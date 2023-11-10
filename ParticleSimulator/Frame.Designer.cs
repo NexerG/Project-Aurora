@@ -1,6 +1,6 @@
 ﻿namespace ParticleSimulator
 {
-    partial class Form1
+    partial class Frame
     {
         /// <summary>
         ///  Required designer variable.
@@ -52,7 +52,6 @@
             TestButton.TabIndex = 1;
             TestButton.Text = "button1";
             TestButton.UseVisualStyleBackColor = true;
-            TestButton.Click += TestButton_Click;
             // 
             // Form1
             // 
@@ -63,14 +62,13 @@
             Controls.Add(PicBox);
             Name = "Form1";
             Text = "Form1";
-            Resize += Form1_Resize;
             ((System.ComponentModel.ISupportInitialize)PicBox).EndInit();
             ResumeLayout(false);
         }
 
         #endregion
 
-        private PictureBox PicBox;
+        public PictureBox PicBox;
         private Button TestButton;
     }
 }
