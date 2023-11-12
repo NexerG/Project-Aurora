@@ -12,9 +12,9 @@ namespace ParticleSimulator.EngineWork
         Vector2 ConstForce = new Vector2();
         List<Particle> parts;
         float[] densities;
-        public float targetDensity = 2.75f;
+        public float targetDensity = 10f;
         float smoothingRadius = 30f;
-        float pressureMultiplier = 0.1f;
+        float pressureMultiplier = 1f;
 
         public Simulator()
         {
@@ -64,7 +64,7 @@ namespace ParticleSimulator.EngineWork
             {
                 parts[i].velocity += ConstForce * TimeScale;
             });
-
+            UpdateDensities();
             Parallel.For(0, parts.Count, i =>
             {
                 Vector2 pressureFroce = CalcPresureForce(i);
@@ -110,8 +110,11 @@ namespace ParticleSimulator.EngineWork
             foreach (Particle p in parts)
             {
                 float dist = Vector2.Distance(samplePoint, p.point);
-                float influence = SmoothingKernel(smoothingRadius, dist);
-                density += influence;
+                if(dist < smoothingRadius)
+                {
+                    float influence = SmoothingKernel(smoothingRadius, dist);
+                    density += influence;
+                }
             }
             return density;
         }
