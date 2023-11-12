@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ParticleSimulator.ParticleTypes;
 
-namespace ParticleSimulator
+namespace ParticleSimulator.EngineWork
 {
     public class Renderer
     {
@@ -12,7 +13,7 @@ namespace ParticleSimulator
         public Graphics g;
         PictureBox PicBox;
 
-        public Renderer(ref PictureBox PB)
+        public Renderer(PictureBox PB)
         {
             PicBox = PB;
             //picture stuff
@@ -22,7 +23,7 @@ namespace ParticleSimulator
 
         public void Draw(List<Particle> p)
         {
-            if(bmp.Width!=PicBox.Width || bmp.Height!=PicBox.Height)
+            if (bmp.Width != PicBox.Width || bmp.Height != PicBox.Height)
             {
                 bmp = new Bitmap(PicBox.Width, PicBox.Height);
                 g = Graphics.FromImage(bmp);
@@ -34,7 +35,7 @@ namespace ParticleSimulator
             //draw
             foreach (Particle particle in p)
             {
-                g.FillRectangle(particle.color, particle.point.X, particle.point.Y, particle.radius, particle.radius);
+                g.FillEllipse(particle.color, particle.point.X, particle.point.Y, particle.radius, particle.radius);
             }
             PicBox.Invalidate();
         }

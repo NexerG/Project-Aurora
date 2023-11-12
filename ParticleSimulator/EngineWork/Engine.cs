@@ -3,29 +3,34 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ParticleSimulator.ParticleTypes;
 
-namespace ParticleSimulator
+namespace ParticleSimulator.EngineWork
 {
     public class Engine
     {
         public bool Running { get; private set; }
-        private Frame SC;
-        private Simulator simulator;
-        private Renderer renderer;
-        private List<Particle> particles;
+        internal Frame SC;
+        internal Simulator simulator;
+        internal Renderer renderer;
+        internal List<Particle> particles;
         System.Windows.Forms.Timer grapicsTimer;
 
         public void Init(Frame s)
         {
             Running = true;
             SC = s;
-            particles= new List<Particle>();
-            particles.Add(new Particle(10,10));
-            simulator = new Simulator();
-            renderer = new Renderer(ref SC.PicBox);
+            particles = new List<Particle>();
+            Random rnd = new Random();
+            for(int i=0; i < 3000; i++)
+            {
+                particles.Add(new Particle(rnd.Next(0, SC.Width), rnd.Next(0, SC.Height)));
+            }
+            simulator = new Simulator(particles,SC);
+            renderer = new Renderer(SC.PicBox);
 
-            grapicsTimer=new System.Windows.Forms.Timer();
-            grapicsTimer.Interval = 1000 / 120;
+            grapicsTimer = new System.Windows.Forms.Timer();
+            grapicsTimer.Interval = 1000 / 240;
             grapicsTimer.Tick += GraphicsTimer_Tick;
             grapicsTimer.Start();
 
@@ -34,22 +39,22 @@ namespace ParticleSimulator
 
         public async void Start()
         {
-            if(simulator==null)
+            if (simulator == null)
             {
                 throw new ArgumentException("Sim missing");
             }
             DateTime initTime = DateTime.Now;
-            while(Running)
+            int TS = 4;
+            while (Running)
             {
                 TimeSpan SimTime = DateTime.Now - initTime;
-                simulator.Update(SimTime,particles);
-                await Task.Delay(64);
+                simulator.Update(SimTime, TS/1000f);
+                await Task.Delay(TS);
             }
         }
 
         private void GraphicsTimer_Tick(object sender, EventArgs e)
         {
-            Console.WriteLine("Draw");
             renderer.Draw(particles);
             //SC.Invalidate();
         }

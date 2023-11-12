@@ -37,9 +37,9 @@
             // 
             PicBox.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             PicBox.BackColor = Color.DimGray;
-            PicBox.Location = new Point(-3, -3);
+            PicBox.Location = new Point(0, 0);
             PicBox.Name = "PicBox";
-            PicBox.Size = new Size(598, 456);
+            PicBox.Size = new Size(560, 450);
             PicBox.TabIndex = 0;
             PicBox.TabStop = false;
             // 
@@ -52,15 +52,16 @@
             TestButton.TabIndex = 1;
             TestButton.Text = "button1";
             TestButton.UseVisualStyleBackColor = true;
+            TestButton.Click += TestButton_Click;
             // 
-            // Form1
+            // Frame
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
             Controls.Add(TestButton);
             Controls.Add(PicBox);
-            Name = "Form1";
+            Name = "Frame";
             Text = "Form1";
             ((System.ComponentModel.ISupportInitialize)PicBox).EndInit();
             ResumeLayout(false);
