@@ -13,7 +13,7 @@ namespace ParticleSimulator.EngineWork
         List<Particle> parts;
         float[] densities;
         public float targetDensity = 10f;
-        float smoothingRadius = 30f;
+        float smoothingRadius = 20f;
         float pressureMultiplier = 1f;
 
         public Simulator()
