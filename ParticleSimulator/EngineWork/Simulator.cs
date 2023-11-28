@@ -38,8 +38,8 @@ namespace ParticleSimulator.EngineWork
         List<Particle> parts;
         float[] densities;
         public float targetDensity = 10f;
-        float smoothingRadius = 20f;
-        float pressureMultiplier = 4f;
+        float smoothingRadius = 40f;
+        float pressureMultiplier = 10f;
         Entry[] SpatialLookup;
         int[] StartIndices;
         public Vector2[] Offsets2D= new Vector2[9];
