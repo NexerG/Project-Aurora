@@ -1,9 +1,34 @@
-﻿using System.Numerics;
+﻿using System;
+using System.Diagnostics;
+using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using ParticleSimulator.Forces;
 using ParticleSimulator.ParticleTypes;
 
 namespace ParticleSimulator.EngineWork
 {
+    public class Entry : IComparable, IComparable<Entry>
+    {
+        public int index;
+        public uint CKey;
+        public Entry(int i, uint ck)
+        {
+            index= i;
+            CKey = ck;
+        }
+
+        public int CompareTo(Entry other)
+        {
+            return CKey.CompareTo(other.CKey);
+        }
+
+        public int CompareTo(object? obj)
+        {
+            return CKey.CompareTo(obj);
+        }
+    }
+
     public class Simulator
     {
         Frame SC;
@@ -14,13 +39,24 @@ namespace ParticleSimulator.EngineWork
         float[] densities;
         public float targetDensity = 10f;
         float smoothingRadius = 20f;
-        float pressureMultiplier = 1f;
+        float pressureMultiplier = 4f;
+        Entry[] SpatialLookup;
+        int[] StartIndices;
+        public Vector2[] Offsets2D= new Vector2[9];
 
-        public Simulator()
+        public Simulator() //SPH algorithm
         {
             Gravity g = new Gravity(new PointF(0, 9.8f));
             forces.Add(g);
+
+            SpatialLookup = new Entry[parts.Count];
+            StartIndices = new int[parts.Count];
+            densities = new float[parts.Count];
+
+            CreateOffsets();
+            UpdateSpatialLookup(parts, smoothingRadius);
             CalcConstForces();
+            CreateOffsets();
         }
 
         public Simulator(List<Particle> parts, Frame SC)
@@ -30,9 +66,26 @@ namespace ParticleSimulator.EngineWork
             this.parts = parts;
             this.SC = SC;
 
-            densities= new float[parts.Count];
+            SpatialLookup = new Entry[parts.Count];
+            StartIndices = new int[parts.Count];
+            densities = new float[parts.Count];
+
+            CreateOffsets();
+            UpdateSpatialLookup(parts, smoothingRadius);
             CalcConstForces();
             UpdateDensities();
+        }
+        public void CreateOffsets()
+        {
+            Offsets2D[0] = new Vector2(-1, 1);
+            Offsets2D[1] = new Vector2(0, 1);
+            Offsets2D[2] = new Vector2(1, 1);
+            Offsets2D[3] = new Vector2(-1, 0);
+            Offsets2D[4] = new Vector2(0, 0);
+            Offsets2D[5] = new Vector2(1, 0);
+            Offsets2D[6] = new Vector2(-1, -1);
+            Offsets2D[7] = new Vector2(0, -1);
+            Offsets2D[8] = new Vector2(1, -1);
         }
 
         public void CalcConstForces()
@@ -57,23 +110,33 @@ namespace ParticleSimulator.EngineWork
 
         public void Update(TimeSpan engineTime, float TimeScale)
         {
-            //this.parts = ps;
-            double TimeElapsed = engineTime.TotalMilliseconds / 1000f;
+            SimStep(TimeScale);
+        }
 
+        public void SimStep(float TimeScale)
+        {
+            //gravity
             Parallel.For(0, parts.Count, i =>
             {
                 parts[i].velocity += ConstForce * TimeScale;
+                parts[i].PredPoint = parts[i].point + parts[i].velocity * TimeScale;
             });
+
+            //assign points to cells
+            UpdateSpatialLookup(parts,smoothingRadius);
+            //densities
             UpdateDensities();
+
+            //forces
             Parallel.For(0, parts.Count, i =>
             {
                 Vector2 pressureFroce = CalcPresureForce(i);
                 Vector2 pressureAccel = pressureFroce / densities[i];
                 parts[i].velocity += -pressureAccel * TimeScale;
             });
-
             UpdatePositions(parts);
         }
+
         void UpdatePositions(List<Particle> parts)
         {
             Parallel.For(0, parts.Count, i =>
@@ -98,22 +161,36 @@ namespace ParticleSimulator.EngineWork
         {
             Parallel.For(0, parts.Count, i =>
             {
-                densities[i] = CalculateDensity(parts[i].point);
+                densities[i] = CalculateDensity(parts[i].PredPoint);
             });
         }
 
         private float CalculateDensity(Vector2 samplePoint)
         {
             float density = 0;
-            const float mass = 1;
+            //const float mass = 1;
 
-            foreach (Particle p in parts)
+            (int CenterX, int CenterY) = PositionToCellCoord(samplePoint, smoothingRadius);
+            float sqrRadius = smoothingRadius * smoothingRadius;
+
+            foreach (Vector2 off in Offsets2D)
             {
-                float dist = Vector2.Distance(samplePoint, p.point);
-                if(dist < smoothingRadius)
+                uint key = GetKeyFromHash(HashCell((int)(CenterX + off.X), (int)(CenterY + off.Y)));
+                int cellStartIndex = StartIndices[key];
+
+                for (int i = cellStartIndex; i < SpatialLookup.Length; i++)
                 {
-                    float influence = SmoothingKernel(smoothingRadius, dist);
-                    density += influence;
+                    if (SpatialLookup[i].CKey != key) break;
+
+                    int particleIndex = SpatialLookup[i].index;
+                    float sqrDist = (parts[particleIndex].point - samplePoint).LengthSquared();
+                    if (sqrDist <= sqrRadius)
+                    {
+                        float dist = Vector2.Distance(samplePoint, parts[particleIndex].point);
+
+                        float influence = SmoothingKernel(smoothingRadius, dist);
+                        density += influence;
+                    }
                 }
             }
             return density;
@@ -136,18 +213,35 @@ namespace ParticleSimulator.EngineWork
 
         Vector2 CalcPresureForce(int index)
         {
-            Vector2 PressureForce = Vector2.Zero;
-            for (int i = 0; i < parts.Count; i++)
-            {
-                if (index == i) continue;
-                Vector2 offset = parts[i].point - parts[index].point;
-                float dist = offset.Length();
-                Vector2 dir = dist == 0 ? GetRandomDir() : offset / dist;
+            Vector2 PressureForce = new Vector2(0,0);
 
-                float slope = SmoothingKernelDerivative(dist, smoothingRadius);
-                float density = densities[i];
-                float sharedpressure = CalcSharedPressure(density, densities[i]);
-                PressureForce += sharedpressure * dir * slope * 1 / density;
+            (int CenterX, int CenterY) = PositionToCellCoord(parts[index].point, smoothingRadius);
+            float sqrRadius = smoothingRadius * smoothingRadius;
+
+            foreach (Vector2 off in Offsets2D)
+            {
+                uint key = GetKeyFromHash(HashCell((int)(CenterX + off.X), (int)(CenterY + off.Y)));
+                int cellStartIndex = StartIndices[key];
+
+                for (int i = cellStartIndex; i < SpatialLookup.Length; i++)
+                {
+                    if (SpatialLookup[i].CKey != key) break;
+
+                    int particleIndex = SpatialLookup[i].index;
+                    float sqrDist = (parts[particleIndex].point - parts[index].point).LengthSquared();
+                    if (sqrDist <= sqrRadius)
+                    {
+                        if (index == i) continue;
+                        Vector2 offset = parts[i].point - parts[index].point;
+                        float dist = offset.Length();
+                        Vector2 dir = dist == 0 ? GetRandomDir() : offset / dist;
+
+                        float slope = SmoothingKernelDerivative(dist, smoothingRadius);
+                        float density = densities[i];
+                        float sharedpressure = CalcSharedPressure(density, densities[i]);
+                        PressureForce += sharedpressure * dir * slope * 1 / density;
+                    }
+                }
             }
             return PressureForce;
         }
@@ -170,6 +264,53 @@ namespace ParticleSimulator.EngineWork
             float densityError = density - targetDensity;
             float pressure = densityError * pressureMultiplier;
             return pressure;
+        }
+        public void UpdateSpatialLookup(List<Particle> parts, float radius)
+        {
+            Parallel.For(0, parts.Count, i =>
+            {
+                (int cellX, int cellY) = PositionToCellCoord(parts[i], radius);
+                uint CKey = GetKeyFromHash(HashCell(cellX,cellY));
+                SpatialLookup[i] = new Entry(i, CKey);
+                StartIndices[i] = int.MaxValue;
+            });
+
+            Array.Sort(SpatialLookup);
+
+            Parallel.For(0, parts.Count, i =>
+            {
+                uint key = SpatialLookup[i].CKey;
+                uint KeyPrev = i ==0 ?int.MaxValue: SpatialLookup[i-1].CKey;
+                if(key!= KeyPrev)
+                {
+                    StartIndices[key] = i;
+                }
+            });
+        }
+
+        private uint HashCell(int cellX, int cellY)
+        {
+            uint a = (uint)(cellX * 15823);
+            uint b = (uint)(cellY * 9737333);
+            return a + b;
+        }
+
+        private uint GetKeyFromHash(uint HC)
+        {
+            return HC % (uint)SpatialLookup.Length;
+        }
+
+        private (int cellX, int cellY) PositionToCellCoord(Particle particle, float radius)
+        {
+            int cellX = (int)(particle.PredPoint.X / radius);
+            int cellY = (int)(particle.PredPoint.Y / radius);
+            return (cellX, cellY);
+        }
+        private (int cellX, int cellY) PositionToCellCoord(Vector2 Point, float radius)
+        {
+            int cellX = (int)(Point.X / radius);
+            int cellY = (int)(Point.Y / radius);
+            return (cellX, cellY);
         }
     }
 }

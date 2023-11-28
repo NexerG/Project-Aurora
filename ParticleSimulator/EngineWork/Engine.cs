@@ -22,9 +22,9 @@ namespace ParticleSimulator.EngineWork
             SC = s;
             particles = new List<Particle>();
             Random rnd = new Random();
-            for(int i=0; i < 750; i++)
+            for(int i=0; i < 5000; i++)
             {
-                particles.Add(new Particle(rnd.Next(0, SC.PicBox.Width), rnd.Next(0, SC.PicBox.Height)));
+                particles.Add(new Particle(rnd.Next(10, SC.PicBox.Width), rnd.Next(10, SC.PicBox.Height)));
             }
             simulator = new Simulator(particles,SC);
             renderer = new Renderer(SC.PicBox);
