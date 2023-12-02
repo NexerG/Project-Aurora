@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using ParticleSimulator.ParticleTypes;
+﻿using ParticleSimulator.ParticleTypes;
 
 namespace ParticleSimulator.EngineWork
 {
@@ -22,11 +17,14 @@ namespace ParticleSimulator.EngineWork
             SC = s;
             particles = new List<Particle>();
             Random rnd = new Random();
-            for(int i=0; i < 40; i++)
+            int particleRoot = 40;
+            float offsetX = (SC.PicBox.Width / 2) - (particleRoot * 7 / 2);
+            float offsetY = (SC.PicBox.Height / 2) - (particleRoot * 7 / 2);
+            for (int i=0; i < particleRoot; i++)
             {
-                for(int j=0; j < 40; j++)
+                for(int j=0; j < particleRoot; j++)
                 {
-                    particles.Add(new Particle(i * 7+100,j*7+50));
+                    particles.Add(new Particle(i * 7+offsetX,j*7+offsetY));
                 }
             }
             simulator = new Simulator(particles,SC);
@@ -47,7 +45,7 @@ namespace ParticleSimulator.EngineWork
                 throw new ArgumentException("Sim missing");
             }
             DateTime initTime = DateTime.Now;
-            int TS = 4;
+            int TS = 8;
             while (Running)
             {
                 TimeSpan SimTime = DateTime.Now - initTime;

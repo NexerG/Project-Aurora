@@ -33,11 +33,25 @@ namespace ParticleSimulator.EngineWork
             PicBox.Image = bmp;
 
             //draw
+            float MaxSpeed = p.Max(r => r.velocity.LengthSquared()) + 0.1f;
+            float MinSpeed = p.Min(r => r.velocity.LengthSquared()) - 0.1f;
             foreach (Particle particle in p)
             {
-                g.FillEllipse(particle.color, particle.point.X, particle.point.Y, particle.radius, particle.radius);
+                g.FillEllipse(color(particle.velocity.LengthSquared(),MinSpeed,MaxSpeed), particle.point.X, particle.point.Y, particle.radius, particle.radius);
             }
             PicBox.Invalidate();
+        }
+
+        public Brush color(float velocity, float MinSpeed, float MaxSpeed)
+        {
+            Color minColor = Color.Blue;
+            Color MaxColor = Color.Red;
+            double remaped = (velocity - MinSpeed) / (MaxSpeed - MinSpeed);
+            int r = (int)(minColor.R + remaped * (MaxColor.R - minColor.R));
+            int g = (int)(minColor.G + remaped * (MaxColor.G - minColor.G));
+            int b = (int)(minColor.B + remaped * (MaxColor.B - minColor.B));
+
+            return new Pen(Color.FromArgb(255, r, g, b)).Brush;
         }
     }
 }

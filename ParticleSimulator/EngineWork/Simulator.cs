@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Numerics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using ParticleSimulator.Forces;
@@ -31,15 +32,20 @@ namespace ParticleSimulator.EngineWork
 
     public class Simulator
     {
+        //Frame
         Frame SC;
-
+        //particles and forces
         List<Force> forces = new List<Force>();
         Vector2 ConstForce = new Vector2();
         List<Particle> parts;
         float[] densities;
-        public float targetDensity = 10f;
-        float smoothingRadius = 40f;
-        float pressureMultiplier = 10f;
+        //Vars
+        public float targetDensity = 0.00001f;
+        public float smoothingRadius = 14f;
+        public float pressureMultiplier = 800f;
+        public float viscosityStr = 0.45f;
+        public float GravStrength = 1f;
+        //Cells
         Entry[] SpatialLookup;
         int[] StartIndices;
         public Vector2[] Offsets2D= new Vector2[9];
@@ -57,6 +63,7 @@ namespace ParticleSimulator.EngineWork
             UpdateSpatialLookup(parts, smoothingRadius);
             CalcConstForces();
             CreateOffsets();
+            UpdateUI();
         }
 
         public Simulator(List<Particle> parts, Frame SC)
@@ -74,6 +81,16 @@ namespace ParticleSimulator.EngineWork
             UpdateSpatialLookup(parts, smoothingRadius);
             CalcConstForces();
             UpdateDensities();
+            UpdateUI();
+        }
+
+        private void UpdateUI()
+        {
+            SC.TB_SmoothingRadius.Text = smoothingRadius.ToString();
+            SC.TB_TargetDensity.Text = targetDensity.ToString();
+            SC.TB_ViscosityStrength.Text = viscosityStr.ToString();
+            SC.TB_PressureMult.Text = pressureMultiplier.ToString();
+            SC.TB_GravStr.Text = GravStrength.ToString();
         }
         public void CreateOffsets()
         {
@@ -118,8 +135,8 @@ namespace ParticleSimulator.EngineWork
             //gravity
             Parallel.For(0, parts.Count, i =>
             {
-                parts[i].velocity += ConstForce * TimeScale;
-                parts[i].PredPoint = parts[i].point + parts[i].velocity * TimeScale;
+                parts[i].velocity += ConstForce * TimeScale * GravStrength;
+                parts[i].PredPoint = parts[i].point + parts[i].velocity;
             });
 
             //assign points to cells
@@ -127,12 +144,20 @@ namespace ParticleSimulator.EngineWork
             //densities
             UpdateDensities();
 
-            //forces
+            //////forces
+            //pressure
             Parallel.For(0, parts.Count, i =>
             {
-                Vector2 pressureFroce = CalcPresureForce(i);
-                Vector2 pressureAccel = pressureFroce / densities[i];
-                parts[i].velocity += -pressureAccel * TimeScale;
+                Vector2 pressureForce = CalcPresureForce(i);
+                Vector2 pressureAccel = pressureForce / densities[i];
+                parts[i].velocity += pressureAccel * TimeScale;
+            });
+
+            //Viscosity
+            Parallel.For(0, parts.Count, i =>
+            {
+                Vector2 ViscForce = CalculateViscosityForce(i);
+                parts[i].velocity += ViscForce * viscosityStr;
             });
             UpdatePositions(parts);
         }
@@ -157,6 +182,7 @@ namespace ParticleSimulator.EngineWork
             });
         }
 
+        #region Density
         void UpdateDensities()
         {
             Parallel.For(0, parts.Count, i =>
@@ -164,11 +190,10 @@ namespace ParticleSimulator.EngineWork
                 densities[i] = CalculateDensity(parts[i].PredPoint);
             });
         }
-
         private float CalculateDensity(Vector2 samplePoint)
         {
             float density = 0;
-            //const float mass = 1;
+            const float mass = 1;
 
             (int CenterX, int CenterY) = PositionToCellCoord(samplePoint, smoothingRadius);
             float sqrRadius = smoothingRadius * smoothingRadius;
@@ -183,37 +208,92 @@ namespace ParticleSimulator.EngineWork
                     if (SpatialLookup[i].CKey != key) break;
 
                     int particleIndex = SpatialLookup[i].index;
-                    float sqrDist = (parts[particleIndex].point - samplePoint).LengthSquared();
+                    float sqrDist = (parts[particleIndex].PredPoint - samplePoint).LengthSquared();
                     if (sqrDist <= sqrRadius)
                     {
-                        float dist = Vector2.Distance(samplePoint, parts[particleIndex].point);
+                        float dist = Vector2.Distance(samplePoint, parts[particleIndex].PredPoint);
 
-                        float influence = SmoothingKernel(smoothingRadius, dist);
-                        density += influence;
+                        float influence = SmoothingKernel(dist);
+                        density += influence * mass;
                     }
                 }
             }
             return density;
         }
-        float SmoothingKernel(float radius, float dist)
+        float SmoothingKernel(float dist)
         {
-            if (dist >= radius) return 0;
+            if (dist >= smoothingRadius) return 0;
 
-            float volume = (float)((Math.PI * Math.Pow(radius, 4)) / 6);
-            return (radius - dist) * (radius - dist) / volume;
+            float volume = (float)((Math.PI * Math.Pow(smoothingRadius, 4)) / 6);
+            return (smoothingRadius - dist) * (smoothingRadius - dist) / volume;
         }
+#endregion
 
-        static float SmoothingKernelDerivative(float dist, float radius)
-        {
-            if (dist >= radius) return 0;
-
-            float scale = (float)(13 / (Math.Pow(radius, 4) * Math.PI));
-            return (dist - radius) * scale;
-        }
-
+        #region Pressure
         Vector2 CalcPresureForce(int index)
         {
             Vector2 PressureForce = new Vector2(0,0);
+
+            (int CenterX, int CenterY) = PositionToCellCoord(parts[index].PredPoint, smoothingRadius);
+            float sqrRadius = smoothingRadius * smoothingRadius;
+
+            foreach (Vector2 off in Offsets2D)
+            {
+                uint key = GetKeyFromHash(HashCell((int)(CenterX + off.X), (int)(CenterY + off.Y)));
+                int cellStartIndex = StartIndices[key];
+
+                for (int i = cellStartIndex; i < SpatialLookup.Length; i++)
+                {
+                    if (SpatialLookup[i].CKey != key) break;
+
+                    int particleIndex = SpatialLookup[i].index;
+                    float sqrDist = (parts[particleIndex].point - parts[index].point).LengthSquared();
+                    if (sqrDist <= sqrRadius)
+                    {
+                        if (index == particleIndex) continue;
+                        Vector2 offset = parts[particleIndex].PredPoint - parts[index].PredPoint;
+                        float dist = offset.Length();
+                        Vector2 dir = dist == 0 ? GetRandomDir() : offset / dist;
+
+                        float slope = SmoothingKernelDerivative(dist);
+                        float density = densities[particleIndex];
+                        float sharedpressure = CalcSharedPressure(density, densities[index]);
+                        PressureForce += sharedpressure * dir * slope * 1 / density;
+                    }
+                }
+            }
+            return PressureForce;
+        }
+        float SmoothingKernelDerivative(float dist)
+        {
+            if (dist >= smoothingRadius) return 0;
+
+            float scale = (float)(12 / (Math.Pow(smoothingRadius, 4) * Math.PI));
+            return (dist - smoothingRadius) * scale;
+        }
+        private float CalcSharedPressure(float DensA, float DensB)
+        {
+            float pressureA = ConvertDensityToPressure(DensA);
+            float pressureB = ConvertDensityToPressure(DensB);
+            return (pressureA + pressureB) / 2;
+        }
+        private Vector2 GetRandomDir()
+        {
+            Random r = new Random();
+            return new Vector2(r.Next(0, 1), r.Next(0, 1));
+        }
+        float ConvertDensityToPressure(float density)
+        {
+            float densityError = density - targetDensity;
+            float pressure = densityError * pressureMultiplier;
+            return pressure;
+        }
+        #endregion
+
+        #region Viscosity
+        public Vector2 CalculateViscosityForce(int index)
+        {
+            Vector2 ViscosityForce = Vector2.Zero;
 
             (int CenterX, int CenterY) = PositionToCellCoord(parts[index].point, smoothingRadius);
             float sqrRadius = smoothingRadius * smoothingRadius;
@@ -231,40 +311,27 @@ namespace ParticleSimulator.EngineWork
                     float sqrDist = (parts[particleIndex].point - parts[index].point).LengthSquared();
                     if (sqrDist <= sqrRadius)
                     {
-                        if (index == i) continue;
-                        Vector2 offset = parts[i].point - parts[index].point;
-                        float dist = offset.Length();
-                        Vector2 dir = dist == 0 ? GetRandomDir() : offset / dist;
+                        if (index == particleIndex) continue;
 
-                        float slope = SmoothingKernelDerivative(dist, smoothingRadius);
-                        float density = densities[i];
-                        float sharedpressure = CalcSharedPressure(density, densities[i]);
-                        PressureForce += sharedpressure * dir * slope * 1 / density;
+                        float dist = Vector2.Distance(parts[index].point, parts[particleIndex].point);
+                        float influence = ViscositySmoothingKernel(dist);
+                        ViscosityForce += (parts[particleIndex].velocity - parts[index].velocity) * influence;
                     }
                 }
             }
-            return PressureForce;
+            return ViscosityForce;
         }
-
-        private float CalcSharedPressure(float DensA, float DensB)
+        private float ViscositySmoothingKernel(float dist)
         {
-            float pressureA = ConverDesntiyToPresure(DensA);
-            float pressureB = ConverDesntiyToPresure(DensB);
-            return (pressureA + pressureB) / 2;
-        }
+            if (dist >= smoothingRadius) return 0;
 
-        private Vector2 GetRandomDir()
-        {
-            Random r = new Random();
-            return new Vector2(r.Next(0, 1), r.Next(0, 1));
+            float volume = (float)(Math.PI * Math.Pow(smoothingRadius, 8) / 4);
+            float val = Math.Max(0, smoothingRadius * smoothingRadius - dist * dist);
+            return val * val * val / volume;
         }
+        #endregion
 
-        float ConverDesntiyToPresure(float density)
-        {
-            float densityError = density - targetDensity;
-            float pressure = densityError * pressureMultiplier;
-            return pressure;
-        }
+        #region Cells
         public void UpdateSpatialLookup(List<Particle> parts, float radius)
         {
             Parallel.For(0, parts.Count, i =>
@@ -287,19 +354,16 @@ namespace ParticleSimulator.EngineWork
                 }
             });
         }
-
         private uint HashCell(int cellX, int cellY)
         {
             uint a = (uint)(cellX * 15823);
             uint b = (uint)(cellY * 9737333);
             return a + b;
         }
-
         private uint GetKeyFromHash(uint HC)
         {
             return HC % (uint)SpatialLookup.Length;
         }
-
         private (int cellX, int cellY) PositionToCellCoord(Particle particle, float radius)
         {
             int cellX = (int)(particle.PredPoint.X / radius);
@@ -312,5 +376,6 @@ namespace ParticleSimulator.EngineWork
             int cellY = (int)(Point.Y / radius);
             return (cellX, cellY);
         }
+        #endregion
     }
 }

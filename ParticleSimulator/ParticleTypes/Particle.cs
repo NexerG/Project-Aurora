@@ -12,7 +12,7 @@ namespace ParticleSimulator.ParticleTypes
         public Vector2 point = new Vector2();
         public Vector2 PredPoint = new Vector2();
         public Vector2 velocity = new Vector2();
-        public float radius = 5;
+        public float radius = 7;
         public Brush color = new Pen(Color.FromArgb(255, 255, 255, 255)).Brush;
 
         public Particle()
