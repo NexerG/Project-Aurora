@@ -42,8 +42,8 @@ namespace ParticleSimulator.EngineWork
         //Vars
         public float targetDensity = 0.00001f;
         public float smoothingRadius = 14f;
-        public float pressureMultiplier = 800f;
-        public float viscosityStr = 0.45f;
+        public float pressureMultiplier = 3200f;
+        public float viscosityStr = 15f;
         public float GravStrength = 1f;
         //Cells
         Entry[] SpatialLookup;

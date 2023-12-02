@@ -17,7 +17,7 @@ namespace ParticleSimulator.EngineWork
             SC = s;
             particles = new List<Particle>();
             Random rnd = new Random();
-            int particleRoot = 40;
+            int particleRoot = 50;
             float offsetX = (SC.PicBox.Width / 2) - (particleRoot * 7 / 2);
             float offsetY = (SC.PicBox.Height / 2) - (particleRoot * 7 / 2);
             for (int i=0; i < particleRoot; i++)
