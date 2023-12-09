@@ -1,3 +1,6 @@
+using OpenTK;
+using OpenTK.Compute.OpenCL;
+using OpenTK.Graphics.OpenGL;
 using ParticleSimulator.EngineWork;
 using System.Numerics;
 
@@ -11,8 +14,6 @@ namespace ParticleSimulator
         {
             //initialization
             InitializeComponent();
-            engine = new Engine();
-            engine.Init(this);
         }
 
         private void TestButton_Click(object sender, EventArgs e)
@@ -53,6 +54,27 @@ namespace ParticleSimulator
         private void TB_GravStr_Validated(object sender, EventArgs e)
         {
             engine.simulator.GravStrength = float.Parse(TB_GravStr.Text);
+        }
+
+        private void Frame_Load(object sender, EventArgs e)
+        {
+            engine = new Engine();
+            engine.Init(this);
+            GLControl.Resize += GLControl_Resize;
+            //GLControl.Paint += GLControl_Paint;
+        }
+        public void GLControl_Resize(object? sender, EventArgs e)
+        {
+            GLControl.MakeCurrent();
+            GL.Viewport(0, 0, GLControl.Width, GLControl.Height);
+        }
+
+        private void GLControl_Paint(object? sender, PaintEventArgs e)
+        {
+            GLControl.MakeCurrent();
+            GL.ClearColor(Color.FromArgb(255, 30, 30, 30));
+            GL.Clear(ClearBufferMask.ColorBufferBit);
+            GLControl.SwapBuffers();
         }
     }
 }
