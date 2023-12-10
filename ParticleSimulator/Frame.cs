@@ -58,10 +58,10 @@ namespace ParticleSimulator
 
         private void Frame_Load(object sender, EventArgs e)
         {
+            //GLControl.Paint += GLControl_Paint;
             engine = new Engine();
             engine.Init(this);
             GLControl.Resize += GLControl_Resize;
-            //GLControl.Paint += GLControl_Paint;
         }
         public void GLControl_Resize(object? sender, EventArgs e)
         {

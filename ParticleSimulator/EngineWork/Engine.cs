@@ -30,7 +30,8 @@ namespace ParticleSimulator.EngineWork
             //simulator = new Simulator(particles,SC);
             //renderer = new Renderer(SC.PicBox);
             renderer3D = new OpenTK_Renderer(SC);
-            SC.GLControl.Paint += renderer3D.MakeTriangle;
+            SC.GLControl.Paint += renderer3D.Render;
+            SC.GLControl.Invalidate();
 
             //grapicsTimer = new System.Windows.Forms.Timer();
             //grapicsTimer.Interval = 1000 / 240;
