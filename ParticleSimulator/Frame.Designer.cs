@@ -42,6 +42,7 @@
             label1 = new Label();
             TB_GravStr = new TextBox();
             ControlPanel = new Panel();
+            button2 = new Button();
             MainPanel = new Panel();
             GLControl = new OpenTK.WinForms.GLControl();
             ((System.ComponentModel.ISupportInitialize)PicBox).BeginInit();
@@ -178,6 +179,7 @@
             // 
             // ControlPanel
             // 
+            ControlPanel.Controls.Add(button2);
             ControlPanel.Controls.Add(label1);
             ControlPanel.Controls.Add(TB_GravStr);
             ControlPanel.Controls.Add(button1);
@@ -195,6 +197,16 @@
             ControlPanel.Name = "ControlPanel";
             ControlPanel.Size = new Size(223, 627);
             ControlPanel.TabIndex = 13;
+            // 
+            // button2
+            // 
+            button2.Location = new Point(7, 202);
+            button2.Name = "button2";
+            button2.Size = new Size(208, 23);
+            button2.TabIndex = 13;
+            button2.Text = "button2";
+            button2.UseVisualStyleBackColor = true;
+            button2.Click += button2_Click;
             // 
             // MainPanel
             // 
@@ -220,6 +232,12 @@
             GLControl.Size = new Size(921, 627);
             GLControl.TabIndex = 0;
             GLControl.Text = "GlControl";
+            GLControl.KeyDown += GLControl_KeyDown;
+            GLControl.KeyPress += GLControl_KeyPress;
+            GLControl.MouseClick += GLControl_MouseClick;
+            GLControl.MouseDown += GLControl_MouseDown;
+            GLControl.MouseMove += GLControl_MouseMove;
+            GLControl.MouseUp += GLControl_MouseUp;
             // 
             // Frame
             // 
@@ -231,7 +249,9 @@
             Controls.Add(ControlPanel);
             Controls.Add(PicBox);
             Name = "Frame";
+            FormClosing += Frame_FormClosing;
             Load += Frame_Load;
+            KeyDown += Frame_KeyDown;
             ((System.ComponentModel.ISupportInitialize)PicBox).EndInit();
             ControlPanel.ResumeLayout(false);
             ControlPanel.PerformLayout();
@@ -261,7 +281,8 @@
         private Label label1;
         public TextBox TB_GravStr;
         private Panel ControlPanel;
-        private Panel MainPanel;
+        public Panel MainPanel;
         public OpenTK.WinForms.GLControl GLControl;
+        private Button button2;
     }
 }

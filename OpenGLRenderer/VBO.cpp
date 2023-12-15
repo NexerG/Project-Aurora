@@ -1,6 +1,7 @@
-#include "VertexBufferClass.h"
+#include"VBO.h"
 
-VertexBufferClass::VertexBufferClass(GLfloat* vertices, GLsizeiptr size)
+// Constructor that generates a Vertex Buffer Object and links it to vertices
+VBO::VBO(GLfloat* vertices, GLsizeiptr size)
 {
 	glGenBuffers(1, &ID);
 	glBindBuffer(GL_ARRAY_BUFFER, ID);
@@ -8,19 +9,19 @@ VertexBufferClass::VertexBufferClass(GLfloat* vertices, GLsizeiptr size)
 }
 
 // Binds the VBO
-void VertexBufferClass::Bind()
+void VBO::Bind()
 {
 	glBindBuffer(GL_ARRAY_BUFFER, ID);
 }
 
 // Unbinds the VBO
-void VertexBufferClass::Unbind()
+void VBO::Unbind()
 {
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 // Deletes the VBO
-void VertexBufferClass::Delete()
+void VBO::Delete()
 {
 	glDeleteBuffers(1, &ID);
 }

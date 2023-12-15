@@ -141,23 +141,32 @@
   <ItemGroup>
     <ClInclude Include="..\..\OpenGL Libs\Glad\glad\glad.h" />
     <ClInclude Include="..\..\OpenGL Libs\Glad\KHR\khrplatform.h" />
-    <ClInclude Include="ElementBufferClass.h" />
+    <ClInclude Include="Camera.h" />
+    <ClInclude Include="EBO.h" />
     <ClInclude Include="Main.h" />
-    <ClInclude Include="Shader.h" />
-    <ClInclude Include="VertexArrayClass.h" />
-    <ClInclude Include="VertexBufferClass.h" />
+    <ClInclude Include="shaderClass.h" />
+    <ClInclude Include="stb_image.h" />
+    <ClInclude Include="Texture.h" />
+    <ClInclude Include="VAO.h" />
+    <ClInclude Include="VBO.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ElementBufferClass.cpp" />
+    <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="EBO.cpp" />
     <ClCompile Include="glad.c" />
     <ClCompile Include="Main.cpp" />
-    <ClCompile Include="Shader.cpp" />
-    <ClCompile Include="VertexArrayClass.cpp" />
-    <ClCompile Include="VertexBufferClass.cpp" />
+    <ClCompile Include="shaderClass.cpp" />
+    <ClCompile Include="stb.cpp" />
+    <ClCompile Include="Texture.cpp" />
+    <ClCompile Include="VAO.cpp" />
+    <ClCompile Include="VBO.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Default.frag" />
-    <None Include="Default.vert" />
+    <Image Include="..\ParticleSimulator\Shaders\Brick.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\ParticleSimulator\Shaders\Default.frag" />
+    <None Include="..\ParticleSimulator\Shaders\Default.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

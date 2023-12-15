@@ -21,6 +21,7 @@
     <PackageReference Include="OpenTK.Windowing.Desktop" Version="4.8.2" />
     <PackageReference Include="OpenTK.Windowing.GraphicsLibraryFramework" Version="4.8.2" />
     <PackageReference Include="OpenTK.WinForms" Version="4.0.0-pre.7" />
+    <PackageReference Include="StbImageSharp" Version="2.27.13" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
   </ItemGroup>
 

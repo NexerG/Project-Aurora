@@ -76,5 +76,50 @@ namespace ParticleSimulator
             GL.Clear(ClearBufferMask.ColorBufferBit);
             GLControl.SwapBuffers();
         }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+            //GLControl.Invalidate();
+        }
+
+        private void Frame_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            engine.renderer3D.ClearMemory();
+        }
+
+        private void GLControl_MouseDown(object sender, MouseEventArgs e)
+        {
+            engine.MouseHandler(e, 1);
+        }
+
+        private void GLControl_MouseUp(object sender, MouseEventArgs e)
+        {
+            engine.MouseHandler(e, 0);
+        }
+
+        private void GLControl_MouseMove(object sender, MouseEventArgs e)
+        {
+            engine.MouseHandler(e, 2);
+        }
+
+        private void GLControl_KeyDown(object sender, KeyEventArgs e)
+        {
+        }
+
+        private void GLControl_MouseClick(object sender, MouseEventArgs e)
+        {
+            GLControl.Focus();
+            Console.WriteLine("focus");
+        }
+
+        private void Frame_KeyDown(object sender, KeyEventArgs e)
+        {
+            //engine.KeyboardHandler(e);
+        }
+
+        private void GLControl_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            engine.KeyboardHandler(e);
+        }
     }
 }
