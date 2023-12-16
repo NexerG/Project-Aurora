@@ -1,5 +1,6 @@
 ﻿using ParticleSimulator.EngineWork.Rendering;
 using ParticleSimulator.ParticleTypes;
+using System.Numerics;
 
 namespace ParticleSimulator.EngineWork
 {
@@ -7,43 +8,73 @@ namespace ParticleSimulator.EngineWork
     {
         public bool Running { get; private set; }
         internal Frame SC;
-        internal Simulator simulator;
-        internal Renderer renderer;
+        internal Simulator simulator2D;
+        internal Simulator3D simulator3D;
+        //internal Renderer renderer;
         internal OpenTK_Renderer renderer3D;
-        internal List<Particle> particles;
+        internal List<Particle2D> particles2D;
+        internal List<Particle3D> particles3D;
         System.Windows.Forms.Timer grapicsTimer;
 
-        public void Init(Frame s)
+        public void Init(Frame s, bool threeDims)
         {
             Running = true;
             SC = s;
-            particles = new List<Particle>();
-            int particleRoot = 50;
-            float offsetX = (SC.PicBox.Width / 2) - (particleRoot * 7 / 2);
-            float offsetY = (SC.PicBox.Height / 2) - (particleRoot * 7 / 2);
-            for (int i=0; i < particleRoot; i++)
+            particles2D = new List<Particle2D>();
+            particles3D = new List<Particle3D>();
+            int particleRoot = 70;
+            float offsetX = (700 / 2) - (particleRoot * 7 / 2);
+            float offsetY = (700 / 2) - (particleRoot * 7 / 2);
+            float offsetZ = (700 / 2) - (particleRoot * 7 / 2);
+
+            if(!threeDims)
             {
-                for(int j=0; j < particleRoot; j++)
+                //2D
+                Parallel.For(0, particleRoot, i =>
                 {
-                    particles.Add(new Particle(i * 7+offsetX,j*7+offsetY));
-                }
+                    for (int j = 0; j < particleRoot; j++)
+                    {
+                        particles2D.Add(new Particle2D(i * 7 + offsetX, j * 7 + offsetY));
+                    }
+                });
+                simulator2D = new Simulator(SC, particles2D, new Vector2(700, 700));
+                renderer3D = new OpenTK_Renderer(SC);
+                SC.GLControl.Paint += renderer3D.Render;
+                renderer3D.Init2D(particles2D);
             }
-            //simulator = new Simulator(particles,SC);
-            //renderer = new Renderer(SC.PicBox);
-            renderer3D = new OpenTK_Renderer(SC);
-            SC.GLControl.Paint += renderer3D.Render;
+            else
+            {
+                //3D
+                Parallel.For(0, particleRoot, i =>
+                {
+                    for (int j = 0; j < particleRoot; j++)
+                    {
+                        for (int k = 0; k < particleRoot; k++)
+                        {
+                            particles3D.Add(new Particle3D(i * 7 + offsetX, j * 7 + offsetY, k * 7 + offsetZ));
+                        }
+                    }
+                });
+                simulator3D = new Simulator3D(SC, particles3D, new Vector3(700, 700,700));
+                renderer3D = new OpenTK_Renderer(SC);
+                SC.GLControl.Paint += renderer3D.Render;
+                renderer3D.Init3D(particles3D);
+            }
 
             grapicsTimer = new System.Windows.Forms.Timer();
             grapicsTimer.Interval = 1000 / 240;
             grapicsTimer.Tick += GraphicsTimer_Tick;
             grapicsTimer.Start();
 
-            //Start();
+            if (!threeDims)
+                Start2D();
+            else
+                Start3D();
         }
 
-        public async void Start()
+        public async void Start2D()
         {
-            if (simulator == null)
+            if (simulator2D == null)
             {
                 throw new ArgumentException("Sim missing");
             }
@@ -52,14 +83,31 @@ namespace ParticleSimulator.EngineWork
             while (Running)
             {
                 TimeSpan SimTime = DateTime.Now - initTime;
-                simulator.Update(SimTime, TS/1000f);
+                simulator2D.Update(SimTime, TS / 1000f);
+                renderer3D.UpdatePositions2D(particles2D);
                 await Task.Delay(TS);
-            } 
+            }
+        }
+        public async void Start3D()
+        {
+            if (simulator3D == null)
+            {
+                throw new ArgumentException("Sim missing");
+            }
+            DateTime initTime = DateTime.Now;
+            int TS = 8;
+            while (Running)
+            {
+                TimeSpan SimTime = DateTime.Now - initTime;
+                simulator3D.Update(SimTime, TS / 1000f);
+                renderer3D.UpdatePositions3D(particles3D);
+                await Task.Delay(TS);
+            }
         }
 
         private void GraphicsTimer_Tick(object sender, EventArgs e)
         {
-            //renderer.Draw(particles);
+            //renderer.Draw(particles2D);
             //SC.Invalidate();
             //renderer3D.RotatePyramid(new OpenTK.Mathematics.Vector3(0, 1f, 0), 0.5f);
             //renderer3D.camera.inputs(SC.GLControl);

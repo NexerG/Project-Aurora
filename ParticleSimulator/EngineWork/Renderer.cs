@@ -21,7 +21,7 @@ namespace ParticleSimulator.EngineWork
             g = Graphics.FromImage(bmp);
         }
 
-        public void Draw(List<Particle> p)
+        public void Draw(List<Particle2D> p)
         {
             if (bmp.Width != PicBox.Width || bmp.Height != PicBox.Height)
             {
@@ -35,7 +35,7 @@ namespace ParticleSimulator.EngineWork
             //draw
             float MaxSpeed = p.Max(r => r.velocity.LengthSquared()) + 0.1f;
             float MinSpeed = p.Min(r => r.velocity.LengthSquared()) - 0.1f;
-            foreach (Particle particle in p)
+            foreach (Particle2D particle in p)
             {
                 g.FillEllipse(color(particle.velocity.LengthSquared(),MinSpeed,MaxSpeed), particle.point.X, particle.point.Y, particle.radius, particle.radius);
             }

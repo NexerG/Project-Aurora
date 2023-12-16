@@ -3,15 +3,14 @@ using OpenTK.Mathematics;
 
 namespace ParticleSimulator.EngineWork.Rendering
 {
-    //bybi dejau
     public class Camera
     {
         //vars init
-        public Vector3 pos = new Vector3(10f, 0f, 0f);
+        public Vector3 pos = new Vector3(-500f, -500f, 350f);
 
         //directions
         Vector3 Up = new Vector3(0.0f, 1.0f, 0.0f);
-        Vector3 Orientation = new Vector3(-10.0f, 0.0f, 0.0f);
+        Vector3 Orientation = new Vector3(1.0f, 0.0f, 0.0f);
         Matrix4 pv;
 
         //controls
@@ -34,7 +33,7 @@ namespace ParticleSimulator.EngineWork.Rendering
         public void updateMatrix(Frame f)
         {
             Matrix4 view = Matrix4.LookAt(pos, pos + Orientation, Up);
-            Matrix4 projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(60.0f), f.GLControl.AspectRatio, 0.1f, 1000f);
+            Matrix4 projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(60.0f), f.GLControl.AspectRatio, 0.1f, 5000f);
             pv = Matrix4.Mult(view, projection);
         }
         public void rotateCamera(float width, float height)

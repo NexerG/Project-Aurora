@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace ParticleSimulator.ParticleTypes
 {
-    public class Particle
+    public class Particle2D
     {
         public Vector2 point = new Vector2();
         public Vector2 PredPoint = new Vector2();
@@ -15,7 +15,7 @@ namespace ParticleSimulator.ParticleTypes
         public float radius = 7;
         public Brush color = new Pen(Color.FromArgb(255, 255, 255, 255)).Brush;
 
-        public Particle()
+        public Particle2D()
         {
             point.X = 0; point.Y = 0;
             velocity.X = 0; velocity.Y= 0;
@@ -23,7 +23,7 @@ namespace ParticleSimulator.ParticleTypes
             PredPoint = point;
         }
 
-        public Particle(Vector2 point)
+        public Particle2D(Vector2 point)
         {
             this.point = point;
             velocity.X = 0; velocity.Y = 0;
@@ -31,7 +31,7 @@ namespace ParticleSimulator.ParticleTypes
             PredPoint = point;
         }
 
-        public Particle(float x, float y)
+        public Particle2D(float x, float y)
         {
             point.X = x;
             point.Y = y;
@@ -40,26 +40,26 @@ namespace ParticleSimulator.ParticleTypes
             PredPoint = point;
         }
 
-        public Particle(float x, float y, float HorizontalVel, float VerticalVel)
+        public Particle2D(float x, float y, float HorizontalVelX, float HorizontalVelY)
         {
             point.X = x;
             point.Y = y;
-            velocity.X = HorizontalVel;
-            velocity.Y = VerticalVel;
+            velocity.X = HorizontalVelX;
+            velocity.Y = HorizontalVelY;
 
             PredPoint = point;
         }
 
-        public Particle(Vector2 p, float HorizontalVel, float VerticalVel)
+        public Particle2D(Vector2 p, float HorizontalVelX, float HorizontalVelY)
         {
             point = p;
-            velocity.X = HorizontalVel;
-            velocity.Y = VerticalVel;
+            velocity.X = HorizontalVelX;
+            velocity.Y = HorizontalVelY;
 
             PredPoint = point;
         }
 
-        public Particle(Vector2 p, Vector2 v)
+        public Particle2D(Vector2 p, Vector2 v)
         {
             point = p;
             velocity = v;
