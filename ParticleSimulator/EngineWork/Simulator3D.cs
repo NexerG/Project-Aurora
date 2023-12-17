@@ -85,7 +85,7 @@ namespace ParticleSimulator.EngineWork
         {
             SC = frame;
             simOpenTK = true;
-            Gravity g = new Gravity(new PointF(0, 9.8f));
+            Gravity g = new Gravity(new Vector3(0f, 9.8f,0f));
             forces.Add(g);
             this.parts = parts;
 

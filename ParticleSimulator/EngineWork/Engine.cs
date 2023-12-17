@@ -16,13 +16,13 @@ namespace ParticleSimulator.EngineWork
         internal List<Particle3D> particles3D;
         System.Windows.Forms.Timer grapicsTimer;
 
-        public void Init(Frame s, bool threeDims)
+        public void Init(Frame s, bool threeDims, int parts)
         {
             Running = true;
             SC = s;
             particles2D = new List<Particle2D>();
             particles3D = new List<Particle3D>();
-            int particleRoot = 70;
+            int particleRoot = parts;
             float offsetX = (700 / 2) - (particleRoot * 7 / 2);
             float offsetY = (700 / 2) - (particleRoot * 7 / 2);
             float offsetZ = (700 / 2) - (particleRoot * 7 / 2);

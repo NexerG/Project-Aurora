@@ -42,6 +42,9 @@
             label1 = new Label();
             TB_GravStr = new TextBox();
             ControlPanel = new Panel();
+            label2 = new Label();
+            TB_ParticleAmount = new TextBox();
+            checkBox1 = new CheckBox();
             button2 = new Button();
             MainPanel = new Panel();
             GLControl = new OpenTK.WinForms.GLControl();
@@ -157,6 +160,7 @@
             button1.TabIndex = 10;
             button1.Text = "Commit";
             button1.UseVisualStyleBackColor = true;
+            button1.Click += button1_Click;
             // 
             // label1
             // 
@@ -179,6 +183,9 @@
             // 
             // ControlPanel
             // 
+            ControlPanel.Controls.Add(label2);
+            ControlPanel.Controls.Add(TB_ParticleAmount);
+            ControlPanel.Controls.Add(checkBox1);
             ControlPanel.Controls.Add(button2);
             ControlPanel.Controls.Add(label1);
             ControlPanel.Controls.Add(TB_GravStr);
@@ -197,6 +204,37 @@
             ControlPanel.Name = "ControlPanel";
             ControlPanel.Size = new Size(223, 627);
             ControlPanel.TabIndex = 13;
+            // 
+            // label2
+            // 
+            label2.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            label2.AutoSize = true;
+            label2.Location = new Point(7, 236);
+            label2.Name = "label2";
+            label2.Size = new Size(91, 15);
+            label2.TabIndex = 16;
+            label2.Text = "Particle amount";
+            // 
+            // TB_ParticleAmount
+            // 
+            TB_ParticleAmount.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            TB_ParticleAmount.Location = new Point(117, 233);
+            TB_ParticleAmount.Name = "TB_ParticleAmount";
+            TB_ParticleAmount.Size = new Size(98, 23);
+            TB_ParticleAmount.TabIndex = 15;
+            TB_ParticleAmount.Validating += TB_ParticleAmount_Validating;
+            TB_ParticleAmount.Validated += TB_ParticleAmount_Validated;
+            // 
+            // checkBox1
+            // 
+            checkBox1.AutoSize = true;
+            checkBox1.Location = new Point(10, 270);
+            checkBox1.Name = "checkBox1";
+            checkBox1.Size = new Size(45, 19);
+            checkBox1.TabIndex = 14;
+            checkBox1.Text = "3D?";
+            checkBox1.UseVisualStyleBackColor = true;
+            checkBox1.CheckedChanged += checkBox1_CheckedChanged;
             // 
             // button2
             // 
@@ -284,5 +322,8 @@
         public Panel MainPanel;
         public OpenTK.WinForms.GLControl GLControl;
         private Button button2;
+        private CheckBox checkBox1;
+        private Label label2;
+        public TextBox TB_ParticleAmount;
     }
 }
