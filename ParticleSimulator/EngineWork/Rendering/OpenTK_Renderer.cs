@@ -125,32 +125,32 @@ namespace ParticleSimulator.EngineWork.Rendering
             GL.Enable(EnableCap.DepthTest);
         }
 
-        public void UpdatePositions2D(List<Particle2D> ps)
-        {
-            for (int i = 0; i < ps.Count; i++)
-            {
-                Vector3 posTrans = new Vector3(-ps[i].point.X, -ps[i].point.Y, 0f);
-                Quaternion q = new Quaternion(0.0f, 1.0f, 0.0f, 1.0f);
-                Vector3 sc = new Vector3(5.0f, 5.0f, 5.0f);
+        //public void UpdatePositions2D(List<Particle2D> ps)
+        //{
+        //    for (int i = 0; i < ps.Count; i++)
+        //    {
+        //        Vector3 posTrans = new Vector3(-ps[i].point.X, -ps[i].point.Y, 0f);
+        //        Quaternion q = new Quaternion(0.0f, 1.0f, 0.0f, 1.0f);
+        //        Vector3 sc = new Vector3(5.0f, 5.0f, 5.0f);
 
-                Matrix4 translation = Matrix4.Identity;
-                Matrix4 rotation = Matrix4.Identity;
-                Matrix4 scale = Matrix4.Identity;
+        //        Matrix4 translation = Matrix4.Identity;
+        //        Matrix4 rotation = Matrix4.Identity;
+        //        Matrix4 scale = Matrix4.Identity;
 
-                Matrix4.CreateTranslation(posTrans, out translation);
-                Matrix4.CreateFromQuaternion(q, out rotation);
-                Matrix4.CreateScale(sc, out scale);
+        //        Matrix4.CreateTranslation(posTrans, out translation);
+        //        Matrix4.CreateFromQuaternion(q, out rotation);
+        //        Matrix4.CreateScale(sc, out scale);
 
-                Matrix4 tr = Matrix4.Mult(translation, rotation);
-                Matrix4 tr_s = Matrix4.Mult(scale, tr);
+        //        Matrix4 tr = Matrix4.Mult(translation, rotation);
+        //        Matrix4 tr_s = Matrix4.Mult(scale, tr);
 
-                instanceMats[i]=tr_s;
-            }
-            foreach (Mesh m in meshes)
-            {
-                m.updateMatrices(instanceMats);
-            }
-        }
+        //        instanceMats[i]=tr_s;
+        //    }
+        //    foreach (Mesh m in meshes)
+        //    {
+        //        m.updateMatrices(instanceMats);
+        //    }
+        //}
         public void UpdatePositions3D(List<Particle3D> ps)
         {
             for (int i = 0; i < ps.Count; i++)

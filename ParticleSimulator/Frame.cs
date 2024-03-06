@@ -2,6 +2,7 @@ using OpenTK;
 using OpenTK.Compute.OpenCL;
 using OpenTK.Graphics.OpenGL;
 using ParticleSimulator.EngineWork;
+using System.Diagnostics;
 using System.Numerics;
 
 namespace ParticleSimulator
@@ -150,7 +151,7 @@ namespace ParticleSimulator
             if (engine == null)
             {
                 engine = new Engine();
-                engine.Init(this, is3D, parts);
+                engine.Init(this, true, 15);
             }
         }
 
