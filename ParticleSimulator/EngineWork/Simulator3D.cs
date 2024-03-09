@@ -84,7 +84,6 @@ namespace ParticleSimulator.EngineWork
         public Simulator3D(Frame frame, List<Particle3D> parts, Vector3 simSize)
         {
             SC = frame;
-            simOpenTK = true;
             Gravity g = new Gravity(new Vector3(0f, 9.8f,0f));
             forces.Add(g);
             this.parts = parts;
