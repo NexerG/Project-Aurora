@@ -13,11 +13,22 @@ namespace ParticleSimulator.EngineWork.Model
 {
     public class Mesh
     {
+        //verts and indices
         float[] vertices;
         uint[] indices;
+
+        //textures
         Texture textures;
+
+        //gameobject variables
+        Vector3 translation = new Vector3(0,0,0);
+        Quaternion rotation = new Quaternion(1,0,0,0);
+        Vector3 scale = new Vector3(1,1,1);
+
+        //instancing
         int instancing;
         public List<Matrix4> instanceMatrix;
+
         //A & E buffer
         public VAO vao;
         public VBO vbo;
@@ -59,6 +70,7 @@ namespace ParticleSimulator.EngineWork.Model
             ivbo.Unbind();
             ebo.Unbind();
         }
+
         public void updateMatrices(List<Matrix4> IMats)
         {
             instanceMatrix = IMats;
@@ -89,7 +101,7 @@ namespace ParticleSimulator.EngineWork.Model
             ivbo.Unbind();
             ebo.Unbind();
         }
-        public void Draw(ShaderClass shader, Camera camera, Matrix4 mat, Vector3 translation, Quaternion rotation, Vector3 scale)
+        public void Draw(ShaderClass shader, Camera camera, Matrix4 mat)
         {
             //shader.Activate();
             vao.Bind();

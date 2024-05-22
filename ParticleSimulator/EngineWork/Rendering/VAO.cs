@@ -14,10 +14,10 @@ namespace ParticleSimulator.EngineWork.Rendering
         {
             vertex_array_object = GL.GenVertexArray();
         }
-        public void LinkAttrib(VBO vbo, int layout, int numComponents, VertexAttribPointerType type, int stride, int offset)
+        public void LinkAttrib(VBO vbo, int layout, int numComponentBehaviours, VertexAttribPointerType type, int stride, int offset)
         {
             vbo.Bind();
-            GL.VertexAttribPointer(layout, numComponents, type, false, stride, offset);
+            GL.VertexAttribPointer(layout, numComponentBehaviours, type, false, stride, offset);
             GL.EnableVertexAttribArray(layout);
             vbo.Unbind();
         }
@@ -33,6 +33,5 @@ namespace ParticleSimulator.EngineWork.Rendering
         {
             GL.DeleteVertexArray(vertex_array_object);
         }
-
     }
 }

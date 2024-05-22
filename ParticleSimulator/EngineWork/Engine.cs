@@ -1,4 +1,7 @@
-﻿using ParticleSimulator.EngineWork.Rendering;
+﻿using OpenTK.Mathematics;
+using OpenTK.Windowing.Desktop;
+using OpenTK.WinForms;
+using ParticleSimulator.EngineWork.Rendering;
 using ParticleSimulator.ParticleTypes;
 using System.Diagnostics;
 using System.Numerics;
@@ -57,18 +60,24 @@ namespace ParticleSimulator.EngineWork
                         }
                     }
                 });
-                simulator3D = new Simulator3D(SC, particles3D, new Vector3(700, 700, 700));
-                renderer3D = new OpenTK_Renderer(SC);
-                SC.GLControl.Paint += renderer3D.Render;
-                renderer3D.Init3D(particles3D);
+                simulator3D = new Simulator3D(SC, particles3D, new System.Numerics.Vector3(700, 700, 700));
+                GameWindowSettings _gws = GameWindowSettings.Default;
+                NativeWindowSettings _nws = new NativeWindowSettings() { Size = new Vector2i(1280,720), Title = "ProjectAurora"};
+                Start3D();
+
+                renderer3D = new OpenTK_Renderer(SC, _gws, _nws);
+                renderer3D.Init();
+                Console.WriteLine("atejom");
+                //renderer3D = new OpenTK_Renderer(SC);
+                //SC.GLControl.Paint += renderer3D.Render;
+                //renderer3D.Init3D(particles3D);
             }
 
-            grapicsTimer = new System.Windows.Forms.Timer();
-            grapicsTimer.Interval = 1000 / 240;
-            grapicsTimer.Tick += GraphicsTimer_Tick;
-            grapicsTimer.Start();
+            //grapicsTimer = new System.Windows.Forms.Timer();
+            //grapicsTimer.Interval = 1000 / 240;
+            //grapicsTimer.Tick += GraphicsTimer_Tick;
+            //grapicsTimer.Start();
 
-            Start3D();
         }
 
         public async void Start3D()
@@ -81,20 +90,44 @@ namespace ParticleSimulator.EngineWork
             int TS = 8;
             while (Running)
             {
+                //engine time
                 TimeSpan SimTime = DateTime.Now - initTime;
+
+                //simulation
+                DateTime SimTimeStart = DateTime.Now;
                 simulator3D.Update(SimTime, TS / 1000f);
-                renderer3D.UpdatePositions3D(particles3D);
+                if(renderer3D!=null)
+                {
+                    renderer3D.UpdatePositions3D(particles3D);
+                }
+                TimeSpan SimulationTime = DateTime.Now - SimTimeStart;
+                //Console.WriteLine("Particles ---" + SimulationTime.TotalMilliseconds);
+                //Console.WriteLine("whatever" + (TS-SimulationTime.TotalMilliseconds));
+
+                //renderer
+                /*DateTime GraphicsTimeStart = DateTime.Now;
+                SC.GLControl.Invalidate();
+                TimeSpan GraphicsTime = DateTime.Now - GraphicsTimeStart;
+                Console.WriteLine("Graphics --- "+GraphicsTime.TotalMilliseconds);*/
+
+                //double totalTime = GraphicsTime.TotalMilliseconds + SimulationTime.TotalMilliseconds;
+                //Console.Clear();
+                //Console.WriteLine("TotalTime --- "+ totalTime);
+                double TSOffset = TS - SimulationTime.TotalMilliseconds;
+                /*if (TSOffset > 0f)
+                    await Task.Delay(((int)TSOffset));*/
                 await Task.Delay(TS);
             }
         }
 
         private void GraphicsTimer_Tick(object sender, EventArgs e)
         {
-            //renderer.Draw(particles2D);
-            //SC.Invalidate();
-            //renderer3D.RotatePyramid(new OpenTK.Mathematics.Vector3(0, 1f, 0), 0.5f);
             //renderer3D.camera.inputs(SC.GLControl);
-            SC.GLControl.Invalidate();
+
+            DateTime GraphicsTimeStart = DateTime.Now;
+            //SC.GLControl.Invalidate();
+            TimeSpan GraphicsTime = DateTime.Now - GraphicsTimeStart;
+            //Console.WriteLine(GraphicsTime.TotalMilliseconds);
         }
 
         public void Stop()
@@ -102,7 +135,7 @@ namespace ParticleSimulator.EngineWork
             Running = false;
         }
         private bool FirstPress = true;
-        public void MouseHandler(MouseEventArgs e, int UD)
+        /*public void MouseHandler(MouseEventArgs e, int UD)
         {
             switch (e.Button)
             {
@@ -143,7 +176,7 @@ namespace ParticleSimulator.EngineWork
                 default:
                     break;
             }
-        }
+        }*/
         public void KeyboardHandler(KeyPressEventArgs e)
         {
             renderer3D.camera.moveCamera(e);

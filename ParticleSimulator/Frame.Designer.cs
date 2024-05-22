@@ -5,7 +5,7 @@
         /// <summary>
         ///  Required designer variable.
         /// </summary>
-        private System.ComponentModel.IContainer components = null;
+        private System.ComponentBehaviourModel.IContainer ComponentBehaviours = null;
 
         /// <summary>
         ///  Clean up any resources being used.
@@ -13,9 +13,9 @@
         /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
-            if (disposing && (components != null))
+            if (disposing && (ComponentBehaviours != null))
             {
-                components.Dispose();
+                ComponentBehaviours.Dispose();
             }
             base.Dispose(disposing);
         }
@@ -26,7 +26,7 @@
         ///  Required method for Designer support - do not modify
         ///  the contents of this method with the code editor.
         /// </summary>
-        private void InitializeComponent()
+        private void InitializeComponentBehaviour()
         {
             PicBox = new PictureBox();
             TestButton = new Button();
@@ -47,10 +47,8 @@
             checkBox1 = new CheckBox();
             button2 = new Button();
             MainPanel = new Panel();
-            GLControl = new OpenTK.WinForms.GLControl();
-            ((System.ComponentModel.ISupportInitialize)PicBox).BeginInit();
+            ((System.ComponentBehaviourModel.ISupportInitialize)PicBox).BeginInit();
             ControlPanel.SuspendLayout();
-            MainPanel.SuspendLayout();
             SuspendLayout();
             // 
             // PicBox
@@ -248,34 +246,11 @@
             // 
             // MainPanel
             // 
-            MainPanel.Controls.Add(GLControl);
             MainPanel.Dock = DockStyle.Fill;
             MainPanel.Location = new Point(0, 0);
             MainPanel.Name = "MainPanel";
             MainPanel.Size = new Size(921, 627);
             MainPanel.TabIndex = 14;
-            // 
-            // GLControl
-            // 
-            GLControl.API = OpenTK.Windowing.Common.ContextAPI.OpenGL;
-            GLControl.APIVersion = new Version(3, 3, 0, 0);
-            GLControl.BackColor = SystemColors.ActiveCaption;
-            GLControl.Dock = DockStyle.Fill;
-            GLControl.Flags = OpenTK.Windowing.Common.ContextFlags.Default;
-            GLControl.ForeColor = SystemColors.ActiveCaption;
-            GLControl.IsEventDriven = true;
-            GLControl.Location = new Point(0, 0);
-            GLControl.Name = "GLControl";
-            GLControl.Profile = OpenTK.Windowing.Common.ContextProfile.Core;
-            GLControl.Size = new Size(921, 627);
-            GLControl.TabIndex = 0;
-            GLControl.Text = "GlControl";
-            GLControl.KeyDown += GLControl_KeyDown;
-            GLControl.KeyPress += GLControl_KeyPress;
-            GLControl.MouseClick += GLControl_MouseClick;
-            GLControl.MouseDown += GLControl_MouseDown;
-            GLControl.MouseMove += GLControl_MouseMove;
-            GLControl.MouseUp += GLControl_MouseUp;
             // 
             // Frame
             // 
@@ -290,10 +265,9 @@
             FormClosing += Frame_FormClosing;
             Load += Frame_Load;
             KeyDown += Frame_KeyDown;
-            ((System.ComponentModel.ISupportInitialize)PicBox).EndInit();
+            ((System.ComponentBehaviourModel.ISupportInitialize)PicBox).EndInit();
             ControlPanel.ResumeLayout(false);
             ControlPanel.PerformLayout();
-            MainPanel.ResumeLayout(false);
             ResumeLayout(false);
         }
 
@@ -320,7 +294,6 @@
         public TextBox TB_GravStr;
         private Panel ControlPanel;
         public Panel MainPanel;
-        public OpenTK.WinForms.GLControl GLControl;
         private Button button2;
         private CheckBox checkBox1;
         private Label label2;

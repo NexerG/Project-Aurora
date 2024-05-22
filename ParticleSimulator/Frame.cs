@@ -9,28 +9,19 @@ namespace ParticleSimulator
 {
     public partial class Frame : Form
     {
-        Engine engine = null;
-        bool is3D = false;
+        internal Engine engine = null;
+        bool is3D = true;
         int parts = 0;
+
         public Frame()
         {
             //initialization
-            InitializeComponent();
+            InitializeComponentBehaviour();
         }
 
         private void TestButton_Click(object sender, EventArgs e)
         {
-            int RowofParts = (int)Math.Sqrt(engine.particles2D.Count);
-            float offsetX = (PicBox.Width / 2) - (RowofParts * 7 / 2);
-            float offsetY = (PicBox.Height / 2) - (RowofParts * 7 / 2);
-            for (int i = 0; i < RowofParts; i++)
-            {
-                for (int j = 0; j < RowofParts; j++)
-                {
-                    engine.particles2D[i * RowofParts + j].velocity = new Vector2(0, 0);
-                    engine.particles2D[i * RowofParts + j].point = new Vector2(i * 7 + offsetX, j * 7 + offsetY);
-                }
-            }
+
         }
 
         private void TB_SmoothingRadius_Validated(object sender, EventArgs e)
@@ -76,20 +67,20 @@ namespace ParticleSimulator
         private void Frame_Load(object sender, EventArgs e)
         {
             //GLControl.Paint += GLControl_Paint;
-            GLControl.Resize += GLControl_Resize;
+            //GLControl.Resize += GLControl_Resize;
         }
         public void GLControl_Resize(object? sender, EventArgs e)
         {
-            GLControl.MakeCurrent();
-            GL.Viewport(0, 0, GLControl.Width, GLControl.Height);
+            //GLControl.MakeCurrent();
+            //GL.Viewport(0, 0, GLControl.Width, GLControl.Height);
         }
 
         private void GLControl_Paint(object? sender, PaintEventArgs e)
         {
-            GLControl.MakeCurrent();
-            GL.ClearColor(Color.FromArgb(255, 30, 30, 30));
-            GL.Clear(ClearBufferMask.ColorBufferBit);
-            GLControl.SwapBuffers();
+            //GLControl.MakeCurrent();
+            //GL.ClearColor(Color.FromArgb(255, 30, 30, 30));
+            //GL.Clear(ClearBufferMask.ColorBufferBit);
+            //GLControl.SwapBuffers();
         }
 
         private void button2_Click(object sender, EventArgs e)
@@ -104,20 +95,20 @@ namespace ParticleSimulator
 
         private void GLControl_MouseDown(object sender, MouseEventArgs e)
         {
-            if (engine != null)
-                engine.MouseHandler(e, 1);
+            /*if (engine != null)
+                engine.MouseHandler(e, 1);*/
         }
 
         private void GLControl_MouseUp(object sender, MouseEventArgs e)
         {
-            if (engine != null)
-                engine.MouseHandler(e, 0);
+            /*if (engine != null)
+                engine.MouseHandler(e, 0);*/
         }
 
         private void GLControl_MouseMove(object sender, MouseEventArgs e)
         {
-            if (engine != null)
-                engine.MouseHandler(e, 2);
+            /*if (engine != null)
+                engine.MouseHandler(e, 2);*/
         }
 
         private void GLControl_KeyDown(object sender, KeyEventArgs e)
@@ -127,7 +118,7 @@ namespace ParticleSimulator
 
         private void GLControl_MouseClick(object sender, MouseEventArgs e)
         {
-            GLControl.Focus();
+            //GLControl.Focus();
             Console.WriteLine("focus");
         }
 
@@ -160,7 +151,7 @@ namespace ParticleSimulator
             parts = int.Parse(TB_ParticleAmount.Text);
         }
 
-        private void TB_ParticleAmount_Validating(object sender, System.ComponentModel.CancelEventArgs e)
+        private void TB_ParticleAmount_Validating(object sender, System.ComponentBehaviourModel.CancelEventArgs e)
         {
             parts = int.Parse(TB_ParticleAmount.Text);
         }

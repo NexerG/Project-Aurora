@@ -33,7 +33,7 @@ namespace ParticleSimulator.EngineWork.Rendering
         public void updateMatrix(Frame f)
         {
             Matrix4 view = Matrix4.LookAt(pos, pos + Orientation, Up);
-            Matrix4 projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(60.0f), f.GLControl.AspectRatio, 0.1f, 5000f);
+            Matrix4 projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(60.0f), 1920/1080, 0.1f, 5000f);
             pv = Matrix4.Mult(view, projection);
         }
         public void rotateCamera(float width, float height)
