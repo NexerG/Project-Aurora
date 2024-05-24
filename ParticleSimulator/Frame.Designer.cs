@@ -5,21 +5,6 @@
         /// <summary>
         ///  Required designer variable.
         /// </summary>
-        private System.ComponentBehaviourModel.IContainer ComponentBehaviours = null;
-
-        /// <summary>
-        ///  Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing && (ComponentBehaviours != null))
-            {
-                ComponentBehaviours.Dispose();
-            }
-            base.Dispose(disposing);
-        }
-
         #region Windows Form Designer generated code
 
         /// <summary>
@@ -47,7 +32,6 @@
             checkBox1 = new CheckBox();
             button2 = new Button();
             MainPanel = new Panel();
-            ((System.ComponentBehaviourModel.ISupportInitialize)PicBox).BeginInit();
             ControlPanel.SuspendLayout();
             SuspendLayout();
             // 
@@ -265,7 +249,6 @@
             FormClosing += Frame_FormClosing;
             Load += Frame_Load;
             KeyDown += Frame_KeyDown;
-            ((System.ComponentBehaviourModel.ISupportInitialize)PicBox).EndInit();
             ControlPanel.ResumeLayout(false);
             ControlPanel.PerformLayout();
             ResumeLayout(false);

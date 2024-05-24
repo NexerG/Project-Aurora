@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+﻿using OpenTK.Mathematics;
 using ParticleSimulator.Forces;
 using ParticleSimulator.ParticleTypes;
 
@@ -100,6 +100,23 @@ namespace ParticleSimulator.EngineWork
             UpdateUI();
         }
 
+        public Simulator3D(List<Particle3D> parts, Vector3 simSize)
+        {
+            Gravity g = new Gravity(new Vector3(0f, 9.8f, 0f));
+            forces.Add(g);
+            this.parts = parts;
+
+            SpatialLookup = new Entry[parts.Count];
+            StartIndices = new int[parts.Count];
+            densities = new float[parts.Count];
+            this.simSize = simSize;
+
+            CreateOffsets();
+            UpdateSpatialLookup(parts, smoothingRadius);
+            CalcConstForces();
+            UpdateDensities();
+        }
+
         private void UpdateUI()
         {
             SC.TB_SmoothingRadius.Text = smoothingRadius.ToString();
@@ -163,7 +180,7 @@ namespace ParticleSimulator.EngineWork
             CalcConstForces();
         }
 
-        public void Update(TimeSpan engineTime, float TimeScale)
+        public void Update(float TimeScale)
         {
             SimStep(TimeScale);
         }
@@ -253,7 +270,7 @@ namespace ParticleSimulator.EngineWork
                     if (SpatialLookup[i].CKey != key) break;
 
                     int particleIndex = SpatialLookup[i].index;
-                    float sqrDist = (parts[particleIndex].PredPoint - samplePoint).LengthSquared();
+                    float sqrDist = (parts[particleIndex].PredPoint - samplePoint).LengthSquared;
                     if (sqrDist <= sqrRadius)
                     {
                         float dist = Vector3.Distance(samplePoint, parts[particleIndex].PredPoint);
@@ -292,12 +309,12 @@ namespace ParticleSimulator.EngineWork
                     if (SpatialLookup[i].CKey != key) break;
 
                     int particleIndex = SpatialLookup[i].index;
-                    float sqrDist = (parts[particleIndex].point - parts[index].point).LengthSquared();
+                    float sqrDist = (parts[particleIndex].point - parts[index].point).LengthSquared;
                     if (sqrDist <= sqrRadius)
                     {
                         if (index == particleIndex) continue;
                         Vector3 offset = parts[particleIndex].PredPoint - parts[index].PredPoint;
-                        float dist = offset.Length();
+                        float dist = offset.Length;
                         Vector3 dir = dist == 0 ? GetRandomDir() : offset / dist;
 
                         float slope = SmoothingKernelDerivative(dist);
@@ -353,7 +370,7 @@ namespace ParticleSimulator.EngineWork
                     if (SpatialLookup[i].CKey != key) break;
 
                     int particleIndex = SpatialLookup[i].index;
-                    float sqrDist = (parts[particleIndex].point - parts[index].point).LengthSquared();
+                    float sqrDist = (parts[particleIndex].point - parts[index].point).LengthSquared;
                     if (sqrDist <= sqrRadius)
                     {
                         if (index == particleIndex) continue;

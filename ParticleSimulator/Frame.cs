@@ -26,41 +26,31 @@ namespace ParticleSimulator
 
         private void TB_SmoothingRadius_Validated(object sender, EventArgs e)
         {
-            if (!is3D)
-                engine.simulator2D.smoothingRadius = float.Parse(TB_SmoothingRadius.Text);
-            else
+            if (is3D)
                 engine.simulator3D.smoothingRadius = float.Parse(TB_SmoothingRadius.Text);
         }
 
         private void TB_TargetDensity_Validated(object sender, EventArgs e)
         {
-            if (!is3D)
-                engine.simulator2D.targetDensity = float.Parse(TB_TargetDensity.Text);
-            else
+            if (is3D)
                 engine.simulator3D.targetDensity = float.Parse(TB_TargetDensity.Text);
         }
 
         private void TB_PressureMult_Validated(object sender, EventArgs e)
         {
-            if (!is3D)
-                engine.simulator2D.pressureMultiplier = float.Parse(TB_PressureMult.Text);
-            else
+            if (is3D)
                 engine.simulator3D.pressureMultiplier = float.Parse(TB_PressureMult.Text);
         }
 
         private void TB_ViscosityStrength_Validated(object sender, EventArgs e)
         {
-            if (!is3D)
-                engine.simulator2D.viscosityStr = float.Parse(TB_ViscosityStrength.Text);
-            else
+            if (is3D)
                 engine.simulator3D.viscosityStr = float.Parse(TB_ViscosityStrength.Text);
         }
 
         private void TB_GravStr_Validated(object sender, EventArgs e)
         {
-            if (!is3D)
-                engine.simulator2D.GravStrength = float.Parse(TB_GravStr.Text);
-            else
+            if (is3D)
                 engine.simulator3D.GravStrength = float.Parse(TB_GravStr.Text);
         }
 
@@ -151,7 +141,7 @@ namespace ParticleSimulator
             parts = int.Parse(TB_ParticleAmount.Text);
         }
 
-        private void TB_ParticleAmount_Validating(object sender, System.ComponentBehaviourModel.CancelEventArgs e)
+        private void TB_ParticleAmount_Validating(object sender, EventArgs e)
         {
             parts = int.Parse(TB_ParticleAmount.Text);
         }

@@ -1,10 +1,15 @@
 ﻿using OpenTK.Mathematics;
 using OpenTK.Windowing.Desktop;
 using OpenTK.WinForms;
+using ParticleSimulator.CustomEntities;
+using ParticleSimulator.CustomEntityComponents;
+using ParticleSimulator.EngineWork.ComponentBehaviour;
+using ParticleSimulator.EngineWork.ECS.RenderingComponents;
 using ParticleSimulator.EngineWork.Rendering;
+using ParticleSimulator.GameObject;
 using ParticleSimulator.ParticleTypes;
 using System.Diagnostics;
-using System.Numerics;
+using System.Reflection;
 
 namespace ParticleSimulator.EngineWork
 {
@@ -12,43 +17,25 @@ namespace ParticleSimulator.EngineWork
     {
         public bool Running { get; private set; }
         internal Frame SC;
-        internal Simulator simulator2D;
-        internal Simulator3D simulator3D;
-        //internal Renderer renderer;
         internal OpenTK_Renderer renderer3D;
-        internal List<Particle2D> particles2D;
-        internal List<Particle3D> particles3D = new List<Particle3D>();
-        System.Windows.Forms.Timer grapicsTimer;
-
+        internal List<Entity> _entities = new List<Entity>();
+        internal List<Particle3D> particles3DForEnts = new List<Particle3D>();
         public void Init(Frame s, bool threeDims, int parts)
         {
+            //for prerequisites
+            GameWindowSettings _gws = GameWindowSettings.Default;
+            NativeWindowSettings _nws = new NativeWindowSettings() { ClientSize = new Vector2i(1280, 720), Title = "ProjectAurora" };
+            renderer3D = new OpenTK_Renderer(SC, _gws, _nws);
+            renderer3D.Prerequisites();
+
             Running = true;
             SC = s;
-            //particles2D = new List<Particle2D>();
-            //particles3D = new List<Particle3D>();
             int particleRoot = parts;
             float offsetX = (700 / 2) - (particleRoot * 7 / 2);
             float offsetY = (700 / 2) - (particleRoot * 7 / 2);
             float offsetZ = (700 / 2) - (particleRoot * 7 / 2);
-            #region Old2D
-            //if(!threeDims)
-            //{
-            //    //2D
-            //    Parallel.For(0, particleRoot, i =>
-            //    {
-            //        for (int j = 0; j < particleRoot; j++)
-            //        {
-            //            particles2D.Add(new Particle2D(i * 7 + offsetX, j * 7 + offsetY));
-            //        }
-            //    });
-            //    simulator2D = new Simulator(SC, particles2D, new Vector2(700, 700));
-            //    renderer3D = new OpenTK_Renderer(SC);
-            //    SC.GLControl.Paint += renderer3D.Render;
-            //    renderer3D.Init2D(particles2D);
-            //}
-            //else
-            #endregion
             {
+
                 //3D
                 Parallel.For(0, 15, i =>
                 {
@@ -56,36 +43,27 @@ namespace ParticleSimulator.EngineWork
                     {
                         for (int k = 0; k < 15; k++)
                         {
-                            particles3D.Add(new Particle3D(i * 7 + offsetX, j * 7 + offsetY, k * 7 + offsetZ));
+                            particles3DForEnts.Add(new Particle3D(i * 7 + offsetX, j * 7 + offsetY, k * 7 + offsetZ));
                         }
                     }
                 });
-                simulator3D = new Simulator3D(SC, particles3D, new System.Numerics.Vector3(700, 700, 700));
-                GameWindowSettings _gws = GameWindowSettings.Default;
-                NativeWindowSettings _nws = new NativeWindowSettings() { Size = new Vector2i(1280,720), Title = "ProjectAurora"};
-                Start3D();
 
-                renderer3D = new OpenTK_Renderer(SC, _gws, _nws);
+                SimulatorEntity simas = new SimulatorEntity();
+                simas.GetComponent<SPHSimComponent>().SetVariables(particles3DForEnts);
+                _entities.Add(simas);
+
+                foreach(Entity e in _entities)
+                {
+                    e.OnStart();
+                }
+
+                EngineStart();
                 renderer3D.Init();
-                Console.WriteLine("atejom");
-                //renderer3D = new OpenTK_Renderer(SC);
-                //SC.GLControl.Paint += renderer3D.Render;
-                //renderer3D.Init3D(particles3D);
             }
-
-            //grapicsTimer = new System.Windows.Forms.Timer();
-            //grapicsTimer.Interval = 1000 / 240;
-            //grapicsTimer.Tick += GraphicsTimer_Tick;
-            //grapicsTimer.Start();
-
         }
 
-        public async void Start3D()
+        public async void EngineStart()
         {
-            if (simulator3D == null)
-            {
-                throw new ArgumentException("Sim missing");
-            }
             DateTime initTime = DateTime.Now;
             int TS = 8;
             while (Running)
@@ -93,14 +71,22 @@ namespace ParticleSimulator.EngineWork
                 //engine time
                 TimeSpan SimTime = DateTime.Now - initTime;
 
+                DateTime entityTimeStart = DateTime.Now;
+                foreach(Entity e in _entities)
+                {
+                    e.OnTick();
+                }
+                TimeSpan entityTime = DateTime.Now - entityTimeStart;
+                //Console.WriteLine("Entity time ---" + entityTime.TotalMilliseconds);
+
                 //simulation
                 DateTime SimTimeStart = DateTime.Now;
-                simulator3D.Update(SimTime, TS / 1000f);
+                /*simulator3D.Update(TS / 1000f);
                 if(renderer3D!=null)
                 {
                     renderer3D.UpdatePositions3D(particles3D);
-                }
-                TimeSpan SimulationTime = DateTime.Now - SimTimeStart;
+                }*/
+                //TimeSpan SimulationTime = DateTime.Now - SimTimeStart;
                 //Console.WriteLine("Particles ---" + SimulationTime.TotalMilliseconds);
                 //Console.WriteLine("whatever" + (TS-SimulationTime.TotalMilliseconds));
 
@@ -113,10 +99,19 @@ namespace ParticleSimulator.EngineWork
                 //double totalTime = GraphicsTime.TotalMilliseconds + SimulationTime.TotalMilliseconds;
                 //Console.Clear();
                 //Console.WriteLine("TotalTime --- "+ totalTime);
-                double TSOffset = TS - SimulationTime.TotalMilliseconds;
+                //double TSOffset = TS - SimulationTime.TotalMilliseconds;
                 /*if (TSOffset > 0f)
                     await Task.Delay(((int)TSOffset));*/
                 await Task.Delay(TS);
+            }
+        }
+
+        internal void InvokeMethod(EntityComponent e, string methodName)
+        {
+            MethodInfo method = e.GetType().GetMethod(methodName);
+            if(method!=null)
+            {
+                method.Invoke(e,null);
             }
         }
 

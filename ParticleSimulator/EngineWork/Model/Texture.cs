@@ -17,7 +17,7 @@ namespace ParticleSimulator.EngineWork.Model
             ImageResult image;
             using (FileStream stream = File.OpenRead("../../../Shaders/Brick2.png"))
             {
-                image = ImageResult.FromStream(stream, ColorComponentBehaviours.RedGreenBlueAlpha);
+                image = ImageResult.FromStream(stream, ColorComponents.RedGreenBlueAlpha);
             }
             //because STBI reads from bot left to bot right, whislt OpenGL renders from top left to bot right
             StbImage.stbi_set_flip_vertically_on_load(1);
