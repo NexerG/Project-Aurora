@@ -54,6 +54,8 @@ namespace ArctisAurora.EngineWork.Rendering
             GL.ClearColor(Color.FromArgb(255, 30, 30, 30));
 
             GL.Enable(EnableCap.DepthTest);
+            GL.CullFace(CullFaceMode.Front);
+            GL.FrontFace(FrontFaceDirection.Ccw);
         }
 
         protected override void OnResize(ResizeEventArgs e)

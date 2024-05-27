@@ -11,6 +11,8 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
         //the model
         internal Mesh _model;
         internal Vector4 _lightColor = new Vector4(1f, 1f, 1f, 1f);
+        internal float _lightIntensity = 1f;
+        internal float _attenuationRadius = 5000f;
 
         //A & E buffers
         internal VAO vao;
@@ -25,20 +27,22 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
         public LightSourceComponent()
         {
             _model = new Mesh();
+            if(_model!=null)
+            {
+                vao = new VAO();
+                vao.Bind();
+                vbo = new VBO(_model.vertices);
+                ebo = new EBO(_model.indices);
 
-            vao = new VAO();
-            vao.Bind();
-            vbo = new VBO(_model.vertices);
-            ebo = new EBO(_model.indices);
+                vao.LinkAttrib(vbo, 0, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 0);
+                vao.LinkAttrib(vbo, 1, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 3 * sizeof(float));
+                vao.LinkAttrib(vbo, 2, 2, VertexAttribPointerType.Float, 11 * sizeof(float), 6 * sizeof(float));
+                vao.LinkAttrib(vbo, 3, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 8 * sizeof(float));
 
-            vao.LinkAttrib(vbo, 0, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 0);
-            vao.LinkAttrib(vbo, 1, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 3 * sizeof(float));
-            vao.LinkAttrib(vbo, 2, 2, VertexAttribPointerType.Float, 11 * sizeof(float), 6 * sizeof(float));
-            vao.LinkAttrib(vbo, 3, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 8 * sizeof(float));
-
-            vao.Unbind();
-            vbo.Unbind();
-            ebo.Unbind();
+                vao.Unbind();
+                vbo.Unbind();
+                ebo.Unbind();
+            }
         }
 
         public override void OnStart()
@@ -54,37 +58,40 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
 
         internal void UpdateMatrices(List<Matrix4> IMats)
         {
-            instanceMatrix = IMats;
-            vao = new VAO();
-            vao.Bind();
-            ivbo = new VBO(instanceMatrix);
-            vbo = new VBO(_model.vertices);
-            ebo = new EBO(_model.indices);
-
-            //initial mesh
-            vao.LinkAttrib(vbo, 0, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 0);
-            vao.LinkAttrib(vbo, 1, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 3 * sizeof(float));
-            vao.LinkAttrib(vbo, 2, 2, VertexAttribPointerType.Float, 11 * sizeof(float), 6 * sizeof(float));
-            vao.LinkAttrib(vbo, 3, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 8 * sizeof(float));
-
-            //instanced mesh data
-            if (instances > 1)
+            if(_model!=null)
             {
-                ivbo.Bind();
-                vao.LinkAttrib(ivbo, 4, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 0);
-                vao.LinkAttrib(ivbo, 5, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 1 * 16);
-                vao.LinkAttrib(ivbo, 6, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 2 * 16);
-                vao.LinkAttrib(ivbo, 7, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 3 * 16);
-                GL.VertexAttribDivisor(4, 1);
-                GL.VertexAttribDivisor(5, 1);
-                GL.VertexAttribDivisor(6, 1);
-                GL.VertexAttribDivisor(7, 1);
-            }
+                instanceMatrix = IMats;
+                vao = new VAO();
+                vao.Bind();
+                ivbo = new VBO(instanceMatrix);
+                vbo = new VBO(_model.vertices);
+                ebo = new EBO(_model.indices);
 
-            vao.Unbind();
-            vbo.Unbind();
-            ivbo.Unbind();
-            ebo.Unbind();
+                //initial mesh
+                vao.LinkAttrib(vbo, 0, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 0);
+                vao.LinkAttrib(vbo, 1, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 3 * sizeof(float));
+                vao.LinkAttrib(vbo, 2, 2, VertexAttribPointerType.Float, 11 * sizeof(float), 6 * sizeof(float));
+                vao.LinkAttrib(vbo, 3, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 8 * sizeof(float));
+
+                //instanced mesh data
+                if (instances > 1)
+                {
+                    ivbo.Bind();
+                    vao.LinkAttrib(ivbo, 4, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 0);
+                    vao.LinkAttrib(ivbo, 5, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 1 * 16);
+                    vao.LinkAttrib(ivbo, 6, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 2 * 16);
+                    vao.LinkAttrib(ivbo, 7, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 3 * 16);
+                    GL.VertexAttribDivisor(4, 1);
+                    GL.VertexAttribDivisor(5, 1);
+                    GL.VertexAttribDivisor(6, 1);
+                    GL.VertexAttribDivisor(7, 1);
+                }
+
+                vao.Unbind();
+                vbo.Unbind();
+                ivbo.Unbind();
+                ebo.Unbind();
+            }
         }
 
         internal void AddMesh(Mesh m)
@@ -120,13 +127,13 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
             this.instanceMatrix.Add(tr_s);
         }
 
-        public void Draw(ShaderClass shader, Camera camera)
+        public virtual void Draw(ShaderClass shader, Camera camera)
         {
             if (instances == 1)
             {
                 Matrix4 mat = instanceMatrix[0];
 
-                UpdateMatrices(instanceMatrix);
+                //UpdateMatrices(instanceMatrix);
                 PreDraw(camera, shader);
                 GL.UniformMatrix4(GL.GetUniformLocation(shader.program, "model"), false, ref mat);
                 GL.DrawElements(PrimitiveType.Triangles, _model.indices.Length * sizeof(uint) / sizeof(int), DrawElementsType.UnsignedInt, 0);

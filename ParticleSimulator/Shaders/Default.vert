@@ -8,6 +8,7 @@ layout (location = 1) in vec3 aColor;
 layout (location = 2) in vec2 aTex;
 // Normals (not necessarily normalized)
 layout (location = 3) in vec3 aNormal;
+//instance matrix
 layout (location = 4) in mat4 instanceMatrix;
 
 // Outputs the color for the Fragment Shader

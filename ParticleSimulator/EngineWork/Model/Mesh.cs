@@ -12,6 +12,22 @@ using System.Threading.Tasks;
 
 namespace ArctisAurora.EngineWork.Model
 {
+    public class Vertex
+    {
+        Vector3 position;
+        Vector3 normal;
+        Vector3 color;
+        Vector2 UV;
+
+        public Vertex(Vector3 pos, Vector3 norm, Vector3 clr, Vector2 uv)
+        {
+            this.position = pos;
+            this.normal = norm;
+            this.color = clr;
+            this.UV = uv;
+        }
+    }
+
     public class Mesh
     {
         //verts and indices
@@ -19,8 +35,19 @@ namespace ArctisAurora.EngineWork.Model
         internal uint[] indices;
 
         //default
-        float[] pyramidVertices =
+        /*Vertex[] pyramidVertexes =
         {
+            new Vertex(new Vector3(-0.5f, 0.0f,  0.5f), new Vector3(0.0f, -1.0f, 0.0f), new Vector3(0.83f, 0.70f, 0.44f) , new Vector2(0.0f, 0.0f)),
+            new Vertex(new Vector3(-0.5f, 0.0f, -0.5f), new Vector3(), new Vector3(), new Vector2()),
+            new Vertex(new Vector3(0.5f, 0.0f, -0.5f), new Vector3(), new Vector3(), new Vector2()),
+            new Vertex(new Vector3(), new Vector3(), new Vector3(), new Vector2()),
+            new Vertex(new Vector3(), new Vector3(), new Vector3(), new Vector2()),
+            new Vertex(new Vector3(), new Vector3(), new Vector3(), new Vector2()),
+            new Vertex(new Vector3(), new Vector3(), new Vector3(), new Vector2()),
+        };*/
+
+        float[] pyramidVertices =
+        { 
             // X    Y      Z          R     G     B          U     V            NORMALS
             -0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,     0.0f, 0.0f,      0.0f, -1.0f, 0.0f, // Bottom side
 	        -0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,     0.0f, 5.0f,      0.0f, -1.0f, 0.0f, // Bottom side

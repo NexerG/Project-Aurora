@@ -10,6 +10,7 @@ using ArctisAurora.GameObject;
 using ArctisAurora.ParticleTypes;
 using System.Diagnostics;
 using System.Reflection;
+using OpenTK.Windowing.Common;
 
 namespace ArctisAurora.EngineWork
 {
@@ -56,6 +57,11 @@ namespace ArctisAurora.EngineWork
 
         public async void EngineStart()
         {
+            double[] framerate = new double[10];
+            for(int i=0;i<10;i++)
+                framerate[i] = 0;
+            int index = 0;
+
             DateTime initTime = DateTime.Now;
             int TS = 8;
             while (Running)
@@ -87,6 +93,16 @@ namespace ArctisAurora.EngineWork
 
                 double totalTime = GraphicsTime.TotalMilliseconds + entityOnTickTime.TotalMilliseconds;
                 Console.WriteLine("TotalTime --- " + totalTime);
+                framerate[index % 10] = totalTime;
+                index++;
+                if (index > 100) index = 1;
+                double fr=0;
+                for(int i=0;i<10;i++)
+                {
+                    fr += framerate[i];
+                }
+                Console.WriteLine("FPS --- " + 1000/(fr/10));
+
                 double TSOffset = TS - totalTime;
                 if (TSOffset > 0f)
                     await Task.Delay(((int)TSOffset));
