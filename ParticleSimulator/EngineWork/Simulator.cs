@@ -4,10 +4,10 @@ using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using ParticleSimulator.Forces;
-using ParticleSimulator.ParticleTypes;
+using ArctisAurora.Forces;
+using ArctisAurora.ParticleTypes;
 
-namespace ParticleSimulator.EngineWork
+namespace ArctisAurora.EngineWork
 {
     public class Entry : IComparable, IComparable<Entry>
     {

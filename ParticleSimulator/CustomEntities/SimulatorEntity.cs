@@ -1,10 +1,10 @@
 ﻿using OpenTK.Mathematics;
-using ParticleSimulator.CustomEntityComponents;
-using ParticleSimulator.EngineWork;
-using ParticleSimulator.EngineWork.ECS.RenderingComponents;
-using ParticleSimulator.GameObject;
+using ArctisAurora.CustomEntityComponents;
+using ArctisAurora.EngineWork;
+using ArctisAurora.EngineWork.ECS.RenderingComponents;
+using ArctisAurora.GameObject;
 
-namespace ParticleSimulator.CustomEntities
+namespace ArctisAurora.CustomEntities
 {
     internal class SimulatorEntity : Entity
     {
@@ -12,6 +12,7 @@ namespace ParticleSimulator.CustomEntities
         {
             this.CreateComponent<SPHSimComponent>();
             this.CreateComponent<MeshComponent>();
+            this.name= "SPH Simulation Entity";
         }
 
         public override void OnStart()

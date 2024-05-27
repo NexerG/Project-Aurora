@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Windows.Graphics.Imaging;
 
-namespace ParticleSimulator.GameObject
+namespace ArctisAurora.GameObject
 {
     internal class Transform
     {
@@ -25,6 +25,15 @@ namespace ParticleSimulator.GameObject
             //Vector3.
         }
 
+        internal Quaternion GetQuaternion()
+        {
+            float eulerRadiansX = MathHelper.DegreesToRadians(rotation.X);
+            float eulerRadiansY = MathHelper.DegreesToRadians(rotation.Y);
+            float eulerRadiansZ = MathHelper.DegreesToRadians(rotation.Z);
+
+            Quaternion q = Quaternion.FromEulerAngles(eulerRadiansX, eulerRadiansY, eulerRadiansZ);
+            return q;
+        }
         internal Vector3 GetEntityRotation()
         {
             return rotation;

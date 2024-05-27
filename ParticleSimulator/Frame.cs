@@ -1,11 +1,11 @@
 using OpenTK;
 using OpenTK.Compute.OpenCL;
 using OpenTK.Graphics.OpenGL;
-using ParticleSimulator.EngineWork;
+using ArctisAurora.EngineWork;
 using System.Diagnostics;
 using System.Numerics;
 
-namespace ParticleSimulator
+namespace ArctisAurora
 {
     public partial class Frame : Form
     {
@@ -26,32 +26,22 @@ namespace ParticleSimulator
 
         private void TB_SmoothingRadius_Validated(object sender, EventArgs e)
         {
-            if (is3D)
-                engine.simulator3D.smoothingRadius = float.Parse(TB_SmoothingRadius.Text);
         }
 
         private void TB_TargetDensity_Validated(object sender, EventArgs e)
         {
-            if (is3D)
-                engine.simulator3D.targetDensity = float.Parse(TB_TargetDensity.Text);
         }
 
         private void TB_PressureMult_Validated(object sender, EventArgs e)
         {
-            if (is3D)
-                engine.simulator3D.pressureMultiplier = float.Parse(TB_PressureMult.Text);
         }
 
         private void TB_ViscosityStrength_Validated(object sender, EventArgs e)
         {
-            if (is3D)
-                engine.simulator3D.viscosityStr = float.Parse(TB_ViscosityStrength.Text);
         }
 
         private void TB_GravStr_Validated(object sender, EventArgs e)
         {
-            if (is3D)
-                engine.simulator3D.GravStrength = float.Parse(TB_GravStr.Text);
         }
 
         private void Frame_Load(object sender, EventArgs e)
@@ -119,7 +109,7 @@ namespace ParticleSimulator
 
         private void GLControl_KeyPress(object sender, KeyPressEventArgs e)
         {
-            engine.KeyboardHandler(e);
+
         }
 
         private void checkBox1_CheckedChanged(object sender, EventArgs e)

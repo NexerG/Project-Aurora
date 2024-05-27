@@ -1,15 +1,15 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 
-namespace ParticleSimulator.EngineWork.Rendering
+namespace ArctisAurora.EngineWork.Rendering
 {
     //a class responsible for computing shaders. that includes vertex shaders, shadows (fragment), and textures
     public class ShaderClass
     {
         public int program;
-        public ShaderClass()
+        public ShaderClass(string vert, string frag)
         {
-            string VertexCode = ReadFile("../../../Shaders/Default.vert");
-            string FragmentCode = ReadFile("../../../Shaders/Default.frag");
+            string VertexCode = ReadFile("../../../Shaders/" + vert);
+            string FragmentCode = ReadFile("../../../Shaders/" + frag);
             //create shaders
             int vertex_shader = GL.CreateShader(ShaderType.VertexShader);
             GL.ShaderSource(vertex_shader, VertexCode);
@@ -38,7 +38,7 @@ namespace ParticleSimulator.EngineWork.Rendering
             GL.DetachShader(program, fragment_shader);
             GL.DeleteShader(vertex_shader);
             GL.DeleteShader(fragment_shader);
-            //just a stupid need for specifying what compute program object to use but hey its OpenGL
+            //A way for openGL to decide what shaders to use in order to calculate the objects
             Activate();
         }
         public string ReadFile(string FileName)

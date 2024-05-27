@@ -1,5 +1,5 @@
 ﻿using OpenTK.Graphics.OpenGL4;
-using ParticleSimulator.EngineWork.Rendering;
+using ArctisAurora.EngineWork.Rendering;
 using StbImageSharp;
 using System;
 using System.Collections.Generic;
@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ParticleSimulator.EngineWork.Model
+namespace ArctisAurora.EngineWork.Model
 {
     public class Texture
     {

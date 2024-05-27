@@ -1,11 +1,11 @@
-﻿using ParticleSimulator.GameObject;
+﻿using ArctisAurora.GameObject;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ParticleSimulator.EngineWork.ComponentBehaviour
+namespace ArctisAurora.EngineWork.ComponentBehaviour
 {
     internal class EntityComponent
     {

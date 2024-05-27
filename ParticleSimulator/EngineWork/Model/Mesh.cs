@@ -1,7 +1,7 @@
 ﻿using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
-using ParticleSimulator.EngineWork.Rendering;
-using ParticleSimulator.ParticleTypes;
+using ArctisAurora.EngineWork.Rendering;
+using ArctisAurora.ParticleTypes;
 using StbImageSharp;
 using System;
 using System.Collections.Generic;
@@ -10,7 +10,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ParticleSimulator.EngineWork.Model
+namespace ArctisAurora.EngineWork.Model
 {
     public class Mesh
     {
@@ -21,25 +21,41 @@ namespace ParticleSimulator.EngineWork.Model
         //default
         float[] pyramidVertices =
         {
-            // X    Y      Z          R     G     B          U     V
-	        -0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,    0.0f, 0.0f,
-            -0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,    5.0f, 0.0f,
-             0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,    0.0f, 0.0f,
-             0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,    5.0f, 0.0f,
-             0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,    2.5f, 5.0f
+            // X    Y      Z          R     G     B          U     V            NORMALS
+            -0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,     0.0f, 0.0f,      0.0f, -1.0f, 0.0f, // Bottom side
+	        -0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,     0.0f, 5.0f,      0.0f, -1.0f, 0.0f, // Bottom side
+	         0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,     5.0f, 5.0f,      0.0f, -1.0f, 0.0f, // Bottom side
+	         0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,     5.0f, 0.0f,      0.0f, -1.0f, 0.0f, // Bottom side
+
+	        -0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,     0.0f, 0.0f,     -0.8f, 0.5f,  0.0f, // Left Side
+	        -0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,     5.0f, 0.0f,     -0.8f, 0.5f,  0.0f, // Left Side
+	         0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,     2.5f, 5.0f,     -0.8f, 0.5f,  0.0f, // Left Side
+
+	        -0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,     5.0f, 0.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
+	         0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,     0.0f, 0.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
+	         0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,     2.5f, 5.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
+
+	         0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,     0.0f, 0.0f,      0.8f, 0.5f,  0.0f, // Right side
+	         0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,     5.0f, 0.0f,      0.8f, 0.5f,  0.0f, // Right side
+	         0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,     2.5f, 5.0f,      0.8f, 0.5f,  0.0f, // Right side
+
+	         0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,     5.0f, 0.0f,      0.0f, 0.5f,  0.8f, // Facing side
+	        -0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,     0.0f, 0.0f,      0.0f, 0.5f,  0.8f, // Facing side
+	         0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,     2.5f, 5.0f,      0.0f, 0.5f,  0.8f  // Facing side
         };
         uint[] pyramidIndices =
         {
-            0, 1, 2,
-            0, 2, 3,
-            0, 1, 4,
-            1, 2, 4,
-            2, 3, 4,
-            3, 0, 4
-        };
+            0, 1, 2, // Bottom side
+	        0, 2, 3, // Bottom side
+	        4, 6, 5, // Left side
+	        7, 9, 8, // Non-facing side
+	        10, 12, 11, // Right side
+	        13, 15, 14 // Facing side
+         };
 
         //textures
         internal Texture textures;
+        internal Texture specular;
 
         public Mesh(float[] vertices, uint[] indices, Texture texture)
         {
@@ -53,6 +69,7 @@ namespace ParticleSimulator.EngineWork.Model
             this.vertices = pyramidVertices;
             this.indices = pyramidIndices;
             textures = new Texture();
+            specular = new Texture();
         }
         public Mesh(Texture texture)
         {

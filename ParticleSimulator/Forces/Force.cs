@@ -5,7 +5,7 @@ using OpenTK.Mathematics;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ParticleSimulator.Forces
+namespace ArctisAurora.Forces
 {
     public abstract class Force
     {

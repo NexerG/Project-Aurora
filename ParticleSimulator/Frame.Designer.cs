@@ -1,4 +1,4 @@
-﻿namespace ParticleSimulator
+﻿namespace ArctisAurora
 {
     partial class Frame
     {

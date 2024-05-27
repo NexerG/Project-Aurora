@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 
-namespace ParticleSimulator
+namespace ArctisAurora
 {
     internal static class Program
     {

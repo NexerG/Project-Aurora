@@ -23,12 +23,17 @@ out vec3 crntPos;
 uniform mat4 camMatrix;
 // Imports the model matrix from the main function
 uniform mat4 model;
-
+//imports the scaling factor of the object
+uniform vec3 scale;
+//imports the rotation of the object
+uniform mat4 rotation;
 
 void main()
 {
 	// calculates current position
-	crntPos = vec3(instanceMatrix * vec4(aPos, 1.0f));
+	vec3 scaledPos = aPos * scale;
+	vec3 rotatedPos = vec3(rotation * vec4(scaledPos, 1.0));
+	crntPos = vec3(instanceMatrix * vec4(rotatedPos, 1.0f));
 
 	// Outputs the positions/coordinates of all vertices
 	gl_Position = camMatrix * vec4(crntPos, 1.0);

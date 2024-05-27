@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ParticleSimulator.EngineWork.Rendering
+namespace ArctisAurora.EngineWork.Rendering
 {
     public class VBO
     {

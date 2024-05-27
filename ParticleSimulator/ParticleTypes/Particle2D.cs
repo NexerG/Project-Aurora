@@ -5,7 +5,7 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ParticleSimulator.ParticleTypes
+namespace ArctisAurora.ParticleTypes
 {
     public class Particle2D
     {

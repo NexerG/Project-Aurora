@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using ParticleSimulator.ParticleTypes;
+using ArctisAurora.ParticleTypes;
 
-namespace ParticleSimulator.EngineWork
+namespace ArctisAurora.EngineWork
 {
     public class Renderer
     {

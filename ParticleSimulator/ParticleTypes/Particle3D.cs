@@ -5,7 +5,7 @@ using OpenTK.Mathematics;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ParticleSimulator.ParticleTypes
+namespace ArctisAurora.ParticleTypes
 {
     public class Particle3D
     {

@@ -1,8 +1,8 @@
 ﻿using OpenTK.Mathematics;
-using ParticleSimulator.Forces;
-using ParticleSimulator.ParticleTypes;
+using ArctisAurora.Forces;
+using ArctisAurora.ParticleTypes;
 
-namespace ParticleSimulator.EngineWork
+namespace ArctisAurora.EngineWork
 {
     public class Entry3D : IComparable, IComparable<Entry>
     {
