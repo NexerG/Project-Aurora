@@ -1,5 +1,8 @@
-﻿using OpenTK.Graphics.OpenGL4;
+﻿using Microsoft.VisualBasic.Devices;
+using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
+using OpenTK.Windowing.GraphicsLibraryFramework;
+using Keys = OpenTK.Windowing.GraphicsLibraryFramework.Keys;
 
 namespace ArctisAurora.EngineWork.Rendering
 {
@@ -9,13 +12,14 @@ namespace ArctisAurora.EngineWork.Rendering
         public Vector3 pos = new Vector3(-500f, -500f, 350f);
 
         //directions
-        float pitch=0;
-        float yaw=0;
-        float roll=0;
+        Vector3 orientation = new Vector3(0,0,0);
+        Vector3 up = new Vector3(0,0,0);
         Matrix4 pv;
+        Vector3 front;
+        Vector3 right;
 
         //controls
-        float speed = 0.1f;
+        float speed = 0.01f;
         float sensitivity = .25f;
 
         public Camera()
@@ -30,14 +34,13 @@ namespace ArctisAurora.EngineWork.Rendering
 
         public void updateMatrix()
         {
-            Vector3 front;
-            front.X = MathF.Cos(MathHelper.DegreesToRadians(yaw)) * MathF.Cos(MathHelper.DegreesToRadians(pitch));
-            front.Y = MathF.Sin(MathHelper.DegreesToRadians(pitch));
-            front.Z = MathF.Sin(MathHelper.DegreesToRadians(yaw)) * MathF.Cos(MathHelper.DegreesToRadians(pitch));
+            front.X = MathF.Cos(MathHelper.DegreesToRadians(orientation.X)) * MathF.Cos(MathHelper.DegreesToRadians(orientation.Y));
+            front.Y = MathF.Sin(MathHelper.DegreesToRadians(orientation.Y));
+            front.Z = MathF.Sin(MathHelper.DegreesToRadians(orientation.X)) * MathF.Cos(MathHelper.DegreesToRadians(orientation.Y));
             front = Vector3.Normalize(front);
 
-            Vector3 right = Vector3.Normalize(Vector3.Cross(front, Vector3.UnitY));
-            Vector3 up = Vector3.Normalize(Vector3.Cross(right, front));
+            right = Vector3.Normalize(Vector3.Cross(front, Vector3.UnitY));
+            up = Vector3.Normalize(Vector3.Cross(right, front));
 
             Matrix4 view = Matrix4.LookAt(pos, pos + front, up);
             Matrix4 projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(60), 1920 / 1080, 0.1f, 5000f);
@@ -48,14 +51,49 @@ namespace ArctisAurora.EngineWork.Rendering
         {
             delta *= sensitivity;
 
-            yaw += delta.X;
-            pitch -= delta.Y;
+            orientation.X += delta.X;
+            orientation.Y -= delta.Y;
 
             if (constrainPitch)
             {
-                pitch = MathHelper.Clamp(pitch, -89.0f,89.0f);
+                orientation.Y = MathHelper.Clamp(orientation.Y, -89.0f,89.0f);
             }
-            //Console.WriteLine("Orientation " + yaw + "  " + pitch);
+        }
+
+        internal void ProcessKeyboard(KeyboardState keyboard)
+        {
+            if (keyboard.IsKeyDown(Keys.W))
+            {
+                pos += speed * front;
+            }
+            if (keyboard.IsKeyDown(Keys.A))
+            {
+                pos += speed * -right;
+            }
+            if (keyboard.IsKeyDown(Keys.D))
+            {
+                pos += speed * right;
+            }
+            if (keyboard.IsKeyDown(Keys.S))
+            {
+                pos += speed * -front;
+            }
+            if (keyboard.IsKeyDown(Keys.Space))
+            {
+                pos += speed * up;
+            }
+            if (keyboard.IsKeyDown(Keys.LeftControl))
+            {
+                pos += speed * -up;
+            }
+            if (keyboard.IsKeyDown(Keys.E))
+            {
+                pos += speed * Vector3.UnitY;
+            }
+            if (keyboard.IsKeyDown(Keys.Q))
+            {
+                pos += speed * -Vector3.UnitY;
+            }
         }
     }
 }

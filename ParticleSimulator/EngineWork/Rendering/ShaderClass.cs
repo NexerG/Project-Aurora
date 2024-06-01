@@ -5,9 +5,19 @@ namespace ArctisAurora.EngineWork.Rendering
     //a class responsible for computing shaders. that includes vertex shaders, shadows (fragment), and textures
     public class ShaderClass
     {
-        public int program;
-        public ShaderClass(string vert, string frag)
+        public enum entityShaderType
         {
+            lightsource,
+            entity,
+            grass,
+            water
+        }
+
+        public int program;
+        internal entityShaderType type;
+        public ShaderClass(string vert, string frag, entityShaderType type)
+        {
+            this.type = type;
             string VertexCode = ReadFile("../../../Shaders/" + vert);
             string FragmentCode = ReadFile("../../../Shaders/" + frag);
             //create shaders

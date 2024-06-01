@@ -25,7 +25,7 @@ namespace ArctisAurora.EngineWork
             //Renderer prerequisites refueling
             GameWindowSettings _gws = GameWindowSettings.Default;
             NativeWindowSettings _nws = new NativeWindowSettings() { ClientSize = new Vector2i(1280, 720), Title = "ProjectAurora" };
-            renderer3D = new OpenTK_Renderer(SC, _gws, _nws);
+            renderer3D = new OpenTK_Renderer(_gws, _nws);
             renderer3D.Prerequisites();
 
             Running = true;

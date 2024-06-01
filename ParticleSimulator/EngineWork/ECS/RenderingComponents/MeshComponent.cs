@@ -8,6 +8,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static ArctisAurora.EngineWork.Rendering.ShaderClass;
+using ArctisAurora.GameObject;
 
 namespace ArctisAurora.EngineWork.ECS.RenderingComponents
 {
@@ -24,6 +26,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
         //instancing
         int instances = 1;
         internal List<Matrix4> instanceMatrix = new List<Matrix4>();
+        entityShaderType type = entityShaderType.entity;
 
         public MeshComponent()
         {
@@ -50,7 +53,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
             MakeSingleInstance();
         }
 
-        internal void FenceMesh(ShaderClass shader)
+        internal void setupUniforms(ShaderClass shader)
         {
             GL.Uniform4(GL.GetUniformLocation(shader.program, "lightColor"), 1f, 1f, 1f, 1f);
             GL.Uniform3(GL.GetUniformLocation(shader.program, "lightPos"), -300f, -300f, 300f);

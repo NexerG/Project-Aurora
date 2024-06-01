@@ -9,6 +9,8 @@ using ArctisAurora.ParticleTypes;
 using StbImageSharp;
 using static OpenTK.Graphics.OpenGL.GL;
 using OpenTK.Windowing.GraphicsLibraryFramework;
+using static ArctisAurora.EngineWork.Rendering.ShaderClass;
+using Keys = OpenTK.Windowing.GraphicsLibraryFramework.Keys;
 
 namespace ArctisAurora.EngineWork.Rendering
 {
@@ -21,9 +23,10 @@ namespace ArctisAurora.EngineWork.Rendering
         internal GameWindowSettings _gameWindowSettings;
         internal NativeWindowSettings _nativeWindowSettings;
 
-        //_entityShader
+        //shaders
         internal ShaderClass _entityShader;
         internal ShaderClass _lightSourceShader;
+        internal Dictionary<entityShaderType, ShaderClass> shaderPrograms = new Dictionary<entityShaderType, ShaderClass>();
         //camera
         public Camera camera = new Camera();
         internal Vector2 mousePos = new Vector2();
@@ -37,14 +40,11 @@ namespace ArctisAurora.EngineWork.Rendering
         uint Texture;
         //particles location, rotation, size matrices
 
-        public OpenTK_Renderer(Frame frame, GameWindowSettings _gws, NativeWindowSettings _nws)
+        public OpenTK_Renderer(GameWindowSettings _gws, NativeWindowSettings _nws)
             :base (_gws, _nws)
         {
             _gameWindowSettings = _gws;
             _nativeWindowSettings = _nws;
-            //constructor
-            f = frame;
-            //initialize the stuffs
             _rendererInstance = this;
         }
 
@@ -68,11 +68,8 @@ namespace ArctisAurora.EngineWork.Rendering
         {
             base.OnUpdateFrame(e);
 
-            MouseState mouse = MouseState.GetSnapshot();
-            mousePos = new Vector2(mouse.X,mouse.Y);
-            mouseDelta = mousePos - prevMousePos;
-            prevMousePos = mousePos;
-            camera.ProcessMouseMovement(mouseDelta);
+            HandleMouse();
+            HandleKeyboard();
         }
 
         protected override void OnRenderFrame(FrameEventArgs e)
@@ -83,29 +80,65 @@ namespace ArctisAurora.EngineWork.Rendering
         protected override void OnMouseMove(MouseMoveEventArgs e)
         {
             base.OnMouseMove(e);
-            
         }
 
         internal void Prerequisites()
         {
-            //initialize the _entityShader pipeline
-            _lightSourceShader = new ShaderClass("Light.vert", "Light.frag");
-            _entityShader = new ShaderClass("Default.vert", "Default.frag");
+            //initialize the entity & light source shaders
+            _lightSourceShader = new ShaderClass("Light.vert", "Light.frag", entityShaderType.lightsource);
+            shaderPrograms.Add(entityShaderType.lightsource, _lightSourceShader);
+
+            _entityShader = new ShaderClass("Default.vert", "Default.frag", entityShaderType.entity);
+            shaderPrograms.Add(entityShaderType.entity, _entityShader);
+        }
+
+        internal void HandleMouse()
+        {
+            if (IsFocused)
+            {
+                MouseState mouse = MouseState.GetSnapshot();
+                mouseDelta = mouse.Position - mouse.PreviousPosition;
+                camera.ProcessMouseMovement(mouseDelta);
+                CursorState = CursorState.Grabbed;
+            }
+            else CursorState = CursorState.Normal;
+        }
+
+        internal void HandleKeyboard()
+        {
+            if (IsFocused)
+            {
+                KeyboardState keyboard = KeyboardState.GetSnapshot();
+                camera.ProcessKeyboard(keyboard);
+            }
+        }
+
+        internal void CreateEntityShader(string vertShader, string fragShader, entityShaderType t)
+        {
+            if (!shaderPrograms.ContainsKey(t))
+            {
+                ShaderClass shader = new ShaderClass(vertShader, fragShader, t);
+                shaderPrograms.Add(t, shader);
+            }
+        }
+
+        internal void ChangeShader(entityShaderType t)
+        {
+            shaderPrograms.TryGetValue(t, out var shader);
+            if (shader != null) shader.Activate();
         }
 
         internal void EntityToRenderQueue(Entity e)
         {
             _renderQueue.Add(e);
-
             _entityShader.Activate();
-            e.GetComponent<MeshComponent>().FenceMesh(_entityShader);
+            e.GetComponent<MeshComponent>().setupUniforms(_entityShader);
         }
         internal void LightToRenderQueue(Entity e)
         {
             _lightSourcesRenderQueue.Add(e);
-
             _lightSourceShader.Activate();
-            e.GetComponent<LightSourceComponent>().FenceMesh(_lightSourceShader);
+            e.GetComponent<LightSourceComponent>().setupUniforms(_lightSourceShader);
         }
 
         public void Init()
@@ -120,15 +153,21 @@ namespace ArctisAurora.EngineWork.Rendering
             camera.updateMatrix();
 
             //Entity rendering
-            _entityShader.Activate();
+            {
+                shaderPrograms.TryGetValue(entityShaderType.entity, out var shader);
+                if (shader != null) shader.Activate();
+            }
             foreach (Entity entity in _renderQueue)
             {
                 entity.GetComponent<MeshComponent>().Draw(_entityShader, camera);
             }
 
             //Light source rendering
-            _lightSourceShader.Activate();
-            foreach(Entity entity in _lightSourcesRenderQueue)
+            {
+                shaderPrograms.TryGetValue(entityShaderType.lightsource, out var shader);
+                if (shader != null) shader.Activate();
+            }
+            foreach (Entity entity in _lightSourcesRenderQueue)
             {
                 entity.GetComponent<LightSourceComponent>().Draw(_lightSourceShader, camera);
             }

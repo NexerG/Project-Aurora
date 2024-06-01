@@ -51,7 +51,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
             MakeSingleInstance();
         }
 
-        internal void FenceMesh(ShaderClass shader)
+        internal void setupUniforms(ShaderClass shader)
         {
             GL.Uniform4(GL.GetUniformLocation(shader.program, "lightColor"), _lightColor.X, _lightColor.Y, _lightColor.Z, _lightColor.W);
         }
