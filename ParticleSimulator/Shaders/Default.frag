@@ -32,12 +32,15 @@ vec4 pointLight(vec3 normal, vec3 lightPosition)
 	float ambientLight = 0.2f;
 	vec3 lightDirection = normalize(lightVec);
 	float diffuse = max(dot(normal, lightDirection), 0.0f);
-
-	float specularLight = 0.5f;
-	vec3 viewDirection = normalize(camPos - crntPos);
-	vec3 reflectionDirection = reflect(-lightDirection, normal);
-	float specAmount = pow(max(dot(viewDirection, reflectionDirection), 0), 8);
-	float specular = specAmount * specularLight;
+	float specular = 0.0f;
+	if(diffuse !=0.0f)
+	{
+		float specularLight = 0.5f;
+		vec3 viewDirection = normalize(camPos - crntPos);
+		vec3 halfWayVec = normalize(viewDirection + lightDirection);
+		float specAmount = pow(max(dot(normal, halfWayVec), 0), 16);
+		specular = specAmount * specularLight;
+	}
 
 	//need to add intensity back
 	return (texture(tex0, texCoord) * (diffuse * intensity + ambientLight) + texture(tex1, texCoord).r * specular * intensity) * lightColor;
