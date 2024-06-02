@@ -16,10 +16,17 @@ namespace ArctisAurora.EngineWork
 {
     public class Engine
     {
+        internal static Engine _engineInstance = null;
         public bool Running { get; private set; }
         internal Frame SC;
         internal OpenTK_Renderer renderer3D;
         internal List<Entity> _entities = new List<Entity>();
+
+        public Engine()
+        {
+            _engineInstance = this;
+        }
+
         public void Init(Frame s, bool threeDims, int parts)
         {
             //Renderer prerequisites refueling
@@ -33,20 +40,19 @@ namespace ArctisAurora.EngineWork
 
             //---------------------------------------------------------------------------
             //Game logic
+            //first we setup lights
+            LightSourceEntity lightEntity = new LightSourceEntity();
+            LightSourceEntity lightEntity2 = new LightSourceEntity();
+            lightEntity2.transform.position = new Vector3(700, 700, 700);
+            _entities.Add(lightEntity2);
+            _entities.Add(lightEntity);
+
+            //then we do entities
             SimulatorEntity _simEntity = new SimulatorEntity();
             _simEntity.GetComponent<SPHSimComponent>().simSetup(parts);
             _entities.Add(_simEntity);
-
-
-            LightSourceEntity lightEntity = new LightSourceEntity();
-            _entities.Add(lightEntity);
             //---------------------------------------------------------------------------
 
-            //rest of the engine logic (Engine kickstart)
-            foreach (Entity e in _entities)
-            {
-                e.OnStart();
-            }
 
             new Thread(() =>
             {

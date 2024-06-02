@@ -9,7 +9,7 @@ namespace ArctisAurora.EngineWork.Rendering
     public class Camera
     {
         //vars init
-        public Vector3 pos = new Vector3(-500f, -500f, 350f);
+        public Vector3 pos = new Vector3(0, 0, 0);
 
         //directions
         Vector3 orientation = new Vector3(0,0,0);

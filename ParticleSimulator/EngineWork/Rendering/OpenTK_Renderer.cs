@@ -17,8 +17,6 @@ namespace ArctisAurora.EngineWork.Rendering
     public class OpenTK_Renderer : GameWindow
     {
         internal static OpenTK_Renderer _rendererInstance=null;
-        //the form (frame of the engine)
-        private Frame f;
         //gamewindow
         internal GameWindowSettings _gameWindowSettings;
         internal NativeWindowSettings _nativeWindowSettings;
@@ -131,8 +129,6 @@ namespace ArctisAurora.EngineWork.Rendering
         internal void EntityToRenderQueue(Entity e)
         {
             _renderQueue.Add(e);
-            _entityShader.Activate();
-            e.GetComponent<MeshComponent>().setupUniforms(_entityShader);
         }
         internal void LightToRenderQueue(Entity e)
         {
@@ -140,6 +136,21 @@ namespace ArctisAurora.EngineWork.Rendering
             _lightSourceShader.Activate();
             e.GetComponent<LightSourceComponent>().setupUniforms(_lightSourceShader);
         }
+
+        internal List<Entity> GetLightSources()
+        {
+            return _lightSourcesRenderQueue;
+        }
+
+        internal void setupLights(ShaderClass shader)
+        {
+            GL.Uniform4(GL.GetUniformLocation(shader.program, "lightColor"), 1f, 1f, 1f, 1f);
+            foreach (Entity e in _lightSourcesRenderQueue)
+            {
+                GL.Uniform3(GL.GetUniformLocation(shader.program, "lightPos"), e.transform.position);
+            }
+        }
+
 
         public void Init()
         {
@@ -155,7 +166,11 @@ namespace ArctisAurora.EngineWork.Rendering
             //Entity rendering
             {
                 shaderPrograms.TryGetValue(entityShaderType.entity, out var shader);
-                if (shader != null) shader.Activate();
+                if (shader != null)
+                {
+                    shader.Activate();
+                    setupLights(shader);
+                }
             }
             foreach (Entity entity in _renderQueue)
             {

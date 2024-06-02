@@ -12,7 +12,6 @@ namespace ArctisAurora.GameObject
     {
         public LightSourceEntity()
         {
-            this.transform.position = new Vector3(300, 100, 300);
             this.CreateComponent<LightSourceComponent>();
             this.name = "Light Source Entity";
         }

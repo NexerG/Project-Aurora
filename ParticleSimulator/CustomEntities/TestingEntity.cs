@@ -1,4 +1,7 @@
-﻿using ArctisAurora.GameObject;
+﻿using ArctisAurora.CustomEntityComponents;
+using ArctisAurora.EngineWork.ECS.RenderingComponents;
+using ArctisAurora.GameObject;
+using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +14,9 @@ namespace ArctisAurora.CustomEntities
     {
         public override void OnStart()
         {
+            this.transform.scale = new Vector3(25, 25, 25);
+            this.transform.position = new Vector3(350, 350, 350);
+            this.CreateComponent<MeshComponent>();
             base.OnStart();
         }
         public override void OnTick()

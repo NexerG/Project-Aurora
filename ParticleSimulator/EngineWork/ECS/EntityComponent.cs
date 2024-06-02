@@ -16,6 +16,16 @@ namespace ArctisAurora.EngineWork.ComponentBehaviour
 
         }
 
+        public virtual void OnEnable()
+        {
+
+        }
+
+        public virtual void OnDisable()
+        {
+
+        }
+
         public virtual void OnTick() //runs on every frame
         {
 

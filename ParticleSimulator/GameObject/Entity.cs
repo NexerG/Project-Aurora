@@ -1,6 +1,7 @@
 ﻿using ArctisAurora.EngineWork.ComponentBehaviour;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Numerics;
 using System.Text;
@@ -11,6 +12,7 @@ namespace ArctisAurora.GameObject
     internal class Entity
     {
         //variables
+        bool enabled = true;
         internal Transform transform;
         internal string name = "entity";
 
@@ -36,6 +38,22 @@ namespace ArctisAurora.GameObject
             }
         }
 
+        public virtual void OnEnable()
+        {
+            foreach (EntityComponent c in _components)
+            {
+                c.OnEnable();
+            }
+        }
+
+        public virtual void OnDisable()
+        {
+            foreach (EntityComponent c in _components)
+            {
+                c.OnDisable();
+            }
+        }
+
         public virtual void OnTick()
         {
             foreach(EntityComponent c in _components)
@@ -53,6 +71,17 @@ namespace ArctisAurora.GameObject
             }
         }
 
+        internal void IsEnabled(bool state)
+        {
+            if(enabled != state)
+            {
+                enabled = state;
+                if(enabled)
+                    OnEnable();
+                else OnDisable();
+            }
+        }
+
         internal EntComp CreateComponent<EntComp>() where EntComp : EntityComponent, new()
         {
             EntComp component = new EntComp();
@@ -60,11 +89,11 @@ namespace ArctisAurora.GameObject
             {
                 _components.Add(component);
                 component.parent = this;
+                component.OnStart();
                 return component;
             }
             else return null;
         }
-
         internal EntComp GetComponent<EntComp>() where EntComp : EntityComponent
         {
             foreach(EntityComponent comp in _components)

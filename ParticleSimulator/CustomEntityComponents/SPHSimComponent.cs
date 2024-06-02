@@ -68,7 +68,7 @@ namespace ArctisAurora.CustomEntityComponents
         {
             for (int i = 0; i < ps.Count; i++)
             {
-                Vector3 posTrans = new Vector3(ps[i].point.X, -ps[i].point.Y, ps[i].point.Z);
+                Vector3 posTrans = new Vector3(ps[i].point.X, ps[i].point.Y, ps[i].point.Z);
                 Quaternion q = new Quaternion(0.0f, 1.0f, 0.0f, 1.0f);
                 Vector3 sc = new Vector3(5.0f, 5.0f, 5.0f);
 
@@ -85,6 +85,11 @@ namespace ArctisAurora.CustomEntityComponents
 
                 _instanceMatrix[i] = tr_s;
             }
+        }
+
+        public override void OnStart()
+        {
+            base.OnStart();
         }
     }
 }

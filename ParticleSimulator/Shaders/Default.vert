@@ -20,6 +20,7 @@ out vec3 Normal;
 // Outputs the current position for the Fragment Shader
 out vec3 crntPos;
 
+
 // Imports the camera matrix from the main function
 uniform mat4 camMatrix;
 // Imports the model matrix from the main function

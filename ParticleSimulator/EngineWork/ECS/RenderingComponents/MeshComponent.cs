@@ -3,18 +3,14 @@ using OpenTK.Mathematics;
 using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.Model;
 using ArctisAurora.EngineWork.Rendering;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using static ArctisAurora.EngineWork.Rendering.ShaderClass;
-using ArctisAurora.GameObject;
 
 namespace ArctisAurora.EngineWork.ECS.RenderingComponents
 {
     internal class MeshComponent : EntityComponent
     {
+        //variable
+        bool render = true;
         //the model
         internal Mesh model;
         //A & E buffers
@@ -53,10 +49,14 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
             MakeSingleInstance();
         }
 
-        internal void setupUniforms(ShaderClass shader)
+        public override void OnDisable()
         {
-            GL.Uniform4(GL.GetUniformLocation(shader.program, "lightColor"), 1f, 1f, 1f, 1f);
-            GL.Uniform3(GL.GetUniformLocation(shader.program, "lightPos"), -300f, -300f, 300f);
+            render = false;
+        }
+
+        public override void OnEnable()
+        {
+            render = true;
         }
 
         internal void UpdateMatrices()
@@ -74,7 +74,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
             vao.LinkAttrib(vbo, 3, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 8 * sizeof(float));
 
             //instanced mesh data
-            if(instances > 1)
+            //if(instances > 1)
             {
                 ivbo.Bind();
                 vao.LinkAttrib(ivbo, 4, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 0);
@@ -105,7 +105,6 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
         {
             Vector3 posTrans = new Vector3(parent.transform.position.X, parent.transform.position.Y, parent.transform.position.Z);
             Quaternion q = new Quaternion(0.0f, 1.0f, 0.0f, 1.0f);
-            Vector3 sc = new Vector3(5.0f, 5.0f, 5.0f);
 
             Matrix4 translation = Matrix4.Identity;
             Matrix4 rotation = Matrix4.Identity;
@@ -113,34 +112,35 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
 
             Matrix4.CreateTranslation(posTrans, out translation);
             Matrix4.CreateFromQuaternion(q, out rotation);
-            Matrix4.CreateScale(sc, out scale);
+            Matrix4.CreateScale(parent.transform.scale, out scale);
 
             Matrix4 tr = Matrix4.Mult(translation, rotation);
             Matrix4 tr_s = Matrix4.Mult(scale, tr);
 
             this.instanceMatrix.Add(tr_s);
+            UpdateMatrices();
         }
 
         public void Draw(ShaderClass shader, Camera camera)
         {
-            Matrix4 rot;
-            Matrix4.CreateFromQuaternion(parent.transform.GetQuaternion(), out rot);
-            GL.UniformMatrix4(GL.GetUniformLocation(shader.program, "rotation"), false, ref rot);
-            GL.Uniform3(GL.GetUniformLocation(shader.program, "scale"), parent.transform.scale);
-            if (instances == 1)
+            if(render)
             {
-                Matrix4 mat = instanceMatrix[0];
+                Matrix4 rot;
+                Matrix4.CreateFromQuaternion(parent.transform.GetQuaternion(), out rot);
+                GL.UniformMatrix4(GL.GetUniformLocation(shader.program, "rotation"), false, ref rot);
+                GL.Uniform3(GL.GetUniformLocation(shader.program, "scale"), parent.transform.scale);
                 UpdateMatrices();
                 PreDraw(camera, shader);
-                GL.UniformMatrix4(GL.GetUniformLocation(shader.program, "model"), false, ref mat);
-                GL.DrawElements(PrimitiveType.Triangles, model.indices.Length * sizeof(uint) / sizeof(int), DrawElementsType.UnsignedInt, 0);
-            }
-            else
-            {
-                UpdateMatrices();
-                PreDraw(camera, shader);
-
-                GL.DrawElementsInstanced(PrimitiveType.Triangles, model.indices.Length * sizeof(uint) / sizeof(int), DrawElementsType.UnsignedInt, 0, instances);
+                if (instances == 1)
+                {
+                    Matrix4 mat = instanceMatrix[0];
+                    GL.UniformMatrix4(GL.GetUniformLocation(shader.program, "model"), false, ref mat);
+                    GL.DrawElements(PrimitiveType.Triangles, model.indices.Length * sizeof(uint) / sizeof(int), DrawElementsType.UnsignedInt, 0);
+                }
+                else
+                {
+                    GL.DrawElementsInstanced(PrimitiveType.Triangles, model.indices.Length * sizeof(uint) / sizeof(int), DrawElementsType.UnsignedInt, 0, instances);
+                }
             }
         }
 

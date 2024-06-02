@@ -102,7 +102,7 @@ namespace ArctisAurora.EngineWork
 
         public Simulator3D(List<Particle3D> parts, Vector3 simSize)
         {
-            Gravity g = new Gravity(new Vector3(0f, 9.8f, 0f));
+            Gravity g = new Gravity(new Vector3(0f, -9.8f, 0f));
             forces.Add(g);
             this.parts = parts;
 
