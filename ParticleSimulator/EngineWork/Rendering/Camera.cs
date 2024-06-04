@@ -12,11 +12,14 @@ namespace ArctisAurora.EngineWork.Rendering
         public Vector3 pos = new Vector3(0, 0, 0);
 
         //directions
-        Vector3 orientation = new Vector3(0,0,0);
-        Vector3 up = new Vector3(0,0,0);
-        Matrix4 pv;
-        Vector3 front;
-        Vector3 right;
+        Vector3 rotation = new Vector3(0, 0, 0);
+        Vector3 localUp = new Vector3(0, 1, 0);
+        Vector3 front = new Vector3(0,0,-1);
+        Vector3 localRight;
+
+        internal Matrix4 view;
+        internal Matrix4 projection;
+        internal Matrix4 pv;
 
         //controls
         float speed = 0.01f;
@@ -27,23 +30,18 @@ namespace ArctisAurora.EngineWork.Rendering
 
         }
 
-        public void Matrix(ShaderClass shader, string uniform)
-        {
-            GL.UniformMatrix4(GL.GetUniformLocation(shader.program, uniform), false, ref pv);
-        }
-
         public void updateMatrix()
         {
-            front.X = MathF.Cos(MathHelper.DegreesToRadians(orientation.X)) * MathF.Cos(MathHelper.DegreesToRadians(orientation.Y));
-            front.Y = MathF.Sin(MathHelper.DegreesToRadians(orientation.Y));
-            front.Z = MathF.Sin(MathHelper.DegreesToRadians(orientation.X)) * MathF.Cos(MathHelper.DegreesToRadians(orientation.Y));
+            front.X = MathF.Cos(MathHelper.DegreesToRadians(rotation.X)) * MathF.Cos(MathHelper.DegreesToRadians(rotation.Y));
+            front.Y = MathF.Sin(MathHelper.DegreesToRadians(rotation.Y));
+            front.Z = MathF.Sin(MathHelper.DegreesToRadians(rotation.X)) * MathF.Cos(MathHelper.DegreesToRadians(rotation.Y));
             front = Vector3.Normalize(front);
 
-            right = Vector3.Normalize(Vector3.Cross(front, Vector3.UnitY));
-            up = Vector3.Normalize(Vector3.Cross(right, front));
+            localRight = Vector3.Normalize(Vector3.Cross(front, Vector3.UnitY));
+            localUp = Vector3.Normalize(Vector3.Cross(localRight, front));
 
-            Matrix4 view = Matrix4.LookAt(pos, pos + front, up);
-            Matrix4 projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(60), 1920 / 1080, 0.1f, 5000f);
+            view = Matrix4.LookAt(pos, pos + front, Vector3.UnitY);
+            projection = Matrix4.CreatePerspectiveFieldOfView(MathHelper.DegreesToRadians(60), 1920 / 1080, 0.1f, 5000f);
             pv = view * projection;
         }
 
@@ -51,12 +49,12 @@ namespace ArctisAurora.EngineWork.Rendering
         {
             delta *= sensitivity;
 
-            orientation.X += delta.X;
-            orientation.Y -= delta.Y;
+            rotation.X += delta.X;
+            rotation.Y -= delta.Y;
 
             if (constrainPitch)
             {
-                orientation.Y = MathHelper.Clamp(orientation.Y, -89.0f,89.0f);
+                rotation.Y = MathHelper.Clamp(rotation.Y, -89.0f,89.0f);
             }
         }
 
@@ -68,11 +66,11 @@ namespace ArctisAurora.EngineWork.Rendering
             }
             if (keyboard.IsKeyDown(Keys.A))
             {
-                pos += speed * -right;
+                pos += speed * -localRight;
             }
             if (keyboard.IsKeyDown(Keys.D))
             {
-                pos += speed * right;
+                pos += speed * localRight;
             }
             if (keyboard.IsKeyDown(Keys.S))
             {
@@ -80,11 +78,11 @@ namespace ArctisAurora.EngineWork.Rendering
             }
             if (keyboard.IsKeyDown(Keys.Space))
             {
-                pos += speed * up;
+                pos += speed * localUp;
             }
             if (keyboard.IsKeyDown(Keys.LeftControl))
             {
-                pos += speed * -up;
+                pos += speed * -localUp;
             }
             if (keyboard.IsKeyDown(Keys.E))
             {

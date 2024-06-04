@@ -47,7 +47,6 @@ namespace ArctisAurora.EngineWork.Model
         public void texUnit(ShaderClass shader, string uniform, int unit)
         {
             int texUni = GL.GetUniformLocation(shader.program, uniform);
-            //shader.Activate();
             GL.Uniform1(texUni, unit);
         }
     }

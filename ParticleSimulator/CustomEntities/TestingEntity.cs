@@ -12,11 +12,13 @@ namespace ArctisAurora.CustomEntities
 {
     internal class TestingEntity : Entity
     {
+        public TestingEntity() 
+        {
+            this.transform.scale = new Vector3(100, 5, 100);
+            this.CreateComponent<MeshComponent>();
+        }
         public override void OnStart()
         {
-            this.transform.scale = new Vector3(25, 25, 25);
-            this.transform.position = new Vector3(350, 350, 350);
-            this.CreateComponent<MeshComponent>();
             base.OnStart();
         }
         public override void OnTick()

@@ -45,22 +45,15 @@ namespace ArctisAurora.CustomEntityComponents
 
             for (int i = 0; i < _particles.Count; i++)
             {
-                Vector3 posTrans = new Vector3(_particles[i].point.X, _particles[i].point.Y, _particles[i].point.Z);
-                Quaternion q = new Quaternion(0.0f, 1.0f, 0.0f, 1.0f);
-                Vector3 sc = new Vector3(5.0f, 5.0f, 5.0f);
+                Vector3 pos = new Vector3(parent.transform.position.X, parent.transform.position.Y, parent.transform.position.Z);
+                Quaternion q = Quaternion.FromEulerAngles(parent.transform.rotation);
 
-                Matrix4 translation = Matrix4.Identity;
-                Matrix4 rotation = Matrix4.Identity;
-                Matrix4 scale = Matrix4.Identity;
+                Matrix4 transformation = Matrix4.Identity;
+                transformation *= Matrix4.CreateTranslation(pos);
+                transformation *= Matrix4.CreateFromQuaternion(q);
+                transformation *= Matrix4.CreateScale(parent.transform.scale);
 
-                Matrix4.CreateTranslation(posTrans, out translation);
-                Matrix4.CreateFromQuaternion(q, out rotation);
-                Matrix4.CreateScale(sc, out scale);
-
-                Matrix4 tr = Matrix4.Mult(translation, rotation);
-                Matrix4 tr_s = Matrix4.Mult(scale, tr);
-
-                _instanceMatrix.Add(tr_s);
+                _instanceMatrix.Add(transformation);
             }
             parent.GetComponent<MeshComponent>().MakeInstanced(_instanceMatrix.Count, ref _instanceMatrix);
         }
@@ -68,22 +61,15 @@ namespace ArctisAurora.CustomEntityComponents
         {
             for (int i = 0; i < ps.Count; i++)
             {
-                Vector3 posTrans = new Vector3(ps[i].point.X, ps[i].point.Y, ps[i].point.Z);
-                Quaternion q = new Quaternion(0.0f, 1.0f, 0.0f, 1.0f);
-                Vector3 sc = new Vector3(5.0f, 5.0f, 5.0f);
+                Vector3 pos = new Vector3(ps[i].point.X, ps[i].point.Y, ps[i].point.Z);
+                Quaternion q = Quaternion.FromEulerAngles(parent.transform.rotation);
 
-                Matrix4 translation = Matrix4.Identity;
-                Matrix4 rotation = Matrix4.Identity;
-                Matrix4 scale = Matrix4.Identity;
+                Matrix4 transformation = Matrix4.Identity;
+                transformation *= Matrix4.CreateTranslation(pos);
+                transformation *= Matrix4.CreateFromQuaternion(q);
+                transformation *= Matrix4.CreateScale(parent.transform.scale);
 
-                Matrix4.CreateTranslation(posTrans, out translation);
-                Matrix4.CreateFromQuaternion(q, out rotation);
-                Matrix4.CreateScale(sc, out scale);
-
-                Matrix4 tr = Matrix4.Mult(translation, rotation);
-                Matrix4 tr_s = Matrix4.Mult(scale, tr);
-
-                _instanceMatrix[i] = tr_s;
+                _instanceMatrix[i] = transformation;
             }
         }
 

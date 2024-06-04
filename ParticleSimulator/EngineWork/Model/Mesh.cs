@@ -9,6 +9,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using Assimp;
 
 namespace ArctisAurora.EngineWork.Model
 {
@@ -22,9 +23,9 @@ namespace ArctisAurora.EngineWork.Model
         public Vertex(Vector3 pos, Vector3 norm, Vector3 clr, Vector2 uv)
         {
             this.position = pos;
-            this.normal = norm;
             this.color = clr;
             this.UV = uv;
+            this.normal = norm;
         }
     }
 
@@ -33,6 +34,7 @@ namespace ArctisAurora.EngineWork.Model
         //verts and indices
         internal float[] vertices;
         internal uint[] indices;
+        internal int[] indc;
 
         //default
         /*Vertex[] pyramidVertexes =
@@ -48,28 +50,29 @@ namespace ArctisAurora.EngineWork.Model
 
         float[] pyramidVertices =
         { 
-            // X    Y      Z          R     G     B          U     V            NORMALS
-            -0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,     0.0f, 0.0f,      0.0f, -1.0f, 0.0f, // Bottom side
-	        -0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,     0.0f, 5.0f,      0.0f, -1.0f, 0.0f, // Bottom side
-	         0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,     5.0f, 5.0f,      0.0f, -1.0f, 0.0f, // Bottom side
-	         0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,     5.0f, 0.0f,      0.0f, -1.0f, 0.0f, // Bottom side
+            // X    Y      Z          U     V            NORMALS
+            -0.5f, 0.0f,  0.5f,     0.0f, 0.0f,      0.0f, -1.0f, 0.0f, // Bottom side
+	        -0.5f, 0.0f, -0.5f,     0.0f, 5.0f,      0.0f, -1.0f, 0.0f, // Bottom side
+	         0.5f, 0.0f, -0.5f,     5.0f, 5.0f,      0.0f, -1.0f, 0.0f, // Bottom side
+	         0.5f, 0.0f,  0.5f,     5.0f, 0.0f,      0.0f, -1.0f, 0.0f, // Bottom side
 
-	        -0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,     0.0f, 0.0f,     -0.8f, 0.5f,  0.0f, // Left Side
-	        -0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,     5.0f, 0.0f,     -0.8f, 0.5f,  0.0f, // Left Side
-	         0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,     2.5f, 5.0f,     -0.8f, 0.5f,  0.0f, // Left Side
+	        -0.5f, 0.0f,  0.5f,     0.0f, 0.0f,     -0.8f, 0.5f,  0.0f, // Left Side
+	        -0.5f, 0.0f, -0.5f,     5.0f, 0.0f,     -0.8f, 0.5f,  0.0f, // Left Side
+	         0.0f, 0.8f,  0.0f,     2.5f, 5.0f,     -0.8f, 0.5f,  0.0f, // Left Side
 
-	        -0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,     5.0f, 0.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
-	         0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,     0.0f, 0.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
-	         0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,     2.5f, 5.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
+	        -0.5f, 0.0f, -0.5f,     5.0f, 0.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
+	         0.5f, 0.0f, -0.5f,     0.0f, 0.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
+	         0.0f, 0.8f,  0.0f,     2.5f, 5.0f,      0.0f, 0.5f, -0.8f, // Non-facing side
 
-	         0.5f, 0.0f, -0.5f,     0.83f, 0.70f, 0.44f,     0.0f, 0.0f,      0.8f, 0.5f,  0.0f, // Right side
-	         0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,     5.0f, 0.0f,      0.8f, 0.5f,  0.0f, // Right side
-	         0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,     2.5f, 5.0f,      0.8f, 0.5f,  0.0f, // Right side
+	         0.5f, 0.0f, -0.5f,     0.0f, 0.0f,      0.8f, 0.5f,  0.0f, // Right side
+	         0.5f, 0.0f,  0.5f,     5.0f, 0.0f,      0.8f, 0.5f,  0.0f, // Right side
+	         0.0f, 0.8f,  0.0f,     2.5f, 5.0f,      0.8f, 0.5f,  0.0f, // Right side
 
-	         0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,     5.0f, 0.0f,      0.0f, 0.5f,  0.8f, // Facing side
-	        -0.5f, 0.0f,  0.5f,     0.83f, 0.70f, 0.44f,     0.0f, 0.0f,      0.0f, 0.5f,  0.8f, // Facing side
-	         0.0f, 0.8f,  0.0f,     0.92f, 0.86f, 0.76f,     2.5f, 5.0f,      0.0f, 0.5f,  0.8f  // Facing side
+	         0.5f, 0.0f,  0.5f,     5.0f, 0.0f,      0.0f, 0.5f,  0.8f, // Facing side
+	        -0.5f, 0.0f,  0.5f,     0.0f, 0.0f,      0.0f, 0.5f,  0.8f, // Facing side
+	         0.0f, 0.8f,  0.0f,     2.5f, 5.0f,      0.0f, 0.5f,  0.8f  // Facing side
         };
+
         uint[] pyramidIndices =
         {
             0, 1, 2, // Bottom side
@@ -108,6 +111,34 @@ namespace ArctisAurora.EngineWork.Model
         internal void LoadMeshFromFile()
         {
 
+        }
+
+        internal void LoadCustomMesh(Scene sc)
+        {
+            List<Assimp.Vector3D> verts = sc.Meshes[0].Vertices;
+            List<Assimp.Vector3D> uvs = sc.Meshes[0].TextureCoordinateChannels[0];
+            List<Assimp.Vector3D> normals = sc.Meshes[0].Normals;
+            int vertexSize = sc.Meshes[0].VertexCount;
+            indices = new uint[sc.Meshes[0].GetIndices().Length];
+            for (int i = 0; i < sc.Meshes[0].GetIndices().Length; i++)
+            {
+                indices[i] = (uint)sc.Meshes[0].GetIndices()[i];
+            }
+
+            vertices = new float[verts.Count * 3 + uvs.Count * 2 + normals.Count * 3];
+            for (int i = 0; i < verts.Count; i++)
+            {
+                vertices[i * 8 + 0] = verts[i].X;
+                vertices[i * 8 + 1] = verts[i].Y;
+                vertices[i * 8 + 2] = verts[i].Z;
+
+                vertices[i * 8 + 3] = uvs[i].X;
+                vertices[i * 8 + 4] = uvs[i].Y;
+
+                vertices[i * 8 + 5] = normals[i].X;
+                vertices[i * 8 + 6] = normals[i].Y;
+                vertices[i * 8 + 7] = normals[i].Z;
+            }
         }
     }
 }

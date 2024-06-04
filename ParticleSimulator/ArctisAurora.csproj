@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AssimpNet" Version="4.1.0" />
     <PackageReference Include="OpenTK" Version="4.8.2" />
     <PackageReference Include="OpenTK.Audio.OpenAL" Version="4.8.2" />
     <PackageReference Include="OpenTK.Compute" Version="4.8.2" />

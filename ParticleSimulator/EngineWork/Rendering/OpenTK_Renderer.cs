@@ -11,11 +11,16 @@ using static OpenTK.Graphics.OpenGL.GL;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using static ArctisAurora.EngineWork.Rendering.ShaderClass;
 using Keys = OpenTK.Windowing.GraphicsLibraryFramework.Keys;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
+using System.Runtime.InteropServices;
 
 namespace ArctisAurora.EngineWork.Rendering
 {
     public class OpenTK_Renderer : GameWindow
     {
+        //testing
+        int ssbo;
+
         internal static OpenTK_Renderer _rendererInstance=null;
         //gamewindow
         internal GameWindowSettings _gameWindowSettings;
@@ -80,6 +85,12 @@ namespace ArctisAurora.EngineWork.Rendering
             base.OnMouseMove(e);
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+        struct DebugData
+        {
+            public float x, y, z;
+        }
+
         internal void Prerequisites()
         {
             //initialize the entity & light source shaders
@@ -88,6 +99,13 @@ namespace ArctisAurora.EngineWork.Rendering
 
             _entityShader = new ShaderClass("Default.vert", "Default.frag", entityShaderType.entity);
             shaderPrograms.Add(entityShaderType.entity, _entityShader);
+
+            //debug
+            GL.GenBuffers(2, out ssbo);
+            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo);
+            GL.BufferData(BufferTarget.ShaderStorageBuffer, sizeof(float) * 3, IntPtr.Zero, BufferUsageHint.DynamicCopy);
+            GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, 0, ssbo); // Binding point 0
+            GL.BindBuffer(BufferTarget.ShaderStorageBuffer, 0);
         }
 
         internal void HandleMouse()
@@ -130,6 +148,7 @@ namespace ArctisAurora.EngineWork.Rendering
         {
             _renderQueue.Add(e);
         }
+
         internal void LightToRenderQueue(Entity e)
         {
             _lightSourcesRenderQueue.Add(e);
@@ -145,9 +164,9 @@ namespace ArctisAurora.EngineWork.Rendering
         internal void setupLights(ShaderClass shader)
         {
             GL.Uniform4(GL.GetUniformLocation(shader.program, "lightColor"), 1f, 1f, 1f, 1f);
-            foreach (Entity e in _lightSourcesRenderQueue)
+            //foreach (Entity e in _lightSourcesRenderQueue)
             {
-                GL.Uniform3(GL.GetUniformLocation(shader.program, "lightPos"), e.transform.position);
+                GL.Uniform3(GL.GetUniformLocation(shader.program, "lightPos"), _lightSourcesRenderQueue[0].transform.position);
             }
         }
 
@@ -164,23 +183,43 @@ namespace ArctisAurora.EngineWork.Rendering
             camera.updateMatrix();
 
             //Entity rendering
+            shaderPrograms.TryGetValue(entityShaderType.entity, out var shader);
+            if (shader != null)
             {
-                shaderPrograms.TryGetValue(entityShaderType.entity, out var shader);
-                if (shader != null)
-                {
-                    shader.Activate();
-                    setupLights(shader);
-                }
+                shader.Activate();
+                setupLights(shader);
+                GL.Uniform3(GL.GetUniformLocation(shader.program, "camPos"), camera.pos);
+                GL.UniformMatrix4(GL.GetUniformLocation(shader.program, "camMatrix"), false, ref camera.pv);
             }
+
             foreach (Entity entity in _renderQueue)
             {
-                entity.GetComponent<MeshComponent>().Draw(_entityShader, camera);
+                entity.GetComponent<MeshComponent>().Draw(_entityShader);
             }
+
+            
+            //debug
+            /*{
+                GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo);
+                IntPtr ptr = GL.MapBuffer(BufferTarget.ShaderStorageBuffer, BufferAccess.ReadOnly);
+                if (ptr != IntPtr.Zero)
+                {
+                    DebugData debugData = (DebugData)Marshal.PtrToStructure(ptr, typeof(DebugData));
+                    GL.UnmapBuffer(BufferTarget.ShaderStorageBuffer);
+
+                    // Log the data to the console
+                    Console.WriteLine($"camPos: {debugData.x}, {debugData.y}, {debugData.z}");
+                }
+                GL.BindBuffer(BufferTarget.ShaderStorageBuffer, 0);
+            }*/
+            //----------------------------------------
+            
+
 
             //Light source rendering
             {
-                shaderPrograms.TryGetValue(entityShaderType.lightsource, out var shader);
-                if (shader != null) shader.Activate();
+                shaderPrograms.TryGetValue(entityShaderType.lightsource, out var shader2);
+                if (shader2 != null) shader2.Activate();
             }
             foreach (Entity entity in _lightSourcesRenderQueue)
             {
@@ -204,10 +243,10 @@ namespace ArctisAurora.EngineWork.Rendering
             }
             foreach (Entity entity in _lightSourcesRenderQueue)
             {
-                entity.GetComponent<MeshComponent>().vao.Delete();
-                entity.GetComponent<MeshComponent>().vbo.Delete();
-                entity.GetComponent<MeshComponent>().ebo.Delete();
-                entity.GetComponent<MeshComponent>().ivbo.Delete();
+                entity.GetComponent<LightSourceComponent>().vao.Delete();
+                entity.GetComponent<LightSourceComponent>().vbo.Delete();
+                entity.GetComponent<LightSourceComponent>().ebo.Delete();
+                entity.GetComponent<LightSourceComponent>().ivbo.Delete();
             }
         }
     }

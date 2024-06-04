@@ -11,6 +11,7 @@ using ArctisAurora.ParticleTypes;
 using System.Diagnostics;
 using System.Reflection;
 using OpenTK.Windowing.Common;
+using Assimp;
 
 namespace ArctisAurora.EngineWork
 {
@@ -29,6 +30,11 @@ namespace ArctisAurora.EngineWork
 
         public void Init(Frame s, bool threeDims, int parts)
         {
+            //mesh importer
+            MeshImporter importer = new MeshImporter();
+            Scene scene1 = importer.ImportFBX("H:\\Creative\\Blender\\AuroraTestScene.fbx");
+            Scene kugis = importer.ImportFBX("H:\\Creative\\Blender\\AuroraTestScene_kugis.fbx");
+
             //Renderer prerequisites refueling
             GameWindowSettings _gws = GameWindowSettings.Default;
             NativeWindowSettings _nws = new NativeWindowSettings() { ClientSize = new Vector2i(1280, 720), Title = "ProjectAurora" };
@@ -42,15 +48,24 @@ namespace ArctisAurora.EngineWork
             //Game logic
             //first we setup lights
             LightSourceEntity lightEntity = new LightSourceEntity();
-            LightSourceEntity lightEntity2 = new LightSourceEntity();
-            lightEntity2.transform.position = new Vector3(700, 700, 700);
-            _entities.Add(lightEntity2);
+            lightEntity.transform.position = new Vector3(50, 15, 50);
+            //LightSourceEntity lightEntity2 = new LightSourceEntity();
+            //lightEntity2.transform.position = new Vector3(700, 700, 700);
             _entities.Add(lightEntity);
+            //_entities.Add(lightEntity);
 
             //then we do entities
-            SimulatorEntity _simEntity = new SimulatorEntity();
-            _simEntity.GetComponent<SPHSimComponent>().simSetup(parts);
-            _entities.Add(_simEntity);
+            //SimulatorEntity _simEntity = new SimulatorEntity();
+            //_simEntity.GetComponent<MeshComponent>().LoadCustomMesh(kugis);
+            //_simEntity.GetComponent<SPHSimComponent>().simSetup(parts);
+            //_entities.Add(_simEntity);
+
+            /*TestingEntity testEnt = new TestingEntity();
+            testEnt.transform.position = new Vector3(50, -5, 50);
+            testEnt.GetComponent<MeshComponent>().LoadCustomMesh(scene1);*/
+            TestingEntity testEnt2 = new TestingEntity();
+            testEnt2.transform.position = new Vector3(50,10,50);
+            testEnt2.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
             //---------------------------------------------------------------------------
 
 
@@ -82,10 +97,10 @@ namespace ArctisAurora.EngineWork
                     DateTime entityTimeStart = DateTime.Now;
                     e.OnTick();
                     TimeSpan entityTime = DateTime.Now - entityTimeStart;
-                    Console.WriteLine("      " + e.name + "   "+entityTime.TotalMilliseconds);
+                    //Console.WriteLine("      " + e.name + "   "+entityTime.TotalMilliseconds);
                 }
                 TimeSpan entityOnTickTime = DateTime.Now - entityOnTickStart;
-                Console.WriteLine("Entity time ---" + entityOnTickTime.TotalMilliseconds);
+                //Console.WriteLine("Entity time ---" + entityOnTickTime.TotalMilliseconds);
 
                 //renderer
                 DateTime GraphicsTimeStart = DateTime.Now;
@@ -95,10 +110,10 @@ namespace ArctisAurora.EngineWork
                         OpenTK_Renderer._rendererInstance.Render(this, null);
                     }));
                 TimeSpan GraphicsTime = DateTime.Now - GraphicsTimeStart;
-                Console.WriteLine("Graphics --- " + GraphicsTime.TotalMilliseconds);
+               //Console.WriteLine("Graphics --- " + GraphicsTime.TotalMilliseconds);
 
                 double totalTime = GraphicsTime.TotalMilliseconds + entityOnTickTime.TotalMilliseconds;
-                Console.WriteLine("TotalTime --- " + totalTime);
+                //Console.WriteLine("TotalTime --- " + totalTime);
                 framerate[index % 10] = totalTime;
                 index++;
                 if (index > 100) index = 1;
@@ -107,7 +122,7 @@ namespace ArctisAurora.EngineWork
                 {
                     fr += framerate[i];
                 }
-                Console.WriteLine("FPS --- " + 1000/(fr/10));
+                //Console.WriteLine("FPS --- " + 1000/(fr/10));
 
                 double TSOffset = TS - totalTime;
                 if (TSOffset > 0f)

@@ -10,9 +10,9 @@ namespace ArctisAurora.GameObject
 {
     internal class Transform
     {
-        internal Vector3 position = new Vector3(0,0,0);
-        internal Vector3 rotation = new Vector3(0,0,0);
-        internal Vector3 scale = new Vector3(1,1,1);
+        internal Vector3 position = new Vector3(0, 0, 0);
+        internal Vector3 rotation = new Vector3(0, 0, 0);
+        internal Vector3 scale = new Vector3(1, 1, 1);
         internal Entity parent;
 
         internal Transform(Entity e)

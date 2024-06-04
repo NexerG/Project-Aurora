@@ -10,6 +10,7 @@ namespace ArctisAurora.CustomEntities
     {
         public SimulatorEntity()
         {
+            this.transform.scale *= 2;
             this.CreateComponent<SPHSimComponent>();
             this.CreateComponent<MeshComponent>();
             this.name= "SPH Simulation Entity";

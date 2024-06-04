@@ -4,6 +4,8 @@ using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.Model;
 using ArctisAurora.EngineWork.Rendering;
 using static ArctisAurora.EngineWork.Rendering.ShaderClass;
+using Assimp;
+using PrimitiveType = OpenTK.Graphics.OpenGL4.PrimitiveType;
 
 namespace ArctisAurora.EngineWork.ECS.RenderingComponents
 {
@@ -12,7 +14,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
         //variable
         bool render = true;
         //the model
-        internal Mesh model;
+        internal Model.Mesh model;
         //A & E buffers
         public VAO vao;
         public VBO vbo;
@@ -26,21 +28,12 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
 
         public MeshComponent()
         {
-            model = new Mesh();
+            model = new Model.Mesh();
+        }
 
-            vao = new VAO();
-            vao.Bind();
-            vbo = new VBO(model.vertices);
-            ebo = new EBO(model.indices);
-
-            vao.LinkAttrib(vbo, 0, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 0);
-            vao.LinkAttrib(vbo, 1, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 3 * sizeof(float));
-            vao.LinkAttrib(vbo, 2, 2, VertexAttribPointerType.Float, 11 * sizeof(float), 6 * sizeof(float));
-            vao.LinkAttrib(vbo, 3, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 8 * sizeof(float));
-
-            vao.Unbind();
-            vbo.Unbind();
-            ebo.Unbind();
+        internal void LoadCustomMesh(Scene sc)
+        {
+            model.LoadCustomMesh(sc);
         }
 
         public override void OnStart()
@@ -68,29 +61,29 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
             ebo = new EBO(model.indices);
 
             //initial mesh
-            vao.LinkAttrib(vbo, 0, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 0);
-            vao.LinkAttrib(vbo, 1, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 3 * sizeof(float));
-            vao.LinkAttrib(vbo, 2, 2, VertexAttribPointerType.Float, 11 * sizeof(float), 6 * sizeof(float));
-            vao.LinkAttrib(vbo, 3, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 8 * sizeof(float));
+            vao.LinkAttrib(vbo, 0, 3, VertexAttribPointerType.Float, 8 * sizeof(float), 0);
+            //vao.LinkAttrib(vbo, 1, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 3 * sizeof(float));
+            vao.LinkAttrib(vbo, 1, 2, VertexAttribPointerType.Float, 8 * sizeof(float), 3 * sizeof(float));
+            vao.LinkAttrib(vbo, 2, 3, VertexAttribPointerType.Float, 8 * sizeof(float), 6 * sizeof(float));
 
             //instanced mesh data
             //if(instances > 1)
             {
                 ivbo.Bind();
-                vao.LinkAttrib(ivbo, 4, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 0);
-                vao.LinkAttrib(ivbo, 5, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 1 * 16);
-                vao.LinkAttrib(ivbo, 6, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 2 * 16);
-                vao.LinkAttrib(ivbo, 7, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 3 * 16);
+                vao.LinkAttrib(ivbo, 3, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 0);
+                vao.LinkAttrib(ivbo, 4, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 1 * 16);
+                vao.LinkAttrib(ivbo, 5, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 2 * 16);
+                vao.LinkAttrib(ivbo, 6, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 3 * 16);
+                GL.VertexAttribDivisor(3, 1);
                 GL.VertexAttribDivisor(4, 1);
                 GL.VertexAttribDivisor(5, 1);
                 GL.VertexAttribDivisor(6, 1);
-                GL.VertexAttribDivisor(7, 1);
             }
 
             vao.Unbind();
-            vbo.Unbind();
+            //vbo.Unbind();
             ivbo.Unbind();
-            ebo.Unbind();
+            //ebo.Unbind();
         }
 
         internal void MakeInstanced(int instances, ref List<Matrix4> instanceMatrix)
@@ -103,38 +96,26 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
 
         internal void MakeSingleInstance()
         {
-            Vector3 posTrans = new Vector3(parent.transform.position.X, parent.transform.position.Y, parent.transform.position.Z);
-            Quaternion q = new Quaternion(0.0f, 1.0f, 0.0f, 1.0f);
+            Vector3 pos = new Vector3(parent.transform.position.X, parent.transform.position.Y, parent.transform.position.Z);
+            OpenTK.Mathematics.Quaternion q = OpenTK.Mathematics.Quaternion.FromEulerAngles(parent.transform.rotation);
 
-            Matrix4 translation = Matrix4.Identity;
-            Matrix4 rotation = Matrix4.Identity;
-            Matrix4 scale = Matrix4.Identity;
+            Matrix4 transformation = Matrix4.Identity;
+            transformation *= Matrix4.CreateTranslation(pos);
+            transformation *= Matrix4.CreateFromQuaternion(q);
+            transformation *= Matrix4.CreateScale(parent.transform.scale);
 
-            Matrix4.CreateTranslation(posTrans, out translation);
-            Matrix4.CreateFromQuaternion(q, out rotation);
-            Matrix4.CreateScale(parent.transform.scale, out scale);
-
-            Matrix4 tr = Matrix4.Mult(translation, rotation);
-            Matrix4 tr_s = Matrix4.Mult(scale, tr);
-
-            this.instanceMatrix.Add(tr_s);
+            this.instanceMatrix.Add(transformation);
             UpdateMatrices();
         }
 
-        public void Draw(ShaderClass shader, Camera camera)
+        public void Draw(ShaderClass shader)
         {
             if(render)
             {
-                Matrix4 rot;
-                Matrix4.CreateFromQuaternion(parent.transform.GetQuaternion(), out rot);
-                GL.UniformMatrix4(GL.GetUniformLocation(shader.program, "rotation"), false, ref rot);
-                GL.Uniform3(GL.GetUniformLocation(shader.program, "scale"), parent.transform.scale);
                 UpdateMatrices();
-                PreDraw(camera, shader);
+                PreDraw(shader);
                 if (instances == 1)
                 {
-                    Matrix4 mat = instanceMatrix[0];
-                    GL.UniformMatrix4(GL.GetUniformLocation(shader.program, "model"), false, ref mat);
                     GL.DrawElements(PrimitiveType.Triangles, model.indices.Length * sizeof(uint) / sizeof(int), DrawElementsType.UnsignedInt, 0);
                 }
                 else
@@ -144,14 +125,11 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
             }
         }
 
-        private void PreDraw(Camera camera, ShaderClass shader)
+        private void PreDraw(ShaderClass shader)
         {
             vao.Bind();
             model.textures.texUnit(shader, "tex0", 0);
             model.textures.Bind();
-
-            GL.Uniform3(GL.GetUniformLocation(shader.program, "camPos"), camera.pos);
-            camera.Matrix(shader, "camMatrix");
         }
     }
 }
