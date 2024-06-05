@@ -76,7 +76,7 @@ namespace ArctisAurora.EngineWork
         public async void EngineStart()
         {
             double[] framerate = new double[10];
-            for(int i=0;i<10;i++)
+            for (int i = 0; i < 10; i++)
                 framerate[i] = 0;
             int index = 0;
 
@@ -85,7 +85,7 @@ namespace ArctisAurora.EngineWork
             while (Running)
             {
                 //engine time
-                //TimeSpan SimTime = DateTime.Now - initTime;
+                TimeSpan SimTime = DateTime.Now - initTime;
                 Console.SetCursorPosition(0, 0);
 
                 DateTime entityOnTickStart = DateTime.Now;
@@ -94,10 +94,10 @@ namespace ArctisAurora.EngineWork
                     DateTime entityTimeStart = DateTime.Now;
                     e.OnTick();
                     TimeSpan entityTime = DateTime.Now - entityTimeStart;
-                    //Console.WriteLine("      " + e.name + "   "+entityTime.TotalMilliseconds);
+                    Console.WriteLine("      " + e.name + "   " + entityTime.TotalMilliseconds);
                 }
                 TimeSpan entityOnTickTime = DateTime.Now - entityOnTickStart;
-                //Console.WriteLine("Entity time ---" + entityOnTickTime.TotalMilliseconds);
+                Console.WriteLine("Entity time ---" + entityOnTickTime.TotalMilliseconds);
 
                 //renderer
                 DateTime GraphicsTimeStart = DateTime.Now;
@@ -107,19 +107,19 @@ namespace ArctisAurora.EngineWork
                         OpenTK_Renderer._rendererInstance.Render(this, null);
                     }));
                 TimeSpan GraphicsTime = DateTime.Now - GraphicsTimeStart;
-               //Console.WriteLine("Graphics --- " + GraphicsTime.TotalMilliseconds);
+                Console.WriteLine("Graphics --- " + GraphicsTime.TotalMilliseconds);
 
                 double totalTime = GraphicsTime.TotalMilliseconds + entityOnTickTime.TotalMilliseconds;
-                //Console.WriteLine("TotalTime --- " + totalTime);
+                Console.WriteLine("TotalTime --- " + totalTime);
                 framerate[index % 10] = totalTime;
                 index++;
                 if (index > 100) index = 1;
-                double fr=0;
-                for(int i=0;i<10;i++)
+                double fr = 0;
+                for (int i = 0; i < 10; i++)
                 {
                     fr += framerate[i];
                 }
-                //Console.WriteLine("FPS --- " + 1000/(fr/10));
+                Console.WriteLine("FPS --- " + 1000 / (fr / 10));
 
                 double TSOffset = TS - totalTime;
                 if (TSOffset > 0f)
