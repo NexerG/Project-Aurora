@@ -15,11 +15,12 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
         bool render = true;
         //the model
         internal Model.Mesh model;
+
         //A & E buffers
         public VAO vao;
-        public VBO vbo;
-        public EBO ebo;
-        public VBO ivbo;
+        public VBO vbo = new VBO();
+        public VBO ivbo = new VBO();
+        public EBO ebo = new EBO();
 
         //instancing
         int instances = 1;
@@ -28,18 +29,53 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
 
         public MeshComponent()
         {
+            instanceMatrix.Add(Matrix4.Identity);
             model = new Model.Mesh();
+            if (model != null)
+            {
+                vao = new VAO();
+                vao.Bind();
+
+                ebo.BufferElementData(model.indices);
+                vbo.BufferVertexData(model.vertices);
+
+                //tell the gpu what vertex buffer part is what
+                vao.LinkAttrib(vbo, 0, 3, VertexAttribPointerType.Float, 8 * sizeof(float), 0);
+                vao.LinkAttrib(vbo, 1, 2, VertexAttribPointerType.Float, 8 * sizeof(float), 3 * sizeof(float));
+                vao.LinkAttrib(vbo, 2, 3, VertexAttribPointerType.Float, 8 * sizeof(float), 5 * sizeof(float));
+                //instance matrix attributes
+                vao.LinkAttrib(ivbo, 3, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 0);
+                vao.LinkAttrib(ivbo, 4, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 1 * 16);
+                vao.LinkAttrib(ivbo, 5, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 2 * 16);
+                vao.LinkAttrib(ivbo, 6, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 3 * 16);
+                GL.VertexAttribDivisor(3, 1);
+                GL.VertexAttribDivisor(4, 1);
+                GL.VertexAttribDivisor(5, 1);
+                GL.VertexAttribDivisor(6, 1);
+
+                vao.Unbind();
+            }
         }
 
         internal void LoadCustomMesh(Scene sc)
         {
             model.LoadCustomMesh(sc);
+
+            vao.Bind();
+
+            vbo.BufferVertexData(model.vertices);
+            ebo.BufferElementData(model.indices);
+
+            vao.LinkAttrib(vbo, 0, 3, VertexAttribPointerType.Float, 8 * sizeof(float), 0);
+            vao.LinkAttrib(vbo, 1, 2, VertexAttribPointerType.Float, 8 * sizeof(float), 3 * sizeof(float));
+            vao.LinkAttrib(vbo, 2, 3, VertexAttribPointerType.Float, 8 * sizeof(float), 5 * sizeof(float));
+
+            vao.Unbind();
         }
 
         public override void OnStart()
         {
             OpenTK_Renderer._rendererInstance.EntityToRenderQueue(parent);
-            MakeSingleInstance();
         }
 
         public override void OnDisable()
@@ -52,82 +88,54 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
             render = true;
         }
 
-        internal void UpdateMatrices()
+        private void BufferInstances()
         {
-            vao = new VAO();
-            vao.Bind();
-            ivbo = new VBO(instanceMatrix);
-            vbo = new VBO(model.vertices);
-            ebo = new EBO(model.indices);
-
-            //initial mesh
-            vao.LinkAttrib(vbo, 0, 3, VertexAttribPointerType.Float, 8 * sizeof(float), 0);
-            //vao.LinkAttrib(vbo, 1, 3, VertexAttribPointerType.Float, 11 * sizeof(float), 3 * sizeof(float));
-            vao.LinkAttrib(vbo, 1, 2, VertexAttribPointerType.Float, 8 * sizeof(float), 3 * sizeof(float));
-            vao.LinkAttrib(vbo, 2, 3, VertexAttribPointerType.Float, 8 * sizeof(float), 6 * sizeof(float));
-
-            //instanced mesh data
-            //if(instances > 1)
-            {
-                ivbo.Bind();
-                vao.LinkAttrib(ivbo, 3, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 0);
-                vao.LinkAttrib(ivbo, 4, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 1 * 16);
-                vao.LinkAttrib(ivbo, 5, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 2 * 16);
-                vao.LinkAttrib(ivbo, 6, 4, VertexAttribPointerType.Float, 16 * sizeof(float), 3 * 16);
-                GL.VertexAttribDivisor(3, 1);
-                GL.VertexAttribDivisor(4, 1);
-                GL.VertexAttribDivisor(5, 1);
-                GL.VertexAttribDivisor(6, 1);
-            }
-
-            vao.Unbind();
-            //vbo.Unbind();
-            ivbo.Unbind();
-            //ebo.Unbind();
+            ivbo.BufferMatrixData(instanceMatrix);
         }
 
         internal void MakeInstanced(int instances, ref List<Matrix4> instanceMatrix)
         {
             this.instances = instances;
             this.instanceMatrix = instanceMatrix;
-
-            UpdateMatrices();
         }
 
-        internal void MakeSingleInstance()
+        internal void SingletonMatrix()
         {
             Vector3 pos = new Vector3(parent.transform.position.X, parent.transform.position.Y, parent.transform.position.Z);
             OpenTK.Mathematics.Quaternion q = OpenTK.Mathematics.Quaternion.FromEulerAngles(parent.transform.rotation);
 
             Matrix4 transformation = Matrix4.Identity;
-            transformation *= Matrix4.CreateTranslation(pos);
-            transformation *= Matrix4.CreateFromQuaternion(q);
             transformation *= Matrix4.CreateScale(parent.transform.scale);
+            transformation *= Matrix4.CreateFromQuaternion(q);
+            transformation *= Matrix4.CreateTranslation(pos);
 
-            this.instanceMatrix.Add(transformation);
-            UpdateMatrices();
+            instanceMatrix[0] = transformation;
+
+            BufferInstances();
         }
 
         public void Draw(ShaderClass shader)
         {
             if(render)
             {
-                UpdateMatrices();
+                vao.Bind();
                 PreDraw(shader);
                 if (instances == 1)
                 {
+                    SingletonMatrix();
                     GL.DrawElements(PrimitiveType.Triangles, model.indices.Length * sizeof(uint) / sizeof(int), DrawElementsType.UnsignedInt, 0);
                 }
                 else
                 {
+                    BufferInstances();
                     GL.DrawElementsInstanced(PrimitiveType.Triangles, model.indices.Length * sizeof(uint) / sizeof(int), DrawElementsType.UnsignedInt, 0, instances);
                 }
+                vao.Unbind();
             }
         }
 
         private void PreDraw(ShaderClass shader)
         {
-            vao.Bind();
             model.textures.texUnit(shader, "tex0", 0);
             model.textures.Bind();
         }

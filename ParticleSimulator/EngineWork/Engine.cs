@@ -48,24 +48,21 @@ namespace ArctisAurora.EngineWork
             //Game logic
             //first we setup lights
             LightSourceEntity lightEntity = new LightSourceEntity();
-            lightEntity.transform.position = new Vector3(50, 15, 50);
+            lightEntity.transform.position = new Vector3(-0, 15, -0);
             //LightSourceEntity lightEntity2 = new LightSourceEntity();
             //lightEntity2.transform.position = new Vector3(700, 700, 700);
             _entities.Add(lightEntity);
             //_entities.Add(lightEntity);
 
             //then we do entities
-            //SimulatorEntity _simEntity = new SimulatorEntity();
-            //_simEntity.GetComponent<MeshComponent>().LoadCustomMesh(kugis);
-            //_simEntity.GetComponent<SPHSimComponent>().simSetup(parts);
-            //_entities.Add(_simEntity);
+            SimulatorEntity _simEntity = new SimulatorEntity();
+            _simEntity.GetComponent<MeshComponent>().LoadCustomMesh(kugis);
+            _simEntity.GetComponent<SPHSimComponent>().simSetup(parts);
+            _entities.Add(_simEntity);
 
-            /*TestingEntity testEnt = new TestingEntity();
-            testEnt.transform.position = new Vector3(50, -5, 50);
-            testEnt.GetComponent<MeshComponent>().LoadCustomMesh(scene1);*/
-            TestingEntity testEnt2 = new TestingEntity();
-            testEnt2.transform.position = new Vector3(50,10,50);
-            testEnt2.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
+            TestingEntity testEnt = new TestingEntity();
+            testEnt.transform.scale = new Vector3(10, 1, 10);
+            testEnt.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
             //---------------------------------------------------------------------------
 
 

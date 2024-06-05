@@ -12,27 +12,34 @@ namespace ArctisAurora.EngineWork.Rendering
     {
         int vertex_buffer_object;
 
-        public VBO(float[] vertices)
+        public VBO()
         {
             vertex_buffer_object = GL.GenBuffer();
-            GL.BindBuffer(BufferTarget.ArrayBuffer, vertex_buffer_object);
-            GL.BufferData(BufferTarget.ArrayBuffer, vertices.Length * sizeof(float), vertices, BufferUsageHint.StaticDraw);
         }
-        public VBO(List<Matrix4> mat4List)
+
+        internal void BufferMatrixData(List<Matrix4> instanceMatrixes)
         {
-            vertex_buffer_object = GL.GenBuffer();
-            GL.BindBuffer(BufferTarget.ArrayBuffer, vertex_buffer_object);
-            GL.BufferData(BufferTarget.ArrayBuffer, mat4List.Count * 16 * sizeof(float), mat4List.ToArray(), BufferUsageHint.StaticDraw);
+            Bind();
+            GL.BufferData(BufferTarget.ArrayBuffer, instanceMatrixes.Count * 16 * sizeof(float), instanceMatrixes.ToArray(), BufferUsageHint.StaticDraw);
+            Unbind();
         }
-        public void Bind()
+
+        internal void BufferVertexData(float[] vertexes)
+        {
+            Bind();
+            GL.BufferData(BufferTarget.ArrayBuffer, vertexes.Length * sizeof(float), vertexes, BufferUsageHint.StaticDraw);
+            Unbind();
+        }
+
+        internal void Bind()
         {
             GL.BindBuffer(BufferTarget.ArrayBuffer, vertex_buffer_object);
         }
-        public void Unbind()
+        internal void Unbind()
         {
             GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
         }
-        public void Delete()
+        internal void Delete()
         {
             GL.DeleteBuffer(vertex_buffer_object);
         }

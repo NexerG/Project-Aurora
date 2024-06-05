@@ -14,7 +14,6 @@ namespace ArctisAurora.CustomEntities
     {
         public TestingEntity() 
         {
-            this.transform.scale = new Vector3(100, 5, 100);
             this.CreateComponent<MeshComponent>();
         }
         public override void OnStart()

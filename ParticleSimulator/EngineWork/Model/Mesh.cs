@@ -118,15 +118,15 @@ namespace ArctisAurora.EngineWork.Model
             List<Assimp.Vector3D> verts = sc.Meshes[0].Vertices;
             List<Assimp.Vector3D> uvs = sc.Meshes[0].TextureCoordinateChannels[0];
             List<Assimp.Vector3D> normals = sc.Meshes[0].Normals;
-            int vertexSize = sc.Meshes[0].VertexCount;
+
             indices = new uint[sc.Meshes[0].GetIndices().Length];
             for (int i = 0; i < sc.Meshes[0].GetIndices().Length; i++)
             {
                 indices[i] = (uint)sc.Meshes[0].GetIndices()[i];
             }
 
-            vertices = new float[verts.Count * 3 + uvs.Count * 2 + normals.Count * 3];
-            for (int i = 0; i < verts.Count; i++)
+            vertices = new float[verts.Count * 3 + uvs.Count * 3 + normals.Count * 3];
+            for (int i = 0; i < sc.Meshes[0].VertexCount; i++)
             {
                 vertices[i * 8 + 0] = verts[i].X;
                 vertices[i * 8 + 1] = verts[i].Y;

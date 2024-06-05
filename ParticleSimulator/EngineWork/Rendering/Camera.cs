@@ -9,12 +9,12 @@ namespace ArctisAurora.EngineWork.Rendering
     public class Camera
     {
         //vars init
-        public Vector3 pos = new Vector3(0, 0, 0);
+        public Vector3 pos = new Vector3(0.0f, 0.0f, 0.0f);
 
         //directions
         Vector3 rotation = new Vector3(0, 0, 0);
         Vector3 localUp = new Vector3(0, 1, 0);
-        Vector3 front = new Vector3(0,0,-1);
+        Vector3 front = new Vector3(0,0,1);
         Vector3 localRight;
 
         internal Matrix4 view;
@@ -22,7 +22,7 @@ namespace ArctisAurora.EngineWork.Rendering
         internal Matrix4 pv;
 
         //controls
-        float speed = 0.01f;
+        float speed = 0.001f;
         float sensitivity = .25f;
 
         public Camera()

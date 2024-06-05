@@ -57,7 +57,8 @@ namespace ArctisAurora.EngineWork.Rendering
             GL.ClearColor(Color.FromArgb(255, 30, 30, 30));
 
             GL.Enable(EnableCap.DepthTest);
-            GL.CullFace(CullFaceMode.Front);
+            GL.Enable(EnableCap.CullFace);
+            GL.CullFace(CullFaceMode.Back);
             GL.FrontFace(FrontFaceDirection.Ccw);
         }
 
@@ -152,8 +153,6 @@ namespace ArctisAurora.EngineWork.Rendering
         internal void LightToRenderQueue(Entity e)
         {
             _lightSourcesRenderQueue.Add(e);
-            _lightSourceShader.Activate();
-            e.GetComponent<LightSourceComponent>().setupUniforms(_lightSourceShader);
         }
 
         internal List<Entity> GetLightSources()
@@ -197,29 +196,11 @@ namespace ArctisAurora.EngineWork.Rendering
                 entity.GetComponent<MeshComponent>().Draw(_entityShader);
             }
 
-            
-            //debug
-            /*{
-                GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo);
-                IntPtr ptr = GL.MapBuffer(BufferTarget.ShaderStorageBuffer, BufferAccess.ReadOnly);
-                if (ptr != IntPtr.Zero)
-                {
-                    DebugData debugData = (DebugData)Marshal.PtrToStructure(ptr, typeof(DebugData));
-                    GL.UnmapBuffer(BufferTarget.ShaderStorageBuffer);
-
-                    // Log the data to the console
-                    Console.WriteLine($"camPos: {debugData.x}, {debugData.y}, {debugData.z}");
-                }
-                GL.BindBuffer(BufferTarget.ShaderStorageBuffer, 0);
-            }*/
-            //----------------------------------------
-            
-
-
             //Light source rendering
             {
                 shaderPrograms.TryGetValue(entityShaderType.lightsource, out var shader2);
                 if (shader2 != null) shader2.Activate();
+                GL.UniformMatrix4(GL.GetUniformLocation(shader2.program, "camMatrix"), false, ref camera.pv);
             }
             foreach (Entity entity in _lightSourcesRenderQueue)
             {
@@ -239,14 +220,12 @@ namespace ArctisAurora.EngineWork.Rendering
                 entity.GetComponent<MeshComponent>().vao.Delete();
                 entity.GetComponent<MeshComponent>().vbo.Delete();
                 entity.GetComponent<MeshComponent>().ebo.Delete();
-                entity.GetComponent<MeshComponent>().ivbo.Delete();
             }
             foreach (Entity entity in _lightSourcesRenderQueue)
             {
                 entity.GetComponent<LightSourceComponent>().vao.Delete();
                 entity.GetComponent<LightSourceComponent>().vbo.Delete();
                 entity.GetComponent<LightSourceComponent>().ebo.Delete();
-                entity.GetComponent<LightSourceComponent>().ivbo.Delete();
             }
         }
     }

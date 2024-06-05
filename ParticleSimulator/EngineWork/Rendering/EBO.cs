@@ -10,21 +10,27 @@ namespace ArctisAurora.EngineWork.Rendering
     public class EBO
     {
         public int element_buffer_object;
-        public EBO(uint[] indices) 
+        public EBO() 
         {
             element_buffer_object = GL.GenBuffer();
+        }
+
+        internal void BufferElementData(uint[] indices)
+        {
             GL.BindBuffer(BufferTarget.ElementArrayBuffer, element_buffer_object);
             GL.BufferData(BufferTarget.ElementArrayBuffer, indices.Length * sizeof(uint), indices, BufferUsageHint.StaticDraw);
+            Unbind();
         }
-        public void Bind()
+
+        internal void Bind()
         {
             GL.BindBuffer(BufferTarget.ArrayBuffer, element_buffer_object);
         }
-        public void Unbind()
+        internal void Unbind()
         {
             GL.BindBuffer(BufferTarget.ArrayBuffer, 0);
         }
-        public void Delete()
+        internal void Delete()
         {
             GL.DeleteBuffer(element_buffer_object);
         }
