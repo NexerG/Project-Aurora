@@ -1,6 +1,6 @@
 ﻿using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.Model;
-using ArctisAurora.EngineWork.Rendering;
+using ArctisAurora.EngineWork.Rendering.Renderers.OpenTK;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 
@@ -43,7 +43,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
 
         public override void OnStart()
         {
-            OpenTK_Renderer._rendererInstance.LightToRenderQueue(parent);
+            Rasterization._rendererInstance.LightToRenderQueue(parent);
         }
 
         internal void AddMesh(Mesh m)

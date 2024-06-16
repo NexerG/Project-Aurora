@@ -1,11 +1,11 @@
 ﻿using OpenTK.Graphics.OpenGL4;
-using ArctisAurora.EngineWork.Rendering;
 using StbImageSharp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ArctisAurora.EngineWork.Rendering.Renderers.OpenTK;
 
 namespace ArctisAurora.EngineWork.Model
 {

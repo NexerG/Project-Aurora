@@ -9,19 +9,19 @@ using ArctisAurora.ParticleTypes;
 using StbImageSharp;
 using static OpenTK.Graphics.OpenGL.GL;
 using OpenTK.Windowing.GraphicsLibraryFramework;
-using static ArctisAurora.EngineWork.Rendering.ShaderClass;
+using static ArctisAurora.EngineWork.Rendering.Renderers.OpenTK.ShaderClass;
 using Keys = OpenTK.Windowing.GraphicsLibraryFramework.Keys;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using System.Runtime.InteropServices;
 
-namespace ArctisAurora.EngineWork.Rendering
+namespace ArctisAurora.EngineWork.Rendering.Renderers.OpenTK
 {
-    public class OpenTK_Renderer : GameWindow
+    internal class Rasterization : GameWindow
     {
         //testing
         int ssbo;
 
-        internal static OpenTK_Renderer _rendererInstance=null;
+        internal static Rasterization _rendererInstance = null;
         //gamewindow
         internal GameWindowSettings _gameWindowSettings;
         internal NativeWindowSettings _nativeWindowSettings;
@@ -43,8 +43,8 @@ namespace ArctisAurora.EngineWork.Rendering
         uint Texture;
         //particles location, rotation, size matrices
 
-        public OpenTK_Renderer(GameWindowSettings _gws, NativeWindowSettings _nws)
-            :base (_gws, _nws)
+        public Rasterization(GameWindowSettings _gws, NativeWindowSettings _nws)
+            : base(_gws, _nws)
         {
             _gameWindowSettings = _gws;
             _nativeWindowSettings = _nws;
@@ -104,7 +104,7 @@ namespace ArctisAurora.EngineWork.Rendering
             //debug
             GL.GenBuffers(2, out ssbo);
             GL.BindBuffer(BufferTarget.ShaderStorageBuffer, ssbo);
-            GL.BufferData(BufferTarget.ShaderStorageBuffer, sizeof(float) * 3, IntPtr.Zero, BufferUsageHint.DynamicCopy);
+            GL.BufferData(BufferTarget.ShaderStorageBuffer, sizeof(float) * 3, nint.Zero, BufferUsageHint.DynamicCopy);
             GL.BindBufferBase(BufferRangeTarget.ShaderStorageBuffer, 0, ssbo); // Binding point 0
             GL.BindBuffer(BufferTarget.ShaderStorageBuffer, 0);
         }
@@ -169,7 +169,6 @@ namespace ArctisAurora.EngineWork.Rendering
             }
         }
 
-
         public void Init()
         {
             Run();
@@ -181,6 +180,8 @@ namespace ArctisAurora.EngineWork.Rendering
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
             camera.updateMatrix();
 
+            //--------------------------------------
+            //rendering
             //Entity rendering
             shaderPrograms.TryGetValue(entityShaderType.entity, out var shader);
             if (shader != null)
@@ -206,6 +207,7 @@ namespace ArctisAurora.EngineWork.Rendering
             {
                 entity.GetComponent<LightSourceComponent>().Draw(_lightSourceShader, camera);
             }
+            //--------------------------------------
 
             GL.Finish();
             SwapBuffers();

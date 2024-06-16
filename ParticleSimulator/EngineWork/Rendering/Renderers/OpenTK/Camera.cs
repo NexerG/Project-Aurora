@@ -4,17 +4,17 @@ using OpenTK.Mathematics;
 using OpenTK.Windowing.GraphicsLibraryFramework;
 using Keys = OpenTK.Windowing.GraphicsLibraryFramework.Keys;
 
-namespace ArctisAurora.EngineWork.Rendering
+namespace ArctisAurora.EngineWork.Rendering.Renderers.OpenTK
 {
     public class Camera
     {
         //vars init
-        public Vector3 pos = new Vector3(0.0f, 0.0f, 0.0f);
+        public Vector3 pos = new Vector3(0.0f, 0.0f, -5.0f);
 
         //directions
         Vector3 rotation = new Vector3(0, 0, 0);
         Vector3 localUp = new Vector3(0, 1, 0);
-        Vector3 front = new Vector3(0,0,1);
+        Vector3 front = new Vector3(0, 0, 1);
         Vector3 localRight;
 
         internal Matrix4 view;
@@ -54,7 +54,7 @@ namespace ArctisAurora.EngineWork.Rendering
 
             if (constrainPitch)
             {
-                rotation.Y = MathHelper.Clamp(rotation.Y, -89.0f,89.0f);
+                rotation.Y = MathHelper.Clamp(rotation.Y, -89.0f, 89.0f);
             }
         }
 

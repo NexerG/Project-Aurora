@@ -2,10 +2,10 @@
 using OpenTK.Mathematics;
 using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.Model;
-using ArctisAurora.EngineWork.Rendering;
-using static ArctisAurora.EngineWork.Rendering.ShaderClass;
+using static ArctisAurora.EngineWork.Rendering.Renderers.OpenTK.ShaderClass;
 using Assimp;
 using PrimitiveType = OpenTK.Graphics.OpenGL4.PrimitiveType;
+using ArctisAurora.EngineWork.Rendering.Renderers.OpenTK;
 
 namespace ArctisAurora.EngineWork.ECS.RenderingComponents
 {
@@ -75,7 +75,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
 
         public override void OnStart()
         {
-            OpenTK_Renderer._rendererInstance.EntityToRenderQueue(parent);
+            Rasterization._rendererInstance.EntityToRenderQueue(parent);
         }
 
         public override void OnDisable()

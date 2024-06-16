@@ -5,12 +5,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ArctisAurora.EngineWork.Rendering
+namespace ArctisAurora.EngineWork.Rendering.Renderers.OpenTK
 {
     public class EBO
     {
         public int element_buffer_object;
-        public EBO() 
+        public EBO()
         {
             element_buffer_object = GL.GenBuffer();
         }

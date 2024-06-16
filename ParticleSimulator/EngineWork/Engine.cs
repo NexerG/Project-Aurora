@@ -5,13 +5,14 @@ using ArctisAurora.CustomEntities;
 using ArctisAurora.CustomEntityComponents;
 using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.ECS.RenderingComponents;
-using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.GameObject;
 using ArctisAurora.ParticleTypes;
 using System.Diagnostics;
 using System.Reflection;
 using OpenTK.Windowing.Common;
 using Assimp;
+using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
+using ArctisAurora.EngineWork.Rendering.Renderers.OpenTK;
 
 namespace ArctisAurora.EngineWork
 {
@@ -20,7 +21,8 @@ namespace ArctisAurora.EngineWork
         internal static Engine _engineInstance = null;
         public bool Running { get; private set; }
         internal Frame SC;
-        internal OpenTK_Renderer renderer3D;
+        internal Rasterization renderer3D;
+        VulkanRenderer _pathTracer;
         internal List<Entity> _entities = new List<Entity>();
 
         public Engine()
@@ -30,47 +32,56 @@ namespace ArctisAurora.EngineWork
 
         public void Init(Frame s, bool threeDims, int parts)
         {
-            //mesh importer
-            MeshImporter importer = new MeshImporter();
-            Scene scene1 = importer.ImportFBX("H:\\Creative\\Blender\\AuroraTestScene.fbx");
-            Scene kugis = importer.ImportFBX("H:\\Creative\\Blender\\AuroraTestScene_kugis.fbx");
-
-            //Renderer prerequisites refueling
-            GameWindowSettings _gws = GameWindowSettings.Default;
-            NativeWindowSettings _nws = new NativeWindowSettings() { ClientSize = new Vector2i(1280, 720), Title = "ProjectAurora" };
-            renderer3D = new OpenTK_Renderer(_gws, _nws);
-            renderer3D.Prerequisites();
-
             Running = true;
             SC = s;
 
-            //---------------------------------------------------------------------------
-            //Game logic
-            //first we setup lights
-            LightSourceEntity lightEntity = new LightSourceEntity();
-            lightEntity.transform.position = new Vector3(-0, 15, -0);
-            //LightSourceEntity lightEntity2 = new LightSourceEntity();
-            //lightEntity2.transform.position = new Vector3(700, 700, 700);
-            _entities.Add(lightEntity);
-            //_entities.Add(lightEntity);
-
-            //then we do entities
-            SimulatorEntity _simEntity = new SimulatorEntity();
-            _simEntity.GetComponent<MeshComponent>().LoadCustomMesh(kugis);
-            _simEntity.GetComponent<SPHSimComponent>().simSetup(parts);
-            _entities.Add(_simEntity);
-
-            TestingEntity testEnt = new TestingEntity();
-            testEnt.transform.scale = new Vector3(10, 1, 10);
-            testEnt.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
-            //---------------------------------------------------------------------------
-
-
-            new Thread(() =>
+            _pathTracer = new VulkanRenderer();
+            /*new Thread(() =>
             {
-                EngineStart();
-            }).Start();
-            renderer3D.Init();
+                PathTracerTest();
+            }).Start();*/
+
+            ////mesh importer
+            //MeshImporter importer = new MeshImporter();
+            //Scene scene1 = importer.ImportFBX("H:\\Creative\\Blender\\AuroraTestScene.fbx");
+            //Scene kugis = importer.ImportFBX("H:\\Creative\\Blender\\AuroraTestScene_kugis.fbx");
+
+            ////Renderer prerequisites refueling
+            //GameWindowSettings _gws = GameWindowSettings.Default;
+            //NativeWindowSettings _nws = new NativeWindowSettings() { ClientSize = new Vector2i(1280, 720), Title = "ProjectAurora" };
+            //renderer3D = new Rasterization(_gws, _nws);
+            //renderer3D.Prerequisites();
+
+            //Running = true;
+            //SC = s;
+
+            ////---------------------------------------------------------------------------
+            ////Game logic
+            ////first we setup lights
+            //LightSourceEntity lightEntity = new LightSourceEntity();
+            //lightEntity.transform.position = new Vector3(-0, 15, -0);
+            ////LightSourceEntity lightEntity2 = new LightSourceEntity();
+            ////lightEntity2.transform.position = new Vector3(700, 700, 700);
+            //_entities.Add(lightEntity);
+            ////_entities.Add(lightEntity);
+
+            ////then we do entities
+            ///*SimulatorEntity _simEntity = new SimulatorEntity();
+            //_simEntity.GetComponent<MeshComponent>().LoadCustomMesh(kugis);
+            //_simEntity.GetComponent<SPHSimComponent>().simSetup(parts);
+            //_entities.Add(_simEntity);*/
+
+            //TestingEntity testEnt = new TestingEntity();
+            //testEnt.transform.scale = new Vector3(10, 1, 10);
+            //testEnt.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
+            ////---------------------------------------------------------------------------
+
+
+            //new Thread(() =>
+            //{
+            //    EngineStart();
+            //}).Start();
+            //renderer3D.Init();
         }
 
         public async void EngineStart()
@@ -104,7 +115,7 @@ namespace ArctisAurora.EngineWork
                 if (SC.InvokeRequired)
                     SC.Invoke(new Action(() =>
                     {
-                        OpenTK_Renderer._rendererInstance.Render(this, null);
+                        Rasterization._rendererInstance.Render(this, null);
                     }));
                 TimeSpan GraphicsTime = DateTime.Now - GraphicsTimeStart;
                 Console.WriteLine("Graphics --- " + GraphicsTime.TotalMilliseconds);
@@ -126,6 +137,19 @@ namespace ArctisAurora.EngineWork
                     await Task.Delay(((int)TSOffset));
             }
         }
+
+        /*public async void PathTracerTest()
+        {
+            while(Running)
+            {
+                if (SC.InvokeRequired)
+                    SC.Invoke(new Action(() =>
+                    {
+                        PathTracer._rendererInstance.Render(this, null);
+                    }));
+                await Task.Delay(8);
+            }
+        }*/
 
         public void Stop()
         {

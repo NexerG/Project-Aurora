@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ArctisAurora.EngineWork.Rendering
+namespace ArctisAurora.EngineWork.Rendering.Renderers.OpenTK
 {
     public class VBO
     {
