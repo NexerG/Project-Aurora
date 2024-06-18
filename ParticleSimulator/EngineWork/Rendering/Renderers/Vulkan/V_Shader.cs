@@ -1,5 +1,7 @@
-﻿using Silk.NET.Core.Native;
+﻿using OpenTK.Platform.Windows;
+using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
+using Silk.NET.Vulkan.Extensions.KHR;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,54 +12,173 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 {
     internal unsafe class V_Shader
     {
+        PipelineLayout _pipelineLayout;
         internal List<ShaderCreateInfoEXT> _shaderInfo = new List<ShaderCreateInfoEXT>();
-        internal List<ShaderEXT> MakeShaderObjects(string vertex, string fragment, Device _logicalDevice, Vk _vulkan)
+        internal void CreateGraphicsPipeline(string vertex, string fragment, Device _logicalDevice, Vk _vulkan, Extent2D _extent2D, RenderPass _renderPass,ref Pipeline _graphicsPipeline)
         {
-            //create shader flags
-            ShaderCreateFlagsEXT _flags = ShaderCreateFlagsEXT.LinkStageBitExt;
-            ShaderStageFlags _nextStage = ShaderStageFlags.FragmentBit;
+            byte[] _vertexCode = ReadFile("../../../Shaders/" + vertex);
+            byte[] _fragmentCode = ReadFile("../../../Shaders/" + fragment);
 
-            string _vertexCode = ReadFile(ReadFile("../../../../../Shaders/" + vertex));
-            string _fragmentCode = ReadFile(ReadFile("../../../../../Shaders/" + fragment));
-            ShaderCodeTypeEXT _shaderCodeType = ShaderCodeTypeEXT.SpirvExt;
+            ShaderModule _vertexShader = CreateShaderModule(_vertexCode, _vulkan, _logicalDevice);
+            ShaderModule _fragmentShader = CreateShaderModule(_fragmentCode, _vulkan, _logicalDevice);
 
-            fixed (char* _vertexCodePtr = _vertexCode)
+            PipelineShaderStageCreateInfo _vertexShaderStageInfo = new PipelineShaderStageCreateInfo
             {
-                void* voidPtr = _vertexCodePtr;
-                ShaderCreateInfoEXT _vertexInfo = new ShaderCreateInfoEXT
-                {
-                    Flags = _flags,
-                    Stage = ShaderStageFlags.VertexBit,
-                    NextStage = _nextStage,
-                    CodeType = _shaderCodeType,
-                    CodeSize = (nuint)(_vertexCode.Length),
-                    PCode = voidPtr,
-                    PName = (byte*)SilkMarshal.StringToPtr("Default")
-                };
-                _shaderInfo.Add(_vertexInfo);
+                SType = StructureType.PipelineShaderStageCreateInfo,
+                Stage = ShaderStageFlags.VertexBit,
+                Module = _vertexShader,
+                PName = (byte*)SilkMarshal.StringToPtr("main")
+            };
+            PipelineShaderStageCreateInfo _fragmentShaderStageInfo = new PipelineShaderStageCreateInfo
+            {
+                SType = StructureType.PipelineShaderStageCreateInfo,
+                Stage = ShaderStageFlags.FragmentBit,
+                Module = _fragmentShader,
+                PName = (byte*)SilkMarshal.StringToPtr("main")
+            };
+
+            var _stages = stackalloc[]
+            {
+                _vertexShaderStageInfo,
+                _fragmentShaderStageInfo
+            };
+
+            PipelineVertexInputStateCreateInfo _vertexInputInfo = new PipelineVertexInputStateCreateInfo
+            {
+                SType = StructureType.PipelineVertexInputStateCreateInfo,
+                VertexBindingDescriptionCount = 0,
+                VertexAttributeDescriptionCount = 0
+            };
+            PipelineInputAssemblyStateCreateInfo _inputAssembly = new PipelineInputAssemblyStateCreateInfo
+            {
+                SType = StructureType.PipelineInputAssemblyStateCreateInfo,
+                Topology = PrimitiveTopology.TriangleList,
+                PrimitiveRestartEnable = false
+            };
+
+            Viewport _viewport = new Viewport()
+            {
+                X = 0,
+                Y = 0,
+                Width = _extent2D.Width,
+                Height = _extent2D.Height,
+                MinDepth = 0,
+                MaxDepth = 1
+            };
+            Rect2D _scissor = new Rect2D()
+            {
+                Offset = { X = 0, Y = 0 },
+                Extent = _extent2D
+            };
+            PipelineViewportStateCreateInfo _viewportState = new PipelineViewportStateCreateInfo()
+            {
+                SType = StructureType.PipelineViewportStateCreateInfo,
+                ViewportCount = 1,
+                PViewports = &_viewport,
+                ScissorCount = 1,
+                PScissors = &_scissor,
+            };
+            PipelineRasterizationStateCreateInfo _rasterizer = new PipelineRasterizationStateCreateInfo()
+            {
+                SType = StructureType.PipelineRasterizationStateCreateInfo,
+                DepthClampEnable = false,
+                RasterizerDiscardEnable = false,
+                PolygonMode = PolygonMode.Fill,
+                LineWidth = 1,
+                CullMode = CullModeFlags.BackBit,
+                FrontFace = FrontFace.Clockwise,
+                DepthBiasEnable = false
+            };
+            PipelineMultisampleStateCreateInfo _multisampling = new PipelineMultisampleStateCreateInfo()
+            {
+                SType = StructureType.PipelineMultisampleStateCreateInfo,
+                SampleShadingEnable = false,
+                RasterizationSamples = SampleCountFlags.Count1Bit
+            };
+            PipelineColorBlendAttachmentState _colorBlendAttachment = new PipelineColorBlendAttachmentState()
+            {
+                ColorWriteMask = ColorComponentFlags.RBit | ColorComponentFlags.GBit | ColorComponentFlags.BBit | ColorComponentFlags.ABit,
+                BlendEnable = false,
+            };
+            PipelineColorBlendStateCreateInfo _colorBlending = new PipelineColorBlendStateCreateInfo()
+            {
+                SType = StructureType.PipelineColorBlendStateCreateInfo,
+                LogicOpEnable = false,
+                LogicOp = LogicOp.Copy,
+                AttachmentCount = 1,
+                PAttachments = &_colorBlendAttachment
+            };
+
+            _colorBlending.BlendConstants[0] = 0;
+            _colorBlending.BlendConstants[1] = 0;
+            _colorBlending.BlendConstants[2] = 0;
+            _colorBlending.BlendConstants[3] = 0;
+
+            PipelineLayoutCreateInfo _pipelineLayoutInfo = new PipelineLayoutCreateInfo()
+            {
+                SType = StructureType.PipelineLayoutCreateInfo,
+                SetLayoutCount = 0,
+                PushConstantRangeCount = 0,
+            };
+
+            if (_vulkan.CreatePipelineLayout(_logicalDevice, _pipelineLayoutInfo, null, out _pipelineLayout) != Result.Success)
+            {
+                throw new Exception("Failed to create pipeline layout");
             }
 
-            fixed (char* _fragmentCodePtr = _fragmentCode)
+            GraphicsPipelineCreateInfo _graphicsPipelineInfo = new GraphicsPipelineCreateInfo()
             {
-                void* voidPtr = _fragmentCodePtr;
-                ShaderCreateInfoEXT _fragmentPtr = new ShaderCreateInfoEXT
-                {
-                    Flags = _flags,
-                    Stage = ShaderStageFlags.VertexBit,
-                    CodeType = _shaderCodeType,
-                    CodeSize = (nuint)(_vertexCode.Length),
-                    PCode = voidPtr,
-                    PName = (byte*)SilkMarshal.StringToPtr("Default")
-                };
-                _shaderInfo.Add(_fragmentPtr);
+                SType = StructureType.GraphicsPipelineCreateInfo,
+                StageCount = 2,
+                PStages = _stages,
+                PVertexInputState = &_vertexInputInfo,
+                PInputAssemblyState = &_inputAssembly,
+                PViewportState = &_viewportState,
+                PRasterizationState = &_rasterizer,
+                PMultisampleState = &_multisampling,
+                PColorBlendState = &_colorBlending,
+                Layout = _pipelineLayout,
+                RenderPass = _renderPass,
+                Subpass = 0,
+                BasePipelineHandle = default
+            };
+
+            Result r = _vulkan.CreateGraphicsPipelines(_logicalDevice, default, 1, _graphicsPipelineInfo, null, out _graphicsPipeline);
+            if( r != Result.Success)
+            {
+                throw new Exception("Failed to create graphics pipeline " + r);
             }
-            _vulkan.createshade
+
+            _vulkan.DestroyShaderModule(_logicalDevice, _vertexShader, null);
+            _vulkan.DestroyShaderModule(_logicalDevice, _fragmentShader, null);
+            SilkMarshal.Free((nint)_vertexShaderStageInfo.PName);
+            SilkMarshal.Free((nint)_fragmentShaderStageInfo.PName);
         }
-        public string ReadFile(string FileName)
+
+        private ShaderModule CreateShaderModule(byte[] _shaderCode, Vk _vulkan, Device _logicalDevice)
         {
-            string contents = File.ReadAllText(FileName);
+            ShaderModuleCreateInfo _createInfo = new ShaderModuleCreateInfo
+            {
+                SType = StructureType.ShaderModuleCreateInfo,
+                CodeSize = (nuint)_shaderCode.Length,
+            };
+            ShaderModule _shaderModule;
+
+            fixed (byte* _shaderCodePtr = _shaderCode)
+            {
+                _createInfo.PCode = (uint*)_shaderCodePtr;
+                if (_vulkan.CreateShaderModule(_logicalDevice, _createInfo, null, out _shaderModule) != Result.Success)
+                {
+                    throw new Exception("Failed to create shader module");
+                }
+            }
+            return _shaderModule;
+        }
+
+        private byte[] ReadFile(string FileName)
+        {
+            byte[] contents = File.ReadAllBytes(FileName);
             return contents;
         }
-
     }
 }

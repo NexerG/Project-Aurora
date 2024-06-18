@@ -36,6 +36,7 @@ namespace ArctisAurora.EngineWork
             SC = s;
 
             _pathTracer = new VulkanRenderer();
+            _pathTracer.Draw();
             /*new Thread(() =>
             {
                 PathTracerTest();

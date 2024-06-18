@@ -18,8 +18,8 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.OpenTK
         public ShaderClass(string vert, string frag, entityShaderType type)
         {
             this.type = type;
-            string VertexCode = ReadFile("../../../../../Shaders/" + vert);
-            string FragmentCode = ReadFile("../../../../../Shaders/" + frag);
+            string VertexCode = ReadFile("../../../Shaders/" + vert);
+            string FragmentCode = ReadFile("../../../Shaders/" + frag);
             //create shaders
             int vertex_shader = GL.CreateShader(ShaderType.VertexShader);
             GL.ShaderSource(vertex_shader, VertexCode);
