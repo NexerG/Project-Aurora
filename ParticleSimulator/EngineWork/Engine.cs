@@ -13,6 +13,9 @@ using OpenTK.Windowing.Common;
 using Assimp;
 using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
 using ArctisAurora.EngineWork.Rendering.Renderers.OpenTK;
+using Silk.NET.Vulkan;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace ArctisAurora.EngineWork
 {
@@ -36,11 +39,10 @@ namespace ArctisAurora.EngineWork
             SC = s;
 
             _pathTracer = new VulkanRenderer();
-            _pathTracer.Draw();
-            /*new Thread(() =>
+            new Thread(() =>
             {
                 PathTracerTest();
-            }).Start();*/
+            }).Start();
 
             ////mesh importer
             //MeshImporter importer = new MeshImporter();
@@ -139,18 +141,19 @@ namespace ArctisAurora.EngineWork
             }
         }
 
-        /*public async void PathTracerTest()
+        public async void PathTracerTest()
         {
             while(Running)
             {
                 if (SC.InvokeRequired)
                     SC.Invoke(new Action(() =>
                     {
-                        PathTracer._rendererInstance.Render(this, null);
+                        _pathTracer._glfw.PollEvents();
+                        _pathTracer.Draw();
                     }));
                 await Task.Delay(8);
             }
-        }*/
+        }
 
         public void Stop()
         {

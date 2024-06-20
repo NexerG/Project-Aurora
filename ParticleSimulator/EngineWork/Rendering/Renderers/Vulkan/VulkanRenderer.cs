@@ -10,9 +10,63 @@ using OpenTK.Platform.Windows;
 using Silk.NET.Windowing;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.ListView;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
+using OpenTK.Mathematics;
+using Silk.NET.Maths;
+using System.Runtime.CompilerServices;
+using Buffer = Silk.NET.Vulkan.Buffer;
+using ArctisAurora.EngineWork.Rendering.Renderers.OpenTK;
+using OpenTK.Graphics.OpenGL;
 
 namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 {
+    struct UBO
+    {
+        public Matrix4X4<float> _model;
+        public Matrix4X4<float> _view;
+        public Matrix4X4<float> _projection;
+    }
+
+    struct Vertex
+    {
+        public Silk.NET.Maths.Vector2D<float> _pos;
+        public Silk.NET.Maths.Vector3D<float> _color;
+        //public Silk.NET.Maths.Vector3D<float> _normal;
+        //public Silk.NET.Maths.Vector2D<float> _uv;
+
+        public static VertexInputBindingDescription GetBindingDescription()
+        {
+            VertexInputBindingDescription _description = new VertexInputBindingDescription()
+            {
+                Binding = 0,
+                Stride = (uint)Unsafe.SizeOf<Vertex>(),
+                InputRate = VertexInputRate.Vertex
+            };
+            return _description;
+        }
+
+        public static VertexInputAttributeDescription[] GetVertexInputAttributeDescriptions()
+        {
+            VertexInputAttributeDescription[] _descriptions = new VertexInputAttributeDescription[]
+            {
+                new VertexInputAttributeDescription()
+                {
+                    Binding = 0,
+                    Location = 0,
+                    Format = Format.R32G32Sfloat,
+                    Offset = (uint)Marshal.OffsetOf<Vertex>(nameof(_pos))
+                },
+                new VertexInputAttributeDescription()
+                {
+                    Binding = 0,
+                    Location = 1,
+                    Format = Format.R32G32Sfloat,
+                  Offset = (uint)Marshal.OffsetOf<Vertex>(nameof(_color)),
+                }
+            };
+            return _descriptions;
+        }
+    }
+
     struct SwapChainSupportDetails
     {
         public SurfaceCapabilitiesKHR Capabilities;
@@ -22,11 +76,22 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 
     internal unsafe class VulkanRenderer
     {
+        private Vertex[] _vertices = new Vertex[]
+        {
+            new Vertex { _pos = new Vector2D<float>(-0.5f,-0.5f), _color = new Vector3D<float>(1.0f, 0.0f, 0.0f) },
+            new Vertex { _pos = new Vector2D<float>(0.5f,-0.5f), _color = new Vector3D<float>(0.0f, 1.0f, 0.0f) },
+            new Vertex { _pos = new Vector2D<float>(0.5f,0.5f), _color = new Vector3D<float>(0.0f, 0.0f, 1.0f) },
+            new Vertex { _pos = new Vector2D<float>(-0.5f,0.5f), _color = new Vector3D<float>(1.0f, 1.0f, 1.0f) },
+        };
+        private ushort[] _indices = new ushort[]
+        {
+            0,1,2,2,3,0
+        };
         internal int _width = 1280;
         internal int _height = 720;
         internal static VulkanRenderer _rendererInstance = null;
         //window & vulkan setup
-        private static Glfw _glfw = Glfw.GetApi();  //window(GLFW) api
+        internal Glfw _glfw = Glfw.GetApi();        //window(GLFW) api
         private static Vk _vulkan = Vk.GetApi();    //vulkan api
 
         private static Instance _instance;          //vulkan instance
@@ -45,6 +110,21 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         Framebuffer[] _framebuffer;
         CommandBuffer[] _commandBuffer;
         CommandPool _commandPool;
+        bool _frameBufferResized = false;
+
+        //VAO
+        private Buffer _vertexBuffer;
+        private DeviceMemory _vertexBufferMemory;
+        private Buffer _indexBuffer;
+        private DeviceMemory _indexBufferMemory;
+
+        //uniform buffers
+        Buffer[] _uniformBuffers;
+        DeviceMemory[] _uniformBuffersMemory;
+
+        private DescriptorSetLayout _descriptorSetLayout;
+        DescriptorPool _descriptorPool;
+        DescriptorSet[] _descriptorSets;
 
         int MAX_FRAMES_IN_FLIGHT = 2;
         int _currentFrame = 0;
@@ -67,11 +147,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             //Vulkan
             CreateVulkanInstance();
 
-            VkNonDispatchableHandle _surfaceHandle;
-            _glfw.CreateWindowSurface(_instance.ToHandle(), _windowHandle, null, &_surfaceHandle);
-            _surface = _surfaceHandle.ToSurface();
             CreateSurface();
-
             ChoosePhysicalDevice();
             CreateLogicalDevice(_gpu);
             int _graphicsQFamilyIndex = FindQueueFamilyIndex(_gpu, QueueFlags.GraphicsBit);
@@ -79,20 +155,17 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             _graphicsQueue = _vulkan.GetDeviceQueue(_logicalDevice, (uint)_graphicsQFamilyIndex, 0);
             _presentQueue = _vulkan.GetDeviceQueue(_logicalDevice, _presentSupportIndex, 0);
             CreateSwapChain();
-
-            uint _imageCount = 0;
-            //Span<Image> images = new Span<Image>();
-            _swapchainExtension.GetSwapchainImages(_logicalDevice, _swapchain, &_imageCount, null);
-            _swapChainImages = new Image[_imageCount];
-            fixed (Image* _imagePtr = _swapChainImages)
-            {
-                _swapchainExtension.GetSwapchainImages(_logicalDevice, _swapchain, &_imageCount, _imagePtr);
-            }
             CreateImageView();
             CreateRenderPass();
+            CreateDescriptorSetLayout();
             CreateGraphicsPipeline();
             CreateFrameBuffers();
             CreateCommandPool();
+            CreateVertexBuffer();
+            CreateIndexBuffer();
+            CreateUniformBuffers();
+            CreateDescriptorPool();
+            CreateDescriptorSets();
             CreateCommandBuffers();
             CreateSyncObjects();
         }
@@ -103,6 +176,9 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             {
                 throw new NotSupportedException("KHR_surface extension not found.");
             }
+            VkNonDispatchableHandle _surfaceHandle;
+            _glfw.CreateWindowSurface(_instance.ToHandle(), _windowHandle, null, &_surfaceHandle);
+            _surface = _surfaceHandle.ToSurface();
         }
 
         private void CreateGLFWInstance()
@@ -112,6 +188,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 
             _glfw.WindowHint(WindowHintClientApi.ClientApi, ClientApi.NoApi);
             _windowHandle = _glfw.CreateWindow(_width, _height, "Arctis Auora", null, null);
+            _glfw.SetWindowSizeCallback(_windowHandle, WindwoResizeCallback);
 
             if (_windowHandle == null)
             {
@@ -205,15 +282,16 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 
             return int.MaxValue;
         }
+
         private uint FindPresentSuppotIndex()
         {
             uint i = 0;
-            foreach(var _qf in _qfm)
+            foreach (var _qf in _qfm)
             {
-                if(_qf.QueueFlags.HasFlag(QueueFlags.GraphicsBit))
+                if (_qf.QueueFlags.HasFlag(QueueFlags.GraphicsBit))
                 {
                     _vkSurface.GetPhysicalDeviceSurfaceSupport(_gpu, i, _surface, out var _presentSupport);
-                    if(_presentSupport)
+                    if (_presentSupport)
                     {
                         return i;
                     }
@@ -311,7 +389,6 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             };
             uint _imageCount = _support.Capabilities.MinImageCount + 1;
 
-
             SwapchainCreateInfoKHR _swapChainInfo = new SwapchainCreateInfoKHR()
             {
                 SType = StructureType.SwapchainCreateInfoKhr,
@@ -341,6 +418,33 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             {
                 throw new Exception("Failed to create swapchain " + r);
             }
+            uint _swapchainImageCount = 0;
+            _swapchainExtension.GetSwapchainImages(_logicalDevice, _swapchain, &_swapchainImageCount, null);
+            _swapChainImages = new Image[_swapchainImageCount];
+            fixed (Image* _imagePtr = _swapChainImages)
+            {
+                _swapchainExtension.GetSwapchainImages(_logicalDevice, _swapchain, &_swapchainImageCount, _imagePtr);
+            }
+        }
+
+        private void RecreateSwapChain()
+        {
+            _glfw.GetFramebufferSize(_windowHandle, out _width, out _height);
+            _glfw.PollEvents();
+            _vulkan.DeviceWaitIdle(_logicalDevice);
+            CleanUpSwapChain();
+
+            CreateSwapChain();
+            CreateImageView();
+            CreateRenderPass();
+            CreateGraphicsPipeline();
+            CreateFrameBuffers();
+            CreateUniformBuffers();
+            CreateDescriptorPool();
+            CreateDescriptorSets();
+            CreateCommandBuffers();
+
+            _imagesInFlight = new Fence[_swapChainImages.Length];
         }
 
         private SwapChainSupportDetails QuerySwapChainSupport(PhysicalDevice _physicalDevice)
@@ -405,7 +509,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         private void CreateImageView()
         {
             _imageViews = new ImageView[_swapChainImages.Length];
-            for(int i=0;i< _swapChainImages.Length;i++)
+            for (int i = 0; i < _swapChainImages.Length; i++)
             {
                 ImageViewCreateInfo _createInfo = new ImageViewCreateInfo
                 {
@@ -424,7 +528,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 _createInfo.SubresourceRange.BaseArrayLayer = 0;
                 _createInfo.SubresourceRange.LayerCount = 1;
 
-                if(_vulkan!.CreateImageView(_logicalDevice, _createInfo, null, out _imageViews[i])!= Result.Success)
+                if (_vulkan!.CreateImageView(_logicalDevice, _createInfo, null, out _imageViews[i]) != Result.Success)
                 {
                     throw new Exception("failed to create image views!");
                 }
@@ -457,6 +561,16 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 PColorAttachments = &_colorAttachmentRef,
             };
 
+            SubpassDependency _subDepend = new SubpassDependency()
+            {
+                SrcSubpass = Vk.SubpassExternal,
+                DstSubpass = 0,
+                SrcStageMask = PipelineStageFlags.ColorAttachmentOutputBit,
+                SrcAccessMask = 0,
+                DstStageMask = PipelineStageFlags.ColorAttachmentOutputBit,
+                DstAccessMask = AccessFlags.ColorAttachmentWriteBit
+            };
+
             RenderPassCreateInfo _renderPassInfo = new RenderPassCreateInfo()
             {
                 SType = StructureType.RenderPassCreateInfo,
@@ -464,6 +578,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 PAttachments = &_colorAttachment,
                 SubpassCount = 1,
                 PSubpasses = &_subpass,
+                PDependencies = &_subDepend
             };
 
             if (_vulkan.CreateRenderPass(_logicalDevice, _renderPassInfo, null, out _renderPass) != Result.Success)
@@ -475,13 +590,13 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         private void CreateGraphicsPipeline()
         {
             _pipeline = new V_Shader();
-            _pipeline.CreateGraphicsPipeline("vert.spv", "frag.spv", _logicalDevice, _vulkan, _extent, _renderPass,ref _graphicsPipeline);
+            _pipeline.CreateGraphicsPipeline("vulkan.vert.spv", "vulkan.frag.spv", _logicalDevice, _vulkan, _extent, ref _renderPass, ref _graphicsPipeline, ref _descriptorSetLayout);
         }
 
         private void CreateFrameBuffers()
         {
             _framebuffer = new Framebuffer[_imageViews.Length];
-            for(int i=0; i < _imageViews.Length; i++)
+            for (int i = 0; i < _imageViews.Length; i++)
             {
                 var _attachment = _imageViews[i];
 
@@ -496,7 +611,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                     Layers = 1
                 };
 
-                if(_vulkan.CreateFramebuffer(_logicalDevice,_framebufferInfo,null,out _framebuffer[i]) != Result.Success)
+                if (_vulkan.CreateFramebuffer(_logicalDevice, _framebufferInfo, null, out _framebuffer[i]) != Result.Success)
                 {
                     throw new Exception("Failed to create frame buffer");
                 }
@@ -511,7 +626,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 SType = StructureType.CommandPoolCreateInfo,
                 QueueFamilyIndex = (uint)_queueFamilyIndex,
             };
-            if(_vulkan.CreateCommandPool(_logicalDevice, _createInfo,null,out _commandPool) != Result.Success)
+            if (_vulkan.CreateCommandPool(_logicalDevice, _createInfo, null, out _commandPool) != Result.Success)
             {
                 throw new Exception("Failed to create command pool");
             }
@@ -528,10 +643,10 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 Level = CommandBufferLevel.Primary,
                 CommandBufferCount = (uint)_commandBuffer.Length
             };
-            fixed(CommandBuffer* _commandBufferPtr = _commandBuffer)
+            fixed (CommandBuffer* _commandBufferPtr = _commandBuffer)
             {
                 Result r = _vulkan.AllocateCommandBuffers(_logicalDevice, _allocInfo, _commandBufferPtr);
-                if (r !=Result.Success)
+                if (r != Result.Success)
                 {
                     throw new Exception("Failed to allocate command buffer with error " + r);
                 }
@@ -543,7 +658,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                     SType = StructureType.CommandBufferBeginInfo
                 };
 
-                if (_vulkan.BeginCommandBuffer(_commandBuffer[i],_beginInfo)!=Result.Success)
+                if (_vulkan.BeginCommandBuffer(_commandBuffer[i], _beginInfo) != Result.Success)
                 {
                     throw new Exception("Failed to create BEGIN command buffer at index " + i);
                 }
@@ -562,18 +677,31 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 
                 ClearValue _clearColor = new ClearValue()
                 {
-                    Color = new() { Float32_0 = 0.12f, Float32_1 = 0.12f, Float32_2 = 0.12f, Float32_3 = 1 }
+                    Color = new() { Float32_0 = 0.05f, Float32_1 = 0.05f, Float32_2 = 0.05f, Float32_3 = 1f }
                 };
 
                 _renderPassInfo.ClearValueCount = 1;
                 _renderPassInfo.PClearValues = &_clearColor;
 
+                //render code
                 _vulkan.CmdBeginRenderPass(_commandBuffer[i], &_renderPassInfo, SubpassContents.Inline);
                 _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.Graphics, _graphicsPipeline);
-                _vulkan.CmdDraw(_commandBuffer[i], 3, 1, 0, 0);
-                _vulkan.CmdEndRenderPass(_commandBuffer[i]);
 
-                if (_vulkan.EndCommandBuffer(_commandBuffer[i])!= Result.Success)
+                Buffer[] _vertBuffers = new Buffer[] { _vertexBuffer };
+                var _offset = new ulong[] { 0 };
+
+                fixed (ulong* _offsetsPtr = _offset)
+                fixed (Buffer* _vertBuffersPtr = _vertBuffers)
+                {
+                    _vulkan.CmdBindVertexBuffers(_commandBuffer[i], 0, 1, _vertBuffersPtr, _offsetsPtr);
+                }
+                _vulkan.CmdBindIndexBuffer(_commandBuffer[i], _indexBuffer, 0, IndexType.Uint16);
+                _vulkan.CmdBindDescriptorSets(_commandBuffer[i], PipelineBindPoint.Graphics, _pipeline._pipelineLayout, 0, 1, _descriptorSets[i], 0, null);
+                _vulkan.CmdDrawIndexed(_commandBuffer[i], (uint)_indices.Length, 1, 0, 0, 0);
+                _vulkan.CmdEndRenderPass(_commandBuffer[i]);
+                //done rendering
+
+                if (_vulkan.EndCommandBuffer(_commandBuffer[i]) != Result.Success)
                 {
                     throw new Exception("Failed to record command buffer");
                 }
@@ -598,7 +726,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 Flags = FenceCreateFlags.SignaledBit
             };
 
-            for(int i=0;i<MAX_FRAMES_IN_FLIGHT;i++)
+            for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
             {
                 if (_vulkan.CreateSemaphore(_logicalDevice, _semaphoreCreateInfo, null, out _imageAvailableSemaphores[i]) != Result.Success ||
                     _vulkan.CreateSemaphore(_logicalDevice, _semaphoreCreateInfo, null, out _renderFinishedSemaphores[i]) != Result.Success ||
@@ -613,9 +741,20 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         {
             _vulkan.WaitForFences(_logicalDevice, 1, _fencesInFlight[_currentFrame], true, ulong.MaxValue);
             uint _imageIndex = 0;
-            _swapchainExtension.AcquireNextImage(_logicalDevice, _swapchain, ulong.MaxValue, _imageAvailableSemaphores[_currentFrame], default, ref _imageIndex);
+            Result r = _swapchainExtension.AcquireNextImage(_logicalDevice, _swapchain, ulong.MaxValue, _imageAvailableSemaphores[_currentFrame], default, ref _imageIndex);
 
-            if (_imagesInFlight[_imageIndex].Handle !=default)
+            if (r == Result.ErrorOutOfDateKhr)
+            {
+                RecreateSwapChain();
+                return;
+            }
+            else if (r != Result.Success && r != Result.SuboptimalKhr)
+            {
+                throw new Exception("Failed to acquire swap chain image");
+            }
+
+            UpdateUniformBuffer(_imageIndex);
+            if (_imagesInFlight[_imageIndex].Handle != default)
             {
                 _vulkan.WaitForFences(_logicalDevice, 1, _imagesInFlight[_imageIndex], true, ulong.MaxValue);
             }
@@ -635,13 +774,13 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 PipelineStageFlags.ColorAttachmentOutputBit
             };
 
-            var _buffer = _commandBuffer[_imageIndex];
-
+            CommandBuffer _buffer = _commandBuffer[_imageIndex];
             _submitInfo = _submitInfo with
             {
                 WaitSemaphoreCount = 1,
                 PWaitSemaphores = _waitSemaphores,
                 PWaitDstStageMask = _waitStages,
+
                 CommandBufferCount = 1,
                 PCommandBuffers = &_buffer
             };
@@ -670,12 +809,300 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 SType = StructureType.PresentInfoKhr,
                 WaitSemaphoreCount = 1,
                 PWaitSemaphores = _signalSemaphores,
-                SwapchainCount =1,
+                SwapchainCount = 1,
                 PSwapchains = _swapChains,
                 PImageIndices = &_imageIndex
             };
-            _swapchainExtension.QueuePresent(_presentQueue, _presentInfo);
+            r = _swapchainExtension.QueuePresent(_presentQueue, _presentInfo);
+            if (r == Result.ErrorOutOfDateKhr || r == Result.SuboptimalKhr || _frameBufferResized)
+            {
+                _frameBufferResized = false;
+                RecreateSwapChain();
+            }
+            else if (r != Result.Success)
+            {
+                throw new Exception("Failed to present swap chain image");
+            }
+
             _currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+        }
+
+        private void CleanUpSwapChain()
+        {
+            foreach (var fb in _framebuffer)
+            {
+                _vulkan.DestroyFramebuffer(_logicalDevice, fb, null);
+            }
+            fixed (CommandBuffer* CBPtr = _commandBuffer)
+            {
+                _vulkan.FreeCommandBuffers(_logicalDevice, _commandPool, (uint)_commandBuffer.Length, CBPtr);
+            }
+
+            _vulkan.DestroyPipeline(_logicalDevice, _graphicsPipeline, null);
+            _vulkan.DestroyPipelineLayout(_logicalDevice, _pipeline._pipelineLayout, null);
+            _vulkan.DestroyRenderPass(_logicalDevice, _renderPass, null);
+
+            foreach (var iv in _imageViews)
+            {
+                _vulkan.DestroyImageView(_logicalDevice, iv, null);
+            }
+            _swapchainExtension.DestroySwapchain(_logicalDevice, _swapchain, null);
+        }
+
+        private void WindwoResizeCallback(WindowHandle* window, int width, int height)
+        {
+            _frameBufferResized = true;
+        }
+
+        private void CreateVertexBuffer()
+        {
+            ulong _bufferSize = (ulong)(Unsafe.SizeOf<Vertex>() * _vertices.Length);
+            Buffer _stagingBuffer = default;
+            DeviceMemory _stagingBufferMemory = default;
+            CreateBuffer(_bufferSize,BufferUsageFlags.TransferSrcBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCachedBit, ref _stagingBuffer, ref _stagingBufferMemory);
+
+            void* _data;
+            _vulkan.MapMemory(_logicalDevice, _stagingBufferMemory, 0, _bufferSize, 0, &_data);
+            _vertices.AsSpan().CopyTo(new Span<Vertex>(_data, _vertices.Length));
+            _vulkan.UnmapMemory(_logicalDevice, _stagingBufferMemory);
+
+            CreateBuffer(_bufferSize, BufferUsageFlags.TransferDstBit | BufferUsageFlags.VertexBufferBit, MemoryPropertyFlags.DeviceLocalBit, ref _vertexBuffer, ref _vertexBufferMemory);
+
+            CopyBuffer(_stagingBuffer, _vertexBuffer, _bufferSize);
+            _vulkan.DestroyBuffer(_logicalDevice, _stagingBuffer, null);
+            _vulkan.FreeMemory(_logicalDevice, _stagingBufferMemory, null);
+        }
+
+        private void CopyBuffer(Buffer _sourceBuffer, Buffer _dstBuffer, ulong bufferSize)
+        {
+            CommandBufferAllocateInfo _allocInfo = new CommandBufferAllocateInfo()
+            {
+                SType = StructureType.CommandBufferAllocateInfo,
+                Level = CommandBufferLevel.Primary,
+                CommandPool = _commandPool,
+                CommandBufferCount = 1
+            };
+            CommandBuffer _localCommandBuffer;
+            _vulkan.AllocateCommandBuffers(_logicalDevice, _allocInfo, out _localCommandBuffer);
+
+            CommandBufferBeginInfo _cBBeginInfo = new CommandBufferBeginInfo()
+            {
+                SType = StructureType.CommandBufferBeginInfo,
+                Flags = CommandBufferUsageFlags.OneTimeSubmitBit
+            };
+            _vulkan.BeginCommandBuffer(_localCommandBuffer, _cBBeginInfo);
+
+            BufferCopy _copyRegion = new BufferCopy()
+            {
+                Size = bufferSize
+            };
+            _vulkan.CmdCopyBuffer(_localCommandBuffer, _sourceBuffer, _dstBuffer, 1, _copyRegion);
+            _vulkan.EndCommandBuffer(_localCommandBuffer);
+
+            SubmitInfo _subInfo = new SubmitInfo()
+            {
+                SType = StructureType.SubmitInfo,
+                CommandBufferCount= 1,
+                PCommandBuffers = &_localCommandBuffer
+            };
+            _vulkan.QueueSubmit(_graphicsQueue, 1, _subInfo, default);
+            _vulkan.QueueWaitIdle(_graphicsQueue);
+            _vulkan.FreeCommandBuffers(_logicalDevice, _commandPool, 1, _localCommandBuffer);
+        }
+
+        private void CreateBuffer(ulong _size, BufferUsageFlags _usage, MemoryPropertyFlags _properties, ref Buffer _buffer, ref DeviceMemory _bufferMemory)
+        {
+            BufferCreateInfo _bufferCreateInfo = new BufferCreateInfo()
+            {
+                SType = StructureType.BufferCreateInfo,
+                Size = _size,
+                Usage = _usage,
+                SharingMode = SharingMode.Exclusive
+            };
+
+            fixed (Buffer* _bufferPtr = &_buffer)
+            {
+                if (_vulkan.CreateBuffer(_logicalDevice, _bufferCreateInfo, null, _bufferPtr) != Result.Success)
+                {
+                    throw new Exception("Failed to create a VAO");
+                }
+            }
+            MemoryRequirements _memReqs = new MemoryRequirements();
+            _vulkan.GetBufferMemoryRequirements(_logicalDevice, _buffer, out _memReqs);
+
+            MemoryAllocateInfo _allocateInfo = new MemoryAllocateInfo()
+            {
+                SType = StructureType.MemoryAllocateInfo,
+                AllocationSize = _memReqs.Size,
+                MemoryTypeIndex = FindMemoryType(_memReqs.MemoryTypeBits, _properties)
+            };
+
+            fixed (DeviceMemory* _bufferMemoryPtr = &_bufferMemory)
+            {
+                if (_vulkan.AllocateMemory(_logicalDevice, _allocateInfo, null, _bufferMemoryPtr) != Result.Success)
+                {
+                    throw new Exception("Failed to allocate vertex buffer memory");
+                }
+            }
+
+            _vulkan.BindBufferMemory(_logicalDevice, _buffer, _bufferMemory, 0);
+        }
+
+        private void CreateIndexBuffer()
+        {
+            ulong _bufferSize = ((ulong)(Unsafe.SizeOf<ushort>() * _indices.Length));
+            Buffer _stagingBuffer = default;
+            DeviceMemory _stagingBufferMemory = default;
+            CreateBuffer(_bufferSize, BufferUsageFlags.TransferSrcBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _stagingBuffer, ref _stagingBufferMemory);
+            void* _data;
+            _vulkan.MapMemory(_logicalDevice, _stagingBufferMemory, 0, _bufferSize, 0, &_data);
+            _indices.AsSpan().CopyTo(new Span<ushort>(_data, _indices.Length));
+            _vulkan.UnmapMemory(_logicalDevice, _stagingBufferMemory);
+            CreateBuffer(_bufferSize, BufferUsageFlags.TransferDstBit | BufferUsageFlags.IndexBufferBit, MemoryPropertyFlags.DeviceLocalBit, ref _indexBuffer, ref _indexBufferMemory);
+            CopyBuffer(_stagingBuffer, _indexBuffer, _bufferSize);
+            _vulkan.DestroyBuffer(_logicalDevice, _stagingBuffer, null);
+            _vulkan.FreeMemory(_logicalDevice, _stagingBufferMemory, null);
+        }
+
+        private void CreateDescriptorSetLayout()
+        {
+            DescriptorSetLayoutBinding _uboLayoutBinding = new DescriptorSetLayoutBinding()
+            {
+                Binding = 0,
+                DescriptorCount = 1,
+                DescriptorType = DescriptorType.UniformBuffer,
+                PImmutableSamplers = null,
+                StageFlags = ShaderStageFlags.VertexBit
+            };
+            DescriptorSetLayoutCreateInfo _layoutCreateInfo = new DescriptorSetLayoutCreateInfo()
+            {
+                SType = StructureType.DescriptorSetLayoutCreateInfo,
+                BindingCount = 1,
+                PBindings = &_uboLayoutBinding
+            };
+            fixed (DescriptorSetLayout* _descSetLayoutPtr = &_descriptorSetLayout)
+            {
+                if (_vulkan.CreateDescriptorSetLayout(_logicalDevice, _layoutCreateInfo, null, _descSetLayoutPtr) != Result.Success)
+                {
+                    throw new Exception("Failed to create UBO");
+                }
+            }
+        }
+
+        private uint FindMemoryType(uint _typeFilter, MemoryPropertyFlags _properties)
+        {
+            PhysicalDeviceMemoryProperties _memProperties;
+            _vulkan.GetPhysicalDeviceMemoryProperties(_gpu, out _memProperties);
+
+            for(int i=0;i<_memProperties.MemoryTypeCount;i++)
+            {
+                if ((_typeFilter & (1<<i)) != 0 && (_memProperties.MemoryTypes[i].PropertyFlags & _properties) == _properties)
+                {
+                    return (uint)i;
+                }
+            }
+            throw new Exception("Failed to find suitable memory type");
+        }
+
+        private void CreateUniformBuffers()
+        {
+            ulong _bufferSize = (ulong)Unsafe.SizeOf<UBO>();
+            _uniformBuffers = new Buffer[_swapChainImages.Length];
+            _uniformBuffersMemory = new DeviceMemory[_swapChainImages.Length];
+
+            for(int i=0;i<_swapChainImages.Length;i++)
+            {
+                CreateBuffer(_bufferSize, BufferUsageFlags.UniformBufferBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _uniformBuffers[i], ref _uniformBuffersMemory[i]);
+            }
+        }
+
+        private void UpdateUniformBuffer(uint _currentImage)
+        {
+            float time = (float)_glfw.GetTime();
+
+            UBO _ubo = new UBO()
+            {
+                _model = Matrix4X4<float>.Identity * Matrix4X4.CreateFromAxisAngle<float>(new Vector3D<float>(1,0,0), time * Scalar.DegreesToRadians(90.0f)),
+                _view = Matrix4X4.CreateLookAt(new Vector3D<float>(2,2,2), new Vector3D<float>(0,0,0), new Vector3D<float>(0,0,1)),
+                _projection = Matrix4X4.CreatePerspectiveFieldOfView(Scalar.DegreesToRadians(45.0f),_extent.Width/_extent.Height,0.1f,10f)
+            };
+            _ubo._projection.M22 *= -1;
+
+            void* _data;
+            _vulkan.MapMemory(_logicalDevice, _uniformBuffersMemory[_currentImage], 0, (ulong)Unsafe.SizeOf<UBO>(), 0, &_data);
+            new Span<UBO>(_data, 1)[0] = _ubo;
+            _vulkan.UnmapMemory(_logicalDevice, _uniformBuffersMemory[_currentImage]);
+        }
+
+        private void CreateDescriptorPool()
+        {
+            DescriptorPoolSize _poolSize = new DescriptorPoolSize()
+            {
+                Type = DescriptorType.UniformBuffer,
+                DescriptorCount = (uint)_swapChainImages.Length
+            };
+
+            DescriptorPoolCreateInfo _poolInfo = new DescriptorPoolCreateInfo()
+            {
+                SType = StructureType.DescriptorPoolCreateInfo,
+                PoolSizeCount = 1,
+                PPoolSizes = &_poolSize,
+                MaxSets = (uint)_swapChainImages.Length
+            };
+
+            fixed(DescriptorPool* _descPoolPtr= &_descriptorPool)
+            {
+                if(_vulkan.CreateDescriptorPool(_logicalDevice,_poolInfo,null,_descPoolPtr) != Result.Success)
+                {
+                    throw new Exception("Failed to create descriptor pool");
+                }
+            }
+        }
+
+        private void CreateDescriptorSets()
+        {
+            DescriptorSetLayout[] _layouts = new DescriptorSetLayout[_swapChainImages.Length];
+            Array.Fill(_layouts, _descriptorSetLayout);
+
+            fixed(DescriptorSetLayout* _layoutsPtr= _layouts)
+            {
+                DescriptorSetAllocateInfo _allocateInfo = new DescriptorSetAllocateInfo()
+                {
+                    SType = StructureType.DescriptorSetAllocateInfo,
+                    DescriptorPool = _descriptorPool,
+                    DescriptorSetCount = (uint)_swapChainImages.Length,
+                    PSetLayouts = _layoutsPtr
+                };
+
+                _descriptorSets = new DescriptorSet[_swapChainImages.Length];
+                fixed(DescriptorSet* _descriptorSetsPtr= _descriptorSets)
+                {
+                    if (_vulkan.AllocateDescriptorSets(_logicalDevice, _allocateInfo, _descriptorSetsPtr) != Result.Success)
+                    {
+                        throw new Exception("Failed to allocate descriptor set");
+                    }
+                }
+            }
+            for (int i = 0; i < _swapChainImages.Length;i++)
+            {
+                DescriptorBufferInfo _bufferInfo = new DescriptorBufferInfo()
+                {
+                    Buffer = _uniformBuffers[i],
+                    Offset = 0,
+                    Range = (ulong)Unsafe.SizeOf<UBO>()
+                };
+                WriteDescriptorSet _descriptorWrite = new WriteDescriptorSet()
+                {
+                    SType = StructureType.WriteDescriptorSet,
+                    DstSet = _descriptorSets[i],
+                    DstBinding = 0,
+                    DstArrayElement = 0,
+                    DescriptorType = DescriptorType.UniformBuffer,
+                    DescriptorCount = 1,
+                    PBufferInfo = &_bufferInfo
+                };
+                _vulkan.UpdateDescriptorSets(_logicalDevice, 1, _descriptorWrite, 0, null);
+            }
         }
     }
 }
