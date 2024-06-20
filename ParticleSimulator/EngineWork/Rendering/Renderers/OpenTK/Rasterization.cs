@@ -194,7 +194,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.OpenTK
 
             foreach (Entity entity in _renderQueue)
             {
-                entity.GetComponent<MeshComponent>().Draw(_entityShader);
+                entity.GetComponent<MeshComponent_OpenTK>().Draw(_entityShader);
             }
 
             //Light source rendering
@@ -219,9 +219,9 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.OpenTK
             GL.DeleteTextures(1, ref Texture);
             foreach (Entity entity in _renderQueue)
             {
-                entity.GetComponent<MeshComponent>().vao.Delete();
-                entity.GetComponent<MeshComponent>().vbo.Delete();
-                entity.GetComponent<MeshComponent>().ebo.Delete();
+                entity.GetComponent<MeshComponent_OpenTK>().vao.Delete();
+                entity.GetComponent<MeshComponent_OpenTK>().vbo.Delete();
+                entity.GetComponent<MeshComponent_OpenTK>().ebo.Delete();
             }
             foreach (Entity entity in _lightSourcesRenderQueue)
             {

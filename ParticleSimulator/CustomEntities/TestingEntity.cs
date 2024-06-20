@@ -14,7 +14,7 @@ namespace ArctisAurora.CustomEntities
     {
         public TestingEntity() 
         {
-            this.CreateComponent<MeshComponent>();
+            this.CreateComponent<MeshComponent_OpenTK>();
         }
         public override void OnStart()
         {

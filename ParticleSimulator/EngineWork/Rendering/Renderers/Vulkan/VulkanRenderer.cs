@@ -2,20 +2,12 @@
 using Silk.NET.GLFW;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
-using Silk.NET.Vulkan.Extensions.EXT;
 using System.Runtime.InteropServices;
-using System.Text;
 using Image = Silk.NET.Vulkan.Image;
-using OpenTK.Platform.Windows;
-using Silk.NET.Windowing;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.ListView;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
-using OpenTK.Mathematics;
 using Silk.NET.Maths;
 using System.Runtime.CompilerServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
-using ArctisAurora.EngineWork.Rendering.Renderers.OpenTK;
-using OpenTK.Graphics.OpenGL;
 
 namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 {
@@ -67,13 +59,6 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         }
     }
 
-    struct SwapChainSupportDetails
-    {
-        public SurfaceCapabilitiesKHR Capabilities;
-        public SurfaceFormatKHR[] Formats;
-        public PresentModeKHR[] PresentModes;
-    }
-
     internal unsafe class VulkanRenderer
     {
         private Vertex[] _vertices = new Vertex[]
@@ -91,26 +76,18 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         internal int _height = 720;
         internal static VulkanRenderer _rendererInstance = null;
         //window & vulkan setup
-        internal Glfw _glfw = Glfw.GetApi();        //window(GLFW) api
+        internal AGlfwWindow _glWindow = new AGlfwWindow();
         private static Vk _vulkan = Vk.GetApi();    //vulkan api
 
         private static Instance _instance;          //vulkan instance
-        private KhrSurface _vkSurface;              //vulkan driver extension surface
-        private SurfaceKHR _surface;                //vulkan surface
-        private static WindowHandle* _windowHandle; //window handle to interact with vulkan
-        private IWindow _window;
-        private SwapchainKHR _swapchain;            //swapchain reference
-        KhrSwapchain _swapchainExtension;           //swapchain driver extension
-        Image[] _swapChainImages;
+        private AVulkanSwapchain _swapchain;
         ImageView[] _imageViews;
-        SurfaceFormatKHR _surfaceFormat;
         Extent2D _extent;
         RenderPass _renderPass;
         Pipeline _graphicsPipeline;
         Framebuffer[] _framebuffer;
         CommandBuffer[] _commandBuffer;
         CommandPool _commandPool;
-        bool _frameBufferResized = false;
 
         //VAO
         private Buffer _vertexBuffer;
@@ -142,19 +119,21 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         V_Shader _pipeline;
         public VulkanRenderer()
         {
-            //The Window
-            CreateGLFWInstance();
-            //Vulkan
-            CreateVulkanInstance();
-
-            CreateSurface();
+            _extent = new Extent2D() { Height = (uint)_height, Width = (uint)_width };
+            _glWindow.CreateWindow(ref _extent);                //create glfw window
+            CreateVulkanInstance();                             //create Vulkan instance
+            _glWindow.CreateSurface(ref _vulkan, ref _instance);//create window surface
             ChoosePhysicalDevice();
             CreateLogicalDevice(_gpu);
+
             int _graphicsQFamilyIndex = FindQueueFamilyIndex(_gpu, QueueFlags.GraphicsBit);
-            uint _presentSupportIndex = FindPresentSuppotIndex();
+            uint _presentSupportIndex = _glWindow.FindPresentSupportIndex(ref _qfm, ref _gpu);
             _graphicsQueue = _vulkan.GetDeviceQueue(_logicalDevice, (uint)_graphicsQFamilyIndex, 0);
             _presentQueue = _vulkan.GetDeviceQueue(_logicalDevice, _presentSupportIndex, 0);
-            CreateSwapChain();
+
+            _swapchain = new AVulkanSwapchain(ref _vulkan, ref _glWindow._driverSurface, ref _glWindow._surface, ref _extent, ref _instance,ref _logicalDevice);
+            _swapchain.CreateSwapchain(ref _gpu);
+
             CreateImageView();
             CreateRenderPass();
             CreateDescriptorSetLayout();
@@ -170,33 +149,6 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             CreateSyncObjects();
         }
 
-        private void CreateSurface()
-        {
-            if (!_vulkan!.TryGetInstanceExtension(_instance, out _vkSurface))
-            {
-                throw new NotSupportedException("KHR_surface extension not found.");
-            }
-            VkNonDispatchableHandle _surfaceHandle;
-            _glfw.CreateWindowSurface(_instance.ToHandle(), _windowHandle, null, &_surfaceHandle);
-            _surface = _surfaceHandle.ToSurface();
-        }
-
-        private void CreateGLFWInstance()
-        {
-            if (!_glfw.Init())
-                Console.WriteLine("Failed to initialize GLFW");
-
-            _glfw.WindowHint(WindowHintClientApi.ClientApi, ClientApi.NoApi);
-            _windowHandle = _glfw.CreateWindow(_width, _height, "Arctis Auora", null, null);
-            _glfw.SetWindowSizeCallback(_windowHandle, WindwoResizeCallback);
-
-            if (_windowHandle == null)
-            {
-                Console.WriteLine("Failed to create window");
-                _glfw.Terminate();
-            }
-        }
-
         private void CreateVulkanInstance()
         {
             ApplicationInfo _appInfo = new ApplicationInfo
@@ -210,7 +162,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             };
 
             uint _glfwExtensionCount;
-            byte** _glfwExtensions = _glfw.GetRequiredInstanceExtensions(out _glfwExtensionCount);
+            byte** _glfwExtensions = _glWindow._glfw.GetRequiredInstanceExtensions(out _glfwExtensionCount);
 
             // Create Vulkan instance info
             InstanceCreateInfo createInfo = new InstanceCreateInfo
@@ -280,24 +232,6 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 if ((_qfm[i].QueueFlags & _qType) == _qType)
                     return i;
 
-            return int.MaxValue;
-        }
-
-        private uint FindPresentSuppotIndex()
-        {
-            uint i = 0;
-            foreach (var _qf in _qfm)
-            {
-                if (_qf.QueueFlags.HasFlag(QueueFlags.GraphicsBit))
-                {
-                    _vkSurface.GetPhysicalDeviceSurfaceSupport(_gpu, i, _surface, out var _presentSupport);
-                    if (_presentSupport)
-                    {
-                        return i;
-                    }
-                }
-                i++;
-            }
             return int.MaxValue;
         }
 
@@ -376,65 +310,13 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             Marshal.FreeHGlobal(ppEnabledExtensions);
         }
 
-        private void CreateSwapChain()
-        {
-            SwapChainSupportDetails _support = QuerySwapChainSupport(_gpu);
-
-            _surfaceFormat = ChooseSwapSurfaceFormat(_support.Formats);
-            PresentModeKHR _presentMode = ChoosePresentMode(_support.PresentModes);
-            _extent = new Extent2D
-            {
-                Width = (uint)_width,
-                Height = (uint)_height
-            };
-            uint _imageCount = _support.Capabilities.MinImageCount + 1;
-
-            SwapchainCreateInfoKHR _swapChainInfo = new SwapchainCreateInfoKHR()
-            {
-                SType = StructureType.SwapchainCreateInfoKhr,
-                Surface = _surface,
-
-                MinImageCount = _imageCount,
-                ImageFormat = _surfaceFormat.Format,
-                ImageColorSpace = _surfaceFormat.ColorSpace,
-                ImageExtent = _extent,
-                ImageArrayLayers = 1,
-                ImageUsage = ImageUsageFlags.ColorAttachmentBit,
-                ImageSharingMode = SharingMode.Exclusive,
-                PresentMode = _presentMode,
-                Clipped = true,
-                OldSwapchain = default,
-                CompositeAlpha = CompositeAlphaFlagsKHR.OpaqueBitKhr,
-                PreTransform = _support.Capabilities.CurrentTransform
-            };
-
-            if (!_vulkan!.TryGetDeviceExtension(_instance, _logicalDevice, out _swapchainExtension))
-            {
-                throw new NotSupportedException("VK_KHR_swapchain extension not found."); ;
-            }
-
-            Result r = _swapchainExtension!.CreateSwapchain(_logicalDevice, _swapChainInfo, null, out _swapchain);
-            if (r != Result.Success)
-            {
-                throw new Exception("Failed to create swapchain " + r);
-            }
-            uint _swapchainImageCount = 0;
-            _swapchainExtension.GetSwapchainImages(_logicalDevice, _swapchain, &_swapchainImageCount, null);
-            _swapChainImages = new Image[_swapchainImageCount];
-            fixed (Image* _imagePtr = _swapChainImages)
-            {
-                _swapchainExtension.GetSwapchainImages(_logicalDevice, _swapchain, &_swapchainImageCount, _imagePtr);
-            }
-        }
-
         private void RecreateSwapChain()
         {
-            _glfw.GetFramebufferSize(_windowHandle, out _width, out _height);
-            _glfw.PollEvents();
+            _glWindow.UpdateWindowSize(ref _extent);
             _vulkan.DeviceWaitIdle(_logicalDevice);
             CleanUpSwapChain();
 
-            CreateSwapChain();
+            _swapchain.CreateSwapchain(ref _gpu);
             CreateImageView();
             CreateRenderPass();
             CreateGraphicsPipeline();
@@ -444,77 +326,18 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             CreateDescriptorSets();
             CreateCommandBuffers();
 
-            _imagesInFlight = new Fence[_swapChainImages.Length];
-        }
-
-        private SwapChainSupportDetails QuerySwapChainSupport(PhysicalDevice _physicalDevice)
-        {
-            var _details = new SwapChainSupportDetails();
-
-            _vkSurface!.GetPhysicalDeviceSurfaceCapabilities(_physicalDevice, _surface, out _details.Capabilities);
-
-            //surface formats
-            uint _formatCount = 0;
-            _vkSurface.GetPhysicalDeviceSurfaceFormats(_physicalDevice, _surface, ref _formatCount, null);
-            if (_formatCount != 0)
-            {
-                _details.Formats = new SurfaceFormatKHR[_formatCount];
-                fixed (SurfaceFormatKHR* _fPtr = _details.Formats)
-                {
-                    _vkSurface.GetPhysicalDeviceSurfaceFormats(_physicalDevice, _surface, ref _formatCount, _fPtr);
-                }
-            }
-            else _details.Formats = Array.Empty<SurfaceFormatKHR>();
-
-            //present modes
-            uint _presentModeCount = 0;
-            _vkSurface.GetPhysicalDeviceSurfacePresentModes(_physicalDevice, _surface, ref _presentModeCount, null);
-            if (_presentModeCount != 0)
-            {
-                _details.PresentModes = new PresentModeKHR[_presentModeCount];
-                fixed (PresentModeKHR* _formatsPtr = _details.PresentModes)
-                {
-                    _vkSurface.GetPhysicalDeviceSurfacePresentModes(_physicalDevice, _surface, ref _presentModeCount, _formatsPtr);
-                }
-            }
-            else _details.PresentModes = Array.Empty<PresentModeKHR>();
-
-            return _details;
-        }
-
-        private SurfaceFormatKHR ChooseSwapSurfaceFormat(IReadOnlyList<SurfaceFormatKHR> availableFormats)
-        {
-            foreach (var availableFormat in availableFormats)
-            {
-                if (availableFormat.Format == Format.B8G8R8A8Srgb && availableFormat.ColorSpace == ColorSpaceKHR.SpaceSrgbNonlinearKhr)
-                {
-                    return availableFormat;
-                }
-            }
-            return availableFormats[0];
-        }
-
-        private PresentModeKHR ChoosePresentMode(IReadOnlyList<PresentModeKHR> availablePresentModes)
-        {
-            foreach (var availablePresentMode in availablePresentModes)
-            {
-                if (availablePresentMode == PresentModeKHR.MailboxKhr)
-                {
-                    return availablePresentMode;
-                }
-            }
-            return PresentModeKHR.FifoKhr;
+            _imagesInFlight = new Fence[_swapchain._swapchainImages.Length];
         }
 
         private void CreateImageView()
         {
-            _imageViews = new ImageView[_swapChainImages.Length];
-            for (int i = 0; i < _swapChainImages.Length; i++)
+            _imageViews = new ImageView[_swapchain._swapchainImages.Length];
+            for (int i = 0; i < _swapchain._swapchainImages.Length; i++)
             {
                 ImageViewCreateInfo _createInfo = new ImageViewCreateInfo
                 {
-                    Image = _swapChainImages[i],
-                    Format = _surfaceFormat.Format,
+                    Image = _swapchain._swapchainImages[i],
+                    Format = _swapchain._surfaceFormat.Format,
                     ViewType = ImageViewType.Type2D
                 };
                 _createInfo.Components.R = ComponentSwizzle.Identity;
@@ -539,7 +362,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         {
             AttachmentDescription _colorAttachment = new AttachmentDescription()
             {
-                Format = _surfaceFormat.Format,
+                Format = _swapchain._surfaceFormat.Format,
                 Samples = SampleCountFlags.Count1Bit,
                 LoadOp = AttachmentLoadOp.Clear,
                 StoreOp = AttachmentStoreOp.Store,
@@ -683,7 +506,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 _renderPassInfo.ClearValueCount = 1;
                 _renderPassInfo.PClearValues = &_clearColor;
 
-                //render code
+                //render command code
                 _vulkan.CmdBeginRenderPass(_commandBuffer[i], &_renderPassInfo, SubpassContents.Inline);
                 _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.Graphics, _graphicsPipeline);
 
@@ -713,7 +536,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             _imageAvailableSemaphores = new Silk.NET.Vulkan.Semaphore[MAX_FRAMES_IN_FLIGHT];
             _renderFinishedSemaphores = new Silk.NET.Vulkan.Semaphore[MAX_FRAMES_IN_FLIGHT];
             _fencesInFlight = new Fence[MAX_FRAMES_IN_FLIGHT];
-            _imagesInFlight = new Fence[_swapChainImages.Length];
+            _imagesInFlight = new Fence[_swapchain._swapchainImages.Length];
 
             SemaphoreCreateInfo _semaphoreCreateInfo = new SemaphoreCreateInfo()
             {
@@ -741,7 +564,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         {
             _vulkan.WaitForFences(_logicalDevice, 1, _fencesInFlight[_currentFrame], true, ulong.MaxValue);
             uint _imageIndex = 0;
-            Result r = _swapchainExtension.AcquireNextImage(_logicalDevice, _swapchain, ulong.MaxValue, _imageAvailableSemaphores[_currentFrame], default, ref _imageIndex);
+            Result r = _swapchain._driverSwapchain.AcquireNextImage(_logicalDevice, _swapchain._swapchainKHR, ulong.MaxValue, _imageAvailableSemaphores[_currentFrame], default, ref _imageIndex);
 
             if (r == Result.ErrorOutOfDateKhr)
             {
@@ -803,7 +626,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 throw new Exception("Failed to send command buffer to the GPU");
             }
 
-            var _swapChains = stackalloc[] { _swapchain };
+            var _swapChains = stackalloc[] { _swapchain._swapchainKHR };
             PresentInfoKHR _presentInfo = new PresentInfoKHR()
             {
                 SType = StructureType.PresentInfoKhr,
@@ -813,10 +636,10 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 PSwapchains = _swapChains,
                 PImageIndices = &_imageIndex
             };
-            r = _swapchainExtension.QueuePresent(_presentQueue, _presentInfo);
-            if (r == Result.ErrorOutOfDateKhr || r == Result.SuboptimalKhr || _frameBufferResized)
+            r = _swapchain._driverSwapchain.QueuePresent(_presentQueue, _presentInfo);
+            if (r == Result.ErrorOutOfDateKhr || r == Result.SuboptimalKhr || _glWindow._frameBufferResized)
             {
-                _frameBufferResized = false;
+                _glWindow._frameBufferResized = false;
                 RecreateSwapChain();
             }
             else if (r != Result.Success)
@@ -846,12 +669,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             {
                 _vulkan.DestroyImageView(_logicalDevice, iv, null);
             }
-            _swapchainExtension.DestroySwapchain(_logicalDevice, _swapchain, null);
-        }
-
-        private void WindwoResizeCallback(WindowHandle* window, int width, int height)
-        {
-            _frameBufferResized = true;
+            _swapchain.DestroySwapchain();
         }
 
         private void CreateVertexBuffer()
@@ -1007,10 +825,10 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         private void CreateUniformBuffers()
         {
             ulong _bufferSize = (ulong)Unsafe.SizeOf<UBO>();
-            _uniformBuffers = new Buffer[_swapChainImages.Length];
-            _uniformBuffersMemory = new DeviceMemory[_swapChainImages.Length];
+            _uniformBuffers = new Buffer[_swapchain._swapchainImages.Length];
+            _uniformBuffersMemory = new DeviceMemory[_swapchain._swapchainImages.Length];
 
-            for(int i=0;i<_swapChainImages.Length;i++)
+            for(int i=0;i< _swapchain._swapchainImages.Length;i++)
             {
                 CreateBuffer(_bufferSize, BufferUsageFlags.UniformBufferBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _uniformBuffers[i], ref _uniformBuffersMemory[i]);
             }
@@ -1018,7 +836,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 
         private void UpdateUniformBuffer(uint _currentImage)
         {
-            float time = (float)_glfw.GetTime();
+            float time = (float)_glWindow._glfw.GetTime();
 
             UBO _ubo = new UBO()
             {
@@ -1039,7 +857,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             DescriptorPoolSize _poolSize = new DescriptorPoolSize()
             {
                 Type = DescriptorType.UniformBuffer,
-                DescriptorCount = (uint)_swapChainImages.Length
+                DescriptorCount = (uint)_swapchain._swapchainImages.Length
             };
 
             DescriptorPoolCreateInfo _poolInfo = new DescriptorPoolCreateInfo()
@@ -1047,7 +865,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 SType = StructureType.DescriptorPoolCreateInfo,
                 PoolSizeCount = 1,
                 PPoolSizes = &_poolSize,
-                MaxSets = (uint)_swapChainImages.Length
+                MaxSets = (uint)_swapchain._swapchainImages.Length
             };
 
             fixed(DescriptorPool* _descPoolPtr= &_descriptorPool)
@@ -1061,7 +879,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 
         private void CreateDescriptorSets()
         {
-            DescriptorSetLayout[] _layouts = new DescriptorSetLayout[_swapChainImages.Length];
+            DescriptorSetLayout[] _layouts = new DescriptorSetLayout[_swapchain._swapchainImages.Length];
             Array.Fill(_layouts, _descriptorSetLayout);
 
             fixed(DescriptorSetLayout* _layoutsPtr= _layouts)
@@ -1070,11 +888,11 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 {
                     SType = StructureType.DescriptorSetAllocateInfo,
                     DescriptorPool = _descriptorPool,
-                    DescriptorSetCount = (uint)_swapChainImages.Length,
+                    DescriptorSetCount = (uint)_swapchain._swapchainImages.Length,
                     PSetLayouts = _layoutsPtr
                 };
 
-                _descriptorSets = new DescriptorSet[_swapChainImages.Length];
+                _descriptorSets = new DescriptorSet[_swapchain._swapchainImages.Length];
                 fixed(DescriptorSet* _descriptorSetsPtr= _descriptorSets)
                 {
                     if (_vulkan.AllocateDescriptorSets(_logicalDevice, _allocateInfo, _descriptorSetsPtr) != Result.Success)
@@ -1083,7 +901,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                     }
                 }
             }
-            for (int i = 0; i < _swapChainImages.Length;i++)
+            for (int i = 0; i < _swapchain._swapchainImages.Length;i++)
             {
                 DescriptorBufferInfo _bufferInfo = new DescriptorBufferInfo()
                 {

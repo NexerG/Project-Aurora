@@ -9,7 +9,7 @@ using ArctisAurora.EngineWork.Rendering.Renderers.OpenTK;
 
 namespace ArctisAurora.EngineWork.ECS.RenderingComponents
 {
-    internal class MeshComponent : EntityComponent
+    internal class MeshComponent_OpenTK : EntityComponent
     {
         //variable
         bool render = true;
@@ -27,7 +27,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
         internal List<Matrix4> instanceMatrix = new List<Matrix4>();
         entityShaderType type = entityShaderType.entity;
 
-        public MeshComponent()
+        public MeshComponent_OpenTK()
         {
             instanceMatrix.Add(Matrix4.Identity);
             model = new Model.Mesh();

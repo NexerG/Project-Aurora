@@ -55,7 +55,7 @@ namespace ArctisAurora.CustomEntityComponents
 
                 _instanceMatrix.Add(transformation);
             }
-            parent.GetComponent<MeshComponent>().MakeInstanced(_instanceMatrix.Count, ref _instanceMatrix);
+            parent.GetComponent<MeshComponent_OpenTK>().MakeInstanced(_instanceMatrix.Count, ref _instanceMatrix);
         }
         public void UpdatePositions3D(List<Particle3D> ps)
         {
