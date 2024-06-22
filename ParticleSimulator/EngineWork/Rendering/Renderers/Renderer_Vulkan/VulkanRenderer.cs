@@ -49,6 +49,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         private Queue _presentQueue;                        //fuck knows what this is (ill ask chatgpt later)
         //-------------------------------------
         private AVulkanMeshComponent _meshComp;             //will be replaced later with a list of objects to render
+        private AVulkanCamera _camera = new AVulkanCamera();//camera
 
         public VulkanRenderer()
         {
@@ -355,7 +356,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 //for() loop
                 Buffer[] _vertBuffers = new Buffer[] { _meshComp._bufferHandler._vertexBuffer };
                 var _offset = new ulong[] { 0 };
-                _meshComp.Draw(_offset, i, ref _commandBuffer[i]);
+                _meshComp.EnqueueDrawCommands(_offset, i, ref _commandBuffer[i]);
 
                 //end of for loop
                 _vulkan.CmdEndRenderPass(_commandBuffer[i]);
@@ -434,7 +435,10 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 throw new Exception("Failed to acquire swap chain image");
             }
 
-            _meshComp._bufferHandler.UpdateUniformBuffer(_imageIndex, _extent);
+            _camera.UpdateCameraMatrix(_extent);
+            _meshComp.UpdateMatrices();
+            _meshComp._bufferHandler.UpdateUniformBuffer(ref _meshComp, _camera, _imageIndex, _extent);
+
             if (_imagesInFlight[_imageIndex].Handle != default)
             {
                 _vulkan.WaitForFences(_logicalDevice, 1, _imagesInFlight[_imageIndex], true, ulong.MaxValue);

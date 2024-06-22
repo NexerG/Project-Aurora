@@ -1,4 +1,5 @@
-﻿using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
+﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
@@ -71,15 +72,13 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             }
         }
 
-        internal void UpdateUniformBuffer(uint _currentImage, Extent2D _extent)
+        internal void UpdateUniformBuffer(ref AVulkanMeshComponent _sender, AVulkanCamera _camera, uint _currentImage, Extent2D _extent)
         {
-            float time = (float)VulkanRenderer._glWindow._glfw.GetTime();
-
             UBO _ubo = new UBO()
             {
-                _model = Matrix4X4<float>.Identity * Matrix4X4.CreateFromAxisAngle<float>(new Vector3D<float>(1, 0, 0), time * Scalar.DegreesToRadians(90.0f)),
-                _view = Matrix4X4.CreateLookAt(new Vector3D<float>(2, 2, 2), new Vector3D<float>(0, 0, 0), new Vector3D<float>(0, 0, 1)),
-                _projection = Matrix4X4.CreatePerspectiveFieldOfView(Scalar.DegreesToRadians(45.0f), _extent.Width / _extent.Height, 0.1f, 10f)
+                _model = _sender._instanceMatrices[0],
+                _view = _camera._view,
+                _projection = _camera._projection
             };
             _ubo._projection.M22 *= -1;
 

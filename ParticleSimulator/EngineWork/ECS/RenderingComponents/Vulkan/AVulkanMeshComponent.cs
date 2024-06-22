@@ -1,5 +1,7 @@
-﻿using ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan;
+﻿using ArctisAurora.EngineWork.ComponentBehaviour;
+using ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan;
 using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
+using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
@@ -11,16 +13,12 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         bool _render = true;
         internal AVulkanMesh _mesh = new AVulkanMesh();
 
-        //Vertex objects & buffers
-        //internal VVAO _vao;
-        //internal VVBO _vbo;
-        //internal VEBO _ebo;
+        //buffer handler and descriptor set
         internal AVulkanBufferHandler _bufferHandler;
         internal DescriptorSet[] _descriptorSets;
 
         int _instances = 1;
-
-        //internal List<Matrix4x4> _instanceMatrix = new List<Matrix4x4>();
+        internal List<Matrix4X4<float>> _instanceMatrices = new List<Matrix4X4<float>>();
 
         internal AVulkanMeshComponent()
         {
@@ -29,7 +27,27 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 _bufferHandler = new AVulkanBufferHandler();
                 _bufferHandler.CreateVertexBuffer(ref _mesh._vertices);
                 _bufferHandler.CreateIndexBuffer(ref _mesh._indices);
+                SingletonMatrix();
             }
+        }
+
+        internal void MakeInstanced(int _instanceCount, ref List<Matrix4X4<float>> _matrices)
+        {
+            _instances = _instanceCount;
+            _instanceMatrices = _matrices;
+        }
+
+        internal void SingletonMatrix()
+        {
+            Vector3D<float> _pos = new Vector3D<float>(0, 0, 0);
+            Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0,0,0);
+
+            Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
+            //_transform *= Matrix4X4.CreateScale(new Vector3D<float>(1,1,1));
+            //_transform *= Matrix4X4.CreateFromQuaternion(q);
+            //_transform *= Matrix4X4.CreateTranslation(_pos);
+            
+            _instanceMatrices.Add(_transform);
         }
 
         internal void CreateDescriptorSet()
@@ -78,17 +96,34 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             }
         }
 
-        internal void Draw(ulong[] _offset, int _loopIndex, ref CommandBuffer _commandBuffer)
+        internal void UpdateMatrices()
         {
-            Buffer[] _vertBuffer = new Buffer[] { _bufferHandler._vertexBuffer };
-            fixed (ulong* _offsetsPtr = _offset)
-            fixed (Buffer* _vertBuffersPtr = _vertBuffer)
+            float time = (float)VulkanRenderer._glWindow._glfw.GetTime();
+
+            Vector3D<float> _pos = new Vector3D<float>(0, 0, 0);
+
+            Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
+            _transform *= Matrix4X4.CreateScale(new Vector3D<float>(1, 1, 1));
+            _transform *= Matrix4X4.CreateFromAxisAngle(new Vector3D<float>(1,0,0), time * Scalar.DegreesToRadians(90.0f));
+            _transform *= Matrix4X4.CreateTranslation(_pos);
+
+            _instanceMatrices[0] = _transform;
+        }
+
+        internal void EnqueueDrawCommands(ulong[] _offset, int _loopIndex, ref CommandBuffer _commandBuffer)
+        {
+            if (_render)
             {
-                VulkanRenderer._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, _vertBuffersPtr, _offsetsPtr);
+                Buffer[] _vertBuffer = new Buffer[] { _bufferHandler._vertexBuffer };
+                fixed (ulong* _offsetsPtr = _offset)
+                fixed (Buffer* _vertBuffersPtr = _vertBuffer)
+                {
+                    VulkanRenderer._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, _vertBuffersPtr, _offsetsPtr);
+                }
+                VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, _bufferHandler._indexBuffer, 0, IndexType.Uint16);
+                VulkanRenderer._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, VulkanRenderer._pipeline._pipelineLayout, 0, 1, _descriptorSets[_loopIndex], 0, null);
+                VulkanRenderer._vulkan.CmdDrawIndexed(_commandBuffer, (uint)_mesh._indices.Length, (uint)_instances, 0, 0, 0);
             }
-            VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, _bufferHandler._indexBuffer, 0, IndexType.Uint16);
-            VulkanRenderer._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, VulkanRenderer._pipeline._pipelineLayout, 0, 1, _descriptorSets[_loopIndex], 0, null);
-            VulkanRenderer._vulkan.CmdDrawIndexed(_commandBuffer, (uint)_mesh._indices.Length, 1, 0, 0, 0);
         }
     }
 }
