@@ -2,6 +2,7 @@
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 using Image = Silk.NET.Vulkan.Image;
+using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 
 namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 {
@@ -14,34 +15,27 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 
     internal unsafe class AVulkanSwapchain
     {
-        internal Vk _vulkan;
-
         //swapchain variables
         internal SwapchainKHR _swapchainKHR;        //the virtualized swapchain
         internal KhrSwapchain _driverSwapchain;     //the driver swapchain
         internal Image[] _swapchainImages;          //swapchain images for rendering
+        internal ImageView[] _imageViews;           //image views for rendering
         internal SurfaceFormatKHR _surfaceFormat;   //window format
+        internal RenderPass _renderPass;
 
         //external references
         internal KhrSurface _driverSurface;
         internal SurfaceKHR _surface;
-        internal Extent2D _extent;
-        internal Device _logicalDevice;
-        internal Instance _instance;
 
-        internal AVulkanSwapchain(ref Vk _vk, ref KhrSurface _ks, ref SurfaceKHR _sk, ref Extent2D _ex, ref Instance _i, ref Device _ld)
+        internal AVulkanSwapchain(ref KhrSurface _ks, ref SurfaceKHR _sk)
         {
-            _vulkan = _vk;
             _driverSurface = _ks;
             _surface = _sk;
-            _extent = _ex;
-            _instance = _i;
-            _logicalDevice = _ld;
         }
 
-        internal void CreateSwapchain(ref PhysicalDevice _physicalDevice)
+        internal void CreateSwapchain(ref Extent2D _extent)
         {
-            SwapChainSupportDetails _support = GetSupportDetails(_physicalDevice);
+            SwapChainSupportDetails _support = GetSupportDetails(VulkanRenderer._gpu);
             _surfaceFormat = GetSwapchainSurfaceFormat(_support.Formats);
             PresentModeKHR _presentMode = GetPresentMode(_support.PresentModes);
 
@@ -65,28 +59,121 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 PreTransform = _support.Capabilities.CurrentTransform
             };
 
-            if (!_vulkan.TryGetDeviceExtension(_instance, _logicalDevice, out _driverSwapchain))
+            if (!VulkanRenderer._vulkan.TryGetDeviceExtension(VulkanRenderer._instance, VulkanRenderer._logicalDevice, out _driverSwapchain))
             {
                 throw new Exception("VK_KHR_swapchain extension not found on the device");
             }
 
-            Result r = _driverSwapchain!.CreateSwapchain(_logicalDevice, _swapchainCreateInfo, null, out _swapchainKHR);
+            Result r = _driverSwapchain!.CreateSwapchain(VulkanRenderer._logicalDevice, _swapchainCreateInfo, null, out _swapchainKHR);
             if (r != Result.Success)
             {
                 throw new Exception("Failed to create swapchain " + r);
             }
             uint _swapchainImageCount = 0;
-            _driverSwapchain.GetSwapchainImages(_logicalDevice, _swapchainKHR, &_swapchainImageCount, null);
+            _driverSwapchain.GetSwapchainImages(VulkanRenderer._logicalDevice, _swapchainKHR, &_swapchainImageCount, null);
             _swapchainImages = new Image[_swapchainImageCount];
             fixed (Image* _imagePtr = _swapchainImages)
             {
-                _driverSwapchain.GetSwapchainImages(_logicalDevice, _swapchainKHR, &_swapchainImageCount, _imagePtr);
+                _driverSwapchain.GetSwapchainImages(VulkanRenderer._logicalDevice, _swapchainKHR, &_swapchainImageCount, _imagePtr);
+            }
+        }
+
+        internal void CreateImageView()
+        {
+            _imageViews = new ImageView[_swapchainImages.Length];
+            for (int i = 0; i < _swapchainImages.Length; i++)
+            {
+                ImageViewCreateInfo _createInfo = new ImageViewCreateInfo
+                {
+                    Image = _swapchainImages[i],
+                    Format = _surfaceFormat.Format,
+                    ViewType = ImageViewType.Type2D
+                };
+
+                _createInfo.Components.R = ComponentSwizzle.Identity;
+                _createInfo.Components.G = ComponentSwizzle.Identity;
+                _createInfo.Components.B = ComponentSwizzle.Identity;
+                _createInfo.Components.A = ComponentSwizzle.Identity;
+
+                _createInfo.SubresourceRange.AspectMask = ImageAspectFlags.ColorBit;
+                _createInfo.SubresourceRange.BaseMipLevel = 0;
+                _createInfo.SubresourceRange.LevelCount = 1;
+                _createInfo.SubresourceRange.BaseArrayLayer = 0;
+                _createInfo.SubresourceRange.LayerCount = 1;
+
+                if (VulkanRenderer._vulkan!.CreateImageView(VulkanRenderer._logicalDevice, _createInfo, null, out _imageViews[i]) != Result.Success)
+                {
+                    throw new Exception("failed to create image views!");
+                }
+            }
+        }
+
+        internal void CreateRenderPass()
+        {
+            AttachmentDescription _colorAttachment = new AttachmentDescription()
+            {
+                Format = _surfaceFormat.Format,
+                Samples = SampleCountFlags.Count1Bit,
+                LoadOp = AttachmentLoadOp.Clear,
+                StoreOp = AttachmentStoreOp.Store,
+                StencilLoadOp = AttachmentLoadOp.DontCare,
+                InitialLayout = ImageLayout.Undefined,
+                FinalLayout = ImageLayout.PresentSrcKhr,
+            };
+
+            AttachmentReference _colorAttachmentRef = new AttachmentReference()
+            {
+                Attachment = 0,
+                Layout = ImageLayout.ColorAttachmentOptimal,
+            };
+
+            SubpassDescription _subpass = new SubpassDescription()
+            {
+                PipelineBindPoint = PipelineBindPoint.Graphics,
+                ColorAttachmentCount = 1,
+                PColorAttachments = &_colorAttachmentRef,
+            };
+
+            SubpassDependency _subDepend = new SubpassDependency()
+            {
+                SrcSubpass = Vk.SubpassExternal,
+                DstSubpass = 0,
+                SrcStageMask = PipelineStageFlags.ColorAttachmentOutputBit,
+                SrcAccessMask = 0,
+                DstStageMask = PipelineStageFlags.ColorAttachmentOutputBit,
+                DstAccessMask = AccessFlags.ColorAttachmentWriteBit
+            };
+
+            RenderPassCreateInfo _renderPassInfo = new RenderPassCreateInfo()
+            {
+                SType = StructureType.RenderPassCreateInfo,
+                AttachmentCount = 1,
+                PAttachments = &_colorAttachment,
+                SubpassCount = 1,
+                PSubpasses = &_subpass,
+                PDependencies = &_subDepend
+            };
+
+            if (VulkanRenderer._vulkan.CreateRenderPass(VulkanRenderer._logicalDevice, _renderPassInfo, null, out _renderPass) != Result.Success)
+            {
+                throw new Exception("failed to create render pass!");
             }
         }
 
         internal void DestroySwapchain()
         {
-            _driverSwapchain.DestroySwapchain(_logicalDevice, _swapchainKHR, null);
+            foreach (var iv in _imageViews)
+            {
+                VulkanRenderer._vulkan.DestroyImageView(VulkanRenderer._logicalDevice, iv, null);
+            }
+            _driverSwapchain.DestroySwapchain(VulkanRenderer._logicalDevice, _swapchainKHR, null);
+        }
+
+        internal void DoSwapchainMethodSequence(ref Extent2D _extent)
+        {
+            CreateSwapchain(ref _extent);
+            CreateImageView();
+            CreateRenderPass();
         }
 
         private PresentModeKHR GetPresentMode(IReadOnlyList<PresentModeKHR> _presentModes)

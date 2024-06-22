@@ -6,8 +6,9 @@ using static ArctisAurora.EngineWork.Rendering.Renderers.OpenTK.ShaderClass;
 using Assimp;
 using PrimitiveType = OpenTK.Graphics.OpenGL4.PrimitiveType;
 using ArctisAurora.EngineWork.Rendering.Renderers.OpenTK;
+using Quaternion = OpenTK.Mathematics.Quaternion;
 
-namespace ArctisAurora.EngineWork.ECS.RenderingComponents
+namespace ArctisAurora.EngineWork.ECS.RenderingComponents.OpenTK
 {
     internal class MeshComponent_OpenTK : EntityComponent
     {
@@ -102,7 +103,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
         internal void SingletonMatrix()
         {
             Vector3 pos = new Vector3(parent.transform.position.X, parent.transform.position.Y, parent.transform.position.Z);
-            OpenTK.Mathematics.Quaternion q = OpenTK.Mathematics.Quaternion.FromEulerAngles(parent.transform.rotation);
+            Quaternion q = Quaternion.FromEulerAngles(parent.transform.rotation);
 
             Matrix4 transformation = Matrix4.Identity;
             transformation *= Matrix4.CreateScale(parent.transform.scale);
@@ -116,7 +117,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
 
         public void Draw(ShaderClass shader)
         {
-            if(render)
+            if (render)
             {
                 vao.Bind();
                 PreDraw(shader);

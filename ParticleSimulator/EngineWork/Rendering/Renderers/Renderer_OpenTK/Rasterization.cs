@@ -2,7 +2,6 @@
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
-using ArctisAurora.EngineWork.ECS.RenderingComponents;
 using ArctisAurora.EngineWork.Model;
 using ArctisAurora.GameObject;
 using ArctisAurora.ParticleTypes;
@@ -13,6 +12,7 @@ using static ArctisAurora.EngineWork.Rendering.Renderers.OpenTK.ShaderClass;
 using Keys = OpenTK.Windowing.GraphicsLibraryFramework.Keys;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using System.Runtime.InteropServices;
+using ArctisAurora.EngineWork.ECS.RenderingComponents.OpenTK;
 
 namespace ArctisAurora.EngineWork.Rendering.Renderers.OpenTK
 {
@@ -205,7 +205,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.OpenTK
             }
             foreach (Entity entity in _lightSourcesRenderQueue)
             {
-                entity.GetComponent<LightSourceComponent>().Draw(_lightSourceShader, camera);
+                entity.GetComponent<LightSourceComponent_OpenTK>().Draw(_lightSourceShader, camera);
             }
             //--------------------------------------
 
@@ -225,9 +225,9 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.OpenTK
             }
             foreach (Entity entity in _lightSourcesRenderQueue)
             {
-                entity.GetComponent<LightSourceComponent>().vao.Delete();
-                entity.GetComponent<LightSourceComponent>().vbo.Delete();
-                entity.GetComponent<LightSourceComponent>().ebo.Delete();
+                entity.GetComponent<LightSourceComponent_OpenTK>().vao.Delete();
+                entity.GetComponent<LightSourceComponent_OpenTK>().vbo.Delete();
+                entity.GetComponent<LightSourceComponent_OpenTK>().ebo.Delete();
             }
         }
     }

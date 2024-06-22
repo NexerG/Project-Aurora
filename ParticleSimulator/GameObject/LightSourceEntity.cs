@@ -1,4 +1,4 @@
-﻿using ArctisAurora.EngineWork.ECS.RenderingComponents;
+﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.OpenTK;
 using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
@@ -12,7 +12,7 @@ namespace ArctisAurora.GameObject
     {
         public LightSourceEntity()
         {
-            this.CreateComponent<LightSourceComponent>();
+            this.CreateComponent<LightSourceComponent_OpenTK>();
             this.name = "Light Source Entity";
         }
         public override void OnStart()

@@ -8,8 +8,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
-using ArctisAurora.EngineWork.ECS.RenderingComponents;
 using System.Diagnostics;
+using ArctisAurora.EngineWork.ECS.RenderingComponents.OpenTK;
 
 namespace ArctisAurora.CustomEntityComponents
 {

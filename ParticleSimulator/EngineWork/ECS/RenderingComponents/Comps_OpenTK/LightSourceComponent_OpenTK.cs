@@ -4,9 +4,9 @@ using ArctisAurora.EngineWork.Rendering.Renderers.OpenTK;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
 
-namespace ArctisAurora.EngineWork.ECS.RenderingComponents
+namespace ArctisAurora.EngineWork.ECS.RenderingComponents.OpenTK
 {
-    internal class LightSourceComponent : EntityComponent
+    internal class LightSourceComponent_OpenTK : EntityComponent
     {
         //the model
         internal Mesh _model;
@@ -22,10 +22,10 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
         //instancing
         internal Matrix4 instanceMatrix = Matrix4.Identity;
 
-        public LightSourceComponent()
+        public LightSourceComponent_OpenTK()
         {
             _model = new Mesh();
-            if(_model!=null)
+            if (_model != null)
             {
                 vao = new VAO();
                 vao.Bind();
@@ -54,7 +54,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
         internal void SingletonMatrix()
         {
             Vector3 pos = new Vector3(parent.transform.position.X, parent.transform.position.Y, parent.transform.position.Z);
-            OpenTK.Mathematics.Quaternion q = OpenTK.Mathematics.Quaternion.FromEulerAngles(parent.transform.rotation);
+            Quaternion q = Quaternion.FromEulerAngles(parent.transform.rotation);
 
             Matrix4 transformation = Matrix4.Identity;
             transformation *= Matrix4.CreateScale(parent.transform.scale);
@@ -71,7 +71,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents
             GL.Uniform4(GL.GetUniformLocation(shader.program, "lightColor"), _lightColor.X, _lightColor.Y, _lightColor.Z, _lightColor.W);
             GL.UniformMatrix4(GL.GetUniformLocation(shader.program, "model"), false, ref instanceMatrix);
             GL.DrawElements(PrimitiveType.Triangles, _model.indices.Length * sizeof(uint) / sizeof(int), DrawElementsType.UnsignedInt, 0);
-            
+
             vao.Unbind();
         }
 

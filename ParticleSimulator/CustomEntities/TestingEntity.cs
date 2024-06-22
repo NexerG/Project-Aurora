@@ -1,5 +1,5 @@
 ﻿using ArctisAurora.CustomEntityComponents;
-using ArctisAurora.EngineWork.ECS.RenderingComponents;
+using ArctisAurora.EngineWork.ECS.RenderingComponents.OpenTK;
 using ArctisAurora.GameObject;
 using OpenTK.Mathematics;
 using System;

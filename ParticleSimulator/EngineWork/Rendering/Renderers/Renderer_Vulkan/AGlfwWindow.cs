@@ -1,13 +1,7 @@
-﻿using Silk.NET.Core.Contexts;
-using Silk.NET.Core.Native;
+﻿using Silk.NET.Core.Native;
 using Silk.NET.GLFW;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 {
@@ -36,14 +30,14 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             }
         }
 
-        internal void CreateSurface(ref Vk _vulkan, ref Instance _instance)
+        internal void CreateSurface()
         {
-            if (!_vulkan!.TryGetInstanceExtension(_instance, out _driverSurface))
+            if (!VulkanRenderer._vulkan.TryGetInstanceExtension(VulkanRenderer._instance, out _driverSurface))
             {
                 throw new NotSupportedException("KHR_surface extension not found.");
             }
             VkNonDispatchableHandle _surfaceHandle;
-            _glfw.CreateWindowSurface(_instance.ToHandle(), _windowHandle, null, &_surfaceHandle);
+            _glfw.CreateWindowSurface(VulkanRenderer._instance.ToHandle(), _windowHandle, null, &_surfaceHandle);
             _surface = _surfaceHandle.ToSurface();
         }
 
@@ -55,14 +49,14 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             _extent.Height = (uint)_height;
         }
 
-        internal uint FindPresentSupportIndex(ref QueueFamilyProperties[] _qfm, ref PhysicalDevice _gpu)
+        internal uint FindPresentSupportIndex(ref QueueFamilyProperties[] _qfm)
         {
             uint i = 0;
             foreach (var _qf in _qfm)
             {
                 if (_qf.QueueFlags.HasFlag(QueueFlags.GraphicsBit))
                 {
-                    _driverSurface.GetPhysicalDeviceSurfaceSupport(_gpu, i, _surface, out var _presentSupport);
+                    _driverSurface.GetPhysicalDeviceSurfaceSupport(VulkanRenderer._gpu, i, _surface, out var _presentSupport);
                     if (_presentSupport)
                     {
                         return i;

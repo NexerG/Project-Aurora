@@ -1,8 +1,8 @@
 ﻿using OpenTK.Mathematics;
 using ArctisAurora.CustomEntityComponents;
 using ArctisAurora.EngineWork;
-using ArctisAurora.EngineWork.ECS.RenderingComponents;
 using ArctisAurora.GameObject;
+using ArctisAurora.EngineWork.ECS.RenderingComponents.OpenTK;
 
 namespace ArctisAurora.CustomEntities
 {

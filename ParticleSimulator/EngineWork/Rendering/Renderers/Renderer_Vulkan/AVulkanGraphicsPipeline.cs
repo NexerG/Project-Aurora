@@ -1,19 +1,21 @@
-﻿using Silk.NET.Core.Native;
+﻿using ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan;
+using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
 
 namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 {
-    internal unsafe class V_Shader
+    internal unsafe class AVulkanGraphicsPipeline
     {
         internal PipelineLayout _pipelineLayout;
-        internal List<ShaderCreateInfoEXT> _shaderInfo = new List<ShaderCreateInfoEXT>();
-        internal void CreateGraphicsPipeline(string vertex, string fragment, Device _logicalDevice, Vk _vulkan, Extent2D _extent2D, ref RenderPass _renderPass, ref Pipeline _graphicsPipeline, ref DescriptorSetLayout _descriptorSetLayout)
+        internal Pipeline _graphicsPipeline;
+
+        internal void CreateGraphicsPipeline(string vertex, string fragment, Extent2D _extent2D, ref DescriptorSetLayout _descriptorSetLayout)
         {
             byte[] _vertexCode = ReadFile("../../../Shaders/" + vertex);
             byte[] _fragmentCode = ReadFile("../../../Shaders/" + fragment);
 
-            ShaderModule _vertexShader = CreateShaderModule(_vertexCode, _vulkan, _logicalDevice);
-            ShaderModule _fragmentShader = CreateShaderModule(_fragmentCode, _vulkan, _logicalDevice);
+            ShaderModule _vertexShader = CreateShaderModule(_vertexCode);
+            ShaderModule _fragmentShader = CreateShaderModule(_fragmentCode);
 
             PipelineShaderStageCreateInfo _vertexShaderStageInfo = new PipelineShaderStageCreateInfo
             {
@@ -39,8 +41,8 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             VertexInputBindingDescription _bindingDesc = Vertex.GetBindingDescription();
             VertexInputAttributeDescription[] _attribDesc = Vertex.GetVertexInputAttributeDescriptions();
 
-            fixed(VertexInputAttributeDescription* _attribDescPtr= _attribDesc)
-                fixed(DescriptorSetLayout* _descriptorSetLayoutPtr = &_descriptorSetLayout)
+            fixed (VertexInputAttributeDescription* _attribDescPtr = _attribDesc)
+            fixed (DescriptorSetLayout* _descriptorSetLayoutPtr = &_descriptorSetLayout)
             {
                 PipelineVertexInputStateCreateInfo _vertexInputInfo = new PipelineVertexInputStateCreateInfo
                 {
@@ -123,7 +125,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                     PSetLayouts = _descriptorSetLayoutPtr
                 };
 
-                if (_vulkan.CreatePipelineLayout(_logicalDevice, _pipelineLayoutInfo, null, out _pipelineLayout) != Result.Success)
+                if (VulkanRenderer._vulkan.CreatePipelineLayout(VulkanRenderer._logicalDevice, _pipelineLayoutInfo, null, out _pipelineLayout) != Result.Success)
                 {
                     throw new Exception("Failed to create pipeline layout");
                 }
@@ -140,25 +142,31 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                     PMultisampleState = &_multisampling,
                     PColorBlendState = &_colorBlending,
                     Layout = _pipelineLayout,
-                    RenderPass = _renderPass,
+                    RenderPass = VulkanRenderer._swapchain._renderPass,
                     Subpass = 0,
                     BasePipelineHandle = default
                 };
 
-                Result r = _vulkan.CreateGraphicsPipelines(_logicalDevice, default, 1, _graphicsPipelineInfo, null, out _graphicsPipeline);
+                Result r = VulkanRenderer._vulkan.CreateGraphicsPipelines(VulkanRenderer._logicalDevice, default, 1, _graphicsPipelineInfo, null, out _graphicsPipeline);
                 if (r != Result.Success)
                 {
                     throw new Exception("Failed to create graphics pipeline " + r);
                 }
             }
 
-            _vulkan.DestroyShaderModule(_logicalDevice, _vertexShader, null);
-            _vulkan.DestroyShaderModule(_logicalDevice, _fragmentShader, null);
+            VulkanRenderer._vulkan.DestroyShaderModule(VulkanRenderer._logicalDevice, _vertexShader, null);
+            VulkanRenderer._vulkan.DestroyShaderModule(VulkanRenderer._logicalDevice, _fragmentShader, null);
             SilkMarshal.Free((nint)_vertexShaderStageInfo.PName);
             SilkMarshal.Free((nint)_fragmentShaderStageInfo.PName);
         }
 
-        private ShaderModule CreateShaderModule(byte[] _shaderCode, Vk _vulkan, Device _logicalDevice)
+        internal void DestroyPipeline()
+        {
+            VulkanRenderer._vulkan.DestroyPipeline(VulkanRenderer._logicalDevice, _graphicsPipeline, null);
+            VulkanRenderer._vulkan.DestroyPipelineLayout(VulkanRenderer._logicalDevice, _pipelineLayout, null);
+        }
+
+        private ShaderModule CreateShaderModule(byte[] _shaderCode)
         {
             ShaderModuleCreateInfo _createInfo = new ShaderModuleCreateInfo
             {
@@ -170,7 +178,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             fixed (byte* _shaderCodePtr = _shaderCode)
             {
                 _createInfo.PCode = (uint*)_shaderCodePtr;
-                if (_vulkan.CreateShaderModule(_logicalDevice, _createInfo, null, out _shaderModule) != Result.Success)
+                if (VulkanRenderer._vulkan.CreateShaderModule(VulkanRenderer._logicalDevice, _createInfo, null, out _shaderModule) != Result.Success)
                 {
                     throw new Exception("Failed to create shader module");
                 }

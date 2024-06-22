@@ -148,7 +148,7 @@ namespace ArctisAurora.EngineWork
                 if (SC.InvokeRequired)
                     SC.Invoke(new Action(() =>
                     {
-                        _pathTracer._glWindow._glfw.PollEvents();
+                        VulkanRenderer._glWindow._glfw.PollEvents();
                         _pathTracer.Draw();
                     }));
                 await Task.Delay(8);
