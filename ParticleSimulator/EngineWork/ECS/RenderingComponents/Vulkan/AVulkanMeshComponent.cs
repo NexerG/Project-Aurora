@@ -5,6 +5,7 @@ using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
+using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 
 namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 {
@@ -28,6 +29,8 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 _bufferHandler.CreateVertexBuffer(ref _mesh._vertices);
                 _bufferHandler.CreateIndexBuffer(ref _mesh._indices);
                 SingletonMatrix();
+                _bufferHandler.CreateTextureBuffer();
+                _bufferHandler.CreateImageView();
             }
         }
 
@@ -52,7 +55,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
         internal void CreateDescriptorSet()
         {
-            DescriptorSetLayout[] _layouts = new DescriptorSetLayout[VulkanRenderer._swapchain._swapchainImages.Length];
+            DescriptorSetLayout[] _layouts = new DescriptorSetLayout[VulkanRenderer._swapchain!._swapchainImages.Length];
             Array.Fill(_layouts, VulkanRenderer._descriptorSetLayout);
 
             fixed (DescriptorSetLayout* _layoutsPtr = _layouts)
@@ -61,7 +64,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 {
                     SType = StructureType.DescriptorSetAllocateInfo,
                     DescriptorPool = VulkanRenderer._descriptorPool,
-                    DescriptorSetCount = (uint)VulkanRenderer._swapchain._swapchainImages.Length,
+                    DescriptorSetCount = (uint)VulkanRenderer._swapchain!._swapchainImages.Length,
                     PSetLayouts = _layoutsPtr
                 };
 
@@ -82,30 +85,52 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                     Offset = 0,
                     Range = (ulong)Unsafe.SizeOf<UBO>()
                 };
-                WriteDescriptorSet _descriptorWrite = new WriteDescriptorSet()
+
+                DescriptorImageInfo _imageInfo = new DescriptorImageInfo()
                 {
-                    SType = StructureType.WriteDescriptorSet,
-                    DstSet = _descriptorSets[i],
-                    DstBinding = 0,
-                    DstArrayElement = 0,
-                    DescriptorType = DescriptorType.UniformBuffer,
-                    DescriptorCount = 1,
-                    PBufferInfo = &_bufferInfo
+                    ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
+                    ImageView = _bufferHandler._textureImageView,
+                    Sampler = VulkanRenderer._textureSampler
                 };
-                VulkanRenderer._vulkan.UpdateDescriptorSets(VulkanRenderer._logicalDevice, 1, _descriptorWrite, 0, null);
+
+                var _writeDescriptorSets = new WriteDescriptorSet[]
+                {
+                    new WriteDescriptorSet()
+                    {
+                        SType = StructureType.WriteDescriptorSet,
+                        DstSet = _descriptorSets[i],
+                        DstBinding = 0,
+                        DstArrayElement = 0,
+                        DescriptorType = DescriptorType.UniformBuffer,
+                        DescriptorCount = 1,
+                        PBufferInfo = &_bufferInfo
+                    },
+                    new WriteDescriptorSet()
+                    {
+                        SType = StructureType.WriteDescriptorSet,
+                        DstSet = _descriptorSets[i],
+                        DstBinding = 1,
+                        DstArrayElement = 0,
+                        DescriptorType = DescriptorType.CombinedImageSampler,
+                        DescriptorCount = 1,
+                        PImageInfo = &_imageInfo
+                    }
+                };
+                fixed(WriteDescriptorSet* _descPtr = _writeDescriptorSets)
+                {
+                    VulkanRenderer._vulkan!.UpdateDescriptorSets(VulkanRenderer._logicalDevice, (uint)_writeDescriptorSets.Length, _descPtr, 0, null);
+                }
             }
         }
 
         internal void UpdateMatrices()
         {
-            float time = (float)VulkanRenderer._glWindow._glfw.GetTime();
 
             Vector3D<float> _pos = new Vector3D<float>(0, 0, 0);
 
             Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-            _transform *= Matrix4X4.CreateScale(new Vector3D<float>(1, 1, 1));
-            _transform *= Matrix4X4.CreateFromAxisAngle(new Vector3D<float>(1,0,0), time * Scalar.DegreesToRadians(90.0f));
-            _transform *= Matrix4X4.CreateTranslation(_pos);
+            //_transform *= Matrix4X4.CreateScale(new Vector3D<float>(1, 1, 1));
+            //_transform *= Matrix4X4.CreateTranslation(_pos);
 
             _instanceMatrices[0] = _transform;
         }

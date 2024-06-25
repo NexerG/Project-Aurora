@@ -48,8 +48,10 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         internal static Queue _graphicsQueue;               //api queue
         private Queue _presentQueue;                        //fuck knows what this is (ill ask chatgpt later)
         //-------------------------------------
+        internal static Sampler _textureSampler;
+        //
         private AVulkanMeshComponent _meshComp;             //will be replaced later with a list of objects to render
-        private AVulkanCamera _camera = new AVulkanCamera();//camera
+        internal static AVulkanCamera _camera = new AVulkanCamera();//camera
 
         public VulkanRenderer()
         {
@@ -79,6 +81,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             CreateGraphicsPipeline();                       //graphics pipeline
             CreateFrameBuffers();                           //frame buffers
             CreateCommandPool();                            //
+            CreateImageSampler();                           //
             CreateDescriptorPool();                         //descriptor pool
 
             _meshComp = new AVulkanMeshComponent();         //create meshes only after the descriptors have been made
@@ -169,7 +172,10 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 PQueuePriorities = &_qPriority
             };
 
-            PhysicalDeviceFeatures _deviceFeatures = new PhysicalDeviceFeatures();
+            PhysicalDeviceFeatures _deviceFeatures = new PhysicalDeviceFeatures()
+            {
+                SamplerAnisotropy = true
+            };
             string[] _validationLayers = { "VK_LAYER_KHRONOS_validation" };
             byte*[] _validationLayersNames = new byte*[_validationLayers.Length];
             for (int i = 0; i < _validationLayers.Length; i++)
@@ -379,39 +385,60 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 PImmutableSamplers = null,
                 StageFlags = ShaderStageFlags.VertexBit
             };
-            DescriptorSetLayoutCreateInfo _layoutCreateInfo = new DescriptorSetLayoutCreateInfo()
+
+            DescriptorSetLayoutBinding _samplerLayoutBinding = new DescriptorSetLayoutBinding()
             {
-                SType = StructureType.DescriptorSetLayoutCreateInfo,
-                BindingCount = 1,
-                PBindings = &_uboLayoutBinding
+                Binding = 1,
+                DescriptorCount = 1,
+                DescriptorType = DescriptorType.CombinedImageSampler,
+                PImmutableSamplers = null,
+                StageFlags = ShaderStageFlags.FragmentBit
             };
+
+            var _bindings = new DescriptorSetLayoutBinding[] { _uboLayoutBinding, _samplerLayoutBinding};
+            fixed(DescriptorSetLayoutBinding* _bindingsPtr = _bindings)
             fixed (DescriptorSetLayout* _descSetLayoutPtr = &_descriptorSetLayout)
             {
+                DescriptorSetLayoutCreateInfo _layoutCreateInfo = new DescriptorSetLayoutCreateInfo()
+                {
+                    SType = StructureType.DescriptorSetLayoutCreateInfo,
+                    BindingCount = (uint)_bindings.Length,
+                    PBindings = _bindingsPtr,
+                };
                 if (_vulkan.CreateDescriptorSetLayout(_logicalDevice, _layoutCreateInfo, null, _descSetLayoutPtr) != Result.Success)
                 {
-                    throw new Exception("Failed to create UBO");
+                    throw new Exception("Failed to create descriptor set layout");
                 }
             }
         }
 
         private void CreateDescriptorPool()
         {
-            DescriptorPoolSize _poolSize = new DescriptorPoolSize()
+            var _poolSizes = new DescriptorPoolSize[]
             {
-                Type = DescriptorType.UniformBuffer,
-                DescriptorCount = (uint)_swapchain._swapchainImages.Length
+                new DescriptorPoolSize()
+                {
+                    Type = DescriptorType.UniformBuffer,
+                    DescriptorCount = (uint)_swapchain._swapchainImages.Length
+                },
+                new DescriptorPoolSize()
+                {
+                    Type = DescriptorType.CombinedImageSampler,
+                    DescriptorCount = (uint)_swapchain._swapchainImages.Length
+                }
             };
 
-            DescriptorPoolCreateInfo _poolInfo = new DescriptorPoolCreateInfo()
-            {
-                SType = StructureType.DescriptorPoolCreateInfo,
-                PoolSizeCount = 1,
-                PPoolSizes = &_poolSize,
-                MaxSets = (uint)_swapchain._swapchainImages.Length
-            };
 
+            fixed (DescriptorPoolSize* _poolSizesPtr = _poolSizes)
             fixed (DescriptorPool* _descPoolPtr = &_descriptorPool)
             {
+                DescriptorPoolCreateInfo _poolInfo = new DescriptorPoolCreateInfo()
+                {
+                    SType = StructureType.DescriptorPoolCreateInfo,
+                    PoolSizeCount = (uint)_poolSizes.Length,
+                    PPoolSizes = _poolSizesPtr,
+                    MaxSets = (uint)_swapchain._swapchainImages.Length
+                };
                 if (_vulkan.CreateDescriptorPool(_logicalDevice, _poolInfo, null, _descPoolPtr) != Result.Success)
                 {
                     throw new Exception("Failed to create descriptor pool");
@@ -419,8 +446,39 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             }
         }
 
+        private void CreateImageSampler()
+        {
+            _vulkan.GetPhysicalDeviceProperties(_gpu, out PhysicalDeviceProperties _properties);
+            SamplerCreateInfo _createInfo = new SamplerCreateInfo()
+            {
+                SType = StructureType.SamplerCreateInfo,
+                MagFilter = Filter.Linear,
+                MinFilter = Filter.Linear,
+                AddressModeU = SamplerAddressMode.Repeat,
+                AddressModeV = SamplerAddressMode.Repeat,
+                AddressModeW = SamplerAddressMode.Repeat,
+                AnisotropyEnable = true,
+                MaxAnisotropy = _properties.Limits.MaxSamplerAnisotropy,
+                BorderColor = BorderColor.IntOpaqueBlack,
+                UnnormalizedCoordinates = false,
+                CompareEnable = false,
+                CompareOp = CompareOp.Always,
+                MipmapMode = SamplerMipmapMode.Linear
+            };
+
+            fixed (Sampler* _textureSamplerPtr = &_textureSampler)
+            {
+                Result r = _vulkan.CreateSampler(_logicalDevice, _createInfo, null, _textureSamplerPtr);
+                if (r != Result.Success)
+                {
+                    throw new Exception("Failed to create a texture sampler with error: " + r);
+                }
+            }
+        }
+
         internal void Draw()
         {
+            _camera.ProcessKeyboard();
             _vulkan.WaitForFences(_logicalDevice, 1, _fencesInFlight[_currentFrame], true, ulong.MaxValue);
             uint _imageIndex = 0;
             Result r = _swapchain._driverSwapchain.AcquireNextImage(_logicalDevice, _swapchain._swapchainKHR, ulong.MaxValue, _imageAvailableSemaphores[_currentFrame], default, ref _imageIndex);
@@ -432,7 +490,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             }
             else if (r != Result.Success && r != Result.SuboptimalKhr)
             {
-                throw new Exception("Failed to acquire swap chain image");
+                throw new Exception("Failed to acquire swapchain image");
             }
 
             _camera.UpdateCameraMatrix(_extent);

@@ -13,6 +13,17 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         public PresentModeKHR[] PresentModes;
     }
 
+    struct QueueFamilyIndices
+    {
+        public uint? GraphicsFamily { get; set; }
+        public uint? PresentFamily { get; set; }
+
+        public bool IsComplete()
+        {
+            return GraphicsFamily.HasValue && PresentFamily.HasValue;
+        }
+    }
+
     internal unsafe class AVulkanSwapchain
     {
         //swapchain variables
@@ -39,6 +50,9 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             _surfaceFormat = GetSwapchainSurfaceFormat(_support.Formats);
             PresentModeKHR _presentMode = GetPresentMode(_support.PresentModes);
 
+            QueueFamilyIndices _indices = FindQueueFamilies();
+            var _queueFamilyIndices = stackalloc[] {_indices.GraphicsFamily.Value, _indices.PresentFamily.Value };
+
             uint _imageCount = _support.Capabilities.MinImageCount + 1;
             SwapchainCreateInfoKHR _swapchainCreateInfo = new SwapchainCreateInfoKHR()
             {
@@ -56,7 +70,9 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 Clipped = true,
                 OldSwapchain = default,
                 CompositeAlpha = CompositeAlphaFlagsKHR.OpaqueBitKhr,
-                PreTransform = _support.Capabilities.CurrentTransform
+                PreTransform = _support.Capabilities.CurrentTransform,
+                QueueFamilyIndexCount = 2,
+                PQueueFamilyIndices = _queueFamilyIndices
             };
 
             if (!VulkanRenderer._vulkan.TryGetDeviceExtension(VulkanRenderer._instance, VulkanRenderer._logicalDevice, out _driverSwapchain))
@@ -90,10 +106,10 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                     ViewType = ImageViewType.Type2D
                 };
 
-                _createInfo.Components.R = ComponentSwizzle.Identity;
+                /*_createInfo.Components.R = ComponentSwizzle.Identity;
                 _createInfo.Components.G = ComponentSwizzle.Identity;
                 _createInfo.Components.B = ComponentSwizzle.Identity;
-                _createInfo.Components.A = ComponentSwizzle.Identity;
+                _createInfo.Components.A = ComponentSwizzle.Identity;*/
 
                 _createInfo.SubresourceRange.AspectMask = ImageAspectFlags.ColorBit;
                 _createInfo.SubresourceRange.BaseMipLevel = 0;
@@ -151,6 +167,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 PAttachments = &_colorAttachment,
                 SubpassCount = 1,
                 PSubpasses = &_subpass,
+                DependencyCount = 1,
                 PDependencies = &_subDepend
             };
 
@@ -233,6 +250,41 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             else _details.PresentModes = Array.Empty<PresentModeKHR>();
 
             return _details;
+        }
+
+        private QueueFamilyIndices FindQueueFamilies()
+        {
+            QueueFamilyIndices _qfi = new QueueFamilyIndices();
+
+            uint _qfc = 0;
+            VulkanRenderer._vulkan.GetPhysicalDeviceQueueFamilyProperties(VulkanRenderer._gpu, ref _qfc, null);
+
+            var _qfp = new QueueFamilyProperties[_qfc];
+            fixed(QueueFamilyProperties* _qfpPtr = _qfp)
+            {
+                VulkanRenderer._vulkan.GetPhysicalDeviceQueueFamilyProperties(VulkanRenderer._gpu,ref _qfc, _qfpPtr);
+            }
+
+            uint i = 0;
+            foreach (var _qf in _qfp)
+            {
+                if (_qf.QueueFlags.HasFlag(QueueFlags.GraphicsBit))
+                {
+                    _qfi.GraphicsFamily = i;
+                }
+                _driverSurface.GetPhysicalDeviceSurfaceSupport(VulkanRenderer._gpu,i,_surface, out var _presentSupport);
+
+                if (_presentSupport)
+                {
+                    _qfi.PresentFamily = i;
+                }
+                if (_qfi.IsComplete())
+                {
+                    break;
+                }
+                i++;
+            }
+            return _qfi;
         }
     }
 }
