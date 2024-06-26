@@ -16,9 +16,10 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         //early window setting
         internal int _width = 1280;
         internal int _height = 720;
-        private Extent2D _extent;
+        internal static Extent2D _extent;
         //
         internal static VulkanRenderer _rendererInstance = null;    //Engine renderer reference
+        internal static AVulkanBufferHandler _bufferHandlerHelper = new AVulkanBufferHandler(); //just buffer helper
         //window & vulkan setup
         internal static AGlfwWindow _glWindow = new AGlfwWindow();  //GLFW window
         internal static Vk _vulkan = Vk.GetApi();                   //vulkan api
@@ -79,6 +80,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             //initiate the draw command pipeline
             CreateDescriptorSetLayout();                    //
             CreateGraphicsPipeline();                       //graphics pipeline
+            _swapchain.CreateDepthImages();                 //
             CreateFrameBuffers();                           //frame buffers
             CreateCommandPool();                            //
             CreateImageSampler();                           //
@@ -267,25 +269,27 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 
         private void CreateFrameBuffers()
         {
-            _framebuffer = new Framebuffer[_swapchain._imageViews.Length];
+            _framebuffer = new Framebuffer[_swapchain!._imageViews.Length];
             for (int i = 0; i < _swapchain._imageViews.Length; i++)
             {
-                var _attachment = _swapchain._imageViews[i];
+                var _attachment = new[] { _swapchain._imageViews[i], _swapchain._depthView };
 
-                FramebufferCreateInfo _framebufferInfo = new FramebufferCreateInfo()
+                fixed(ImageView* _imAttachmentPtr = _attachment)
                 {
-                    SType = StructureType.FramebufferCreateInfo,
-                    RenderPass = _swapchain._renderPass,
-                    AttachmentCount = 1,
-                    PAttachments = &_attachment,
-                    Width = _extent.Width,
-                    Height = _extent.Height,
-                    Layers = 1
-                };
-
-                if (_vulkan.CreateFramebuffer(_logicalDevice, _framebufferInfo, null, out _framebuffer[i]) != Result.Success)
-                {
-                    throw new Exception("Failed to create frame buffer");
+                    FramebufferCreateInfo _framebufferInfo = new FramebufferCreateInfo()
+                    {
+                        SType = StructureType.FramebufferCreateInfo,
+                        RenderPass = _swapchain._renderPass,
+                        AttachmentCount = (uint)_attachment.Length,
+                        PAttachments = _imAttachmentPtr,
+                        Width = _extent.Width,
+                        Height = _extent.Height,
+                        Layers = 1
+                    };
+                    if (_vulkan.CreateFramebuffer(_logicalDevice, _framebufferInfo, null, out _framebuffer[i]) != Result.Success)
+                    {
+                        throw new Exception("Failed to create frame buffer");
+                    }
                 }
             }
         }
@@ -347,16 +351,27 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                     }
                 };
 
-                ClearValue _clearColor = new ClearValue()
+                var _clearValues = new ClearValue[]
                 {
-                    Color = new() { Float32_0 = 0.05f, Float32_1 = 0.05f, Float32_2 = 0.05f, Float32_3 = 1f }
+                    new ClearValue()
+                    {
+                        Color = new ClearColorValue() { Float32_0 = 0.05f, Float32_1 = 0.05f, Float32_2 = 0.05f, Float32_3 = 1f },
+                    },
+                    new ClearValue()
+                    {
+                        DepthStencil = new ClearDepthStencilValue() { Depth = 1f, Stencil = 0 }
+                    },
                 };
 
-                _renderPassInfo.ClearValueCount = 1;
-                _renderPassInfo.PClearValues = &_clearColor;
+                fixed(ClearValue* _clrValuesPtr = _clearValues)
+                {
+                    _renderPassInfo.ClearValueCount = (uint)_clearValues.Length;
+                    _renderPassInfo.PClearValues = _clrValuesPtr;
+
+                    _vulkan.CmdBeginRenderPass(_commandBuffer[i], &_renderPassInfo, SubpassContents.Inline);
+                }
 
                 //render command code
-                _vulkan.CmdBeginRenderPass(_commandBuffer[i], &_renderPassInfo, SubpassContents.Inline);
                 _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.Graphics, _pipeline._graphicsPipeline);
 
                 //for() loop

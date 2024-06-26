@@ -96,7 +96,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             _image.CopyPixelDataTo(new Span<byte>(_data, (int)_imageSize));
             VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory);
 
-            CreateImage((uint)_image.Width, (uint)_image.Height, Format.R8G8B8A8Srgb, ImageTiling.Optimal, ImageUsageFlags.TransferDstBit | ImageUsageFlags.SampledBit, MemoryPropertyFlags.DeviceLocalBit);
+            CreateImage((uint)_image.Width, (uint)_image.Height, Format.R8G8B8A8Srgb, ImageTiling.Optimal, ImageUsageFlags.TransferDstBit | ImageUsageFlags.SampledBit, MemoryPropertyFlags.DeviceLocalBit, ref _textureImage, ref _textureBufferMemory);
 
             TransitionImageLayout(_textureImage, ImageLayout.Undefined, ImageLayout.TransferDstOptimal);
             CopyBufferToImage(_stagingBuffer, _textureImage, (uint)_image.Width, (uint)_image.Height);
@@ -311,7 +311,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             VulkanRenderer._vulkan.FreeCommandBuffers(VulkanRenderer._logicalDevice, VulkanRenderer._commandPool, 1, _localCommandBuffer);
         }
 
-        private void CreateImage(uint _width, uint _height, Format _format, ImageTiling _tiling, ImageUsageFlags _usage, MemoryPropertyFlags _properties)
+        internal void CreateImage(uint _width, uint _height, Format _format, ImageTiling _tiling, ImageUsageFlags _usage, MemoryPropertyFlags _properties, ref Silk.NET.Vulkan.Image _im, ref DeviceMemory _devMemory)
         {
             ImageCreateInfo _imageInfo = new()
             {
@@ -319,10 +319,10 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
                 ImageType = ImageType.Type2D,
                 Extent =
                 {
-                Width = _width,
-                Height = _height,
-                Depth = 1,
-            },
+                    Width = _width,
+                    Height = _height,
+                    Depth = 1,
+                },
                 MipLevels = 1,
                 ArrayLayers = 1,
                 Format = _format,
@@ -333,7 +333,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
                 SharingMode = SharingMode.Exclusive,
             };
 
-            fixed (Silk.NET.Vulkan.Image* imagePtr = &_textureImage)
+            fixed (Silk.NET.Vulkan.Image* imagePtr = &_im)
             {
                 if (VulkanRenderer._vulkan!.CreateImage(VulkanRenderer._logicalDevice, _imageInfo, null, imagePtr) != Result.Success)
                 {
@@ -341,7 +341,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
                 }
             }
 
-            VulkanRenderer._vulkan.GetImageMemoryRequirements(VulkanRenderer._logicalDevice, _textureImage, out MemoryRequirements _memReqs);
+            VulkanRenderer._vulkan.GetImageMemoryRequirements(VulkanRenderer._logicalDevice, _im, out MemoryRequirements _memReqs);
 
             MemoryAllocateInfo allocInfo = new()
             {
@@ -350,7 +350,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
                 MemoryTypeIndex = FindMemoryType(_memReqs.MemoryTypeBits, _properties),
             };
 
-            fixed (DeviceMemory* imageMemoryPtr = &_textureBufferMemory)
+            fixed (DeviceMemory* imageMemoryPtr = &_devMemory)
             {
                 if (VulkanRenderer._vulkan!.AllocateMemory(VulkanRenderer._logicalDevice, allocInfo, null, imageMemoryPtr) != Result.Success)
                 {
@@ -358,7 +358,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
                 }
             }
 
-            VulkanRenderer._vulkan!.BindImageMemory(VulkanRenderer._logicalDevice, _textureImage, _textureBufferMemory, 0);
+            VulkanRenderer._vulkan!.BindImageMemory(VulkanRenderer._logicalDevice, _im, _devMemory, 0);
         }
 
         internal void CreateImageView()

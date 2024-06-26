@@ -31,6 +31,9 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         internal KhrSwapchain _driverSwapchain;     //the driver swapchain
         internal Image[] _swapchainImages;          //swapchain images for rendering
         internal ImageView[] _imageViews;           //image views for rendering
+        internal Image _depthImage;
+        internal ImageView _depthView;
+        internal DeviceMemory _depthMemory;
         internal SurfaceFormatKHR _surfaceFormat;   //window format
         internal RenderPass _renderPass;
 
@@ -51,7 +54,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             PresentModeKHR _presentMode = GetPresentMode(_support.PresentModes);
 
             QueueFamilyIndices _indices = FindQueueFamilies();
-            var _queueFamilyIndices = stackalloc[] {_indices.GraphicsFamily.Value, _indices.PresentFamily.Value };
+            var _queueFamilyIndices = stackalloc[] { _indices.GraphicsFamily.Value, _indices.PresentFamily.Value };
 
             uint _imageCount = _support.Capabilities.MinImageCount + 1;
             SwapchainCreateInfoKHR _swapchainCreateInfo = new SwapchainCreateInfoKHR()
@@ -124,6 +127,29 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             }
         }
 
+        internal void CreateDepthImages()
+        {
+            Format _depthFormat = GetDepthFormat();
+            VulkanRenderer._bufferHandlerHelper.CreateImage(VulkanRenderer._extent.Width, VulkanRenderer._extent.Height, _depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit, MemoryPropertyFlags.DeviceLocalBit, ref _depthImage, ref _depthMemory);
+            ImageViewCreateInfo _createInfo = new ImageViewCreateInfo
+            {
+                Image = _depthImage,
+                Format = _depthFormat,
+                ViewType = ImageViewType.Type2D
+            };
+
+            _createInfo.SubresourceRange.AspectMask = ImageAspectFlags.DepthBit;
+            _createInfo.SubresourceRange.BaseMipLevel = 0;
+            _createInfo.SubresourceRange.LevelCount = 1;
+            _createInfo.SubresourceRange.BaseArrayLayer = 0;
+            _createInfo.SubresourceRange.LayerCount = 1;
+
+            if (VulkanRenderer._vulkan!.CreateImageView(VulkanRenderer._logicalDevice, _createInfo, null, out _depthView) != Result.Success)
+            {
+                throw new Exception("failed to create image views!");
+            }
+        }
+
         internal void CreateRenderPass()
         {
             AttachmentDescription _colorAttachment = new AttachmentDescription()
@@ -143,37 +169,60 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 Layout = ImageLayout.ColorAttachmentOptimal,
             };
 
+            AttachmentDescription _depthAttachment = new AttachmentDescription()
+            {
+                Format = GetDepthFormat(),
+                Samples = SampleCountFlags.Count1Bit,
+                LoadOp = AttachmentLoadOp.Clear,
+                StoreOp = AttachmentStoreOp.DontCare,
+                StencilLoadOp = AttachmentLoadOp.DontCare,
+                StencilStoreOp = AttachmentStoreOp.DontCare,
+                InitialLayout = ImageLayout.Undefined,
+                FinalLayout = ImageLayout.DepthStencilAttachmentOptimal
+            };
+
+            AttachmentReference _depthAttachmentRef = new AttachmentReference()
+            {
+                Attachment = 1,
+                Layout = ImageLayout.DepthStencilAttachmentOptimal
+            };
+
             SubpassDescription _subpass = new SubpassDescription()
             {
                 PipelineBindPoint = PipelineBindPoint.Graphics,
                 ColorAttachmentCount = 1,
                 PColorAttachments = &_colorAttachmentRef,
+                PDepthStencilAttachment = &_depthAttachmentRef
             };
 
             SubpassDependency _subDepend = new SubpassDependency()
             {
                 SrcSubpass = Vk.SubpassExternal,
                 DstSubpass = 0,
-                SrcStageMask = PipelineStageFlags.ColorAttachmentOutputBit,
+                SrcStageMask = PipelineStageFlags.ColorAttachmentOutputBit | PipelineStageFlags.EarlyFragmentTestsBit,
                 SrcAccessMask = 0,
-                DstStageMask = PipelineStageFlags.ColorAttachmentOutputBit,
-                DstAccessMask = AccessFlags.ColorAttachmentWriteBit
+                DstStageMask = PipelineStageFlags.ColorAttachmentOutputBit | PipelineStageFlags.EarlyFragmentTestsBit,
+                DstAccessMask = AccessFlags.ColorAttachmentWriteBit | AccessFlags.DepthStencilAttachmentWriteBit
             };
 
-            RenderPassCreateInfo _renderPassInfo = new RenderPassCreateInfo()
+            var _attachments = new[] { _colorAttachment, _depthAttachment };
+            fixed (AttachmentDescription* _attachmentPtr = _attachments)
             {
-                SType = StructureType.RenderPassCreateInfo,
-                AttachmentCount = 1,
-                PAttachments = &_colorAttachment,
-                SubpassCount = 1,
-                PSubpasses = &_subpass,
-                DependencyCount = 1,
-                PDependencies = &_subDepend
-            };
+                RenderPassCreateInfo _renderPassInfo = new RenderPassCreateInfo()
+                {
+                    SType = StructureType.RenderPassCreateInfo,
+                    AttachmentCount = (uint)_attachments.Length,
+                    PAttachments = _attachmentPtr,
+                    SubpassCount = 1,
+                    PSubpasses = &_subpass,
+                    DependencyCount = 1,
+                    PDependencies = &_subDepend
+                };
 
-            if (VulkanRenderer._vulkan.CreateRenderPass(VulkanRenderer._logicalDevice, _renderPassInfo, null, out _renderPass) != Result.Success)
-            {
-                throw new Exception("failed to create render pass!");
+                if (VulkanRenderer._vulkan.CreateRenderPass(VulkanRenderer._logicalDevice, _renderPassInfo, null, out _renderPass) != Result.Success)
+                {
+                    throw new Exception("failed to create render pass!");
+                }
             }
         }
 
@@ -260,9 +309,9 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             VulkanRenderer._vulkan.GetPhysicalDeviceQueueFamilyProperties(VulkanRenderer._gpu, ref _qfc, null);
 
             var _qfp = new QueueFamilyProperties[_qfc];
-            fixed(QueueFamilyProperties* _qfpPtr = _qfp)
+            fixed (QueueFamilyProperties* _qfpPtr = _qfp)
             {
-                VulkanRenderer._vulkan.GetPhysicalDeviceQueueFamilyProperties(VulkanRenderer._gpu,ref _qfc, _qfpPtr);
+                VulkanRenderer._vulkan.GetPhysicalDeviceQueueFamilyProperties(VulkanRenderer._gpu, ref _qfc, _qfpPtr);
             }
 
             uint i = 0;
@@ -272,7 +321,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 {
                     _qfi.GraphicsFamily = i;
                 }
-                _driverSurface.GetPhysicalDeviceSurfaceSupport(VulkanRenderer._gpu,i,_surface, out var _presentSupport);
+                _driverSurface.GetPhysicalDeviceSurfaceSupport(VulkanRenderer._gpu, i, _surface, out var _presentSupport);
 
                 if (_presentSupport)
                 {
@@ -285,6 +334,28 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 i++;
             }
             return _qfi;
+        }
+
+        private Format GetDepthFormat()
+        {
+            return FindSupportedFormat(new[] { Format.D32Sfloat, Format.D32SfloatS8Uint, Format.D24UnormS8Uint }, ImageTiling.Optimal, FormatFeatureFlags.DepthStencilAttachmentBit);
+        }
+
+        private Format FindSupportedFormat(IEnumerable<Format> _formats, ImageTiling _tiling, FormatFeatureFlags _features)
+        {
+            foreach (Format _f in _formats)
+            {
+                VulkanRenderer._vulkan.GetPhysicalDeviceFormatProperties(VulkanRenderer._gpu, _f, out FormatProperties _fp);
+                if (_tiling == ImageTiling.Linear && (_fp.LinearTilingFeatures & _features) == _features)
+                {
+                    return _f;
+                }
+                else if (_tiling == ImageTiling.Optimal && (_fp.OptimalTilingFeatures & _features) == _features)
+                {
+                    return _f;
+                }
+            }
+            throw new Exception("Failed to find requested format");
         }
     }
 }

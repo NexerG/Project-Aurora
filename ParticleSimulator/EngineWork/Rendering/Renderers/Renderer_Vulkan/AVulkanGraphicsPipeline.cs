@@ -88,7 +88,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                     RasterizerDiscardEnable = false,
                     PolygonMode = PolygonMode.Fill,
                     LineWidth = 1,
-                    CullMode = CullModeFlags.BackBit,
+                    CullMode = CullModeFlags.FrontBit,
                     FrontFace = FrontFace.Clockwise,
                     DepthBiasEnable = false
                 };
@@ -97,6 +97,15 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                     SType = StructureType.PipelineMultisampleStateCreateInfo,
                     SampleShadingEnable = false,
                     RasterizationSamples = SampleCountFlags.Count1Bit
+                };
+                PipelineDepthStencilStateCreateInfo _depthCreateInfo = new PipelineDepthStencilStateCreateInfo()
+                {
+                    SType = StructureType.PipelineDepthStencilStateCreateInfo,
+                    DepthTestEnable = true,
+                    DepthWriteEnable = true,
+                    DepthCompareOp = CompareOp.Less,
+                    DepthBoundsTestEnable = false,
+                    StencilTestEnable = false,
                 };
                 PipelineColorBlendAttachmentState _colorBlendAttachment = new PipelineColorBlendAttachmentState()
                 {
@@ -140,6 +149,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                     PViewportState = &_viewportState,
                     PRasterizationState = &_rasterizer,
                     PMultisampleState = &_multisampling,
+                    PDepthStencilState = &_depthCreateInfo,
                     PColorBlendState = &_colorBlending,
                     Layout = _pipelineLayout,
                     RenderPass = VulkanRenderer._swapchain._renderPass,
