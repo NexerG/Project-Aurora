@@ -70,7 +70,7 @@ namespace ArctisAurora
 
         private void Frame_FormClosing(object sender, FormClosingEventArgs e)
         {
-            engine.renderer3D.ClearMemory();
+
         }
 
         private void GLControl_MouseDown(object sender, MouseEventArgs e)

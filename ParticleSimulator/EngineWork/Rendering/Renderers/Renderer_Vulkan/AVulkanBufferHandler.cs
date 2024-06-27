@@ -5,6 +5,7 @@ using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using StbImageSharp;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using Format = Silk.NET.Vulkan.Format;
@@ -15,7 +16,6 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
 {
     internal struct UBO
     {
-        public Matrix4X4<float> _model;
         public Matrix4X4<float> _view;
         public Matrix4X4<float> _projection;
     }
@@ -94,11 +94,35 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, null);
         }
 
+        internal void CreateTransformBuffer(ref List<Matrix4X4<float>> _instances, ref Buffer _instanceBuffer, ref DeviceMemory _instanceMemory)
+        {
+            ulong _bufferSize = (ulong)(sizeof(Matrix4X4<float>) * _instances.Count);
+            CreateBuffer(_bufferSize,BufferUsageFlags.StorageBufferBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _instanceBuffer, ref _instanceMemory);
+
+            void* _data;
+            VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _instanceMemory, 0, _bufferSize, 0, &_data);
+            Span<Matrix4X4<float>> _span = new Span<Matrix4X4<float>>(_data, _instances.Count);
+            for (int i = 0; i < _instances.Count; i++)
+                _span[i] = _instances[i];
+            VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _instanceMemory);
+        }
+
+        internal void UpdateTransformBuffer(ref List<Matrix4X4<float>> _instances, ref DeviceMemory _instanceMemory)
+        {
+            ulong _bufferSize = (ulong)(sizeof(Matrix4X4<float>) * _instances.Count);
+
+            void* _data;
+            VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _instanceMemory, 0, _bufferSize, 0, &_data);
+            Span<Matrix4X4<float>> _span = new Span<Matrix4X4<float>>(_data, _instances.Count);
+            for (int i = 0; i < _instances.Count; i++)
+                _span[i] = _instances[i];
+            VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _instanceMemory);
+        }
+
         internal void UpdateUniformBuffer(ref AVulkanMeshComponent _sender, AVulkanCamera _camera, uint _currentImage, ref DeviceMemory[] _uniformBuffersMemory)
         {
             UBO _ubo = new UBO()
             {
-                _model = _sender._instanceMatrices[0],
                 _view = _camera._view,
                 _projection = _camera._projection
             };

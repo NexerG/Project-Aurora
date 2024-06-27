@@ -16,6 +16,8 @@ using ArctisAurora.EngineWork.Rendering.Renderers.OpenTK;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Silk.NET.Maths;
+using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 
 namespace ArctisAurora.EngineWork
 {
@@ -24,8 +26,8 @@ namespace ArctisAurora.EngineWork
         internal static Engine _engineInstance = null;
         public bool Running { get; private set; }
         internal Frame SC;
-        internal Rasterization renderer3D;
-        VulkanRenderer _pathTracer;
+        //internal Rasterization renderer3D;
+        internal VulkanRenderer _pathTracer;
         internal List<Entity> _entities = new List<Entity>();
 
         public Engine()
@@ -39,10 +41,6 @@ namespace ArctisAurora.EngineWork
             SC = s;
 
             _pathTracer = new VulkanRenderer();
-            new Thread(() =>
-            {
-                PathTracerTest();
-            }).Start();
 
             ////mesh importer
             //MeshImporter importer = new MeshImporter();
@@ -55,35 +53,39 @@ namespace ArctisAurora.EngineWork
             //renderer3D = new Rasterization(_gws, _nws);
             //renderer3D.Prerequisites();
 
-            //Running = true;
-            //SC = s;
+            Running = true;
+            SC = s;
 
-            ////---------------------------------------------------------------------------
-            ////Game logic
-            ////first we setup lights
+            //---------------------------------------------------------------------------
+            //Game logic
+            //first we setup lights
             //LightSourceEntity lightEntity = new LightSourceEntity();
-            //lightEntity.transform.position = new Vector3(-0, 15, -0);
-            ////LightSourceEntity lightEntity2 = new LightSourceEntity();
-            ////lightEntity2.transform.position = new Vector3(700, 700, 700);
+            //lightEntity.transform.position = new Vector3D<float>(-0, 15, -0);
+            //LightSourceEntity lightEntity2 = new LightSourceEntity();
+            //lightEntity2.transform.position = new Vector3(700, 700, 700);
             //_entities.Add(lightEntity);
-            ////_entities.Add(lightEntity);
+            //_entities.Add(lightEntity);
 
-            ////then we do entities
-            ///*SimulatorEntity _simEntity = new SimulatorEntity();
-            //_simEntity.GetComponent<MeshComponent>().LoadCustomMesh(kugis);
-            //_simEntity.GetComponent<SPHSimComponent>().simSetup(parts);
-            //_entities.Add(_simEntity);*/
+            //then we do entities
+            //SimulatorEntity _simEntity = new SimulatorEntity();
+            //_simEntity.GetComponent<AVulkanMeshComponent>().LoadCustomMesh(kugis);
+            //_simEntity.GetComponent<SPHSimVulkanComponent>().simSetup(parts);
+            //_entities.Add(_simEntity);
 
             //TestingEntity testEnt = new TestingEntity();
-            //testEnt.transform.scale = new Vector3(10, 1, 10);
-            //testEnt.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
-            ////---------------------------------------------------------------------------
+            //testEnt.transform.scale = new Vector3D<float>(1, 1, 1);
+            //testEnt.GetComponent<AVulkanMeshComponent>().LoadCustomMesh(scene1);
+            //---------------------------------------------------------------------------
 
 
-            //new Thread(() =>
-            //{
-            //    EngineStart();
-            //}).Start();
+            /*new Thread(() =>
+            {
+                EngineStart();
+            }).Start();*/
+            new Thread(() =>
+            {
+                PathTracerTest();
+            }).Start();
             //renderer3D.Init();
         }
 

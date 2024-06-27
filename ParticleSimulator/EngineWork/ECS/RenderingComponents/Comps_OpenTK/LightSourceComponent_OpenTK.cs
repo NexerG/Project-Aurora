@@ -54,10 +54,10 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.OpenTK
         internal void SingletonMatrix()
         {
             Vector3 pos = new Vector3(parent.transform.position.X, parent.transform.position.Y, parent.transform.position.Z);
-            Quaternion q = Quaternion.FromEulerAngles(parent.transform.rotation);
+            Quaternion q = Quaternion.FromEulerAngles(parent.transform.rotation.X, parent.transform.rotation.Y, parent.transform.rotation.Z);
 
             Matrix4 transformation = Matrix4.Identity;
-            transformation *= Matrix4.CreateScale(parent.transform.scale);
+            transformation *= Matrix4.CreateScale(parent.transform.rotation.X, parent.transform.rotation.Y, parent.transform.rotation.Z);
             transformation *= Matrix4.CreateFromQuaternion(q);
             transformation *= Matrix4.CreateTranslation(pos);
             instanceMatrix = transformation;

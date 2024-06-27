@@ -4,6 +4,7 @@ using System.Linq;
 using OpenTK.Mathematics;
 using System.Text;
 using System.Threading.Tasks;
+using Silk.NET.Maths;
 
 namespace ArctisAurora.Forces
 {
@@ -13,6 +14,9 @@ namespace ArctisAurora.Forces
         {
         }
         public Gravity(Vector3 force) : base(force)
+        {
+        }
+        public Gravity(Vector3D<float> force) : base(force)
         {
         }
     }

@@ -1,9 +1,6 @@
 ﻿using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
 using System.Runtime.InteropServices;
-using ImageLayout = Silk.NET.Vulkan.ImageLayout;
-using Silk.NET.Maths;
-using System.Runtime.CompilerServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
@@ -401,16 +398,25 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 StageFlags = ShaderStageFlags.VertexBit
             };
 
-            DescriptorSetLayoutBinding _samplerLayoutBinding = new DescriptorSetLayoutBinding()
+            DescriptorSetLayoutBinding _matrixLayoutBinding = new DescriptorSetLayoutBinding()
             {
                 Binding = 1,
+                DescriptorCount = 1,
+                DescriptorType = DescriptorType.StorageBuffer,
+                PImmutableSamplers = null,
+                StageFlags = ShaderStageFlags.VertexBit
+            };
+
+            DescriptorSetLayoutBinding _samplerLayoutBinding = new DescriptorSetLayoutBinding()
+            {
+                Binding = 2,
                 DescriptorCount = 1,
                 DescriptorType = DescriptorType.CombinedImageSampler,
                 PImmutableSamplers = null,
                 StageFlags = ShaderStageFlags.FragmentBit
             };
 
-            var _bindings = new DescriptorSetLayoutBinding[] { _uboLayoutBinding, _samplerLayoutBinding};
+            var _bindings = new DescriptorSetLayoutBinding[] { _uboLayoutBinding, _matrixLayoutBinding, _samplerLayoutBinding};
             fixed(DescriptorSetLayoutBinding* _bindingsPtr = _bindings)
             fixed (DescriptorSetLayout* _descSetLayoutPtr = &_descriptorSetLayout)
             {

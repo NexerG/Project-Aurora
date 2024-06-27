@@ -9,7 +9,7 @@ using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 
 namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 {
-    internal unsafe class AVulkanMeshComponent
+    internal unsafe class AVulkanMeshComponent : EntityComponent
     {
         bool _render = true;
         internal AVulkanMesh _mesh = new AVulkanMesh();
@@ -24,8 +24,12 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         internal Buffer _indexBuffer;
         internal DeviceMemory _indexBufferMemory;
 
+        internal Buffer _trasnformsBuffer;
+        internal DeviceMemory _trasnformsBufferMemory;
+
         internal Buffer[] _uniformBuffers;
         internal DeviceMemory[] _uniformBuffersMemory;
+
 
         internal Silk.NET.Vulkan.Image _textureImage;
         internal ImageView _textureImageView;
@@ -33,9 +37,9 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
 
         int _instances = 1;
-        internal List<Matrix4X4<float>> _instanceMatrices = new List<Matrix4X4<float>>();
+        internal List<Matrix4X4<float>> _transformMatrices = new List<Matrix4X4<float>>();
 
-        internal AVulkanMeshComponent()
+        public AVulkanMeshComponent()
         {
             if (_mesh != null)
             {
@@ -44,13 +48,25 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 SingletonMatrix();
                 VulkanRenderer._bufferHandlerHelper.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory);
                 VulkanRenderer._bufferHandlerHelper.CreateImageView(ref _textureImage, ref _textureImageView);
+
+                List<Matrix4X4<float>> _testMatrix = new List<Matrix4X4<float>>();
+                Vector3D<float> _pos = new Vector3D<float>(2, 2, 2);
+                Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
+                _testMatrix.Add(_transform);
+
+                Matrix4X4<float> _transform2 = Matrix4X4<float>.Identity;
+                _transform2 *= Matrix4X4.CreateTranslation(_pos);
+                _testMatrix.Add(_transform2);
+                MakeInstanced(ref _testMatrix);
             }
         }
 
-        internal void MakeInstanced(int _instanceCount, ref List<Matrix4X4<float>> _matrices)
+        internal void MakeInstanced(ref List<Matrix4X4<float>> _matrices)
         {
-            _instances = _instanceCount;
-            _instanceMatrices = _matrices;
+            _instances = _matrices.Count;
+            _transformMatrices = _matrices;
+
+            VulkanRenderer._bufferHandlerHelper.CreateTransformBuffer(ref _transformMatrices, ref _trasnformsBuffer, ref _trasnformsBufferMemory);
         }
 
         internal void SingletonMatrix()
@@ -62,8 +78,8 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             //_transform *= Matrix4X4.CreateScale(new Vector3D<float>(1,1,1));
             //_transform *= Matrix4X4.CreateFromQuaternion(q);
             //_transform *= Matrix4X4.CreateTranslation(_pos);
-            
-            _instanceMatrices.Add(_transform);
+
+            _transformMatrices.Add(_transform);
         }
 
         internal void CreateDescriptorSet()
@@ -92,11 +108,18 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             }
             for (int i = 0; i < VulkanRenderer._swapchain._swapchainImages.Length; i++)
             {
-                DescriptorBufferInfo _bufferInfo = new DescriptorBufferInfo()
+                DescriptorBufferInfo _bufferInfoUniform = new DescriptorBufferInfo()
                 {
                     Buffer = _uniformBuffers[i],
                     Offset = 0,
                     Range = (ulong)Unsafe.SizeOf<UBO>()
+                };
+
+                DescriptorBufferInfo _bufferInfoMatrices = new DescriptorBufferInfo()
+                {
+                    Buffer = _trasnformsBuffer,
+                    Offset = 0,
+                    Range = Vk.WholeSize
                 };
 
                 DescriptorImageInfo _imageInfo = new DescriptorImageInfo()
@@ -116,13 +139,23 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                         DstArrayElement = 0,
                         DescriptorType = DescriptorType.UniformBuffer,
                         DescriptorCount = 1,
-                        PBufferInfo = &_bufferInfo
+                        PBufferInfo = &_bufferInfoUniform
                     },
                     new WriteDescriptorSet()
                     {
                         SType = StructureType.WriteDescriptorSet,
                         DstSet = _descriptorSets[i],
                         DstBinding = 1,
+                        DstArrayElement = 0,
+                        DescriptorType = DescriptorType.StorageBuffer,
+                        DescriptorCount = 1,
+                        PBufferInfo = &_bufferInfoMatrices
+                    },
+                    new WriteDescriptorSet()
+                    {
+                        SType = StructureType.WriteDescriptorSet,
+                        DstSet = _descriptorSets[i],
+                        DstBinding = 2,
                         DstArrayElement = 0,
                         DescriptorType = DescriptorType.CombinedImageSampler,
                         DescriptorCount = 1,
@@ -142,10 +175,11 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             Vector3D<float> _pos = new Vector3D<float>(0, 0, 0);
 
             Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-            //_transform *= Matrix4X4.CreateScale(new Vector3D<float>(1, 1, 1));
+            _transform *= Matrix4X4.CreateScale(new Vector3D<float>(2, 2, 2));
             //_transform *= Matrix4X4.CreateTranslation(_pos);
 
-            _instanceMatrices[0] = _transform;
+            _transformMatrices[0] = _transform;
+            VulkanRenderer._bufferHandlerHelper.UpdateTransformBuffer(ref _transformMatrices, ref _trasnformsBufferMemory);
         }
 
         internal void EnqueueDrawCommands(ulong[] _offset, int _loopIndex, ref CommandBuffer _commandBuffer)

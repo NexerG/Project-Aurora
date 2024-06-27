@@ -165,7 +165,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.OpenTK
             GL.Uniform4(GL.GetUniformLocation(shader.program, "lightColor"), 1f, 1f, 1f, 1f);
             //foreach (Entity e in _lightSourcesRenderQueue)
             {
-                GL.Uniform3(GL.GetUniformLocation(shader.program, "lightPos"), _lightSourcesRenderQueue[0].transform.position);
+                //GL.Uniform3(GL.GetUniformLocation(shader.program, "lightPos"), ref _lightSourcesRenderQueue[0].transform.position);
             }
         }
 

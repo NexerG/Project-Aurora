@@ -3,14 +3,14 @@ using Silk.NET.Maths;
 
 namespace ArctisAurora.GameObject
 {
-    internal class Transform
+    internal class ATransform
     {
         internal Vector3D<float> position = new Vector3D<float>(0, 0, 0);
         internal Vector3D<float> rotation = new Vector3D<float>(0, 0, 0);
         internal Vector3D<float> scale = new Vector3D<float>(1, 1, 1);
         internal Entity parent;
 
-        internal Transform(Entity e)
+        internal ATransform(Entity e)
         {
             parent = e;
         }

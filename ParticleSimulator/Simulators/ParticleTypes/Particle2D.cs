@@ -5,7 +5,7 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ArctisAurora.ParticleTypes
+namespace ArctisAurora.Simulators.ParticleTypes
 {
     public class Particle2D
     {
@@ -18,7 +18,7 @@ namespace ArctisAurora.ParticleTypes
         public Particle2D()
         {
             point.X = 0; point.Y = 0;
-            velocity.X = 0; velocity.Y= 0;
+            velocity.X = 0; velocity.Y = 0;
 
             PredPoint = point;
         }

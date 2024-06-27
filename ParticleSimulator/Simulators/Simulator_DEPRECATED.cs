@@ -5,9 +5,9 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using ArctisAurora.Forces;
-using ArctisAurora.ParticleTypes;
+using ArctisAurora.Simulators.ParticleTypes;
 
-namespace ArctisAurora.EngineWork
+namespace ArctisAurora.Simulators
 {
     public class Entry : IComparable, IComparable<Entry>
     {
@@ -15,7 +15,7 @@ namespace ArctisAurora.EngineWork
         public uint CKey;
         public Entry(int i, uint ck)
         {
-            index= i;
+            index = i;
             CKey = ck;
         }
 
@@ -30,7 +30,7 @@ namespace ArctisAurora.EngineWork
         }
     }
 
-    public class Simulator
+    public class Simulator_DEPRECATED
     {
         //Frame
         Frame SC;
@@ -49,9 +49,9 @@ namespace ArctisAurora.EngineWork
         //Cells
         Entry[] SpatialLookup;
         int[] StartIndices;
-        public Vector2[] Offsets2D= new Vector2[9];
+        public Vector2[] Offsets2D = new Vector2[9];
 
-        public Simulator() //SPH algorithm
+        public Simulator_DEPRECATED() //SPH algorithm
         {
             Gravity g = new Gravity(new PointF(0, 9.8f));
             forces.Add(g);
@@ -67,7 +67,7 @@ namespace ArctisAurora.EngineWork
             UpdateUI();
         }
 
-        public Simulator(List<Particle2D> parts, Frame SC)
+        public Simulator_DEPRECATED(List<Particle2D> parts, Frame SC)
         {
             Gravity g = new Gravity(new PointF(0, 9.8f));
             forces.Add(g);
@@ -85,7 +85,7 @@ namespace ArctisAurora.EngineWork
             UpdateUI();
         }
 
-        public Simulator(Frame frame, List<Particle2D> parts, Vector2 simSize)
+        public Simulator_DEPRECATED(Frame frame, List<Particle2D> parts, Vector2 simSize)
         {
             SC = frame;
             Gravity g = new Gravity(new PointF(0, 9.8f));
@@ -160,7 +160,7 @@ namespace ArctisAurora.EngineWork
             });
 
             //assign points to cells
-            UpdateSpatialLookup(parts,smoothingRadius);
+            UpdateSpatialLookup(parts, smoothingRadius);
             //densities
             UpdateDensities();
 
@@ -244,15 +244,15 @@ namespace ArctisAurora.EngineWork
         {
             if (dist >= smoothingRadius) return 0;
 
-            float volume = (float)((Math.PI * Math.Pow(smoothingRadius, 4)) / 6);
+            float volume = (float)(Math.PI * Math.Pow(smoothingRadius, 4) / 6);
             return (smoothingRadius - dist) * (smoothingRadius - dist) / volume;
         }
-#endregion
+        #endregion
 
         #region Pressure
         Vector2 CalcPresureForce(int index)
         {
-            Vector2 PressureForce = new Vector2(0,0);
+            Vector2 PressureForce = new Vector2(0, 0);
 
             (int CenterX, int CenterY) = PositionToCellCoord(parts[index].PredPoint, smoothingRadius);
             float sqrRadius = smoothingRadius * smoothingRadius;
@@ -357,7 +357,7 @@ namespace ArctisAurora.EngineWork
             Parallel.For(0, parts.Count, i =>
             {
                 (int cellX, int cellY) = PositionToCellCoord(parts[i], radius);
-                uint CKey = GetKeyFromHash(HashCell(cellX,cellY));
+                uint CKey = GetKeyFromHash(HashCell(cellX, cellY));
                 SpatialLookup[i] = new Entry(i, CKey);
                 StartIndices[i] = int.MaxValue;
             });
@@ -367,8 +367,8 @@ namespace ArctisAurora.EngineWork
             Parallel.For(0, parts.Count, i =>
             {
                 uint key = SpatialLookup[i].CKey;
-                uint KeyPrev = i ==0 ?int.MaxValue: SpatialLookup[i-1].CKey;
-                if(key!= KeyPrev)
+                uint KeyPrev = i == 0 ? int.MaxValue : SpatialLookup[i - 1].CKey;
+                if (key != KeyPrev)
                 {
                     StartIndices[key] = i;
                 }

@@ -1,12 +1,6 @@
-﻿using ArctisAurora.CustomEntityComponents;
-using ArctisAurora.EngineWork.ECS.RenderingComponents.OpenTK;
+﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.OpenTK;
+using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.GameObject;
-using OpenTK.Mathematics;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ArctisAurora.CustomEntities
 {
@@ -14,7 +8,7 @@ namespace ArctisAurora.CustomEntities
     {
         public TestingEntity() 
         {
-            this.CreateComponent<MeshComponent_OpenTK>();
+            this.CreateComponent<AVulkanMeshComponent>();
         }
         public override void OnStart()
         {
