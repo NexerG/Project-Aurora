@@ -14,9 +14,23 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         bool _render = true;
         internal AVulkanMesh _mesh = new AVulkanMesh();
 
-        //buffer handler and descriptor set
-        internal AVulkanBufferHandler _bufferHandler;
+        //Descriptor set
         internal DescriptorSet[] _descriptorSets;
+
+        //buffer objects
+        internal Buffer _vertexBuffer;
+        internal DeviceMemory _vertexBufferMemory;
+
+        internal Buffer _indexBuffer;
+        internal DeviceMemory _indexBufferMemory;
+
+        internal Buffer[] _uniformBuffers;
+        internal DeviceMemory[] _uniformBuffersMemory;
+
+        internal Silk.NET.Vulkan.Image _textureImage;
+        internal ImageView _textureImageView;
+        internal DeviceMemory _textureBufferMemory;
+
 
         int _instances = 1;
         internal List<Matrix4X4<float>> _instanceMatrices = new List<Matrix4X4<float>>();
@@ -25,12 +39,11 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         {
             if (_mesh != null)
             {
-                _bufferHandler = new AVulkanBufferHandler();
-                _bufferHandler.CreateVertexBuffer(ref _mesh._vertices);
-                _bufferHandler.CreateIndexBuffer(ref _mesh._indices);
+                VulkanRenderer._bufferHandlerHelper.CreateVertexBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory);
+                VulkanRenderer._bufferHandlerHelper.CreateIndexBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory);
                 SingletonMatrix();
-                _bufferHandler.CreateTextureBuffer();
-                _bufferHandler.CreateImageView();
+                VulkanRenderer._bufferHandlerHelper.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory);
+                VulkanRenderer._bufferHandlerHelper.CreateImageView(ref _textureImage, ref _textureImageView);
             }
         }
 
@@ -81,7 +94,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             {
                 DescriptorBufferInfo _bufferInfo = new DescriptorBufferInfo()
                 {
-                    Buffer = _bufferHandler._uniformBuffers[i],
+                    Buffer = _uniformBuffers[i],
                     Offset = 0,
                     Range = (ulong)Unsafe.SizeOf<UBO>()
                 };
@@ -89,7 +102,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 DescriptorImageInfo _imageInfo = new DescriptorImageInfo()
                 {
                     ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
-                    ImageView = _bufferHandler._textureImageView,
+                    ImageView = _textureImageView,
                     Sampler = VulkanRenderer._textureSampler
                 };
 
@@ -139,13 +152,13 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         {
             if (_render)
             {
-                Buffer[] _vertBuffer = new Buffer[] { _bufferHandler._vertexBuffer };
+                Buffer[] _vertBuffer = new Buffer[] { _vertexBuffer };
                 fixed (ulong* _offsetsPtr = _offset)
                 fixed (Buffer* _vertBuffersPtr = _vertBuffer)
                 {
                     VulkanRenderer._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, _vertBuffersPtr, _offsetsPtr);
                 }
-                VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, _bufferHandler._indexBuffer, 0, IndexType.Uint16);
+                VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, _indexBuffer, 0, IndexType.Uint16);
                 VulkanRenderer._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, VulkanRenderer._pipeline._pipelineLayout, 0, 1, _descriptorSets[_loopIndex], 0, null);
                 VulkanRenderer._vulkan.CmdDrawIndexed(_commandBuffer, (uint)_mesh._indices.Length, (uint)_instances, 0, 0, 0);
             }

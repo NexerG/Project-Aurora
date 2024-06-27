@@ -87,7 +87,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             CreateDescriptorPool();                         //descriptor pool
 
             _meshComp = new AVulkanMeshComponent();         //create meshes only after the descriptors have been made
-            _meshComp._bufferHandler.CreateUniformBuffer(); //create buffers used in shaders
+            _bufferHandlerHelper.CreateUniformBuffer(ref _meshComp._uniformBuffers, ref _meshComp._uniformBuffersMemory); //create buffers used in shaders
             _meshComp.CreateDescriptorSet();                //create descriptor sets (only after the pool has been made) (one for each game ent)
 
             CreateCommandBuffers();                         //the draw command sequence that'll be used for rendering
@@ -253,7 +253,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             CreateGraphicsPipeline();
             CreateFrameBuffers();
             //api calls
-            _meshComp._bufferHandler.CreateUniformBuffer();
+            _bufferHandlerHelper.CreateUniformBuffer(ref _meshComp._uniformBuffers, ref _meshComp._uniformBuffersMemory);
             CreateDescriptorPool();
             _meshComp.CreateDescriptorSet();
             CreateCommandBuffers();
@@ -375,7 +375,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.Graphics, _pipeline._graphicsPipeline);
 
                 //for() loop
-                Buffer[] _vertBuffers = new Buffer[] { _meshComp._bufferHandler._vertexBuffer };
+                Buffer[] _vertBuffers = new Buffer[] { _meshComp._vertexBuffer };
                 var _offset = new ulong[] { 0 };
                 _meshComp.EnqueueDrawCommands(_offset, i, ref _commandBuffer[i]);
 
@@ -510,7 +510,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 
             _camera.UpdateCameraMatrix(_extent);
             _meshComp.UpdateMatrices();
-            _meshComp._bufferHandler.UpdateUniformBuffer(ref _meshComp, _camera, _imageIndex, _extent);
+            _bufferHandlerHelper.UpdateUniformBuffer(ref _meshComp, _camera, _imageIndex, ref _meshComp._uniformBuffersMemory);
 
             if (_imagesInFlight[_imageIndex].Handle != default)
             {

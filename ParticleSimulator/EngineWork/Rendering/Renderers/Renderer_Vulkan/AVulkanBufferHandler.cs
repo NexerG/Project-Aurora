@@ -22,20 +22,8 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
 
     internal unsafe class AVulkanBufferHandler
     {
-        internal Buffer _vertexBuffer;
-        internal DeviceMemory _vertexBufferMemory;
 
-        internal Buffer _indexBuffer;
-        internal DeviceMemory _indexBufferMemory;
-
-        internal Buffer[] _uniformBuffers;
-        internal DeviceMemory[] _uniformBuffersMemory;
-
-        internal Silk.NET.Vulkan.Image _textureImage;
-        internal ImageView _textureImageView;
-        internal DeviceMemory _textureBufferMemory;
-
-        internal void CreateVertexBuffer(ref Vertex[] _vertices)
+        internal void CreateVertexBuffer(ref Vertex[] _vertices, ref Buffer _vertexBuffer, ref DeviceMemory _vertexBufferMemory)
         {
             ulong _bufferSize = (ulong)(Unsafe.SizeOf<Vertex>() * _vertices.Length);
             Buffer _stagingBuffer = default;
@@ -54,7 +42,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, null);
         }
 
-        internal void CreateIndexBuffer(ref ushort[] _meshIndices)
+        internal void CreateIndexBuffer(ref ushort[] _meshIndices, ref Buffer _indexBuffer, ref DeviceMemory _indexBufferMemory)
         {
             ulong _bufferSize = ((ulong)(Unsafe.SizeOf<ushort>() * _meshIndices.Length));
             Buffer _stagingBuffer = default;
@@ -70,7 +58,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, null);
         }
 
-        internal void CreateUniformBuffer()
+        internal void CreateUniformBuffer(ref Buffer[]? _uniformBuffers, ref DeviceMemory[]? _uniformBuffersMemory)
         {
             ulong _bufferSize = (ulong)Unsafe.SizeOf<UBO>();
             _uniformBuffers = new Buffer[VulkanRenderer._swapchain._swapchainImages.Length];
@@ -82,7 +70,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             }
         }
 
-        internal void CreateTextureBuffer()
+        internal void CreateTextureBuffer(ref Silk.NET.Vulkan.Image _textureImage, ref DeviceMemory _textureBufferMemory)
         {
             using var _image = Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>("../../../Shaders/Brick2.png");
             ulong _imageSize = (ulong)(_image.Width * _image.Height * _image.PixelType.BitsPerPixel / 8);
@@ -106,7 +94,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, null);
         }
 
-        internal void UpdateUniformBuffer(ref AVulkanMeshComponent _sender, AVulkanCamera _camera, uint _currentImage, Extent2D _extent)
+        internal void UpdateUniformBuffer(ref AVulkanMeshComponent _sender, AVulkanCamera _camera, uint _currentImage, ref DeviceMemory[] _uniformBuffersMemory)
         {
             UBO _ubo = new UBO()
             {
@@ -361,7 +349,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             VulkanRenderer._vulkan!.BindImageMemory(VulkanRenderer._logicalDevice, _im, _devMemory, 0);
         }
 
-        internal void CreateImageView()
+        internal void CreateImageView(ref Silk.NET.Vulkan.Image _textureImage, ref ImageView _imageView)
         {
             ImageViewCreateInfo _createInfo = new ImageViewCreateInfo
             {
@@ -376,7 +364,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             _createInfo.SubresourceRange.BaseArrayLayer = 0;
             _createInfo.SubresourceRange.LayerCount = 1;
 
-            if (VulkanRenderer._vulkan!.CreateImageView(VulkanRenderer._logicalDevice, _createInfo, null, out _textureImageView) != Result.Success)
+            if (VulkanRenderer._vulkan!.CreateImageView(VulkanRenderer._logicalDevice, _createInfo, null, out _imageView) != Result.Success)
             {
                 throw new Exception("failed to create texture image view!");
             }
