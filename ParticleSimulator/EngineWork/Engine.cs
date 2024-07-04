@@ -23,11 +23,11 @@ namespace ArctisAurora.EngineWork
 {
     public class Engine
     {
-        internal static Engine _engineInstance = null;
+        internal Engine _engineInstance = null;
         public bool Running { get; private set; }
         internal Frame SC;
         //internal Rasterization renderer3D;
-        internal VulkanRenderer _pathTracer;
+        internal static VulkanRenderer _pathTracer;
         internal List<Entity> _entities = new List<Entity>();
 
         public Engine()
@@ -41,6 +41,7 @@ namespace ArctisAurora.EngineWork
             SC = s;
 
             _pathTracer = new VulkanRenderer();
+            TestingEntity ent = new TestingEntity();
 
             ////mesh importer
             //MeshImporter importer = new MeshImporter();

@@ -58,7 +58,16 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 _transform2 *= Matrix4X4.CreateTranslation(_pos);
                 _testMatrix.Add(_transform2);
                 MakeInstanced(ref _testMatrix);
+                
+                CreateUniformBuffers();
+                CreateDescriptorSet();
             }
+        }
+
+        public override void OnStart()
+        {
+            VulkanRenderer._rendererInstance.AddEntityToRenderQueue(parent);
+            VulkanRenderer._rendererInstance.RecreateCommandBuffers();
         }
 
         internal void MakeInstanced(ref List<Matrix4X4<float>> _matrices)
@@ -180,6 +189,11 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
             _transformMatrices[0] = _transform;
             VulkanRenderer._bufferHandlerHelper.UpdateTransformBuffer(ref _transformMatrices, ref _trasnformsBufferMemory);
+        }
+
+        internal void CreateUniformBuffers()
+        {
+            VulkanRenderer._bufferHandlerHelper.CreateUniformBuffer(ref _uniformBuffers, ref _uniformBuffersMemory);
         }
 
         internal void EnqueueDrawCommands(ulong[] _offset, int _loopIndex, ref CommandBuffer _commandBuffer)

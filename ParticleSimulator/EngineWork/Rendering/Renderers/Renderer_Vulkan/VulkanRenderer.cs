@@ -5,6 +5,8 @@ using Buffer = Silk.NET.Vulkan.Buffer;
 using ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using Semaphore = Silk.NET.Vulkan.Semaphore;
+using ArctisAurora.GameObject;
+using ArctisAurora.CustomEntities;
 
 namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 {
@@ -48,7 +50,8 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         //-------------------------------------
         internal static Sampler _textureSampler;
         //
-        private AVulkanMeshComponent _meshComp;             //will be replaced later with a list of objects to render
+        private List<Entity> _entitiesToRender = new List<Entity>();
+        private List<Entity> _lightsToRender = new List<Entity>();
         internal static AVulkanCamera _camera = new AVulkanCamera();//camera
 
         public VulkanRenderer()
@@ -83,13 +86,20 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             CreateImageSampler();                           //
             CreateDescriptorPool();                         //descriptor pool
 
-            _meshComp = new AVulkanMeshComponent();         //create meshes only after the descriptors have been made
-            _bufferHandlerHelper.CreateUniformBuffer(ref _meshComp._uniformBuffers, ref _meshComp._uniformBuffersMemory); //create buffers used in shaders
-            _meshComp.CreateDescriptorSet();                //create descriptor sets (only after the pool has been made) (one for each game ent)
-
+            //from this point the entities can be rendered
             CreateCommandBuffers();                         //the draw command sequence that'll be used for rendering
 
             CreateSyncObjects();                            //CPU - GPU sync logic
+        }
+
+        internal void AddEntityToRenderQueue(Entity _m)
+        {
+            _entitiesToRender.Add(_m);
+        }
+
+        internal void AddLighToRenderQueue()
+        {
+
         }
 
         private void CreateVulkanInstance()
@@ -250,10 +260,13 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             CreateGraphicsPipeline();
             CreateFrameBuffers();
             //api calls
-            _bufferHandlerHelper.CreateUniformBuffer(ref _meshComp._uniformBuffers, ref _meshComp._uniformBuffersMemory);
             CreateDescriptorPool();
-            _meshComp.CreateDescriptorSet();
-            CreateCommandBuffers();
+            for (int i = 0; i < _entitiesToRender.Count; i++) 
+            {
+                _entitiesToRender[i].GetComponent<AVulkanMeshComponent>().CreateUniformBuffers();
+                _entitiesToRender[i].GetComponent<AVulkanMeshComponent>().CreateDescriptorSet();
+            }
+            RecreateCommandBuffers();
 
             _imagesInFlight = new Fence[_swapchain._swapchainImages.Length];
         }
@@ -303,6 +316,15 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             {
                 throw new Exception("Failed to create command pool");
             }
+        }
+
+        public void RecreateCommandBuffers()
+        {
+            fixed (CommandBuffer* CBPtr = _commandBuffer)
+            {
+                _vulkan.FreeCommandBuffers(_logicalDevice, _commandPool, (uint)_commandBuffer.Length, CBPtr);
+            }
+            CreateCommandBuffers();
         }
 
         private void CreateCommandBuffers()
@@ -371,10 +393,13 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 //render command code
                 _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.Graphics, _pipeline._graphicsPipeline);
 
-                //for() loop
-                Buffer[] _vertBuffers = new Buffer[] { _meshComp._vertexBuffer };
-                var _offset = new ulong[] { 0 };
-                _meshComp.EnqueueDrawCommands(_offset, i, ref _commandBuffer[i]);
+                Buffer[] _vertBuffers = new Buffer[_entitiesToRender.Count];
+                for (int e = 0; e < _entitiesToRender.Count; e++)
+                {
+                    _vertBuffers[e] = _entitiesToRender[e].GetComponent<AVulkanMeshComponent>()._vertexBuffer;
+                    var _offset = new ulong[] { 0 };
+                    _entitiesToRender[e].GetComponent<AVulkanMeshComponent>().EnqueueDrawCommands(_offset, i, ref _commandBuffer[i]);
+                }
 
                 //end of for loop
                 _vulkan.CmdEndRenderPass(_commandBuffer[i]);
@@ -515,8 +540,12 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             }
 
             _camera.UpdateCameraMatrix(_extent);
-            _meshComp.UpdateMatrices();
-            _bufferHandlerHelper.UpdateUniformBuffer(ref _meshComp, _camera, _imageIndex, ref _meshComp._uniformBuffersMemory);
+            foreach (Entity e in _entitiesToRender)
+            {
+                e.GetComponent<AVulkanMeshComponent>().UpdateMatrices();
+                AVulkanMeshComponent _meshComp = e.GetComponent<AVulkanMeshComponent>();
+                _bufferHandlerHelper.UpdateUniformBuffer(ref _meshComp, _camera, _imageIndex, ref _meshComp._uniformBuffersMemory);
+            }
 
             if (_imagesInFlight[_imageIndex].Handle != default)
             {
