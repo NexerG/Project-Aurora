@@ -1,9 +1,4 @@
-using OpenTK;
-using OpenTK.Compute.OpenCL;
-using OpenTK.Graphics.OpenGL;
 using ArctisAurora.EngineWork;
-using System.Diagnostics;
-using System.Numerics;
 
 namespace ArctisAurora
 {

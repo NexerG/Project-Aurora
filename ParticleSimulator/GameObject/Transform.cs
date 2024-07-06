@@ -1,5 +1,4 @@
-﻿using OpenTK.Mathematics;
-using Silk.NET.Maths;
+﻿using Silk.NET.Maths;
 
 namespace ArctisAurora.GameObject
 {
@@ -22,9 +21,9 @@ namespace ArctisAurora.GameObject
 
         internal Quaternion<float> GetQuaternion()
         {
-            float eulerRadiansX = MathHelper.DegreesToRadians(rotation.X);
-            float eulerRadiansY = MathHelper.DegreesToRadians(rotation.Y);
-            float eulerRadiansZ = MathHelper.DegreesToRadians(rotation.Z);
+            float eulerRadiansX = DegreesToRadians(rotation.X);
+            float eulerRadiansY = DegreesToRadians(rotation.Y);
+            float eulerRadiansZ = DegreesToRadians(rotation.Z);
 
             Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(eulerRadiansX, eulerRadiansY, eulerRadiansZ);
             return q;
@@ -67,6 +66,11 @@ namespace ArctisAurora.GameObject
         internal void SetWorldScale(Vector3D<float> s)
         {
             scale = s;
+        }
+
+        private float DegreesToRadians(float degrees)
+        {
+            return degrees * (MathF.PI / 180.0f);
         }
     }
 }

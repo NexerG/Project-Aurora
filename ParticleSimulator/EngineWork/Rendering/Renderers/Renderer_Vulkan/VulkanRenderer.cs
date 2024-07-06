@@ -570,7 +570,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             {
                 e.GetComponent<AVulkanMeshComponent>().UpdateMatrices();
                 AVulkanMeshComponent _meshComp = e.GetComponent<AVulkanMeshComponent>();
-                _bufferHandlerHelper.UpdateUniformBuffer(ref _meshComp, _camera, _imageIndex, ref _meshComp._uniformBuffersMemory);
+                _bufferHandlerHelper.UpdateUniformBuffer(_camera, _imageIndex, ref _meshComp._uniformBuffersMemory);
             }
 
             if (_imagesInFlight[_imageIndex].Handle != default)

@@ -1,23 +1,7 @@
-﻿using OpenTK.Mathematics;
-using OpenTK.Windowing.Desktop;
-using OpenTK.WinForms;
-using ArctisAurora.CustomEntities;
-using ArctisAurora.CustomEntityComponents;
-using ArctisAurora.EngineWork.ComponentBehaviour;
-using ArctisAurora.EngineWork.ECS.RenderingComponents;
+﻿using ArctisAurora.CustomEntities;
 using ArctisAurora.GameObject;
-using ArctisAurora.ParticleTypes;
-using System.Diagnostics;
-using System.Reflection;
-using OpenTK.Windowing.Common;
-using Assimp;
 using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
-using ArctisAurora.EngineWork.Rendering.Renderers.OpenTK;
-using Silk.NET.Vulkan;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using Silk.NET.Maths;
-using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+using ArctisAurora.CustomEntityComponents;
 
 namespace ArctisAurora.EngineWork
 {
@@ -27,7 +11,7 @@ namespace ArctisAurora.EngineWork
         public bool Running { get; private set; }
         internal Frame SC;
         //internal Rasterization renderer3D;
-        internal static VulkanRenderer _pathTracer;
+        internal static VulkanRenderer _rasterizer;
         internal List<Entity> _entities = new List<Entity>();
 
         public Engine()
@@ -40,20 +24,12 @@ namespace ArctisAurora.EngineWork
             Running = true;
             SC = s;
 
-            _pathTracer = new VulkanRenderer();
-            TestingEntity ent = new TestingEntity();
-            Entity lightEnt = new Entity();
-            _pathTracer.AddLighToRenderQueue(lightEnt);
+            _rasterizer = new VulkanRenderer();
+
             ////mesh importer
             //MeshImporter importer = new MeshImporter();
             //Scene scene1 = importer.ImportFBX("H:\\Creative\\Blender\\AuroraTestScene.fbx");
             //Scene kugis = importer.ImportFBX("H:\\Creative\\Blender\\AuroraTestScene_kugis.fbx");
-
-            ////Renderer prerequisites refueling
-            //GameWindowSettings _gws = GameWindowSettings.Default;
-            //NativeWindowSettings _nws = new NativeWindowSettings() { ClientSize = new Vector2i(1280, 720), Title = "ProjectAurora" };
-            //renderer3D = new Rasterization(_gws, _nws);
-            //renderer3D.Prerequisites();
 
             Running = true;
             SC = s;
@@ -61,6 +37,8 @@ namespace ArctisAurora.EngineWork
             //---------------------------------------------------------------------------
             //Game logic
             //first we setup lights
+            Entity lightEnt = new Entity();
+            _rasterizer.AddLighToRenderQueue(lightEnt);
             //LightSourceEntity lightEntity = new LightSourceEntity();
             //lightEntity.transform.position = new Vector3D<float>(-0, 15, -0);
             //LightSourceEntity lightEntity2 = new LightSourceEntity();
@@ -69,32 +47,32 @@ namespace ArctisAurora.EngineWork
             //_entities.Add(lightEntity);
 
             //then we do entities
-            //SimulatorEntity _simEntity = new SimulatorEntity();
+            SimulatorEntity _simEntity = new SimulatorEntity();
             //_simEntity.GetComponent<AVulkanMeshComponent>().LoadCustomMesh(kugis);
-            //_simEntity.GetComponent<SPHSimVulkanComponent>().simSetup(parts);
-            //_entities.Add(_simEntity);
+            _simEntity.GetComponent<SPHSimComponent>().simSetup(parts);
+            _entities.Add(_simEntity);
 
             //TestingEntity testEnt = new TestingEntity();
             //testEnt.transform.scale = new Vector3D<float>(1, 1, 1);
             //testEnt.GetComponent<AVulkanMeshComponent>().LoadCustomMesh(scene1);
             //---------------------------------------------------------------------------
 
-
-            /*new Thread(() =>
-            {
-                EngineStart();
-            }).Start();*/
+            //engine thread
             new Thread(() =>
             {
-                PathTracerTest();
+                EngineStart();
             }).Start();
-            //renderer3D.Init();
+            //renderer thread for testing
+            /*new Thread(() =>
+            {
+                PathTracerTest();
+            }).Start();*/
         }
 
         public async void EngineStart()
         {
-            double[] framerate = new double[10];
-            for (int i = 0; i < 10; i++)
+            double[] framerate = new double[100];
+            for (int i = 0; i < 100; i++)
                 framerate[i] = 0;
             int index = 0;
 
@@ -122,22 +100,23 @@ namespace ArctisAurora.EngineWork
                 if (SC.InvokeRequired)
                     SC.Invoke(new Action(() =>
                     {
-                        Rasterization._rendererInstance.Render(this, null);
+                        VulkanRenderer._glWindow._glfw.PollEvents();
+                        _rasterizer.Draw();
                     }));
                 TimeSpan GraphicsTime = DateTime.Now - GraphicsTimeStart;
                 Console.WriteLine("Graphics --- " + GraphicsTime.TotalMilliseconds);
 
                 double totalTime = GraphicsTime.TotalMilliseconds + entityOnTickTime.TotalMilliseconds;
                 Console.WriteLine("TotalTime --- " + totalTime);
-                framerate[index % 10] = totalTime;
+                framerate[index % 100] = totalTime;
                 index++;
                 if (index > 100) index = 1;
                 double fr = 0;
-                for (int i = 0; i < 10; i++)
+                for (int i = 0; i < 100; i++)
                 {
                     fr += framerate[i];
                 }
-                Console.WriteLine("FPS --- " + 1000 / (fr / 10));
+                Console.WriteLine("FPS --- " + 1000 / (fr / 100));
 
                 double TSOffset = TS - totalTime;
                 if (TSOffset > 0f)
@@ -153,7 +132,7 @@ namespace ArctisAurora.EngineWork
                     SC.Invoke(new Action(() =>
                     {
                         VulkanRenderer._glWindow._glfw.PollEvents();
-                        _pathTracer.Draw();
+                        _rasterizer.Draw();
                     }));
                 await Task.Delay(8);
             }

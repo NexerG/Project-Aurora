@@ -1,29 +1,24 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using OpenTK.Mathematics;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Silk.NET.Maths;
 
-namespace ArctisAurora.Simulators.ParticleTypes
+namespace ArctisAurora.ParticleTypes
 {
     public class Particle3D
     {
-        public Vector3 point = new Vector3();
-        public Vector3 PredPoint = new Vector3();
-        public Vector3 velocity = new Vector3();
+        public Vector3D<float> point = new Vector3D<float>();
+        public Vector3D<float> PredPoint = new Vector3D<float>();
+        public Vector3D<float> velocity = new Vector3D<float>();
         public float radius = 7;
         public Brush color = new Pen(Color.FromArgb(255, 255, 255, 255)).Brush;
 
         public Particle3D()
         {
             point.X = 0; point.Y = 0; point.Z = 0;
-            velocity.X = 0; velocity.Y = 0; velocity.Z = 0;
+            velocity.X = 0; velocity.Y = 0; velocity.Z= 0;
 
             PredPoint = point;
         }
 
-        public Particle3D(Vector3 point)
+        public Particle3D(Vector3D<float> point)
         {
             this.point = point;
             velocity.X = 0; velocity.Y = 0; velocity.Z = 0;
@@ -49,7 +44,7 @@ namespace ArctisAurora.Simulators.ParticleTypes
             PredPoint = point;
         }
 
-        public Particle3D(Vector3 p, float HorizontalVelX, float HorizontalVelY, float VerticalVel)
+        public Particle3D(Vector3D<float> p, float HorizontalVelX, float HorizontalVelY, float VerticalVel)
         {
             point = p;
             velocity.X = HorizontalVelX;
@@ -59,7 +54,7 @@ namespace ArctisAurora.Simulators.ParticleTypes
             PredPoint = point;
         }
 
-        public Particle3D(Vector3 p, Vector3 v)
+        public Particle3D(Vector3D<float> p, Vector3D<float> v)
         {
             point = p;
             velocity = v;

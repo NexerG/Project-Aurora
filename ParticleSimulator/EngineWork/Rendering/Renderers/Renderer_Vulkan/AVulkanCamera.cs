@@ -1,5 +1,4 @@
 ﻿using ArctisAurora.GameObject;
-using OpenTK.Mathematics;
 using Silk.NET.GLFW;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
@@ -55,7 +54,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
 
             if (_constrainPitch)
             {
-                _rotation.Y = MathHelper.Clamp(_rotation.Y, -89.0f, 89.0f);
+                _rotation.Y = Clamp(_rotation.Y, -89.0f, 89.0f);
             }
         }
 
@@ -96,6 +95,16 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             {
                 _pos += _speed * _localUp;
             }
+        }
+
+        private float Clamp(float toClamp, float bottom, float top)
+        {
+            if (toClamp < bottom)
+                return bottom;
+            else if (toClamp > top)
+                return top;
+            else
+                return toClamp;
         }
     }
 }

@@ -1,5 +1,4 @@
-﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.OpenTK;
-using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.GameObject;
 
 namespace ArctisAurora.CustomEntities

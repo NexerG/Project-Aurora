@@ -1,8 +1,7 @@
-﻿using OpenTK.Mathematics;
-using ArctisAurora.CustomEntityComponents;
-using ArctisAurora.EngineWork;
+﻿using ArctisAurora.CustomEntityComponents;
+using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+using ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan;
 using ArctisAurora.GameObject;
-using ArctisAurora.EngineWork.ECS.RenderingComponents.OpenTK;
 
 namespace ArctisAurora.CustomEntities
 {
@@ -11,9 +10,9 @@ namespace ArctisAurora.CustomEntities
         public SimulatorEntity()
         {
             this.transform.scale *= 2;
-            this.CreateComponent<SPHSimComponent_OpenTK>();
-            this.CreateComponent<MeshComponent_OpenTK>();
-            this.name= "SPH Simulation Entity";
+            this.CreateComponent<SPHSimComponent>();
+            this.CreateComponent<AVulkanMeshComponent>();
+            this.name = "SPH Simulation Entity";
         }
 
         public override void OnStart()

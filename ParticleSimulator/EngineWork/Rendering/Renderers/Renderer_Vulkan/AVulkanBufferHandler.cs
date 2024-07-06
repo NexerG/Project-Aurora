@@ -1,13 +1,9 @@
 ﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
 using ArctisAurora.GameObject;
-using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
-using StbImageSharp;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Threading;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using Format = Silk.NET.Vulkan.Format;
 using Image = SixLabors.ImageSharp.Image;
@@ -155,7 +151,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _instanceMemory);
         }
 
-        internal void UpdateUniformBuffer(ref AVulkanMeshComponent _sender, AVulkanCamera _camera, uint _currentImage, ref DeviceMemory[] _uniformBuffersMemory)
+        internal void UpdateUniformBuffer(AVulkanCamera _camera, uint _currentImage, ref DeviceMemory[] _uniformBuffersMemory)
         {
             UBO _ubo = new UBO()
             {

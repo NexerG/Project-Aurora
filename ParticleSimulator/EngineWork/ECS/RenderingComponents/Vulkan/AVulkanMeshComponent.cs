@@ -49,7 +49,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 VulkanRenderer._bufferHandlerHelper.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory);
                 VulkanRenderer._bufferHandlerHelper.CreateImageView(ref _textureImage, ref _textureImageView);
 
-                List<Matrix4X4<float>> _testMatrix = new List<Matrix4X4<float>>();
+                /*List<Matrix4X4<float>> _testMatrix = new List<Matrix4X4<float>>();
                 Vector3D<float> _pos = new Vector3D<float>(2, 2, 2);
                 Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
                 _testMatrix.Add(_transform);
@@ -57,7 +57,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 Matrix4X4<float> _transform2 = Matrix4X4<float>.Identity;
                 _transform2 *= Matrix4X4.CreateTranslation(_pos);
                 _testMatrix.Add(_transform2);
-                MakeInstanced(ref _testMatrix);
+                MakeInstanced(ref _testMatrix);*/
                 
                 CreateUniformBuffers();
                 CreateDescriptorSet();
@@ -76,6 +76,9 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             _transformMatrices = _matrices;
 
             VulkanRenderer._bufferHandlerHelper.CreateTransformBuffer(ref _transformMatrices, ref _trasnformsBuffer, ref _trasnformsBufferMemory);
+            VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, VulkanRenderer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
+            CreateDescriptorSet();
+            VulkanRenderer._rendererInstance.RecreateCommandBuffers();
         }
 
         internal void SingletonMatrix()
@@ -109,9 +112,10 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 _descriptorSets = new DescriptorSet[VulkanRenderer._swapchain._swapchainImages.Length];
                 fixed (DescriptorSet* _descriptorSetsPtr = _descriptorSets)
                 {
-                    if (VulkanRenderer._vulkan.AllocateDescriptorSets(VulkanRenderer._logicalDevice, _allocateInfo, _descriptorSetsPtr) != Result.Success)
+                    Result r = VulkanRenderer._vulkan.AllocateDescriptorSets(VulkanRenderer._logicalDevice, _allocateInfo, _descriptorSetsPtr);
+                    if (r != Result.Success)
                     {
-                        throw new Exception("Failed to allocate descriptor set");
+                        throw new Exception("Failed to allocate descriptor set withe error code: " + r);
                     }
                 }
             }
@@ -198,13 +202,13 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         internal void UpdateMatrices()
         {
 
-            Vector3D<float> _pos = new Vector3D<float>(0, 0, 0);
+            /*Vector3D<float> _pos = new Vector3D<float>(0, 0, 0);
 
             Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
             _transform *= Matrix4X4.CreateScale(new Vector3D<float>(2, 2, 2));
             //_transform *= Matrix4X4.CreateTranslation(_pos);
 
-            _transformMatrices[0] = _transform;
+            _transformMatrices[0] = _transform;*/
             VulkanRenderer._bufferHandlerHelper.UpdateTransformBuffer(ref _transformMatrices, ref _trasnformsBufferMemory);
         }
 

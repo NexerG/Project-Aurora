@@ -95,5 +95,5 @@ vec4 spotLight()
 void main()
 {
     //outColor = texture(texSampler, texCoord);
-	outColor = pointLight(LUniform.lights[0].pos);
+	outColor = directLight();
 }

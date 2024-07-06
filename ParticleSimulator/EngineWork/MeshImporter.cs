@@ -1,12 +1,4 @@
-﻿using ArctisAurora.EngineWork.Model;
-using Assimp;
-using Assimp.Unmanaged;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Assimp;
 
 namespace ArctisAurora.EngineWork
 {

@@ -4,7 +4,7 @@ using Silk.NET.Maths;
 
 namespace ArctisAurora.Simulators.Vulkan
 {
-    public class Simulator3DVulkan
+    public class Simulator3D
     {
         //Frame
         Frame SC;
@@ -13,7 +13,7 @@ namespace ArctisAurora.Simulators.Vulkan
         //particles and forces
         List<Force> forces = new List<Force>();
         Vector3D<float> ConstForce = new Vector3D<float>();
-        List<Particle3DVulkan> parts;
+        List<Particle3D> parts;
         float[] densities;
         //Vars
         public float targetDensity = 0.00001f;
@@ -26,7 +26,7 @@ namespace ArctisAurora.Simulators.Vulkan
         int[] StartIndices;
         public Vector3D<float>[] Offsets2D = new Vector3D<float>[27];
 
-        public Simulator3DVulkan() //SPH algorithm
+        public Simulator3D() //SPH algorithm
         {
             Gravity g = new Gravity(new PointF(0, 9.8f));
             forces.Add(g);
@@ -42,7 +42,7 @@ namespace ArctisAurora.Simulators.Vulkan
             UpdateUI();
         }
 
-        public Simulator3DVulkan(List<Particle3DVulkan> parts, Frame SC)
+        public Simulator3D(List<Particle3D> parts, Frame SC)
         {
             Gravity g = new Gravity(new Vector3D<float>(0f, 0f, 9.8f));
             forces.Add(g);
@@ -60,7 +60,7 @@ namespace ArctisAurora.Simulators.Vulkan
             UpdateUI();
         }
 
-        public Simulator3DVulkan(Frame frame, List<Particle3DVulkan> parts, Vector3D<float> simSize)
+        public Simulator3D(Frame frame, List<Particle3D> parts, Vector3D<float> simSize)
         {
             SC = frame;
             Gravity g = new Gravity(new Vector3D<float>(0f, 9.8f, 0f));
@@ -79,7 +79,7 @@ namespace ArctisAurora.Simulators.Vulkan
             UpdateUI();
         }
 
-        public Simulator3DVulkan(List<Particle3DVulkan> parts, Vector3D<float> simSize)
+        public Simulator3D(List<Particle3D> parts, Vector3D<float> simSize)
         {
             Gravity g = new Gravity(new Vector3D<float>(0f, -9.8f, 0f));
             forces.Add(g);
@@ -143,9 +143,9 @@ namespace ArctisAurora.Simulators.Vulkan
         {
             foreach (Force f in forces)
             {
-                ConstForce.X = ConstForce.X + f.force3.X;
-                ConstForce.Y = ConstForce.Y + f.force3.Y;
-                ConstForce.Z = ConstForce.Z + f.force3.Z;
+                ConstForce.X = ConstForce.X + f._force.X;
+                ConstForce.Y = ConstForce.Y + f._force.Y;
+                ConstForce.Z = ConstForce.Z + f._force.Z;
             }
         }
 
@@ -198,7 +198,7 @@ namespace ArctisAurora.Simulators.Vulkan
             UpdatePositions(parts);
         }
 
-        void UpdatePositions(List<Particle3DVulkan> parts)
+        void UpdatePositions(List<Particle3D> parts)
         {
 
             Parallel.For(0, parts.Count, i =>
@@ -377,7 +377,7 @@ namespace ArctisAurora.Simulators.Vulkan
         #endregion
 
         #region Cells
-        public void UpdateSpatialLookup(List<Particle3DVulkan> parts, float radius)
+        public void UpdateSpatialLookup(List<Particle3D> parts, float radius)
         {
             Parallel.For(0, parts.Count, i =>
             {
@@ -409,7 +409,7 @@ namespace ArctisAurora.Simulators.Vulkan
         {
             return HC % (uint)SpatialLookup.Length;
         }
-        private (int cellX, int cellY, int cellZ) PositionToCellCoord(Particle3DVulkan particle, float radius)
+        private (int cellX, int cellY, int cellZ) PositionToCellCoord(Particle3D particle, float radius)
         {
             int cellX = (int)(particle.PredPoint.X / radius);
             int cellY = (int)(particle.PredPoint.Y / radius);

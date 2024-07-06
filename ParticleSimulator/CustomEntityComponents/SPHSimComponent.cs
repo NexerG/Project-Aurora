@@ -1,17 +1,15 @@
 ﻿using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.ParticleTypes;
-using ArctisAurora.Simulators.OpenTK;
-using ArctisAurora.Simulators.ParticleTypes;
 using ArctisAurora.Simulators.Vulkan;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.CustomEntityComponents
 {
-    internal class SPHSimVulkanComponent : EntityComponent
+    internal class SPHSimComponent : EntityComponent
     {
-        internal List<Particle3DVulkan> _particles = new List<Particle3DVulkan>();
-        internal Simulator3DVulkan _simulator;
+        internal List<Particle3D> _particles = new List<Particle3D>();
+        internal Simulator3D _simulator;
         internal List<Matrix4X4<float>> _instanceMatrix = new List<Matrix4X4<float>>();
 
         public override void OnTick()
@@ -31,12 +29,12 @@ namespace ArctisAurora.CustomEntityComponents
                 {
                     for (int k = 0; k < particleRoot; k++)
                     {
-                        _particles.Add(new Particle3DVulkan((i * 7 + offsetX), (j * 7 + offsetY), k * 7 + offsetZ));
+                        _particles.Add(new Particle3D((i * 7 + offsetX), (j * 7 + offsetY), k * 7 + offsetZ));
                     }
                 }
             }
 
-            _simulator = new Simulator3DVulkan(_particles, new Vector3D<float>(700, 700, 700));
+            _simulator = new Simulator3D(_particles, new Vector3D<float>(700, 700, 700));
 
             for (int i = 0; i < _particles.Count; i++)
             {
@@ -45,14 +43,14 @@ namespace ArctisAurora.CustomEntityComponents
 
                 Matrix4X4<float> transformation = Matrix4X4<float>.Identity;
                 transformation *= Matrix4X4.CreateTranslation(pos);
-                transformation *= Matrix4X4.CreateFromQuaternion(q);
-                transformation *= Matrix4X4.CreateScale(parent.transform.scale);
+                //transformation *= Matrix4X4.CreateFromQuaternion(q);
+                //transformation *= Matrix4X4.CreateScale(parent.transform.scale);
 
                 _instanceMatrix.Add(transformation);
             }
             parent.GetComponent<AVulkanMeshComponent>().MakeInstanced(ref _instanceMatrix);
         }
-        public void UpdatePositions3D(List<Particle3DVulkan> ps)
+        public void UpdatePositions3D(List<Particle3D> ps)
         {
             for (int i = 0; i < ps.Count; i++)
             {
