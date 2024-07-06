@@ -42,7 +42,8 @@ namespace ArctisAurora.EngineWork
 
             _pathTracer = new VulkanRenderer();
             TestingEntity ent = new TestingEntity();
-
+            Entity lightEnt = new Entity();
+            _pathTracer.AddLighToRenderQueue(lightEnt);
             ////mesh importer
             //MeshImporter importer = new MeshImporter();
             //Scene scene1 = importer.ImportFBX("H:\\Creative\\Blender\\AuroraTestScene.fbx");

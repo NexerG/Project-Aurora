@@ -7,9 +7,16 @@ using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using Semaphore = Silk.NET.Vulkan.Semaphore;
 using ArctisAurora.GameObject;
 using ArctisAurora.CustomEntities;
+using Silk.NET.Maths;
 
 namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 {
+    struct LightData
+    {
+        internal Vector3D<float> _pos;
+        internal Vector4D<float> _color;
+    }
+
     internal unsafe class VulkanRenderer
     {
         //early window setting
@@ -26,11 +33,13 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         internal static Instance _instance;                         //vulkan instance
         internal static AVulkanSwapchain? _swapchain;
         internal static AVulkanGraphicsPipeline _pipeline;
-        //
+        //buffers
         private Framebuffer[] _framebuffer;
         private CommandBuffer[] _commandBuffer;
+        internal static Buffer _lightBuffer;
+        internal static DeviceMemory _lightBufferMemory;
         internal static CommandPool _commandPool;
-        //
+        //descriptors
         internal static DescriptorSetLayout _descriptorSetLayout;
         internal static DescriptorPool _descriptorPool;
         //cpu - gpu sync variables
@@ -97,9 +106,14 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             _entitiesToRender.Add(_m);
         }
 
-        internal void AddLighToRenderQueue()
+        internal void AddLighToRenderQueue(Entity _l)
         {
-
+            _lightsToRender.Add(_l);
+            if (_lightsToRender.Count == 1)
+            {
+                _bufferHandlerHelper.CreateLightsBuffer(ref _lightsToRender, ref _lightBuffer, ref _lightBufferMemory);
+            }
+            else _bufferHandlerHelper.RecreateLightsBuffer(ref _lightsToRender, ref _lightBuffer, ref _lightBufferMemory);
         }
 
         private void CreateVulkanInstance()
@@ -432,16 +446,25 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 StageFlags = ShaderStageFlags.VertexBit
             };
 
-            DescriptorSetLayoutBinding _samplerLayoutBinding = new DescriptorSetLayoutBinding()
+            DescriptorSetLayoutBinding _lightLayoutBinding = new DescriptorSetLayoutBinding()
             {
                 Binding = 2,
+                DescriptorCount = 1,
+                DescriptorType = DescriptorType.StorageBuffer,
+                PImmutableSamplers = null,
+                StageFlags = ShaderStageFlags.FragmentBit
+            };
+
+            DescriptorSetLayoutBinding _samplerLayoutBinding = new DescriptorSetLayoutBinding()
+            {
+                Binding = 3,
                 DescriptorCount = 1,
                 DescriptorType = DescriptorType.CombinedImageSampler,
                 PImmutableSamplers = null,
                 StageFlags = ShaderStageFlags.FragmentBit
             };
 
-            var _bindings = new DescriptorSetLayoutBinding[] { _uboLayoutBinding, _matrixLayoutBinding, _samplerLayoutBinding};
+            var _bindings = new DescriptorSetLayoutBinding[] { _uboLayoutBinding, _matrixLayoutBinding, _lightLayoutBinding, _samplerLayoutBinding};
             fixed(DescriptorSetLayoutBinding* _bindingsPtr = _bindings)
             fixed (DescriptorSetLayout* _descSetLayoutPtr = &_descriptorSetLayout)
             {
@@ -540,6 +563,9 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             }
 
             _camera.UpdateCameraMatrix(_extent);
+            if(_lightsToRender.Count > 0)
+                _bufferHandlerHelper.UpdateLightsBuffer(ref _lightsToRender, ref _lightBufferMemory);
+            //update uniforms
             foreach (Entity e in _entitiesToRender)
             {
                 e.GetComponent<AVulkanMeshComponent>().UpdateMatrices();

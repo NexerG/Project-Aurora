@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
+using ArctisAurora.GameObject;
 using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
@@ -22,7 +23,6 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
 
     internal unsafe class AVulkanBufferHandler
     {
-
         internal void CreateVertexBuffer(ref Vertex[] _vertices, ref Buffer _vertexBuffer, ref DeviceMemory _vertexBufferMemory)
         {
             ulong _bufferSize = (ulong)(Unsafe.SizeOf<Vertex>() * _vertices.Length);
@@ -107,6 +107,42 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _instanceMemory);
         }
 
+        internal void CreateLightsBuffer(ref List<Entity> _lightsToRender, ref Buffer _lightBuffer, ref DeviceMemory _lightMemory)
+        {
+            LightData[] _lightData = new LightData[_lightsToRender.Count];
+            for (int i = 0; i < _lightsToRender.Count; i++)
+            {
+                _lightData[i] = new LightData();
+                _lightData[i]._pos = _lightsToRender[i].transform.position;
+                _lightData[i]._color = new Vector4D<float>(1, 1, 1, 1);
+            }
+
+            ulong _bufferSize = (ulong)(sizeof(LightData) * _lightData.Length);
+            CreateBuffer(_bufferSize, BufferUsageFlags.StorageBufferBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _lightBuffer, ref _lightMemory);
+
+            void* _data;
+            VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _lightMemory, 0, _bufferSize, 0, &_data);
+            Span<LightData> _spanData = new Span<LightData>(_data, _lightData.Length);
+            for (int i = 0; i < _lightData.Length; i++)
+                _spanData[i] = _lightData[i];
+            new Span<int>((byte*)_data + sizeof(LightData) * _lightsToRender.Count, 1)[0] = _lightsToRender.Count;
+            new Span<Vector3D<float>>((byte*)_data + sizeof(LightData) * _lightsToRender.Count + sizeof(int), 1)[0] = VulkanRenderer._camera._pos;
+            VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _lightMemory);
+        }
+
+        internal void RecreateLightsBuffer(ref List<Entity> _lightsToRender, ref Buffer _lightBuffer, ref DeviceMemory _lightMemory)
+        {
+            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _lightBuffer, null);
+            LightData[] _lightData = new LightData[_lightsToRender.Count];
+            for (int i = 0; i < _lightsToRender.Count; i++)
+            {
+                _lightData[i] = new LightData();
+                _lightData[i]._pos = _lightsToRender[i].transform.position;
+                _lightData[i]._color = new Vector4D<float>(1, 1, 1, 1);
+            }
+            CreateLightsBuffer(ref _lightsToRender, ref _lightBuffer, ref _lightMemory);
+        }
+
         internal void UpdateTransformBuffer(ref List<Matrix4X4<float>> _instances, ref DeviceMemory _instanceMemory)
         {
             ulong _bufferSize = (ulong)(sizeof(Matrix4X4<float>) * _instances.Count);
@@ -131,6 +167,26 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _uniformBuffersMemory[_currentImage], 0, (ulong)Unsafe.SizeOf<UBO>(), 0, &_data);
             new Span<UBO>(_data, 1)[0] = _ubo;
             VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _uniformBuffersMemory[_currentImage]);
+        }
+
+        internal void UpdateLightsBuffer(ref List<Entity> _lightsToRender, ref DeviceMemory _lightMemory)
+        {
+            LightData[] _lightData = new LightData[_lightsToRender.Count];
+            for (int i = 0; i < _lightsToRender.Count; i++)
+            {
+                _lightData[i] = new LightData();
+                _lightData[i]._pos = _lightsToRender[i].transform.position;
+                _lightData[i]._color = new Vector4D<float>(1, 1, 1, 1);
+            }
+            
+            void* _data;
+            VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _lightMemory, 0, (ulong)Unsafe.SizeOf<UBO>(), 0, &_data);
+            Span<LightData> _span = new Span<LightData>(_data, _lightData.Length);
+            for (int i = 0; i < _lightData.Length; i++)
+                _span[i] = _lightData[i];
+            new Span<int>((byte*)_data + sizeof(LightData) * _lightsToRender.Count, 1)[0] = _lightsToRender.Count;
+            new Span<Vector3D<float>>((byte*)_data + sizeof(LightData) * _lightsToRender.Count + sizeof(int), 1)[0] = VulkanRenderer._camera._pos;
+            VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _lightMemory);
         }
 
         private void CopyBufferToImage(Buffer _buffer, Silk.NET.Vulkan.Image _image, uint _width, uint _height)

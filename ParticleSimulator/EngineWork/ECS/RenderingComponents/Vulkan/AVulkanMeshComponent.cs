@@ -131,6 +131,13 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                     Range = Vk.WholeSize
                 };
 
+                DescriptorBufferInfo _lightBufferUniform = new DescriptorBufferInfo()
+                {
+                    Buffer = VulkanRenderer._lightBuffer,
+                    Offset = 0,
+                    Range = Vk.WholeSize
+                };
+
                 DescriptorImageInfo _imageInfo = new DescriptorImageInfo()
                 {
                     ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
@@ -165,6 +172,16 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                         SType = StructureType.WriteDescriptorSet,
                         DstSet = _descriptorSets[i],
                         DstBinding = 2,
+                        DstArrayElement = 0,
+                        DescriptorType = DescriptorType.StorageBuffer,
+                        DescriptorCount = 1,
+                        PBufferInfo = &_lightBufferUniform
+                    },
+                    new WriteDescriptorSet()
+                    {
+                        SType = StructureType.WriteDescriptorSet,
+                        DstSet = _descriptorSets[i],
+                        DstBinding = 3,
                         DstArrayElement = 0,
                         DescriptorType = DescriptorType.CombinedImageSampler,
                         DescriptorCount = 1,
