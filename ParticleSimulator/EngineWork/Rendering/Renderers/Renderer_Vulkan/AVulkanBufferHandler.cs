@@ -1,5 +1,4 @@
-﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
-using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
+﻿using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
 using ArctisAurora.GameObject;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
@@ -113,7 +112,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
                 _lightData[i]._color = new Vector4D<float>(1, 1, 1, 1);
             }
 
-            ulong _bufferSize = (ulong)(sizeof(LightData) * _lightData.Length);
+            ulong _bufferSize = (ulong)(sizeof(LightData) * _lightData.Length + sizeof(int) + sizeof(Vector3D<float>));
             CreateBuffer(_bufferSize, BufferUsageFlags.StorageBufferBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _lightBuffer, ref _lightMemory);
 
             void* _data;
@@ -174,13 +173,17 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
                 _lightData[i]._pos = _lightsToRender[i].transform.position;
                 _lightData[i]._color = new Vector4D<float>(1, 1, 1, 1);
             }
-            
+            ulong _bufferSize = (ulong)(sizeof(LightData) * _lightData.Length + sizeof(int) + sizeof(Vector3D<float>));
+
             void* _data;
-            VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _lightMemory, 0, (ulong)Unsafe.SizeOf<UBO>(), 0, &_data);
+            VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _lightMemory, 0, _bufferSize, 0, &_data);
+            //get the light data (positions and light color) into a container
             Span<LightData> _span = new Span<LightData>(_data, _lightData.Length);
             for (int i = 0; i < _lightData.Length; i++)
                 _span[i] = _lightData[i];
+            //put how many lights we got into a container
             new Span<int>((byte*)_data + sizeof(LightData) * _lightsToRender.Count, 1)[0] = _lightsToRender.Count;
+            //camera position
             new Span<Vector3D<float>>((byte*)_data + sizeof(LightData) * _lightsToRender.Count + sizeof(int), 1)[0] = VulkanRenderer._camera._pos;
             VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _lightMemory);
         }
@@ -429,6 +432,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
         {
             ImageViewCreateInfo _createInfo = new ImageViewCreateInfo
             {
+                SType = StructureType.ImageViewCreateInfo,
                 Image = _textureImage,
                 Format = Format.R8G8B8A8Srgb,
                 ViewType = ImageViewType.Type2D

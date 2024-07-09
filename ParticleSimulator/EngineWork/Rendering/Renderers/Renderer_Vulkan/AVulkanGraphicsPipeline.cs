@@ -8,6 +8,8 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
     {
         internal PipelineLayout _pipelineLayout;
         internal Pipeline _graphicsPipeline;
+        internal PipelineLayout _shadowLayout;
+        internal Pipeline _shadowPipeline;
 
         internal void CreateGraphicsPipeline(string vertex, string fragment, Extent2D _extent2D, ref DescriptorSetLayout _descriptorSetLayout)
         {
@@ -170,10 +172,152 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             SilkMarshal.Free((nint)_fragmentShaderStageInfo.PName);
         }
 
+        internal void CreateShadwomapPipeline(string vertex, string fragment, Extent2D _shadowTextureSize, ref DescriptorSetLayout _descriptorSetLayout)
+        {
+            byte[] _vertexCode = ReadFile("../../../Shaders/" + vertex);
+            byte[] _fragmentCode = ReadFile("../../../Shaders/" + fragment);
+
+            ShaderModule _vertexShader = CreateShaderModule(_vertexCode);
+            ShaderModule _fragmentShader = CreateShaderModule(_fragmentCode);
+
+            PipelineShaderStageCreateInfo _vertexShaderStageInfo = new PipelineShaderStageCreateInfo
+            {
+                SType = StructureType.PipelineShaderStageCreateInfo,
+                Stage = ShaderStageFlags.VertexBit,
+                Module = _vertexShader,
+                PName = (byte*)SilkMarshal.StringToPtr("main")
+            };
+            PipelineShaderStageCreateInfo _fragmentShaderStageInfo = new PipelineShaderStageCreateInfo
+            {
+                SType = StructureType.PipelineShaderStageCreateInfo,
+                Stage = ShaderStageFlags.FragmentBit,
+                Module = _fragmentShader,
+                PName = (byte*)SilkMarshal.StringToPtr("main")
+            };
+
+            var _stages = stackalloc[]
+            {
+                _vertexShaderStageInfo,
+                _fragmentShaderStageInfo
+            };
+
+            VertexInputBindingDescription _bindingDesc = Vertex.GetBindingDescription();
+            VertexInputAttributeDescription[] _attribDesc = Vertex.GetVertexInputAttributeDescriptions();
+
+            fixed (VertexInputAttributeDescription* _attribDescPtr = _attribDesc)
+            fixed (DescriptorSetLayout* _descriptorSetLayoutPtr = &_descriptorSetLayout)
+            {
+                PipelineVertexInputStateCreateInfo _vertexInputInfo = new PipelineVertexInputStateCreateInfo
+                {
+                    SType = StructureType.PipelineVertexInputStateCreateInfo,
+                    VertexBindingDescriptionCount = 1,
+                    VertexAttributeDescriptionCount = (uint)_attribDesc.Length,
+                    PVertexBindingDescriptions = &_bindingDesc,
+                    PVertexAttributeDescriptions = _attribDescPtr
+                };
+                PipelineInputAssemblyStateCreateInfo _inputAssembly = new PipelineInputAssemblyStateCreateInfo
+                {
+                    SType = StructureType.PipelineInputAssemblyStateCreateInfo,
+                    Topology = PrimitiveTopology.TriangleList,
+                    PrimitiveRestartEnable = false
+                };
+                Viewport _viewport = new Viewport()
+                {
+                    X = 0,
+                    Y = 0,
+                    Width = _shadowTextureSize.Width,
+                    Height = _shadowTextureSize.Height,
+                    MinDepth = 0,
+                    MaxDepth = 1
+                };
+                Rect2D _scissor = new Rect2D()
+                {
+                    Offset = { X = 0, Y = 0 },
+                    Extent = _shadowTextureSize
+                };
+                PipelineViewportStateCreateInfo _viewportState = new PipelineViewportStateCreateInfo()
+                {
+                    SType = StructureType.PipelineViewportStateCreateInfo,
+                    ViewportCount = 1,
+                    PViewports = &_viewport,
+                    ScissorCount = 1,
+                    PScissors = &_scissor,
+                };
+                PipelineRasterizationStateCreateInfo _rasterizer = new PipelineRasterizationStateCreateInfo()
+                {
+                    SType = StructureType.PipelineRasterizationStateCreateInfo,
+                    DepthClampEnable = false,
+                    RasterizerDiscardEnable = false,
+                    PolygonMode = PolygonMode.Fill,
+                    LineWidth = 1,
+                    CullMode = CullModeFlags.FrontBit,
+                    FrontFace = FrontFace.Clockwise,
+                    DepthBiasEnable = false
+                };
+                PipelineMultisampleStateCreateInfo _multisampling = new PipelineMultisampleStateCreateInfo()
+                {
+                    SType = StructureType.PipelineMultisampleStateCreateInfo,
+                    SampleShadingEnable = false,
+                    RasterizationSamples = SampleCountFlags.Count1Bit
+                };
+                PipelineDepthStencilStateCreateInfo _depthCreateInfo = new PipelineDepthStencilStateCreateInfo()
+                {
+                    SType = StructureType.PipelineDepthStencilStateCreateInfo,
+                    DepthTestEnable = true,
+                    DepthWriteEnable = true,
+                    DepthCompareOp = CompareOp.Less,
+                    DepthBoundsTestEnable = false,
+                    StencilTestEnable = false,
+                };
+                PipelineLayoutCreateInfo _pipelineLayoutInfo = new PipelineLayoutCreateInfo()
+                {
+                    SType = StructureType.PipelineLayoutCreateInfo,
+                    SetLayoutCount = 1,
+                    PushConstantRangeCount = 0,
+                    PSetLayouts = _descriptorSetLayoutPtr
+                };
+
+                if (VulkanRenderer._vulkan.CreatePipelineLayout(VulkanRenderer._logicalDevice, _pipelineLayoutInfo, null, out _shadowLayout) != Result.Success)
+                {
+                    throw new Exception("Failed to create pipeline layout");
+                }
+
+                GraphicsPipelineCreateInfo _graphicsPipelineInfo = new GraphicsPipelineCreateInfo()
+                {
+                    SType = StructureType.GraphicsPipelineCreateInfo,
+                    StageCount = 2,
+                    PStages = _stages,
+                    PVertexInputState = &_vertexInputInfo,
+                    PInputAssemblyState = &_inputAssembly,
+                    PViewportState = &_viewportState,
+                    PRasterizationState = &_rasterizer,
+                    PMultisampleState = &_multisampling,
+                    PDepthStencilState = &_depthCreateInfo,
+                    Layout = _shadowLayout,
+                    RenderPass = VulkanRenderer._swapchain._shadowmapRenderPass,
+                    Subpass = 0,
+                    BasePipelineHandle = default
+                };
+
+                Result r = VulkanRenderer._vulkan.CreateGraphicsPipelines(VulkanRenderer._logicalDevice, default, 1, _graphicsPipelineInfo, null, out _shadowPipeline);
+                if (r != Result.Success)
+                {
+                    throw new Exception("Failed to create graphics pipeline " + r);
+                }
+            }
+
+            VulkanRenderer._vulkan.DestroyShaderModule(VulkanRenderer._logicalDevice, _vertexShader, null);
+            VulkanRenderer._vulkan.DestroyShaderModule(VulkanRenderer._logicalDevice, _fragmentShader, null);
+            SilkMarshal.Free((nint)_vertexShaderStageInfo.PName);
+            SilkMarshal.Free((nint)_fragmentShaderStageInfo.PName);
+        }
+
         internal void DestroyPipeline()
         {
             VulkanRenderer._vulkan.DestroyPipeline(VulkanRenderer._logicalDevice, _graphicsPipeline, null);
             VulkanRenderer._vulkan.DestroyPipelineLayout(VulkanRenderer._logicalDevice, _pipelineLayout, null);
+            VulkanRenderer._vulkan.DestroyPipeline(VulkanRenderer._logicalDevice, _shadowPipeline, null);
+            VulkanRenderer._vulkan.DestroyPipelineLayout(VulkanRenderer._logicalDevice, _shadowLayout, null);
         }
 
         private ShaderModule CreateShaderModule(byte[] _shaderCode)

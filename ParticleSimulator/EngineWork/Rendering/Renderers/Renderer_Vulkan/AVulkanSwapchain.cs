@@ -1,5 +1,4 @@
-﻿using Silk.NET.Core.Contexts;
-using Silk.NET.Vulkan;
+﻿using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 using Image = Silk.NET.Vulkan.Image;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
@@ -36,6 +35,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         internal DeviceMemory _depthMemory;
         internal SurfaceFormatKHR _surfaceFormat;   //window format
         internal RenderPass _renderPass;
+        internal RenderPass _shadowmapRenderPass;
 
         //external references
         internal KhrSurface _driverSurface;
@@ -104,6 +104,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             {
                 ImageViewCreateInfo _createInfo = new ImageViewCreateInfo
                 {
+                    SType = StructureType.ImageViewCreateInfo,
                     Image = _swapchainImages[i],
                     Format = _surfaceFormat.Format,
                     ViewType = ImageViewType.Type2D
@@ -133,6 +134,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             VulkanRenderer._bufferHandlerHelper.CreateImage(VulkanRenderer._extent.Width, VulkanRenderer._extent.Height, _depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit, MemoryPropertyFlags.DeviceLocalBit, ref _depthImage, ref _depthMemory);
             ImageViewCreateInfo _createInfo = new ImageViewCreateInfo
             {
+                SType = StructureType.ImageViewCreateInfo,
                 Image = _depthImage,
                 Format = _depthFormat,
                 ViewType = ImageViewType.Type2D
@@ -226,6 +228,65 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             }
         }
 
+        internal void CreateShadowmapRenderPass()
+        {
+            AttachmentDescription _depthAttachment = new AttachmentDescription()
+            {
+                Format = GetDepthFormat(),
+                Samples = SampleCountFlags.Count1Bit,
+                LoadOp = AttachmentLoadOp.Clear,
+                StoreOp = AttachmentStoreOp.DontCare,
+                StencilLoadOp = AttachmentLoadOp.DontCare,
+                StencilStoreOp = AttachmentStoreOp.DontCare,
+                InitialLayout = ImageLayout.Undefined,
+                FinalLayout = ImageLayout.DepthStencilAttachmentOptimal
+            };
+
+            AttachmentReference _depthAttachmentRef = new AttachmentReference()
+            {
+                Attachment = 0,
+                Layout = ImageLayout.DepthStencilAttachmentOptimal
+            };
+
+            SubpassDescription _subpass = new SubpassDescription()
+            {
+                PipelineBindPoint = PipelineBindPoint.Graphics,
+                ColorAttachmentCount = 0,
+                PColorAttachments = null,
+                PDepthStencilAttachment = &_depthAttachmentRef
+            };
+
+            SubpassDependency _subDepend = new SubpassDependency()
+            {
+                SrcSubpass = Vk.SubpassExternal,
+                DstSubpass = 0,
+                SrcStageMask = PipelineStageFlags.EarlyFragmentTestsBit,
+                SrcAccessMask = 0,
+                DstStageMask = PipelineStageFlags.EarlyFragmentTestsBit,
+                DstAccessMask = AccessFlags.DepthStencilAttachmentWriteBit
+            };
+
+            var _attachments = new[] { _depthAttachment };
+            fixed (AttachmentDescription* _attachmentPtr = _attachments)
+            {
+                RenderPassCreateInfo _renderPassInfo = new RenderPassCreateInfo()
+                {
+                    SType = StructureType.RenderPassCreateInfo,
+                    AttachmentCount = (uint)_attachments.Length,
+                    PAttachments = _attachmentPtr,
+                    SubpassCount = 1,
+                    PSubpasses = &_subpass,
+                    DependencyCount = 1,
+                    PDependencies = &_subDepend
+                };
+
+                if (VulkanRenderer._vulkan.CreateRenderPass(VulkanRenderer._logicalDevice, _renderPassInfo, null, out _shadowmapRenderPass) != Result.Success)
+                {
+                    throw new Exception("failed to create render pass!");
+                }
+            }
+        }
+
         internal void DestroySwapchain()
         {
             foreach (var iv in _imageViews)
@@ -240,6 +301,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             CreateSwapchain(ref _extent);
             CreateImageView();
             CreateRenderPass();
+            CreateShadowmapRenderPass();
         }
 
         private PresentModeKHR GetPresentMode(IReadOnlyList<PresentModeKHR> _presentModes)

@@ -1,12 +1,15 @@
-﻿using ArctisAurora.GameObject;
-using Silk.NET.GLFW;
+﻿using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
+using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
 {
     internal class AVulkanCamera
     {
+        //camera buffer
+        internal Buffer[] _cameraBuffer;
+        internal DeviceMemory[] _camBmemory;
         //keyboard
         internal Dictionary<Silk.NET.GLFW.Keys, bool> _keyStates = new Dictionary<Silk.NET.GLFW.Keys, bool>();
         //variables
@@ -16,8 +19,8 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
         internal Vector3D<float> _front = new Vector3D<float>(0, 0, 1);
         internal Vector3D<float> _localRight = new Vector3D<float> (0, 0, 0);
         //matrices
-        internal Matrix4X4<float> _view;
-        internal Matrix4X4<float> _projection;
+        internal Matrix4X4<float> _view = Matrix4X4<float>.Identity;
+        internal Matrix4X4<float> _projection = Matrix4X4<float>.Identity;
         //controls
         float _speed = 0.05f;
         float _sensitivity = 0.25f;
@@ -28,9 +31,10 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             {
                 _keyStates[key] = false;
             }
+            VulkanRenderer._bufferHandlerHelper.CreateUniformBuffer(ref _cameraBuffer, ref _camBmemory);
         }
 
-        internal void UpdateCameraMatrix(Extent2D _extent)
+        internal void UpdateCameraMatrix(Extent2D _extent, uint currentImage)
         {
             _front.X = MathF.Cos(Scalar.DegreesToRadians(_rotation.X)) * MathF.Cos(Scalar.DegreesToRadians(_rotation.Y));
             _front.Y = MathF.Sin(Scalar.DegreesToRadians(_rotation.Y));
@@ -43,6 +47,8 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             _view = Matrix4X4.CreateLookAt(_pos, _pos + _front, Vector3D<float>.UnitY);
             _projection = Matrix4X4.CreatePerspectiveFieldOfView(Scalar.DegreesToRadians(45.0f), _extent.Width / _extent.Height, 0.1f, 5000f);
             _projection.M22 *= -1;
+
+            VulkanRenderer._bufferHandlerHelper.UpdateUniformBuffer(this, currentImage, ref _camBmemory);
         }
 
         internal void ProcessMouseMovements(Vector2D<float> _delta, bool _constrainPitch = true)

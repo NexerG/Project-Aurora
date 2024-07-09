@@ -37,14 +37,13 @@ namespace ArctisAurora.EngineWork
             //---------------------------------------------------------------------------
             //Game logic
             //first we setup lights
-            Entity lightEnt = new Entity();
-            _rasterizer.AddLighToRenderQueue(lightEnt);
             //LightSourceEntity lightEntity = new LightSourceEntity();
             //lightEntity.transform.position = new Vector3D<float>(-0, 15, -0);
             //LightSourceEntity lightEntity2 = new LightSourceEntity();
             //lightEntity2.transform.position = new Vector3(700, 700, 700);
             //_entities.Add(lightEntity);
             //_entities.Add(lightEntity);
+            LightSourceEntity _ls = new LightSourceEntity();
 
             //then we do entities
             SimulatorEntity _simEntity = new SimulatorEntity();
@@ -82,7 +81,7 @@ namespace ArctisAurora.EngineWork
             {
                 //engine time
                 TimeSpan SimTime = DateTime.Now - initTime;
-                Console.SetCursorPosition(0, 0);
+                //Console.SetCursorPosition(0, 0);
 
                 DateTime entityOnTickStart = DateTime.Now;
                 foreach (Entity e in _entities)
@@ -90,10 +89,10 @@ namespace ArctisAurora.EngineWork
                     DateTime entityTimeStart = DateTime.Now;
                     e.OnTick();
                     TimeSpan entityTime = DateTime.Now - entityTimeStart;
-                    Console.WriteLine("      " + e.name + "   " + entityTime.TotalMilliseconds);
+                    //Console.WriteLine("      " + e.name + "   " + entityTime.TotalMilliseconds);
                 }
                 TimeSpan entityOnTickTime = DateTime.Now - entityOnTickStart;
-                Console.WriteLine("Entity time ---" + entityOnTickTime.TotalMilliseconds);
+                //Console.WriteLine("Entity time ---" + entityOnTickTime.TotalMilliseconds);
 
                 //renderer
                 DateTime GraphicsTimeStart = DateTime.Now;
@@ -104,10 +103,10 @@ namespace ArctisAurora.EngineWork
                         _rasterizer.Draw();
                     }));
                 TimeSpan GraphicsTime = DateTime.Now - GraphicsTimeStart;
-                Console.WriteLine("Graphics --- " + GraphicsTime.TotalMilliseconds);
+                //Console.WriteLine("Graphics --- " + GraphicsTime.TotalMilliseconds);
 
                 double totalTime = GraphicsTime.TotalMilliseconds + entityOnTickTime.TotalMilliseconds;
-                Console.WriteLine("TotalTime --- " + totalTime);
+                //Console.WriteLine("TotalTime --- " + totalTime);
                 framerate[index % 100] = totalTime;
                 index++;
                 if (index > 100) index = 1;
@@ -116,7 +115,7 @@ namespace ArctisAurora.EngineWork
                 {
                     fr += framerate[i];
                 }
-                Console.WriteLine("FPS --- " + 1000 / (fr / 100));
+                //Console.WriteLine("FPS --- " + 1000 / (fr / 100));
 
                 double TSOffset = TS - totalTime;
                 if (TSOffset > 0f)

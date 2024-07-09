@@ -5,7 +5,7 @@ struct LightData {
     vec4 color;
 };
 
-layout(binding = 2) uniform lightUniform {
+layout(binding = 2) buffer lightUniform {
     LightData lights[];
     int lightCount;
 	vec3 camPos;
