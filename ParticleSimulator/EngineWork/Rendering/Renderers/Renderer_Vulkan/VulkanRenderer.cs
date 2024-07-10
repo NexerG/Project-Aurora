@@ -47,6 +47,8 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         private CommandBuffer[] _commandBuffer;
         internal static Buffer _lightBuffer;
         internal static DeviceMemory _lightBufferMemory;
+        internal static Buffer[] _lightUBO;
+        internal static DeviceMemory[] _lightUBOMemory;
         internal static CommandPool _commandPool;
         //descriptors
         internal static DescriptorSetLayout _descriptorSetLayout;
@@ -127,11 +129,20 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             if (_lightsToRender.Count == 1)
             {
                 _bufferHandlerHelper.CreateLightsBuffer(ref _lightsToRender, ref _lightBuffer, ref _lightBufferMemory);
+                _bufferHandlerHelper.CreateLightUBO(ref _lightUBO, ref _lightUBOMemory, 1);
             }
-            else _bufferHandlerHelper.RecreateLightsBuffer(ref _lightsToRender, ref _lightBuffer, ref _lightBufferMemory);
+            else
+            {
+                _bufferHandlerHelper.RecreateLightsBuffer(ref _lightsToRender, ref _lightBuffer, ref _lightBufferMemory);
+                foreach(Buffer b in  _lightUBO)
+                    _vulkan.DestroyBuffer(_logicalDevice, b, null);
+                _vulkan.FreeMemory(_logicalDevice, _lightBufferMemory, null);
+                _bufferHandlerHelper.CreateLightUBO(ref _lightUBO, ref _lightUBOMemory, _lightsToRender.Count);
+                //recreate descriptor sets cause we just nuked all the buffers
+            }
         }
 
-        private void CreateVulkanInstance()
+            private void CreateVulkanInstance()
         {
             ApplicationInfo _appInfo = new ApplicationInfo
             {
@@ -269,7 +280,12 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 
             PhysicalDeviceFeatures _deviceFeatures = new PhysicalDeviceFeatures()
             {
-                SamplerAnisotropy = true
+                SamplerAnisotropy = true,
+            };
+            PhysicalDeviceVulkan12Features _vulkan12FT = new PhysicalDeviceVulkan12Features()
+            {
+                SType = StructureType.PhysicalDeviceVulkan12Features,
+                RuntimeDescriptorArray = true
             };
             string[] _validationLayers = { "VK_LAYER_KHRONOS_validation" };
             byte*[] _validationLayersNames = new byte*[_validationLayers.Length];
@@ -313,7 +329,8 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 
                     EnabledExtensionCount = (uint)enabledExtensions.Length,
                     PpEnabledExtensionNames = (byte**)ppEnabledExtensions,
-                    PEnabledFeatures = &_deviceFeatures
+                    PEnabledFeatures = &_deviceFeatures,
+                    PNext = &_vulkan12FT
                 };
                 Result r = _vulkan.CreateDevice(_gpu, _deviceInfo, null, out _logicalDevice);
 
@@ -514,7 +531,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                     {
                         _vertBuffers[e] = _entitiesToRender[e].GetComponent<AVulkanMeshComponent>()._vertexBuffer;
                         var _offset = new ulong[] { 0 };
-                        _entitiesToRender[e].GetComponent<AVulkanMeshComponent>().EnqueuShadowDrawCommands(_offset, i, ref _commandBuffer[i]);
+                        _entitiesToRender[e].GetComponent<AVulkanMeshComponent>().EnqueuShadowDrawCommands(_offset, i, ref _commandBuffer[i], e);
                     }
                     _vulkan.CmdEndRenderPass(_commandBuffer[i]);
                 }
@@ -601,7 +618,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             {
                 Binding = 0,
                 DescriptorCount = 1,
-                DescriptorType = DescriptorType.UniformBuffer,
+                DescriptorType = DescriptorType.StorageBuffer,
                 PImmutableSamplers = null,
                 StageFlags = ShaderStageFlags.VertexBit
             };
@@ -672,7 +689,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             {
                 new DescriptorPoolSize()
                 {
-                    Type = DescriptorType.UniformBuffer,
+                    Type = DescriptorType.StorageBuffer,
                     DescriptorCount = (uint)_swapchain!._swapchainImages.Length
                 }
             };
@@ -743,9 +760,16 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             }
 
             _camera.UpdateCameraMatrix(_extent, _imageIndex);
-            if(_lightsToRender.Count > 0)
+            if (_lightsToRender.Count > 0)
+            {
                 _bufferHandlerHelper.UpdateLightsBuffer(ref _lightsToRender, ref _lightBufferMemory);
+                _bufferHandlerHelper.UpdateLightUniforms(ref _lightsToRender, _imageIndex, ref _lightUBOMemory);
+            }
             //update uniforms
+            foreach (Entity e in _lightsToRender)
+            {
+                e.GetComponent<AVulkanLightsourceComponent>().UpdateVPMatrices(_imageIndex);
+            }
             foreach (Entity e in _entitiesToRender)
             {
                 e.GetComponent<AVulkanMeshComponent>().UpdateMatrices();

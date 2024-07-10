@@ -219,9 +219,9 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             {
                 DescriptorBufferInfo _bufferInfoUniform = new DescriptorBufferInfo()
                 {
-                    Buffer = VulkanRenderer._camera._cameraBuffer[i],
+                    Buffer = VulkanRenderer._lightUBO[i],
                     Offset = 0,
-                    Range = (ulong)Unsafe.SizeOf<UBO>()
+                    Range = Vk.WholeSize
                 };
 
                 DescriptorBufferInfo _bufferInfoMatrices = new DescriptorBufferInfo()
@@ -239,7 +239,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                         DstSet = _descriptorSetsShadow[i],
                         DstBinding = 0,
                         DstArrayElement = 0,
-                        DescriptorType = DescriptorType.UniformBuffer,
+                        DescriptorType = DescriptorType.StorageBuffer,
                         DescriptorCount = 1,
                         PBufferInfo = &_bufferInfoUniform
                     },
@@ -290,7 +290,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             }
         }
 
-        internal void EnqueuShadowDrawCommands(ulong[] _offset, int index, ref CommandBuffer _commandBuffer)
+        internal void EnqueuShadowDrawCommands(ulong[] _offset, int descriptorIndex, ref CommandBuffer _commandBuffer, int lightIndex)
         {
             if (_render)
             {
@@ -301,7 +301,9 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                     VulkanRenderer._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, _vertBuffersPtr, _offsetsPtr);
                 }
                 VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, _indexBuffer, 0, IndexType.Uint16);
-                VulkanRenderer._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, VulkanRenderer._pipeline._shadowLayout, 0, 1, _descriptorSetsShadow[index], 0, null);
+                VulkanRenderer._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, VulkanRenderer._pipeline._shadowLayout, 0, 1, _descriptorSetsShadow[descriptorIndex], 0, null);
+                //push constants
+                VulkanRenderer._vulkan.CmdPushConstants(_commandBuffer, VulkanRenderer._pipeline._shadowLayout, ShaderStageFlags.VertexBit, 0, sizeof(int), &lightIndex);
                 VulkanRenderer._vulkan.CmdDrawIndexed(_commandBuffer, (uint)_mesh._indices.Length, (uint)_instances, 0, 0, 0);
             }
         }

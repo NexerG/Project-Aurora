@@ -269,12 +269,19 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                     DepthBoundsTestEnable = false,
                     StencilTestEnable = false,
                 };
+                PushConstantRange _pushInfo = new PushConstantRange()
+                {
+                    StageFlags = ShaderStageFlags.VertexBit,
+                    Offset = 0,
+                    Size = sizeof(int)
+                };
                 PipelineLayoutCreateInfo _pipelineLayoutInfo = new PipelineLayoutCreateInfo()
                 {
                     SType = StructureType.PipelineLayoutCreateInfo,
                     SetLayoutCount = 1,
-                    PushConstantRangeCount = 0,
-                    PSetLayouts = _descriptorSetLayoutPtr
+                    PushConstantRangeCount = 1,
+                    PSetLayouts = _descriptorSetLayoutPtr,
+                    PPushConstantRanges = &_pushInfo,
                 };
 
                 if (VulkanRenderer._vulkan.CreatePipelineLayout(VulkanRenderer._logicalDevice, _pipelineLayoutInfo, null, out _shadowLayout) != Result.Success)

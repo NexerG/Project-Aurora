@@ -1,9 +1,14 @@
 #version 450
+#extension GL_EXT_nonuniform_qualifier : require
 
-layout(binding = 0) uniform UniformBufferObject {
+layout(push_constant) uniform lightIndex {
+    int index;
+} lIndex;
+
+layout(binding = 0) buffer lightMatrices {
     mat4 view;
     mat4 proj;
-} ubo;
+} ubo[];
 
 layout(binding = 1) buffer instanceBuffer{
     mat4 instanceMatrices[];
@@ -15,5 +20,5 @@ layout(location = 2) in vec2 inUV;
 
 void main()
 {
-    gl_Position = ubo.proj * ubo.view * instanceMatrices[gl_InstanceIndex] * vec4(inPosition, 1.0);
+    gl_Position = ubo[lIndex.index].proj * ubo[lIndex.index].view * instanceMatrices[gl_InstanceIndex] * vec4(inPosition, 1.0);
 }

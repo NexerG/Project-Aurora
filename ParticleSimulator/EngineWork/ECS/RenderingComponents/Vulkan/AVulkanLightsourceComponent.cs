@@ -19,21 +19,17 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         internal Buffer _trasnformsBuffer;
         internal DeviceMemory _trasnformsBufferMemory;
 
-        internal Buffer[] _uniformBuffers;
-        internal DeviceMemory[] _uniformBuffersMemory;
-
         internal Silk.NET.Vulkan.Image _depthImage;
         internal ImageView _depthImageView;
         internal DeviceMemory _depthBufferMemory;
         internal Framebuffer _shadowFramebuffer;
 
-        internal Matrix4X4<float> _transformMatrix;
+        //internal Matrix4X4<float> _transformMatrix;
+        internal Matrix4X4<float> _lightView;
+        internal Matrix4X4<float> _lightProjection = Matrix4X4.CreateOrthographicOffCenter(-35f, 35f, -35f, 35f, 0.1f, 1000f);
 
         public AVulkanLightsourceComponent()
         {
-            SingletonMatrix();
-
-            CreateUniformBuffers();
             //CreateDescriptorSet();
             CreateShadowFramebuffer(new Extent2D(1000,1000));
         }
@@ -44,7 +40,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             VulkanRenderer._rendererInstance.RecreateCommandBuffers();
         }
 
-        internal void SingletonMatrix()
+        /*internal void SingletonMatrix()
         {
             Vector3D<float> _pos = new Vector3D<float>(0, 0, 0);
             Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0,0,0);
@@ -55,7 +51,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             //_transform *= Matrix4X4.CreateTranslation(_pos);
 
             _transformMatrix = _transform;
-        }
+        }*/
 
         internal void CreateShadowFramebuffer(Extent2D _resolution)
         {
@@ -81,7 +77,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             }
         }
 
-        internal void CreateDescriptorSet()
+        /*internal void CreateDescriptorSet()
         {
             DescriptorSetLayout[] _layouts = new DescriptorSetLayout[VulkanRenderer._swapchain!._swapchainImages.Length];
             Array.Fill(_layouts, VulkanRenderer._descriptorSetLayout);
@@ -150,25 +146,17 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                     VulkanRenderer._vulkan!.UpdateDescriptorSets(VulkanRenderer._logicalDevice, (uint)_writeDescriptorSets.Length, _descPtr, 0, null);
                 }
             }
-        }
+        }*/
 
-        internal void UpdateMatrices()
+        internal void UpdateVPMatrices(uint _currentImage)
         {
-
-            /*Vector3D<float> _pos = new Vector3D<float>(0, 0, 0);
-
-            Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-            _transform *= Matrix4X4.CreateScale(new Vector3D<float>(2, 2, 2));
-            //_transform *= Matrix4X4.CreateTranslation(_pos);
-
-            _transformMatrices[0] = _transform;*/
-            //VulkanRenderer._bufferHandlerHelper.UpdateTransformBuffer(ref _transformMatrices, ref _trasnformsBufferMemory);
+            _lightView = Matrix4X4.CreateLookAt(parent.transform.position, new Vector3D<float>(0, 0, 0), new Vector3D<float>(0, 1, 0));
         }
 
-        internal void CreateUniformBuffers()
+        /*internal void CreateUniformBuffers()
         {
             VulkanRenderer._bufferHandlerHelper.CreateUniformBuffer(ref _uniformBuffers, ref _uniformBuffersMemory);
-        }
+        }*/
 
         internal void EnqueueDrawCommands(ulong[] _offset, int _loopIndex, ref CommandBuffer _commandBuffer)
         {
@@ -206,6 +194,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         {
             return FindSupportedFormat(new[] { Format.D32Sfloat, Format.D32SfloatS8Uint, Format.D24UnormS8Uint }, ImageTiling.Optimal, FormatFeatureFlags.DepthStencilAttachmentBit);
         }
+
         private Format FindSupportedFormat(IEnumerable<Format> _formats, ImageTiling _tiling, FormatFeatureFlags _features)
         {
             foreach (Format _f in _formats)

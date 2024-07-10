@@ -1,8 +1,10 @@
-﻿using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
+﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
 using ArctisAurora.GameObject;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
+using WinRT;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using Format = Silk.NET.Vulkan.Format;
 using Image = SixLabors.ImageSharp.Image;
@@ -62,6 +64,18 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             for (int i = 0; i < VulkanRenderer._swapchain._swapchainImages.Length; i++)
             {
                 CreateBuffer(_bufferSize, BufferUsageFlags.UniformBufferBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _uniformBuffers[i], ref _uniformBuffersMemory[i]);
+            }
+        }
+
+        internal void CreateLightUBO(ref Buffer[] _uniformBuffers, ref DeviceMemory[] _uniformBuffersMemory, int _lightCount)
+        {
+            ulong _bufferSize = (ulong)(sizeof(UBO) * _lightCount);
+            _uniformBuffers = new Buffer[VulkanRenderer._swapchain._swapchainImages.Length];
+            _uniformBuffersMemory = new DeviceMemory[VulkanRenderer._swapchain._swapchainImages.Length];
+
+            for (int i = 0; i < VulkanRenderer._swapchain._swapchainImages.Length; i++)
+            {
+                CreateBuffer(_bufferSize, BufferUsageFlags.StorageBufferBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _uniformBuffers[i], ref _uniformBuffersMemory[i]);
             }
         }
 
@@ -161,6 +175,24 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             void* _data;
             VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _uniformBuffersMemory[_currentImage], 0, (ulong)Unsafe.SizeOf<UBO>(), 0, &_data);
             new Span<UBO>(_data, 1)[0] = _ubo;
+            VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _uniformBuffersMemory[_currentImage]);
+        }
+
+        internal void UpdateLightUniforms(ref List<Entity> _lightsToRender, uint _currentImage, ref DeviceMemory[] _uniformBuffersMemory)
+        {
+            ulong _bufferSize = (ulong)(sizeof(UBO) * _lightsToRender.Count);
+            void* _data;
+            VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _uniformBuffersMemory[_currentImage], 0, _bufferSize, 0, &_data);
+            //get the light data (positions and light color) into a container
+            Span<UBO> _span = new Span<UBO>(_data, _lightsToRender.Count);
+            for (int i = 0; i < _lightsToRender.Count; i++)
+            {
+                _span[i] = new UBO()
+                {
+                    _projection = _lightsToRender[i].GetComponent<AVulkanLightsourceComponent>()._lightProjection,
+                    _view = _lightsToRender[i].GetComponent<AVulkanLightsourceComponent>()._lightView
+                };
+            }
             VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _uniformBuffersMemory[_currentImage]);
         }
 
