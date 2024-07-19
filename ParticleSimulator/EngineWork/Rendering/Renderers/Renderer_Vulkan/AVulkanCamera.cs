@@ -13,7 +13,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
         //keyboard
         internal Dictionary<Silk.NET.GLFW.Keys, bool> _keyStates = new Dictionary<Silk.NET.GLFW.Keys, bool>();
         //variables
-        internal Vector3D<float> _pos = new Vector3D<float>(2, 2, 2);
+        internal Vector3D<float> _pos = new Vector3D<float>(-10, 2, 0);
         internal Vector3D<float> _rotation = new Vector3D<float>(0, 0, 0);
         internal Vector3D<float> _localUp = new Vector3D<float>(0, 1, 0);
         internal Vector3D<float> _front = new Vector3D<float>(0, 0, 1);
@@ -22,7 +22,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
         internal Matrix4X4<float> _view = Matrix4X4<float>.Identity;
         internal Matrix4X4<float> _projection = Matrix4X4<float>.Identity;
         //controls
-        float _speed = 0.05f;
+        float _speed = 0.1f;
         float _sensitivity = 0.25f;
 
         internal AVulkanCamera()

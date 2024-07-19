@@ -16,6 +16,9 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
     {
         public Matrix4X4<float> _view;
         public Matrix4X4<float> _projection;
+        public Matrix4X4<float> _lightProjection;
+        public Matrix4X4<float> _lightView;
+        public Vector3D<float> _camPos;
     }
 
     internal unsafe class AVulkanBufferHandler
@@ -118,37 +121,16 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
 
         internal void CreateLightsBuffer(ref List<Entity> _lightsToRender, ref Buffer _lightBuffer, ref DeviceMemory _lightMemory)
         {
+            _lightBuffer = new Buffer();
+            _lightMemory = new DeviceMemory();
             LightData[] _lightData = new LightData[_lightsToRender.Count];
-            for (int i = 0; i < _lightsToRender.Count; i++)
-            {
-                _lightData[i] = new LightData();
-                _lightData[i]._pos = _lightsToRender[i].transform.position;
-                _lightData[i]._color = new Vector4D<float>(1, 1, 1, 1);
-            }
-
-            ulong _bufferSize = (ulong)(sizeof(LightData) * _lightData.Length + sizeof(int) + sizeof(Vector3D<float>));
+            ulong _bufferSize = (ulong)(sizeof(LightData) * _lightData.Length + sizeof(int));
             CreateBuffer(_bufferSize, BufferUsageFlags.StorageBufferBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _lightBuffer, ref _lightMemory);
-
-            void* _data;
-            VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _lightMemory, 0, _bufferSize, 0, &_data);
-            Span<LightData> _spanData = new Span<LightData>(_data, _lightData.Length);
-            for (int i = 0; i < _lightData.Length; i++)
-                _spanData[i] = _lightData[i];
-            new Span<int>((byte*)_data + sizeof(LightData) * _lightsToRender.Count, 1)[0] = _lightsToRender.Count;
-            new Span<Vector3D<float>>((byte*)_data + sizeof(LightData) * _lightsToRender.Count + sizeof(int), 1)[0] = VulkanRenderer._camera._pos;
-            VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _lightMemory);
         }
 
         internal void RecreateLightsBuffer(ref List<Entity> _lightsToRender, ref Buffer _lightBuffer, ref DeviceMemory _lightMemory)
         {
             VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _lightBuffer, null);
-            LightData[] _lightData = new LightData[_lightsToRender.Count];
-            for (int i = 0; i < _lightsToRender.Count; i++)
-            {
-                _lightData[i] = new LightData();
-                _lightData[i]._pos = _lightsToRender[i].transform.position;
-                _lightData[i]._color = new Vector4D<float>(1, 1, 1, 1);
-            }
             CreateLightsBuffer(ref _lightsToRender, ref _lightBuffer, ref _lightMemory);
         }
 
@@ -169,7 +151,10 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             UBO _ubo = new UBO()
             {
                 _view = _camera._view,
-                _projection = _camera._projection
+                _projection = _camera._projection,
+                _lightProjection = VulkanRenderer._lightsToRender[0].GetComponent<AVulkanLightsourceComponent>()._lightProjection,
+                _lightView = VulkanRenderer._lightsToRender[0].GetComponent<AVulkanLightsourceComponent>()._lightView,
+                _camPos = _camera._pos
             };
 
             void* _data;
@@ -189,8 +174,8 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             {
                 _span[i] = new UBO()
                 {
-                    _projection = _lightsToRender[i].GetComponent<AVulkanLightsourceComponent>()._lightProjection,
-                    _view = _lightsToRender[i].GetComponent<AVulkanLightsourceComponent>()._lightView
+                    _view = _lightsToRender[i].GetComponent<AVulkanLightsourceComponent>()._lightView,
+                    _projection = _lightsToRender[i].GetComponent<AVulkanLightsourceComponent>()._lightProjection
                 };
             }
             VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _uniformBuffersMemory[_currentImage]);
@@ -201,11 +186,11 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             LightData[] _lightData = new LightData[_lightsToRender.Count];
             for (int i = 0; i < _lightsToRender.Count; i++)
             {
-                _lightData[i] = new LightData();
+                //_lightData[i] = new LightData();
                 _lightData[i]._pos = _lightsToRender[i].transform.position;
-                _lightData[i]._color = new Vector4D<float>(1, 1, 1, 1);
+                _lightData[i]._color = _lightsToRender[i].GetComponent<AVulkanLightsourceComponent>()._lightColor;
             }
-            ulong _bufferSize = (ulong)(sizeof(LightData) * _lightData.Length + sizeof(int) + sizeof(Vector3D<float>));
+            ulong _bufferSize = (ulong)(sizeof(LightData) * _lightData.Length + sizeof(int));
 
             void* _data;
             VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _lightMemory, 0, _bufferSize, 0, &_data);
@@ -215,8 +200,6 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
                 _span[i] = _lightData[i];
             //put how many lights we got into a container
             new Span<int>((byte*)_data + sizeof(LightData) * _lightsToRender.Count, 1)[0] = _lightsToRender.Count;
-            //camera position
-            new Span<Vector3D<float>>((byte*)_data + sizeof(LightData) * _lightsToRender.Count + sizeof(int), 1)[0] = VulkanRenderer._camera._pos;
             VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _lightMemory);
         }
 

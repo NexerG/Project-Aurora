@@ -235,11 +235,11 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 Format = GetDepthFormat(),
                 Samples = SampleCountFlags.Count1Bit,
                 LoadOp = AttachmentLoadOp.Clear,
-                StoreOp = AttachmentStoreOp.DontCare,
+                StoreOp = AttachmentStoreOp.Store,
                 StencilLoadOp = AttachmentLoadOp.DontCare,
                 StencilStoreOp = AttachmentStoreOp.DontCare,
                 InitialLayout = ImageLayout.Undefined,
-                FinalLayout = ImageLayout.DepthStencilAttachmentOptimal
+                FinalLayout = ImageLayout.DepthStencilReadOnlyOptimal
             };
 
             AttachmentReference _depthAttachmentRef = new AttachmentReference()

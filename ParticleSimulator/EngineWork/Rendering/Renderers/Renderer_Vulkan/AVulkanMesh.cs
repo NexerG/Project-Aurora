@@ -15,7 +15,6 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
     {
         public Vector3D<float> _pos;
         public Vector3D<float> _normal;
-        //public Silk.NET.Maths.Vector3D<float> _normal;
         public Vector2D<float> _uv;
 
         public static VertexInputBindingDescription GetBindingDescription()

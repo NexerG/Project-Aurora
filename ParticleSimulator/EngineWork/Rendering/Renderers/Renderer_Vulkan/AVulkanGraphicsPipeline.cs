@@ -265,7 +265,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                     SType = StructureType.PipelineDepthStencilStateCreateInfo,
                     DepthTestEnable = true,
                     DepthWriteEnable = true,
-                    DepthCompareOp = CompareOp.Less,
+                    DepthCompareOp = CompareOp.LessOrEqual,
                     DepthBoundsTestEnable = false,
                     StencilTestEnable = false,
                 };

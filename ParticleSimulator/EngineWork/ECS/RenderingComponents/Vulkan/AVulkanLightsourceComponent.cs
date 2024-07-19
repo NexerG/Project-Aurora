@@ -5,6 +5,7 @@ using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
+using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 
 namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 {
@@ -26,12 +27,14 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
         //internal Matrix4X4<float> _transformMatrix;
         internal Matrix4X4<float> _lightView;
-        internal Matrix4X4<float> _lightProjection = Matrix4X4.CreateOrthographicOffCenter(-35f, 35f, -35f, 35f, 0.1f, 1000f);
+        internal Matrix4X4<float> _lightProjection;
+        internal Matrix4X4<float> _lpv;
+        internal Vector4D<float> _lightColor = new Vector4D<float>(1, 1, 1, 1);
 
         public AVulkanLightsourceComponent()
         {
             //CreateDescriptorSet();
-            CreateShadowFramebuffer(new Extent2D(1000,1000));
+            CreateShadowFramebuffer(new Extent2D(2000,2000));
         }
 
         public override void OnStart()
@@ -150,7 +153,10 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
         internal void UpdateVPMatrices(uint _currentImage)
         {
-            _lightView = Matrix4X4.CreateLookAt(parent.transform.position, new Vector3D<float>(0, 0, 0), new Vector3D<float>(0, 1, 0));
+            _lightProjection = Matrix4X4.CreateOrthographicOffCenter(-35f, 35f, -35f, 35f, 0.1f, 300f);
+            _lightProjection.M22 *= -1;
+            _lightView = Matrix4X4.CreateLookAt(parent.transform.position, Vector3D<float>.Zero, Vector3D<float>.UnitY);
+            _lpv = _lightProjection * _lightView;
         }
 
         /*internal void CreateUniformBuffers()
@@ -169,7 +175,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         private void CreateDepthImage(Extent2D _resolution)
         {
             Format _depthFormat = GetDepthFormat();
-            VulkanRenderer._bufferHandlerHelper.CreateImage(_resolution.Width, _resolution.Height, _depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit, MemoryPropertyFlags.DeviceLocalBit, ref _depthImage, ref _depthBufferMemory);
+            VulkanRenderer._bufferHandlerHelper.CreateImage(_resolution.Width, _resolution.Height, _depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit | ImageUsageFlags.SampledBit, MemoryPropertyFlags.DeviceLocalBit, ref _depthImage, ref _depthBufferMemory);
             ImageViewCreateInfo _createInfo = new ImageViewCreateInfo
             {
                 SType = StructureType.ImageViewCreateInfo,

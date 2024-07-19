@@ -9,6 +9,8 @@ using ArctisAurora.GameObject;
 using ArctisAurora.CustomEntities;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan.Extensions.EXT;
+using ImageLayout = Silk.NET.Vulkan.ImageLayout;
+using Image = Silk.NET.Vulkan.Image;
 
 namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 {
@@ -71,9 +73,10 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         private Queue _presentQueue;                        //fuck knows what this is (ill ask chatgpt later)
         //-------------------------------------
         internal static Sampler _textureSampler;
+        internal static Sampler _shadowmapSampler;
         //
         private List<Entity> _entitiesToRender = new List<Entity>();
-        private List<Entity> _lightsToRender = new List<Entity>();
+        internal static List<Entity> _lightsToRender = new List<Entity>();
         internal static AVulkanCamera _camera;//camera
 
         public VulkanRenderer()
@@ -121,6 +124,18 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         internal void AddEntityToRenderQueue(Entity _m)
         {
             _entitiesToRender.Add(_m);
+            for (int i = 0; i < _entitiesToRender.Count; i++)
+                _entitiesToRender[i].GetComponent<AVulkanMeshComponent>().FreeDescriptorSets();
+            if (_descriptorPool.Handle != 0)
+                _vulkan.DestroyDescriptorPool(_logicalDevice, _descriptorPool, null);
+            if (_descriptorPoolShadow.Handle != 0)
+                _vulkan.DestroyDescriptorPool(_logicalDevice, _descriptorPoolShadow, null);
+            CreateDescriptorPool();
+            CreateShadowDescriptorPool();
+            for (int i = 0; i < _entitiesToRender.Count; i++)
+                _entitiesToRender[i].GetComponent<AVulkanMeshComponent>().ReinstantiateDesriptorSets();
+
+            RecreateCommandBuffers();
         }
 
         internal void AddLighToRenderQueue(Entity _l)
@@ -133,16 +148,20 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             }
             else
             {
+                _vulkan.FreeMemory(_logicalDevice, _lightBufferMemory, null);
                 _bufferHandlerHelper.RecreateLightsBuffer(ref _lightsToRender, ref _lightBuffer, ref _lightBufferMemory);
                 foreach(Buffer b in  _lightUBO)
                     _vulkan.DestroyBuffer(_logicalDevice, b, null);
-                _vulkan.FreeMemory(_logicalDevice, _lightBufferMemory, null);
                 _bufferHandlerHelper.CreateLightUBO(ref _lightUBO, ref _lightUBOMemory, _lightsToRender.Count);
-                //recreate descriptor sets cause we just nuked all the buffers
+                foreach (Entity _e in _entitiesToRender)
+                {
+                    _e.GetComponent<AVulkanMeshComponent>().FreeDescriptorSets();
+                    _e.GetComponent<AVulkanMeshComponent>().ReinstantiateDesriptorSets();
+                }
             }
         }
 
-            private void CreateVulkanInstance()
+        private void CreateVulkanInstance()
         {
             ApplicationInfo _appInfo = new ApplicationInfo
             {
@@ -161,14 +180,12 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             {
                 _extensions = _extensions.Append(ExtDebugUtils.ExtensionName).ToArray();
             }
-            //_extensions = _extensions.Append("VK_EXT_robustness2").ToArray();
-
             // Create Vulkan instance info
             InstanceCreateInfo createInfo = new InstanceCreateInfo
             {
                 SType = StructureType.InstanceCreateInfo,
                 PApplicationInfo = &_appInfo,
-                EnabledExtensionCount = _glfwExtensionCount + 1,
+                EnabledExtensionCount = (uint)_extensions.Length,
                 PpEnabledExtensionNames = (byte**)SilkMarshal.StringArrayToPtr(_extensions)
             };
 
@@ -381,7 +398,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
         {
             _pipeline = new AVulkanGraphicsPipeline();
             _pipeline.CreateGraphicsPipeline("vulkan.vert.spv", "vulkan.frag.spv", _extent, ref _descriptorSetLayout);
-            _pipeline.CreateShadwomapPipeline("Shadowmap.vert.spv", "Shadowmap.frag.spv", new Extent2D(1000,1000), ref _descriptorSetLayoutShadow);
+            _pipeline.CreateShadwomapPipeline("Shadowmap.vert.spv", "Shadowmap.frag.spv", new Extent2D(2000,2000), ref _descriptorSetLayoutShadow);
         }
 
         private void CreateFrameBuffers()
@@ -515,8 +532,8 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                         Framebuffer = _lightsToRender[j].GetComponent<AVulkanLightsourceComponent>()._shadowFramebuffer,
                         RenderArea =
                         {
-                            Offset = { X = 0, Y=0 },
-                            Extent = new Extent2D(1000, 1000)
+                            Offset = { X = 0, Y = 0 },
+                            Extent = new Extent2D(2000, 2000)
                         },
                     };
                     fixed (ClearValue* _clrValuesPtr = _shadowClearValues)
@@ -524,24 +541,21 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                         _shadowPassInfo.ClearValueCount = (uint)_shadowClearValues.Length;
                         _shadowPassInfo.PClearValues = _clrValuesPtr;
 
-                        _vulkan.CmdBeginRenderPass(_commandBuffer[i], &_shadowPassInfo, SubpassContents.Inline);
                     }
+                    _vulkan.CmdBeginRenderPass(_commandBuffer[i], &_shadowPassInfo, SubpassContents.Inline);
                     //shadow maps
                     for (int e = 0; e < _entitiesToRender.Count; e++)
                     {
-                        _vertBuffers[e] = _entitiesToRender[e].GetComponent<AVulkanMeshComponent>()._vertexBuffer;
                         var _offset = new ulong[] { 0 };
-                        _entitiesToRender[e].GetComponent<AVulkanMeshComponent>().EnqueuShadowDrawCommands(_offset, i, ref _commandBuffer[i], e);
+                        _entitiesToRender[e].GetComponent<AVulkanMeshComponent>().EnqueuShadowDrawCommands(_offset, i, ref _commandBuffer[i], j);
                     }
                     _vulkan.CmdEndRenderPass(_commandBuffer[i]);
                 }
-
-                //player view
-                _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.Graphics, _pipeline._graphicsPipeline);
+                    //player view
+                    _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.Graphics, _pipeline._graphicsPipeline);
                 _vulkan.CmdBeginRenderPass(_commandBuffer[i], &_renderPassInfo, SubpassContents.Inline);
                 for (int e = 0; e < _entitiesToRender.Count; e++)
                 {
-                    _vertBuffers[e] = _entitiesToRender[e].GetComponent<AVulkanMeshComponent>()._vertexBuffer;
                     var _offset = new ulong[] { 0 };
                     _entitiesToRender[e].GetComponent<AVulkanMeshComponent>().EnqueueDrawCommands(_offset, i, ref _commandBuffer[i]);
                 }
@@ -594,8 +608,16 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 PImmutableSamplers = null,
                 StageFlags = ShaderStageFlags.FragmentBit
             };
+            DescriptorSetLayoutBinding _shadowSamplerLayoutBinding = new DescriptorSetLayoutBinding()
+            {
+                Binding = 4,
+                DescriptorCount = 1,
+                DescriptorType = DescriptorType.CombinedImageSampler,
+                PImmutableSamplers = null,
+                StageFlags = ShaderStageFlags.FragmentBit
+            };
 
-            var _bindings = new DescriptorSetLayoutBinding[] { _uboLayoutBinding, _matrixLayoutBinding, _lightLayoutBinding, _samplerLayoutBinding};
+            var _bindings = new DescriptorSetLayoutBinding[] { _uboLayoutBinding, _matrixLayoutBinding, _lightLayoutBinding, _samplerLayoutBinding, _shadowSamplerLayoutBinding};
             fixed(DescriptorSetLayoutBinding* _bindingsPtr = _bindings)
             fixed (DescriptorSetLayout* _descSetLayoutPtr = &_descriptorSetLayout)
             {
@@ -656,12 +678,17 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.UniformBuffer,
-                    DescriptorCount = (uint)_swapchain._swapchainImages.Length
+                    DescriptorCount = (uint)(_swapchain._swapchainImages.Length * _entitiesToRender.Count) +1
+                },
+                new DescriptorPoolSize()
+                {
+                    Type = DescriptorType.StorageBuffer,
+                    DescriptorCount = (uint)(_swapchain._swapchainImages.Length * _entitiesToRender.Count * 2) + 1
                 },
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.CombinedImageSampler,
-                    DescriptorCount = (uint)_swapchain._swapchainImages.Length
+                    DescriptorCount = (uint)(_swapchain._swapchainImages.Length * _entitiesToRender.Count * 2) + 1
                 }
             };
 
@@ -673,7 +700,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                     SType = StructureType.DescriptorPoolCreateInfo,
                     PoolSizeCount = (uint)_poolSizes.Length,
                     PPoolSizes = _poolSizesPtr,
-                    MaxSets = (uint)_swapchain._swapchainImages.Length,
+                    MaxSets = (uint)(_swapchain._swapchainImages.Length * (_entitiesToRender.Count * 5) + 1),
                     Flags = DescriptorPoolCreateFlags.FreeDescriptorSetBit
                 };
                 if (_vulkan.CreateDescriptorPool(_logicalDevice, _poolInfo, null, _descPoolPtr) != Result.Success)
@@ -690,7 +717,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.StorageBuffer,
-                    DescriptorCount = (uint)_swapchain!._swapchainImages.Length
+                    DescriptorCount = (uint)(_swapchain!._swapchainImages.Length * _entitiesToRender.Count * 2) + 1
                 }
             };
 
@@ -702,7 +729,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                     SType = StructureType.DescriptorPoolCreateInfo,
                     PoolSizeCount = (uint)_poolSizes.Length,
                     PPoolSizes = _poolSizesPtr,
-                    MaxSets = (uint)_swapchain!._swapchainImages.Length,
+                    MaxSets = (uint)(_swapchain!._swapchainImages.Length * (_entitiesToRender.Count * 2) + 1),
                     Flags = DescriptorPoolCreateFlags.FreeDescriptorSetBit
                 };
                 if (_vulkan.CreateDescriptorPool(_logicalDevice, _poolInfo, null, _descPoolPtr) != Result.Success)
@@ -714,6 +741,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 
         private void CreateImageSampler()
         {
+            //textureSampler
             _vulkan.GetPhysicalDeviceProperties(_gpu, out PhysicalDeviceProperties _properties);
             SamplerCreateInfo _createInfo = new SamplerCreateInfo()
             {
@@ -738,6 +766,35 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 if (r != Result.Success)
                 {
                     throw new Exception("Failed to create a texture sampler with error: " + r);
+                }
+            }
+            //shadow map samplper
+            SamplerCreateInfo _shadowInfo = new SamplerCreateInfo()
+            {
+                SType = StructureType.SamplerCreateInfo,
+                MagFilter = Filter.Linear,
+                MinFilter = Filter.Linear,
+                AddressModeU = SamplerAddressMode.ClampToEdge,
+                AddressModeV = SamplerAddressMode.ClampToEdge,
+                AddressModeW = SamplerAddressMode.ClampToEdge,
+                AnisotropyEnable = false,
+                MaxAnisotropy = 1.0f,
+                MipLodBias = 0.0f,
+                MinLod = 0.0f,
+                MaxLod = 1.0f,
+                BorderColor = BorderColor.FloatOpaqueWhite,
+                UnnormalizedCoordinates = false,
+                CompareEnable = false,
+                CompareOp = CompareOp.Less,
+                MipmapMode = SamplerMipmapMode.Linear
+            };
+
+            fixed (Sampler* _textureSamplerPtr = &_shadowmapSampler)
+            {
+                Result r = _vulkan.CreateSampler(_logicalDevice, _shadowInfo, null, _textureSamplerPtr);
+                if (r != Result.Success)
+                {
+                    throw new Exception("Failed to create a shadowmap sampler with error: " + r);
                 }
             }
         }
@@ -847,6 +904,60 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 
             _currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
         }
+
+        /*internal void TransitionImageLayout(CommandBuffer _b, Image _image, ImageLayout _oldLayout, ImageLayout _newLayout)
+        {
+            ImageMemoryBarrier _barrier = new ImageMemoryBarrier()
+            {
+                SType = StructureType.ImageMemoryBarrier,
+                OldLayout = _oldLayout,
+                NewLayout = _newLayout,
+                SrcQueueFamilyIndex = Vk.QueueFamilyIgnored,
+                DstQueueFamilyIndex = Vk.QueueFamilyIgnored,
+                Image = _image,
+                SubresourceRange =
+                {
+                    AspectMask = ImageAspectFlags.DepthBit,
+                    BaseMipLevel = 0,
+                    LevelCount = 1,
+                    BaseArrayLayer = 0,
+                    LayerCount = 1,
+                }
+            };
+            PipelineStageFlags sourceStage;
+            PipelineStageFlags destinationStage;
+
+            if (_oldLayout == ImageLayout.DepthStencilAttachmentOptimal && _newLayout == ImageLayout.DepthStencilReadOnlyOptimal)
+            {
+                _barrier.SrcAccessMask = AccessFlags.DepthStencilAttachmentWriteBit;
+                _barrier.DstAccessMask = AccessFlags.ShaderReadBit;
+
+                sourceStage = PipelineStageFlags.LateFragmentTestsBit;
+                destinationStage = PipelineStageFlags.FragmentShaderBit;
+            }
+            else if (_oldLayout == ImageLayout.DepthStencilReadOnlyOptimal && _newLayout == ImageLayout.DepthStencilAttachmentOptimal)
+            {
+                _barrier.SrcAccessMask = AccessFlags.ShaderReadBit;
+                _barrier.DstAccessMask = AccessFlags.DepthStencilAttachmentWriteBit;
+
+                sourceStage = PipelineStageFlags.FragmentShaderBit;
+                destinationStage = PipelineStageFlags.LateFragmentTestsBit;
+            }
+            else if (_oldLayout == ImageLayout.Undefined && _newLayout == ImageLayout.DepthStencilAttachmentOptimal)
+            {
+                _barrier.SrcAccessMask = AccessFlags.ShaderReadBit;
+                _barrier.DstAccessMask = AccessFlags.DepthStencilAttachmentWriteBit;
+
+                sourceStage = PipelineStageFlags.FragmentShaderBit;
+                destinationStage = PipelineStageFlags.LateFragmentTestsBit;
+            }
+            else
+            {
+                throw new Exception("unsupported layout transition!");
+            }
+
+            _vulkan!.CmdPipelineBarrier(_b, sourceStage, destinationStage, 0, 0, null, 0, null, 1, _barrier);
+        }*/
 
         private void CreateSyncObjects()
         {

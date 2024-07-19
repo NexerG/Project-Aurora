@@ -1,7 +1,7 @@
 ﻿using ArctisAurora.CustomEntities;
 using ArctisAurora.GameObject;
 using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
-using ArctisAurora.CustomEntityComponents;
+using Silk.NET.Maths;
 
 namespace ArctisAurora.EngineWork
 {
@@ -44,12 +44,63 @@ namespace ArctisAurora.EngineWork
             //_entities.Add(lightEntity);
             //_entities.Add(lightEntity);
             LightSourceEntity _ls = new LightSourceEntity();
+            _ls.transform.SetWorldPosition(new Vector3D<float>(-1, 20, -1));
 
             //then we do entities
-            SimulatorEntity _simEntity = new SimulatorEntity();
+            //-------------
+            TestingEntity _tent12 = new TestingEntity();
+            _tent12.transform.SetWorldPosition(new Vector3D<float>(0, -5, 0));
+            TestingEntity _tent13 = new TestingEntity();
+            _tent13.transform.SetWorldPosition(new Vector3D<float>(1, -5, 0));
+            TestingEntity _tent14 = new TestingEntity();
+            _tent14.transform.SetWorldPosition(new Vector3D<float>(-1, -5, 0));
+            TestingEntity _tent15 = new TestingEntity();
+            _tent15.transform.SetWorldPosition(new Vector3D<float>(1, -5, 1));
+            TestingEntity _tent16 = new TestingEntity();
+            _tent16.transform.SetWorldPosition(new Vector3D<float>(1, -5, -1));
+            TestingEntity _tent17 = new TestingEntity();
+            _tent17.transform.SetWorldPosition(new Vector3D<float>(-1, -5, 1));
+            TestingEntity _tent18 = new TestingEntity();
+            _tent18.transform.SetWorldPosition(new Vector3D<float>(-1, -5, -1));
+            TestingEntity _tent19 = new TestingEntity();
+            _tent19.transform.SetWorldPosition(new Vector3D<float>(0, -5, 1));
+            TestingEntity _tent20 = new TestingEntity();
+            _tent20.transform.SetWorldPosition(new Vector3D<float>(0, -5, -1));
+            TestingEntity _tent21 = new TestingEntity();
+            _tent21.transform.SetWorldPosition(new Vector3D<float>(0, -8, 0));
+            _tent21.transform.SetWorldScale(new Vector3D<float>(40, 1, 30));
+
+
+            TestingEntity _tent1 = new TestingEntity();
+            _tent1.transform.SetWorldPosition(new Vector3D<float>(0, 5, 0));
+            TestingEntity _tent2 = new TestingEntity();
+            _tent2.transform.SetWorldPosition(new Vector3D<float>(1, 5, 0));
+            TestingEntity _tent3 = new TestingEntity();
+            _tent3.transform.SetWorldPosition(new Vector3D<float>(-1, 5, 0));
+            TestingEntity _tent4 = new TestingEntity();
+            _tent4.transform.SetWorldPosition(new Vector3D<float>(1, 5, 1));
+            TestingEntity _tent5 = new TestingEntity();
+            _tent5.transform.SetWorldPosition(new Vector3D<float>(1, 5, -1));
+            TestingEntity _tent6 = new TestingEntity();
+            _tent6.transform.SetWorldPosition(new Vector3D<float>(-1, 5, 1));
+            TestingEntity _tent7 = new TestingEntity();
+            _tent7.transform.SetWorldPosition(new Vector3D<float>(-1, 5, -1));
+            TestingEntity _tent8 = new TestingEntity();
+            _tent8.transform.SetWorldPosition(new Vector3D<float>(0, 5, 1));
+            TestingEntity _tent9 = new TestingEntity();
+            _tent9.transform.SetWorldPosition(new Vector3D<float>(0, 5, -1));
+            TestingEntity _tent11 = new TestingEntity();
+            _tent11.transform.SetWorldPosition(new Vector3D<float>(0, 8, 0));
+            _tent11.transform.SetWorldScale(new Vector3D<float>(40, 1, 30));
+
+
+            TestingEntity _tent10 = new TestingEntity();
+            _tent10.transform.SetWorldPosition(new Vector3D<float>(0, 3, 0));
+
+            //SimulatorEntity _simEntity = new SimulatorEntity();
             //_simEntity.GetComponent<AVulkanMeshComponent>().LoadCustomMesh(kugis);
-            _simEntity.GetComponent<SPHSimComponent>().simSetup(parts);
-            _entities.Add(_simEntity);
+            //_simEntity.GetComponent<SPHSimComponent>().simSetup(parts);
+            //_entities.Add(_simEntity);
 
             //TestingEntity testEnt = new TestingEntity();
             //testEnt.transform.scale = new Vector3D<float>(1, 1, 1);

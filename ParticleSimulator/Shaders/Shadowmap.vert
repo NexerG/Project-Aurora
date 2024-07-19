@@ -8,6 +8,9 @@ layout(push_constant) uniform lightIndex {
 layout(binding = 0) buffer lightMatrices {
     mat4 view;
     mat4 proj;
+    mat4 lightProjection;
+    mat4 lightView;
+    vec3 camPos;
 } ubo[];
 
 layout(binding = 1) buffer instanceBuffer{
