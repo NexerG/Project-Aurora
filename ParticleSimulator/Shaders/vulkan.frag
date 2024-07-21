@@ -56,34 +56,30 @@ vec4 directLight()
 	float diffuse = max(dot(normal, lightDirection), 0.0f);
 
 	//specular
-	float specularLight = 0.5f;
-	vec3 viewDirection = normalize(cp - currentPos);
-	vec3 reflectionDirection = reflect(-lightDirection, normal);
-	float specAmount = pow(max(dot(viewDirection, reflectionDirection),0),8);
-	float specular = specAmount * specularLight;	
+	float specular = 0.0f;
+	if(diffuse != 0)
+	{
+		float specularLight = 0.5f;
+		vec3 viewDirection = normalize(cp - currentPos);
+		vec3 halfWayVec = normalize(viewDirection + lightDirection);
+		float specAmount = pow(max(dot(normal, halfWayVec),0),16);
+		float specular = specAmount * specularLight;
+	}
 
 	float shadow = 0.0f;
 	vec3 lightCoords = fragPosLight.xyz / fragPosLight.w;
-	if(lightCoords.z <= 1.0f)
-	{
-		float currentDepth = lightCoords.z;
-		// Prevents shadow acne
-		//float bias = max(0.025f * (1.0f - dot(normal, lightDirection)), 0.0005f);
+	//lightCoords.y = -lightCoords.y;
+	lightCoords.xy = lightCoords.xy * 0.5 + 0.5f;
+	
+	bool isInShadowMap = lightCoords.x >= 0.0 && lightCoords.x <= 1.0 &&
+                         lightCoords.y >= 0.0 && lightCoords.y <= 1.0;
 
-		// Smoothens out the shadows
-		int sampleRadius = 2;
-		vec2 pixelSize = 1.0 / textureSize(shadowMap, 0);
-		for(int y = -sampleRadius; y <= sampleRadius; y++)
-		{
-		    for(int x = -sampleRadius; x <= sampleRadius; x++)
-		    {
-		        float closestDepth = texture(shadowMap, lightCoords.xy + vec2(x, y) * pixelSize).r;
-				if (currentDepth > closestDepth)
-					shadow += 1.0f;
-		    }    
-		}
-		// Get average shadow
-		shadow /= pow((sampleRadius * 2 + 1), 2);
+	if (isInShadowMap) 
+    {
+		float currentDepth = lightCoords.z;
+		float closestDepth = texture(shadowMap, lightCoords.xy).r;
+
+		shadow = currentDepth - 0.005f > closestDepth ? 1.0 : 0.0;
 	}
 
 	return (texture(texSampler, texCoord) * (diffuse * (1.0f - shadow) + ambientLight) + specular * texture(texSampler, texCoord).r * (1.0f - shadow)) * LUniform.lights[0].color;

@@ -153,7 +153,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
         internal void UpdateVPMatrices(uint _currentImage)
         {
-            _lightProjection = Matrix4X4.CreateOrthographicOffCenter(-35f, 35f, -35f, 35f, 0.1f, 300f);
+            _lightProjection = Matrix4X4.CreateOrthographicOffCenter(-35f, 35f, -35f, 35f, 5, 300f);
             _lightProjection.M22 *= -1;
             _lightView = Matrix4X4.CreateLookAt(parent.transform.position, Vector3D<float>.Zero, Vector3D<float>.UnitY);
             _lpv = _lightProjection * _lightView;

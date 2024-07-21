@@ -90,7 +90,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                     RasterizerDiscardEnable = false,
                     PolygonMode = PolygonMode.Fill,
                     LineWidth = 1,
-                    CullMode = CullModeFlags.FrontBit,
+                    CullMode = CullModeFlags.None,
                     FrontFace = FrontFace.Clockwise,
                     DepthBiasEnable = false
                 };
@@ -107,7 +107,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                     DepthWriteEnable = true,
                     DepthCompareOp = CompareOp.Less,
                     DepthBoundsTestEnable = false,
-                    StencilTestEnable = false,
+                    StencilTestEnable = false
                 };
                 PipelineColorBlendAttachmentState _colorBlendAttachment = new PipelineColorBlendAttachmentState()
                 {
@@ -250,8 +250,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                     RasterizerDiscardEnable = false,
                     PolygonMode = PolygonMode.Fill,
                     LineWidth = 1,
-                    CullMode = CullModeFlags.FrontBit,
-                    FrontFace = FrontFace.Clockwise,
+                    CullMode = CullModeFlags.None,
                     DepthBiasEnable = false
                 };
                 PipelineMultisampleStateCreateInfo _multisampling = new PipelineMultisampleStateCreateInfo()

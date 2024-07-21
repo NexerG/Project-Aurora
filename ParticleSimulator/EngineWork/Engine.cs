@@ -2,6 +2,8 @@
 using ArctisAurora.GameObject;
 using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
 using Silk.NET.Maths;
+using Assimp;
+using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 
 namespace ArctisAurora.EngineWork
 {
@@ -13,6 +15,7 @@ namespace ArctisAurora.EngineWork
         //internal Rasterization renderer3D;
         internal static VulkanRenderer _rasterizer;
         internal List<Entity> _entities = new List<Entity>();
+        internal List<TestingEntity> _bandymas = new List<TestingEntity>();
 
         public Engine()
         {
@@ -27,8 +30,8 @@ namespace ArctisAurora.EngineWork
             _rasterizer = new VulkanRenderer();
 
             ////mesh importer
-            //MeshImporter importer = new MeshImporter();
-            //Scene scene1 = importer.ImportFBX("H:\\Creative\\Blender\\AuroraTestScene.fbx");
+            MeshImporter importer = new MeshImporter();
+            Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\plane.fbx");
             //Scene kugis = importer.ImportFBX("H:\\Creative\\Blender\\AuroraTestScene_kugis.fbx");
 
             Running = true;
@@ -44,33 +47,27 @@ namespace ArctisAurora.EngineWork
             //_entities.Add(lightEntity);
             //_entities.Add(lightEntity);
             LightSourceEntity _ls = new LightSourceEntity();
-            _ls.transform.SetWorldPosition(new Vector3D<float>(-1, 20, -1));
+            _ls.transform.SetWorldPosition(new Vector3D<float>(-1, 40, -1));
 
             //then we do entities
             //-------------
-            TestingEntity _tent12 = new TestingEntity();
-            _tent12.transform.SetWorldPosition(new Vector3D<float>(0, -5, 0));
-            TestingEntity _tent13 = new TestingEntity();
-            _tent13.transform.SetWorldPosition(new Vector3D<float>(1, -5, 0));
-            TestingEntity _tent14 = new TestingEntity();
-            _tent14.transform.SetWorldPosition(new Vector3D<float>(-1, -5, 0));
-            TestingEntity _tent15 = new TestingEntity();
-            _tent15.transform.SetWorldPosition(new Vector3D<float>(1, -5, 1));
-            TestingEntity _tent16 = new TestingEntity();
-            _tent16.transform.SetWorldPosition(new Vector3D<float>(1, -5, -1));
-            TestingEntity _tent17 = new TestingEntity();
-            _tent17.transform.SetWorldPosition(new Vector3D<float>(-1, -5, 1));
-            TestingEntity _tent18 = new TestingEntity();
-            _tent18.transform.SetWorldPosition(new Vector3D<float>(-1, -5, -1));
-            TestingEntity _tent19 = new TestingEntity();
-            _tent19.transform.SetWorldPosition(new Vector3D<float>(0, -5, 1));
-            TestingEntity _tent20 = new TestingEntity();
-            _tent20.transform.SetWorldPosition(new Vector3D<float>(0, -5, -1));
+            TestingEntity _tent1 = new TestingEntity();
+            _tent1.transform.SetWorldPosition(new Vector3D<float>(75, 0, 75));
+            _tent1.transform.SetWorldScale(new Vector3D<float>(25, 1, 25));
+            TestingEntity _tent2 = new TestingEntity();
+            _tent2.transform.SetWorldPosition(new Vector3D<float>(150, 0, 150));
+            _tent2.transform.SetWorldScale(new Vector3D<float>(25, 1, 25));
+
+            TestingEntity _tentLight = new TestingEntity();
+            _tentLight.transform.SetWorldPosition(new Vector3D<float>(-1, 40, -1));
+            _bandymas.Add(_tentLight);
+
             TestingEntity _tent21 = new TestingEntity();
-            _tent21.transform.SetWorldPosition(new Vector3D<float>(0, -8, 0));
-            _tent21.transform.SetWorldScale(new Vector3D<float>(40, 1, 30));
+            _tent21.transform.SetWorldPosition(new Vector3D<float>(0, -20, 0));
+            _tent21.transform.SetWorldScale(new Vector3D<float>(250, 1, 250));
+            _tent21.GetComponent<AVulkanMeshComponent>().LoadCustomMesh(scene1);
 
-
+            /*
             TestingEntity _tent1 = new TestingEntity();
             _tent1.transform.SetWorldPosition(new Vector3D<float>(0, 5, 0));
             TestingEntity _tent2 = new TestingEntity();
@@ -91,11 +88,8 @@ namespace ArctisAurora.EngineWork
             _tent9.transform.SetWorldPosition(new Vector3D<float>(0, 5, -1));
             TestingEntity _tent11 = new TestingEntity();
             _tent11.transform.SetWorldPosition(new Vector3D<float>(0, 8, 0));
-            _tent11.transform.SetWorldScale(new Vector3D<float>(40, 1, 30));
+            _tent11.transform.SetWorldScale(new Vector3D<float>(40, 1, 30));*/
 
-
-            TestingEntity _tent10 = new TestingEntity();
-            _tent10.transform.SetWorldPosition(new Vector3D<float>(0, 3, 0));
 
             //SimulatorEntity _simEntity = new SimulatorEntity();
             //_simEntity.GetComponent<AVulkanMeshComponent>().LoadCustomMesh(kugis);
@@ -112,11 +106,6 @@ namespace ArctisAurora.EngineWork
             {
                 EngineStart();
             }).Start();
-            //renderer thread for testing
-            /*new Thread(() =>
-            {
-                PathTracerTest();
-            }).Start();*/
         }
 
         public async void EngineStart()
@@ -167,6 +156,14 @@ namespace ArctisAurora.EngineWork
                     fr += framerate[i];
                 }
                 //Console.WriteLine("FPS --- " + 1000 / (fr / 100));
+                /*VulkanRenderer._lightsToRender[0].transform.SetWorldPosition(new Vector3D<float>(
+                VulkanRenderer._lightsToRender[0].transform.position.X + 0.003f,
+                VulkanRenderer._lightsToRender[0].transform.position.Y,
+                VulkanRenderer._lightsToRender[0].transform.position.Z));
+                _bandymas[0].transform.SetWorldPosition(new Vector3D<float>(
+                    _bandymas[0].transform.position.X + 0.003f,
+                    _bandymas[0].transform.position.Y,
+                    _bandymas[0].transform.position.Z ));*/
 
                 double TSOffset = TS - totalTime;
                 if (TSOffset > 0f)

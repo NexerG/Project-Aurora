@@ -23,5 +23,5 @@ layout(location = 2) in vec2 inUV;
 
 void main()
 {
-    gl_Position = ubo[lIndex.index].proj * ubo[lIndex.index].view * instanceMatrices[gl_InstanceIndex] * vec4(inPosition, 1.0);
+    gl_Position = ubo[lIndex.index].proj * ubo[lIndex.index].view * (instanceMatrices[gl_InstanceIndex] * vec4(inPosition, 1.0));
 }

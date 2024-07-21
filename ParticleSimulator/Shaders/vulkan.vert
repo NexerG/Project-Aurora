@@ -24,11 +24,10 @@ layout(location = 4) out vec3 cp;
 
 void main()
 {
-    mat3 normMat = inverse(mat3(instanceMatrices[gl_InstanceIndex]));
     currentPos = vec3(instanceMatrices[gl_InstanceIndex] * vec4(inPosition, 1.0));
-    fragPosLight = ubo.lightProjection  * ubo.lightView * mat4(1.0f) * vec4(currentPos, 1.0f);
+    fragPosLight = ubo.lightProjection  * ubo.lightView * vec4(currentPos, 1.0f);
     texCoord = inUV;
-    normal = normalize(normMat * inNormal);
+    normal = normalize(inverse(mat3(instanceMatrices[gl_InstanceIndex])) * inNormal);
     cp = ubo.camPos;
-    gl_Position = ubo.proj * ubo.view * instanceMatrices[gl_InstanceIndex] * vec4(inPosition, 1.0);
+    gl_Position = ubo.proj * ubo.view * vec4(currentPos, 1.0);
 }

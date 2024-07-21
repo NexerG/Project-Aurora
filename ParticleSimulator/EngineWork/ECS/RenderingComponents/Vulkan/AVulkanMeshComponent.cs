@@ -1,6 +1,7 @@
 ﻿using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan;
 using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
+using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
@@ -53,6 +54,18 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             VulkanRenderer._rendererInstance.AddEntityToRenderQueue(parent);
             CreateDescriptorSet();
             CreateShadowDescriptorSet();
+        }
+
+        internal void LoadCustomMesh(Scene sc)
+        {
+            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _vertexBuffer, null);
+            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _indexBuffer, null);
+            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _indexBufferMemory, null);
+            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _vertexBufferMemory, null);
+            _mesh.LoadCustomMesh(sc);
+            VulkanRenderer._bufferHandlerHelper.CreateVertexBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory);
+            VulkanRenderer._bufferHandlerHelper.CreateIndexBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory);
+            VulkanRenderer._rendererInstance.RecreateCommandBuffers();
         }
 
         internal void FreeDescriptorSets()
@@ -290,10 +303,10 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
         internal void UpdateMatrices()
         {
-            Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0, 0, 0);
+            Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(30f * MathF.PI / 180f, 0, 0);
             Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-            //_transform *= Matrix4X4.CreateFromQuaternion(q);
             _transform *= Matrix4X4.CreateScale(parent.transform.scale);
+            _transform *= Matrix4X4.CreateFromQuaternion(q);
             _transform *= Matrix4X4.CreateTranslation(parent.transform.position);
 
             _transformMatrices[0] = _transform;

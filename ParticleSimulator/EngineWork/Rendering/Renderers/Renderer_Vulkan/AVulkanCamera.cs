@@ -22,7 +22,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
         internal Matrix4X4<float> _view = Matrix4X4<float>.Identity;
         internal Matrix4X4<float> _projection = Matrix4X4<float>.Identity;
         //controls
-        float _speed = 0.1f;
+        float _speed = 0.5f;
         float _sensitivity = 0.25f;
 
         internal AVulkanCamera()

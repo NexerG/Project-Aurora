@@ -109,9 +109,9 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             _vertices = new Vertex[sc.Meshes[0].VertexCount];
             for (int i = 0; i < sc.Meshes[0].VertexCount; i++)
             {
-                _vertices[0]._pos = new Vector3D<float>(verts[i].X, verts[i].Y,verts[i].Z);
-                _vertices[0]._uv = new Vector2D<float>(uvs[i].X, uvs[i].Y);
-                _vertices[0]._normal = new Vector3D<float>(normals[i].X, normals[i].Y, normals[i].Z);
+                _vertices[i]._pos = new Vector3D<float>(verts[i].X, verts[i].Y,verts[i].Z);
+                _vertices[i]._uv = new Vector2D<float>(uvs[i].X, uvs[i].Y);
+                _vertices[i]._normal = new Vector3D<float>(normals[i].X, normals[i].Y, normals[i].Z);
             }
         }
     }
