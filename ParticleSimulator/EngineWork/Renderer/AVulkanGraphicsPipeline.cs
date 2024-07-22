@@ -1,8 +1,7 @@
-﻿using ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan;
-using Silk.NET.Core.Native;
+﻿using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
 
-namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
+namespace ArctisAurora.EngineWork.Renderer
 {
     internal unsafe class AVulkanGraphicsPipeline
     {
@@ -90,7 +89,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                     RasterizerDiscardEnable = false,
                     PolygonMode = PolygonMode.Fill,
                     LineWidth = 1,
-                    CullMode = CullModeFlags.None,
+                    CullMode = CullModeFlags.FrontBit,
                     FrontFace = FrontFace.Clockwise,
                     DepthBiasEnable = false
                 };
@@ -172,13 +171,11 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             SilkMarshal.Free((nint)_fragmentShaderStageInfo.PName);
         }
 
-        internal void CreateShadwomapPipeline(string vertex, string fragment, Extent2D _shadowTextureSize, ref DescriptorSetLayout _descriptorSetLayout)
+        internal void CreateShadwomapPipeline(string vertex, Extent2D _shadowTextureSize, ref DescriptorSetLayout _descriptorSetLayout)
         {
             byte[] _vertexCode = ReadFile("../../../Shaders/" + vertex);
-            byte[] _fragmentCode = ReadFile("../../../Shaders/" + fragment);
 
             ShaderModule _vertexShader = CreateShaderModule(_vertexCode);
-            ShaderModule _fragmentShader = CreateShaderModule(_fragmentCode);
 
             PipelineShaderStageCreateInfo _vertexShaderStageInfo = new PipelineShaderStageCreateInfo
             {
@@ -187,18 +184,9 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 Module = _vertexShader,
                 PName = (byte*)SilkMarshal.StringToPtr("main")
             };
-            PipelineShaderStageCreateInfo _fragmentShaderStageInfo = new PipelineShaderStageCreateInfo
-            {
-                SType = StructureType.PipelineShaderStageCreateInfo,
-                Stage = ShaderStageFlags.FragmentBit,
-                Module = _fragmentShader,
-                PName = (byte*)SilkMarshal.StringToPtr("main")
-            };
-
             var _stages = stackalloc[]
             {
                 _vertexShaderStageInfo,
-                _fragmentShaderStageInfo
             };
 
             VertexInputBindingDescription _bindingDesc = Vertex.GetBindingDescription();
@@ -291,7 +279,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
                 GraphicsPipelineCreateInfo _graphicsPipelineInfo = new GraphicsPipelineCreateInfo()
                 {
                     SType = StructureType.GraphicsPipelineCreateInfo,
-                    StageCount = 2,
+                    StageCount = 1,
                     PStages = _stages,
                     PVertexInputState = &_vertexInputInfo,
                     PInputAssemblyState = &_inputAssembly,
@@ -313,9 +301,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             }
 
             VulkanRenderer._vulkan.DestroyShaderModule(VulkanRenderer._logicalDevice, _vertexShader, null);
-            VulkanRenderer._vulkan.DestroyShaderModule(VulkanRenderer._logicalDevice, _fragmentShader, null);
             SilkMarshal.Free((nint)_vertexShaderStageInfo.PName);
-            SilkMarshal.Free((nint)_fragmentShaderStageInfo.PName);
         }
 
         internal void DestroyPipeline()

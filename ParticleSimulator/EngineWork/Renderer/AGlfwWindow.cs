@@ -4,7 +4,7 @@ using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 
-namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
+namespace ArctisAurora.EngineWork.Renderer
 {
     internal unsafe class AGlfwWindow
     {
@@ -38,7 +38,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
 
         internal void CreateSurface()
         {
-            if (!VulkanRenderer._vulkan.TryGetInstanceExtension<KhrSurface>(VulkanRenderer._instance, out _driverSurface))
+            if (!VulkanRenderer._vulkan.TryGetInstanceExtension(VulkanRenderer._instance, out _driverSurface))
             {
                 throw new NotSupportedException("KHR_surface extension not found.");
             }
@@ -53,24 +53,6 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Vulkan
             _glfw.GetFramebufferSize(_windowHandle, out _width, out _height);
             _extent.Width = (uint)_width;
             _extent.Height = (uint)_height;
-        }
-
-        internal uint FindPresentSupportIndex(ref QueueFamilyProperties[] _qfm)
-        {
-            uint i = 0;
-            foreach (var _qf in _qfm)
-            {
-                if (_qf.QueueFlags.HasFlag(QueueFlags.GraphicsBit))
-                {
-                    _driverSurface.GetPhysicalDeviceSurfaceSupport(VulkanRenderer._gpu, i, _surface, out var _presentSupport);
-                    if (_presentSupport)
-                    {
-                        return i;
-                    }
-                }
-                i++;
-            }
-            return int.MaxValue;
         }
 
         private void WindwoResizeCallback(WindowHandle* window, int width, int height)

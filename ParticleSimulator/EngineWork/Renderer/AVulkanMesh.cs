@@ -1,15 +1,10 @@
 ﻿using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
+namespace ArctisAurora.EngineWork.Renderer
 {
     struct Vertex
     {
@@ -66,19 +61,19 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f, -0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(0.0f, 5.0f) },
             new Vertex { _pos = new Vector3D<float>( 0.5f, 0.0f, -0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(5.0f, 5.0f) },
             new Vertex { _pos = new Vector3D<float>( 0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(5.0f, 0.0f) },
-        
+
             new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(-0.8f, 0.5f,  0.0f), _uv = new Vector2D<float>(0.0f, 0.0f) },
             new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f, -0.5f), _normal = new Vector3D<float>(-0.8f, 0.5f,  0.0f), _uv = new Vector2D<float>(5.0f, 0.0f) },
             new Vertex { _pos = new Vector3D<float>(0.0f, 0.8f,  0.0f), _normal =  new Vector3D<float>(-0.8f, 0.5f,  0.0f), _uv = new Vector2D<float>(2.5f, 5.0f) },
-        
+
             new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f, -0.5f), _normal = new Vector3D<float>(0.0f, 0.5f, -0.8f), _uv = new Vector2D<float>(5.0f, 0.0f) },
             new Vertex { _pos = new Vector3D<float>(0.5f, 0.0f, -0.5f), _normal =  new Vector3D<float>(0.0f, 0.5f, -0.8f), _uv = new Vector2D<float>(0.0f, 0.0f) },
             new Vertex { _pos = new Vector3D<float>(0.0f, 0.8f,  0.0f), _normal =  new Vector3D<float>(0.0f, 0.5f, -0.8f), _uv = new Vector2D<float>(2.5f, 5.0f) },
-            
+
             new Vertex { _pos = new Vector3D<float>(0.5f, 0.0f, -0.5f), _normal =  new Vector3D<float>(0.8f, 0.5f,  0.0f), _uv = new Vector2D<float>(0.0f, 0.0f) },
             new Vertex { _pos = new Vector3D<float>(0.5f, 0.0f,  0.5f), _normal =  new Vector3D<float>(0.8f, 0.5f,  0.0f), _uv = new Vector2D<float>(5.0f, 0.0f) },
             new Vertex { _pos = new Vector3D<float>(0.0f, 0.8f,  0.0f), _normal =  new Vector3D<float>(0.8f, 0.5f,  0.0f), _uv = new Vector2D<float>(2.5f, 5.0f) },
-            
+
             new Vertex { _pos = new Vector3D<float>(0.5f, 0.0f,  0.5f), _normal =  new Vector3D<float>(0.0f, 0.5f,  0.8f), _uv = new Vector2D<float>(5.0f, 0.0f) },
             new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(0.0f, 0.5f,  0.8f), _uv = new Vector2D<float>(0.0f, 0.0f) },
             new Vertex { _pos = new Vector3D<float>(0.0f, 0.8f,  0.0f), _normal =  new Vector3D<float>(0.0f, 0.5f,  0.8f), _uv = new Vector2D<float>(2.5f, 5.0f) },
@@ -99,7 +94,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             List<Assimp.Vector3D> verts = sc.Meshes[0].Vertices;
             List<Assimp.Vector3D> uvs = sc.Meshes[0].TextureCoordinateChannels[0];
             List<Assimp.Vector3D> normals = sc.Meshes[0].Normals;
-            
+
             _indices = new ushort[sc.Meshes[0].GetIndices().Length];
             for (int i = 0; i < sc.Meshes[0].GetIndices().Length; i++)
             {
@@ -109,7 +104,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             _vertices = new Vertex[sc.Meshes[0].VertexCount];
             for (int i = 0; i < sc.Meshes[0].VertexCount; i++)
             {
-                _vertices[i]._pos = new Vector3D<float>(verts[i].X, verts[i].Y,verts[i].Z);
+                _vertices[i]._pos = new Vector3D<float>(verts[i].X, verts[i].Y, verts[i].Z);
                 _vertices[i]._uv = new Vector2D<float>(uvs[i].X, uvs[i].Y);
                 _vertices[i]._normal = new Vector3D<float>(normals[i].X, normals[i].Y, normals[i].Z);
             }

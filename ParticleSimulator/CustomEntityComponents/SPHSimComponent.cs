@@ -48,7 +48,7 @@ namespace ArctisAurora.CustomEntityComponents
 
                 _instanceMatrix.Add(transformation);
             }
-            parent.GetComponent<AVulkanMeshComponent>().MakeInstanced(ref _instanceMatrix);
+            parent.GetComponent<MeshComponent>().MakeInstanced(ref _instanceMatrix);
         }
         public void UpdatePositions3D(List<Particle3D> ps)
         {

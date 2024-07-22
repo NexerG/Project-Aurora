@@ -7,13 +7,13 @@ using ArctisAurora.Simulators.ParticleTypes;
 
 namespace ArctisAurora.EngineWork
 {
-    public class Renderer
+    public class RendererDeprecated
     {
         Bitmap bmp;
         public Graphics g;
         PictureBox PicBox;
 
-        public Renderer(PictureBox PB)
+        public RendererDeprecated(PictureBox PB)
         {
             PicBox = PB;
             //picture stuff

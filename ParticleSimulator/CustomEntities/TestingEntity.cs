@@ -7,7 +7,7 @@ namespace ArctisAurora.CustomEntities
     {
         public TestingEntity() 
         {
-            this.CreateComponent<AVulkanMeshComponent>();
+            this.CreateComponent<MeshComponent>();
         }
         public override void OnStart()
         {

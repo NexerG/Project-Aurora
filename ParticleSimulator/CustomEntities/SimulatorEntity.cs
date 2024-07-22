@@ -1,6 +1,5 @@
 ﻿using ArctisAurora.CustomEntityComponents;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
-using ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan;
 using ArctisAurora.GameObject;
 
 namespace ArctisAurora.CustomEntities
@@ -11,7 +10,7 @@ namespace ArctisAurora.CustomEntities
         {
             this.transform.scale *= 2;
             this.CreateComponent<SPHSimComponent>();
-            this.CreateComponent<AVulkanMeshComponent>();
+            this.CreateComponent<MeshComponent>();
             this.name = "SPH Simulation Entity";
         }
 

@@ -1,16 +1,14 @@
 ﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
-using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
 using ArctisAurora.GameObject;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
-using WinRT;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using Format = Silk.NET.Vulkan.Format;
 using Image = SixLabors.ImageSharp.Image;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 
-namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
+namespace ArctisAurora.EngineWork.Renderer.Helpers
 {
     internal struct UBO
     {
@@ -44,7 +42,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
 
         internal void CreateIndexBuffer(ref ushort[] _meshIndices, ref Buffer _indexBuffer, ref DeviceMemory _indexBufferMemory)
         {
-            ulong _bufferSize = ((ulong)(Unsafe.SizeOf<ushort>() * _meshIndices.Length));
+            ulong _bufferSize = (ulong)(Unsafe.SizeOf<ushort>() * _meshIndices.Length);
             Buffer _stagingBuffer = default;
             DeviceMemory _stagingBufferMemory = default;
             CreateBuffer(_bufferSize, BufferUsageFlags.TransferSrcBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _stagingBuffer, ref _stagingBufferMemory);
@@ -109,7 +107,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
         internal void CreateTransformBuffer(ref List<Matrix4X4<float>> _instances, ref Buffer _instanceBuffer, ref DeviceMemory _instanceMemory)
         {
             ulong _bufferSize = (ulong)(sizeof(Matrix4X4<float>) * _instances.Count);
-            CreateBuffer(_bufferSize,BufferUsageFlags.StorageBufferBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _instanceBuffer, ref _instanceMemory);
+            CreateBuffer(_bufferSize, BufferUsageFlags.StorageBufferBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _instanceBuffer, ref _instanceMemory);
 
             void* _data;
             VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _instanceMemory, 0, _bufferSize, 0, &_data);
@@ -152,8 +150,8 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             {
                 _view = _camera._view,
                 _projection = _camera._projection,
-                _lightProjection = VulkanRenderer._lightsToRender[0].GetComponent<AVulkanLightsourceComponent>()._lightProjection,
-                _lightView = VulkanRenderer._lightsToRender[0].GetComponent<AVulkanLightsourceComponent>()._lightView,
+                _lightProjection = VulkanRenderer._lightsToRender[0].GetComponent<LightsourceComponent>()._lightProjection,
+                _lightView = VulkanRenderer._lightsToRender[0].GetComponent<LightsourceComponent>()._lightView,
                 _camPos = _camera._pos
             };
 
@@ -174,8 +172,8 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             {
                 _span[i] = new UBO()
                 {
-                    _view = _lightsToRender[i].GetComponent<AVulkanLightsourceComponent>()._lightView,
-                    _projection = _lightsToRender[i].GetComponent<AVulkanLightsourceComponent>()._lightProjection
+                    _view = _lightsToRender[i].GetComponent<LightsourceComponent>()._lightView,
+                    _projection = _lightsToRender[i].GetComponent<LightsourceComponent>()._lightProjection
                 };
             }
             VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _uniformBuffersMemory[_currentImage]);
@@ -188,7 +186,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
             {
                 //_lightData[i] = new LightData();
                 _lightData[i]._pos = _lightsToRender[i].transform.position;
-                _lightData[i]._color = _lightsToRender[i].GetComponent<AVulkanLightsourceComponent>()._lightColor;
+                _lightData[i]._color = _lightsToRender[i].GetComponent<LightsourceComponent>()._lightColor;
             }
             ulong _bufferSize = (ulong)(sizeof(LightData) * _lightData.Length + sizeof(int));
 
@@ -472,7 +470,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
 
             for (int i = 0; i < _memProperties.MemoryTypeCount; i++)
             {
-                if ((_typeFilter & (1 << i)) != 0 && (_memProperties.MemoryTypes[i].PropertyFlags & _properties) == _properties)
+                if ((_typeFilter & 1 << i) != 0 && (_memProperties.MemoryTypes[i].PropertyFlags & _properties) == _properties)
                 {
                     return (uint)i;
                 }

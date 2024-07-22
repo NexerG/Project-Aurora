@@ -1,9 +1,8 @@
-﻿using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
-using Silk.NET.Maths;
+﻿using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
-namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
+namespace ArctisAurora.EngineWork.Renderer
 {
     internal class AVulkanCamera
     {
@@ -17,7 +16,7 @@ namespace ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan
         internal Vector3D<float> _rotation = new Vector3D<float>(0, 0, 0);
         internal Vector3D<float> _localUp = new Vector3D<float>(0, 1, 0);
         internal Vector3D<float> _front = new Vector3D<float>(0, 0, 1);
-        internal Vector3D<float> _localRight = new Vector3D<float> (0, 0, 0);
+        internal Vector3D<float> _localRight = new Vector3D<float>(0, 0, 0);
         //matrices
         internal Matrix4X4<float> _view = Matrix4X4<float>.Identity;
         internal Matrix4X4<float> _projection = Matrix4X4<float>.Identity;

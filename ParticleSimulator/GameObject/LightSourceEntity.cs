@@ -6,7 +6,7 @@ namespace ArctisAurora.GameObject
     {
         public LightSourceEntity()
         {
-            this.CreateComponent<AVulkanLightsourceComponent>();
+            this.CreateComponent<LightsourceComponent>();
             this.name = "Light Source Entity";
         }
         public override void OnStart()

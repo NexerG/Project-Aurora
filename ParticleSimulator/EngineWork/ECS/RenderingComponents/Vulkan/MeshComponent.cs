@@ -1,6 +1,6 @@
 ﻿using ArctisAurora.EngineWork.ComponentBehaviour;
-using ArctisAurora.EngineWork.Rendering.Renderers.Renderer_Vulkan;
-using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
+using ArctisAurora.EngineWork.Renderer;
+using ArctisAurora.EngineWork.Renderer.Helpers;
 using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
@@ -10,7 +10,7 @@ using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 
 namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 {
-    internal unsafe class AVulkanMeshComponent : EntityComponent
+    internal unsafe class MeshComponent : EntityComponent
     {
         bool _render = true;
         internal AVulkanMesh _mesh = new AVulkanMesh();
@@ -37,7 +37,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         int _instances = 1;
         internal List<Matrix4X4<float>> _transformMatrices = new List<Matrix4X4<float>>();
 
-        public AVulkanMeshComponent()
+        public MeshComponent()
         {
             if (_mesh != null)
             {
@@ -166,7 +166,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 DescriptorImageInfo _shadowmapInfo = new DescriptorImageInfo()
                 {
                     ImageLayout = ImageLayout.DepthStencilReadOnlyOptimal,
-                    ImageView = VulkanRenderer._lightsToRender[0].GetComponent<AVulkanLightsourceComponent>()._depthImageView,
+                    ImageView = VulkanRenderer._lightsToRender[0].GetComponent<LightsourceComponent>()._depthImageView,
                     Sampler = VulkanRenderer._shadowmapSampler
                 };
 

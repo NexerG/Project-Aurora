@@ -1,9 +1,9 @@
 ﻿using ArctisAurora.CustomEntities;
 using ArctisAurora.GameObject;
-using ArctisAurora.EngineWork.Rendering.Renderers.Vulkan;
 using Silk.NET.Maths;
 using Assimp;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+using ArctisAurora.EngineWork.Renderer;
 
 namespace ArctisAurora.EngineWork
 {
@@ -52,10 +52,10 @@ namespace ArctisAurora.EngineWork
             //then we do entities
             //-------------
             TestingEntity _tent1 = new TestingEntity();
-            _tent1.transform.SetWorldPosition(new Vector3D<float>(75, 0, 75));
+            _tent1.transform.SetWorldPosition(new Vector3D<float>(10, 0, 10));
             _tent1.transform.SetWorldScale(new Vector3D<float>(25, 1, 25));
             TestingEntity _tent2 = new TestingEntity();
-            _tent2.transform.SetWorldPosition(new Vector3D<float>(150, 0, 150));
+            _tent2.transform.SetWorldPosition(new Vector3D<float>(15, 2, 15));
             _tent2.transform.SetWorldScale(new Vector3D<float>(25, 1, 25));
 
             TestingEntity _tentLight = new TestingEntity();
@@ -65,7 +65,7 @@ namespace ArctisAurora.EngineWork
             TestingEntity _tent21 = new TestingEntity();
             _tent21.transform.SetWorldPosition(new Vector3D<float>(0, -20, 0));
             _tent21.transform.SetWorldScale(new Vector3D<float>(250, 1, 250));
-            _tent21.GetComponent<AVulkanMeshComponent>().LoadCustomMesh(scene1);
+            _tent21.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
 
             /*
             TestingEntity _tent1 = new TestingEntity();
