@@ -1,4 +1,5 @@
-﻿using Silk.NET.Vulkan;
+﻿using ArctisAurora.EngineWork.Renderer.Helpers;
+using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 using static ArctisAurora.EngineWork.Renderer.Helpers.AVulkanHelper;
 using Image = Silk.NET.Vulkan.Image;
@@ -95,7 +96,7 @@ namespace ArctisAurora.EngineWork.Renderer
                 CreateImageView(ref _imageViews[i], ref _swapchainImages[i], ImageAspectFlags.ColorBit, _surfaceFormat.Format);
             }
             Format _depthFormat = GetDepthFormat();
-            VulkanRenderer._bufferHandlerHelper.CreateImage(VulkanRenderer._extent.Width, VulkanRenderer._extent.Height, _depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit, MemoryPropertyFlags.DeviceLocalBit, ref _depthImage, ref _depthMemory);
+            AVulkanBufferHandler.CreateImage(VulkanRenderer._extent.Width, VulkanRenderer._extent.Height, _depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit, MemoryPropertyFlags.DeviceLocalBit, ref _depthImage, ref _depthMemory);
             CreateImageView(ref _depthView, ref _depthImage, ImageAspectFlags.DepthBit, _depthFormat); //depth map
             CreateRenderPass();
             CreateShadowmapRenderPass();

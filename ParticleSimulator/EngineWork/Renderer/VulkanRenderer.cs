@@ -11,34 +11,21 @@ using ArctisAurora.EngineWork.Renderer.Helpers;
 
 namespace ArctisAurora.EngineWork.Renderer
 {
+    internal interface IRecreateCommandBuffer
+    {
+        internal void RecreateCommandBuffers();
+    }
+
     struct LightData
     {
         internal Vector3D<float> _pos;
         internal Vector4D<float> _color;
     }
 
-    internal unsafe class VulkanRenderer
+    internal unsafe class VulkanRenderer : RendererBaseClass, IRecreateCommandBuffer
     {
-        //early window setting
-        internal int _width = 1280;
-        internal int _height = 720;
-        internal static Extent2D _extent;
-        //
-        internal static VulkanRenderer _rendererInstance = null;    //Engine renderer reference
-        internal static AVulkanBufferHandler _bufferHandlerHelper = new AVulkanBufferHandler(); //just buffer helper
-        //window & vulkan setup
-        internal static AGlfwWindow _glWindow = new AGlfwWindow();  //GLFW window
-        internal static Vk _vulkan = Vk.GetApi();                   //vulkan api
-        //validation
-        bool _isValidationLayers = true;
-        private readonly string[] _validationLayers = new string[]
-        {
-            "VK_LAYER_KHRONOS_validation"
-        };
-        private ExtDebugUtils? _debugUtils;
-        private DebugUtilsMessengerEXT _debugMessenger;
+        string[] requiredExtensions = { "VK_KHR_swapchain" };
         //whole rendering pipeline variables
-        internal static Instance _instance;                         //vulkan instance
         internal static AVulkanSwapchain _swapchain;
         internal static AVulkanGraphicsPipeline _pipeline;
         //buffers
@@ -48,7 +35,6 @@ namespace ArctisAurora.EngineWork.Renderer
         internal static DeviceMemory _lightBufferMemory;
         internal static Buffer[] _lightUBO;
         internal static DeviceMemory[] _lightUBOMemory;
-        internal static CommandPool _commandPool;
         //descriptors
         internal static DescriptorSetLayout _descriptorSetLayout;
         internal static DescriptorPool _descriptorPool;
@@ -61,18 +47,11 @@ namespace ArctisAurora.EngineWork.Renderer
         private Semaphore[] _renderFinishedSemaphores;
         private Fence[] _fencesInFlight;
         private Fence[] _imagesInFlight;
-        //
-        private QueueFamilyProperties[] _qfm;               //api queue properties
-        internal static Device _logicalDevice;              //the interface that will interact with the GPU
-        internal static PhysicalDevice _gpu;                //gpu reference
-        //
-        internal static Queue _graphicsQueue;               //api queue
-        private Queue _presentQueue;                        //fuck knows what this is (ill ask chatgpt later)
         //-------------------------------------
         internal static Sampler _textureSampler;
         internal static Sampler _shadowmapSampler;
         //
-        private List<Entity> _entitiesToRender = new List<Entity>();
+        internal static List<Entity> _entitiesToRender = new List<Entity>();
         internal static List<Entity> _lightsToRender = new List<Entity>();
         internal static AVulkanCamera _camera;              //camera
 
@@ -80,15 +59,9 @@ namespace ArctisAurora.EngineWork.Renderer
         {
             //some engine specific rendering prerequisites
             _rendererInstance = this;
-            _extent = new Extent2D() { Height = (uint)_height, Width = (uint)_width };
             //end of prerequisites
 
-            _glWindow.CreateWindow(ref _extent);            //create glfw window
-            CreateVulkanInstance();                         //create Vulkan instance
-            SetupDebugMessenger();
-            _glWindow.CreateSurface();                      //create window surface
-            ChoosePhysicalDevice();                         //we get the gpu
-            CreateLogicalDevice();                          //abstract the gpu so we can communicate
+            CreateLogicalDevice(requiredExtensions);        //abstract the gpu so we can communicate
 
             //getting the render queues ready
             int _graphicsQFamilyIndex = AVulkanHelper.FindQueueFamilyIndex(ref _gpu, ref _qfm, QueueFlags.GraphicsBit);
@@ -99,6 +72,7 @@ namespace ArctisAurora.EngineWork.Renderer
             //create the swapchain
             _swapchain = new AVulkanSwapchain(ref _glWindow._driverSurface, ref _glWindow._surface);
             _swapchain.DoSwapchainMethodSequence(ref _extent);        //swapchain methods for simplicity sake
+            _swapimageCount = _swapchain._swapchainImages.Length;     //engine related thing
             _camera = new AVulkanCamera();
 
             //initiate the draw command pipeline
@@ -116,7 +90,7 @@ namespace ArctisAurora.EngineWork.Renderer
             CreateSyncObjects();                            //CPU - GPU sync logic
         }
 
-        internal void AddEntityToRenderQueue(Entity _m)
+        internal override void AddEntityToRenderQueue(Entity _m)
         {
             _entitiesToRender.Add(_m);
             for (int i = 0; i < _entitiesToRender.Count; i++)
@@ -133,220 +107,27 @@ namespace ArctisAurora.EngineWork.Renderer
             RecreateCommandBuffers();
         }
 
-        internal void AddLighToRenderQueue(Entity _l)
+        internal override void AddLightToRenderQueue(Entity _l)
         {
             _lightsToRender.Add(_l);
             if (_lightsToRender.Count == 1)
             {
-                _bufferHandlerHelper.CreateLightsBuffer(ref _lightsToRender, ref _lightBuffer, ref _lightBufferMemory);
-                _bufferHandlerHelper.CreateLightUBO(ref _lightUBO, ref _lightUBOMemory, 1);
+                AVulkanBufferHandler.CreateLightsBuffer(ref _lightsToRender, ref _lightBuffer, ref _lightBufferMemory);
+                AVulkanBufferHandler.CreateLightUBO(ref _lightUBO, ref _lightUBOMemory, 1);
             }
             else
             {
                 _vulkan.FreeMemory(_logicalDevice, _lightBufferMemory, null);
-                _bufferHandlerHelper.RecreateLightsBuffer(ref _lightsToRender, ref _lightBuffer, ref _lightBufferMemory);
+                AVulkanBufferHandler.RecreateLightsBuffer(ref _lightsToRender, ref _lightBuffer, ref _lightBufferMemory);
                 foreach (Buffer b in _lightUBO)
                     _vulkan.DestroyBuffer(_logicalDevice, b, null);
-                _bufferHandlerHelper.CreateLightUBO(ref _lightUBO, ref _lightUBOMemory, _lightsToRender.Count);
+                AVulkanBufferHandler.CreateLightUBO(ref _lightUBO, ref _lightUBOMemory, _lightsToRender.Count);
                 foreach (Entity _e in _entitiesToRender)
                 {
                     _e.GetComponent<MeshComponent>().FreeDescriptorSets();
                     _e.GetComponent<MeshComponent>().ReinstantiateDesriptorSets();
                 }
             }
-        }
-
-        private void CreateVulkanInstance()
-        {
-            ApplicationInfo _appInfo = new ApplicationInfo
-            {
-                SType = StructureType.ApplicationInfo,
-                PApplicationName = (byte*)SilkMarshal.StringToPtr("VulkanApp"),
-                ApplicationVersion = AVulkanHelper.Version(1, 0, 0),
-                PEngineName = (byte*)SilkMarshal.StringToPtr("ArctisAurora"),
-                EngineVersion = AVulkanHelper.Version(1, 0, 0),
-                ApiVersion = Vk.Version13
-            };
-
-            uint _glfwExtensionCount;
-            byte** _glfwExtensions = _glWindow._glfw.GetRequiredInstanceExtensions(out _glfwExtensionCount);
-            var _extensions = SilkMarshal.PtrToStringArray((nint)_glfwExtensions, (int)_glfwExtensionCount);
-            if (_isValidationLayers)
-            {
-                _extensions = _extensions.Append(ExtDebugUtils.ExtensionName).ToArray();
-            }
-            // Create Vulkan instance info
-            InstanceCreateInfo createInfo = new InstanceCreateInfo
-            {
-                SType = StructureType.InstanceCreateInfo,
-                PApplicationInfo = &_appInfo,
-                EnabledExtensionCount = (uint)_extensions.Length,
-                PpEnabledExtensionNames = (byte**)SilkMarshal.StringArrayToPtr(_extensions)
-            };
-
-            if (_isValidationLayers)
-            {
-                createInfo.EnabledLayerCount = (uint)_validationLayers.Length;
-                createInfo.PpEnabledLayerNames = (byte**)SilkMarshal.StringArrayToPtr(_validationLayers);
-                DebugUtilsMessengerCreateInfoEXT debugCreateInfo = new();
-                PopulateDebugMessengerCreateInfo(ref debugCreateInfo);
-                createInfo.PNext = &debugCreateInfo;
-            }
-            else
-            {
-                createInfo.EnabledLayerCount = 0;
-                createInfo.PNext = null;
-            }
-
-            // Create Vulkan instance
-            fixed (Instance* instancePtr = &_instance)
-            {
-                if (_vulkan.CreateInstance(&createInfo, null, instancePtr) != Result.Success)
-                {
-                    Console.WriteLine("Failed to create Vulkan instance.");
-                }
-            }
-
-            // Clean up unmanaged memory
-            SilkMarshal.Free((nint)_appInfo.PApplicationName);
-            SilkMarshal.Free((nint)_appInfo.PEngineName);
-            SilkMarshal.Free((nint)createInfo.PpEnabledExtensionNames);
-            if (_isValidationLayers)
-            {
-                SilkMarshal.Free((nint)createInfo.PpEnabledLayerNames);
-            }
-        }
-
-        private void SetupDebugMessenger()
-        {
-            if (!_isValidationLayers) return;
-
-            if (_vulkan.TryGetInstanceExtension(_instance, out _debugUtils)) return;
-
-            DebugUtilsMessengerCreateInfoEXT createInfo = new DebugUtilsMessengerCreateInfoEXT();
-            PopulateDebugMessengerCreateInfo(ref createInfo);
-            if (_debugUtils!.CreateDebugUtilsMessenger(_instance, in createInfo, null, out _debugMessenger) != Result.Success)
-            {
-                throw new Exception("Failed to create debug messenger");
-            }
-        }
-
-        private void PopulateDebugMessengerCreateInfo(ref DebugUtilsMessengerCreateInfoEXT createInfo)
-        {
-            createInfo.SType = StructureType.DebugUtilsMessengerCreateInfoExt;
-            createInfo.MessageSeverity = DebugUtilsMessageSeverityFlagsEXT.VerboseBitExt |
-                                         DebugUtilsMessageSeverityFlagsEXT.WarningBitExt |
-                                         DebugUtilsMessageSeverityFlagsEXT.ErrorBitExt;
-            createInfo.MessageType = DebugUtilsMessageTypeFlagsEXT.GeneralBitExt |
-                                     DebugUtilsMessageTypeFlagsEXT.PerformanceBitExt |
-                                     DebugUtilsMessageTypeFlagsEXT.ValidationBitExt;
-            createInfo.PfnUserCallback = (DebugUtilsMessengerCallbackFunctionEXT)DebugCallback;
-        }
-
-        private uint DebugCallback(DebugUtilsMessageSeverityFlagsEXT messageSeverity, DebugUtilsMessageTypeFlagsEXT messageTypes, DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
-        {
-            Console.WriteLine($"validation layer:" + Marshal.PtrToStringAnsi((nint)pCallbackData->PMessage));
-
-            return Vk.False;
-        }
-
-        private void ChoosePhysicalDevice()
-        {
-            uint _deviceCount = 0;
-            _vulkan.GetPhysicalDevices(_instance);
-            _vulkan.EnumeratePhysicalDevices(_instance, &_deviceCount, null);
-            if (_deviceCount == 0)
-            {
-                throw new Exception("Failed to find Vulcan compatible device");
-            }
-            PhysicalDevice[] _devices = new PhysicalDevice[_deviceCount];
-            _devices = (PhysicalDevice[])_vulkan.GetPhysicalDevices(_instance);
-            _gpu = _devices[0];
-        }
-
-        private void CreateLogicalDevice()
-        {
-            int _graphicsIndex = AVulkanHelper.FindQueueFamilyIndex(ref _gpu, ref _qfm, QueueFlags.GraphicsBit);
-            float _qPriority = 1.0f;
-            DeviceQueueCreateInfo _qCreateInfo = new DeviceQueueCreateInfo
-            {
-                SType = StructureType.DeviceQueueCreateInfo,
-                QueueFamilyIndex = (uint)_graphicsIndex,
-                QueueCount = 1,
-                PQueuePriorities = &_qPriority
-            };
-
-            PhysicalDeviceFeatures _deviceFeatures = new PhysicalDeviceFeatures()
-            {
-                SamplerAnisotropy = true,
-            };
-            PhysicalDeviceVulkan12Features _vulkan12FT = new PhysicalDeviceVulkan12Features()
-            {
-                SType = StructureType.PhysicalDeviceVulkan12Features,
-                RuntimeDescriptorArray = true
-            };
-            string[] _validationLayers = { "VK_LAYER_KHRONOS_validation" };
-            byte*[] _validationLayersNames = new byte*[_validationLayers.Length];
-            for (int i = 0; i < _validationLayers.Length; i++)
-            {
-                _validationLayersNames[i] = (byte*)SilkMarshal.StringToPtr(_validationLayers[i]);
-            }
-
-            uint extensionCount = 0;
-            _vulkan.EnumerateDeviceExtensionProperties(_gpu, (byte*)null, &extensionCount, null);
-            ExtensionProperties[] availableExtensions = new ExtensionProperties[extensionCount];
-            fixed (ExtensionProperties* availableExtensionsPtr = availableExtensions)
-            {
-                _vulkan.EnumerateDeviceExtensionProperties(_gpu, (byte*)null, &extensionCount, availableExtensionsPtr);
-            }
-
-            string[] requiredExtensions = { "VK_KHR_swapchain" };
-
-            // Check for required extensions
-            foreach (string requiredExtension in requiredExtensions)
-            {
-                bool found = availableExtensions.Any(ext => Marshal.PtrToStringAnsi((nint)ext.ExtensionName).TrimEnd('\0') == requiredExtension);
-                if (!found)
-                {
-                    throw new Exception($"Required extension '{requiredExtension}' is not supported by the physical device.");
-                }
-            }
-
-            nint[] enabledExtensions = requiredExtensions.Select(ext => Marshal.StringToHGlobalAnsi(ext)).ToArray();
-            nint ppEnabledExtensions = Marshal.AllocHGlobal(nint.Size * enabledExtensions.Length);
-            Marshal.Copy(enabledExtensions, 0, ppEnabledExtensions, enabledExtensions.Length);
-
-            fixed (byte** _ppEnabledLayerNames = _validationLayersNames)
-            {
-                DeviceCreateInfo _deviceInfo = new DeviceCreateInfo
-                {
-                    SType = StructureType.DeviceCreateInfo,
-                    QueueCreateInfoCount = 1,
-                    PQueueCreateInfos = &_qCreateInfo,
-                    PpEnabledLayerNames = _ppEnabledLayerNames,
-
-                    EnabledExtensionCount = (uint)enabledExtensions.Length,
-                    PpEnabledExtensionNames = (byte**)ppEnabledExtensions,
-                    PEnabledFeatures = &_deviceFeatures,
-                    PNext = &_vulkan12FT
-                };
-                Result r = _vulkan.CreateDevice(_gpu, _deviceInfo, null, out _logicalDevice);
-
-                if (r != Result.Success)
-                {
-                    throw new Exception("Failed to create a logical device" + r);
-                }
-            }
-
-            foreach (var f in _validationLayersNames)
-            {
-                SilkMarshal.Free((nint)f);
-            }
-            foreach (var ptr in enabledExtensions)
-            {
-                Marshal.FreeHGlobal(ptr);
-            }
-            Marshal.FreeHGlobal(ppEnabledExtensions);
         }
 
         private void RecreateSwapChain()
@@ -406,19 +187,6 @@ namespace ArctisAurora.EngineWork.Renderer
             }
         }
 
-        private void CreateCommandPool()
-        {
-            int _queueFamilyIndex = AVulkanHelper.FindQueueFamilyIndex(ref _gpu, ref _qfm, QueueFlags.GraphicsBit);
-            CommandPoolCreateInfo _createInfo = new CommandPoolCreateInfo()
-            {
-                SType = StructureType.CommandPoolCreateInfo,
-                QueueFamilyIndex = (uint)_queueFamilyIndex,
-            };
-            if (_vulkan.CreateCommandPool(_logicalDevice, _createInfo, null, out _commandPool) != Result.Success)
-            {
-                throw new Exception("Failed to create command pool");
-            }
-        }
 
         public void RecreateCommandBuffers()
         {
@@ -777,7 +545,7 @@ namespace ArctisAurora.EngineWork.Renderer
             }
         }
 
-        internal void Draw()
+        internal override void Draw()
         {
             _camera.ProcessKeyboard();
             _vulkan.WaitForFences(_logicalDevice, 1, _fencesInFlight[_currentFrame], true, ulong.MaxValue);
@@ -797,8 +565,8 @@ namespace ArctisAurora.EngineWork.Renderer
             _camera.UpdateCameraMatrix(_extent, _imageIndex);
             if (_lightsToRender.Count > 0)
             {
-                _bufferHandlerHelper.UpdateLightsBuffer(ref _lightsToRender, ref _lightBufferMemory);
-                _bufferHandlerHelper.UpdateLightUniforms(ref _lightsToRender, _imageIndex, ref _lightUBOMemory);
+                AVulkanBufferHandler.UpdateLightsBuffer(ref _lightsToRender, ref _lightBufferMemory);
+                AVulkanBufferHandler.UpdateLightUniforms(ref _lightsToRender, _imageIndex, ref _lightUBOMemory);
             }
             //update uniforms
             foreach (Entity e in _lightsToRender)

@@ -1,4 +1,5 @@
-﻿using Silk.NET.Maths;
+﻿using ArctisAurora.EngineWork.Renderer.Helpers;
+using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
@@ -30,7 +31,7 @@ namespace ArctisAurora.EngineWork.Renderer
             {
                 _keyStates[key] = false;
             }
-            VulkanRenderer._bufferHandlerHelper.CreateUniformBuffer(ref _cameraBuffer, ref _camBmemory);
+            AVulkanBufferHandler.CreateUniformBuffer(ref _cameraBuffer, ref _camBmemory);
         }
 
         internal void UpdateCameraMatrix(Extent2D _extent, uint currentImage)
@@ -47,7 +48,7 @@ namespace ArctisAurora.EngineWork.Renderer
             _projection = Matrix4X4.CreatePerspectiveFieldOfView(Scalar.DegreesToRadians(45.0f), _extent.Width / _extent.Height, 0.1f, 5000f);
             _projection.M22 *= -1;
 
-            VulkanRenderer._bufferHandlerHelper.UpdateUniformBuffer(this, currentImage, ref _camBmemory);
+            AVulkanBufferHandler.UpdateUniformBuffer(this, currentImage, ref _camBmemory);
         }
 
         internal void ProcessMouseMovements(Vector2D<float> _delta, bool _constrainPitch = true)

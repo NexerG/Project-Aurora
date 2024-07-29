@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.Renderer;
+using ArctisAurora.EngineWork.Renderer.Helpers;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using static ArctisAurora.EngineWork.Renderer.Helpers.AVulkanHelper;
@@ -37,8 +38,8 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
         public override void OnStart()
         {
-            VulkanRenderer._rendererInstance.AddLighToRenderQueue(parent);
-            VulkanRenderer._rendererInstance.RecreateCommandBuffers();
+            RendererBaseClass._rendererInstance.AddLightToRenderQueue(parent);
+            ((IRecreateCommandBuffer)RendererBaseClass._rendererInstance).RecreateCommandBuffers();
         }
 
         internal void CreateShadowFramebuffer(Extent2D _resolution)
@@ -76,7 +77,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         private void CreateDepthImage(Extent2D _resolution)
         {
             Format _depthFormat = GetDepthFormat();
-            VulkanRenderer._bufferHandlerHelper.CreateImage(_resolution.Width, _resolution.Height, _depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit | ImageUsageFlags.SampledBit, MemoryPropertyFlags.DeviceLocalBit, ref _depthImage, ref _depthBufferMemory);
+            AVulkanBufferHandler.CreateImage(_resolution.Width, _resolution.Height, _depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit | ImageUsageFlags.SampledBit, MemoryPropertyFlags.DeviceLocalBit, ref _depthImage, ref _depthBufferMemory);
             ImageViewCreateInfo _createInfo = new ImageViewCreateInfo
             {
                 SType = StructureType.ImageViewCreateInfo,

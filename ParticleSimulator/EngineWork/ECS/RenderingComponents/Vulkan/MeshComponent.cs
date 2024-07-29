@@ -41,39 +41,39 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         {
             if (_mesh != null)
             {
-                VulkanRenderer._bufferHandlerHelper.CreateVertexBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory);
-                VulkanRenderer._bufferHandlerHelper.CreateIndexBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory);
-                VulkanRenderer._bufferHandlerHelper.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory);
-                VulkanRenderer._bufferHandlerHelper.CreateImageView(ref _textureImage, ref _textureImageView);
+                AVulkanBufferHandler.CreateVertexBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory);
+                AVulkanBufferHandler.CreateIndexBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory);
+                AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory);
+                AVulkanBufferHandler.CreateImageView(ref _textureImage, ref _textureImageView);
             }
         }
 
         public override void OnStart()
         {
             SingletonMatrix();
-            VulkanRenderer._rendererInstance.AddEntityToRenderQueue(parent);
-            CreateDescriptorSet();
-            CreateShadowDescriptorSet();
+            RendererBaseClass._rendererInstance.AddEntityToRenderQueue(parent);
+            //CreateDescriptorSet();
+            //CreateShadowDescriptorSet();
         }
 
         internal void LoadCustomMesh(Scene sc)
         {
-            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _vertexBuffer, null);
-            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _indexBuffer, null);
-            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _indexBufferMemory, null);
-            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _vertexBufferMemory, null);
+            RendererBaseClass._vulkan.DestroyBuffer(RendererBaseClass._logicalDevice, _vertexBuffer, null);
+            RendererBaseClass._vulkan.DestroyBuffer(RendererBaseClass._logicalDevice, _indexBuffer, null);
+            RendererBaseClass._vulkan.FreeMemory(RendererBaseClass._logicalDevice, _indexBufferMemory, null);
+            RendererBaseClass._vulkan.FreeMemory(RendererBaseClass._logicalDevice, _vertexBufferMemory, null);
             _mesh.LoadCustomMesh(sc);
-            VulkanRenderer._bufferHandlerHelper.CreateVertexBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory);
-            VulkanRenderer._bufferHandlerHelper.CreateIndexBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory);
-            VulkanRenderer._rendererInstance.RecreateCommandBuffers();
+            AVulkanBufferHandler.CreateVertexBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory);
+            AVulkanBufferHandler.CreateIndexBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory);
+            ((IRecreateCommandBuffer)RendererBaseClass._rendererInstance).RecreateCommandBuffers();
         }
 
         internal void FreeDescriptorSets()
         {
             if (_descriptorSets != null)
-                VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, VulkanRenderer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
+                RendererBaseClass._vulkan.FreeDescriptorSets(RendererBaseClass._logicalDevice, VulkanRenderer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
             if (_descriptorSetsShadow != null)
-                VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, VulkanRenderer._descriptorPoolShadow, (uint)_descriptorSetsShadow.Length, _descriptorSetsShadow);
+                RendererBaseClass._vulkan.FreeDescriptorSets(RendererBaseClass._logicalDevice, VulkanRenderer._descriptorPoolShadow, (uint)_descriptorSetsShadow.Length, _descriptorSetsShadow);
         }
 
         internal void ReinstantiateDesriptorSets()
@@ -87,12 +87,12 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             _instances = _matrices.Count;
             _transformMatrices = _matrices;
 
-            VulkanRenderer._bufferHandlerHelper.CreateTransformBuffer(ref _transformMatrices, ref _trasnformsBuffer, ref _trasnformsBufferMemory);
+            AVulkanBufferHandler.CreateTransformBuffer(ref _transformMatrices, ref _trasnformsBuffer, ref _trasnformsBufferMemory);
             VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, VulkanRenderer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
             VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, VulkanRenderer._descriptorPoolShadow, (uint)_descriptorSetsShadow.Length, _descriptorSetsShadow);
             CreateDescriptorSet();
             CreateShadowDescriptorSet();
-            VulkanRenderer._rendererInstance.RecreateCommandBuffers();
+            ((IRecreateCommandBuffer)RendererBaseClass._rendererInstance).RecreateCommandBuffers();
         }
 
         internal void SingletonMatrix()
@@ -104,7 +104,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             _transform *= Matrix4X4.CreateScale(parent.transform.scale);
 
             _transformMatrices.Add(_transform);
-            VulkanRenderer._bufferHandlerHelper.CreateTransformBuffer(ref _transformMatrices, ref _trasnformsBuffer, ref _trasnformsBufferMemory);
+            AVulkanBufferHandler.CreateTransformBuffer(ref _transformMatrices, ref _trasnformsBuffer, ref _trasnformsBufferMemory);
         }
 
         internal void CreateDescriptorSet()
@@ -310,7 +310,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             _transform *= Matrix4X4.CreateTranslation(parent.transform.position);
 
             _transformMatrices[0] = _transform;
-            VulkanRenderer._bufferHandlerHelper.UpdateTransformBuffer(ref _transformMatrices, ref _trasnformsBufferMemory);
+            AVulkanBufferHandler.UpdateTransformBuffer(ref _transformMatrices, ref _trasnformsBufferMemory);
         }
 
         internal void EnqueueDrawCommands(ulong[] _offset, int _loopIndex, ref CommandBuffer _commandBuffer)
