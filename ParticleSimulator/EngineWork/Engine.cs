@@ -4,6 +4,7 @@ using Silk.NET.Maths;
 using Assimp;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Renderer;
+using ArctisAurora.CustomEntityComponents;
 
 namespace ArctisAurora.EngineWork
 {
@@ -50,51 +51,12 @@ namespace ArctisAurora.EngineWork
             _ls.transform.SetWorldPosition(new Vector3D<float>(-1, 40, -1));
 
             //then we do entities
-            //-------------
-            TestingEntity _tent1 = new TestingEntity();
-            _tent1.transform.SetWorldPosition(new Vector3D<float>(10, 0, 10));
-            _tent1.transform.SetWorldScale(new Vector3D<float>(25, 1, 25));
-            TestingEntity _tent2 = new TestingEntity();
-            _tent2.transform.SetWorldPosition(new Vector3D<float>(15, 2, 15));
-            _tent2.transform.SetWorldScale(new Vector3D<float>(25, 1, 25));
+            //-------------+
 
-            TestingEntity _tentLight = new TestingEntity();
-            _tentLight.transform.SetWorldPosition(new Vector3D<float>(-1, 40, -1));
-            _bandymas.Add(_tentLight);
-
-            TestingEntity _tent21 = new TestingEntity();
-            _tent21.transform.SetWorldPosition(new Vector3D<float>(0, -20, 0));
-            _tent21.transform.SetWorldScale(new Vector3D<float>(250, 1, 250));
-            _tent21.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
-
-            /*
-            TestingEntity _tent1 = new TestingEntity();
-            _tent1.transform.SetWorldPosition(new Vector3D<float>(0, 5, 0));
-            TestingEntity _tent2 = new TestingEntity();
-            _tent2.transform.SetWorldPosition(new Vector3D<float>(1, 5, 0));
-            TestingEntity _tent3 = new TestingEntity();
-            _tent3.transform.SetWorldPosition(new Vector3D<float>(-1, 5, 0));
-            TestingEntity _tent4 = new TestingEntity();
-            _tent4.transform.SetWorldPosition(new Vector3D<float>(1, 5, 1));
-            TestingEntity _tent5 = new TestingEntity();
-            _tent5.transform.SetWorldPosition(new Vector3D<float>(1, 5, -1));
-            TestingEntity _tent6 = new TestingEntity();
-            _tent6.transform.SetWorldPosition(new Vector3D<float>(-1, 5, 1));
-            TestingEntity _tent7 = new TestingEntity();
-            _tent7.transform.SetWorldPosition(new Vector3D<float>(-1, 5, -1));
-            TestingEntity _tent8 = new TestingEntity();
-            _tent8.transform.SetWorldPosition(new Vector3D<float>(0, 5, 1));
-            TestingEntity _tent9 = new TestingEntity();
-            _tent9.transform.SetWorldPosition(new Vector3D<float>(0, 5, -1));
-            TestingEntity _tent11 = new TestingEntity();
-            _tent11.transform.SetWorldPosition(new Vector3D<float>(0, 8, 0));
-            _tent11.transform.SetWorldScale(new Vector3D<float>(40, 1, 30));*/
-
-
-            //SimulatorEntity _simEntity = new SimulatorEntity();
-            //_simEntity.GetComponent<AVulkanMeshComponent>().LoadCustomMesh(kugis);
-            //_simEntity.GetComponent<SPHSimComponent>().simSetup(parts);
-            //_entities.Add(_simEntity);
+            SimulatorEntity _simEntity = new SimulatorEntity();
+            //_simEntity.GetComponent<Mesh>().LoadCustomMesh(kugis);
+            _simEntity.GetComponent<SPHSimComponent>().simSetup(parts);
+            _entities.Add(_simEntity);
 
             //TestingEntity testEnt = new TestingEntity();
             //testEnt.transform.scale = new Vector3D<float>(1, 1, 1);
@@ -121,7 +83,7 @@ namespace ArctisAurora.EngineWork
             {
                 //engine time
                 TimeSpan SimTime = DateTime.Now - initTime;
-                //Console.SetCursorPosition(0, 0);
+                Console.SetCursorPosition(0, 0);
 
                 DateTime entityOnTickStart = DateTime.Now;
                 foreach (Entity e in _entities)
@@ -129,24 +91,27 @@ namespace ArctisAurora.EngineWork
                     DateTime entityTimeStart = DateTime.Now;
                     e.OnTick();
                     TimeSpan entityTime = DateTime.Now - entityTimeStart;
-                    //Console.WriteLine("      " + e.name + "   " + entityTime.TotalMilliseconds);
+                    Console.WriteLine("      " + e.name + "   " + entityTime.TotalMilliseconds);
                 }
                 TimeSpan entityOnTickTime = DateTime.Now - entityOnTickStart;
-                //Console.WriteLine("Entity time ---" + entityOnTickTime.TotalMilliseconds);
+                Console.WriteLine("Entity time ---" + entityOnTickTime.TotalMilliseconds);
 
                 //renderer
-                DateTime GraphicsTimeStart = DateTime.Now;
+                double GraphicsTime = 999;
                 if (SC.InvokeRequired)
                     SC.Invoke(new Action(() =>
                     {
                         VulkanRenderer._glWindow._glfw.PollEvents();
                         _rasterizer.Draw();
+                        GraphicsTime = _rasterizer._timesFloat[1] - _rasterizer._timesFloat[0];
                     }));
-                TimeSpan GraphicsTime = DateTime.Now - GraphicsTimeStart;
-                //Console.WriteLine("Graphics --- " + GraphicsTime.TotalMilliseconds);
+                Console.WriteLine("Graphics time --- " + GraphicsTime);
 
-                double totalTime = GraphicsTime.TotalMilliseconds + entityOnTickTime.TotalMilliseconds;
-                //Console.WriteLine("TotalTime --- " + totalTime);
+                TimeSpan CPUTime = DateTime.Now - entityOnTickStart;
+                Console.WriteLine("CPU time --- " + CPUTime.TotalMilliseconds);
+
+                double totalTime = GraphicsTime + CPUTime.TotalMilliseconds;
+                Console.WriteLine("TotalTime --- " + totalTime);
                 framerate[index % 100] = totalTime;
                 index++;
                 if (index > 100) index = 1;
@@ -155,16 +120,7 @@ namespace ArctisAurora.EngineWork
                 {
                     fr += framerate[i];
                 }
-                //Console.WriteLine("FPS --- " + 1000 / (fr / 100));
-                /*VulkanRenderer._lightsToRender[0].transform.SetWorldPosition(new Vector3D<float>(
-                VulkanRenderer._lightsToRender[0].transform.position.X + 0.003f,
-                VulkanRenderer._lightsToRender[0].transform.position.Y,
-                VulkanRenderer._lightsToRender[0].transform.position.Z));
-                _bandymas[0].transform.SetWorldPosition(new Vector3D<float>(
-                    _bandymas[0].transform.position.X + 0.003f,
-                    _bandymas[0].transform.position.Y,
-                    _bandymas[0].transform.position.Z ));*/
-
+                Console.WriteLine("FPS --- " + 1000 / (fr / 100));
                 double TSOffset = TS - totalTime;
                 if (TSOffset > 0f)
                     await Task.Delay(((int)TSOffset));

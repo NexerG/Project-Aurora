@@ -30,7 +30,7 @@ namespace ArctisAurora.EngineWork.Renderer
         internal static AGlfwWindow _glWindow = new AGlfwWindow();  //GLFW window
         internal static Vk _vulkan = Vk.GetApi();                   //vulkan api
         //validation
-        bool _isValidationLayers = true;
+        bool _isValidationLayers = false;
         private readonly string[] _validationLayers = new string[]
         {
             "VK_LAYER_KHRONOS_validation"
@@ -63,6 +63,9 @@ namespace ArctisAurora.EngineWork.Renderer
         private Fence[] _imagesInFlight;
         //
         private QueueFamilyProperties[] _qfm;               //api queue properties
+        internal QueryPool _timestampQuerry;
+        private ulong[] _times = new ulong[2];                        //for time
+        internal float[] _timesFloat = new float[2];                        //for time
         internal static Device _logicalDevice;              //the interface that will interact with the GPU
         internal static PhysicalDevice _gpu;                //gpu reference
         //
@@ -89,7 +92,7 @@ namespace ArctisAurora.EngineWork.Renderer
             _glWindow.CreateSurface();                      //create window surface
             ChoosePhysicalDevice();                         //we get the gpu
             CreateLogicalDevice();                          //abstract the gpu so we can communicate
-
+            CreateTimequerry();                             //frame time statistics
             //getting the render queues ready
             int _graphicsQFamilyIndex = AVulkanHelper.FindQueueFamilyIndex(ref _gpu, ref _qfm, QueueFlags.GraphicsBit);
             uint _presentSupportIndex = AVulkanHelper.FindPresentSupportIndex(ref _qfm, ref _glWindow._driverSurface, ref _glWindow._surface);
@@ -250,6 +253,21 @@ namespace ArctisAurora.EngineWork.Renderer
             return Vk.False;
         }
 
+        private void CreateTimequerry()
+        {
+            QueryPoolCreateInfo _qpcInfo = new QueryPoolCreateInfo()
+            {
+                SType = StructureType.QueryPoolCreateInfo,
+                QueryType = QueryType.Timestamp,
+                QueryCount = 6,
+                PipelineStatistics = 0
+            };
+            fixed(QueryPool* _qPointer = &_timestampQuerry)
+            {
+                _vulkan.CreateQueryPool(_logicalDevice, _qpcInfo, null, _qPointer);
+            }
+        }
+
         private void ChoosePhysicalDevice()
         {
             uint _deviceCount = 0;
@@ -312,6 +330,13 @@ namespace ArctisAurora.EngineWork.Renderer
                 }
             }
 
+            PhysicalDeviceHostQueryResetFeatures _resetFeatures = new PhysicalDeviceHostQueryResetFeatures()
+            {
+                SType = StructureType.PhysicalDeviceHostQueryResetFeatures,
+                HostQueryReset = true,
+                PNext = &_vulkan12FT
+            };
+
             nint[] enabledExtensions = requiredExtensions.Select(ext => Marshal.StringToHGlobalAnsi(ext)).ToArray();
             nint ppEnabledExtensions = Marshal.AllocHGlobal(nint.Size * enabledExtensions.Length);
             Marshal.Copy(enabledExtensions, 0, ppEnabledExtensions, enabledExtensions.Length);
@@ -328,7 +353,7 @@ namespace ArctisAurora.EngineWork.Renderer
                     EnabledExtensionCount = (uint)enabledExtensions.Length,
                     PpEnabledExtensionNames = (byte**)ppEnabledExtensions,
                     PEnabledFeatures = &_deviceFeatures,
-                    PNext = &_vulkan12FT
+                    PNext = &_resetFeatures
                 };
                 Result r = _vulkan.CreateDevice(_gpu, _deviceInfo, null, out _logicalDevice);
 
@@ -432,7 +457,6 @@ namespace ArctisAurora.EngineWork.Renderer
         private void CreateCommandBuffers()
         {
             _commandBuffer = new CommandBuffer[_framebuffer.Length];
-
             CommandBufferAllocateInfo _allocInfo = new CommandBufferAllocateInfo()
             {
                 SType = StructureType.CommandBufferAllocateInfo,
@@ -499,7 +523,8 @@ namespace ArctisAurora.EngineWork.Renderer
                 };
 
                 //render code
-                Buffer[] _vertBuffers = new Buffer[_entitiesToRender.Count + _entitiesToRender.Count * _lightsToRender.Count];
+                _vulkan.CmdResetQueryPool(_commandBuffer[i], _timestampQuerry, (uint)(i * 2), 1);
+                _vulkan.CmdWriteTimestamp(_commandBuffer[i], PipelineStageFlags.TopOfPipeBit, _timestampQuerry, (uint)(i * 2));
                 _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.Graphics, _pipeline._shadowPipeline);
                 for (int j = 0; j < _lightsToRender.Count; j++)
                 {
@@ -540,6 +565,8 @@ namespace ArctisAurora.EngineWork.Renderer
 
                 //end of for loop
                 _vulkan.CmdEndRenderPass(_commandBuffer[i]);
+                _vulkan.CmdResetQueryPool(_commandBuffer[i], _timestampQuerry, (uint)(i * 2 + 1), 1);
+                _vulkan.CmdWriteTimestamp(_commandBuffer[i], PipelineStageFlags.TopOfPipeBit, _timestampQuerry, (uint)(i * 2 + 1));
                 //done rendering
 
                 if (_vulkan.EndCommandBuffer(_commandBuffer[i]) != Result.Success)
@@ -794,6 +821,7 @@ namespace ArctisAurora.EngineWork.Renderer
                 throw new Exception("Failed to acquire swapchain image");
             }
 
+
             _camera.UpdateCameraMatrix(_extent, _imageIndex);
             if (_lightsToRender.Count > 0)
             {
@@ -879,8 +907,30 @@ namespace ArctisAurora.EngineWork.Renderer
             {
                 throw new Exception("Failed to present swap chain image");
             }
+            FetchRenderTimeResults(_currentFrame);
 
             _currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+        }
+
+        private void FetchRenderTimeResults(int _swapchainIndex)
+        {
+            QueryResultFlags flags = QueryResultFlags.Result64Bit | QueryResultFlags.ResultWaitBit;
+            Result _r;
+            fixed (ulong* _timePtr = _times)
+            {
+                _r = _vulkan.GetQueryPoolResults(_logicalDevice, _timestampQuerry, (uint)(_swapchainIndex * 2), 2, sizeof(ulong) * 2, (void*)_timePtr, sizeof(ulong), flags);
+            }
+            if(_r == Result.Success)
+            {
+                PhysicalDeviceProperties _props;
+                _vulkan.GetPhysicalDeviceProperties(_gpu, &_props);
+                float timestampPeriod = _props.Limits.TimestampPeriod;
+                _timesFloat[0] = (_times[0] * timestampPeriod) / 1000000.0f;
+                _timesFloat[1] = (_times[1] * timestampPeriod) / 1000000.0f;
+                //Console.WriteLine("good time fetch: " + (_timesFloat[1] - _timesFloat[0]));
+            }
+            else
+                Console.WriteLine("failed to fetch time");
         }
 
         private void CreateSyncObjects()
