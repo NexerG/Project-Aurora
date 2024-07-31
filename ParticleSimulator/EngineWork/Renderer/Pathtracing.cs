@@ -70,7 +70,9 @@ namespace ArctisAurora.EngineWork.Renderer
             _graphicsQueue = _vulkan.GetDeviceQueue(_logicalDevice, (uint)_graphicsQFamilyIndex, 0);
             _presentQueue = _vulkan.GetDeviceQueue(_logicalDevice, _presentSupportIndex, 0);
             CreateCommandPool();
+
             CreateBLAS();
+            CreateTLAS();
             //SET SWAP CHAIN IMAGE COUNT AFTER PIPELINE
         }
 
@@ -172,17 +174,118 @@ namespace ArctisAurora.EngineWork.Renderer
             };
             _BLAS._deviceAddress = _accelerationStructure.GetAccelerationStructureDeviceAddress(_logicalDevice, _adaInfo);
             DeleteScratchBuffer(ref _scratchBuffer);
-            /*AccelerationStructureDeviceAddressInfoKHR _aDeviceAddressInfo = new()
-            {
-              SType = StructureType.AccelerationStructureBuildGeometryInfoKhr,
-              AccelerationStructure = _TLAS._handle
-            };*/
-
         }
 
         private void CreateTLAS()
         {
+            TransformMatrixKHR _matrix = new TransformMatrixKHR();
+            _matrix.Matrix[0] = _testEnt.GetComponent<MeshComponent>()._transformMatrices[0].M11;
+            _matrix.Matrix[1] = _testEnt.GetComponent<MeshComponent>()._transformMatrices[0].M12;
+            _matrix.Matrix[2] = _testEnt.GetComponent<MeshComponent>()._transformMatrices[0].M13;
+            _matrix.Matrix[3] = _testEnt.GetComponent<MeshComponent>()._transformMatrices[0].M14;
+            _matrix.Matrix[4] = _testEnt.GetComponent<MeshComponent>()._transformMatrices[0].M21;
+            _matrix.Matrix[5] = _testEnt.GetComponent<MeshComponent>()._transformMatrices[0].M22;
+            _matrix.Matrix[6] = _testEnt.GetComponent<MeshComponent>()._transformMatrices[0].M23;
+            _matrix.Matrix[7] = _testEnt.GetComponent<MeshComponent>()._transformMatrices[0].M24;
+            _matrix.Matrix[8] = _testEnt.GetComponent<MeshComponent>()._transformMatrices[0].M31;
+            _matrix.Matrix[9] = _testEnt.GetComponent<MeshComponent>()._transformMatrices[0].M32;
+            _matrix.Matrix[10] = _testEnt.GetComponent<MeshComponent>()._transformMatrices[0].M33;
+            _matrix.Matrix[11] = _testEnt.GetComponent<MeshComponent>()._transformMatrices[0].M34;
 
+            AccelerationStructureInstanceKHR _accelerationInstance = new AccelerationStructureInstanceKHR()
+            {
+                Flags = GeometryInstanceFlagsKHR.TriangleFacingCullDisableBitKhr,
+                AccelerationStructureReference = _BLAS._deviceAddress,
+                Transform = _matrix,
+                InstanceCustomIndex = 0,
+                Mask = 0xFF,
+                InstanceShaderBindingTableRecordOffset = 0
+            };
+            AccelerationStructureGeometryKHR _asg = new AccelerationStructureGeometryKHR()
+            {
+                SType = StructureType.AccelerationStructureGeometryKhr,
+                GeometryType = GeometryTypeKHR.InstancesKhr,
+                Flags = GeometryFlagsKHR.OpaqueBitKhr,
+                Geometry =
+                {
+                    Instances =
+                    {
+                        SType = StructureType.AccelerationStructureGeometryInstancesDataKhr,
+                        ArrayOfPointers = false,
+                        Data = _addressTransform
+                    }
+                }
+            };
+            AccelerationStructureBuildGeometryInfoKHR _asbgInfo = new AccelerationStructureBuildGeometryInfoKHR()
+            {
+                SType = StructureType.AccelerationStructureBuildGeometryInfoKhr,
+                Type = AccelerationStructureTypeKHR.TopLevelKhr,
+                Flags = BuildAccelerationStructureFlagsKHR.PreferFastTraceBitKhr,
+                GeometryCount = 1,
+                PGeometries = &_asg
+            };
+            uint primitive_count = 6;
+            AccelerationStructureBuildSizesInfoKHR _asbsInfo = new()
+            {
+                SType = StructureType.AccelerationStructureBuildSizesInfoKhr
+            };
+            _accelerationStructure.GetAccelerationStructureBuildSizes(_logicalDevice, AccelerationStructureBuildTypeKHR.DeviceKhr, &_asbgInfo, primitive_count, &_asbsInfo);
+
+            CreateAccelerationStructureBuffer(ref _TLAS, _asbsInfo);
+
+            AccelerationStructureCreateInfoKHR _asCreateInfo = new AccelerationStructureCreateInfoKHR()
+            {
+                SType = StructureType.AccelerationStructureCreateInfoKhr,
+                Buffer = _TLAS._buffer,
+                Size = _asbsInfo.AccelerationStructureSize,
+                Type = AccelerationStructureTypeKHR.TopLevelKhr,
+            };
+            //
+            _accelerationStructure.CreateAccelerationStructure(_logicalDevice, _asCreateInfo, null, out _TLAS._handle);
+            PathtracingScratchBuffer _scratchBuffer = new PathtracingScratchBuffer();
+            CreateScratchBuffer(_asbsInfo.BuildScratchSize, ref _scratchBuffer);
+
+            AccelerationStructureBuildGeometryInfoKHR _abgInfo = new AccelerationStructureBuildGeometryInfoKHR()
+            {
+                SType = StructureType.AccelerationStructureBuildGeometryInfoKhr,
+                Type = AccelerationStructureTypeKHR.TopLevelKhr,
+                Flags = BuildAccelerationStructureFlagsKHR.PreferFastTraceBitKhr,
+                Mode = BuildAccelerationStructureModeKHR.BuildKhr,
+                DstAccelerationStructure = _TLAS._handle,
+                GeometryCount = 1,
+                PGeometries = &_asg,
+                ScratchData =
+                {
+                    DeviceAddress = _scratchBuffer._deviceAddress
+                }
+            };
+            AccelerationStructureBuildRangeInfoKHR _asbrInfo = new AccelerationStructureBuildRangeInfoKHR()
+            {
+                PrimitiveCount = primitive_count,
+                PrimitiveOffset = 0,
+                FirstVertex = 0,
+                TransformOffset = 0
+            };
+
+            CommandBuffer _commandBuffer = AVulkanBufferHandler.BeginSingleTimeCommands();
+
+            void* _data;
+            ulong _size = ((ulong)(6 * sizeof(Vertex)));
+            _vulkan.MapMemory(_logicalDevice, _TLAS._memory, 0, _size, 0, &_data);
+            Span<AccelerationStructureBuildGeometryInfoKHR> _ASBGSpan = new Span<AccelerationStructureBuildGeometryInfoKHR>(_data, 1);
+            _ASBGSpan[0] = _abgInfo;
+            _vulkan.UnmapMemory(_logicalDevice, _TLAS._memory);
+            _accelerationStructure.CmdBuildAccelerationStructures(_commandBuffer, 1, _ASBGSpan, &_asbrInfo);
+
+            AVulkanBufferHandler.EndSingleTimeCommands(_commandBuffer);
+
+            AccelerationStructureDeviceAddressInfoKHR _adaInfo = new AccelerationStructureDeviceAddressInfoKHR()
+            {
+                SType = StructureType.AccelerationStructureBuildGeometryInfoKhr,
+                AccelerationStructure = _TLAS._handle
+            };
+            _TLAS._deviceAddress = _accelerationStructure.GetAccelerationStructureDeviceAddress(_logicalDevice, _adaInfo);
+            DeleteScratchBuffer(ref _scratchBuffer);
         }
 
         private void DeleteScratchBuffer(ref PathtracingScratchBuffer _sBuffer)
