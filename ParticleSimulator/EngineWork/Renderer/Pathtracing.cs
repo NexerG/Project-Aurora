@@ -5,6 +5,9 @@ using Silk.NET.Vulkan.Extensions.KHR;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Renderer.Helpers;
 using ArctisAurora.CustomEntities;
+using Windows.Devices.Bluetooth.Advertisement;
+using Silk.NET.Core.Native;
+using System.Reflection;
 
 namespace ArctisAurora.EngineWork.Renderer
 {
@@ -17,7 +20,6 @@ namespace ArctisAurora.EngineWork.Renderer
         string[] requiredExtensions =
         {
                 "VK_KHR_swapchain",
-                "VK_KHR_acceleration_structure",
                 "VK_KHR_ray_tracing_pipeline",
                 "VK_KHR_deferred_host_operations",
                 "VK_KHR_buffer_device_address",
@@ -43,6 +45,15 @@ namespace ArctisAurora.EngineWork.Renderer
         AccelerationStruct _BLAS = default;
         AccelerationStruct _TLAS = default;
 
+        KhrRayTracingPipeline _rtExtention;
+        DescriptorSetLayout _descriptorSetLayout;
+        PipelineLayout _pipelineLayout;
+        Pipeline _rtPipeline;
+
+        Buffer _raygenBindingTable;
+        Buffer _missBindingTable;
+        Buffer _hitBinddingTable;
+
         internal Camera _camera;
 
         struct AccelerationStruct
@@ -62,6 +73,16 @@ namespace ArctisAurora.EngineWork.Renderer
 
         internal Pathtracing() 
         {
+            _rtPipelineProperties.SType = StructureType.PhysicalDeviceRayTracingPipelinePropertiesKhr;
+            fixed(PhysicalDeviceRayTracingPipelinePropertiesKHR* _rtPtr = &_rtPipelineProperties)
+            {
+                PhysicalDeviceProperties2 _devprops2 = new PhysicalDeviceProperties2()
+                {
+                    SType = StructureType.PhysicalDeviceProperties2,
+                    PNext = _rtPtr
+                };
+                _vulkan.GetPhysicalDeviceProperties2(_gpu, &_devprops2);
+            }
             _rendererInstance = this;
             CreateLogicalDevice(requiredExtensions);
 
@@ -73,9 +94,11 @@ namespace ArctisAurora.EngineWork.Renderer
 
             CreateBLAS();
             CreateTLAS();
+            //create storage image
+            //create uniform buffer
+            CreateRaytracingPipeline();
             //SET SWAP CHAIN IMAGE COUNT AFTER PIPELINE
         }
-
 
         private void CreateBLAS()
         {
@@ -288,6 +311,164 @@ namespace ArctisAurora.EngineWork.Renderer
             DeleteScratchBuffer(ref _scratchBuffer);
         }
 
+        private void CreateRaytracingPipeline()
+        {
+            DescriptorSetLayoutBinding _asLayoutBinding = new DescriptorSetLayoutBinding()
+            {
+                Binding = 0,
+                DescriptorType = DescriptorType.AccelerationStructureKhr,
+                DescriptorCount = 1,
+                StageFlags = ShaderStageFlags.RaygenBitKhr
+            };
+
+            DescriptorSetLayoutBinding _resultImageLayoutBinding = new()
+            {
+                Binding = 1,
+                DescriptorType = DescriptorType.StorageImage,
+                DescriptorCount = 1,
+                StageFlags = ShaderStageFlags.RaygenBitKhr
+            };
+
+            DescriptorSetLayoutBinding _uniformBufferBinding = new DescriptorSetLayoutBinding()
+            {
+                Binding = 2,
+                DescriptorType = DescriptorType.UniformBuffer,
+                DescriptorCount = 1,
+                StageFlags = ShaderStageFlags.RaygenBitKhr
+            };
+
+            var _bindings = new DescriptorSetLayoutBinding[] { _asLayoutBinding, _resultImageLayoutBinding, _uniformBufferBinding};
+
+            fixed(DescriptorSetLayoutBinding* _bPtr = _bindings)
+            fixed(DescriptorSetLayout* _setPtr = &_descriptorSetLayout)
+            {
+                DescriptorSetLayoutCreateInfo _layoutCreateInfo = new DescriptorSetLayoutCreateInfo()
+                {
+                    SType = StructureType.DescriptorSetLayoutCreateInfo,
+                    BindingCount = (uint)_bindings.Length,
+                    PBindings = _bPtr
+                };
+                if (_vulkan.CreateDescriptorSetLayout(_logicalDevice, _layoutCreateInfo, null, _setPtr) != Result.Success)
+                {
+                    throw new Exception("Failed to create descriptor set layout");
+                }
+                PipelineLayoutCreateInfo _pipelineLayoutCreateInfo = new()
+                {
+                    SType = StructureType.PipelineLayoutCreateInfo,
+                    SetLayoutCount = 1,
+                    PSetLayouts = _setPtr
+                };
+                fixed(PipelineLayout* _pipePtr = &_pipelineLayout)
+                    if (_vulkan.CreatePipelineLayout(_logicalDevice, _pipelineLayoutCreateInfo, null, _pipePtr) != Result.Success)
+                    {
+                        throw new Exception("Failed to create descriptor set layout");
+                    }
+            }
+
+            byte[] _rayGenCode = ReadFile("../../../Shaders/raygen.rgen.spv");
+            byte[] _missCode = ReadFile("../../../Shaders/miss.rmiss.spv");
+            byte[] _hitCode = ReadFile("../../../Shaders/closesthit.rchit.spv");
+
+            ShaderModule _raygenShader = CreateShaderModule(_rayGenCode);
+            ShaderModule _missShader = CreateShaderModule(_missCode);
+            ShaderModule _hitShader = CreateShaderModule(_hitCode);
+
+            PipelineShaderStageCreateInfo _pipelineShaderStageRaygenCI = new()
+            {
+                SType = StructureType.PipelineShaderStageCreateInfo,
+                Stage = ShaderStageFlags.RaygenBitKhr,
+                Module = _raygenShader,
+                PName = (byte*)SilkMarshal.StringToPtr("main")
+            };
+            PipelineShaderStageCreateInfo _pipelineShaderStageMissCI = new()
+            {
+                SType = StructureType.PipelineShaderStageCreateInfo,
+                Stage = ShaderStageFlags.MissBitKhr,
+                Module = _missShader,
+                PName = (byte*)SilkMarshal.StringToPtr("main")
+            };
+            PipelineShaderStageCreateInfo _pipelineShaderStageHitCI = new()
+            {
+                SType = StructureType.PipelineShaderStageCreateInfo,
+                Stage = ShaderStageFlags.ClosestHitBitKhr,
+                Module = _hitShader,
+                PName = (byte*)SilkMarshal.StringToPtr("main")
+            };
+
+            var _stages = stackalloc[]
+            {
+                _pipelineShaderStageRaygenCI,
+                _pipelineShaderStageMissCI,
+                _pipelineShaderStageHitCI
+            };
+            //
+            RayTracingShaderGroupCreateInfoKHR _raygenCI = new()
+            {
+                SType = StructureType.RayTracingShaderGroupCreateInfoKhr,
+                Type = RayTracingShaderGroupTypeKHR.GeneralKhr,
+                GeneralShader = 0,
+                ClosestHitShader = Vk.ShaderUnusedKhr,
+                AnyHitShader = Vk.ShaderUnusedKhr,
+                IntersectionShader = Vk.ShaderUnusedKhr,
+            };
+            //
+            RayTracingShaderGroupCreateInfoKHR _missCI = new()
+            {
+                SType = StructureType.RayTracingShaderGroupCreateInfoKhr,
+                Type = RayTracingShaderGroupTypeKHR.GeneralKhr,
+                GeneralShader = 1,
+                ClosestHitShader = Vk.ShaderUnusedKhr,
+                AnyHitShader = Vk.ShaderUnusedKhr,
+                IntersectionShader = Vk.ShaderUnusedKhr,
+            };
+            //
+            RayTracingShaderGroupCreateInfoKHR _closesCI = new()
+            {
+                SType = StructureType.RayTracingShaderGroupCreateInfoKhr,
+                Type = RayTracingShaderGroupTypeKHR.TrianglesHitGroupKhr,
+                GeneralShader = Vk.ShaderUnusedKhr,
+                ClosestHitShader = 2,
+                AnyHitShader = Vk.ShaderUnusedKhr,
+                IntersectionShader = Vk.ShaderUnusedKhr,
+            };
+            var _shaderGroups = stackalloc[]
+                { _raygenCI , _missCI, _closesCI};
+            //
+            //
+            RayTracingPipelineCreateInfoKHR _rtPipelineCI = new()
+            {
+                SType = StructureType.RayTracingPipelineCreateInfoKhr,
+                StageCount = 3,
+                PStages = _stages,
+                GroupCount = 3,
+                PGroups = _shaderGroups,
+                MaxPipelineRayRecursionDepth = 1,
+                Layout = _pipelineLayout
+            };
+            _vulkan.TryGetDeviceExtension(_instance, _logicalDevice, out _rtExtention);
+            Result r = _rtExtention.CreateRayTracingPipelines(_logicalDevice, default, default, 1, _rtPipelineCI, null, out _rtPipeline);
+            if (r != Result.Success)
+            {
+                throw new Exception("Failed to create graphics pipeline " + r);
+            }
+        }
+
+        private void CreateShaderBindingTable()
+        {
+            uint _handleSize = _rtPipelineProperties.ShaderGroupHandleSize;
+            uint _handleSizeAligned = AlignedSize(_handleSize, _rtPipelineProperties.ShaderGroupHandleAlignment);
+            uint _groupCount = 3;
+            uint _sbtSize = _groupCount * _handleSizeAligned;
+
+            Span<uint> _shaderHandleStorage = new Span<uint>();
+            _rtExtention.GetRayTracingShaderGroupHandles(_logicalDevice, _rtPipeline, 0, _groupCount, _sbtSize, _shaderHandleStorage);
+
+            BufferUsageFlags _buf = BufferUsageFlags.ShaderBindingTableBitKhr | BufferUsageFlags.ShaderDeviceAddressBit;
+            MemoryPropertyFlags _mpf = MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit;
+
+            //AVulkanBufferHandler.createbuffer
+        }
+
         private void DeleteScratchBuffer(ref PathtracingScratchBuffer _sBuffer)
         {
             if (_sBuffer._memory.Handle != 0)
@@ -388,6 +569,37 @@ namespace ArctisAurora.EngineWork.Renderer
                 Buffer = _b,
             };
             return _vulkan.GetBufferDeviceAddress(_logicalDevice, _addressInfo);
+        }
+
+        private ShaderModule CreateShaderModule(byte[] _shaderCode)
+        {
+            ShaderModuleCreateInfo _createInfo = new ShaderModuleCreateInfo
+            {
+                SType = StructureType.ShaderModuleCreateInfo,
+                CodeSize = (nuint)_shaderCode.Length,
+            };
+            ShaderModule _shaderModule;
+
+            fixed (byte* _shaderCodePtr = _shaderCode)
+            {
+                _createInfo.PCode = (uint*)_shaderCodePtr;
+                if (VulkanRenderer._vulkan.CreateShaderModule(VulkanRenderer._logicalDevice, _createInfo, null, out _shaderModule) != Result.Success)
+                {
+                    throw new Exception("Failed to create shader module");
+                }
+            }
+            return _shaderModule;
+        }
+
+        private byte[] ReadFile(string FileName)
+        {
+            byte[] contents = File.ReadAllBytes(FileName);
+            return contents;
+        }
+
+        private uint AlignedSize(uint _value, uint _alignment)
+        {
+            return (_value + _alignment - 1) * ~(_alignment - 1);
         }
     }
 }

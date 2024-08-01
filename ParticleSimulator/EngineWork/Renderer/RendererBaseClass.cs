@@ -178,11 +178,19 @@ namespace ArctisAurora.EngineWork.Renderer
                 PQueuePriorities = &_qPriority
             };
 
+            PhysicalDeviceRayTracingPipelineFeaturesKHR _rtPipelineFeature = new PhysicalDeviceRayTracingPipelineFeaturesKHR()
+            {
+                SType = StructureType.PhysicalDeviceRayTracingPipelineFeaturesKhr,
+                RayTracingPipeline = true
+            };
+
             PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures = new()
             {
                 SType = StructureType.PhysicalDeviceAccelerationStructureFeaturesKhr,
-                AccelerationStructure = true
+                AccelerationStructure = true,
+                PNext = &_rtPipelineFeature
             };
+
             PhysicalDeviceFeatures _deviceFeatures = new PhysicalDeviceFeatures()
             {
                 SamplerAnisotropy = true,

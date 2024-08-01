@@ -321,7 +321,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             EndSingleTimeCommands(_commandBuffer);
         }
 
-        private static void CreateBuffer(ulong _size, BufferUsageFlags _usage, MemoryPropertyFlags _properties, ref Buffer _buffer, ref DeviceMemory _bufferMemory)
+        internal static void CreateBuffer(ulong _size, BufferUsageFlags _usage, MemoryPropertyFlags _properties, ref Buffer _buffer, ref DeviceMemory _bufferMemory)
         {
             BufferCreateInfo _bufferCreateInfo = new BufferCreateInfo()
             {

@@ -187,7 +187,6 @@ namespace ArctisAurora.EngineWork.Renderer
             }
         }
 
-
         public void RecreateCommandBuffers()
         {
             fixed (CommandBuffer* CBPtr = _commandBuffer)
