@@ -18,6 +18,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         //Descriptor set
         internal DescriptorSet[] _descriptorSets;
         internal DescriptorSet[] _descriptorSetsShadow;
+        internal DescriptorSet[] _descriptorSetsPathTracing;
 
         //buffer objects
         internal Buffer _vertexBuffer;
@@ -297,6 +298,94 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 fixed (WriteDescriptorSet* _descPtr = _writeDescriptorSets)
                 {
                     VulkanRenderer._vulkan!.UpdateDescriptorSets(VulkanRenderer._logicalDevice, (uint)_writeDescriptorSets.Length, _descPtr, 0, null);
+                }
+            }
+        }
+
+        internal void CreateRTDescriptorSet()
+        {
+            DescriptorSetLayout[] _layouts = new DescriptorSetLayout[Pathtracing._swapchain!._swapchainImages.Length];
+            Array.Fill(_layouts, Pathtracing._descriptorSetLayout);
+
+            fixed (DescriptorSetLayout* _layoutsPtr = _layouts)
+            {
+                DescriptorSetAllocateInfo _allocateInfo = new DescriptorSetAllocateInfo()
+                {
+                    SType = StructureType.DescriptorSetAllocateInfo,
+                    DescriptorPool = Pathtracing._descriptorPool,
+                    DescriptorSetCount = (uint)Pathtracing._swapchain!._swapchainImages.Length,
+                    PSetLayouts = _layoutsPtr
+                };
+
+                _descriptorSetsPathTracing = new DescriptorSet[Pathtracing._swapchain!._swapchainImages.Length];
+                fixed (DescriptorSet* _descriptorSetsPtr = _descriptorSetsPathTracing)
+                {
+                    Result r = RendererBaseClass._vulkan.AllocateDescriptorSets(RendererBaseClass._logicalDevice, _allocateInfo, _descriptorSetsPtr);
+                    if (r != Result.Success)
+                    {
+                        throw new Exception("Failed to allocate descriptor set with error code: " + r);
+                    }
+                }
+            }
+            for (int i = 0; i < Pathtracing._swapchain!._swapchainImages.Length; i++)
+            {
+                fixed (AccelerationStructureKHR* _accelStrPtr = &Pathtracing._TLAS._handle)
+                {
+                    WriteDescriptorSetAccelerationStructureKHR _dasinfo = new()
+                    {
+                        SType = StructureType.WriteDescriptorSetAccelerationStructureKhr,
+                        AccelerationStructureCount = 1,
+                        PAccelerationStructures = _accelStrPtr,
+                    };
+                    DescriptorImageInfo _dImageInfo = new()
+                    {
+                        ImageLayout = ImageLayout.General,
+                        ImageView = Pathtracing._swapchain!._imageViews[i]
+                    };
+                    DescriptorBufferInfo _bufferInfoMatrices = new DescriptorBufferInfo()
+                    {
+                        Buffer = _trasnformsBuffer,
+                        Offset = 0,
+                        Range = Vk.WholeSize
+                    };
+
+                    var _writeDescriptorSets = new WriteDescriptorSet[]
+                    {
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            PNext = &_dasinfo,
+                            DstSet = _descriptorSetsPathTracing[0],
+                            DstBinding = 0,
+                            DstArrayElement = 0,
+                            DescriptorCount = 1,
+                            DescriptorType = DescriptorType.AccelerationStructureKhr
+                        },
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = _descriptorSetsPathTracing[0],
+                            DstBinding = 1,
+                            DescriptorCount = 1,
+                            DstArrayElement = 0,
+                            DescriptorType = DescriptorType.StorageImage,
+                            PImageInfo = &_dImageInfo
+                        },
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = _descriptorSetsPathTracing[0],
+                            DstBinding = 2,
+                            DescriptorCount = 1,
+                            DstArrayElement = 0,
+                            DescriptorType = DescriptorType.StorageBuffer,
+                            PBufferInfo = &_bufferInfoMatrices
+                        }
+                    };
+                    fixed (WriteDescriptorSet* _descPtr = _writeDescriptorSets)
+                    {
+                        RendererBaseClass._vulkan!.UpdateDescriptorSets(RendererBaseClass._logicalDevice, (uint)_writeDescriptorSets.Length, _descPtr, 0, null);
+                    }
                 }
             }
         }

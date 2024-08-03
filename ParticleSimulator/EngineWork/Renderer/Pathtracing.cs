@@ -8,6 +8,8 @@ using ArctisAurora.CustomEntities;
 using Windows.Devices.Bluetooth.Advertisement;
 using Silk.NET.Core.Native;
 using System.Reflection;
+using System;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskBand;
 
 namespace ArctisAurora.EngineWork.Renderer
 {
@@ -29,7 +31,6 @@ namespace ArctisAurora.EngineWork.Renderer
                 KhrAccelerationStructure.ExtensionName
         };
 
-
         PhysicalDeviceRayTracingPipelinePropertiesKHR _rtPipelineProperties = default;
         PhysicalDeviceRayTracingPipelineFeaturesKHR _rtPipelineFeatures = default;
 
@@ -43,20 +44,27 @@ namespace ArctisAurora.EngineWork.Renderer
 
         KhrAccelerationStructure _accelerationStructure = default;
         AccelerationStruct _BLAS = default;
-        AccelerationStruct _TLAS = default;
+        internal static AccelerationStruct _TLAS = default;
+
+        internal static AVulkanSwapchain _swapchain;
 
         KhrRayTracingPipeline _rtExtention;
-        DescriptorSetLayout _descriptorSetLayout;
+        internal static DescriptorSetLayout _descriptorSetLayout;
         PipelineLayout _pipelineLayout;
         Pipeline _rtPipeline;
 
         Buffer _raygenBindingTable;
+        DeviceMemory _raygenBTDM;
         Buffer _missBindingTable;
+        DeviceMemory _missBTDM; 
         Buffer _hitBinddingTable;
+        DeviceMemory _hitBTDM;
+
+        internal static DescriptorPool _descriptorPool;
 
         internal Camera _camera;
 
-        struct AccelerationStruct
+        internal struct AccelerationStruct
         {
             internal AccelerationStructureKHR _handle;
             internal ulong _deviceAddress;
@@ -90,14 +98,61 @@ namespace ArctisAurora.EngineWork.Renderer
             uint _presentSupportIndex = AVulkanHelper.FindPresentSupportIndex(ref _qfm, ref _glWindow._driverSurface, ref _glWindow._surface);
             _graphicsQueue = _vulkan.GetDeviceQueue(_logicalDevice, (uint)_graphicsQFamilyIndex, 0);
             _presentQueue = _vulkan.GetDeviceQueue(_logicalDevice, _presentSupportIndex, 0);
+
+            _swapchain = new AVulkanSwapchain(ref _glWindow._driverSurface, ref _glWindow._surface);
+            _swapchain.DoSwapchainMethodSequence(ref _extent);        //swapchain methods for simplicity sake
+            _swapimageCount = _swapchain._swapchainImages.Length;     //engine related thing
+
             CreateCommandPool();
 
+            CreateDescriptorPool();
             CreateBLAS();
             CreateTLAS();
             //create storage image
-            //create uniform buffer
+            //create uniform buffer DONE
             CreateRaytracingPipeline();
+            CreateShaderBindingTable();
+
+            _testEnt.GetComponent<MeshComponent>().CreateRTDescriptorSet();
             //SET SWAP CHAIN IMAGE COUNT AFTER PIPELINE
+        }
+
+        private void CreateDescriptorPool()
+        {
+            var _poolSizes = new DescriptorPoolSize[]
+            {
+                new DescriptorPoolSize()
+                {
+                    Type = DescriptorType.AccelerationStructureKhr,
+                    DescriptorCount = 1
+                },
+                new DescriptorPoolSize()
+                {
+                    Type = DescriptorType.StorageImage,
+                    DescriptorCount = 1
+                },
+                new DescriptorPoolSize()
+                {
+                    Type = DescriptorType.UniformBuffer,
+                    DescriptorCount = 1
+                }
+            };
+
+            fixed(DescriptorPoolSize* _poolSizePtr = _poolSizes)
+            fixed(DescriptorPool* _dpPtr = &_descriptorPool)
+            {
+                DescriptorPoolCreateInfo _createInfo = new DescriptorPoolCreateInfo()
+                {
+                    SType = StructureType.DescriptorPoolCreateInfo,
+                    PoolSizeCount = (uint)_poolSizes.Length,
+                    PPoolSizes = _poolSizePtr,
+                    MaxSets = 3
+                };
+                if (_vulkan.CreateDescriptorPool(_logicalDevice, _createInfo, null, _dpPtr) != Result.Success)
+                {
+                    throw new Exception("Failed to create descriptor pool");
+                }
+            }
         }
 
         private void CreateBLAS()
@@ -460,13 +515,26 @@ namespace ArctisAurora.EngineWork.Renderer
             uint _groupCount = 3;
             uint _sbtSize = _groupCount * _handleSizeAligned;
 
-            Span<uint> _shaderHandleStorage = new Span<uint>();
-            _rtExtention.GetRayTracingShaderGroupHandles(_logicalDevice, _rtPipeline, 0, _groupCount, _sbtSize, _shaderHandleStorage);
-
             BufferUsageFlags _buf = BufferUsageFlags.ShaderBindingTableBitKhr | BufferUsageFlags.ShaderDeviceAddressBit;
             MemoryPropertyFlags _mpf = MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit;
 
-            //AVulkanBufferHandler.createbuffer
+            AVulkanBufferHandler.CreateBuffer(_handleSize, _buf, _mpf, ref _raygenBindingTable, ref _raygenBTDM);
+            AVulkanBufferHandler.CreateBuffer(_handleSize, _buf, _mpf, ref _missBindingTable, ref _missBTDM);
+            AVulkanBufferHandler.CreateBuffer(_handleSize, _buf, _mpf, ref _hitBinddingTable, ref _hitBTDM);
+
+            CopyHandles(_handleSize, ref _raygenBTDM, _groupCount, _sbtSize, 0);
+            CopyHandles(_handleSize, ref _missBTDM, _groupCount, _sbtSize, _handleSizeAligned);
+            CopyHandles(_handleSize, ref _hitBTDM, _groupCount, _sbtSize, _handleSizeAligned * 2);
+        }
+
+        private void CopyHandles(uint _handleSize, ref DeviceMemory _memory, uint _groupCount, uint _sbtSize, uint _handleSizeAligned)
+        {
+            void* _data;
+            _vulkan.MapMemory(_logicalDevice, _memory, 0, _handleSize, 0, &_data);
+            Span<uint> _shaderHandleStorage = new Span<uint>(_data, 1);
+            _rtExtention.GetRayTracingShaderGroupHandles(_logicalDevice, _rtPipeline, 0, _groupCount, _sbtSize, _shaderHandleStorage);
+            _shaderHandleStorage[0] = _shaderHandleStorage[0] + _handleSizeAligned;
+            _vulkan.UnmapMemory(_logicalDevice, _memory);
         }
 
         private void DeleteScratchBuffer(ref PathtracingScratchBuffer _sBuffer)
