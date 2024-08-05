@@ -5,11 +5,9 @@ using Silk.NET.Vulkan.Extensions.KHR;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Renderer.Helpers;
 using ArctisAurora.CustomEntities;
-using Windows.Devices.Bluetooth.Advertisement;
 using Silk.NET.Core.Native;
-using System.Reflection;
-using System;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.TaskBand;
+using Image = Silk.NET.Vulkan.Image;
+using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 
 namespace ArctisAurora.EngineWork.Renderer
 {
@@ -47,6 +45,9 @@ namespace ArctisAurora.EngineWork.Renderer
         internal static AccelerationStruct _TLAS = default;
 
         internal static AVulkanSwapchain _swapchain;
+        internal Image _storageImage;
+        internal DeviceMemory _storageDM;
+        internal static ImageView _storageImageView;
 
         KhrRayTracingPipeline _rtExtention;
         internal static DescriptorSetLayout _descriptorSetLayout;
@@ -59,6 +60,8 @@ namespace ArctisAurora.EngineWork.Renderer
         DeviceMemory _missBTDM; 
         Buffer _hitBinddingTable;
         DeviceMemory _hitBTDM;
+
+        CommandBuffer[] _commandBuffer;
 
         internal static DescriptorPool _descriptorPool;
 
@@ -108,13 +111,13 @@ namespace ArctisAurora.EngineWork.Renderer
             CreateDescriptorPool();
             CreateBLAS();
             CreateTLAS();
-            //create storage image
+            CreateStorageImage();
             //create uniform buffer DONE
             CreateRaytracingPipeline();
             CreateShaderBindingTable();
 
             _testEnt.GetComponent<MeshComponent>().CreateRTDescriptorSet();
-            //SET SWAP CHAIN IMAGE COUNT AFTER PIPELINE
+            CreateCommandBuffers();
         }
 
         private void CreateDescriptorPool()
@@ -133,7 +136,7 @@ namespace ArctisAurora.EngineWork.Renderer
                 },
                 new DescriptorPoolSize()
                 {
-                    Type = DescriptorType.UniformBuffer,
+                    Type = DescriptorType.StorageBuffer,
                     DescriptorCount = 1
                 }
             };
@@ -387,7 +390,7 @@ namespace ArctisAurora.EngineWork.Renderer
             DescriptorSetLayoutBinding _uniformBufferBinding = new DescriptorSetLayoutBinding()
             {
                 Binding = 2,
-                DescriptorType = DescriptorType.UniformBuffer,
+                DescriptorType = DescriptorType.StorageBuffer,
                 DescriptorCount = 1,
                 StageFlags = ShaderStageFlags.RaygenBitKhr
             };
@@ -627,6 +630,208 @@ namespace ArctisAurora.EngineWork.Renderer
                 }
             }
             _vulkan.BindBufferMemory(_logicalDevice, _accelStructure._buffer, _accelStructure._memory, 0);
+        }
+
+        private void CreateStorageImage()
+        {
+            AVulkanBufferHandler.CreateImage(_extent.Width, _extent.Height, Format.R32G32B32A32Sfloat, ImageTiling.Optimal, ImageUsageFlags.TransferSrcBit | ImageUsageFlags.StorageBit, MemoryPropertyFlags.DeviceLocalBit, ref _storageImage, ref _storageDM);
+            _swapchain.CreateImageView(ref _storageImageView, ref _storageImage, ImageAspectFlags.ColorBit, Format.R32G32B32A32Sfloat);
+
+            CommandBuffer _imageTransition = AVulkanBufferHandler.BeginSingleTimeCommands();
+
+            ImageMemoryBarrier _barrier = new()
+            {
+                SType = StructureType.ImageMemoryBarrier,
+                OldLayout = Silk.NET.Vulkan.ImageLayout.Undefined,
+                NewLayout   = Silk.NET.Vulkan.ImageLayout.General,
+                SrcQueueFamilyIndex = Vk.QueueFamilyIgnored,
+                DstQueueFamilyIndex = Vk.QueueFamilyIgnored,
+                Image = _storageImage,
+                SubresourceRange =
+                {
+                    AspectMask = ImageAspectFlags.ColorBit,
+                    BaseMipLevel = 0,
+                    LevelCount = 1,
+                    BaseArrayLayer = 0,
+                    LayerCount = 1,
+                },
+                SrcAccessMask = 0,
+                DstAccessMask = AccessFlags.ShaderReadBit | AccessFlags.ShaderWriteBit,
+            };
+            //Format _f = AVulkanHelper.FindSupportedFormat();
+            _vulkan.CmdPipelineBarrier(_imageTransition, PipelineStageFlags.TopOfPipeBit, PipelineStageFlags.ComputeShaderBit | PipelineStageFlags.FragmentShaderBit, 0, 0, null, 0, null, 1, _barrier);
+            AVulkanBufferHandler.EndSingleTimeCommands(_imageTransition);
+        }
+
+        private void CreateCommandBuffers()
+        {
+            _commandBuffer = new CommandBuffer[_swapimageCount];
+
+            CommandBufferAllocateInfo _allocInfo = new CommandBufferAllocateInfo()
+            {
+                SType = StructureType.CommandBufferAllocateInfo,
+                CommandPool = _commandPool,
+                Level = CommandBufferLevel.Primary,
+                CommandBufferCount = (uint)_commandBuffer.Length
+            };
+            fixed (CommandBuffer* _commandBufferPtr = _commandBuffer)
+            {
+                Result r = _vulkan.AllocateCommandBuffers(_logicalDevice, _allocInfo, _commandBufferPtr);
+                if (r != Result.Success)
+                {
+                    throw new Exception("Failed to allocate command buffer with error " + r);
+                }
+            }
+
+            ImageSubresourceRange _sr = new()
+            {
+                AspectMask = ImageAspectFlags.ColorBit,
+                BaseArrayLayer = 0,
+                BaseMipLevel = 0,
+                LayerCount = 1,
+                LevelCount = 1
+            };
+
+            for (int i = 0; i < _commandBuffer.Length; i++)
+            {
+                CommandBufferBeginInfo _beginInfo = new CommandBufferBeginInfo()
+                {
+                    SType = StructureType.CommandBufferBeginInfo
+                };
+                if (_vulkan.BeginCommandBuffer(_commandBuffer[i], _beginInfo) != Result.Success)
+                {
+                    throw new Exception("Failed to create BEGIN command buffer at index " + i);
+                }
+                //render code
+                uint _handleSizeAligned = AlignedSize(_rtPipelineProperties.ShaderGroupHandleSize, _rtPipelineProperties.ShaderGroupHandleAlignment);
+                StridedDeviceAddressRegionKHR _raygenShaderSbtEntry = new()
+                {
+                    DeviceAddress = GetAddress(_raygenBindingTable),
+                    Stride = _handleSizeAligned,
+                    Size = _handleSizeAligned
+                };
+                StridedDeviceAddressRegionKHR _missnShaderSbtEntry = new()
+                {
+                    DeviceAddress = GetAddress(_missBindingTable),
+                    Stride = _handleSizeAligned,
+                    Size = _handleSizeAligned
+                };
+                StridedDeviceAddressRegionKHR _hitShaderSbtEntry = new()
+                {
+                    DeviceAddress = GetAddress(_hitBinddingTable),
+                    Stride = _handleSizeAligned,
+                    Size = _handleSizeAligned
+                };
+                StridedDeviceAddressRegionKHR _callableShaderSbt = default;
+                _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.RayTracingKhr, _rtPipeline);
+                fixed(DescriptorSet* _dSetPtr = _testEnt.GetComponent<MeshComponent>()._descriptorSetsPathTracing)
+                    _vulkan.CmdBindDescriptorSets(_commandBuffer[i], PipelineBindPoint.RayTracingKhr, _pipelineLayout, 0, 1, _dSetPtr, 0, 0);
+                _rtExtention.CmdTraceRays(
+                    _commandBuffer[i],
+                    &_raygenShaderSbtEntry,
+                    &_missnShaderSbtEntry,
+                    &_hitShaderSbtEntry,
+                    &_callableShaderSbt,
+                    _extent.Width,
+                    _extent.Height,
+                    1);
+                SetImageLayout(ref _commandBuffer[i], ref _swapchain._swapchainImages[i], ImageLayout.Undefined, ImageLayout.TransferDstOptimal, _sr);
+                SetImageLayout(ref _commandBuffer[i], ref _storageImage, ImageLayout.General, ImageLayout.TransferSrcOptimal, _sr);
+                
+                ImageCopy _ic = new ImageCopy()
+                {
+                    SrcSubresource =
+                    {
+                        AspectMask = ImageAspectFlags.ColorBit,
+                        BaseArrayLayer = 0,
+                        LayerCount = 1,
+                        MipLevel = 0
+                    },
+                    SrcOffset ={ X = 0, Y = 0, Z = 0},
+                    DstSubresource =
+                    {
+                        AspectMask = ImageAspectFlags.ColorBit,
+                        MipLevel = 0,
+                        LayerCount = 1,
+                        BaseArrayLayer = 0
+                    },
+                    DstOffset = { X = 0,Y = 0, Z = 0},
+                    Extent =
+                    {
+                        Height = _extent.Height , Width = _extent.Width, Depth = 1
+                    }
+                };
+                _vulkan.CmdCopyImage(_commandBuffer[i], _storageImage, ImageLayout.TransferSrcOptimal, _swapchain._swapchainImages[i], ImageLayout.TransferDstOptimal, 1, &_ic);
+
+                SetImageLayout(ref _commandBuffer[i], ref _swapchain._swapchainImages[i], ImageLayout.TransferDstOptimal, ImageLayout.PresentSrcKhr, _sr);
+                SetImageLayout(ref _commandBuffer[i], ref _storageImage, ImageLayout.TransferSrcOptimal, ImageLayout.General, _sr);
+                //done rendering
+                if (_vulkan.EndCommandBuffer(_commandBuffer[i]) != Result.Success)
+                {
+                    throw new Exception("Failed to record command buffer");
+                }
+            }
+        }
+
+        private void SetImageLayout(ref CommandBuffer _cBuffer, ref Image _swapchainImage, ImageLayout _oldLayout, ImageLayout _newLayout, ImageSubresourceRange _subresource)
+        {
+            ImageMemoryBarrier _barrier = new()
+            {
+                SType = StructureType.ImageMemoryBarrier,
+                OldLayout = _oldLayout,
+                NewLayout = _newLayout,
+                SrcQueueFamilyIndex = Vk.QueueFamilyIgnored,
+                DstQueueFamilyIndex = Vk.QueueFamilyIgnored,
+                Image = _swapchainImage,
+                SubresourceRange =
+                {
+                    AspectMask = ImageAspectFlags.ColorBit,
+                    BaseMipLevel = 0,
+                    LevelCount = 1,
+                    BaseArrayLayer = 0,
+                    LayerCount = 1,
+                }
+            };
+            PipelineStageFlags sourceStage;
+            PipelineStageFlags destinationStage;
+
+            if (_oldLayout == ImageLayout.Undefined && _newLayout == ImageLayout.TransferDstOptimal)
+            {
+                _barrier.SrcAccessMask = 0;
+                _barrier.DstAccessMask = AccessFlags.TransferWriteBit;
+
+                sourceStage = PipelineStageFlags.TopOfPipeBit;
+                destinationStage = PipelineStageFlags.TransferBit;
+            }
+            else if (_oldLayout == ImageLayout.TransferDstOptimal && _newLayout == ImageLayout.PresentSrcKhr)
+            {
+                _barrier.SrcAccessMask = AccessFlags.TransferWriteBit;
+                _barrier.DstAccessMask = 0;
+
+                sourceStage = PipelineStageFlags.TransferBit;
+                destinationStage = PipelineStageFlags.TopOfPipeBit;
+            }
+            else if (_oldLayout == ImageLayout.TransferSrcOptimal && _newLayout == ImageLayout.General)
+            {
+                _barrier.SrcAccessMask = AccessFlags.TransferWriteBit;
+                _barrier.DstAccessMask = 0;
+
+                sourceStage = PipelineStageFlags.TransferBit;
+                destinationStage = PipelineStageFlags.TopOfPipeBit;
+            }
+            else if (_oldLayout == ImageLayout.General && _newLayout == ImageLayout.TransferSrcOptimal)
+            {
+                _barrier.SrcAccessMask = 0;
+                _barrier.DstAccessMask = AccessFlags.ShaderReadBit;
+
+                sourceStage = PipelineStageFlags.TransferBit;
+                destinationStage = PipelineStageFlags.TopOfPipeBit;
+            }
+            else
+            {
+                throw new Exception("unsupported layout transition!");
+            }
+            _vulkan!.CmdPipelineBarrier(_cBuffer, sourceStage, destinationStage, 0, 0, null, 0, null, 1, _barrier);
         }
 
         private ulong GetAddress(Buffer _b)

@@ -257,7 +257,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
 
         internal static void EndSingleTimeCommands(CommandBuffer commandBuffer)
         {
-            VulkanRenderer._vulkan!.EndCommandBuffer(commandBuffer);
+            RendererBaseClass._vulkan!.EndCommandBuffer(commandBuffer);
 
             SubmitInfo submitInfo = new()
             {
@@ -266,10 +266,10 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
                 PCommandBuffers = &commandBuffer,
             };
 
-            VulkanRenderer._vulkan!.QueueSubmit(VulkanRenderer._graphicsQueue, 1, submitInfo, default);
-            VulkanRenderer._vulkan!.QueueWaitIdle(VulkanRenderer._graphicsQueue);
+            RendererBaseClass._vulkan!.QueueSubmit(RendererBaseClass._graphicsQueue, 1, submitInfo, default);
+            RendererBaseClass._vulkan!.QueueWaitIdle(RendererBaseClass._graphicsQueue);
 
-            VulkanRenderer._vulkan!.FreeCommandBuffers(VulkanRenderer._logicalDevice, VulkanRenderer._commandPool, 1, commandBuffer);
+            RendererBaseClass._vulkan!.FreeCommandBuffers(RendererBaseClass._logicalDevice, RendererBaseClass._commandPool, 1, commandBuffer);
         }
 
         private static void TransitionImageLayout(Silk.NET.Vulkan.Image _image, ImageLayout _oldLayout, ImageLayout _newLayout)

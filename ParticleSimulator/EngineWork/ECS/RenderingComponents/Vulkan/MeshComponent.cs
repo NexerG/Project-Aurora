@@ -340,7 +340,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                     DescriptorImageInfo _dImageInfo = new()
                     {
                         ImageLayout = ImageLayout.General,
-                        ImageView = Pathtracing._swapchain!._imageViews[i]
+                        ImageView = Pathtracing._storageImageView
                     };
                     DescriptorBufferInfo _bufferInfoMatrices = new DescriptorBufferInfo()
                     {
@@ -355,7 +355,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                         {
                             SType = StructureType.WriteDescriptorSet,
                             PNext = &_dasinfo,
-                            DstSet = _descriptorSetsPathTracing[0],
+                            DstSet = _descriptorSetsPathTracing[i],
                             DstBinding = 0,
                             DstArrayElement = 0,
                             DescriptorCount = 1,
@@ -364,7 +364,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                         new WriteDescriptorSet
                         {
                             SType = StructureType.WriteDescriptorSet,
-                            DstSet = _descriptorSetsPathTracing[0],
+                            DstSet = _descriptorSetsPathTracing[i],
                             DstBinding = 1,
                             DescriptorCount = 1,
                             DstArrayElement = 0,
@@ -374,7 +374,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                         new WriteDescriptorSet
                         {
                             SType = StructureType.WriteDescriptorSet,
-                            DstSet = _descriptorSetsPathTracing[0],
+                            DstSet = _descriptorSetsPathTracing[i],
                             DstBinding = 2,
                             DescriptorCount = 1,
                             DstArrayElement = 0,

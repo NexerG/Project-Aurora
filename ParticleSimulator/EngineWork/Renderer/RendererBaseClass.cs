@@ -42,7 +42,7 @@ namespace ArctisAurora.EngineWork.Renderer
         //
         internal static CommandPool _commandPool;
         //
-        internal static Queue _graphicsQueue;               //api queue
+        internal static Queue _graphicsQueue;                       //api queue
         internal static Queue _presentQueue;                        //fuck knows what this is (ill ask chatgpt later)
 
         internal void InitRenderer(bool RTX)
