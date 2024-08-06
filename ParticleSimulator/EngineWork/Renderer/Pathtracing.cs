@@ -65,7 +65,7 @@ namespace ArctisAurora.EngineWork.Renderer
 
         internal static DescriptorPool _descriptorPool;
 
-        internal Camera _camera;
+        internal static AVulkanCamera _camera;
 
         internal struct AccelerationStruct
         {
@@ -105,6 +105,7 @@ namespace ArctisAurora.EngineWork.Renderer
             _swapchain = new AVulkanSwapchain(ref _glWindow._driverSurface, ref _glWindow._surface);
             _swapchain.DoSwapchainMethodSequence(ref _extent);        //swapchain methods for simplicity sake
             _swapimageCount = _swapchain._swapchainImages.Length;     //engine related thing
+            _camera = new AVulkanCamera();
 
             CreateCommandPool();
 
@@ -136,7 +137,7 @@ namespace ArctisAurora.EngineWork.Renderer
                 },
                 new DescriptorPoolSize()
                 {
-                    Type = DescriptorType.StorageBuffer,
+                    Type = DescriptorType.UniformBuffer,
                     DescriptorCount = 1
                 }
             };
@@ -390,7 +391,7 @@ namespace ArctisAurora.EngineWork.Renderer
             DescriptorSetLayoutBinding _uniformBufferBinding = new DescriptorSetLayoutBinding()
             {
                 Binding = 2,
-                DescriptorType = DescriptorType.StorageBuffer,
+                DescriptorType = DescriptorType.UniformBuffer,
                 DescriptorCount = 1,
                 StageFlags = ShaderStageFlags.RaygenBitKhr
             };
@@ -634,8 +635,8 @@ namespace ArctisAurora.EngineWork.Renderer
 
         private void CreateStorageImage()
         {
-            AVulkanBufferHandler.CreateImage(_extent.Width, _extent.Height, Format.R32G32B32A32Sfloat, ImageTiling.Optimal, ImageUsageFlags.TransferSrcBit | ImageUsageFlags.StorageBit, MemoryPropertyFlags.DeviceLocalBit, ref _storageImage, ref _storageDM);
-            _swapchain.CreateImageView(ref _storageImageView, ref _storageImage, ImageAspectFlags.ColorBit, Format.R32G32B32A32Sfloat);
+            AVulkanBufferHandler.CreateImage(_extent.Width, _extent.Height, Format.R8G8B8A8Unorm, ImageTiling.Optimal, ImageUsageFlags.TransferSrcBit | ImageUsageFlags.StorageBit, MemoryPropertyFlags.DeviceLocalBit, ref _storageImage, ref _storageDM);
+            _swapchain.CreateImageView(ref _storageImageView, ref _storageImage, ImageAspectFlags.ColorBit, Format.R8G8B8A8Unorm);
 
             CommandBuffer _imageTransition = AVulkanBufferHandler.BeginSingleTimeCommands();
 
@@ -825,7 +826,7 @@ namespace ArctisAurora.EngineWork.Renderer
                 _barrier.DstAccessMask = AccessFlags.ShaderReadBit;
 
                 sourceStage = PipelineStageFlags.TransferBit;
-                destinationStage = PipelineStageFlags.TopOfPipeBit;
+                destinationStage = PipelineStageFlags.ComputeShaderBit;
             }
             else
             {
@@ -872,7 +873,8 @@ namespace ArctisAurora.EngineWork.Renderer
 
         private uint AlignedSize(uint _value, uint _alignment)
         {
-            return (_value + _alignment - 1) * ~(_alignment - 1);
+            uint a = (_value + _alignment - 1) & ~(_alignment - 1);
+            return a;
         }
     }
 }

@@ -144,7 +144,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
         {
             foreach (var _availableFormat in _formats)
             {
-                if (_availableFormat.Format == Format.B8G8R8A8Srgb && _availableFormat.ColorSpace == ColorSpaceKHR.SpaceSrgbNonlinearKhr)
+                if (_availableFormat.Format == Format.R8G8B8A8Unorm && _availableFormat.ColorSpace == ColorSpaceKHR.SpaceSrgbNonlinearKhr)
                 {
                     return _availableFormat;
                 }

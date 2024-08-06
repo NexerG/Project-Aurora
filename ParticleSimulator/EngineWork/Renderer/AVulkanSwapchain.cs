@@ -57,7 +57,7 @@ namespace ArctisAurora.EngineWork.Renderer
                 ImageColorSpace = _surfaceFormat.ColorSpace,
                 ImageExtent = _extent,
                 ImageArrayLayers = 1,
-                ImageUsage = ImageUsageFlags.ColorAttachmentBit,
+                ImageUsage = ImageUsageFlags.ColorAttachmentBit | ImageUsageFlags.TransferDstBit,
                 ImageSharingMode = SharingMode.Exclusive,
                 PresentMode = _presentMode,
                 Clipped = true,

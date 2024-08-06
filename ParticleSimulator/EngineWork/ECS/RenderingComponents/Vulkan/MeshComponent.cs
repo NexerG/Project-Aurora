@@ -344,9 +344,9 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                     };
                     DescriptorBufferInfo _bufferInfoMatrices = new DescriptorBufferInfo()
                     {
-                        Buffer = _trasnformsBuffer,
+                        Buffer = Pathtracing._camera._cameraBuffer[i],
                         Offset = 0,
-                        Range = Vk.WholeSize
+                        Range = (ulong)Unsafe.SizeOf<UBO>()
                     };
 
                     var _writeDescriptorSets = new WriteDescriptorSet[]
@@ -378,7 +378,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                             DstBinding = 2,
                             DescriptorCount = 1,
                             DstArrayElement = 0,
-                            DescriptorType = DescriptorType.StorageBuffer,
+                            DescriptorType = DescriptorType.UniformBuffer,
                             PBufferInfo = &_bufferInfoMatrices
                         }
                     };
