@@ -576,7 +576,7 @@ namespace ArctisAurora.EngineWork.Renderer
             {
                 e.GetComponent<MeshComponent>().UpdateMatrices();
             }
-
+            //uniforms done
             if (_imagesInFlight[_imageIndex].Handle != default)
             {
                 _vulkan.WaitForFences(_logicalDevice, 1, _imagesInFlight[_imageIndex], true, ulong.MaxValue);

@@ -65,25 +65,25 @@ namespace ArctisAurora.EngineWork.Renderer
                 CompositeAlpha = CompositeAlphaFlagsKHR.OpaqueBitKhr,
                 PreTransform = _support.Capabilities.CurrentTransform,
                 QueueFamilyIndexCount = 2,
-                PQueueFamilyIndices = _queueFamilyIndices
+                PQueueFamilyIndices = _queueFamilyIndices,
             };
 
-            if (!VulkanRenderer._vulkan.TryGetDeviceExtension(VulkanRenderer._instance, VulkanRenderer._logicalDevice, out _driverSwapchain))
+            if (!RendererBaseClass._vulkan.TryGetDeviceExtension(RendererBaseClass._instance, RendererBaseClass._logicalDevice, out _driverSwapchain))
             {
                 throw new Exception("VK_KHR_swapchain extension not found on the device");
             }
 
-            Result r = _driverSwapchain!.CreateSwapchain(VulkanRenderer._logicalDevice, _swapchainCreateInfo, null, out _swapchainKHR);
+            Result r = _driverSwapchain!.CreateSwapchain(RendererBaseClass._logicalDevice, _swapchainCreateInfo, null, out _swapchainKHR);
             if (r != Result.Success)
             {
                 throw new Exception("Failed to create swapchain " + r);
             }
             uint _swapchainImageCount = 0;
-            _driverSwapchain.GetSwapchainImages(VulkanRenderer._logicalDevice, _swapchainKHR, &_swapchainImageCount, null);
+            _driverSwapchain.GetSwapchainImages(RendererBaseClass._logicalDevice, _swapchainKHR, &_swapchainImageCount, null);
             _swapchainImages = new Image[_swapchainImageCount];
             fixed (Image* _imagePtr = _swapchainImages)
             {
-                _driverSwapchain.GetSwapchainImages(VulkanRenderer._logicalDevice, _swapchainKHR, &_swapchainImageCount, _imagePtr);
+                _driverSwapchain.GetSwapchainImages(RendererBaseClass._logicalDevice, _swapchainKHR, &_swapchainImageCount, _imagePtr);
             }
         }
 

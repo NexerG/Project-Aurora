@@ -34,7 +34,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             RendererBaseClass._vulkan.UnmapMemory(RendererBaseClass._logicalDevice, _stagingBufferMemory);
 
             //CreateBuffer(_bufferSize, BufferUsageFlags.TransferDstBit | BufferUsageFlags.VertexBufferBit, MemoryPropertyFlags.DeviceLocalBit, ref _vertexBuffer, ref _vertexBufferMemory);
-            CreateBuffer(_bufferSize, BufferUsageFlags.TransferDstBit | BufferUsageFlags.VertexBufferBit | BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr, MemoryPropertyFlags.DeviceLocalBit | MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _vertexBuffer, ref _vertexBufferMemory);
+            CreateBuffer(_bufferSize, BufferUsageFlags.TransferDstBit | BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr, MemoryPropertyFlags.DeviceLocalBit | MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _vertexBuffer, ref _vertexBufferMemory);
 
             CopyBuffer(ref _stagingBuffer, ref _vertexBuffer, _bufferSize);
             RendererBaseClass._vulkan.DestroyBuffer(RendererBaseClass._logicalDevice, _stagingBuffer, null);
@@ -54,7 +54,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             RendererBaseClass._vulkan.UnmapMemory(RendererBaseClass._logicalDevice, _stagingBufferMemory);
             
             //CreateBuffer(_bufferSize, BufferUsageFlags.TransferDstBit | BufferUsageFlags.IndexBufferBit, MemoryPropertyFlags.DeviceLocalBit, ref _indexBuffer, ref _indexBufferMemory); ;
-            CreateBuffer(_bufferSize, BufferUsageFlags.TransferDstBit | BufferUsageFlags.IndexBufferBit | BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr, MemoryPropertyFlags.DeviceLocalBit | MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _indexBuffer, ref _indexBufferMemory); ;
+            CreateBuffer(_bufferSize, BufferUsageFlags.TransferDstBit | BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _indexBuffer, ref _indexBufferMemory); ;
             CopyBuffer(ref _stagingBuffer, ref _indexBuffer, _bufferSize);
 
             RendererBaseClass._vulkan.DestroyBuffer(RendererBaseClass._logicalDevice, _stagingBuffer, null);
@@ -155,9 +155,9 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             {
                 _view = _camera._view,
                 _projection = _camera._projection,
-                _lightProjection = VulkanRenderer._lightsToRender[0].GetComponent<LightsourceComponent>()._lightProjection,
-                _lightView = VulkanRenderer._lightsToRender[0].GetComponent<LightsourceComponent>()._lightView,
-                _camPos = _camera._pos
+                //_lightProjection = VulkanRenderer._lightsToRender[0].GetComponent<LightsourceComponent>()._lightProjection,
+                //_lightView = VulkanRenderer._lightsToRender[0].GetComponent<LightsourceComponent>()._lightView,
+                //_camPos = _camera._pos
             };
 
             void* _data;
@@ -228,8 +228,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             };
 
             RendererBaseClass._vulkan!.CmdCopyBufferToImage(_commandBuffer, _buffer, _image, ImageLayout.TransferDstOptimal, 1, _bufferImageCopy);
-
-            EndSingleTimeCommands(_commandBuffer);
+            EndSingleTimeCommands(ref _commandBuffer);
         }
 
         internal static CommandBuffer BeginSingleTimeCommands()
@@ -255,21 +254,25 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             return _commandBuffer;
         }
 
-        internal static void EndSingleTimeCommands(CommandBuffer commandBuffer)
+        internal static void EndSingleTimeCommands(ref CommandBuffer commandBuffer)
         {
             RendererBaseClass._vulkan!.EndCommandBuffer(commandBuffer);
 
-            SubmitInfo submitInfo = new()
+            fixed(CommandBuffer* _cptr = &commandBuffer)
             {
-                SType = StructureType.SubmitInfo,
-                CommandBufferCount = 1,
-                PCommandBuffers = &commandBuffer,
-            };
+                SubmitInfo submitInfo = new()
+                {
+                    SType = StructureType.SubmitInfo,
+                    CommandBufferCount = 1,
+                    PCommandBuffers = _cptr,
+                };
+                Result r;
+                r = RendererBaseClass._vulkan!.QueueSubmit(RendererBaseClass._graphicsQueue, 1, submitInfo, default);
+                r = RendererBaseClass._vulkan!.QueueWaitIdle(RendererBaseClass._graphicsQueue);
+                r = RendererBaseClass._vulkan!.DeviceWaitIdle(RendererBaseClass._logicalDevice);
 
-            RendererBaseClass._vulkan!.QueueSubmit(RendererBaseClass._graphicsQueue, 1, submitInfo, default);
-            RendererBaseClass._vulkan!.QueueWaitIdle(RendererBaseClass._graphicsQueue);
-
-            RendererBaseClass._vulkan!.FreeCommandBuffers(RendererBaseClass._logicalDevice, RendererBaseClass._commandPool, 1, commandBuffer);
+                RendererBaseClass._vulkan!.FreeCommandBuffers(RendererBaseClass._logicalDevice, RendererBaseClass._commandPool, 1, _cptr);
+            }
         }
 
         private static void TransitionImageLayout(Silk.NET.Vulkan.Image _image, ImageLayout _oldLayout, ImageLayout _newLayout)
@@ -318,7 +321,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             }
 
             RendererBaseClass._vulkan!.CmdPipelineBarrier(_commandBuffer, sourceStage, destinationStage, 0, 0, null, 0, null, 1, _barrier);
-            EndSingleTimeCommands(_commandBuffer);
+            EndSingleTimeCommands(ref _commandBuffer);
         }
 
         internal static void CreateBuffer(ulong _size, BufferUsageFlags _usage, MemoryPropertyFlags _properties, ref Buffer _buffer, ref DeviceMemory _bufferMemory)

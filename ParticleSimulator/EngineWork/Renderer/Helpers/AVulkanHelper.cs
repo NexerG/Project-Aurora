@@ -25,7 +25,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
         internal static int FindQueueFamilyIndex(ref PhysicalDevice _gpu, ref QueueFamilyProperties[] _qfm, QueueFlags _qType)
         {
             uint _propertyCount = 0;
-            VulkanRenderer._vulkan.GetPhysicalDeviceQueueFamilyProperties(_gpu, &_propertyCount, null);
+            RendererBaseClass._vulkan.GetPhysicalDeviceQueueFamilyProperties(_gpu, &_propertyCount, null);
             _qfm = new QueueFamilyProperties[_propertyCount];
 
             VulkanRenderer._vulkan.GetPhysicalDeviceQueueFamilyProperties(_gpu, &_propertyCount, _qfm);
@@ -63,12 +63,12 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             QueueFamilyIndices _qfi = new QueueFamilyIndices();
 
             uint _qfc = 0;
-            VulkanRenderer._vulkan.GetPhysicalDeviceQueueFamilyProperties(VulkanRenderer._gpu, ref _qfc, null);
+            RendererBaseClass._vulkan.GetPhysicalDeviceQueueFamilyProperties(RendererBaseClass._gpu, ref _qfc, null);
 
             var _qfp = new QueueFamilyProperties[_qfc];
             fixed (QueueFamilyProperties* _qfpPtr = _qfp)
             {
-                VulkanRenderer._vulkan.GetPhysicalDeviceQueueFamilyProperties(VulkanRenderer._gpu, ref _qfc, _qfpPtr);
+                RendererBaseClass._vulkan.GetPhysicalDeviceQueueFamilyProperties(RendererBaseClass._gpu, ref _qfc, _qfpPtr);
             }
 
             uint i = 0;
@@ -78,7 +78,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
                 {
                     _qfi.GraphicsFamily = i;
                 }
-                _driverSurface.GetPhysicalDeviceSurfaceSupport(VulkanRenderer._gpu, i, _surface, out var _presentSupport);
+                _driverSurface.GetPhysicalDeviceSurfaceSupport(RendererBaseClass._gpu, i, _surface, out var _presentSupport);
 
                 if (_presentSupport)
                 {

@@ -56,6 +56,10 @@ namespace ArctisAurora.EngineWork
             {
                 EngineStart();
             }).Start();*/
+            new Thread(() =>
+            {
+                PathTracerTest();
+            }).Start();
         }
 
         public async void EngineStart()
@@ -106,14 +110,6 @@ namespace ArctisAurora.EngineWork
                     fr += framerate[i];
                 }
                 //Console.WriteLine("FPS --- " + 1000 / (fr / 100));
-                /*VulkanRenderer._lightsToRender[0].transform.SetWorldPosition(new Vector3D<float>(
-                VulkanRenderer._lightsToRender[0].transform.position.X + 0.003f,
-                VulkanRenderer._lightsToRender[0].transform.position.Y,
-                VulkanRenderer._lightsToRender[0].transform.position.Z));
-                _bandymas[0].transform.SetWorldPosition(new Vector3D<float>(
-                    _bandymas[0].transform.position.X + 0.003f,
-                    _bandymas[0].transform.position.Y,
-                    _bandymas[0].transform.position.Z ));*/
 
                 double TSOffset = TS - totalTime;
                 if (TSOffset > 0f)
@@ -128,10 +124,10 @@ namespace ArctisAurora.EngineWork
                 if (SC.InvokeRequired)
                     SC.Invoke(new Action(() =>
                     {
-                        VulkanRenderer._glWindow._glfw.PollEvents();
-                        _rasterizer.Draw();
+                        //RendererBaseClass._glWindow._glfw.PollEvents();
+                        RendererBaseClass._rendererInstance.Draw();
                     }));
-                await Task.Delay(8);
+                await Task.Delay(1000);
             }
         }
 

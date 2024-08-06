@@ -340,7 +340,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                     DescriptorImageInfo _dImageInfo = new()
                     {
                         ImageLayout = ImageLayout.General,
-                        ImageView = Pathtracing._storageImageView
+                        ImageView = Pathtracing._storageImageView[i]
                     };
                     DescriptorBufferInfo _bufferInfoMatrices = new DescriptorBufferInfo()
                     {
@@ -410,11 +410,11 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 fixed (ulong* _offsetsPtr = _offset)
                 fixed (Buffer* _vertBuffersPtr = _vertBuffer)
                 {
-                    VulkanRenderer._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, _vertBuffersPtr, _offsetsPtr);
+                    RendererBaseClass._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, _vertBuffersPtr, _offsetsPtr);
                 }
-                VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, _indexBuffer, 0, IndexType.Uint16);
-                VulkanRenderer._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, VulkanRenderer._pipeline._pipelineLayout, 0, 1, _descriptorSets[_loopIndex], 0, null);
-                VulkanRenderer._vulkan.CmdDrawIndexed(_commandBuffer, (uint)_mesh._indices.Length, (uint)_instances, 0, 0, 0);
+                RendererBaseClass._vulkan.CmdBindIndexBuffer(_commandBuffer, _indexBuffer, 0, IndexType.Uint16);
+                RendererBaseClass._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, VulkanRenderer._pipeline._pipelineLayout, 0, 1, _descriptorSets[_loopIndex], 0, null);
+                RendererBaseClass._vulkan.CmdDrawIndexed(_commandBuffer, (uint)_mesh._indices.Length, (uint)_instances, 0, 0, 0);
             }
         }
 
