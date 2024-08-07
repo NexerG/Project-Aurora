@@ -110,7 +110,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
         internal void CreateDescriptorSet()
         {
-            DescriptorSetLayout[] _layouts = new DescriptorSetLayout[VulkanRenderer._swapchain!._swapchainImages.Length];
+            DescriptorSetLayout[] _layouts = new DescriptorSetLayout[RendererBaseClass._swapimageCount];
             Array.Fill(_layouts, VulkanRenderer._descriptorSetLayout);
 
             fixed (DescriptorSetLayout* _layoutsPtr = _layouts)
@@ -119,14 +119,14 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 {
                     SType = StructureType.DescriptorSetAllocateInfo,
                     DescriptorPool = VulkanRenderer._descriptorPool,
-                    DescriptorSetCount = (uint)VulkanRenderer._swapchain!._swapchainImages.Length,
+                    DescriptorSetCount = (uint)RendererBaseClass._swapimageCount,
                     PSetLayouts = _layoutsPtr
                 };
 
-                _descriptorSets = new DescriptorSet[VulkanRenderer._swapchain._swapchainImages.Length];
+                _descriptorSets = new DescriptorSet[RendererBaseClass._swapimageCount];
                 fixed (DescriptorSet* _descriptorSetsPtr = _descriptorSets)
                 {
-                    Result r = VulkanRenderer._vulkan.AllocateDescriptorSets(VulkanRenderer._logicalDevice, _allocateInfo, _descriptorSetsPtr);
+                    Result r = RendererBaseClass._vulkan.AllocateDescriptorSets(RendererBaseClass._logicalDevice, _allocateInfo, _descriptorSetsPtr);
                     if (r != Result.Success)
                     {
                         throw new Exception("Failed to allocate descriptor set with error code: " + r);
@@ -134,7 +134,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 }
             }
 
-            for (int i = 0; i < VulkanRenderer._swapchain._swapchainImages.Length; i++)
+            for (int i = 0; i < RendererBaseClass._swapimageCount; i++)
             {
                 DescriptorBufferInfo _bufferInfoUniform = new DescriptorBufferInfo()
                 {
@@ -313,7 +313,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 {
                     SType = StructureType.DescriptorSetAllocateInfo,
                     DescriptorPool = Pathtracing._descriptorPool,
-                    DescriptorSetCount = (uint)Pathtracing._swapchain!._swapchainImages.Length,
+                    DescriptorSetCount = (uint)RendererBaseClass._swapimageCount,
                     PSetLayouts = _layoutsPtr
                 };
 

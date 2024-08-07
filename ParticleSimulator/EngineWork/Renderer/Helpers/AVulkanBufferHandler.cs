@@ -14,9 +14,9 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
     {
         public Matrix4X4<float> _view;
         public Matrix4X4<float> _projection;
-        public Matrix4X4<float> _lightProjection;
-        public Matrix4X4<float> _lightView;
-        public Vector3D<float> _camPos;
+        //public Matrix4X4<float> _lightProjection;
+        //public Matrix4X4<float> _lightView;
+        //public Vector3D<float> _camPos;
     }
 
     internal static unsafe class AVulkanBufferHandler
