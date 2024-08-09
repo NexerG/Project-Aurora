@@ -52,29 +52,29 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         public override void OnStart()
         {
             SingletonMatrix();
-            RendererBaseClass._rendererInstance.AddEntityToRenderQueue(parent);
-            //CreateDescriptorSet();
-            //CreateShadowDescriptorSet();
+            VulkanRenderer._rendererInstance.AddEntityToRenderQueue(parent);
+            CreateDescriptorSet();
+            CreateShadowDescriptorSet();
         }
 
         internal void LoadCustomMesh(Scene sc)
         {
-            RendererBaseClass._vulkan.DestroyBuffer(RendererBaseClass._logicalDevice, _vertexBuffer, null);
-            RendererBaseClass._vulkan.DestroyBuffer(RendererBaseClass._logicalDevice, _indexBuffer, null);
-            RendererBaseClass._vulkan.FreeMemory(RendererBaseClass._logicalDevice, _indexBufferMemory, null);
-            RendererBaseClass._vulkan.FreeMemory(RendererBaseClass._logicalDevice, _vertexBufferMemory, null);
+            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _vertexBuffer, null);
+            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _indexBuffer, null);
+            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _indexBufferMemory, null);
+            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _vertexBufferMemory, null);
             _mesh.LoadCustomMesh(sc);
             AVulkanBufferHandler.CreateVertexBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory);
             AVulkanBufferHandler.CreateIndexBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory);
-            ((IRecreateCommandBuffer)RendererBaseClass._rendererInstance).RecreateCommandBuffers();
+            ((IRecreateCommandBuffer)VulkanRenderer._rendererInstance).RecreateCommandBuffers();
         }
 
         internal void FreeDescriptorSets()
         {
             if (_descriptorSets != null)
-                RendererBaseClass._vulkan.FreeDescriptorSets(RendererBaseClass._logicalDevice, VulkanRenderer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
+                VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
             if (_descriptorSetsShadow != null)
-                RendererBaseClass._vulkan.FreeDescriptorSets(RendererBaseClass._logicalDevice, VulkanRenderer._descriptorPoolShadow, (uint)_descriptorSetsShadow.Length, _descriptorSetsShadow);
+                VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPoolShadow, (uint)_descriptorSetsShadow.Length, _descriptorSetsShadow);
         }
 
         internal void ReinstantiateDesriptorSets()
@@ -89,11 +89,11 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             _transformMatrices = _matrices;
 
             AVulkanBufferHandler.CreateTransformBuffer(ref _transformMatrices, ref _trasnformsBuffer, ref _trasnformsBufferMemory);
-            VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, VulkanRenderer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
-            VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, VulkanRenderer._descriptorPoolShadow, (uint)_descriptorSetsShadow.Length, _descriptorSetsShadow);
+            VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
+            VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPoolShadow, (uint)_descriptorSetsShadow.Length, _descriptorSetsShadow);
             CreateDescriptorSet();
             CreateShadowDescriptorSet();
-            ((IRecreateCommandBuffer)RendererBaseClass._rendererInstance).RecreateCommandBuffers();
+            ((IRecreateCommandBuffer)VulkanRenderer._rendererInstance).RecreateCommandBuffers();
         }
 
         internal void SingletonMatrix()
@@ -110,23 +110,23 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
         internal void CreateDescriptorSet()
         {
-            DescriptorSetLayout[] _layouts = new DescriptorSetLayout[RendererBaseClass._swapimageCount];
-            Array.Fill(_layouts, VulkanRenderer._descriptorSetLayout);
+            DescriptorSetLayout[] _layouts = new DescriptorSetLayout[VulkanRenderer._swapimageCount];
+            Array.Fill(_layouts, Rasterizer._descriptorSetLayout);
 
             fixed (DescriptorSetLayout* _layoutsPtr = _layouts)
             {
                 DescriptorSetAllocateInfo _allocateInfo = new DescriptorSetAllocateInfo()
                 {
                     SType = StructureType.DescriptorSetAllocateInfo,
-                    DescriptorPool = VulkanRenderer._descriptorPool,
-                    DescriptorSetCount = (uint)RendererBaseClass._swapimageCount,
+                    DescriptorPool = Rasterizer._descriptorPool,
+                    DescriptorSetCount = (uint)VulkanRenderer._swapimageCount,
                     PSetLayouts = _layoutsPtr
                 };
 
-                _descriptorSets = new DescriptorSet[RendererBaseClass._swapimageCount];
+                _descriptorSets = new DescriptorSet[VulkanRenderer._swapimageCount];
                 fixed (DescriptorSet* _descriptorSetsPtr = _descriptorSets)
                 {
-                    Result r = RendererBaseClass._vulkan.AllocateDescriptorSets(RendererBaseClass._logicalDevice, _allocateInfo, _descriptorSetsPtr);
+                    Result r = VulkanRenderer._vulkan.AllocateDescriptorSets(VulkanRenderer._logicalDevice, _allocateInfo, _descriptorSetsPtr);
                     if (r != Result.Success)
                     {
                         throw new Exception("Failed to allocate descriptor set with error code: " + r);
@@ -134,11 +134,11 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 }
             }
 
-            for (int i = 0; i < RendererBaseClass._swapimageCount; i++)
+            for (int i = 0; i < VulkanRenderer._swapimageCount; i++)
             {
                 DescriptorBufferInfo _bufferInfoUniform = new DescriptorBufferInfo()
                 {
-                    Buffer = VulkanRenderer._camera._cameraBuffer[i],
+                    Buffer = Rasterizer._camera._cameraBuffer[i],
                     Offset = 0,
                     Range = (ulong)Unsafe.SizeOf<UBO>()
                 };
@@ -152,23 +152,23 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
                 DescriptorBufferInfo _lightBufferUniform = new DescriptorBufferInfo()
                 {
-                    Buffer = VulkanRenderer._lightBuffer,
+                    Buffer = Rasterizer._lightBuffer,
                     Offset = 0,
-                    Range = (ulong)(sizeof(LightData) * VulkanRenderer._lightsToRender.Count + sizeof(int))
+                    Range = (ulong)(sizeof(LightData) * Rasterizer._lightsToRender.Count + sizeof(int))
                 };
 
                 DescriptorImageInfo _imageInfo = new DescriptorImageInfo()
                 {
                     ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
                     ImageView = _textureImageView,
-                    Sampler = VulkanRenderer._textureSampler
+                    Sampler = Rasterizer._textureSampler
                 };
 
                 DescriptorImageInfo _shadowmapInfo = new DescriptorImageInfo()
                 {
                     ImageLayout = ImageLayout.DepthStencilReadOnlyOptimal,
-                    ImageView = VulkanRenderer._lightsToRender[0].GetComponent<LightsourceComponent>()._depthImageView,
-                    Sampler = VulkanRenderer._shadowmapSampler
+                    ImageView = Rasterizer._lightsToRender[0].GetComponent<LightsourceComponent>()._depthImageView,
+                    Sampler = Rasterizer._shadowmapSampler
                 };
 
                 var _writeDescriptorSets = new WriteDescriptorSet[]
@@ -226,41 +226,41 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 };
                 fixed (WriteDescriptorSet* _descPtr = _writeDescriptorSets)
                 {
-                    VulkanRenderer._vulkan!.UpdateDescriptorSets(VulkanRenderer._logicalDevice, (uint)_writeDescriptorSets.Length, _descPtr, 0, null);
+                    Rasterizer._vulkan!.UpdateDescriptorSets(Rasterizer._logicalDevice, (uint)_writeDescriptorSets.Length, _descPtr, 0, null);
                 }
             }
         }
 
         internal void CreateShadowDescriptorSet()
         {
-            DescriptorSetLayout[] _layouts = new DescriptorSetLayout[VulkanRenderer._swapchain!._swapchainImages.Length];
-            Array.Fill(_layouts, VulkanRenderer._descriptorSetLayoutShadow);
+            DescriptorSetLayout[] _layouts = new DescriptorSetLayout[Rasterizer._swapchain!._swapchainImages.Length];
+            Array.Fill(_layouts, Rasterizer._descriptorSetLayoutShadow);
 
             fixed (DescriptorSetLayout* _layoutsPtr = _layouts)
             {
                 DescriptorSetAllocateInfo _allocateInfo = new DescriptorSetAllocateInfo()
                 {
                     SType = StructureType.DescriptorSetAllocateInfo,
-                    DescriptorPool = VulkanRenderer._descriptorPoolShadow,
-                    DescriptorSetCount = (uint)VulkanRenderer._swapchain!._swapchainImages.Length,
+                    DescriptorPool = Rasterizer._descriptorPoolShadow,
+                    DescriptorSetCount = (uint)Rasterizer._swapchain!._swapchainImages.Length,
                     PSetLayouts = _layoutsPtr
                 };
 
-                _descriptorSetsShadow = new DescriptorSet[VulkanRenderer._swapchain!._swapchainImages.Length];
+                _descriptorSetsShadow = new DescriptorSet[Rasterizer._swapchain!._swapchainImages.Length];
                 fixed (DescriptorSet* _descriptorSetsPtr = _descriptorSetsShadow)
                 {
-                    Result r = VulkanRenderer._vulkan.AllocateDescriptorSets(VulkanRenderer._logicalDevice, _allocateInfo, _descriptorSetsPtr);
+                    Result r = Rasterizer._vulkan.AllocateDescriptorSets(Rasterizer._logicalDevice, _allocateInfo, _descriptorSetsPtr);
                     if (r != Result.Success)
                     {
                         throw new Exception("Failed to allocate descriptor set with error code: " + r);
                     }
                 }
             }
-            for (int i = 0; i < VulkanRenderer._swapchain._swapchainImages.Length; i++)
+            for (int i = 0; i < Rasterizer._swapchain._swapchainImages.Length; i++)
             {
                 DescriptorBufferInfo _bufferInfoUniform = new DescriptorBufferInfo()
                 {
-                    Buffer = VulkanRenderer._lightUBO[i],
+                    Buffer = Rasterizer._lightUBO[i],
                     Offset = 0,
                     Range = Vk.WholeSize
                 };
@@ -297,7 +297,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 };
                 fixed (WriteDescriptorSet* _descPtr = _writeDescriptorSets)
                 {
-                    VulkanRenderer._vulkan!.UpdateDescriptorSets(VulkanRenderer._logicalDevice, (uint)_writeDescriptorSets.Length, _descPtr, 0, null);
+                    Rasterizer._vulkan!.UpdateDescriptorSets(Rasterizer._logicalDevice, (uint)_writeDescriptorSets.Length, _descPtr, 0, null);
                 }
             }
         }
@@ -313,14 +313,14 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 {
                     SType = StructureType.DescriptorSetAllocateInfo,
                     DescriptorPool = Pathtracing._descriptorPool,
-                    DescriptorSetCount = (uint)RendererBaseClass._swapimageCount,
+                    DescriptorSetCount = (uint)VulkanRenderer._swapimageCount,
                     PSetLayouts = _layoutsPtr
                 };
 
                 _descriptorSetsPathTracing = new DescriptorSet[Pathtracing._swapchain!._swapchainImages.Length];
                 fixed (DescriptorSet* _descriptorSetsPtr = _descriptorSetsPathTracing)
                 {
-                    Result r = RendererBaseClass._vulkan.AllocateDescriptorSets(RendererBaseClass._logicalDevice, _allocateInfo, _descriptorSetsPtr);
+                    Result r = VulkanRenderer._vulkan.AllocateDescriptorSets(VulkanRenderer._logicalDevice, _allocateInfo, _descriptorSetsPtr);
                     if (r != Result.Success)
                     {
                         throw new Exception("Failed to allocate descriptor set with error code: " + r);
@@ -344,7 +344,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                     };
                     DescriptorBufferInfo _bufferInfoMatrices = new DescriptorBufferInfo()
                     {
-                        Buffer = Pathtracing._camera._cameraBuffer[i],
+                        Buffer = VulkanRenderer._camera._cameraBuffer[i],
                         Offset = 0,
                         Range = (ulong)Unsafe.SizeOf<UBO>()
                     };
@@ -384,7 +384,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                     };
                     fixed (WriteDescriptorSet* _descPtr = _writeDescriptorSets)
                     {
-                        RendererBaseClass._vulkan!.UpdateDescriptorSets(RendererBaseClass._logicalDevice, (uint)_writeDescriptorSets.Length, _descPtr, 0, null);
+                        VulkanRenderer._vulkan!.UpdateDescriptorSets(VulkanRenderer._logicalDevice, (uint)_writeDescriptorSets.Length, _descPtr, 0, null);
                     }
                 }
             }
@@ -410,11 +410,11 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 fixed (ulong* _offsetsPtr = _offset)
                 fixed (Buffer* _vertBuffersPtr = _vertBuffer)
                 {
-                    RendererBaseClass._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, _vertBuffersPtr, _offsetsPtr);
+                    VulkanRenderer._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, _vertBuffersPtr, _offsetsPtr);
                 }
-                RendererBaseClass._vulkan.CmdBindIndexBuffer(_commandBuffer, _indexBuffer, 0, IndexType.Uint16);
-                RendererBaseClass._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, VulkanRenderer._pipeline._pipelineLayout, 0, 1, _descriptorSets[_loopIndex], 0, null);
-                RendererBaseClass._vulkan.CmdDrawIndexed(_commandBuffer, (uint)_mesh._indices.Length, (uint)_instances, 0, 0, 0);
+                VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, _indexBuffer, 0, IndexType.Uint16);
+                VulkanRenderer._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, Rasterizer._pipeline._pipelineLayout, 0, 1, _descriptorSets[_loopIndex], 0, null);
+                VulkanRenderer._vulkan.CmdDrawIndexed(_commandBuffer, (uint)_mesh._indices.Length, (uint)_instances, 0, 0, 0);
             }
         }
 
@@ -426,13 +426,13 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 fixed (ulong* _offsetsPtr = _offset)
                 fixed (Buffer* _vertBuffersPtr = _vertBuffer)
                 {
-                    VulkanRenderer._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, _vertBuffersPtr, _offsetsPtr);
+                    Rasterizer._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, _vertBuffersPtr, _offsetsPtr);
                 }
-                VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, _indexBuffer, 0, IndexType.Uint16);
-                VulkanRenderer._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, VulkanRenderer._pipeline._shadowLayout, 0, 1, _descriptorSetsShadow[descriptorIndex], 0, null);
+                Rasterizer._vulkan.CmdBindIndexBuffer(_commandBuffer, _indexBuffer, 0, IndexType.Uint16);
+                Rasterizer._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, Rasterizer._pipeline._shadowLayout, 0, 1, _descriptorSetsShadow[descriptorIndex], 0, null);
                 //push constants
-                VulkanRenderer._vulkan.CmdPushConstants(_commandBuffer, VulkanRenderer._pipeline._shadowLayout, ShaderStageFlags.VertexBit, 0, sizeof(int), &lightIndex);
-                VulkanRenderer._vulkan.CmdDrawIndexed(_commandBuffer, (uint)_mesh._indices.Length, (uint)_instances, 0, 0, 0);
+                Rasterizer._vulkan.CmdPushConstants(_commandBuffer, Rasterizer._pipeline._shadowLayout, ShaderStageFlags.VertexBit, 0, sizeof(int), &lightIndex);
+                Rasterizer._vulkan.CmdDrawIndexed(_commandBuffer, (uint)_mesh._indices.Length, (uint)_instances, 0, 0, 0);
             }
         }
     }

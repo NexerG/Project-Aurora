@@ -14,9 +14,7 @@ namespace ArctisAurora.EngineWork
         public bool Running { get; private set; }
         internal Frame SC;
         //internal Rasterization renderer3D;
-        internal static RendererBaseClass _testas;
-        internal static VulkanRenderer _rasterizer;
-        internal static Pathtracing _pathTracer;
+        internal static VulkanRenderer _renderer;
         internal List<Entity> _entities = new List<Entity>();
         internal List<TestingEntity> _bandymas = new List<TestingEntity>();
 
@@ -30,10 +28,8 @@ namespace ArctisAurora.EngineWork
             Running = true;
             SC = s;
 
-            _testas = new RendererBaseClass();
-            _testas.InitRenderer(true);
-            //_rasterizer = new VulkanRenderer();
-            //_pathTracer =  new Pathtracing();
+            _ = new VulkanRenderer();
+            _renderer.InitRenderer(RendererTypes.Pathtracer);
 
             ////mesh importer
             MeshImporter importer = new MeshImporter();
@@ -93,8 +89,8 @@ namespace ArctisAurora.EngineWork
                 if (SC.InvokeRequired)
                     SC.Invoke(new Action(() =>
                     {
-                        RendererBaseClass._glWindow._glfw.PollEvents();
-                        RendererBaseClass._rendererInstance.Draw();
+                        VulkanRenderer._glWindow._glfw.PollEvents();
+                        VulkanRenderer._rendererInstance.Draw();
                     }));
                 TimeSpan GraphicsTime = DateTime.Now - GraphicsTimeStart;
                 //Console.WriteLine("Graphics --- " + GraphicsTime.TotalMilliseconds);
@@ -124,10 +120,10 @@ namespace ArctisAurora.EngineWork
                 if (SC.InvokeRequired)
                     SC.Invoke(new Action(() =>
                     {
-                        //RendererBaseClass._glWindow._glfw.PollEvents();
-                        RendererBaseClass._rendererInstance.Draw();
+                        VulkanRenderer._glWindow._glfw.PollEvents();
+                        VulkanRenderer._rendererInstance.Draw();
                     }));
-                await Task.Delay(1000);
+                await Task.Delay(4);
             }
         }
 

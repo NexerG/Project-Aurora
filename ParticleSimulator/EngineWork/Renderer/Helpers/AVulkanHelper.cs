@@ -25,10 +25,10 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
         internal static int FindQueueFamilyIndex(ref PhysicalDevice _gpu, ref QueueFamilyProperties[] _qfm, QueueFlags _qType)
         {
             uint _propertyCount = 0;
-            RendererBaseClass._vulkan.GetPhysicalDeviceQueueFamilyProperties(_gpu, &_propertyCount, null);
+            VulkanRenderer._vulkan.GetPhysicalDeviceQueueFamilyProperties(_gpu, &_propertyCount, null);
             _qfm = new QueueFamilyProperties[_propertyCount];
 
-            VulkanRenderer._vulkan.GetPhysicalDeviceQueueFamilyProperties(_gpu, &_propertyCount, _qfm);
+            Rasterizer._vulkan.GetPhysicalDeviceQueueFamilyProperties(_gpu, &_propertyCount, _qfm);
             for (int i = 0; i < _propertyCount; i++)
                 if ((_qfm[i].QueueFlags & _qType) == _qType)
                     return i;
@@ -45,7 +45,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
         {
             foreach (Format _f in _formats)
             {
-                VulkanRenderer._vulkan.GetPhysicalDeviceFormatProperties(VulkanRenderer._gpu, _f, out FormatProperties _fp);
+                Rasterizer._vulkan.GetPhysicalDeviceFormatProperties(Rasterizer._gpu, _f, out FormatProperties _fp);
                 if (_tiling == ImageTiling.Linear && (_fp.LinearTilingFeatures & _features) == _features)
                 {
                     return _f;
@@ -63,12 +63,12 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             QueueFamilyIndices _qfi = new QueueFamilyIndices();
 
             uint _qfc = 0;
-            RendererBaseClass._vulkan.GetPhysicalDeviceQueueFamilyProperties(RendererBaseClass._gpu, ref _qfc, null);
+            VulkanRenderer._vulkan.GetPhysicalDeviceQueueFamilyProperties(VulkanRenderer._gpu, ref _qfc, null);
 
             var _qfp = new QueueFamilyProperties[_qfc];
             fixed (QueueFamilyProperties* _qfpPtr = _qfp)
             {
-                RendererBaseClass._vulkan.GetPhysicalDeviceQueueFamilyProperties(RendererBaseClass._gpu, ref _qfc, _qfpPtr);
+                VulkanRenderer._vulkan.GetPhysicalDeviceQueueFamilyProperties(VulkanRenderer._gpu, ref _qfc, _qfpPtr);
             }
 
             uint i = 0;
@@ -78,7 +78,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
                 {
                     _qfi.GraphicsFamily = i;
                 }
-                _driverSurface.GetPhysicalDeviceSurfaceSupport(RendererBaseClass._gpu, i, _surface, out var _presentSupport);
+                _driverSurface.GetPhysicalDeviceSurfaceSupport(VulkanRenderer._gpu, i, _surface, out var _presentSupport);
 
                 if (_presentSupport)
                 {
@@ -97,30 +97,30 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
         {
             var _details = new SwapChainSupportDetails();
 
-            _driverSurface!.GetPhysicalDeviceSurfaceCapabilities(VulkanRenderer._gpu, _surface, out _details.Capabilities);
+            _driverSurface!.GetPhysicalDeviceSurfaceCapabilities(Rasterizer._gpu, _surface, out _details.Capabilities);
 
             //surface formats
             uint _formatCount = 0;
-            _driverSurface.GetPhysicalDeviceSurfaceFormats(VulkanRenderer._gpu, _surface, ref _formatCount, null);
+            _driverSurface.GetPhysicalDeviceSurfaceFormats(Rasterizer._gpu, _surface, ref _formatCount, null);
             if (_formatCount != 0)
             {
                 _details.Formats = new SurfaceFormatKHR[_formatCount];
                 fixed (SurfaceFormatKHR* _fPtr = _details.Formats)
                 {
-                    _driverSurface.GetPhysicalDeviceSurfaceFormats(VulkanRenderer._gpu, _surface, ref _formatCount, _fPtr);
+                    _driverSurface.GetPhysicalDeviceSurfaceFormats(Rasterizer._gpu, _surface, ref _formatCount, _fPtr);
                 }
             }
             else _details.Formats = Array.Empty<SurfaceFormatKHR>();
 
             //present modes
             uint _presentModeCount = 0;
-            _driverSurface.GetPhysicalDeviceSurfacePresentModes(VulkanRenderer._gpu, _surface, ref _presentModeCount, null);
+            _driverSurface.GetPhysicalDeviceSurfacePresentModes(Rasterizer._gpu, _surface, ref _presentModeCount, null);
             if (_presentModeCount != 0)
             {
                 _details.PresentModes = new PresentModeKHR[_presentModeCount];
                 fixed (PresentModeKHR* _formatsPtr = _details.PresentModes)
                 {
-                    _driverSurface.GetPhysicalDeviceSurfacePresentModes(VulkanRenderer._gpu, _surface, ref _presentModeCount, _formatsPtr);
+                    _driverSurface.GetPhysicalDeviceSurfacePresentModes(Rasterizer._gpu, _surface, ref _presentModeCount, _formatsPtr);
                 }
             }
             else _details.PresentModes = Array.Empty<PresentModeKHR>();
@@ -159,7 +159,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             {
                 if (_qf.QueueFlags.HasFlag(QueueFlags.GraphicsBit))
                 {
-                    _driverSurface.GetPhysicalDeviceSurfaceSupport(VulkanRenderer._gpu, i, _surface, out var _presentSupport);
+                    _driverSurface.GetPhysicalDeviceSurfaceSupport(Rasterizer._gpu, i, _surface, out var _presentSupport);
                     if (_presentSupport)
                     {
                         return i;

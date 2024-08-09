@@ -38,8 +38,8 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
         public override void OnStart()
         {
-            RendererBaseClass._rendererInstance.AddLightToRenderQueue(parent);
-            ((IRecreateCommandBuffer)RendererBaseClass._rendererInstance).RecreateCommandBuffers();
+            VulkanRenderer._rendererInstance.AddLightToRenderQueue(parent);
+            ((IRecreateCommandBuffer)VulkanRenderer._rendererInstance).RecreateCommandBuffers();
         }
 
         internal void CreateShadowFramebuffer(Extent2D _resolution)
@@ -52,14 +52,14 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 FramebufferCreateInfo _framebufferInfo = new FramebufferCreateInfo()
                 {
                     SType = StructureType.FramebufferCreateInfo,
-                    RenderPass = VulkanRenderer._swapchain._shadowmapRenderPass,
+                    RenderPass = Rasterizer._swapchain._shadowmapRenderPass,
                     AttachmentCount = (uint)_attachment.Length,
                     PAttachments = _imAttachmentPtr,
                     Width = _resolution.Width,
                     Height = _resolution.Height,
                     Layers = 1
                 };
-                if (VulkanRenderer._vulkan.CreateFramebuffer(VulkanRenderer._logicalDevice, _framebufferInfo, null, out _shadowFramebuffer) != Result.Success)
+                if (Rasterizer._vulkan.CreateFramebuffer(Rasterizer._logicalDevice, _framebufferInfo, null, out _shadowFramebuffer) != Result.Success)
                 {
                     throw new Exception("Failed to create frame buffer");
                 }
@@ -92,7 +92,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             _createInfo.SubresourceRange.BaseArrayLayer = 0;
             _createInfo.SubresourceRange.LayerCount = 1;
 
-            if (VulkanRenderer._vulkan!.CreateImageView(VulkanRenderer._logicalDevice, _createInfo, null, out _depthImageView) != Result.Success)
+            if (Rasterizer._vulkan!.CreateImageView(Rasterizer._logicalDevice, _createInfo, null, out _depthImageView) != Result.Success)
             {
                 throw new Exception("failed to create image views!");
             }

@@ -10,45 +10,30 @@ using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 using Semaphore = Silk.NET.Vulkan.Semaphore;
 using Silk.NET.Maths;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 namespace ArctisAurora.EngineWork.Renderer
 {
-    internal unsafe class Pathtracing : RendererBaseClass
+    internal unsafe class Pathtracing : VulkanRenderer
     {
         //temporary
         TestingEntity _testEnt;
-        /*Buffer _fakeVertexBuffer;
-        DeviceMemory _fakeVertexDM;
-        Buffer _fakeIndexBuffer;
-        DeviceMemory _fakeIndexDM;*/
         Buffer _fakeTransformBuffer;
         DeviceMemory _fakeTransformDM;
         Buffer _fakeInstanceBuffer;
         DeviceMemory _fakeInstanceDM;
-
-        fakeVertex[] _fakeVertexData = new fakeVertex[]
-        {
-            new fakeVertex{ _pos = new Vector3D<float>(1.0f, 1.0f, 0.0f) },
-            new fakeVertex{ _pos = new Vector3D<float>(-1.0f,1.0f,0.0f) },
-            new fakeVertex{ _pos = new Vector3D<float>(0.0f,-1.0f,0.0f) },
-        };
-        uint[] _fakeIndexData = new uint[]
-        {
-                0, 1, 2
-        };
-
         //
 
         string[] requiredExtensions =
         {
                 "VK_KHR_swapchain",
-                "VK_KHR_ray_tracing_pipeline",
-                "VK_KHR_deferred_host_operations",
-                "VK_KHR_buffer_device_address",
                 "VK_EXT_descriptor_indexing",
                 "VK_KHR_spirv_1_4",
                 "VK_KHR_shader_float_controls",
-                KhrAccelerationStructure.ExtensionName
+                KhrAccelerationStructure.ExtensionName,
+                KhrRayTracingPipeline.ExtensionName,
+                KhrDeferredHostOperations.ExtensionName,
+                KhrBufferDeviceAddress.ExtensionName,
         };
 
         PhysicalDeviceRayTracingPipelinePropertiesKHR _rtPipelineProperties = default;
@@ -63,7 +48,7 @@ namespace ArctisAurora.EngineWork.Renderer
         AccelerationStruct _BLAS = default;
         internal static AccelerationStruct _TLAS = default;
 
-        internal static AVulkanSwapchain _swapchain;
+        internal static Swapchain _swapchain;
         internal Image[] _storageImage;
         internal DeviceMemory[] _storageDM;
         internal static ImageView[] _storageImageView;
@@ -90,33 +75,45 @@ namespace ArctisAurora.EngineWork.Renderer
 
         internal static DescriptorPool _descriptorPool;
 
-        internal static AVulkanCamera _camera;
-
-        internal struct AccelerationStruct
+        public struct AccelerationStruct
         {
-            internal AccelerationStructureKHR _handle;
-            internal ulong _deviceAddress;
-            internal DeviceMemory _memory;
-            internal Buffer _buffer;
+            public AccelerationStructureKHR _handle;
+            public ulong _deviceAddress;
+            public DeviceMemory _memory;
+            public Buffer _buffer;
         }
 
-        struct PathtracingScratchBuffer
+        public struct PathtracingScratchBuffer
         {
-            internal ulong _deviceAddress;
-            internal Buffer _buffer;
-            internal DeviceMemory _memory;
-        }
-
-        public struct fakeVertex
-        {
-            public Vector3D<float> _pos;
+            public ulong _deviceAddress;
+            public Buffer _buffer;
+            public DeviceMemory _memory;
         }
 
         internal Pathtracing() 
         {
             _rendererInstance = this;
-            CreateLogicalDevice(requiredExtensions);
 
+            PhysicalDeviceRayTracingPipelineFeaturesKHR _rtPipelineFeature = new PhysicalDeviceRayTracingPipelineFeaturesKHR()
+            {
+                SType = StructureType.PhysicalDeviceRayTracingPipelineFeaturesKhr,
+                RayTracingPipeline = true
+            };
+            PhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures = new()
+            {
+                SType = StructureType.PhysicalDeviceAccelerationStructureFeaturesKhr,
+                AccelerationStructure = true,
+                PNext = &_rtPipelineFeature
+            };
+            PhysicalDeviceVulkan12Features _vulkan12FT = new PhysicalDeviceVulkan12Features()
+            {
+                SType = StructureType.PhysicalDeviceVulkan12Features,
+                DescriptorIndexing = true,
+                BufferDeviceAddress = true,
+                RuntimeDescriptorArray = true,
+                PNext = &accelerationStructureFeatures
+            };
+            CreateLogicalDevice(requiredExtensions, _vulkan12FT, null);
             _rtPipelineProperties.SType = StructureType.PhysicalDeviceRayTracingPipelinePropertiesKhr;
             fixed (PhysicalDeviceRayTracingPipelinePropertiesKHR* _rtPtr = &_rtPipelineProperties)
             {
@@ -128,23 +125,23 @@ namespace ArctisAurora.EngineWork.Renderer
                 _vulkan.GetPhysicalDeviceProperties2(_gpu, &_devprops2);
             }
 
+
             int _graphicsQFamilyIndex = AVulkanHelper.FindQueueFamilyIndex(ref _gpu, ref _qfm, QueueFlags.GraphicsBit);
             uint _presentSupportIndex = AVulkanHelper.FindPresentSupportIndex(ref _qfm, ref _glWindow._driverSurface, ref _glWindow._surface);
             _graphicsQueue = _vulkan.GetDeviceQueue(_logicalDevice, (uint)_graphicsQFamilyIndex, 0);
             _presentQueue = _vulkan.GetDeviceQueue(_logicalDevice, _presentSupportIndex, 0);
 
-            _swapchain = new AVulkanSwapchain(ref _glWindow._driverSurface, ref _glWindow._surface);
+            _swapchain = new Swapchain(ref _glWindow._driverSurface, ref _glWindow._surface);
             _swapchain.DoSwapchainMethodSequence(ref _extent);        //swapchain methods for simplicity sake
             _swapimageCount = _swapchain._swapchainImages.Length;     //engine related thing
-            _camera = new AVulkanCamera();
+            _camera = new AuroraCamera();
 
             CreateCommandPool();
+            CreateStorageImage();
             CreateDescriptorPool();
-
+            //mesh after here
             CreateBLAS();
             CreateTLAS();
-            CreateStorageImage();
-            //create uniform buffer DONE
             CreateRaytracingPipeline();
             CreateShaderBindingTable();
 
@@ -195,31 +192,45 @@ namespace ArctisAurora.EngineWork.Renderer
         {
             _testEnt = new TestingEntity();
 
+            Matrix4X4<float> _ftm = Matrix4X4<float>.Identity;
             TransformMatrixKHR _fakeTransformMatrix = new TransformMatrixKHR();
-            _fakeTransformMatrix.Matrix[0] = 1.0f;
-            _fakeTransformMatrix.Matrix[1] = 0.0f;
-            _fakeTransformMatrix.Matrix[2] = 0.0f;
-            _fakeTransformMatrix.Matrix[3] = 0.0f;
-            _fakeTransformMatrix.Matrix[4] = 0.0f;
-            _fakeTransformMatrix.Matrix[5] = 1.0f;
-            _fakeTransformMatrix.Matrix[6] = 0.0f;
-            _fakeTransformMatrix.Matrix[7] = 0.0f;
-            _fakeTransformMatrix.Matrix[8] = 0.0f;
-            _fakeTransformMatrix.Matrix[9] = 0.0f;
-            _fakeTransformMatrix.Matrix[10] = 1.0f;
-            _fakeTransformMatrix.Matrix[11] = 0.0f;
+            Unsafe.CopyBlock(_fakeTransformMatrix.Matrix, Unsafe.AsPointer(ref _ftm), 48);
+
             AVulkanBufferHandler.CreateBuffer(
-                sizeof(float) * 12,
+                (ulong)sizeof(TransformMatrixKHR),
                 BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr,
                 MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
                 ref _fakeTransformBuffer, ref _fakeTransformDM);
-            void* _data3;
-            _vulkan.MapMemory(_logicalDevice, _fakeTransformDM, 0, (ulong)sizeof(TransformMatrixKHR), 0, &_data3);
-            new Span<TransformMatrixKHR>(_data3, 1)[0] = _fakeTransformMatrix;
+            void* _data;
+            _vulkan.MapMemory(_logicalDevice, _fakeTransformDM, 0, (ulong)sizeof(TransformMatrixKHR), 0, &_data);
+            new Span<TransformMatrixKHR>(_data, 1)[0] = _fakeTransformMatrix;
             _vulkan.UnmapMemory(_logicalDevice, _fakeTransformDM);
+            //---------------------------------------
+            /*AVulkanBufferHandler.CreateBuffer(
+                (ulong)(sizeof(fakeVertex) * _fakeVertexData.Length),
+                BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr,
+                MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
+                ref _fakeVertexBuffer, ref _fakeVertexDM);
+            void* _data2;
+            _vulkan.MapMemory(_logicalDevice, _fakeVertexDM, 0, (ulong)(sizeof(fakeVertex) * _fakeVertexData.Length), 0, &_data2);
+            _fakeVertexData.AsSpan().CopyTo(new Span<fakeVertex>(_data2, _fakeVertexData.Length));
+            _vulkan.UnmapMemory(_logicalDevice, _fakeVertexDM);
+            //
+            AVulkanBufferHandler.CreateBuffer(
+                (ulong)(sizeof(uint) * _fakeIndexData.Length),
+                BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr,
+                MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
+                ref _fakeIndexBuffer, ref _fakeIndexDM);
+            void* _data3;
+            _vulkan.MapMemory(_logicalDevice, _fakeIndexDM, 0, (ulong)(sizeof(uint) * _fakeIndexData.Length), 0, &_data3);
+            _fakeIndexData.AsSpan().CopyTo(new Span<uint>(_data3, _fakeIndexData.Length));
+            _vulkan.UnmapMemory(_logicalDevice, _fakeIndexDM);*/
+            //
 
             _addressVertex.DeviceAddress = GetAddress(_testEnt.GetComponent<MeshComponent>()._vertexBuffer);
             _addressIndex.DeviceAddress = GetAddress(_testEnt.GetComponent<MeshComponent>()._indexBuffer);
+            //_addressVertex.DeviceAddress = GetAddress(_fakeVertexBuffer);
+            //_addressIndex.DeviceAddress = GetAddress(_fakeIndexBuffer);
             _addressTransform.DeviceAddress = GetAddress(_fakeTransformBuffer);
 
             AccelerationStructureGeometryKHR _accelStrGeom = new AccelerationStructureGeometryKHR
@@ -234,15 +245,14 @@ namespace ArctisAurora.EngineWork.Renderer
                         SType = StructureType.AccelerationStructureGeometryTrianglesDataKhr,
                         VertexFormat = Format.R32G32B32Sfloat,
                         VertexData = _addressVertex,
+                        //MaxVertex = 2,
                         MaxVertex = (uint)(_testEnt.GetComponent<MeshComponent>()._mesh._vertices.Length),
+                        //VertexStride = (ulong)sizeof(fakeVertex),
                         VertexStride = (ulong)sizeof(Vertex),
+                        //IndexType = IndexType.Uint32,
                         IndexType = IndexType.Uint16,
                         IndexData = _addressIndex,
-                        TransformData = 
-                        {
-                            DeviceAddress =0,
-                            HostAddress = null
-                        },
+                        TransformData = default,
                         PNext = null
                     }
                 },
@@ -261,11 +271,12 @@ namespace ArctisAurora.EngineWork.Renderer
             };
 
             uint numTris = (uint)(_testEnt.GetComponent<MeshComponent>()._mesh._indices.Length / 3);
+            //uint numTris = 1;
             AccelerationStructureBuildSizesInfoKHR _asbsInfo = default;
             _asbsInfo.SType = StructureType.AccelerationStructureBuildSizesInfoKhr;
             _vulkan.TryGetDeviceExtension(_instance, _logicalDevice, out _accelerationStructure);
             _accelerationStructure.GetAccelerationStructureBuildSizes(_logicalDevice, AccelerationStructureBuildTypeKHR.DeviceKhr, &_accelStrGeomInfo, numTris, out _asbsInfo);
-            CreateAccelerationStructureBuffer(ref _BLAS, _asbsInfo);
+            CreateAccelerationStructureBuffer(ref _BLAS, ref _asbsInfo);
 
             AccelerationStructureCreateInfoKHR _accelerationStructureCreateInfo = new AccelerationStructureCreateInfoKHR()
             {
@@ -274,7 +285,11 @@ namespace ArctisAurora.EngineWork.Renderer
                 Size = _asbsInfo.AccelerationStructureSize,
                 Type = AccelerationStructureTypeKHR.BottomLevelKhr
             };
-            _accelerationStructure.CreateAccelerationStructure(_logicalDevice, _accelerationStructureCreateInfo, null, out _BLAS._handle);
+            Result r = _accelerationStructure.CreateAccelerationStructure(_logicalDevice, _accelerationStructureCreateInfo, null, out _BLAS._handle);
+            if (r != Result.Success)
+            {
+                throw new Exception("failed to create BLAS on the host");
+            }
             PathtracingScratchBuffer _scratchBuffer = new PathtracingScratchBuffer();
             CreateScratchBuffer(_asbsInfo.BuildScratchSize, ref _scratchBuffer);
 
@@ -303,7 +318,8 @@ namespace ArctisAurora.EngineWork.Renderer
             CommandBuffer _commandBuffer = AVulkanBufferHandler.BeginSingleTimeCommands();
             _accelerationStructure.CmdBuildAccelerationStructures(_commandBuffer, 1, &_abgInfo, &_asbrInfo);
             AVulkanBufferHandler.EndSingleTimeCommands(ref _commandBuffer);
-            
+
+
             AccelerationStructureDeviceAddressInfoKHR _adaInfo = new AccelerationStructureDeviceAddressInfoKHR()
             {
                 SType = StructureType.AccelerationStructureDeviceAddressInfoKhr,
@@ -315,31 +331,9 @@ namespace ArctisAurora.EngineWork.Renderer
 
         private void CreateTLAS()
         {
+            Matrix4X4<float> _ftm = Matrix4X4<float>.Identity;
             TransformMatrixKHR _matrix = new TransformMatrixKHR();
-            _matrix.Matrix[0] = 1.0f;
-            _matrix.Matrix[1] = 0.0f;
-            _matrix.Matrix[2] = 0.0f;
-            _matrix.Matrix[3] = 0.0f;
-            _matrix.Matrix[4] = 0.0f;
-            _matrix.Matrix[5] = 1.0f;
-            _matrix.Matrix[6] = 0.0f;
-            _matrix.Matrix[7] = 0.0f;
-            _matrix.Matrix[8] = 0.0f;
-            _matrix.Matrix[9] = 0.0f;
-            _matrix.Matrix[10] = 1.0f;
-            _matrix.Matrix[11] = 0.0f;
-
-            AVulkanBufferHandler.CreateBuffer(
-                sizeof(float) * 12,
-                BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr,
-                MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
-                ref _fakeInstanceBuffer, ref _fakeInstanceDM);
-            void* _data;
-            _vulkan.MapMemory(_logicalDevice, _fakeTransformDM, 0, (ulong)sizeof(TransformMatrixKHR), 0, &_data);
-            new Span<TransformMatrixKHR>(_data, 1)[0] = _matrix;
-            _vulkan.UnmapMemory(_logicalDevice, _fakeTransformDM);
-
-            _addressInstance.DeviceAddress = GetAddress(_fakeInstanceBuffer);
+            Unsafe.CopyBlock(_matrix.Matrix, Unsafe.AsPointer(ref _ftm), 48);
 
             AccelerationStructureInstanceKHR _accelerationInstance = new AccelerationStructureInstanceKHR()
             {
@@ -350,6 +344,19 @@ namespace ArctisAurora.EngineWork.Renderer
                 Mask = 0xFF,
                 InstanceShaderBindingTableRecordOffset = 0
             };
+
+            AVulkanBufferHandler.CreateBuffer(
+                (ulong)sizeof(AccelerationStructureInstanceKHR),
+                BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr,
+                MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
+                ref _fakeInstanceBuffer, ref _fakeInstanceDM);
+            void* _data;
+            _vulkan.MapMemory(_logicalDevice, _fakeInstanceDM, 0, (ulong)sizeof(AccelerationStructureInstanceKHR), 0, &_data);
+            new Span<AccelerationStructureInstanceKHR>(_data, 1)[0] = _accelerationInstance;
+            _vulkan.UnmapMemory(_logicalDevice, _fakeInstanceDM);
+
+            _addressInstance.DeviceAddress = GetAddress(_fakeInstanceBuffer);
+
             AccelerationStructureGeometryKHR _asg = new AccelerationStructureGeometryKHR()
             {
                 SType = StructureType.AccelerationStructureGeometryKhr,
@@ -380,7 +387,7 @@ namespace ArctisAurora.EngineWork.Renderer
             };
             _accelerationStructure.GetAccelerationStructureBuildSizes(_logicalDevice, AccelerationStructureBuildTypeKHR.DeviceKhr, &_asbgInfo, primitive_count, &_asbsInfo);
 
-            CreateAccelerationStructureBuffer(ref _TLAS, _asbsInfo);
+            CreateAccelerationStructureBuffer(ref _TLAS, ref _asbsInfo);
 
             AccelerationStructureCreateInfoKHR _asCreateInfo = new AccelerationStructureCreateInfoKHR()
             {
@@ -390,7 +397,11 @@ namespace ArctisAurora.EngineWork.Renderer
                 Type = AccelerationStructureTypeKHR.TopLevelKhr,
             };
             //
-            _accelerationStructure.CreateAccelerationStructure(_logicalDevice, _asCreateInfo, null, out _TLAS._handle);
+            Result r = _accelerationStructure.CreateAccelerationStructure(_logicalDevice, _asCreateInfo, null, out _TLAS._handle);
+            if (r != Result.Success)
+            {
+                throw new Exception("failed to create TLAS on the host");
+            }
             PathtracingScratchBuffer _scratchBuffer = new PathtracingScratchBuffer();
             CreateScratchBuffer(_asbsInfo.BuildScratchSize, ref _scratchBuffer);
 
@@ -415,9 +426,13 @@ namespace ArctisAurora.EngineWork.Renderer
                 FirstVertex = 0,
                 TransformOffset = 0
             };
+            var _buildRangeInfos = stackalloc[]
+            {
+                _asbrInfo
+            };
 
             CommandBuffer _commandBuffer = AVulkanBufferHandler.BeginSingleTimeCommands();
-            _accelerationStructure.CmdBuildAccelerationStructures(_commandBuffer, 1, &_abgInfo, &_asbrInfo);
+            _accelerationStructure.CmdBuildAccelerationStructures(_commandBuffer, 1, &_abgInfo, _buildRangeInfos);
             AVulkanBufferHandler.EndSingleTimeCommands(ref _commandBuffer);
 
             AccelerationStructureDeviceAddressInfoKHR _adaInfo = new AccelerationStructureDeviceAddressInfoKHR()
@@ -427,6 +442,7 @@ namespace ArctisAurora.EngineWork.Renderer
             };
             _TLAS._deviceAddress = _accelerationStructure.GetAccelerationStructureDeviceAddress(_logicalDevice, _adaInfo);
             DeleteScratchBuffer(ref _scratchBuffer);
+            _vulkan.DestroyBuffer(_logicalDevice, _fakeInstanceBuffer, null);
         }
 
         private void CreateRaytracingPipeline()
@@ -591,15 +607,15 @@ namespace ArctisAurora.EngineWork.Renderer
                 _rtExtention.GetRayTracingShaderGroupHandles(_logicalDevice, _rtPipeline, 0, _groupCount, _sbtSize, _ptr);
             }
 
-            CopyHandles(_handleSize, ref _raygenBTDM, (int)_handleSize, 0, _sbt);
-            CopyHandles(_handleSize, ref _missBTDM, (int)_handleSize, (int)_handleSizeAligned, _sbt);
-            CopyHandles(_handleSize, ref _hitBTDM, (int)_handleSize, (int)_handleSizeAligned *2, _sbt);
+            CopyHandles(ref _raygenBTDM, (int)_handleSize, 0, _sbt);
+            CopyHandles(ref _missBTDM, (int)_handleSize, (int)_handleSizeAligned, _sbt);
+            CopyHandles(ref _hitBTDM, (int)_handleSize, (int)_handleSizeAligned *2, _sbt);
         }
 
-        private void CopyHandles(uint _handleSize, ref DeviceMemory _memory, int _size, int _offset, byte[] _sbt)
+        private void CopyHandles(ref DeviceMemory _memory, int _size, int _offset, byte[] _sbt)
         {
             void* _data;
-            _vulkan.MapMemory(_logicalDevice, _memory, 0, _handleSize, 0, &_data);
+            _vulkan.MapMemory(_logicalDevice, _memory, 0, (ulong)_size, 0, &_data);
             Marshal.Copy(_sbt, _offset, (nint)_data, _size);
             _vulkan.UnmapMemory(_logicalDevice, _memory);
         }
@@ -658,7 +674,7 @@ namespace ArctisAurora.EngineWork.Renderer
             _b._deviceAddress = _vulkan.GetBufferDeviceAddress(_logicalDevice, &_driverBufferAddressInfo);
         }
 
-        private void CreateAccelerationStructureBuffer(ref AccelerationStruct _accelStructure, AccelerationStructureBuildSizesInfoKHR _buildSizeInfo)
+        private void CreateAccelerationStructureBuffer(ref AccelerationStruct _accelStructure, ref AccelerationStructureBuildSizesInfoKHR _buildSizeInfo)
         {
             BufferCreateInfo _bufferCreateInfo = new BufferCreateInfo()
             {
@@ -1040,7 +1056,7 @@ namespace ArctisAurora.EngineWork.Renderer
             fixed (byte* _shaderCodePtr = _shaderCode)
             {
                 _createInfo.PCode = (uint*)_shaderCodePtr;
-                if (VulkanRenderer._vulkan.CreateShaderModule(VulkanRenderer._logicalDevice, _createInfo, null, out _shaderModule) != Result.Success)
+                if (Rasterizer._vulkan.CreateShaderModule(Rasterizer._logicalDevice, _createInfo, null, out _shaderModule) != Result.Success)
                 {
                     throw new Exception("Failed to create shader module");
                 }

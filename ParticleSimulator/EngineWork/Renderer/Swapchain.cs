@@ -13,7 +13,7 @@ namespace ArctisAurora.EngineWork.Renderer
         public SurfaceFormatKHR[] Formats;
         public PresentModeKHR[] PresentModes;
     }
-    internal unsafe class AVulkanSwapchain
+    internal unsafe class Swapchain
     {
         //swapchain variables
         internal SwapchainKHR _swapchainKHR;        //the virtualized swapchain
@@ -31,7 +31,7 @@ namespace ArctisAurora.EngineWork.Renderer
         internal KhrSurface _driverSurface;
         internal SurfaceKHR _surface;
 
-        internal AVulkanSwapchain(ref KhrSurface _ks, ref SurfaceKHR _sk)
+        internal Swapchain(ref KhrSurface _ks, ref SurfaceKHR _sk)
         {
             _driverSurface = _ks;
             _surface = _sk;
@@ -68,22 +68,22 @@ namespace ArctisAurora.EngineWork.Renderer
                 PQueueFamilyIndices = _queueFamilyIndices,
             };
 
-            if (!RendererBaseClass._vulkan.TryGetDeviceExtension(RendererBaseClass._instance, RendererBaseClass._logicalDevice, out _driverSwapchain))
+            if (!VulkanRenderer._vulkan.TryGetDeviceExtension(VulkanRenderer._instance, VulkanRenderer._logicalDevice, out _driverSwapchain))
             {
                 throw new Exception("VK_KHR_swapchain extension not found on the device");
             }
 
-            Result r = _driverSwapchain!.CreateSwapchain(RendererBaseClass._logicalDevice, _swapchainCreateInfo, null, out _swapchainKHR);
+            Result r = _driverSwapchain!.CreateSwapchain(VulkanRenderer._logicalDevice, _swapchainCreateInfo, null, out _swapchainKHR);
             if (r != Result.Success)
             {
                 throw new Exception("Failed to create swapchain " + r);
             }
             uint _swapchainImageCount = 0;
-            _driverSwapchain.GetSwapchainImages(RendererBaseClass._logicalDevice, _swapchainKHR, &_swapchainImageCount, null);
+            _driverSwapchain.GetSwapchainImages(VulkanRenderer._logicalDevice, _swapchainKHR, &_swapchainImageCount, null);
             _swapchainImages = new Image[_swapchainImageCount];
             fixed (Image* _imagePtr = _swapchainImages)
             {
-                _driverSwapchain.GetSwapchainImages(RendererBaseClass._logicalDevice, _swapchainKHR, &_swapchainImageCount, _imagePtr);
+                _driverSwapchain.GetSwapchainImages(VulkanRenderer._logicalDevice, _swapchainKHR, &_swapchainImageCount, _imagePtr);
             }
         }
 
@@ -96,7 +96,7 @@ namespace ArctisAurora.EngineWork.Renderer
                 CreateImageView(ref _imageViews[i], ref _swapchainImages[i], ImageAspectFlags.ColorBit, _surfaceFormat.Format);
             }
             Format _depthFormat = GetDepthFormat();
-            AVulkanBufferHandler.CreateImage(VulkanRenderer._extent.Width, VulkanRenderer._extent.Height, _depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit, MemoryPropertyFlags.DeviceLocalBit, ref _depthImage, ref _depthMemory);
+            AVulkanBufferHandler.CreateImage(Rasterizer._extent.Width, Rasterizer._extent.Height, _depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit, MemoryPropertyFlags.DeviceLocalBit, ref _depthImage, ref _depthMemory);
             CreateImageView(ref _depthView, ref _depthImage, ImageAspectFlags.DepthBit, _depthFormat); //depth map
             CreateRenderPass();
             //CreateShadowmapRenderPass();
@@ -118,7 +118,7 @@ namespace ArctisAurora.EngineWork.Renderer
             _createInfo.SubresourceRange.BaseArrayLayer = 0;
             _createInfo.SubresourceRange.LayerCount = 1;
 
-            if (VulkanRenderer._vulkan!.CreateImageView(VulkanRenderer._logicalDevice, _createInfo, null, out _iv) != Result.Success)
+            if (Rasterizer._vulkan!.CreateImageView(Rasterizer._logicalDevice, _createInfo, null, out _iv) != Result.Success)
             {
                 throw new Exception("failed to create image views!");
             }
@@ -193,7 +193,7 @@ namespace ArctisAurora.EngineWork.Renderer
                     PDependencies = &_subDepend
                 };
 
-                if (VulkanRenderer._vulkan.CreateRenderPass(VulkanRenderer._logicalDevice, _renderPassInfo, null, out _renderPass) != Result.Success)
+                if (Rasterizer._vulkan.CreateRenderPass(Rasterizer._logicalDevice, _renderPassInfo, null, out _renderPass) != Result.Success)
                 {
                     throw new Exception("failed to create render pass!");
                 }
@@ -252,7 +252,7 @@ namespace ArctisAurora.EngineWork.Renderer
                     PDependencies = &_subDepend
                 };
 
-                if (VulkanRenderer._vulkan.CreateRenderPass(VulkanRenderer._logicalDevice, _renderPassInfo, null, out _shadowmapRenderPass) != Result.Success)
+                if (Rasterizer._vulkan.CreateRenderPass(Rasterizer._logicalDevice, _renderPassInfo, null, out _shadowmapRenderPass) != Result.Success)
                 {
                     throw new Exception("failed to create render pass!");
                 }
@@ -263,9 +263,9 @@ namespace ArctisAurora.EngineWork.Renderer
         {
             foreach (var iv in _imageViews)
             {
-                VulkanRenderer._vulkan.DestroyImageView(VulkanRenderer._logicalDevice, iv, null);
+                Rasterizer._vulkan.DestroyImageView(Rasterizer._logicalDevice, iv, null);
             }
-            _driverSwapchain.DestroySwapchain(VulkanRenderer._logicalDevice, _swapchainKHR, null);
+            _driverSwapchain.DestroySwapchain(Rasterizer._logicalDevice, _swapchainKHR, null);
         }
     }
 }
