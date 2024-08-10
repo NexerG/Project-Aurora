@@ -14,14 +14,14 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
     {
         public Matrix4X4<float> _view;
         public Matrix4X4<float> _projection;
-        //public Matrix4X4<float> _lightProjection;
-        //public Matrix4X4<float> _lightView;
-        //public Vector3D<float> _camPos;
+        public Matrix4X4<float> _lightProjection;
+        public Matrix4X4<float> _lightView;
+        public Vector3D<float> _camPos;
     }
 
     internal static unsafe class AVulkanBufferHandler
     {
-        internal static void CreateVertexBuffer(ref Vertex[] _vertices, ref Buffer _vertexBuffer, ref DeviceMemory _vertexBufferMemory)
+        internal static void CreateVertexBuffer(ref Vertex[] _vertices, ref Buffer _vertexBuffer, ref DeviceMemory _vertexBufferMemory, BufferUsageFlags _additionalFlags)
         {
             ulong _bufferSize = (ulong)(Unsafe.SizeOf<Vertex>() * _vertices.Length);
             Buffer _stagingBuffer = default;
@@ -33,15 +33,14 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             _vertices.AsSpan().CopyTo(new Span<Vertex>(_data, _vertices.Length));
             VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory);
 
-            //CreateBuffer(_bufferSize, BufferUsageFlags.TransferDstBit | BufferUsageFlags.VertexBufferBit, MemoryPropertyFlags.DeviceLocalBit, ref _vertexBuffer, ref _vertexBufferMemory);
-            CreateBuffer(_bufferSize, BufferUsageFlags.TransferDstBit | BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr, MemoryPropertyFlags.DeviceLocalBit | MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _vertexBuffer, ref _vertexBufferMemory);
+            CreateBuffer(_bufferSize, BufferUsageFlags.TransferDstBit | BufferUsageFlags.VertexBufferBit | _additionalFlags, MemoryPropertyFlags.DeviceLocalBit, ref _vertexBuffer, ref _vertexBufferMemory);
 
             CopyBuffer(ref _stagingBuffer, ref _vertexBuffer, _bufferSize);
             VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _stagingBuffer, null);
             VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, null);
         }
 
-        internal static void CreateIndexBuffer(ref ushort[] _meshIndices, ref Buffer _indexBuffer, ref DeviceMemory _indexBufferMemory)
+        internal static void CreateIndexBuffer(ref ushort[] _meshIndices, ref Buffer _indexBuffer, ref DeviceMemory _indexBufferMemory, BufferUsageFlags _additionalFlags)
         {
             ulong _bufferSize = (ulong)(Unsafe.SizeOf<ushort>() * _meshIndices.Length);
             Buffer _stagingBuffer = default;
@@ -53,8 +52,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             _meshIndices.AsSpan().CopyTo(new Span<ushort>(_data, _meshIndices.Length));
             VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory);
             
-            //CreateBuffer(_bufferSize, BufferUsageFlags.TransferDstBit | BufferUsageFlags.IndexBufferBit, MemoryPropertyFlags.DeviceLocalBit, ref _indexBuffer, ref _indexBufferMemory); ;
-            CreateBuffer(_bufferSize, BufferUsageFlags.TransferDstBit | BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _indexBuffer, ref _indexBufferMemory); ;
+            CreateBuffer(_bufferSize, BufferUsageFlags.TransferDstBit | BufferUsageFlags.IndexBufferBit | _additionalFlags, MemoryPropertyFlags.DeviceLocalBit, ref _indexBuffer, ref _indexBufferMemory); ;
             CopyBuffer(ref _stagingBuffer, ref _indexBuffer, _bufferSize);
 
             VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _stagingBuffer, null);
@@ -109,10 +107,10 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, null);
         }
 
-        internal static void CreateTransformBuffer(ref List<Matrix4X4<float>> _instances, ref Buffer _instanceBuffer, ref DeviceMemory _instanceMemory)
+        internal static void CreateTransformBuffer(ref List<Matrix4X4<float>> _instances, ref Buffer _instanceBuffer, ref DeviceMemory _instanceMemory, BufferUsageFlags _additionalFlags)
         {
             ulong _bufferSize = (ulong)(sizeof(Matrix4X4<float>) * _instances.Count);
-            CreateBuffer(_bufferSize, BufferUsageFlags.StorageBufferBit | BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit , ref _instanceBuffer, ref _instanceMemory);
+            CreateBuffer(_bufferSize, BufferUsageFlags.StorageBufferBit | BufferUsageFlags.ShaderDeviceAddressBit | _additionalFlags, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit , ref _instanceBuffer, ref _instanceMemory);
 
             void* _data;
             VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _instanceMemory, 0, _bufferSize, 0, &_data);
@@ -155,9 +153,9 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             {
                 _view = _camera._view,
                 _projection = _camera._projection,
-                //_lightProjection = VulkanRenderer._lightsToRender[0].GetComponent<LightsourceComponent>()._lightProjection,
-                //_lightView = VulkanRenderer._lightsToRender[0].GetComponent<LightsourceComponent>()._lightView,
-                //_camPos = _camera._pos
+                _lightProjection = Rasterizer._lightsToRender[0].GetComponent<LightsourceComponent>()._lightProjection,
+                _lightView = Rasterizer._lightsToRender[0].GetComponent<LightsourceComponent>()._lightView,
+                _camPos = _camera._pos
             };
 
             void* _data;

@@ -45,17 +45,16 @@ namespace ArctisAurora.EngineWork.Renderer
             _localUp = Vector3D.Normalize(Vector3D.Cross(_localRight, _front));
 
             _view = Matrix4X4.CreateLookAt(_pos, _pos + _front, Vector3D<float>.UnitY);
-            //_view = Matrix4X4.CreateLookAt(_pos, _pos + _front, Vector3D<float>.UnitY);
             _projection = Matrix4X4.CreatePerspectiveFieldOfView(Scalar.DegreesToRadians(60.0f), _extent.Width / _extent.Height, 0.1f, 512f);
             _projection.M22 *= -1;
 
-            Matrix4X4<float> _tempView;
+            /*Matrix4X4<float> _tempView;
             Matrix4X4<float> _tempProjection;
 
             Matrix4X4.Invert(_view, out _tempView);
             Matrix4X4.Invert(_projection, out _tempProjection);
             _view = _tempView;
-            _projection = _tempProjection;
+            _projection = _tempProjection;*/
             AVulkanBufferHandler.UpdateUniformBuffer(this, currentImage, ref _camBmemory);
         }
 

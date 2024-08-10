@@ -8,6 +8,7 @@ using Silk.NET.Vulkan.Extensions.EXT;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using Semaphore = Silk.NET.Vulkan.Semaphore;
 using ArctisAurora.EngineWork.Renderer.Helpers;
+using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
 
 namespace ArctisAurora.EngineWork.Renderer
 {
@@ -56,21 +57,7 @@ namespace ArctisAurora.EngineWork.Renderer
 
         public Rasterizer()
         {
-            //some engine specific rendering prerequisites
-            _rendererInstance = this;
-            //end of prerequisites
-            PhysicalDeviceFeatures _deviceFeatures = new PhysicalDeviceFeatures()
-            {
-                SamplerAnisotropy = true,
-            };
-            PhysicalDeviceVulkan12Features _vulkan12FT = new PhysicalDeviceVulkan12Features()
-            {
-                SType = StructureType.PhysicalDeviceVulkan12Features,
-                RuntimeDescriptorArray = true,
-            };
-
-            CreateLogicalDevice(requiredExtensions, _vulkan12FT, _deviceFeatures);        //abstract the gpu so we can communicate
-
+            Setup();
             //getting the render queues ready
             int _graphicsQFamilyIndex = AVulkanHelper.FindQueueFamilyIndex(ref _gpu, ref _qfm, QueueFlags.GraphicsBit);
             uint _presentSupportIndex = AVulkanHelper.FindPresentSupportIndex(ref _qfm, ref _glWindow._driverSurface, ref _glWindow._surface);
@@ -96,6 +83,25 @@ namespace ArctisAurora.EngineWork.Renderer
 
             CreateCommandBuffers();                         //the draw command sequence that'll be used for rendering
             CreateSyncObjects();                            //CPU - GPU sync logic
+        }
+
+        private void Setup()
+        {
+            //some engine specific rendering prerequisites
+            _rendererInstance = this;
+            //end of prerequisites
+            PhysicalDeviceFeatures _deviceFeatures = new PhysicalDeviceFeatures()
+            {
+                SamplerAnisotropy = true,
+            };
+            PhysicalDeviceVulkan12Features _vulkan12FT = new PhysicalDeviceVulkan12Features()
+            {
+                SType = StructureType.PhysicalDeviceVulkan12Features,
+                BufferDeviceAddress = true,
+                RuntimeDescriptorArray = true,
+            };
+
+            CreateLogicalDevice(requiredExtensions, _vulkan12FT, _deviceFeatures);        //abstract the gpu so we can communicate
         }
 
         internal override void AddEntityToRenderQueue(Entity _m)
@@ -154,7 +160,6 @@ namespace ArctisAurora.EngineWork.Renderer
             for (int i = 0; i < _entitiesToRender.Count; i++)
             {
                 _entitiesToRender[i].GetComponent<MeshComponent>().CreateDescriptorSet();
-                _entitiesToRender[i].GetComponent<MeshComponent>().CreateShadowDescriptorSet();
             }
             RecreateCommandBuffers();
 
@@ -300,7 +305,7 @@ namespace ArctisAurora.EngineWork.Renderer
                     for (int e = 0; e < _entitiesToRender.Count; e++)
                     {
                         var _offset = new ulong[] { 0 };
-                        _entitiesToRender[e].GetComponent<MeshComponent>().EnqueuShadowDrawCommands(_offset, i, ref _commandBuffer[i], j);
+                        ((MCRaster)_entitiesToRender[e].GetComponent<MeshComponent>()).EnqueuShadowDrawCommands(_offset, i, ref _commandBuffer[i], j);
                     }
                     _vulkan.CmdEndRenderPass(_commandBuffer[i]);
                 }

@@ -271,7 +271,7 @@ namespace ArctisAurora.EngineWork.Renderer
                     PPushConstantRanges = &_pushInfo,
                 };
 
-                if (Rasterizer._vulkan.CreatePipelineLayout(Rasterizer._logicalDevice, _pipelineLayoutInfo, null, out _shadowLayout) != Result.Success)
+                if (VulkanRenderer._vulkan.CreatePipelineLayout(VulkanRenderer._logicalDevice, _pipelineLayoutInfo, null, out _shadowLayout) != Result.Success)
                 {
                     throw new Exception("Failed to create pipeline layout");
                 }
@@ -293,23 +293,23 @@ namespace ArctisAurora.EngineWork.Renderer
                     BasePipelineHandle = default
                 };
 
-                Result r = Rasterizer._vulkan.CreateGraphicsPipelines(Rasterizer._logicalDevice, default, 1, _graphicsPipelineInfo, null, out _shadowPipeline);
+                Result r = VulkanRenderer._vulkan.CreateGraphicsPipelines(VulkanRenderer._logicalDevice, default, 1, _graphicsPipelineInfo, null, out _shadowPipeline);
                 if (r != Result.Success)
                 {
-                    throw new Exception("Failed to create graphics pipeline " + r);
+                    throw new Exception("Failed to create shadow graphics pipeline " + r);
                 }
             }
 
-            Rasterizer._vulkan.DestroyShaderModule(Rasterizer._logicalDevice, _vertexShader, null);
+            VulkanRenderer._vulkan.DestroyShaderModule(VulkanRenderer._logicalDevice, _vertexShader, null);
             SilkMarshal.Free((nint)_vertexShaderStageInfo.PName);
         }
 
         internal void DestroyPipeline()
         {
-            Rasterizer._vulkan.DestroyPipeline(Rasterizer._logicalDevice, _graphicsPipeline, null);
-            Rasterizer._vulkan.DestroyPipelineLayout(Rasterizer._logicalDevice, _pipelineLayout, null);
-            Rasterizer._vulkan.DestroyPipeline(Rasterizer._logicalDevice, _shadowPipeline, null);
-            Rasterizer._vulkan.DestroyPipelineLayout(Rasterizer._logicalDevice, _shadowLayout, null);
+            VulkanRenderer._vulkan.DestroyPipeline(VulkanRenderer._logicalDevice, _graphicsPipeline, null);
+            VulkanRenderer._vulkan.DestroyPipelineLayout(VulkanRenderer._logicalDevice, _pipelineLayout, null);
+            VulkanRenderer._vulkan.DestroyPipeline(VulkanRenderer._logicalDevice, _shadowPipeline, null);
+            VulkanRenderer._vulkan.DestroyPipelineLayout(VulkanRenderer._logicalDevice, _shadowLayout, null);
         }
 
         private ShaderModule CreateShaderModule(byte[] _shaderCode)
@@ -324,7 +324,7 @@ namespace ArctisAurora.EngineWork.Renderer
             fixed (byte* _shaderCodePtr = _shaderCode)
             {
                 _createInfo.PCode = (uint*)_shaderCodePtr;
-                if (Rasterizer._vulkan.CreateShaderModule(Rasterizer._logicalDevice, _createInfo, null, out _shaderModule) != Result.Success)
+                if (VulkanRenderer._vulkan.CreateShaderModule(VulkanRenderer._logicalDevice, _createInfo, null, out _shaderModule) != Result.Success)
                 {
                     throw new Exception("Failed to create shader module");
                 }

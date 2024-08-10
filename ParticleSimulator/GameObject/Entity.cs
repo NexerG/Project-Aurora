@@ -1,4 +1,7 @@
 ﻿using ArctisAurora.EngineWork.ComponentBehaviour;
+using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+using ArctisAurora.EngineWork.Renderer;
+using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
 
 namespace ArctisAurora.GameObject
 {
@@ -77,7 +80,19 @@ namespace ArctisAurora.GameObject
 
         internal EntComp CreateComponent<EntComp>() where EntComp : EntityComponent, new()
         {
-            EntComp component = new EntComp();
+            EntComp component = typeof(EntComp).Name == typeof(MeshComponent).Name ?
+                (VulkanRenderer._rendererType == RendererTypes.Pathtracer
+                    ? (EntComp)(object)new MCRaytracing() 
+                    : (VulkanRenderer._rendererType == RendererTypes.RadianceCascades
+                        ? (EntComp)(object)new MCRaster() 
+                        : (EntComp)(object)new MCRaster()))
+            :  new EntComp();
+            /*EntComp _component;
+            if (typeof(EntComp).Name == "MeshComponent")
+            {
+                _component = (EntComp)(object)(VulkanRenderer._rendererType == RendererTypes.Pathtracer ?
+                new MCRaytracing() : new MCRaster());
+            }*/
             if (!_components.Contains(component))
             {
                 _components.Add(component);
@@ -87,6 +102,7 @@ namespace ArctisAurora.GameObject
             }
             else return null;
         }
+
         internal EntComp GetComponent<EntComp>() where EntComp : EntityComponent
         {
             foreach(EntityComponent comp in _components)

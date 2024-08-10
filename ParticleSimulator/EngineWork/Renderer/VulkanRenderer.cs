@@ -196,11 +196,12 @@ namespace ArctisAurora.EngineWork.Renderer
                 QueueCount = 1,
                 PQueuePriorities = &_qPriority
             };
-
+            PhysicalDeviceFeatures _df = (PhysicalDeviceFeatures)_deviceFeatures;
             PhysicalDeviceVulkan12Features _v12FT = (PhysicalDeviceVulkan12Features)_vulkan12FT;
             PhysicalDeviceFeatures2 _devFeatures2 = new PhysicalDeviceFeatures2()
             {
                 SType = StructureType.PhysicalDeviceFeatures2,
+                Features = _df,
                 PNext = &_v12FT
             };
 
@@ -244,7 +245,7 @@ namespace ArctisAurora.EngineWork.Renderer
 
                     EnabledExtensionCount = (uint)enabledExtensions.Length,
                     PpEnabledExtensionNames = (byte**)ppEnabledExtensions,
-                    PEnabledFeatures = (PhysicalDeviceFeatures*)&_deviceFeatures,
+                    PEnabledFeatures = null,
                     PNext = &_devFeatures2
                 };
                 Result r = _vulkan.CreateDevice(_gpu, _deviceInfo, null, out _logicalDevice);

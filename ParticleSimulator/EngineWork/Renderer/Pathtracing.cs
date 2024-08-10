@@ -92,8 +92,36 @@ namespace ArctisAurora.EngineWork.Renderer
 
         internal Pathtracing() 
         {
-            _rendererInstance = this;
+            setup();
+            //-------------- setup above
 
+            int _graphicsQFamilyIndex = AVulkanHelper.FindQueueFamilyIndex(ref _gpu, ref _qfm, QueueFlags.GraphicsBit);
+            uint _presentSupportIndex = AVulkanHelper.FindPresentSupportIndex(ref _qfm, ref _glWindow._driverSurface, ref _glWindow._surface);
+            _graphicsQueue = _vulkan.GetDeviceQueue(_logicalDevice, (uint)_graphicsQFamilyIndex, 0);
+            _presentQueue = _vulkan.GetDeviceQueue(_logicalDevice, _presentSupportIndex, 0);
+
+            _swapchain = new Swapchain(ref _glWindow._driverSurface, ref _glWindow._surface);
+            _swapchain.DoSwapchainMethodSequence(ref _extent);        //swapchain methods for simplicity sake
+            _swapimageCount = _swapchain._swapchainImages.Length;     //engine related thing
+            _camera = new AuroraCamera();
+
+            CreateCommandPool();
+            CreateStorageImage();
+            CreateDescriptorPool();
+            //meshes after this point
+            CreateBLAS();
+            CreateTLAS();
+            CreateRaytracingPipeline();
+            CreateShaderBindingTable();
+
+            _testEnt.GetComponent<MeshComponent>().CreateDescriptorSet();
+            CreateCommandBuffers();
+            CreateSyncObjects();                                        //CPU - GPU sync logic
+        }
+
+        private void setup()
+        {
+            _rendererInstance = this;
             PhysicalDeviceRayTracingPipelineFeaturesKHR _rtPipelineFeature = new PhysicalDeviceRayTracingPipelineFeaturesKHR()
             {
                 SType = StructureType.PhysicalDeviceRayTracingPipelineFeaturesKhr,
@@ -125,29 +153,6 @@ namespace ArctisAurora.EngineWork.Renderer
                 _vulkan.GetPhysicalDeviceProperties2(_gpu, &_devprops2);
             }
 
-
-            int _graphicsQFamilyIndex = AVulkanHelper.FindQueueFamilyIndex(ref _gpu, ref _qfm, QueueFlags.GraphicsBit);
-            uint _presentSupportIndex = AVulkanHelper.FindPresentSupportIndex(ref _qfm, ref _glWindow._driverSurface, ref _glWindow._surface);
-            _graphicsQueue = _vulkan.GetDeviceQueue(_logicalDevice, (uint)_graphicsQFamilyIndex, 0);
-            _presentQueue = _vulkan.GetDeviceQueue(_logicalDevice, _presentSupportIndex, 0);
-
-            _swapchain = new Swapchain(ref _glWindow._driverSurface, ref _glWindow._surface);
-            _swapchain.DoSwapchainMethodSequence(ref _extent);        //swapchain methods for simplicity sake
-            _swapimageCount = _swapchain._swapchainImages.Length;     //engine related thing
-            _camera = new AuroraCamera();
-
-            CreateCommandPool();
-            CreateStorageImage();
-            CreateDescriptorPool();
-            //mesh after here
-            CreateBLAS();
-            CreateTLAS();
-            CreateRaytracingPipeline();
-            CreateShaderBindingTable();
-
-            _testEnt.GetComponent<MeshComponent>().CreateRTDescriptorSet();
-            CreateCommandBuffers();
-            CreateSyncObjects();                                        //CPU - GPU sync logic
         }
 
         private void CreateDescriptorPool()
@@ -810,7 +815,7 @@ namespace ArctisAurora.EngineWork.Renderer
                 };
                 StridedDeviceAddressRegionKHR _callableShaderSbt = default;
                 _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.RayTracingKhr, _rtPipeline);
-                _vulkan.CmdBindDescriptorSets(_commandBuffer[i], PipelineBindPoint.RayTracingKhr, _pipelineLayout, 0, 1, _testEnt.GetComponent<MeshComponent>()._descriptorSetsPathTracing[i], 0, null);
+                _vulkan.CmdBindDescriptorSets(_commandBuffer[i], PipelineBindPoint.RayTracingKhr, _pipelineLayout, 0, 1, _testEnt.GetComponent<MeshComponent>()._descriptorSets[i], 0, null);
                 _rtExtention.CmdTraceRays(
                     _commandBuffer[i],
                     &_raygenShaderSbtEntry,

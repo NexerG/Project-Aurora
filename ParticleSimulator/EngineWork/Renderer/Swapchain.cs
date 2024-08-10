@@ -96,10 +96,11 @@ namespace ArctisAurora.EngineWork.Renderer
                 CreateImageView(ref _imageViews[i], ref _swapchainImages[i], ImageAspectFlags.ColorBit, _surfaceFormat.Format);
             }
             Format _depthFormat = GetDepthFormat();
-            AVulkanBufferHandler.CreateImage(Rasterizer._extent.Width, Rasterizer._extent.Height, _depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit, MemoryPropertyFlags.DeviceLocalBit, ref _depthImage, ref _depthMemory);
+            AVulkanBufferHandler.CreateImage(VulkanRenderer._extent.Width, VulkanRenderer._extent.Height, _depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit, MemoryPropertyFlags.DeviceLocalBit, ref _depthImage, ref _depthMemory);
             CreateImageView(ref _depthView, ref _depthImage, ImageAspectFlags.DepthBit, _depthFormat); //depth map
             CreateRenderPass();
-            //CreateShadowmapRenderPass();
+            if(VulkanRenderer._rendererType == RendererTypes.Rasterizer)
+                CreateShadowmapRenderPass();
         }
 
         internal void CreateImageView(ref ImageView _iv, ref Image _im, ImageAspectFlags _aspect, Format _f)

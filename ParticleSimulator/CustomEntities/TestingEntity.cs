@@ -1,4 +1,5 @@
-﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+﻿using ArctisAurora.CustomEntityComponents;
+using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.GameObject;
 
 namespace ArctisAurora.CustomEntities
