@@ -1,13 +1,7 @@
 ﻿using ArctisAurora.CustomEntities;
 using ArctisAurora.GameObject;
 using Silk.NET.Maths;
-using Assimp;
-using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Renderer;
-using Silk.NET.Vulkan;
-using Windows.ApplicationModel.Email.DataProvider;
-using ArctisAurora.CustomEntityComponents;
-using System.Security.Cryptography.Xml;
 
 namespace ArctisAurora.EngineWork
 {
@@ -26,13 +20,13 @@ namespace ArctisAurora.EngineWork
             _engineInstance = this;
         }
 
-        public void Init(Frame s, bool threeDims, int parts)
+        public void Init(Frame s)
         {
             Running = true;
             SC = s;
 
             _renderer = new VulkanRenderer();
-            _renderer.InitRenderer(RendererTypes.Rasterizer);
+            _renderer.InitRenderer(RendererTypes.Pathtracer);
 
             ////mesh importer
             MeshImporter importer = new MeshImporter();
@@ -44,16 +38,16 @@ namespace ArctisAurora.EngineWork
             //---------------------------------------------------------------------------
             //Game logic
             //first we setup lights
-            LightSourceEntity _ls = new LightSourceEntity();
-            _ls.transform.SetWorldPosition(new Vector3D<float>(1, 10 ,1));
+            //LightSourceEntity _ls = new LightSourceEntity();
+            //_ls.transform.SetWorldPosition(new Vector3D<float>(1, 10 ,1));
             //
             /*SimulatorEntity _e = new SimulatorEntity();
             _e.GetComponent<SPHSimComponent>().simSetup(15);
             _entities.Add(_e);*/
 
+            //then we do meshes
             TestingEntity _te = new TestingEntity();
             _te.transform.SetWorldScale(new Vector3D<float>(50, 1, 50));
-            //then we do meshes
             //---------------------------------------------------------------------------
 
             //engine thread

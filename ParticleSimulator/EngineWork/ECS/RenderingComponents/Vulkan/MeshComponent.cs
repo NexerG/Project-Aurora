@@ -52,7 +52,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             _mesh.LoadCustomMesh(sc);
             AVulkanBufferHandler.CreateVertexBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, _aditionalUsageFlags);
             AVulkanBufferHandler.CreateIndexBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, _aditionalUsageFlags);
-            ((IRecreateCommandBuffer)VulkanRenderer._rendererInstance).RecreateCommandBuffers();
+            VulkanRenderer._rendererInstance.RecreateCommandBuffers();
         }
 
         internal virtual void FreeDescriptorSets() { }

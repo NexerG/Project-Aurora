@@ -1,10 +1,7 @@
-﻿using Silk.NET.Core.Native;
-using Silk.NET.Vulkan;
-using System.Runtime.InteropServices;
+﻿using Silk.NET.Vulkan;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.GameObject;
 using Silk.NET.Maths;
-using Silk.NET.Vulkan.Extensions.EXT;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using Semaphore = Silk.NET.Vulkan.Semaphore;
 using ArctisAurora.EngineWork.Renderer.Helpers;
@@ -12,48 +9,28 @@ using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
 
 namespace ArctisAurora.EngineWork.Renderer
 {
-    internal interface IRecreateCommandBuffer
-    {
-        internal void RecreateCommandBuffers();
-    }
-
     struct LightData
     {
         internal Vector3D<float> _pos;
         internal Vector4D<float> _color;
     }
 
-    internal unsafe class Rasterizer : VulkanRenderer, IRecreateCommandBuffer
+    internal unsafe class Rasterizer : VulkanRenderer
     {
         string[] requiredExtensions = { "VK_KHR_swapchain" };
-        //whole rendering pipeline variables
-        internal static Swapchain _swapchain;
-        internal static GraphicsPipeline _pipeline;
         //buffers
         private Framebuffer[] _framebuffer;
-        private CommandBuffer[] _commandBuffer;
         internal static Buffer _lightBuffer;
         internal static DeviceMemory _lightBufferMemory;
         internal static Buffer[] _lightUBO;
         internal static DeviceMemory[] _lightUBOMemory;
         //descriptors
-        internal static DescriptorSetLayout _descriptorSetLayout;
-        internal static DescriptorPool _descriptorPool;
         internal static DescriptorSetLayout _descriptorSetLayoutShadow;
         internal static DescriptorPool _descriptorPoolShadow;
-        //cpu - gpu sync variables
-        private int MAX_FRAMES_IN_FLIGHT = 2;
-        private int _currentFrame = 0;
-        private Semaphore[] _imageAvailableSemaphores;
-        private Semaphore[] _renderFinishedSemaphores;
-        private Fence[] _fencesInFlight;
-        private Fence[] _imagesInFlight;
         //-------------------------------------
         internal static Sampler _textureSampler;
         internal static Sampler _shadowmapSampler;
         //
-        internal static List<Entity> _entitiesToRender = new List<Entity>();
-        internal static List<Entity> _lightsToRender = new List<Entity>();
 
         public Rasterizer()
         {
@@ -92,7 +69,7 @@ namespace ArctisAurora.EngineWork.Renderer
             //end of prerequisites
             PhysicalDeviceFeatures _deviceFeatures = new PhysicalDeviceFeatures()
             {
-                SamplerAnisotropy = true,
+                SamplerAnisotropy = true
             };
             PhysicalDeviceVulkan12Features _vulkan12FT = new PhysicalDeviceVulkan12Features()
             {
@@ -106,13 +83,7 @@ namespace ArctisAurora.EngineWork.Renderer
 
         internal override void AddEntityToRenderQueue(Entity _m)
         {
-            _entitiesToRender.Add(_m);
-            for (int i = 0; i < _entitiesToRender.Count; i++)
-                _entitiesToRender[i].GetComponent<MeshComponent>().FreeDescriptorSets();
-            if (_descriptorPool.Handle != 0)
-                _vulkan.DestroyDescriptorPool(_logicalDevice, _descriptorPool, null);
-            if (_descriptorPoolShadow.Handle != 0)
-                _vulkan.DestroyDescriptorPool(_logicalDevice, _descriptorPoolShadow, null);
+            base.AddEntityToRenderQueue(_m);
             CreateDescriptorPool();
             CreateShadowDescriptorPool();
             for (int i = 0; i < _entitiesToRender.Count; i++)
@@ -200,12 +171,9 @@ namespace ArctisAurora.EngineWork.Renderer
             }
         }
 
-        public void RecreateCommandBuffers()
+        internal override void RecreateCommandBuffers()
         {
-            fixed (CommandBuffer* CBPtr = _commandBuffer)
-            {
-                _vulkan.FreeCommandBuffers(_logicalDevice, _commandPool, (uint)_commandBuffer.Length, CBPtr);
-            }
+            base.RecreateCommandBuffers();
             CreateCommandBuffers();
         }
 
@@ -429,24 +397,24 @@ namespace ArctisAurora.EngineWork.Renderer
             }
         }
 
-        private void CreateDescriptorPool()
+        internal override void CreateDescriptorPool()
         {
             var _poolSizes = new DescriptorPoolSize[]
             {
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.UniformBuffer,
-                    DescriptorCount = (uint)(_swapchain._swapchainImages.Length * _entitiesToRender.Count) +1
+                    DescriptorCount = (uint)(_swapimageCount * _entitiesToRender.Count) +1
                 },
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.StorageBuffer,
-                    DescriptorCount = (uint)(_swapchain._swapchainImages.Length * _entitiesToRender.Count * 2) + 1
+                    DescriptorCount = (uint)(_swapimageCount * _entitiesToRender.Count * 2) + 1
                 },
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.CombinedImageSampler,
-                    DescriptorCount = (uint)(_swapchain._swapchainImages.Length * _entitiesToRender.Count * 2) + 1
+                    DescriptorCount = (uint)(_swapimageCount * _entitiesToRender.Count * 2) + 1
                 }
             };
 
@@ -458,7 +426,7 @@ namespace ArctisAurora.EngineWork.Renderer
                     SType = StructureType.DescriptorPoolCreateInfo,
                     PoolSizeCount = (uint)_poolSizes.Length,
                     PPoolSizes = _poolSizesPtr,
-                    MaxSets = (uint)(_swapchain._swapchainImages.Length * _entitiesToRender.Count * 5 + 1),
+                    MaxSets = (uint)(_swapimageCount * _entitiesToRender.Count * 5 + 1),
                     Flags = DescriptorPoolCreateFlags.FreeDescriptorSetBit
                 };
                 if (_vulkan.CreateDescriptorPool(_logicalDevice, _poolInfo, null, _descPoolPtr) != Result.Success)

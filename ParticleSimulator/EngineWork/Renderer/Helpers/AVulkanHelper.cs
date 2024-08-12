@@ -1,6 +1,6 @@
 ﻿using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
-
+using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Renderer.Helpers
 {
@@ -168,6 +168,22 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
                 i++;
             }
             return int.MaxValue;
+        }
+
+        internal static ulong GetBufferAdress(ref Buffer _b)
+        {
+            BufferDeviceAddressInfo _addressInfo = new BufferDeviceAddressInfo()
+            {
+                SType = StructureType.BufferDeviceAddressInfo,
+                Buffer = _b,
+            };
+            return VulkanRenderer._vulkan.GetBufferDeviceAddress(VulkanRenderer._logicalDevice, _addressInfo);
+        }
+
+        internal static uint AlignedSize(uint _value, uint _alignment)
+        {
+            uint a = (_value + _alignment - 1) & ~(_alignment - 1);
+            return a;
         }
     }
 }

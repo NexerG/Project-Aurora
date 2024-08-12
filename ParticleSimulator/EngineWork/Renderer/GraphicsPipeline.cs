@@ -135,7 +135,7 @@ namespace ArctisAurora.EngineWork.Renderer
                     PSetLayouts = _descriptorSetLayoutPtr
                 };
 
-                if (Rasterizer._vulkan.CreatePipelineLayout(Rasterizer._logicalDevice, _pipelineLayoutInfo, null, out _pipelineLayout) != Result.Success)
+                if (VulkanRenderer._vulkan.CreatePipelineLayout(VulkanRenderer._logicalDevice, _pipelineLayoutInfo, null, out _pipelineLayout) != Result.Success)
                 {
                     throw new Exception("Failed to create pipeline layout");
                 }
@@ -153,20 +153,20 @@ namespace ArctisAurora.EngineWork.Renderer
                     PDepthStencilState = &_depthCreateInfo,
                     PColorBlendState = &_colorBlending,
                     Layout = _pipelineLayout,
-                    RenderPass = Rasterizer._swapchain._renderPass,
+                    RenderPass = VulkanRenderer._swapchain._renderPass,
                     Subpass = 0,
                     BasePipelineHandle = default
                 };
 
-                Result r = Rasterizer._vulkan.CreateGraphicsPipelines(Rasterizer._logicalDevice, default, 1, _graphicsPipelineInfo, null, out _graphicsPipeline);
+                Result r = VulkanRenderer._vulkan.CreateGraphicsPipelines(VulkanRenderer._logicalDevice, default, 1, _graphicsPipelineInfo, null, out _graphicsPipeline);
                 if (r != Result.Success)
                 {
                     throw new Exception("Failed to create graphics pipeline " + r);
                 }
             }
 
-            Rasterizer._vulkan.DestroyShaderModule(Rasterizer._logicalDevice, _vertexShader, null);
-            Rasterizer._vulkan.DestroyShaderModule(Rasterizer._logicalDevice, _fragmentShader, null);
+            VulkanRenderer._vulkan.DestroyShaderModule(VulkanRenderer._logicalDevice, _vertexShader, null);
+            VulkanRenderer._vulkan.DestroyShaderModule(VulkanRenderer._logicalDevice, _fragmentShader, null);
             SilkMarshal.Free((nint)_vertexShaderStageInfo.PName);
             SilkMarshal.Free((nint)_fragmentShaderStageInfo.PName);
         }
@@ -288,7 +288,7 @@ namespace ArctisAurora.EngineWork.Renderer
                     PMultisampleState = &_multisampling,
                     PDepthStencilState = &_depthCreateInfo,
                     Layout = _shadowLayout,
-                    RenderPass = Rasterizer._swapchain._shadowmapRenderPass,
+                    RenderPass = VulkanRenderer._swapchain._shadowmapRenderPass,
                     Subpass = 0,
                     BasePipelineHandle = default
                 };
@@ -306,10 +306,26 @@ namespace ArctisAurora.EngineWork.Renderer
 
         internal void DestroyPipeline()
         {
-            VulkanRenderer._vulkan.DestroyPipeline(VulkanRenderer._logicalDevice, _graphicsPipeline, null);
-            VulkanRenderer._vulkan.DestroyPipelineLayout(VulkanRenderer._logicalDevice, _pipelineLayout, null);
-            VulkanRenderer._vulkan.DestroyPipeline(VulkanRenderer._logicalDevice, _shadowPipeline, null);
-            VulkanRenderer._vulkan.DestroyPipelineLayout(VulkanRenderer._logicalDevice, _shadowLayout, null);
+            switch (VulkanRenderer._rendererType)
+            {
+                case RendererTypes.Rasterizer:
+                    {
+                        VulkanRenderer._vulkan.DestroyPipeline(VulkanRenderer._logicalDevice, _graphicsPipeline, null);
+                        VulkanRenderer._vulkan.DestroyPipelineLayout(VulkanRenderer._logicalDevice, _pipelineLayout, null);
+                        VulkanRenderer._vulkan.DestroyPipeline(VulkanRenderer._logicalDevice, _shadowPipeline, null);
+                        VulkanRenderer._vulkan.DestroyPipelineLayout(VulkanRenderer._logicalDevice, _shadowLayout, null);
+                        break;
+                    }
+                case RendererTypes.Pathtracer:
+                    {
+                        break;
+                    }
+                case RendererTypes.RadianceCascades:
+                    {
+                        break;
+                    }
+                default: break;
+            }
         }
 
         private ShaderModule CreateShaderModule(byte[] _shaderCode)

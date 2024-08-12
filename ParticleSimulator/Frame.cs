@@ -117,7 +117,7 @@ namespace ArctisAurora
             if (engine == null)
             {
                 engine = new Engine();
-                engine.Init(this, true, 15);
+                engine.Init(this);
             }
         }
 

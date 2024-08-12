@@ -10,8 +10,9 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 {
     internal unsafe class MCRaster : MeshComponent
     {
+        //shadow map descriptor set
         internal DescriptorSet[] _descriptorSetsShadow;
-
+        //texture image
         internal Silk.NET.Vulkan.Image _textureImage;
         internal ImageView _textureImageView;
         internal DeviceMemory _textureBufferMemory;
@@ -45,7 +46,6 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             CreateDescriptorSet();
         }
 
-
         internal override void CreateDescriptorSet()
         {
             CreateRasterDescriptorSet();
@@ -62,7 +62,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
                 DescriptorSetAllocateInfo _allocateInfo = new DescriptorSetAllocateInfo()
                 {
                     SType = StructureType.DescriptorSetAllocateInfo,
-                    DescriptorPool = Rasterizer._descriptorPool,
+                    DescriptorPool = VulkanRenderer._descriptorPool,
                     DescriptorSetCount = (uint)VulkanRenderer._swapimageCount,
                     PSetLayouts = _layoutsPtr
                 };
@@ -98,7 +98,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
                 {
                     Buffer = Rasterizer._lightBuffer,
                     Offset = 0,
-                    Range = (ulong)(sizeof(LightData) * Rasterizer._lightsToRender.Count + sizeof(int))
+                    Range = (ulong)(sizeof(LightData) * VulkanRenderer._lightsToRender.Count + sizeof(int))
                 };
 
                 DescriptorImageInfo _imageInfo = new DescriptorImageInfo()
@@ -111,7 +111,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
                 DescriptorImageInfo _shadowmapInfo = new DescriptorImageInfo()
                 {
                     ImageLayout = ImageLayout.DepthStencilReadOnlyOptimal,
-                    ImageView = Rasterizer._lightsToRender[0].GetComponent<LightsourceComponent>()._depthImageView,
+                    ImageView = VulkanRenderer._lightsToRender[0].GetComponent<LightsourceComponent>()._depthImageView,
                     Sampler = Rasterizer._shadowmapSampler
                 };
 
@@ -256,7 +256,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
             VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPoolShadow, (uint)_descriptorSetsShadow.Length, _descriptorSetsShadow);
             CreateDescriptorSet();
-            ((IRecreateCommandBuffer)VulkanRenderer._rendererInstance).RecreateCommandBuffers();
+            VulkanRenderer._rendererInstance.RecreateCommandBuffers();
         }
 
         internal override void SingletonMatrix()

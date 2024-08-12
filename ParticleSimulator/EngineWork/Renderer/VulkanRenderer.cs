@@ -4,6 +4,8 @@ using Silk.NET.Vulkan.Extensions.EXT;
 using Silk.NET.Vulkan;
 using System.Runtime.InteropServices;
 using ArctisAurora.GameObject;
+using Semaphore = Silk.NET.Vulkan.Semaphore;
+using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 
 namespace ArctisAurora.EngineWork.Renderer
 {
@@ -42,11 +44,25 @@ namespace ArctisAurora.EngineWork.Renderer
         internal static Device _logicalDevice;
         internal static QueueFamilyProperties[] _qfm;               //api queue properties
         //
+        internal static GraphicsPipeline _pipeline;
+        internal static Swapchain _swapchain;
+        internal static DescriptorPool _descriptorPool;
+        internal static DescriptorSetLayout _descriptorSetLayout;
         internal static CommandPool _commandPool;
+        internal static CommandBuffer[] _commandBuffer;
+        //
+        internal static int MAX_FRAMES_IN_FLIGHT = 2;
+        internal static int _currentFrame = 0;
+        internal static Semaphore[] _imageAvailableSemaphores;
+        internal static Semaphore[] _renderFinishedSemaphores;
+        internal static Fence[] _fencesInFlight;
+        internal static Fence[] _imagesInFlight;
         //
         internal static Queue _graphicsQueue;                       //api queue
         internal static Queue _presentQueue;                        //fuck knows what this is (ill ask chatgpt later)
         //
+        internal static List<Entity> _entitiesToRender = new List<Entity>();
+        internal static List<Entity> _lightsToRender = new List<Entity>();
 
         internal void InitRenderer(RendererTypes _type)
         {
@@ -267,7 +283,14 @@ namespace ArctisAurora.EngineWork.Renderer
             Marshal.FreeHGlobal(ppEnabledExtensions);
         }
 
-        internal virtual void AddEntityToRenderQueue(Entity _m) { }
+        internal virtual void AddEntityToRenderQueue(Entity _m) 
+        {
+            _entitiesToRender.Add(_m);
+            for (int i = 0; i < _entitiesToRender.Count; i++)
+                _entitiesToRender[i].GetComponent<MeshComponent>().FreeDescriptorSets();
+            if (_descriptorPool.Handle != 0)
+                _vulkan.DestroyDescriptorPool(_logicalDevice, _descriptorPool, null);
+        }
 
         internal virtual void AddLightToRenderQueue(Entity _m) { }
 
@@ -284,6 +307,16 @@ namespace ArctisAurora.EngineWork.Renderer
                 throw new Exception("Failed to create command pool");
             }
         }
+
+        internal virtual void RecreateCommandBuffers()
+        {
+            fixed (CommandBuffer* CBPtr = _commandBuffer)
+            {
+                _vulkan.FreeCommandBuffers(_logicalDevice, _commandPool, (uint)_commandBuffer.Length, CBPtr);
+            }
+        }
+
+        internal virtual void CreateDescriptorPool() { }
 
         internal virtual void Draw() { }
     }

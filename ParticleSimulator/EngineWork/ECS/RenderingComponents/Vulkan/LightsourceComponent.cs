@@ -39,7 +39,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         public override void OnStart()
         {
             VulkanRenderer._rendererInstance.AddLightToRenderQueue(parent);
-            ((IRecreateCommandBuffer)VulkanRenderer._rendererInstance).RecreateCommandBuffers();
+            VulkanRenderer._rendererInstance.RecreateCommandBuffers();
         }
 
         internal void CreateShadowFramebuffer(Extent2D _resolution)

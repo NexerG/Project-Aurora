@@ -14,9 +14,9 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
     {
         public Matrix4X4<float> _view;
         public Matrix4X4<float> _projection;
-        public Matrix4X4<float> _lightProjection;
-        public Matrix4X4<float> _lightView;
-        public Vector3D<float> _camPos;
+        //public Matrix4X4<float> _lightProjection;
+        //public Matrix4X4<float> _lightView;
+        //public Vector3D<float> _camPos;
     }
 
     internal static unsafe class AVulkanBufferHandler
@@ -153,9 +153,9 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             {
                 _view = _camera._view,
                 _projection = _camera._projection,
-                _lightProjection = Rasterizer._lightsToRender[0].GetComponent<LightsourceComponent>()._lightProjection,
-                _lightView = Rasterizer._lightsToRender[0].GetComponent<LightsourceComponent>()._lightView,
-                _camPos = _camera._pos
+                //_lightProjection = Rasterizer._lightsToRender[0].GetComponent<LightsourceComponent>()._lightProjection,
+                //_lightView = Rasterizer._lightsToRender[0].GetComponent<LightsourceComponent>()._lightView,
+                //_camPos = _camera._pos
             };
 
             void* _data;
