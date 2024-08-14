@@ -48,6 +48,7 @@ namespace ArctisAurora.EngineWork
             //then we do meshes
             TestingEntity _te = new TestingEntity();
             _te.transform.SetWorldScale(new Vector3D<float>(50, 1, 50));
+            _te.transform.SetWorldPosition(new Vector3D<float>(0, -5, 0));
             //---------------------------------------------------------------------------
 
             //engine thread

@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+using ArctisAurora.EngineWork.Renderer;
 using ArctisAurora.ParticleTypes;
 using ArctisAurora.Simulators.Vulkan;
 using Silk.NET.Maths;
@@ -64,6 +65,7 @@ namespace ArctisAurora.CustomEntityComponents
 
                 _instanceMatrix[i] = transformation;
             }
+            VulkanRenderer._rendererInstance.AddEntityToUpdate(parent);
         }
 
         public override void OnStart()

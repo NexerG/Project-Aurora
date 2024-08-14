@@ -1,13 +1,10 @@
 ﻿using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.Renderer;
 using ArctisAurora.EngineWork.Renderer.Helpers;
-using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
 using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
-using System.Runtime.CompilerServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
-using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 
 namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 {
@@ -26,7 +23,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         internal Buffer _indexBuffer;
         internal DeviceMemory _indexBufferMemory;
 
-        internal Buffer _trasnformsBuffer;
+        internal Buffer _transformsBuffer;
         internal DeviceMemory _trasnformsBufferMemory;
 
         internal int _instances = 1;
@@ -74,7 +71,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
         internal virtual void CreateDescriptorSet() { }
 
-        internal void UpdateMatrices()
+        internal virtual void UpdateMatrices()
         {
             Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(30f * MathF.PI / 180f, 0, 0);
             Matrix4X4<float> _transform = Matrix4X4<float>.Identity;

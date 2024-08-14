@@ -89,7 +89,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 
                 DescriptorBufferInfo _bufferInfoMatrices = new DescriptorBufferInfo()
                 {
-                    Buffer = _trasnformsBuffer,
+                    Buffer = _transformsBuffer,
                     Offset = 0,
                     Range = Vk.WholeSize
                 };
@@ -211,7 +211,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 
                 DescriptorBufferInfo _bufferInfoMatrices = new DescriptorBufferInfo()
                 {
-                    Buffer = _trasnformsBuffer,
+                    Buffer = _transformsBuffer,
                     Offset = 0,
                     Range = Vk.WholeSize
                 };
@@ -252,7 +252,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             _instances = _matrices.Count;
             _transformMatrices = _matrices;
 
-            AVulkanBufferHandler.CreateTransformBuffer(ref _transformMatrices, ref _trasnformsBuffer, ref _trasnformsBufferMemory, _aditionalUsageFlags);
+            AVulkanBufferHandler.CreateTransformBuffer(ref _transformMatrices, ref _transformsBuffer, ref _trasnformsBufferMemory, _aditionalUsageFlags);
             VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
             VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPoolShadow, (uint)_descriptorSetsShadow.Length, _descriptorSetsShadow);
             CreateDescriptorSet();
@@ -262,7 +262,12 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
         internal override void SingletonMatrix()
         {
             base.SingletonMatrix();
-            AVulkanBufferHandler.CreateTransformBuffer(ref _transformMatrices, ref _trasnformsBuffer, ref _trasnformsBufferMemory, _aditionalUsageFlags);
+            AVulkanBufferHandler.CreateTransformBuffer(ref _transformMatrices, ref _transformsBuffer, ref _trasnformsBufferMemory, _aditionalUsageFlags);
+        }
+
+        internal override void UpdateMatrices()
+        {
+            base.UpdateMatrices();
         }
 
         internal override void EnqueueDrawCommands(ulong[] _offset, int _loopIndex, ref CommandBuffer _commandBuffer)

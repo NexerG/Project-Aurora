@@ -1,4 +1,5 @@
-﻿using Silk.NET.Maths;
+﻿using ArctisAurora.EngineWork.Renderer;
+using Silk.NET.Maths;
 
 namespace ArctisAurora.GameObject
 {
@@ -8,6 +9,7 @@ namespace ArctisAurora.GameObject
         internal Vector3D<float> rotation = new Vector3D<float>(0, 0, 0);
         internal Vector3D<float> scale = new Vector3D<float>(1, 1, 1);
         internal Entity parent;
+        internal bool _changed = false;
 
         internal Transform(Entity e)
         {
@@ -17,6 +19,7 @@ namespace ArctisAurora.GameObject
         internal void SetRotationFromQuaternion(Quaternion<float> q)
         {
             //Vector3.
+            VulkanRenderer._rendererInstance.AddEntityToUpdate(parent);
         }
 
         internal Quaternion<float> GetQuaternion()
@@ -41,11 +44,14 @@ namespace ArctisAurora.GameObject
         internal void SetWorldPosition(Vector3D<float> newPos)
         {
             position = newPos;
+            _changed = true;
+            VulkanRenderer._rendererInstance.AddEntityToUpdate(parent);
         }
 
         internal void SetLocalPosition(Vector3D<float> newPos)
         {
-
+            _changed = true;
+            VulkanRenderer._rendererInstance.AddEntityToUpdate(parent);
         }
 
         internal Vector3D<float> GetEntityPosition()
@@ -61,11 +67,15 @@ namespace ArctisAurora.GameObject
         internal void SetLocalScale(Vector3D<float> s)
         {
             scale = s;
+            _changed = true;
+            VulkanRenderer._rendererInstance.AddEntityToUpdate(parent);
         }
 
         internal void SetWorldScale(Vector3D<float> s)
         {
             scale = s;
+            _changed = true;
+            VulkanRenderer._rendererInstance.AddEntityToUpdate(parent);
         }
 
         private float DegreesToRadians(float degrees)

@@ -2,10 +2,9 @@
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.GameObject;
 using Silk.NET.Maths;
-using Buffer = Silk.NET.Vulkan.Buffer;
-using Semaphore = Silk.NET.Vulkan.Semaphore;
 using ArctisAurora.EngineWork.Renderer.Helpers;
 using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
+using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Renderer
 {
@@ -48,8 +47,7 @@ namespace ArctisAurora.EngineWork.Renderer
             _camera = new AuroraCamera();
 
             //initiate the draw command pipeline
-            CreateDescriptorSetLayout();                    //
-            CreateShadowDescriptorSetLayout();              //
+            CreateRasterizerDescritorSetLayouts();
             CreateGraphicsPipeline();                       //graphics pipeline
             CreateFrameBuffers();                           //frame buffers
             CreateCommandPool();                            //
@@ -177,25 +175,9 @@ namespace ArctisAurora.EngineWork.Renderer
             CreateCommandBuffers();
         }
 
-        private void CreateCommandBuffers()
+        internal override void CreateCommandBuffers()
         {
-            _commandBuffer = new CommandBuffer[_framebuffer.Length];
-
-            CommandBufferAllocateInfo _allocInfo = new CommandBufferAllocateInfo()
-            {
-                SType = StructureType.CommandBufferAllocateInfo,
-                CommandPool = _commandPool,
-                Level = CommandBufferLevel.Primary,
-                CommandBufferCount = (uint)_commandBuffer.Length
-            };
-            fixed (CommandBuffer* _commandBufferPtr = _commandBuffer)
-            {
-                Result r = _vulkan.AllocateCommandBuffers(_logicalDevice, _allocInfo, _commandBufferPtr);
-                if (r != Result.Success)
-                {
-                    throw new Exception("Failed to allocate command buffer with error " + r);
-                }
-            }
+            base.CreateCommandBuffers();
             for (int i = 0; i < _commandBuffer.Length; i++)
             {
                 CommandBufferBeginInfo _beginInfo = new CommandBufferBeginInfo()
@@ -297,104 +279,14 @@ namespace ArctisAurora.EngineWork.Renderer
             }
         }
 
-        private void CreateDescriptorSetLayout()
+        private void CreateRasterizerDescritorSetLayouts()
         {
-            DescriptorSetLayoutBinding _uboLayoutBinding = new DescriptorSetLayoutBinding()
-            {
-                Binding = 0,
-                DescriptorCount = 1,
-                DescriptorType = DescriptorType.UniformBuffer,
-                PImmutableSamplers = null,
-                StageFlags = ShaderStageFlags.VertexBit
-            };
-
-            DescriptorSetLayoutBinding _matrixLayoutBinding = new DescriptorSetLayoutBinding()
-            {
-                Binding = 1,
-                DescriptorCount = 1,
-                DescriptorType = DescriptorType.StorageBuffer,
-                PImmutableSamplers = null,
-                StageFlags = ShaderStageFlags.VertexBit
-            };
-
-            DescriptorSetLayoutBinding _lightLayoutBinding = new DescriptorSetLayoutBinding()
-            {
-                Binding = 2,
-                DescriptorCount = 1,
-                DescriptorType = DescriptorType.StorageBuffer,
-                PImmutableSamplers = null,
-                StageFlags = ShaderStageFlags.FragmentBit
-            };
-
-            DescriptorSetLayoutBinding _samplerLayoutBinding = new DescriptorSetLayoutBinding()
-            {
-                Binding = 3,
-                DescriptorCount = 1,
-                DescriptorType = DescriptorType.CombinedImageSampler,
-                PImmutableSamplers = null,
-                StageFlags = ShaderStageFlags.FragmentBit
-            };
-            DescriptorSetLayoutBinding _shadowSamplerLayoutBinding = new DescriptorSetLayoutBinding()
-            {
-                Binding = 4,
-                DescriptorCount = 1,
-                DescriptorType = DescriptorType.CombinedImageSampler,
-                PImmutableSamplers = null,
-                StageFlags = ShaderStageFlags.FragmentBit
-            };
-
-            var _bindings = new DescriptorSetLayoutBinding[] { _uboLayoutBinding, _matrixLayoutBinding, _lightLayoutBinding, _samplerLayoutBinding, _shadowSamplerLayoutBinding };
-            fixed (DescriptorSetLayoutBinding* _bindingsPtr = _bindings)
-            fixed (DescriptorSetLayout* _descSetLayoutPtr = &_descriptorSetLayout)
-            {
-                DescriptorSetLayoutCreateInfo _layoutCreateInfo = new DescriptorSetLayoutCreateInfo()
-                {
-                    SType = StructureType.DescriptorSetLayoutCreateInfo,
-                    BindingCount = (uint)_bindings.Length,
-                    PBindings = _bindingsPtr,
-                };
-                if (_vulkan.CreateDescriptorSetLayout(_logicalDevice, _layoutCreateInfo, null, _descSetLayoutPtr) != Result.Success)
-                {
-                    throw new Exception("Failed to create descriptor set layout");
-                }
-            }
-        }
-
-        private void CreateShadowDescriptorSetLayout()
-        {
-            DescriptorSetLayoutBinding _uboLayoutBinding = new DescriptorSetLayoutBinding()
-            {
-                Binding = 0,
-                DescriptorCount = 1,
-                DescriptorType = DescriptorType.StorageBuffer,
-                PImmutableSamplers = null,
-                StageFlags = ShaderStageFlags.VertexBit
-            };
-
-            DescriptorSetLayoutBinding _matrixLayoutBinding = new DescriptorSetLayoutBinding()
-            {
-                Binding = 1,
-                DescriptorCount = 1,
-                DescriptorType = DescriptorType.StorageBuffer,
-                PImmutableSamplers = null,
-                StageFlags = ShaderStageFlags.VertexBit
-            };
-
-            var _bindings = new DescriptorSetLayoutBinding[] { _uboLayoutBinding, _matrixLayoutBinding };
-            fixed (DescriptorSetLayoutBinding* _bindingsPtr = _bindings)
-            fixed (DescriptorSetLayout* _descSetLayoutPtr = &_descriptorSetLayoutShadow)
-            {
-                DescriptorSetLayoutCreateInfo _layoutCreateInfo = new DescriptorSetLayoutCreateInfo()
-                {
-                    SType = StructureType.DescriptorSetLayoutCreateInfo,
-                    BindingCount = (uint)_bindings.Length,
-                    PBindings = _bindingsPtr,
-                };
-                if (_vulkan.CreateDescriptorSetLayout(_logicalDevice, _layoutCreateInfo, null, _descSetLayoutPtr) != Result.Success)
-                {
-                    throw new Exception("Failed to create descriptor set layout");
-                }
-            }
+            List<DescriptorType> _types1 = new List<DescriptorType> { DescriptorType.UniformBuffer, DescriptorType.StorageBuffer, DescriptorType.StorageBuffer, DescriptorType.CombinedImageSampler, DescriptorType.CombinedImageSampler };
+            List<ShaderStageFlags> _flags1 = new List<ShaderStageFlags> { ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit, ShaderStageFlags.FragmentBit, ShaderStageFlags.FragmentBit, ShaderStageFlags.FragmentBit, };
+            CreateDescriptorSetLayout(_types1.Count, _types1, _flags1, ref _descriptorSetLayout);
+            List<DescriptorType> _types2 = new List<DescriptorType> { DescriptorType.StorageBuffer, DescriptorType.StorageBuffer };
+            List<ShaderStageFlags> _flags2 = new List<ShaderStageFlags> { ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit };
+            CreateDescriptorSetLayout(_types2.Count, _types2, _flags2, ref _descriptorSetLayoutShadow);
         }
 
         internal override void CreateDescriptorPool()
@@ -553,10 +445,14 @@ namespace ArctisAurora.EngineWork.Renderer
             {
                 e.GetComponent<LightsourceComponent>().UpdateVPMatrices(_imageIndex);
             }
-            foreach (Entity e in _entitiesToRender)
+
+            int localEntityCount = 0;
+            foreach (Entity e in _updateEntities)
             {
                 e.GetComponent<MeshComponent>().UpdateMatrices();
+                localEntityCount++;
             }
+            _updateEntities.RemoveRange(0, localEntityCount);
             //uniforms done
             if (_imagesInFlight[_imageIndex].Handle != default)
             {
@@ -629,35 +525,6 @@ namespace ArctisAurora.EngineWork.Renderer
             }
 
             _currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-        }
-
-        private void CreateSyncObjects()
-        {
-            _imageAvailableSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
-            _renderFinishedSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
-            _fencesInFlight = new Fence[MAX_FRAMES_IN_FLIGHT];
-            _imagesInFlight = new Fence[_swapchain._swapchainImages.Length];
-
-            SemaphoreCreateInfo _semaphoreCreateInfo = new SemaphoreCreateInfo()
-            {
-                SType = StructureType.SemaphoreCreateInfo
-            };
-
-            FenceCreateInfo _fenceCreateInfo = new FenceCreateInfo()
-            {
-                SType = StructureType.FenceCreateInfo,
-                Flags = FenceCreateFlags.SignaledBit
-            };
-
-            for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-            {
-                if (_vulkan.CreateSemaphore(_logicalDevice, _semaphoreCreateInfo, null, out _imageAvailableSemaphores[i]) != Result.Success ||
-                    _vulkan.CreateSemaphore(_logicalDevice, _semaphoreCreateInfo, null, out _renderFinishedSemaphores[i]) != Result.Success ||
-                    _vulkan.CreateFence(_logicalDevice, _fenceCreateInfo, null, out _fencesInFlight[i]) != Result.Success)
-                {
-                    throw new Exception("Failed to create synch objects for a frame at index " + i);
-                }
-            }
         }
 
         private void CleanUpSwapChain()

@@ -1,14 +1,13 @@
 ﻿using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
+using Silk.NET.Core.Native;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Renderer.Helpers;
-using Silk.NET.Core.Native;
+using ArctisAurora.GameObject;
 using System.Runtime.InteropServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using Image = Silk.NET.Vulkan.Image;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
-using Semaphore = Silk.NET.Vulkan.Semaphore;
-using ArctisAurora.GameObject;
 
 namespace ArctisAurora.EngineWork.Renderer
 {
@@ -67,6 +66,7 @@ namespace ArctisAurora.EngineWork.Renderer
             CreateCommandPool();
             CreateStorageImage();
             CreateDescriptorPool();
+            CreatePathtracingDescriptorSetLayout();
             CreateRaytracingPipeline();
             CreateShaderBindingTable();
 
@@ -167,60 +167,30 @@ namespace ArctisAurora.EngineWork.Renderer
             }
         }
 
+        private void CreatePathtracingDescriptorSetLayout()
+        {
+            List<DescriptorType> _types1 = new List<DescriptorType> { DescriptorType.AccelerationStructureKhr, DescriptorType.StorageImage, DescriptorType.UniformBuffer };
+            List<ShaderStageFlags> _flags1 = new List<ShaderStageFlags> { ShaderStageFlags.RaygenBitKhr, ShaderStageFlags.RaygenBitKhr, ShaderStageFlags.RaygenBitKhr };
+            CreateDescriptorSetLayout(_types1.Count, _types1, _flags1, ref _descriptorSetLayout);
+        }
+
         private void CreateRaytracingPipeline()
         {
-            DescriptorSetLayoutBinding _asLayoutBinding = new DescriptorSetLayoutBinding()
+            fixed (DescriptorSetLayout* _setPtr = &_descriptorSetLayout)
             {
-                Binding = 0,
-                DescriptorType = DescriptorType.AccelerationStructureKhr,
-                DescriptorCount = 1,
-                StageFlags = ShaderStageFlags.RaygenBitKhr
-            };
-
-            DescriptorSetLayoutBinding _resultImageLayoutBinding = new()
-            {
-                Binding = 1,
-                DescriptorType = DescriptorType.StorageImage,
-                DescriptorCount = 1,
-                StageFlags = ShaderStageFlags.RaygenBitKhr
-            };
-
-            DescriptorSetLayoutBinding _uniformBufferBinding = new DescriptorSetLayoutBinding()
-            {
-                Binding = 2,
-                DescriptorType = DescriptorType.UniformBuffer,
-                DescriptorCount = 1,
-                StageFlags = ShaderStageFlags.RaygenBitKhr
-            };
-
-            var _bindings = new DescriptorSetLayoutBinding[] { _asLayoutBinding, _resultImageLayoutBinding, _uniformBufferBinding};
-
-            fixed(DescriptorSetLayoutBinding* _bPtr = _bindings)
-            fixed(DescriptorSetLayout* _setPtr = &_descriptorSetLayout)
-            {
-                DescriptorSetLayoutCreateInfo _layoutCreateInfo = new DescriptorSetLayoutCreateInfo()
-                {
-                    SType = StructureType.DescriptorSetLayoutCreateInfo,
-                    BindingCount = (uint)_bindings.Length,
-                    PBindings = _bPtr
-                };
-                if (_vulkan.CreateDescriptorSetLayout(_logicalDevice, _layoutCreateInfo, null, _setPtr) != Result.Success)
-                {
-                    throw new Exception("Failed to create descriptor set layout");
-                }
                 PipelineLayoutCreateInfo _pipelineLayoutCreateInfo = new()
                 {
                     SType = StructureType.PipelineLayoutCreateInfo,
                     SetLayoutCount = 1,
                     PSetLayouts = _setPtr
                 };
-                fixed(PipelineLayout* _pipePtr = &_pipelineLayout)
+                fixed (PipelineLayout* _pipePtr = &_pipelineLayout)
                     if (_vulkan.CreatePipelineLayout(_logicalDevice, _pipelineLayoutCreateInfo, null, _pipePtr) != Result.Success)
                     {
                         throw new Exception("Failed to create pipeline layout");
                     }
             }
-
+            
             byte[] _rayGenCode = ReadFile("../../../Shaders/raygen.rgen.spv");
             byte[] _missCode = ReadFile("../../../Shaders/miss.rmiss.spv");
             byte[] _hitCode = ReadFile("../../../Shaders/closesthit.rchit.spv");
@@ -378,26 +348,9 @@ namespace ArctisAurora.EngineWork.Renderer
             }
         }
 
-        private void CreateCommandBuffers()
+        internal override void CreateCommandBuffers()
         {
-            _commandBuffer = new CommandBuffer[_swapimageCount];
-
-            CommandBufferAllocateInfo _allocInfo = new CommandBufferAllocateInfo()
-            {
-                SType = StructureType.CommandBufferAllocateInfo,
-                CommandPool = _commandPool,
-                Level = CommandBufferLevel.Primary,
-                CommandBufferCount = (uint)_commandBuffer.Length
-            };
-            fixed (CommandBuffer* _commandBufferPtr = _commandBuffer)
-            {
-                Result r = _vulkan.AllocateCommandBuffers(_logicalDevice, _allocInfo, _commandBufferPtr);
-                if (r != Result.Success)
-                {
-                    throw new Exception("Failed to allocate command buffer with error " + r);
-                }
-            }
-
+            base.CreateCommandBuffers();
             ImageSubresourceRange _sr = new()
             {
                 AspectMask = ImageAspectFlags.ColorBit,
@@ -517,6 +470,13 @@ namespace ArctisAurora.EngineWork.Renderer
 
             _camera.UpdateCameraMatrix(_extent, _imageIndex);
             //cia turetu buti kitu buffer updates
+            int localEntityCount = 0;
+            foreach (Entity e in _updateEntities)
+            {
+                e.GetComponent<MeshComponent>().UpdateMatrices();
+                localEntityCount++;
+            }
+            _updateEntities.RemoveRange(0, localEntityCount);
             //-----------------------------------
             if (_imagesInFlight[_imageIndex].Handle != default)
             {
@@ -644,35 +604,6 @@ namespace ArctisAurora.EngineWork.Renderer
             _vulkan!.CmdPipelineBarrier(_cBuffer, sourceStage, destinationStage, 0, 0, null, 0, null, 1, &_barrier);
         }
 
-        private void CreateSyncObjects()
-        {
-            _imageAvailableSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
-            _renderFinishedSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
-            _fencesInFlight = new Fence[MAX_FRAMES_IN_FLIGHT];
-            _imagesInFlight = new Fence[_swapchain._swapchainImages.Length];
-
-            SemaphoreCreateInfo _semaphoreCreateInfo = new SemaphoreCreateInfo()
-            {
-                SType = StructureType.SemaphoreCreateInfo
-            };
-
-            FenceCreateInfo _fenceCreateInfo = new FenceCreateInfo()
-            {
-                SType = StructureType.FenceCreateInfo,
-                Flags = FenceCreateFlags.SignaledBit
-            };
-
-            for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-            {
-                if (_vulkan.CreateSemaphore(_logicalDevice, _semaphoreCreateInfo, null, out _imageAvailableSemaphores[i]) != Result.Success ||
-                    _vulkan.CreateSemaphore(_logicalDevice, _semaphoreCreateInfo, null, out _renderFinishedSemaphores[i]) != Result.Success ||
-                    _vulkan.CreateFence(_logicalDevice, _fenceCreateInfo, null, out _fencesInFlight[i]) != Result.Success)
-                {
-                    throw new Exception("Failed to create synch objects for a frame at index " + i);
-                }
-            }
-        }
-
         private ShaderModule CreateShaderModule(byte[] _shaderCode)
         {
             ShaderModuleCreateInfo _createInfo = new ShaderModuleCreateInfo
@@ -685,7 +616,7 @@ namespace ArctisAurora.EngineWork.Renderer
             fixed (byte* _shaderCodePtr = _shaderCode)
             {
                 _createInfo.PCode = (uint*)_shaderCodePtr;
-                if (Rasterizer._vulkan.CreateShaderModule(Rasterizer._logicalDevice, _createInfo, null, out _shaderModule) != Result.Success)
+                if (_vulkan.CreateShaderModule(_logicalDevice, _createInfo, null, out _shaderModule) != Result.Success)
                 {
                     throw new Exception("Failed to create shader module");
                 }
