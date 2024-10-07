@@ -16,7 +16,6 @@ namespace ArctisAurora
 
         private void TestButton_Click(object sender, EventArgs e)
         {
-
         }
 
         private void TB_SmoothingRadius_Validated(object sender, EventArgs e)
@@ -37,12 +36,15 @@ namespace ArctisAurora
 
         private void TB_GravStr_Validated(object sender, EventArgs e)
         {
+
         }
 
         private void Frame_Load(object sender, EventArgs e)
         {
             //GLControl.Paint += GLControl_Paint;
             //GLControl.Resize += GLControl_Resize;
+            engine = new Engine();
+            engine.Init(this);
         }
         public void GLControl_Resize(object? sender, EventArgs e)
         {
@@ -116,8 +118,6 @@ namespace ArctisAurora
         {
             if (engine == null)
             {
-                engine = new Engine();
-                engine.Init(this);
             }
         }
 
@@ -129,6 +129,18 @@ namespace ArctisAurora
         private void TB_ParticleAmount_Validating(object sender, EventArgs e)
         {
             parts = int.Parse(TB_ParticleAmount.Text);
+        }
+
+        private void InitializeComponent()
+        {
+            SuspendLayout();
+            // 
+            // Frame
+            // 
+            ClientSize = new Size(284, 261);
+            Name = "Frame";
+            Load += Frame_Load;
+            ResumeLayout(false);
         }
     }
 }

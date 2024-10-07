@@ -4,7 +4,7 @@ using ArctisAurora.GameObject;
 
 namespace ArctisAurora.CustomEntities
 {
-    internal class TestingEntity : Entity
+    public class TestingEntity : Entity
     {
         public TestingEntity() 
         {

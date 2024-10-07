@@ -5,11 +5,11 @@ using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
 
 namespace ArctisAurora.GameObject
 {
-    internal class Entity
+    public class Entity
     {
         //variables
         bool enabled = true;
-        internal Transform transform;
+        public Transform transform;
         internal string name = "entity";
 
         internal List<EntityComponent> _components = new List<EntityComponent>();

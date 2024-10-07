@@ -15,6 +15,8 @@ namespace ArctisAurora.EngineWork
         internal List<Entity> _entities = new List<Entity>();
         internal List<TestingEntity> _bandymas = new List<TestingEntity>();
 
+        public int bbz;
+
         public Engine()
         {
             _engineInstance = this;
@@ -26,7 +28,7 @@ namespace ArctisAurora.EngineWork
             SC = s;
 
             _renderer = new VulkanRenderer();
-            _renderer.InitRenderer(RendererTypes.Pathtracer);
+            _renderer.InitRenderer(RendererTypes.Rasterizer);
 
             ////mesh importer
             MeshImporter importer = new MeshImporter();
@@ -38,17 +40,17 @@ namespace ArctisAurora.EngineWork
             //---------------------------------------------------------------------------
             //Game logic
             //first we setup lights
-            //LightSourceEntity _ls = new LightSourceEntity();
-            //_ls.transform.SetWorldPosition(new Vector3D<float>(1, 10 ,1));
+            LightSourceEntity _ls = new LightSourceEntity();
+            _ls.transform.SetWorldPosition(new Vector3D<float>(1, 10 ,1));
             //
             /*SimulatorEntity _e = new SimulatorEntity();
             _e.GetComponent<SPHSimComponent>().simSetup(15);
             _entities.Add(_e);*/
 
             //then we do meshes
-            TestingEntity _te = new TestingEntity();
+            /*TestingEntity _te = new TestingEntity();
             _te.transform.SetWorldScale(new Vector3D<float>(50, 1, 50));
-            _te.transform.SetWorldPosition(new Vector3D<float>(0, -5, 0));
+            _te.transform.SetWorldPosition(new Vector3D<float>(0, -5, 0));*/
             //---------------------------------------------------------------------------
 
             //engine thread

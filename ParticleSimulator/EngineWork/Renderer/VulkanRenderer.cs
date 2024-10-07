@@ -295,7 +295,8 @@ namespace ArctisAurora.EngineWork.Renderer
 
         internal virtual void AddEntityToUpdate(Entity _m)
         {
-            _updateEntities.Add(_m);
+            if (_m.GetComponent<MeshComponent>()!=null)
+                _updateEntities.Add(_m);
         }
 
         internal virtual void AddLightToRenderQueue(Entity _m) { }

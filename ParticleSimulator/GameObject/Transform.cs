@@ -3,11 +3,11 @@ using Silk.NET.Maths;
 
 namespace ArctisAurora.GameObject
 {
-    internal class Transform
+    public class Transform
     {
-        internal Vector3D<float> position = new Vector3D<float>(0, 0, 0);
-        internal Vector3D<float> rotation = new Vector3D<float>(0, 0, 0);
-        internal Vector3D<float> scale = new Vector3D<float>(1, 1, 1);
+        public Vector3D<float> position = new Vector3D<float>(0, 0, 0);
+        public Vector3D<float> rotation = new Vector3D<float>(0, 0, 0);
+        public Vector3D<float> scale = new Vector3D<float>(1, 1, 1);
         internal Entity parent;
         internal bool _changed = false;
 
@@ -16,13 +16,13 @@ namespace ArctisAurora.GameObject
             parent = e;
         }
 
-        internal void SetRotationFromQuaternion(Quaternion<float> q)
+        public void SetRotationFromQuaternion(Quaternion<float> q)
         {
             //Vector3.
             VulkanRenderer._rendererInstance.AddEntityToUpdate(parent);
         }
 
-        internal Quaternion<float> GetQuaternion()
+        public Quaternion<float> GetQuaternion()
         {
             float eulerRadiansX = DegreesToRadians(rotation.X);
             float eulerRadiansY = DegreesToRadians(rotation.Y);
@@ -31,47 +31,47 @@ namespace ArctisAurora.GameObject
             Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(eulerRadiansX, eulerRadiansY, eulerRadiansZ);
             return q;
         }
-        internal Vector3D<float> GetEntityRotation()
+        public Vector3D<float> GetEntityRotation()
         {
             return rotation;
         }
 
-        internal Vector3D<float> CalculateRotationFromQuaternion()
+        public Vector3D<float> CalculateRotationFromQuaternion()
         {
             return rotation;
         }
 
-        internal void SetWorldPosition(Vector3D<float> newPos)
+        public void SetWorldPosition(Vector3D<float> newPos)
         {
             position = newPos;
             _changed = true;
             VulkanRenderer._rendererInstance.AddEntityToUpdate(parent);
         }
 
-        internal void SetLocalPosition(Vector3D<float> newPos)
+        public void SetLocalPosition(Vector3D<float> newPos)
         {
             _changed = true;
             VulkanRenderer._rendererInstance.AddEntityToUpdate(parent);
         }
 
-        internal Vector3D<float> GetEntityPosition()
+        public Vector3D<float> GetEntityPosition()
         {
             return position;
         }
 
-        internal Vector3D<float> GetScale()
+        public Vector3D<float> GetScale()
         {
             return scale;
         }
 
-        internal void SetLocalScale(Vector3D<float> s)
+        public void SetLocalScale(Vector3D<float> s)
         {
             scale = s;
             _changed = true;
             VulkanRenderer._rendererInstance.AddEntityToUpdate(parent);
         }
 
-        internal void SetWorldScale(Vector3D<float> s)
+        public void SetWorldScale(Vector3D<float> s)
         {
             scale = s;
             _changed = true;
