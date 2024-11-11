@@ -10,10 +10,10 @@ namespace ArctisAurora.GameObject
         //variables
         bool enabled = true;
         public Transform transform;
-        internal string name = "entity";
+        public string name = "entity";
 
-        internal List<EntityComponent> _components = new List<EntityComponent>();
-        internal List<Entity> _children = new List<Entity>();
+        public List<EntityComponent> _components = new List<EntityComponent>();
+        public List<Entity> _children = new List<Entity>();
 
         public Entity()
         {
@@ -78,7 +78,7 @@ namespace ArctisAurora.GameObject
             }
         }
 
-        internal EntComp CreateComponent<EntComp>() where EntComp : EntityComponent, new()
+        public EntComp CreateComponent<EntComp>() where EntComp : EntityComponent, new()
         {
             EntComp component = typeof(EntComp).Name == typeof(MeshComponent).Name ?
                 (VulkanRenderer._rendererType == RendererTypes.Pathtracer
@@ -95,7 +95,7 @@ namespace ArctisAurora.GameObject
             }*/
             if (!_components.Contains(component))
             {
-                _components.Add(component);
+                //_components.Add(component);
                 component.parent = this;
                 component.OnStart();
                 return component;
@@ -103,7 +103,7 @@ namespace ArctisAurora.GameObject
             else return null;
         }
 
-        internal EntComp GetComponent<EntComp>() where EntComp : EntityComponent
+        public EntComp GetComponent<EntComp>() where EntComp : EntityComponent
         {
             foreach(EntityComponent comp in _components)
             {
@@ -113,14 +113,14 @@ namespace ArctisAurora.GameObject
             return null;
         }
 
-        internal Ent CreateChildEntity<Ent>() where Ent : Entity, new()
+        public Ent CreateChildEntity<Ent>() where Ent : Entity, new()
         {
             Ent entity = new Ent();
             _children.Add(entity);
             return entity;
         }
 
-        internal Entity GetChildEntityByName(string querryName)
+        public Entity GetChildEntityByName(string querryName)
         {
             foreach(Entity ent in _children)
             {
@@ -132,7 +132,7 @@ namespace ArctisAurora.GameObject
             return null;
         }
 
-        internal List<Entity> GetAllChildrenEntitiesByName(string querryName)
+        public List<Entity> GetAllChildrenEntitiesByName(string querryName)
         {
             List<Entity> _childrenByName = new List<Entity>();
             foreach(Entity ent in _children)
@@ -145,11 +145,12 @@ namespace ArctisAurora.GameObject
             return _childrenByName;
         }
 
-        internal List<Entity> GetAllChildrenEntities()
+        public List<Entity> GetAllChildrenEntities()
         {
             return _children;
         }
-        internal EntComp RemoveComponent<EntComp>() where EntComp : EntityComponent
+
+        public EntComp RemoveComponent<EntComp>() where EntComp : EntityComponent
         {
             foreach (EntityComponent ec in _components)
             {

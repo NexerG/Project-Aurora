@@ -59,7 +59,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                     Height = _resolution.Height,
                     Layers = 1
                 };
-                if (Rasterizer._vulkan.CreateFramebuffer(Rasterizer._logicalDevice, _framebufferInfo, null, out _shadowFramebuffer) != Result.Success)
+                if (Rasterizer._vulkan.CreateFramebuffer(Rasterizer._logicalDevice, ref _framebufferInfo, null, out _shadowFramebuffer) != Result.Success)
                 {
                     throw new Exception("Failed to create frame buffer");
                 }
@@ -92,7 +92,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             _createInfo.SubresourceRange.BaseArrayLayer = 0;
             _createInfo.SubresourceRange.LayerCount = 1;
 
-            if (Rasterizer._vulkan!.CreateImageView(Rasterizer._logicalDevice, _createInfo, null, out _depthImageView) != Result.Success)
+            if (Rasterizer._vulkan!.CreateImageView(Rasterizer._logicalDevice, ref _createInfo, null, out _depthImageView) != Result.Success)
             {
                 throw new Exception("failed to create image views!");
             }

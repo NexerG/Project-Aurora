@@ -298,7 +298,7 @@ namespace ArctisAurora.Simulators.Vulkan
                         if (index == particleIndex) continue;
                         Vector3D<float> offset = parts[particleIndex].PredPoint - parts[index].PredPoint;
                         float dist = offset.Length;
-                        Vector3D<float> dir = dist == 0 ? GetRandomDir() : offset / dist;
+                        Vector3D<float> dir = dist == 0.0001 ? GetRandomDir() : offset / dist;
 
                         float slope = SmoothingKernelDerivative(dist);
                         float density = densities[particleIndex];

@@ -7,7 +7,7 @@ namespace ArctisAurora.EngineWork
 {
     public class Engine
     {
-        internal Engine _engineInstance = null;
+        internal static Engine _engineInstance = null;
         public bool Running { get; private set; }
         internal Frame SC;
         //internal Rasterization renderer3D;
@@ -33,7 +33,7 @@ namespace ArctisAurora.EngineWork
             ////mesh importer
             MeshImporter importer = new MeshImporter();
             //Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\plane.fbx");
-
+            
             Running = true;
             SC = s;
 
@@ -48,23 +48,24 @@ namespace ArctisAurora.EngineWork
             _entities.Add(_e);*/
 
             //then we do meshes
-            /*TestingEntity _te = new TestingEntity();
+            TestingEntity _te = new TestingEntity();
             _te.transform.SetWorldScale(new Vector3D<float>(50, 1, 50));
-            _te.transform.SetWorldPosition(new Vector3D<float>(0, -5, 0));*/
+            _te.transform.SetWorldPosition(new Vector3D<float>(0, -5, 0));
             //---------------------------------------------------------------------------
 
             //engine thread
-            new Thread(() =>
+            Task _engineTask = Task.Run(() => EngineStart());
+            /*new Thread(() =>
             {
                 EngineStart();
             }).Start();
-            /*new Thread(() =>
+            new Thread(() =>
             {
                 PathTracerTest();
             }).Start();*/
         }
 
-        public async void EngineStart()
+        public async Task EngineStart()
         {
             double[] framerate = new double[100];
             for (int i = 0; i < 100; i++)
@@ -104,13 +105,8 @@ namespace ArctisAurora.EngineWork
                 double totalTime = GraphicsTime.TotalMilliseconds + entityOnTickTime.TotalMilliseconds;
                 //Console.WriteLine("TotalTime --- " + totalTime);
                 framerate[index % 100] = totalTime;
-                index++;
-                if (index > 100) index = 1;
-                double fr = 0;
-                for (int i = 0; i < 100; i++)
-                {
-                    fr += framerate[i];
-                }
+                index = (index + 1) % 100;
+                double fr = framerate.Sum() / index;
                 //Console.WriteLine("FPS --- " + 1000 / (fr / 100));
 
                 double TSOffset = TS - totalTime;
@@ -119,7 +115,7 @@ namespace ArctisAurora.EngineWork
             }
         }
 
-        public async void PathTracerTest()
+        public async Task PathTracerTest()
         {
             while(Running)
             {

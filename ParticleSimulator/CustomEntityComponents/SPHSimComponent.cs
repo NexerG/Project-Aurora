@@ -40,7 +40,7 @@ namespace ArctisAurora.CustomEntityComponents
             for (int i = 0; i < _particles.Count; i++)
             {
                 Vector3D<float> pos = new Vector3D<float>(parent.transform.position.X, parent.transform.position.Y, parent.transform.position.Z);
-                Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(parent.transform.rotation.X, parent.transform.rotation.Y, parent.transform.rotation.Z);
+                //Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(parent.transform.rotation.X, parent.transform.rotation.Y, parent.transform.rotation.Z);
 
                 Matrix4X4<float> transformation = Matrix4X4<float>.Identity;
                 transformation *= Matrix4X4.CreateTranslation(pos);

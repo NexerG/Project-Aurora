@@ -1,0 +1,56 @@
+{
+  "$schema": "http://json.schemastore.org/sarif-1.0.0",
+  "version": "1.0.0",
+  "runs": [
+    {
+      "tool": {
+        "name": "Microsoft (R) Visual C# Compiler",
+        "version": "4.11.0.0",
+        "fileVersion": "4.11.0-3.24460.3 (5649376e)",
+        "semanticVersion": "4.11.0",
+        "language": "en-US"
+      },
+      "results": [
+        {
+          "ruleId": "S2701",
+          "level": "warning",
+          "message": "Remove or correct this assertion.",
+          "locations": [
+            {
+              "resultFile": {
+                "uri": "file:///H:/Creative/VS/ParticleSimulator/ParticleSim/AuroraTesting/EntityTesting.cs",
+                "region": {
+                  "startLine": 18,
+                  "startColumn": 13,
+                  "endLine": 18,
+                  "endColumn": 32
+                }
+              }
+            }
+          ],
+          "properties": {
+            "warningLevel": 1
+          }
+        }
+      ],
+      "rules": {
+        "S2701": {
+          "id": "S2701",
+          "shortDescription": "Literal boolean values should not be used in assertions",
+          "fullDescription": "Using literal boolean values in assertions can lead to less readable and less informative unit tests. When a test fails, it’s important to have a clear understanding of what the test was checking and why it failed. Most of the testing frameworks provide more explicit assertion methods that will provide a more helpful error message if the test fails.",
+          "defaultLevel": "warning",
+          "helpUri": "https://rules.sonarsource.com/csharp/RSPEC-2701",
+          "properties": {
+            "category": "Critical Code Smell",
+            "isEnabledByDefault": true,
+            "tags": [
+              "C#",
+              "TestSourceScope",
+              "SonarWay"
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+﻿H:\Creative\VS\ParticleSimulator\ParticleSim\AuroraTesting\EntityTesting.cs
+C:\Users\gmgyt\.nuget\packages\microsoft.net.test.sdk\17.8.0\build\netcoreapp3.1\Microsoft.NET.Test.Sdk.Program.cs
+C:\Users\gmgyt\.nuget\packages\microsoft.testplatform.testhost\17.8.0\build\netcoreapp3.1\x64\testhost.exe
+C:\Users\gmgyt\.nuget\packages\microsoft.testplatform.testhost\17.8.0\build\netcoreapp3.1\x64\testhost.dll
+C:\Users\gmgyt\.nuget\packages\mstest.testadapter\3.1.1\build\net6.0\Microsoft.VisualStudio.TestPlatform.MSTest.TestAdapter.dll
+C:\Users\gmgyt\.nuget\packages\mstest.testadapter\3.1.1\build\net6.0\Microsoft.VisualStudio.TestPlatform.MSTestAdapter.PlatformServices.dll
+C:\Users\gmgyt\.nuget\packages\mstest.testadapter\3.1.1\build\net6.0\Microsoft.TestPlatform.AdapterUtilities.dll

@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 
 namespace ArctisAurora.EngineWork.ComponentBehaviour
 {
-    internal class EntityComponent
+    public class EntityComponent
     {
-        internal Entity parent;
+        public Entity parent;
 
         public virtual void OnStart() //runs on creation of the component in the world
         {
