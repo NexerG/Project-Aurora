@@ -196,8 +196,8 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 
         private void CreatePathtracingDescriptorSetLayout()
         {
-            List<DescriptorType> _types1 = new List<DescriptorType> { DescriptorType.AccelerationStructureKhr, DescriptorType.StorageImage, DescriptorType.UniformBuffer, DescriptorType.StorageBuffer, DescriptorType.StorageBuffer };
-            List<ShaderStageFlags> _flags1 = new List<ShaderStageFlags> { ShaderStageFlags.RaygenBitKhr, ShaderStageFlags.RaygenBitKhr, ShaderStageFlags.RaygenBitKhr, ShaderStageFlags.ClosestHitBitKhr, ShaderStageFlags.ClosestHitBitKhr };
+            List<DescriptorType> _types1 = new List<DescriptorType> { DescriptorType.AccelerationStructureKhr, DescriptorType.StorageImage, DescriptorType.UniformBuffer, DescriptorType.StorageBuffer, DescriptorType.StorageBuffer, DescriptorType.UniformBuffer };
+            List<ShaderStageFlags> _flags1 = new List<ShaderStageFlags> { ShaderStageFlags.RaygenBitKhr, ShaderStageFlags.RaygenBitKhr, ShaderStageFlags.RaygenBitKhr, ShaderStageFlags.ClosestHitBitKhr, ShaderStageFlags.ClosestHitBitKhr , ShaderStageFlags.ClosestHitBitKhr };
             CreateDescriptorSetLayout(_types1.Count, _types1, _flags1, ref _descriptorSetLayout);
         }
 

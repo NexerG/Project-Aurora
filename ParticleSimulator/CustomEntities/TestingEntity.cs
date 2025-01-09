@@ -1,8 +1,6 @@
-﻿using ArctisAurora.CustomEntityComponents;
-using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.GameObject;
 using Silk.NET.Maths;
-using System.Numerics;
 
 namespace ArctisAurora.CustomEntities
 {
@@ -27,6 +25,9 @@ namespace ArctisAurora.CustomEntities
         public override void OnTick()
         {
             base.OnTick();
+            float r = 0.01f;
+            r = transform.GetEntityRotation().X + r;
+            transform.SetRotationFromVector3(new Vector3D<float>(r,0,0));
         }
     }
 }

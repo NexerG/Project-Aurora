@@ -35,8 +35,6 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
         internal AccelerationStruct _BLAS = default;
         // data for building a TLAS
         internal AccelerationStructureInstanceKHR _accelerationInstance;
-        /*internal Buffer _accInstanceTransformBuffer;
-        internal DeviceMemory _accInstanceDM;*/
 
         internal MCRaytracing()
         {
@@ -55,19 +53,6 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 
         private void CreateBLAS()
         {
-            TransformMatrixKHR _entityVulkanTransform = new TransformMatrixKHR();
-            Unsafe.CopyBlock(_entityVulkanTransform.Matrix, Unsafe.AsPointer(ref _transformMatrices.ToArray()[0]), 48);
-
-            AVulkanBufferHandler.CreateBuffer(
-                (ulong)sizeof(TransformMatrixKHR),
-                BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr,
-                MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
-                ref _transformsBuffer, ref _transformsBufferMemory);
-            void* _data;
-            _vulkan.MapMemory(_logicalDevice, _transformsBufferMemory, 0, (ulong)sizeof(TransformMatrixKHR), 0, &_data);
-            new Span<TransformMatrixKHR>(_data, 1)[0] = _entityVulkanTransform;
-            _vulkan.UnmapMemory(_logicalDevice, _transformsBufferMemory);
-
             _addressVertex.DeviceAddress = AVulkanHelper.GetBufferAdress(ref _vertexBuffer);
             _addressIndex.DeviceAddress = AVulkanHelper.GetBufferAdress(ref _indexBuffer);
             _addressTransform.DeviceAddress = AVulkanHelper.GetBufferAdress(ref _transformsBuffer);
@@ -413,6 +398,12 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
                         Range = (ulong)(sizeof(uint) * _mesh._indices.Length)
                     };
 
+                    DescriptorBufferInfo _transformData = new()
+                    {
+                        Buffer = _transformsBuffer,
+                        Offset = 0,
+                        Range = (ulong)sizeof(float) * 12
+                    };
                     var _writeDescriptorSets = new WriteDescriptorSet[]
                     {
                         new WriteDescriptorSet
@@ -465,6 +456,17 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
                             DstArrayElement = 0,
                             DescriptorType = DescriptorType.StorageBuffer,
                             PBufferInfo = &_indexData
+                        },
+                        // transform
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = _descriptorSets[i],
+                            DstBinding = 5,
+                            DescriptorCount = 1,
+                            DstArrayElement = 0,
+                            DescriptorType = DescriptorType.UniformBuffer,
+                            PBufferInfo = &_transformData
                         }
                     };
                     fixed (WriteDescriptorSet* _descPtr = _writeDescriptorSets)
@@ -489,14 +491,28 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             _transform *= Matrix4X4.CreateFromQuaternion(q);
             _transform *= Matrix4X4.CreateTranslation(parent.transform.position);
             _transform = Matrix4X4.Transpose(_transform);
-
             _transformMatrices.Add(_transform);
-            AVulkanBufferHandler.CreateTransformBuffer(ref _transformMatrices, ref _transformsBuffer, ref _transformsBufferMemory, _aditionalUsageFlags);
+
+            TransformMatrixKHR _entityVulkanTransform = new TransformMatrixKHR();
+            Unsafe.CopyBlock(_entityVulkanTransform.Matrix, Unsafe.AsPointer(ref _transformMatrices.ToArray()[0]), 48);
+
+            AVulkanBufferHandler.CreateBuffer(
+                (ulong)sizeof(TransformMatrixKHR),
+                BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr | BufferUsageFlags.UniformBufferBit,
+                MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
+                ref _transformsBuffer, ref _transformsBufferMemory);
+            void* _data;
+            _vulkan.MapMemory(_logicalDevice, _transformsBufferMemory, 0, (ulong)sizeof(TransformMatrixKHR), 0, &_data);
+            new Span<TransformMatrixKHR>(_data, 1)[0] = _entityVulkanTransform;
+            _vulkan.UnmapMemory(_logicalDevice, _transformsBufferMemory);
+
+
+            //AVulkanBufferHandler.CreateTransformBuffer(ref _transformMatrices, ref _transformsBuffer, ref _transformsBufferMemory, _aditionalUsageFlags);
         }
 
         internal override void UpdateMatrices()
         {
-            Quaternion<float> q = Quaternion<float>.Identity;
+            Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(parent.transform.rotation.X,parent.transform.rotation.Y,parent.transform.rotation.Z);
             Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
             _transform *= Matrix4X4.CreateScale(parent.transform.scale);
             _transform *= Matrix4X4.CreateFromQuaternion(q);

@@ -22,6 +22,13 @@ namespace ArctisAurora.GameObject
             VulkanRenderer._rendererInstance.AddEntityToUpdate(parent);
         }
 
+        public void SetRotationFromVector3(Vector3D<float> _r)
+        {
+            rotation = _r;
+            _changed = true;
+            VulkanRenderer._rendererInstance.AddEntityToUpdate(parent);
+        }
+
         public Quaternion<float> GetQuaternion()
         {
             float eulerRadiansX = DegreesToRadians(rotation.X);

@@ -11,6 +11,7 @@ namespace ArctisAurora.EngineWork
     {
         internal static Engine _engineInstance = null;
         public bool Running { get; private set; }
+        internal static DateTime initTime;
         internal Frame SC;
         //internal Rasterization renderer3D;
         internal static VulkanRenderer _renderer;
@@ -50,8 +51,10 @@ namespace ArctisAurora.EngineWork
             _entities.Add(_e);*/
 
             //then we do meshes
-            TestingEntity _te = new TestingEntity(new Vector3D<float>(5, 5, 5), new Vector3D<float>(75, -25, 0));
+            //TestingEntity _te = new TestingEntity(new Vector3D<float>(5, 5, 5), new Vector3D<float>(75, -25, 0));
             TestingEntity _te2 = new TestingEntity(new Vector3D<float>(25, 25, 25), new Vector3D<float>(75, 25, 0));
+            //_entities.Add(_te);
+            _entities.Add(_te2);
             /*TestingEntity _te = new TestingEntity();
             _te.transform.SetWorldScale(new Vector3D<float>(5, 5, 5));
             _te.transform.SetWorldPosition(new Vector3D<float>(75, -25, 0));
@@ -79,7 +82,7 @@ namespace ArctisAurora.EngineWork
                 framerate[i] = 0;
             int index = 0;
 
-            DateTime initTime = DateTime.Now;
+            initTime = DateTime.Now;
             int TS = 8;
             while (Running)
             {
