@@ -2,6 +2,8 @@
 using ArctisAurora.GameObject;
 using Silk.NET.Maths;
 using ArctisAurora.EngineWork.Renderer;
+using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
+using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 
 namespace ArctisAurora.EngineWork
 {
@@ -28,7 +30,7 @@ namespace ArctisAurora.EngineWork
             SC = s;
 
             _renderer = new VulkanRenderer();
-            _renderer.InitRenderer(RendererTypes.Rasterizer);
+            _renderer.InitRenderer(ERendererTypes.Pathtracer);
 
             ////mesh importer
             MeshImporter importer = new MeshImporter();
@@ -48,18 +50,23 @@ namespace ArctisAurora.EngineWork
             _entities.Add(_e);*/
 
             //then we do meshes
-            TestingEntity _te = new TestingEntity();
-            _te.transform.SetWorldScale(new Vector3D<float>(50, 1, 50));
-            _te.transform.SetWorldPosition(new Vector3D<float>(0, -5, 0));
+            TestingEntity _te = new TestingEntity(new Vector3D<float>(5, 5, 5), new Vector3D<float>(75, -25, 0));
+            TestingEntity _te2 = new TestingEntity(new Vector3D<float>(25, 25, 25), new Vector3D<float>(75, 25, 0));
+            /*TestingEntity _te = new TestingEntity();
+            _te.transform.SetWorldScale(new Vector3D<float>(5, 5, 5));
+            _te.transform.SetWorldPosition(new Vector3D<float>(75, -25, 0));
+            TestingEntity _te2 = new TestingEntity();
+            _te2.transform.SetWorldScale(new Vector3D<float>(25, 25, 25));
+            _te2.transform.SetWorldPosition(new Vector3D<float>(75, 25, 0));*/
             //---------------------------------------------------------------------------
 
             //engine thread
-            Task _engineTask = Task.Run(() => EngineStart());
-            /*new Thread(() =>
+            //Task _engineTask = Task.Run(() => EngineStart());
+            new Thread(() =>
             {
                 EngineStart();
             }).Start();
-            new Thread(() =>
+            /*new Thread(() =>
             {
                 PathTracerTest();
             }).Start();*/

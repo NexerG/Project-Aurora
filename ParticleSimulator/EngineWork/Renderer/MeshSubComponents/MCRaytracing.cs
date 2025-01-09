@@ -1,10 +1,11 @@
 ﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Renderer.Helpers;
+using ArctisAurora.EngineWork.Renderer.RendererTypes;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Drawing.Drawing2D;
 using System.Runtime.CompilerServices;
-using static ArctisAurora.EngineWork.Renderer.Pathtracing;
+using static ArctisAurora.EngineWork.Renderer.RendererTypes.Pathtracing;
 using static ArctisAurora.EngineWork.Renderer.VulkanRenderer;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
@@ -13,12 +14,6 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 {
     internal unsafe class MCRaytracing : MeshComponent
     {
-        //temp
-        Buffer _fakeTransformBuffer;
-        DeviceMemory _fakeTransformDM;
-        Buffer _fakeInstanceBuffer;
-        DeviceMemory _fakeInstanceDM;
-        //
         public struct AccelerationStruct
         {
             public AccelerationStructureKHR _handle;
@@ -36,16 +31,16 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
         DeviceOrHostAddressConstKHR _addressVertex = default;
         DeviceOrHostAddressConstKHR _addressIndex = default;
         DeviceOrHostAddressConstKHR _addressTransform = default;
-        DeviceOrHostAddressConstKHR _addressInstance = default;
         //
-        AccelerationStruct _BLAS = default;
-        AccelerationStruct _TLAS = default;
-        //
-        AccelerationStructureInstanceKHR _accelerationInstance;
+        internal AccelerationStruct _BLAS = default;
+        // data for building a TLAS
+        internal AccelerationStructureInstanceKHR _accelerationInstance;
+        /*internal Buffer _accInstanceTransformBuffer;
+        internal DeviceMemory _accInstanceDM;*/
 
         internal MCRaytracing()
         {
-            _aditionalUsageFlags = BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr | BufferUsageFlags.ShaderDeviceAddressBit;
+            _aditionalUsageFlags = BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr | BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.StorageBufferBit;
             AVulkanBufferHandler.CreateVertexBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, _aditionalUsageFlags);
             AVulkanBufferHandler.CreateIndexBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, _aditionalUsageFlags);
         }
@@ -54,29 +49,28 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
         {
             SingletonMatrix();
             CreateBLAS();
-            CreateTLAS();
             _rendererInstance.AddEntityToRenderQueue(parent);
             CreateDescriptorSet();
         }
 
         private void CreateBLAS()
         {
-            TransformMatrixKHR _fakeTransformMatrix = new TransformMatrixKHR();
-            Unsafe.CopyBlock(_fakeTransformMatrix.Matrix, Unsafe.AsPointer(ref _transformMatrices.ToArray()[0]), 48);
+            TransformMatrixKHR _entityVulkanTransform = new TransformMatrixKHR();
+            Unsafe.CopyBlock(_entityVulkanTransform.Matrix, Unsafe.AsPointer(ref _transformMatrices.ToArray()[0]), 48);
 
             AVulkanBufferHandler.CreateBuffer(
                 (ulong)sizeof(TransformMatrixKHR),
                 BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr,
                 MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
-                ref _fakeTransformBuffer, ref _fakeTransformDM);
+                ref _transformsBuffer, ref _transformsBufferMemory);
             void* _data;
-            _vulkan.MapMemory(_logicalDevice, _fakeTransformDM, 0, (ulong)sizeof(TransformMatrixKHR), 0, &_data);
-            new Span<TransformMatrixKHR>(_data, 1)[0] = _fakeTransformMatrix;
-            _vulkan.UnmapMemory(_logicalDevice, _fakeTransformDM);
+            _vulkan.MapMemory(_logicalDevice, _transformsBufferMemory, 0, (ulong)sizeof(TransformMatrixKHR), 0, &_data);
+            new Span<TransformMatrixKHR>(_data, 1)[0] = _entityVulkanTransform;
+            _vulkan.UnmapMemory(_logicalDevice, _transformsBufferMemory);
 
             _addressVertex.DeviceAddress = AVulkanHelper.GetBufferAdress(ref _vertexBuffer);
             _addressIndex.DeviceAddress = AVulkanHelper.GetBufferAdress(ref _indexBuffer);
-            _addressTransform.DeviceAddress = AVulkanHelper.GetBufferAdress(ref _fakeTransformBuffer);
+            _addressTransform.DeviceAddress = AVulkanHelper.GetBufferAdress(ref _transformsBuffer);
 
             AccelerationStructureGeometryKHR _accelStrGeom = new AccelerationStructureGeometryKHR
             {
@@ -92,21 +86,21 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
                         VertexData = _addressVertex,
                         MaxVertex = (uint)(_mesh._vertices.Length),
                         VertexStride = (ulong)sizeof(Vertex),
-                        IndexType = IndexType.Uint16,
+                        IndexType = IndexType.Uint32,
                         IndexData = _addressIndex,
-                        TransformData = default,
+                        TransformData = _addressTransform,
                         PNext = null
                     }
                 },
                 PNext = null,
             };
-            _accelStrGeom.Geometry.Triangles.TransformData = _addressTransform;
 
             AccelerationStructureBuildGeometryInfoKHR _accelStrGeomInfo = new()
             {
                 SType = StructureType.AccelerationStructureBuildGeometryInfoKhr,
+                Mode = BuildAccelerationStructureModeKHR.BuildKhr,
                 Type = AccelerationStructureTypeKHR.BottomLevelKhr,
-                Flags = BuildAccelerationStructureFlagsKHR.PreferFastTraceBitKhr,
+                Flags = BuildAccelerationStructureFlagsKHR.PreferFastTraceBitKhr | BuildAccelerationStructureFlagsKHR.AllowUpdateBitKhr,
                 GeometryCount = 1,
                 PGeometries = &_accelStrGeom,
                 SrcAccelerationStructure = default,
@@ -125,7 +119,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
                 Size = _asbsInfo.AccelerationStructureSize,
                 Type = AccelerationStructureTypeKHR.BottomLevelKhr
             };
-            Result r = _accelerationStructure.CreateAccelerationStructure(_logicalDevice, _accelerationStructureCreateInfo, null, out _BLAS._handle);
+            Result r = _accelerationStructure.CreateAccelerationStructure(_logicalDevice, ref _accelerationStructureCreateInfo, null, out _BLAS._handle);
             if (r != Result.Success)
             {
                 throw new Exception("failed to create BLAS on the host");
@@ -137,7 +131,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             {
                 SType = StructureType.AccelerationStructureBuildGeometryInfoKhr,
                 Type = AccelerationStructureTypeKHR.BottomLevelKhr,
-                Flags = BuildAccelerationStructureFlagsKHR.PreferFastTraceBitKhr,
+                Flags = BuildAccelerationStructureFlagsKHR.PreferFastTraceBitKhr | BuildAccelerationStructureFlagsKHR.AllowUpdateBitKhr,
                 Mode = BuildAccelerationStructureModeKHR.BuildKhr,
                 DstAccelerationStructure = _BLAS._handle,
                 GeometryCount = 1,
@@ -147,6 +141,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
                     DeviceAddress = _scratchBuffer._deviceAddress
                 }
             };
+
             AccelerationStructureBuildRangeInfoKHR _asbrInfo = new AccelerationStructureBuildRangeInfoKHR()
             {
                 PrimitiveCount = numTris,
@@ -169,199 +164,90 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             DeleteScratchBuffer(ref _scratchBuffer);
         }
 
-        private void CreateTLAS()
+        private void UpdateBLAS()
         {
-
-            if (_fakeInstanceBuffer.Handle == 0)
-            {
-                Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(30f * MathF.PI / 180f, 0, 0);
-                Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-                _transform *= Matrix4X4.CreateScale(parent.transform.scale);
-                _transform *= Matrix4X4.CreateFromQuaternion(q);
-                _transform *= Matrix4X4.CreateTranslation(parent.transform.position);
-
-                _transformMatrices[0] = _transform;
-                TransformMatrixKHR _fakeTransformMatrix = new TransformMatrixKHR();
-                Unsafe.CopyBlock(_fakeTransformMatrix.Matrix, Unsafe.AsPointer(ref _transformMatrices.ToArray()[0]), 48);
-
-                _accelerationInstance = new AccelerationStructureInstanceKHR()
-                {
-                    Flags = GeometryInstanceFlagsKHR.TriangleFacingCullDisableBitKhr,
-                    AccelerationStructureReference = _BLAS._deviceAddress,
-                    Transform = _fakeTransformMatrix,
-                    InstanceCustomIndex = 0,
-                    Mask = 0xFF,
-                    InstanceShaderBindingTableRecordOffset = 0
-                };
-
-                AVulkanBufferHandler.CreateBuffer(
-                    (ulong)sizeof(AccelerationStructureInstanceKHR),
-                    BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr,
-                    MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
-                    ref _fakeInstanceBuffer, ref _fakeInstanceDM);
-                void* _data;
-                _vulkan.MapMemory(_logicalDevice, _fakeInstanceDM, 0, (ulong)sizeof(AccelerationStructureInstanceKHR), 0, &_data);
-                new Span<AccelerationStructureInstanceKHR>(_data, 1)[0] = _accelerationInstance;
-                _vulkan.UnmapMemory(_logicalDevice, _fakeInstanceDM);
-            }
-
-            _addressInstance.DeviceAddress = AVulkanHelper.GetBufferAdress(ref _fakeInstanceBuffer);
-
-            AccelerationStructureGeometryKHR _asg = new AccelerationStructureGeometryKHR()
+            AccelerationStructureGeometryKHR _accelStrGeom = new AccelerationStructureGeometryKHR
             {
                 SType = StructureType.AccelerationStructureGeometryKhr,
-                GeometryType = GeometryTypeKHR.InstancesKhr,
                 Flags = GeometryFlagsKHR.OpaqueBitKhr,
+                GeometryType = GeometryTypeKHR.TrianglesKhr,
                 Geometry =
                 {
-                    Instances =
+                    Triangles =
                     {
-                        SType = StructureType.AccelerationStructureGeometryInstancesDataKhr,
-                        ArrayOfPointers = false,
-                        Data = _addressInstance
+                        SType = StructureType.AccelerationStructureGeometryTrianglesDataKhr,
+                        VertexFormat = Format.R32G32B32Sfloat,
+                        VertexData = _addressVertex,
+                        MaxVertex = (uint)(_mesh._vertices.Length),
+                        VertexStride = (ulong)sizeof(Vertex),
+                        IndexType = IndexType.Uint32,
+                        IndexData = _addressIndex,
+                        TransformData = _addressTransform,
+                        PNext = null
                     }
-                }
+                },
+                PNext = null
             };
-            AccelerationStructureBuildGeometryInfoKHR _asbgInfo = new AccelerationStructureBuildGeometryInfoKHR()
+
+            AccelerationStructureBuildGeometryInfoKHR _accelStrGeomInfo = new()
             {
                 SType = StructureType.AccelerationStructureBuildGeometryInfoKhr,
-                Type = AccelerationStructureTypeKHR.TopLevelKhr,
+                Type = AccelerationStructureTypeKHR.BottomLevelKhr,
                 Flags = BuildAccelerationStructureFlagsKHR.PreferFastTraceBitKhr | BuildAccelerationStructureFlagsKHR.AllowUpdateBitKhr,
                 GeometryCount = 1,
-                PGeometries = &_asg
+                PGeometries = &_accelStrGeom,
+                SrcAccelerationStructure = _BLAS._handle,
+                DstAccelerationStructure = _BLAS._handle,
+                Mode = BuildAccelerationStructureModeKHR.UpdateKhr
             };
-            uint primitive_count = 1;
-            AccelerationStructureBuildSizesInfoKHR _asbsInfo = new()
-            {
-                SType = StructureType.AccelerationStructureBuildSizesInfoKhr
-            };
-            _accelerationStructure.GetAccelerationStructureBuildSizes(_logicalDevice, AccelerationStructureBuildTypeKHR.DeviceKhr, &_asbgInfo, primitive_count, &_asbsInfo);
 
-            CreateAccelerationStructureBuffer(ref _TLAS, ref _asbsInfo);
+            uint numTris = (uint)(_mesh._indices.Length / 3);
+            AccelerationStructureBuildSizesInfoKHR _asbsInfo = default;
+            _asbsInfo.SType = StructureType.AccelerationStructureBuildSizesInfoKhr;
 
-            AccelerationStructureCreateInfoKHR _asCreateInfo = new AccelerationStructureCreateInfoKHR()
-            {
-                SType = StructureType.AccelerationStructureCreateInfoKhr,
-                Buffer = _TLAS._buffer,
-                Size = _asbsInfo.AccelerationStructureSize,
-                Type = AccelerationStructureTypeKHR.TopLevelKhr,
-            };
-            //
-            Result r = _accelerationStructure.CreateAccelerationStructure(_logicalDevice, _asCreateInfo, null, out _TLAS._handle);
-            if (r != Result.Success)
-            {
-                throw new Exception("failed to create TLAS on the host");
-            }
+            _accelerationStructure.GetAccelerationStructureBuildSizes(_logicalDevice, AccelerationStructureBuildTypeKHR.DeviceKhr, &_accelStrGeomInfo, numTris, out _asbsInfo);
             PathtracingScratchBuffer _scratchBuffer = new PathtracingScratchBuffer();
             CreateScratchBuffer(_asbsInfo.BuildScratchSize, ref _scratchBuffer);
 
             AccelerationStructureBuildGeometryInfoKHR _abgInfo = new AccelerationStructureBuildGeometryInfoKHR()
             {
                 SType = StructureType.AccelerationStructureBuildGeometryInfoKhr,
-                Type = AccelerationStructureTypeKHR.TopLevelKhr,
+                Type = AccelerationStructureTypeKHR.BottomLevelKhr,
                 Flags = BuildAccelerationStructureFlagsKHR.PreferFastTraceBitKhr | BuildAccelerationStructureFlagsKHR.AllowUpdateBitKhr,
-                Mode = BuildAccelerationStructureModeKHR.BuildKhr,
-                DstAccelerationStructure = _TLAS._handle,
+                Mode = BuildAccelerationStructureModeKHR.UpdateKhr,
+                SrcAccelerationStructure = _BLAS._handle,
+                DstAccelerationStructure = _BLAS._handle,
                 GeometryCount = 1,
-                PGeometries = &_asg,
+                PGeometries = &_accelStrGeom,
                 ScratchData =
                 {
                     DeviceAddress = _scratchBuffer._deviceAddress
                 }
             };
+
             AccelerationStructureBuildRangeInfoKHR _asbrInfo = new AccelerationStructureBuildRangeInfoKHR()
             {
-                PrimitiveCount = primitive_count,
+                PrimitiveCount = numTris,
                 PrimitiveOffset = 0,
                 FirstVertex = 0,
                 TransformOffset = 0
             };
-            var _buildRangeInfos = stackalloc[]
-            {
-                _asbrInfo
-            };
 
             CommandBuffer _commandBuffer = AVulkanBufferHandler.BeginSingleTimeCommands();
-            _accelerationStructure.CmdBuildAccelerationStructures(_commandBuffer, 1, &_abgInfo, _buildRangeInfos);
+            _accelerationStructure.CmdBuildAccelerationStructures(_commandBuffer, 1, &_abgInfo, &_asbrInfo);
             AVulkanBufferHandler.EndSingleTimeCommands(ref _commandBuffer);
+
 
             AccelerationStructureDeviceAddressInfoKHR _adaInfo = new AccelerationStructureDeviceAddressInfoKHR()
             {
                 SType = StructureType.AccelerationStructureDeviceAddressInfoKhr,
-                AccelerationStructure = _TLAS._handle
+                AccelerationStructure = _BLAS._handle
             };
-            _TLAS._deviceAddress = _accelerationStructure.GetAccelerationStructureDeviceAddress(_logicalDevice, _adaInfo);
+            _BLAS._deviceAddress = _accelerationStructure.GetAccelerationStructureDeviceAddress(_logicalDevice, _adaInfo);
             DeleteScratchBuffer(ref _scratchBuffer);
         }
 
-        private void UpdateTLAS()
-        {
-            AccelerationStructureGeometryKHR _asg = new AccelerationStructureGeometryKHR()
-            {
-                SType = StructureType.AccelerationStructureGeometryKhr,
-                GeometryType = GeometryTypeKHR.InstancesKhr,
-                Flags = GeometryFlagsKHR.OpaqueBitKhr,
-                Geometry =
-                {
-                    Instances =
-                    {
-                        SType = StructureType.AccelerationStructureGeometryInstancesDataKhr,
-                        ArrayOfPointers = false,
-                        Data = _addressInstance
-                    }
-                }
-            };
-            AccelerationStructureBuildGeometryInfoKHR _asbgInfo = new AccelerationStructureBuildGeometryInfoKHR()
-            {
-                SType = StructureType.AccelerationStructureBuildGeometryInfoKhr,
-                Type = AccelerationStructureTypeKHR.TopLevelKhr,
-                Flags = BuildAccelerationStructureFlagsKHR.PreferFastTraceBitKhr | BuildAccelerationStructureFlagsKHR.AllowUpdateBitKhr,
-                GeometryCount = 1,
-                PGeometries = &_asg
-            };
-            uint primitive_count = 1;
-            AccelerationStructureBuildSizesInfoKHR _asbsInfo = new()
-            {
-                SType = StructureType.AccelerationStructureBuildSizesInfoKhr
-            };
-            _accelerationStructure.GetAccelerationStructureBuildSizes(_logicalDevice, AccelerationStructureBuildTypeKHR.DeviceKhr, &_asbgInfo, primitive_count, &_asbsInfo);
-            PathtracingScratchBuffer _scratchBuffer = new PathtracingScratchBuffer();
-            CreateScratchBuffer(_asbsInfo.BuildScratchSize, ref _scratchBuffer);
-
-            AccelerationStructureBuildGeometryInfoKHR _abgInfo = new AccelerationStructureBuildGeometryInfoKHR()
-            {
-                SType = StructureType.AccelerationStructureBuildGeometryInfoKhr,
-                Type = AccelerationStructureTypeKHR.TopLevelKhr,
-                Flags = BuildAccelerationStructureFlagsKHR.PreferFastTraceBitKhr | BuildAccelerationStructureFlagsKHR.AllowUpdateBitKhr,
-                Mode = BuildAccelerationStructureModeKHR.UpdateKhr,
-                SrcAccelerationStructure = _TLAS._handle,
-                DstAccelerationStructure = _TLAS._handle,
-                GeometryCount = 1,
-                PGeometries = &_asg,
-                ScratchData =
-                {
-                    DeviceAddress = _scratchBuffer._deviceAddress
-                }
-            };
-            AccelerationStructureBuildRangeInfoKHR _asbrInfo = new AccelerationStructureBuildRangeInfoKHR()
-            {
-                PrimitiveCount = primitive_count,
-                PrimitiveOffset = 0,
-                FirstVertex = 0,
-                TransformOffset = 0
-            };
-            var _buildRangeInfos = stackalloc[]
-            {
-                _asbrInfo
-            };
-
-            CommandBuffer _commandBuffer = AVulkanBufferHandler.BeginSingleTimeCommands();
-            _accelerationStructure.CmdBuildAccelerationStructures(_commandBuffer, 1, &_abgInfo, _buildRangeInfos);
-            AVulkanBufferHandler.EndSingleTimeCommands(ref _commandBuffer);
-            DeleteScratchBuffer(ref _scratchBuffer);
-        }
-
-        private void CreateAccelerationStructureBuffer(ref AccelerationStruct _accelStructure, ref AccelerationStructureBuildSizesInfoKHR _buildSizeInfo)
+        internal static void CreateAccelerationStructureBuffer(ref AccelerationStruct _accelStructure, ref AccelerationStructureBuildSizesInfoKHR _buildSizeInfo)
         {
             BufferCreateInfo _bufferCreateInfo = new BufferCreateInfo()
             {
@@ -399,7 +285,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             _vulkan.BindBufferMemory(_logicalDevice, _accelStructure._buffer, _accelStructure._memory, 0);
         }
 
-        private void DeleteScratchBuffer(ref PathtracingScratchBuffer _sBuffer)
+        internal static void DeleteScratchBuffer(ref PathtracingScratchBuffer _sBuffer)
         {
             if (_sBuffer._memory.Handle != 0)
             {
@@ -411,7 +297,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             }
         }
 
-        private void CreateScratchBuffer(ulong size, ref PathtracingScratchBuffer _b)
+        internal static void CreateScratchBuffer(ulong size, ref PathtracingScratchBuffer _b)
         {
             BufferCreateInfo _bufferCreateInfo = new()
             {
@@ -457,7 +343,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
         {
             base.FreeDescriptorSets();
             if (_descriptorSets != null)
-                VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
+                VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, VulkanRenderer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
         }
 
         internal override void ReinstantiateDesriptorSets()
@@ -484,7 +370,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
                 _descriptorSets = new DescriptorSet[_swapimageCount];
                 fixed (DescriptorSet* _descriptorSetsPtr = _descriptorSets)
                 {
-                    Result r = _vulkan.AllocateDescriptorSets(_logicalDevice, _allocateInfo, _descriptorSetsPtr);
+                    Result r = _vulkan.AllocateDescriptorSets(_logicalDevice, ref _allocateInfo, _descriptorSetsPtr);
                     if (r != Result.Success)
                     {
                         throw new Exception("Failed to allocate descriptor set with error code: " + r);
@@ -493,7 +379,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             }
             for (int i = 0; i < _swapimageCount; i++)
             {
-                fixed (AccelerationStructureKHR* _accelStrPtr = &_TLAS._handle)
+                fixed (AccelerationStructureKHR* _accelStrPtr = &Pathtracing._TLAS._handle)
                 {
                     WriteDescriptorSetAccelerationStructureKHR _dasinfo = new()
                     {
@@ -513,6 +399,20 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
                         Range = (ulong)Unsafe.SizeOf<UBO>()
                     };
 
+                    DescriptorBufferInfo _vertexData = new()
+                    {
+                        Buffer = _vertexBuffer,
+                        Offset = 0,
+                        Range = (ulong)(sizeof(Vertex) * _mesh._vertices.Length)
+                    };
+
+                    DescriptorBufferInfo _indexData = new()
+                    {
+                        Buffer = _indexBuffer,
+                        Offset = 0,
+                        Range = (ulong)(sizeof(uint) * _mesh._indices.Length)
+                    };
+
                     var _writeDescriptorSets = new WriteDescriptorSet[]
                     {
                         new WriteDescriptorSet
@@ -521,8 +421,8 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
                             PNext = &_dasinfo,
                             DstSet = _descriptorSets[i],
                             DstBinding = 0,
-                            DstArrayElement = 0,
                             DescriptorCount = 1,
+                            DstArrayElement = 0,
                             DescriptorType = DescriptorType.AccelerationStructureKhr
                         },
                         new WriteDescriptorSet
@@ -544,6 +444,27 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
                             DstArrayElement = 0,
                             DescriptorType = DescriptorType.UniformBuffer,
                             PBufferInfo = &_bufferInfoMatrices
+                        },
+                        // vertex data
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = _descriptorSets[i],
+                            DstBinding = 3,
+                            DescriptorCount = 1,
+                            DstArrayElement = 0,
+                            DescriptorType = DescriptorType.StorageBuffer,
+                            PBufferInfo = &_vertexData
+                        },
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = _descriptorSets[i],
+                            DstBinding = 4,
+                            DescriptorCount = 1,
+                            DstArrayElement = 0,
+                            DescriptorType = DescriptorType.StorageBuffer,
+                            PBufferInfo = &_indexData
                         }
                     };
                     fixed (WriteDescriptorSet* _descPtr = _writeDescriptorSets)
@@ -562,37 +483,45 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 
         internal override void SingletonMatrix()
         {
-            base.SingletonMatrix();
-            AVulkanBufferHandler.CreateTransformBuffer(ref _transformMatrices, ref _transformsBuffer, ref _trasnformsBufferMemory, _aditionalUsageFlags);
-        }
-
-        internal override void UpdateMatrices()
-        {
-            Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(30f * MathF.PI / 180f, 0, 0);
+            Quaternion<float> q = Quaternion<float>.Identity;
             Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
             _transform *= Matrix4X4.CreateScale(parent.transform.scale);
             _transform *= Matrix4X4.CreateFromQuaternion(q);
             _transform *= Matrix4X4.CreateTranslation(parent.transform.position);
+            _transform = Matrix4X4.Transpose(_transform);
+
+            _transformMatrices.Add(_transform);
+            AVulkanBufferHandler.CreateTransformBuffer(ref _transformMatrices, ref _transformsBuffer, ref _transformsBufferMemory, _aditionalUsageFlags);
+        }
+
+        internal override void UpdateMatrices()
+        {
+            Quaternion<float> q = Quaternion<float>.Identity;
+            Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
+            _transform *= Matrix4X4.CreateScale(parent.transform.scale);
+            _transform *= Matrix4X4.CreateFromQuaternion(q);
+            _transform *= Matrix4X4.CreateTranslation(parent.transform.position);
+            _transform = Matrix4X4.Transpose(_transform);
 
             _transformMatrices[0] = _transform;
-            TransformMatrixKHR _fakeTransformMatrix = new TransformMatrixKHR();
-            Unsafe.CopyBlock(_fakeTransformMatrix.Matrix, Unsafe.AsPointer(ref _transform), 48);
-            _accelerationInstance.Transform = _fakeTransformMatrix;
+            TransformMatrixKHR _entityVulkanMatric = new TransformMatrixKHR();
+            Unsafe.CopyBlock(_entityVulkanMatric.Matrix, Unsafe.AsPointer(ref _transformMatrices.ToArray()[0]), 48);
+            //_accelerationInstance.Transform = _entityVulkanMatric;
 
             void* _data;
-            _vulkan.MapMemory(_logicalDevice, _fakeInstanceDM, 0, (ulong)sizeof(AccelerationStructureInstanceKHR), 0, &_data);
-            new Span<AccelerationStructureInstanceKHR>(_data, 1)[0] = _accelerationInstance;
-            _vulkan.UnmapMemory(_logicalDevice, _fakeInstanceDM);
+            _vulkan.MapMemory(_logicalDevice, _transformsBufferMemory, 0, (ulong)sizeof(TransformMatrixKHR), 0, &_data);
+            new Span<TransformMatrixKHR>(_data, 1)[0] = _entityVulkanMatric;
+            _vulkan.UnmapMemory(_logicalDevice, _transformsBufferMemory);
+            UpdateBLAS();
 
-            UpdateTLAS();
             parent.transform._changed = false;
         }
 
-        internal override void EnqueueDrawCommands(ulong[] _offset, int _loopIndex, ref CommandBuffer _commandBuffer)
+        internal override void EnqueueDrawCommands(ref ulong[] _offset, int _loopIndex, ref CommandBuffer _commandBuffer)
         {
             if (_render)
             {
-                _vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.RayTracingKhr, _pipelineLayout, 0, 1, _descriptorSets[_loopIndex], 0, null);
+                _vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.RayTracingKhr, _pipelineLayout, 0, 1, ref _descriptorSets[_loopIndex], 0, null);
             }
         }
     }

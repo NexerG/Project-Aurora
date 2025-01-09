@@ -6,10 +6,11 @@ using System.Runtime.InteropServices;
 using ArctisAurora.GameObject;
 using Semaphore = Silk.NET.Vulkan.Semaphore;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+using ArctisAurora.EngineWork.Renderer.RendererTypes;
 
 namespace ArctisAurora.EngineWork.Renderer
 {
-    enum RendererTypes
+    enum ERendererTypes
     {
         Rasterizer,
         Pathtracer,
@@ -19,7 +20,7 @@ namespace ArctisAurora.EngineWork.Renderer
     internal unsafe class VulkanRenderer
     {
         internal static VulkanRenderer _rendererInstance = null;
-        internal static RendererTypes _rendererType;
+        internal static ERendererTypes _rendererType;
         internal int _width = 1280;
         internal int _height = 720;
         internal static Extent2D _extent;
@@ -65,7 +66,7 @@ namespace ArctisAurora.EngineWork.Renderer
         internal static List<Entity> _lightsToRender = new List<Entity>();
         internal static List<Entity> _updateEntities = new List<Entity>();
 
-        internal void InitRenderer(RendererTypes _type)
+        internal void InitRenderer(ERendererTypes _type)
         {
             _rendererType = _type;
             _extent = new Extent2D() { Height = (uint)_height, Width = (uint)_width };
@@ -78,12 +79,12 @@ namespace ArctisAurora.EngineWork.Renderer
             ChoosePhysicalDevice();                         //we get the gpu
             switch (_rendererType)
             {
-                case RendererTypes.Rasterizer:
+                case ERendererTypes.Rasterizer:
                     {
                         Rasterizer _rasterizer = new Rasterizer();
                         break;
                     }
-                case RendererTypes.Pathtracer:
+                case ERendererTypes.Pathtracer:
                     {
                         Pathtracing _tracer = new Pathtracing();
                         break;
@@ -295,8 +296,11 @@ namespace ArctisAurora.EngineWork.Renderer
 
         internal virtual void AddEntityToUpdate(Entity _m)
         {
-            if (_m.GetComponent<MeshComponent>()!=null)
-                _updateEntities.Add(_m);
+            if (!_updateEntities.Contains(_m))
+            {
+                if (_m.GetComponent<MeshComponent>() != null)
+                    _updateEntities.Add(_m);
+            }
         }
 
         internal virtual void AddLightToRenderQueue(Entity _m) { }
@@ -371,7 +375,7 @@ namespace ArctisAurora.EngineWork.Renderer
                     BindingCount = (uint)_bindingList.Count,
                     PBindings = _bindingsPtr,
                 };
-                if (_vulkan.CreateDescriptorSetLayout(_logicalDevice, _layoutCreateInfo, null, _descSetLayoutPtr) != Result.Success)
+                if (_vulkan.CreateDescriptorSetLayout(_logicalDevice, ref _layoutCreateInfo, null, _descSetLayoutPtr) != Result.Success)
                 {
                     throw new Exception("Failed to create descriptor set layout");
                 }

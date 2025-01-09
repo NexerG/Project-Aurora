@@ -308,7 +308,7 @@ namespace ArctisAurora.EngineWork.Renderer
         {
             switch (VulkanRenderer._rendererType)
             {
-                case RendererTypes.Rasterizer:
+                case ERendererTypes.Rasterizer:
                     {
                         VulkanRenderer._vulkan.DestroyPipeline(VulkanRenderer._logicalDevice, _graphicsPipeline, null);
                         VulkanRenderer._vulkan.DestroyPipelineLayout(VulkanRenderer._logicalDevice, _pipelineLayout, null);
@@ -316,11 +316,11 @@ namespace ArctisAurora.EngineWork.Renderer
                         VulkanRenderer._vulkan.DestroyPipelineLayout(VulkanRenderer._logicalDevice, _shadowLayout, null);
                         break;
                     }
-                case RendererTypes.Pathtracer:
+                case ERendererTypes.Pathtracer:
                     {
                         break;
                     }
-                case RendererTypes.RadianceCascades:
+                case ERendererTypes.RadianceCascades:
                     {
                         break;
                     }

@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.EngineWork.Renderer.Helpers;
+using ArctisAurora.EngineWork.Renderer.RendererTypes;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 using static ArctisAurora.EngineWork.Renderer.Helpers.AVulkanHelper;
@@ -99,7 +100,7 @@ namespace ArctisAurora.EngineWork.Renderer
             AVulkanBufferHandler.CreateImage(VulkanRenderer._extent.Width, VulkanRenderer._extent.Height, _depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit, MemoryPropertyFlags.DeviceLocalBit, ref _depthImage, ref _depthMemory);
             CreateImageView(ref _depthView, ref _depthImage, ImageAspectFlags.DepthBit, _depthFormat); //depth map
             CreateRenderPass();
-            if(VulkanRenderer._rendererType == RendererTypes.Rasterizer)
+            if(VulkanRenderer._rendererType == ERendererTypes.Rasterizer)
                 CreateShadowmapRenderPass();
         }
 
@@ -194,7 +195,7 @@ namespace ArctisAurora.EngineWork.Renderer
                     PDependencies = &_subDepend
                 };
 
-                if (Rasterizer._vulkan.CreateRenderPass(Rasterizer._logicalDevice, _renderPassInfo, null, out _renderPass) != Result.Success)
+                if (Rasterizer._vulkan.CreateRenderPass(Rasterizer._logicalDevice, ref _renderPassInfo, null, out _renderPass) != Result.Success)
                 {
                     throw new Exception("failed to create render pass!");
                 }

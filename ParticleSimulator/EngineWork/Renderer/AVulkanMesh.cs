@@ -25,7 +25,7 @@ namespace ArctisAurora.EngineWork.Renderer
 
         public static VertexInputAttributeDescription[] GetVertexInputAttributeDescriptions()
         {
-            VertexInputAttributeDescription[] _descriptions = new VertexInputAttributeDescription[]
+            VertexInputAttributeDescription[] _descriptions = new[]
             {
                 new VertexInputAttributeDescription()
                 {
@@ -55,7 +55,7 @@ namespace ArctisAurora.EngineWork.Renderer
 
     internal class AVulkanMesh
     {
-        internal Vertex[] _vertices = new Vertex[]
+        internal Vertex[] _vertices = new[]
         {
             new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(0.0f, 0.0f) },
             new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f, -0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(0.0f, 5.0f) },
@@ -78,8 +78,27 @@ namespace ArctisAurora.EngineWork.Renderer
             new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(0.0f, 0.5f,  0.8f), _uv = new Vector2D<float>(0.0f, 0.0f) },
             new Vertex { _pos = new Vector3D<float>(0.0f, 0.8f,  0.0f), _normal =  new Vector3D<float>(0.0f, 0.5f,  0.8f), _uv = new Vector2D<float>(2.5f, 5.0f) },
         };
+        /*internal Vertex[] _vertices = new[]
+        {
+            // bottom.
+            new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(0.0f, 0.0f) },
+            new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f, -0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(0.0f, 5.0f) },
+            new Vertex { _pos = new Vector3D<float>( 0.5f, 0.0f, -0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(5.0f, 5.0f) },
+            new Vertex { _pos = new Vector3D<float>( 0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(5.0f, 0.0f) },
+            // pyramid top.
+            new Vertex { _pos = new Vector3D<float>(0.0f, 0.8f,  0.0f), _normal =  new Vector3D<float>(0.0f, 0.5f,  0.8f), _uv = new Vector2D<float>(2.5f, 5.0f) },
+        };
+        internal uint[] _indices = new uint[]
+        {
+            0, 1, 2, // Bottom side
+	        0, 2, 3, // Bottom side
+	        0, 1, 4, // Left side
+	        1, 2, 4, // Non-facing side
+	        2, 3, 4, // Right side
+	        3, 0, 4 // Facing side
+        };*/
 
-        internal ushort[] _indices = new ushort[]
+        internal uint[] _indices = new uint[]
         {
             0, 1, 2, // Bottom side
 	        0, 2, 3, // Bottom side
@@ -95,10 +114,10 @@ namespace ArctisAurora.EngineWork.Renderer
             List<Assimp.Vector3D> uvs = sc.Meshes[0].TextureCoordinateChannels[0];
             List<Assimp.Vector3D> normals = sc.Meshes[0].Normals;
 
-            _indices = new ushort[sc.Meshes[0].GetIndices().Length];
+            _indices = new uint[sc.Meshes[0].GetIndices().Length];
             for (int i = 0; i < sc.Meshes[0].GetIndices().Length; i++)
             {
-                _indices[i] = (ushort)sc.Meshes[0].GetIndices()[i];
+                _indices[i] = (uint)sc.Meshes[0].GetIndices()[i];
             }
 
             _vertices = new Vertex[sc.Meshes[0].VertexCount];

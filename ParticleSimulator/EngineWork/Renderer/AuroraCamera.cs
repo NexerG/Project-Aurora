@@ -13,7 +13,7 @@ namespace ArctisAurora.EngineWork.Renderer
         //keyboard
         internal Dictionary<Silk.NET.GLFW.Keys, bool> _keyStates = new Dictionary<Silk.NET.GLFW.Keys, bool>();
         //variables
-        internal Vector3D<float> _pos = new Vector3D<float>(0, 0, -3);
+        internal Vector3D<float> _pos = new Vector3D<float>(0, 0, 0);
         internal Vector3D<float> _rotation = new Vector3D<float>(0, 0, 0);
         internal Vector3D<float> _localUp = new Vector3D<float>(0, 1, 0);
         internal Vector3D<float> _front = new Vector3D<float>(0, 0, 1);
@@ -48,7 +48,7 @@ namespace ArctisAurora.EngineWork.Renderer
             _projection = Matrix4X4.CreatePerspectiveFieldOfView(Scalar.DegreesToRadians(60.0f), _extent.Width / _extent.Height, 0.1f, 512f);
             _projection.M22 *= -1;
 
-            if (VulkanRenderer._rendererType == RendererTypes.Pathtracer)
+            if (VulkanRenderer._rendererType == ERendererTypes.Pathtracer)
             {
                 Matrix4X4<float> _tempView;
                 Matrix4X4<float> _tempProjection;

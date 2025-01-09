@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Renderer.Helpers;
+using ArctisAurora.EngineWork.Renderer.RendererTypes;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
@@ -252,7 +253,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             _instances = _matrices.Count;
             _transformMatrices = _matrices;
 
-            AVulkanBufferHandler.CreateTransformBuffer(ref _transformMatrices, ref _transformsBuffer, ref _trasnformsBufferMemory, _aditionalUsageFlags);
+            AVulkanBufferHandler.CreateTransformBuffer(ref _transformMatrices, ref _transformsBuffer, ref _transformsBufferMemory, _aditionalUsageFlags);
             VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
             VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPoolShadow, (uint)_descriptorSetsShadow.Length, _descriptorSetsShadow);
             CreateDescriptorSet();
@@ -262,7 +263,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
         internal override void SingletonMatrix()
         {
             base.SingletonMatrix();
-            AVulkanBufferHandler.CreateTransformBuffer(ref _transformMatrices, ref _transformsBuffer, ref _trasnformsBufferMemory, _aditionalUsageFlags);
+            AVulkanBufferHandler.CreateTransformBuffer(ref _transformMatrices, ref _transformsBuffer, ref _transformsBufferMemory, _aditionalUsageFlags);
         }
 
         internal override void UpdateMatrices()
@@ -270,9 +271,9 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             base.UpdateMatrices();
         }
 
-        internal override void EnqueueDrawCommands(ulong[] _offset, int _loopIndex, ref CommandBuffer _commandBuffer)
+        internal override void EnqueueDrawCommands(ref ulong[] _offset, int _loopIndex, ref CommandBuffer _commandBuffer)
         {
-            base.EnqueueDrawCommands(_offset, _loopIndex, ref _commandBuffer);
+            base.EnqueueDrawCommands(ref _offset, _loopIndex, ref _commandBuffer);
         }
 
         internal void EnqueuShadowDrawCommands(ulong[] _offset, int descriptorIndex, ref CommandBuffer _commandBuffer, int lightIndex)
@@ -285,7 +286,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
                 {
                     VulkanRenderer._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, _vertBuffersPtr, _offsetsPtr);
                 }
-                VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, _indexBuffer, 0, IndexType.Uint16);
+                VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, _indexBuffer, 0, IndexType.Uint32);
                 VulkanRenderer._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, Rasterizer._pipeline._shadowLayout, 0, 1, _descriptorSetsShadow[descriptorIndex], 0, null);
                 //push constants
                 VulkanRenderer._vulkan.CmdPushConstants(_commandBuffer, Rasterizer._pipeline._shadowLayout, ShaderStageFlags.VertexBit, 0, sizeof(int), &lightIndex);

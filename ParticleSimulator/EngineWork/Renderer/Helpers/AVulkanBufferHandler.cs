@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+using ArctisAurora.EngineWork.Renderer.RendererTypes;
 using ArctisAurora.GameObject;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
@@ -40,16 +41,16 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, null);
         }
 
-        internal static void CreateIndexBuffer(ref ushort[] _meshIndices, ref Buffer _indexBuffer, ref DeviceMemory _indexBufferMemory, BufferUsageFlags _additionalFlags)
+        internal static void CreateIndexBuffer(ref uint[] _meshIndices, ref Buffer _indexBuffer, ref DeviceMemory _indexBufferMemory, BufferUsageFlags _additionalFlags)
         {
-            ulong _bufferSize = (ulong)(Unsafe.SizeOf<ushort>() * _meshIndices.Length);
+            ulong _bufferSize = (ulong)(Unsafe.SizeOf<uint>() * _meshIndices.Length);
             Buffer _stagingBuffer = default;
             DeviceMemory _stagingBufferMemory = default;
             CreateBuffer(_bufferSize, BufferUsageFlags.TransferSrcBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _stagingBuffer, ref _stagingBufferMemory);
 
             void* _data;
             VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, 0, _bufferSize, 0, &_data);
-            _meshIndices.AsSpan().CopyTo(new Span<ushort>(_data, _meshIndices.Length));
+            _meshIndices.AsSpan().CopyTo(new Span<uint>(_data, _meshIndices.Length));
             VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory);
             
             CreateBuffer(_bufferSize, BufferUsageFlags.TransferDstBit | BufferUsageFlags.IndexBufferBit | _additionalFlags, MemoryPropertyFlags.DeviceLocalBit, ref _indexBuffer, ref _indexBufferMemory); ;
@@ -114,9 +115,10 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
 
             void* _data;
             VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _instanceMemory, 0, _bufferSize, 0, &_data);
+            /*_instances.ToArray().AsSpan().CopyTo(new Span<Matrix4X4<float>>(_data, _instances.Count));
             Span<Matrix4X4<float>> _span = new Span<Matrix4X4<float>>(_data, _instances.Count);
             for (int i = 0; i < _instances.Count; i++)
-                _span[i] = _instances[i];
+                _span[i] = _instances[i];*/
             VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _instanceMemory);
         }
 

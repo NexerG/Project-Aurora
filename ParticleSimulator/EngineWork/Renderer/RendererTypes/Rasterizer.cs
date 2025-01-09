@@ -6,7 +6,7 @@ using ArctisAurora.EngineWork.Renderer.Helpers;
 using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
-namespace ArctisAurora.EngineWork.Renderer
+namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 {
     struct LightData
     {
@@ -265,7 +265,7 @@ namespace ArctisAurora.EngineWork.Renderer
                 for (int e = 0; e < _entitiesToRender.Count; e++)
                 {
                     var _offset = new ulong[] { 0 };
-                    _entitiesToRender[e].GetComponent<MeshComponent>().EnqueueDrawCommands(_offset, i, ref _commandBuffer[i]);
+                    _entitiesToRender[e].GetComponent<MeshComponent>().EnqueueDrawCommands(ref _offset, i, ref _commandBuffer[i]);
                 }
 
                 //end of for loop
@@ -284,6 +284,7 @@ namespace ArctisAurora.EngineWork.Renderer
             List<DescriptorType> _types1 = new List<DescriptorType> { DescriptorType.UniformBuffer, DescriptorType.StorageBuffer, DescriptorType.StorageBuffer, DescriptorType.CombinedImageSampler, DescriptorType.CombinedImageSampler };
             List<ShaderStageFlags> _flags1 = new List<ShaderStageFlags> { ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit, ShaderStageFlags.FragmentBit, ShaderStageFlags.FragmentBit, ShaderStageFlags.FragmentBit, };
             CreateDescriptorSetLayout(_types1.Count, _types1, _flags1, ref _descriptorSetLayout);
+
             List<DescriptorType> _types2 = new List<DescriptorType> { DescriptorType.StorageBuffer, DescriptorType.StorageBuffer };
             List<ShaderStageFlags> _flags2 = new List<ShaderStageFlags> { ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit };
             CreateDescriptorSetLayout(_types2.Count, _types2, _flags2, ref _descriptorSetLayoutShadow);

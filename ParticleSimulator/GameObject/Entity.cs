@@ -81,9 +81,9 @@ namespace ArctisAurora.GameObject
         public EntComp CreateComponent<EntComp>() where EntComp : EntityComponent, new()
         {
             EntComp component = typeof(EntComp).Name == typeof(MeshComponent).Name ?
-                (VulkanRenderer._rendererType == RendererTypes.Pathtracer
+                (VulkanRenderer._rendererType == ERendererTypes.Pathtracer
                     ? (EntComp)(object)new MCRaytracing() 
-                    : (VulkanRenderer._rendererType == RendererTypes.RadianceCascades
+                    : (VulkanRenderer._rendererType == ERendererTypes.RadianceCascades
                         ? (EntComp)(object)new MCRaster() 
                         : (EntComp)(object)new MCRaster()))
             :  new EntComp();
@@ -95,7 +95,7 @@ namespace ArctisAurora.GameObject
             }*/
             if (!_components.Contains(component))
             {
-                //_components.Add(component);
+                _components.Add(component);
                 component.parent = this;
                 component.OnStart();
                 return component;
