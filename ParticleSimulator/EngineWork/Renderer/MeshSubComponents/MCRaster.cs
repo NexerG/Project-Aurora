@@ -1,6 +1,7 @@
 ﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Renderer.Helpers;
 using ArctisAurora.EngineWork.Renderer.RendererTypes;
+using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
@@ -30,6 +31,11 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
         {
             base.OnStart();
             CreateDescriptorSet();
+        }
+
+        internal override void LoadCustomMesh(Scene sc)
+        {
+            base.LoadCustomMesh(sc);
         }
 
         internal override void FreeDescriptorSets()

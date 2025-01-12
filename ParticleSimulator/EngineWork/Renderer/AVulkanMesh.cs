@@ -55,7 +55,7 @@ namespace ArctisAurora.EngineWork.Renderer
 
     internal class AVulkanMesh
     {
-        internal Vertex[] _vertices = new[]
+        /*internal Vertex[] _vertices = new[]
         {
             new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(0.0f, 0.0f) },
             new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f, -0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(0.0f, 5.0f) },
@@ -78,7 +78,17 @@ namespace ArctisAurora.EngineWork.Renderer
             new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(0.0f, 0.5f,  0.8f), _uv = new Vector2D<float>(0.0f, 0.0f) },
             new Vertex { _pos = new Vector3D<float>(0.0f, 0.8f,  0.0f), _normal =  new Vector3D<float>(0.0f, 0.5f,  0.8f), _uv = new Vector2D<float>(2.5f, 5.0f) },
         };
-        /*internal Vertex[] _vertices = new[]
+        internal uint[] _indices = new uint[]
+{
+            0, 1, 2, // Bottom side
+	        0, 2, 3, // Bottom side
+	        4, 6, 5, // Left side
+	        7, 9, 8, // Non-facing side
+	        10, 12, 11, // Right side
+	        13, 15, 14 // Facing side
+        };*/
+
+        internal Vertex[] _vertices = new[]
         {
             // bottom.
             new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(0.0f, 0.0f) },
@@ -92,20 +102,10 @@ namespace ArctisAurora.EngineWork.Renderer
         {
             0, 1, 2, // Bottom side
 	        0, 2, 3, // Bottom side
-	        0, 1, 4, // Left side
-	        1, 2, 4, // Non-facing side
-	        2, 3, 4, // Right side
-	        3, 0, 4 // Facing side
-        };*/
-
-        internal uint[] _indices = new uint[]
-        {
-            0, 1, 2, // Bottom side
-	        0, 2, 3, // Bottom side
-	        4, 6, 5, // Left side
-	        7, 9, 8, // Non-facing side
-	        10, 12, 11, // Right side
-	        13, 15, 14 // Facing side
+	        4, 1, 0, // Left side
+	        4, 2, 1, // Non-facing side
+	        4, 3, 2, // Right side
+	        4, 0, 3 // Facing side
         };
 
         internal void LoadCustomMesh(Scene sc)
@@ -127,6 +127,11 @@ namespace ArctisAurora.EngineWork.Renderer
                 _vertices[i]._uv = new Vector2D<float>(uvs[i].X, uvs[i].Y);
                 _vertices[i]._normal = new Vector3D<float>(normals[i].X, normals[i].Y, normals[i].Z);
             }
+        }
+
+        internal void RecalculateNormals()
+        {
+
         }
     }
 }

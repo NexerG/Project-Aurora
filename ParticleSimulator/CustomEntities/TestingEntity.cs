@@ -25,9 +25,9 @@ namespace ArctisAurora.CustomEntities
         public override void OnTick()
         {
             base.OnTick();
-            float r = 0.01f;
+            float r = 0.0025f;
             r = transform.GetEntityRotation().X + r;
-            transform.SetRotationFromVector3(new Vector3D<float>(r,0,0));
+            transform.SetRotationFromVector3(new Vector3D<float>(r,transform.GetEntityRotation().Y, transform.GetEntityRotation().Z));
         }
     }
 }

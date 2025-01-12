@@ -267,12 +267,13 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
                     PCommandBuffers = _cptr,
                 };
                 Result queue, queuewait, devicewait;
-                queue  = VulkanRenderer._vulkan!.QueueSubmit(VulkanRenderer._graphicsQueue, 1, submitInfo, default);
+                queue  = VulkanRenderer._vulkan!.QueueSubmit(VulkanRenderer._graphicsQueue, 1, ref submitInfo, default);
                 queuewait = VulkanRenderer._vulkan!.QueueWaitIdle(VulkanRenderer._graphicsQueue);
                 devicewait = VulkanRenderer._vulkan!.DeviceWaitIdle(VulkanRenderer._logicalDevice);
-                if(queue != queuewait && queue != devicewait && queue != Result.Success)
+                if(queue != Result.Success && queue != Result.Success && queue != Result.Success)
                 {
-                    throw new Exception("failed to submit command buffer");
+                    Console.WriteLine("Exception thrown");
+                    throw new Exception("failed to submit single time commands");
                 }
 
                 VulkanRenderer._vulkan!.FreeCommandBuffers(VulkanRenderer._logicalDevice, VulkanRenderer._commandPool, 1, _cptr);
@@ -404,8 +405,14 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
                 CommandBufferCount = 1,
                 PCommandBuffers = &_localCommandBuffer
             };
-            VulkanRenderer._vulkan.QueueSubmit(VulkanRenderer._graphicsQueue, 1, _subInfo, default);
-            VulkanRenderer._vulkan.QueueWaitIdle(VulkanRenderer._graphicsQueue);
+            Result queue, wait;
+            queue = VulkanRenderer._vulkan.QueueSubmit(VulkanRenderer._graphicsQueue, 1, _subInfo, default);
+            wait = VulkanRenderer._vulkan.QueueWaitIdle(VulkanRenderer._graphicsQueue);
+            if (queue != Result.Success && wait != Result.Success)
+            {
+                Console.WriteLine("Exception thrown");
+                throw new Exception("failed to submit 'copy buffer' commands");
+            }
             VulkanRenderer._vulkan.FreeCommandBuffers(VulkanRenderer._logicalDevice, VulkanRenderer._commandPool, 1, _localCommandBuffer);
         }
 
@@ -485,134 +492,6 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
         {
             PhysicalDeviceMemoryProperties _memProperties;
             VulkanRenderer._vulkan.GetPhysicalDeviceMemoryProperties(VulkanRenderer._gpu, out _memProperties);
-
-            for (int i = 0; i < _memProperties.MemoryTypeCount; i++)
-            {
-                if ((_typeFilter & 1 << i) != 0 && (_memProperties.MemoryTypes[i].PropertyFlags & _properties) == _properties)
-                {
-                    return (uint)i;
-                }
-            }
-            throw new Exception("Failed to find suitable memory type");
-        }
-    }
-
-    internal unsafe class PathTracerBufferHelper
-    {
-        internal void CreateVertexBuffer(ref Vertex[] _vertices, ref Buffer _vertexBuffer, ref DeviceMemory _vertexBufferMemory)
-        {
-            ulong _bufferSize = (ulong)(Unsafe.SizeOf<Vertex>() * _vertices.Length);
-            Buffer _stagingBuffer = default;
-            DeviceMemory _stagingBufferMemory = default;
-            CreateBuffer(_bufferSize, BufferUsageFlags.TransferSrcBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCachedBit, ref _stagingBuffer, ref _stagingBufferMemory);
-
-            void* _data;
-            Rasterizer._vulkan.MapMemory(Rasterizer._logicalDevice, _stagingBufferMemory, 0, _bufferSize, 0, &_data);
-            _vertices.AsSpan().CopyTo(new Span<Vertex>(_data, _vertices.Length));
-            Rasterizer._vulkan.UnmapMemory(Rasterizer._logicalDevice, _stagingBufferMemory);
-
-            CreateBuffer(_bufferSize, BufferUsageFlags.TransferDstBit | BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.StorageBufferBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr, MemoryPropertyFlags.DeviceLocalBit, ref _vertexBuffer, ref _vertexBufferMemory);
-
-            CopyBuffer(ref _stagingBuffer, ref _vertexBuffer, _bufferSize);
-            Rasterizer._vulkan.DestroyBuffer(Rasterizer._logicalDevice, _stagingBuffer, null);
-            Rasterizer._vulkan.FreeMemory(Rasterizer._logicalDevice, _stagingBufferMemory, null);
-        }
-
-        internal void CreateIndexBuffer(ref ushort[] _meshIndices, ref Buffer _indexBuffer, ref DeviceMemory _indexBufferMemory)
-        {
-            ulong _bufferSize = (ulong)(Unsafe.SizeOf<ushort>() * _meshIndices.Length);
-            Buffer _stagingBuffer = default;
-            DeviceMemory _stagingBufferMemory = default;
-            CreateBuffer(_bufferSize, BufferUsageFlags.TransferSrcBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit, ref _stagingBuffer, ref _stagingBufferMemory);
-            void* _data;
-            Rasterizer._vulkan.MapMemory(Rasterizer._logicalDevice, _stagingBufferMemory, 0, _bufferSize, 0, &_data);
-            _meshIndices.AsSpan().CopyTo(new Span<ushort>(_data, _meshIndices.Length));
-            Rasterizer._vulkan.UnmapMemory(Rasterizer._logicalDevice, _stagingBufferMemory);
-            CreateBuffer(_bufferSize, BufferUsageFlags.TransferDstBit | BufferUsageFlags.IndexBufferBit, MemoryPropertyFlags.DeviceLocalBit, ref _indexBuffer, ref _indexBufferMemory); ;
-            CopyBuffer(ref _stagingBuffer, ref _indexBuffer, _bufferSize);
-            Rasterizer._vulkan.DestroyBuffer(Rasterizer._logicalDevice, _stagingBuffer, null);
-            Rasterizer._vulkan.FreeMemory(Rasterizer._logicalDevice, _stagingBufferMemory, null);
-        }
-
-        private void CopyBuffer(ref Buffer _sourceBuffer, ref Buffer _dstBuffer, ulong bufferSize)
-        {
-            CommandBufferAllocateInfo _allocInfo = new CommandBufferAllocateInfo()
-            {
-                SType = StructureType.CommandBufferAllocateInfo,
-                Level = CommandBufferLevel.Primary,
-                CommandPool = Rasterizer._commandPool,
-                CommandBufferCount = 1
-            };
-            CommandBuffer _localCommandBuffer;
-            Rasterizer._vulkan.AllocateCommandBuffers(Rasterizer._logicalDevice, _allocInfo, out _localCommandBuffer);
-
-            CommandBufferBeginInfo _cBBeginInfo = new CommandBufferBeginInfo()
-            {
-                SType = StructureType.CommandBufferBeginInfo,
-                Flags = CommandBufferUsageFlags.OneTimeSubmitBit
-            };
-            Rasterizer._vulkan.BeginCommandBuffer(_localCommandBuffer, _cBBeginInfo);
-
-            BufferCopy _copyRegion = new BufferCopy()
-            {
-                Size = bufferSize
-            };
-            Rasterizer._vulkan.CmdCopyBuffer(_localCommandBuffer, _sourceBuffer, _dstBuffer, 1, _copyRegion);
-            Rasterizer._vulkan.EndCommandBuffer(_localCommandBuffer);
-
-            SubmitInfo _subInfo = new SubmitInfo()
-            {
-                SType = StructureType.SubmitInfo,
-                CommandBufferCount = 1,
-                PCommandBuffers = &_localCommandBuffer
-            };
-            Rasterizer._vulkan.QueueSubmit(Rasterizer._graphicsQueue, 1, _subInfo, default);
-            Rasterizer._vulkan.QueueWaitIdle(Rasterizer._graphicsQueue);
-            Rasterizer._vulkan.FreeCommandBuffers(Rasterizer._logicalDevice, Rasterizer._commandPool, 1, _localCommandBuffer);
-        }
-
-        private void CreateBuffer(ulong _size, BufferUsageFlags _usage, MemoryPropertyFlags _properties, ref Buffer _buffer, ref DeviceMemory _bufferMemory)
-        {
-            BufferCreateInfo _bufferCreateInfo = new BufferCreateInfo()
-            {
-                SType = StructureType.BufferCreateInfo,
-                Size = _size,
-                Usage = _usage,
-                SharingMode = SharingMode.Exclusive
-            };
-
-            fixed (Buffer* _bufferPtr = &_buffer)
-            {
-                if (Rasterizer._vulkan.CreateBuffer(Rasterizer._logicalDevice, _bufferCreateInfo, null, _bufferPtr) != Result.Success)
-                {
-                    throw new Exception("Failed to create a VBO");
-                }
-            }
-            MemoryRequirements _memReqs = new MemoryRequirements();
-            Rasterizer._vulkan.GetBufferMemoryRequirements(Rasterizer._logicalDevice, _buffer, out _memReqs);
-
-            MemoryAllocateInfo _allocateInfo = new MemoryAllocateInfo()
-            {
-                SType = StructureType.MemoryAllocateInfo,
-                AllocationSize = _memReqs.Size,
-                MemoryTypeIndex = FindMemoryType(_memReqs.MemoryTypeBits, _properties)
-            };
-
-            fixed (DeviceMemory* _bufferMemoryPtr = &_bufferMemory)
-            {
-                if (Rasterizer._vulkan.AllocateMemory(Rasterizer._logicalDevice, _allocateInfo, null, _bufferMemoryPtr) != Result.Success)
-                {
-                    throw new Exception("Failed to allocate vertex buffer memory");
-                }
-            }
-
-            Rasterizer._vulkan.BindBufferMemory(Rasterizer._logicalDevice, _buffer, _bufferMemory, 0);
-        }
-
-        private uint FindMemoryType(uint _typeFilter, MemoryPropertyFlags _properties)
-        {
-            PhysicalDeviceMemoryProperties _memProperties;
-            Rasterizer._vulkan.GetPhysicalDeviceMemoryProperties(Rasterizer._gpu, out _memProperties);
 
             for (int i = 0; i < _memProperties.MemoryTypeCount; i++)
             {

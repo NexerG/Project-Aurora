@@ -41,7 +41,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             VulkanRenderer._rendererInstance.AddEntityToRenderQueue(parent);
         }
 
-        internal void LoadCustomMesh(Scene sc)
+        internal virtual void LoadCustomMesh(Scene sc)
         {
             VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _vertexBuffer, null);
             VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _indexBuffer, null);
@@ -88,11 +88,9 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         {
             if (_render)
             {
-                Buffer[] _vertBuffer = new Buffer[] { _vertexBuffer };
                 fixed (ulong* _offsetsPtr = _offset)
-                fixed (Buffer* _vertBuffersPtr = _vertBuffer)
                 {
-                    VulkanRenderer._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, _vertBuffersPtr, _offsetsPtr);
+                    VulkanRenderer._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, ref _vertexBuffer, _offsetsPtr);
                 }
                 VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, _indexBuffer, 0, IndexType.Uint32);
                 VulkanRenderer._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, Rasterizer._pipeline._pipelineLayout, 0, 1, ref _descriptorSets[_loopIndex], 0, null);

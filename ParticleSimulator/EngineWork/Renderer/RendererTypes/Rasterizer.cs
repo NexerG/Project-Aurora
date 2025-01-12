@@ -283,11 +283,12 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
         {
             List<DescriptorType> _types1 = new List<DescriptorType> { DescriptorType.UniformBuffer, DescriptorType.StorageBuffer, DescriptorType.StorageBuffer, DescriptorType.CombinedImageSampler, DescriptorType.CombinedImageSampler };
             List<ShaderStageFlags> _flags1 = new List<ShaderStageFlags> { ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit, ShaderStageFlags.FragmentBit, ShaderStageFlags.FragmentBit, ShaderStageFlags.FragmentBit, };
-            CreateDescriptorSetLayout(_types1.Count, _types1, _flags1, ref _descriptorSetLayout);
+            DescriptorBindingFlags[] _DBF = { };
+            CreateDescriptorSetLayout(_types1.Count, _types1, _flags1, ref _descriptorSetLayout, _DBF);
 
             List<DescriptorType> _types2 = new List<DescriptorType> { DescriptorType.StorageBuffer, DescriptorType.StorageBuffer };
             List<ShaderStageFlags> _flags2 = new List<ShaderStageFlags> { ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit };
-            CreateDescriptorSetLayout(_types2.Count, _types2, _flags2, ref _descriptorSetLayoutShadow);
+            CreateDescriptorSetLayout(_types2.Count, _types2, _flags2, ref _descriptorSetLayoutShadow, _DBF);
         }
 
         internal override void CreateDescriptorPool()
@@ -322,7 +323,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                     MaxSets = (uint)(_swapimageCount * _entitiesToRender.Count * 5 + 1),
                     Flags = DescriptorPoolCreateFlags.FreeDescriptorSetBit
                 };
-                if (_vulkan.CreateDescriptorPool(_logicalDevice, _poolInfo, null, _descPoolPtr) != Result.Success)
+                if (_vulkan.CreateDescriptorPool(_logicalDevice, ref _poolInfo, null, _descPoolPtr) != Result.Success)
                 {
                     throw new Exception("Failed to create descriptor pool");
                 }

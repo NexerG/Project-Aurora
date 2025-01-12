@@ -4,6 +4,7 @@ using Silk.NET.Maths;
 using ArctisAurora.EngineWork.Renderer;
 using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+using Assimp;
 
 namespace ArctisAurora.EngineWork
 {
@@ -35,7 +36,7 @@ namespace ArctisAurora.EngineWork
 
             ////mesh importer
             MeshImporter importer = new MeshImporter();
-            //Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\plane.fbx");
+            Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\plane.fbx");
             
             Running = true;
             SC = s;
@@ -51,16 +52,17 @@ namespace ArctisAurora.EngineWork
             _entities.Add(_e);*/
 
             //then we do meshes
-            //TestingEntity _te = new TestingEntity(new Vector3D<float>(5, 5, 5), new Vector3D<float>(75, -25, 0));
-            TestingEntity _te2 = new TestingEntity(new Vector3D<float>(25, 25, 25), new Vector3D<float>(75, 25, 0));
-            //_entities.Add(_te);
+            TestingEntity _te = new TestingEntity(new Vector3D<float>(100, 1, 100), new Vector3D<float>(75, 25, 0));
+            _te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
+            _entities.Add(_te);
+            TestingEntity _te2 = new TestingEntity(new Vector3D<float>(5, 5, 5), new Vector3D<float>(75, 35, 0));
             _entities.Add(_te2);
-            /*TestingEntity _te = new TestingEntity();
-            _te.transform.SetWorldScale(new Vector3D<float>(5, 5, 5));
-            _te.transform.SetWorldPosition(new Vector3D<float>(75, -25, 0));
-            TestingEntity _te2 = new TestingEntity();
-            _te2.transform.SetWorldScale(new Vector3D<float>(25, 25, 25));
-            _te2.transform.SetWorldPosition(new Vector3D<float>(75, 25, 0));*/
+            TestingEntity _te3 = new TestingEntity(new Vector3D<float>(5, 5, 5), new Vector3D<float>(75, 35, 10));
+            _te3.transform.SetRotationFromVector3(new Vector3D<float>(0.0f,2f,0.0f));
+            _entities.Add(_te3);
+            TestingEntity _te4 = new TestingEntity(new Vector3D<float>(5, 5, 5), new Vector3D<float>(75, 35, 20));
+            _te4.transform.SetRotationFromVector3(new Vector3D<float>(0.0f,0.0f,5.0f));
+            _entities.Add(_te4);
             //---------------------------------------------------------------------------
 
             //engine thread

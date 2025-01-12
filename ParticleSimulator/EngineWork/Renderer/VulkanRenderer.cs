@@ -127,6 +127,15 @@ namespace ArctisAurora.EngineWork.Renderer
                 createInfo.EnabledLayerCount = (uint)_validationLayers.Length;
                 createInfo.PpEnabledLayerNames = (byte**)SilkMarshal.StringArrayToPtr(_validationLayers);
                 DebugUtilsMessengerCreateInfoEXT debugCreateInfo = new();
+                debugCreateInfo.MessageSeverity =
+                    DebugUtilsMessageSeverityFlagsEXT.VerboseBitExt
+                    | DebugUtilsMessageSeverityFlagsEXT.WarningBitExt
+                    | DebugUtilsMessageSeverityFlagsEXT.ErrorBitExt;
+                debugCreateInfo.MessageType =
+                    DebugUtilsMessageTypeFlagsEXT.GeneralBitExt
+                    | DebugUtilsMessageTypeFlagsEXT.ValidationBitExt
+                    | DebugUtilsMessageTypeFlagsEXT.PerformanceBitExt;
+
                 PopulateDebugMessengerCreateInfo(ref debugCreateInfo);
                 createInfo.PNext = &debugCreateInfo;
             }
@@ -350,30 +359,79 @@ namespace ArctisAurora.EngineWork.Renderer
 
         internal virtual void CreateDescriptorPool() { }
 
-        internal void CreateDescriptorSetLayout(int _bindingCount, List<DescriptorType> _descriptors, List<ShaderStageFlags> _stageFlags, ref DescriptorSetLayout _dsl)
+        internal void CreateDescriptorSetLayout(int _bindingCount, List<DescriptorType> _descriptorTypes, List<ShaderStageFlags> _stageFlags, ref DescriptorSetLayout _dsl, DescriptorBindingFlags[] indexedFlags, uint descriptorCount = 1)
         {
             List<DescriptorSetLayoutBinding> _bindingList = new List<DescriptorSetLayoutBinding>();
-            for (int i=0;i<_bindingCount; i++)
+            for (int i=0; i<_bindingCount; i++)
             {
                 DescriptorSetLayoutBinding _binding = new DescriptorSetLayoutBinding()
                 {
                     Binding = (uint)i,
-                    DescriptorCount = 1,
-                    DescriptorType = _descriptors[i],
+                    DescriptorCount = descriptorCount,
+                    DescriptorType = _descriptorTypes[i],
                     PImmutableSamplers = null,
                     StageFlags = _stageFlags[i]
                 };
                 _bindingList.Add(_binding);
             }
             var _b = _bindingList.ToArray();
+            fixed (DescriptorBindingFlags* _indexedPtr = indexedFlags)
             fixed (DescriptorSetLayoutBinding* _bindingsPtr = _b)
             fixed (DescriptorSetLayout* _descSetLayoutPtr = &_dsl)
             {
+                DescriptorSetLayoutBindingFlagsCreateInfoEXT _setLayoutBindingFlags = new()
+                {
+                    SType = StructureType.DescriptorSetLayoutBindingFlagsCreateInfoExt,
+                    BindingCount = (uint)indexedFlags.Length,
+                    PBindingFlags = _indexedPtr
+                };
+
                 DescriptorSetLayoutCreateInfo _layoutCreateInfo = new DescriptorSetLayoutCreateInfo()
                 {
                     SType = StructureType.DescriptorSetLayoutCreateInfo,
                     BindingCount = (uint)_bindingList.Count,
                     PBindings = _bindingsPtr,
+                    PNext = &_setLayoutBindingFlags
+                };
+                if (_vulkan.CreateDescriptorSetLayout(_logicalDevice, ref _layoutCreateInfo, null, _descSetLayoutPtr) != Result.Success)
+                {
+                    throw new Exception("Failed to create descriptor set layout");
+                }
+            }
+        }
+        internal void CreateDescriptorSetLayout(int _bindingCount, List<DescriptorType> _descriptorTypes, List<ShaderStageFlags> _stageFlags, ref DescriptorSetLayout _dsl, DescriptorBindingFlags[] indexedFlags, uint[] descriptorCount)
+        {
+            List<DescriptorSetLayoutBinding> _bindingList = new List<DescriptorSetLayoutBinding>();
+            for (int i = 0; i < _bindingCount; i++)
+            {
+                DescriptorSetLayoutBinding _binding = new DescriptorSetLayoutBinding()
+                {
+                    Binding = (uint)i,
+                    DescriptorCount = descriptorCount[i],
+                    DescriptorType = _descriptorTypes[i],
+                    PImmutableSamplers = null,
+                    StageFlags = _stageFlags[i]
+                };
+                _bindingList.Add(_binding);
+            }
+            var _b = _bindingList.ToArray();
+            fixed (DescriptorBindingFlags* _indexedPtr = indexedFlags)
+            fixed (DescriptorSetLayoutBinding* _bindingsPtr = _b)
+            fixed (DescriptorSetLayout* _descSetLayoutPtr = &_dsl)
+            {
+                DescriptorSetLayoutBindingFlagsCreateInfo _setLayoutBindingFlags = new()
+                {
+                    SType = StructureType.DescriptorSetLayoutBindingFlagsCreateInfoExt,
+                    BindingCount = (uint)indexedFlags.Length,
+                    PBindingFlags = _indexedPtr
+                };
+
+                DescriptorSetLayoutCreateInfo _layoutCreateInfo = new DescriptorSetLayoutCreateInfo()
+                {
+                    SType = StructureType.DescriptorSetLayoutCreateInfo,
+                    BindingCount = (uint)_bindingList.Count,
+                    PBindings = _bindingsPtr,
+                    PNext = &_setLayoutBindingFlags
                 };
                 if (_vulkan.CreateDescriptorSetLayout(_logicalDevice, ref _layoutCreateInfo, null, _descSetLayoutPtr) != Result.Success)
                 {

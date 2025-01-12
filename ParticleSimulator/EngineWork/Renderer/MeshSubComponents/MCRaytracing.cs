@@ -1,6 +1,7 @@
 ﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Renderer.Helpers;
 using ArctisAurora.EngineWork.Renderer.RendererTypes;
+using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Drawing.Drawing2D;
@@ -48,7 +49,32 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             SingletonMatrix();
             CreateBLAS();
             _rendererInstance.AddEntityToRenderQueue(parent);
-            CreateDescriptorSet();
+            //CreateDescriptorSet();
+        }
+
+        internal override void LoadCustomMesh(Scene sc)
+        {
+            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _vertexBuffer, null);
+            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _indexBuffer, null);
+            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _indexBufferMemory, null);
+            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _vertexBufferMemory, null);
+            if (_BLAS._handle.Handle != 0)
+            {
+                _accelerationStructure.DestroyAccelerationStructure(_logicalDevice, _BLAS._handle, null);
+                _vulkan.FreeMemory(_logicalDevice, _BLAS._memory, null);
+                _vulkan.DestroyBuffer(_logicalDevice, _BLAS._buffer, null);
+            }
+
+            _mesh.LoadCustomMesh(sc);
+
+            AVulkanBufferHandler.CreateVertexBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, _aditionalUsageFlags);
+            AVulkanBufferHandler.CreateIndexBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, _aditionalUsageFlags);
+            CreateBLAS();
+            Pathtracing.UpdateAccInstance(this);
+            UpdateTLAS();
+            ReinstantiateDesriptorSets();
+
+            VulkanRenderer._rendererInstance.RecreateCommandBuffers();
         }
 
         private void CreateBLAS()
@@ -339,142 +365,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 
         internal override void CreateDescriptorSet()
         {
-            DescriptorSetLayout[] _layouts = new DescriptorSetLayout[_swapimageCount];
-            Array.Fill(_layouts, _descriptorSetLayout);
-
-            fixed (DescriptorSetLayout* _layoutsPtr = _layouts)
-            {
-                DescriptorSetAllocateInfo _allocateInfo = new DescriptorSetAllocateInfo()
-                {
-                    SType = StructureType.DescriptorSetAllocateInfo,
-                    DescriptorPool = _descriptorPool,
-                    DescriptorSetCount = (uint)_swapimageCount,
-                    PSetLayouts = _layoutsPtr
-                };
-
-                _descriptorSets = new DescriptorSet[_swapimageCount];
-                fixed (DescriptorSet* _descriptorSetsPtr = _descriptorSets)
-                {
-                    Result r = _vulkan.AllocateDescriptorSets(_logicalDevice, ref _allocateInfo, _descriptorSetsPtr);
-                    if (r != Result.Success)
-                    {
-                        throw new Exception("Failed to allocate descriptor set with error code: " + r);
-                    }
-                }
-            }
-            for (int i = 0; i < _swapimageCount; i++)
-            {
-                fixed (AccelerationStructureKHR* _accelStrPtr = &Pathtracing._TLAS._handle)
-                {
-                    WriteDescriptorSetAccelerationStructureKHR _dasinfo = new()
-                    {
-                        SType = StructureType.WriteDescriptorSetAccelerationStructureKhr,
-                        AccelerationStructureCount = 1,
-                        PAccelerationStructures = _accelStrPtr,
-                    };
-                    DescriptorImageInfo _dImageInfo = new()
-                    {
-                        ImageLayout = ImageLayout.General,
-                        ImageView = _storageImageView[i]
-                    };
-                    DescriptorBufferInfo _bufferInfoMatrices = new DescriptorBufferInfo()
-                    {
-                        Buffer = _camera._cameraBuffer[i],
-                        Offset = 0,
-                        Range = (ulong)Unsafe.SizeOf<UBO>()
-                    };
-
-                    DescriptorBufferInfo _vertexData = new()
-                    {
-                        Buffer = _vertexBuffer,
-                        Offset = 0,
-                        Range = (ulong)(sizeof(Vertex) * _mesh._vertices.Length)
-                    };
-
-                    DescriptorBufferInfo _indexData = new()
-                    {
-                        Buffer = _indexBuffer,
-                        Offset = 0,
-                        Range = (ulong)(sizeof(uint) * _mesh._indices.Length)
-                    };
-
-                    DescriptorBufferInfo _transformData = new()
-                    {
-                        Buffer = _transformsBuffer,
-                        Offset = 0,
-                        Range = (ulong)sizeof(float) * 12
-                    };
-                    var _writeDescriptorSets = new WriteDescriptorSet[]
-                    {
-                        new WriteDescriptorSet
-                        {
-                            SType = StructureType.WriteDescriptorSet,
-                            PNext = &_dasinfo,
-                            DstSet = _descriptorSets[i],
-                            DstBinding = 0,
-                            DescriptorCount = 1,
-                            DstArrayElement = 0,
-                            DescriptorType = DescriptorType.AccelerationStructureKhr
-                        },
-                        new WriteDescriptorSet
-                        {
-                            SType = StructureType.WriteDescriptorSet,
-                            DstSet = _descriptorSets[i],
-                            DstBinding = 1,
-                            DescriptorCount = 1,
-                            DstArrayElement = 0,
-                            DescriptorType = DescriptorType.StorageImage,
-                            PImageInfo = &_dImageInfo
-                        },
-                        new WriteDescriptorSet
-                        {
-                            SType = StructureType.WriteDescriptorSet,
-                            DstSet = _descriptorSets[i],
-                            DstBinding = 2,
-                            DescriptorCount = 1,
-                            DstArrayElement = 0,
-                            DescriptorType = DescriptorType.UniformBuffer,
-                            PBufferInfo = &_bufferInfoMatrices
-                        },
-                        // vertex data
-                        new WriteDescriptorSet
-                        {
-                            SType = StructureType.WriteDescriptorSet,
-                            DstSet = _descriptorSets[i],
-                            DstBinding = 3,
-                            DescriptorCount = 1,
-                            DstArrayElement = 0,
-                            DescriptorType = DescriptorType.StorageBuffer,
-                            PBufferInfo = &_vertexData
-                        },
-                        new WriteDescriptorSet
-                        {
-                            SType = StructureType.WriteDescriptorSet,
-                            DstSet = _descriptorSets[i],
-                            DstBinding = 4,
-                            DescriptorCount = 1,
-                            DstArrayElement = 0,
-                            DescriptorType = DescriptorType.StorageBuffer,
-                            PBufferInfo = &_indexData
-                        },
-                        // transform
-                        new WriteDescriptorSet
-                        {
-                            SType = StructureType.WriteDescriptorSet,
-                            DstSet = _descriptorSets[i],
-                            DstBinding = 5,
-                            DescriptorCount = 1,
-                            DstArrayElement = 0,
-                            DescriptorType = DescriptorType.UniformBuffer,
-                            PBufferInfo = &_transformData
-                        }
-                    };
-                    fixed (WriteDescriptorSet* _descPtr = _writeDescriptorSets)
-                    {
-                        _vulkan!.UpdateDescriptorSets(_logicalDevice, (uint)_writeDescriptorSets.Length, _descPtr, 0, null);
-                    }
-                }
-            }
+            ((Pathtracing)_rendererInstance).CreateGlobalDescriptorSets();
         }
 
         internal override void MakeInstanced(ref List<Matrix4X4<float>> _matrices)
@@ -520,13 +411,13 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             _transform = Matrix4X4.Transpose(_transform);
 
             _transformMatrices[0] = _transform;
-            TransformMatrixKHR _entityVulkanMatric = new TransformMatrixKHR();
-            Unsafe.CopyBlock(_entityVulkanMatric.Matrix, Unsafe.AsPointer(ref _transformMatrices.ToArray()[0]), 48);
-            //_accelerationInstance.Transform = _entityVulkanMatric;
+            TransformMatrixKHR _entityVulkanMatrix = new TransformMatrixKHR();
+            Unsafe.CopyBlock(_entityVulkanMatrix.Matrix, Unsafe.AsPointer(ref _transformMatrices.ToArray()[0]), 48);
+            //_accelerationInstance.Transform = _entityVulkanMatrix;
 
             void* _data;
             _vulkan.MapMemory(_logicalDevice, _transformsBufferMemory, 0, (ulong)sizeof(TransformMatrixKHR), 0, &_data);
-            new Span<TransformMatrixKHR>(_data, 1)[0] = _entityVulkanMatric;
+            new Span<TransformMatrixKHR>(_data, 1)[0] = _entityVulkanMatrix;
             _vulkan.UnmapMemory(_logicalDevice, _transformsBufferMemory);
             UpdateBLAS();
 

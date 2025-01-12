@@ -178,7 +178,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
                 SType = StructureType.BufferDeviceAddressInfo,
                 Buffer = _b,
             };
-            return VulkanRenderer._vulkan.GetBufferDeviceAddress(VulkanRenderer._logicalDevice, _addressInfo);
+            return VulkanRenderer._vulkan.GetBufferDeviceAddress(VulkanRenderer._logicalDevice, ref _addressInfo);
         }
 
         internal static uint AlignedSize(uint _value, uint _alignment)
