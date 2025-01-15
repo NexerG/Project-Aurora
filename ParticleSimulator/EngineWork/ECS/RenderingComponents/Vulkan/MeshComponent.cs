@@ -48,8 +48,8 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _indexBufferMemory, null);
             VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _vertexBufferMemory, null);
             _mesh.LoadCustomMesh(sc);
-            AVulkanBufferHandler.CreateVertexBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, _aditionalUsageFlags);
-            AVulkanBufferHandler.CreateIndexBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, _aditionalUsageFlags);
+            AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
+            AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
             VulkanRenderer._rendererInstance.RecreateCommandBuffers();
         }
 
@@ -81,7 +81,8 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             _transform *= Matrix4X4.CreateTranslation(parent.transform.position);
 
             _transformMatrices[0] = _transform;
-            AVulkanBufferHandler.UpdateTransformBuffer(ref _transformMatrices, ref _transformsBufferMemory);
+            Matrix4X4<float>[] _mats = _transformMatrices.ToArray();
+            AVulkanBufferHandler.CreateBuffer(ref _mats, ref _transformsBuffer, ref _transformsBufferMemory, _aditionalUsageFlags);
         }
 
         internal virtual void EnqueueDrawCommands(ref ulong[] _offset, int _loopIndex, ref CommandBuffer _commandBuffer)

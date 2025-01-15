@@ -93,22 +93,36 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
         internal override void AddLightToRenderQueue(Entity _l)
         {
             _lightsToRender.Add(_l);
-            if (_lightsToRender.Count == 1)
-            {
-                AVulkanBufferHandler.CreateLightsBuffer(ref _lightsToRender, ref _lightBuffer, ref _lightBufferMemory);
-                AVulkanBufferHandler.CreateLightUBO(ref _lightUBO, ref _lightUBOMemory, 1);
-            }
-            else
+            ulong _bufferSize = (ulong)(sizeof(UBO) * _lightsToRender.Count);
+            _lightUBO = new Buffer[VulkanRenderer._swapimageCount];
+            _lightUBOMemory = new DeviceMemory[VulkanRenderer._swapimageCount];
+
+            if (_lightsToRender.Count > 1)
             {
                 _vulkan.FreeMemory(_logicalDevice, _lightBufferMemory, null);
                 AVulkanBufferHandler.RecreateLightsBuffer(ref _lightsToRender, ref _lightBuffer, ref _lightBufferMemory);
                 foreach (Buffer b in _lightUBO)
                     _vulkan.DestroyBuffer(_logicalDevice, b, null);
-                AVulkanBufferHandler.CreateLightUBO(ref _lightUBO, ref _lightUBOMemory, _lightsToRender.Count);
+
+                for (int i = 0; i < VulkanRenderer._swapimageCount; i++)
+                {
+                    AVulkanBufferHandler.CreateBuffer(_bufferSize, ref _lightUBO[i], ref _lightUBOMemory[i],
+                        BufferUsageFlags.StorageBufferBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit);
+                }
+
                 foreach (Entity _e in _entitiesToRender)
                 {
                     _e.GetComponent<MeshComponent>().FreeDescriptorSets();
                     _e.GetComponent<MeshComponent>().ReinstantiateDesriptorSets();
+                }
+            }
+            else
+            {
+                AVulkanBufferHandler.CreateLightsBuffer(ref _lightsToRender, ref _lightBuffer, ref _lightBufferMemory);
+                for (int i = 0; i < VulkanRenderer._swapimageCount; i++)
+                {
+                    AVulkanBufferHandler.CreateBuffer(_bufferSize, ref _lightUBO[i], ref _lightUBOMemory[i],
+                        BufferUsageFlags.StorageBufferBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit);
                 }
             }
         }
@@ -441,6 +455,9 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             {
                 AVulkanBufferHandler.UpdateLightsBuffer(ref _lightsToRender, ref _lightBufferMemory);
                 AVulkanBufferHandler.UpdateLightUniforms(ref _lightsToRender, _imageIndex, ref _lightUBOMemory);
+
+                //UBO[] _ubos = new UBO[_lightsToRender.Count];
+                //AVulkanBufferHandler.UpdateBuffer(ref _ubos, ref );
             }
             //update uniforms
             foreach (Entity e in _lightsToRender)

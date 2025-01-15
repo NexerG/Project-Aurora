@@ -1,6 +1,7 @@
 ﻿using ArctisAurora.EngineWork.Renderer.Helpers;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
+using System.Runtime.CompilerServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Renderer
@@ -31,7 +32,14 @@ namespace ArctisAurora.EngineWork.Renderer
             {
                 _keyStates[key] = false;
             }
-            AVulkanBufferHandler.CreateUniformBuffer(ref _cameraBuffer, ref _camBmemory);
+
+            ulong bufferSize = (ulong)Unsafe.SizeOf<UBO>();
+            _cameraBuffer = new Buffer[VulkanRenderer._swapimageCount];
+            _camBmemory = new DeviceMemory[VulkanRenderer._swapimageCount];
+            for (int i = 0; i < VulkanRenderer._swapimageCount; i++)
+            {
+                AVulkanBufferHandler.CreateBuffer(bufferSize, ref _cameraBuffer[i], ref _camBmemory[i], BufferUsageFlags.UniformBufferBit | BufferUsageFlags.TransferDstBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit);
+            }
         }
 
         internal void UpdateCameraMatrix(Extent2D _extent, uint currentImage)
@@ -58,7 +66,17 @@ namespace ArctisAurora.EngineWork.Renderer
                 _view = _tempView;
                 _projection = _tempProjection;
             }
-            AVulkanBufferHandler.UpdateUniformBuffer(this, currentImage, ref _camBmemory);
+
+            UBO _ubo = new UBO()
+            {
+                _view = _view,
+                _projection = _projection,
+                //_lightProjection = Rasterizer._lightsToRender[0].GetComponent<LightsourceComponent>()._lightProjection,
+                //_lightView = Rasterizer._lightsToRender[0].GetComponent<LightsourceComponent>()._lightView,
+                //_camPos = _camera._pos
+            };
+
+            AVulkanBufferHandler.UpdateBuffer(ref _ubo, ref _cameraBuffer[currentImage], ref _camBmemory[currentImage], BufferUsageFlags.None);
         }
 
         internal void ProcessMouseMovements(Vector2D<float> _delta, bool _constrainPitch = true)

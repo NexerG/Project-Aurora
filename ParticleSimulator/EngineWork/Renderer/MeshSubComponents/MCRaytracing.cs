@@ -37,11 +37,23 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
         // data for building a TLAS
         internal AccelerationStructureInstanceKHR _accelerationInstance;
 
+        // Material. WILL BE SEPARATED INTO A DIFFERENT CLASS LATER ON :))
+        Vector3D<float> _color = new Vector3D<float>(1,1,1);
+        internal Buffer _colorBuffer;
+        DeviceMemory _colorMemory;
+
         internal MCRaytracing()
         {
             _aditionalUsageFlags = BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr | BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.StorageBufferBit;
-            AVulkanBufferHandler.CreateVertexBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, _aditionalUsageFlags);
-            AVulkanBufferHandler.CreateIndexBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, _aditionalUsageFlags);
+            //AVulkanBufferHandler.CreateVertexBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, _aditionalUsageFlags);
+            //AVulkanBufferHandler.CreateIndexBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, _aditionalUsageFlags);
+
+            // Buffer for Vertices & Indices
+            AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
+            AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
+
+            BufferUsageFlags additionalColorFlags = BufferUsageFlags.UniformBufferBit | BufferUsageFlags.ShaderDeviceAddressBit;
+            AVulkanBufferHandler.CreateBuffer(ref _color, ref _colorBuffer, ref _colorMemory, additionalColorFlags);
         }
 
         public override void OnStart()
@@ -50,6 +62,12 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             CreateBLAS();
             _rendererInstance.AddEntityToRenderQueue(parent);
             //CreateDescriptorSet();
+        }
+
+        internal void UpdateColor(Vector3D<float> color)
+        {
+            _color = color;
+            AVulkanBufferHandler.UpdateBuffer(ref _color, ref _colorBuffer, ref _colorMemory, BufferUsageFlags.None);
         }
 
         internal override void LoadCustomMesh(Scene sc)
@@ -67,8 +85,8 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 
             _mesh.LoadCustomMesh(sc);
 
-            AVulkanBufferHandler.CreateVertexBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, _aditionalUsageFlags);
-            AVulkanBufferHandler.CreateIndexBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, _aditionalUsageFlags);
+            AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
+            AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
             CreateBLAS();
             Pathtracing.UpdateAccInstance(this);
             UpdateTLAS();
@@ -171,7 +189,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
                 SType = StructureType.AccelerationStructureDeviceAddressInfoKhr,
                 AccelerationStructure = _BLAS._handle
             };
-            _BLAS._deviceAddress = _accelerationStructure.GetAccelerationStructureDeviceAddress(_logicalDevice, _adaInfo);
+            _BLAS._deviceAddress = _accelerationStructure.GetAccelerationStructureDeviceAddress(_logicalDevice, ref _adaInfo);
             DeleteScratchBuffer(ref _scratchBuffer);
         }
 
@@ -310,43 +328,15 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 
         internal static void CreateScratchBuffer(ulong size, ref PathtracingScratchBuffer _b)
         {
-            BufferCreateInfo _bufferCreateInfo = new()
-            {
-                SType = StructureType.BufferCreateInfo,
-                Size = size,
-                Usage = BufferUsageFlags.StorageBufferBit | BufferUsageFlags.ShaderDeviceAddressBit
-            };
-
-            fixed (Buffer* _bufferPtr = &_b._buffer)
-            {
-                _vulkan.CreateBuffer(_logicalDevice, _bufferCreateInfo, null, _bufferPtr);
-            }
-            MemoryRequirements _memReqs = new MemoryRequirements();
-            _vulkan.GetBufferMemoryRequirements(_logicalDevice, _b._buffer, out _memReqs);
-            MemoryAllocateFlagsInfo _memFlags = new MemoryAllocateFlagsInfo()
-            {
-                SType = StructureType.MemoryAllocateFlagsInfo,
-                Flags = MemoryAllocateFlags.AddressBit
-            };
-            MemoryAllocateInfo _memAllocInfo = new MemoryAllocateInfo()
-            {
-                SType = StructureType.MemoryAllocateInfo,
-                PNext = &_memFlags,
-                AllocationSize = _memReqs.Size,
-                MemoryTypeIndex = AVulkanBufferHandler.FindMemoryType(_memReqs.MemoryTypeBits, MemoryPropertyFlags.DeviceLocalBit)
-            };
-
-            fixed (DeviceMemory* _bufferMemoryPtr = &_b._memory)
-            {
-                _vulkan.AllocateMemory(_logicalDevice, _memAllocInfo, null, _bufferMemoryPtr);
-            }
-            _vulkan.BindBufferMemory(_logicalDevice, _b._buffer, _b._memory, 0);
+            BufferUsageFlags buf = BufferUsageFlags.StorageBufferBit | BufferUsageFlags.ShaderDeviceAddressBit;
+            AVulkanBufferHandler.CreateBuffer(size, ref _b._buffer, ref _b._memory, buf, MemoryPropertyFlags.DeviceLocalBit);
 
             BufferDeviceAddressInfo _driverBufferAddressInfo = new BufferDeviceAddressInfo()
             {
                 SType = StructureType.BufferDeviceAddressInfoKhr,
                 Buffer = _b._buffer,
             };
+
             _b._deviceAddress = _vulkan.GetBufferDeviceAddress(_logicalDevice, &_driverBufferAddressInfo);
         }
 
@@ -387,18 +377,8 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             TransformMatrixKHR _entityVulkanTransform = new TransformMatrixKHR();
             Unsafe.CopyBlock(_entityVulkanTransform.Matrix, Unsafe.AsPointer(ref _transformMatrices.ToArray()[0]), 48);
 
-            AVulkanBufferHandler.CreateBuffer(
-                (ulong)sizeof(TransformMatrixKHR),
-                BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr | BufferUsageFlags.UniformBufferBit,
-                MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
-                ref _transformsBuffer, ref _transformsBufferMemory);
-            void* _data;
-            _vulkan.MapMemory(_logicalDevice, _transformsBufferMemory, 0, (ulong)sizeof(TransformMatrixKHR), 0, &_data);
-            new Span<TransformMatrixKHR>(_data, 1)[0] = _entityVulkanTransform;
-            _vulkan.UnmapMemory(_logicalDevice, _transformsBufferMemory);
-
-
-            //AVulkanBufferHandler.CreateTransformBuffer(ref _transformMatrices, ref _transformsBuffer, ref _transformsBufferMemory, _aditionalUsageFlags);
+            BufferUsageFlags bufferUsageFlags = BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr | BufferUsageFlags.UniformBufferBit;
+            AVulkanBufferHandler.CreateBuffer(ref _entityVulkanTransform, ref _transformsBuffer, ref _transformsBufferMemory, bufferUsageFlags);
         }
 
         internal override void UpdateMatrices()
@@ -414,11 +394,9 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             TransformMatrixKHR _entityVulkanMatrix = new TransformMatrixKHR();
             Unsafe.CopyBlock(_entityVulkanMatrix.Matrix, Unsafe.AsPointer(ref _transformMatrices.ToArray()[0]), 48);
             //_accelerationInstance.Transform = _entityVulkanMatrix;
+            BufferUsageFlags bufferUsageFlags = BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr | BufferUsageFlags.UniformBufferBit;
+            AVulkanBufferHandler.UpdateBuffer(ref _entityVulkanMatrix, ref _transformsBuffer, ref _transformsBufferMemory, bufferUsageFlags);
 
-            void* _data;
-            _vulkan.MapMemory(_logicalDevice, _transformsBufferMemory, 0, (ulong)sizeof(TransformMatrixKHR), 0, &_data);
-            new Span<TransformMatrixKHR>(_data, 1)[0] = _entityVulkanMatrix;
-            _vulkan.UnmapMemory(_logicalDevice, _transformsBufferMemory);
             UpdateBLAS();
 
             parent.transform._changed = false;

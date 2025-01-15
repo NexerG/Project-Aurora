@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
 using ArctisAurora.GameObject;
 using Silk.NET.Maths;
 
@@ -28,6 +29,11 @@ namespace ArctisAurora.CustomEntities
             float r = 0.0025f;
             r = transform.GetEntityRotation().X + r;
             transform.SetRotationFromVector3(new Vector3D<float>(r,transform.GetEntityRotation().Y, transform.GetEntityRotation().Z));
+        }
+
+        public void ChangeColor(Vector3D<float> color)
+        {
+            ((MCRaytracing)GetComponent<MeshComponent>()).UpdateColor(color);
         }
     }
 }

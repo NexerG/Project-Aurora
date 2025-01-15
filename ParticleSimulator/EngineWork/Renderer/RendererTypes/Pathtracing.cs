@@ -54,7 +54,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
         //
         internal static AccelerationStruct _TLAS = default;
         static DeviceOrHostAddressConstKHR _addressInstance = default;
-        internal Buffer _accelerationInstanceBuffer;
+        internal static Buffer _accelerationInstanceBuffer;
         internal static DeviceMemory _accelerationInstanceDM;
         //
         DescriptorSetLayout _DSLIndexed;
@@ -204,15 +204,30 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             ///     then we tell which descriptors (data pieces) are variable.
             /// </summary>
 
-            List<DescriptorType> _types1 = new List<DescriptorType> { DescriptorType.AccelerationStructureKhr, DescriptorType.StorageImage, DescriptorType.UniformBuffer, DescriptorType.StorageBuffer, DescriptorType.StorageBuffer, DescriptorType.UniformBuffer };
-            List<ShaderStageFlags> _flags1 = new List<ShaderStageFlags> { ShaderStageFlags.RaygenBitKhr | ShaderStageFlags.ClosestHitBitKhr, ShaderStageFlags.RaygenBitKhr, ShaderStageFlags.RaygenBitKhr, ShaderStageFlags.ClosestHitBitKhr, ShaderStageFlags.ClosestHitBitKhr, ShaderStageFlags.ClosestHitBitKhr };
-            uint _indexedCount = 50000;
-            //uint _indexedCount = (uint)_entitiesToRender.Count;
-            uint[] _descriptorCount = { 1, 1, 1, _indexedCount, _indexedCount, _indexedCount };
+            List<DescriptorType> _types1 = new List<DescriptorType> {
+                DescriptorType.AccelerationStructureKhr, DescriptorType.StorageImage, DescriptorType.UniformBuffer,
+                DescriptorType.StorageBuffer, DescriptorType.StorageBuffer, DescriptorType.UniformBuffer , DescriptorType.UniformBuffer };
+            List<ShaderStageFlags> _flags1 = new List<ShaderStageFlags> {
+                ShaderStageFlags.RaygenBitKhr | ShaderStageFlags.ClosestHitBitKhr, ShaderStageFlags.RaygenBitKhr, ShaderStageFlags.RaygenBitKhr,
+                ShaderStageFlags.ClosestHitBitKhr, ShaderStageFlags.ClosestHitBitKhr, ShaderStageFlags.ClosestHitBitKhr, ShaderStageFlags.ClosestHitBitKhr };
 
             DescriptorBindingFlags[] _dbfEXT = {
                 DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.None,
-                DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit };
+                DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit };
+
+            uint _indexedCount = 50000;
+            uint[] _descriptorCount = new uint[_dbfEXT.Length];
+            for (int i = 0; i < _dbfEXT.Length; i++)
+            {
+                if (_dbfEXT[i] == DescriptorBindingFlags.VariableDescriptorCountBit)
+                {
+                    _descriptorCount[i] = _indexedCount;
+                }
+                else
+                {
+                    _descriptorCount[i] = 1;
+                }
+            }
 
             CreateDescriptorSetLayout(_types1.Count, _types1, _flags1, ref _descriptorSetLayout, _dbfEXT, _descriptorCount);
         }
@@ -246,12 +261,29 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             ShaderModule _shadowShader = CreateShaderModule(_shadowCode);
             ShaderModule _hitShader = CreateShaderModule(_hitCode);
 
+            // specialization constant for ray bouncing
+            SpecializationMapEntry _mapEntry = new()
+            {
+                ConstantID = 0,
+                Offset = 0,
+                Size = sizeof(uint)
+            };
+            uint _maxRecursion = 128;
+            SpecializationInfo _sInfo = new()
+            {
+                DataSize = sizeof(uint),
+                MapEntryCount = 1,
+                PMapEntries = &_mapEntry,
+                PData = &_maxRecursion
+            };
+
             PipelineShaderStageCreateInfo _pipelineShaderStageRaygenCI = new()
             {
                 SType = StructureType.PipelineShaderStageCreateInfo,
                 Stage = ShaderStageFlags.RaygenBitKhr,
                 Module = _raygenShader,
-                PName = (byte*)SilkMarshal.StringToPtr("main")
+                PName = (byte*)SilkMarshal.StringToPtr("main"),
+                PSpecializationInfo = &_sInfo
             };
             PipelineShaderStageCreateInfo _pipelineShaderStageMissCI = new()
             {
@@ -290,29 +322,29 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 GeneralShader = 0,
                 ClosestHitShader = Vk.ShaderUnusedKhr,
                 AnyHitShader = Vk.ShaderUnusedKhr,
-                IntersectionShader = Vk.ShaderUnusedKhr,
+                IntersectionShader = Vk.ShaderUnusedKhr
             };
             // miss
-            // general miss
-            RayTracingShaderGroupCreateInfoKHR _missCI = new()
-            {
-                SType = StructureType.RayTracingShaderGroupCreateInfoKhr,
-                Type = RayTracingShaderGroupTypeKHR.GeneralKhr,
-                GeneralShader = 1,
-                ClosestHitShader = Vk.ShaderUnusedKhr,
-                AnyHitShader = Vk.ShaderUnusedKhr,
-                IntersectionShader = Vk.ShaderUnusedKhr,
-            };
-            // shadows miss
-            RayTracingShaderGroupCreateInfoKHR _shadowCI = new()
-            {
-                SType = StructureType.RayTracingShaderGroupCreateInfoKhr,
-                Type = RayTracingShaderGroupTypeKHR.GeneralKhr,
-                GeneralShader = 2,
-                ClosestHitShader = Vk.ShaderUnusedKhr,
-                AnyHitShader = Vk.ShaderUnusedKhr,
-                IntersectionShader = Vk.ShaderUnusedKhr,
-            };
+                // general miss
+                RayTracingShaderGroupCreateInfoKHR _missCI = new()
+                {
+                    SType = StructureType.RayTracingShaderGroupCreateInfoKhr,
+                    Type = RayTracingShaderGroupTypeKHR.GeneralKhr,
+                    GeneralShader = 1,
+                    ClosestHitShader = Vk.ShaderUnusedKhr,
+                    AnyHitShader = Vk.ShaderUnusedKhr,
+                    IntersectionShader = Vk.ShaderUnusedKhr,
+                };
+                // shadows miss
+                RayTracingShaderGroupCreateInfoKHR _shadowCI = new()
+                {
+                    SType = StructureType.RayTracingShaderGroupCreateInfoKhr,
+                    Type = RayTracingShaderGroupTypeKHR.GeneralKhr,
+                    GeneralShader = 2,
+                    ClosestHitShader = Vk.ShaderUnusedKhr,
+                    AnyHitShader = Vk.ShaderUnusedKhr,
+                    IntersectionShader = Vk.ShaderUnusedKhr,
+                };
             // hit
             RayTracingShaderGroupCreateInfoKHR _closesCI = new()
             {
@@ -334,7 +366,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 PStages = _stages,
                 GroupCount = 4,
                 PGroups = _shaderGroups,
-                MaxPipelineRayRecursionDepth = Math.Min(2, _rtPipelineProperties.MaxRayRecursionDepth),
+                MaxPipelineRayRecursionDepth = Math.Min(_maxRecursion, _rtPipelineProperties.MaxRayRecursionDepth),
                 Layout = _pipelineLayout
             };
             Result r = _rtExtention.CreateRayTracingPipelines(_logicalDevice, default, default, 1, ref _rtPipelineCI, null, out _rtPipeline);
@@ -354,9 +386,9 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             BufferUsageFlags _buf = BufferUsageFlags.ShaderBindingTableBitKhr | BufferUsageFlags.ShaderDeviceAddressBit;
             MemoryPropertyFlags _mpf = MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit;
 
-            AVulkanBufferHandler.CreateBuffer(_handleSize, _buf, _mpf, ref _raygenBindingTable, ref _raygenBTDM);
-            AVulkanBufferHandler.CreateBuffer(_handleSize * 2, _buf, _mpf, ref _missBindingTable, ref _missBTDM);
-            AVulkanBufferHandler.CreateBuffer(_handleSize, _buf, _mpf, ref _hitBinddingTable, ref _hitBTDM);
+            AVulkanBufferHandler.CreateBuffer(_handleSize, ref _raygenBindingTable, ref _raygenBTDM, _buf, _mpf);
+            AVulkanBufferHandler.CreateBuffer(_handleSize * 2, ref _missBindingTable, ref _missBTDM, _buf, _mpf);
+            AVulkanBufferHandler.CreateBuffer(_handleSize, ref _hitBinddingTable, ref _hitBTDM, _buf, _mpf);
 
             byte[] _sbt = new byte[_sbtSize];
             fixed (byte* _ptr = _sbt)
@@ -420,12 +452,12 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 
         private void CreateTLAS()
         {
-            List<AccelerationStructureInstanceKHR> _structures = new List<AccelerationStructureInstanceKHR>();
-            foreach (Entity e in _entitiesToRender)
+            AccelerationStructureInstanceKHR[] _structures = new AccelerationStructureInstanceKHR[_entitiesToRender.Count];
+            for (int i = 0; i < _entitiesToRender.Count; i++)
             {
-                if (e.GetComponent<MCRaytracing>() != null)
+                MCRaytracing component = _entitiesToRender[i].GetComponent<MCRaytracing>();
+                if (component != null)
                 {
-                    MCRaytracing component = e.GetComponent<MCRaytracing>();
                     //Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(30f * MathF.PI / 180f, 0, 0);
                     //Quaternion<float> q = Quaternion<float>.Identity;
                     Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
@@ -442,24 +474,15 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                         Flags = GeometryInstanceFlagsKHR.TriangleFacingCullDisableBitKhr,
                         AccelerationStructureReference = component._BLAS._deviceAddress,
                         Transform = _instanceMatrix,
-                        InstanceCustomIndex = (uint)_entitiesToRender.IndexOf(e),
+                        InstanceCustomIndex = (uint)i,
                         Mask = 0xFF,
                         InstanceShaderBindingTableRecordOffset = 0
                     };
-                    _structures.Add(component._accelerationInstance);
-                    //_structures.Add(_accInstance);
+                    _structures[i] = component._accelerationInstance;
                 }
             }
-            ulong _bufferSize = (ulong)(sizeof(AccelerationStructureInstanceKHR) * _entitiesToRender.Count);
-            AVulkanBufferHandler.CreateBuffer(
-                _bufferSize,
-                BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr,
-                MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
-                ref _accelerationInstanceBuffer, ref _accelerationInstanceDM);
-            void* _data;
-            _vulkan.MapMemory(_logicalDevice, _accelerationInstanceDM, 0, _bufferSize, 0, &_data);
-            _structures.ToArray().AsSpan().CopyTo(new Span<AccelerationStructureInstanceKHR>(_data, _structures.Count));
-            _vulkan.UnmapMemory(_logicalDevice, _accelerationInstanceDM);
+            BufferUsageFlags accBFlags = BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr;
+            AVulkanBufferHandler.CreateBuffer(ref _structures, ref _accelerationInstanceBuffer, ref _accelerationInstanceDM, accBFlags);
             _addressInstance.DeviceAddress = AVulkanHelper.GetBufferAdress(ref _accelerationInstanceBuffer);
 
             AccelerationStructureGeometryKHR _asg = new AccelerationStructureGeometryKHR()
@@ -551,16 +574,14 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 
         internal static void UpdateTLAS()
         {
-            List<AccelerationStructureInstanceKHR> _structures = new List<AccelerationStructureInstanceKHR>();
-            foreach (Entity e in _entitiesToRender)
+            AccelerationStructureInstanceKHR[] _structures = new AccelerationStructureInstanceKHR[_entitiesToRender.Count];
+            for (int i = 0; i < _entitiesToRender.Count; i++)
             {
-                _structures.Add(e.GetComponent<MCRaytracing>()._accelerationInstance);
+                _structures[i] = _entitiesToRender[i].GetComponent<MCRaytracing>()._accelerationInstance;
             }
 
-            void* _data;
-            _vulkan.MapMemory(_logicalDevice, _accelerationInstanceDM, 0, (ulong)sizeof(AccelerationStructureInstanceKHR), 0, &_data);
-            _structures.ToArray().AsSpan().CopyTo(new Span<AccelerationStructureInstanceKHR>(_data, _structures.Count));
-            _vulkan.UnmapMemory(_logicalDevice, _accelerationInstanceDM);
+            BufferUsageFlags accBFlags = BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr;
+            AVulkanBufferHandler.UpdateBuffer(ref _structures, ref _accelerationInstanceBuffer, ref _accelerationInstanceDM, accBFlags);
 
             AccelerationStructureGeometryKHR _asg = new AccelerationStructureGeometryKHR()
             {
@@ -654,13 +675,6 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 
         internal void CreateGlobalDescriptorSets()
         {
-            /*if (_descriptorSets[0].Handle != 0)
-            {
-                fixed(DescriptorSet* descPtr = _descriptorSets)
-                {
-                    _vulkan.FreeDescriptorSets(_logicalDevice, _descriptorPool, (uint)_descriptorSets.Length, descPtr);
-                }
-            }*/
             DescriptorSetLayout[] _layouts = new DescriptorSetLayout[_swapimageCount];
             Array.Fill(_layouts, _descriptorSetLayout);
 
@@ -722,6 +736,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                     DescriptorBufferInfo[] _vertexBufferInfos = new DescriptorBufferInfo[_entitiesToRender.Count];
                     DescriptorBufferInfo[] _indexBufferInfos = new DescriptorBufferInfo[_entitiesToRender.Count];
                     DescriptorBufferInfo[] _transformUniformInfos = new DescriptorBufferInfo[_entitiesToRender.Count];
+                    DescriptorBufferInfo[] _colorBufferInfos = new DescriptorBufferInfo[_entitiesToRender.Count];
                     for (int k = 0; k < _entitiesToRender.Count;k++)
                     {
                         MCRaytracing component = _entitiesToRender[k].GetComponent<MCRaytracing>();
@@ -743,7 +758,14 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                             Offset = 0,
                             Range = (ulong)(sizeof(uint) * component._mesh._indices.Length)
                         };
+                        _colorBufferInfos[k] = new()
+                        {
+                            Buffer = component._colorBuffer,
+                            Offset = 0,
+                            Range = (ulong)sizeof(Vector3D<float>)
+                        };
                     }
+                    fixed (DescriptorBufferInfo* _colorUniformInfoPtr = _colorBufferInfos)
                     fixed (DescriptorBufferInfo* _transforUniformInfoPtr = _transformUniformInfos)
                     fixed (DescriptorBufferInfo* _indexBufferInfoPtr = _indexBufferInfos)
                     fixed (DescriptorBufferInfo* _vertexBufferInfoPtr = _vertexBufferInfos)
@@ -811,6 +833,16 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                                 DstArrayElement = 0,
                                 DescriptorType = DescriptorType.UniformBuffer,
                                 PBufferInfo = _transforUniformInfoPtr
+                            },
+                            new WriteDescriptorSet
+                            {
+                                SType = StructureType.WriteDescriptorSet,
+                                DstSet = _descriptorSets[i],
+                                DstBinding = 6,
+                                DescriptorCount = (uint)_colorBufferInfos.Length,
+                                DstArrayElement = 0,
+                                DescriptorType = DescriptorType.UniformBuffer,
+                                PBufferInfo = _colorUniformInfoPtr
                             }
                         };
                         fixed (WriteDescriptorSet* _descPtr = _writeDescriptorSets)
@@ -869,26 +901,8 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.RayTracingKhr, _rtPipeline);
                 var _offset = new ulong[] { 0 };
                 DescriptorSet[] _allDS = new DescriptorSet[_entitiesToRender.Count];
-                for (int j = 0; j < _entitiesToRender.Count; j++)
-                {
-                    //_entitiesToRender[j].GetComponent<MeshComponent>().EnqueueDrawCommands(ref _offset, i, ref _commandBuffer[i]);
-                    //_allDS[j] = _entitiesToRender[j].GetComponent<MeshComponent>()._descriptorSets[i];
-                }
                 if (_entitiesToRender.Count > 0)
                 {
-                    /*fixed (DescriptorSet* ptr = _allDS)
-                    {
-                        _vulkan.CmdBindDescriptorSets(
-                                _commandBuffer[i],
-                                PipelineBindPoint.RayTracingKhr,
-                                _pipelineLayout,
-                                0,
-                                (uint)_entitiesToRender.Count,
-                                ptr,
-                                0,
-                                null
-                            );
-                    }*/
                     _vulkan.CmdBindDescriptorSets(_commandBuffer[i], PipelineBindPoint.RayTracingKhr, _pipelineLayout, 0, 1, ref _descriptorSets[i], 0, null);
                     _rtExtention.CmdTraceRays(
                         _commandBuffer[i],
@@ -1080,7 +1094,6 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             _vulkan.DestroyRenderPass(_logicalDevice, _swapchain._shadowmapRenderPass, null);
             _swapchain.DestroySwapchain();
         }
-
 
         private void SetImageLayout(ref CommandBuffer _cBuffer, ref Image _image, ImageLayout _oldLayout, ImageLayout _newLayout, ImageSubresourceRange _subresource)
         {

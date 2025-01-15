@@ -21,8 +21,8 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 
         internal MCRaster()
         {
-            AVulkanBufferHandler.CreateVertexBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, _aditionalUsageFlags);
-            AVulkanBufferHandler.CreateIndexBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, _aditionalUsageFlags);
+            AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
+            AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
             AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory);
             AVulkanBufferHandler.CreateImageView(ref _textureImage, ref _textureImageView);
         }
@@ -259,7 +259,8 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             _instances = _matrices.Count;
             _transformMatrices = _matrices;
 
-            AVulkanBufferHandler.CreateTransformBuffer(ref _transformMatrices, ref _transformsBuffer, ref _transformsBufferMemory, _aditionalUsageFlags);
+            Matrix4X4<float>[] _mats = _matrices.ToArray();
+            AVulkanBufferHandler.CreateBuffer(ref _mats, ref _transformsBuffer, ref _transformsBufferMemory, _aditionalUsageFlags);
             VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
             VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPoolShadow, (uint)_descriptorSetsShadow.Length, _descriptorSetsShadow);
             CreateDescriptorSet();
@@ -269,7 +270,9 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
         internal override void SingletonMatrix()
         {
             base.SingletonMatrix();
-            AVulkanBufferHandler.CreateTransformBuffer(ref _transformMatrices, ref _transformsBuffer, ref _transformsBufferMemory, _aditionalUsageFlags);
+
+            Matrix4X4<float>[] _mats = _transformMatrices.ToArray();
+            AVulkanBufferHandler.CreateBuffer(ref _mats, ref _transformsBuffer, ref _transformsBufferMemory, _aditionalUsageFlags);
         }
 
         internal override void UpdateMatrices()

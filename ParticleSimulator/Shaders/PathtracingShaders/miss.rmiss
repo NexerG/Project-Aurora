@@ -1,7 +1,17 @@
 #version 460
 #extension GL_EXT_ray_tracing : enable
 
-layout(location = 0) rayPayloadInEXT vec3 hitValue;
+struct RayPayload
+{
+	vec3 hitColor;
+	vec3 hitPos;
+    float distance;
+	vec3 normal;
+	float reflector;
+    bool hitAtmosphere;
+};
+
+layout(location = 0) rayPayloadInEXT RayPayload payload;
 
 void main()
 {
@@ -16,5 +26,6 @@ void main()
 
     vec3 atmosphereColor = mix(horizonColor, zenithColor, angleFactor);
 
-    hitValue = atmosphereColor;
+    payload.hitColor = atmosphereColor;
+    payload.hitAtmosphere = true;
 }

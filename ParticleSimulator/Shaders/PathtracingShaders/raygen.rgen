@@ -9,7 +9,74 @@ layout(binding = 2, set = 0) uniform CameraProperties
 	mat4 projInverse;
 } cam;
 
-layout(location = 0) rayPayloadEXT vec3 hitValue;
+struct RayPayload
+{
+	vec3 hitColor;
+	vec3 hitPos;
+	float distance;
+	vec3 normal;
+	float reflector;
+    bool hitAtmosphere;
+};
+
+//layout(location = 0) rayPayloadEXT vec3 hitValue;
+layout(location = 0) rayPayloadEXT RayPayload payload;
+layout(constant_id = 0) const int MAX_BOUNCES = 1;
+
+const float M_PI = 3.14159265359;
+float randomFloat(inout uint seed) {
+    seed ^= seed << 13;
+    seed ^= seed >> 17;
+    seed ^= seed << 5;
+    return float(seed & 0x00FFFFFFu) / float(0x01000000u);
+}
+
+vec4 randomDirectionWithinCone(vec3 normal, float coneAngle, inout uint seed) {
+    float z = cos(radians(coneAngle)) + (1.0 - cos(radians(coneAngle))) * randomFloat(seed);
+    float phi = 2.0 * M_PI * randomFloat(seed);
+    float x = sqrt(1.0 - z * z) * cos(phi);
+    float y = sqrt(1.0 - z * z) * sin(phi);
+
+    vec3 randomDir = normalize(vec3(x, y, z));
+    vec3 tangent = normalize(cross(abs(normal.y) > 0.9 ? vec3(1, 0, 0) : vec3(0, 1, 0), normal));
+    vec3 bitangent = cross(normal, tangent);
+    return vec4(normalize(randomDir.x * tangent + randomDir.y * bitangent + randomDir.z * normal), 0.0);
+}
+
+float RandVal(inout uint seed)
+{
+	seed = seed * 747796405 + 2891336453;
+	uint result = ((seed >> ((seed >> 22) + 4)) ^ seed) * 277803737;
+	result = (result >> 22) ^ result;
+	return result / 4294967295.0;
+}
+
+float RandValNormDist(inout uint seed)
+{
+	float theta = 2 * M_PI * RandVal(seed);
+	float rho = sqrt(-2 * log(RandVal(seed)));
+	return rho * cos(theta);
+}
+
+vec3 RandomDir(inout uint seed)
+{
+	float x = RandValNormDist(seed);
+	float y = RandValNormDist(seed);
+	float z = RandValNormDist(seed);
+
+	return normalize(vec3(x,y,z));
+}
+
+vec4 RandHemisphereDir(inout uint seed, vec3 normal)
+{
+	vec3 dir = RandomDir(seed);
+	return vec4(normalize(dir * sign(dot(normal, dir))),0);
+}
+
+uint RandNumByPixel()
+{
+	return (gl_LaunchIDEXT.x * gl_LaunchIDEXT.y);
+}
 
 void main() 
 {
@@ -24,9 +91,38 @@ void main()
 	float tmin = 0.001;
 	float tmax = 10000.0;
 
-    hitValue = vec3(0.0);
+	payload.hitColor = vec3(0.0);
+	vec3 color = vec3(0.0);
+	traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xff, 0, 0, 0, origin.xyz, tmin, direction.xyz, tmax, 0);
+	color = payload.hitColor;
 
-    traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xff, 0, 0, 0, origin.xyz, tmin, direction.xyz, tmax, 0);
+	if(!payload.hitAtmosphere)
+	{
+		uint directionSeed = RandNumByPixel();
+		vec3 surfaceNormal = payload.normal;
+		origin = vec4(payload.hitPos, 0.0);
+		for(int i = 0; i < MAX_BOUNCES; i++)
+		{
+			direction = RandHemisphereDir(directionSeed, surfaceNormal);
+			traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xff, 0, 0, 0, origin.xyz, tmin, direction.xyz, tmax, 0);
+			//if(!payload.hitAtmosphere)
+			{
+				float maxDistance = 5.0; // Example max distance for contribution
+				float normalizedDistance = clamp(payload.distance / maxDistance, 0.0, 1.0);
+				float contribution = max(1.0 - normalizedDistance, 0.0);
+				if(contribution > 0)
+				{
+					color += payload.hitColor * contribution;
+				}
+			}
+		}
+		float maxIntensity = 1; // Adjust as needed
+		float intensity = max(max(color.r, color.g), color.b);
+		if (intensity > maxIntensity)
+		{
+			color *= maxIntensity / intensity; // Scale down if intensity exceeds the cap
+		}
+}
 
-	imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(hitValue, 0.0));
+	imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(color, 0.0));
 }
