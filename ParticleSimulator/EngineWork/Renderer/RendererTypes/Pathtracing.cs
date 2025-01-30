@@ -58,7 +58,6 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
         internal static DeviceMemory _accelerationInstanceDM;
         //
         DescriptorSetLayout _DSLIndexed;
-        DescriptorSet[] _descriptorSets = new DescriptorSet[3];
 
         internal Pathtracing()
         {
@@ -72,6 +71,8 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             _swapchain = new Swapchain(ref _glWindow._driverSurface, ref _glWindow._surface);
             _swapchain.DoSwapchainMethodSequence(ref _extent);        //swapchain methods for simplicity sake
             _swapimageCount = _swapchain._swapchainImages.Length;     //engine related thing
+
+            _descriptorSets = new DescriptorSet[_swapimageCount];
             _camera = new AuroraCamera();
 
             _vulkan.TryGetDeviceExtension(_instance, _logicalDevice, out _accelerationStructure);
@@ -139,15 +140,19 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 _vulkan.DestroyBuffer(_logicalDevice, _TLAS._buffer, null);
             }
             CreateTLAS();
-            for (int i = 0; i < _entitiesToRender.Count; i++)
-                _entitiesToRender[i].GetComponent<MeshComponent>().ReinstantiateDesriptorSets();
 
+            CreateGlobalDescriptorSets();
             RecreateCommandBuffers();
         }
 
         internal override void AddLightToRenderQueue(Entity _m)
         {
             base.AddLightToRenderQueue(_m);
+        }
+
+        internal override void MouseUpdate(double xPos, double yPos)
+        {
+            base.MouseUpdate(xPos, yPos);
         }
 
         internal override void CreateDescriptorPool()
@@ -211,15 +216,15 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 ShaderStageFlags.RaygenBitKhr | ShaderStageFlags.ClosestHitBitKhr, ShaderStageFlags.RaygenBitKhr, ShaderStageFlags.RaygenBitKhr,
                 ShaderStageFlags.ClosestHitBitKhr, ShaderStageFlags.ClosestHitBitKhr, ShaderStageFlags.ClosestHitBitKhr, ShaderStageFlags.ClosestHitBitKhr };
 
-            DescriptorBindingFlags[] _dbfEXT = {
+            DescriptorBindingFlags[] _DBF = {
                 DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.None,
                 DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit };
 
             uint _indexedCount = 50000;
-            uint[] _descriptorCount = new uint[_dbfEXT.Length];
-            for (int i = 0; i < _dbfEXT.Length; i++)
+            uint[] _descriptorCount = new uint[_DBF.Length];
+            for (int i = 0; i < _DBF.Length; i++)
             {
-                if (_dbfEXT[i] == DescriptorBindingFlags.VariableDescriptorCountBit)
+                if (_DBF[i] == DescriptorBindingFlags.VariableDescriptorCountBit)
                 {
                     _descriptorCount[i] = _indexedCount;
                 }
@@ -229,7 +234,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 }
             }
 
-            CreateDescriptorSetLayout(_types1.Count, _types1, _flags1, ref _descriptorSetLayout, _dbfEXT, _descriptorCount);
+            CreateDescriptorSetLayout(_types1.Count, _types1, _flags1, ref _descriptorSetLayout, _DBF, _descriptorCount);
         }
 
         private void CreateRaytracingPipeline()
@@ -268,13 +273,13 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 Offset = 0,
                 Size = sizeof(uint)
             };
-            uint _maxRecursion = 128;
+            uint raysPerPixel = 32;
             SpecializationInfo _sInfo = new()
             {
                 DataSize = sizeof(uint),
                 MapEntryCount = 1,
                 PMapEntries = &_mapEntry,
-                PData = &_maxRecursion
+                PData = &raysPerPixel
             };
 
             PipelineShaderStageCreateInfo _pipelineShaderStageRaygenCI = new()
@@ -366,7 +371,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 PStages = _stages,
                 GroupCount = 4,
                 PGroups = _shaderGroups,
-                MaxPipelineRayRecursionDepth = Math.Min(_maxRecursion, _rtPipelineProperties.MaxRayRecursionDepth),
+                MaxPipelineRayRecursionDepth = Math.Min(raysPerPixel, _rtPipelineProperties.MaxRayRecursionDepth),
                 Layout = _pipelineLayout
             };
             Result r = _rtExtention.CreateRayTracingPipelines(_logicalDevice, default, default, 1, ref _rtPipelineCI, null, out _rtPipeline);
@@ -445,7 +450,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                     SrcAccessMask = 0,
                     DstAccessMask = AccessFlags.ShaderReadBit | AccessFlags.ShaderWriteBit,
                 };
-                _vulkan.CmdPipelineBarrier(_imageTransition, PipelineStageFlags.TopOfPipeBit, PipelineStageFlags.ComputeShaderBit | PipelineStageFlags.RayTracingShaderBitKhr, 0, 0, null, 0, null, 1, _barrier);
+                _vulkan.CmdPipelineBarrier(_imageTransition, PipelineStageFlags.TopOfPipeBit, PipelineStageFlags.RayTracingShaderBitKhr, 0, 0, null, 0, null, 1, ref _barrier);
                 AVulkanBufferHandler.EndSingleTimeCommands(ref _imageTransition);
             }
         }
@@ -673,44 +678,9 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             };
         }
 
-        internal void CreateGlobalDescriptorSets()
+        internal override void CreateGlobalDescriptorSets()
         {
-            DescriptorSetLayout[] _layouts = new DescriptorSetLayout[_swapimageCount];
-            Array.Fill(_layouts, _descriptorSetLayout);
-
-            fixed (DescriptorSetLayout* _layoutsPtr = _layouts)
-            {
-                uint bufferCount = (uint)_entitiesToRender.Count;
-                uint[] entriesPer = { bufferCount, bufferCount, bufferCount };
-                fixed (uint* perPtr = entriesPer)
-                {
-                    DescriptorSetVariableDescriptorCountAllocateInfo _variableDSCount = new()
-                    {
-                        SType = StructureType.DescriptorSetVariableDescriptorCountAllocateInfo,
-                        DescriptorSetCount = (uint)_swapimageCount, // total amount of descriptor sets
-                        PDescriptorCounts = perPtr                  // how many descriptor sets are variable
-                    };
-
-                    DescriptorSetAllocateInfo _allocateInfo = new DescriptorSetAllocateInfo()
-                    {
-                        SType = StructureType.DescriptorSetAllocateInfo,
-                        DescriptorPool = _descriptorPool,
-                        DescriptorSetCount = (uint)_swapimageCount,
-                        PSetLayouts = _layoutsPtr,
-                        PNext = &_variableDSCount
-                    };
-
-                    //_descriptorSets = new DescriptorSet[_swapimageCount];
-                    fixed (DescriptorSet* _descriptorSetsPtr = _descriptorSets)
-                    {
-                        Result r = _vulkan.AllocateDescriptorSets(_logicalDevice, ref _allocateInfo, _descriptorSetsPtr);
-                        if (r != Result.Success)
-                        {
-                            throw new Exception("Failed to allocate descriptor set with error code: " + r);
-                        }
-                    }
-                }
-            }
+            base.CreateGlobalDescriptorSets();
             for (int i = 0; i < _swapimageCount; i++)
             {
                 fixed (AccelerationStructureKHR* _accelStrPtr = &Pathtracing._TLAS._handle)
@@ -852,7 +822,6 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                     }
                 }
             }
-
         }
 
         internal override void CreateCommandBuffers()
@@ -1034,8 +1003,8 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 PSignalSemaphores = _signalSemaphores
             };
 
-            _vulkan.ResetFences(_logicalDevice, 1, _fencesInFlight[_currentFrame]);
-            r = _vulkan.QueueSubmit(_graphicsQueue, 1, _submitInfo, _fencesInFlight[_currentFrame]);
+            _vulkan.ResetFences(_logicalDevice, 1, ref _fencesInFlight[_currentFrame]);
+            r = _vulkan.QueueSubmit(_graphicsQueue, 1, ref _submitInfo, _fencesInFlight[_currentFrame]);
             if (r != Result.Success)
             {
                 throw new Exception("command buffer is not recorded or invalid:" + r);

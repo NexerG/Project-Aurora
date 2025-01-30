@@ -2,7 +2,6 @@
 using ArctisAurora.GameObject;
 using Silk.NET.Maths;
 using ArctisAurora.EngineWork.Renderer;
-using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using Assimp;
 
@@ -32,7 +31,8 @@ namespace ArctisAurora.EngineWork
             SC = s;
 
             _renderer = new VulkanRenderer();
-            _renderer.InitRenderer(ERendererTypes.Pathtracer);
+            _renderer.InitRenderer(ERendererTypes.RadianceCascades2D);
+            //VulkanRenderer._rendererInstance.Draw();
 
             ////mesh importer
             MeshImporter importer = new MeshImporter();
@@ -44,29 +44,29 @@ namespace ArctisAurora.EngineWork
             //---------------------------------------------------------------------------
             //Game logic
             //first we setup lights
-            LightSourceEntity _ls = new LightSourceEntity();
-            _ls.transform.SetWorldPosition(new Vector3D<float>(1, 10 ,1));
+            //LightSourceEntity _ls = new LightSourceEntity();
+            //_ls.transform.SetWorldPosition(new Vector3D<float>(1, 10 ,1));
             //
             /*SimulatorEntity _e = new SimulatorEntity();
             _e.GetComponent<SPHSimComponent>().simSetup(15);
             _entities.Add(_e);*/
 
             //then we do meshes
-            TestingEntity _te = new TestingEntity(new Vector3D<float>(100, 1, 100), new Vector3D<float>(75, 25, 0));
-            _te.ChangeColor(new Vector3D<float>(0.5f, 0.5f, 0.5f));
-            _te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
-            _entities.Add(_te);
-            TestingEntity _te2 = new TestingEntity(new Vector3D<float>(5, 5, 5), new Vector3D<float>(75, 29, 0));
-            _te2.ChangeColor(new Vector3D<float>(0.05f, 0.5f, 0.247f));
-            _entities.Add(_te2);
-            TestingEntity _te3 = new TestingEntity(new Vector3D<float>(5, 5, 5), new Vector3D<float>(75, 29, 10));
-            _te2.ChangeColor(new Vector3D<float>(0f, 0f, 1f));
-            _te3.transform.SetRotationFromVector3(new Vector3D<float>(0.0f,2f,0.0f));
-            _entities.Add(_te3);
-            TestingEntity _te4 = new TestingEntity(new Vector3D<float>(5, 5, 5), new Vector3D<float>(75, 29, 20));
-            _te4.ChangeColor(new Vector3D<float>(1f, 0f, 0f));
-            _te4.transform.SetRotationFromVector3(new Vector3D<float>(0.0f,0.0f,5.0f));
-            _entities.Add(_te4);
+            //TestingEntity _te = new TestingEntity(new Vector3D<float>(100, 1, 100), new Vector3D<float>(75, 25, 0));
+            //_te.ChangeColor(new Vector3D<float>(0.5f, 0.5f, 0.5f));
+            //_te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
+            //_entities.Add(_te);
+            //TestingEntity _te2 = new TestingEntity(new Vector3D<float>(5, 5, 5), new Vector3D<float>(75, 29, 0));
+            //_te2.ChangeColor(new Vector3D<float>(0.05f, 0.5f, 0.247f));
+            //_entities.Add(_te2);
+            //TestingEntity _te3 = new TestingEntity(new Vector3D<float>(5, 5, 5), new Vector3D<float>(75, 29, 10));
+            //_te2.ChangeColor(new Vector3D<float>(0f, 0f, 1f));
+            //_te3.transform.SetRotationFromVector3(new Vector3D<float>(0.0f,2f,0.0f));
+            //_entities.Add(_te3);
+            //TestingEntity _te4 = new TestingEntity(new Vector3D<float>(5, 5, 5), new Vector3D<float>(75, 29, 20));
+            //_te4.ChangeColor(new Vector3D<float>(1f, 0f, 0f));
+            //_te4.transform.SetRotationFromVector3(new Vector3D<float>(0.0f,0.0f,5.0f));
+            //_entities.Add(_te4);
             //---------------------------------------------------------------------------
             //engine thread
             //Task _engineTask = Task.Run(() => EngineStart());

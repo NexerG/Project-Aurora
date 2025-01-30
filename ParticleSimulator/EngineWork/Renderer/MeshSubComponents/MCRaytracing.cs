@@ -340,24 +340,6 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             _b._deviceAddress = _vulkan.GetBufferDeviceAddress(_logicalDevice, &_driverBufferAddressInfo);
         }
 
-        internal override void FreeDescriptorSets()
-        {
-            base.FreeDescriptorSets();
-            if (_descriptorSets != null)
-                VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, VulkanRenderer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
-        }
-
-        internal override void ReinstantiateDesriptorSets()
-        {
-            base.ReinstantiateDesriptorSets();
-            CreateDescriptorSet();
-        }
-
-        internal override void CreateDescriptorSet()
-        {
-            ((Pathtracing)_rendererInstance).CreateGlobalDescriptorSets();
-        }
-
         internal override void MakeInstanced(ref List<Matrix4X4<float>> _matrices)
         {
             base.MakeInstanced(ref _matrices);

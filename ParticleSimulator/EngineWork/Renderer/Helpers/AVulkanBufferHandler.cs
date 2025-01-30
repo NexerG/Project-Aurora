@@ -1,9 +1,6 @@
-﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
-using ArctisAurora.EngineWork.Renderer.RendererTypes;
-using ArctisAurora.GameObject;
+﻿using ArctisAurora.EngineWork.Renderer.RendererTypes;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
-using System.Runtime.CompilerServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using Format = Silk.NET.Vulkan.Format;
 using Image = SixLabors.ImageSharp.Image;
@@ -44,61 +41,6 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
 
             VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _stagingBuffer, null);
             VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, null);
-        }
-
-        internal static void CreateLightsBuffer(ref List<Entity> _lightsToRender, ref Buffer _lightBuffer, ref DeviceMemory _lightMemory)
-        {
-            _lightBuffer = new Buffer();
-            _lightMemory = new DeviceMemory();
-            LightData[] _lightData = new LightData[_lightsToRender.Count];
-            ulong _bufferSize = (ulong)(sizeof(LightData) * _lightData.Length + sizeof(int));
-            CreateBuffer(_bufferSize, ref _lightBuffer, ref _lightMemory, BufferUsageFlags.StorageBufferBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit);
-        }
-
-        internal static void RecreateLightsBuffer(ref List<Entity> _lightsToRender, ref Buffer _lightBuffer, ref DeviceMemory _lightMemory)
-        {
-            Rasterizer._vulkan.DestroyBuffer(Rasterizer._logicalDevice, _lightBuffer, null);
-            CreateLightsBuffer(ref _lightsToRender, ref _lightBuffer, ref _lightMemory);
-        }
-
-        internal static void UpdateLightUniforms(ref List<Entity> _lightsToRender, uint _currentImage, ref DeviceMemory[] _uniformBuffersMemory)
-        {
-            ulong _bufferSize = (ulong)(sizeof(UBO) * _lightsToRender.Count);
-            void* _data;
-            Rasterizer._vulkan.MapMemory(Rasterizer._logicalDevice, _uniformBuffersMemory[_currentImage], 0, _bufferSize, 0, &_data);
-            //get the light data (positions and light color) into a container
-            Span<UBO> _span = new Span<UBO>(_data, _lightsToRender.Count);
-            for (int i = 0; i < _lightsToRender.Count; i++)
-            {
-                _span[i] = new UBO()
-                {
-                    _view = _lightsToRender[i].GetComponent<LightsourceComponent>()._lightView,
-                    _projection = _lightsToRender[i].GetComponent<LightsourceComponent>()._lightProjection
-                };
-            }
-            Rasterizer._vulkan.UnmapMemory(Rasterizer._logicalDevice, _uniformBuffersMemory[_currentImage]);
-        }
-
-        internal static void UpdateLightsBuffer(ref List<Entity> _lightsToRender, ref DeviceMemory _lightMemory)
-        {
-            LightData[] _lightData = new LightData[_lightsToRender.Count];
-            for (int i = 0; i < _lightsToRender.Count; i++)
-            {
-                //_lightData[i] = new LightData();
-                _lightData[i]._pos = _lightsToRender[i].transform.position;
-                _lightData[i]._color = _lightsToRender[i].GetComponent<LightsourceComponent>()._lightColor;
-            }
-            ulong _bufferSize = (ulong)(sizeof(LightData) * _lightData.Length + sizeof(int));
-
-            void* _data;
-            Rasterizer._vulkan.MapMemory(Rasterizer._logicalDevice, _lightMemory, 0, _bufferSize, 0, &_data);
-            //get the light data (positions and light color) into a container
-            Span<LightData> _span = new Span<LightData>(_data, _lightData.Length);
-            for (int i = 0; i < _lightData.Length; i++)
-                _span[i] = _lightData[i];
-            //put how many lights we got into a container
-            new Span<int>((byte*)_data + sizeof(LightData) * _lightsToRender.Count, 1)[0] = _lightsToRender.Count;
-            Rasterizer._vulkan.UnmapMemory(Rasterizer._logicalDevice, _lightMemory);
         }
 
         private static void CopyBufferToImage(Buffer _buffer, Silk.NET.Vulkan.Image _image, uint _width, uint _height)
@@ -199,7 +141,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
 
             fixed (Silk.NET.Vulkan.Image* imagePtr = &_im)
             {
-                if (VulkanRenderer._vulkan!.CreateImage(VulkanRenderer._logicalDevice, _imageInfo, null, imagePtr) != Result.Success)
+                if (VulkanRenderer._vulkan!.CreateImage(VulkanRenderer._logicalDevice, ref _imageInfo, null, imagePtr) != Result.Success)
                 {
                     throw new Exception("failed to create image!");
                 }
@@ -216,7 +158,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
 
             fixed (DeviceMemory* imageMemoryPtr = &_devMemory)
             {
-                if (VulkanRenderer._vulkan!.AllocateMemory(VulkanRenderer._logicalDevice, allocInfo, null, imageMemoryPtr) != Result.Success)
+                if (VulkanRenderer._vulkan!.AllocateMemory(VulkanRenderer._logicalDevice, ref allocInfo, null, imageMemoryPtr) != Result.Success)
                 {
                     throw new Exception("failed to allocate image memory!");
                 }

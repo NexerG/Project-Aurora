@@ -13,7 +13,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
     internal unsafe class MCRaster : MeshComponent
     {
         //shadow map descriptor set
-        internal DescriptorSet[] _descriptorSetsShadow;
+        //internal DescriptorSet[] _descriptorSetsShadow;
         //texture image
         internal Silk.NET.Vulkan.Image _textureImage;
         internal ImageView _textureImageView;
@@ -30,7 +30,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
         public override void OnStart()
         {
             base.OnStart();
-            CreateDescriptorSet();
+            //CreateDescriptorSet();
         }
 
         internal override void LoadCustomMesh(Scene sc)
@@ -41,10 +41,10 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
         internal override void FreeDescriptorSets()
         {
             base.FreeDescriptorSets();
-            if (_descriptorSets != null)
-                VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
-            if (_descriptorSetsShadow != null)
-                VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPoolShadow, (uint)_descriptorSetsShadow.Length, _descriptorSetsShadow);
+            //if (_descriptorSets != null)
+            //    VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
+            //if (_descriptorSetsShadow != null)
+            //    VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPoolShadow, (uint)_descriptorSetsShadow.Length, _descriptorSetsShadow);
         }
 
         internal override void ReinstantiateDesriptorSets()
@@ -61,7 +61,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 
         private void CreateRasterDescriptorSet()
         {
-            DescriptorSetLayout[] _layouts = new DescriptorSetLayout[VulkanRenderer._swapimageCount];
+            /*DescriptorSetLayout[] _layouts = new DescriptorSetLayout[VulkanRenderer._swapimageCount];
             Array.Fill(_layouts, Rasterizer._descriptorSetLayout);
 
             fixed (DescriptorSetLayout* _layoutsPtr = _layouts)
@@ -179,12 +179,12 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
                 {
                     VulkanRenderer._vulkan!.UpdateDescriptorSets(VulkanRenderer._logicalDevice, (uint)_writeDescriptorSets.Length, _descPtr, 0, null);
                 }
-            }
+            }*/
         }
 
         private void CreateShadowDescriptorSet()
         {
-            DescriptorSetLayout[] _layouts = new DescriptorSetLayout[Rasterizer._swapchain!._swapchainImages.Length];
+            /*DescriptorSetLayout[] _layouts = new DescriptorSetLayout[Rasterizer._swapchain!._swapchainImages.Length];
             Array.Fill(_layouts, Rasterizer._descriptorSetLayoutShadow);
 
             fixed (DescriptorSetLayout* _layoutsPtr = _layouts)
@@ -250,7 +250,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
                 {
                     VulkanRenderer._vulkan!.UpdateDescriptorSets(VulkanRenderer._logicalDevice, (uint)_writeDescriptorSets.Length, _descPtr, 0, null);
                 }
-            }
+            }*/
         }
 
         internal override void MakeInstanced(ref List<Matrix4X4<float>> _matrices)
@@ -260,10 +260,10 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             _transformMatrices = _matrices;
 
             Matrix4X4<float>[] _mats = _matrices.ToArray();
-            AVulkanBufferHandler.CreateBuffer(ref _mats, ref _transformsBuffer, ref _transformsBufferMemory, _aditionalUsageFlags);
-            VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
-            VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPoolShadow, (uint)_descriptorSetsShadow.Length, _descriptorSetsShadow);
-            CreateDescriptorSet();
+            AVulkanBufferHandler.CreateBuffer(ref _mats, ref _transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
+            //VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
+            //VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPoolShadow, (uint)_descriptorSetsShadow.Length, _descriptorSetsShadow);
+            //CreateDescriptorSet();
             VulkanRenderer._rendererInstance.RecreateCommandBuffers();
         }
 
@@ -272,7 +272,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             base.SingletonMatrix();
 
             Matrix4X4<float>[] _mats = _transformMatrices.ToArray();
-            AVulkanBufferHandler.CreateBuffer(ref _mats, ref _transformsBuffer, ref _transformsBufferMemory, _aditionalUsageFlags);
+            AVulkanBufferHandler.CreateBuffer(ref _mats, ref _transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
         }
 
         internal override void UpdateMatrices()
@@ -296,7 +296,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
                     VulkanRenderer._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, _vertBuffersPtr, _offsetsPtr);
                 }
                 VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, _indexBuffer, 0, IndexType.Uint32);
-                VulkanRenderer._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, Rasterizer._pipeline._shadowLayout, 0, 1, _descriptorSetsShadow[descriptorIndex], 0, null);
+                //VulkanRenderer._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, Rasterizer._pipeline._shadowLayout, 0, 1, _descriptorSetsShadow[descriptorIndex], 0, null);
                 //push constants
                 VulkanRenderer._vulkan.CmdPushConstants(_commandBuffer, Rasterizer._pipeline._shadowLayout, ShaderStageFlags.VertexBit, 0, sizeof(int), &lightIndex);
                 VulkanRenderer._vulkan.CmdDrawIndexed(_commandBuffer, (uint)_mesh._indices.Length, (uint)_instances, 0, 0, 0);

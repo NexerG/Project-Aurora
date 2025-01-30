@@ -74,7 +74,7 @@ namespace ArctisAurora.EngineWork.Renderer
                 throw new Exception("VK_KHR_swapchain extension not found on the device");
             }
 
-            Result r = _driverSwapchain!.CreateSwapchain(VulkanRenderer._logicalDevice, _swapchainCreateInfo, null, out _swapchainKHR);
+            Result r = _driverSwapchain!.CreateSwapchain(VulkanRenderer._logicalDevice, ref _swapchainCreateInfo, null, out _swapchainKHR);
             if (r != Result.Success)
             {
                 throw new Exception("Failed to create swapchain " + r);

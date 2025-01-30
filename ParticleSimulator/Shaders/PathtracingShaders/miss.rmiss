@@ -4,6 +4,7 @@
 struct RayPayload
 {
 	vec3 hitColor;
+	vec3 incLight;
 	vec3 hitPos;
     float distance;
 	vec3 normal;
@@ -26,6 +27,6 @@ void main()
 
     vec3 atmosphereColor = mix(horizonColor, zenithColor, angleFactor);
 
-    payload.hitColor = atmosphereColor;
+    payload.hitColor += atmosphereColor;
     payload.hitAtmosphere = true;
 }

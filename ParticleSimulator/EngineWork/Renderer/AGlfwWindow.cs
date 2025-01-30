@@ -14,8 +14,6 @@ namespace ArctisAurora.EngineWork.Renderer
         internal SurfaceKHR _surface;
         internal KhrSurface _driverSurface;
         internal bool _frameBufferResized = false;
-        private bool _firstMove = true;
-        private double _lastX, _lastY;
 
         internal void CreateWindow(ref Extent2D _extent)
         {
@@ -32,9 +30,12 @@ namespace ArctisAurora.EngineWork.Renderer
             }
 
             _glfw.SetWindowSizeCallback(_windowHandle, WindwoResizeCallback);
+
             _glfw.SetCursorPosCallback(_windowHandle, MouseMoveCallback);
             _glfw.SetKeyCallback(_windowHandle, KeyboardCallback);
+            _glfw.SetMouseButtonCallback(_windowHandle, MouseClickCallback);
         }
+
 
         internal void CreateSurface()
         {
@@ -62,18 +63,12 @@ namespace ArctisAurora.EngineWork.Renderer
 
         private void MouseMoveCallback(WindowHandle* window, double xPos, double yPos)
         {
-            if (_firstMove)
-            {
-                _lastX = xPos;
-                _lastY = yPos;
-                _firstMove = false;
-            }
+            VulkanRenderer._rendererInstance.MouseUpdate(xPos, yPos);
+        }
 
-            Vector2D<float> _delta = new Vector2D<float>((float)(xPos - _lastX), (float)(yPos - _lastY));
-            _lastX = xPos;
-            _lastY = yPos;
-
-            VulkanRenderer._camera.ProcessMouseMovements(_delta);
+        private void MouseClickCallback(WindowHandle* window, MouseButton button, InputAction action, KeyModifiers mods)
+        {
+            VulkanRenderer._rendererInstance.MouseClick(button, action);
         }
 
         private void KeyboardCallback(WindowHandle* window, Silk.NET.GLFW.Keys _key, int _scanCode, InputAction _action, KeyModifiers _mods)

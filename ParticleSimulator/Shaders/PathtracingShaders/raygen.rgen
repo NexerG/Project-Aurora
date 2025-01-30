@@ -12,6 +12,7 @@ layout(binding = 2, set = 0) uniform CameraProperties
 struct RayPayload
 {
 	vec3 hitColor;
+	vec3 incLight;
 	vec3 hitPos;
 	float distance;
 	vec3 normal;
@@ -21,7 +22,8 @@ struct RayPayload
 
 //layout(location = 0) rayPayloadEXT vec3 hitValue;
 layout(location = 0) rayPayloadEXT RayPayload payload;
-layout(constant_id = 0) const int MAX_BOUNCES = 1;
+layout(constant_id = 0) const int RAYS_PER_PIXEL = 1;
+const int NUM_BOUNCES = 8;
 
 const float M_PI = 3.14159265359;
 float randomFloat(inout uint seed) {
@@ -91,38 +93,26 @@ void main()
 	float tmin = 0.001;
 	float tmax = 10000.0;
 
-	payload.hitColor = vec3(0.0);
-	vec3 color = vec3(0.0);
+	vec3 totalIncomingLight = vec3(0.0);
 	traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xff, 0, 0, 0, origin.xyz, tmin, direction.xyz, tmax, 0);
-	color = payload.hitColor;
+	origin = payload.hitPos;
 
-	if(!payload.hitAtmosphere)
+
+	for(int i=0; i < RAYS_PER_PIXEL; i++)
 	{
-		uint directionSeed = RandNumByPixel();
-		vec3 surfaceNormal = payload.normal;
-		origin = vec4(payload.hitPos, 0.0);
-		for(int i = 0; i < MAX_BOUNCES; i++)
+		payload.hitColor = vec3(0.0);
+		payload.incLight = vec3(1.0);
+		traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xff, 0, 0, 0, origin.xyz, tmin, direction.xyz, tmax, 0);
+		totalIncomingLight += payload.hitColor;
+		vec4 bounceOrigin = payload.hitPos;
+		for(int j = 0; j < NUM_BOUNCES; j++)
 		{
-			direction = RandHemisphereDir(directionSeed, surfaceNormal);
-			traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xff, 0, 0, 0, origin.xyz, tmin, direction.xyz, tmax, 0);
-			//if(!payload.hitAtmosphere)
-			{
-				float maxDistance = 5.0; // Example max distance for contribution
-				float normalizedDistance = clamp(payload.distance / maxDistance, 0.0, 1.0);
-				float contribution = max(1.0 - normalizedDistance, 0.0);
-				if(contribution > 0)
-				{
-					color += payload.hitColor * contribution;
-				}
-			}
+			traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xff, 0, 0, 0, origin.xyz, tmin, bounceOrigin.xyz, tmax, 0);
+			bounceOrigin = payload.hitPos;
+			totalIncomingLight += payload.hitColor;
 		}
-		float maxIntensity = 1; // Adjust as needed
-		float intensity = max(max(color.r, color.g), color.b);
-		if (intensity > maxIntensity)
-		{
-			color *= maxIntensity / intensity; // Scale down if intensity exceeds the cap
-		}
-}
+	}
+	color = totalIncomingLight / RAYS_PER_PIXEL;
 
 	imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(color, 0.0));
 }

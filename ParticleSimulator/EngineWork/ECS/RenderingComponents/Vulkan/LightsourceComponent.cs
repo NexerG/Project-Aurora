@@ -9,27 +9,30 @@ using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 {
-    internal unsafe class LightsourceComponent: EntityComponent
+    internal unsafe class LightsourceComponent: MeshComponent
     {
-        bool _render = true;
+        internal struct LightData
+        {
+            internal Matrix4X4<float> view;
+            internal Matrix4X4<float> projection;
+            internal Vector3D<float> position;
+            internal Vector3D<float> color;
 
-        //Descriptor set
-        internal DescriptorSet[] _descriptorSets;
-
-        //buffer objects
-        internal Buffer _trasnformsBuffer;
-        internal DeviceMemory _trasnformsBufferMemory;
+            public LightData()
+            {
+                position = new Vector3D<float>(0, 0, 0);
+                color = new Vector3D<float>(1, 1, 1);
+            }
+        }
 
         internal Silk.NET.Vulkan.Image _depthImage;
         internal ImageView _depthImageView;
         internal DeviceMemory _depthBufferMemory;
         internal Framebuffer _shadowFramebuffer;
 
-        //internal Matrix4X4<float> _transformMatrix;
-        internal Matrix4X4<float> _lightView;
-        internal Matrix4X4<float> _lightProjection;
-        internal Matrix4X4<float> _lpv;
-        internal Vector4D<float> _lightColor = new Vector4D<float>(1, 1, 1, 1);
+        internal LightData _lightData = new LightData();
+        internal Buffer _lightDataBuffer;
+        internal DeviceMemory _lightDataDM;
 
         public LightsourceComponent()
         {
@@ -39,8 +42,19 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
         public override void OnStart()
         {
+            SingletonMatrix();
             VulkanRenderer._rendererInstance.AddLightToRenderQueue(parent);
-            VulkanRenderer._rendererInstance.RecreateCommandBuffers();
+            //VulkanRenderer._rendererInstance.RecreateCommandBuffers();
+        }
+
+        internal override void SingletonMatrix()
+        {
+            base.SingletonMatrix();
+            _lightData.projection = Matrix4X4.CreateOrthographicOffCenter(-35f, 35f, -35f, 35f, 5, 300f);
+            _lightData.projection.M22 *= -1;
+            _lightData.view = Matrix4X4.CreateLookAt(parent.transform.position, Vector3D<float>.Zero, Vector3D<float>.UnitY);
+
+            AVulkanBufferHandler.CreateBuffer(ref _lightData, ref _lightDataBuffer, ref _lightDataDM, BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.UniformBufferBit);
         }
 
         internal void CreateShadowFramebuffer(Extent2D _resolution)
@@ -67,12 +81,14 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             }
         }
 
-        internal void UpdateVPMatrices(uint _currentImage)
+        internal override void UpdateMatrices()
         {
-            _lightProjection = Matrix4X4.CreateOrthographicOffCenter(-35f, 35f, -35f, 35f, 5, 300f);
-            _lightProjection.M22 *= -1;
-            _lightView = Matrix4X4.CreateLookAt(parent.transform.position, Vector3D<float>.Zero, Vector3D<float>.UnitY);
-            _lpv = _lightProjection * _lightView;
+            base.UpdateMatrices();
+        }
+
+        internal override void EnqueueDrawCommands(ref ulong[] _offset, int _loopIndex, ref CommandBuffer _commandBuffer)
+        {
+            //base.EnqueueDrawCommands(ref _offset, _loopIndex, ref _commandBuffer);
         }
 
         private void CreateDepthImage(Extent2D _resolution)

@@ -1,4 +1,6 @@
 ﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.GameObject
 {
@@ -17,6 +19,13 @@ namespace ArctisAurora.GameObject
         public override void OnTick()
         {
             base.OnTick();
+        }
+
+        public void UpdateLightPosition(Vector3D<float> newPos)
+        {
+            transform.position = newPos;
+
+            //GetComponent<LightsourceComponent>().UpdatePosition();
         }
     }
 }

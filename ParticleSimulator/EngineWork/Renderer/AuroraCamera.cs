@@ -25,6 +25,9 @@ namespace ArctisAurora.EngineWork.Renderer
         //controls
         float _speed = 0.5f;
         float _sensitivity = 0.25f;
+        //control vars
+        private bool _firstMove = true;
+        private double _lastX, _lastY;
 
         internal AuroraCamera()
         {
@@ -79,8 +82,19 @@ namespace ArctisAurora.EngineWork.Renderer
             AVulkanBufferHandler.UpdateBuffer(ref _ubo, ref _cameraBuffer[currentImage], ref _camBmemory[currentImage], BufferUsageFlags.None);
         }
 
-        internal void ProcessMouseMovements(Vector2D<float> _delta, bool _constrainPitch = true)
+        internal void ProcessMouseMovements(double xPos, double yPos, bool _constrainPitch = true)
         {
+            if (_firstMove)
+            {
+                _lastX = xPos;
+                _lastY = yPos;
+                _firstMove = false;
+            }
+
+            Vector2D<float> _delta = new Vector2D<float>((float)(xPos - _lastX), (float)(yPos - _lastY));
+            _lastX = xPos;
+            _lastY = yPos;
+
             _delta *= _sensitivity;
 
             _rotation.X += _delta.X;

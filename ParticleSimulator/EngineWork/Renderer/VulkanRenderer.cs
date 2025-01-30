@@ -7,6 +7,7 @@ using ArctisAurora.GameObject;
 using Semaphore = Silk.NET.Vulkan.Semaphore;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Renderer.RendererTypes;
+using Silk.NET.GLFW;
 
 namespace ArctisAurora.EngineWork.Renderer
 {
@@ -14,7 +15,8 @@ namespace ArctisAurora.EngineWork.Renderer
     {
         Rasterizer,
         Pathtracer,
-        RadianceCascades
+        RadianceCascades,
+        RadianceCascades2D
     }
 
     internal unsafe class VulkanRenderer
@@ -49,6 +51,7 @@ namespace ArctisAurora.EngineWork.Renderer
         internal static Swapchain _swapchain;
         internal static DescriptorPool _descriptorPool;
         internal static DescriptorSetLayout _descriptorSetLayout;
+        internal DescriptorSet[] _descriptorSets;
         internal static CommandPool _commandPool;
         internal static CommandBuffer[] _commandBuffer;
         //
@@ -59,8 +62,8 @@ namespace ArctisAurora.EngineWork.Renderer
         internal static Fence[] _fencesInFlight;
         internal static Fence[] _imagesInFlight;
         //
-        internal static Queue _graphicsQueue;                       //api queue
-        internal static Queue _presentQueue;                        //fuck knows what this is (ill ask chatgpt later)
+        internal static Queue _graphicsQueue;               //api queue
+        internal static Queue _presentQueue;                //fuck knows what this is (ill ask chatgpt later)
         //
         internal static List<Entity> _entitiesToRender = new List<Entity>();
         internal static List<Entity> _lightsToRender = new List<Entity>();
@@ -87,6 +90,11 @@ namespace ArctisAurora.EngineWork.Renderer
                 case ERendererTypes.Pathtracer:
                     {
                         Pathtracing _tracer = new Pathtracing();
+                        break;
+                    }
+                case ERendererTypes.RadianceCascades2D:
+                    {
+                        RadianceCascades2D _cascades = new RadianceCascades2D();
                         break;
                     }
                 default:
@@ -275,7 +283,7 @@ namespace ArctisAurora.EngineWork.Renderer
                     PEnabledFeatures = null,
                     PNext = &_devFeatures2
                 };
-                Result r = _vulkan.CreateDevice(_gpu, _deviceInfo, null, out _logicalDevice);
+                Result r = _vulkan.CreateDevice(_gpu, ref _deviceInfo, null, out _logicalDevice);
 
                 if (r != Result.Success)
                 {
@@ -314,6 +322,16 @@ namespace ArctisAurora.EngineWork.Renderer
 
         internal virtual void AddLightToRenderQueue(Entity _m) { }
 
+        internal virtual void MouseUpdate(double xPos, double yPos)
+        {
+            _camera.ProcessMouseMovements(xPos, yPos);
+        }
+
+        internal virtual void MouseClick(MouseButton button, InputAction action)
+        {
+
+        }
+
         internal void CreateCommandPool()
         {
             int _queueFamilyIndex = AVulkanHelper.FindQueueFamilyIndex(ref _gpu, ref _qfm, QueueFlags.GraphicsBit);
@@ -322,7 +340,7 @@ namespace ArctisAurora.EngineWork.Renderer
                 SType = StructureType.CommandPoolCreateInfo,
                 QueueFamilyIndex = (uint)_queueFamilyIndex,
             };
-            if (_vulkan.CreateCommandPool(_logicalDevice, _createInfo, null, out _commandPool) != Result.Success)
+            if (_vulkan.CreateCommandPool(_logicalDevice, ref _createInfo, null, out _commandPool) != Result.Success)
             {
                 throw new Exception("Failed to create command pool");
             }
@@ -358,6 +376,45 @@ namespace ArctisAurora.EngineWork.Renderer
         }
 
         internal virtual void CreateDescriptorPool() { }
+
+        internal virtual void CreateGlobalDescriptorSets()
+        {
+            DescriptorSetLayout[] localLayout = new DescriptorSetLayout[_swapimageCount];
+            Array.Fill(localLayout, _descriptorSetLayout);
+
+            fixed (DescriptorSetLayout* _layoutsPtr = localLayout)
+            {
+                uint bufferCount = (uint)_entitiesToRender.Count;
+                uint[] entriesPer = { bufferCount, bufferCount, bufferCount };
+                fixed (uint* perPtr = entriesPer)
+                {
+                    DescriptorSetVariableDescriptorCountAllocateInfo _variableDSCount = new()
+                    {
+                        SType = StructureType.DescriptorSetVariableDescriptorCountAllocateInfo,
+                        DescriptorSetCount = (uint)_swapimageCount, // total amount of descriptor sets
+                        PDescriptorCounts = perPtr                  // how many descriptor sets are variable
+                    };
+
+                    DescriptorSetAllocateInfo _allocateInfo = new DescriptorSetAllocateInfo()
+                    {
+                        SType = StructureType.DescriptorSetAllocateInfo,
+                        DescriptorPool = _descriptorPool,
+                        DescriptorSetCount = (uint)_swapimageCount,
+                        PSetLayouts = _layoutsPtr,
+                        PNext = &_variableDSCount
+                    };
+
+                    fixed (DescriptorSet* _descriptorSetsPtr = _descriptorSets)
+                    {
+                        Result r = _vulkan.AllocateDescriptorSets(_logicalDevice, ref _allocateInfo, _descriptorSetsPtr);
+                        if (r != Result.Success)
+                        {
+                            throw new Exception("Failed to allocate descriptor set with error code: " + r);
+                        }
+                    }
+                }
+            }
+        }
 
         internal void CreateDescriptorSetLayout(int _bindingCount, List<DescriptorType> _descriptorTypes, List<ShaderStageFlags> _stageFlags, ref DescriptorSetLayout _dsl, DescriptorBindingFlags[] indexedFlags, uint descriptorCount = 1)
         {
@@ -462,9 +519,9 @@ namespace ArctisAurora.EngineWork.Renderer
 
             for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
             {
-                if (_vulkan.CreateSemaphore(_logicalDevice, _semaphoreCreateInfo, null, out _imageAvailableSemaphores[i]) != Result.Success ||
-                    _vulkan.CreateSemaphore(_logicalDevice, _semaphoreCreateInfo, null, out _renderFinishedSemaphores[i]) != Result.Success ||
-                    _vulkan.CreateFence(_logicalDevice, _fenceCreateInfo, null, out _fencesInFlight[i]) != Result.Success)
+                if (_vulkan.CreateSemaphore(_logicalDevice, ref _semaphoreCreateInfo, null, out _imageAvailableSemaphores[i]) != Result.Success ||
+                    _vulkan.CreateSemaphore(_logicalDevice, ref _semaphoreCreateInfo, null, out _renderFinishedSemaphores[i]) != Result.Success ||
+                    _vulkan.CreateFence(_logicalDevice, ref _fenceCreateInfo, null, out _fencesInFlight[i]) != Result.Success)
                 {
                     throw new Exception("Failed to create synch objects for a frame at index " + i);
                 }

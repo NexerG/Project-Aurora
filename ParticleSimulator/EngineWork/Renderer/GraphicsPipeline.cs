@@ -324,6 +324,10 @@ namespace ArctisAurora.EngineWork.Renderer
                     {
                         break;
                     }
+                case ERendererTypes.RadianceCascades2D:
+                    {
+                        break;
+                    }
                 default: break;
             }
         }
@@ -340,7 +344,7 @@ namespace ArctisAurora.EngineWork.Renderer
             fixed (byte* _shaderCodePtr = _shaderCode)
             {
                 _createInfo.PCode = (uint*)_shaderCodePtr;
-                if (VulkanRenderer._vulkan.CreateShaderModule(VulkanRenderer._logicalDevice, _createInfo, null, out _shaderModule) != Result.Success)
+                if (VulkanRenderer._vulkan.CreateShaderModule(VulkanRenderer._logicalDevice, ref _createInfo, null, out _shaderModule) != Result.Success)
                 {
                     throw new Exception("Failed to create shader module");
                 }

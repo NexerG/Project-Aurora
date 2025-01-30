@@ -1,0 +1,90 @@
+#version 450
+#extension GL_EXT_scalar_block_layout : enable
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(binding = 0, rgba8) uniform image2D outputImage;
+layout(binding = 1, rgba8) uniform image2D lightDataImage;
+layout(binding = 2, scalar) uniform MouseData{
+    ivec2 mousePos;
+    bool isLMBDown;
+    bool isRMBDown;
+} md;
+
+void main()
+{
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
+    int tileSize = 64; // Each large tile is 64x64 pixels
+    int subTileSize = tileSize / 4; // Each small tile is 16x16 pixels
+
+    // Compute tile indices
+    int tileX = pos.x / tileSize;
+    int tileY = pos.y / tileSize;
+    
+    // Compute position within the current tile
+    int localX = pos.x % tileSize;
+    int localY = pos.y % tileSize;
+
+    // Black border thickness (e.g., 3 pixels)
+    int borderThickness = 1;
+
+
+    // mouse position stuff
+    vec4 LMBColor = vec4(1);
+    int brushSize = 5; // Increase this for a larger brush
+    if(md.isLMBDown)
+    {
+        for (int dx = -brushSize; dx <= brushSize; dx++)
+        {
+            for (int dy = -brushSize; dy <= brushSize; dy++)
+            {
+                ivec2 brushPos = md.mousePos + ivec2(dx, dy);
+                if (length(vec2(dx, dy)) <= brushSize) // Circular brush effect
+                {
+                    imageStore(lightDataImage, brushPos, LMBColor);
+                }
+            }
+        }
+    }
+
+    vec4 RMBColor = vec4(0);
+    if(md.isRMBDown)
+    {
+        for (int dx = -brushSize; dx <= brushSize; dx++)
+        {
+            for (int dy = -brushSize; dy <= brushSize; dy++)
+            {
+                ivec2 brushPos = md.mousePos + ivec2(dx, dy);
+                if (length(vec2(dx, dy)) <= brushSize) // Circular brush effect
+                {
+                    imageStore(lightDataImage, brushPos, RMBColor);
+                }
+            }
+        }
+    }
+
+    vec4 mpc = imageLoad(lightDataImage, pos);
+    if(length(mpc) > 0)
+    {
+        imageStore(outputImage, pos, LMBColor);
+        return;
+    }
+
+    // Check if we're in the black border
+    if (localX < borderThickness || localX >= tileSize - borderThickness ||
+        localY < borderThickness || localY >= tileSize - borderThickness) {
+        imageStore(outputImage, pos, vec4(0.0, 0.0, 0.0, 1.0)); // Black edges
+        return;
+    }
+
+    // Compute checkerboard pattern inside the tile
+    int subTileX = (localX - borderThickness) / subTileSize;
+    int subTileY = (localY - borderThickness) / subTileSize;
+    bool isDarkBlue = (subTileX + subTileY) % 2 == 0;
+
+    vec3 darkBlue1 = vec3(0, 0.08, 0.22); // Darker blue
+    vec3 darkBlue2 = vec3(0, 0.14, 0.36); // Lighter blue
+
+    vec4 color = vec4(isDarkBlue ? darkBlue1 : darkBlue2, 1.0);
+    imageStore(outputImage, pos, color);
+}

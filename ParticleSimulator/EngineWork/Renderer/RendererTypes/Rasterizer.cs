@@ -5,27 +5,24 @@ using Silk.NET.Maths;
 using ArctisAurora.EngineWork.Renderer.Helpers;
 using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
 using Buffer = Silk.NET.Vulkan.Buffer;
+using System.Runtime.CompilerServices;
+using static ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan.LightsourceComponent;
 
 namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 {
-    struct LightData
-    {
-        internal Vector3D<float> _pos;
-        internal Vector4D<float> _color;
-    }
-
     internal unsafe class Rasterizer : VulkanRenderer
     {
-        string[] requiredExtensions = { "VK_KHR_swapchain" };
+        string[] requiredExtensions = 
+        {
+            "VK_KHR_swapchain",
+            "VK_EXT_descriptor_indexing",
+        };
         //buffers
         private Framebuffer[] _framebuffer;
-        internal static Buffer _lightBuffer;
-        internal static DeviceMemory _lightBufferMemory;
-        internal static Buffer[] _lightUBO;
-        internal static DeviceMemory[] _lightUBOMemory;
         //descriptors
         internal static DescriptorSetLayout _descriptorSetLayoutShadow;
         internal static DescriptorPool _descriptorPoolShadow;
+        internal DescriptorSet[] _descriptorSetsShadow;
         //-------------------------------------
         internal static Sampler _textureSampler;
         internal static Sampler _shadowmapSampler;
@@ -44,7 +41,12 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             _swapchain = new Swapchain(ref _glWindow._driverSurface, ref _glWindow._surface);
             _swapchain.DoSwapchainMethodSequence(ref _extent);        //swapchain methods for simplicity sake
             _swapimageCount = _swapchain._swapchainImages.Length;     //engine related thing
+
+            _descriptorSets = new DescriptorSet[_swapimageCount];
+            _descriptorSetsShadow = new DescriptorSet[_swapimageCount];
             _camera = new AuroraCamera();
+
+            //here go any extensions required for the renderer.
 
             //initiate the draw command pipeline
             CreateRasterizerDescritorSetLayouts();
@@ -74,6 +76,8 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 SType = StructureType.PhysicalDeviceVulkan12Features,
                 BufferDeviceAddress = true,
                 RuntimeDescriptorArray = true,
+                DescriptorBindingVariableDescriptorCount = true,
+                DescriptorIndexing = true
             };
 
             CreateLogicalDevice(requiredExtensions, _vulkan12FT, _deviceFeatures);        //abstract the gpu so we can communicate
@@ -84,47 +88,22 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             base.AddEntityToRenderQueue(_m);
             CreateDescriptorPool();
             CreateShadowDescriptorPool();
-            for (int i = 0; i < _entitiesToRender.Count; i++)
-                _entitiesToRender[i].GetComponent<MeshComponent>().ReinstantiateDesriptorSets();
+            /*for (int i = 0; i < _entitiesToRender.Count; i++)
+                _entitiesToRender[i].GetComponent<MeshComponent>().ReinstantiateDesriptorSets();*/
 
+            CreateGlobalDescriptorSets();
             RecreateCommandBuffers();
         }
 
         internal override void AddLightToRenderQueue(Entity _l)
         {
             _lightsToRender.Add(_l);
-            ulong _bufferSize = (ulong)(sizeof(UBO) * _lightsToRender.Count);
-            _lightUBO = new Buffer[VulkanRenderer._swapimageCount];
-            _lightUBOMemory = new DeviceMemory[VulkanRenderer._swapimageCount];
+            //CreateGlobalDescriptorSets();
+        }
 
-            if (_lightsToRender.Count > 1)
-            {
-                _vulkan.FreeMemory(_logicalDevice, _lightBufferMemory, null);
-                AVulkanBufferHandler.RecreateLightsBuffer(ref _lightsToRender, ref _lightBuffer, ref _lightBufferMemory);
-                foreach (Buffer b in _lightUBO)
-                    _vulkan.DestroyBuffer(_logicalDevice, b, null);
-
-                for (int i = 0; i < VulkanRenderer._swapimageCount; i++)
-                {
-                    AVulkanBufferHandler.CreateBuffer(_bufferSize, ref _lightUBO[i], ref _lightUBOMemory[i],
-                        BufferUsageFlags.StorageBufferBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit);
-                }
-
-                foreach (Entity _e in _entitiesToRender)
-                {
-                    _e.GetComponent<MeshComponent>().FreeDescriptorSets();
-                    _e.GetComponent<MeshComponent>().ReinstantiateDesriptorSets();
-                }
-            }
-            else
-            {
-                AVulkanBufferHandler.CreateLightsBuffer(ref _lightsToRender, ref _lightBuffer, ref _lightBufferMemory);
-                for (int i = 0; i < VulkanRenderer._swapimageCount; i++)
-                {
-                    AVulkanBufferHandler.CreateBuffer(_bufferSize, ref _lightUBO[i], ref _lightUBOMemory[i],
-                        BufferUsageFlags.StorageBufferBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit);
-                }
-            }
+        internal override void MouseUpdate(double xPos, double yPos)
+        {
+            base.MouseUpdate(xPos, yPos);
         }
 
         private void RecreateSwapChain()
@@ -199,7 +178,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                     SType = StructureType.CommandBufferBeginInfo
                 };
 
-                if (_vulkan.BeginCommandBuffer(_commandBuffer[i], _beginInfo) != Result.Success)
+                if (_vulkan.BeginCommandBuffer(_commandBuffer[i], ref _beginInfo) != Result.Success)
                 {
                     throw new Exception("Failed to create BEGIN command buffer at index " + i);
                 }
@@ -211,7 +190,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                     Framebuffer = _framebuffer[i],
                     RenderArea =
                     {
-                        Offset = { X = 0, Y=0 },
+                        Offset = { X = 0, Y = 0 },
                         Extent = _extent
                     }
                 };
@@ -295,14 +274,246 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 
         private void CreateRasterizerDescritorSetLayouts()
         {
-            List<DescriptorType> _types1 = new List<DescriptorType> { DescriptorType.UniformBuffer, DescriptorType.StorageBuffer, DescriptorType.StorageBuffer, DescriptorType.CombinedImageSampler, DescriptorType.CombinedImageSampler };
-            List<ShaderStageFlags> _flags1 = new List<ShaderStageFlags> { ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit, ShaderStageFlags.FragmentBit, ShaderStageFlags.FragmentBit, ShaderStageFlags.FragmentBit, };
-            DescriptorBindingFlags[] _DBF = { };
-            CreateDescriptorSetLayout(_types1.Count, _types1, _flags1, ref _descriptorSetLayout, _DBF);
+            List<DescriptorType> _types1 = new List<DescriptorType> { DescriptorType.UniformBuffer, DescriptorType.CombinedImageSampler, DescriptorType.StorageBuffer, DescriptorType.CombinedImageSampler };
+            List<ShaderStageFlags> _flags1 = new List<ShaderStageFlags> { ShaderStageFlags.VertexBit, ShaderStageFlags.FragmentBit, ShaderStageFlags.FragmentBit, ShaderStageFlags.FragmentBit };
+            DescriptorBindingFlags[] _DBF = { DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit , DescriptorBindingFlags.VariableDescriptorCountBit };
 
-            List<DescriptorType> _types2 = new List<DescriptorType> { DescriptorType.StorageBuffer, DescriptorType.StorageBuffer };
+            uint _indexedCount = 50000;
+            uint[] _descriptorCount = new uint[_DBF.Length];
+            for (int i = 0; i < _DBF.Length; i++)
+            {
+                if (_DBF[i] == DescriptorBindingFlags.VariableDescriptorCountBit)
+                {
+                    _descriptorCount[i] = _indexedCount;
+                }
+                else
+                {
+                    _descriptorCount[i] = 1;
+                }
+            }
+
+            CreateDescriptorSetLayout(_types1.Count, _types1, _flags1, ref _descriptorSetLayout, _DBF, _descriptorCount);
+
+            List<DescriptorType> _types2 = new List<DescriptorType> { DescriptorType.UniformBuffer, DescriptorType.StorageBuffer };
             List<ShaderStageFlags> _flags2 = new List<ShaderStageFlags> { ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit };
-            CreateDescriptorSetLayout(_types2.Count, _types2, _flags2, ref _descriptorSetLayoutShadow, _DBF);
+            DescriptorBindingFlags[] _DBF2 = { DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit};
+            _descriptorCount = new uint[_DBF2.Length];
+            for (int i = 0; i < _DBF2.Length; i++)
+            {
+                if (_DBF2[i] == DescriptorBindingFlags.VariableDescriptorCountBit)
+                {
+                    _descriptorCount[i] = _indexedCount;
+                }
+                else
+                {
+                    _descriptorCount[i] = 1;
+                }
+            }
+
+            CreateDescriptorSetLayout(_types2.Count, _types2, _flags2, ref _descriptorSetLayoutShadow, _DBF2, _descriptorCount);
+        }
+
+        internal override void CreateGlobalDescriptorSets()
+        {
+            //base.CreateGlobalDescriptorSets();
+            AllocateDescriptorSets(ref _descriptorSetLayout, ref _descriptorPool, ref _descriptorSets);
+            CreateRasterDescriptorSets();
+
+            AllocateDescriptorSets(ref _descriptorSetLayoutShadow, ref _descriptorPoolShadow, ref _descriptorSetsShadow);
+            CreateShadowMapDescriptorSets();
+        }
+
+        private void CreateRasterDescriptorSets()
+        {
+            for (int i = 0; i < _swapimageCount; i++)
+            {
+                fixed (AccelerationStructureKHR* _accelStrPtr = &Pathtracing._TLAS._handle)
+                {
+                    DescriptorBufferInfo _bufferInfoMatrices = new DescriptorBufferInfo()
+                    {
+                        Buffer = _camera._cameraBuffer[i],
+                        Offset = 0,
+                        Range = (ulong)Unsafe.SizeOf<UBO>()
+                    };
+                    DescriptorImageInfo shadowMapInfo = new()
+                    {
+                        ImageLayout = Silk.NET.Vulkan.ImageLayout.ShaderReadOnlyOptimal,
+                        ImageView = _lightsToRender[0].GetComponent<LightsourceComponent>()._depthImageView,
+                        Sampler = _shadowmapSampler
+                    };
+
+                    DescriptorBufferInfo[] _transformUniformInfos = new DescriptorBufferInfo[_entitiesToRender.Count];
+                    DescriptorImageInfo[] _textureImageInfos = new DescriptorImageInfo[_entitiesToRender.Count];
+                    for (int k = 0; k < _entitiesToRender.Count; k++)
+                    {
+                        MCRaster component = _entitiesToRender[k].GetComponent<MCRaster>();
+                        _transformUniformInfos[k] = new()
+                        {
+                            Buffer = component._transformsBuffer,
+                            Offset = 0,
+                            Range = Vk.WholeSize
+                        };
+                        _textureImageInfos[k] = new()
+                        {
+                            ImageLayout = Silk.NET.Vulkan.ImageLayout.ShaderReadOnlyOptimal,
+                            ImageView = component._textureImageView,
+                            Sampler = _textureSampler
+                        };
+                    }
+                    fixed (DescriptorImageInfo* _textureImageInforPtr = _textureImageInfos)
+                    fixed (DescriptorBufferInfo* _transforUniformInfoPtr = _transformUniformInfos)
+                    {
+                        var _writeDescriptorSets = new WriteDescriptorSet[]
+                        {
+                            new WriteDescriptorSet
+                            {
+                                SType = StructureType.WriteDescriptorSet,
+                                DstSet = _descriptorSets[i],
+                                DstBinding = 0,
+                                DescriptorCount = 1,
+                                DstArrayElement = 0,
+                                DescriptorType = DescriptorType.UniformBuffer,
+                                PBufferInfo = &_bufferInfoMatrices
+                            },
+                            new WriteDescriptorSet
+                            {
+                                SType = StructureType.WriteDescriptorSet,
+                                DstSet = _descriptorSets[i],
+                                DstBinding = 1,
+                                DescriptorCount = 1,
+                                DstArrayElement = 0,
+                                DescriptorType = DescriptorType.CombinedImageSampler,
+                                PImageInfo = &shadowMapInfo
+                            },
+                            // transform
+                            new WriteDescriptorSet
+                            {
+                                SType = StructureType.WriteDescriptorSet,
+                                DstSet = _descriptorSets[i],
+                                DstBinding = 2,
+                                DescriptorCount = (uint)_transformUniformInfos.Length,
+                                DstArrayElement = 0,
+                                DescriptorType = DescriptorType.StorageBuffer,
+                                PBufferInfo = _transforUniformInfoPtr
+                            },
+                            new WriteDescriptorSet
+                            {
+                                SType = StructureType.WriteDescriptorSet,
+                                DstSet = _descriptorSets[i],
+                                DstBinding = 3,
+                                DescriptorCount = (uint)_textureImageInfos.Length,
+                                DstArrayElement = 0,
+                                DescriptorType = DescriptorType.CombinedImageSampler,
+                                PImageInfo = _textureImageInforPtr
+                            }
+                        };
+                        fixed (WriteDescriptorSet* _descPtr = _writeDescriptorSets)
+                        {
+                            _vulkan!.UpdateDescriptorSets(_logicalDevice, (uint)_writeDescriptorSets.Length, _descPtr, 0, null);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void CreateShadowMapDescriptorSets()
+        {
+            for (int i = 0; i < Rasterizer._swapchain._swapchainImages.Length; i++)
+            {
+                DescriptorBufferInfo[] _lightDataInfo = new DescriptorBufferInfo[_lightsToRender.Count];
+                for (int k = 0; k < _lightsToRender.Count; k++)
+                {
+                    _lightDataInfo[k] = new DescriptorBufferInfo()
+                    {
+                        Buffer = _lightsToRender[k].GetComponent<LightsourceComponent>()._lightDataBuffer,
+                        Offset = 0,
+                        Range = (ulong)sizeof(LightData)
+                    };
+                }
+
+                DescriptorBufferInfo[] _transformUniformInfos = new DescriptorBufferInfo[_entitiesToRender.Count];
+                for (int k = 0; k < _entitiesToRender.Count; k++)
+                {
+                    MCRaster component = _entitiesToRender[k].GetComponent<MCRaster>();
+                    _transformUniformInfos[k] = new()
+                    {
+                        Buffer = component._transformsBuffer,
+                        Offset = 0,
+                        Range = Vk.WholeSize
+                    };
+                }
+
+                fixed (DescriptorBufferInfo* _lightDataPtr = _lightDataInfo)
+                fixed (DescriptorBufferInfo* _transforUniformInfoPtr = _transformUniformInfos)
+                {
+                    var _writeDescriptorSets = new WriteDescriptorSet[]
+                    {
+                        new WriteDescriptorSet()
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = _descriptorSetsShadow[i],
+                            DstBinding = 0,
+                            DstArrayElement = 0,
+                            DescriptorType = DescriptorType.UniformBuffer,
+                            DescriptorCount = (uint)_lightDataInfo.Length,
+                            PBufferInfo = _lightDataPtr
+                        },
+                        new WriteDescriptorSet()
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = _descriptorSetsShadow[i],
+                            DstBinding = 1,
+                            DstArrayElement = 0,
+                            DescriptorType = DescriptorType.StorageBuffer,
+                            DescriptorCount = (uint)_transformUniformInfos.Length,
+                            PBufferInfo = _transforUniformInfoPtr
+                        }
+                    };
+                    fixed (WriteDescriptorSet* _descPtr = _writeDescriptorSets)
+                    {
+                        VulkanRenderer._vulkan!.UpdateDescriptorSets(VulkanRenderer._logicalDevice, (uint)_writeDescriptorSets.Length, _descPtr, 0, null);
+                    }
+                }
+            }
+        }
+
+        private void AllocateDescriptorSets(ref DescriptorSetLayout _layout, ref DescriptorPool _pool, ref DescriptorSet[] _sets)
+        {
+            DescriptorSetLayout[] localLayout = new DescriptorSetLayout[_swapimageCount];
+            Array.Fill(localLayout, _layout);
+
+            fixed (DescriptorSetLayout* _layoutsPtr = localLayout)
+            {
+                uint bufferCount = (uint)_entitiesToRender.Count;
+                uint[] entriesPer = { bufferCount, bufferCount, bufferCount };
+                fixed (uint* perPtr = entriesPer)
+                {
+                    DescriptorSetVariableDescriptorCountAllocateInfo _variableDSCount = new()
+                    {
+                        SType = StructureType.DescriptorSetVariableDescriptorCountAllocateInfo,
+                        DescriptorSetCount = (uint)_swapimageCount, // total amount of descriptor sets
+                        PDescriptorCounts = perPtr                  // how many descriptor sets are variable
+                    };
+
+                    DescriptorSetAllocateInfo _allocateInfo = new DescriptorSetAllocateInfo()
+                    {
+                        SType = StructureType.DescriptorSetAllocateInfo,
+                        DescriptorPool = _pool,
+                        DescriptorSetCount = (uint)_swapimageCount,
+                        PSetLayouts = _layoutsPtr,
+                        PNext = &_variableDSCount
+                    };
+
+                    fixed (DescriptorSet* _descriptorSetsPtr = _sets)
+                    {
+                        Result r = _vulkan.AllocateDescriptorSets(_logicalDevice, ref _allocateInfo, _descriptorSetsPtr);
+                        if (r != Result.Success)
+                        {
+                            throw new Exception("Failed to allocate descriptor set with error code: " + r);
+                        }
+                    }
+                }
+            }
         }
 
         internal override void CreateDescriptorPool()
@@ -312,17 +523,17 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.UniformBuffer,
-                    DescriptorCount = (uint)(_swapimageCount * _entitiesToRender.Count) +1
+                    DescriptorCount = (uint)_swapimageCount * 10
                 },
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.StorageBuffer,
-                    DescriptorCount = (uint)(_swapimageCount * _entitiesToRender.Count * 2) + 1
+                    DescriptorCount = (uint)(_swapimageCount * _entitiesToRender.Count) + 1
                 },
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.CombinedImageSampler,
-                    DescriptorCount = (uint)(_swapimageCount * _entitiesToRender.Count * 2) + 1
+                    DescriptorCount = (uint)(_swapimageCount * _entitiesToRender.Count * 10) + 1
                 }
             };
 
@@ -351,7 +562,12 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.StorageBuffer,
-                    DescriptorCount = (uint)(_swapchain!._swapchainImages.Length * _entitiesToRender.Count * 2) + 1
+                    DescriptorCount = (uint)(_swapchain!._swapchainImages.Length * _entitiesToRender.Count) + 1
+                },
+                new DescriptorPoolSize()
+                {
+                    Type = DescriptorType.UniformBuffer,
+                    DescriptorCount = (uint)(_swapchain!._swapchainImages.Length * _entitiesToRender.Count) + 1
                 }
             };
 
@@ -366,7 +582,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                     MaxSets = (uint)(_swapchain!._swapchainImages.Length * _entitiesToRender.Count * 2 + 1),
                     Flags = DescriptorPoolCreateFlags.FreeDescriptorSetBit
                 };
-                if (_vulkan.CreateDescriptorPool(_logicalDevice, _poolInfo, null, _descPoolPtr) != Result.Success)
+                if (_vulkan.CreateDescriptorPool(_logicalDevice, ref _poolInfo, null, _descPoolPtr) != Result.Success)
                 {
                     throw new Exception("Failed to create descriptor pool");
                 }
@@ -436,7 +652,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
         internal override void Draw()
         {
             _camera.ProcessKeyboard();
-            _vulkan.WaitForFences(_logicalDevice, 1, _fencesInFlight[_currentFrame], true, ulong.MaxValue);
+            _vulkan.WaitForFences(_logicalDevice, 1, ref _fencesInFlight[_currentFrame], true, ulong.MaxValue);
             uint _imageIndex = 0;
             Result r = _swapchain._driverSwapchain.AcquireNextImage(_logicalDevice, _swapchain._swapchainKHR, ulong.MaxValue, _imageAvailableSemaphores[_currentFrame], default, ref _imageIndex);
 
@@ -451,20 +667,6 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             }
 
             _camera.UpdateCameraMatrix(_extent, _imageIndex);
-            if (_lightsToRender.Count > 0)
-            {
-                AVulkanBufferHandler.UpdateLightsBuffer(ref _lightsToRender, ref _lightBufferMemory);
-                AVulkanBufferHandler.UpdateLightUniforms(ref _lightsToRender, _imageIndex, ref _lightUBOMemory);
-
-                //UBO[] _ubos = new UBO[_lightsToRender.Count];
-                //AVulkanBufferHandler.UpdateBuffer(ref _ubos, ref );
-            }
-            //update uniforms
-            foreach (Entity e in _lightsToRender)
-            {
-                e.GetComponent<LightsourceComponent>().UpdateVPMatrices(_imageIndex);
-            }
-
             int localEntityCount = 0;
             foreach (Entity e in _updateEntities)
             {
@@ -475,7 +677,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             //uniforms done
             if (_imagesInFlight[_imageIndex].Handle != default)
             {
-                _vulkan.WaitForFences(_logicalDevice, 1, _imagesInFlight[_imageIndex], true, ulong.MaxValue);
+                _vulkan.WaitForFences(_logicalDevice, 1, ref _imagesInFlight[_imageIndex], true, ulong.MaxValue);
             }
             _imagesInFlight[_imageIndex] = _fencesInFlight[_currentFrame];
 
@@ -515,8 +717,8 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 PSignalSemaphores = _signalSemaphores
             };
 
-            _vulkan.ResetFences(_logicalDevice, 1, _fencesInFlight[_currentFrame]);
-            r = _vulkan.QueueSubmit(_graphicsQueue, 1, _submitInfo, _fencesInFlight[_currentFrame]);
+            _vulkan.ResetFences(_logicalDevice, 1, ref _fencesInFlight[_currentFrame]);
+            r = _vulkan.QueueSubmit(_graphicsQueue, 1, ref _submitInfo, _fencesInFlight[_currentFrame]);
             if (r != Result.Success)
             {
                 throw new Exception("Failed to send command buffer to the GPU with error code:" + r);
@@ -532,7 +734,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 PSwapchains = _swapChains,
                 PImageIndices = &_imageIndex
             };
-            r = _swapchain._driverSwapchain.QueuePresent(_presentQueue, _presentInfo);
+            r = _swapchain._driverSwapchain.QueuePresent(_presentQueue, ref _presentInfo);
             if (r == Result.ErrorOutOfDateKhr || r == Result.SuboptimalKhr || _glWindow._frameBufferResized)
             {
                 _glWindow._frameBufferResized = false;

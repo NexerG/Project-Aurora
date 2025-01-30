@@ -6,6 +6,7 @@
 struct RayPayload
 {
 	vec3 hitColor;
+	vec3 incLight;
 	vec3 hitPos;
 	float distance;
 	vec3 normal;
@@ -44,10 +45,6 @@ hitAttributeEXT vec2 attribs;
 void main()
 {
 	const vec3 barycentricCoords = vec3(1.0f - attribs.x - attribs.y, attribs.x, attribs.y);
-	vec3 albedo = colors[gl_InstanceID].color;
-
-	// use when smoothed surface
-	//vec3 normal = barycentricCoords.x * normal0 + barycentricCoords.y * normal1 + barycentricCoords.z * normal2;
 
 	uint index0 = indices[gl_InstanceID].ind[gl_PrimitiveID * 3 + 0];
 	uint index1 = indices[gl_InstanceID].ind[gl_PrimitiveID * 3 + 1];
@@ -62,11 +59,8 @@ void main()
 	vec3 normal = normalize(cross(AB, AC));
 	normal = normalize(mat3(transpose(transformations[gl_InstanceID].transform)) * normal);
 
-	vec3 lightDir = normalize(vec3(1.0f, 0.5f, 0.0f));
-	float luminosity = max(dot(normal, lightDir), 0.1f);
-	vec3 diffuse = luminosity * albedo;
+	//vec3 emittedLight = ; ONLY WHEN I WILL IMPLEMENT EMISSIVE MATERIALS
 
-	payload.hitColor = diffuse;
 	payload.normal = normal;
 	payload.hitPos = (gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT);
 	payload.distance = gl_HitTEXT;
@@ -77,8 +71,13 @@ void main()
 	shadowed = true;
 	// Trace shadow ray and offset indices to match shadow hit/miss shader group indices
 	traceRayEXT(topLevelAS, gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT, 0xFF, 0, 0, 1, origin, tmin, lightDir, tmax, 2);
-	if (shadowed) {
-		payload.hitColor = payload.hitColor * 0.4f;
+	if (shadowed)
+	{
+		payload.hitColor += (lerp(colors[gl_InstanceID], vec3(0.75f, 0.75f, 0.75f), 0) * 0.25);
+	}
+	else
+	{
+		payload.hitColor += lerp(colors[gl_InstanceID], vec3(0.75f, 0.75f, 0.75f), 0);
 	}
 	payload.hitAtmosphere = false;
 }
