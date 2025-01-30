@@ -5,7 +5,9 @@ layout(local_size_x = 16, local_size_y = 16) in;
 
 layout(binding = 0, rgba8) uniform image2D outputImage;
 layout(binding = 1, rgba8) uniform image2D lightDataImage;
-layout(binding = 2, scalar) uniform MouseData{
+layout(binding = 2, rgba8) uniform image2D probeTexels;
+layout(binding = 3, scalar) uniform MouseData{
+    vec4 color;
     ivec2 mousePos;
     bool isLMBDown;
     bool isRMBDown;
@@ -13,6 +15,9 @@ layout(binding = 2, scalar) uniform MouseData{
 
 void main()
 {
+    // probes
+    ivec2 center = imageSize(outputImage) / 2;
+
     ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
     int tileSize = 64; // Each large tile is 64x64 pixels
     int subTileSize = tileSize / 4; // Each small tile is 16x16 pixels
@@ -29,8 +34,7 @@ void main()
     int borderThickness = 1;
 
 
-    // mouse position stuff
-    vec4 LMBColor = vec4(1);
+    // check if we're drawing (LMB = true) or deleting (RMB = true)
     int brushSize = 5; // Increase this for a larger brush
     if(md.isLMBDown)
     {
@@ -41,7 +45,7 @@ void main()
                 ivec2 brushPos = md.mousePos + ivec2(dx, dy);
                 if (length(vec2(dx, dy)) <= brushSize) // Circular brush effect
                 {
-                    imageStore(lightDataImage, brushPos, LMBColor);
+                    imageStore(lightDataImage, brushPos, md.color);
                 }
             }
         }
@@ -66,7 +70,7 @@ void main()
     vec4 mpc = imageLoad(lightDataImage, pos);
     if(length(mpc) > 0)
     {
-        imageStore(outputImage, pos, LMBColor);
+        imageStore(outputImage, pos, mpc);
         return;
     }
 
