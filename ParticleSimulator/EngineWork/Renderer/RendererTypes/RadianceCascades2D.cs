@@ -40,14 +40,18 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
         Buffer mousePosBuffer;
         DeviceMemory mousePosMemory;
 
+        struct Probe()
+        {
+            Vector3D<float> pos;
+            int raycount;
+            int cascade;
+            int rayLength;
+            int rayOffset;
+        }
 
         struct ProbeLayer()
         {
-            Vector3D<float> _startPos;
-            float positionOffset;
-            int rayCount;
-            int rayLength;
-            int rayOffset;
+            Probe[] probes;
         }
 
         struct MouseData()
@@ -92,7 +96,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             CreateProbeDescriptorPool();
             CreateDescriptorsetlayout();
             
-            setupProbes(1);
+            setupProbes(1, 20);
             
             UpdateDescriptorSet();
             
@@ -123,7 +127,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             CreateLogicalDevice(requiredExtensions, _vulkan12FT, _deviceFeatures);        //abstract the gpu so we can communicate
         }
 
-        private void setupProbes(int layers)
+        private void setupProbes(int layers, float firstLayerSpacing)
         {
             for (int i = 0; i < layers; i++)
             {
@@ -607,7 +611,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 // probes
                 _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.Compute, probePipeline);
                 _vulkan.CmdBindDescriptorSets(_commandBuffer[i], PipelineBindPoint.Compute, probePipelineLayout, 0, 1, ref probeDescriptorSets[i], 0, null);
-                _vulkan.CmdDispatch(_commandBuffer[i], _extent.Width / 16, _extent.Height / 16, 1);
+                _vulkan.CmdDispatch(_commandBuffer[i], 1, 1, 1);
 
                 // drawing
                 _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.Compute, computePipeline);

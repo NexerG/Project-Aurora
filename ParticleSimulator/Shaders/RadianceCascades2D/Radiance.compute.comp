@@ -30,7 +30,7 @@ void main()
     int localX = pos.x % tileSize;
     int localY = pos.y % tileSize;
 
-    // Black border thickness (e.g., 3 pixels)
+    // Black border thickness
     int borderThickness = 1;
 
 

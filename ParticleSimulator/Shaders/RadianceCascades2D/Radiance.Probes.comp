@@ -1,12 +1,95 @@
 #version 450
 #extension GL_EXT_scalar_block_layout : enable
 
-layout(local_size_x = 16, local_size_y = 16) in;
+layout(local_size_x = 1, local_size_y = 1) in;
 
 layout(binding = 0, rgba8) uniform image2D probeImage;
-layout(binding = 0, rgba8) uniform image2D lightImage;
+layout(binding = 1, rgba8) uniform image2D lightImage;
+
+struct Hit
+{
+	bool hit;
+	vec2 location;
+	float rayLuminosity;
+};
+
+struct Ray
+{
+	vec2 rayStart;
+	float rayLength;
+	vec2 rayDirection;
+};
+
+Hit raycast(Ray ray)
+{
+	Hit hit;
+	vec2 pos = ray.rayStart;
+	hit.rayLuminosity = 0.0f;
+
+	ivec2 size = imageSize(lightImage);
+
+	for(int i=0; i < ray.rayLength; i++)
+	{
+		pos += ray.rayDirection;
+		if(pos.x >= size.x || pos.y >= size.y || pos.x == 0 || pos.y == 0)
+		{
+			break;
+		}
+
+		vec4 data = imageLoad(lightImage, ivec2(pos));
+		if(length(data) > 0)
+		{
+			hit.hit = true;
+			hit.location = pos;
+			hit.rayLuminosity = 1.0f;
+			break;
+		}
+	}
+	return hit;
+}
 
 void main()
 {
-	
+	ivec2 center = imageSize(lightImage) / 2;
+
+	Ray ray1;
+	ray1.rayStart = ivec2(center);
+	ray1.rayLength = 1000.0f;
+	ray1.rayDirection = normalize(vec2(0, 1));
+
+	Ray ray2;
+	ray2.rayStart = ivec2(center);
+	ray2.rayLength = 1000.0f;
+	ray2.rayDirection = normalize(vec2(1, 0));
+
+	Ray ray3;
+	ray3.rayStart = ivec2(center);
+	ray3.rayLength = 1000.0f;
+	ray3.rayDirection = normalize(vec2(0, -1));
+
+	Ray ray4;
+	ray4.rayStart = ivec2(center);
+	ray4.rayLength = 1000.0f;
+	ray4.rayDirection = normalize(vec2(-1, 0));
+
+	Hit hit1 = raycast(ray1);
+	Hit hit2 = raycast(ray2);
+	Hit hit3 = raycast(ray3);
+	Hit hit4 = raycast(ray4);
+
+	ivec2 probe1 = ivec2(0, 0);
+	vec4 lumen1 = vec4(hit1.rayLuminosity, hit1.rayLuminosity, hit1.rayLuminosity, 1);
+	imageStore(probeImage, probe1, lumen1);
+
+	ivec2 probe2 = ivec2(0, 1);
+	vec4 lumen2 = vec4(hit2.rayLuminosity, hit2.rayLuminosity, hit2.rayLuminosity, 1);
+	imageStore(probeImage, probe2, lumen2);
+
+	ivec2 probe3 = ivec2(1, 0);
+	vec4 lumen3 = vec4(hit3.rayLuminosity, hit3.rayLuminosity, hit3.rayLuminosity, 1);
+	imageStore(probeImage, probe3, lumen3);
+
+	ivec2 probe4 = ivec2(1, 1);
+	vec4 lumen4 = vec4(hit4.rayLuminosity, hit4.rayLuminosity, hit4.rayLuminosity, 1);
+	imageStore(probeImage, probe4, lumen4);
 }
