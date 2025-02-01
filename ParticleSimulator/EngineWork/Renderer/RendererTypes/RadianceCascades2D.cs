@@ -33,7 +33,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
         DeviceMemory lightsDM;        // where the lights are in the 2D sceme image
         Image lightsImage;
         ImageView lightsImageView;
-        DeviceMemory probesDM;        // probes
+        DeviceMemory probesImageDM;        // probes
         Image probesImage;
         ImageView probesImageView;
         // Mouse position data
@@ -43,16 +43,21 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
         struct Probe()
         {
             Vector3D<float> pos;
-            int raycount;
-            int cascade;
-            int rayLength;
-            int rayOffset;
         }
 
         struct ProbeLayer()
         {
-            Probe[] probes;
+            //Probe[] probes;
+            public Vector2D<int>[][] pos;
+            public int cascade = 0;
+            public int rayCount = 4;
+            public int rayLength = 8;
+            public int rayOffset = 0;
         }
+        ProbeLayer[] probeLayers;
+        Buffer probesB;
+        DeviceMemory probesDM;
+
 
         struct MouseData()
         {
@@ -96,7 +101,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             CreateProbeDescriptorPool();
             CreateDescriptorsetlayout();
             
-            setupProbes(1, 20);
+            setupProbes(4, 10, 20, 4,_extent);
             
             UpdateDescriptorSet();
             
@@ -127,19 +132,50 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             CreateLogicalDevice(requiredExtensions, _vulkan12FT, _deviceFeatures);        //abstract the gpu so we can communicate
         }
 
-        private void setupProbes(int layers, float firstLayerSpacing)
+        private void setupProbes(int layers, uint firstOffset, float firstDistance, int rayLength, Extent2D canvasSize)
         {
+            probeLayers = new ProbeLayer[layers];
+            Vector2D<float> localSize = new Vector2D<float>(canvasSize.Width, canvasSize.Height );
+            Vector2D<float> layerStart = new Vector2D<float>(firstOffset, firstOffset);
+            float localDistance = firstDistance;
+            int localRayLength = rayLength;
+            int localRayOffset = 0;
             for (int i = 0; i < layers; i++)
             {
+                int xCount = (int)((localSize.X / localDistance) + firstOffset);
+                int yCount = (int)((localSize.Y / localDistance) + firstOffset);
+                probeLayers[i].cascade = i;
+                probeLayers[i].pos = new Vector2D<int>[xCount][];
+                probeLayers[i].rayCount = (int)Math.Pow(4, i + 1);
+                probeLayers[i].rayLength = localRayLength;
+                probeLayers[i].rayOffset = localRayOffset;
 
+
+                for (int x = 0; x < xCount; x++)
+                {
+                    probeLayers[i].pos[x] = new Vector2D<int>[yCount];
+                    for (int y = 0; y < yCount; y++)
+                    {
+                        probeLayers[i].pos[x][y] = new Vector2D<int>((int)(layerStart.X + localDistance * x), (int)(layerStart.Y + localDistance * y));
+                    }
+                }
+
+                Vector2D<float> nextLayerOffset = new Vector2D<float>(localDistance / 2);
+                layerStart += nextLayerOffset;
+                localDistance = 2 * localDistance;
+
+                localRayOffset += localRayLength;
+                localRayLength *= 2;
             }
-            SetupProbeImages();
+
+            AVulkanBufferHandler.CreateBuffer(ref probeLayers, ref probesB, ref probesDM, BufferUsageFlags.StorageBufferBit);
+            SetupProbeImages(layers);
         }
 
-        private void SetupProbeImages()
+        private void SetupProbeImages(int layers)
         {
             Extent2D imageSize = new Extent2D(2, 2);
-            CreateImage(ref imageSize, ref probesImage, ref probesDM, ref probesImageView, Format.R8G8B8A8Unorm);
+            CreateImage(ref imageSize, ref probesImage, ref probesImageDM, ref probesImageView, Format.R8G8B8A8Unorm);
         }
 
         internal override void MouseUpdate(double xPos, double yPos)

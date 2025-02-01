@@ -5,6 +5,13 @@ layout(local_size_x = 1, local_size_y = 1) in;
 
 layout(binding = 0, rgba8) uniform image2D probeImage;
 layout(binding = 1, rgba8) uniform image2D lightImage;
+layout(binding = 2, scalar) buffer ProbeData{
+	ivec2 positions[][100];
+	int cascade;
+	int rayCount;
+	int raylength;
+	int rayOffset;
+} probes[];
 
 struct Hit
 {
