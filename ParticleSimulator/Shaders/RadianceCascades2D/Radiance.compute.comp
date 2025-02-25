@@ -13,6 +13,37 @@ layout(binding = 3, scalar) uniform MouseData{
     bool isRMBDown;
 } md;
 
+layout(binding = 4, scalar) buffer ProbeData{
+	int cascade;
+	int rayCount;
+	int rayLength;
+	int rayOffset;
+	ivec2 probeCount;
+	ivec2 probeDst;
+	ivec2 offset;
+} probes;
+
+
+vec4 Luminosity(ivec2 pos)
+{
+    ivec2 probeIndex = ivec2(round((vec2(pos) / vec2(probes.probeDst)) - probes.offset));
+    ivec2 texel = probeIndex * 2;
+
+    int levels = int(pow(2, probes.cascade + 1));
+    vec4 luminosity = vec4(0.0f);
+    for(int vertical = 0; vertical < levels; vertical++)
+    {
+        for(int horizontal = 0; horizontal < levels; horizontal++)
+        {
+            luminosity += imageLoad(probeTexels, texel + ivec2(horizontal, vertical));
+        }
+    }
+    luminosity /= (levels * 2);
+
+    return luminosity;
+}
+
+
 void main()
 {
     // probes
@@ -32,7 +63,6 @@ void main()
 
     // Black border thickness
     int borderThickness = 1;
-
 
     // check if we're drawing (LMB = true) or deleting (RMB = true)
     int brushSize = 5; // Increase this for a larger brush
@@ -89,6 +119,9 @@ void main()
     vec3 darkBlue1 = vec3(0, 0.08, 0.22); // Darker blue
     vec3 darkBlue2 = vec3(0, 0.14, 0.36); // Lighter blue
 
-    vec4 color = vec4(isDarkBlue ? darkBlue1 : darkBlue2, 1.0);
+    // calc the luminosity of the pixel
+    vec4 luminosity = Luminosity(pos);
+
+    vec4 color = vec4(isDarkBlue ? darkBlue1 : darkBlue2, 1.0) * luminosity;
     imageStore(outputImage, pos, color);
 }
