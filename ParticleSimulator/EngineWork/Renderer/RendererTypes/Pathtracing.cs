@@ -19,15 +19,15 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
     {
         string[] requiredExtensions =
         {
-                "VK_KHR_swapchain",
-                "VK_EXT_descriptor_indexing",
-                "VK_KHR_spirv_1_4",
-                "VK_KHR_shader_float_controls",
-                KhrAccelerationStructure.ExtensionName,
-                KhrRayTracingPipeline.ExtensionName,
-                KhrDeferredHostOperations.ExtensionName,
-                KhrBufferDeviceAddress.ExtensionName,
-                "VK_EXT_scalar_block_layout"
+            "VK_KHR_swapchain",
+            "VK_EXT_descriptor_indexing",
+            "VK_KHR_spirv_1_4",
+            "VK_KHR_shader_float_controls",
+            KhrAccelerationStructure.ExtensionName,
+            KhrRayTracingPipeline.ExtensionName,
+            KhrDeferredHostOperations.ExtensionName,
+            KhrBufferDeviceAddress.ExtensionName,
+            "VK_EXT_scalar_block_layout"
         };
         //
         PhysicalDeviceRayTracingPipelinePropertiesKHR _rtPipelineProperties = default;

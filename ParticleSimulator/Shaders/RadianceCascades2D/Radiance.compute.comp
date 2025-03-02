@@ -1,44 +1,61 @@
 #version 450
 #extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_nonuniform_qualifier : enable
 
 layout(local_size_x = 16, local_size_y = 16) in;
 
-layout(binding = 0, rgba8) uniform image2D outputImage;
-layout(binding = 1, rgba8) uniform image2D lightDataImage;
-layout(binding = 2, rgba8) uniform image2D probeTexels;
-layout(binding = 3, scalar) uniform MouseData{
-    vec4 color;
-    ivec2 mousePos;
-    bool isLMBDown;
-    bool isRMBDown;
-} md;
-
-layout(binding = 4, scalar) buffer ProbeData{
+struct PD
+{
 	int cascade;
 	int rayCount;
 	int rayLength;
 	int rayOffset;
 	ivec2 probeCount;
-	ivec2 probeDst;
+	ivec2 probeDist;
 	ivec2 offset;
+};
+
+layout(binding = 0, rgba8) uniform image2D outputImage;
+layout(binding = 1, rgba8) uniform image2D lightDataImage;
+
+layout(binding = 2, scalar) uniform MouseData{
+    vec4 color;
+    ivec2 mousePos;
+    bool isLMBDown;
+    bool isRMBDown;
+} md;
+layout(binding = 3, scalar) buffer ProbeData{
+    PD data[];
 } probes;
+
+layout(set = 0, binding = 4, rgba8) uniform image2D probeTexels[];
 
 
 vec4 Luminosity(ivec2 pos)
 {
-    ivec2 probeIndex = ivec2(round((vec2(pos) / vec2(probes.probeDst)) - probes.offset));
-    ivec2 texel = probeIndex * 2;
-
-    int levels = int(pow(2, probes.cascade + 1));
     vec4 luminosity = vec4(0.0f);
-    for(int vertical = 0; vertical < levels; vertical++)
+
+    int cascadeIndex = 0;
+    PD pd = probes.data[cascadeIndex];
+    while(pd.rayCount > 0)
     {
-        for(int horizontal = 0; horizontal < levels; horizontal++)
+        ivec2 probeIndex = ivec2(round((vec2(pos) / vec2(pd.probeDist)) - pd.offset));
+        ivec2 texel = ivec2(probeIndex * sqrt(pd.rayCount));
+
+        int levels = int(pow(2, pd.cascade + 1));
+        vec4 cl = vec4(0.0f);
+        for(int vertical = 0; vertical < levels; vertical++)
         {
-            luminosity += imageLoad(probeTexels, texel + ivec2(horizontal, vertical));
+            for(int horizontal = 0; horizontal < levels; horizontal++)
+            {
+                cl += imageLoad(probeTexels[cascadeIndex], texel + ivec2(horizontal, vertical));
+            }
         }
+        luminosity += (cl / pd.rayCount);
+    
+        cascadeIndex++;
+        pd = probes.data[cascadeIndex];
     }
-    luminosity /= (levels * 2);
 
     return luminosity;
 }
@@ -124,4 +141,5 @@ void main()
 
     vec4 color = vec4(isDarkBlue ? darkBlue1 : darkBlue2, 1.0) * luminosity;
     imageStore(outputImage, pos, color);
+    return;
 }

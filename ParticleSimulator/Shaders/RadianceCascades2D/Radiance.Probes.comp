@@ -1,11 +1,11 @@
 #version 450
 #extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_nonuniform_qualifier : enable
 
-layout(local_size_x = 1, local_size_y = 1) in;
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-layout(binding = 0, rgba8) uniform image2D probeImage;
-layout(binding = 1, rgba8) uniform image2D lightImage;
-layout(binding = 2, scalar) buffer ProbeData{
+struct PD
+{
 	int cascade;
 	int rayCount;
 	int rayLength;
@@ -13,20 +13,18 @@ layout(binding = 2, scalar) buffer ProbeData{
 	ivec2 probeCount;
 	ivec2 probeDist;
 	ivec2 offset;
+};
+
+layout(binding = 0, rgba8) uniform image2D lightImage;
+layout(binding = 1, scalar) buffer ProbeData{
+	PD data[];
 } probes;
 
-layout(binding = 3, scalar) buffer ProbePositionData{
+
+layout(set = 0, binding = 2, rgba8) uniform image2D probeImage[];
+layout(set = 0, binding = 3, scalar) buffer ProbePositionData{
     ivec2 pos[];
-} posData;
-
-
-vec2 directions[4] = vec2[4](
-    vec2(1, 1),   // Up-Right
-    vec2(1, -1),  // Right-Down
-    vec2(-1, -1), // Bottom-Left
-    vec2(-1, 1)   // Top-Left
-);
-
+} posData[];
 
 struct Hit
 {
@@ -42,6 +40,19 @@ struct Ray
 	vec2 rayDirection;
 };
 
+vec2 rotateVector(vec2 dir, float degrees) {
+    float radians = radians(degrees);
+    
+    mat2 rotationMatrix = mat2(
+        cos(radians), -sin(radians),
+        sin(radians),  cos(radians)
+    );
+    
+    vec2 rotatedVector = rotationMatrix * dir;
+    
+    return rotatedVector;
+}
+
 Hit raycast(Ray ray)
 {
 	Hit hit;
@@ -50,7 +61,7 @@ Hit raycast(Ray ray)
 
 	ivec2 size = imageSize(lightImage);
 
-	for(int i=0; i < ray.rayLength; i++)
+	for(int i = 0; i < ray.rayLength; i++)
 	{
 		pos += ray.rayDirection;
 		if(pos.x >= size.x || pos.y >= size.y || pos.x == 0 || pos.y == 0)
@@ -72,24 +83,39 @@ Hit raycast(Ray ray)
 
 void main()
 {
-	int probeX = (int(gl_GlobalInvocationID.x) % probes.probeCount.x) * 2;
-	int probeY = (int(gl_GlobalInvocationID.x) / probes.probeCount.x) * 2;
+	PD layer = probes.data[gl_WorkGroupID.z];
+
+	int totalProbes = layer.probeCount.x * layer.probeCount.y;
+	if(totalProbes <= gl_WorkGroupID.x)
+	{
+		return;
+	}
+	if (layer.rayCount <= gl_WorkGroupID.y)
+	{
+		return;
+	}
+
+
+	int probeX = int((int(gl_WorkGroupID.x) % layer.probeCount.x) * pow(2, (layer.cascade + 1)));
+	int probeY = int((int(gl_WorkGroupID.x) / layer.probeCount.x) * pow(2, (layer.cascade + 1)));
 
 	Ray ray;
-	ray.rayStart = posData.pos[gl_GlobalInvocationID.x];
-	ray.rayLength = probes.rayLength;
+	ray.rayStart = posData[gl_WorkGroupID.z].pos[gl_WorkGroupID.x];
+	ray.rayLength = layer.rayLength;
 
-	for(int vertical = 0; vertical < 2; vertical++)
-	{
-		for(int horizontal = 0; horizontal < 2; horizontal++)
-		{
-			ray.rayDirection = normalize(directions[vertical * 2 + horizontal]);
-			Hit hit = raycast(ray);
+	vec2 dir = vec2(0.0f, -1.0f);
+	float x = (360.0f / float(layer.rayCount)) * gl_WorkGroupID.y;
+	float rot = 45.0f / (gl_WorkGroupID.z + 1) + x;
 
-			ivec2 texel = ivec2(probeX + horizontal, probeY + vertical);
-			vec4 lumen = vec4(hit.rayLuminosity, hit.rayLuminosity, hit.rayLuminosity, 1);
+	dir = rotateVector(dir, -rot);
 
-			imageStore(probeImage, texel, lumen);
-		}
-	}
+	ray.rayDirection = normalize(dir);
+	Hit hit = raycast(ray);
+
+	int rc = int(sqrt(layer.rayCount));
+	ivec2 texel = ivec2(probeX + (gl_WorkGroupID.y % rc), probeY + (gl_WorkGroupID.y / rc));
+	vec4 lumen = vec4(hit.rayLuminosity, hit.rayLuminosity, hit.rayLuminosity, 1);
+
+	imageStore(probeImage[gl_WorkGroupID.z], texel, lumen);
+	return;
 }

@@ -14,7 +14,9 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
         string[] requiredExtensions =
         {
             "VK_KHR_swapchain",
-            "VK_EXT_scalar_block_layout"
+            "VK_EXT_scalar_block_layout",
+            "VK_EXT_descriptor_indexing",
+            "VK_KHR_spirv_1_4",
         };
         //
         Pipeline computePipeline;
@@ -33,9 +35,9 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
         DeviceMemory lightsDM;          // where the lights are in the 2D sceme image
         Image lightsImage;
         ImageView lightsImageView;
-        DeviceMemory probesImageDM;     // probes
-        Image probesImage;
-        ImageView probesImageView;
+        DeviceMemory[] probesImageDM;     // probes
+        Image[] probesImage;
+        ImageView[] probesImageView;
 
         // Mouse position data
         Buffer mousePosBuffer;
@@ -54,13 +56,15 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             public Vector2D<int> offset;
         }
 
+        int cascadeCount = 3;
+
         ProbeLayer[] probeLayers;
         Buffer probesB;
         DeviceMemory probesDM;
 
         public Vector2D<int>[][] pos;
-        Buffer probesPostionB;
-        DeviceMemory probesPositionDM;
+        Buffer[] probesPostionB;
+        DeviceMemory[] probesPositionDM;
 
         struct MouseData()
         {
@@ -103,7 +107,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             CreateProbeDescriptorPool();
             CreateDescriptorsetlayout();
             
-            setupProbes(1, 10, 50, 100, _extent);
+            setupProbes(cascadeCount, 10, 50, 20, _extent);
             
             UpdateDescriptorSet();
             
@@ -128,7 +132,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 BufferDeviceAddress = true,
                 RuntimeDescriptorArray = true,
                 DescriptorBindingVariableDescriptorCount = true,
-                DescriptorIndexing = true
+                DescriptorIndexing = true,
             };
 
             CreateLogicalDevice(requiredExtensions, _vulkan12FT, _deviceFeatures);        //abstract the gpu so we can communicate
@@ -137,6 +141,8 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
         private void setupProbes(int layers, uint firstOffset, float firstDistance, int rayLength, Extent2D canvasSize)
         {
             pos = new Vector2D<int>[layers][];
+            probesPostionB = new Buffer[layers];
+            probesPositionDM = new DeviceMemory[layers];
             probeLayers = new ProbeLayer[layers];
             Vector2D<float> localSize = new Vector2D<float>(canvasSize.Width - firstOffset, canvasSize.Height - firstOffset);
             Vector2D<float> layerStart = new Vector2D<float>(firstOffset, firstOffset);
@@ -153,7 +159,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 probeLayers[i].rayOffset = localRayOffset;
                 probeLayers[i].probeCount = new Vector2D<int>(horizontal, vertical);
                 probeLayers[i].probeDst = new Vector2D<int>((int)localDistance, (int)localDistance);
-                probeLayers[i].offset = new Vector2D<int>(localRayOffset, localRayOffset) / probeLayers[i].probeCount;
+                probeLayers[i].offset = new Vector2D<int>((int)firstOffset, (int)firstOffset) / probeLayers[i].probeCount;
 
                 pos[i] = new Vector2D<int>[vertical * horizontal];
 
@@ -174,14 +180,24 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             }
 
             AVulkanBufferHandler.CreateBuffer(ref probeLayers, ref probesB, ref probesDM, BufferUsageFlags.StorageBufferBit);
-            AVulkanBufferHandler.CreateBuffer(ref pos[0], ref probesPostionB, ref probesPositionDM, BufferUsageFlags.StorageBufferBit);
+            for (int k = 0; k < layers; k++)
+            {
+                AVulkanBufferHandler.CreateBuffer(ref pos[k], ref probesPostionB[k], ref probesPositionDM[k], BufferUsageFlags.StorageBufferBit);
+            }
             SetupProbeImages(probeLayers);
         }
 
         private void SetupProbeImages(ProbeLayer[] layers)
         {
-            Extent2D imageSize = new Extent2D((uint)(layers[0].probeCount.X * 2), (uint)(layers[0].probeCount.Y * 2));
-            CreateImage(ref imageSize, ref probesImage, ref probesImageDM, ref probesImageView, Format.R8G8B8A8Unorm);
+            probesImage = new Image[cascadeCount];
+            probesImageDM = new DeviceMemory[cascadeCount];
+            probesImageView = new ImageView[cascadeCount];
+
+            for (int i = 0; i < cascadeCount; i++)
+            {
+                Extent2D imageSize = new Extent2D((uint)(layers[i].probeCount.X * Math.Pow(2, i + 1)), (uint)(layers[i].probeCount.Y * Math.Pow(2, i + 1)));
+                CreateImage(ref imageSize, ref probesImage[i], ref probesImageDM[i], ref probesImageView[i], Format.R8G8B8A8Unorm);
+            }
         }
 
         internal override void MouseUpdate(double xPos, double yPos)
@@ -244,22 +260,49 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
         private void CreateDescriptorsetlayout()
         {
             List<DescriptorType> _types1 = new List<DescriptorType> {
-                DescriptorType.StorageImage, DescriptorType.StorageImage, DescriptorType.StorageImage, DescriptorType.UniformBuffer, DescriptorType.StorageBuffer};
+                DescriptorType.StorageImage, DescriptorType.StorageImage, DescriptorType.UniformBuffer, DescriptorType.StorageBuffer, DescriptorType.StorageImage };
             List<ShaderStageFlags> _flags1 = new List<ShaderStageFlags> {
                 ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit };
             DescriptorBindingFlags[] _DBF = {
-                DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.None};
+                DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit};
 
-            CreateDescriptorSetLayout(_types1.Count, _types1, _flags1, ref _descriptorSetLayout, _DBF);
+            uint _indexedCount = 50000;
+            uint[] _descriptorCount = new uint[_DBF.Length];
+            for (int i = 0; i < _DBF.Length; i++)
+            {
+                if (_DBF[i] == DescriptorBindingFlags.VariableDescriptorCountBit)
+                {
+                    _descriptorCount[i] = _indexedCount;
+                }
+                else
+                {
+                    _descriptorCount[i] = 1;
+                }
+            }
+
+            CreateDescriptorSetLayout(_types1.Count, _types1, _flags1, ref _descriptorSetLayout, _DBF, _descriptorCount);
 
             List<DescriptorType> _types2 = new List<DescriptorType> {
-                DescriptorType.StorageImage, DescriptorType.StorageImage, DescriptorType.StorageBuffer, DescriptorType.StorageBuffer};
+                DescriptorType.StorageImage, DescriptorType.StorageBuffer, DescriptorType.StorageImage, DescriptorType.StorageBuffer};
             List<ShaderStageFlags> _flags2 = new List<ShaderStageFlags> {
                 ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit , ShaderStageFlags.ComputeBit , ShaderStageFlags.ComputeBit };
             DescriptorBindingFlags[] _DBF2 = {
-                DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.None };
+                DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit };
+            
+            uint[] _descriptorCount2 = new uint[_DBF2.Length];
+            for (int i = 0; i < _DBF2.Length; i++)
+            {
+                if (_DBF2[i] == DescriptorBindingFlags.VariableDescriptorCountBit)
+                {
+                    _descriptorCount2[i] = _indexedCount;
+                }
+                else
+                {
+                    _descriptorCount2[i] = 1;
+                }
+            }
 
-            CreateDescriptorSetLayout(_types2.Count, _types2, _flags2, ref probeDescriptorSetLayout, _DBF2);
+            CreateDescriptorSetLayout(_types2.Count, _types2, _flags2, ref probeDescriptorSetLayout, _DBF2, _descriptorCount2);
         }
 
         private void CreateComputePipeline()
@@ -436,12 +479,12 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.StorageImage,
-                    DescriptorCount = (uint)_swapimageCount * 2
+                    DescriptorCount = (uint)(1 + cascadeCount)
                 },
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.StorageBuffer,
-                    DescriptorCount = (uint)_swapimageCount * 2
+                    DescriptorCount = (uint)(1 + cascadeCount)
                 }
             };
             fixed (DescriptorPoolSize* _poolSizePtr = _poolSizes)
@@ -471,23 +514,24 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 
             fixed (DescriptorSetLayout* _layoutsPtr = localLayout)
             {
-                uint bufferCount = (uint)_entitiesToRender.Count;
+                uint bufferCount = (uint)cascadeCount;
                 uint[] entriesPer = { bufferCount, bufferCount, bufferCount };
                 fixed (uint* perPtr = entriesPer)
                 {
-                    /*DescriptorSetVariableDescriptorCountAllocateInfo _variableDSCount = new()
+                    DescriptorSetVariableDescriptorCountAllocateInfo _variableDSCount = new()
                     {
                         SType = StructureType.DescriptorSetVariableDescriptorCountAllocateInfo,
                         DescriptorSetCount = (uint)_swapimageCount, // total amount of descriptor sets
                         PDescriptorCounts = perPtr                  // how many descriptor sets are variable
-                    };*/
+                    };
 
                     DescriptorSetAllocateInfo _allocateInfo = new DescriptorSetAllocateInfo()
                     {
                         SType = StructureType.DescriptorSetAllocateInfo,
                         DescriptorPool = _descriptorPool,
                         DescriptorSetCount = (uint)_swapimageCount,
-                        PSetLayouts = _layoutsPtr
+                        PSetLayouts = _layoutsPtr,
+                        PNext = &_variableDSCount
                     };
 
                     _descriptorSets = new DescriptorSet[_swapimageCount];
@@ -504,23 +548,24 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 
             fixed (DescriptorSetLayout* _layoutsPtr = localLayout2)
             {
-                uint bufferCount = (uint)_entitiesToRender.Count;
+                uint bufferCount = (uint)cascadeCount;
                 uint[] entriesPer = { bufferCount, bufferCount, bufferCount };
                 fixed (uint* perPtr = entriesPer)
                 {
-                    /*DescriptorSetVariableDescriptorCountAllocateInfo _variableDSCount = new()
+                    DescriptorSetVariableDescriptorCountAllocateInfo _variableDSCount = new()
                     {
                         SType = StructureType.DescriptorSetVariableDescriptorCountAllocateInfo,
                         DescriptorSetCount = (uint)_swapimageCount, // total amount of descriptor sets
                         PDescriptorCounts = perPtr                  // how many descriptor sets are variable
-                    };*/
+                    };
 
                     DescriptorSetAllocateInfo _allocateInfo = new DescriptorSetAllocateInfo()
                     {
                         SType = StructureType.DescriptorSetAllocateInfo,
                         DescriptorPool = probeDescriptorPool,
                         DescriptorSetCount = (uint)_swapimageCount,
-                        PSetLayouts = _layoutsPtr
+                        PSetLayouts = _layoutsPtr,
+                        PNext = &_variableDSCount
                     };
 
                     probeDescriptorSets = new DescriptorSet[_swapimageCount];
@@ -538,11 +583,6 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             for (int i = 0; i < _swapimageCount; i++)
             {
                 // probes
-                DescriptorImageInfo probeTexel = new DescriptorImageInfo
-                {
-                    ImageView = probesImageView,
-                    ImageLayout = ImageLayout.General // Compute shader writes to it
-                };
                 DescriptorImageInfo lightsImageInfo = new DescriptorImageInfo
                 {
                     ImageView = lightsImageView,
@@ -552,58 +592,74 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 {
                     Buffer = probesB,
                     Offset = 0,
-                    Range = (ulong)(sizeof(ProbeLayer))
+                    Range = (ulong)(sizeof(ProbeLayer) * cascadeCount)
                 };
-                DescriptorBufferInfo probePositionInfo = new DescriptorBufferInfo()
+                DescriptorBufferInfo[] probePositionInfos = new DescriptorBufferInfo[cascadeCount];
+                DescriptorImageInfo[] texels = new DescriptorImageInfo[cascadeCount];
+                for (int k = 0; k < cascadeCount; k++)
                 {
-                    Buffer = probesPostionB,
-                    Offset = 0,
-                    Range = (ulong)(sizeof(Vector2D<int>) * pos[0].Length)
-                };
+                    probePositionInfos[k] = new DescriptorBufferInfo()
+                    {
+                        Buffer = probesPostionB[k],
+                        Offset = 0,
+                        Range = (ulong)(sizeof(Vector2D<int>) * pos[k].Length)
+                    };
+                    texels[k] = new DescriptorImageInfo()
+                    {
+                        ImageView = probesImageView[k],
+                        ImageLayout = ImageLayout.General // Compute shader writes to it
+                    };
+                }
 
-                var probeWrites = new WriteDescriptorSet[]
+                fixed (DescriptorImageInfo* texelsPtr = texels)
+                fixed (DescriptorBufferInfo* probePtr = probePositionInfos)
                 {
-                    new WriteDescriptorSet
+                    var probeWrites = new WriteDescriptorSet[]
                     {
-                        SType = StructureType.WriteDescriptorSet,
-                        DstSet = probeDescriptorSets[i],
-                        DstBinding = 0,
-                        DescriptorCount = 1,
-                        DescriptorType = DescriptorType.StorageImage,
-                        PImageInfo = &probeTexel
-                    },
-                    new WriteDescriptorSet
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = probeDescriptorSets[i],
+                            DstBinding = 0,
+                            DescriptorCount = 1,
+                            DescriptorType = DescriptorType.StorageImage,
+                            PImageInfo = &lightsImageInfo
+                        },
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = probeDescriptorSets[i],
+                            DstBinding = 1,
+                            DescriptorCount = 1,
+                            DescriptorType = DescriptorType.StorageBuffer,
+                            PBufferInfo = &probeLayerInfo
+                        },
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = probeDescriptorSets[i],
+                            DstBinding = 2,
+                            DescriptorCount = (uint)cascadeCount,
+                            DescriptorType = DescriptorType.StorageImage,
+                            PImageInfo = texelsPtr,
+                            DstArrayElement = 0
+                        },
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = probeDescriptorSets[i],
+                            DstBinding = 3,
+                            DescriptorCount = (uint)cascadeCount,
+                            DescriptorType = DescriptorType.StorageBuffer,
+                            PBufferInfo = probePtr,
+                            DstArrayElement = 0
+                        }
+                    };
+
+                    fixed (WriteDescriptorSet* _descPtr = probeWrites)
                     {
-                        SType = StructureType.WriteDescriptorSet,
-                        DstSet = probeDescriptorSets[i],
-                        DstBinding = 1,
-                        DescriptorCount = 1,
-                        DescriptorType = DescriptorType.StorageImage,
-                        PImageInfo = &lightsImageInfo
-                    },
-                    new WriteDescriptorSet
-                    {
-                        SType = StructureType.WriteDescriptorSet,
-                        DstSet = probeDescriptorSets[i],
-                        DstBinding = 2,
-                        DescriptorCount = 1,
-                        DescriptorType = DescriptorType.StorageBuffer,
-                        PBufferInfo = &probeLayerInfo
-                    },
-                    new WriteDescriptorSet
-                    {
-                        SType = StructureType.WriteDescriptorSet,
-                        DstSet = probeDescriptorSets[i],
-                        DstBinding = 3,
-                        DescriptorCount = 1,
-                        DescriptorType = DescriptorType.StorageBuffer,
-                        PBufferInfo = &probePositionInfo
+                        _vulkan!.UpdateDescriptorSets(_logicalDevice, (uint)probeWrites.Length, _descPtr, 0, null);
                     }
-                };
-
-                fixed (WriteDescriptorSet* _descPtr = probeWrites)
-                {
-                    _vulkan!.UpdateDescriptorSets(_logicalDevice, (uint)probeWrites.Length, _descPtr, 0, null);
                 }
                 //-----------------------------------------------------------------------------------------------
                 // framebuffer
@@ -619,58 +675,62 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                     Range = (ulong)sizeof(MouseData)
                 };
 
-                var writeDescriptorSets = new WriteDescriptorSet[]
+                fixed (DescriptorImageInfo* texelsPtr = texels)
                 {
-                    new WriteDescriptorSet
+                    var writeDescriptorSets = new WriteDescriptorSet[]
                     {
-                        SType = StructureType.WriteDescriptorSet,
-                        DstSet = _descriptorSets[i],
-                        DstBinding = 0,
-                        DescriptorCount = 1,
-                        DescriptorType = DescriptorType.StorageImage,
-                        PImageInfo = &imageInfo
-                    },
-                    new WriteDescriptorSet
-                    {
-                        SType = StructureType.WriteDescriptorSet,
-                        DstSet = _descriptorSets[i],
-                        DstBinding = 1,
-                        DescriptorCount = 1,
-                        DescriptorType = DescriptorType.StorageImage,
-                        PImageInfo = &lightsImageInfo
-                    },
-                    new WriteDescriptorSet
-                    {
-                        SType = StructureType.WriteDescriptorSet,
-                        DstSet = _descriptorSets[i],
-                        DstBinding = 2,
-                        DescriptorCount = 1,
-                        DescriptorType = DescriptorType.StorageImage,
-                        PImageInfo = &probeTexel
-                    },
-                    new WriteDescriptorSet
-                    {
-                        SType = StructureType.WriteDescriptorSet,
-                        DstSet = _descriptorSets[i],
-                        DstBinding = 3,
-                        DescriptorCount = 1,
-                        DescriptorType = DescriptorType.UniformBuffer,
-                        PBufferInfo = &mousePosInfo
-                    },
-                    new WriteDescriptorSet
-                    {
-                        SType = StructureType.WriteDescriptorSet,
-                        DstSet = _descriptorSets[i],
-                        DstBinding = 4,
-                        DescriptorCount = 1,
-                        DescriptorType = DescriptorType.StorageBuffer,
-                        PBufferInfo = &probeLayerInfo
-                    }
-                };
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = _descriptorSets[i],
+                            DstBinding = 0,
+                            DescriptorCount = 1,
+                            DescriptorType = DescriptorType.StorageImage,
+                            PImageInfo = &imageInfo
+                        },
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = _descriptorSets[i],
+                            DstBinding = 1,
+                            DescriptorCount = 1,
+                            DescriptorType = DescriptorType.StorageImage,
+                            PImageInfo = &lightsImageInfo
+                        },
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = _descriptorSets[i],
+                            DstBinding = 2,
+                            DescriptorCount = 1,
+                            DescriptorType = DescriptorType.UniformBuffer,
+                            PBufferInfo = &mousePosInfo
+                        },
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = _descriptorSets[i],
+                            DstBinding = 3,
+                            DescriptorCount = 1,
+                            DescriptorType = DescriptorType.StorageBuffer,
+                            PBufferInfo = &probeLayerInfo
+                        },
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = _descriptorSets[i],
+                            DstBinding = 4,
+                            DescriptorCount = (uint)cascadeCount,
+                            DescriptorType = DescriptorType.StorageImage,
+                            PImageInfo = texelsPtr,
+                            DstArrayElement = 0
+                        }
+                    };
 
-                fixed (WriteDescriptorSet* _descPtr = writeDescriptorSets)
-                {
-                    _vulkan!.UpdateDescriptorSets(_logicalDevice, (uint)writeDescriptorSets.Length, _descPtr, 0, null);
+                    fixed (WriteDescriptorSet* _descPtr = writeDescriptorSets)
+                    {
+                        _vulkan!.UpdateDescriptorSets(_logicalDevice, (uint)writeDescriptorSets.Length, _descPtr, 0, null);
+                    }
                 }
             }
         }
@@ -703,8 +763,9 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.Compute, probePipeline);
                 _vulkan.CmdBindDescriptorSets(_commandBuffer[i], PipelineBindPoint.Compute, probePipelineLayout, 0, 1, ref probeDescriptorSets[i], 0, null);
 
-                int threadCountX = pos[0].Length;
-                _vulkan.CmdDispatch(_commandBuffer[i], (uint)threadCountX, 1, 1);
+                int probeCount = pos[0].Length;
+                int rayCount = (int)Math.Pow(4, cascadeCount);
+                _vulkan.CmdDispatch(_commandBuffer[i], (uint)probeCount, (uint)rayCount, (uint)cascadeCount);
 
                 // drawing
                 _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.Compute, computePipeline);
