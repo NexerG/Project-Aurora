@@ -12,7 +12,7 @@ struct PD
 	int rayOffset;
 	ivec2 probeCount;
 	ivec2 probeDist;
-	ivec2 offset;
+	vec2 offset;
 };
 
 layout(binding = 0, rgba8) uniform image2D lightImage;
@@ -66,7 +66,7 @@ Hit raycast(Ray ray)
 		pos += ray.rayDirection;
 		if(pos.x >= size.x || pos.y >= size.y || pos.x == 0 || pos.y == 0)
 		{
-			break;
+			continue;
 		}
 
 		vec4 data = imageLoad(lightImage, ivec2(pos));
@@ -94,6 +94,22 @@ void main()
 	{
 		return;
 	}
+	
+	//if(gl_WorkGroupID.z != 3)
+	//{
+	//	int brushSize = 5; // Increase this for a larger brush
+    //    for (int dx = -brushSize; dx <= brushSize; dx++)
+    //    {
+    //        for (int dy = -brushSize; dy <= brushSize; dy++)
+    //        {
+    //            ivec2 brushPos = posData[gl_WorkGroupID.z].pos[gl_WorkGroupID.x] + ivec2(dx, dy);
+    //            if (length(vec2(dx, dy)) <= brushSize) // Circular brush effect
+    //            {
+    //                imageStore(lightImage, brushPos, vec4(1.0f));
+    //            }
+    //        }
+    //    }
+	//}
 
 
 	int probeX = int((int(gl_WorkGroupID.x) % layer.probeCount.x) * pow(2, (layer.cascade + 1)));

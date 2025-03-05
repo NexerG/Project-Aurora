@@ -12,7 +12,7 @@ struct PD
 	int rayOffset;
 	ivec2 probeCount;
 	ivec2 probeDist;
-	ivec2 offset;
+	vec2 offset;
 };
 
 layout(binding = 0, rgba8) uniform image2D outputImage;
@@ -37,22 +37,45 @@ vec4 Luminosity(ivec2 pos)
 
     int cascadeIndex = 0;
     PD pd = probes.data[cascadeIndex];
+
     while(pd.rayCount > 0)
     {
-        ivec2 probeIndex = ivec2(round((vec2(pos) / vec2(pd.probeDist)) - pd.offset));
-        ivec2 texel = ivec2(probeIndex * sqrt(pd.rayCount));
+        vec2 pureIndex = (vec2(pos) / vec2(pd.probeDist)) - pd.offset;
 
-        int levels = int(pow(2, pd.cascade + 1));
-        vec4 cl = vec4(0.0f);
-        for(int vertical = 0; vertical < levels; vertical++)
+        ivec2 topLeft = ivec2(floor(pureIndex)); //top left
+        ivec2 topRight = topLeft + ivec2(1, 0);
+        ivec2 botRight = topLeft + ivec2(1, 1);
+        ivec2 botLeft = topLeft + ivec2(0, 1);
+
+        ivec2 probeIndex[4] = ivec2[4](
+            topLeft, botLeft, topRight, botRight
+        );
+
+        vec2 uv = pureIndex - topLeft;
+
+        float w1 = (1.0f - uv.x) * (1.0f - uv.y);
+        float w2 = uv.x * (1.0f - uv.y);
+        float w3 = (1.0f - uv.x) * uv.y;
+        float w4 = uv.x * uv.y;
+
+        float weights[4] = float[4](
+            w1, w3, w2, w4);
+
+        for(int i=0; i < 4; i++)
         {
-            for(int horizontal = 0; horizontal < levels; horizontal++)
+            ivec2 texel = ivec2(probeIndex[i] * sqrt(pd.rayCount));
+
+            int levels = int(pow(2, pd.cascade + 1));
+            vec4 cl = vec4(0.0f);
+            for(int vertical = 0; vertical < levels; vertical++)
             {
-                cl += imageLoad(probeTexels[cascadeIndex], texel + ivec2(horizontal, vertical));
+                for(int horizontal = 0; horizontal < levels; horizontal++)
+                {
+                    cl += imageLoad(probeTexels[cascadeIndex], texel + ivec2(horizontal, vertical));
+                }
             }
+            luminosity += (cl / pd.rayCount) * weights[i];
         }
-        luminosity += (cl / pd.rayCount);
-    
         cascadeIndex++;
         pd = probes.data[cascadeIndex];
     }

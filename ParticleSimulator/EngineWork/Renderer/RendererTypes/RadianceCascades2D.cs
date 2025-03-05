@@ -53,7 +53,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             public int rayOffset = 0;
             public Vector2D<int> probeCount;
             public Vector2D<int> probeDst;
-            public Vector2D<int> offset;
+            public Vector2D<float> offset;
         }
 
         int cascadeCount = 3;
@@ -107,7 +107,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             CreateProbeDescriptorPool();
             CreateDescriptorsetlayout();
             
-            setupProbes(cascadeCount, 10, 50, 20, _extent);
+            setupProbes(cascadeCount, 10, 40, 20, _extent);
             
             UpdateDescriptorSet();
             
@@ -151,15 +151,14 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             int localRayOffset = (int)firstOffset;
             for (int i = 0; i < layers; i++)
             {
-                int horizontal = (int)(localSize.X / localDistance);
-                int vertical = (int)(localSize.Y / localDistance);
+                int horizontal = (int)(localSize.X / localDistance) + 2;
+                int vertical = (int)(localSize.Y / localDistance) + 2;
                 probeLayers[i].cascade = i;
                 probeLayers[i].rayCount = (int)Math.Pow(4, i + 1);
                 probeLayers[i].rayLength = localRayLength;
                 probeLayers[i].rayOffset = localRayOffset;
                 probeLayers[i].probeCount = new Vector2D<int>(horizontal, vertical);
                 probeLayers[i].probeDst = new Vector2D<int>((int)localDistance, (int)localDistance);
-                probeLayers[i].offset = new Vector2D<int>((int)firstOffset, (int)firstOffset) / probeLayers[i].probeCount;
 
                 pos[i] = new Vector2D<int>[vertical * horizontal];
 
@@ -170,6 +169,9 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                         pos[i][y * horizontal + x] = new Vector2D<int>((int)(layerStart.X + localDistance * x), (int)(layerStart.Y + localDistance * y));
                     }
                 }
+
+                probeLayers[i].offset = new Vector2D<float>((float)pos[i][0].X / localDistance,
+                                                            (float)pos[i][0].Y / localDistance);
 
                 Vector2D<float> nextLayerOffset = new Vector2D<float>(localDistance / 2);
                 layerStart += nextLayerOffset;
