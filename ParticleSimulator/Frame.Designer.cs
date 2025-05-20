@@ -264,5 +264,7 @@
         private PictureBox ColorPickerPB;
         private Label label1;
         private Label ColorPreviewLabel;
+        private HScrollBar BrushSizeBar;
+        private Label BrushSizeLabel;
     }
 }

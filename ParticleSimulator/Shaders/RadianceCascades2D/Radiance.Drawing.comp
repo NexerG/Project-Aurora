@@ -11,16 +11,16 @@ layout(binding = 0, scalar) uniform WorldData{
     bool isRMBDown;
     bool isEditingLight;
     int editableLayer;
+    int brushSize;
 } md;
 
 layout(set = 0, binding = 1, rgba8) uniform image2D layeredColor[];
 layout(set = 0, binding = 2, rgba8) uniform image2D layeredLight[];
 
-
 void main()
 {
     // check if we're drawing (LMB = true) or deleting (RMB = true)
-    int brushSize = 5; // Increase this for a larger brush
+    int brushSize = md.brushSize; // Increase this for a larger brush
     if(md.isLMBDown)
     {
         for (int dx = -brushSize; dx <= brushSize; dx++)
@@ -65,5 +65,5 @@ void main()
             }
         }
     }
-
+    return;
 }

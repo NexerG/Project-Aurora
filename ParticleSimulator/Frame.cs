@@ -48,6 +48,8 @@ namespace ArctisAurora
             ColorPickerPB = new PictureBox();
             label1 = new Label();
             ColorPreviewLabel = new Label();
+            BrushSizeBar = new HScrollBar();
+            this.BrushSizeLabel = new Label();
             ((System.ComponentModel.ISupportInitialize)LayerIndex).BeginInit();
             ((System.ComponentModel.ISupportInitialize)ColorPickerPB).BeginInit();
             SuspendLayout();
@@ -122,11 +124,32 @@ namespace ArctisAurora
             ColorPreviewLabel.Size = new Size(53, 20);
             ColorPreviewLabel.TabIndex = 6;
             // 
+            // BrushSizeBar
+            // 
+            BrushSizeBar.Location = new Point(6, 326);
+            BrushSizeBar.Minimum = 2;
+            BrushSizeBar.Name = "BrushSizeBar";
+            BrushSizeBar.Size = new Size(177, 17);
+            BrushSizeBar.TabIndex = 7;
+            BrushSizeBar.Value = 10;
+            BrushSizeBar.ValueChanged += BrushSizeBar_ValueChanged;
+            // 
+            // BrushSizeLabel
+            // 
+            this.BrushSizeLabel.AutoSize = true;
+            this.BrushSizeLabel.Location = new Point(193, 328);
+            this.BrushSizeLabel.Name = "BrushSizeLabel";
+            this.BrushSizeLabel.Size = new Size(13, 15);
+            this.BrushSizeLabel.TabIndex = 8;
+            this.BrushSizeLabel.Text = "5";
+            // 
             // Frame
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(239, 324);
+            ClientSize = new Size(239, 369);
+            Controls.Add(this.BrushSizeLabel);
+            Controls.Add(BrushSizeBar);
             Controls.Add(ColorPreviewLabel);
             Controls.Add(label1);
             Controls.Add(ColorPickerPB);
@@ -170,12 +193,19 @@ namespace ArctisAurora
         private void isDrawingLight_CheckedChanged(object sender, EventArgs e)
         {
             // flip drawing boolean
+            RadianceCascades2D.worldData.isEditingLight = isDrawingLight.Checked;
         }
 
         private void LayerIndex_ValueChanged(object sender, EventArgs e)
         {
             RadianceCascades2D.worldData.editableLayer = (int)LayerIndex.Value;
             AVulkanBufferHandler.UpdateBuffer(ref RadianceCascades2D.worldData, ref RadianceCascades2D.mousePosBuffer, ref RadianceCascades2D.mousePosMemory, Silk.NET.Vulkan.BufferUsageFlags.UniformBufferBit);
+        }
+
+        private void BrushSizeBar_ValueChanged(object sender, EventArgs e)
+        {
+            RadianceCascades2D.worldData.brushSize = BrushSizeBar.Value / 2;
+            BrushSizeLabel.Text = BrushSizeBar.Value.ToString();
         }
     }
 }

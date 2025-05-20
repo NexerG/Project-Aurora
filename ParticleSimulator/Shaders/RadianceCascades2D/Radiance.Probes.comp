@@ -26,6 +26,7 @@ layout(set = 0, binding = 3, scalar) buffer ProbePositionData{
     ivec2 pos[];
 } posData[];
 
+layout(set = 0, binding = 4, rgba8) uniform image2D layeredLight[];
 
 layout(push_constant) uniform PC{
 	int currentLayer;
@@ -64,7 +65,7 @@ Hit raycast(Ray ray)
 	vec2 pos = ray.rayStart;
 	hit.rayLuminosity = 0.0f;
 
-	ivec2 size = imageSize(lightImage);
+	ivec2 size = imageSize(layeredLight[pc.currentLayer]);
 
 	for(int i = 0; i < ray.rayLength; i++)
 	{
@@ -74,7 +75,7 @@ Hit raycast(Ray ray)
 			continue;
 		}
 
-		vec4 data = imageLoad(lightImage, ivec2(pos));
+		vec4 data = imageLoad(layeredLight[pc.currentLayer], ivec2(pos));
 		if(length(data) > 0)
 		{
 			hit.hit = true;
@@ -135,7 +136,7 @@ void main()
 
 	int rc = int(sqrt(layer.rayCount));
 	ivec2 texel = ivec2(probeX + (gl_WorkGroupID.y % rc), probeY + (gl_WorkGroupID.y / rc));
-	vec4 lumen = vec4(hit.rayLuminosity, hit.rayLuminosity, hit.rayLuminosity, 1);
+	vec4 lumen = vec4(hit.rayLuminosity, hit.rayLuminosity, hit.rayLuminosity, hit.rayLuminosity);
 
 	imageStore(probeImage[gl_WorkGroupID.z], texel, lumen);
 	return;
