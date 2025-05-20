@@ -22,6 +22,7 @@ layout(binding = 2, scalar) uniform WorldData{
     vec4 color;
     ivec2 mousePos;
     bool isLMBDown;
+    bool isEditingLight;
     bool isRMBDown;
     int editableLayer;
 } md;
@@ -108,39 +109,6 @@ void main()
     // Black border thickness
     int borderThickness = 1;
 
-    // check if we're drawing (LMB = true) or deleting (RMB = true)
-    int brushSize = 5; // Increase this for a larger brush
-    if(md.isLMBDown)
-    {
-        for (int dx = -brushSize; dx <= brushSize; dx++)
-        {
-            for (int dy = -brushSize; dy <= brushSize; dy++)
-            {
-                ivec2 brushPos = md.mousePos + ivec2(dx, dy);
-                if (length(vec2(dx, dy)) <= brushSize) // Circular brush effect
-                {
-                    imageStore(lightDataImage, brushPos, md.color);
-                }
-            }
-        }
-    }
-
-    vec4 RMBColor = vec4(0);
-    if(md.isRMBDown)
-    {
-        for (int dx = -brushSize; dx <= brushSize; dx++)
-        {
-            for (int dy = -brushSize; dy <= brushSize; dy++)
-            {
-                ivec2 brushPos = md.mousePos + ivec2(dx, dy);
-                if (length(vec2(dx, dy)) <= brushSize) // Circular brush effect
-                {
-                    imageStore(lightDataImage, brushPos, RMBColor);
-                }
-            }
-        }
-    }
-
     vec4 mpc = imageLoad(lightDataImage, pos);
     if(length(mpc) > 0)
     {
@@ -169,7 +137,6 @@ void main()
     vec4 color = vec4(isDarkBlue ? darkBlue1 : darkBlue2, 1.0) * luminosity;
 
     vec4 invertedColor = vec4(0.4, 0.08, 0.22, 1);
-    imageStore(layeredColor[0], pos, invertedColor);
     imageStore(outputImage, pos, color);
     return;
 }

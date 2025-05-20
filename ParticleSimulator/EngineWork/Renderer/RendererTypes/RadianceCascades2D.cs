@@ -26,11 +26,19 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
         Pipeline computePipeline;
         PipelineLayout computePipelineLayout;
 
+        //probe pipeline
         DescriptorPool probeDescriptorPool;
         DescriptorSetLayout probeDescriptorSetLayout;
         DescriptorSet[] probeDescriptorSets;
         Pipeline probePipeline;
         PipelineLayout probePipelineLayout;
+
+        // drawing pipeline
+        DescriptorPool drawingDescriptorPool;
+        DescriptorSetLayout drawingDescriptorSetLayout;
+        DescriptorSet[] drawingDescriptorSets;
+        Pipeline drawingPipeline;
+        PipelineLayout drawingPipelineLayout;
 
         // images
         DeviceMemory[] storageImageDM;  // frame buffer image
@@ -79,6 +87,10 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             internal bool padding4;
             internal bool padding5;
             internal bool padding6;
+            internal bool isEditingLight = true;
+            internal bool padding7;
+            internal bool padding8;
+            internal bool padding9;
             internal int editableLayer = 0;
         }
         internal static WorldData worldData = new WorldData();
@@ -108,8 +120,11 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             AVulkanBufferHandler.CreateBuffer(ref worldData, ref mousePosBuffer, ref mousePosMemory, BufferUsageFlags.UniformBufferBit);
             AVulkanBufferHandler.UpdateBuffer(ref worldData, ref mousePosBuffer, ref mousePosMemory, BufferUsageFlags.UniformBufferBit);
             CreateImages();
+
             CreateDescriptorPool();
+            CreateDrawingDescriptorPool();
             CreateProbeDescriptorPool();
+
             CreateDescriptorsetlayout();
             
             setupProbes(cascadeCount, 10, 40, 20, _extent);
@@ -119,6 +134,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             
             CreateProbePipeline();
             CreateComputePipeline();
+            CreateDrawingPipeline();
 
             CreateCommandBuffers();
             CreateSyncObjects();
@@ -131,6 +147,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             {
                 _vulkan.FreeDescriptorSets(_logicalDevice, _descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
                 _vulkan.FreeDescriptorSets(_logicalDevice, probeDescriptorPool, (uint)probeDescriptorSets.Length, probeDescriptorSets);
+                _vulkan.FreeDescriptorSets(_logicalDevice, probeDescriptorPool, (uint)drawingDescriptorSets.Length, drawingDescriptorSets);
             }
             UpdateDescriptorSet();
             if (_commandBuffer != null)
@@ -329,6 +346,29 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             }
 
             CreateDescriptorSetLayout(_types2.Count, _types2, _flags2, ref probeDescriptorSetLayout, _DBF2, _descriptorCount2);
+
+            // drawing
+            List<DescriptorType> _types3 = new List<DescriptorType> {
+                DescriptorType.UniformBuffer, DescriptorType.StorageImage , DescriptorType.StorageImage};
+            List<ShaderStageFlags> _flags3 = new List<ShaderStageFlags> {
+                ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit };
+            DescriptorBindingFlags[] _DBF3 = {
+                DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit };
+
+            uint[] _descriptorCount3 = new uint[_DBF3.Length];
+            for (int i = 0; i < _DBF3.Length; i++)
+            {
+                if (_DBF3[i] == DescriptorBindingFlags.VariableDescriptorCountBit)
+                {
+                    _descriptorCount3[i] = _indexedCount;
+                }
+                else
+                {
+                    _descriptorCount3[i] = 1;
+                }
+            }
+
+            CreateDescriptorSetLayout(_types3.Count, _types3, _flags3, ref drawingDescriptorSetLayout, _DBF3, _descriptorCount3);
         }
 
         private void CreateComputePipeline()
@@ -381,8 +421,8 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 PushConstantRange pushConstantRange = new PushConstantRange()
                 {
                     StageFlags = ShaderStageFlags.ComputeBit,
-                    Offset= 0,
-                    Size= sizeof(int),
+                    Offset = 0,
+                    Size = sizeof(int),
                 };
 
                 PipelineLayoutCreateInfo _pipelineLayoutCreateInfo = new()
@@ -418,6 +458,48 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 Layout = probePipelineLayout
             };
             if (_vulkan.CreateComputePipelines(_logicalDevice, default, 1, &pipelineCreateInfo, null, out probePipeline) != Result.Success)
+                throw new Exception("Failed to create compute pipeline");
+
+            _vulkan.DestroyShaderModule(_logicalDevice, computeShaderModule, null);
+        }
+
+        private void CreateDrawingPipeline()
+        {
+            DescriptorSetLayout[] _DSLayouts = new DescriptorSetLayout[1];
+            _DSLayouts[0] = drawingDescriptorSetLayout;
+            fixed (DescriptorSetLayout* _setPtr = _DSLayouts)
+            {
+                PipelineLayoutCreateInfo _pipelineLayoutCreateInfo = new()
+                {
+                    SType = StructureType.PipelineLayoutCreateInfo,
+                    SetLayoutCount = (uint)_DSLayouts.Length,
+                    PSetLayouts = _setPtr
+                };
+
+                fixed (PipelineLayout* _pipePtr = &drawingPipelineLayout)
+                    if (_vulkan.CreatePipelineLayout(_logicalDevice, ref _pipelineLayoutCreateInfo, null, _pipePtr) != Result.Success)
+                    {
+                        throw new Exception("Failed to create pipeline layout");
+                    }
+            }
+
+            ShaderModule computeShaderModule = LoadShader("../../../Shaders/RadianceCascades2D/Radiance.Drawing.comp.spv");
+
+            PipelineShaderStageCreateInfo shaderStageCreateInfo = new PipelineShaderStageCreateInfo
+            {
+                SType = StructureType.PipelineShaderStageCreateInfo,
+                Stage = ShaderStageFlags.ComputeBit,
+                Module = computeShaderModule,
+                PName = (byte*)SilkMarshal.StringToPtr("main")
+            };
+
+            ComputePipelineCreateInfo pipelineCreateInfo = new ComputePipelineCreateInfo
+            {
+                SType = StructureType.ComputePipelineCreateInfo,
+                Stage = shaderStageCreateInfo,
+                Layout = drawingPipelineLayout
+            };
+            if (_vulkan.CreateComputePipelines(_logicalDevice, default, 1, &pipelineCreateInfo, null, out drawingPipeline) != Result.Success)
                 throw new Exception("Failed to create compute pipeline");
 
             _vulkan.DestroyShaderModule(_logicalDevice, computeShaderModule, null);
@@ -541,12 +623,47 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             }
         }
 
+        private void CreateDrawingDescriptorPool()
+        {
+            var _poolSizes = new DescriptorPoolSize[]
+            {
+                new DescriptorPoolSize()
+                {
+                    Type = DescriptorType.StorageImage,
+                    DescriptorCount = 50000
+                },
+                new DescriptorPoolSize()
+                {
+                    Type = DescriptorType.UniformBuffer,
+                    DescriptorCount = 1
+                }
+            };
+            fixed (DescriptorPoolSize* _poolSizePtr = _poolSizes)
+            fixed (DescriptorPool* _dpPtr = &drawingDescriptorPool)
+            {
+                DescriptorPoolCreateInfo _createInfo = new DescriptorPoolCreateInfo()
+                {
+                    SType = StructureType.DescriptorPoolCreateInfo,
+                    PoolSizeCount = (uint)_poolSizes.Length,
+                    PPoolSizes = _poolSizePtr,
+                    MaxSets = (uint)_swapimageCount,
+                    Flags = DescriptorPoolCreateFlags.FreeDescriptorSetBit
+                };
+                if (_vulkan.CreateDescriptorPool(_logicalDevice, ref _createInfo, null, _dpPtr) != Result.Success)
+                {
+                    throw new Exception("Failed to create descriptor pool");
+                }
+            }
+        }
+
         private void UpdateDescriptorSet()
         {
             DescriptorSetLayout[] localLayout = new DescriptorSetLayout[_swapimageCount];
             Array.Fill(localLayout, _descriptorSetLayout);
             DescriptorSetLayout[] localLayout2 = new DescriptorSetLayout[_swapimageCount];
             Array.Fill(localLayout2, probeDescriptorSetLayout);
+            DescriptorSetLayout[] localLayout3 = new DescriptorSetLayout[_swapimageCount];
+            Array.Fill(localLayout3, drawingDescriptorSetLayout);
 
             fixed (DescriptorSetLayout* _layoutsPtr = localLayout)
             {
@@ -606,6 +723,40 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 
                     probeDescriptorSets = new DescriptorSet[_swapimageCount];
                     fixed (DescriptorSet* _descriptorSetsPtr = probeDescriptorSets)
+                    {
+                        Result r = _vulkan.AllocateDescriptorSets(_logicalDevice, ref _allocateInfo, _descriptorSetsPtr);
+                        if (r != Result.Success)
+                        {
+                            throw new Exception("Failed to allocate descriptor set with error code: " + r);
+                        }
+                    }
+                }
+            }
+
+            fixed (DescriptorSetLayout* _layoutsPtr = localLayout3)
+            {
+                uint bufferCount = (uint)cascadeCount;
+                uint[] entriesPer = { bufferCount, bufferCount, bufferCount };
+                fixed (uint* perPtr = entriesPer)
+                {
+                    DescriptorSetVariableDescriptorCountAllocateInfo _variableDSCount = new()
+                    {
+                        SType = StructureType.DescriptorSetVariableDescriptorCountAllocateInfo,
+                        DescriptorSetCount = (uint)_swapimageCount, // total amount of descriptor sets
+                        PDescriptorCounts = perPtr                  // how many descriptor sets are variable
+                    };
+
+                    DescriptorSetAllocateInfo _allocateInfo = new DescriptorSetAllocateInfo()
+                    {
+                        SType = StructureType.DescriptorSetAllocateInfo,
+                        DescriptorPool = drawingDescriptorPool,
+                        DescriptorSetCount = (uint)_swapimageCount,
+                        PSetLayouts = _layoutsPtr,
+                        PNext = &_variableDSCount
+                    };
+
+                    drawingDescriptorSets = new DescriptorSet[_swapimageCount];
+                    fixed (DescriptorSet* _descriptorSetsPtr = drawingDescriptorSets)
                     {
                         Result r = _vulkan.AllocateDescriptorSets(_logicalDevice, ref _allocateInfo, _descriptorSetsPtr);
                         if (r != Result.Success)
@@ -721,7 +872,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                     ImageView = storageImageView[i],
                     ImageLayout = ImageLayout.General // Compute shader writes to it
                 };
-                DescriptorBufferInfo mousePosInfo = new DescriptorBufferInfo()
+                DescriptorBufferInfo worldDataInfo = new DescriptorBufferInfo()
                 {
                     Buffer = mousePosBuffer,
                     Offset = 0,
@@ -759,7 +910,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                             DstBinding = 2,
                             DescriptorCount = 1,
                             DescriptorType = DescriptorType.UniformBuffer,
-                            PBufferInfo = &mousePosInfo
+                            PBufferInfo = &worldDataInfo
                         },
                         new WriteDescriptorSet
                         {
@@ -807,6 +958,48 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                         _vulkan!.UpdateDescriptorSets(_logicalDevice, (uint)writeDescriptorSets.Length, _descPtr, 0, null);
                     }
                 }
+                //-----------------------------------------------------------------------------------------------
+                // drawing
+                fixed (DescriptorImageInfo* layersLightPtr = layersLight)
+                fixed (DescriptorImageInfo* layersClrPtr = layersColor)
+                {
+                    var writeDescriptorSets = new WriteDescriptorSet[]
+                    {
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = drawingDescriptorSets[i],
+                            DstBinding = 0,
+                            DescriptorCount = 1,
+                            DescriptorType = DescriptorType.UniformBuffer,
+                            PBufferInfo = &worldDataInfo
+                        },
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = drawingDescriptorSets[i],
+                            DstBinding = 1,
+                            DescriptorCount = (uint)_entitiesToRender.Count,
+                            DescriptorType = DescriptorType.StorageImage,
+                            PImageInfo = layersClrPtr,
+                            DstArrayElement = 0
+                        },
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = drawingDescriptorSets[i],
+                            DstBinding = 2,
+                            DescriptorCount = (uint)_entitiesToRender.Count,
+                            DescriptorType = DescriptorType.StorageImage,
+                            PImageInfo = layersLightPtr,
+                            DstArrayElement = 0
+                        }
+                    };
+                    fixed (WriteDescriptorSet* _descPtr = writeDescriptorSets)
+                    {
+                        _vulkan!.UpdateDescriptorSets(_logicalDevice, (uint)writeDescriptorSets.Length, _descPtr, 0, null);
+                    }
+                }
             }
         }
 
@@ -834,18 +1027,26 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             for (int i = 0; i < _swapimageCount; i++)
             {
                 _vulkan.BeginCommandBuffer(_commandBuffer[i], &beginInfo);
-                // probes
-                _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.Compute, probePipeline);
-                _vulkan.CmdBindDescriptorSets(_commandBuffer[i], PipelineBindPoint.Compute, probePipelineLayout, 0, 1, ref probeDescriptorSets[i], 0, null);
-
-                int layerIndex = 0;
-                _vulkan.CmdPushConstants(_commandBuffer[i],probePipelineLayout, ShaderStageFlags.ComputeBit, 0, sizeof(int), &layerIndex);
-
-                int probeCount = pos[0].Length;
-                int rayCount = (int)Math.Pow(4, cascadeCount);
-                _vulkan.CmdDispatch(_commandBuffer[i], (uint)probeCount, (uint)rayCount, (uint)cascadeCount);
-
                 // drawing
+                _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.Compute, drawingPipeline);
+                _vulkan.CmdBindDescriptorSets(_commandBuffer[i], PipelineBindPoint.Compute, drawingPipelineLayout, 0, 1, ref drawingDescriptorSets[i], 0, null);
+                _vulkan.CmdDispatch(_commandBuffer[i], 1, 1, 1);
+
+                for (int layer = 0; layer < _entitiesToRender.Count; layer++)
+                {
+                    // probes
+                    _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.Compute, probePipeline);
+                    _vulkan.CmdBindDescriptorSets(_commandBuffer[i], PipelineBindPoint.Compute, probePipelineLayout, 0, 1, ref probeDescriptorSets[i], 0, null);
+
+                    int layerIndex = layer;
+                    _vulkan.CmdPushConstants(_commandBuffer[i], probePipelineLayout, ShaderStageFlags.ComputeBit, 0, sizeof(int), &layerIndex);
+
+                    int probeCount = pos[0].Length;
+                    int rayCount = (int)Math.Pow(4, cascadeCount);
+                    _vulkan.CmdDispatch(_commandBuffer[i], (uint)probeCount, (uint)rayCount, (uint)cascadeCount);
+                }
+
+                // final
                 _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.Compute, computePipeline);
                 _vulkan.CmdBindDescriptorSets(_commandBuffer[i], PipelineBindPoint.Compute, computePipelineLayout, 0, 1, ref _descriptorSets[i], 0, null);
                 _vulkan.CmdDispatch(_commandBuffer[i], _extent.Width / 16, _extent.Height / 16, 1);

@@ -1,0 +1,69 @@
+#version 450
+#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+
+layout(local_size_x = 1, local_size_y = 1) in;
+
+layout(binding = 0, scalar) uniform WorldData{
+    vec4 color;
+    ivec2 mousePos;
+    bool isLMBDown;
+    bool isRMBDown;
+    bool isEditingLight;
+    int editableLayer;
+} md;
+
+layout(set = 0, binding = 1, rgba8) uniform image2D layeredColor[];
+layout(set = 0, binding = 2, rgba8) uniform image2D layeredLight[];
+
+
+void main()
+{
+    // check if we're drawing (LMB = true) or deleting (RMB = true)
+    int brushSize = 5; // Increase this for a larger brush
+    if(md.isLMBDown)
+    {
+        for (int dx = -brushSize; dx <= brushSize; dx++)
+        {
+            for (int dy = -brushSize; dy <= brushSize; dy++)
+            {
+                ivec2 brushPos = md.mousePos + ivec2(dx, dy);
+                if (length(vec2(dx, dy)) <= brushSize) // Circular brush effect
+                {
+                    if(md.isEditingLight)
+                    {
+                        imageStore(layeredLight[md.editableLayer], brushPos, md.color);
+                    }
+                    else
+                    {
+                        imageStore(layeredColor[md.editableLayer], brushPos, md.color);
+                    }
+                }
+            }
+        }
+    }
+
+    vec4 RMBColor = vec4(0);
+    if(md.isRMBDown)
+    {
+        for (int dx = -brushSize; dx <= brushSize; dx++)
+        {
+            for (int dy = -brushSize; dy <= brushSize; dy++)
+            {
+                ivec2 brushPos = md.mousePos + ivec2(dx, dy);
+                if (length(vec2(dx, dy)) <= brushSize) // Circular brush effect
+                {
+                    if(md.isEditingLight)
+                    {
+                        imageStore(layeredLight[md.editableLayer], brushPos, md.color);
+                    }
+                    else
+                    {
+                        imageStore(layeredColor[md.editableLayer], brushPos, md.color);
+                    }
+                }
+            }
+        }
+    }
+
+}
