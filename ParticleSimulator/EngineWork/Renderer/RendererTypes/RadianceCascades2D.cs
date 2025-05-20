@@ -312,11 +312,11 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
         {
             // general image
             List<DescriptorType> _types1 = new List<DescriptorType> {
-                DescriptorType.StorageImage, DescriptorType.StorageImage, DescriptorType.StorageBuffer, DescriptorType.StorageImage, DescriptorType.StorageImage};
+                DescriptorType.StorageImage, DescriptorType.StorageBuffer, DescriptorType.StorageImage, DescriptorType.StorageImage};
             List<ShaderStageFlags> _flags1 = new List<ShaderStageFlags> {
-                ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit};
+                ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit};
             DescriptorBindingFlags[] _DBF = {
-                DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit};
+                DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit};
 
             uint _indexedCount = 50000;
             uint[] _descriptorCount = new uint[_DBF.Length];
@@ -383,11 +383,11 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 
             // layerCompute
             List<DescriptorType> _types4 = new List<DescriptorType> {
-                DescriptorType.StorageBuffer, DescriptorType.StorageImage, DescriptorType.StorageImage, DescriptorType.StorageImage, DescriptorType.StorageImage};
+                DescriptorType.StorageBuffer, DescriptorType.StorageImage, DescriptorType.StorageImage, DescriptorType.StorageImage};
             List<ShaderStageFlags> _flags4 = new List<ShaderStageFlags> {
-                ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit };
+                ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit };
             DescriptorBindingFlags[] _DBF4 = {
-                DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit };
+                DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit };
 
             uint[] _descriptorCount4 = new uint[_DBF4.Length];
             for (int i = 0; i < _DBF4.Length; i++)
@@ -1079,15 +1079,6 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                             DstSet = _descriptorSets[i],
                             DstBinding = 1,
                             DescriptorCount = 1,
-                            DescriptorType = DescriptorType.StorageImage,
-                            PImageInfo = &lightsImageInfo
-                        },
-                        new WriteDescriptorSet
-                        {
-                            SType = StructureType.WriteDescriptorSet,
-                            DstSet = _descriptorSets[i],
-                            DstBinding = 2,
-                            DescriptorCount = 1,
                             DescriptorType = DescriptorType.StorageBuffer,
                             PBufferInfo = &probeLayerInfo
                         },
@@ -1095,7 +1086,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                         {
                             SType = StructureType.WriteDescriptorSet,
                             DstSet = _descriptorSets[i],
-                            DstBinding = 3,
+                            DstBinding = 2,
                             DescriptorCount = (uint)_entitiesToRender.Count,
                             DescriptorType = DescriptorType.StorageImage,
                             PImageInfo = layersFinalPtr,
@@ -1105,7 +1096,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                         {
                             SType = StructureType.WriteDescriptorSet,
                             DstSet = _descriptorSets[i],
-                            DstBinding = 4,
+                            DstBinding = 3,
                             DescriptorCount = (uint)_entitiesToRender.Count,
                             DescriptorType = DescriptorType.StorageImage,
                             PImageInfo = layersClrPtr,
@@ -1165,7 +1156,6 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 // layer compute
                 fixed (DescriptorImageInfo* texelsPtr = texels) 
                 fixed (DescriptorImageInfo* layersFinalPtr = layersFinal)
-                fixed (DescriptorImageInfo* layersLightPtr = layersLight)
                 fixed (DescriptorImageInfo* layersClrPtr = layersColor)
                 {
                     var writeDescriptorSets = new WriteDescriptorSet[]
@@ -1196,16 +1186,6 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                             DstBinding = 2,
                             DescriptorCount = (uint)_entitiesToRender.Count,
                             DescriptorType = DescriptorType.StorageImage,
-                            PImageInfo = layersLightPtr,
-                            DstArrayElement = 0
-                        },
-                        new WriteDescriptorSet
-                        {
-                            SType = StructureType.WriteDescriptorSet,
-                            DstSet = layerComputeDescriptorSets[i],
-                            DstBinding = 3,
-                            DescriptorCount = (uint)_entitiesToRender.Count,
-                            DescriptorType = DescriptorType.StorageImage,
                             PImageInfo = layersFinalPtr,
                             DstArrayElement = 0
                         },
@@ -1213,7 +1193,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                         {
                             SType = StructureType.WriteDescriptorSet,
                             DstSet = layerComputeDescriptorSets[i],
-                            DstBinding = 4,
+                            DstBinding = 3,
                             DescriptorCount = (uint)cascadeCount,
                             DescriptorType = DescriptorType.StorageImage,
                             PImageInfo = texelsPtr,

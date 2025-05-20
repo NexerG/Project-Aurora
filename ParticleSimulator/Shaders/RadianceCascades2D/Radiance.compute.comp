@@ -16,14 +16,13 @@ struct PD
 };
 
 layout(binding = 0, rgba8) uniform image2D outputImage;
-layout(binding = 1, rgba8) uniform image2D lightDataImage;
 
-layout(binding = 2, scalar) buffer ProbeData{
+layout(binding = 1, scalar) buffer ProbeData{
     PD data[];
 } probes;
 
-layout(set = 0, binding = 3, rgba8) uniform image2D layeredFinal[];
-layout(set = 0, binding = 4, rgba8) uniform image2D layeredColor[];
+layout(set = 0, binding = 2, rgba8) uniform image2D layeredFinal[];
+layout(set = 0, binding = 3, rgba8) uniform image2D layeredColor[];
 
 layout(push_constant) uniform PC{
 	int layerCount;

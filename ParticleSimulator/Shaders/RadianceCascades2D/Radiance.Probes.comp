@@ -15,7 +15,7 @@ struct PD
 	vec2 offset;
 };
 
-layout(binding = 0, rgba8) uniform image2D lightImage;
+layout(binding = 0, rgba8) uniform image2D lightImage; // ONLY USED FOR DEBUG
 layout(binding = 1, scalar) buffer ProbeData{
 	PD data[];
 } probes;

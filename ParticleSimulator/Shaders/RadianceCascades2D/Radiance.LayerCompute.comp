@@ -20,9 +20,8 @@ layout(binding = 0, scalar) buffer ProbeData{
 } probes;
 
 layout(set = 0, binding = 1, rgba8) uniform image2D layeredColor[];
-layout(set = 0, binding = 2, rgba8) uniform image2D layeredLight[];
-layout(set = 0, binding = 3, rgba8) uniform image2D layeredFinal[];
-layout(set = 0, binding = 4, rgba8) uniform image2D probeTexels[];
+layout(set = 0, binding = 2, rgba8) uniform image2D layeredFinal[];
+layout(set = 0, binding = 3, rgba8) uniform image2D probeTexels[];
 
 layout(push_constant) uniform PC{
 	int currentLayer;
@@ -87,7 +86,6 @@ void main()
     vec4 luminosity = Luminosity(pos);              // calc the luminosity of the pixel
 
     vec4 pixel = imageLoad(layeredColor[pc.currentLayer], pos);
-    //vec4 color = vec4(vec3(pixel), 1.0f) * luminosity;
     vec4 color = vec4(vec3(pixel), 1.0f) * luminosity;
 
     imageStore(layeredFinal[pc.currentLayer], pos, color);
