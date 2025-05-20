@@ -106,11 +106,6 @@ namespace ArctisAurora.Simulators
 
         private void UpdateUI()
         {
-            SC.TB_SmoothingRadius.Text = smoothingRadius.ToString();
-            SC.TB_TargetDensity.Text = targetDensity.ToString();
-            SC.TB_ViscosityStrength.Text = viscosityStr.ToString();
-            SC.TB_PressureMult.Text = pressureMultiplier.ToString();
-            SC.TB_GravStr.Text = GravStrength.ToString();
         }
         public void CreateOffsets()
         {

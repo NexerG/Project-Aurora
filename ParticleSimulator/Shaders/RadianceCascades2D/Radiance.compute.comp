@@ -18,17 +18,21 @@ struct PD
 layout(binding = 0, rgba8) uniform image2D outputImage;
 layout(binding = 1, rgba8) uniform image2D lightDataImage;
 
-layout(binding = 2, scalar) uniform MouseData{
+layout(binding = 2, scalar) uniform WorldData{
     vec4 color;
     ivec2 mousePos;
     bool isLMBDown;
     bool isRMBDown;
+    int editableLayer;
 } md;
+
 layout(binding = 3, scalar) buffer ProbeData{
     PD data[];
 } probes;
 
 layout(set = 0, binding = 4, rgba8) uniform image2D probeTexels[];
+layout(set = 0, binding = 5, rgba8) uniform image2D layeredColor[];
+layout(set = 0, binding = 6, rgba8) uniform image2D layeredLight[];
 
 
 vec4 Luminosity(ivec2 pos)
@@ -163,6 +167,9 @@ void main()
     vec4 luminosity = Luminosity(pos);
 
     vec4 color = vec4(isDarkBlue ? darkBlue1 : darkBlue2, 1.0) * luminosity;
+
+    vec4 invertedColor = vec4(0.4, 0.08, 0.22, 1);
+    imageStore(layeredColor[0], pos, invertedColor);
     imageStore(outputImage, pos, color);
     return;
 }

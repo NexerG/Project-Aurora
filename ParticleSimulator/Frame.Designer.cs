@@ -13,7 +13,7 @@
         /// </summary>
         private void InitializeComponentBehaviour()
         {
-            PicBox = new PictureBox();
+            /*PicBox = new PictureBox();
             TestButton = new Button();
             TB_SmoothingRadius = new TextBox();
             Smoothing_radius = new Label();
@@ -251,35 +251,18 @@
             KeyDown += Frame_KeyDown;
             ControlPanel.ResumeLayout(false);
             ControlPanel.PerformLayout();
-            ResumeLayout(false);
+            ResumeLayout(false);*/
         }
 
         #endregion
 
-        public PictureBox PicBox;
-        private Button TestButton;
-
-        public TextBox TB_SmoothingRadius;
-        private Label Smoothing_radius;
-
-        private Label Target_Density;
-        public TextBox TB_TargetDensity;
-
-        private Label Pressure_mult;
-        public TextBox TB_PressureMult;
-
-        private Label Viscosity_str;
-        public TextBox TB_ViscosityStrength;
-
-        private Button button1;
-
+        private Button AddLayer;
+        private Label SelectedLayerLabel;
+        private NumericUpDown LayerIndex;
+        private CheckBox isDrawingLight;
+        private ColorDialog colorDialog1;
+        private PictureBox ColorPickerPB;
         private Label label1;
-        public TextBox TB_GravStr;
-        private Panel ControlPanel;
-        public Panel MainPanel;
-        private Button button2;
-        private CheckBox checkBox1;
-        private Label label2;
-        public TextBox TB_ParticleAmount;
+        private Label ColorPreviewLabel;
     }
 }
