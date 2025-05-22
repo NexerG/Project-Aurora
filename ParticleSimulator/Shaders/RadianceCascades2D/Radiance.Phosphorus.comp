@@ -1,0 +1,30 @@
+#version 450
+#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+//#extension GL_ARB_gpu_shader_fp64 : enable
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(set = 0, binding = 0, rgba8) uniform image2D layeredColor[];
+layout(set = 0, binding = 1, rgba8) uniform image2D probeTexels[];
+layout(binding = 2, scalar) uniform DT{
+	float deltaTime;
+	float decayTime;
+} dt;
+
+layout(push_constant) uniform PC{
+	int currentLayer;
+} pc;
+
+void main()
+{
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);    //current pixel pos
+	vec4 color = imageLoad(layeredColor[pc.currentLayer], pos);
+
+	//color.w = 0.0f;
+	//float decayFactor = exp(-dt.deltaTime / dt.decayTime);
+	//color.w *= 0.7f;
+	color.w = max((color.w - 0.0001f), 0.0f);
+	imageStore(layeredColor[pc.currentLayer], pos, color);
+	return;
+}

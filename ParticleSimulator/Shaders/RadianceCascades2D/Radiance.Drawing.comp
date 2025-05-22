@@ -5,7 +5,9 @@
 layout(local_size_x = 1, local_size_y = 1) in;
 
 layout(binding = 0, scalar) uniform WorldData{
-    vec4 color;
+    vec3 color;
+    float lightStr;
+    float emissive;
     ivec2 mousePos;
     bool isLMBDown;
     bool isRMBDown;
@@ -32,11 +34,11 @@ void main()
                 {
                     if(md.isEditingLight)
                     {
-                        imageStore(layeredLight[md.editableLayer], brushPos, md.color);
+                        imageStore(layeredLight[md.editableLayer], brushPos, vec4(md.color, md.lightStr));
                     }
                     else
                     {
-                        imageStore(layeredColor[md.editableLayer], brushPos, md.color);
+                        imageStore(layeredColor[md.editableLayer], brushPos, vec4(md.color, md.emissive));
                     }
                 }
             }
@@ -55,11 +57,11 @@ void main()
                 {
                     if(md.isEditingLight)
                     {
-                        imageStore(layeredLight[md.editableLayer], brushPos, md.color);
+                        imageStore(layeredLight[md.editableLayer], brushPos, vec4(md.color, md.lightStr));
                     }
                     else
                     {
-                        imageStore(layeredColor[md.editableLayer], brushPos, md.color);
+                        imageStore(layeredColor[md.editableLayer], brushPos, vec4(md.color, md.emissive));
                     }
                 }
             }

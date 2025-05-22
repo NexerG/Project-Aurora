@@ -266,5 +266,15 @@
         private Label ColorPreviewLabel;
         private HScrollBar BrushSizeBar;
         private Label BrushSizeLabel;
+        private HScrollBar EmissiveBar;
+        private Label label2;
+        private Label label3;
+        private Label EmissiveLabel;
+        private Label label4;
+        private Label label5;
+        private HScrollBar hScrollBar1;
+        private Label LightStrLabel;
+        private HScrollBar LightStrBar;
+        private CheckBox IsPhosphorous;
     }
 }

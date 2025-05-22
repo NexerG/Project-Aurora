@@ -21,12 +21,13 @@ layout(binding = 1, scalar) buffer ProbeData{
 } probes;
 
 
-layout(set = 0, binding = 2, rgba8) uniform image2D probeImage[];
+layout(set = 0, binding = 2, rgba16f) uniform image2D probeImage[];
 layout(set = 0, binding = 3, scalar) buffer ProbePositionData{
     ivec2 pos[];
 } posData[];
 
 layout(set = 0, binding = 4, rgba8) uniform image2D layeredLight[];
+layout(set = 0, binding = 5, rgba8) uniform image2D layeredEmit[];
 
 layout(push_constant) uniform PC{
 	int currentLayer;
@@ -37,6 +38,7 @@ struct Hit
 	bool hit;
 	vec2 location;
 	float rayLuminosity;
+	vec3 lightColor;
 };
 
 struct Ray
@@ -59,11 +61,12 @@ vec2 rotateVector(vec2 dir, float degrees) {
     return rotatedVector;
 }
 
-Hit raycast(Ray ray)
+Hit raycastLightLayer(Ray ray)
 {
 	Hit hit;
 	vec2 pos = ray.rayStart;
 	hit.rayLuminosity = 0.0f;
+	hit.lightColor = vec3(0.0f);
 
 	ivec2 size = imageSize(layeredLight[pc.currentLayer]);
 
@@ -76,12 +79,49 @@ Hit raycast(Ray ray)
 		}
 
 		vec4 data = imageLoad(layeredLight[pc.currentLayer], ivec2(pos));
-		if(length(data) > 0)
+		if(data.w > hit.rayLuminosity)
 		{
 			hit.hit = true;
 			hit.location = pos;
-			hit.rayLuminosity = 1.0f;
-			break;
+			hit.rayLuminosity = data.w;
+		}
+		if(data.w > 0)
+		{
+			hit.lightColor += data.rgb * data.w;
+			
+		}
+	}
+	return hit;
+}
+
+Hit raycastEmitLayer(Ray ray)
+{
+	Hit hit;
+	vec2 pos = ray.rayStart;
+	hit.rayLuminosity = 0.0f;
+	hit.lightColor = vec3(0.0f);
+
+	ivec2 size = imageSize(layeredEmit[pc.currentLayer]);
+
+	for(int i = 0; i < ray.rayLength; i++)
+	{
+		pos += ray.rayDirection;
+		if(pos.x >= size.x || pos.y >= size.y || pos.x == 0 || pos.y == 0)
+		{
+			continue;
+		}
+
+		vec4 data = imageLoad(layeredEmit[pc.currentLayer], ivec2(pos));
+		if(data.w > hit.rayLuminosity)
+		{
+			hit.hit = true;
+			hit.location = pos;
+			hit.rayLuminosity = data.w;
+		}
+		if(data.w > 0)
+		{
+			hit.lightColor += data.rgb * data.w;
+			
 		}
 	}
 	return hit;
@@ -121,9 +161,9 @@ void main()
 	int probeX = int((int(gl_WorkGroupID.x) % layer.probeCount.x) * pow(2, (layer.cascade + 1)));
 	int probeY = int((int(gl_WorkGroupID.x) / layer.probeCount.x) * pow(2, (layer.cascade + 1)));
 
-	Ray ray;
-	ray.rayStart = posData[gl_WorkGroupID.z].pos[gl_WorkGroupID.x];
-	ray.rayLength = layer.rayLength;
+	Ray rayReflective;
+	rayReflective.rayStart = posData[gl_WorkGroupID.z].pos[gl_WorkGroupID.x];
+	rayReflective.rayLength = layer.rayLength;
 
 	vec2 dir = vec2(0.0f, -1.0f);
 	float x = (360.0f / float(layer.rayCount)) * gl_WorkGroupID.y;
@@ -131,12 +171,24 @@ void main()
 
 	dir = rotateVector(dir, -rot);
 
-	ray.rayDirection = normalize(dir);
-	Hit hit = raycast(ray);
+	rayReflective.rayDirection = normalize(dir);
+	Hit hitLights = raycastLightLayer(rayReflective);
+
+	Ray rayEmissive;
+	rayEmissive.rayStart = posData[gl_WorkGroupID.z].pos[gl_WorkGroupID.x];
+	rayEmissive.rayLength = layer.rayLength;
+	rayEmissive.rayDirection = normalize(dir);
+	Hit hitEmissive = raycastEmitLayer(rayEmissive);
 
 	int rc = int(sqrt(layer.rayCount));
 	ivec2 texel = ivec2(probeX + (gl_WorkGroupID.y % rc), probeY + (gl_WorkGroupID.y / rc));
-	vec4 lumen = vec4(hit.rayLuminosity, hit.rayLuminosity, hit.rayLuminosity, hit.rayLuminosity);
+	
+	vec3 finalColor = hitLights.lightColor + hitEmissive.lightColor;
+	float maxRG = max(finalColor.r, finalColor.g);
+	float maxRGB = max(maxRG, finalColor.b);
+	finalColor /= maxRGB;
+
+	vec4 lumen = vec4(finalColor, hitLights.rayLuminosity + hitEmissive.rayLuminosity);
 
 	imageStore(probeImage[gl_WorkGroupID.z], texel, lumen);
 	return;

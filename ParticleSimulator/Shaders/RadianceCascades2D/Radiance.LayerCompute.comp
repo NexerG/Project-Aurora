@@ -86,7 +86,9 @@ void main()
     vec4 luminosity = Luminosity(pos);              // calc the luminosity of the pixel
 
     vec4 pixel = imageLoad(layeredColor[pc.currentLayer], pos);
-    vec4 color = vec4(vec3(pixel), 1.0f) * luminosity;
+    vec4 color = vec4(0.0f);
+    color.rgb += pixel.rgb * luminosity.w * luminosity.rgb;
+    color.rgb += pixel.rgb * pixel.w;
 
     imageStore(layeredFinal[pc.currentLayer], pos, color);
     return;

@@ -26,6 +26,8 @@ namespace ArctisAurora.CustomEntities
         internal ImageView layerFView;
         internal DeviceMemory layerFDM;
 
+        internal bool isPhosphorus = false;
+
         internal Layer()
         {
             layerImage = new Image();

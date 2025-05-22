@@ -32,7 +32,6 @@ layout(push_constant) uniform PC{
 void main()
 {
     ivec2 pos = ivec2(gl_GlobalInvocationID.xy);    //current pixel pos
-	ivec2 imSize = imageSize(layeredFinal[0]);
 	vec4 color = vec4(0.0f);
 	for(int i = pc.layerCount - 1; i >= 0; i--)
 	{
@@ -40,11 +39,10 @@ void main()
 		float lenSqr = length(mask);
 		if(lenSqr != 0)
 		{
-			color = imageLoad(layeredFinal[i], pos);;
+			color = imageLoad(layeredFinal[i], pos);
 			break;
 		}
 	}
-
     imageStore(outputImage, pos, color);
     return;
 }

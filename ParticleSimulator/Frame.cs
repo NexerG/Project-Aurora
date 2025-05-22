@@ -49,7 +49,15 @@ namespace ArctisAurora
             label1 = new Label();
             ColorPreviewLabel = new Label();
             BrushSizeBar = new HScrollBar();
-            this.BrushSizeLabel = new Label();
+            BrushSizeLabel = new Label();
+            EmissiveBar = new HScrollBar();
+            label2 = new Label();
+            label3 = new Label();
+            EmissiveLabel = new Label();
+            LightStrLabel = new Label();
+            label5 = new Label();
+            LightStrBar = new HScrollBar();
+            IsPhosphorous = new CheckBox();
             ((System.ComponentModel.ISupportInitialize)LayerIndex).BeginInit();
             ((System.ComponentModel.ISupportInitialize)ColorPickerPB).BeginInit();
             SuspendLayout();
@@ -87,7 +95,7 @@ namespace ArctisAurora
             isDrawingLight.AutoSize = true;
             isDrawingLight.Checked = true;
             isDrawingLight.CheckState = CheckState.Checked;
-            isDrawingLight.Location = new Point(5, 75);
+            isDrawingLight.Location = new Point(5, 100);
             isDrawingLight.Name = "isDrawingLight";
             isDrawingLight.Size = new Size(102, 19);
             isDrawingLight.TabIndex = 3;
@@ -98,7 +106,7 @@ namespace ArctisAurora
             // ColorPickerPB
             // 
             ColorPickerPB.Image = (Image)resources.GetObject("ColorPickerPB.Image");
-            ColorPickerPB.Location = new Point(5, 115);
+            ColorPickerPB.Location = new Point(1, 219);
             ColorPickerPB.Name = "ColorPickerPB";
             ColorPickerPB.Size = new Size(226, 156);
             ColorPickerPB.SizeMode = PictureBoxSizeMode.AutoSize;
@@ -109,7 +117,7 @@ namespace ArctisAurora
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new Point(40, 275);
+            label1.Location = new Point(40, 379);
             label1.Name = "label1";
             label1.Size = new Size(79, 15);
             label1.TabIndex = 5;
@@ -119,14 +127,14 @@ namespace ArctisAurora
             // 
             ColorPreviewLabel.BackColor = Color.White;
             ColorPreviewLabel.BorderStyle = BorderStyle.FixedSingle;
-            ColorPreviewLabel.Location = new Point(130, 274);
+            ColorPreviewLabel.Location = new Point(130, 378);
             ColorPreviewLabel.Name = "ColorPreviewLabel";
             ColorPreviewLabel.Size = new Size(53, 20);
             ColorPreviewLabel.TabIndex = 6;
             // 
             // BrushSizeBar
             // 
-            BrushSizeBar.Location = new Point(6, 326);
+            BrushSizeBar.Location = new Point(6, 429);
             BrushSizeBar.Minimum = 2;
             BrushSizeBar.Name = "BrushSizeBar";
             BrushSizeBar.Size = new Size(177, 17);
@@ -136,19 +144,102 @@ namespace ArctisAurora
             // 
             // BrushSizeLabel
             // 
-            this.BrushSizeLabel.AutoSize = true;
-            this.BrushSizeLabel.Location = new Point(193, 328);
-            this.BrushSizeLabel.Name = "BrushSizeLabel";
-            this.BrushSizeLabel.Size = new Size(13, 15);
-            this.BrushSizeLabel.TabIndex = 8;
-            this.BrushSizeLabel.Text = "5";
+            BrushSizeLabel.AutoSize = true;
+            BrushSizeLabel.Location = new Point(193, 431);
+            BrushSizeLabel.Name = "BrushSizeLabel";
+            BrushSizeLabel.Size = new Size(13, 15);
+            BrushSizeLabel.TabIndex = 8;
+            BrushSizeLabel.Text = "5";
+            // 
+            // EmissiveBar
+            // 
+            EmissiveBar.Location = new Point(5, 190);
+            EmissiveBar.Maximum = 109;
+            EmissiveBar.Name = "EmissiveBar";
+            EmissiveBar.Size = new Size(177, 17);
+            EmissiveBar.TabIndex = 1;
+            EmissiveBar.ValueChanged += ColorAlphaBar_ValueChanged;
+            // 
+            // label2
+            // 
+            label2.AutoSize = true;
+            label2.Location = new Point(6, 405);
+            label2.Name = "label2";
+            label2.Size = new Size(60, 15);
+            label2.TabIndex = 10;
+            label2.Text = "Brush Size";
+            // 
+            // label3
+            // 
+            label3.AutoSize = true;
+            label3.Location = new Point(5, 169);
+            label3.Name = "label3";
+            label3.Size = new Size(147, 15);
+            label3.TabIndex = 11;
+            label3.Text = "Color Emissiveness (alpha)";
+            // 
+            // EmissiveLabel
+            // 
+            EmissiveLabel.AutoSize = true;
+            EmissiveLabel.Location = new Point(193, 192);
+            EmissiveLabel.Name = "EmissiveLabel";
+            EmissiveLabel.Size = new Size(22, 15);
+            EmissiveLabel.TabIndex = 12;
+            EmissiveLabel.Text = "0.0";
+            // 
+            // LightStrLabel
+            // 
+            LightStrLabel.AutoSize = true;
+            LightStrLabel.Location = new Point(194, 145);
+            LightStrLabel.Name = "LightStrLabel";
+            LightStrLabel.Size = new Size(22, 15);
+            LightStrLabel.TabIndex = 15;
+            LightStrLabel.Text = "1.0";
+            // 
+            // label5
+            // 
+            label5.AutoSize = true;
+            label5.Location = new Point(6, 122);
+            label5.Name = "label5";
+            label5.Size = new Size(82, 15);
+            label5.TabIndex = 14;
+            label5.Text = "Light Strength";
+            // 
+            // LightStrBar
+            // 
+            LightStrBar.Location = new Point(6, 143);
+            LightStrBar.Maximum = 109;
+            LightStrBar.Name = "LightStrBar";
+            LightStrBar.Size = new Size(177, 17);
+            LightStrBar.TabIndex = 13;
+            LightStrBar.Value = 100;
+            LightStrBar.ValueChanged += LightStrBar_ValueChanged;
+            // 
+            // IsPhosphorous
+            // 
+            IsPhosphorous.AutoSize = true;
+            IsPhosphorous.Location = new Point(5, 75);
+            IsPhosphorous.Name = "IsPhosphorous";
+            IsPhosphorous.Size = new Size(116, 19);
+            IsPhosphorous.TabIndex = 16;
+            IsPhosphorous.Text = "IsLayerDecaying?";
+            IsPhosphorous.UseVisualStyleBackColor = true;
+            IsPhosphorous.CheckedChanged += IsPhosphorous_CheckedChanged;
             // 
             // Frame
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(239, 369);
-            Controls.Add(this.BrushSizeLabel);
+            ClientSize = new Size(239, 545);
+            Controls.Add(IsPhosphorous);
+            Controls.Add(LightStrLabel);
+            Controls.Add(label5);
+            Controls.Add(LightStrBar);
+            Controls.Add(EmissiveLabel);
+            Controls.Add(label3);
+            Controls.Add(label2);
+            Controls.Add(EmissiveBar);
+            Controls.Add(BrushSizeLabel);
             Controls.Add(BrushSizeBar);
             Controls.Add(ColorPreviewLabel);
             Controls.Add(label1);
@@ -186,7 +277,7 @@ namespace ArctisAurora
             float g = (float)clr.G / 255;
             float b = (float)clr.B / 255;
 
-            RadianceCascades2D.worldData.brushColor = new Silk.NET.Maths.Vector4D<float>(r, g, b, 1);
+            RadianceCascades2D.worldData.brushColor = new Silk.NET.Maths.Vector3D<float>(r, g, b);
             AVulkanBufferHandler.UpdateBuffer(ref RadianceCascades2D.worldData, ref RadianceCascades2D.mousePosBuffer, ref RadianceCascades2D.mousePosMemory, Silk.NET.Vulkan.BufferUsageFlags.UniformBufferBit);
         }
 
@@ -206,6 +297,28 @@ namespace ArctisAurora
         {
             RadianceCascades2D.worldData.brushSize = BrushSizeBar.Value / 2;
             BrushSizeLabel.Text = BrushSizeBar.Value.ToString();
+        }
+
+        private void LightStrBar_ValueChanged(object sender, EventArgs e)
+        {
+            RadianceCascades2D.worldData.lightStr = (float)LightStrBar.Value / 100;
+            LightStrLabel.Text = ((float)LightStrBar.Value / 100).ToString();
+            AVulkanBufferHandler.UpdateBuffer(ref RadianceCascades2D.worldData, ref RadianceCascades2D.mousePosBuffer, ref RadianceCascades2D.mousePosMemory, Silk.NET.Vulkan.BufferUsageFlags.UniformBufferBit);
+        }
+
+        private void ColorAlphaBar_ValueChanged(object sender, EventArgs e)
+        {
+            RadianceCascades2D.worldData.emissive = (float)EmissiveBar.Value / 100;
+            EmissiveLabel.Text = ((float)EmissiveBar.Value / 100).ToString();
+            AVulkanBufferHandler.UpdateBuffer(ref RadianceCascades2D.worldData, ref RadianceCascades2D.mousePosBuffer, ref RadianceCascades2D.mousePosMemory, Silk.NET.Vulkan.BufferUsageFlags.UniformBufferBit);
+        }
+
+        private void IsPhosphorous_CheckedChanged(object sender, EventArgs e)
+        {
+            Layer l = RadianceCascades2D._entitiesToRender[(int)LayerIndex.Value] as Layer;
+            l.isPhosphorus = IsPhosphorous.Checked;
+            RadianceCascades2D._rendererInstance.RecreateCommandBuffers();
+            RadianceCascades2D._rendererInstance.CreateCommandBuffers();
         }
     }
 }
