@@ -78,6 +78,8 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             public Vector2D<int> probeCount;
             public Vector2D<int> probeDst;
             public Vector2D<float> offset;
+            public float importance;
+            public float pad;
         }
 
         int cascadeCount = 5;
@@ -259,6 +261,18 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 localRayOffset += localRayLength;
                 localRayLength *= 2;
             }
+
+            float total = 0.0f;
+            for (int i = 0; i < layers; i++)
+            {
+                probeLayers[i].importance = 1.0f - ((1 / layers) * i);
+                total += probeLayers[i].importance;
+            }
+            for (int i = 0; i < layers; i++)
+            {
+                probeLayers[i].importance /= total;
+            }
+
 
             AVulkanBufferHandler.CreateBuffer(ref probeLayers, ref probesB, ref probesDM, BufferUsageFlags.StorageBufferBit);
             for (int k = 0; k < layers; k++)

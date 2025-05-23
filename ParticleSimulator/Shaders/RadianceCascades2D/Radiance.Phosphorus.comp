@@ -13,6 +13,8 @@ struct PD
 	ivec2 probeCount;
 	ivec2 probeDist;
 	vec2 offset;
+    float importance;
+    float padding;
 };
 
 layout(set = 0, binding = 0, rgba8) uniform image2D layeredColor[];
@@ -61,26 +63,27 @@ vec4 Luminosity(ivec2 pos)
         float weights[4] = float[4](
             w1, w3, w2, w4);
 
+        vec4 quadProbeLuminosity = vec4(0.0f);
         for(int i = 0; i < 4; i++)
         {
             ivec2 texel = ivec2(probeIndex[i] * sqrt(pd.rayCount));
 
             int levels = int(pow(2, pd.cascade + 1));
-            vec4 cl = vec4(0.0f);
+            vec4 currentLight = vec4(0.0f);
             for(int vertical = 0; vertical < levels; vertical++)
             {
                 for(int horizontal = 0; horizontal < levels; horizontal++)
                 {
-                    cl += imageLoad(probeTexels[cascadeIndex], texel + ivec2(horizontal, vertical));
+                    currentLight += imageLoad(probeTexels[cascadeIndex], texel + ivec2(horizontal, vertical));
                 }
             }
-            luminosity += (cl / pd.rayCount) * weights[i];
+            quadProbeLuminosity += (currentLight / pd.rayCount) * weights[i];
         }
+        luminosity += quadProbeLuminosity * pd.importance;
         cascadeIndex++;
         pd = probes.data[cascadeIndex];
     }
 
-    luminosity /= float(cascadeIndex);
     return luminosity;
 }
 

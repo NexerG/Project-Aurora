@@ -13,6 +13,8 @@ struct PD
 	ivec2 probeCount;
 	ivec2 probeDist;
 	vec2 offset;
+    float importance;
+    float padding;
 };
 
 layout(binding = 0, rgba8) uniform image2D lightImage; // ONLY USED FOR DEBUG
@@ -79,20 +81,19 @@ Hit raycastLightLayer(Ray ray)
 		}
 
 		vec4 data = imageLoad(layeredLight[pc.currentLayer], ivec2(pos));
-		//if(data.w > hit.rayLuminosity)
-		if(data.w > 0.0f)
+		if(data.w > hit.rayLuminosity)
+		//if(data.w > 0.0f)
 		{
 			hit.hit = true;
 			hit.location = pos;
 			hit.rayLuminosity = data.w;
 			hit.lightColor = data.rgb;
-			break;
+			//break;
 		}
 		//if(data.w > 0)
 		//{
 		//	hit.lightColor += data.rgb;
 		//}
-		//
 	}
 	//float maxRG = max(hit.lightColor.r, hit.lightColor.b);
 	//float maxRGB = max(maxRG, hit.lightColor.g);
@@ -118,19 +119,18 @@ Hit raycastEmitLayer(Ray ray)
 		}
 
 		vec4 data = imageLoad(layeredEmit[pc.currentLayer], ivec2(pos));
-		//if(data.w > hit.rayLuminosity)
-		if(data.w > 0.0f)
+		if(data.w > hit.rayLuminosity)
+		//if(data.w > 0.0f)
 		{
 			hit.hit = true;
 			hit.location = pos;
 			hit.rayLuminosity = data.w;
 			hit.lightColor = data.rgb;
-			break;
+			//break;
 		}
 		//if(data.w > 0)
 		//{
 		//	hit.lightColor += data.rgb;
-		//	
 		//}
 	}
 

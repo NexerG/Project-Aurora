@@ -13,6 +13,8 @@ struct PD
 	ivec2 probeCount;
 	ivec2 probeDist;
 	vec2 offset;
+    float importance;
+    float padding;
 };
 
 layout(binding = 0, rgba8) uniform image2D outputImage;
