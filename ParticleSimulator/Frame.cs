@@ -3,6 +3,7 @@ using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Renderer;
 using ArctisAurora.EngineWork.Renderer.Helpers;
 using ArctisAurora.EngineWork.Renderer.RendererTypes;
+using Silk.NET.Vulkan;
 
 namespace ArctisAurora
 {
@@ -105,7 +106,7 @@ namespace ArctisAurora
             // 
             // ColorPickerPB
             // 
-            ColorPickerPB.Image = (Image)resources.GetObject("ColorPickerPB.Image");
+            ColorPickerPB.Image = (System.Drawing.Image)resources.GetObject("ColorPickerPB.Image");
             ColorPickerPB.Location = new Point(1, 219);
             ColorPickerPB.Name = "ColorPickerPB";
             ColorPickerPB.Size = new Size(226, 156);
@@ -317,7 +318,8 @@ namespace ArctisAurora
         {
             Layer l = RadianceCascades2D._entitiesToRender[(int)LayerIndex.Value] as Layer;
             l.isPhosphorus = IsPhosphorous.Checked;
-            RadianceCascades2D._rendererInstance.RecreateCommandBuffers();
+
+            RadianceCascades2D.FreeCommandBuffer();
             RadianceCascades2D._rendererInstance.CreateCommandBuffers();
         }
     }

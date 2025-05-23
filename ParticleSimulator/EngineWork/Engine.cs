@@ -4,6 +4,8 @@ using Silk.NET.Maths;
 using ArctisAurora.EngineWork.Renderer;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using Assimp;
+using ArctisAurora.EngineWork.Renderer.Helpers;
+using Silk.NET.Vulkan;
 
 namespace ArctisAurora.EngineWork
 {
@@ -18,7 +20,7 @@ namespace ArctisAurora.EngineWork
         internal List<Entity> _entities = new List<Entity>();
         internal List<TestingEntity> _bandymas = new List<TestingEntity>();
 
-        public int bbz;
+        //private DateTime lastFrameTime = DateTime.Now;
 
         public Engine()
         {
@@ -110,6 +112,12 @@ namespace ArctisAurora.EngineWork
                 }
                 TimeSpan entityOnTickTime = DateTime.Now - entityOnTickStart;
                 //Console.WriteLine("Entity time ---" + entityOnTickTime.TotalMilliseconds);
+
+                //DateTime now = DateTime.Now;
+                //pd.deltaTime = (float)(now - lastFrameTime).TotalSeconds;
+                //AVulkanBufferHandler.UpdateBuffer(ref pd, ref phosphorusDataBuffer, ref phosphorusDM, BufferUsageFlags.UniformBufferBit);
+                //lastFrameTime = now;
+
 
                 //renderer
                 DateTime GraphicsTimeStart = DateTime.Now;

@@ -47,7 +47,7 @@ vec4 Luminosity(ivec2 pos)
             topLeft, botLeft, topRight, botRight
         );
 
-        vec2 uv = pureIndex - topLeft;
+        vec2 uv = pureIndex - vec2(topLeft);
 
         float w1 = (1.0f - uv.x) * (1.0f - uv.y);
         float w2 = uv.x * (1.0f - uv.y);
@@ -57,7 +57,7 @@ vec4 Luminosity(ivec2 pos)
         float weights[4] = float[4](
             w1, w3, w2, w4);
 
-        for(int i=0; i < 4; i++)
+        for(int i = 0; i < 4; i++)
         {
             ivec2 texel = ivec2(probeIndex[i] * sqrt(pd.rayCount));
 
@@ -75,6 +75,7 @@ vec4 Luminosity(ivec2 pos)
         cascadeIndex++;
         pd = probes.data[cascadeIndex];
     }
+    luminosity /= float(cascadeIndex);
 
     return luminosity;
 }
@@ -88,7 +89,7 @@ void main()
     vec4 pixel = imageLoad(layeredColor[pc.currentLayer], pos);
     vec4 color = vec4(0.0f);
     color.rgb += pixel.rgb * luminosity.w * luminosity.rgb;
-    color.rgb += pixel.rgb * pixel.w;
+    //color.rgb += pixel.rgb * pixel.w;
 
     imageStore(layeredFinal[pc.currentLayer], pos, color);
     return;

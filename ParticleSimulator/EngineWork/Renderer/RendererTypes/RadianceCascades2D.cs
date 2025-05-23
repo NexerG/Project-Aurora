@@ -80,7 +80,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             public Vector2D<float> offset;
         }
 
-        int cascadeCount = 4;
+        int cascadeCount = 5;
 
         ProbeLayer[] probeLayers;
         Buffer probesB;
@@ -188,6 +188,12 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 _vulkan.FreeCommandBuffers(_logicalDevice, _commandPool, (uint)_commandBuffer.Length, _commandBuffer);
                 CreateCommandBuffers();
             }
+        }
+
+        internal static void FreeCommandBuffer()
+        {
+            _vulkan.DeviceWaitIdle(_logicalDevice);
+            _vulkan.FreeCommandBuffers(_logicalDevice, _commandPool, (uint)_commandBuffer.Length, _commandBuffer);
         }
 
         private void setup()
@@ -430,11 +436,11 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 
             // phosphorous shader
             List<DescriptorType> _types5 = new List<DescriptorType> {
-                DescriptorType.StorageImage, DescriptorType.StorageImage, DescriptorType.UniformBuffer};
+                DescriptorType.StorageImage, DescriptorType.StorageImage, DescriptorType.UniformBuffer, DescriptorType.StorageBuffer};
             List<ShaderStageFlags> _flags5 = new List<ShaderStageFlags> {
-                ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit};
+                ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit, ShaderStageFlags.ComputeBit};
             DescriptorBindingFlags[] _DBF5 = {
-                DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.None };
+                DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.None, DescriptorBindingFlags.None };
 
             uint[] _descriptorCount5 = new uint[_DBF5.Length];
             for (int i = 0; i < _DBF5.Length; i++)
@@ -893,7 +899,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.UniformBuffer,
-                    DescriptorCount = 1
+                    DescriptorCount = 3
                 }
             };
             fixed (DescriptorPoolSize* _poolSizePtr = _poolSizes)
@@ -1371,6 +1377,15 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                             DescriptorCount = 1,
                             DescriptorType = DescriptorType.UniformBuffer,
                             PBufferInfo = &phosphorusDataInfo
+                        },
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = phosphrousDescriptorSets[i],
+                            DstBinding = 3,
+                            DescriptorCount = 1,
+                            DescriptorType = DescriptorType.StorageBuffer,
+                            PBufferInfo = &probeLayerInfo
                         }
                     };
                     fixed (WriteDescriptorSet* _descPtr = writeDescriptorSets)
@@ -1477,7 +1492,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                     int rayCount = (int)Math.Pow(4, cascadeCount);
                     _vulkan.CmdDispatch(_commandBuffer[i], (uint)probeCount, (uint)rayCount, (uint)cascadeCount);
 
-                    // layer final images
+                    // render each layer out
                     _vulkan.CmdBindPipeline(_commandBuffer[i], PipelineBindPoint.Compute, layerComputePipeline);
                     _vulkan.CmdBindDescriptorSets(_commandBuffer[i], PipelineBindPoint.Compute, layerComputePipelineLayout, 0, 1, ref layerComputeDescriptorSets[i], 0, null);
                     _vulkan.CmdPushConstants(_commandBuffer[i], layerComputePipelineLayout, ShaderStageFlags.ComputeBit, 0, sizeof(int), &layerIndex);
@@ -1557,10 +1572,10 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             }
 
             // update deltattime here
-            DateTime now = DateTime.Now;
-            pd.deltaTime = (float)(now - lastFrameTime).TotalSeconds;
-            AVulkanBufferHandler.UpdateBuffer(ref pd, ref phosphorusDataBuffer, ref phosphorusDM, BufferUsageFlags.UniformBufferBit);
-            lastFrameTime = now;
+            //DateTime now = DateTime.Now;
+            //pd.deltaTime = (float)(now - lastFrameTime).TotalSeconds;
+            //AVulkanBufferHandler.UpdateBuffer(ref pd, ref phosphorusDataBuffer, ref phosphorusDM, BufferUsageFlags.UniformBufferBit);
+            //lastFrameTime = now;
             //_camera.UpdateCameraMatrix(_extent, _imageIndex);
             //-----------------------------------
             if (_imagesInFlight[_imageIndex].Handle != default)

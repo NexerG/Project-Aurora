@@ -45,7 +45,7 @@ void main()
         }
     }
 
-    vec4 RMBColor = vec4(0);
+    vec4 RMBColor = vec4(0.0f);
     if(md.isRMBDown)
     {
         for (int dx = -brushSize; dx <= brushSize; dx++)
@@ -57,11 +57,11 @@ void main()
                 {
                     if(md.isEditingLight)
                     {
-                        imageStore(layeredLight[md.editableLayer], brushPos, vec4(md.color, md.lightStr));
+                        imageStore(layeredLight[md.editableLayer], brushPos, RMBColor);
                     }
                     else
                     {
-                        imageStore(layeredColor[md.editableLayer], brushPos, vec4(md.color, md.emissive));
+                        imageStore(layeredColor[md.editableLayer], brushPos, RMBColor);
                     }
                 }
             }
