@@ -276,5 +276,6 @@
         private Label LightStrLabel;
         private HScrollBar LightStrBar;
         private CheckBox IsPhosphorous;
+        private Button Color_reset;
     }
 }

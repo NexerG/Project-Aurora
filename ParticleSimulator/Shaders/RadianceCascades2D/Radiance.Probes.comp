@@ -82,22 +82,22 @@ Hit raycastLightLayer(Ray ray)
 
 		vec4 data = imageLoad(layeredLight[pc.currentLayer], ivec2(pos));
 		if(data.w > hit.rayLuminosity)
-		//if(data.w > 0.0f)
 		{
 			hit.hit = true;
 			hit.location = pos;
 			hit.rayLuminosity = data.w;
-			hit.lightColor = data.rgb;
+			//hit.lightColor = data.rgb;
 			//break;
 		}
-		//if(data.w > 0)
-		//{
-		//	hit.lightColor += data.rgb;
-		//}
+		if(data.w > 0)
+		{
+			hit.lightColor += data.rgb;
+		}
 	}
 	//float maxRG = max(hit.lightColor.r, hit.lightColor.b);
 	//float maxRGB = max(maxRG, hit.lightColor.g);
 	//hit.lightColor /= maxRGB;
+	
 	return hit;
 }
 
@@ -120,18 +120,17 @@ Hit raycastEmitLayer(Ray ray)
 
 		vec4 data = imageLoad(layeredEmit[pc.currentLayer], ivec2(pos));
 		if(data.w > hit.rayLuminosity)
-		//if(data.w > 0.0f)
 		{
 			hit.hit = true;
 			hit.location = pos;
 			hit.rayLuminosity = data.w;
-			hit.lightColor = data.rgb;
+			//hit.lightColor = data.rgb;
 			//break;
 		}
-		//if(data.w > 0)
-		//{
-		//	hit.lightColor += data.rgb;
-		//}
+		if(data.w > 0)
+		{
+			hit.lightColor += data.rgb;
+		}
 	}
 
 	//float maxRG = max(hit.lightColor.r, hit.lightColor.b);
@@ -202,7 +201,7 @@ void main()
 	float maxRGB = max(maxRG, finalColor.b);
 	finalColor /= maxRGB;
 
-	vec4 lumen = vec4(finalColor.rgb, min(hitLights.rayLuminosity + hitEmissive.rayLuminosity, 1.0f));
+	vec4 lumen = vec4(finalColor.rgb, hitLights.rayLuminosity + hitEmissive.rayLuminosity);
 
 	imageStore(probeImage[gl_WorkGroupID.z], texel, lumen);
 	return;

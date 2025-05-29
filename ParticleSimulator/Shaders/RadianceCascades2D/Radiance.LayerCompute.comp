@@ -73,12 +73,18 @@ vec4 Luminosity(ivec2 pos)
                     currentLight += imageLoad(probeTexels[cascadeIndex], texel + ivec2(horizontal, vertical));
                 }
             }
-            quadProbeLuminosity += (currentLight / pd.rayCount) * weights[i];
+            quadProbeLuminosity.w += (currentLight.w / pd.rayCount) * weights[i];
+            quadProbeLuminosity.rgb += currentLight.rgb;
         }
-        luminosity += quadProbeLuminosity * pd.importance;
+        luminosity.w += quadProbeLuminosity.w * pd.importance;
+        luminosity.rgb += quadProbeLuminosity.rgb;
         cascadeIndex++;
         pd = probes.data[cascadeIndex];
     }
+
+	float maxRG = max(luminosity.r, luminosity.b);
+	float maxRGB = max(maxRG, luminosity.g);
+	luminosity.rgb /= maxRGB;
 
     return luminosity;
 }
@@ -91,8 +97,7 @@ void main()
 
     vec4 pixel = imageLoad(layeredColor[pc.currentLayer], pos);
     vec4 color = vec4(0.0f);
-    color.rgb += pixel.rgb * luminosity.w * luminosity.rgb;
-    //color.rgb += pixel.rgb * pixel.w;
+    color.rgb = pixel.rgb * luminosity.w * luminosity.rgb;
 
     imageStore(layeredFinal[pc.currentLayer], pos, color);
     return;

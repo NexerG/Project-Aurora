@@ -1,3 +1,4 @@
+using System.Runtime.ConstrainedExecution;
 using ArctisAurora.CustomEntities;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Renderer;
@@ -59,6 +60,7 @@ namespace ArctisAurora
             label5 = new Label();
             LightStrBar = new HScrollBar();
             IsPhosphorous = new CheckBox();
+            this.Color_reset = new Button();
             ((System.ComponentModel.ISupportInitialize)LayerIndex).BeginInit();
             ((System.ComponentModel.ISupportInitialize)ColorPickerPB).BeginInit();
             SuspendLayout();
@@ -118,7 +120,7 @@ namespace ArctisAurora
             // label1
             // 
             label1.AutoSize = true;
-            label1.Location = new Point(40, 379);
+            label1.Location = new Point(9, 379);
             label1.Name = "label1";
             label1.Size = new Size(79, 15);
             label1.TabIndex = 5;
@@ -128,7 +130,7 @@ namespace ArctisAurora
             // 
             ColorPreviewLabel.BackColor = Color.White;
             ColorPreviewLabel.BorderStyle = BorderStyle.FixedSingle;
-            ColorPreviewLabel.Location = new Point(130, 378);
+            ColorPreviewLabel.Location = new Point(99, 378);
             ColorPreviewLabel.Name = "ColorPreviewLabel";
             ColorPreviewLabel.Size = new Size(53, 20);
             ColorPreviewLabel.TabIndex = 6;
@@ -136,6 +138,7 @@ namespace ArctisAurora
             // BrushSizeBar
             // 
             BrushSizeBar.Location = new Point(6, 429);
+            BrushSizeBar.Maximum = 269;
             BrushSizeBar.Minimum = 2;
             BrushSizeBar.Name = "BrushSizeBar";
             BrushSizeBar.Size = new Size(177, 17);
@@ -227,11 +230,22 @@ namespace ArctisAurora
             IsPhosphorous.UseVisualStyleBackColor = true;
             IsPhosphorous.CheckedChanged += IsPhosphorous_CheckedChanged;
             // 
+            // Color_reset
+            // 
+            this.Color_reset.Location = new Point(155, 377);
+            this.Color_reset.Name = "Color_reset";
+            this.Color_reset.Size = new Size(75, 23);
+            this.Color_reset.TabIndex = 17;
+            this.Color_reset.Text = "ResetColor";
+            this.Color_reset.UseVisualStyleBackColor = true;
+            this.Color_reset.Click += this.Color_reset_Click;
+            // 
             // Frame
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(239, 545);
+            ClientSize = new Size(239, 475);
+            Controls.Add(this.Color_reset);
             Controls.Add(IsPhosphorous);
             Controls.Add(LightStrLabel);
             Controls.Add(label5);
@@ -321,6 +335,13 @@ namespace ArctisAurora
 
             RadianceCascades2D.FreeCommandBuffer();
             RadianceCascades2D._rendererInstance.CreateCommandBuffers();
+        }
+
+        private void Color_reset_Click(object sender, EventArgs e)
+        {
+            ColorPreviewLabel.BackColor = Color.White;
+            RadianceCascades2D.worldData.brushColor = new Silk.NET.Maths.Vector3D<float>(1, 1, 1);
+            AVulkanBufferHandler.UpdateBuffer(ref RadianceCascades2D.worldData, ref RadianceCascades2D.mousePosBuffer, ref RadianceCascades2D.mousePosMemory, Silk.NET.Vulkan.BufferUsageFlags.UniformBufferBit);
         }
     }
 }

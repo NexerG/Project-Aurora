@@ -82,7 +82,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             public float pad;
         }
 
-        int cascadeCount = 5;
+        int cascadeCount = 4;
 
         ProbeLayer[] probeLayers;
         Buffer probesB;
@@ -159,7 +159,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 
             CreateDescriptorsetlayout();
             
-            setupProbes(cascadeCount, 10, 40, 20, _extent);
+            setupProbes(cascadeCount, 10, 80, 40, _extent);
             Layer L0 = new Layer();
             AddEntityToRenderQueue(L0);
             UpdateDescriptorSet();
