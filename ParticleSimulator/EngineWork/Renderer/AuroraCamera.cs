@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.EngineWork.Renderer.Helpers;
+using ArctisAurora.EngineWork.Renderer.UI;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
@@ -59,15 +60,24 @@ namespace ArctisAurora.EngineWork.Renderer
             _projection = Matrix4X4.CreatePerspectiveFieldOfView(Scalar.DegreesToRadians(60.0f), _extent.Width / _extent.Height, 0.1f, 512f);
             _projection.M22 *= -1;
 
-            if (VulkanRenderer._rendererType == ERendererTypes.Pathtracer)
+            switch (VulkanRenderer._rendererType)
             {
-                Matrix4X4<float> _tempView;
-                Matrix4X4<float> _tempProjection;
+                case ERendererTypes.Pathtracer:
+                    Matrix4X4<float> _tempView;
+                    Matrix4X4<float> _tempProjection;
 
-                Matrix4X4.Invert(_view, out _tempView);
-                Matrix4X4.Invert(_projection, out _tempProjection);
-                _view = _tempView;
-                _projection = _tempProjection;
+                    Matrix4X4.Invert(_view, out _tempView);
+                    Matrix4X4.Invert(_projection, out _tempProjection);
+                    _view = _tempView;
+                    _projection = _tempProjection;
+                    break;
+
+                case ERendererTypes.UITemp:
+                    _view = Matrix4X4.CreateLookAt(Vector3D<float>.Zero, _front, Vector3D<float>.UnitY);
+                    _projection = Matrix4X4.CreateOrthographic(1280, 720, 0.1f, 512f);
+                    break;
+                default:
+                    break;
             }
 
             UBO _ubo = new UBO()
@@ -84,6 +94,10 @@ namespace ArctisAurora.EngineWork.Renderer
 
         internal void ProcessMouseMovements(double xPos, double yPos, bool _constrainPitch = true)
         {
+            if (VulkanRenderer._rendererType == ERendererTypes.UITemp)
+            {
+                return;
+            }
             if (_firstMove)
             {
                 _lastX = xPos;

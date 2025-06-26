@@ -18,7 +18,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             "VK_EXT_descriptor_indexing",
         };
         //buffers
-        private Framebuffer[] _framebuffer;
+        private Framebuffer[] _frameBuffer;
         //descriptors
         internal static DescriptorSetLayout _descriptorSetLayoutShadow;
         internal static DescriptorPool _descriptorPoolShadow;
@@ -54,6 +54,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             CreateFrameBuffers();                           //frame buffers
             CreateCommandPool();                            //
             CreateImageSampler();                           //
+
             CreateDescriptorPool();                         //descriptor pool
             CreateShadowDescriptorPool();                   //descriptor pool for shadows
             //from this point the entities can be created
@@ -137,7 +138,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 
         private void CreateFrameBuffers()
         {
-            _framebuffer = new Framebuffer[_swapchain!._imageViews.Length];
+            _frameBuffer = new Framebuffer[_swapchain!._imageViews.Length];
             for (int i = 0; i < _swapchain._imageViews.Length; i++)
             {
                 var _attachment = new[] { _swapchain._imageViews[i], _swapchain._depthView };
@@ -154,7 +155,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                         Height = _extent.Height,
                         Layers = 1
                     };
-                    if (_vulkan.CreateFramebuffer(_logicalDevice, _framebufferInfo, null, out _framebuffer[i]) != Result.Success)
+                    if (_vulkan.CreateFramebuffer(_logicalDevice, _framebufferInfo, null, out _frameBuffer[i]) != Result.Success)
                     {
                         throw new Exception("Failed to create frame buffer");
                     }
@@ -187,7 +188,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 {
                     SType = StructureType.RenderPassBeginInfo,
                     RenderPass = _swapchain._renderPass,
-                    Framebuffer = _framebuffer[i],
+                    Framebuffer = _frameBuffer[i],
                     RenderArea =
                     {
                         Offset = { X = 0, Y = 0 },
@@ -750,7 +751,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 
         private void CleanUpSwapChain()
         {
-            foreach (var fb in _framebuffer)
+            foreach (var fb in _frameBuffer)
             {
                 _vulkan.DestroyFramebuffer(_logicalDevice, fb, null);
             }

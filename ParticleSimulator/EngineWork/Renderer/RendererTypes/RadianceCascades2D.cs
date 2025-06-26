@@ -1563,7 +1563,10 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 SetImageLayout(ref _commandBuffer[i], ref _swapchain._swapchainImages[i], ImageLayout.TransferDstOptimal, ImageLayout.PresentSrcKhr, _sr);
                 SetImageLayout(ref _commandBuffer[i], ref storageImage[i], ImageLayout.TransferSrcOptimal, ImageLayout.General, _sr);
 
-                _vulkan.EndCommandBuffer(_commandBuffer[i]);
+                if (_vulkan.EndCommandBuffer(_commandBuffer[i]) != Result.Success)
+                {
+                    throw new Exception("Failed to record command buffer");
+                }
             }
         }
 

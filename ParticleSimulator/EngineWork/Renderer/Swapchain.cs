@@ -120,7 +120,7 @@ namespace ArctisAurora.EngineWork.Renderer
             _createInfo.SubresourceRange.BaseArrayLayer = 0;
             _createInfo.SubresourceRange.LayerCount = 1;
 
-            if (Rasterizer._vulkan!.CreateImageView(Rasterizer._logicalDevice, _createInfo, null, out _iv) != Result.Success)
+            if (VulkanRenderer._vulkan!.CreateImageView(VulkanRenderer._logicalDevice, _createInfo, null, out _iv) != Result.Success)
             {
                 throw new Exception("failed to create image views!");
             }
@@ -195,7 +195,7 @@ namespace ArctisAurora.EngineWork.Renderer
                     PDependencies = &_subDepend
                 };
 
-                if (Rasterizer._vulkan.CreateRenderPass(Rasterizer._logicalDevice, ref _renderPassInfo, null, out _renderPass) != Result.Success)
+                if (VulkanRenderer._vulkan.CreateRenderPass(VulkanRenderer._logicalDevice, ref _renderPassInfo, null, out _renderPass) != Result.Success)
                 {
                     throw new Exception("failed to create render pass!");
                 }

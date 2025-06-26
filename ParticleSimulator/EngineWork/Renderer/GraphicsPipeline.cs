@@ -89,7 +89,7 @@ namespace ArctisAurora.EngineWork.Renderer
                     RasterizerDiscardEnable = false,
                     PolygonMode = PolygonMode.Fill,
                     LineWidth = 1,
-                    CullMode = CullModeFlags.FrontBit,
+                    CullMode = CullModeFlags.None,
                     FrontFace = FrontFace.Clockwise,
                     DepthBiasEnable = false
                 };
@@ -102,7 +102,7 @@ namespace ArctisAurora.EngineWork.Renderer
                 PipelineDepthStencilStateCreateInfo _depthCreateInfo = new PipelineDepthStencilStateCreateInfo()
                 {
                     SType = StructureType.PipelineDepthStencilStateCreateInfo,
-                    DepthTestEnable = true,
+                    DepthTestEnable = false,
                     DepthWriteEnable = true,
                     DepthCompareOp = CompareOp.Less,
                     DepthBoundsTestEnable = false,
@@ -111,7 +111,15 @@ namespace ArctisAurora.EngineWork.Renderer
                 PipelineColorBlendAttachmentState _colorBlendAttachment = new PipelineColorBlendAttachmentState()
                 {
                     ColorWriteMask = ColorComponentFlags.RBit | ColorComponentFlags.GBit | ColorComponentFlags.BBit | ColorComponentFlags.ABit,
-                    BlendEnable = false,
+                    BlendEnable = true,
+                    SrcAlphaBlendFactor = BlendFactor.Src1Alpha,
+                    DstColorBlendFactor = BlendFactor.OneMinusSrcAlpha,
+
+                    ColorBlendOp = BlendOp.Add,
+                    SrcColorBlendFactor = BlendFactor.One,
+                    DstAlphaBlendFactor = BlendFactor.Zero,
+
+                    AlphaBlendOp = BlendOp.Add
                 };
                 PipelineColorBlendStateCreateInfo _colorBlending = new PipelineColorBlendStateCreateInfo()
                 {

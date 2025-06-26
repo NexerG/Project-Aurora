@@ -33,12 +33,12 @@ namespace ArctisAurora.EngineWork
             SC = s;
 
             _renderer = new VulkanRenderer();
-            _renderer.InitRenderer(ERendererTypes.RadianceCascades2D);
+            _renderer.InitRenderer(ERendererTypes.UITemp);
             //VulkanRenderer._rendererInstance.Draw();
 
             ////mesh importer
             MeshImporter importer = new MeshImporter();
-            Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\plane.fbx");
+            Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\planeAlongX_ActualPlane.fbx");
             
             Running = true;
             SC = s;
@@ -58,14 +58,15 @@ namespace ArctisAurora.EngineWork
             _entities.Add(_e);*/
 
             //then we do meshes
-            //TestingEntity _te = new TestingEntity(new Vector3D<float>(100, 1, 100), new Vector3D<float>(75, 25, 0));
+            TestingEntity _te = new TestingEntity(new Vector3D<float>(50, 50, 50), new Vector3D<float>(2, 2, 10));
             //_te.ChangeColor(new Vector3D<float>(0.5f, 0.5f, 0.5f));
-            //_te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
-            //_entities.Add(_te);
-            //TestingEntity _te2 = new TestingEntity(new Vector3D<float>(5, 5, 5), new Vector3D<float>(75, 29, 0));
+            _te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
+            _entities.Add(_te);
+            //TestingEntity _te2 = new TestingEntity(new Vector3D<float>(20, 20, 20), new Vector3D<float>(0, 0, 0));
             //_te2.ChangeColor(new Vector3D<float>(0.05f, 0.5f, 0.247f));
+            //_te2.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
             //_entities.Add(_te2);
-            //TestingEntity _te3 = new TestingEntity(new Vector3D<float>(5, 5, 5), new Vector3D<float>(75, 29, 10));
+            //TestingEntity _te3 = new TestingEntity(new Vector3D<float>(20, 20, 20), new Vector3D<float>(0, 10, 10));
             //_te2.ChangeColor(new Vector3D<float>(0f, 0f, 1f));
             //_te3.transform.SetRotationFromVector3(new Vector3D<float>(0.0f,2f,0.0f));
             //_entities.Add(_te3);

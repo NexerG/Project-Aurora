@@ -8,6 +8,7 @@ using Semaphore = Silk.NET.Vulkan.Semaphore;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Renderer.RendererTypes;
 using Silk.NET.GLFW;
+using ArctisAurora.EngineWork.Renderer.UI;
 
 namespace ArctisAurora.EngineWork.Renderer
 {
@@ -16,7 +17,8 @@ namespace ArctisAurora.EngineWork.Renderer
         Rasterizer,
         Pathtracer,
         RadianceCascades,
-        RadianceCascades2D
+        RadianceCascades2D,
+        UITemp
     }
 
     internal unsafe class VulkanRenderer
@@ -51,7 +53,7 @@ namespace ArctisAurora.EngineWork.Renderer
         internal static Swapchain _swapchain;
         internal static DescriptorPool _descriptorPool;
         internal static DescriptorSetLayout _descriptorSetLayout;
-        internal DescriptorSet[] _descriptorSets;
+        internal static DescriptorSet[] _descriptorSets;
         internal static CommandPool _commandPool;
         internal static CommandBuffer[] _commandBuffer;
         //
@@ -95,6 +97,11 @@ namespace ArctisAurora.EngineWork.Renderer
                 case ERendererTypes.RadianceCascades2D:
                     {
                         RadianceCascades2D _cascades = new RadianceCascades2D();
+                        break;
+                    }
+                case ERendererTypes.UITemp:
+                    {
+                        UIRenderer _ui = new UIRenderer();
                         break;
                     }
                 default:
