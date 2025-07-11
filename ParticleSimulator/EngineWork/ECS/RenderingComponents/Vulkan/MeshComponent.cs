@@ -74,7 +74,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
         internal virtual void UpdateMatrices()
         {
-            Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(30f * MathF.PI / 180f, 0, 0);
+            Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0, 0, 0);
             Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
             _transform *= Matrix4X4.CreateScale(parent.transform.scale);
             _transform *= Matrix4X4.CreateFromQuaternion(q);

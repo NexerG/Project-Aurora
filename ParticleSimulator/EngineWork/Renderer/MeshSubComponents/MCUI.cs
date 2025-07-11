@@ -1,14 +1,9 @@
 ﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Renderer.Helpers;
-using ArctisAurora.EngineWork.Renderer.RendererTypes;
-using ArctisAurora.EngineWork.Renderer.UI;
 using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using SixLabors.ImageSharp.PixelFormats;
-using System.Runtime.CompilerServices;
-using Buffer = Silk.NET.Vulkan.Buffer;
-using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 
 namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 {
@@ -26,7 +21,8 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
             AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
 
-            CreateCircleSDF(128, 128, 50, 4f);
+            //CreateCircleSDF(128, 128, 50, 4f);
+            image = AssetImporter.ImportFont();
 
             AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image);
             AVulkanBufferHandler.CreateImageView(ref _textureImage, ref _textureImageView);
