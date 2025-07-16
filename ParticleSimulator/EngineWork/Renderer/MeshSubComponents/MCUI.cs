@@ -22,7 +22,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
 
             //CreateCircleSDF(128, 128, 50, 4f);
-            image = AssetImporter.ImportFont();
+            image = AssetImporter.ImportFont("Arial.ttf");
 
             AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image);
             AVulkanBufferHandler.CreateImageView(ref _textureImage, ref _textureImageView);
@@ -89,7 +89,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 
             fixed (Sampler* _textureSamplerPtr = &textureSampler)
             {
-                Result r = VulkanRenderer._vulkan.CreateSampler(VulkanRenderer._logicalDevice, _createInfo, null, _textureSamplerPtr);
+                Result r = VulkanRenderer._vulkan.CreateSampler(VulkanRenderer._logicalDevice, ref _createInfo, null, _textureSamplerPtr);
                 if (r != Result.Success)
                 {
                     throw new Exception("Failed to create a texture sampler with error: " + r);

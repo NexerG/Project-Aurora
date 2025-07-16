@@ -170,7 +170,7 @@ namespace ArctisAurora.EngineWork.Renderer.UI
                         Height = _extent.Height,
                         Layers = 1
                     };
-                    if (_vulkan.CreateFramebuffer(_logicalDevice, _framebufferInfo, null, out _frameBuffer[i]) != Result.Success)
+                    if (_vulkan.CreateFramebuffer(_logicalDevice, ref _framebufferInfo, null, out _frameBuffer[i]) != Result.Success)
                     {
                         throw new Exception("Failed to create frame buffer");
                     }

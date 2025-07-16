@@ -143,7 +143,7 @@ namespace ArctisAurora.EngineWork.Renderer
                     PSetLayouts = _descriptorSetLayoutPtr
                 };
 
-                if (VulkanRenderer._vulkan.CreatePipelineLayout(VulkanRenderer._logicalDevice, _pipelineLayoutInfo, null, out _pipelineLayout) != Result.Success)
+                if (VulkanRenderer._vulkan.CreatePipelineLayout(VulkanRenderer._logicalDevice, ref _pipelineLayoutInfo, null, out _pipelineLayout) != Result.Success)
                 {
                     throw new Exception("Failed to create pipeline layout");
                 }
@@ -166,7 +166,7 @@ namespace ArctisAurora.EngineWork.Renderer
                     BasePipelineHandle = default
                 };
 
-                Result r = VulkanRenderer._vulkan.CreateGraphicsPipelines(VulkanRenderer._logicalDevice, default, 1, _graphicsPipelineInfo, null, out _graphicsPipeline);
+                Result r = VulkanRenderer._vulkan.CreateGraphicsPipelines(VulkanRenderer._logicalDevice, default, 1, ref _graphicsPipelineInfo, null, out _graphicsPipeline);
                 if (r != Result.Success)
                 {
                     throw new Exception("Failed to create graphics pipeline " + r);
@@ -279,7 +279,7 @@ namespace ArctisAurora.EngineWork.Renderer
                     PPushConstantRanges = &_pushInfo,
                 };
 
-                if (VulkanRenderer._vulkan.CreatePipelineLayout(VulkanRenderer._logicalDevice, _pipelineLayoutInfo, null, out _shadowLayout) != Result.Success)
+                if (VulkanRenderer._vulkan.CreatePipelineLayout(VulkanRenderer._logicalDevice, ref _pipelineLayoutInfo, null, out _shadowLayout) != Result.Success)
                 {
                     throw new Exception("Failed to create pipeline layout");
                 }
@@ -301,7 +301,7 @@ namespace ArctisAurora.EngineWork.Renderer
                     BasePipelineHandle = default
                 };
 
-                Result r = VulkanRenderer._vulkan.CreateGraphicsPipelines(VulkanRenderer._logicalDevice, default, 1, _graphicsPipelineInfo, null, out _shadowPipeline);
+                Result r = VulkanRenderer._vulkan.CreateGraphicsPipelines(VulkanRenderer._logicalDevice, default, 1, ref _graphicsPipelineInfo, null, out _shadowPipeline);
                 if (r != Result.Success)
                 {
                     throw new Exception("Failed to create shadow graphics pipeline " + r);

@@ -58,7 +58,7 @@ namespace ArctisAurora.EngineWork
             _entities.Add(_e);*/
 
             //then we do meshes
-            TestingEntity _te = new TestingEntity(new Vector3D<float>(200, 200, 200), new Vector3D<float>(0, 0, 0));
+            TestingEntity _te = new TestingEntity(new Vector3D<float>(200, 200, 200), new Vector3D<float>(2, 0, 0));
             //_te.ChangeColor(new Vector3D<float>(0.5f, 0.5f, 0.5f));
             _te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
             _entities.Add(_te);
