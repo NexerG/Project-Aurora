@@ -292,7 +292,6 @@ namespace ArctisAurora.EngineWork
         {
             int width = image.Width;
             int height = image.Height;
-            float maxDist = 0.3f;// (float)image.Width / 4;
 
             // go through each pixel
             for (int x = 0; x < width; x++)
@@ -306,38 +305,36 @@ namespace ArctisAurora.EngineWork
                     }
                     else
                     {
-                        float horizontalD = 1 - HorizontalCheck(p, b, width, maxDist);
-                        float verticalD = 1 - VerticalCheck(p, b, height, maxDist);
-                        float diagonalD = 1 - DiagonalCheck(p, b, width, maxDist);
+                        float horizontalD = HorizontalCheck(p, b, width);
+                        float verticalD = VerticalCheck(p, b, height);
+                        float diagonalD = DiagonalCheck(p, b, width);
                         image[x, y] = new Rgba32(horizontalD, verticalD, diagonalD, 1);
                     }
                 }
             }
         }
 
-        private static float HorizontalCheck(Vector2D<float> pos, Bezier b, int width, float maxDist)
+        private static float HorizontalCheck(Vector2D<float> pos, Bezier b, int width)
         {
             Vector2D<float> posHorizontalRight = new Vector2D<float>(10, pos.Y);
             Vector2D<float> posHorizontalLeft = new Vector2D<float>(-10, pos.Y);
 
-            float distance = maxDist;
+            float distance = 1.0f;
             for (int i = 0; i < b.points.Count; i++)
             {
-                if (CheckIntersect(pos, posHorizontalRight, b.points[i].pos, b.points[(i + 1) % b.points.Count].pos, out Vector2D<float> intersect))
+                var p1 = b.points[i].pos;
+                var p2 = b.points[(i + 1) % b.points.Count].pos;
+                if (CheckIntersect(pos, posHorizontalRight, p1, p2, out Vector2D<float> intersectR))
                 {
-                    float localD = MathF.Abs(pos.X - intersect.X);
+                    float localD = (pos - intersectR).Length;
                     if (localD < distance)
                     {
                         distance = localD;
                     }
                 }
-            }
-
-            for (int i = 0; i < b.points.Count; i++)
-            {
-                if (CheckIntersect(pos, posHorizontalLeft, b.points[i].pos, b.points[(i + 1) % b.points.Count].pos, out Vector2D<float> intersect))
+                if (CheckIntersect(pos, posHorizontalLeft, p1, p2, out Vector2D<float> intersectL))
                 {
-                    float localD = MathF.Abs(pos.X - intersect.X);
+                    float localD = (pos - intersectR).Length;
                     if (localD < distance)
                     {
                         distance = localD;
@@ -348,29 +345,27 @@ namespace ArctisAurora.EngineWork
             return distance;
         }
 
-        private static float VerticalCheck(Vector2D<float> pos, Bezier b, int height, float maxDist)
+        private static float VerticalCheck(Vector2D<float> pos, Bezier b, int height)
         {
             Vector2D<float> posVerticaTop = new Vector2D<float>(pos.X, 10);
             Vector2D<float> posVerticalBot = new Vector2D<float>(pos.X, -10);
 
-            float distance = maxDist;
+            float distance = 1.0f;
             for (int i = 0; i < b.points.Count; i++)
             {
-                if (CheckIntersect(pos, posVerticaTop, b.points[i].pos, b.points[(i + 1) % b.points.Count].pos, out Vector2D<float> intersect))
+                var p1 = b.points[i].pos;
+                var p2 = b.points[(i + 1) % b.points.Count].pos;
+                if (CheckIntersect(pos, posVerticaTop, p1, p2, out Vector2D<float> intersectTop))
                 {
-                    float localD = MathF.Abs(pos.Y - intersect.Y);
+                    float localD = (pos - intersectTop).Length;
                     if (localD < distance)
                     {
                         distance = localD;
                     }
                 }
-            }
-
-            for (int i = 0; i < b.points.Count; i++)
-            {
-                if (CheckIntersect(pos, posVerticalBot, b.points[i].pos, b.points[(i + 1) % b.points.Count].pos, out Vector2D<float> intersect))
+                if (CheckIntersect(pos, posVerticalBot, p1, p2, out Vector2D<float> intersectBot))
                 {
-                    float localD = MathF.Abs(pos.Y - intersect.Y);
+                    float localD = (pos - intersectBot).Length;
                     if (localD < distance)
                     {
                         distance = localD;
@@ -381,60 +376,52 @@ namespace ArctisAurora.EngineWork
             return distance;
         }
 
-        private static float DiagonalCheck(Vector2D<float> pos, Bezier b, int height, float maxDist)
+        private static float DiagonalCheck(Vector2D<float> pos, Bezier b, int height)
         {
             Vector2D<float> upRight = new Vector2D<float>(pos.X + 10, pos.Y + 10);
             Vector2D<float> botRight = new Vector2D<float>(pos.X + 10, pos.Y - 10);
             Vector2D<float> botLeft = new Vector2D<float>(pos.X - 10, pos.Y - 10);
             Vector2D<float> topLeft = new Vector2D<float>(pos.X - 10, pos.Y + 10);
 
-            float distance = maxDist;
+            float distance = .1f;
             for (int i = 0; i < b.points.Count; i++)
             {
-                if (CheckIntersect(pos, upRight, b.points[i].pos, b.points[(i + 1) % b.points.Count].pos, out Vector2D<float> intersect))
+                var p1 = b.points[i].pos;
+                var p2 = b.points[(i + 1) % b.points.Count].pos;
+                
+                if (CheckIntersect(pos, upRight, p1, p2, out Vector2D<float> intersectUR))
                 {
-                    float localD = MathF.Abs((pos - intersect).Length);
+                    float localD = (pos - intersectUR).Length;
                     if (localD < distance)
                     {
                         distance = localD;
                     }
                 }
-            }
+                if (CheckIntersect(pos, botRight, p1, p2, out Vector2D<float> intersectBR))
+                {
+                    float localD = (pos - intersectBR).Length;
+                    if (localD < distance)
+                    {
+                        distance = localD;
+                    }
+                }
+                if (CheckIntersect(pos, botLeft, p1, p2, out Vector2D<float> intersectBL))
+                {
+                    float localD = (pos - intersectBL).Length;
+                    if (localD < distance)
+                    {
+                        distance = localD;
+                    }
+                }
+                if (CheckIntersect(pos, topLeft, p1, p2, out Vector2D<float> intersectTL))
+                {
+                    float localD = (pos - intersectTL).Length;
+                    if (localD < distance)
+                    {
+                        distance = localD;
+                    }
+                }
 
-            for (int i = 0; i < b.points.Count; i++)
-            {
-                if (CheckIntersect(pos, botRight, b.points[i].pos, b.points[(i + 1) % b.points.Count].pos, out Vector2D<float> intersect))
-                {
-                    float localD = MathF.Abs((pos - intersect).Length);
-                    if (localD < distance)
-                    {
-                        distance = localD;
-                    }
-                }
-            }
-
-            for (int i = 0; i < b.points.Count; i++)
-            {
-                if (CheckIntersect(pos, botLeft, b.points[i].pos, b.points[(i + 1) % b.points.Count].pos, out Vector2D<float> intersect))
-                {
-                    float localD = MathF.Abs((pos - intersect).Length);
-                    if (localD < distance)
-                    {
-                        distance = localD;
-                    }
-                }
-            }
-
-            for (int i = 0; i < b.points.Count; i++)
-            {
-                if (CheckIntersect(pos, topLeft, b.points[i].pos, b.points[(i + 1) % b.points.Count].pos, out Vector2D<float> intersect))
-                {
-                    float localD = MathF.Abs((pos - intersect).Length);
-                    if (localD < distance)
-                    {
-                        distance = localD;
-                    }
-                }
             }
 
             return distance;

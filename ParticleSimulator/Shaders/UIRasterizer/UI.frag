@@ -12,7 +12,12 @@ float median(float r, float g, float b) {
     return max(min(r, g), min(max(r, g), b));
 }
 
-void main() {
+//float median(float r, float g, float b) {
+//    return min(max(r, g), max(min(r, g), b));
+//}
+
+void main()
+{
     vec3 msdf = texture(textures[fragInstanceID], fragUV).rgb;
     float opacity = clamp(median(msdf.r, msdf.g, msdf.b), 0.0, 1.0);
 
