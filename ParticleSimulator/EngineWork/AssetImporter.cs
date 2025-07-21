@@ -1,15 +1,9 @@
 ﻿using ArctisAurora.EngineWork.Renderer.UI;
-using Assimp;
 using Silk.NET.Maths;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using StbTrueTypeSharp;
-using System;
-using System.ComponentModel.Design;
-using System.IO;
-using System.Text;
-using System.Text.RegularExpressions;
-using static ArctisAurora.EngineWork.AssetImporter;
+using Windows.ApplicationModel.VoiceCommands;
+using Image = SixLabors.ImageSharp.Image;
 
 namespace ArctisAurora.EngineWork
 {
@@ -27,6 +21,13 @@ namespace ArctisAurora.EngineWork
             public uint checksum;
             public uint offset;
             public uint length;
+        }
+
+        internal static Image<Rgba32> TestLetterA()
+        {
+            Image<Rgba32> image = Image.Load<Rgba32>("C:\\Users\\gmgyt\\Downloads\\testas.png");
+
+            return image;
         }
 
         internal static Image<Rgba32> ImportFont(string fontName = "arial.ttf")
@@ -90,15 +91,12 @@ namespace ArctisAurora.EngineWork
                     glyphOffsets[i] = ReadUInt32BE(reader); // 32-bit
             }
 
-            char targetChar = 'C';
+            char targetChar = 'G';
             ushort charIndex = GetGlyphIndex(targetChar, reader, tables);
             Bezier b = GetGlyphOutline(charIndex, reader, tables, glyphOffsets);
 
-            //Bezier b = new Bezier();
-            //b.Test();
-
             Image<Rgba32> image = new Image<Rgba32>(128, 128);
-            GenerateMSDF(b, ref image);
+            GenerateMSDF(b, ref image, 255f);
 
             image.Save("C:\\Users\\gmgyt\\Desktop\\msdf.png");
 
@@ -276,6 +274,35 @@ namespace ArctisAurora.EngineWork
                 bezier.points[i].SetY((float)y / yMax);
             }
 
+            //SubdivideEdges(bezier.points, 3);
+
+            // set edge colors
+            int colorindex = 0;
+            for (int i = 0; i < pointCount; i++)
+            {
+                Vector2D<float> p1 = bezier.points[i].pos;
+                Vector2D<float> p2 = bezier.points[(i + 1) % pointCount].pos;
+                Vector2D<float> p3 = bezier.points[(i + 2) % pointCount].pos;
+
+                float angle = CalcAngleInSegment(p1, p2, p3);
+                if (angle > 1.13)
+                {
+                    colorindex++;
+                }
+                switch(colorindex % 3)
+                {
+                    case 0:
+                        bezier.points[i].color = new Vector3D<int>(1,1,0);
+                        break;
+                    case 1:
+                        bezier.points[i].color = new Vector3D<int>(0,1,1);
+                        break;
+                    case 2:
+                        bezier.points[i].color = new Vector3D<int>(1,0,1);
+                        break;
+                }
+            }
+            Console.WriteLine(colorindex);
             return bezier;
         }
 
@@ -288,7 +315,7 @@ namespace ArctisAurora.EngineWork
         private static uint ReadUInt32BE(BinaryReader reader) =>
             BitConverter.ToUInt32(reader.ReadBytes(4).Reverse().ToArray(), 0);
 
-        private static void GenerateMSDF(Bezier b, ref Image<Rgba32> image)
+        private static void GenerateDSDF(Bezier b, ref Image<Rgba32> image)
         {
             int width = image.Width;
             int height = image.Height;
@@ -299,19 +326,155 @@ namespace ArctisAurora.EngineWork
                 for (int y = 0; y < height; y++)
                 {
                     Vector2D<float> p = new Vector2D<float>((float)x / width, (float)y / height);
-                    if(IsInsidePolygon(p, b.points))
+                    float horizontalD = HorizontalCheck(p, b, width);
+                    float verticalD = VerticalCheck(p, b, height);
+                    float diagonalD = DiagonalCheck(p, b, width);
+                    
+                    if (IsInsidePolygon(p, b.points))
                     {
-                        image[x, y] = new Rgba32(0, 0, 0, 0);
+                        horizontalD = -horizontalD;
+                        verticalD = -verticalD;
+                        diagonalD = -diagonalD;
                     }
-                    else
-                    {
-                        float horizontalD = HorizontalCheck(p, b, width);
-                        float verticalD = VerticalCheck(p, b, height);
-                        float diagonalD = DiagonalCheck(p, b, width);
-                        image[x, y] = new Rgba32(horizontalD, verticalD, diagonalD, 1);
-                    }
+
+                    horizontalD = horizontalD * 0.5f + 0.5f;
+                    verticalD = verticalD * 0.5f + 0.5f;
+                    diagonalD = diagonalD * 0.5f + 0.5f;
+
+
+                    image[x, y] = new Rgba32(horizontalD, verticalD, diagonalD, 1f);
                 }
             }
+        }
+
+        private static void GenerateMSDF(Bezier b, ref Image<Rgba32> image, float distanceFactor)
+        {
+            int width = image.Width;
+            int height = image.Height;
+
+            // go through each pixel
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    Vector2D<float> p = new Vector2D<float>((x + 0.5f) / width, (y + 0.5f) / height);
+                    float redDist = Math.Clamp(GetClosestDistance(p, b, new Vector3D<int>(1, 0, 0)) * distanceFactor, -1 , 1);
+                    float greenDist = Math.Clamp(GetClosestDistance(p, b, new Vector3D<int>(0, 1, 0)) * distanceFactor, -1, 1);
+                    float blueDist = Math.Clamp(GetClosestDistance(p, b, new Vector3D<int>(0, 0, 1)) * distanceFactor, -1, 1);
+
+                    redDist = redDist * 0.5f + 0.5f;
+                    greenDist = greenDist * 0.5f + 0.5f;
+                    blueDist = blueDist * 0.5f + 0.5f;
+            
+            
+                    image[x, y] = new Rgba32(redDist, greenDist, blueDist, 1f);
+                    //image[x, height - y - 1] = new Rgba32(redDist, greenDist, blueDist, 1f);
+                }
+            }
+        }
+
+        private static void SubdivideEdges(List<Bezier.Point> points, int count)
+        {
+            List<Bezier.Point> original = new List<Bezier.Point>(points);
+            points.Clear();
+
+            for (int i = 0; i < original.Count; i++)
+            {
+                Vector2D<float> p1 = original[i].pos;
+                Vector2D<float> p2 = original[(i + 1) % original.Count].pos;
+
+                //points.Add(original[i]);
+
+                Vector2D<float> segementLength = (p2 - p1) / count;
+
+                for (int j = 0; j < count; j++)
+                {
+                    Vector2D<float> newPos = p1 + segementLength * j;
+                    points.Add(new Bezier.Point(newPos, original[i].isAnchor));
+                }
+            }
+        }
+
+        private static float GetClosestDistance(Vector2D<float> p, Bezier bezier, Vector3D<int> channel)
+        {
+            float minDist = float.MaxValue;
+            int index = 0;
+            for (int i = 0; i < bezier.points.Count; i++)
+            {
+                Bezier.Point p0 = bezier.points[i];
+                if ((p0.color * channel) == Vector3D<int>.Zero)
+                {
+                    continue;
+                }
+
+                Bezier.Point p1 = bezier.points[(i + 1) % bezier.points.Count];
+
+                Vector2D<float> a = new Vector2D<float>(p0.pos.X, p0.pos.Y);
+                Vector2D<float> b = new Vector2D<float>(p1.pos.X, p1.pos.Y);
+
+                float dist = DistanceToLineSegment(p, a, b);
+                if (dist < minDist)
+                {
+                    minDist = dist;
+                    index = i;
+                }
+            }
+
+            if (!IsRightOfSegement(p, bezier.points[index].pos, bezier.points[(index + 1) % bezier.points.Count].pos))
+            {
+                minDist = -minDist;
+            }
+
+            return minDist;
+        }
+
+        private static float DistanceToLineSegment(Vector2D<float> p, Vector2D<float> a, Vector2D<float> b)
+        {
+            Vector2D<float> ab = b - a;
+            Vector2D<float> ap = p - a;
+
+            float t = Vector2D.Dot(ap, ab) / Vector2D.Dot(ab, ab);
+            t = Math.Clamp(t, 0f, 1f);
+
+            Vector2D<float> closest = a + t * ab;
+            return Vector2D.Distance(p, closest);
+        }
+
+        private static float SignedDistance(Vector2D<float> p, Bezier bezier, Vector3D<int> channel)
+        {
+            //float sign = 0;
+            float smallestDist = float.MaxValue;
+            for(int i = 0; i < bezier.points.Count; i++)
+            {
+                if (bezier.points[i].color * channel == Vector3D<int>.Zero)
+                {
+                    continue;
+                }
+                Vector2D<float> A = bezier.points[i].pos;
+                Vector2D<float> B = bezier.points[(i + 1) % bezier.points.Count].pos;
+
+                Vector2D<float> ab = new Vector2D<float>(B.X - A.X, B.Y - A.Y);
+                Vector2D<float> ap = new Vector2D<float>(p.X - A.X, p.Y - A.Y);
+
+                float lenSq = ab.X * ab.X + ab.Y * ab.Y;
+                float t = (ab.X * ap.X + ab.Y * ap.Y) / lenSq;
+
+                t = Math.Clamp(t, 0.0f, 1.0f);
+
+                Vector2D<float> closestPoint = new Vector2D<float>(A.X + ab.X * t, A.Y + ab.Y * t);
+
+                Vector2D<float> d = new Vector2D<float>(p.X - closestPoint.X, p.Y - closestPoint.Y);
+                float dist = MathF.Sqrt(d.X * d.X + d.Y * d.Y);
+
+                if (smallestDist > dist)
+                {
+                    smallestDist = dist;
+                    //float cross = (ab.X * (p.Y - A.Y)) - (ab.Y * (p.X - A.X));
+                    //sign = (cross < 0) ? -1 : 1;
+                }
+            }
+
+            return smallestDist;// * sign;
         }
 
         private static float HorizontalCheck(Vector2D<float> pos, Bezier b, int width)
@@ -383,7 +546,7 @@ namespace ArctisAurora.EngineWork
             Vector2D<float> botLeft = new Vector2D<float>(pos.X - 10, pos.Y - 10);
             Vector2D<float> topLeft = new Vector2D<float>(pos.X - 10, pos.Y + 10);
 
-            float distance = .1f;
+            float distance = 1.0f;
             for (int i = 0; i < b.points.Count; i++)
             {
                 var p1 = b.points[i].pos;
@@ -479,6 +642,33 @@ namespace ArctisAurora.EngineWork
                 }
             }
             return rayIntersect % 2 == 1;
+        }
+
+        private static bool IsRightOfSegement(Vector2D<float> point, Vector2D<float> e1, Vector2D<float> e2)
+        {
+            var ab = new Vector2D<float>(e2.X - e1.X, e2.Y - e1.Y);
+            var ap = new Vector2D<float>(point.X - e1.X, point.Y - e1.Y);
+
+            float cross = ab.X * ap.Y - ab.Y * ap.X;
+
+            return cross < 0; // true = point is to the right of the edge from e1 to e2
+        }
+
+        private static float CalcAngleInSegment(Vector2D<float> p1, Vector2D<float> p2, Vector2D<float> p3)
+        {
+            Vector2D<float> v1 = p2 - p1;
+            Vector2D<float> v2 = p3 - p2;
+
+            //Vector2D<float> v1Norm = v1 / v1.Length;
+            //Vector2D<float> v2Norm = v2 / v2.Length;
+
+            Vector2D<float> v1Norm = Vector2D.Normalize(v1);
+            Vector2D<float> v2Norm = Vector2D.Normalize(v2);
+
+            float dotProduct = Vector2D.Dot(v1Norm, v2Norm);
+            float angle = MathF.Acos(Math.Clamp(dotProduct, -1, 1));
+
+            return angle;
         }
     }
 }

@@ -12,6 +12,7 @@ namespace ArctisAurora.EngineWork.Renderer.UI
         internal class Point
         {
             public Vector2D<float> pos = new Vector2D<float>(1,1);
+            public Vector3D<int> color = new Vector3D<int>(0, 0, 0);
             public bool isAnchor;
             public bool isFill;
 

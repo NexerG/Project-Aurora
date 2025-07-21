@@ -23,8 +23,8 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
         {
             AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
             AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
-            AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, "../../../Shaders/Brick2.png");
-            AVulkanBufferHandler.CreateImageView(ref _textureImage, ref _textureImageView);
+            AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, "../../../Shaders/Brick2.png", Format.R8G8B8A8Srgb);
+            AVulkanBufferHandler.CreateImageView(ref _textureImage, ref _textureImageView, Format.R8G8B8A8Srgb);
         }
 
         public override void OnStart()

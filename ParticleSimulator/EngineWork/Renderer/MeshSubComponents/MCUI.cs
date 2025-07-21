@@ -23,9 +23,11 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 
             //CreateCircleSDF(128, 128, 50, 4f);
             image = AssetImporter.ImportFont("Arial.ttf");
+            //image = AssetImporter.TestLetterA();
+            //SixLabors.ImageSharp.Image testImage = AssetImporter.ImportFont();
 
-            AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image);
-            AVulkanBufferHandler.CreateImageView(ref _textureImage, ref _textureImageView);
+            AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image, Format.R8G8B8A8Srgb);
+            AVulkanBufferHandler.CreateImageView(ref _textureImage, ref _textureImageView, Format.R8G8B8A8Srgb);
             CreateSampler();
         }
 

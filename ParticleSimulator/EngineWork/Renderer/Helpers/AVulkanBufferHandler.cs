@@ -21,7 +21,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
 
     internal static unsafe class AVulkanBufferHandler
     {
-        internal static void CreateTextureBuffer(ref Silk.NET.Vulkan.Image _textureImage, ref DeviceMemory _textureBufferMemory, string pathToImage)
+        internal static void CreateTextureBuffer(ref Silk.NET.Vulkan.Image _textureImage, ref DeviceMemory _textureBufferMemory, string pathToImage, Format imageFormat)
         {
             using var _image = Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(pathToImage);
             ulong _imageSize = (ulong)(_image.Width * _image.Height * _image.PixelType.BitsPerPixel / 8);
@@ -35,7 +35,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             _image.CopyPixelDataTo(new Span<byte>(_data, (int)_imageSize));
             VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory);
 
-            CreateImage((uint)_image.Width, (uint)_image.Height, Format.R8G8B8A8Srgb, ImageTiling.Optimal, ImageUsageFlags.TransferDstBit | ImageUsageFlags.SampledBit, MemoryPropertyFlags.DeviceLocalBit, ref _textureImage, ref _textureBufferMemory);
+            CreateImage((uint)_image.Width, (uint)_image.Height, imageFormat, ImageTiling.Optimal, ImageUsageFlags.TransferDstBit | ImageUsageFlags.SampledBit, MemoryPropertyFlags.DeviceLocalBit, ref _textureImage, ref _textureBufferMemory);
 
             TransitionImageLayout(_textureImage, ImageLayout.Undefined, ImageLayout.TransferDstOptimal);
             CopyBufferToImage(_stagingBuffer, _textureImage, (uint)_image.Width, (uint)_image.Height);
@@ -45,10 +45,10 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, null);
         }
 
-        internal static void CreateTextureBuffer(ref Silk.NET.Vulkan.Image _textureImage, ref DeviceMemory _textureBufferMemory, ref Image<Rgba32> image)
+        internal static void CreateTextureBuffer(ref Silk.NET.Vulkan.Image _textureImage, ref DeviceMemory _textureBufferMemory, ref Image<Rgba32> image, Format imageFormat)
         {
             using var _image = image;
-            ulong _imageSize = (ulong)(_image.Width * _image.Height * _image.PixelType.BitsPerPixel / 8);
+            ulong _imageSize = (ulong)(_image.Width * _image.Height * _image.PixelType.BitsPerPixel);
 
             Buffer _stagingBuffer = default;
             DeviceMemory _stagingBufferMemory = default;
@@ -59,7 +59,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             _image.CopyPixelDataTo(new Span<byte>(_data, (int)_imageSize));
             VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory);
 
-            CreateImage((uint)_image.Width, (uint)_image.Height, Format.R8G8B8A8Srgb, ImageTiling.Optimal, ImageUsageFlags.TransferDstBit | ImageUsageFlags.SampledBit, MemoryPropertyFlags.DeviceLocalBit, ref _textureImage, ref _textureBufferMemory);
+            CreateImage((uint)_image.Width, (uint)_image.Height, imageFormat, ImageTiling.Optimal, ImageUsageFlags.TransferDstBit | ImageUsageFlags.SampledBit, MemoryPropertyFlags.DeviceLocalBit, ref _textureImage, ref _textureBufferMemory);
 
             TransitionImageLayout(_textureImage, ImageLayout.Undefined, ImageLayout.TransferDstOptimal);
             CopyBufferToImage(_stagingBuffer, _textureImage, (uint)_image.Width, (uint)_image.Height);
@@ -90,7 +90,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
 
             };
 
-            VulkanRenderer._vulkan!.CmdCopyBufferToImage(_commandBuffer, _buffer, _image, ImageLayout.TransferDstOptimal, 1, _bufferImageCopy);
+            VulkanRenderer._vulkan!.CmdCopyBufferToImage(_commandBuffer, _buffer, _image, ImageLayout.TransferDstOptimal, 1, ref _bufferImageCopy);
             EndSingleTimeCommands(ref _commandBuffer);
         }
 
@@ -193,13 +193,13 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             VulkanRenderer._vulkan!.BindImageMemory(VulkanRenderer._logicalDevice, _im, _devMemory, 0);
         }
 
-        internal static void CreateImageView(ref Silk.NET.Vulkan.Image _textureImage, ref ImageView _imageView)
+        internal static void CreateImageView(ref Silk.NET.Vulkan.Image _textureImage, ref ImageView _imageView, Format imageFormat)
         {
             ImageViewCreateInfo _createInfo = new ImageViewCreateInfo
             {
                 SType = StructureType.ImageViewCreateInfo,
                 Image = _textureImage,
-                Format = Format.R8G8B8A8Srgb,
+                Format = imageFormat,
                 ViewType = ImageViewType.Type2D
             };
 
