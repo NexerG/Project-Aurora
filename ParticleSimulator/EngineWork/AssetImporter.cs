@@ -91,7 +91,7 @@ namespace ArctisAurora.EngineWork
                     glyphOffsets[i] = ReadUInt32BE(reader); // 32-bit
             }
 
-            char targetChar = 'G';
+            char targetChar = 'K';
             ushort charIndex = GetGlyphIndex(targetChar, reader, tables);
             Bezier b = GetGlyphOutline(charIndex, reader, tables, glyphOffsets);
 
@@ -284,8 +284,8 @@ namespace ArctisAurora.EngineWork
                 Vector2D<float> p2 = bezier.points[(i + 1) % pointCount].pos;
                 Vector2D<float> p3 = bezier.points[(i + 2) % pointCount].pos;
 
-                float angle = CalcAngleInSegment(p1, p2, p3);
-                if (angle > 1.13)
+                float direction = CalcVectorAngle(p1, p2, p3);
+                if (direction < 0)
                 {
                     colorindex++;
                 }
@@ -315,38 +315,6 @@ namespace ArctisAurora.EngineWork
         private static uint ReadUInt32BE(BinaryReader reader) =>
             BitConverter.ToUInt32(reader.ReadBytes(4).Reverse().ToArray(), 0);
 
-        private static void GenerateDSDF(Bezier b, ref Image<Rgba32> image)
-        {
-            int width = image.Width;
-            int height = image.Height;
-
-            // go through each pixel
-            for (int x = 0; x < width; x++)
-            {
-                for (int y = 0; y < height; y++)
-                {
-                    Vector2D<float> p = new Vector2D<float>((float)x / width, (float)y / height);
-                    float horizontalD = HorizontalCheck(p, b, width);
-                    float verticalD = VerticalCheck(p, b, height);
-                    float diagonalD = DiagonalCheck(p, b, width);
-                    
-                    if (IsInsidePolygon(p, b.points))
-                    {
-                        horizontalD = -horizontalD;
-                        verticalD = -verticalD;
-                        diagonalD = -diagonalD;
-                    }
-
-                    horizontalD = horizontalD * 0.5f + 0.5f;
-                    verticalD = verticalD * 0.5f + 0.5f;
-                    diagonalD = diagonalD * 0.5f + 0.5f;
-
-
-                    image[x, y] = new Rgba32(horizontalD, verticalD, diagonalD, 1f);
-                }
-            }
-        }
-
         private static void GenerateMSDF(Bezier b, ref Image<Rgba32> image, float distanceFactor)
         {
             int width = image.Width;
@@ -357,6 +325,10 @@ namespace ArctisAurora.EngineWork
             {
                 for (int y = 0; y < height; y++)
                 {
+                    if (x == 33 && y == 56)
+                    {
+                        Console.WriteLine($"Found pixel at {x}, {y}");
+                    }
                     Vector2D<float> p = new Vector2D<float>((x + 0.5f) / width, (y + 0.5f) / height);
                     float redDist = Math.Clamp(GetClosestDistance(p, b, new Vector3D<int>(1, 0, 0)) * distanceFactor, -1 , 1);
                     float greenDist = Math.Clamp(GetClosestDistance(p, b, new Vector3D<int>(0, 1, 0)) * distanceFactor, -1, 1);
@@ -420,12 +392,59 @@ namespace ArctisAurora.EngineWork
                 }
             }
 
+            // do orthagonality check
+            Vector2D<float> op0 = bezier.points[index].pos;
+            Vector2D<float> op1 = bezier.points[(index + 1) % bezier.points.Count].pos;
+            Vector2D<float> op2;
+            
+            bool isOrthogonal = true;
+            
+            float d1 = Vector2D.Distance(op0, p);
+            float d2 = Vector2D.Distance(op1, p);
+            if (d1 == minDist)
+            {
+                op2 = bezier.points[(index - 1 + bezier.points.Count) % bezier.points.Count].pos;
+                isOrthogonal = IsOrthagonalToE1(op1, op0, op2, p);
+                if (!isOrthogonal)
+                {
+                    index = (index - 1 + bezier.points.Count) % bezier.points.Count;
+                }
+            }
+            else if(d2 == minDist)
+            {
+                op2 = bezier.points[(index + 2) % bezier.points.Count].pos;
+                isOrthogonal = IsOrthagonalToE1(op0, op1, op2, p);
+                if (!isOrthogonal)
+                {
+                    index = (index + 1) % bezier.points.Count;
+                }
+            }
+
             if (!IsRightOfSegement(p, bezier.points[index].pos, bezier.points[(index + 1) % bezier.points.Count].pos))
             {
                 minDist = -minDist;
             }
 
             return minDist;
+        }
+
+        private static bool IsOrthagonalToE1(Vector2D<float> a, Vector2D<float> b, Vector2D<float> c, Vector2D<float> d)
+        {
+            Vector2D<float> ab = b - a;
+            Vector2D<float> bc = b - c;
+
+            Vector2D<float> bd = d - b;
+
+            float dotA = MathF.Abs(Vector2D.Dot(ab, bd));
+            float dotB = MathF.Abs(Vector2D.Dot(bc, bd));
+
+            //Console.WriteLine($"Angle A: {angleA}, Angle B: {angleB}, k1: {k1}, k2: {k2}");
+
+            if (dotA - dotB < 0)
+            {
+                return true; // edge AB is closer to 90 degrees
+            }
+            return false; // edge CB is closer to 90 degrees
         }
 
         private static float DistanceToLineSegment(Vector2D<float> p, Vector2D<float> a, Vector2D<float> b)
@@ -439,211 +458,7 @@ namespace ArctisAurora.EngineWork
             Vector2D<float> closest = a + t * ab;
             return Vector2D.Distance(p, closest);
         }
-
-        private static float SignedDistance(Vector2D<float> p, Bezier bezier, Vector3D<int> channel)
-        {
-            //float sign = 0;
-            float smallestDist = float.MaxValue;
-            for(int i = 0; i < bezier.points.Count; i++)
-            {
-                if (bezier.points[i].color * channel == Vector3D<int>.Zero)
-                {
-                    continue;
-                }
-                Vector2D<float> A = bezier.points[i].pos;
-                Vector2D<float> B = bezier.points[(i + 1) % bezier.points.Count].pos;
-
-                Vector2D<float> ab = new Vector2D<float>(B.X - A.X, B.Y - A.Y);
-                Vector2D<float> ap = new Vector2D<float>(p.X - A.X, p.Y - A.Y);
-
-                float lenSq = ab.X * ab.X + ab.Y * ab.Y;
-                float t = (ab.X * ap.X + ab.Y * ap.Y) / lenSq;
-
-                t = Math.Clamp(t, 0.0f, 1.0f);
-
-                Vector2D<float> closestPoint = new Vector2D<float>(A.X + ab.X * t, A.Y + ab.Y * t);
-
-                Vector2D<float> d = new Vector2D<float>(p.X - closestPoint.X, p.Y - closestPoint.Y);
-                float dist = MathF.Sqrt(d.X * d.X + d.Y * d.Y);
-
-                if (smallestDist > dist)
-                {
-                    smallestDist = dist;
-                    //float cross = (ab.X * (p.Y - A.Y)) - (ab.Y * (p.X - A.X));
-                    //sign = (cross < 0) ? -1 : 1;
-                }
-            }
-
-            return smallestDist;// * sign;
-        }
-
-        private static float HorizontalCheck(Vector2D<float> pos, Bezier b, int width)
-        {
-            Vector2D<float> posHorizontalRight = new Vector2D<float>(10, pos.Y);
-            Vector2D<float> posHorizontalLeft = new Vector2D<float>(-10, pos.Y);
-
-            float distance = 1.0f;
-            for (int i = 0; i < b.points.Count; i++)
-            {
-                var p1 = b.points[i].pos;
-                var p2 = b.points[(i + 1) % b.points.Count].pos;
-                if (CheckIntersect(pos, posHorizontalRight, p1, p2, out Vector2D<float> intersectR))
-                {
-                    float localD = (pos - intersectR).Length;
-                    if (localD < distance)
-                    {
-                        distance = localD;
-                    }
-                }
-                if (CheckIntersect(pos, posHorizontalLeft, p1, p2, out Vector2D<float> intersectL))
-                {
-                    float localD = (pos - intersectR).Length;
-                    if (localD < distance)
-                    {
-                        distance = localD;
-                    }
-                }
-            }
-
-            return distance;
-        }
-
-        private static float VerticalCheck(Vector2D<float> pos, Bezier b, int height)
-        {
-            Vector2D<float> posVerticaTop = new Vector2D<float>(pos.X, 10);
-            Vector2D<float> posVerticalBot = new Vector2D<float>(pos.X, -10);
-
-            float distance = 1.0f;
-            for (int i = 0; i < b.points.Count; i++)
-            {
-                var p1 = b.points[i].pos;
-                var p2 = b.points[(i + 1) % b.points.Count].pos;
-                if (CheckIntersect(pos, posVerticaTop, p1, p2, out Vector2D<float> intersectTop))
-                {
-                    float localD = (pos - intersectTop).Length;
-                    if (localD < distance)
-                    {
-                        distance = localD;
-                    }
-                }
-                if (CheckIntersect(pos, posVerticalBot, p1, p2, out Vector2D<float> intersectBot))
-                {
-                    float localD = (pos - intersectBot).Length;
-                    if (localD < distance)
-                    {
-                        distance = localD;
-                    }
-                }
-            }
-
-            return distance;
-        }
-
-        private static float DiagonalCheck(Vector2D<float> pos, Bezier b, int height)
-        {
-            Vector2D<float> upRight = new Vector2D<float>(pos.X + 10, pos.Y + 10);
-            Vector2D<float> botRight = new Vector2D<float>(pos.X + 10, pos.Y - 10);
-            Vector2D<float> botLeft = new Vector2D<float>(pos.X - 10, pos.Y - 10);
-            Vector2D<float> topLeft = new Vector2D<float>(pos.X - 10, pos.Y + 10);
-
-            float distance = 1.0f;
-            for (int i = 0; i < b.points.Count; i++)
-            {
-                var p1 = b.points[i].pos;
-                var p2 = b.points[(i + 1) % b.points.Count].pos;
-                
-                if (CheckIntersect(pos, upRight, p1, p2, out Vector2D<float> intersectUR))
-                {
-                    float localD = (pos - intersectUR).Length;
-                    if (localD < distance)
-                    {
-                        distance = localD;
-                    }
-                }
-                if (CheckIntersect(pos, botRight, p1, p2, out Vector2D<float> intersectBR))
-                {
-                    float localD = (pos - intersectBR).Length;
-                    if (localD < distance)
-                    {
-                        distance = localD;
-                    }
-                }
-                if (CheckIntersect(pos, botLeft, p1, p2, out Vector2D<float> intersectBL))
-                {
-                    float localD = (pos - intersectBL).Length;
-                    if (localD < distance)
-                    {
-                        distance = localD;
-                    }
-                }
-                if (CheckIntersect(pos, topLeft, p1, p2, out Vector2D<float> intersectTL))
-                {
-                    float localD = (pos - intersectTL).Length;
-                    if (localD < distance)
-                    {
-                        distance = localD;
-                    }
-                }
-
-            }
-
-            return distance;
-        }
-
-        private static bool CheckIntersect(Vector2D<float> p1, Vector2D<float> p2, Vector2D<float> p3, Vector2D<float> p4, out Vector2D<float> intersect)
-        {
-            intersect = Vector2D<float>.Zero;
-
-            Vector2D<float> l1 = p2 - p1;
-            Vector2D<float> l2 = p4 - p3;
-
-            Vector2D<float> l3 = p3 - p1;
-
-            float cross = Cross(l1, l2);
-            float intCross = Cross(l3, l1);
-
-            if (MathF.Abs(cross) < float.Epsilon)
-            {
-                return false;
-            }
-
-            float t = Cross(l3, l2) / cross;
-            float u = Cross(l3, l1) / cross;
-
-            if (t >= 0 && t <= 1 && u >= 0 && u <= 1)
-            {
-                intersect = p1 + t * l1;
-                return true;
-            }
-
-            return false;
-        }
-
-        private static float Cross(Vector2D<float> a, Vector2D<float> b)
-        {
-            return a.X * b.Y - a.Y * b.X;
-        }
-
-        private static bool IsInsidePolygon(Vector2D<float> point, List<Bezier.Point> polygon)
-        {
-            int rayIntersect = 0;
-            for (int i = 0; i < polygon.Count; i++)
-            {
-                var p1 = polygon[i].pos;
-                var p2 = polygon[(i + 1) % polygon.Count].pos;
-
-                if ((point.X > MathF.Min(p1.X, p2.X)) && (point.X <= MathF.Max(p1.X, p2.X)) && (point.Y <= MathF.Max(p1.Y, p2.Y)))
-                {
-                    double xIntersect = (point.X - p1.X) * (p2.Y - p1.Y) / (p2.X - p1.X) + p1.Y;
-                    if (p1.Y == p2.Y || point.Y <= xIntersect)
-                    {
-                        rayIntersect++;
-                    }
-                }
-            }
-            return rayIntersect % 2 == 1;
-        }
-
+        
         private static bool IsRightOfSegement(Vector2D<float> point, Vector2D<float> e1, Vector2D<float> e2)
         {
             var ab = new Vector2D<float>(e2.X - e1.X, e2.Y - e1.Y);
@@ -654,21 +469,17 @@ namespace ArctisAurora.EngineWork
             return cross < 0; // true = point is to the right of the edge from e1 to e2
         }
 
-        private static float CalcAngleInSegment(Vector2D<float> p1, Vector2D<float> p2, Vector2D<float> p3)
+        private static float CalcVectorAngle(Vector2D<float> p1, Vector2D<float> p2, Vector2D<float> p3)
         {
             Vector2D<float> v1 = p2 - p1;
             Vector2D<float> v2 = p3 - p2;
-
-            //Vector2D<float> v1Norm = v1 / v1.Length;
-            //Vector2D<float> v2Norm = v2 / v2.Length;
 
             Vector2D<float> v1Norm = Vector2D.Normalize(v1);
             Vector2D<float> v2Norm = Vector2D.Normalize(v2);
 
             float dotProduct = Vector2D.Dot(v1Norm, v2Norm);
-            float angle = MathF.Acos(Math.Clamp(dotProduct, -1, 1));
 
-            return angle;
+            return dotProduct;
         }
     }
 }

@@ -16,13 +16,9 @@ float median(float r, float g, float b) {
 void main()
 {
     vec3 msdf = texture(textures[fragInstanceID], fragUV).rgb;
-    float sd = median(msdf.r, msdf.g, msdf.b) - 0.43;
+    float sd = median(msdf.r, msdf.g, msdf.b) - 0.5f;
     float screenPxRange = fwidth(sd);
     float opacity = smoothstep(-screenPxRange, screenPxRange, sd);
 
-    //outColor = vec4(msdf, 1.0f);
-    //outColor = vec4(vec3(sd), 1);
-    //outColor = vec4(vec3(screenPxRange), 1);
-    //outColor = vec4(vec3(opacity), 1);
     outColor = vec4(vec3(1.0f), opacity);
 }
