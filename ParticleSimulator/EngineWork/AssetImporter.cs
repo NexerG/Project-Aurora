@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.EngineWork.Renderer.UI;
 using Silk.NET.Maths;
+using Silk.NET.Vulkan;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using Windows.ApplicationModel.VoiceCommands;
@@ -93,10 +94,10 @@ namespace ArctisAurora.EngineWork
 
             char targetChar = 'K';
             ushort charIndex = GetGlyphIndex(targetChar, reader, tables);
-            Bezier b = GetGlyphOutline(charIndex, reader, tables, glyphOffsets);
+            Glyph g = GetGlyphOutline(charIndex, reader, tables, glyphOffsets);
 
             Image<Rgba32> image = new Image<Rgba32>(128, 128);
-            GenerateMSDF(b, ref image, 255f);
+            GenerateMSDF(g, ref image, 255f);
 
             image.Save("C:\\Users\\gmgyt\\Desktop\\msdf.png");
 
@@ -184,7 +185,7 @@ namespace ArctisAurora.EngineWork
             throw new Exception($"Glyph for '{character}' not found!");
         }
 
-        private static Bezier GetGlyphOutline(ushort glyphIndex, BinaryReader reader, TableEntry[] tables, uint[] glyphOffsets)
+        private static Glyph GetGlyphOutline(ushort glyphIndex, BinaryReader reader, TableEntry[] tables, uint[] glyphOffsets)
         {
             var glyfTable = tables.First(t => t.name == "glyf"); // "glyf"
             uint start = glyphOffsets[glyphIndex];
@@ -221,89 +222,133 @@ namespace ArctisAurora.EngineWork
 
             // --- Read Flags and Coordinates ---
             byte[] flags = new byte[pointCount];
-            Bezier bezier = new Bezier();
+            Glyph glyph = new Glyph();
 
             // Read flags
-            for (int i = 0; i < pointCount; i++)
+            int offset = 0;
+            for (int con = 0; con < numContours; con++)
             {
-                flags[i] = reader.ReadByte();
-                bezier.points.Add(new Bezier.Point());
-                bezier.points[i].SetAnchor((flags[i] & 0x01) != 0); // Bit 0 = on-curve
-                if ((flags[i] & 0x08) != 0)
+                Bezier bezier = new Bezier();
+                ushort endPoint = (ushort)(endPts[con] + 1);
+                for (int i = offset; i < endPoint; i++)
                 {
-                    uint repeater = reader.ReadByte();
-                    for (int j = 1; j <= repeater; j++)
+                    flags[i] = reader.ReadByte();
+                    bezier.points.Add(new Bezier.Point());
+                    bezier.points[i - offset].SetAnchor((flags[i] & 0x01) != 0); // Bit 0 = on-curve
+                    if ((flags[i] & 0x08) != 0)
                     {
-                        flags[i + j] = flags[i];
-                        bezier.points.Add(new Bezier.Point());
-                        bezier.points[i + j].SetAnchor(bezier.points[i].isAnchor);
+                        uint repeater = reader.ReadByte();
+                        for (int j = 1; j <= repeater; j++)
+                        {
+                            flags[i + j] = flags[i];
+                            bezier.points.Add(new Bezier.Point());
+                            bezier.points[i + j - offset].SetAnchor(bezier.points[i - offset].isAnchor);
+                        }
+                        i += (int)repeater;
                     }
-                    i += (int)repeater;
                 }
+                offset = endPoint;
+                glyph.contours.Add(bezier);
             }
 
             // Read X coordinates
             short x = 0;
-            for (int i = 0; i < pointCount; i++)
+            int flagIndex = 0;
+            for (int j = 0; j < numContours; j++)
             {
-                if ((flags[i] & 0x02) != 0) // X-byte delta
+                Bezier bezier = glyph.contours[j];
+                for (int i = 0; i < bezier.points.Count; i++)
                 {
-                    byte delta =  reader.ReadByte();
-                    x += ((flags[i] & 0x10) != 0) ? delta : (short)-delta;
+                    if ((flags[flagIndex] & 0x02) != 0) // X-byte delta
+                    {
+                        byte delta = reader.ReadByte();
+                        x += ((flags[flagIndex] & 0x10) != 0) ? delta : (short)-delta;
+                    }
+                    else if ((flags[flagIndex] & 0x10) == 0) // X-word delta
+                    {
+                        x += ReadInt16BE(reader);
+                    }
+                    bezier.points[i].SetX((float)x / xMax);
+                    flagIndex++;
                 }
-                else if ((flags[i] & 0x10) == 0) // X-word delta
-                {
-                    x += ReadInt16BE(reader);
-                }
-                bezier.points[i].SetX((float)x/xMax);
             }
 
             // Read Y coordinates
             short y = 0;
-            for (int i = 0; i < pointCount; i++)
+            flagIndex = 0;
+            for (int j = 0; j < numContours; j++)
             {
-                if ((flags[i] & 0x04) != 0) // Y-byte delta
+                Bezier bezier = glyph.contours[j];
+                for (int i = 0; i < bezier.points.Count; i++)
                 {
-                    byte delta = reader.ReadByte();
-                    y += ((flags[i] & 0x20) != 0) ? delta : (short)-delta;
+                    if ((flags[flagIndex] & 0x04) != 0) // Y-byte delta
+                    {
+                        byte delta = reader.ReadByte();
+                        y += ((flags[flagIndex] & 0x20) != 0) ? delta : (short)-delta;
+                    }
+                    else if ((flags[flagIndex] & 0x20) == 0) // Y-word delta
+                    {
+                        y += ReadInt16BE(reader);
+                    }
+                    bezier.points[i].SetY((float)y / yMax);
+                    flagIndex++;
                 }
-                else if ((flags[i] & 0x20) == 0) // Y-word delta
-                {
-                    y += ReadInt16BE(reader);
-                }
-                bezier.points[i].SetY((float)y / yMax);
             }
 
-            //SubdivideEdges(bezier.points, 3);
+            for (numContours = 0; numContours < glyph.contours.Count; numContours++)
+            {
+                for(int i = 0; i < glyph.contours[numContours].points.Count; i++)
+                {
+                    Vector2D<float> pos = glyph.contours[numContours].points[i].pos;
+                    Console.WriteLine($"Point {i} in contour {numContours}: ({pos.X}, {pos.Y})");
+                }
+            }
+
+            for (int i = 0; i < glyph.contours.Count; i++)
+            {
+                SubdivideEdges(glyph.contours[i].points, 4);
+                //Console.WriteLine($"Contour {i} has {glyph.contours[i].points.Count} points.");
+            }
 
             // set edge colors
             int colorindex = 0;
-            for (int i = 0; i < pointCount; i++)
+            for (int j = 0; j < numContours; j++)
             {
-                Vector2D<float> p1 = bezier.points[i].pos;
-                Vector2D<float> p2 = bezier.points[(i + 1) % pointCount].pos;
-                Vector2D<float> p3 = bezier.points[(i + 2) % pointCount].pos;
+                Bezier b = glyph.contours[j];
+                int localCount = b.points.Count;
+                for (int i = 0; i < localCount; i++)
+                {
+                    Vector2D<float> p1 = b.points[i].pos;
+                    Vector2D<float> p2 = b.points[(i + 1) % localCount].pos;
+                    Vector2D<float> p3 = b.points[(i + 2) % localCount].pos;
 
-                float direction = CalcVectorAngle(p1, p2, p3);
-                if (direction < 0)
-                {
-                    colorindex++;
+                    float direction = CalcVectorAngle(p1, p2, p3);
+                    if (direction < 0)
+                    {
+                        colorindex++;
+                    }
+                    switch (colorindex % 3)
+                    {
+                        case 0:
+                            glyph.contours[j].points[i].color = new Vector3D<int>(1, 1, 0);
+                            break;
+                        case 1:
+                            glyph.contours[j].points[i].color = new Vector3D<int>(0, 1, 1);
+                            break;
+                        case 2:
+                            glyph.contours[j].points[i].color = new Vector3D<int>(1, 0, 1);
+                            break;
+                    }
                 }
-                switch(colorindex % 3)
+                colorindex++;
+                bool isOfColor = b.points[0].color == b.points[localCount - 1].color;
+                if (isOfColor)
                 {
-                    case 0:
-                        bezier.points[i].color = new Vector3D<int>(1,1,0);
-                        break;
-                    case 1:
-                        bezier.points[i].color = new Vector3D<int>(0,1,1);
-                        break;
-                    case 2:
-                        bezier.points[i].color = new Vector3D<int>(1,0,1);
-                        break;
+                    b.points[localCount - 1].color = new Vector3D<int>(0, 1, 1);
                 }
             }
-            Console.WriteLine(colorindex);
-            return bezier;
+
+            return glyph;
         }
 
         private static short ReadInt16BE(BinaryReader reader) =>
@@ -315,7 +360,7 @@ namespace ArctisAurora.EngineWork
         private static uint ReadUInt32BE(BinaryReader reader) =>
             BitConverter.ToUInt32(reader.ReadBytes(4).Reverse().ToArray(), 0);
 
-        private static void GenerateMSDF(Bezier b, ref Image<Rgba32> image, float distanceFactor)
+        private static void GenerateMSDF(Glyph g, ref Image<Rgba32> image, float distanceFactor)
         {
             int width = image.Width;
             int height = image.Height;
@@ -325,14 +370,14 @@ namespace ArctisAurora.EngineWork
             {
                 for (int y = 0; y < height; y++)
                 {
-                    if (x == 33 && y == 56)
+                    if (x == 73 && y == 62)
                     {
                         Console.WriteLine($"Found pixel at {x}, {y}");
                     }
                     Vector2D<float> p = new Vector2D<float>((x + 0.5f) / width, (y + 0.5f) / height);
-                    float redDist = Math.Clamp(GetClosestDistance(p, b, new Vector3D<int>(1, 0, 0)) * distanceFactor, -1 , 1);
-                    float greenDist = Math.Clamp(GetClosestDistance(p, b, new Vector3D<int>(0, 1, 0)) * distanceFactor, -1, 1);
-                    float blueDist = Math.Clamp(GetClosestDistance(p, b, new Vector3D<int>(0, 0, 1)) * distanceFactor, -1, 1);
+                    float redDist = Math.Clamp(GetClosestDistance(p, g, new Vector3D<int>(1, 0, 0)) * distanceFactor, -1 , 1);
+                    float greenDist = Math.Clamp(GetClosestDistance(p, g, new Vector3D<int>(0, 1, 0)) * distanceFactor, -1, 1);
+                    float blueDist = Math.Clamp(GetClosestDistance(p, g, new Vector3D<int>(0, 0, 1)) * distanceFactor, -1, 1);
 
                     redDist = redDist * 0.5f + 0.5f;
                     greenDist = greenDist * 0.5f + 0.5f;
@@ -340,7 +385,6 @@ namespace ArctisAurora.EngineWork
             
             
                     image[x, y] = new Rgba32(redDist, greenDist, blueDist, 1f);
-                    //image[x, height - y - 1] = new Rgba32(redDist, greenDist, blueDist, 1f);
                 }
             }
         }
@@ -355,8 +399,6 @@ namespace ArctisAurora.EngineWork
                 Vector2D<float> p1 = original[i].pos;
                 Vector2D<float> p2 = original[(i + 1) % original.Count].pos;
 
-                //points.Add(original[i]);
-
                 Vector2D<float> segementLength = (p2 - p1) / count;
 
                 for (int j = 0; j < count; j++)
@@ -367,34 +409,41 @@ namespace ArctisAurora.EngineWork
             }
         }
 
-        private static float GetClosestDistance(Vector2D<float> p, Bezier bezier, Vector3D<int> channel)
+        private static float GetClosestDistance(Vector2D<float> p, Glyph glyph, Vector3D<int> channel)
         {
             float minDist = float.MaxValue;
+            int pointIndex = 0;
             int index = 0;
-            for (int i = 0; i < bezier.points.Count; i++)
+            for (int contour = 0; contour < glyph.contours.Count; contour++)
             {
-                Bezier.Point p0 = bezier.points[i];
-                if ((p0.color * channel) == Vector3D<int>.Zero)
+                Bezier bezier = glyph.contours[contour];
+                for (int j = 0; j < bezier.points.Count; j++)
                 {
-                    continue;
-                }
+                    Bezier.Point p0 = bezier.points[j];
+                    if ((p0.color * channel) == Vector3D<int>.Zero)
+                    {
+                        continue;
+                    }
 
-                Bezier.Point p1 = bezier.points[(i + 1) % bezier.points.Count];
+                    Bezier.Point p1 = bezier.points[(j + 1) % bezier.points.Count];
 
-                Vector2D<float> a = new Vector2D<float>(p0.pos.X, p0.pos.Y);
-                Vector2D<float> b = new Vector2D<float>(p1.pos.X, p1.pos.Y);
+                    Vector2D<float> vec1 = new Vector2D<float>(p0.pos.X, p0.pos.Y);
+                    Vector2D<float> vec2 = new Vector2D<float>(p1.pos.X, p1.pos.Y);
 
-                float dist = DistanceToLineSegment(p, a, b);
-                if (dist < minDist)
-                {
-                    minDist = dist;
-                    index = i;
+                    float dist = DistanceToLineSegment(p, vec1, vec2);
+                    if (dist < minDist)
+                    {
+                        minDist = dist;
+                        pointIndex = j;
+                        index = contour;
+                    }
                 }
             }
 
             // do orthagonality check
-            Vector2D<float> op0 = bezier.points[index].pos;
-            Vector2D<float> op1 = bezier.points[(index + 1) % bezier.points.Count].pos;
+            Bezier b = glyph.contours[index];
+            Vector2D<float> op0 = b.points[pointIndex].pos;
+            Vector2D<float> op1 = b.points[(pointIndex + 1) % b.points.Count].pos;
             Vector2D<float> op2;
             
             bool isOrthogonal = true;
@@ -403,24 +452,28 @@ namespace ArctisAurora.EngineWork
             float d2 = Vector2D.Distance(op1, p);
             if (d1 == minDist)
             {
-                op2 = bezier.points[(index - 1 + bezier.points.Count) % bezier.points.Count].pos;
+                Bezier.Point prevPoint = b.points[(pointIndex - 1 + b.points.Count) % b.points.Count];
+                op2 = prevPoint.pos;
                 isOrthogonal = IsOrthagonalToE1(op1, op0, op2, p);
-                if (!isOrthogonal)
+                bool isOfColor = prevPoint.color * channel != Vector3D<int>.Zero;
+                if (!isOrthogonal && isOfColor)
                 {
-                    index = (index - 1 + bezier.points.Count) % bezier.points.Count;
+                    pointIndex = (pointIndex - 1 + b.points.Count) % b.points.Count;
                 }
             }
             else if(d2 == minDist)
             {
-                op2 = bezier.points[(index + 2) % bezier.points.Count].pos;
+                Bezier.Point nextPoint = b.points[(pointIndex + 2) % b.points.Count];
+                op2 = nextPoint.pos;
                 isOrthogonal = IsOrthagonalToE1(op0, op1, op2, p);
-                if (!isOrthogonal)
+                bool isOfColor = nextPoint.color * channel != Vector3D<int>.Zero;
+                if (!isOrthogonal && isOfColor)
                 {
-                    index = (index + 1) % bezier.points.Count;
+                    pointIndex = (pointIndex + 1) % b.points.Count;
                 }
             }
 
-            if (!IsRightOfSegement(p, bezier.points[index].pos, bezier.points[(index + 1) % bezier.points.Count].pos))
+            if (!IsRightOfSegement(p, b.points[pointIndex].pos, b.points[(pointIndex + 1) % b.points.Count].pos))
             {
                 minDist = -minDist;
             }
@@ -433,10 +486,14 @@ namespace ArctisAurora.EngineWork
             Vector2D<float> ab = b - a;
             Vector2D<float> bc = b - c;
 
-            Vector2D<float> bd = d - b;
+            Vector2D<float> bd = b - d;
 
-            float dotA = MathF.Abs(Vector2D.Dot(ab, bd));
-            float dotB = MathF.Abs(Vector2D.Dot(bc, bd));
+            Vector2D<float> abNorm = Vector2D.Normalize(ab);
+            Vector2D<float> bcNorm = Vector2D.Normalize(bc);
+            Vector2D<float> bdNorm = Vector2D.Normalize(bd);
+
+            float dotA = MathF.Abs(Vector2D.Dot(abNorm, bdNorm));
+            float dotB = MathF.Abs(Vector2D.Dot(bcNorm, bdNorm));
 
             //Console.WriteLine($"Angle A: {angleA}, Angle B: {angleB}, k1: {k1}, k2: {k2}");
 

@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Silk.NET.Maths;
+﻿using Silk.NET.Maths;
 
 namespace ArctisAurora.EngineWork.Renderer.UI
 {
@@ -65,11 +60,6 @@ namespace ArctisAurora.EngineWork.Renderer.UI
             this.points = points;
         }
 
-        /*internal Bezier(int listLength)
-        {
-            this.points = points;
-        }*/
-
         internal void AddPoint(Point p)
         {
             points.Add(p);
@@ -89,19 +79,6 @@ namespace ArctisAurora.EngineWork.Renderer.UI
         internal void Clear()
         {
             points.Clear();
-        }
-
-        internal void Test()
-        {
-            Point p1 = new Point(new Vector2D<float>(0.5f, 0.0f), true);
-            Point p2 = new Point(new Vector2D<float>(1.0f, 0.5f), true);
-            Point p3 = new Point(new Vector2D<float>(0.5f, 1.0f), true);
-            Point p4 = new Point(new Vector2D<float>(0.0f, 0.5f), true);
-
-            points.Add(p1);
-            points.Add(p2);
-            points.Add(p3);
-            points.Add(p4);
         }
     }
 }
