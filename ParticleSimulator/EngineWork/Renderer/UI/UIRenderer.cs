@@ -1,17 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Runtime.CompilerServices;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Renderer.Helpers;
 using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
-using ArctisAurora.EngineWork.Renderer.RendererTypes;
 using ArctisAurora.GameObject;
+using Silk.NET.Maths;
 using Silk.NET.Vulkan;
-using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Renderer.UI
 {
@@ -24,10 +17,15 @@ namespace ArctisAurora.EngineWork.Renderer.UI
         };
         private Framebuffer[] _frameBuffer;
         //-------------------------------------
+        internal static Vector2D<float> unitsPerPixel;
+
 
         public UIRenderer()
         {
             Setup();
+            // calc world units per pixel   
+            unitsPerPixel = AuroraCamera.GetPixelSizeInWorldSpace(-1, 1, -1, 1, (int)_extent.Width, (int)_extent.Height);
+
             //getting the render queues ready
             int _graphicsQFamilyIndex = AVulkanHelper.FindQueueFamilyIndex(ref _gpu, ref _qfm, QueueFlags.GraphicsBit);
             uint _presentSupportIndex = AVulkanHelper.FindPresentSupportIndex(ref _qfm, ref _glWindow._driverSurface, ref _glWindow._surface);
@@ -75,10 +73,10 @@ namespace ArctisAurora.EngineWork.Renderer.UI
         {
             base.AddEntityToRenderQueue(_m);
             CreateDescriptorPool();
-            /*for (int i = 0; i < _entitiesToRender.Count; i++)
+            for (int i = 0; i < _entitiesToRender.Count; i++)
             {
                 _entitiesToRender[i].GetComponent<MeshComponent>().ReinstantiateDesriptorSets();
-            }*/
+            }
             CreateGlobalDescriptorSets();
             RecreateCommandBuffers();
         }

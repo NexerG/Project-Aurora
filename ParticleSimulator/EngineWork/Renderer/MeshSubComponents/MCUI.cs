@@ -1,5 +1,8 @@
-﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+﻿using ArctisAurora.CustomEntities;
+using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Renderer.Helpers;
+using ArctisAurora.EngineWork.Renderer.UI;
+using ArctisAurora.EngineWork.Serialization;
 using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
@@ -16,23 +19,25 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
         internal Sampler textureSampler;
         internal SixLabors.ImageSharp.Image<Rgba32> image;
 
+        // glyph data
+        internal Glyph glyph;
+
         internal MCUI()
         {
-            AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
-            AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
-
-            //CreateCircleSDF(128, 128, 50, 4f);
-            image = AssetImporter.ImportFont("Arial.ttf");
-            //image = AssetImporter.TestLetterA();
-            //SixLabors.ImageSharp.Image testImage = AssetImporter.ImportFont();
-
-            AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image, Format.R8G8B8A8Srgb);
-            AVulkanBufferHandler.CreateImageView(ref _textureImage, ref _textureImageView, Format.R8G8B8A8Srgb);
-            CreateSampler();
         }
 
         public override void OnStart()
         {
+            AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
+            AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
+
+            char glyphChar = ((GlyphEntity)parent).character;
+            image = AssetImporter.ImportFont(out glyph, glyphChar);
+
+            AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image, Format.R8G8B8A8Srgb);
+            AVulkanBufferHandler.CreateImageView(ref _textureImage, ref _textureImageView, Format.R8G8B8A8Srgb);
+            CreateSampler();
+            
             base.OnStart();
             CreateDescriptorSet();
         }
@@ -58,6 +63,10 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 
         internal override void SingletonMatrix()
         {
+            if(glyph != null)
+            {
+                parent.transform.SetWorldScale(new Vector3D<float>(1, glyph.glyphHeight, glyph.glyphWidth));
+            }
             base.SingletonMatrix();
 
             Matrix4X4<float>[] _mats = _transformMatrices.ToArray();

@@ -1,37 +1,77 @@
 ﻿using ArctisAurora.EngineWork.Renderer.UI;
 using Silk.NET.Maths;
-using Silk.NET.Vulkan;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using Windows.ApplicationModel.VoiceCommands;
-using Image = SixLabors.ImageSharp.Image;
+using System.Runtime.InteropServices;
+using Windows.Devices.Bluetooth.Advertisement;
+using static ArctisAurora.EngineWork.Renderer.UI.AuroraFont;
+using AuroraFont = ArctisAurora.EngineWork.Renderer.UI.AuroraFont;
 
-namespace ArctisAurora.EngineWork
+namespace ArctisAurora.EngineWork.Serialization
 {
-    internal unsafe class AssetImporter
+    internal unsafe static class AssetImporter
     {
-        public struct OffsetTable
+        internal static void ImportFont(string characters, string fontName)
         {
-            public uint version;
-            public ushort tableCount;
+            var fs = new FileStream("C:\\Windows\\Fonts\\" + fontName, FileMode.Open, FileAccess.Read);
+            var reader = new BinaryReader(fs);
+
+            AuroraFont font = new AuroraFont();
+
+            font.offsetTable = new OffsetTable
+            {
+                version = ReadUInt32BE(reader),  // Big-endian
+                tableCount = ReadUInt16BE(reader)
+            };
+
+            // Skip other fields (searchRange, entrySelector, rangeShift)
+            fs.Position += 6;
+            font.tableEntries = new TableEntry[font.offsetTable.tableCount];
+            for (int i = 0; i < font.offsetTable.tableCount; i++)
+            {
+                font.tableEntries[i] = new TableEntry
+                {
+                    name = new string(reader.ReadChars(4)),
+                    checksum = ReadUInt32BE(reader),
+                    offset = ReadUInt32BE(reader),
+                    length = ReadUInt32BE(reader)
+                };
+            }
+
+            string baseName = fontName.Split('.')[0];
+            string path = Paths.FONTS + $"\\{baseName}\\{baseName}" + ".auroraFont";
+
+            Serializer.Serialize(font, path);
+
+            /*if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+            }
+
+            using FileStream stream = new FileStream(path, FileMode.Create, FileAccess.ReadWrite);
+            using BinaryWriter writer = new BinaryWriter(stream);
+            
+            writer.Write(font.offsetTable.version);
+            writer.Write(font.offsetTable.tableCount);
+
+            for(int i = 0; i < font.offsetTable.tableCount; i++)
+            {
+                writer.Write(font.tableEntries[i].name.ToCharArray());
+                writer.Write(font.tableEntries[i].checksum);
+                writer.Write(font.tableEntries[i].offset);
+                writer.Write(font.tableEntries[i].length);
+            }
+
+            writer.Close();*/
         }
 
-        public struct TableEntry
-        {
-            public string name;
-            public uint checksum;
-            public uint offset;
-            public uint length;
-        }
+        //internal static Image<Rgba32> GenerateGlyphAtlas(string characters, string fontName = "arial.ttf")
+        //{
+        //    Glyph glyph;
+        //    return ImportFont(out glyph, letter, fontName);
+        //}
 
-        internal static Image<Rgba32> TestLetterA()
-        {
-            Image<Rgba32> image = Image.Load<Rgba32>("C:\\Users\\gmgyt\\Downloads\\testas.png");
-
-            return image;
-        }
-
-        internal static Image<Rgba32> ImportFont(string fontName = "arial.ttf")
+        internal static Image<Rgba32> ImportFont(out Glyph glyph, char letter, string fontName = "arial.ttf")
         {
             var fs = new FileStream("C:\\Windows\\Fonts\\" + fontName, FileMode.Open, FileAccess.Read);
             var reader = new BinaryReader(fs);
@@ -56,11 +96,11 @@ namespace ArctisAurora.EngineWork
                 };
             }
 
-            Console.WriteLine($"Found {offsetTable.tableCount} of tables");
-            for (int i = 0; i < offsetTable.tableCount; i++)
-            {
-                Console.WriteLine($"    TN: {tables[i].name} @loc {tables[i].offset}");
-            }
+            //Console.WriteLine($"Found {offsetTable.tableCount} of tables");
+            //for (int i = 0; i < offsetTable.tableCount; i++)
+            //{
+            //    Console.WriteLine($"    TN: {tables[i].name} @loc {tables[i].offset}");
+            //}
 
             uint glyphCount = 0;
             foreach (var entry in tables)
@@ -92,12 +132,12 @@ namespace ArctisAurora.EngineWork
                     glyphOffsets[i] = ReadUInt32BE(reader); // 32-bit
             }
 
-            char targetChar = 'K';
+            char targetChar = letter;
             ushort charIndex = GetGlyphIndex(targetChar, reader, tables);
-            Glyph g = GetGlyphOutline(charIndex, reader, tables, glyphOffsets);
+            glyph = GetGlyphOutline(charIndex, reader, tables, glyphOffsets);
 
             Image<Rgba32> image = new Image<Rgba32>(128, 128);
-            GenerateMSDF(g, ref image, 255f);
+            GenerateMSDF(glyph, ref image, 255f);
 
             image.Save("C:\\Users\\gmgyt\\Desktop\\msdf.png");
 
@@ -192,7 +232,7 @@ namespace ArctisAurora.EngineWork
             uint end = glyphOffsets[glyphIndex + 1];
 
             if (start == end)
-                return null; // Empty glyph (e.g., space)
+                return null;
 
             reader.BaseStream.Position = glyfTable.offset + start;
 
@@ -201,13 +241,16 @@ namespace ArctisAurora.EngineWork
             if (numContours <= 0)
                 return null; // Skip composite/empty glyphs
 
+            Glyph glyph = new Glyph();
             short xMin = ReadInt16BE(reader);
             short yMin = ReadInt16BE(reader);
             short xMax = ReadInt16BE(reader);
             short yMax = ReadInt16BE(reader);
 
-            float xK = xMax - xMin;
-            float yK = yMax - yMin;
+            glyph.SetParams(xMin, xMax, yMin, yMax, 2048);
+
+            short xK = (short)(xMax - xMin);
+            short yK = (short)(yMax - yMin);
 
             // --- Read Contour End Points ---
             ushort[] endPts = new ushort[numContours];
@@ -222,7 +265,6 @@ namespace ArctisAurora.EngineWork
 
             // --- Read Flags and Coordinates ---
             byte[] flags = new byte[pointCount];
-            Glyph glyph = new Glyph();
 
             // Read flags
             int offset = 0;
@@ -252,7 +294,7 @@ namespace ArctisAurora.EngineWork
             }
 
             // Read X coordinates
-            short x = 0;
+            short x = (short)-xMin;
             int flagIndex = 0;
             for (int j = 0; j < numContours; j++)
             {
@@ -262,19 +304,19 @@ namespace ArctisAurora.EngineWork
                     if ((flags[flagIndex] & 0x02) != 0) // X-byte delta
                     {
                         byte delta = reader.ReadByte();
-                        x += ((flags[flagIndex] & 0x10) != 0) ? delta : (short)-delta;
+                        x += (flags[flagIndex] & 0x10) != 0 ? delta : (short)-delta;
                     }
                     else if ((flags[flagIndex] & 0x10) == 0) // X-word delta
                     {
                         x += ReadInt16BE(reader);
                     }
-                    bezier.points[i].SetX((float)x / xMax);
+                    bezier.points[i].SetX((float)x / xK);
                     flagIndex++;
                 }
             }
 
             // Read Y coordinates
-            short y = 0;
+            short y = (short)-yMin;
             flagIndex = 0;
             for (int j = 0; j < numContours; j++)
             {
@@ -284,25 +326,25 @@ namespace ArctisAurora.EngineWork
                     if ((flags[flagIndex] & 0x04) != 0) // Y-byte delta
                     {
                         byte delta = reader.ReadByte();
-                        y += ((flags[flagIndex] & 0x20) != 0) ? delta : (short)-delta;
+                        y += (flags[flagIndex] & 0x20) != 0 ? delta : (short)-delta;
                     }
                     else if ((flags[flagIndex] & 0x20) == 0) // Y-word delta
                     {
                         y += ReadInt16BE(reader);
                     }
-                    bezier.points[i].SetY((float)y / yMax);
+                    bezier.points[i].SetY((float)y / yK);
                     flagIndex++;
                 }
             }
 
-            for (numContours = 0; numContours < glyph.contours.Count; numContours++)
-            {
-                for(int i = 0; i < glyph.contours[numContours].points.Count; i++)
-                {
-                    Vector2D<float> pos = glyph.contours[numContours].points[i].pos;
-                    Console.WriteLine($"Point {i} in contour {numContours}: ({pos.X}, {pos.Y})");
-                }
-            }
+            //for (numContours = 0; numContours < glyph.contours.Count; numContours++)
+            //{
+            //    for(int i = 0; i < glyph.contours[numContours].points.Count; i++)
+            //    {
+            //        Vector2D<float> pos = glyph.contours[numContours].points[i].pos;
+            //        Console.WriteLine($"Point {i} in contour {numContours}: ({pos.X}, {pos.Y})");
+            //    }
+            //}
 
             for (int i = 0; i < glyph.contours.Count; i++)
             {
@@ -370,10 +412,6 @@ namespace ArctisAurora.EngineWork
             {
                 for (int y = 0; y < height; y++)
                 {
-                    if (x == 73 && y == 62)
-                    {
-                        Console.WriteLine($"Found pixel at {x}, {y}");
-                    }
                     Vector2D<float> p = new Vector2D<float>((x + 0.5f) / width, (y + 0.5f) / height);
                     float redDist = Math.Clamp(GetClosestDistance(p, g, new Vector3D<int>(1, 0, 0)) * distanceFactor, -1 , 1);
                     float greenDist = Math.Clamp(GetClosestDistance(p, g, new Vector3D<int>(0, 1, 0)) * distanceFactor, -1, 1);
@@ -420,7 +458,7 @@ namespace ArctisAurora.EngineWork
                 for (int j = 0; j < bezier.points.Count; j++)
                 {
                     Bezier.Point p0 = bezier.points[j];
-                    if ((p0.color * channel) == Vector3D<int>.Zero)
+                    if (p0.color * channel == Vector3D<int>.Zero)
                     {
                         continue;
                     }

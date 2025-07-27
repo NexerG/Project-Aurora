@@ -18,7 +18,8 @@ void main()
     vec3 msdf = texture(textures[fragInstanceID], fragUV).rgb;
     float sd = median(msdf.r, msdf.g, msdf.b) - 0.5f;
     float screenPxRange = fwidth(sd);
-    float opacity = smoothstep(-screenPxRange, screenPxRange, sd);
+    float opacity = clamp(sd / screenPxRange + 0.5f, 0.0f, 1.0f);
+    //float opacity = smoothstep(-screenPxRange, screenPxRange, sd);
 
     outColor = vec4(vec3(1.0f), opacity);
 }

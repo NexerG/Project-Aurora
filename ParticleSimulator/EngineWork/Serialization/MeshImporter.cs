@@ -1,6 +1,6 @@
 ﻿using Assimp;
 
-namespace ArctisAurora.EngineWork
+namespace ArctisAurora.EngineWork.Serialization
 {
     internal class MeshImporter
     {

@@ -27,7 +27,7 @@ namespace ArctisAurora.CustomEntities
         {
             base.OnTick();
             //if(transform.position.Y < 200.0f)
-            transform.SetWorldPosition(new Vector3D<float>(transform.position.X, transform.position.Y, transform.position.Z));
+            //transform.SetWorldPosition(new Vector3D<float>(transform.position.X, transform.position.Y, transform.position.Z));
         }
 
         public void ChangeColor(Vector3D<float> color)

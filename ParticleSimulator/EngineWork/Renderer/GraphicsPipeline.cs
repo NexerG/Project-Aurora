@@ -112,8 +112,8 @@ namespace ArctisAurora.EngineWork.Renderer
                 {
                     ColorWriteMask = ColorComponentFlags.RBit | ColorComponentFlags.GBit | ColorComponentFlags.BBit | ColorComponentFlags.ABit,
                     BlendEnable = true,
-                    //SrcAlphaBlendFactor = BlendFactor.SrcAlpha,
-                    //DstColorBlendFactor = BlendFactor.OneMinusSrcAlpha,
+                    SrcAlphaBlendFactor = BlendFactor.SrcAlpha,
+                    DstColorBlendFactor = BlendFactor.OneMinusSrcAlpha,
 
                     ColorBlendOp = BlendOp.Add,
                     SrcColorBlendFactor = BlendFactor.SrcAlpha,

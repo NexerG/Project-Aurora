@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.EngineWork.Renderer.Helpers;
 using ArctisAurora.EngineWork.Renderer.UI;
+using Microsoft.VisualBasic.Logging;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
@@ -74,7 +75,9 @@ namespace ArctisAurora.EngineWork.Renderer
 
                 case ERendererTypes.UITemp:
                     _view = Matrix4X4.CreateLookAt(Vector3D<float>.Zero, _front, Vector3D<float>.UnitY);
-                    _projection = Matrix4X4.CreateOrthographic(1280, 720, 0.01f, 512f);
+                    float horizontalHalf = _extent.Width / 2;
+                    float verticalHalf = _extent.Height / 2;
+                    _projection = Matrix4X4.CreateOrthographicOffCenter(-horizontalHalf, horizontalHalf, -verticalHalf, verticalHalf, 0.01f, 512f);
                     break;
                 default:
                     break;
@@ -167,6 +170,17 @@ namespace ArctisAurora.EngineWork.Renderer
                 return top;
             else
                 return toClamp;
+        }
+
+        internal static Vector2D<float> GetPixelSizeInWorldSpace(float left, float right, float bot, float top, int screenWidth, int screenHeight)
+        {
+            float worldWidth = right - left;
+            float worldHeight = top - bot;
+
+            float pixelWidth = worldWidth / screenWidth;
+            float pixelHeight = worldHeight / screenHeight;
+
+            return new Vector2D<float>(pixelWidth, pixelHeight);
         }
     }
 }

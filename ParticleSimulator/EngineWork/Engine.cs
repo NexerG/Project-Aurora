@@ -6,11 +6,24 @@ using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using Assimp;
 using ArctisAurora.EngineWork.Renderer.Helpers;
 using Silk.NET.Vulkan;
+using ArctisAurora.EngineWork.Serialization;
 
 namespace ArctisAurora.EngineWork
 {
     public class Engine
     {
+        public static bool isDebug
+        {
+            get
+            {
+#if DEBUG
+                return true;
+#else
+                    return false;
+#endif
+            }
+        }
+
         internal static Engine _engineInstance = null;
         public bool Running { get; private set; }
         internal static DateTime initTime;
@@ -38,10 +51,12 @@ namespace ArctisAurora.EngineWork
 
             ////mesh importer
             MeshImporter importer = new MeshImporter();
-            Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\planeAlongX_ActualPlane.fbx");
+            Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\VienetinisPlane.fbx");
             
             Running = true;
             SC = s;
+
+            AssetImporter.ImportFont("", "arial.ttf");
             //---------------------------------------------------------------------------
             //PHOTO EDITING ENTITY CREATION
 
@@ -58,9 +73,11 @@ namespace ArctisAurora.EngineWork
             _entities.Add(_e);*/
 
             //then we do meshes
-            TestingEntity _te = new TestingEntity(new Vector3D<float>(200, 200, 200), new Vector3D<float>(2, 0, 0));
+            //TestingEntity _te = new TestingEntity(new Vector3D<float>(1, 70, 70), new Vector3D<float>(2, 0, 0));
             //_te.ChangeColor(new Vector3D<float>(0.5f, 0.5f, 0.5f));
-            _te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
+            //_te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
+            TextEntity _te = new TextEntity("ABCD");
+            //_te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
             _entities.Add(_te);
             //TestingEntity _te2 = new TestingEntity(new Vector3D<float>(20, 20, 20), new Vector3D<float>(0, 0, 0));
             //_te2.ChangeColor(new Vector3D<float>(0.05f, 0.5f, 0.247f));
