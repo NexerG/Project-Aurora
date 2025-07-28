@@ -18,7 +18,7 @@ namespace ArctisAurora.EngineWork.Serialization
 
             AuroraFont font = new AuroraFont();
 
-            font.offsetTable = new OffsetTable
+            font.fontMeta = new FontMeta
             {
                 version = ReadUInt32BE(reader),  // Big-endian
                 tableCount = ReadUInt16BE(reader)
@@ -26,8 +26,8 @@ namespace ArctisAurora.EngineWork.Serialization
 
             // Skip other fields (searchRange, entrySelector, rangeShift)
             fs.Position += 6;
-            font.tableEntries = new TableEntry[font.offsetTable.tableCount];
-            for (int i = 0; i < font.offsetTable.tableCount; i++)
+            font.tableEntries = new TableEntry[font.fontMeta.tableCount];
+            for (int i = 0; i < font.fontMeta.tableCount; i++)
             {
                 font.tableEntries[i] = new TableEntry
                 {
@@ -76,7 +76,7 @@ namespace ArctisAurora.EngineWork.Serialization
             var fs = new FileStream("C:\\Windows\\Fonts\\" + fontName, FileMode.Open, FileAccess.Read);
             var reader = new BinaryReader(fs);
 
-            OffsetTable offsetTable = new OffsetTable
+            FontMeta offsetTable = new FontMeta
             {
                 version = ReadUInt32BE(reader),  // Big-endian
                 tableCount = ReadUInt16BE(reader)

@@ -155,7 +155,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                         Height = _extent.Height,
                         Layers = 1
                     };
-                    if (_vulkan.CreateFramebuffer(_logicalDevice, _framebufferInfo, null, out _frameBuffer[i]) != Result.Success)
+                    if (_vulkan.CreateFramebuffer(_logicalDevice, ref _framebufferInfo, null, out _frameBuffer[i]) != Result.Success)
                     {
                         throw new Exception("Failed to create frame buffer");
                     }
@@ -613,7 +613,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 
             fixed (Sampler* _textureSamplerPtr = &_textureSampler)
             {
-                Result r = _vulkan.CreateSampler(_logicalDevice, _createInfo, null, _textureSamplerPtr);
+                Result r = _vulkan.CreateSampler(_logicalDevice, ref _createInfo, null, _textureSamplerPtr);
                 if (r != Result.Success)
                 {
                     throw new Exception("Failed to create a texture sampler with error: " + r);
@@ -642,7 +642,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 
             fixed (Sampler* _textureSamplerPtr = &_shadowmapSampler)
             {
-                Result r = _vulkan.CreateSampler(_logicalDevice, _shadowInfo, null, _textureSamplerPtr);
+                Result r = _vulkan.CreateSampler(_logicalDevice, ref _shadowInfo, null, _textureSamplerPtr);
                 if (r != Result.Success)
                 {
                     throw new Exception("Failed to create a shadowmap sampler with error: " + r);

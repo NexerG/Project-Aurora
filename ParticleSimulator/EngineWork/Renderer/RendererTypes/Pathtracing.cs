@@ -530,7 +530,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             };
 
             //
-            Result r = _accelerationStructure.CreateAccelerationStructure(_logicalDevice, _asCreateInfo, null, out _TLAS._handle);
+            Result r = _accelerationStructure.CreateAccelerationStructure(_logicalDevice, ref _asCreateInfo, null, out _TLAS._handle);
             if (r != Result.Success)
             {
                 throw new Exception("failed to create TLAS on the host");
@@ -565,7 +565,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             };
 
             CommandBuffer _commandBuffer = AVulkanBufferHandler.BeginSingleTimeCommands();
-            _accelerationStructure.CmdBuildAccelerationStructures(_commandBuffer, 1, &_abgInfo, _buildRangeInfos);
+            _accelerationStructure.CmdBuildAccelerationStructures(_commandBuffer, 1, &_abgInfo, ref _buildRangeInfos);
             AVulkanBufferHandler.EndSingleTimeCommands(ref _commandBuffer);
 
             AccelerationStructureDeviceAddressInfoKHR _adaInfo = new AccelerationStructureDeviceAddressInfoKHR()
@@ -573,7 +573,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 SType = StructureType.AccelerationStructureDeviceAddressInfoKhr,
                 AccelerationStructure = _TLAS._handle
             };
-            _TLAS._deviceAddress = _accelerationStructure.GetAccelerationStructureDeviceAddress(_logicalDevice, _adaInfo);
+            _TLAS._deviceAddress = _accelerationStructure.GetAccelerationStructureDeviceAddress(_logicalDevice, ref _adaInfo);
             DeleteScratchBuffer(ref _scratchBuffer);
         }
 
@@ -617,7 +617,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             {
                 SType = StructureType.AccelerationStructureBuildSizesInfoKhr
             };
-            _accelerationStructure.GetAccelerationStructureBuildSizes(_logicalDevice, AccelerationStructureBuildTypeKHR.DeviceKhr, &_asbgInfo, primitive_count, &_asbsInfo);
+            _accelerationStructure.GetAccelerationStructureBuildSizes(_logicalDevice, AccelerationStructureBuildTypeKHR.DeviceKhr, &_asbgInfo, ref primitive_count, &_asbsInfo);
             PathtracingScratchBuffer _scratchBuffer = new PathtracingScratchBuffer();
             CreateScratchBuffer(_asbsInfo.BuildScratchSize, ref _scratchBuffer);
 
@@ -1020,7 +1020,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 PSwapchains = _swapChains,
                 PImageIndices = &_imageIndex
             };
-            r = _swapchain._driverSwapchain.QueuePresent(_presentQueue, _presentInfo);
+            r = _swapchain._driverSwapchain.QueuePresent(_presentQueue, ref _presentInfo);
             if (r == Result.ErrorOutOfDateKhr || r == Result.SuboptimalKhr || _glWindow._frameBufferResized)
             {
                 _glWindow._frameBufferResized = false;
@@ -1130,7 +1130,7 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
             fixed (byte* _shaderCodePtr = _shaderCode)
             {
                 _createInfo.PCode = (uint*)_shaderCodePtr;
-                if (_vulkan.CreateShaderModule(_logicalDevice, _createInfo, null, out _shaderModule) != Result.Success)
+                if (_vulkan.CreateShaderModule(_logicalDevice, ref _createInfo, null, out _shaderModule) != Result.Success)
                 {
                     throw new Exception("Failed to create shader module");
                 }

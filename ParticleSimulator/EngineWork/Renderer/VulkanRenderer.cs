@@ -366,7 +366,7 @@ namespace ArctisAurora.EngineWork.Renderer
             };
             fixed (CommandBuffer* _commandBufferPtr = _commandBuffer)
             {
-                Result r = _vulkan.AllocateCommandBuffers(_logicalDevice, _allocInfo, _commandBufferPtr);
+                Result r = _vulkan.AllocateCommandBuffers(_logicalDevice, ref _allocInfo, _commandBufferPtr);
                 if (r != Result.Success)
                 {
                     throw new Exception("Failed to allocate command buffer with error " + r);

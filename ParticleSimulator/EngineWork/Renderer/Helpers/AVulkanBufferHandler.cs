@@ -139,7 +139,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
                 throw new Exception("unsupported layout transition!");
             }
 
-            VulkanRenderer._vulkan!.CmdPipelineBarrier(_commandBuffer, sourceStage, destinationStage, 0, 0, null, 0, null, 1, _barrier);
+            VulkanRenderer._vulkan!.CmdPipelineBarrier(_commandBuffer, sourceStage, destinationStage, 0, 0, null, 0, null, 1, ref _barrier);
             EndSingleTimeCommands(ref _commandBuffer);
         }
 
@@ -209,7 +209,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             _createInfo.SubresourceRange.BaseArrayLayer = 0;
             _createInfo.SubresourceRange.LayerCount = 1;
 
-            if (VulkanRenderer._vulkan!.CreateImageView(VulkanRenderer._logicalDevice, _createInfo, null, out _imageView) != Result.Success)
+            if (VulkanRenderer._vulkan!.CreateImageView(VulkanRenderer._logicalDevice, ref _createInfo, null, out _imageView) != Result.Success)
             {
                 throw new Exception("failed to create texture image view!");
             }
@@ -358,20 +358,20 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
                 CommandBufferCount = 1
             };
             CommandBuffer _localCommandBuffer;
-            VulkanRenderer._vulkan.AllocateCommandBuffers(VulkanRenderer._logicalDevice, _allocInfo, out _localCommandBuffer);
+            VulkanRenderer._vulkan.AllocateCommandBuffers(VulkanRenderer._logicalDevice, ref _allocInfo, out _localCommandBuffer);
 
             CommandBufferBeginInfo _cBBeginInfo = new CommandBufferBeginInfo()
             {
                 SType = StructureType.CommandBufferBeginInfo,
                 Flags = CommandBufferUsageFlags.OneTimeSubmitBit
             };
-            VulkanRenderer._vulkan.BeginCommandBuffer(_localCommandBuffer, _cBBeginInfo);
+            VulkanRenderer._vulkan.BeginCommandBuffer(_localCommandBuffer, ref _cBBeginInfo);
 
             BufferCopy _copyRegion = new BufferCopy()
             {
                 Size = bufferSize
             };
-            VulkanRenderer._vulkan.CmdCopyBuffer(_localCommandBuffer, _sourceBuffer, _dstBuffer, 1, _copyRegion);
+            VulkanRenderer._vulkan.CmdCopyBuffer(_localCommandBuffer, _sourceBuffer, _dstBuffer, 1, ref _copyRegion);
             VulkanRenderer._vulkan.EndCommandBuffer(_localCommandBuffer);
 
             SubmitInfo _subInfo = new SubmitInfo()
@@ -381,14 +381,14 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
                 PCommandBuffers = &_localCommandBuffer
             };
             Result queue, wait;
-            queue = VulkanRenderer._vulkan.QueueSubmit(VulkanRenderer._graphicsQueue, 1, _subInfo, default);
+            queue = VulkanRenderer._vulkan.QueueSubmit(VulkanRenderer._graphicsQueue, 1, ref _subInfo, default);
             wait = VulkanRenderer._vulkan.QueueWaitIdle(VulkanRenderer._graphicsQueue);
             if (queue != Result.Success && wait != Result.Success)
             {
                 Console.WriteLine("Exception thrown");
                 throw new Exception("failed to submit 'copy buffer' commands");
             }
-            VulkanRenderer._vulkan.FreeCommandBuffers(VulkanRenderer._logicalDevice, VulkanRenderer._commandPool, 1, _localCommandBuffer);
+            VulkanRenderer._vulkan.FreeCommandBuffers(VulkanRenderer._logicalDevice, VulkanRenderer._commandPool, 1, ref _localCommandBuffer);
         }
 
         internal static uint FindMemoryType(uint _typeFilter, MemoryPropertyFlags _properties)
@@ -416,7 +416,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
                 CommandBufferCount = 1,
             };
 
-            VulkanRenderer._vulkan!.AllocateCommandBuffers(VulkanRenderer._logicalDevice, _allocInfo, out CommandBuffer _commandBuffer);
+            VulkanRenderer._vulkan!.AllocateCommandBuffers(VulkanRenderer._logicalDevice, ref _allocInfo, out CommandBuffer _commandBuffer);
 
             CommandBufferBeginInfo beginInfo = new CommandBufferBeginInfo()
             {
@@ -424,7 +424,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
                 Flags = CommandBufferUsageFlags.OneTimeSubmitBit,
             };
 
-            VulkanRenderer._vulkan!.BeginCommandBuffer(_commandBuffer, beginInfo);
+            VulkanRenderer._vulkan!.BeginCommandBuffer(_commandBuffer, ref beginInfo);
 
             return _commandBuffer;
         }

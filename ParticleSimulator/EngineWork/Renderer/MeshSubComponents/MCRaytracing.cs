@@ -138,7 +138,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             uint numTris = (uint)(_mesh._indices.Length / 3);
             AccelerationStructureBuildSizesInfoKHR _asbsInfo = default;
             _asbsInfo.SType = StructureType.AccelerationStructureBuildSizesInfoKhr;
-            _accelerationStructure.GetAccelerationStructureBuildSizes(_logicalDevice, AccelerationStructureBuildTypeKHR.DeviceKhr, &_accelStrGeomInfo, numTris, out _asbsInfo);
+            _accelerationStructure.GetAccelerationStructureBuildSizes(_logicalDevice, AccelerationStructureBuildTypeKHR.DeviceKhr, &_accelStrGeomInfo, ref numTris, out _asbsInfo);
             CreateAccelerationStructureBuffer(ref _BLAS, ref _asbsInfo);
 
             AccelerationStructureCreateInfoKHR _accelerationStructureCreateInfo = new AccelerationStructureCreateInfoKHR()
@@ -234,7 +234,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             AccelerationStructureBuildSizesInfoKHR _asbsInfo = default;
             _asbsInfo.SType = StructureType.AccelerationStructureBuildSizesInfoKhr;
 
-            _accelerationStructure.GetAccelerationStructureBuildSizes(_logicalDevice, AccelerationStructureBuildTypeKHR.DeviceKhr, &_accelStrGeomInfo, numTris, out _asbsInfo);
+            _accelerationStructure.GetAccelerationStructureBuildSizes(_logicalDevice, AccelerationStructureBuildTypeKHR.DeviceKhr, &_accelStrGeomInfo, ref numTris, out _asbsInfo);
             PathtracingScratchBuffer _scratchBuffer = new PathtracingScratchBuffer();
             CreateScratchBuffer(_asbsInfo.BuildScratchSize, ref _scratchBuffer);
 
@@ -272,7 +272,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
                 SType = StructureType.AccelerationStructureDeviceAddressInfoKhr,
                 AccelerationStructure = _BLAS._handle
             };
-            _BLAS._deviceAddress = _accelerationStructure.GetAccelerationStructureDeviceAddress(_logicalDevice, _adaInfo);
+            _BLAS._deviceAddress = _accelerationStructure.GetAccelerationStructureDeviceAddress(_logicalDevice, ref _adaInfo);
             DeleteScratchBuffer(ref _scratchBuffer);
         }
 
@@ -286,7 +286,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             };
             fixed (Buffer* _bufferPtr = &_accelStructure._buffer)
             {
-                _vulkan.CreateBuffer(_logicalDevice, _bufferCreateInfo, null, _bufferPtr);
+                _vulkan.CreateBuffer(_logicalDevice, ref _bufferCreateInfo, null, _bufferPtr);
             }
 
             MemoryRequirements _memReqs = new MemoryRequirements();
@@ -306,7 +306,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 
             fixed (DeviceMemory* _bufferMemoryPtr = &_accelStructure._memory)
             {
-                if (_vulkan.AllocateMemory(_logicalDevice, _memAllocInfo, null, _bufferMemoryPtr) != Result.Success)
+                if (_vulkan.AllocateMemory(_logicalDevice, ref _memAllocInfo, null, _bufferMemoryPtr) != Result.Success)
                 {
                     throw new Exception("Failed to allocate memory");
                 }
