@@ -22,7 +22,6 @@ namespace ArctisAurora.EngineWork.Serialization
 
             string deployRelativePath = Path.Combine(AppContext.BaseDirectory, path);
             return deployRelativePath;
-
         }
     }
 }

@@ -3,6 +3,7 @@ using Silk.NET.Maths;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using System.Runtime.InteropServices;
+using static ArctisAurora.EngineWork.Renderer.UI.AuroraFont;
 
 namespace ArctisAurora.EngineWork.Renderer.UI
 {
@@ -83,45 +84,17 @@ namespace ArctisAurora.EngineWork.Renderer.UI
                 fileStream.Read(characterCount, 0, characterCount.Length);
 
                 GCHandle handleTextData = GCHandle.Alloc(characterCount, GCHandleType.Pinned);
-                textData = Marshal.PtrToStructure<TextData>(handleTextData.AddrOfPinnedObject());
+                textData.characterCount = Marshal.PtrToStructure<int>(handleTextData.AddrOfPinnedObject());
                 handleTextData.Free();
 
                 // Read characters
-                BinaryReader reader = new BinaryReader(fileStream, encoding: System.Text.Encoding.Unicode);
+                BinaryReader reader = new BinaryReader(fileStream, System.Text.Encoding.Unicode);
                 textData.characters = new char[textData.characterCount];
                 for (int i = 0; i < textData.characterCount; i++)
                 {
                     textData.characters[i] = reader.ReadChar();
                 }
             }
-
-            /*using (BinaryReader reader = new BinaryReader(new FileStream(path, FileMode.Open, FileAccess.Read)))
-            {
-                // Read head table info
-                TableEntry headTable = Array.Find(tableEntries, t => t.name == "head");
-                reader.BaseStream.Position =  headTable.offset + 50;
-                headTableInfo = new HeadTableInfo
-                {
-                    indexToLocFormat = AssetImporter.ReadUInt16BE(reader)
-                };
-            }
-
-            // glyph data
-            characters = new Characters();
-            characters.glyphs = new Glyph[textData.characterCount];
-            TableEntry cmap = Array.Find(tableEntries, t => t.name == "cmap");
-            for (int i = 0; i < textData.characterCount; i++)
-            {
-                char character = textData.characters[i];
-                Glyph glyph = new Glyph();
-                using (BinaryReader reader = new BinaryReader(new FileStream(path, FileMode.Open, FileAccess.Read)))
-                {
-                    ushort glyphIndex = GetGlyphIndex(character, reader, cmap);
-
-                    glyph.SetParams(0, 0, 0, 0, 1000); // Placeholder values for xMin, xMax, yMin, yMax and unitsPerEm
-                    characters.glyphs[i] = glyph;
-                }
-            }*/
         }
 
         internal static void GenerateGlyphAtlas(AuroraFont fontData, string fontName, int perGlyphSize)
@@ -152,6 +125,8 @@ namespace ArctisAurora.EngineWork.Renderer.UI
                 TableEntry cmap = fontData.tableEntries.First(t => t.name == "cmap");
                 TableEntry glyf = fontData.tableEntries.First(t => t.name == "glyf");
 
+                glyphs.glyphCount = fontData.textData.characterCount;
+                glyphs.chars = fontData.textData.characters;
                 glyphs.glyphs = new Glyph[fontData.textData.characterCount];
                 for (int i = 0; i < fontData.textData.characterCount; i++)
                 {
@@ -588,20 +563,53 @@ namespace ArctisAurora.EngineWork.Renderer.UI
     [@Serializable]
     public class SerializedGlyphs : IDeserialize
     {
+        public int glyphCount;
+        public char[] chars;
         public Glyph[] glyphs;
+
         public void Deserialize(string path)
         {
-            //using (FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Read))
-            //{
-            //    BinaryReader reader = new BinaryReader(fileStream);
-            //    int count = reader.ReadInt32();
-            //    glyphs = new Glyph[count];
-            //    for (int i = 0; i < count; i++)
-            //    {
-            //        glyphs[i] = new Glyph();
-            //        glyphs[i].Deserialize(reader);
-            //    }
-            //}
+            using (FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Read))
+            {
+                BinaryReader reader = new BinaryReader(fileStream, System.Text.Encoding.Unicode);
+                int count = reader.ReadInt32();
+                chars = new char[count];
+                glyphs = new Glyph[count];
+
+                for(int i=0; i < count; i++)
+                {
+                    chars[i] = reader.ReadChar();
+                }
+
+                // COMMENTED OUT CUZ IT MIGHT HAVE PROBLEMS WITH BEZIER LIST.
+                // DIDNT TEST AND THIS IS NOT PERFORMANCE CRITICAL
+
+                //long offset = sizeof(int) + count * sizeof(char) * 2;
+                //fileStream.Seek(offset, SeekOrigin.Begin);
+
+                //byte[] buffer = new byte[Marshal.SizeOf<>()];
+                //GCHandle handleMeta = GCHandle.Alloc(fontMetaBuffer, GCHandleType.Pinned);
+                //fontMeta = Marshal.PtrToStructure<FontMeta>(handleMeta.AddrOfPinnedObject());
+                //handleMeta.Free();
+
+
+                for(int i = 0; i < count; i++)
+                {
+                    glyphs[i] = new Glyph();
+                    glyphs[i].xMin = (short)reader.ReadInt16();
+                    glyphs[i].yMin = (short)reader.ReadInt16();
+                    glyphs[i].xMax = (short)reader.ReadInt16();
+                    glyphs[i].yMax = (short)reader.ReadInt16();
+                
+                    glyphs[i].scale = reader.ReadSingle();
+                    glyphs[i].glyphWidth = reader.ReadSingle();
+                    glyphs[i].glyphHeight = reader.ReadSingle();
+                    glyphs[i].px = reader.ReadInt32();
+                
+                    glyphs[i].offsetX = reader.ReadSingle();
+                    glyphs[i].offsetY = reader.ReadSingle();
+                }
+            }
         }
     }
 }
