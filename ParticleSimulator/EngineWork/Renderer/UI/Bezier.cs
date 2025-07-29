@@ -1,9 +1,12 @@
-﻿using Silk.NET.Maths;
+﻿using ArctisAurora.EngineWork.Serialization;
+using Silk.NET.Maths;
 
 namespace ArctisAurora.EngineWork.Renderer.UI
 {
+    [@Serializable]
     internal class Bezier
     {
+        [@Serializable]
         internal class Point
         {
             public Vector2D<float> pos = new Vector2D<float>(1,1);

@@ -8,7 +8,6 @@ namespace ArctisAurora.Simulators.Vulkan
     {
         //Frame
         Frame SC;
-        bool simOpenTK = true;
         Vector3D<float> simSize;
         //particles and forces
         List<Force> forces = new List<Force>();

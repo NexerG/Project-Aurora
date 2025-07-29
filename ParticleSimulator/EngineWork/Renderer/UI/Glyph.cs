@@ -1,7 +1,11 @@
-﻿namespace ArctisAurora.EngineWork.Renderer.UI
+﻿using ArctisAurora.EngineWork.Serialization;
+
+namespace ArctisAurora.EngineWork.Renderer.UI
 {
-    internal class Glyph
+    [@Serializable]
+    public class Glyph
     {
+        /*[@Serializable, StructLayout(LayoutKind.Sequential, Pack = 1)]
         struct GlyphData
         {
             public int Unicode;
@@ -9,8 +13,7 @@
             public float AdvanceWidth;
             public float BearingX, BearingY;
             public int AtlasX, AtlasY, Width, Height;
-        }
-
+        }*/
 
         internal short xMin, yMin, xMax, yMax;
         internal float scale;
@@ -18,6 +21,7 @@
         internal float glyphHeight;
         internal int px = 300;
 
+        [NonSerializable]
         internal List<Bezier> contours = new List<Bezier>();
 
         internal float offsetX, offsetY;

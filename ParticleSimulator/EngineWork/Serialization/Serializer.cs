@@ -1,7 +1,5 @@
-﻿using ArctisAurora.EngineWork.Renderer.UI;
-using System.Reflection;
-using System.Runtime.InteropServices;
-using static ArctisAurora.EngineWork.Renderer.UI.AuroraFont;
+﻿using System.Reflection;
+using System.Text.Json.Serialization;
 
 namespace ArctisAurora.EngineWork.Serialization
 {
@@ -30,7 +28,7 @@ namespace ArctisAurora.EngineWork.Serialization
 
         private static void RecursiveSerialize<T>(T obj, BinaryWriter writer)
         {
-            if (obj == null) return;
+            //if (obj == null) return;
 
             Type type = obj.GetType();
             var fields = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
@@ -40,13 +38,18 @@ namespace ArctisAurora.EngineWork.Serialization
                 Type fieldType = field.FieldType;
                 object value = field.GetValue(obj);
 
+                if (field.IsDefined(typeof(NonSerializable), false))
+                {
+                    continue;
+                }
+
                 if (fieldType.IsPrimitive || fieldType == typeof(string))
                 {
                     writer.Write(ConvertToBytes(value));
-                    //Write(value, writer);
                 }
                 else if (fieldType.IsValueType && !fieldType.IsPrimitive)
                 {
+                    //if(fieldType.IsDefined(typeof(Serializable), false))
                     RecursiveSerialize(value, writer); // Recurse into struct
                 }
                 else if (fieldType.IsArray)
@@ -62,7 +65,7 @@ namespace ArctisAurora.EngineWork.Serialization
                 }
                 else if (!fieldType.IsPrimitive && fieldType != typeof(string))
                 {
-                    if (value != null)
+                    if (value != null && fieldType.IsDefined(typeof(Serializable), false))
                         RecursiveSerialize(value, writer);
                 }
             }

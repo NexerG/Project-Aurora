@@ -9,8 +9,6 @@ namespace ArctisAurora.EngineWork.Serialization
     internal static class Paths
     {
         public static readonly string FONTS = GetPath("Data\\Fonts");
-        //"C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Data\Fonts\"
-
 
         private static string GetPath(string path)
         {

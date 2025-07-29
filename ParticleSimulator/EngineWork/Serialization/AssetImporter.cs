@@ -38,31 +38,28 @@ namespace ArctisAurora.EngineWork.Serialization
                 };
             }
 
+            font.textData = new TextData
+            {
+                characterCount = characters.Length,
+                characters = characters.ToCharArray()
+            };
+
+            //font.headTableInfo = new HeadTableInfo();
+            //reader.BaseStream.Position = font.tableEntries.First(t => t.name == "head").offset + 50;
+            //font.headTableInfo.indexToLocFormat = ReadUInt16BE(reader); // 0 = uint16, 1 = uint32
+
             string baseName = fontName.Split('.')[0];
-            string path = Paths.FONTS + $"\\{baseName}\\{baseName}" + ".auroraFont";
+            string path = Paths.FONTS + $"\\{baseName}\\{baseName}" + ".afm";
 
             Serializer.Serialize(font, path);
+            reader.Dispose();
+            reader.Close();
+            fs.Dispose();
+            fs.Close();
 
-            /*if (!Directory.Exists(path))
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(path));
-            }
-
-            using FileStream stream = new FileStream(path, FileMode.Create, FileAccess.ReadWrite);
-            using BinaryWriter writer = new BinaryWriter(stream);
-            
-            writer.Write(font.offsetTable.version);
-            writer.Write(font.offsetTable.tableCount);
-
-            for(int i = 0; i < font.offsetTable.tableCount; i++)
-            {
-                writer.Write(font.tableEntries[i].name.ToCharArray());
-                writer.Write(font.tableEntries[i].checksum);
-                writer.Write(font.tableEntries[i].offset);
-                writer.Write(font.tableEntries[i].length);
-            }
-
-            writer.Close();*/
+            AuroraFont f = new AuroraFont();
+            f.Deserialize(path);
+            AuroraFont.GenerateGlyphAtlas(f, "arial.ttf", 128);
         }
 
         //internal static Image<Rgba32> GenerateGlyphAtlas(string characters, string fontName = "arial.ttf")
@@ -95,12 +92,6 @@ namespace ArctisAurora.EngineWork.Serialization
                     length = ReadUInt32BE(reader)
                 };
             }
-
-            //Console.WriteLine($"Found {offsetTable.tableCount} of tables");
-            //for (int i = 0; i < offsetTable.tableCount; i++)
-            //{
-            //    Console.WriteLine($"    TN: {tables[i].name} @loc {tables[i].offset}");
-            //}
 
             uint glyphCount = 0;
             foreach (var entry in tables)
@@ -337,15 +328,6 @@ namespace ArctisAurora.EngineWork.Serialization
                 }
             }
 
-            //for (numContours = 0; numContours < glyph.contours.Count; numContours++)
-            //{
-            //    for(int i = 0; i < glyph.contours[numContours].points.Count; i++)
-            //    {
-            //        Vector2D<float> pos = glyph.contours[numContours].points[i].pos;
-            //        Console.WriteLine($"Point {i} in contour {numContours}: ({pos.X}, {pos.Y})");
-            //    }
-            //}
-
             for (int i = 0; i < glyph.contours.Count; i++)
             {
                 SubdivideEdges(glyph.contours[i].points, 4);
@@ -393,13 +375,13 @@ namespace ArctisAurora.EngineWork.Serialization
             return glyph;
         }
 
-        private static short ReadInt16BE(BinaryReader reader) =>
+        internal static short ReadInt16BE(BinaryReader reader) =>
             BitConverter.ToInt16(reader.ReadBytes(2).Reverse().ToArray(), 0);
 
-        private static ushort ReadUInt16BE(BinaryReader reader) =>
+        internal static ushort ReadUInt16BE(BinaryReader reader) =>
             BitConverter.ToUInt16(reader.ReadBytes(2).Reverse().ToArray(), 0);
 
-        private static uint ReadUInt32BE(BinaryReader reader) =>
+        internal static uint ReadUInt32BE(BinaryReader reader) =>
             BitConverter.ToUInt32(reader.ReadBytes(4).Reverse().ToArray(), 0);
 
         private static void GenerateMSDF(Glyph g, ref Image<Rgba32> image, float distanceFactor)
