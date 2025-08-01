@@ -1,8 +1,10 @@
-﻿using Assimp;
+﻿using ArctisAurora.EngineWork.Renderer.Helpers;
+using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Renderer
 {
@@ -55,6 +57,12 @@ namespace ArctisAurora.EngineWork.Renderer
 
     internal class AVulkanMesh
     {
+        internal Buffer _vertexBuffer;
+        internal DeviceMemory _vertexBufferMemory;
+
+        internal Buffer _indexBuffer;
+        internal DeviceMemory _indexBufferMemory;
+
         /*internal Vertex[] _vertices = new[]
         {
             new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(0.0f, 0.0f) },
@@ -88,28 +96,22 @@ namespace ArctisAurora.EngineWork.Renderer
 	        13, 15, 14 // Facing side
         };*/
 
-        internal Vertex[] _vertices = new[]
+        internal void BufferMesh()
         {
-            // bottom.
-            new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(0.0f, 0.0f) },
-            new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f, -0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(0.0f, 5.0f) },
-            new Vertex { _pos = new Vector3D<float>( 0.5f, 0.0f, -0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(5.0f, 5.0f) },
-            new Vertex { _pos = new Vector3D<float>( 0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(5.0f, 0.0f) },
-            // pyramid top.
-            new Vertex { _pos = new Vector3D<float>(0.0f, 0.8f,  0.0f), _normal =  new Vector3D<float>(0.0f, 0.5f,  0.8f), _uv = new Vector2D<float>(2.5f, 5.0f) },
-        };
-        internal uint[] _indices = new uint[]
-        {
-            0, 1, 2, // Bottom side
-	        0, 2, 3, // Bottom side
-	        4, 1, 0, // Left side
-	        4, 2, 1, // Non-facing side
-	        4, 3, 2, // Right side
-	        4, 0, 3 // Facing side
-        };
+            AVulkanBufferHandler.CreateBuffer(ref _vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags);
+            AVulkanBufferHandler.CreateBuffer(ref _indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags);
+        }
 
-        internal void LoadCustomMesh(Scene sc)
+        internal Vertex[] _vertices;
+        internal uint[] _indices;
+
+        internal unsafe void LoadCustomMesh(Scene sc)
         {
+            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _vertexBuffer, null);
+            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _indexBuffer, null);
+            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _indexBufferMemory, null);
+            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _vertexBufferMemory, null);
+
             List<Assimp.Vector3D> verts = sc.Meshes[0].Vertices;
             List<Assimp.Vector3D> uvs = sc.Meshes[0].TextureCoordinateChannels[0];
             List<Assimp.Vector3D> normals = sc.Meshes[0].Normals;
@@ -127,6 +129,36 @@ namespace ArctisAurora.EngineWork.Renderer
                 _vertices[i]._uv = new Vector2D<float>(uvs[i].X, uvs[i].Y);
                 _vertices[i]._normal = new Vector3D<float>(normals[i].X, normals[i].Y, normals[i].Z);
             }
+
+            AVulkanBufferHandler.CreateBuffer(ref _vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags);
+            AVulkanBufferHandler.CreateBuffer(ref _indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags);
+        }
+
+        internal static unsafe AVulkanMesh LoadDefault()
+        {
+            AVulkanMesh mesh = new AVulkanMesh();
+            mesh._vertices = new[]
+            {
+                // bottom.
+                new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(0.0f, 0.0f) },
+                new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f, -0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(0.0f, 5.0f) },
+                new Vertex { _pos = new Vector3D<float>( 0.5f, 0.0f, -0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(5.0f, 5.0f) },
+                new Vertex { _pos = new Vector3D<float>( 0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(5.0f, 0.0f) },
+                // pyramid top.
+                new Vertex { _pos = new Vector3D<float>(0.0f, 0.8f,  0.0f), _normal =  new Vector3D<float>(0.0f, 0.5f,  0.8f), _uv = new Vector2D<float>(2.5f, 5.0f) },
+            };
+            mesh._indices = new uint[]
+            {
+                0, 1, 2, // Bottom side
+	            0, 2, 3, // Bottom side
+	            4, 1, 0, // Left side
+	            4, 2, 1, // Non-facing side
+	            4, 3, 2, // Right side
+	            4, 0, 3  // Facing side
+            };
+            mesh.BufferMesh();
+
+            return mesh;
         }
 
         internal void RecalculateNormals()

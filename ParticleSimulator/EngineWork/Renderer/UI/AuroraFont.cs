@@ -3,7 +3,6 @@ using Silk.NET.Maths;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using System.Runtime.InteropServices;
-using static ArctisAurora.EngineWork.Renderer.UI.AuroraFont;
 
 namespace ArctisAurora.EngineWork.Renderer.UI
 {
@@ -37,8 +36,6 @@ namespace ArctisAurora.EngineWork.Renderer.UI
 
         public FontMeta fontMeta;
         public TableEntry[] tableEntries;
-
-        //public HeadTableInfo headTableInfo;
 
         public TextData textData;
 
@@ -100,7 +97,7 @@ namespace ArctisAurora.EngineWork.Renderer.UI
         internal static void GenerateGlyphAtlas(AuroraFont fontData, string fontName, int perGlyphSize)
         {
             string path = "C:\\Windows\\Fonts\\" + fontName;
-            SerializedGlyphs glyphs = new SerializedGlyphs();
+            AtlasMetaData glyphs = new AtlasMetaData();
             using (BinaryReader reader = new BinaryReader(new FileStream(path, FileMode.Open, FileAccess.Read)))
             {
                 TableEntry maxp = fontData.tableEntries.First(t => t.name == "maxp");
@@ -561,14 +558,15 @@ namespace ArctisAurora.EngineWork.Renderer.UI
     }
 
     [@Serializable]
-    public class SerializedGlyphs : IDeserialize
+    public class AtlasMetaData : IDeserialize
     {
         public int glyphCount;
         public char[] chars;
         public Glyph[] glyphs;
 
-        public void Deserialize(string path)
+        public void Deserialize(string name)
         {
+            string path = Paths.FONTS + $"\\{name}\\{name}.agd";
             using (FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Read))
             {
                 BinaryReader reader = new BinaryReader(fileStream, System.Text.Encoding.Unicode);
@@ -576,7 +574,7 @@ namespace ArctisAurora.EngineWork.Renderer.UI
                 chars = new char[count];
                 glyphs = new Glyph[count];
 
-                for(int i=0; i < count; i++)
+                for (int i = 0; i < count; i++)
                 {
                     chars[i] = reader.ReadChar();
                 }
@@ -593,19 +591,19 @@ namespace ArctisAurora.EngineWork.Renderer.UI
                 //handleMeta.Free();
 
 
-                for(int i = 0; i < count; i++)
+                for (int i = 0; i < count; i++)
                 {
                     glyphs[i] = new Glyph();
                     glyphs[i].xMin = (short)reader.ReadInt16();
                     glyphs[i].yMin = (short)reader.ReadInt16();
                     glyphs[i].xMax = (short)reader.ReadInt16();
                     glyphs[i].yMax = (short)reader.ReadInt16();
-                
+
                     glyphs[i].scale = reader.ReadSingle();
                     glyphs[i].glyphWidth = reader.ReadSingle();
                     glyphs[i].glyphHeight = reader.ReadSingle();
                     glyphs[i].px = reader.ReadInt32();
-                
+
                     glyphs[i].offsetX = reader.ReadSingle();
                     glyphs[i].offsetY = reader.ReadSingle();
                 }

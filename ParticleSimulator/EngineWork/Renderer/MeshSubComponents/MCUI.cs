@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.CustomEntities;
+using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Renderer.Helpers;
 using ArctisAurora.EngineWork.Renderer.UI;
@@ -24,12 +25,13 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 
         internal MCUI()
         {
+            _mesh = AssetRegistries.meshes.GetValueOrDefault("default");
         }
 
         public override void OnStart()
         {
-            AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
-            AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
+            //_mesh = AssetRegistries.meshes.GetValueOrDefault("default");
+            //_mesh.BufferMesh();
 
             char glyphChar = ((GlyphEntity)parent).character;
             image = AssetImporter.ImportFont(out glyph, glyphChar);

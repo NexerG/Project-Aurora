@@ -49,8 +49,10 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             //AVulkanBufferHandler.CreateIndexBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, _aditionalUsageFlags);
 
             // Buffer for Vertices & Indices
-            AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
-            AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
+            _mesh = new AVulkanMesh();
+            _mesh.BufferMesh();
+            //AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
+            //AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
 
             BufferUsageFlags additionalColorFlags = BufferUsageFlags.UniformBufferBit | BufferUsageFlags.ShaderDeviceAddressBit;
             AVulkanBufferHandler.CreateBuffer(ref _color, ref _colorBuffer, ref _colorMemory, additionalColorFlags);
@@ -72,10 +74,10 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 
         internal override void LoadCustomMesh(Scene sc)
         {
-            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _vertexBuffer, null);
-            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _indexBuffer, null);
-            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _indexBufferMemory, null);
-            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _vertexBufferMemory, null);
+            //VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _vertexBuffer, null);
+            //VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _indexBuffer, null);
+            //VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _indexBufferMemory, null);
+            //VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _vertexBufferMemory, null);
             if (_BLAS._handle.Handle != 0)
             {
                 _accelerationStructure.DestroyAccelerationStructure(_logicalDevice, _BLAS._handle, null);
@@ -85,8 +87,8 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 
             _mesh.LoadCustomMesh(sc);
 
-            AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
-            AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
+            //AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
+            //AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
             CreateBLAS();
             Pathtracing.UpdateAccInstance(this);
             UpdateTLAS();
@@ -97,8 +99,8 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 
         private void CreateBLAS()
         {
-            _addressVertex.DeviceAddress = AVulkanHelper.GetBufferAdress(ref _vertexBuffer);
-            _addressIndex.DeviceAddress = AVulkanHelper.GetBufferAdress(ref _indexBuffer);
+            _addressVertex.DeviceAddress = AVulkanHelper.GetBufferAdress(ref _mesh._vertexBuffer);
+            _addressIndex.DeviceAddress = AVulkanHelper.GetBufferAdress(ref _mesh._indexBuffer);
             _addressTransform.DeviceAddress = AVulkanHelper.GetBufferAdress(ref _transformsBuffer);
 
             AccelerationStructureGeometryKHR _accelStrGeom = new AccelerationStructureGeometryKHR

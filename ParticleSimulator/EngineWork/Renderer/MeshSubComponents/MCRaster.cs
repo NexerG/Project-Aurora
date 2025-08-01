@@ -21,8 +21,10 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 
         internal MCRaster()
         {
-            AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
-            AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
+            //AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
+            //AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
+            _mesh = new AVulkanMesh();
+            _mesh.BufferMesh();
             AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, "../../../Shaders/Brick2.png", Format.R8G8B8A8Srgb);
             AVulkanBufferHandler.CreateImageView(ref _textureImage, ref _textureImageView, Format.R8G8B8A8Srgb);
         }
@@ -289,13 +291,13 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
         {
             if (_render)
             {
-                Buffer[] _vertBuffer = new Buffer[] { _vertexBuffer };
+                Buffer[] _vertBuffer = new Buffer[] { _mesh._vertexBuffer };
                 fixed (ulong* _offsetsPtr = _offset)
                 fixed (Buffer* _vertBuffersPtr = _vertBuffer)
                 {
                     VulkanRenderer._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, _vertBuffersPtr, _offsetsPtr);
                 }
-                VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, _indexBuffer, 0, IndexType.Uint32);
+                VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, _mesh._indexBuffer, 0, IndexType.Uint32);
                 //VulkanRenderer._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, Rasterizer._pipeline._shadowLayout, 0, 1, _descriptorSetsShadow[descriptorIndex], 0, null);
                 //push constants
                 VulkanRenderer._vulkan.CmdPushConstants(_commandBuffer, Rasterizer._pipeline._shadowLayout, ShaderStageFlags.VertexBit, 0, sizeof(int), &lightIndex);

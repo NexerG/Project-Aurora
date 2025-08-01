@@ -1,12 +1,9 @@
 ﻿using ArctisAurora.CustomEntities;
 using ArctisAurora.GameObject;
-using Silk.NET.Maths;
 using ArctisAurora.EngineWork.Renderer;
-using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using Assimp;
-using ArctisAurora.EngineWork.Renderer.Helpers;
-using Silk.NET.Vulkan;
 using ArctisAurora.EngineWork.Serialization;
+using ArctisAurora.EngineWork.AssetRegistry;
 
 namespace ArctisAurora.EngineWork
 {
@@ -33,6 +30,8 @@ namespace ArctisAurora.EngineWork
         internal List<Entity> _entities = new List<Entity>();
         internal List<TestingEntity> _bandymas = new List<TestingEntity>();
 
+        internal static AssetRegistries assetRegistry = new AssetRegistries();
+
         //private DateTime lastFrameTime = DateTime.Now;
 
         public Engine()
@@ -47,9 +46,10 @@ namespace ArctisAurora.EngineWork
 
             _renderer = new VulkanRenderer();
             _renderer.InitRenderer(ERendererTypes.UITemp);
-            //VulkanRenderer._rendererInstance.Draw();
 
-            ////mesh importer
+            Bootstrapper.PreprareDefaultAssets();
+
+            // mesh importer
             MeshImporter importer = new MeshImporter();
             Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\VienetinisPlane.fbx");
             
@@ -57,10 +57,6 @@ namespace ArctisAurora.EngineWork
             SC = s;
 
             AssetImporter.ImportFont("abcdefghijklmnoprstuvwxyz", "arial.ttf");
-            //---------------------------------------------------------------------------
-            //PHOTO EDITING ENTITY CREATION
-
-            //---------------------------------------------------------------------------
 
             //---------------------------------------------------------------------------
             //Game logic

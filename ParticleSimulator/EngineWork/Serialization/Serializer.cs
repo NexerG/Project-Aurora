@@ -3,6 +3,11 @@ using System.Text.Json.Serialization;
 
 namespace ArctisAurora.EngineWork.Serialization
 {
+    internal interface IDeserialize
+    {
+        public void Deserialize(string path);
+    }
+
     internal class Serializer
     {
         public static void Serialize<T>(T obj, string path)
