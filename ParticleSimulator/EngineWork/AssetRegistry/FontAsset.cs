@@ -9,13 +9,19 @@ namespace ArctisAurora.EngineWork.AssetRegistry
     internal class FontAsset : Asset
     {
         public AtlasMetaData atlasMetaData;
-        public Image<Rgba32> image;
+        public TextureAsset image;
 
-        public override Asset LoadAsset(string name)
+        public FontAsset(string name)
+        {
+            AssetRegistries.fonts.Add(name, this);
+        }
+
+        public override void LoadAsset(Asset asset, string name, string path)
         {
             if (AssetRegistries.fonts.ContainsKey(name))
             {
-                return AssetRegistries.fonts[name];
+                asset = AssetRegistries.fonts[name];
+                return;
             }
             atlasMetaData = new AtlasMetaData();
             atlasMetaData.Deserialize(name);
@@ -23,25 +29,22 @@ namespace ArctisAurora.EngineWork.AssetRegistry
             string imagePath = Paths.FONTS + "\\" + name + "\\" + name + "_atlas.png";
             if (System.IO.File.Exists(imagePath))
             {
-                image = Image.Load<Rgba32>(imagePath);
+                image.LoadAsset(asset, name, path);
                 AssetRegistries.fonts[name] = this;
-                return this;
+                return;
             }
 
             throw new Exception(name);
         }
 
-        public override Asset LoadDefault()
+        public override void LoadDefault()
         {
-            FontAsset fontAsset = new FontAsset();
-
-            fontAsset.atlasMetaData = new AtlasMetaData();
-            fontAsset.atlasMetaData.Deserialize("arial");
+            atlasMetaData = new AtlasMetaData();
+            atlasMetaData.Deserialize("arial");
 
             string imagePath = Paths.FONTS + "\\arial\\" + "arial_atlas.png";
-            fontAsset.image = Image.Load<Rgba32>(imagePath);
-
-            return fontAsset;
+            image = new TextureAsset("default");
+            image.LoadAsset(this, "arial", imagePath);
         }
 
         /*public FontAsset LoadFont(string name)

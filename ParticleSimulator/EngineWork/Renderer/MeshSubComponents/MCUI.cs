@@ -3,29 +3,36 @@ using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Renderer.Helpers;
 using ArctisAurora.EngineWork.Renderer.UI;
-using ArctisAurora.EngineWork.Serialization;
 using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using SixLabors.ImageSharp.PixelFormats;
+using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 {
     internal unsafe class MCUI : MeshComponent
     {
         //texture image
-        internal Silk.NET.Vulkan.Image _textureImage;
-        internal ImageView _textureImageView;
-        internal DeviceMemory _textureBufferMemory;
+        //internal Silk.NET.Vulkan.Image _textureImage;
+        //internal ImageView _textureImageView;
+        //internal DeviceMemory _textureBufferMemory;
         internal Sampler textureSampler;
         internal SixLabors.ImageSharp.Image<Rgba32> image;
 
+        // font asset
+        internal FontAsset fontAsset;
+
         // glyph data
         internal Glyph glyph;
+        internal Vector2D<float>[] glyphUVs;
+        internal Buffer uvBuffer;
+        internal DeviceMemory uvBufferMemory;
 
         internal MCUI()
         {
             _mesh = AssetRegistries.meshes.GetValueOrDefault("default");
+            fontAsset = AssetRegistries.fonts.GetValueOrDefault("default");
         }
 
         public override void OnStart()
@@ -33,11 +40,24 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             //_mesh = AssetRegistries.meshes.GetValueOrDefault("default");
             //_mesh.BufferMesh();
 
+            image = fontAsset.image.image;
             char glyphChar = ((GlyphEntity)parent).character;
-            image = AssetImporter.ImportFont(out glyph, glyphChar);
+            int index;
+            (glyph, index) = fontAsset.atlasMetaData.GetGlyphAndIndex(glyphChar);
 
-            AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image, Format.R8G8B8A8Srgb);
-            AVulkanBufferHandler.CreateImageView(ref _textureImage, ref _textureImageView, Format.R8G8B8A8Srgb);
+            float k = MathF.Ceiling(MathF.Sqrt(fontAsset.atlasMetaData.glyphCount));
+            float glyphAtlasSize = 1f / k;
+            float xOffset = (index % k) * glyphAtlasSize;
+            float yOffset = MathF.Floor(index / k) * glyphAtlasSize;
+
+            glyphUVs = new Vector2D<float>[4];
+            glyphUVs[0] = new Vector2D<float>(xOffset, yOffset);
+            glyphUVs[1] = new Vector2D<float>(xOffset + glyphAtlasSize, yOffset);
+            glyphUVs[2] = new Vector2D<float>(xOffset + glyphAtlasSize, yOffset + glyphAtlasSize);
+            glyphUVs[3] = new Vector2D<float>(xOffset, yOffset + glyphAtlasSize);
+
+            AVulkanBufferHandler.CreateBuffer(ref glyphUVs, ref uvBuffer, ref uvBufferMemory, BufferUsageFlags.StorageBufferBit);
+
             CreateSampler();
             
             base.OnStart();

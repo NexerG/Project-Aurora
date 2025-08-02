@@ -14,6 +14,10 @@ layout(set = 0, binding = 1) readonly buffer Transform{
     mat4 transform;
 }ts[];
 
+layout(set = 0, binding = 2) readonly buffer UVs {
+    vec2[] UV;
+} UVData[];
+
 layout(location = 0) out vec2 fragUV;
 layout(location = 1) out flat uint fragInstanceID;
 
@@ -24,5 +28,5 @@ void main() {
     gl_Position = pos;
     fragInstanceID = gl_InstanceIndex;
 
-    fragUV = inUV;
+    fragUV = UVData[gl_InstanceIndex].UV[gl_VertexIndex];
 }

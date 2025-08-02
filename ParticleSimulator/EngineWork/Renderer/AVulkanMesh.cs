@@ -134,6 +134,12 @@ namespace ArctisAurora.EngineWork.Renderer
             AVulkanBufferHandler.CreateBuffer(ref _indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags);
         }
 
+        internal unsafe void UpdateBuffers()
+        {
+            AVulkanBufferHandler.UpdateBuffer(ref _vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags);
+            AVulkanBufferHandler.UpdateBuffer(ref _indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags);
+        }
+
         internal static unsafe AVulkanMesh LoadDefault()
         {
             AVulkanMesh mesh = new AVulkanMesh();

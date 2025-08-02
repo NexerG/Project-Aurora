@@ -570,11 +570,11 @@ namespace ArctisAurora.EngineWork.Renderer.UI
             using (FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Read))
             {
                 BinaryReader reader = new BinaryReader(fileStream, System.Text.Encoding.Unicode);
-                int count = reader.ReadInt32();
-                chars = new char[count];
-                glyphs = new Glyph[count];
+                glyphCount = reader.ReadInt32();
+                chars = new char[glyphCount];
+                glyphs = new Glyph[glyphCount];
 
-                for (int i = 0; i < count; i++)
+                for (int i = 0; i < glyphCount; i++)
                 {
                     chars[i] = reader.ReadChar();
                 }
@@ -591,7 +591,7 @@ namespace ArctisAurora.EngineWork.Renderer.UI
                 //handleMeta.Free();
 
 
-                for (int i = 0; i < count; i++)
+                for (int i = 0; i < glyphCount; i++)
                 {
                     glyphs[i] = new Glyph();
                     glyphs[i].xMin = (short)reader.ReadInt16();
@@ -608,6 +608,36 @@ namespace ArctisAurora.EngineWork.Renderer.UI
                     glyphs[i].offsetY = reader.ReadSingle();
                 }
             }
+        }
+
+        public Glyph GetGlyph(char character)
+        {
+            int index = Array.IndexOf(chars, character);
+            if (index >= 0 && index < glyphs.Length)
+            {
+                return glyphs[index];
+            }
+            return null; // or throw an exception if preferred
+        }
+
+        public (Glyph, int) GetGlyphAndIndex(char character)
+        {
+            int index = Array.IndexOf(chars, character);
+            if (index >= 0 && index < glyphs.Length)
+            {
+                return (glyphs[index], index);
+            }
+            return (null, -1); // or throw an exception if preferred
+        }
+
+        public int GetIndexOfChar(char character)
+        {
+            int index = Array.IndexOf(chars, character);
+            if (index >= 0 && index < glyphs.Length)
+            {
+                return index;
+            }
+            return -1; // or throw an exception if preferred
         }
     }
 }

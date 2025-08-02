@@ -83,9 +83,9 @@ namespace ArctisAurora.EngineWork.Renderer.UI
 
         private void CreateUIDescriptorSetLayouts()
         {
-            List<DescriptorType> _types1 = new List<DescriptorType> { DescriptorType.UniformBuffer, DescriptorType.StorageBuffer, DescriptorType.CombinedImageSampler };
-            List<ShaderStageFlags> _flags1 = new List<ShaderStageFlags> { ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit, ShaderStageFlags.FragmentBit };
-            DescriptorBindingFlags[] _DBF = { DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit };
+            List<DescriptorType> _types1 = new List<DescriptorType> { DescriptorType.UniformBuffer, DescriptorType.StorageBuffer, DescriptorType.StorageBuffer, DescriptorType.CombinedImageSampler };
+            List<ShaderStageFlags> _flags1 = new List<ShaderStageFlags> { ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit, ShaderStageFlags.FragmentBit };
+            DescriptorBindingFlags[] _DBF = { DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit };
 
             uint _indexedCount = 50000;
             uint[] _descriptorCount = new uint[_DBF.Length];
@@ -121,7 +121,7 @@ namespace ArctisAurora.EngineWork.Renderer.UI
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.StorageBuffer,
-                    DescriptorCount = (uint)(_swapimageCount * _entitiesToRender.Count) + 1
+                    DescriptorCount = (uint)(_swapimageCount * _entitiesToRender.Count * 2) + 1
                 }
             };
 
@@ -190,6 +190,7 @@ namespace ArctisAurora.EngineWork.Renderer.UI
                 };
 
                 DescriptorBufferInfo[] _transformUniformInfos = new DescriptorBufferInfo[_entitiesToRender.Count];
+                DescriptorBufferInfo[] _uvBufferInfos = new DescriptorBufferInfo[_entitiesToRender.Count];
                 DescriptorImageInfo[] _textureImageInfos = new DescriptorImageInfo[_entitiesToRender.Count];
                 for (int k = 0; k < _entitiesToRender.Count; k++)
                 {
@@ -197,7 +198,7 @@ namespace ArctisAurora.EngineWork.Renderer.UI
                     _textureImageInfos[k] = new()
                     {
                         ImageLayout = Silk.NET.Vulkan.ImageLayout.ShaderReadOnlyOptimal,
-                        ImageView = component._textureImageView,
+                        ImageView = component.fontAsset.image._textureImageView,
                         Sampler = component.textureSampler
                     };
                     _transformUniformInfos[k] = new()
@@ -206,7 +207,14 @@ namespace ArctisAurora.EngineWork.Renderer.UI
                         Offset = 0,
                         Range = sizeof(float) * 16
                     };
+                    _uvBufferInfos[k] = new()
+                    {
+                        Buffer = component.uvBuffer,
+                        Offset = 0,
+                        Range = (ulong)Unsafe.SizeOf<Vector2D<float>>() * 4
+                    };
                 }
+                fixed (DescriptorBufferInfo* _uvBufferInfosPtr = _uvBufferInfos)
                 fixed (DescriptorBufferInfo* _transformInforPtr = _transformUniformInfos)
                 fixed (DescriptorImageInfo* _textureImageInforPtr = _textureImageInfos)
                 {
@@ -237,6 +245,16 @@ namespace ArctisAurora.EngineWork.Renderer.UI
                             SType = StructureType.WriteDescriptorSet,
                             DstSet = _descriptorSets[i],
                             DstBinding = 2,
+                            DescriptorCount = (uint)_entitiesToRender.Count,
+                            DstArrayElement = 0,
+                            DescriptorType = DescriptorType.StorageBuffer,
+                            PBufferInfo = _uvBufferInfosPtr
+                        },
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = _descriptorSets[i],
+                            DstBinding = 3,
                             DescriptorCount = (uint)_textureImageInfos.Length,
                             DstArrayElement = 0,
                             DescriptorType = DescriptorType.CombinedImageSampler,

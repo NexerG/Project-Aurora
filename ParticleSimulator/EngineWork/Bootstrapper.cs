@@ -20,8 +20,8 @@ namespace ArctisAurora.EngineWork
             AssetRegistries.meshes.Add("default", mesh);
 
             // load default font
-            FontAsset font = FontAsset.LoadDefault();
-            AssetRegistries.fonts.Add("default", font);
+            FontAsset font = new FontAsset("default");
+            font.LoadDefault();
         }
     }
 }

@@ -7,7 +7,7 @@ layout(location = 1) in flat uint fragInstanceID;
 
 layout(location = 0) out vec4 outColor;
 
-layout(set = 0, binding = 2) uniform sampler2D textures[];
+layout(set = 0, binding = 3) uniform sampler2D textures[];
 
 float median(float r, float g, float b) {
     return max(min(r, g), min(max(r, g), b));

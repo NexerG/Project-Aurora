@@ -1,4 +1,5 @@
-﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+﻿using ArctisAurora.EngineWork.AssetRegistry;
+using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Serialization;
 using ArctisAurora.GameObject;
 using Assimp;
@@ -12,12 +13,16 @@ namespace ArctisAurora.CustomEntities
         internal string text;
         internal List<GlyphEntity> children = new List<GlyphEntity>();
 
+        FontAsset fontAsset;
+
         internal TextEntity(string text)
         {
             MeshImporter importer = new MeshImporter();
             Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\VienetinisPlane.fbx");
             transform.SetWorldPosition(new Vector3D<float>(2, 0, 0));
             this.text = text;
+
+            fontAsset = AssetRegistries.fonts["default"];
 
             int horizontalOffset = 0;
             int verticalOffset = 0;
@@ -28,7 +33,7 @@ namespace ArctisAurora.CustomEntities
                 children.Add(glyph);
                 glyph.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
 
-                //horizontalOffset += ;
+                horizontalOffset += 200;
             }
         }
     }

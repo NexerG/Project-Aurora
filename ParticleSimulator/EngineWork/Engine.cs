@@ -72,7 +72,7 @@ namespace ArctisAurora.EngineWork
             //TestingEntity _te = new TestingEntity(new Vector3D<float>(1, 70, 70), new Vector3D<float>(2, 0, 0));
             //_te.ChangeColor(new Vector3D<float>(0.5f, 0.5f, 0.5f));
             //_te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
-            TextEntity _te = new TextEntity("l");
+            TextEntity _te = new TextEntity("abcde");
             //_te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
             _entities.Add(_te);
             //TestingEntity _te2 = new TestingEntity(new Vector3D<float>(20, 20, 20), new Vector3D<float>(0, 0, 0));

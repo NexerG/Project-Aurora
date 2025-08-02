@@ -4,9 +4,9 @@ namespace ArctisAurora.EngineWork.AssetRegistry
 {
     public abstract class Asset()
     {
-        public abstract Asset LoadAsset(string name);
+        public abstract void LoadAsset(Asset asset, string name, string path);
 
-        public abstract Asset LoadDefault();
+        public abstract void LoadDefault();
     }
 
     internal class AssetRegistries
@@ -15,7 +15,7 @@ namespace ArctisAurora.EngineWork.AssetRegistry
         public static Dictionary<string, AVulkanMesh> meshes = new Dictionary<string, AVulkanMesh>();
 
         public static Dictionary<string, FontAsset> fonts = new Dictionary<string, FontAsset>();
-        //public static Dictionary<string, Image<Rgba32>> textures = new Dictionary<string, Image<Rgba32>>();
+        public static Dictionary<string, TextureAsset> textures = new Dictionary<string, TextureAsset>();
 
         //public static Dictionary<string, audio> audio;
     }

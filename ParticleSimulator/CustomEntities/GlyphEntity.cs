@@ -7,7 +7,7 @@ namespace ArctisAurora.CustomEntities
     internal class GlyphEntity : Entity
     {
 
-        internal char character;
+        internal char character; 
 
         internal GlyphEntity(char character, Vector3D<float> pos)
         {

@@ -1,11 +1,8 @@
-﻿using Silk.NET.Vulkan;
+﻿using ArctisAurora.EngineWork.Renderer.Helpers;
+using Silk.NET.Vulkan;
+using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static ArctisAurora.EngineWork.AssetRegistry.AssetRegistries;
+using Image = SixLabors.ImageSharp.Image;
 
 namespace ArctisAurora.EngineWork.AssetRegistry
 {
@@ -15,15 +12,35 @@ namespace ArctisAurora.EngineWork.AssetRegistry
         internal ImageView _textureImageView;
         internal DeviceMemory _textureBufferMemory;
         internal Sampler textureSampler;
-        internal SixLabors.ImageSharp.Image<Rgba32> image;
+        internal Image<Rgba32> image;
 
 
-        public override Asset LoadAsset(string name)
+        public TextureAsset(string name)
         {
+            AssetRegistries.textures.Add(name, this);
+        }
+
+        public override void LoadAsset(Asset asset, string name, string path)
+        {
+            if (AssetRegistries.textures.ContainsKey(name))
+            {
+                asset = AssetRegistries.textures[name];
+                return;
+            }
+            else if (System.IO.File.Exists(path))
+            { 
+                image = Image.Load<Rgba32>(path);
+
+                AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image, Format.R8G8B8A8Srgb);
+                AVulkanBufferHandler.CreateImageView(ref _textureImage, ref _textureImageView, Format.R8G8B8A8Srgb);
+
+                return;
+            }
+
             throw new NotImplementedException();
         }
 
-        public override Asset LoadDefault()
+        public override void LoadDefault()
         {
             throw new NotImplementedException();
         }
