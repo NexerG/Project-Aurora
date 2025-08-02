@@ -19,12 +19,13 @@ namespace ArctisAurora.EngineWork.Renderer.UI
         internal float scale;
         internal float glyphWidth;
         internal float glyphHeight;
-        internal int px = 300;
+        internal int px = 70;
 
         [NonSerializable]
         internal List<Bezier> contours = new List<Bezier>();
 
-        internal float offsetX, offsetY;
+        internal float rsb, lsb;
+        internal float tsb = 0;
 
         public Glyph()
         {
@@ -42,8 +43,8 @@ namespace ArctisAurora.EngineWork.Renderer.UI
             glyphWidth = (xMax - xMin) * scale * 1.1f;
             glyphHeight = (yMax - yMin) * scale * 1.05f;
 
-            offsetX = xMin * scale;
-            offsetY = yMin * scale;
+            //offsetX = xMin * scale;
+            //offsetY = yMin * scale;
         }
     }
 }

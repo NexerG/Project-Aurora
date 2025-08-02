@@ -119,8 +119,9 @@ namespace ArctisAurora.EngineWork.Renderer.UI
                         glyphOffsets[i] = AssetImporter.ReadUInt32BE(reader); // 32-bit
                 }
 
-                TableEntry cmap = fontData.tableEntries.First(t => t.name == "cmap");
-                TableEntry glyf = fontData.tableEntries.First(t => t.name == "glyf");
+                // loading glyph outlines
+                TableEntry cmap = fontData.tableEntries.First(t => t.name == "cmap"); // for index
+                TableEntry glyf = fontData.tableEntries.First(t => t.name == "glyf"); // for glyph outlines
 
                 glyphs.glyphCount = fontData.textData.characterCount;
                 glyphs.chars = fontData.textData.characters;
@@ -131,6 +132,60 @@ namespace ArctisAurora.EngineWork.Renderer.UI
                     ushort glyphIndex = GetGlyphIndex(character, reader, cmap);
                     Glyph glyph = GetGlyphOutline(glyphIndex, glyphOffsets, glyf, reader);
                     glyphs.glyphs[i] = glyph;
+                }
+
+                //loading distances between glyphs
+                TableEntry hhea = fontData.tableEntries.First(t => t.name == "hhea");
+                reader.BaseStream.Position = hhea.offset + 34;
+                ushort numberOfHMetrics = AssetImporter.ReadUInt16BE(reader);
+
+                TableEntry hmtx = fontData.tableEntries.First(t => t.name == "hmtx"); // for distances between glyphs
+                ushort[] rsb = new ushort[numberOfHMetrics];
+                short[] lsb = new short[numGlyphs];
+                reader.BaseStream.Position = hmtx.offset;
+                for (int i = 0; i < numberOfHMetrics; i++)
+                {
+                    rsb[i] = AssetImporter.ReadUInt16BE(reader);
+                    lsb[i] = AssetImporter.ReadInt16BE(reader);
+                }
+
+                for (int i = numberOfHMetrics; i < numGlyphs ; i++)
+                {
+                    lsb[i] = AssetImporter.ReadInt16BE(reader);
+                }
+
+                //TableEntry vhea = fontData.tableEntries.First(t => t.name == "vhea");
+                //reader.BaseStream.Position = vhea.offset + 34;
+                //ushort numberOfVMetrics = AssetImporter.ReadUInt16BE(reader);
+                //
+                //TableEntry vmtx = fontData.tableEntries.First(t => t.name == "vmtx");
+                //ushort[] bsb = new ushort[numberOfVMetrics];
+                //short[] tsb = new short[numGlyphs];
+                //reader.BaseStream.Position = vmtx.offset;
+                //for (int i = 0; i < numGlyphs; i++)
+                //{
+                //    bsb[i] = AssetImporter.ReadUInt16BE(reader);
+                //    tsb[i] = AssetImporter.ReadInt16BE(reader);
+                //}
+                //for (int i = numberOfVMetrics; i < numGlyphs; i++)
+                //{
+                //    tsb[i] = AssetImporter.ReadInt16BE(reader);
+                //}
+
+                for (int i = 0; i < glyphs.glyphCount; i++)
+                {
+                    char character = fontData.textData.characters[i];
+                    ushort glyphIndex = GetGlyphIndex(character, reader, cmap);
+                    glyphs.glyphs[i].rsb = (float)rsb[glyphIndex] / 2048f;
+                    glyphs.glyphs[i].lsb = (float)lsb[glyphIndex] / 2048f;
+                    if(glyphs.glyphs[i].yMin < 0)
+                    {
+                        float tsb = -(glyphs.glyphs[i].yMin) / 2048f;
+                        glyphs.glyphs[i].tsb = tsb;
+                    }
+                    //glyphs.glyphs[i].bsb = (float)bsb[glyphIndex] / 2048f;
+
+                    //Console.WriteLine($"LSB : {glyphs.glyphs[i].lsb} , RSB : {glyphs.glyphs[i].rsb}");
                 }
             }
 
@@ -249,14 +304,14 @@ namespace ArctisAurora.EngineWork.Renderer.UI
             uint end = glyphOffsets[glyphIndex + 1];
 
             if (start == end)
-                return null;
+                return new Glyph();
 
             reader.BaseStream.Position = glyfTable.offset + start;
 
             // --- Read Glyph Header ---
             short numContours = AssetImporter.ReadInt16BE(reader);
             if (numContours <= 0)
-                return null; // Skip composite/empty glyphs
+                return new Glyph(); // Skip composite/empty glyphs
 
             Glyph glyph = new Glyph();
             short xMin = AssetImporter.ReadInt16BE(reader);
@@ -428,6 +483,11 @@ namespace ArctisAurora.EngineWork.Renderer.UI
 
         private static float GetClosestDistance(Vector2D<float> p, Glyph glyph, Vector3D<int> channel)
         {
+            if (glyph.contours.Count == 0)
+            {
+                return -1f;
+            }
+
             float minDist = float.MaxValue;
             int pointIndex = 0;
             int index = 0;
@@ -604,8 +664,9 @@ namespace ArctisAurora.EngineWork.Renderer.UI
                     glyphs[i].glyphHeight = reader.ReadSingle();
                     glyphs[i].px = reader.ReadInt32();
 
-                    glyphs[i].offsetX = reader.ReadSingle();
-                    glyphs[i].offsetY = reader.ReadSingle();
+                    glyphs[i].rsb = reader.ReadSingle();
+                    glyphs[i].lsb = reader.ReadSingle();
+                    glyphs[i].tsb = reader.ReadSingle();
                 }
             }
         }

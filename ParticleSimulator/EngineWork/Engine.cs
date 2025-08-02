@@ -56,7 +56,7 @@ namespace ArctisAurora.EngineWork
             Running = true;
             SC = s;
 
-            AssetImporter.ImportFont("abcdefghijklmnoprstuvwxyz", "arial.ttf");
+            AssetImporter.ImportFont("abcdefghijklmnoprstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ", "arial.ttf");
 
             //---------------------------------------------------------------------------
             //Game logic
@@ -72,7 +72,7 @@ namespace ArctisAurora.EngineWork
             //TestingEntity _te = new TestingEntity(new Vector3D<float>(1, 70, 70), new Vector3D<float>(2, 0, 0));
             //_te.ChangeColor(new Vector3D<float>(0.5f, 0.5f, 0.5f));
             //_te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
-            TextEntity _te = new TextEntity("abcde");
+            TextEntity _te = new TextEntity("Shikau ir Tapshnojau");
             //_te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
             _entities.Add(_te);
             //TestingEntity _te2 = new TestingEntity(new Vector3D<float>(20, 20, 20), new Vector3D<float>(0, 0, 0));

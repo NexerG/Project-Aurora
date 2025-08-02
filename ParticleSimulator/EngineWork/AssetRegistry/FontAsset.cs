@@ -16,6 +16,18 @@ namespace ArctisAurora.EngineWork.AssetRegistry
             AssetRegistries.fonts.Add(name, this);
         }
 
+        public Glyph GetGlyph(char c)
+        {
+            for (int i = 0; i < atlasMetaData.glyphCount; i++)
+            {
+                if (atlasMetaData.chars[i] == c)
+                {
+                    return atlasMetaData.glyphs[i];
+                }
+            }
+            return null;
+        }
+
         public override void LoadAsset(Asset asset, string name, string path)
         {
             if (AssetRegistries.fonts.ContainsKey(name))
