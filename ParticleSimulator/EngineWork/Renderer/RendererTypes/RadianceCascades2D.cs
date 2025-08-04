@@ -2,7 +2,6 @@
 using System;
 using ArctisAurora.CustomEntities;
 using ArctisAurora.EngineWork.Renderer.Helpers;
-using ArctisAurora.GameObject;
 using Silk.NET.Core.Native;
 using Silk.NET.GLFW;
 using Silk.NET.Maths;
@@ -10,6 +9,7 @@ using Silk.NET.Vulkan;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using Image = Silk.NET.Vulkan.Image;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
+using ArctisAurora.EngineWork.EngineEntity;
 
 namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 {

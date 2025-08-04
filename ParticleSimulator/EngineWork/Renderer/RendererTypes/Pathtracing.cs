@@ -3,7 +3,6 @@ using Silk.NET.Vulkan.Extensions.KHR;
 using Silk.NET.Core.Native;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Renderer.Helpers;
-using ArctisAurora.GameObject;
 using System.Runtime.InteropServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using Image = Silk.NET.Vulkan.Image;
@@ -12,6 +11,7 @@ using static ArctisAurora.EngineWork.Renderer.MeshSubComponents.MCRaytracing;
 using Silk.NET.Maths;
 using System.Runtime.CompilerServices;
 using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
+using ArctisAurora.EngineWork.EngineEntity;
 
 namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 {

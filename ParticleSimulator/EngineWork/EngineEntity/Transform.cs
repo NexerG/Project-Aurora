@@ -1,7 +1,7 @@
 ﻿using ArctisAurora.EngineWork.Renderer;
 using Silk.NET.Maths;
 
-namespace ArctisAurora.GameObject
+namespace ArctisAurora.EngineWork.EngineEntity
 {
     public class Transform
     {

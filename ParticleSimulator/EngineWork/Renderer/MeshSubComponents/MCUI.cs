@@ -13,10 +13,6 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
 {
     internal unsafe class MCUI : MeshComponent
     {
-        //texture image
-        //internal Silk.NET.Vulkan.Image _textureImage;
-        //internal ImageView _textureImageView;
-        //internal DeviceMemory _textureBufferMemory;
         internal Sampler textureSampler;
         internal SixLabors.ImageSharp.Image<Rgba32> image;
 

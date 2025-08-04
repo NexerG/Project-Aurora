@@ -1,8 +1,8 @@
 ﻿using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Renderer.UI;
 using ArctisAurora.EngineWork.Serialization;
-using ArctisAurora.GameObject;
 using Assimp;
 using Silk.NET.Maths;
 using System.Windows.Forms.Design;

@@ -1,7 +1,7 @@
 using ArctisAurora.CustomEntities;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.ComponentBehaviour;
-using ArctisAurora.GameObject;
+using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.ParticleTypes;
 using ArctisAurora.Simulators.Vulkan;
 using Silk.NET.Maths;

@@ -3,12 +3,12 @@ using Silk.NET.Core.Native;
 using Silk.NET.Vulkan.Extensions.EXT;
 using Silk.NET.Vulkan;
 using System.Runtime.InteropServices;
-using ArctisAurora.GameObject;
 using Semaphore = Silk.NET.Vulkan.Semaphore;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Renderer.RendererTypes;
 using Silk.NET.GLFW;
 using ArctisAurora.EngineWork.Renderer.UI;
+using ArctisAurora.EngineWork.EngineEntity;
 
 namespace ArctisAurora.EngineWork.Renderer
 {

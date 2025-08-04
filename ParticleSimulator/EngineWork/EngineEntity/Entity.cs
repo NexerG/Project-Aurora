@@ -3,7 +3,7 @@ using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Renderer;
 using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
 
-namespace ArctisAurora.GameObject
+namespace ArctisAurora.EngineWork.EngineEntity
 {
     public class Entity
     {
@@ -18,6 +18,7 @@ namespace ArctisAurora.GameObject
         public Entity()
         {
             transform = new Transform(this);
+            EntityManager.AddEntity(this);
         }
 
         public Entity(string name)

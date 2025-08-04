@@ -2,14 +2,14 @@
 using Silk.NET.Maths;
 using System.Numerics;
 
-namespace ArctisAurora.GameObject
+namespace ArctisAurora.EngineWork.EngineEntity
 {
     internal class LightSourceEntity : Entity
     {
         public LightSourceEntity()
         {
-            this.CreateComponent<LightsourceComponent>();
-            this.name = "Light Source Entity";
+            CreateComponent<LightsourceComponent>();
+            name = "Light Source Entity";
         }
         public override void OnStart()
         {

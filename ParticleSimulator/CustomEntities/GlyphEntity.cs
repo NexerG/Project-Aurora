@@ -1,5 +1,5 @@
 ﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
-using ArctisAurora.GameObject;
+using ArctisAurora.EngineWork.EngineEntity;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.CustomEntities

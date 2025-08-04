@@ -1,9 +1,9 @@
 ﻿using ArctisAurora.CustomEntities;
-using ArctisAurora.GameObject;
 using ArctisAurora.EngineWork.Renderer;
 using Assimp;
 using ArctisAurora.EngineWork.Serialization;
 using ArctisAurora.EngineWork.AssetRegistry;
+using ArctisAurora.EngineWork.EngineEntity;
 
 namespace ArctisAurora.EngineWork
 {
@@ -27,8 +27,6 @@ namespace ArctisAurora.EngineWork
         internal Frame SC;
         //internal Rasterization renderer3D;
         internal static VulkanRenderer _renderer;
-        internal List<Entity> _entities = new List<Entity>();
-        internal List<TestingEntity> _bandymas = new List<TestingEntity>();
 
         internal static AssetRegistries assetRegistry = new AssetRegistries();
 
@@ -43,6 +41,8 @@ namespace ArctisAurora.EngineWork
         {
             Running = true;
             SC = s;
+
+            EntityManager.manager = new EntityManager();
 
             _renderer = new VulkanRenderer();
             _renderer.InitRenderer(ERendererTypes.UITemp);
@@ -73,8 +73,6 @@ namespace ArctisAurora.EngineWork
             //_te.ChangeColor(new Vector3D<float>(0.5f, 0.5f, 0.5f));
             //_te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
             TextEntity _te = new TextEntity("Shikau ir Tapshnojau");
-            //_te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
-            _entities.Add(_te);
             //TestingEntity _te2 = new TestingEntity(new Vector3D<float>(20, 20, 20), new Vector3D<float>(0, 0, 0));
             //_te2.ChangeColor(new Vector3D<float>(0.05f, 0.5f, 0.247f));
             //_te2.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
@@ -117,7 +115,7 @@ namespace ArctisAurora.EngineWork
                 //Console.SetCursorPosition(0, 0);
 
                 DateTime entityOnTickStart = DateTime.Now;
-                foreach (Entity e in _entities)
+                foreach (Entity e in EntityManager.entities)
                 {
                     DateTime entityTimeStart = DateTime.Now;
                     e.OnTick();

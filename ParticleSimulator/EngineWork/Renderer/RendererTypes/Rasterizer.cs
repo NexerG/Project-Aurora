@@ -1,12 +1,12 @@
 ﻿using Silk.NET.Vulkan;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
-using ArctisAurora.GameObject;
 using Silk.NET.Maths;
 using ArctisAurora.EngineWork.Renderer.Helpers;
 using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using System.Runtime.CompilerServices;
 using static ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan.LightsourceComponent;
+using ArctisAurora.EngineWork.EngineEntity;
 
 namespace ArctisAurora.EngineWork.Renderer.RendererTypes
 {

@@ -1,8 +1,8 @@
 ﻿using System.Runtime.CompilerServices;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Renderer.Helpers;
 using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
-using ArctisAurora.GameObject;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 
@@ -18,7 +18,7 @@ namespace ArctisAurora.EngineWork.Renderer.UI
         private Framebuffer[] _frameBuffer;
         //-------------------------------------
         internal static Vector2D<float> unitsPerPixel;
-
+        internal static MCUI meshComponent;
 
         public UIRenderer()
         {
