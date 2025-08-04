@@ -27,7 +27,7 @@
 
   <ItemGroup>
     <Folder Include="Data\Fonts\" />
-    <Folder Include="EngineWork\Renderer\Pipelines\" />
+    <Folder Include="EngineWork\Rendering\Pipelines\" />
   </ItemGroup>
 
   <ItemGroup>

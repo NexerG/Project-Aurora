@@ -1,9 +1,9 @@
-﻿using ArctisAurora.EngineWork.Renderer.UI;
+﻿using ArctisAurora.EngineWork.Rendering.UI;
 using Silk.NET.Maths;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using static ArctisAurora.EngineWork.Renderer.UI.AuroraFont;
-using AuroraFont = ArctisAurora.EngineWork.Renderer.UI.AuroraFont;
+using static ArctisAurora.EngineWork.Rendering.UI.AuroraFont;
+using AuroraFont = ArctisAurora.EngineWork.Rendering.UI.AuroraFont;
 
 namespace ArctisAurora.EngineWork.Serialization
 {

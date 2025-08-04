@@ -1,9 +1,10 @@
 ﻿using ArctisAurora.CustomEntities;
-using ArctisAurora.EngineWork.Renderer;
+using ArctisAurora.EngineWork.Rendering;
 using Assimp;
 using ArctisAurora.EngineWork.Serialization;
 using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.EngineEntity;
+using ArctisAurora.EngineWork.Rendering.Modules;
 
 namespace ArctisAurora.EngineWork
 {
@@ -42,21 +43,32 @@ namespace ArctisAurora.EngineWork
             Running = true;
             SC = s;
 
-            EntityManager.manager = new EntityManager();
+            Renderer renderer = new Renderer();
+            RenderingModule[] modules = new RenderingModule[]
+            {
+                new UIModule(),
+            };
+            renderer.PreInitialize(modules);
 
-            _renderer = new VulkanRenderer();
-            _renderer.InitRenderer(ERendererTypes.UITemp);
+            renderer.Initialize();
+            renderer.PrepareDescriptors();
+            renderer.SetupPipelines();
 
-            Bootstrapper.PreprareDefaultAssets();
-
-            // mesh importer
-            MeshImporter importer = new MeshImporter();
-            Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\VienetinisPlane.fbx");
-            
-            Running = true;
-            SC = s;
-
-            AssetImporter.ImportFont("abcdefghijklmnoprstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ", "arial.ttf");
+            //EntityManager.manager = new EntityManager();
+            //
+            //_renderer = new VulkanRenderer();
+            //_renderer.InitRenderer(ERendererTypes.UITemp);
+            //
+            //Bootstrapper.PreprareDefaultAssets();
+            //
+            //// mesh importer
+            //MeshImporter importer = new MeshImporter();
+            //Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\VienetinisPlane.fbx");
+            //
+            //Running = true;
+            //SC = s;
+            //
+            //AssetImporter.ImportFont("abcdefghijklmnoprstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ", "arial.ttf");
 
             //---------------------------------------------------------------------------
             //Game logic
@@ -72,7 +84,7 @@ namespace ArctisAurora.EngineWork
             //TestingEntity _te = new TestingEntity(new Vector3D<float>(1, 70, 70), new Vector3D<float>(2, 0, 0));
             //_te.ChangeColor(new Vector3D<float>(0.5f, 0.5f, 0.5f));
             //_te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
-            TextEntity _te = new TextEntity("Shikau ir Tapshnojau");
+            //TextEntity _te = new TextEntity("Shikau ir Tapshnojau");
             //TestingEntity _te2 = new TestingEntity(new Vector3D<float>(20, 20, 20), new Vector3D<float>(0, 0, 0));
             //_te2.ChangeColor(new Vector3D<float>(0.05f, 0.5f, 0.247f));
             //_te2.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
@@ -88,10 +100,10 @@ namespace ArctisAurora.EngineWork
             //---------------------------------------------------------------------------
             //engine thread
             //Task _engineTask = Task.Run(() => EngineStart());
-            new Thread(() =>
-            {
-                EngineStart();
-            }).Start();
+            //new Thread(() =>
+            //{
+            //    EngineStart();
+            //}).Start();
             /*new Thread(() =>
             {
                 PathTracerTest();

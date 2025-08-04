@@ -1,9 +1,9 @@
 ﻿using ArctisAurora.EngineWork.EngineEntity;
-using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
+using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 
-namespace ArctisAurora.EngineWork.Renderer.UI.Controls
+namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 {
     internal class VulkanControl : Entity
     {

@@ -1,12 +1,12 @@
-﻿using ArctisAurora.EngineWork.Renderer.Helpers;
-using ArctisAurora.EngineWork.Renderer.UI;
+﻿using ArctisAurora.EngineWork.Rendering.Helpers;
+using ArctisAurora.EngineWork.Rendering.UI;
 using Microsoft.VisualBasic.Logging;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
-namespace ArctisAurora.EngineWork.Renderer
+namespace ArctisAurora.EngineWork.Rendering
 {
     internal class AuroraCamera
     {

@@ -1,10 +1,10 @@
 ﻿using ArctisAurora.EngineWork.ComponentBehaviour;
-using ArctisAurora.EngineWork.Renderer;
-using ArctisAurora.EngineWork.Renderer.Helpers;
-using ArctisAurora.EngineWork.Renderer.RendererTypes;
+using ArctisAurora.EngineWork.Rendering;
+using ArctisAurora.EngineWork.Rendering.Helpers;
+using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
-using static ArctisAurora.EngineWork.Renderer.Helpers.AVulkanHelper;
+using static ArctisAurora.EngineWork.Rendering.Helpers.AVulkanHelper;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan

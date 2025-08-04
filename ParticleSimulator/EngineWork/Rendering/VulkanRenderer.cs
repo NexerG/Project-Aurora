@@ -1,16 +1,16 @@
-﻿using ArctisAurora.EngineWork.Renderer.Helpers;
+﻿using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Core.Native;
 using Silk.NET.Vulkan.Extensions.EXT;
 using Silk.NET.Vulkan;
 using System.Runtime.InteropServices;
 using Semaphore = Silk.NET.Vulkan.Semaphore;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
-using ArctisAurora.EngineWork.Renderer.RendererTypes;
+using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Silk.NET.GLFW;
-using ArctisAurora.EngineWork.Renderer.UI;
+using ArctisAurora.EngineWork.Rendering.UI;
 using ArctisAurora.EngineWork.EngineEntity;
 
-namespace ArctisAurora.EngineWork.Renderer
+namespace ArctisAurora.EngineWork.Rendering
 {
     enum ERendererTypes
     {
@@ -80,7 +80,7 @@ namespace ArctisAurora.EngineWork.Renderer
             _glWindow.CreateWindow(ref _extent);            //create glfw window
             CreateVulkanInstance();                         //create Vulkan instance
             SetupDebugMessenger();
-            _glWindow.CreateSurface();                      //create window surface
+            _glWindow.CreateSurface(ref _vulkan, ref _instance); //create window surface
             ChoosePhysicalDevice();                         //we get the gpu
             switch (_rendererType)
             {
@@ -111,10 +111,11 @@ namespace ArctisAurora.EngineWork.Renderer
 
         internal void CreateVulkanInstance()
         {
+            IntPtr appName = SilkMarshal.StringToPtr("VulkanApp");
             ApplicationInfo _appInfo = new ApplicationInfo
             {
                 SType = StructureType.ApplicationInfo,
-                PApplicationName = (byte*)SilkMarshal.StringToPtr("VulkanApp"),
+                PApplicationName = (byte*)appName,
                 ApplicationVersion = AVulkanHelper.Version(1, 0, 0),
                 PEngineName = (byte*)SilkMarshal.StringToPtr("ArctisAurora"),
                 EngineVersion = AVulkanHelper.Version(1, 0, 0),
@@ -229,7 +230,7 @@ namespace ArctisAurora.EngineWork.Renderer
             PhysicalDeviceVulkan12Features? _vulkan12FT,
             PhysicalDeviceFeatures? _deviceFeatures)
         {
-            int _graphicsIndex = AVulkanHelper.FindQueueFamilyIndex(ref _gpu, ref _qfm, QueueFlags.GraphicsBit);
+            int _graphicsIndex = AVulkanHelper.FindQueueFamilyIndex(ref _vulkan, ref _gpu, ref _qfm, QueueFlags.GraphicsBit);
             float _qPriority = 1.0f;
             DeviceQueueCreateInfo _qCreateInfo = new DeviceQueueCreateInfo
             {
@@ -341,7 +342,7 @@ namespace ArctisAurora.EngineWork.Renderer
 
         internal void CreateCommandPool()
         {
-            int _queueFamilyIndex = AVulkanHelper.FindQueueFamilyIndex(ref _gpu, ref _qfm, QueueFlags.GraphicsBit);
+            int _queueFamilyIndex = AVulkanHelper.FindQueueFamilyIndex(ref _vulkan, ref _gpu, ref _qfm, QueueFlags.GraphicsBit);
             CommandPoolCreateInfo _createInfo = new CommandPoolCreateInfo()
             {
                 SType = StructureType.CommandPoolCreateInfo,

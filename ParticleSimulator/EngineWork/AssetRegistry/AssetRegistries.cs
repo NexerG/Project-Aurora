@@ -1,4 +1,4 @@
-﻿using ArctisAurora.EngineWork.Renderer;
+﻿using ArctisAurora.EngineWork.Rendering;
 
 namespace ArctisAurora.EngineWork.AssetRegistry
 {

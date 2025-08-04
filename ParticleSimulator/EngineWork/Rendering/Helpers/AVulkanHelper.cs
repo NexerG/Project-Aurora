@@ -1,9 +1,9 @@
-﻿using ArctisAurora.EngineWork.Renderer.RendererTypes;
+﻿using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
-namespace ArctisAurora.EngineWork.Renderer.Helpers
+namespace ArctisAurora.EngineWork.Rendering.Helpers
 {
     internal unsafe static class AVulkanHelper
     {
@@ -23,15 +23,15 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             return major << 22 | minor << 12 | patch;
         }
 
-        internal static int FindQueueFamilyIndex(ref PhysicalDevice _gpu, ref QueueFamilyProperties[] _qfm, QueueFlags _qType)
+        internal static int FindQueueFamilyIndex(ref Vk vk, ref PhysicalDevice gpu, ref QueueFamilyProperties[] qfm, QueueFlags qType)
         {
             uint _propertyCount = 0;
-            VulkanRenderer._vulkan.GetPhysicalDeviceQueueFamilyProperties(_gpu, &_propertyCount, null);
-            _qfm = new QueueFamilyProperties[_propertyCount];
+            vk.GetPhysicalDeviceQueueFamilyProperties(gpu, &_propertyCount, null);
+            qfm = new QueueFamilyProperties[_propertyCount];
 
-            Rasterizer._vulkan.GetPhysicalDeviceQueueFamilyProperties(_gpu, &_propertyCount, _qfm);
+            vk.GetPhysicalDeviceQueueFamilyProperties(gpu, &_propertyCount, qfm);
             for (int i = 0; i < _propertyCount; i++)
-                if ((_qfm[i].QueueFlags & _qType) == _qType)
+                if ((qfm[i].QueueFlags & qType) == qType)
                     return i;
 
             return int.MaxValue;
@@ -42,11 +42,33 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             return FindSupportedFormat(new[] { Format.D32Sfloat, Format.D32SfloatS8Uint, Format.D24UnormS8Uint }, ImageTiling.Optimal, FormatFeatureFlags.DepthStencilAttachmentBit);
         }
 
+        internal static Format GetDepthFormat(ref Vk vk, ref PhysicalDevice gpu)
+        {
+            return FindSupportedFormat(ref vk, ref gpu, new[] { Format.D32Sfloat, Format.D32SfloatS8Uint, Format.D24UnormS8Uint }, ImageTiling.Optimal, FormatFeatureFlags.DepthStencilAttachmentBit);
+        }
+
         internal static Format FindSupportedFormat(IEnumerable<Format> _formats, ImageTiling _tiling, FormatFeatureFlags _features)
         {
             foreach (Format _f in _formats)
             {
                 Rasterizer._vulkan.GetPhysicalDeviceFormatProperties(Rasterizer._gpu, _f, out FormatProperties _fp);
+                if (_tiling == ImageTiling.Linear && (_fp.LinearTilingFeatures & _features) == _features)
+                {
+                    return _f;
+                }
+                else if (_tiling == ImageTiling.Optimal && (_fp.OptimalTilingFeatures & _features) == _features)
+                {
+                    return _f;
+                }
+            }
+            throw new Exception("Failed to find requested format");
+        }
+
+        internal static Format FindSupportedFormat(ref Vk vk, ref PhysicalDevice gpu, IEnumerable<Format> _formats, ImageTiling _tiling, FormatFeatureFlags _features)
+        {
+            foreach (Format _f in _formats)
+            {
+                vk.GetPhysicalDeviceFormatProperties(gpu, _f, out FormatProperties _fp);
                 if (_tiling == ImageTiling.Linear && (_fp.LinearTilingFeatures & _features) == _features)
                 {
                     return _f;
@@ -94,34 +116,61 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             return _qfi;
         }
 
-        internal static SwapChainSupportDetails GetSupportDetails(ref KhrSurface _driverSurface, ref SurfaceKHR _surface)
+        internal static QueueFamilyIndices FindQueueFamilies(ref QueueFamilyProperties[] queueFamilyProperties, ref PhysicalDevice gpu, ref KhrSurface _driverSurface, ref SurfaceKHR _surface)
+        {
+            QueueFamilyIndices _qfi = new QueueFamilyIndices();
+
+            uint i = 0;
+            foreach (var _qf in queueFamilyProperties)
+            {
+                if (_qf.QueueFlags.HasFlag(QueueFlags.GraphicsBit))
+                {
+                    _qfi.GraphicsFamily = i;
+                }
+                _driverSurface.GetPhysicalDeviceSurfaceSupport(gpu, i, _surface, out var _presentSupport);
+
+                if (_presentSupport)
+                {
+                    _qfi.PresentFamily = i;
+                }
+                if (_qfi.IsComplete())
+                {
+                    break;
+                }
+                i++;
+            }
+            return _qfi;
+        }
+
+
+        internal static SwapChainSupportDetails GetSupportDetails(ref PhysicalDevice gpu, ref KhrSurface _driverSurface, ref SurfaceKHR _surface)
         {
             var _details = new SwapChainSupportDetails();
 
-            _driverSurface!.GetPhysicalDeviceSurfaceCapabilities(Rasterizer._gpu, _surface, out _details.Capabilities);
+            _driverSurface!.GetPhysicalDeviceSurfaceCapabilities(gpu, _surface, out _details.Capabilities);
 
             //surface formats
             uint _formatCount = 0;
-            _driverSurface.GetPhysicalDeviceSurfaceFormats(Rasterizer._gpu, _surface, ref _formatCount, null);
+            _driverSurface.GetPhysicalDeviceSurfaceFormats(gpu, _surface, ref _formatCount, null);
             if (_formatCount != 0)
             {
                 _details.Formats = new SurfaceFormatKHR[_formatCount];
                 fixed (SurfaceFormatKHR* _fPtr = _details.Formats)
                 {
-                    _driverSurface.GetPhysicalDeviceSurfaceFormats(Rasterizer._gpu, _surface, ref _formatCount, _fPtr);
+                    _driverSurface.GetPhysicalDeviceSurfaceFormats(gpu, _surface, ref _formatCount, _fPtr);
                 }
             }
             else _details.Formats = Array.Empty<SurfaceFormatKHR>();
 
             //present modes
             uint _presentModeCount = 0;
-            _driverSurface.GetPhysicalDeviceSurfacePresentModes(Rasterizer._gpu, _surface, ref _presentModeCount, null);
+            _driverSurface.GetPhysicalDeviceSurfacePresentModes(gpu, _surface, ref _presentModeCount, null);
             if (_presentModeCount != 0)
             {
                 _details.PresentModes = new PresentModeKHR[_presentModeCount];
                 fixed (PresentModeKHR* _formatsPtr = _details.PresentModes)
                 {
-                    _driverSurface.GetPhysicalDeviceSurfacePresentModes(Rasterizer._gpu, _surface, ref _presentModeCount, _formatsPtr);
+                    _driverSurface.GetPhysicalDeviceSurfacePresentModes(gpu, _surface, ref _presentModeCount, _formatsPtr);
                 }
             }
             else _details.PresentModes = Array.Empty<PresentModeKHR>();
@@ -153,14 +202,14 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             return _formats[0];
         }
 
-        internal static uint FindPresentSupportIndex(ref QueueFamilyProperties[] _qfm, ref KhrSurface _driverSurface, ref SurfaceKHR _surface)
+        internal static uint FindPresentSupportIndex(ref PhysicalDevice gpu, ref QueueFamilyProperties[] _qfm, ref KhrSurface _driverSurface, ref SurfaceKHR _surface)
         {
             uint i = 0;
             foreach (var _qf in _qfm)
             {
                 if (_qf.QueueFlags.HasFlag(QueueFlags.GraphicsBit))
                 {
-                    _driverSurface.GetPhysicalDeviceSurfaceSupport(Rasterizer._gpu, i, _surface, out var _presentSupport);
+                    _driverSurface.GetPhysicalDeviceSurfaceSupport(gpu, i, _surface, out var _presentSupport);
                     if (_presentSupport)
                     {
                         return i;
@@ -185,6 +234,25 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
         {
             uint a = (_value + _alignment - 1) & ~(_alignment - 1);
             return a;
+        }
+
+        internal static nint StringToNint(string str)
+        {
+            if (str == null) throw new ArgumentNullException(nameof(str));
+            byte[] bytes = System.Text.Encoding.UTF8.GetBytes(str);
+            fixed (byte* ptr = bytes)
+            {
+                return (nint)ptr;
+            }
+        }
+
+        internal static nint ArrayToNint<T>(T[] array) where T : unmanaged
+        {
+            if (array == null) throw new ArgumentNullException(nameof(array));
+            fixed (T* ptr = array)
+            {
+                return (nint)ptr;
+            }
         }
     }
 }

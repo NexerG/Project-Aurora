@@ -1,19 +1,18 @@
 ﻿using Silk.NET.Core.Native;
 using Silk.NET.GLFW;
-using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 
-namespace ArctisAurora.EngineWork.Renderer
+namespace ArctisAurora.EngineWork.Rendering
 {
     internal unsafe class AGlfwWindow
     {
         //GLFW window variables
         internal Glfw _glfw = Glfw.GetApi();
-        internal WindowHandle* _windowHandle;
-        internal SurfaceKHR _surface;
-        internal KhrSurface _driverSurface;
-        internal bool _frameBufferResized = false;
+        internal WindowHandle* windowHandle;
+        internal SurfaceKHR surface;
+        internal KhrSurface driverSurface;
+        internal bool frameBufferResized = false;
 
         internal void CreateWindow(ref Extent2D _extent)
         {
@@ -21,44 +20,44 @@ namespace ArctisAurora.EngineWork.Renderer
                 Console.WriteLine("Failed to initialize GLFW");
 
             _glfw.WindowHint(WindowHintClientApi.ClientApi, ClientApi.NoApi);
-            _windowHandle = _glfw.CreateWindow((int)_extent.Width, (int)_extent.Height, "Arctis Auora", null, null);
+            windowHandle = _glfw.CreateWindow((int)_extent.Width, (int)_extent.Height, "Arctis Auora", null, null);
 
-            if (_windowHandle == null)
+            if (windowHandle == null)
             {
                 Console.WriteLine("Failed to create window");
                 _glfw.Terminate();
             }
 
-            _glfw.SetWindowSizeCallback(_windowHandle, WindwoResizeCallback);
+            _glfw.SetWindowSizeCallback(windowHandle, WindwoResizeCallback);
 
-            _glfw.SetCursorPosCallback(_windowHandle, MouseMoveCallback);
-            _glfw.SetKeyCallback(_windowHandle, KeyboardCallback);
-            _glfw.SetMouseButtonCallback(_windowHandle, MouseClickCallback);
+            _glfw.SetCursorPosCallback(windowHandle, MouseMoveCallback);
+            _glfw.SetKeyCallback(windowHandle, KeyboardCallback);
+            _glfw.SetMouseButtonCallback(windowHandle, MouseClickCallback);
         }
 
 
-        internal void CreateSurface()
+        internal void CreateSurface(ref Vk vk, ref Instance instance)
         {
-            if (!VulkanRenderer._vulkan.TryGetInstanceExtension(VulkanRenderer._instance, out _driverSurface))
+            if (!vk.TryGetInstanceExtension(instance, out driverSurface))
             {
                 throw new NotSupportedException("KHR_surface extension not found.");
             }
             VkNonDispatchableHandle _surfaceHandle;
-            _glfw.CreateWindowSurface(VulkanRenderer._instance.ToHandle(), _windowHandle, null, &_surfaceHandle);
-            _surface = _surfaceHandle.ToSurface();
+            _glfw.CreateWindowSurface(instance.ToHandle(), windowHandle, null, &_surfaceHandle);
+            surface = _surfaceHandle.ToSurface();
         }
 
         internal void UpdateWindowSize(ref Extent2D _extent)
         {
             int _width, _height;
-            _glfw.GetFramebufferSize(_windowHandle, out _width, out _height);
+            _glfw.GetFramebufferSize(windowHandle, out _width, out _height);
             _extent.Width = (uint)_width;
             _extent.Height = (uint)_height;
         }
 
         private void WindwoResizeCallback(WindowHandle* window, int width, int height)
         {
-            _frameBufferResized = true;
+            frameBufferResized = true;
         }
 
         private void MouseMoveCallback(WindowHandle* window, double xPos, double yPos)

@@ -1,4 +1,4 @@
-﻿using ArctisAurora.EngineWork.Renderer.Helpers;
+﻿using ArctisAurora.EngineWork.Rendering.Helpers;
 using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
-namespace ArctisAurora.EngineWork.Renderer
+namespace ArctisAurora.EngineWork.Rendering
 {
     struct Vertex
     {

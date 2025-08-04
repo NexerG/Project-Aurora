@@ -1,9 +1,9 @@
 using System.Runtime.ConstrainedExecution;
 using ArctisAurora.CustomEntities;
 using ArctisAurora.EngineWork;
-using ArctisAurora.EngineWork.Renderer;
-using ArctisAurora.EngineWork.Renderer.Helpers;
-using ArctisAurora.EngineWork.Renderer.RendererTypes;
+using ArctisAurora.EngineWork.Rendering;
+using ArctisAurora.EngineWork.Rendering.Helpers;
+using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Silk.NET.Vulkan;
 
 namespace ArctisAurora

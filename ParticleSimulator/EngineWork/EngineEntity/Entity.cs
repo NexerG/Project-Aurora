@@ -1,7 +1,7 @@
 ﻿using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
-using ArctisAurora.EngineWork.Renderer;
-using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
+using ArctisAurora.EngineWork.Rendering;
+using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 
 namespace ArctisAurora.EngineWork.EngineEntity
 {

@@ -4,7 +4,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using System.Runtime.InteropServices;
 
-namespace ArctisAurora.EngineWork.Renderer.UI
+namespace ArctisAurora.EngineWork.Rendering.UI
 {
     [@Serializable]
     public class AuroraFont : IDeserialize

@@ -1,6 +1,6 @@
 ﻿using ArctisAurora.EngineWork.ComponentBehaviour;
-using ArctisAurora.EngineWork.Renderer;
-using ArctisAurora.EngineWork.Renderer.Helpers;
+using ArctisAurora.EngineWork.Rendering;
+using ArctisAurora.EngineWork.Rendering.Helpers;
 using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;

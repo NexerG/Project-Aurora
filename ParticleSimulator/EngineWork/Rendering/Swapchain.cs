@@ -1,12 +1,12 @@
-﻿using ArctisAurora.EngineWork.Renderer.Helpers;
-using ArctisAurora.EngineWork.Renderer.RendererTypes;
+﻿using ArctisAurora.EngineWork.Rendering.Helpers;
+using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
-using static ArctisAurora.EngineWork.Renderer.Helpers.AVulkanHelper;
+using static ArctisAurora.EngineWork.Rendering.Helpers.AVulkanHelper;
 using Image = Silk.NET.Vulkan.Image;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 
-namespace ArctisAurora.EngineWork.Renderer
+namespace ArctisAurora.EngineWork.Rendering
 {
     struct SwapChainSupportDetails
     {
@@ -14,13 +14,14 @@ namespace ArctisAurora.EngineWork.Renderer
         public SurfaceFormatKHR[] Formats;
         public PresentModeKHR[] PresentModes;
     }
+
     internal unsafe class Swapchain
     {
         //swapchain variables
         internal SwapchainKHR _swapchainKHR;        //the virtualized swapchain
         internal KhrSwapchain _driverSwapchain;     //the driver swapchain
-        internal Image[] _swapchainImages;          //swapchain images for rendering
-        internal ImageView[] _imageViews;           //image views for rendering
+        internal Image[] _swapchainImages;          //swapchain images for presenting
+        internal ImageView[] _imageViews;           //image views for presenting
         internal Image _depthImage;
         internal ImageView _depthView;
         internal DeviceMemory _depthMemory;
@@ -40,7 +41,7 @@ namespace ArctisAurora.EngineWork.Renderer
 
         internal void CreateSwapchain(ref Extent2D _extent)
         {
-            SwapChainSupportDetails _support = GetSupportDetails(ref _driverSurface, ref _surface);
+            SwapChainSupportDetails _support = GetSupportDetails(ref VulkanRenderer._gpu, ref _driverSurface, ref _surface);
             _surfaceFormat = GetSwapchainSurfaceFormat(_support.Formats);
             PresentModeKHR _presentMode = GetPresentMode(_support.PresentModes);
 

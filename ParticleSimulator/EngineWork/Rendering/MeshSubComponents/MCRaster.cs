@@ -1,6 +1,6 @@
 ﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
-using ArctisAurora.EngineWork.Renderer.Helpers;
-using ArctisAurora.EngineWork.Renderer.RendererTypes;
+using ArctisAurora.EngineWork.Rendering.Helpers;
+using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
@@ -8,7 +8,7 @@ using System.Runtime.CompilerServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 
-namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
+namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 {
     internal unsafe class MCRaster : MeshComponent
     {
@@ -26,7 +26,7 @@ namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
             _mesh = new AVulkanMesh();
             _mesh.BufferMesh();
             AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, "../../../Shaders/Brick2.png", Format.R8G8B8A8Srgb);
-            AVulkanBufferHandler.CreateImageView(ref _textureImage, ref _textureImageView, Format.R8G8B8A8Srgb);
+            AVulkanBufferHandler.CreateImageView(ref VulkanRenderer._vulkan, ref VulkanRenderer._logicalDevice, ref _textureImage, ref _textureImageView, Format.R8G8B8A8Srgb, ImageAspectFlags.ColorBit);
         }
 
         public override void OnStart()

@@ -1,4 +1,5 @@
-﻿using ArctisAurora.EngineWork.Renderer.Helpers;
+﻿using ArctisAurora.EngineWork.Rendering;
+using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Vulkan;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -32,7 +33,7 @@ namespace ArctisAurora.EngineWork.AssetRegistry
                 image = Image.Load<Rgba32>(path);
 
                 AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image, Format.R8G8B8A8Srgb);
-                AVulkanBufferHandler.CreateImageView(ref _textureImage, ref _textureImageView, Format.R8G8B8A8Srgb);
+                AVulkanBufferHandler.CreateImageView(ref Renderer.vk, ref Renderer.logicalDevice, ref _textureImage, ref _textureImageView, Format.R8G8B8A8Srgb, ImageAspectFlags.ColorBit);
 
                 return;
             }

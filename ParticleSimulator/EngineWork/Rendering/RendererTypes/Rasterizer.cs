@@ -1,14 +1,14 @@
 ﻿using Silk.NET.Vulkan;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using Silk.NET.Maths;
-using ArctisAurora.EngineWork.Renderer.Helpers;
-using ArctisAurora.EngineWork.Renderer.MeshSubComponents;
+using ArctisAurora.EngineWork.Rendering.Helpers;
+using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using System.Runtime.CompilerServices;
 using static ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan.LightsourceComponent;
 using ArctisAurora.EngineWork.EngineEntity;
 
-namespace ArctisAurora.EngineWork.Renderer.RendererTypes
+namespace ArctisAurora.EngineWork.Rendering.RendererTypes
 {
     internal unsafe class Rasterizer : VulkanRenderer
     {
@@ -32,13 +32,13 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
         {
             Setup();
             //getting the render queues ready
-            int _graphicsQFamilyIndex = AVulkanHelper.FindQueueFamilyIndex(ref _gpu, ref _qfm, QueueFlags.GraphicsBit);
-            uint _presentSupportIndex = AVulkanHelper.FindPresentSupportIndex(ref _qfm, ref _glWindow._driverSurface, ref _glWindow._surface);
+            int _graphicsQFamilyIndex = AVulkanHelper.FindQueueFamilyIndex(ref _vulkan, ref _gpu, ref _qfm, QueueFlags.GraphicsBit);
+            uint _presentSupportIndex = AVulkanHelper.FindPresentSupportIndex(ref _gpu, ref _qfm, ref _glWindow.driverSurface, ref _glWindow.surface);
             _graphicsQueue = _vulkan.GetDeviceQueue(_logicalDevice, (uint)_graphicsQFamilyIndex, 0);
             _presentQueue = _vulkan.GetDeviceQueue(_logicalDevice, _presentSupportIndex, 0);
 
             //create the swapchain
-            _swapchain = new Swapchain(ref _glWindow._driverSurface, ref _glWindow._surface);
+            _swapchain = new Swapchain(ref _glWindow.driverSurface, ref _glWindow.surface);
             _swapchain.DoSwapchainMethodSequence(ref _extent);        //swapchain methods for simplicity sake
             _swapimageCount = _swapchain._swapchainImages.Length;     //engine related thing
 
@@ -736,9 +736,9 @@ namespace ArctisAurora.EngineWork.Renderer.RendererTypes
                 PImageIndices = &_imageIndex
             };
             r = _swapchain._driverSwapchain.QueuePresent(_presentQueue, ref _presentInfo);
-            if (r == Result.ErrorOutOfDateKhr || r == Result.SuboptimalKhr || _glWindow._frameBufferResized)
+            if (r == Result.ErrorOutOfDateKhr || r == Result.SuboptimalKhr || _glWindow.frameBufferResized)
             {
-                _glWindow._frameBufferResized = false;
+                _glWindow.frameBufferResized = false;
                 RecreateSwapChain();
             }
             else if (r != Result.Success)

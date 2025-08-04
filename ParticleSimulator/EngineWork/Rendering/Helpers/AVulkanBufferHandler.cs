@@ -1,4 +1,4 @@
-﻿using ArctisAurora.EngineWork.Renderer.RendererTypes;
+﻿using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using SixLabors.ImageSharp;
@@ -8,7 +8,7 @@ using Format = Silk.NET.Vulkan.Format;
 using Image = SixLabors.ImageSharp.Image;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 
-namespace ArctisAurora.EngineWork.Renderer.Helpers
+namespace ArctisAurora.EngineWork.Rendering.Helpers
 {
     public struct UBO
     {
@@ -193,7 +193,7 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
             VulkanRenderer._vulkan!.BindImageMemory(VulkanRenderer._logicalDevice, _im, _devMemory, 0);
         }
 
-        internal static void CreateImageView(ref Silk.NET.Vulkan.Image _textureImage, ref ImageView _imageView, Format imageFormat)
+        internal static void CreateImageView(ref Vk vk, ref Device logicalDevice, ref Silk.NET.Vulkan.Image _textureImage, ref ImageView _imageView, Format imageFormat, ImageAspectFlags aspectFlags)
         {
             ImageViewCreateInfo _createInfo = new ImageViewCreateInfo
             {
@@ -203,13 +203,13 @@ namespace ArctisAurora.EngineWork.Renderer.Helpers
                 ViewType = ImageViewType.Type2D
             };
 
-            _createInfo.SubresourceRange.AspectMask = ImageAspectFlags.ColorBit;
+            _createInfo.SubresourceRange.AspectMask = aspectFlags;
             _createInfo.SubresourceRange.BaseMipLevel = 0;
             _createInfo.SubresourceRange.LevelCount = 1;
             _createInfo.SubresourceRange.BaseArrayLayer = 0;
             _createInfo.SubresourceRange.LayerCount = 1;
 
-            if (VulkanRenderer._vulkan!.CreateImageView(VulkanRenderer._logicalDevice, ref _createInfo, null, out _imageView) != Result.Success)
+            if (vk!.CreateImageView(logicalDevice, ref _createInfo, null, out _imageView) != Result.Success)
             {
                 throw new Exception("failed to create texture image view!");
             }

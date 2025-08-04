@@ -1,17 +1,17 @@
 ﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
-using ArctisAurora.EngineWork.Renderer.Helpers;
-using ArctisAurora.EngineWork.Renderer.RendererTypes;
+using ArctisAurora.EngineWork.Rendering.Helpers;
+using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Drawing.Drawing2D;
 using System.Runtime.CompilerServices;
-using static ArctisAurora.EngineWork.Renderer.RendererTypes.Pathtracing;
-using static ArctisAurora.EngineWork.Renderer.VulkanRenderer;
+using static ArctisAurora.EngineWork.Rendering.RendererTypes.Pathtracing;
+using static ArctisAurora.EngineWork.Rendering.VulkanRenderer;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 
-namespace ArctisAurora.EngineWork.Renderer.MeshSubComponents
+namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 {
     internal unsafe class MCRaytracing : MeshComponent
     {

@@ -1,4 +1,4 @@
-﻿using ArctisAurora.EngineWork.Renderer;
+﻿using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.EngineWork.EngineEntity

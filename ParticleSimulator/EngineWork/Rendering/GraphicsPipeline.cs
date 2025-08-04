@@ -1,7 +1,7 @@
 ﻿using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
 
-namespace ArctisAurora.EngineWork.Renderer
+namespace ArctisAurora.EngineWork.Rendering
 {
     internal unsafe class GraphicsPipeline
     {

@@ -1,6 +1,6 @@
 ﻿using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
-using ArctisAurora.EngineWork.Renderer;
+using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.ParticleTypes;
 using ArctisAurora.Simulators.Vulkan;
 using Silk.NET.Maths;
