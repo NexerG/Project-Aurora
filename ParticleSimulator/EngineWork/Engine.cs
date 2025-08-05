@@ -58,6 +58,7 @@ namespace ArctisAurora.EngineWork
 
             renderer.SetupCameras();
             renderer.PrepareDescriptors();
+
             renderer.SetupPipelines();
             renderer.CreateCommandBuffers();
             renderer.CreateSyncObjects();

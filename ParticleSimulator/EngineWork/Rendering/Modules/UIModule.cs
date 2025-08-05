@@ -24,7 +24,14 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             BufferDeviceAddress = true,
             RuntimeDescriptorArray = true,
             DescriptorBindingVariableDescriptorCount = true,
-            DescriptorIndexing = true
+            DescriptorIndexing = true,
+            DescriptorBindingPartiallyBound = true,
+            DescriptorBindingStorageBufferUpdateAfterBind = true,
+            DescriptorBindingUniformBufferUpdateAfterBind = true,
+            DescriptorBindingSampledImageUpdateAfterBind = true,
+            DescriptorBindingStorageImageUpdateAfterBind = true,
+            DescriptorBindingStorageTexelBufferUpdateAfterBind = true,
+            DescriptorBindingUniformTexelBufferUpdateAfterBind = true
         };
 
         internal override List<DescriptorType> descriptorTypes => new List<DescriptorType> {
@@ -38,7 +45,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         };
 
         internal override DescriptorBindingFlags[] descriptorBindingFlags => new DescriptorBindingFlags[]{
-            DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit,
+            DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit | DescriptorBindingFlags.UpdateAfterBindBit,
             DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit
         };
 

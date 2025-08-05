@@ -84,6 +84,9 @@ namespace ArctisAurora.EngineWork.Rendering
         internal Dictionary<DescriptorType, DescriptorPoolSize> descriptorPoolSizes = new();
         internal static DescriptorPool descriptorPool;
 
+        //internal static bool update
+        internal static bool updateControls = false;
+
         // commands
         internal static CommandPool commandPool;
         internal CommandBuffer[] commandBuffers;

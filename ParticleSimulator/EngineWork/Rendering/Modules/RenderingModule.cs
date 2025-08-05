@@ -47,7 +47,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
             for (int i = 0; i < typeCount; i++)
             {
-                if (descriptorBindingFlags[i] == DescriptorBindingFlags.VariableDescriptorCountBit)
+                if (descriptorBindingFlags[i].HasFlag(DescriptorBindingFlags.VariableDescriptorCountBit))
                 {
                     descriptorCount[i] = indexedMaxCount;
                 }
