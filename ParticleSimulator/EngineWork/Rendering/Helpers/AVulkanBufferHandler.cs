@@ -31,9 +31,9 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             CreateBuffer(_imageSize, ref _stagingBuffer, ref _stagingBufferMemory, BufferUsageFlags.TransferSrcBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit);
 
             void* _data;
-            VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, 0, _imageSize, 0, &_data);
+            Renderer.vk.MapMemory(Renderer.logicalDevice, _stagingBufferMemory, 0, _imageSize, 0, &_data);
             _image.CopyPixelDataTo(new Span<byte>(_data, (int)_imageSize));
-            VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory);
+            Renderer.vk.UnmapMemory(Renderer.logicalDevice, _stagingBufferMemory);
 
             CreateImage((uint)_image.Width, (uint)_image.Height, imageFormat, ImageTiling.Optimal, ImageUsageFlags.TransferDstBit | ImageUsageFlags.SampledBit, MemoryPropertyFlags.DeviceLocalBit, ref _textureImage, ref _textureBufferMemory);
 
@@ -41,8 +41,8 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             CopyBufferToImage(_stagingBuffer, _textureImage, (uint)_image.Width, (uint)_image.Height);
             TransitionImageLayout(_textureImage, ImageLayout.TransferDstOptimal, ImageLayout.ShaderReadOnlyOptimal);
 
-            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _stagingBuffer, null);
-            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, null);
+            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
+            Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
         }
 
         internal static void CreateTextureBuffer(ref Silk.NET.Vulkan.Image _textureImage, ref DeviceMemory _textureBufferMemory, ref Image<Rgba32> image, Format imageFormat)
@@ -55,9 +55,9 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             CreateBuffer(_imageSize, ref _stagingBuffer, ref _stagingBufferMemory, BufferUsageFlags.TransferSrcBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit);
 
             void* _data;
-            VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, 0, _imageSize, 0, &_data);
+            Renderer.vk.MapMemory(Renderer.logicalDevice, _stagingBufferMemory, 0, _imageSize, 0, &_data);
             _image.CopyPixelDataTo(new Span<byte>(_data, (int)_imageSize));
-            VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory);
+            Renderer.vk.UnmapMemory(Renderer.logicalDevice, _stagingBufferMemory);
 
             CreateImage((uint)_image.Width, (uint)_image.Height, imageFormat, ImageTiling.Optimal, ImageUsageFlags.TransferDstBit | ImageUsageFlags.SampledBit, MemoryPropertyFlags.DeviceLocalBit, ref _textureImage, ref _textureBufferMemory);
 
@@ -65,8 +65,8 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             CopyBufferToImage(_stagingBuffer, _textureImage, (uint)_image.Width, (uint)_image.Height);
             TransitionImageLayout(_textureImage, ImageLayout.TransferDstOptimal, ImageLayout.ShaderReadOnlyOptimal);
 
-            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _stagingBuffer, null);
-            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, null);
+            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
+            Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
         }
 
         private static void CopyBufferToImage(Buffer _buffer, Silk.NET.Vulkan.Image _image, uint _width, uint _height)
@@ -90,7 +90,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 
             };
 
-            VulkanRenderer._vulkan!.CmdCopyBufferToImage(_commandBuffer, _buffer, _image, ImageLayout.TransferDstOptimal, 1, ref _bufferImageCopy);
+            Renderer.vk!.CmdCopyBufferToImage(_commandBuffer, _buffer, _image, ImageLayout.TransferDstOptimal, 1, ref _bufferImageCopy);
             EndSingleTimeCommands(ref _commandBuffer);
         }
 
@@ -139,7 +139,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
                 throw new Exception("unsupported layout transition!");
             }
 
-            VulkanRenderer._vulkan!.CmdPipelineBarrier(_commandBuffer, sourceStage, destinationStage, 0, 0, null, 0, null, 1, ref _barrier);
+            Renderer.vk!.CmdPipelineBarrier(_commandBuffer, sourceStage, destinationStage, 0, 0, null, 0, null, 1, ref _barrier);
             EndSingleTimeCommands(ref _commandBuffer);
         }
 
@@ -167,13 +167,13 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 
             fixed (Silk.NET.Vulkan.Image* imagePtr = &_im)
             {
-                if (VulkanRenderer._vulkan!.CreateImage(VulkanRenderer._logicalDevice, ref _imageInfo, null, imagePtr) != Result.Success)
+                if (Renderer.vk!.CreateImage(Renderer.logicalDevice, ref _imageInfo, null, imagePtr) != Result.Success)
                 {
                     throw new Exception("failed to create image!");
                 }
             }
 
-            VulkanRenderer._vulkan.GetImageMemoryRequirements(VulkanRenderer._logicalDevice, _im, out MemoryRequirements _memReqs);
+            Renderer.vk.GetImageMemoryRequirements(Renderer.logicalDevice, _im, out MemoryRequirements _memReqs);
 
             MemoryAllocateInfo allocInfo = new()
             {
@@ -184,13 +184,62 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 
             fixed (DeviceMemory* imageMemoryPtr = &_devMemory)
             {
-                if (VulkanRenderer._vulkan!.AllocateMemory(VulkanRenderer._logicalDevice, ref allocInfo, null, imageMemoryPtr) != Result.Success)
+                if (Renderer.vk!.AllocateMemory(Renderer.logicalDevice, ref allocInfo, null, imageMemoryPtr) != Result.Success)
                 {
                     throw new Exception("failed to allocate image memory!");
                 }
             }
 
-            VulkanRenderer._vulkan!.BindImageMemory(VulkanRenderer._logicalDevice, _im, _devMemory, 0);
+            Renderer.vk!.BindImageMemory(Renderer.logicalDevice, _im, _devMemory, 0);
+        }
+        internal static void CreateImage(Vk vk, Device logicalDevice, PhysicalDevice gpu, uint _width, uint _height, Format _format, ImageTiling _tiling, ImageUsageFlags _usage, MemoryPropertyFlags _properties, ref Silk.NET.Vulkan.Image _im, ref DeviceMemory _devMemory)
+        {
+            ImageCreateInfo _imageInfo = new()
+            {
+                SType = StructureType.ImageCreateInfo,
+                ImageType = ImageType.Type2D,
+                Extent =
+                {
+                    Width = _width,
+                    Height = _height,
+                    Depth = 1,
+                },
+                MipLevels = 1,
+                ArrayLayers = 1,
+                Format = _format,
+                Tiling = _tiling,
+                InitialLayout = ImageLayout.Undefined,
+                Usage = _usage,
+                Samples = SampleCountFlags.Count1Bit,
+                SharingMode = SharingMode.Exclusive,
+            };
+
+            fixed (Silk.NET.Vulkan.Image* imagePtr = &_im)
+            {
+                if (vk!.CreateImage(logicalDevice, ref _imageInfo, null, imagePtr) != Result.Success)
+                {
+                    throw new Exception("failed to create image!");
+                }
+            }
+
+            vk.GetImageMemoryRequirements(logicalDevice, _im, out MemoryRequirements _memReqs);
+
+            MemoryAllocateInfo allocInfo = new()
+            {
+                SType = StructureType.MemoryAllocateInfo,
+                AllocationSize = _memReqs.Size,
+                MemoryTypeIndex = FindMemoryType(vk, gpu, _memReqs.MemoryTypeBits, _properties),
+            };
+
+            fixed (DeviceMemory* imageMemoryPtr = &_devMemory)
+            {
+                if (vk!.AllocateMemory(logicalDevice, ref allocInfo, null, imageMemoryPtr) != Result.Success)
+                {
+                    throw new Exception("failed to allocate image memory!");
+                }
+            }
+
+            vk.BindImageMemory(logicalDevice, _im, _devMemory, 0);
         }
 
         internal static void CreateImageView(ref Vk vk, ref Device logicalDevice, ref Silk.NET.Vulkan.Image _textureImage, ref ImageView _imageView, Format imageFormat, ImageAspectFlags aspectFlags)
@@ -237,15 +286,15 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             CreateBuffer(bufferSize, ref _stagingBuffer, ref _stagingBufferMemory, defaultStagingBufferFlags, defaultStagingMemoryFlags);
 
             void* _dataPtr;
-            VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, 0, bufferSize, 0, &_dataPtr);
+            Renderer.vk.MapMemory(Renderer.logicalDevice, _stagingBufferMemory, 0, bufferSize, 0, &_dataPtr);
             data.AsSpan().CopyTo(new Span<T>(_dataPtr, data.Length));
-            VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory);
+            Renderer.vk.UnmapMemory(Renderer.logicalDevice, _stagingBufferMemory);
 
             CreateBuffer(bufferSize, ref buffer, ref memory, defaultBufferFlags | usageFlags, defaultStagingMemoryFlags);
 
             CopyBuffer(ref _stagingBuffer, ref buffer, bufferSize);
-            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _stagingBuffer, null);
-            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, null);
+            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
+            Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
         }
 
         internal static void CreateBuffer<T>(ref T data, ref Buffer buffer, ref DeviceMemory memory, BufferUsageFlags usageFlags) where T : unmanaged
@@ -257,15 +306,15 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             CreateBuffer(bufferSize, ref _stagingBuffer, ref _stagingBufferMemory, defaultStagingBufferFlags, defaultStagingMemoryFlags);
 
             void* _dataPtr;
-            VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, 0, bufferSize, 0, &_dataPtr);
+            Renderer.vk.MapMemory(Renderer.logicalDevice, _stagingBufferMemory, 0, bufferSize, 0, &_dataPtr);
             new Span<T>(_dataPtr, 1)[0] = data;
-            VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory);
+            Renderer.vk.UnmapMemory(Renderer.logicalDevice, _stagingBufferMemory);
 
             CreateBuffer(bufferSize, ref buffer, ref memory, defaultBufferFlags | usageFlags, defaultStagingMemoryFlags);
 
             CopyBuffer(ref _stagingBuffer, ref buffer, bufferSize);
-            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _stagingBuffer, null);
-            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, null);
+            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
+            Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
         }
 
         internal static void UpdateBuffer<T>(ref T[] data, ref Buffer buffer, ref DeviceMemory memory, BufferUsageFlags usageFlags) where T : unmanaged
@@ -277,13 +326,13 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             CreateBuffer(bufferSize, ref _stagingBuffer, ref _stagingBufferMemory, defaultStagingBufferFlags, defaultStagingMemoryFlags);
 
             void* _dataPtr;
-            VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, 0, bufferSize, 0, &_dataPtr);
+            Renderer.vk.MapMemory(Renderer.logicalDevice, _stagingBufferMemory, 0, bufferSize, 0, &_dataPtr);
             data.AsSpan().CopyTo(new Span<T>(_dataPtr, data.Length));
-            VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory);
+            Renderer.vk.UnmapMemory(Renderer.logicalDevice, _stagingBufferMemory);
 
             CopyBuffer(ref _stagingBuffer, ref buffer, bufferSize);
-            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _stagingBuffer, null);
-            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, null);
+            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
+            Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
         }
 
         internal static void UpdateBuffer<T>(ref T data, ref Buffer buffer, ref DeviceMemory memory, BufferUsageFlags usageFlags) where T : unmanaged
@@ -295,13 +344,13 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             CreateBuffer(bufferSize, ref _stagingBuffer, ref _stagingBufferMemory, defaultStagingBufferFlags, defaultStagingMemoryFlags);
 
             void* _dataPtr;
-            VulkanRenderer._vulkan.MapMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, 0, bufferSize, 0, &_dataPtr);
+            Renderer.vk.MapMemory(Renderer.logicalDevice, _stagingBufferMemory, 0, bufferSize, 0, &_dataPtr);
             new Span<T>(_dataPtr, 1)[0] = data;
-            VulkanRenderer._vulkan.UnmapMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory);
+            Renderer.vk.UnmapMemory(Renderer.logicalDevice, _stagingBufferMemory);
 
             CopyBuffer(ref _stagingBuffer, ref buffer, bufferSize);
-            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _stagingBuffer, null);
-            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _stagingBufferMemory, null);
+            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
+            Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
         }
 
         internal static void CreateBuffer(ulong _size, ref Buffer _buffer, ref DeviceMemory _bufferMemory, BufferUsageFlags _usage, MemoryPropertyFlags _properties)
@@ -316,13 +365,13 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 
             fixed (Buffer* _bufferPtr = &_buffer)
             {
-                if (VulkanRenderer._vulkan.CreateBuffer(VulkanRenderer._logicalDevice, ref _bufferCreateInfo, null, _bufferPtr) != Result.Success)
+                if (Renderer.vk.CreateBuffer(Renderer.logicalDevice, ref _bufferCreateInfo, null, _bufferPtr) != Result.Success)
                 {
                     throw new Exception("Failed to create a buffer");
                 }
             }
             MemoryRequirements _memReqs = new MemoryRequirements();
-            VulkanRenderer._vulkan.GetBufferMemoryRequirements(VulkanRenderer._logicalDevice, _buffer, out _memReqs);
+            Renderer.vk.GetBufferMemoryRequirements(Renderer.logicalDevice, _buffer, out _memReqs);
 
             var allocateFlagsInfo = new MemoryAllocateFlagsInfo
             {
@@ -339,13 +388,13 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 
             fixed (DeviceMemory* _bufferMemoryPtr = &_bufferMemory)
             {
-                if (VulkanRenderer._vulkan.AllocateMemory(VulkanRenderer._logicalDevice, ref _allocateInfo, null, _bufferMemoryPtr) != Result.Success)
+                if (Renderer.vk.AllocateMemory(Renderer.logicalDevice, ref _allocateInfo, null, _bufferMemoryPtr) != Result.Success)
                 {
                     throw new Exception("Failed to allocate buffer memory");
                 }
             }
 
-            VulkanRenderer._vulkan.BindBufferMemory(VulkanRenderer._logicalDevice, _buffer, _bufferMemory, 0);
+            Renderer.vk.BindBufferMemory(Renderer.logicalDevice, _buffer, _bufferMemory, 0);
         }
 
         private static void CopyBuffer(ref Buffer _sourceBuffer, ref Buffer _dstBuffer, ulong bufferSize)
@@ -354,25 +403,25 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             {
                 SType = StructureType.CommandBufferAllocateInfo,
                 Level = CommandBufferLevel.Primary,
-                CommandPool = VulkanRenderer._commandPool,
+                CommandPool = Renderer.commandPool,
                 CommandBufferCount = 1
             };
             CommandBuffer _localCommandBuffer;
-            VulkanRenderer._vulkan.AllocateCommandBuffers(VulkanRenderer._logicalDevice, ref _allocInfo, out _localCommandBuffer);
+            Renderer.vk.AllocateCommandBuffers(Renderer.logicalDevice, ref _allocInfo, out _localCommandBuffer);
 
             CommandBufferBeginInfo _cBBeginInfo = new CommandBufferBeginInfo()
             {
                 SType = StructureType.CommandBufferBeginInfo,
                 Flags = CommandBufferUsageFlags.OneTimeSubmitBit
             };
-            VulkanRenderer._vulkan.BeginCommandBuffer(_localCommandBuffer, ref _cBBeginInfo);
+            Renderer.vk.BeginCommandBuffer(_localCommandBuffer, ref _cBBeginInfo);
 
             BufferCopy _copyRegion = new BufferCopy()
             {
                 Size = bufferSize
             };
-            VulkanRenderer._vulkan.CmdCopyBuffer(_localCommandBuffer, _sourceBuffer, _dstBuffer, 1, ref _copyRegion);
-            VulkanRenderer._vulkan.EndCommandBuffer(_localCommandBuffer);
+            Renderer.vk.CmdCopyBuffer(_localCommandBuffer, _sourceBuffer, _dstBuffer, 1, ref _copyRegion);
+            Renderer.vk.EndCommandBuffer(_localCommandBuffer);
 
             SubmitInfo _subInfo = new SubmitInfo()
             {
@@ -381,20 +430,35 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
                 PCommandBuffers = &_localCommandBuffer
             };
             Result queue, wait;
-            queue = VulkanRenderer._vulkan.QueueSubmit(VulkanRenderer._graphicsQueue, 1, ref _subInfo, default);
-            wait = VulkanRenderer._vulkan.QueueWaitIdle(VulkanRenderer._graphicsQueue);
+            queue = Renderer.vk.QueueSubmit(Renderer.graphicsQueue, 1, ref _subInfo, default);
+            wait = Renderer.vk.QueueWaitIdle(Renderer.graphicsQueue);
             if (queue != Result.Success && wait != Result.Success)
             {
                 Console.WriteLine("Exception thrown");
                 throw new Exception("failed to submit 'copy buffer' commands");
             }
-            VulkanRenderer._vulkan.FreeCommandBuffers(VulkanRenderer._logicalDevice, VulkanRenderer._commandPool, 1, ref _localCommandBuffer);
+            Renderer.vk.FreeCommandBuffers(Renderer.logicalDevice, Renderer.commandPool, 1, ref _localCommandBuffer);
         }
 
         internal static uint FindMemoryType(uint _typeFilter, MemoryPropertyFlags _properties)
         {
             PhysicalDeviceMemoryProperties _memProperties;
-            VulkanRenderer._vulkan.GetPhysicalDeviceMemoryProperties(VulkanRenderer._gpu, out _memProperties);
+            Renderer.vk.GetPhysicalDeviceMemoryProperties(Renderer.gpu, out _memProperties);
+
+            for (int i = 0; i < _memProperties.MemoryTypeCount; i++)
+            {
+                if ((_typeFilter & 1 << i) != 0 && (_memProperties.MemoryTypes[i].PropertyFlags & _properties) == _properties)
+                {
+                    return (uint)i;
+                }
+            }
+            throw new Exception("Failed to find suitable memory type");
+        }
+
+        internal static uint FindMemoryType(Vk vk, PhysicalDevice gpu, uint _typeFilter, MemoryPropertyFlags _properties)
+        {
+            PhysicalDeviceMemoryProperties _memProperties;
+            vk.GetPhysicalDeviceMemoryProperties(gpu, out _memProperties);
 
             for (int i = 0; i < _memProperties.MemoryTypeCount; i++)
             {
@@ -412,11 +476,11 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             {
                 SType = StructureType.CommandBufferAllocateInfo,
                 Level = CommandBufferLevel.Primary,
-                CommandPool = VulkanRenderer._commandPool,
+                CommandPool = Renderer.commandPool,
                 CommandBufferCount = 1,
             };
 
-            VulkanRenderer._vulkan!.AllocateCommandBuffers(VulkanRenderer._logicalDevice, ref _allocInfo, out CommandBuffer _commandBuffer);
+            Renderer.vk!.AllocateCommandBuffers(Renderer.logicalDevice, ref _allocInfo, out CommandBuffer _commandBuffer);
 
             CommandBufferBeginInfo beginInfo = new CommandBufferBeginInfo()
             {
@@ -424,14 +488,14 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
                 Flags = CommandBufferUsageFlags.OneTimeSubmitBit,
             };
 
-            VulkanRenderer._vulkan!.BeginCommandBuffer(_commandBuffer, ref beginInfo);
+            Renderer.vk!.BeginCommandBuffer(_commandBuffer, ref beginInfo);
 
             return _commandBuffer;
         }
 
         internal static void EndSingleTimeCommands(ref CommandBuffer commandBuffer)
         {
-            VulkanRenderer._vulkan!.EndCommandBuffer(commandBuffer);
+            Renderer.vk!.EndCommandBuffer(commandBuffer);
 
             fixed (CommandBuffer* _cptr = &commandBuffer)
             {
@@ -442,16 +506,16 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
                     PCommandBuffers = _cptr,
                 };
                 Result queue, queuewait, devicewait;
-                queue = VulkanRenderer._vulkan!.QueueSubmit(VulkanRenderer._graphicsQueue, 1, ref submitInfo, default);
-                queuewait = VulkanRenderer._vulkan!.QueueWaitIdle(VulkanRenderer._graphicsQueue);
-                devicewait = VulkanRenderer._vulkan!.DeviceWaitIdle(VulkanRenderer._logicalDevice);
+                queue = Renderer.vk!.QueueSubmit(Renderer.graphicsQueue, 1, ref submitInfo, default);
+                queuewait = Renderer.vk!.QueueWaitIdle(Renderer.graphicsQueue);
+                devicewait = Renderer.vk!.DeviceWaitIdle(Renderer.logicalDevice);
                 if (queue != Result.Success && queue != Result.Success && queue != Result.Success)
                 {
                     Console.WriteLine("Exception thrown");
                     throw new Exception("failed to submit single time commands");
                 }
 
-                VulkanRenderer._vulkan!.FreeCommandBuffers(VulkanRenderer._logicalDevice, VulkanRenderer._commandPool, 1, _cptr);
+                Renderer.vk!.FreeCommandBuffers(Renderer.logicalDevice, Renderer.commandPool, 1, _cptr);
             }
         }
     }

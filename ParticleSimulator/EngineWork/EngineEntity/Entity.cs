@@ -84,7 +84,7 @@ namespace ArctisAurora.EngineWork.EngineEntity
             EntComp component;
             if (typeof(EntComp).Name == typeof(MeshComponent).Name)
             {
-                switch (VulkanRenderer._rendererType)
+                switch (Renderer.renderingModules[0].rendererType)
                 {
                     case ERendererTypes.Rasterizer:
                         component = (EntComp)(object)new MCRaster();

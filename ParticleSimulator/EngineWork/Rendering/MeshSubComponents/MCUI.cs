@@ -98,7 +98,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 
         private void CreateSampler()
         {
-            VulkanRenderer._vulkan.GetPhysicalDeviceProperties(VulkanRenderer._gpu, out PhysicalDeviceProperties _properties);
+            Renderer.vk.GetPhysicalDeviceProperties(Renderer.gpu, out PhysicalDeviceProperties _properties);
             SamplerCreateInfo _createInfo = new SamplerCreateInfo()
             {
                 SType = StructureType.SamplerCreateInfo,
@@ -118,7 +118,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 
             fixed (Sampler* _textureSamplerPtr = &textureSampler)
             {
-                Result r = VulkanRenderer._vulkan.CreateSampler(VulkanRenderer._logicalDevice, ref _createInfo, null, _textureSamplerPtr);
+                Result r = Renderer.vk.CreateSampler(Renderer.logicalDevice, ref _createInfo, null, _textureSamplerPtr);
                 if (r != Result.Success)
                 {
                     throw new Exception("Failed to create a texture sampler with error: " + r);

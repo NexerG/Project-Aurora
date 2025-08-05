@@ -335,6 +335,7 @@ namespace ArctisAurora.EngineWork.Rendering
             _camera.ProcessMouseMovements(xPos, yPos);
         }
 
+
         internal virtual void MouseClick(MouseButton button, InputAction action)
         {
 

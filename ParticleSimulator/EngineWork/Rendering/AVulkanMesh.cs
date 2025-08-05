@@ -107,10 +107,10 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal unsafe void LoadCustomMesh(Scene sc)
         {
-            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _vertexBuffer, null);
-            VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _indexBuffer, null);
-            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _indexBufferMemory, null);
-            VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _vertexBufferMemory, null);
+            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _vertexBuffer, null);
+            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _indexBuffer, null);
+            Renderer.vk.FreeMemory(Renderer.logicalDevice, _indexBufferMemory, null);
+            Renderer.vk.FreeMemory(Renderer.logicalDevice, _vertexBufferMemory, null);
 
             List<Assimp.Vector3D> verts = sc.Meshes[0].Vertices;
             List<Assimp.Vector3D> uvs = sc.Meshes[0].TextureCoordinateChannels[0];

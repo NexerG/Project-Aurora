@@ -1,7 +1,12 @@
 ﻿using ArctisAurora.EngineWork.AssetRegistry;
+using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.Helpers;
+using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using Silk.NET.Core.Native;
+using Silk.NET.Maths;
 using Silk.NET.Vulkan;
+using System.Runtime.CompilerServices;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 
 namespace ArctisAurora.EngineWork.Rendering.Modules
@@ -36,6 +41,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit,
             DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit
         };
+
+        internal override ERendererTypes rendererType => ERendererTypes.UITemp;
 
         public UIModule()
         {
@@ -135,9 +142,135 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.CombinedImageSampler,
-                    DescriptorCount = (uint)AssetRegistries.fonts.Count + 1
+                    DescriptorCount = (uint)(swapchainImageCount * EntityManager.controls.Count)
                 }
             ];
+        }
+
+        internal override void UpdateDescriptorSets()
+        {
+            DescriptorSetLayout[] localLayout = new DescriptorSetLayout[Renderer.swapchainImageCount];
+            Array.Fill(localLayout, descriptorSetLayout);
+
+            fixed (DescriptorSetLayout* layoutsPtr = localLayout)
+            {
+                uint bufferCount = (uint)EntityManager.controls.Count;
+                uint[] entriesPer = { bufferCount, bufferCount, bufferCount };
+                fixed (uint* entriesPtr = entriesPer)
+                {
+                    DescriptorSetVariableDescriptorCountAllocateInfo _variableDSCount = new()
+                    {
+                        SType = StructureType.DescriptorSetVariableDescriptorCountAllocateInfo,
+                        DescriptorSetCount = Renderer.swapchainImageCount, // total amount of descriptor sets
+                        PDescriptorCounts = entriesPtr                  // how many descriptor sets are variable
+                    };
+
+                    DescriptorSetAllocateInfo _allocateInfo = new DescriptorSetAllocateInfo()
+                    {
+                        SType = StructureType.DescriptorSetAllocateInfo,
+                        DescriptorPool = Renderer.descriptorPool,
+                        DescriptorSetCount = Renderer.swapchainImageCount,
+                        PSetLayouts = layoutsPtr,
+                        PNext = &_variableDSCount
+                    };
+
+                    descriptorSets = new DescriptorSet[Renderer.swapchainImageCount];
+                    fixed (DescriptorSet* _descriptorSetsPtr = descriptorSets)
+                    {
+                        Result r = Renderer.vk.AllocateDescriptorSets(Renderer.logicalDevice, ref _allocateInfo, _descriptorSetsPtr);
+                        if (r != Result.Success)
+                        {
+                            throw new Exception("Failed to allocate descriptor set with error code: " + r);
+                        }
+                    }
+                }
+            }
+            for (int i = 0; i < Renderer.swapchainImageCount; i++)
+            {
+                DescriptorBufferInfo cameraInfo = new DescriptorBufferInfo()
+                {
+                    Buffer = camera._cameraBuffer[i],
+                    Offset = 0,
+                    Range = (ulong)Unsafe.SizeOf<UBO>()
+                };
+                DescriptorBufferInfo[] transformUniformInfos = new DescriptorBufferInfo[EntityManager.controls.Count];
+                DescriptorBufferInfo[] uvBufferInfos = new DescriptorBufferInfo[EntityManager.controls.Count];
+                DescriptorImageInfo[] textureImageInfos = new DescriptorImageInfo[EntityManager.controls.Count];
+                for (int j = 0; j < EntityManager.controls.Count; j++)
+                {
+                    MCUI component = EntityManager.controls[j].GetComponent<MCUI>();
+                    textureImageInfos[j] = new()
+                    {
+                        ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
+                        ImageView = component.fontAsset.image._textureImageView,
+                        Sampler = component.textureSampler
+                    };
+                    transformUniformInfos[j] = new()
+                    {
+                        Buffer = component._transformsBuffer,
+                        Offset = 0,
+                        Range = sizeof(float) * 16
+                    };
+                    uvBufferInfos[j] = new()
+                    {
+                        Buffer = component.uvBuffer,
+                        Offset = 0,
+                        Range = (ulong)Unsafe.SizeOf<Vector2D<float>>() * 4
+                    };
+                }
+                fixed (DescriptorBufferInfo* uvBufferInfosPtr = uvBufferInfos)
+                fixed (DescriptorBufferInfo* transformInforPtr = transformUniformInfos)
+                fixed (DescriptorImageInfo* textureImageInforPtr = textureImageInfos)
+                {
+                    var writeDescriptorSets = new WriteDescriptorSet[]
+                    {
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = descriptorSets[i],
+                            DstBinding = 0,
+                            DescriptorCount = 1,
+                            DstArrayElement = 0,
+                            DescriptorType = DescriptorType.UniformBuffer,
+                            PBufferInfo = &cameraInfo
+                        },
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = descriptorSets[i],
+                            DstBinding = 1,
+                            DescriptorCount = (uint)EntityManager.controls.Count,
+                            DstArrayElement = 0,
+                            DescriptorType = DescriptorType.StorageBuffer,
+                            PBufferInfo = transformInforPtr
+                        },
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = descriptorSets[i],
+                            DstBinding = 2,
+                            DescriptorCount = (uint)EntityManager.controls.Count,
+                            DstArrayElement = 0,
+                            DescriptorType = DescriptorType.StorageBuffer,
+                            PBufferInfo = uvBufferInfosPtr
+                        },
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = descriptorSets[i],
+                            DstBinding = 3,
+                            DescriptorCount = (uint)EntityManager.controls.Count,
+                            DstArrayElement = 0,
+                            DescriptorType = DescriptorType.CombinedImageSampler,
+                            PImageInfo = textureImageInforPtr
+                        }
+                    };
+                    fixed (WriteDescriptorSet* descPtr = writeDescriptorSets)
+                    {
+                        Renderer.vk!.UpdateDescriptorSets(Renderer.logicalDevice, (uint)writeDescriptorSets.Length, descPtr, 0, null);
+                    }
+                }
+            }
         }
 
         internal override void CreatePipeline(ref Vk vk, ref Device logicalDevice, ref Extent2D extent2D)
@@ -171,6 +304,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
             VertexInputBindingDescription bindingDesc = Vertex.GetBindingDescription();
             VertexInputAttributeDescription[] attribDesc = Vertex.GetVertexInputAttributeDescriptions();
+
+
 
             fixed (VertexInputAttributeDescription* attribDescPtr = attribDesc)
             fixed (DescriptorSetLayout* descriptorSetLayoutPtr = &descriptorSetLayout)
@@ -307,6 +442,83 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             vk.DestroyShaderModule(logicalDevice, fragmentShader, null);
             SilkMarshal.Free((nint)vertexShaderStageInfo.PName);
             SilkMarshal.Free((nint)fragmentShaderStageInfo.PName);
+        }
+
+        internal override void CreateFrameBuffers(ref Vk vk, ref Device logicalDevice, ImageView[] swapchainImageViews, ImageView[] swapchainImageViewsDepth, uint swapchainImageCount, ref Extent2D extent)
+        {
+            frameBuffers = new Framebuffer[swapchainImageCount];
+            depthFrameBuffers = new Framebuffer[swapchainImageCount];
+            for (int i = 0; i < swapchainImageCount; i++)
+            {
+                var _attachment = new[] { swapchainImageViews[i], swapchainImageViewsDepth[i] };
+
+                fixed (ImageView* _imAttachmentPtr = _attachment)
+                {
+                    FramebufferCreateInfo _framebufferInfo = new FramebufferCreateInfo()
+                    {
+                        SType = StructureType.FramebufferCreateInfo,
+                        RenderPass = renderPass,
+                        AttachmentCount = (uint)_attachment.Length,
+                        PAttachments = _imAttachmentPtr,
+                        Width = extent.Width,
+                        Height = extent.Height,
+                        Layers = 1
+                    };
+                    if (vk.CreateFramebuffer(logicalDevice, ref _framebufferInfo, null, out frameBuffers[i]) != Result.Success)
+                    {
+                        throw new Exception("Failed to create frame buffer");
+                    }
+                }
+            }
+        }
+
+        internal override void PrepareCamera()
+        {
+            camera = new AuroraCamera();
+        }
+
+        internal override void WriteCommandBuffers(ref Vk vk, ref Device logicalDevice, Extent2D extent, CommandBuffer[] commandBuffers, int index)
+        {
+            RenderPassBeginInfo _renderPassInfo = new RenderPassBeginInfo()
+            {
+                SType = StructureType.RenderPassBeginInfo,
+                RenderPass = renderPass,
+                Framebuffer = frameBuffers[index],
+                RenderArea =
+                    {
+                        Offset = { X = 0, Y = 0 },
+                        Extent = extent
+                    }
+            };
+
+            var _clearValues = new ClearValue[]
+            {
+                    new ClearValue()
+                    {
+                        Color = new ClearColorValue() { Float32_0 = 0.05f, Float32_1 = 0.05f, Float32_2 = 0.05f, Float32_3 = 1f },
+                    },
+                    new ClearValue()
+                    {
+                        DepthStencil = new ClearDepthStencilValue() { Depth = 1f, Stencil = 0 }
+                    },
+            };
+
+            fixed (ClearValue* _clrValuesPtr = _clearValues)
+            {
+                _renderPassInfo.ClearValueCount = (uint)_clearValues.Length;
+                _renderPassInfo.PClearValues = _clrValuesPtr;
+            }
+            //player view
+            vk.CmdBindPipeline(commandBuffers[index], PipelineBindPoint.Graphics, pipeline);
+            vk.CmdBeginRenderPass(commandBuffers[index], &_renderPassInfo, SubpassContents.Inline);
+
+            IReadOnlyList<Entity> entities = EntityManager.controls;
+            for (int e = 0; e < entities.Count; e++)
+            {
+                var _offset = new ulong[] { 0 };
+                entities[e].GetComponent<MCUI>().EnqueueDrawCommands(ref _offset, index, e, ref commandBuffers[index], ref pipelineLayout, ref descriptorSets[index]);
+            }
+            vk.CmdEndRenderPass(commandBuffers[index]);
         }
     }
 }

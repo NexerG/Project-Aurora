@@ -43,23 +43,29 @@ namespace ArctisAurora.EngineWork
             Running = true;
             SC = s;
 
+
+            EntityManager.manager = new EntityManager();
+
             Renderer renderer = new Renderer();
             RenderingModule[] modules = new RenderingModule[]
             {
                 new UIModule(),
             };
             renderer.PreInitialize(modules);
-
             renderer.Initialize();
+
+            Bootstrapper.PreprareDefaultAssets();
+
+            renderer.SetupCameras();
             renderer.PrepareDescriptors();
             renderer.SetupPipelines();
+            renderer.CreateCommandBuffers();
+            renderer.CreateSyncObjects();
 
-            //EntityManager.manager = new EntityManager();
             //
             //_renderer = new VulkanRenderer();
             //_renderer.InitRenderer(ERendererTypes.UITemp);
             //
-            //Bootstrapper.PreprareDefaultAssets();
             //
             //// mesh importer
             //MeshImporter importer = new MeshImporter();
@@ -108,6 +114,10 @@ namespace ArctisAurora.EngineWork
             {
                 PathTracerTest();
             }).Start();*/
+            new Thread(() =>
+            {
+                TestNewRenderer();
+            }).Start();
         }
 
         public async Task EngineStart()
@@ -176,6 +186,20 @@ namespace ArctisAurora.EngineWork
                     {
                         VulkanRenderer._glWindow._glfw.PollEvents();
                         VulkanRenderer._rendererInstance.Draw();
+                    }));
+                await Task.Delay(4);
+            }
+        }
+
+        public async Task TestNewRenderer()
+        {
+            while (Running)
+            {
+                if (SC.InvokeRequired)
+                    SC.Invoke(new Action(() =>
+                    {
+                        Renderer.window._glfw.PollEvents();
+                        Renderer.renderer.Draw();
                     }));
                 await Task.Delay(4);
             }

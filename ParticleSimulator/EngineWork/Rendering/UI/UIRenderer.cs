@@ -395,7 +395,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                 throw new Exception("Failed to acquire swapchain image");
             }
 
-            _camera.UpdateCameraMatrix(_extent, _imageIndex);
+            //_camera.UpdateCameraMatrix(_extent, _imageIndex);
             int localEntityCount = 0;
             foreach (Entity e in _updateEntities)
             {

@@ -1,9 +1,13 @@
 ﻿using Silk.NET.Vulkan;
+using Image = Silk.NET.Vulkan.Image;
 
 namespace ArctisAurora.EngineWork.Rendering.Modules
 {
     internal unsafe abstract class RenderingModule
     {
+        // type
+        internal abstract ERendererTypes rendererType { get; }
+
         // features
         internal abstract PhysicalDeviceFeatures features { get; }
         internal abstract PhysicalDeviceVulkan12Features features12 { get; }
@@ -14,6 +18,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal RenderPass renderPass;
 
         internal Framebuffer[] frameBuffers;
+        internal Framebuffer[] depthFrameBuffers;
 
         // descriptors
         internal abstract List<DescriptorType> descriptorTypes { get; }
@@ -26,6 +31,9 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal DescriptorPoolSize[] descriptorPoolSizes;
         internal DescriptorSetLayout descriptorSetLayout;
         internal DescriptorSet[] descriptorSets;
+
+        // others
+        internal AuroraCamera camera;
 
 
 
@@ -88,7 +96,15 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal abstract void CreateDescriptorPoolSizes(uint swapchainImageCount);
 
+        internal abstract void UpdateDescriptorSets();
+
         internal abstract void CreatePipeline(ref Vk vk, ref Device logicalDevice, ref Extent2D extent2D);
+
+        internal abstract void CreateFrameBuffers(ref Vk vk, ref Device logicalDevice, ImageView[] swapchainImageViews, ImageView[] swapchainImageViewsDepth, uint swapchainImageCount, ref Extent2D extent);
+
+        internal abstract void PrepareCamera();
+
+        internal abstract void WriteCommandBuffers(ref Vk vk, ref Device logicalDevice, Extent2D extent, CommandBuffer[] commandBuffers, int index);
 
         internal static byte[] ReadFile(string FileName)
         {

@@ -1,5 +1,4 @@
-﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
-using ArctisAurora.EngineWork.EngineEntity;
+﻿using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
 
 namespace ArctisAurora.EngineWork
@@ -12,12 +11,15 @@ namespace ArctisAurora.EngineWork
         private static List<Entity> _entities = new List<Entity>();
         private static List<VulkanControl> _controls = new List<VulkanControl>();
 
-        //private static List<MeshComponent> _entitiesToRender = new List<MeshComponent>();
+        private static List<Entity> _entitiesToRender = new List<Entity>();
+        private static List<Entity> _entitiesToUpdate = new List<Entity>();
 
         //----------
 
         internal static IReadOnlyList<Entity> entities => _entities;
         internal static IReadOnlyList<Entity> controls => _controls;
+        internal static IReadOnlyList<Entity> entitiesToRender => _entitiesToRender;
+        internal static IReadOnlyList<Entity> entitiesToUpdate => _entitiesToUpdate;
         //internal static IReadOnlyList<MeshComponent> entitiesToRender => _entitiesToRender;
 
         //internal static List<Entity> physicsEntities = new List<Entity>();
@@ -44,6 +46,24 @@ namespace ArctisAurora.EngineWork
         {
             if (control == null) throw new ArgumentNullException(nameof(control));
             _controls.Add(control);
+            
+        }
+
+        public static void AddEntityToUpdate(Entity entity)
+        {
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            _entitiesToUpdate.Add(entity);
+        }
+
+        public static void RemoveEntityUpdate(int start, int end)
+        {
+            _entitiesToUpdate.RemoveRange(start, end - start);
+        }
+
+        public static void AddEntityToRender(Entity entity)
+        {
+            if (entity == null) throw new ArgumentNullException(nameof(entity));
+            _entitiesToRender.Add(entity);
         }
 
         //public static void AddMeshComponent(MeshComponent meshComponent)

@@ -1,11 +1,10 @@
 ﻿using ArctisAurora.EngineWork.AssetRegistry;
-using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.EngineEntity;
+using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using ArctisAurora.EngineWork.Rendering.UI;
 using ArctisAurora.EngineWork.Serialization;
 using Assimp;
 using Silk.NET.Maths;
-using System.Windows.Forms.Design;
 
 namespace ArctisAurora.CustomEntities
 {
@@ -35,7 +34,7 @@ namespace ArctisAurora.CustomEntities
                 Vector3D<float> glyphPos = transform.position + new Vector3D<float>(0, verticalOffset, horizontalOffset);
                 GlyphEntity glyph = new GlyphEntity(text[i], glyphPos);
                 children.Add(glyph);
-                glyph.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
+                glyph.GetComponent<MCUI>().LoadCustomMesh(scene1);
 
                 horizontalOffset += (gAsset.rsb * gAsset.px);
             }

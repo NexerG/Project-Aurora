@@ -1,10 +1,12 @@
-﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+﻿using ArctisAurora.EngineWork;
+using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.EngineEntity;
+using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.CustomEntities
 {
-    internal class GlyphEntity : Entity
+    internal class GlyphEntity : VulkanControl
     {
 
         internal char character; 
@@ -14,6 +16,7 @@ namespace ArctisAurora.CustomEntities
             this.character = character;
             transform.SetWorldPosition(pos);
             CreateComponent<MeshComponent>();
+            //EntityManager.AddControl(this);
         }
     }
 }

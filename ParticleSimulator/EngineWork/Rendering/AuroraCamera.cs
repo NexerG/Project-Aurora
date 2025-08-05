@@ -1,10 +1,9 @@
 ﻿using ArctisAurora.EngineWork.Rendering.Helpers;
-using ArctisAurora.EngineWork.Rendering.UI;
-using Microsoft.VisualBasic.Logging;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
+using Keys = Silk.NET.GLFW.Keys;
 
 namespace ArctisAurora.EngineWork.Rendering
 {
@@ -14,7 +13,7 @@ namespace ArctisAurora.EngineWork.Rendering
         internal Buffer[] _cameraBuffer;
         internal DeviceMemory[] _camBmemory;
         //keyboard
-        internal Dictionary<Silk.NET.GLFW.Keys, bool> _keyStates = new Dictionary<Silk.NET.GLFW.Keys, bool>();
+        internal Dictionary<Keys, bool> _keyStates = new Dictionary<Keys, bool>();
         //variables
         internal Vector3D<float> _pos = new Vector3D<float>(0, 0, 0);
         internal Vector3D<float> _rotation = new Vector3D<float>(0, 0, 0);
@@ -33,21 +32,21 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal AuroraCamera()
         {
-            foreach (Silk.NET.GLFW.Keys key in Enum.GetValues(typeof(Silk.NET.GLFW.Keys)))
+            foreach (Keys key in Enum.GetValues(typeof(Keys)))
             {
                 _keyStates[key] = false;
             }
 
             ulong bufferSize = (ulong)Unsafe.SizeOf<UBO>();
-            _cameraBuffer = new Buffer[VulkanRenderer._swapimageCount];
-            _camBmemory = new DeviceMemory[VulkanRenderer._swapimageCount];
-            for (int i = 0; i < VulkanRenderer._swapimageCount; i++)
+            _cameraBuffer = new Buffer[Renderer.swapchainImageCount];
+            _camBmemory = new DeviceMemory[Renderer.swapchainImageCount];
+            for (int i = 0; i < Renderer.swapchainImageCount; i++)
             {
                 AVulkanBufferHandler.CreateBuffer(bufferSize, ref _cameraBuffer[i], ref _camBmemory[i], BufferUsageFlags.UniformBufferBit | BufferUsageFlags.TransferDstBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit);
             }
         }
 
-        internal void UpdateCameraMatrix(Extent2D _extent, uint currentImage)
+        internal void UpdateCameraMatrix(Extent2D _extent, uint currentImage, uint cameraIndex)
         {
             _front.X = MathF.Cos(Scalar.DegreesToRadians(_rotation.X)) * MathF.Cos(Scalar.DegreesToRadians(_rotation.Y));
             _front.Y = MathF.Sin(Scalar.DegreesToRadians(_rotation.Y));
@@ -61,7 +60,7 @@ namespace ArctisAurora.EngineWork.Rendering
             _projection = Matrix4X4.CreatePerspectiveFieldOfView(Scalar.DegreesToRadians(60.0f), _extent.Width / _extent.Height, 0.1f, 512f);
             _projection.M22 *= -1;
 
-            switch (VulkanRenderer._rendererType)
+            switch (Renderer.renderingModules[cameraIndex].rendererType)
             {
                 case ERendererTypes.Pathtracer:
                     Matrix4X4<float> _tempView;
@@ -97,7 +96,7 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal void ProcessMouseMovements(double xPos, double yPos, bool _constrainPitch = true)
         {
-            if (VulkanRenderer._rendererType == ERendererTypes.UITemp)
+            if (Renderer.renderingModules[0].rendererType == ERendererTypes.UITemp)
             {
                 return;
             }
@@ -126,37 +125,37 @@ namespace ArctisAurora.EngineWork.Rendering
         internal void ProcessKeyboard()
         {
             //WASD just wasd man
-            if (_keyStates[Silk.NET.GLFW.Keys.W])
+            if (_keyStates[Keys.W])
             {
                 _pos += _speed * _front;
             }
-            if (_keyStates[Silk.NET.GLFW.Keys.A])
+            if (_keyStates[Keys.A])
             {
                 _pos += _speed * -_localRight;
             }
-            if (_keyStates[Silk.NET.GLFW.Keys.D])
+            if (_keyStates[Keys.D])
             {
                 _pos += _speed * _localRight;
             }
-            if (_keyStates[Silk.NET.GLFW.Keys.S])
+            if (_keyStates[Keys.S])
             {
                 _pos += _speed * -_front;
             }
             //EQ up down on unitY
-            if (_keyStates[Silk.NET.GLFW.Keys.E])
+            if (_keyStates[Keys.E])
             {
                 _pos += _speed * Vector3D<float>.UnitY;
             }
-            if (_keyStates[Silk.NET.GLFW.Keys.Q])
+            if (_keyStates[Keys.Q])
             {
                 _pos += _speed * -Vector3D<float>.UnitY;
             }
             //space ctrl local up down
-            if (_keyStates[Silk.NET.GLFW.Keys.ControlLeft])
+            if (_keyStates[Keys.ControlLeft])
             {
                 _pos += _speed * -_localUp;
             }
-            if (_keyStates[Silk.NET.GLFW.Keys.Space])
+            if (_keyStates[Keys.Space])
             {
                 _pos += _speed * _localUp;
             }
@@ -181,6 +180,11 @@ namespace ArctisAurora.EngineWork.Rendering
             float pixelHeight = worldHeight / screenHeight;
 
             return new Vector2D<float>(pixelWidth, pixelHeight);
+        }
+
+        internal void UpdateCameraMatrix(Extent2D windowExtent, uint imageIndex, int i)
+        {
+            throw new NotImplementedException();
         }
     }
 }

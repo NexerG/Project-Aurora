@@ -30,7 +30,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         public override void OnStart()
         {
             SingletonMatrix();
-            VulkanRenderer._rendererInstance.AddEntityToRenderQueue(parent);
+            EntityManager.AddEntityToRender(parent);
         }
 
         internal virtual void LoadCustomMesh(Scene sc)
@@ -42,7 +42,8 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             _mesh.LoadCustomMesh(sc);
             //AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
             //AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
-            VulkanRenderer._rendererInstance.RecreateCommandBuffers();
+
+            //Renderer.renderer.RecreateCommandBuffers();
         }
 
         internal virtual void FreeDescriptorSets() { }
@@ -106,5 +107,21 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
                 _offset[0] += (ulong)(sizeof(Vertex) * _loopIndex);
             }
         }
+
+        internal virtual void EnqueueDrawCommands(ref ulong[] _offset, int _loopIndex, int instanceID, ref CommandBuffer _commandBuffer, ref PipelineLayout pipelineLayout, ref DescriptorSet descriptorSet)
+        {
+            if (_render)
+            {
+                fixed (ulong* _offsetsPtr = _offset)
+                {
+                    Renderer.vk.CmdBindVertexBuffers(_commandBuffer, 0, 1, ref _mesh._vertexBuffer, _offsetsPtr);
+                }
+                Renderer.vk.CmdBindIndexBuffer(_commandBuffer, _mesh._indexBuffer, 0, IndexType.Uint32);
+                Renderer.vk.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, pipelineLayout, 0, 1, descriptorSet, 0, null);
+                Renderer.vk.CmdDrawIndexed(_commandBuffer, (uint)_mesh._indices.Length, (uint)_instances, 0, 0, (uint)instanceID);
+                _offset[0] += (ulong)(sizeof(Vertex) * _loopIndex);
+            }
+        }
+
     }
 }

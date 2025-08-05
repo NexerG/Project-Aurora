@@ -1,4 +1,7 @@
-﻿using ArctisAurora.EngineWork.Rendering.Helpers;
+﻿using ArctisAurora.CustomEntities;
+using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+using ArctisAurora.EngineWork.EngineEntity;
+using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Core;
 using Silk.NET.Core.Native;
@@ -7,7 +10,6 @@ using Silk.NET.Vulkan.Extensions.EXT;
 using Silk.NET.Vulkan.Extensions.KHR;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using Windows.ApplicationModel.VoiceCommands;
 using static ArctisAurora.EngineWork.Rendering.Helpers.AVulkanHelper;
 using Image = Silk.NET.Vulkan.Image;
 using Semaphore = Silk.NET.Vulkan.Semaphore;
@@ -40,7 +42,7 @@ namespace ArctisAurora.EngineWork.Rendering
         internal static Semaphore[] imageAvailableSemaphores;
         internal static Semaphore[] renderFinishedSemaphores;
         internal static Fence[] inFlightFences;
-        internal static Fence[] imagesInFlight;
+        internal static Fence[] inFlightImages;
 
         // features
         private readonly string[] extensions = new string[]
@@ -69,16 +71,21 @@ namespace ArctisAurora.EngineWork.Rendering
         internal Image[] swapchainImages;
         internal ImageView[] swapchainImageViews;
 
-        internal RenderPass renderPass;
+        internal DeviceMemory[] swapchainImageMemoriesDepth;
+        internal Image[] swapchainImagesDepth;
+        internal ImageView[] swapchainImageViewsDepth;
+
+        internal const int MAX_FRAMES_IN_FLIGHT = 2;
+        internal static int currentFrame = 0;
 
         internal static RenderingModule[] renderingModules;
 
         // descriptors
         internal Dictionary<DescriptorType, DescriptorPoolSize> descriptorPoolSizes = new();
-        internal DescriptorPool descriptorPool;
+        internal static DescriptorPool descriptorPool;
 
         // commands
-        internal CommandPool commandPool;
+        internal static CommandPool commandPool;
         internal CommandBuffer[] commandBuffers;
 
         // debug
@@ -122,13 +129,25 @@ namespace ArctisAurora.EngineWork.Rendering
 
             CreateSwapchain();
             PrepareDescriptorPoolSizes();
+            CreateCommandPool();
         }
 
         // initializes the rendering modules
         internal void PrepareDescriptors()
         {
+            TextEntity _te = new TextEntity("Shikau ir Tapshnojau");
+
             CreateDescriptorPool();
             CreateDescriptorSetLayouts();
+            UpdateGlobalDescriptorSet();
+        }
+
+        internal void SetupCameras()
+        {
+            for (int i = 0; i < renderingModules.Length; i++)
+            {
+                renderingModules[i].PrepareCamera();
+            }
         }
 
         internal void SetupPipelines()
@@ -136,13 +155,83 @@ namespace ArctisAurora.EngineWork.Rendering
             for(int i=0;i< renderingModules.Length; i++)
             {
                 renderingModules[i].CreateRenderPass(ref vk, ref logicalDevice, ref gpu, ref surfaceFormat, ref windowExtent);
+                renderingModules[i].CreateFrameBuffers(ref vk, ref logicalDevice, swapchainImageViews, swapchainImageViewsDepth, swapchainImageCount, ref windowExtent);
                 renderingModules[i].CreatePipeline(ref vk, ref logicalDevice, ref windowExtent);
             }
         }
 
-        internal void CreateCommandBuffer()
+        internal void CreateCommandBuffers()
         {
+            commandBuffers = new CommandBuffer[swapchainImageCount];
 
+            CommandBufferAllocateInfo _allocInfo = new CommandBufferAllocateInfo()
+            {
+                SType = StructureType.CommandBufferAllocateInfo,
+                CommandPool = commandPool,
+                Level = CommandBufferLevel.Primary,
+                CommandBufferCount = (uint)commandBuffers.Length
+            };
+            fixed (CommandBuffer* _commandBufferPtr = commandBuffers)
+            {
+                Result r = vk.AllocateCommandBuffers(logicalDevice, ref _allocInfo, _commandBufferPtr);
+                if (r != Result.Success)
+                {
+                    throw new Exception("Failed to allocate command buffer with error " + r);
+                }
+            }
+
+            for (int i = 0; i < commandBuffers.Length; i++)
+            {
+                CommandBufferBeginInfo _beginInfo = new CommandBufferBeginInfo()
+                {
+                    SType = StructureType.CommandBufferBeginInfo
+                };
+
+                if (vk.BeginCommandBuffer(commandBuffers[i], ref _beginInfo) != Result.Success)
+                {
+                    throw new Exception("Failed to create BEGIN command buffer at index " + i);
+                }
+                //normal render pass info
+                for(int modulesIndex = 0; modulesIndex < renderingModules.Length; modulesIndex++)
+                {
+                    renderingModules[modulesIndex].WriteCommandBuffers(ref vk, ref logicalDevice, windowExtent, commandBuffers, i);
+                }
+                //done rendering
+
+                if (vk.EndCommandBuffer(commandBuffers[i]) != Result.Success)
+                {
+                    throw new Exception("Failed to record command buffer");
+                }
+            }
+        }
+
+        internal void CreateSyncObjects()
+        {
+            imageAvailableSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
+            renderFinishedSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
+            inFlightFences = new Fence[MAX_FRAMES_IN_FLIGHT];
+            inFlightImages = new Fence[swapchainImageCount];
+
+            SemaphoreCreateInfo _semaphoreCreateInfo = new SemaphoreCreateInfo()
+            {
+                SType = StructureType.SemaphoreCreateInfo
+            };
+
+            FenceCreateInfo _fenceCreateInfo = new FenceCreateInfo()
+            {
+                SType = StructureType.FenceCreateInfo,
+                Flags = FenceCreateFlags.SignaledBit
+            };
+
+            for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+            {
+                if (vk.CreateSemaphore(logicalDevice, ref _semaphoreCreateInfo, null, out imageAvailableSemaphores[i]) != Result.Success ||
+                    vk.CreateSemaphore(logicalDevice, ref _semaphoreCreateInfo, null, out renderFinishedSemaphores[i]) != Result.Success ||
+                    vk.CreateFence(logicalDevice, ref _fenceCreateInfo, null, out inFlightFences[i]) != Result.Success)
+                {
+                    throw new Exception("Failed to create synch objects for a frame at index " + i);
+                }
+            }
         }
 
         internal void CreateVulkanInstance()
@@ -399,10 +488,20 @@ namespace ArctisAurora.EngineWork.Rendering
                 swapchainKHR.GetSwapchainImages(logicalDevice, swapchain, &_swapchainImageCount, _imagePtr);
             }
 
+            swapchainImagesDepth = new Image[_swapchainImageCount];
+            swapchainImageMemoriesDepth = new DeviceMemory[_swapchainImageCount];
+            Format depthFormat = GetDepthFormat(ref vk, ref gpu);
+            for(int i = 0; i < swapchainImages.Length; i++)
+            {
+                AVulkanBufferHandler.CreateImage(vk, logicalDevice, gpu, windowExtent.Width, windowExtent.Height, depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit, MemoryPropertyFlags.DeviceLocalBit, ref swapchainImagesDepth[i], ref swapchainImageMemoriesDepth[i]);
+            }
+
             swapchainImageViews = new ImageView[_swapchainImageCount];
+            swapchainImageViewsDepth = new ImageView[_swapchainImageCount];
             for (int i = 0; i < swapchainImages.Length; i++)
             {
                 AVulkanBufferHandler.CreateImageView(ref vk, ref logicalDevice, ref swapchainImages[i], ref swapchainImageViews[i], surfaceFormat.Format, ImageAspectFlags.ColorBit);
+                AVulkanBufferHandler.CreateImageView(ref vk, ref logicalDevice, ref swapchainImagesDepth[i], ref swapchainImageViewsDepth[i], depthFormat, ImageAspectFlags.DepthBit);
             }
         }
 
@@ -466,12 +565,130 @@ namespace ArctisAurora.EngineWork.Rendering
             }
         }
 
+        internal void UpdateGlobalDescriptorSet()
+        {
+            for(int i=0; i < renderingModules.Length; i++)
+            {
+                renderingModules[i].UpdateDescriptorSets();
+            }
+        }
+
         internal void CreateDescriptorSetLayouts()
         {
             for(int i=0; i< renderingModules.Length; i++)
             {
                 renderingModules[i].CreateDescriptorSetLayout(ref vk, ref logicalDevice);
             }
+        }
+
+        internal void Draw()
+        {
+            for(int i=0;i< renderingModules.Length; i++)
+            {
+                renderingModules[i].camera.ProcessKeyboard();
+            }
+            vk.WaitForFences(logicalDevice, 1, ref inFlightFences[currentFrame], true, ulong.MaxValue);
+            uint imageIndex = 0;
+            Result r = swapchainKHR.AcquireNextImage(logicalDevice, swapchain, ulong.MaxValue, imageAvailableSemaphores[currentFrame], default, ref imageIndex);
+
+            if (r == Result.ErrorOutOfDateKhr)
+            {
+                //RecreateSwapChain();
+                return;
+            }
+            else if (r != Result.Success && r != Result.SuboptimalKhr)
+            {
+                throw new Exception("Failed to acquire swapchain image");
+            }
+
+            for (int i = 0; i < renderingModules.Length; i++)
+            {
+                renderingModules[i].camera.UpdateCameraMatrix(windowExtent, imageIndex, (uint)i);
+            }
+            int localEntityCount = 0;
+            foreach (Entity e in EntityManager.entitiesToUpdate)
+            {
+                MeshComponent meshComponent = e.GetComponent<MeshComponent>();
+                if (meshComponent == null)
+                {
+                    continue;
+                }
+                e.GetComponent<MeshComponent>().UpdateMatrices();
+                localEntityCount++;
+            }
+            EntityManager.RemoveEntityUpdate(0, localEntityCount);
+            //uniforms done
+            if (inFlightImages[imageIndex].Handle != default)
+            {
+                vk.WaitForFences(logicalDevice, 1, ref inFlightImages[imageIndex], true, ulong.MaxValue);
+            }
+            inFlightImages[imageIndex] = inFlightFences[currentFrame];
+
+            SubmitInfo _submitInfo = new SubmitInfo()
+            {
+                SType = StructureType.SubmitInfo
+            };
+
+            var _waitSemaphores = stackalloc[]
+            {
+                imageAvailableSemaphores[currentFrame]
+            };
+            var _waitStages = stackalloc[]
+            {
+                PipelineStageFlags.ColorAttachmentOutputBit
+            };
+
+            CommandBuffer _buffer = commandBuffers[imageIndex];
+            _submitInfo = _submitInfo with
+            {
+                WaitSemaphoreCount = 1,
+                PWaitSemaphores = _waitSemaphores,
+                PWaitDstStageMask = _waitStages,
+
+                CommandBufferCount = 1,
+                PCommandBuffers = &_buffer
+            };
+
+            var _signalSemaphores = stackalloc[]
+            {
+                renderFinishedSemaphores[currentFrame]
+            };
+
+            _submitInfo = _submitInfo with
+            {
+                SignalSemaphoreCount = 1,
+                PSignalSemaphores = _signalSemaphores
+            };
+
+            vk.ResetFences(logicalDevice, 1, ref inFlightFences[currentFrame]);
+            r = vk.QueueSubmit(graphicsQueue, 1, ref _submitInfo, inFlightFences[currentFrame]);
+            if (r != Result.Success)
+            {
+                throw new Exception("Failed to send command buffer to the GPU with error code:" + r);
+            }
+
+            var _swapChains = stackalloc[] { swapchain };
+            PresentInfoKHR _presentInfo = new PresentInfoKHR()
+            {
+                SType = StructureType.PresentInfoKhr,
+                WaitSemaphoreCount = 1,
+                PWaitSemaphores = _signalSemaphores,
+                SwapchainCount = 1,
+                PSwapchains = _swapChains,
+                PImageIndices = &imageIndex
+            };
+            r = swapchainKHR.QueuePresent(presentQueue, ref _presentInfo);
+            if (r == Result.ErrorOutOfDateKhr || r == Result.SuboptimalKhr || window.frameBufferResized)
+            {
+                window.frameBufferResized = false;
+                //RecreateSwapChain();
+            }
+            else if (r != Result.Success)
+            {
+                throw new Exception("Failed to present swap chain image");
+            }
+
+            currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
         }
 
         internal void CopyStructTrues<T>(ref T destination, T source) where T : struct
