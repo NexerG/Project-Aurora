@@ -42,33 +42,11 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             return FindSupportedFormat(new[] { Format.D32Sfloat, Format.D32SfloatS8Uint, Format.D24UnormS8Uint }, ImageTiling.Optimal, FormatFeatureFlags.DepthStencilAttachmentBit);
         }
 
-        internal static Format GetDepthFormat(ref Vk vk, ref PhysicalDevice gpu)
-        {
-            return FindSupportedFormat(ref vk, ref gpu, new[] { Format.D32Sfloat, Format.D32SfloatS8Uint, Format.D24UnormS8Uint }, ImageTiling.Optimal, FormatFeatureFlags.DepthStencilAttachmentBit);
-        }
-
         internal static Format FindSupportedFormat(IEnumerable<Format> _formats, ImageTiling _tiling, FormatFeatureFlags _features)
         {
             foreach (Format _f in _formats)
             {
-                Rasterizer._vulkan.GetPhysicalDeviceFormatProperties(Rasterizer._gpu, _f, out FormatProperties _fp);
-                if (_tiling == ImageTiling.Linear && (_fp.LinearTilingFeatures & _features) == _features)
-                {
-                    return _f;
-                }
-                else if (_tiling == ImageTiling.Optimal && (_fp.OptimalTilingFeatures & _features) == _features)
-                {
-                    return _f;
-                }
-            }
-            throw new Exception("Failed to find requested format");
-        }
-
-        internal static Format FindSupportedFormat(ref Vk vk, ref PhysicalDevice gpu, IEnumerable<Format> _formats, ImageTiling _tiling, FormatFeatureFlags _features)
-        {
-            foreach (Format _f in _formats)
-            {
-                vk.GetPhysicalDeviceFormatProperties(gpu, _f, out FormatProperties _fp);
+                Renderer.vk.GetPhysicalDeviceFormatProperties(Renderer.gpu, _f, out FormatProperties _fp);
                 if (_tiling == ImageTiling.Linear && (_fp.LinearTilingFeatures & _features) == _features)
                 {
                     return _f;

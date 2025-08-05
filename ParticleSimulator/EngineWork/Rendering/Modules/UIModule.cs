@@ -1,8 +1,7 @@
-﻿using ArctisAurora.EngineWork.AssetRegistry;
-using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
-using ArctisAurora.EngineWork.EngineEntity;
+﻿using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
+using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using Silk.NET.Core.Native;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
@@ -45,18 +44,22 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         };
 
         internal override DescriptorBindingFlags[] descriptorBindingFlags => new DescriptorBindingFlags[]{
-            DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit | DescriptorBindingFlags.UpdateAfterBindBit,
+            DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit,
             DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit
         };
 
         internal override ERendererTypes rendererType => ERendererTypes.UITemp;
+
+        internal override ERendererStage RendererStage => ERendererStage.UI;
+
+        internal static bool updateCommandBuffers = false;
 
         public UIModule()
         {
 
         }
 
-        internal override void CreateRenderPass(ref Vk vk, ref Device logicalDevice, ref PhysicalDevice gpu, ref SurfaceFormatKHR format, ref Extent2D extent2D)
+        internal override void CreateRenderPass(ref SurfaceFormatKHR format)
         {
             AttachmentDescription _colorAttachment = new AttachmentDescription()
             {
@@ -77,7 +80,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
             AttachmentDescription _depthAttachment = new AttachmentDescription()
             {
-                Format = AVulkanHelper.GetDepthFormat(ref vk, ref gpu),
+                Format = AVulkanHelper.GetDepthFormat(),
                 Samples = SampleCountFlags.Count1Bit,
                 LoadOp = AttachmentLoadOp.Clear,
                 StoreOp = AttachmentStoreOp.DontCare,
@@ -125,7 +128,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     PDependencies = &_subDepend
                 };
 
-                if (vk.CreateRenderPass(logicalDevice, ref _renderPassInfo, null, out renderPass) != Result.Success)
+                if (Renderer.vk.CreateRenderPass(Renderer.logicalDevice, ref _renderPassInfo, null, out renderPass) != Result.Success)
                 {
                     throw new Exception("failed to create render pass!");
                 }
@@ -154,7 +157,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             ];
         }
 
-        internal override void UpdateDescriptorSets()
+        internal override void AllocateDescriptorSets()
         {
             DescriptorSetLayout[] localLayout = new DescriptorSetLayout[Renderer.swapchainImageCount];
             Array.Fill(localLayout, descriptorSetLayout);
@@ -169,7 +172,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     {
                         SType = StructureType.DescriptorSetVariableDescriptorCountAllocateInfo,
                         DescriptorSetCount = Renderer.swapchainImageCount, // total amount of descriptor sets
-                        PDescriptorCounts = entriesPtr                  // how many descriptor sets are variable
+                        PDescriptorCounts = entriesPtr                     // how many descriptors we have per set
                     };
 
                     DescriptorSetAllocateInfo _allocateInfo = new DescriptorSetAllocateInfo()
@@ -192,6 +195,10 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     }
                 }
             }
+        }
+
+        internal override void UpdateDescriptorSets()
+        {
             for (int i = 0; i < Renderer.swapchainImageCount; i++)
             {
                 DescriptorBufferInfo cameraInfo = new DescriptorBufferInfo()
@@ -205,7 +212,9 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 DescriptorImageInfo[] textureImageInfos = new DescriptorImageInfo[EntityManager.controls.Count];
                 for (int j = 0; j < EntityManager.controls.Count; j++)
                 {
-                    MCUI component = EntityManager.controls[j].GetComponent<MCUI>();
+                    VulkanControl control = (VulkanControl)EntityManager.controls[j];
+                    MCUI component = control.GetComponent<MCUI>();
+
                     textureImageInfos[j] = new()
                     {
                         ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
@@ -220,7 +229,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     };
                     uvBufferInfos[j] = new()
                     {
-                        Buffer = component.uvBuffer,
+                        Buffer = control.uvBuffer,
                         Offset = 0,
                         Range = (ulong)Unsafe.SizeOf<Vector2D<float>>() * 4
                     };
@@ -280,13 +289,13 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             }
         }
 
-        internal override void CreatePipeline(ref Vk vk, ref Device logicalDevice, ref Extent2D extent2D)
+        internal override void CreatePipeline()
         {
             byte[] vertexCode = ReadFile("../../../Shaders/" + "UIRasterizer/UI.vert.spv");
             byte[] fragmentCode = ReadFile("../../../Shaders/" + "UIRasterizer/UI.frag.spv");
 
-            ShaderModule vertexShader = CreateShaderModule(ref vk, ref logicalDevice, vertexCode);
-            ShaderModule fragmentShader = CreateShaderModule(ref vk, ref logicalDevice, fragmentCode);
+            ShaderModule vertexShader = CreateShaderModule(ref Renderer.vk, ref Renderer.logicalDevice, vertexCode);
+            ShaderModule fragmentShader = CreateShaderModule(ref Renderer.vk, ref Renderer.logicalDevice, fragmentCode);
 
             PipelineShaderStageCreateInfo vertexShaderStageInfo = new PipelineShaderStageCreateInfo
             {
@@ -336,15 +345,15 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 {
                     X = 0,
                     Y = 0,
-                    Width = extent2D.Width,
-                    Height = extent2D.Height,
+                    Width = Renderer.windowExtent.Width,
+                    Height = Renderer.windowExtent.Height,
                     MinDepth = 0,
                     MaxDepth = 1
                 };
                 Rect2D scissor = new Rect2D()
                 {
                     Offset = { X = 0, Y = 0 },
-                    Extent = extent2D
+                    Extent = Renderer.windowExtent
                 };
                 PipelineViewportStateCreateInfo viewportState = new PipelineViewportStateCreateInfo()
                 {
@@ -415,7 +424,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     PSetLayouts = descriptorSetLayoutPtr
                 };
 
-                if (vk.CreatePipelineLayout(logicalDevice, ref pipelineLayoutInfo, null, out pipelineLayout) != Result.Success)
+                if (Renderer.vk.CreatePipelineLayout(Renderer.logicalDevice, ref pipelineLayoutInfo, null, out pipelineLayout) != Result.Success)
                 {
                     throw new Exception("Failed to create pipeline layout");
                 }
@@ -438,24 +447,24 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     BasePipelineHandle = default
                 };
 
-                Result r = vk.CreateGraphicsPipelines(logicalDevice, default, 1, ref graphicsPipelineInfo, null, out pipeline);
+                Result r = Renderer.vk.CreateGraphicsPipelines(Renderer.logicalDevice, default, 1, ref graphicsPipelineInfo, null, out pipeline);
                 if (r != Result.Success)
                 {
                     throw new Exception("Failed to create graphics pipeline " + r);
                 }
             }
 
-            vk.DestroyShaderModule(logicalDevice, vertexShader, null);
-            vk.DestroyShaderModule(logicalDevice, fragmentShader, null);
+            Renderer.vk.DestroyShaderModule(Renderer.logicalDevice, vertexShader, null);
+            Renderer.vk.DestroyShaderModule(Renderer.logicalDevice, fragmentShader, null);
             SilkMarshal.Free((nint)vertexShaderStageInfo.PName);
             SilkMarshal.Free((nint)fragmentShaderStageInfo.PName);
         }
 
-        internal override void CreateFrameBuffers(ref Vk vk, ref Device logicalDevice, ImageView[] swapchainImageViews, ImageView[] swapchainImageViewsDepth, uint swapchainImageCount, ref Extent2D extent)
+        internal override void CreateFrameBuffers(ImageView[] swapchainImageViews, ImageView[] swapchainImageViewsDepth)
         {
-            frameBuffers = new Framebuffer[swapchainImageCount];
-            depthFrameBuffers = new Framebuffer[swapchainImageCount];
-            for (int i = 0; i < swapchainImageCount; i++)
+            frameBuffers = new Framebuffer[Renderer.swapchainImageCount];
+            depthFrameBuffers = new Framebuffer[Renderer.swapchainImageCount];
+            for (int i = 0; i < Renderer.swapchainImageCount; i++)
             {
                 var _attachment = new[] { swapchainImageViews[i], swapchainImageViewsDepth[i] };
 
@@ -467,11 +476,11 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                         RenderPass = renderPass,
                         AttachmentCount = (uint)_attachment.Length,
                         PAttachments = _imAttachmentPtr,
-                        Width = extent.Width,
-                        Height = extent.Height,
+                        Width = Renderer.windowExtent.Width,
+                        Height = Renderer.windowExtent.Height,
                         Layers = 1
                     };
-                    if (vk.CreateFramebuffer(logicalDevice, ref _framebufferInfo, null, out frameBuffers[i]) != Result.Success)
+                    if (Renderer.vk.CreateFramebuffer(Renderer.logicalDevice, ref _framebufferInfo, null, out frameBuffers[i]) != Result.Success)
                     {
                         throw new Exception("Failed to create frame buffer");
                     }
@@ -484,48 +493,94 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             camera = new AuroraCamera();
         }
 
-        internal override void WriteCommandBuffers(ref Vk vk, ref Device logicalDevice, Extent2D extent, CommandBuffer[] commandBuffers, int index)
+        internal override void WriteCommandBuffers()
         {
-            RenderPassBeginInfo _renderPassInfo = new RenderPassBeginInfo()
+            if (commandBuffers != null)
             {
-                SType = StructureType.RenderPassBeginInfo,
-                RenderPass = renderPass,
-                Framebuffer = frameBuffers[index],
-                RenderArea =
+                fixed (CommandBuffer* CBPtr = commandBuffers)
+                {
+                    Renderer.vk.FreeCommandBuffers(Renderer.logicalDevice, Renderer.commandPool, (uint)commandBuffers.Length, CBPtr);
+                }
+            }
+
+            commandBuffers = new CommandBuffer[Renderer.swapchainImageCount];
+
+            CommandBufferAllocateInfo _allocInfo = new CommandBufferAllocateInfo()
+            {
+                SType = StructureType.CommandBufferAllocateInfo,
+                CommandPool = Renderer.commandPool,
+                Level = CommandBufferLevel.Primary,
+                CommandBufferCount = (uint)commandBuffers.Length
+            };
+            fixed (CommandBuffer* _commandBufferPtr = commandBuffers)
+            {
+                Result r = Renderer.vk.AllocateCommandBuffers(Renderer.logicalDevice, ref _allocInfo, _commandBufferPtr);
+                if (r != Result.Success)
+                {
+                    throw new Exception("Failed to allocate command buffer with error " + r);
+                }
+            }
+
+
+            for (int index=0;index< commandBuffers.Length; index++)
+            {
+                RenderPassBeginInfo _renderPassInfo = new RenderPassBeginInfo()
+                {
+                    SType = StructureType.RenderPassBeginInfo,
+                    RenderPass = renderPass,
+                    Framebuffer = frameBuffers[index],
+                    RenderArea =
                     {
                         Offset = { X = 0, Y = 0 },
-                        Extent = extent
+                        Extent = Renderer.windowExtent
                     }
-            };
+                };
 
-            var _clearValues = new ClearValue[]
-            {
-                    new ClearValue()
-                    {
-                        Color = new ClearColorValue() { Float32_0 = 0.05f, Float32_1 = 0.05f, Float32_2 = 0.05f, Float32_3 = 1f },
-                    },
-                    new ClearValue()
-                    {
-                        DepthStencil = new ClearDepthStencilValue() { Depth = 1f, Stencil = 0 }
-                    },
-            };
+                CommandBufferBeginInfo _beginInfo = new CommandBufferBeginInfo()
+                {
+                    SType = StructureType.CommandBufferBeginInfo
+                };
 
-            fixed (ClearValue* _clrValuesPtr = _clearValues)
-            {
-                _renderPassInfo.ClearValueCount = (uint)_clearValues.Length;
-                _renderPassInfo.PClearValues = _clrValuesPtr;
+                if (Renderer.vk.BeginCommandBuffer(commandBuffers[index], ref _beginInfo) != Result.Success)
+                {
+                    throw new Exception("Failed to create BEGIN command buffer at index " + index);
+                }
+
+
+                var _clearValues = new ClearValue[]
+                {
+                new ClearValue()
+                {
+                    Color = new ClearColorValue() { Float32_0 = 0.05f, Float32_1 = 0.05f, Float32_2 = 0.05f, Float32_3 = 1f },
+                },
+                new ClearValue()
+                {
+                    DepthStencil = new ClearDepthStencilValue() { Depth = 1f, Stencil = 0 }
+                },
+                };
+
+                fixed (ClearValue* _clrValuesPtr = _clearValues)
+                {
+                    _renderPassInfo.ClearValueCount = (uint)_clearValues.Length;
+                    _renderPassInfo.PClearValues = _clrValuesPtr;
+                }
+                //player view
+                Renderer.vk.CmdBindPipeline(commandBuffers[index], PipelineBindPoint.Graphics, pipeline);
+                Renderer.vk.CmdBeginRenderPass(commandBuffers[index], &_renderPassInfo, SubpassContents.Inline);
+
+                IReadOnlyList<Entity> entities = EntityManager.controls;
+                for (int e = 0; e < entities.Count; e++)
+                {
+                    var _offset = new ulong[] { 0 };
+                    entities[e].GetComponent<MCUI>().EnqueueDrawCommands(ref _offset, index, e, ref commandBuffers[index], ref pipelineLayout, ref descriptorSets[index]);
+                }
+                Renderer.vk.CmdEndRenderPass(commandBuffers[index]);
+
+                if (Renderer.vk.EndCommandBuffer(commandBuffers[index]) != Result.Success)
+                {
+                    throw new Exception("Failed to record command buffer");
+                }
             }
-            //player view
-            vk.CmdBindPipeline(commandBuffers[index], PipelineBindPoint.Graphics, pipeline);
-            vk.CmdBeginRenderPass(commandBuffers[index], &_renderPassInfo, SubpassContents.Inline);
-
-            IReadOnlyList<Entity> entities = EntityManager.controls;
-            for (int e = 0; e < entities.Count; e++)
-            {
-                var _offset = new ulong[] { 0 };
-                entities[e].GetComponent<MCUI>().EnqueueDrawCommands(ref _offset, index, e, ref commandBuffers[index], ref pipelineLayout, ref descriptorSets[index]);
-            }
-            vk.CmdEndRenderPass(commandBuffers[index]);
         }
     }
 }

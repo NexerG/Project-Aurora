@@ -20,14 +20,13 @@
     <PackageReference Include="Silk.NET.Windowing" Version="2.21.0" />
     <PackageReference Include="Silk.NET.Windowing.Common" Version="2.21.0" />
     <PackageReference Include="Silk.NET.Windowing.Glfw" Version="2.21.0" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.10" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
     <PackageReference Include="StbImageSharp" Version="2.27.13" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Data\Fonts\" />
-    <Folder Include="EngineWork\Rendering\Pipelines\" />
   </ItemGroup>
 
   <ItemGroup>
@@ -49,6 +48,12 @@
 	<Content Include="Data\Fonts\**\*.*">
 		<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	</Content>
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Compile Remove="EngineWork\Rendering\Pipelines\**" />
+    <EmbeddedResource Remove="EngineWork\Rendering\Pipelines\**" />
+    <None Remove="EngineWork\Rendering\Pipelines\**" />
   </ItemGroup>
 
 </Project>

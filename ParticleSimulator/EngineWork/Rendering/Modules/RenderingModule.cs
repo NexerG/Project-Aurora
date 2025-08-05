@@ -3,10 +3,17 @@ using Image = Silk.NET.Vulkan.Image;
 
 namespace ArctisAurora.EngineWork.Rendering.Modules
 {
+    public enum ERendererStage
+    {
+        Game, UI, PostProcessing
+    }
+
+
     internal unsafe abstract class RenderingModule
     {
         // type
         internal abstract ERendererTypes rendererType { get; }
+        internal abstract ERendererStage RendererStage { get; }
 
         // features
         internal abstract PhysicalDeviceFeatures features { get; }
@@ -19,6 +26,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal Framebuffer[] frameBuffers;
         internal Framebuffer[] depthFrameBuffers;
+
+        internal CommandBuffer[] commandBuffers;
 
         // descriptors
         internal abstract List<DescriptorType> descriptorTypes { get; }
@@ -37,9 +46,9 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
 
 
-        internal abstract void CreateRenderPass(ref Vk vk, ref Device logicalDevice, ref PhysicalDevice gpu, ref SurfaceFormatKHR format, ref Extent2D extent2D);
+        internal abstract void CreateRenderPass(ref SurfaceFormatKHR format);
 
-        internal virtual void CreateDescriptorSetLayout(ref Vk vk, ref Device logicalDevice)
+        internal virtual void CreateDescriptorSetLayout()
         {
             uint typeCount = (uint)descriptorTypes.Count;
             uint indexedMaxCount = 50000;
@@ -87,7 +96,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     PBindings = _bindingsPtr,
                     PNext = &_setLayoutBindingFlags
                 };
-                if (vk.CreateDescriptorSetLayout(logicalDevice, ref _layoutCreateInfo, null, _descSetLayoutPtr) != Result.Success)
+                if (Renderer.vk.CreateDescriptorSetLayout(Renderer.logicalDevice, ref _layoutCreateInfo, null, _descSetLayoutPtr) != Result.Success)
                 {
                     throw new Exception("Failed to create descriptor set layout");
                 }
@@ -98,13 +107,15 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal abstract void UpdateDescriptorSets();
 
-        internal abstract void CreatePipeline(ref Vk vk, ref Device logicalDevice, ref Extent2D extent2D);
+        internal abstract void AllocateDescriptorSets();
 
-        internal abstract void CreateFrameBuffers(ref Vk vk, ref Device logicalDevice, ImageView[] swapchainImageViews, ImageView[] swapchainImageViewsDepth, uint swapchainImageCount, ref Extent2D extent);
+        internal abstract void CreatePipeline();
+
+        internal abstract void CreateFrameBuffers(ImageView[] swapchainImageViews, ImageView[] swapchainImageViewsDepth);
 
         internal abstract void PrepareCamera();
 
-        internal abstract void WriteCommandBuffers(ref Vk vk, ref Device logicalDevice, Extent2D extent, CommandBuffer[] commandBuffers, int index);
+        internal abstract void WriteCommandBuffers();
 
         internal static byte[] ReadFile(string FileName)
         {

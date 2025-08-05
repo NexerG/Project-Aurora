@@ -84,9 +84,6 @@ namespace ArctisAurora.EngineWork.Rendering
         internal Dictionary<DescriptorType, DescriptorPoolSize> descriptorPoolSizes = new();
         internal static DescriptorPool descriptorPool;
 
-        //internal static bool update
-        internal static bool updateControls = false;
-
         // commands
         internal static CommandPool commandPool;
         internal CommandBuffer[] commandBuffers;
@@ -138,11 +135,10 @@ namespace ArctisAurora.EngineWork.Rendering
         // initializes the rendering modules
         internal void PrepareDescriptors()
         {
-            TextEntity _te = new TextEntity("Shikau ir Tapshnojau");
-
-            CreateDescriptorPool();
             CreateDescriptorSetLayouts();
-            UpdateGlobalDescriptorSet();
+            //CreateDescriptorPool();
+            //AllocateDescriptorSets();
+            //UpdateGlobalDescriptorSet();
         }
 
         internal void SetupCameras()
@@ -157,54 +153,17 @@ namespace ArctisAurora.EngineWork.Rendering
         {
             for(int i=0;i< renderingModules.Length; i++)
             {
-                renderingModules[i].CreateRenderPass(ref vk, ref logicalDevice, ref gpu, ref surfaceFormat, ref windowExtent);
-                renderingModules[i].CreateFrameBuffers(ref vk, ref logicalDevice, swapchainImageViews, swapchainImageViewsDepth, swapchainImageCount, ref windowExtent);
-                renderingModules[i].CreatePipeline(ref vk, ref logicalDevice, ref windowExtent);
+                renderingModules[i].CreateRenderPass(ref surfaceFormat);
+                renderingModules[i].CreateFrameBuffers(swapchainImageViews, swapchainImageViewsDepth);
+                renderingModules[i].CreatePipeline();
             }
         }
 
         internal void CreateCommandBuffers()
         {
-            commandBuffers = new CommandBuffer[swapchainImageCount];
-
-            CommandBufferAllocateInfo _allocInfo = new CommandBufferAllocateInfo()
+            for (int modulesIndex = 0; modulesIndex < renderingModules.Length; modulesIndex++)
             {
-                SType = StructureType.CommandBufferAllocateInfo,
-                CommandPool = commandPool,
-                Level = CommandBufferLevel.Primary,
-                CommandBufferCount = (uint)commandBuffers.Length
-            };
-            fixed (CommandBuffer* _commandBufferPtr = commandBuffers)
-            {
-                Result r = vk.AllocateCommandBuffers(logicalDevice, ref _allocInfo, _commandBufferPtr);
-                if (r != Result.Success)
-                {
-                    throw new Exception("Failed to allocate command buffer with error " + r);
-                }
-            }
-
-            for (int i = 0; i < commandBuffers.Length; i++)
-            {
-                CommandBufferBeginInfo _beginInfo = new CommandBufferBeginInfo()
-                {
-                    SType = StructureType.CommandBufferBeginInfo
-                };
-
-                if (vk.BeginCommandBuffer(commandBuffers[i], ref _beginInfo) != Result.Success)
-                {
-                    throw new Exception("Failed to create BEGIN command buffer at index " + i);
-                }
-                //normal render pass info
-                for(int modulesIndex = 0; modulesIndex < renderingModules.Length; modulesIndex++)
-                {
-                    renderingModules[modulesIndex].WriteCommandBuffers(ref vk, ref logicalDevice, windowExtent, commandBuffers, i);
-                }
-                //done rendering
-
-                if (vk.EndCommandBuffer(commandBuffers[i]) != Result.Success)
-                {
-                    throw new Exception("Failed to record command buffer");
-                }
+                renderingModules[modulesIndex].WriteCommandBuffers();
             }
         }
 
@@ -237,7 +196,7 @@ namespace ArctisAurora.EngineWork.Rendering
             }
         }
 
-        internal void CreateVulkanInstance()
+        private void CreateVulkanInstance()
         {
             IntPtr appName = SilkMarshal.StringToPtr("AuroraRenderer");
             IntPtr engineName = SilkMarshal.StringToPtr("ArctisAurora");
@@ -309,13 +268,13 @@ namespace ArctisAurora.EngineWork.Rendering
             SilkMarshal.Free(enabledLayerNames);
         }
 
-        internal uint DebugCallback(DebugUtilsMessageSeverityFlagsEXT messageSeverity, DebugUtilsMessageTypeFlagsEXT messageTypes, DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
+        private uint DebugCallback(DebugUtilsMessageSeverityFlagsEXT messageSeverity, DebugUtilsMessageTypeFlagsEXT messageTypes, DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
         {
             Console.WriteLine($"validation layer:" + Marshal.PtrToStringAnsi((nint)pCallbackData->PMessage));
             return Vk.False;
         }
 
-        internal void SetupDebugMessenger()
+        private void SetupDebugMessenger()
         {
             if (!isDebugEnabled) return;
 
@@ -329,7 +288,7 @@ namespace ArctisAurora.EngineWork.Rendering
             }
         }
 
-        internal void PopulateDebugMessengerCreateInfo(ref DebugUtilsMessengerCreateInfoEXT createInfo)
+        private void PopulateDebugMessengerCreateInfo(ref DebugUtilsMessengerCreateInfoEXT createInfo)
         {
             createInfo.SType = StructureType.DebugUtilsMessengerCreateInfoExt;
             createInfo.MessageSeverity = DebugUtilsMessageSeverityFlagsEXT.VerboseBitExt |
@@ -341,7 +300,7 @@ namespace ArctisAurora.EngineWork.Rendering
             createInfo.PfnUserCallback = (DebugUtilsMessengerCallbackFunctionEXT)DebugCallback;
         }
 
-        internal void ChoosePhysicalDevice()
+        private void ChoosePhysicalDevice()
         {
             uint deviceCount = 0;
             vk.GetPhysicalDevices(instance);
@@ -355,7 +314,7 @@ namespace ArctisAurora.EngineWork.Rendering
             gpu = devices[0];
         }
 
-        internal void CreateLogicalDevice()
+        private void CreateLogicalDevice()
         {
             float queuePriority = 1.0f;
             DeviceQueueCreateInfo queueCreateInfo = new DeviceQueueCreateInfo
@@ -442,7 +401,7 @@ namespace ArctisAurora.EngineWork.Rendering
             Marshal.FreeHGlobal(ppEnabledExtensions);
         }
 
-        internal void CreateSwapchain()
+        private void CreateSwapchain()
         {
             SwapChainSupportDetails _support = GetSupportDetails(ref gpu, ref window.driverSurface, ref window.surface);
             surfaceFormat = GetSwapchainSurfaceFormat(_support.Formats);
@@ -493,7 +452,7 @@ namespace ArctisAurora.EngineWork.Rendering
 
             swapchainImagesDepth = new Image[_swapchainImageCount];
             swapchainImageMemoriesDepth = new DeviceMemory[_swapchainImageCount];
-            Format depthFormat = GetDepthFormat(ref vk, ref gpu);
+            Format depthFormat = GetDepthFormat();
             for(int i = 0; i < swapchainImages.Length; i++)
             {
                 AVulkanBufferHandler.CreateImage(vk, logicalDevice, gpu, windowExtent.Width, windowExtent.Height, depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit, MemoryPropertyFlags.DeviceLocalBit, ref swapchainImagesDepth[i], ref swapchainImageMemoriesDepth[i]);
@@ -508,7 +467,7 @@ namespace ArctisAurora.EngineWork.Rendering
             }
         }
 
-        internal void CreateCommandPool()
+        private void CreateCommandPool()
         {
             CommandPoolCreateInfo _createInfo = new CommandPoolCreateInfo()
             {
@@ -521,7 +480,7 @@ namespace ArctisAurora.EngineWork.Rendering
             }
         }
 
-        internal void PrepareDescriptorPoolSizes()
+        private void PrepareDescriptorPoolSizes()
         {
             DescriptorType[] types = Enum.GetValues<DescriptorType>();
             for (int i = 0; i < types.Length; i++)
@@ -534,7 +493,7 @@ namespace ArctisAurora.EngineWork.Rendering
             }
         }
 
-        internal void CreateDescriptorPool()
+        private void CreateDescriptorPool()
         {
             for (int i = 0; i < renderingModules.Length; i++)
             {
@@ -568,6 +527,14 @@ namespace ArctisAurora.EngineWork.Rendering
             }
         }
 
+        private void AllocateDescriptorSets()
+        {
+            for(int i = 0; i < renderingModules.Length; i++)
+            {
+                renderingModules[i].AllocateDescriptorSets();
+            }
+        }
+
         internal void UpdateGlobalDescriptorSet()
         {
             for(int i=0; i < renderingModules.Length; i++)
@@ -576,11 +543,27 @@ namespace ArctisAurora.EngineWork.Rendering
             }
         }
 
-        internal void CreateDescriptorSetLayouts()
+        internal void UpdateUIRenderer()
+        {
+            CreateDescriptorPool();
+            for (int i = 0; i < renderingModules.Length; i++)
+            {
+                if (renderingModules[i].RendererStage == ERendererStage.UI)
+                {
+                    renderingModules[i].AllocateDescriptorSets();
+                    renderingModules[i].UpdateDescriptorSets();
+                    renderingModules[i].WriteCommandBuffers();
+                    return;
+                }
+            }
+        }
+
+
+        private void CreateDescriptorSetLayouts()
         {
             for(int i=0; i< renderingModules.Length; i++)
             {
-                renderingModules[i].CreateDescriptorSetLayout(ref vk, ref logicalDevice);
+                renderingModules[i].CreateDescriptorSetLayout();
             }
         }
 
@@ -641,33 +624,39 @@ namespace ArctisAurora.EngineWork.Rendering
                 PipelineStageFlags.ColorAttachmentOutputBit
             };
 
-            CommandBuffer _buffer = commandBuffers[imageIndex];
-            _submitInfo = _submitInfo with
+            //CommandBuffer _buffer = commandBuffers[imageIndex];
+            CommandBuffer[] executionBuffer = new CommandBuffer[renderingModules.Length];
+            for (int i = 0; i < renderingModules.Length; i++)
             {
-                WaitSemaphoreCount = 1,
-                PWaitSemaphores = _waitSemaphores,
-                PWaitDstStageMask = _waitStages,
-
-                CommandBufferCount = 1,
-                PCommandBuffers = &_buffer
-            };
-
+                executionBuffer[i] = renderingModules[i].commandBuffers[imageIndex];
+            }
+            //fixed
             var _signalSemaphores = stackalloc[]
-            {
+{
                 renderFinishedSemaphores[currentFrame]
             };
 
-            _submitInfo = _submitInfo with
+            fixed (CommandBuffer* ptrCommandBuffer = executionBuffer)
             {
-                SignalSemaphoreCount = 1,
-                PSignalSemaphores = _signalSemaphores
-            };
+                _submitInfo = _submitInfo with
+                {
+                    WaitSemaphoreCount = 1,
+                    PWaitSemaphores = _waitSemaphores,
+                    PWaitDstStageMask = _waitStages,
 
-            vk.ResetFences(logicalDevice, 1, ref inFlightFences[currentFrame]);
-            r = vk.QueueSubmit(graphicsQueue, 1, ref _submitInfo, inFlightFences[currentFrame]);
-            if (r != Result.Success)
-            {
-                throw new Exception("Failed to send command buffer to the GPU with error code:" + r);
+                    CommandBufferCount = (uint)renderingModules.Length,
+                    PCommandBuffers = ptrCommandBuffer
+                };
+
+                _submitInfo.SignalSemaphoreCount = 1;
+                _submitInfo.PSignalSemaphores = _signalSemaphores;
+
+                vk.ResetFences(logicalDevice, 1, ref inFlightFences[currentFrame]);
+                r = vk.QueueSubmit(graphicsQueue, 1, ref _submitInfo, inFlightFences[currentFrame]);
+                if (r != Result.Success)
+                {
+                    throw new Exception("Failed to send command buffer to the GPU with error code:" + r);
+                }
             }
 
             var _swapChains = stackalloc[] { swapchain };

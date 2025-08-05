@@ -17,8 +17,6 @@ namespace ArctisAurora.CustomEntities
 
         internal TextEntity(string text)
         {
-            MeshImporter importer = new MeshImporter();
-            Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\VienetinisPlane.fbx");
             transform.SetWorldPosition(new Vector3D<float>(2, 0, -200));
             this.text = text;
 
@@ -32,9 +30,8 @@ namespace ArctisAurora.CustomEntities
                 horizontalOffset += (gAsset.lsb * gAsset.px);
                 verticalOffset = (gAsset.tsb * gAsset.px);
                 Vector3D<float> glyphPos = transform.position + new Vector3D<float>(0, verticalOffset, horizontalOffset);
-                GlyphEntity glyph = new GlyphEntity(text[i], glyphPos);
+                GlyphEntity glyph = new GlyphEntity(text[i], glyphPos, gAsset);
                 children.Add(glyph);
-                glyph.GetComponent<MCUI>().LoadCustomMesh(scene1);
 
                 horizontalOffset += (gAsset.rsb * gAsset.px);
             }

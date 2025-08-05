@@ -54,6 +54,7 @@ namespace ArctisAurora.EngineWork
             renderer.PreInitialize(modules);
             renderer.Initialize();
 
+            // asset and renderable objects can be loaded from here
             Bootstrapper.PreprareDefaultAssets();
 
             renderer.SetupCameras();
@@ -62,6 +63,7 @@ namespace ArctisAurora.EngineWork
             renderer.SetupPipelines();
             renderer.CreateCommandBuffers();
             renderer.CreateSyncObjects();
+            // rendering goes from here
 
             //
             //_renderer = new VulkanRenderer();
@@ -91,7 +93,7 @@ namespace ArctisAurora.EngineWork
             //TestingEntity _te = new TestingEntity(new Vector3D<float>(1, 70, 70), new Vector3D<float>(2, 0, 0));
             //_te.ChangeColor(new Vector3D<float>(0.5f, 0.5f, 0.5f));
             //_te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
-            //TextEntity _te = new TextEntity("Shikau ir Tapshnojau");
+            TextEntity _te = new TextEntity("Shikau ir Tapshnojau");
             //TestingEntity _te2 = new TestingEntity(new Vector3D<float>(20, 20, 20), new Vector3D<float>(0, 0, 0));
             //_te2.ChangeColor(new Vector3D<float>(0.05f, 0.5f, 0.247f));
             //_te2.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
@@ -106,18 +108,10 @@ namespace ArctisAurora.EngineWork
             //_entities.Add(_te4);
             //---------------------------------------------------------------------------
             //engine thread
-            //Task _engineTask = Task.Run(() => EngineStart());
-            //new Thread(() =>
-            //{
-            //    EngineStart();
-            //}).Start();
-            /*new Thread(() =>
-            {
-                PathTracerTest();
-            }).Start();*/
+            Task _engineTask = Task.Run(() => EngineStart());
             new Thread(() =>
             {
-                TestNewRenderer();
+                EngineStart();
             }).Start();
         }
 
@@ -159,8 +153,8 @@ namespace ArctisAurora.EngineWork
                 if (SC.InvokeRequired)
                     SC.Invoke(new Action(() =>
                     {
-                        VulkanRenderer._glWindow._glfw.PollEvents();
-                        VulkanRenderer._rendererInstance.Draw();
+                        Renderer.window._glfw.PollEvents();
+                        Renderer.renderer.Draw();
                     }));
                 TimeSpan GraphicsTime = DateTime.Now - GraphicsTimeStart;
                 //Console.WriteLine("Graphics --- " + GraphicsTime.TotalMilliseconds);

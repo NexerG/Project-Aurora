@@ -21,43 +21,20 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 
         // glyph data
         internal Glyph glyph;
-        internal Vector2D<float>[] glyphUVs;
-        internal Buffer uvBuffer;
-        internal DeviceMemory uvBufferMemory;
 
         internal MCUI()
         {
-            _mesh = AssetRegistries.meshes.GetValueOrDefault("default");
+            _mesh = AssetRegistries.meshes.GetValueOrDefault("uidefault");
             fontAsset = AssetRegistries.fonts.GetValueOrDefault("default");
         }
 
         public override void OnStart()
         {
-            //_mesh = AssetRegistries.meshes.GetValueOrDefault("default");
-            //_mesh.BufferMesh();
-
             image = fontAsset.image.image;
-            char glyphChar = ((GlyphEntity)parent).character;
-            int index;
-            (glyph, index) = fontAsset.atlasMetaData.GetGlyphAndIndex(glyphChar);
-
-            float k = MathF.Ceiling(MathF.Sqrt(fontAsset.atlasMetaData.glyphCount));
-            float glyphAtlasSize = 1f / k;
-            float xOffset = (index % k) * glyphAtlasSize;
-            float yOffset = MathF.Floor(index / k) * glyphAtlasSize;
-
-            glyphUVs = new Vector2D<float>[4];
-            glyphUVs[0] = new Vector2D<float>(xOffset, yOffset);
-            glyphUVs[1] = new Vector2D<float>(xOffset + glyphAtlasSize, yOffset);
-            glyphUVs[2] = new Vector2D<float>(xOffset + glyphAtlasSize, yOffset + glyphAtlasSize);
-            glyphUVs[3] = new Vector2D<float>(xOffset, yOffset + glyphAtlasSize);
-
-            AVulkanBufferHandler.CreateBuffer(ref glyphUVs, ref uvBuffer, ref uvBufferMemory, BufferUsageFlags.StorageBufferBit);
 
             CreateSampler();
             
             base.OnStart();
-            CreateDescriptorSet();
         }
 
         internal override void LoadCustomMesh(Scene sc)
@@ -81,10 +58,6 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 
         internal override void SingletonMatrix()
         {
-            if(glyph != null)
-            {
-                parent.transform.SetWorldScale(new Vector3D<float>(1, glyph.glyphHeight, glyph.glyphWidth));
-            }
             base.SingletonMatrix();
 
             Matrix4X4<float>[] _mats = _transformMatrices.ToArray();

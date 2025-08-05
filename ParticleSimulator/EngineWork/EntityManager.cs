@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.EngineWork.EngineEntity;
+using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
 
 namespace ArctisAurora.EngineWork
@@ -46,7 +47,8 @@ namespace ArctisAurora.EngineWork
         {
             if (control == null) throw new ArgumentNullException(nameof(control));
             _controls.Add(control);
-            
+
+            Renderer.renderer.UpdateUIRenderer();
         }
 
         public static void AddEntityToUpdate(Entity entity)

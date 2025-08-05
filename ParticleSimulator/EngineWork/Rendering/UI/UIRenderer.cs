@@ -207,12 +207,12 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                         Offset = 0,
                         Range = sizeof(float) * 16
                     };
-                    _uvBufferInfos[k] = new()
-                    {
-                        Buffer = component.uvBuffer,
-                        Offset = 0,
-                        Range = (ulong)Unsafe.SizeOf<Vector2D<float>>() * 4
-                    };
+                    //_uvBufferInfos[k] = new()
+                    //{
+                    //    Buffer = component.uvBuffer,
+                    //    Offset = 0,
+                    //    Range = (ulong)Unsafe.SizeOf<Vector2D<float>>() * 4
+                    //};
                 }
                 fixed (DescriptorBufferInfo* _uvBufferInfosPtr = _uvBufferInfos)
                 fixed (DescriptorBufferInfo* _transformInforPtr = _transformUniformInfos)

@@ -1,5 +1,7 @@
 ﻿using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.Rendering;
+using ArctisAurora.EngineWork.Serialization;
+using Assimp;
 
 namespace ArctisAurora.EngineWork
 {
@@ -18,6 +20,12 @@ namespace ArctisAurora.EngineWork
             // load default mesh
             AVulkanMesh mesh = AVulkanMesh.LoadDefault();
             AssetRegistries.meshes.Add("default", mesh);
+
+            AVulkanMesh UIMesh = new AVulkanMesh();
+            MeshImporter importer = new MeshImporter();
+            Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\VienetinisPlane.fbx");
+            UIMesh.LoadCustomMesh(scene1);
+            AssetRegistries.meshes.Add("uidefault", UIMesh);
 
             // load default font
             FontAsset font = new FontAsset("default");
