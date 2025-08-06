@@ -49,8 +49,8 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             //AVulkanBufferHandler.CreateIndexBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, _aditionalUsageFlags);
 
             // Buffer for Vertices & Indices
-            _mesh = new AVulkanMesh();
-            _mesh.BufferMesh();
+            mesh = new AVulkanMesh();
+            mesh.BufferMesh();
             //AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
             //AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
 
@@ -85,7 +85,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
                 _vulkan.DestroyBuffer(_logicalDevice, _BLAS._buffer, null);
             }
 
-            _mesh.LoadCustomMesh(sc);
+            mesh.LoadCustomMesh(sc);
 
             //AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
             //AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
@@ -99,9 +99,9 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 
         private void CreateBLAS()
         {
-            _addressVertex.DeviceAddress = AVulkanHelper.GetBufferAdress(ref _mesh._vertexBuffer);
-            _addressIndex.DeviceAddress = AVulkanHelper.GetBufferAdress(ref _mesh._indexBuffer);
-            _addressTransform.DeviceAddress = AVulkanHelper.GetBufferAdress(ref _transformsBuffer);
+            _addressVertex.DeviceAddress = AVulkanHelper.GetBufferAdress(ref mesh.vertexBuffer);
+            _addressIndex.DeviceAddress = AVulkanHelper.GetBufferAdress(ref mesh.indexBuffer);
+            _addressTransform.DeviceAddress = AVulkanHelper.GetBufferAdress(ref transformsBuffer);
 
             AccelerationStructureGeometryKHR _accelStrGeom = new AccelerationStructureGeometryKHR
             {
@@ -115,7 +115,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
                         SType = StructureType.AccelerationStructureGeometryTrianglesDataKhr,
                         VertexFormat = Format.R32G32B32Sfloat,
                         VertexData = _addressVertex,
-                        MaxVertex = (uint)(_mesh._vertices.Length),
+                        MaxVertex = (uint)(mesh._vertices.Length),
                         VertexStride = (ulong)sizeof(Vertex),
                         IndexType = IndexType.Uint32,
                         IndexData = _addressIndex,
@@ -137,7 +137,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
                 SrcAccelerationStructure = default,
             };
 
-            uint numTris = (uint)(_mesh._indices.Length / 3);
+            uint numTris = (uint)(mesh.indices.Length / 3);
             AccelerationStructureBuildSizesInfoKHR _asbsInfo = default;
             _asbsInfo.SType = StructureType.AccelerationStructureBuildSizesInfoKhr;
             _accelerationStructure.GetAccelerationStructureBuildSizes(_logicalDevice, AccelerationStructureBuildTypeKHR.DeviceKhr, &_accelStrGeomInfo, ref numTris, out _asbsInfo);
@@ -209,7 +209,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
                         SType = StructureType.AccelerationStructureGeometryTrianglesDataKhr,
                         VertexFormat = Format.R32G32B32Sfloat,
                         VertexData = _addressVertex,
-                        MaxVertex = (uint)(_mesh._vertices.Length),
+                        MaxVertex = (uint)(mesh._vertices.Length),
                         VertexStride = (ulong)sizeof(Vertex),
                         IndexType = IndexType.Uint32,
                         IndexData = _addressIndex,
@@ -232,7 +232,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
                 Mode = BuildAccelerationStructureModeKHR.UpdateKhr
             };
 
-            uint numTris = (uint)(_mesh._indices.Length / 3);
+            uint numTris = (uint)(mesh.indices.Length / 3);
             AccelerationStructureBuildSizesInfoKHR _asbsInfo = default;
             _asbsInfo.SType = StructureType.AccelerationStructureBuildSizesInfoKhr;
 
@@ -356,13 +356,13 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             _transform *= Matrix4X4.CreateFromQuaternion(q);
             _transform *= Matrix4X4.CreateTranslation(parent.transform.position);
             _transform = Matrix4X4.Transpose(_transform);
-            _transformMatrices.Add(_transform);
+            transformMatrices.Add(_transform);
 
             TransformMatrixKHR _entityVulkanTransform = new TransformMatrixKHR();
-            Unsafe.CopyBlock(_entityVulkanTransform.Matrix, Unsafe.AsPointer(ref _transformMatrices.ToArray()[0]), 48);
+            Unsafe.CopyBlock(_entityVulkanTransform.Matrix, Unsafe.AsPointer(ref transformMatrices.ToArray()[0]), 48);
 
             BufferUsageFlags bufferUsageFlags = BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr | BufferUsageFlags.UniformBufferBit;
-            AVulkanBufferHandler.CreateBuffer(ref _entityVulkanTransform, ref _transformsBuffer, ref _transformsBufferMemory, bufferUsageFlags);
+            AVulkanBufferHandler.CreateBuffer(ref _entityVulkanTransform, ref transformsBuffer, ref _transformsBufferMemory, bufferUsageFlags);
         }
 
         internal override void UpdateMatrices()
@@ -374,12 +374,12 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             _transform *= Matrix4X4.CreateTranslation(parent.transform.position);
             _transform = Matrix4X4.Transpose(_transform);
 
-            _transformMatrices[0] = _transform;
+            transformMatrices[0] = _transform;
             TransformMatrixKHR _entityVulkanMatrix = new TransformMatrixKHR();
-            Unsafe.CopyBlock(_entityVulkanMatrix.Matrix, Unsafe.AsPointer(ref _transformMatrices.ToArray()[0]), 48);
+            Unsafe.CopyBlock(_entityVulkanMatrix.Matrix, Unsafe.AsPointer(ref transformMatrices.ToArray()[0]), 48);
             //_accelerationInstance.Transform = _entityVulkanMatrix;
             BufferUsageFlags bufferUsageFlags = BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr | BufferUsageFlags.UniformBufferBit;
-            AVulkanBufferHandler.UpdateBuffer(ref _entityVulkanMatrix, ref _transformsBuffer, ref _transformsBufferMemory, bufferUsageFlags);
+            AVulkanBufferHandler.UpdateBuffer(ref _entityVulkanMatrix, ref transformsBuffer, ref _transformsBufferMemory, bufferUsageFlags);
 
             UpdateBLAS();
 
@@ -388,7 +388,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 
         internal override void EnqueueDrawCommands(ref ulong[] _offset, int _loopIndex, ref CommandBuffer _commandBuffer)
         {
-            if (_render)
+            if (render)
             {
                 _vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.RayTracingKhr, _pipelineLayout, 0, 1, ref _descriptorSets[_loopIndex], 0, null);
             }

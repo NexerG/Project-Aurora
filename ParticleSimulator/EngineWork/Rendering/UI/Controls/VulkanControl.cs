@@ -1,7 +1,5 @@
-﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
-using ArctisAurora.EngineWork.EngineEntity;
+﻿using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.Helpers;
-using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using Buffer = Silk.NET.Vulkan.Buffer;
@@ -38,7 +36,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         public VulkanControl()
         {
             AVulkanBufferHandler.CreateBuffer(ref quadUV, ref uvBuffer, ref uvBufferMemory, BufferUsageFlags.StorageBufferBit);
-            CreateComponent<MeshComponent>();
+            //CreateComponent<MeshComponent>();
             EntityManager.AddControl(this);
         }
     }

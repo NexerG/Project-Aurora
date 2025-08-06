@@ -1,5 +1,5 @@
 ﻿using Silk.NET.Vulkan;
-using Image = Silk.NET.Vulkan.Image;
+using Windows.ApplicationModel.VoiceCommands;
 
 namespace ArctisAurora.EngineWork.Rendering.Modules
 {
@@ -45,6 +45,9 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal AuroraCamera camera;
 
 
+        internal abstract void PrepareObjects();
+
+        internal abstract void UpdateModule();
 
         internal abstract void CreateRenderPass(ref SurfaceFormatKHR format);
 

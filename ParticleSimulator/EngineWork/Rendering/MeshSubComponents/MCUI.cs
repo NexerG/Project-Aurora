@@ -24,17 +24,15 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 
         internal MCUI()
         {
-            _mesh = AssetRegistries.meshes.GetValueOrDefault("uidefault");
+            render = false;
+            mesh = AssetRegistries.meshes.GetValueOrDefault("uidefault");
             fontAsset = AssetRegistries.fonts.GetValueOrDefault("default");
+            image = fontAsset.image.image;
+            CreateSampler();
         }
 
         public override void OnStart()
         {
-            image = fontAsset.image.image;
-
-            CreateSampler();
-            
-            base.OnStart();
         }
 
         internal override void LoadCustomMesh(Scene sc)
@@ -42,31 +40,57 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             base.LoadCustomMesh(sc);
         }
 
-        internal override void MakeInstanced(ref List<Matrix4X4<float>> _matrices)
+        internal override void MakeInstanced()
         {
-            base.MakeInstanced(ref _matrices);
-            _instances = _matrices.Count;
-            _transformMatrices = _matrices;
+            instances = EntityManager.controls.Count;
+            if (instances > 0)
+            {
+                render = true;
+                transformMatrices = new List<Matrix4X4<float>>();
+                for (int i = 0; i < instances; i++)
+                {
+                    Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0, 0, 0);
+                    Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
+                    _transform *= Matrix4X4.CreateScale(EntityManager.controls[i].transform.scale);
+                    //_transform *= Matrix4X4.CreateFromQuaternion(q);
+                    _transform *= Matrix4X4.CreateTranslation(EntityManager.controls[i].transform.position);
 
-            Matrix4X4<float>[] _mats = _matrices.ToArray();
-            AVulkanBufferHandler.CreateBuffer(ref _mats, ref _transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
-            //VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
-            //VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPoolShadow, (uint)_descriptorSetsShadow.Length, _descriptorSetsShadow);
-            //CreateDescriptorSet();
-            VulkanRenderer._rendererInstance.RecreateCommandBuffers();
+                    transformMatrices.Add(_transform);
+                }
+                if (transformsBuffer.Handle != 0)
+                {
+                    Renderer.vk.DestroyBuffer(Renderer.logicalDevice, transformsBuffer, null);
+                }
+                Matrix4X4<float>[] _mats = transformMatrices.ToArray();
+                AVulkanBufferHandler.CreateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
+            }
         }
 
         internal override void SingletonMatrix()
         {
             base.SingletonMatrix();
 
-            Matrix4X4<float>[] _mats = _transformMatrices.ToArray();
-            AVulkanBufferHandler.CreateBuffer(ref _mats, ref _transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
+            Matrix4X4<float>[] _mats = transformMatrices.ToArray();
+            AVulkanBufferHandler.CreateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
         }
 
         internal override void UpdateMatrices()
         {
             base.UpdateMatrices();
+        }
+
+        internal override void EnqueueDrawCommands(ref ulong[] offset, int loopIndex, int instanceID, ref CommandBuffer commandBuffer, ref PipelineLayout pipelineLayout, ref DescriptorSet descriptorSet)
+        {
+            if (render)
+            {
+                fixed(ulong* offsetsPtr = offset)
+                {
+                    Renderer.vk.CmdBindVertexBuffers(commandBuffer, 0, 1, ref mesh.vertexBuffer, offsetsPtr);
+                }
+                Renderer.vk.CmdBindIndexBuffer(commandBuffer, mesh.indexBuffer, 0, IndexType.Uint32);
+                Renderer.vk.CmdBindDescriptorSets(commandBuffer, PipelineBindPoint.Graphics, pipelineLayout, 0, 1, descriptorSet, 0, null);
+                Renderer.vk.CmdDrawIndexed(commandBuffer, (uint)mesh.indices.Length, (uint)instances, 0, 0, (uint)instanceID);
+            }
         }
 
         private void CreateSampler()

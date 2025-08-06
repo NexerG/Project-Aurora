@@ -1,12 +1,10 @@
 ﻿using ArctisAurora.EngineWork.AssetRegistry;
-using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using ArctisAurora.EngineWork.Rendering.UI;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
-using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.CustomEntities
 {
@@ -39,7 +37,7 @@ namespace ArctisAurora.CustomEntities
 
             transform.SetWorldScale(new Vector3D<float>(1, glyph.glyphHeight, glyph.glyphWidth));
 
-            GetComponent<MCUI>().UpdateMatrices();
+            //GetComponent<MCUI>().UpdateMatrices();
         }
     }
 }

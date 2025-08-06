@@ -2,6 +2,7 @@
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.Helpers;
+using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Core;
 using Silk.NET.Core.Native;
@@ -141,11 +142,11 @@ namespace ArctisAurora.EngineWork.Rendering
             //UpdateGlobalDescriptorSet();
         }
 
-        internal void SetupCameras()
+        internal void SetupObjects()
         {
             for (int i = 0; i < renderingModules.Length; i++)
             {
-                renderingModules[i].PrepareCamera();
+                renderingModules[i].PrepareObjects();
             }
         }
 
@@ -550,14 +551,11 @@ namespace ArctisAurora.EngineWork.Rendering
             {
                 if (renderingModules[i].RendererStage == ERendererStage.UI)
                 {
-                    renderingModules[i].AllocateDescriptorSets();
-                    renderingModules[i].UpdateDescriptorSets();
-                    renderingModules[i].WriteCommandBuffers();
-                    return;
+                    renderingModules[i].UpdateModule();
+                    //return;
                 }
             }
         }
-
 
         private void CreateDescriptorSetLayouts()
         {

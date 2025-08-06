@@ -10,7 +10,7 @@ namespace ArctisAurora.EngineWork.AssetRegistry
     public class TextureAsset : Asset
     {
         internal Silk.NET.Vulkan.Image _textureImage;
-        internal ImageView _textureImageView;
+        internal ImageView textureImageView;
         internal DeviceMemory _textureBufferMemory;
         internal Sampler textureSampler;
         internal Image<Rgba32> image;
@@ -33,7 +33,7 @@ namespace ArctisAurora.EngineWork.AssetRegistry
                 image = Image.Load<Rgba32>(path);
 
                 AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image, Format.R8G8B8A8Srgb);
-                AVulkanBufferHandler.CreateImageView(ref Renderer.vk, ref Renderer.logicalDevice, ref _textureImage, ref _textureImageView, Format.R8G8B8A8Srgb, ImageAspectFlags.ColorBit);
+                AVulkanBufferHandler.CreateImageView(ref Renderer.vk, ref Renderer.logicalDevice, ref _textureImage, ref textureImageView, Format.R8G8B8A8Srgb, ImageAspectFlags.ColorBit);
 
                 return;
             }

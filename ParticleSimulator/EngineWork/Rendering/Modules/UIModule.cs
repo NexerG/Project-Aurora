@@ -1,5 +1,4 @@
-﻿using ArctisAurora.EngineWork.EngineEntity;
-using ArctisAurora.EngineWork.Rendering.Helpers;
+﻿using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using Silk.NET.Core.Native;
@@ -35,17 +34,17 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal override List<DescriptorType> descriptorTypes => new List<DescriptorType> {
             DescriptorType.UniformBuffer, DescriptorType.StorageBuffer,
-            DescriptorType.StorageBuffer, DescriptorType.CombinedImageSampler
+            DescriptorType.CombinedImageSampler, DescriptorType.StorageBuffer
         };
 
         internal override List<ShaderStageFlags> shaderStages => new List<ShaderStageFlags> {
             ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit,
-            ShaderStageFlags.VertexBit, ShaderStageFlags.FragmentBit
+            ShaderStageFlags.FragmentBit, ShaderStageFlags.VertexBit
         };
 
         internal override DescriptorBindingFlags[] descriptorBindingFlags => new DescriptorBindingFlags[]{
-            DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit,
-            DescriptorBindingFlags.VariableDescriptorCountBit, DescriptorBindingFlags.VariableDescriptorCountBit
+            DescriptorBindingFlags.None, DescriptorBindingFlags.None,
+            DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit
         };
 
         internal override ERendererTypes rendererType => ERendererTypes.UITemp;
@@ -53,10 +52,24 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override ERendererStage RendererStage => ERendererStage.UI;
 
         internal static bool updateCommandBuffers = false;
+        private static MCUI meshComponent;
+
 
         public UIModule()
-        {
+        { }
 
+        internal override void UpdateModule()
+        {
+            meshComponent.MakeInstanced();
+            AllocateDescriptorSets();
+            UpdateDescriptorSets();
+            WriteCommandBuffers();
+        }
+
+        internal override void PrepareObjects()
+        {
+            meshComponent = new MCUI();
+            PrepareCamera();
         }
 
         internal override void CreateRenderPass(ref SurfaceFormatKHR format)
@@ -207,26 +220,23 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     Offset = 0,
                     Range = (ulong)Unsafe.SizeOf<UBO>()
                 };
-                DescriptorBufferInfo[] transformUniformInfos = new DescriptorBufferInfo[EntityManager.controls.Count];
+                DescriptorBufferInfo transformInfo = new DescriptorBufferInfo()
+                {
+                    Buffer = meshComponent.transformsBuffer,
+                    Offset = 0,
+                    Range = (ulong)(sizeof(float) * 16 * EntityManager.controls.Count)
+                };
+                DescriptorImageInfo fontInfo = new DescriptorImageInfo()
+                {
+                    ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
+                    ImageView = meshComponent.fontAsset.image.textureImageView,
+                    Sampler = meshComponent.textureSampler
+                };
+
                 DescriptorBufferInfo[] uvBufferInfos = new DescriptorBufferInfo[EntityManager.controls.Count];
-                DescriptorImageInfo[] textureImageInfos = new DescriptorImageInfo[EntityManager.controls.Count];
                 for (int j = 0; j < EntityManager.controls.Count; j++)
                 {
                     VulkanControl control = (VulkanControl)EntityManager.controls[j];
-                    MCUI component = control.GetComponent<MCUI>();
-
-                    textureImageInfos[j] = new()
-                    {
-                        ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
-                        ImageView = component.fontAsset.image._textureImageView,
-                        Sampler = component.textureSampler
-                    };
-                    transformUniformInfos[j] = new()
-                    {
-                        Buffer = component._transformsBuffer,
-                        Offset = 0,
-                        Range = sizeof(float) * 16
-                    };
                     uvBufferInfos[j] = new()
                     {
                         Buffer = control.uvBuffer,
@@ -235,8 +245,6 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     };
                 }
                 fixed (DescriptorBufferInfo* uvBufferInfosPtr = uvBufferInfos)
-                fixed (DescriptorBufferInfo* transformInforPtr = transformUniformInfos)
-                fixed (DescriptorImageInfo* textureImageInforPtr = textureImageInfos)
                 {
                     var writeDescriptorSets = new WriteDescriptorSet[]
                     {
@@ -255,20 +263,20 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                             SType = StructureType.WriteDescriptorSet,
                             DstSet = descriptorSets[i],
                             DstBinding = 1,
-                            DescriptorCount = (uint)EntityManager.controls.Count,
+                            DescriptorCount = 1,
                             DstArrayElement = 0,
                             DescriptorType = DescriptorType.StorageBuffer,
-                            PBufferInfo = transformInforPtr
+                            PBufferInfo = &transformInfo
                         },
                         new WriteDescriptorSet
                         {
                             SType = StructureType.WriteDescriptorSet,
                             DstSet = descriptorSets[i],
                             DstBinding = 2,
-                            DescriptorCount = (uint)EntityManager.controls.Count,
+                            DescriptorCount = 1,
                             DstArrayElement = 0,
-                            DescriptorType = DescriptorType.StorageBuffer,
-                            PBufferInfo = uvBufferInfosPtr
+                            DescriptorType = DescriptorType.CombinedImageSampler,
+                            PImageInfo = &fontInfo
                         },
                         new WriteDescriptorSet
                         {
@@ -277,8 +285,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                             DstBinding = 3,
                             DescriptorCount = (uint)EntityManager.controls.Count,
                             DstArrayElement = 0,
-                            DescriptorType = DescriptorType.CombinedImageSampler,
-                            PImageInfo = textureImageInforPtr
+                            DescriptorType = DescriptorType.StorageBuffer,
+                            PBufferInfo = uvBufferInfosPtr
                         }
                     };
                     fixed (WriteDescriptorSet* descPtr = writeDescriptorSets)
@@ -521,7 +529,6 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 }
             }
 
-
             for (int index=0;index< commandBuffers.Length; index++)
             {
                 RenderPassBeginInfo _renderPassInfo = new RenderPassBeginInfo()
@@ -568,11 +575,11 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 Renderer.vk.CmdBindPipeline(commandBuffers[index], PipelineBindPoint.Graphics, pipeline);
                 Renderer.vk.CmdBeginRenderPass(commandBuffers[index], &_renderPassInfo, SubpassContents.Inline);
 
-                IReadOnlyList<Entity> entities = EntityManager.controls;
-                for (int e = 0; e < entities.Count; e++)
+                //IReadOnlyList<Entity> entities = EntityManager.controls;
+                var _offset = new ulong[] { 0 };
+                if (meshComponent.render == true)
                 {
-                    var _offset = new ulong[] { 0 };
-                    entities[e].GetComponent<MCUI>().EnqueueDrawCommands(ref _offset, index, e, ref commandBuffers[index], ref pipelineLayout, ref descriptorSets[index]);
+                    meshComponent.EnqueueDrawCommands(ref _offset, index, 0, ref commandBuffers[index], ref pipelineLayout, ref descriptorSets[index]);
                 }
                 Renderer.vk.CmdEndRenderPass(commandBuffers[index]);
 

@@ -27,7 +27,7 @@ namespace ArctisAurora.EngineWork
         internal static DateTime initTime;
         internal Frame SC;
         //internal Rasterization renderer3D;
-        internal static VulkanRenderer _renderer;
+        //internal static VulkanRenderer _renderer;
 
         internal static AssetRegistries assetRegistry = new AssetRegistries();
 
@@ -57,7 +57,7 @@ namespace ArctisAurora.EngineWork
             // asset and renderable objects can be loaded from here
             Bootstrapper.PreprareDefaultAssets();
 
-            renderer.SetupCameras();
+            renderer.SetupObjects();
             renderer.PrepareDescriptors();
 
             renderer.SetupPipelines();
@@ -169,34 +169,6 @@ namespace ArctisAurora.EngineWork
                 double TSOffset = TS - totalTime;
                 if (TSOffset > 0f)
                     await Task.Delay(((int)TSOffset));
-            }
-        }
-
-        public async Task PathTracerTest()
-        {
-            while(Running)
-            {
-                if (SC.InvokeRequired)
-                    SC.Invoke(new Action(() =>
-                    {
-                        VulkanRenderer._glWindow._glfw.PollEvents();
-                        VulkanRenderer._rendererInstance.Draw();
-                    }));
-                await Task.Delay(4);
-            }
-        }
-
-        public async Task TestNewRenderer()
-        {
-            while (Running)
-            {
-                if (SC.InvokeRequired)
-                    SC.Invoke(new Action(() =>
-                    {
-                        Renderer.window._glfw.PollEvents();
-                        Renderer.renderer.Draw();
-                    }));
-                await Task.Delay(4);
             }
         }
 

@@ -712,21 +712,21 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
                         MCRaytracing component = _entitiesToRender[k].GetComponent<MCRaytracing>();
                         _vertexBufferInfos[k] = new DescriptorBufferInfo()
                         {
-                            Buffer = component._mesh._vertexBuffer,
+                            Buffer = component.mesh.vertexBuffer,
                             Offset = 0,
-                            Range = (ulong)(sizeof(Vertex) * component._mesh._vertices.Length)
+                            Range = (ulong)(sizeof(Vertex) * component.mesh._vertices.Length)
                         };
                         _transformUniformInfos[k] = new()
                         {
-                            Buffer = component._transformsBuffer,
+                            Buffer = component.transformsBuffer,
                             Offset = 0,
                             Range = (ulong)sizeof(float) * 12
                         };
                         _indexBufferInfos[k] = new()
                         {
-                            Buffer = component._mesh._indexBuffer,
+                            Buffer = component.mesh.indexBuffer,
                             Offset = 0,
-                            Range = (ulong)(sizeof(uint) * component._mesh._indices.Length)
+                            Range = (ulong)(sizeof(uint) * component.mesh.indices.Length)
                         };
                         _colorBufferInfos[k] = new()
                         {

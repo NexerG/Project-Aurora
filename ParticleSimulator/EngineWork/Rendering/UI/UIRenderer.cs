@@ -198,12 +198,12 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                     _textureImageInfos[k] = new()
                     {
                         ImageLayout = Silk.NET.Vulkan.ImageLayout.ShaderReadOnlyOptimal,
-                        ImageView = component.fontAsset.image._textureImageView,
+                        ImageView = component.fontAsset.image.textureImageView,
                         Sampler = component.textureSampler
                     };
                     _transformUniformInfos[k] = new()
                     {
-                        Buffer = component._transformsBuffer,
+                        Buffer = component.transformsBuffer,
                         Offset = 0,
                         Range = sizeof(float) * 16
                     };

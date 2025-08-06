@@ -10,17 +10,17 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 {
     public unsafe class MeshComponent : EntityComponent
     {
-        internal bool _render = true;
-        internal AVulkanMesh _mesh;
+        internal bool render = true;
+        internal AVulkanMesh mesh;
         //descriptor set
         internal DescriptorSet[] _descriptorSets;
         internal BufferUsageFlags _aditionalUsageFlags = BufferUsageFlags.None;
 
-        internal Buffer _transformsBuffer;
+        internal Buffer transformsBuffer;
         internal DeviceMemory _transformsBufferMemory;
 
-        internal int _instances = 1;
-        internal List<Matrix4X4<float>> _transformMatrices = new List<Matrix4X4<float>>();
+        internal int instances = 1;
+        internal List<Matrix4X4<float>> transformMatrices = new List<Matrix4X4<float>>();
 
         public MeshComponent()
         {
@@ -39,7 +39,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             //VulkanRenderer._vulkan.DestroyBuffer(VulkanRenderer._logicalDevice, _indexBuffer, null);
             //VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _indexBufferMemory, null);
             //VulkanRenderer._vulkan.FreeMemory(VulkanRenderer._logicalDevice, _vertexBufferMemory, null);
-            _mesh.LoadCustomMesh(sc);
+            mesh.LoadCustomMesh(sc);
             //AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
             //AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
 
@@ -51,6 +51,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         internal virtual void ReinstantiateDesriptorSets() { }
 
         internal virtual void MakeInstanced(ref List<Matrix4X4<float>> _matrices) { }
+        internal virtual void MakeInstanced() { }
 
         internal virtual void SingletonMatrix()
         {
@@ -60,7 +61,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             //_transform *= Matrix4X4.CreateFromQuaternion(q);
             _transform *= Matrix4X4.CreateTranslation(parent.transform.position);
 
-            _transformMatrices.Add(_transform);
+            transformMatrices.Add(_transform);
         }
 
         internal virtual void CreateDescriptorSet() { }
@@ -73,52 +74,52 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             _transform *= Matrix4X4.CreateFromQuaternion(q);
             _transform *= Matrix4X4.CreateTranslation(parent.transform.position);
 
-            _transformMatrices[0] = _transform;
-            Matrix4X4<float>[] _mats = _transformMatrices.ToArray();
-            AVulkanBufferHandler.UpdateBuffer(ref _mats, ref _transformsBuffer, ref _transformsBufferMemory, _aditionalUsageFlags);
+            transformMatrices[0] = _transform;
+            Matrix4X4<float>[] _mats = transformMatrices.ToArray();
+            AVulkanBufferHandler.UpdateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, _aditionalUsageFlags);
         }
 
         internal virtual void EnqueueDrawCommands(ref ulong[] _offset, int _loopIndex, ref CommandBuffer _commandBuffer)
         {
-            if (_render)
-            {
-                fixed (ulong* _offsetsPtr = _offset)
-                {
-                    VulkanRenderer._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, ref _mesh._vertexBuffer, _offsetsPtr);
-                }
-                VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, _mesh._indexBuffer, 0, IndexType.Uint32);
-                VulkanRenderer._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, VulkanRenderer._pipeline._pipelineLayout, 0, 1, ref VulkanRenderer._descriptorSets[_loopIndex], 0, null);
-                VulkanRenderer._vulkan.CmdDrawIndexed(_commandBuffer, (uint)_mesh._indices.Length, (uint)_instances, 0, 0, 0);
-                _offset[0] += (ulong)(sizeof(Vertex) * _loopIndex);
-            }
+            //    if (_render)
+            //    {
+            //        fixed (ulong* _offsetsPtr = _offset)
+            //        {
+            //            VulkanRenderer._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, ref _mesh._vertexBuffer, _offsetsPtr);
+            //        }
+            //        VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, _mesh._indexBuffer, 0, IndexType.Uint32);
+            //        VulkanRenderer._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, VulkanRenderer._pipeline._pipelineLayout, 0, 1, ref VulkanRenderer._descriptorSets[_loopIndex], 0, null);
+            //        VulkanRenderer._vulkan.CmdDrawIndexed(_commandBuffer, (uint)_mesh._indices.Length, (uint)_instances, 0, 0, 0);
+            //        _offset[0] += (ulong)(sizeof(Vertex) * _loopIndex);
+            //    }
         }
 
         internal virtual void EnqueueDrawCommands(ref ulong[] _offset, int _loopIndex, int instanceID, ref CommandBuffer _commandBuffer)
         {
-            if (_render)
-            {
-                fixed (ulong* _offsetsPtr = _offset)
-                {
-                    VulkanRenderer._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, ref _mesh._vertexBuffer, _offsetsPtr);
-                }
-                VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, _mesh._indexBuffer, 0, IndexType.Uint32);
-                VulkanRenderer._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, VulkanRenderer._pipeline._pipelineLayout, 0, 1, ref VulkanRenderer._descriptorSets[_loopIndex], 0, null);
-                VulkanRenderer._vulkan.CmdDrawIndexed(_commandBuffer, (uint)_mesh._indices.Length, (uint)_instances, 0, 0, (uint)instanceID);
-                _offset[0] += (ulong)(sizeof(Vertex) * _loopIndex);
-            }
+            //    if (_render)
+            //    {
+            //        fixed (ulong* _offsetsPtr = _offset)
+            //        {
+            //            VulkanRenderer._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, ref _mesh._vertexBuffer, _offsetsPtr);
+            //        }
+            //        VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, _mesh._indexBuffer, 0, IndexType.Uint32);
+            //        VulkanRenderer._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, VulkanRenderer._pipeline._pipelineLayout, 0, 1, ref VulkanRenderer._descriptorSets[_loopIndex], 0, null);
+            //        VulkanRenderer._vulkan.CmdDrawIndexed(_commandBuffer, (uint)_mesh._indices.Length, (uint)_instances, 0, 0, (uint)instanceID);
+            //        _offset[0] += (ulong)(sizeof(Vertex) * _loopIndex);
+            //    }
         }
 
         internal virtual void EnqueueDrawCommands(ref ulong[] _offset, int _loopIndex, int instanceID, ref CommandBuffer _commandBuffer, ref PipelineLayout pipelineLayout, ref DescriptorSet descriptorSet)
         {
-            if (_render)
+            if (render)
             {
                 fixed (ulong* _offsetsPtr = _offset)
                 {
-                    Renderer.vk.CmdBindVertexBuffers(_commandBuffer, 0, 1, ref _mesh._vertexBuffer, _offsetsPtr);
+                    Renderer.vk.CmdBindVertexBuffers(_commandBuffer, 0, 1, ref mesh.vertexBuffer, _offsetsPtr);
                 }
-                Renderer.vk.CmdBindIndexBuffer(_commandBuffer, _mesh._indexBuffer, 0, IndexType.Uint32);
+                Renderer.vk.CmdBindIndexBuffer(_commandBuffer, mesh.indexBuffer, 0, IndexType.Uint32);
                 Renderer.vk.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, pipelineLayout, 0, 1, descriptorSet, 0, null);
-                Renderer.vk.CmdDrawIndexed(_commandBuffer, (uint)_mesh._indices.Length, (uint)_instances, 0, 0, (uint)instanceID);
+                Renderer.vk.CmdDrawIndexed(_commandBuffer, (uint)mesh.indices.Length, (uint)instances, 0, 0, (uint)instanceID);
                 _offset[0] += (ulong)(sizeof(Vertex) * _loopIndex);
             }
         }

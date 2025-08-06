@@ -57,10 +57,10 @@ namespace ArctisAurora.EngineWork.Rendering
 
     internal class AVulkanMesh
     {
-        internal Buffer _vertexBuffer;
+        internal Buffer vertexBuffer;
         internal DeviceMemory _vertexBufferMemory;
 
-        internal Buffer _indexBuffer;
+        internal Buffer indexBuffer;
         internal DeviceMemory _indexBufferMemory;
 
         /*internal Vertex[] _vertices = new[]
@@ -98,17 +98,17 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal void BufferMesh()
         {
-            AVulkanBufferHandler.CreateBuffer(ref _vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags);
-            AVulkanBufferHandler.CreateBuffer(ref _indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags);
+            AVulkanBufferHandler.CreateBuffer(ref _vertices, ref vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags);
+            AVulkanBufferHandler.CreateBuffer(ref indices, ref indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags);
         }
 
         internal Vertex[] _vertices;
-        internal uint[] _indices;
+        internal uint[] indices;
 
         internal unsafe void LoadCustomMesh(Scene sc)
         {
-            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _vertexBuffer, null);
-            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _indexBuffer, null);
+            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, vertexBuffer, null);
+            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, indexBuffer, null);
             Renderer.vk.FreeMemory(Renderer.logicalDevice, _indexBufferMemory, null);
             Renderer.vk.FreeMemory(Renderer.logicalDevice, _vertexBufferMemory, null);
 
@@ -116,10 +116,10 @@ namespace ArctisAurora.EngineWork.Rendering
             List<Assimp.Vector3D> uvs = sc.Meshes[0].TextureCoordinateChannels[0];
             List<Assimp.Vector3D> normals = sc.Meshes[0].Normals;
 
-            _indices = new uint[sc.Meshes[0].GetIndices().Length];
+            indices = new uint[sc.Meshes[0].GetIndices().Length];
             for (int i = 0; i < sc.Meshes[0].GetIndices().Length; i++)
             {
-                _indices[i] = (uint)sc.Meshes[0].GetIndices()[i];
+                indices[i] = (uint)sc.Meshes[0].GetIndices()[i];
             }
 
             _vertices = new Vertex[sc.Meshes[0].VertexCount];
@@ -130,14 +130,14 @@ namespace ArctisAurora.EngineWork.Rendering
                 _vertices[i]._normal = new Vector3D<float>(normals[i].X, normals[i].Y, normals[i].Z);
             }
 
-            AVulkanBufferHandler.CreateBuffer(ref _vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags);
-            AVulkanBufferHandler.CreateBuffer(ref _indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags);
+            AVulkanBufferHandler.CreateBuffer(ref _vertices, ref vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags);
+            AVulkanBufferHandler.CreateBuffer(ref indices, ref indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags);
         }
 
         internal unsafe void UpdateBuffers()
         {
-            AVulkanBufferHandler.UpdateBuffer(ref _vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags);
-            AVulkanBufferHandler.UpdateBuffer(ref _indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags);
+            AVulkanBufferHandler.UpdateBuffer(ref _vertices, ref vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags);
+            AVulkanBufferHandler.UpdateBuffer(ref indices, ref indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags);
         }
 
         internal static unsafe AVulkanMesh LoadDefault()
@@ -153,7 +153,7 @@ namespace ArctisAurora.EngineWork.Rendering
                 // pyramid top.
                 new Vertex { _pos = new Vector3D<float>(0.0f, 0.8f,  0.0f), _normal =  new Vector3D<float>(0.0f, 0.5f,  0.8f), _uv = new Vector2D<float>(2.5f, 5.0f) },
             };
-            mesh._indices = new uint[]
+            mesh.indices = new uint[]
             {
                 0, 1, 2, // Bottom side
 	            0, 2, 3, // Bottom side

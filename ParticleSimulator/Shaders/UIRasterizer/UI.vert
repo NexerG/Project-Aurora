@@ -11,10 +11,10 @@ layout(set = 0, binding = 0) uniform UBO {
 } ubo;
 
 layout(set = 0, binding = 1) readonly buffer Transform{
-    mat4 transform;
-}ts[];
+    mat4 transforms[];
+}ts;
 
-layout(set = 0, binding = 2) readonly buffer UVs {
+layout(set = 0, binding = 3) readonly buffer UVs {
     vec2[] UV;
 } UVData[];
 
@@ -22,7 +22,7 @@ layout(location = 0) out vec2 fragUV;
 layout(location = 1) out flat uint fragInstanceID;
 
 void main() {
-    vec3 tPos = vec3(ts[gl_InstanceIndex].transform * vec4(inPosition, 1.0));
+    vec3 tPos = vec3(ts.transforms[gl_InstanceIndex] * vec4(inPosition, 1.0));
     vec4 pos = ubo.proj * ubo.view * vec4(tPos, 1.0f);
 
     gl_Position = pos;

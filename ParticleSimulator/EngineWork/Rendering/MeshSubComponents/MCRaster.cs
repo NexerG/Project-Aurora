@@ -23,8 +23,8 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
         {
             //AVulkanBufferHandler.CreateBuffer(ref _mesh._vertices, ref _vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags | _aditionalUsageFlags);
             //AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
-            _mesh = new AVulkanMesh();
-            _mesh.BufferMesh();
+            mesh = new AVulkanMesh();
+            mesh.BufferMesh();
             AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, "../../../Shaders/Brick2.png", Format.R8G8B8A8Srgb);
             AVulkanBufferHandler.CreateImageView(ref VulkanRenderer._vulkan, ref VulkanRenderer._logicalDevice, ref _textureImage, ref _textureImageView, Format.R8G8B8A8Srgb, ImageAspectFlags.ColorBit);
         }
@@ -258,11 +258,11 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
         internal override void MakeInstanced(ref List<Matrix4X4<float>> _matrices)
         {
             base.MakeInstanced(ref _matrices);
-            _instances = _matrices.Count;
-            _transformMatrices = _matrices;
+            instances = _matrices.Count;
+            transformMatrices = _matrices;
 
             Matrix4X4<float>[] _mats = _matrices.ToArray();
-            AVulkanBufferHandler.CreateBuffer(ref _mats, ref _transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
+            AVulkanBufferHandler.CreateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
             //VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
             //VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPoolShadow, (uint)_descriptorSetsShadow.Length, _descriptorSetsShadow);
             //CreateDescriptorSet();
@@ -273,8 +273,8 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
         {
             base.SingletonMatrix();
 
-            Matrix4X4<float>[] _mats = _transformMatrices.ToArray();
-            AVulkanBufferHandler.CreateBuffer(ref _mats, ref _transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
+            Matrix4X4<float>[] _mats = transformMatrices.ToArray();
+            AVulkanBufferHandler.CreateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
         }
 
         internal override void UpdateMatrices()
@@ -289,19 +289,19 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 
         internal void EnqueuShadowDrawCommands(ulong[] _offset, int descriptorIndex, ref CommandBuffer _commandBuffer, int lightIndex)
         {
-            if (_render)
+            if (render)
             {
-                Buffer[] _vertBuffer = new Buffer[] { _mesh._vertexBuffer };
+                Buffer[] _vertBuffer = new Buffer[] { mesh.vertexBuffer };
                 fixed (ulong* _offsetsPtr = _offset)
                 fixed (Buffer* _vertBuffersPtr = _vertBuffer)
                 {
                     VulkanRenderer._vulkan.CmdBindVertexBuffers(_commandBuffer, 0, 1, _vertBuffersPtr, _offsetsPtr);
                 }
-                VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, _mesh._indexBuffer, 0, IndexType.Uint32);
+                VulkanRenderer._vulkan.CmdBindIndexBuffer(_commandBuffer, mesh.indexBuffer, 0, IndexType.Uint32);
                 //VulkanRenderer._vulkan.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, Rasterizer._pipeline._shadowLayout, 0, 1, _descriptorSetsShadow[descriptorIndex], 0, null);
                 //push constants
                 VulkanRenderer._vulkan.CmdPushConstants(_commandBuffer, Rasterizer._pipeline._shadowLayout, ShaderStageFlags.VertexBit, 0, sizeof(int), &lightIndex);
-                VulkanRenderer._vulkan.CmdDrawIndexed(_commandBuffer, (uint)_mesh._indices.Length, (uint)_instances, 0, 0, 0);
+                VulkanRenderer._vulkan.CmdDrawIndexed(_commandBuffer, (uint)mesh.indices.Length, (uint)instances, 0, 0, 0);
             }
         }
     }

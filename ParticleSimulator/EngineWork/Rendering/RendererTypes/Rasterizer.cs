@@ -350,7 +350,7 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
                         MCRaster component = _entitiesToRender[k].GetComponent<MCRaster>();
                         _transformUniformInfos[k] = new()
                         {
-                            Buffer = component._transformsBuffer,
+                            Buffer = component.transformsBuffer,
                             Offset = 0,
                             Range = Vk.WholeSize
                         };
@@ -438,7 +438,7 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
                     MCRaster component = _entitiesToRender[k].GetComponent<MCRaster>();
                     _transformUniformInfos[k] = new()
                     {
-                        Buffer = component._transformsBuffer,
+                        Buffer = component.transformsBuffer,
                         Offset = 0,
                         Range = Vk.WholeSize
                     };

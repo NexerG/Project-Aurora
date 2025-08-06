@@ -9,6 +9,7 @@ using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Silk.NET.GLFW;
 using ArctisAurora.EngineWork.Rendering.UI;
 using ArctisAurora.EngineWork.EngineEntity;
+using System.Runtime.CompilerServices;
 
 namespace ArctisAurora.EngineWork.Rendering
 {
@@ -21,6 +22,7 @@ namespace ArctisAurora.EngineWork.Rendering
         UITemp
     }
 
+    [Obsolete("this class is in the deprecation phase", false)]
     internal unsafe class VulkanRenderer
     {
         internal static VulkanRenderer _rendererInstance = null;
