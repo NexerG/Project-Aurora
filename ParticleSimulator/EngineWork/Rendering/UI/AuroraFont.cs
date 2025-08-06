@@ -456,7 +456,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
             return glyph;
         }
 
-        private static void GenerateMSDF(Glyph g, ref Image<Rgba32> image, int startX, int startY, int glyphsPerAxis, float distanceFactor)
+        internal static void GenerateMSDF(Glyph g, ref Image<Rgba32> image, int startX, int startY, int glyphsPerAxis, float distanceFactor)
         {
             int width = image.Width / glyphsPerAxis;
             int height = image.Height / glyphsPerAxis;

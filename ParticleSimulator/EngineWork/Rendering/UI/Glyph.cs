@@ -34,14 +34,14 @@ namespace ArctisAurora.EngineWork.Rendering.UI
 
         internal void SetParams(short xMin, short xMax, short yMin, short yMax, float unitsPerEm)
         {
-            scale = px / unitsPerEm / 2;
+            scale = px / unitsPerEm;
             this.xMin = xMin;
             this.xMax = xMax;
             this.yMin = yMin;
             this.yMax = yMax;
 
-            glyphWidth = (xMax - xMin) * scale * 1.1f;
-            glyphHeight = (yMax - yMin) * scale * 1.05f;
+            glyphWidth = (xMax - xMin) * scale;
+            glyphHeight = (yMax - yMin) * scale;
 
             //offsetX = xMin * scale;
             //offsetY = yMin * scale;

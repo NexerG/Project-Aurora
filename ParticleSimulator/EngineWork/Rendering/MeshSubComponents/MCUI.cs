@@ -1,5 +1,4 @@
-﻿using ArctisAurora.CustomEntities;
-using ArctisAurora.EngineWork.AssetRegistry;
+﻿using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.UI;
@@ -7,7 +6,6 @@ using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using SixLabors.ImageSharp.PixelFormats;
-using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 {

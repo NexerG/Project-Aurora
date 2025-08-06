@@ -19,6 +19,7 @@ namespace ArctisAurora.EngineWork.EngineEntity
         {
             transform = new Transform(this);
             EntityManager.AddEntity(this);
+            EntityManager.EntityCreated(this);
         }
 
         public Entity(string name)

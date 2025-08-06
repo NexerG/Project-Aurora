@@ -5,6 +5,7 @@ using Silk.NET.Core.Native;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
+using static ArctisAurora.EngineWork.Rendering.UI.Controls.VulkanControl;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 
 namespace ArctisAurora.EngineWork.Rendering.Modules
@@ -239,9 +240,9 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     VulkanControl control = (VulkanControl)EntityManager.controls[j];
                     uvBufferInfos[j] = new()
                     {
-                        Buffer = control.uvBuffer,
+                        Buffer = control.quadDataBuffer,
                         Offset = 0,
-                        Range = (ulong)Unsafe.SizeOf<Vector2D<float>>() * 4
+                        Range = (ulong)Unsafe.SizeOf<QuadData>()
                     };
                 }
                 fixed (DescriptorBufferInfo* uvBufferInfosPtr = uvBufferInfos)

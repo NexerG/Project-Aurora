@@ -93,7 +93,7 @@ namespace ArctisAurora.EngineWork
             //TestingEntity _te = new TestingEntity(new Vector3D<float>(1, 70, 70), new Vector3D<float>(2, 0, 0));
             //_te.ChangeColor(new Vector3D<float>(0.5f, 0.5f, 0.5f));
             //_te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
-            TextEntity _te = new TextEntity("Shikau ir Tapshnojau");
+            TextEntity _te = new TextEntity("A");
             //TestingEntity _te2 = new TestingEntity(new Vector3D<float>(20, 20, 20), new Vector3D<float>(0, 0, 0));
             //_te2.ChangeColor(new Vector3D<float>(0.05f, 0.5f, 0.247f));
             //_te2.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
@@ -153,6 +153,12 @@ namespace ArctisAurora.EngineWork
                 if (SC.InvokeRequired)
                     SC.Invoke(new Action(() =>
                     {
+                        foreach (Entity e in EntityManager.onStartEntities)
+                        {
+                            e.OnStart();
+                        }
+                        EntityManager.ClearOnStart();
+
                         Renderer.window._glfw.PollEvents();
                         Renderer.renderer.Draw();
                     }));

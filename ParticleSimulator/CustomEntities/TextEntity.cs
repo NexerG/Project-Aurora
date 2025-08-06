@@ -1,9 +1,7 @@
 ﻿using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.EngineEntity;
-using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using ArctisAurora.EngineWork.Rendering.UI;
-using ArctisAurora.EngineWork.Serialization;
-using Assimp;
+using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.CustomEntities
@@ -11,7 +9,7 @@ namespace ArctisAurora.CustomEntities
     internal class TextEntity : Entity
     {
         internal string text;
-        internal List<GlyphEntity> children = new List<GlyphEntity>();
+        internal List<GlyphControl> children = new List<GlyphControl>();
 
         FontAsset fontAsset;
 
@@ -30,7 +28,7 @@ namespace ArctisAurora.CustomEntities
                 horizontalOffset += (gAsset.lsb * gAsset.px);
                 verticalOffset = (gAsset.tsb * gAsset.px);
                 Vector3D<float> glyphPos = transform.position + new Vector3D<float>(0, verticalOffset, horizontalOffset);
-                GlyphEntity glyph = new GlyphEntity(text[i], glyphPos, gAsset);
+                GlyphControl glyph = new GlyphControl(text[i], glyphPos, gAsset, fontAsset);
                 children.Add(glyph);
 
                 horizontalOffset += (gAsset.rsb * gAsset.px);

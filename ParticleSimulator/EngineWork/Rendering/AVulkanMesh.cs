@@ -8,7 +8,7 @@ using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Rendering
 {
-    struct Vertex
+    public struct Vertex
     {
         public Vector3D<float> _pos;
         public Vector3D<float> _normal;
