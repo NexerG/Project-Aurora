@@ -2,6 +2,7 @@
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Serialization;
 using Assimp;
+using static ArctisAurora.EngineWork.Rendering.UI.Controls.VulkanControl;
 
 namespace ArctisAurora.EngineWork
 {
@@ -30,6 +31,13 @@ namespace ArctisAurora.EngineWork
             // load default font
             FontAsset font = new FontAsset("default");
             font.LoadDefault();
+
+            // load default style
+            ControlStyle style = new ControlStyle();
+            style.tintDefault = new Silk.NET.Maths.Vector3D<float>(1, 1, 1);
+            style.tintHover = new Silk.NET.Maths.Vector3D<float>(1, 1, 1);
+            style.tintClick = new Silk.NET.Maths.Vector3D<float>(1, 1, 1);
+            AssetRegistries.styles.Add("default", style);
         }
     }
 }

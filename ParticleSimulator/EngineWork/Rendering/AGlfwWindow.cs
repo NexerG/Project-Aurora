@@ -63,6 +63,7 @@ namespace ArctisAurora.EngineWork.Rendering
         private void MouseMoveCallback(WindowHandle* window, double xPos, double yPos)
         {
             //VulkanRenderer._rendererInstance.MouseUpdate(xPos, yPos);
+            Renderer.MouseUpdate(xPos,yPos);
         }
 
         private void MouseClickCallback(WindowHandle* window, MouseButton button, InputAction action, KeyModifiers mods)

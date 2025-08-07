@@ -650,7 +650,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                 //fontMeta = Marshal.PtrToStructure<FontMeta>(handleMeta.AddrOfPinnedObject());
                 //handleMeta.Free();
 
-
                 for (int i = 0; i < glyphCount; i++)
                 {
                     glyphs[i] = new Glyph();
@@ -659,10 +658,8 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                     glyphs[i].xMax = (short)reader.ReadInt16();
                     glyphs[i].yMax = (short)reader.ReadInt16();
 
-                    glyphs[i].scale = reader.ReadSingle();
                     glyphs[i].glyphWidth = reader.ReadSingle();
                     glyphs[i].glyphHeight = reader.ReadSingle();
-                    glyphs[i].px = reader.ReadInt32();
 
                     glyphs[i].rsb = reader.ReadSingle();
                     glyphs[i].lsb = reader.ReadSingle();

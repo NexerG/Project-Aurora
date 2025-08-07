@@ -6,6 +6,7 @@ using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Windows.Devices.HumanInterfaceDevice;
+using ArctisAurora.EngineWork.Physics.UICollision;
 
 namespace ArctisAurora.EngineWork
 {
@@ -25,6 +26,7 @@ namespace ArctisAurora.EngineWork
 
         internal static Engine engineInstance = null;
         internal static Renderer renderer;
+        internal static UICollisionHandling collisionHandling2D;
         //internal static JobSystem jobSystem;
         internal static AssetRegistries assetRegistry = new AssetRegistries();
 
@@ -58,6 +60,7 @@ namespace ArctisAurora.EngineWork
             SC = s;
 
             EntityManager.manager = new EntityManager();
+            collisionHandling2D = new UICollisionHandling();
 
             renderer = new Renderer();
             RenderingModule[] modules = new RenderingModule[]
@@ -76,9 +79,8 @@ namespace ArctisAurora.EngineWork
             renderer.CreateCommandBuffers();
             renderer.CreateSyncObjects();
 
-            //AssetImporter.ImportFont("abcdefghijklmnoprstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ", "arial.ttf");
 
-            TextEntity _te = new TextEntity("ABCDEFG");
+            TextEntity _te = new TextEntity("A", 70);
 
             Thread physics = new Thread(PhysicsThread);
             Thread rendering = new Thread(RenderThread);
@@ -193,7 +195,7 @@ namespace ArctisAurora.EngineWork
                 entity.OnTick();
             }
 
-            // paralelization of this is a good idea, just the systems that are used with paralelization mush be paralel safe as lists arent
+            // paralelization of this is a good idea, just the systems that are to be paralelized must be paralel safe as the current ones arent
             //if (EntityManager.onStartEntities.Count > 0)
             //{
             //    Parallel.ForEach(EntityManager.onStartEntities, e =>

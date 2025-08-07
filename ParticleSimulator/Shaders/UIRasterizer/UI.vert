@@ -15,13 +15,22 @@ layout(set = 0, binding = 1) readonly buffer Transform{
     mat4 transforms[];
 }ts;
 
+struct Style
+{
+    vec3 tintDefault;
+    vec3 tintHover;
+    vec3 tintClick;
+};
+
 layout(set = 0, binding = 3, scalar) readonly buffer vertexData {
     vec2[4] UV;
     vec3[4] offset;
+    Style style;
 } VD[];
 
 layout(location = 0) out vec2 fragUV;
 layout(location = 1) out flat uint fragInstanceID;
+layout(location = 2) out Style fragStyle;
 
 void main() {
     vec3 tPos = vec3(ts.transforms[gl_InstanceIndex] * vec4(inPosition + VD[gl_InstanceIndex].offset[gl_VertexIndex], 1.0));
@@ -29,6 +38,6 @@ void main() {
 
     gl_Position = pos;
     fragInstanceID = gl_InstanceIndex;
-
+    fragStyle = VD[gl_InstanceIndex].style;
     fragUV = VD[gl_InstanceIndex].UV[gl_VertexIndex];
 }

@@ -1,4 +1,5 @@
-﻿using ArctisAurora.EngineWork.EngineEntity;
+﻿using ArctisAurora.EngineWork.AssetRegistry;
+using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
@@ -9,11 +10,19 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 {
     internal class VulkanControl : Entity
     {
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
         public struct ControlStyle
         {
-            public Vector3D<float> tint;
-            public Sampler image;
-            public Sampler mask;
+            public Vector3D<float> tintDefault;
+            public Vector3D<float> tintHover;
+            public Vector3D<float> tintClick;
+            //public Sampler image;
+            //public Sampler mask;
+
+            public static ControlStyle Default()
+            {
+                return AssetRegistries.styles.GetValueOrDefault("default");
+            }
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -73,22 +82,25 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             public QuadOffsets offsets;
         }
 
-        internal Vector3D<float> tintDefault;
-        internal Vector3D<float> tintHover;
-        internal Vector3D<float> tintClick;
-        internal int pointCount;
-        internal List<Bezier> contour = new List<Bezier>();
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
+        public struct ControlData()
+        {
+            public QuadData quadData;
+            public ControlStyle style;
+        }
 
-        internal ControlStyle style;
+        internal Vector2D<float> px = new Vector2D<float>(72, 72);
 
-        internal QuadData quadData;
-        internal Buffer quadDataBuffer;
-        internal DeviceMemory quadDataBufferMemory;
+        internal ControlData controlData;
+        internal Buffer controlDataBuffer;
+        internal DeviceMemory controlDataBufferMemory;
 
         public VulkanControl()
         {
-            quadData = new QuadData();
-            AVulkanBufferHandler.CreateBuffer(ref quadData, ref quadDataBuffer, ref quadDataBufferMemory, BufferUsageFlags.StorageBufferBit);
+            controlData = new ControlData();
+            controlData.style = ControlStyle.Default();
+            controlData.quadData = new QuadData();
+            AVulkanBufferHandler.CreateBuffer(ref controlData, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
         }
 
         public override void OnStart()

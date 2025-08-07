@@ -1,6 +1,7 @@
 ﻿using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
+using System.Windows.Forms;
 
 namespace ArctisAurora.EngineWork
 {
@@ -9,9 +10,12 @@ namespace ArctisAurora.EngineWork
     {
         internal static EntityManager manager;
 
-        private static List<Entity> _entities = new List<Entity>();
-        private static List<VulkanControl> _controls = new List<VulkanControl>();
 
+
+        private static List<Entity> _entities = new List<Entity>();
+
+        private static List<VulkanControl> _controls = new List<VulkanControl>();
+        private static List<ButtonControl> _buttons = new List<ButtonControl>();
         private static List<Entity> _entitiesToRender = new List<Entity>();
 
         private static List<Entity> _entitiesToUpdate = new List<Entity>();
@@ -22,7 +26,9 @@ namespace ArctisAurora.EngineWork
         //----------
 
         internal static IReadOnlyList<Entity> entities => _entities;
-        internal static IReadOnlyList<Entity> controls => _controls;
+
+        internal static IReadOnlyList<VulkanControl> controls => _controls;
+        internal static IReadOnlyList<ButtonControl> buttons => _buttons;
         internal static IReadOnlyList<Entity> entitiesToRender => _entitiesToRender;
 
 
@@ -59,6 +65,12 @@ namespace ArctisAurora.EngineWork
             Renderer.renderer.UpdateUIRenderer();
         }
 
+        public static void AddButton(ButtonControl button)
+        {
+            if (button == null) throw new ArgumentNullException(nameof(button));
+            _buttons.Add(button);
+        }
+
         public static void AddEntityToUpdate(Entity entity)
         {
             if (entity == null) throw new ArgumentNullException(nameof(entity));
@@ -90,11 +102,5 @@ namespace ArctisAurora.EngineWork
         {
             _onDestroyedEntities.Clear();
         }
-
-        //public static void AddMeshComponent(MeshComponent meshComponent)
-        //{
-        //    if (meshComponent == null) throw new ArgumentNullException(nameof(meshComponent));
-        //    _entitiesToRender.Add(meshComponent);
-        //}
     }
 }

@@ -119,6 +119,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal abstract void WriteCommandBuffers();
 
+        internal abstract void MouseUpdate(double xPos, double yPos);
+
         internal static byte[] ReadFile(string FileName)
         {
             byte[] contents = File.ReadAllBytes(FileName);

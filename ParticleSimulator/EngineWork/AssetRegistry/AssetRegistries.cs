@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.EngineWork.Rendering;
+using static ArctisAurora.EngineWork.Rendering.UI.Controls.VulkanControl;
 
 namespace ArctisAurora.EngineWork.AssetRegistry
 {
@@ -16,6 +17,8 @@ namespace ArctisAurora.EngineWork.AssetRegistry
 
         public static Dictionary<string, FontAsset> fonts = new Dictionary<string, FontAsset>();
         public static Dictionary<string, TextureAsset> textures = new Dictionary<string, TextureAsset>();
+
+        public static Dictionary<string, ControlStyle> styles = new Dictionary<string, ControlStyle>();
 
         //public static Dictionary<string, audio> audio;
     }

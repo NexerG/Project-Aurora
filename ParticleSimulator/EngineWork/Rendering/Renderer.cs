@@ -680,6 +680,14 @@ namespace ArctisAurora.EngineWork.Rendering
             currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
         }
 
+        internal static void MouseUpdate(double xPos, double yPos)
+        {
+            for (int i = 0; i < renderingModules.Length; i++)
+            {
+                renderingModules[i].MouseUpdate(xPos, yPos);
+            }
+        }
+
         internal void CopyStructTrues<T>(ref T destination, T source) where T : struct
         {
             foreach (FieldInfo field in typeof(T).GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))

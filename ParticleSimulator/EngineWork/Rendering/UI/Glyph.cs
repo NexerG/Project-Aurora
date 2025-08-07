@@ -16,10 +16,8 @@ namespace ArctisAurora.EngineWork.Rendering.UI
         }*/
 
         internal short xMin, yMin, xMax, yMax;
-        internal float scale;
         internal float glyphWidth;
         internal float glyphHeight;
-        internal int px = 70;
 
         [NonSerializable]
         internal List<Bezier> contours = new List<Bezier>();
@@ -34,17 +32,13 @@ namespace ArctisAurora.EngineWork.Rendering.UI
 
         internal void SetParams(short xMin, short xMax, short yMin, short yMax, float unitsPerEm)
         {
-            scale = px / unitsPerEm;
             this.xMin = xMin;
             this.xMax = xMax;
             this.yMin = yMin;
             this.yMax = yMax;
 
-            glyphWidth = (xMax - xMin) * scale;
-            glyphHeight = (yMax - yMin) * scale;
-
-            //offsetX = xMin * scale;
-            //offsetY = yMin * scale;
+            glyphWidth = (xMax - xMin) / unitsPerEm;
+            glyphHeight = (yMax - yMin) / unitsPerEm;
         }
     }
 }

@@ -13,9 +13,9 @@ namespace ArctisAurora.CustomEntities
 
         FontAsset fontAsset;
 
-        internal TextEntity(string text)
+        internal TextEntity(string text, int px)
         {
-            transform.SetWorldPosition(new Vector3D<float>(2, 0, -200));
+            transform.SetWorldPosition(new Vector3D<float>(2, 100, 100));
             this.text = text;
 
             fontAsset = AssetRegistries.fonts["default"];
@@ -25,13 +25,13 @@ namespace ArctisAurora.CustomEntities
             for (int i = 0; i< text.Length; i++)
             {
                 Glyph gAsset= fontAsset.atlasMetaData.GetGlyph(text[i]);
-                horizontalOffset += (gAsset.lsb * gAsset.px);
-                verticalOffset = (gAsset.tsb * gAsset.px);
+                horizontalOffset += (gAsset.lsb * px);
+                verticalOffset = (gAsset.tsb * px);
                 Vector3D<float> glyphPos = transform.position + new Vector3D<float>(0, verticalOffset, horizontalOffset);
-                GlyphControl glyph = new GlyphControl(text[i], glyphPos, gAsset, fontAsset);
+                GlyphControl glyph = new GlyphControl(text[i], glyphPos, gAsset, fontAsset, px);
                 children.Add(glyph);
 
-                horizontalOffset += (gAsset.rsb * gAsset.px);
+                horizontalOffset += (gAsset.rsb * px);
             }
         }
     }

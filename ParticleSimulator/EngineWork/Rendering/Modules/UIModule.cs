@@ -1,4 +1,5 @@
-﻿using ArctisAurora.EngineWork.Rendering.Helpers;
+﻿using ArctisAurora.EngineWork.Physics.UICollision;
+using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using Silk.NET.Core.Native;
@@ -239,9 +240,9 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     VulkanControl control = (VulkanControl)EntityManager.controls[j];
                     uvBufferInfos[j] = new()
                     {
-                        Buffer = control.quadDataBuffer,
+                        Buffer = control.controlDataBuffer,
                         Offset = 0,
-                        Range = (ulong)Unsafe.SizeOf<QuadData>()
+                        Range = (ulong)Unsafe.SizeOf<ControlData>()
                     };
                 }
                 fixed (DescriptorBufferInfo* uvBufferInfosPtr = uvBufferInfos)
@@ -588,6 +589,11 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     throw new Exception("Failed to record command buffer");
                 }
             }
+        }
+
+        internal override void MouseUpdate(double xPos, double yPos)
+        {
+            UICollisionHandling.instance.SolveHover(xPos, yPos);
         }
     }
 }
