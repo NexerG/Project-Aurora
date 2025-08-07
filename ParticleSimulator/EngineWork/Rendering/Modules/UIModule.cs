@@ -2,7 +2,6 @@
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using Silk.NET.Core.Native;
-using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
 using static ArctisAurora.EngineWork.Rendering.UI.Controls.VulkanControl;

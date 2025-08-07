@@ -5,6 +5,7 @@ using ArctisAurora.EngineWork.Serialization;
 using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.Modules;
+using Windows.Devices.HumanInterfaceDevice;
 
 namespace ArctisAurora.EngineWork
 {
@@ -17,67 +18,90 @@ namespace ArctisAurora.EngineWork
 #if DEBUG
                 return true;
 #else
-                    return false;
+                return false;
 #endif
             }
         }
 
-        internal static Engine _engineInstance = null;
-        public bool Running { get; private set; }
+        internal static Engine engineInstance = null;
+        internal static Renderer renderer;
+        //internal static JobSystem jobSystem;
+        internal static AssetRegistries assetRegistry = new AssetRegistries();
+
+        public bool running { get; private set; }
+        static AutoResetEvent t_physics_start = new AutoResetEvent(false);
+        static AutoResetEvent t_physics_end = new AutoResetEvent(false);
+        
+        static AutoResetEvent t_ECS_start = new AutoResetEvent(false);
+        static AutoResetEvent t_ECS_end = new AutoResetEvent(false);
+
+        static AutoResetEvent t_render_start = new AutoResetEvent(false);
+        static AutoResetEvent t_render_end = new AutoResetEvent(true);
+
+        static bool isCaughtUp = true;
+        static bool isPhysicsReady = false;
+
         internal static DateTime initTime;
         internal Frame SC;
-        //internal Rasterization renderer3D;
-        //internal static VulkanRenderer _renderer;
 
-        internal static AssetRegistries assetRegistry = new AssetRegistries();
 
         //private DateTime lastFrameTime = DateTime.Now;
 
         public Engine()
         {
-            _engineInstance = this;
+            engineInstance = this;
         }
 
         public void Init(Frame s)
         {
-            Running = true;
+            running = true;
             SC = s;
-
 
             EntityManager.manager = new EntityManager();
 
-            Renderer renderer = new Renderer();
+            renderer = new Renderer();
             RenderingModule[] modules = new RenderingModule[]
             {
                 new UIModule(),
             };
             renderer.PreInitialize(modules);
             renderer.Initialize();
-
             // asset and renderable objects can be loaded from here
+
             Bootstrapper.PreprareDefaultAssets();
-
             renderer.SetupObjects();
-            renderer.PrepareDescriptors();
 
+            renderer.PrepareDescriptors();
             renderer.SetupPipelines();
             renderer.CreateCommandBuffers();
             renderer.CreateSyncObjects();
-            // rendering goes from here
 
-            //
-            //_renderer = new VulkanRenderer();
-            //_renderer.InitRenderer(ERendererTypes.UITemp);
-            //
-            //
-            //// mesh importer
-            //MeshImporter importer = new MeshImporter();
-            //Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\VienetinisPlane.fbx");
-            //
-            //Running = true;
-            //SC = s;
-            //
             //AssetImporter.ImportFont("abcdefghijklmnoprstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ", "arial.ttf");
+
+            TextEntity _te = new TextEntity("ABCDEFG");
+
+            Thread physics = new Thread(PhysicsThread);
+            Thread rendering = new Thread(RenderThread);
+
+            physics.Start();
+            rendering.Start();
+
+            while (running)
+            {
+                Renderer.window._glfw.PollEvents();
+
+                // skip this if we're no done interpolating last physics tick
+                // aka one in the over, another waitting.
+
+                t_physics_start.Set();
+                t_physics_end.WaitOne();
+
+                // here should go entity updates &/or interpolation
+                Interpolate();
+
+                t_render_end.WaitOne();
+                t_render_start.Set();
+            }
 
             //---------------------------------------------------------------------------
             //Game logic
@@ -93,7 +117,6 @@ namespace ArctisAurora.EngineWork
             //TestingEntity _te = new TestingEntity(new Vector3D<float>(1, 70, 70), new Vector3D<float>(2, 0, 0));
             //_te.ChangeColor(new Vector3D<float>(0.5f, 0.5f, 0.5f));
             //_te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
-            TextEntity _te = new TextEntity("A");
             //TestingEntity _te2 = new TestingEntity(new Vector3D<float>(20, 20, 20), new Vector3D<float>(0, 0, 0));
             //_te2.ChangeColor(new Vector3D<float>(0.05f, 0.5f, 0.247f));
             //_te2.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
@@ -107,80 +130,100 @@ namespace ArctisAurora.EngineWork
             //_te4.transform.SetRotationFromVector3(new Vector3D<float>(0.0f,0.0f,5.0f));
             //_entities.Add(_te4);
             //---------------------------------------------------------------------------
-            //engine thread
-            Task _engineTask = Task.Run(() => EngineStart());
-            new Thread(() =>
-            {
-                EngineStart();
-            }).Start();
         }
 
-        public async Task EngineStart()
+        private void PhysicsThread()
         {
-            //Console.Clear();
-            double[] framerate = new double[100];
-            for (int i = 0; i < 100; i++)
-                framerate[i] = 0;
-            int index = 0;
-
-            initTime = DateTime.Now;
-            int TS = 8;
-            while (Running)
+            while (running)
             {
-                //engine time
-                TimeSpan SimTime = DateTime.Now - initTime;
-                //Console.SetCursorPosition(0, 0);
-
-                DateTime entityOnTickStart = DateTime.Now;
-                foreach (Entity e in EntityManager.entities)
+                t_physics_start.WaitOne();
+                //Console.WriteLine("running physics thread");
+                if (!isPhysicsReady) // we're lacking ?
                 {
-                    DateTime entityTimeStart = DateTime.Now;
-                    e.OnTick();
-                    TimeSpan entityTime = DateTime.Now - entityTimeStart;
-                    //Console.WriteLine("      " + e.name + "   " + entityTime.TotalMilliseconds);
+                    //Console.WriteLine("Doing phyics");
+                    isPhysicsReady = true;
                 }
-                TimeSpan entityOnTickTime = DateTime.Now - entityOnTickStart;
-                //Console.WriteLine("Entity time ---" + entityOnTickTime.TotalMilliseconds);
-
-                //DateTime now = DateTime.Now;
-                //pd.deltaTime = (float)(now - lastFrameTime).TotalSeconds;
-                //AVulkanBufferHandler.UpdateBuffer(ref pd, ref phosphorusDataBuffer, ref phosphorusDM, BufferUsageFlags.UniformBufferBit);
-                //lastFrameTime = now;
-
-
-                //renderer
-                DateTime GraphicsTimeStart = DateTime.Now;
-                if (SC.InvokeRequired)
-                    SC.Invoke(new Action(() =>
-                    {
-                        foreach (Entity e in EntityManager.onStartEntities)
-                        {
-                            e.OnStart();
-                        }
-                        EntityManager.ClearOnStart();
-
-                        Renderer.window._glfw.PollEvents();
-                        Renderer.renderer.Draw();
-                    }));
-                TimeSpan GraphicsTime = DateTime.Now - GraphicsTimeStart;
-                //Console.WriteLine("Graphics --- " + GraphicsTime.TotalMilliseconds);
-
-                double totalTime = GraphicsTime.TotalMilliseconds + entityOnTickTime.TotalMilliseconds;
-                //Console.WriteLine("TotalTime --- " + totalTime);
-                framerate[index % 100] = totalTime;
-                index = (index + 1) % 100;
-                double fr = framerate.Sum() / index;
-                //Console.WriteLine("FPS --- " + 1000 / (fr / 100));
-
-                double TSOffset = TS - totalTime;
-                if (TSOffset > 0f)
-                    await Task.Delay(((int)TSOffset));
+                Thread.Sleep(32);
+                t_physics_end.Set();
             }
+        }
+
+        private void RenderThread()
+        {
+            while (running)
+            {
+                t_render_start.WaitOne();
+                renderer.Draw();
+                t_render_end.Set();
+            }
+        }
+
+        private void Interpolate()
+        {
+            // have we caught up?
+            if (isCaughtUp)
+            {
+                isCaughtUp = false;
+                // switch active buffers
+                isPhysicsReady = false;
+            }
+
+            // do interpolation
+
+            if (EntityManager.onStartEntities.Count > 0)
+            {
+                foreach (Entity entity in EntityManager.onStartEntities)
+                {
+                    entity.OnStart();
+                }
+                EntityManager.ClearOnStart();
+            }
+
+            if (EntityManager.onDestroyEntities.Count > 0)
+            {
+                foreach (Entity entity in EntityManager.onDestroyEntities)
+                {
+                    entity.OnDestroy();
+                }
+                EntityManager.ClearOnDestroy();
+            }
+
+            foreach (Entity entity in EntityManager.entities)
+            {
+                entity.OnTick();
+            }
+
+            // paralelization of this is a good idea, just the systems that are used with paralelization mush be paralel safe as lists arent
+            //if (EntityManager.onStartEntities.Count > 0)
+            //{
+            //    Parallel.ForEach(EntityManager.onStartEntities, e =>
+            //    {
+            //        e.OnStart();
+            //    });
+            //    EntityManager.ClearOnStart();
+            //}
+
+            //if (EntityManager.onDestroyEntities.Count > 0)
+            //{
+            //    Parallel.ForEach(EntityManager.onDestroyEntities, e =>
+            //    {
+            //        e.OnDestroy();
+            //    });
+            //    EntityManager.ClearOnDestroy();
+            //}
+
+            //Parallel.ForEach(EntityManager.entities, e =>
+            //{
+            //    e.OnTick();
+            //});
+
+            // some if clause to check if we caught up
+            isCaughtUp = true;
         }
 
         public void Stop()
         {
-            Running = false;
+            running = false;
         }
     }
 }

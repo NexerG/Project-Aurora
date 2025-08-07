@@ -1,7 +1,6 @@
 ﻿using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
-using Windows.ApplicationModel.VoiceCommands;
 
 namespace ArctisAurora.EngineWork
 {
@@ -14,8 +13,10 @@ namespace ArctisAurora.EngineWork
         private static List<VulkanControl> _controls = new List<VulkanControl>();
 
         private static List<Entity> _entitiesToRender = new List<Entity>();
+
         private static List<Entity> _entitiesToUpdate = new List<Entity>();
         private static List<Entity> _onStartEntities = new List<Entity>();
+        private static List<Entity> _onDestroyedEntities = new List<Entity>();
 
 
         //----------
@@ -23,8 +24,11 @@ namespace ArctisAurora.EngineWork
         internal static IReadOnlyList<Entity> entities => _entities;
         internal static IReadOnlyList<Entity> controls => _controls;
         internal static IReadOnlyList<Entity> entitiesToRender => _entitiesToRender;
+
+
         internal static IReadOnlyList<Entity> entitiesToUpdate => _entitiesToUpdate;
         internal static IReadOnlyList<Entity> onStartEntities => _onStartEntities;
+        internal static IReadOnlyList<Entity> onDestroyEntities => _onDestroyedEntities;
         //internal static IReadOnlyList<MeshComponent> entitiesToRender => _entitiesToRender;
 
         //internal static List<Entity> physicsEntities = new List<Entity>();
@@ -80,6 +84,11 @@ namespace ArctisAurora.EngineWork
         public static void ClearOnStart()
         {
             _onStartEntities.Clear();
+        }
+
+        public static void ClearOnDestroy()
+        {
+            _onDestroyedEntities.Clear();
         }
 
         //public static void AddMeshComponent(MeshComponent meshComponent)
