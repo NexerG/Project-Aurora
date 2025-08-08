@@ -9,7 +9,7 @@ namespace ArctisAurora.EngineWork.AssetRegistry
     internal class FontAsset : Asset
     {
         public AtlasMetaData atlasMetaData;
-        public TextureAsset image;
+        public TextureAsset textureAsset;
 
         public FontAsset(string name)
         {
@@ -41,7 +41,7 @@ namespace ArctisAurora.EngineWork.AssetRegistry
             string imagePath = Paths.FONTS + "\\" + name + "\\" + name + "_atlas.png";
             if (System.IO.File.Exists(imagePath))
             {
-                image.LoadAsset(asset, name, path);
+                textureAsset.LoadAsset(asset, name, path);
                 AssetRegistries.fonts[name] = this;
                 return;
             }
@@ -55,8 +55,8 @@ namespace ArctisAurora.EngineWork.AssetRegistry
             atlasMetaData.Deserialize("arial");
 
             string imagePath = Paths.FONTS + "\\arial\\" + "arial_atlas.png";
-            image = new TextureAsset("default");
-            image.LoadAsset(this, "arial", imagePath);
+            textureAsset = new TextureAsset("default");
+            textureAsset.LoadAsset(this, "arial", imagePath);
         }
 
         /*public FontAsset LoadFont(string name)

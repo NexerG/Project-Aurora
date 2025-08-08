@@ -1,5 +1,6 @@
 ﻿using Silk.NET.Vulkan;
 using Windows.ApplicationModel.VoiceCommands;
+using Windows.Media.AppBroadcasting;
 
 namespace ArctisAurora.EngineWork.Rendering.Modules
 {
@@ -29,16 +30,21 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal CommandBuffer[] commandBuffers;
 
         // descriptors
-        internal abstract List<DescriptorType> descriptorTypes { get; }
+        internal abstract List<List<DescriptorType>> descriptorTypes { get; }
+        internal abstract List<List<ShaderStageFlags>> shaderStages { get; }
+        internal abstract DescriptorBindingFlags[][] descriptorBindingFlags { get; }
+        internal abstract int variableSetCount { get; }
 
-        internal abstract List<ShaderStageFlags> shaderStages { get; }
-
-        internal abstract DescriptorBindingFlags[] descriptorBindingFlags { get; }
 
         internal DescriptorPool descriptorPool;
         internal DescriptorPoolSize[] descriptorPoolSizes;
-        internal DescriptorSetLayout descriptorSetLayout;
-        internal DescriptorSet[] descriptorSets;
+        internal DescriptorSetLayout[] descriptorSetLayouts;
+        internal DescriptorSet[][] descriptorSets;
+
+        internal abstract uint MAX_TEXTURES { get; }
+        internal abstract uint MAX_STORAGE_BUFFERS { get; }
+        internal abstract uint MAX_UNIFORMS_BUFFERS { get; }
+
 
         // others
         internal AuroraCamera camera;
@@ -52,62 +58,71 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal virtual void CreateDescriptorSetLayout()
         {
-            uint typeCount = (uint)descriptorTypes.Count;
-            uint indexedMaxCount = 50000;
-            uint[] descriptorCount = new uint[typeCount];
-
-            for (int i = 0; i < typeCount; i++)
+            uint setCount = (uint)variableSetCount;
+            descriptorSetLayouts = new DescriptorSetLayout[variableSetCount];
+            for (int set = 0; set < setCount; ++set)
             {
-                if (descriptorBindingFlags[i].HasFlag(DescriptorBindingFlags.VariableDescriptorCountBit))
-                {
-                    descriptorCount[i] = indexedMaxCount;
-                }
-                else
-                {
-                    descriptorCount[i] = 1;
-                }
-            }
+                uint typeCount = (uint)descriptorTypes[set].Count;
+                uint[] descriptorCount = new uint[typeCount];
 
-            DescriptorSetLayoutBinding[] bindingList = new DescriptorSetLayoutBinding[typeCount];
-            for (int i = 0; i < typeCount; i++)
-            {
-                bindingList[i] = new DescriptorSetLayoutBinding()
+                for (int i = 0; i < typeCount; i++)
                 {
-                    Binding = (uint)i,
-                    DescriptorCount = descriptorCount[i],
-                    DescriptorType = descriptorTypes[i],
-                    PImmutableSamplers = null,
-                    StageFlags = shaderStages[i]
-                };
-            }
-            fixed (DescriptorBindingFlags* _indexedPtr = descriptorBindingFlags)
-            fixed (DescriptorSetLayoutBinding* _bindingsPtr = bindingList)
-            fixed (DescriptorSetLayout* _descSetLayoutPtr = &descriptorSetLayout)
-            {
-                DescriptorSetLayoutBindingFlagsCreateInfo _setLayoutBindingFlags = new()
-                {
-                    SType = StructureType.DescriptorSetLayoutBindingFlagsCreateInfoExt,
-                    BindingCount = typeCount,
-                    PBindingFlags = _indexedPtr
-                };
-
-                DescriptorSetLayoutCreateInfo _layoutCreateInfo = new DescriptorSetLayoutCreateInfo()
-                {
-                    SType = StructureType.DescriptorSetLayoutCreateInfo,
-                    BindingCount = typeCount,
-                    PBindings = _bindingsPtr,
-                    PNext = &_setLayoutBindingFlags
-                };
-                if (Renderer.vk.CreateDescriptorSetLayout(Renderer.logicalDevice, ref _layoutCreateInfo, null, _descSetLayoutPtr) != Result.Success)
-                {
-                    throw new Exception("Failed to create descriptor set layout");
+                    if (descriptorBindingFlags[set][i].HasFlag(DescriptorBindingFlags.VariableDescriptorCountBit))
+                    {
+                        descriptorCount[i] = MAX_STORAGE_BUFFERS;
+                    }
+                    else
+                    {
+                        descriptorCount[i] = 1;
+                    }
                 }
+
+                DescriptorSetLayoutBinding[] bindingList = new DescriptorSetLayoutBinding[typeCount];
+                for (int i = 0; i < typeCount; i++)
+                {
+                    bindingList[i] = new DescriptorSetLayoutBinding()
+                    {
+                        Binding = (uint)i,
+                        DescriptorCount = descriptorCount[i],
+                        DescriptorType = descriptorTypes[set][i],
+                        PImmutableSamplers = null,
+                        StageFlags = shaderStages[set][i]
+                    };
+                }
+
+                DescriptorSetLayout localLayout;
+
+                fixed (DescriptorBindingFlags* _indexedPtr = descriptorBindingFlags[set])
+                fixed (DescriptorSetLayoutBinding* _bindingsPtr = bindingList)
+                {
+                    DescriptorSetLayoutBindingFlagsCreateInfo _setLayoutBindingFlags = new()
+                    {
+                        SType = StructureType.DescriptorSetLayoutBindingFlagsCreateInfoExt,
+                        BindingCount = typeCount,
+                        PBindingFlags = _indexedPtr
+                    };
+
+                    DescriptorSetLayoutCreateInfo _layoutCreateInfo = new DescriptorSetLayoutCreateInfo()
+                    {
+                        SType = StructureType.DescriptorSetLayoutCreateInfo,
+                        BindingCount = typeCount,
+                        PBindings = _bindingsPtr,
+                        PNext = &_setLayoutBindingFlags
+                    };
+                    if (Renderer.vk.CreateDescriptorSetLayout(Renderer.logicalDevice, ref _layoutCreateInfo, null, &localLayout) != Result.Success)
+                    {
+                        throw new Exception("Failed to create descriptor set layout");
+                    }
+                }
+                descriptorSetLayouts[set] = localLayout;
             }
         }
 
         internal abstract void CreateDescriptorPoolSizes(uint swapchainImageCount);
 
         internal abstract void UpdateDescriptorSets();
+
+        internal abstract void CreateDescriptorPool();
 
         internal abstract void AllocateDescriptorSets();
 

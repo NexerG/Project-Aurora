@@ -80,10 +80,6 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal static RenderingModule[] renderingModules;
 
-        // descriptors
-        internal Dictionary<DescriptorType, DescriptorPoolSize> descriptorPoolSizes = new();
-        internal static DescriptorPool descriptorPool;
-
         // commands
         internal static CommandPool commandPool;
         internal CommandBuffer[] commandBuffers;
@@ -128,7 +124,6 @@ namespace ArctisAurora.EngineWork.Rendering
             presentQueue = vk.GetDeviceQueue(logicalDevice, presentSupportIndex, 0);
 
             CreateSwapchain();
-            PrepareDescriptorPoolSizes();
             CreateCommandPool();
         }
 
@@ -480,53 +475,6 @@ namespace ArctisAurora.EngineWork.Rendering
             }
         }
 
-        private void PrepareDescriptorPoolSizes()
-        {
-            DescriptorType[] types = Enum.GetValues<DescriptorType>();
-            for (int i = 0; i < types.Length; i++)
-            {
-                descriptorPoolSizes[(DescriptorType)i] = new DescriptorPoolSize
-                {
-                    Type = (DescriptorType)i,
-                    DescriptorCount = 0
-                };
-            }
-        }
-
-        private void CreateDescriptorPool()
-        {
-            for (int i = 0; i < renderingModules.Length; i++)
-            {
-                renderingModules[i].CreateDescriptorPoolSizes(swapchainImageCount);
-                for (int j = 0; j < renderingModules[i].descriptorPoolSizes.Length; j++)
-                {
-                    DescriptorType type = renderingModules[i].descriptorPoolSizes[j].Type;
-                    DescriptorPoolSize size = descriptorPoolSizes[type];
-                    size.DescriptorCount += renderingModules[i].descriptorPoolSizes[j].DescriptorCount;
-
-                    descriptorPoolSizes[type] = size;
-                }
-            }
-
-            DescriptorPoolSize[] poolSizes = descriptorPoolSizes.Values.Where(pool => pool.DescriptorCount > 0).ToArray();
-
-            fixed (DescriptorPoolSize* _poolSizePtr = poolSizes)
-            {
-                DescriptorPoolCreateInfo _createInfo = new DescriptorPoolCreateInfo()
-                {
-                    SType = StructureType.DescriptorPoolCreateInfo,
-                    PoolSizeCount = (uint)poolSizes.Length,
-                    PPoolSizes = _poolSizePtr,
-                    MaxSets = swapchainImageCount,
-                    Flags = DescriptorPoolCreateFlags.FreeDescriptorSetBit
-                };
-                if (vk.CreateDescriptorPool(logicalDevice, ref _createInfo, null, out descriptorPool) != Result.Success)
-                {
-                    throw new Exception("Failed to create descriptor pool");
-                }
-            }
-        }
-
         private void AllocateDescriptorSets()
         {
             for(int i = 0; i < renderingModules.Length; i++)
@@ -545,7 +493,6 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal void UpdateUIRenderer()
         {
-            CreateDescriptorPool();
             for (int i = 0; i < renderingModules.Length; i++)
             {
                 if (renderingModules[i].RendererStage == ERendererStage.UI)

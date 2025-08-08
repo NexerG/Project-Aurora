@@ -109,19 +109,19 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             //    }
         }
 
-        internal virtual void EnqueueDrawCommands(ref ulong[] _offset, int _loopIndex, int instanceID, ref CommandBuffer _commandBuffer, ref PipelineLayout pipelineLayout, ref DescriptorSet descriptorSet)
+        internal virtual void EnqueueDrawCommands(ref ulong[] _offset, int _loopIndex, int instanceID, ref CommandBuffer _commandBuffer, ref PipelineLayout pipelineLayout, ref DescriptorSet[][] descriptorSet)
         {
-            if (render)
-            {
-                fixed (ulong* _offsetsPtr = _offset)
-                {
-                    Renderer.vk.CmdBindVertexBuffers(_commandBuffer, 0, 1, ref mesh.vertexBuffer, _offsetsPtr);
-                }
-                Renderer.vk.CmdBindIndexBuffer(_commandBuffer, mesh.indexBuffer, 0, IndexType.Uint32);
-                Renderer.vk.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, pipelineLayout, 0, 1, descriptorSet, 0, null);
-                Renderer.vk.CmdDrawIndexed(_commandBuffer, (uint)mesh.indices.Length, (uint)instances, 0, 0, (uint)instanceID);
-                _offset[0] += (ulong)(sizeof(Vertex) * _loopIndex);
-            }
+            //if (render)
+            //{
+            //    fixed (ulong* _offsetsPtr = _offset)
+            //    {
+            //        Renderer.vk.CmdBindVertexBuffers(_commandBuffer, 0, 1, ref mesh.vertexBuffer, _offsetsPtr);
+            //    }
+            //    Renderer.vk.CmdBindIndexBuffer(_commandBuffer, mesh.indexBuffer, 0, IndexType.Uint32);
+            //    Renderer.vk.CmdBindDescriptorSets(_commandBuffer, PipelineBindPoint.Graphics, pipelineLayout, 0, 1, descriptorSet, 0, null);
+            //    Renderer.vk.CmdDrawIndexed(_commandBuffer, (uint)mesh.indices.Length, (uint)instances, 0, 0, (uint)instanceID);
+            //    _offset[0] += (ulong)(sizeof(Vertex) * _loopIndex);
+            //}
         }
 
     }

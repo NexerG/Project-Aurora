@@ -3,12 +3,14 @@ using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 using System.Runtime.InteropServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 {
-    internal class VulkanControl : Entity
+    internal unsafe class VulkanControl : Entity
     {
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         public struct ControlStyle
@@ -95,18 +97,65 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         internal Buffer controlDataBuffer;
         internal DeviceMemory controlDataBufferMemory;
 
+        internal Sampler maskSampler;
+        internal TextureAsset maskAsset;
+
+        internal Sampler colorSampler;
+        internal TextureAsset colorAsset;
+
         public VulkanControl()
         {
             controlData = new ControlData();
             controlData.style = ControlStyle.Default();
             controlData.quadData = new QuadData();
+
+            maskAsset = AssetRegistries.fonts.GetValueOrDefault("default").textureAsset;
+
+            controlData.quadData.uvs.uv1 = new Vector2D<float>(0, 0);
+            controlData.quadData.uvs.uv2 = new Vector2D<float>(1, 0);
+            controlData.quadData.uvs.uv3 = new Vector2D<float>(1, 1);
+            controlData.quadData.uvs.uv4 = new Vector2D<float>(0, 1);
+
+            transform.SetWorldScale(new Vector3D<float>(1, px.X, px.Y));
+
             AVulkanBufferHandler.CreateBuffer(ref controlData, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
         }
 
         public override void OnStart()
         {
             base.OnStart();
+            CreateSampler();
             EntityManager.AddControl(this);
+        }
+
+        private void CreateSampler()
+        {
+            Renderer.vk.GetPhysicalDeviceProperties(Renderer.gpu, out PhysicalDeviceProperties _properties);
+            SamplerCreateInfo _createInfo = new SamplerCreateInfo()
+            {
+                SType = StructureType.SamplerCreateInfo,
+                MagFilter = Filter.Linear,
+                MinFilter = Filter.Linear,
+                AddressModeU = SamplerAddressMode.Repeat,
+                AddressModeV = SamplerAddressMode.Repeat,
+                AddressModeW = SamplerAddressMode.Repeat,
+                AnisotropyEnable = true,
+                MaxAnisotropy = _properties.Limits.MaxSamplerAnisotropy,
+                BorderColor = BorderColor.IntOpaqueBlack,
+                UnnormalizedCoordinates = false,
+                CompareEnable = false,
+                CompareOp = CompareOp.Always,
+                MipmapMode = SamplerMipmapMode.Linear
+            };
+
+            fixed (Sampler* _textureSamplerPtr = &maskSampler)
+            {
+                Result r = Renderer.vk.CreateSampler(Renderer.logicalDevice, ref _createInfo, null, _textureSamplerPtr);
+                if (r != Result.Success)
+                {
+                    throw new Exception("Failed to create a texture sampler with error: " + r);
+                }
+            }
         }
     }
 }

@@ -13,9 +13,9 @@ namespace ArctisAurora.CustomEntities
 
         FontAsset fontAsset;
 
-        internal TextEntity(string text, int px)
+        internal TextEntity(string text, int px, Vector3D<float> pos)
         {
-            transform.SetWorldPosition(new Vector3D<float>(2, 100, 100));
+            transform.SetWorldPosition(pos);
             this.text = text;
 
             fontAsset = AssetRegistries.fonts["default"];

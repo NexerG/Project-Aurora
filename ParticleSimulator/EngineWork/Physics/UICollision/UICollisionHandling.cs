@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
+using ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.EngineWork.Physics.UICollision
@@ -16,29 +17,32 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
         public void SolveHover(double xPos, double yPos)
         {
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
-            foreach (VulkanControl entity in EntityManager.controls)
+            foreach (InteractableControl entity in EntityManager.interactableControls)
             {
                 // check for hovering on each entity
-                float offsetX = entity.controlData.quadData.offsets.offset1.Z;
-                float offsetY = entity.controlData.quadData.offsets.offset1.Y;
-                localVerts[0] = new Vector2D<float>(0 + offsetX, 0 + offsetY);
-                localVerts[1] = new Vector2D<float>(1+ offsetX, 0 + offsetY);
-                localVerts[2] = new Vector2D<float>(1+ offsetX, -1 + offsetY);
-                localVerts[3] = new Vector2D<float>(0 + offsetX, -1 + offsetY);
                 Vector2D<float> pos = new Vector2D<float>((float)xPos, (float)yPos);
-
                 bool isHovering = SolvePositions(entity, pos, localVerts);
-                Console.WriteLine($"IsHovering above {entity}: {isHovering}, with mouse pos {pos} & entity pos {entity.transform.position}");
+                //Console.WriteLine($"IsHovering above {entity}: {isHovering}, with mouse pos {pos} & entity pos {entity.transform.position}");
+                if (isHovering)
+                {
+                    entity.ResolveEnter();
+                }
+                else
+                {
+                    entity.ResolveExit();
+                }
             }
         }
 
-        private bool SolvePositions(Entity entity, Vector2D<float> pos, Vector2D<float>[] localVerts)
+        private bool SolvePositions(VulkanControl entity, Vector2D<float> pos, Vector2D<float>[] localVerts)
         {
+            float offsetX = entity.controlData.quadData.offsets.offset1.Z;
+            float offsetY = entity.controlData.quadData.offsets.offset1.Y;
             // check for hovering on each entity
-            localVerts[0] = new Vector2D<float>(0, 0);
-            localVerts[1] = new Vector2D<float>(1, 0);
-            localVerts[2] = new Vector2D<float>(1, -1);
-            localVerts[3] = new Vector2D<float>(0, -1);
+            localVerts[0] = new Vector2D<float>(0 + offsetX, 0 + offsetY);
+            localVerts[1] = new Vector2D<float>(1 + offsetX, 0 + offsetY);
+            localVerts[2] = new Vector2D<float>(1 + offsetX, -1 + offsetY);
+            localVerts[3] = new Vector2D<float>(0 + offsetX, -1 + offsetY);
 
             localVerts = TransformToWorld(entity.transform, localVerts);
             return IsPointInQuad(pos, localVerts);

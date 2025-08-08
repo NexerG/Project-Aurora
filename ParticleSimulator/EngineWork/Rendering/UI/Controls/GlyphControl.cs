@@ -14,6 +14,8 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         internal GlyphControl(char character, Vector3D<float> pos, Glyph gAsset, FontAsset fontAsset, int px)
         {
             this.character = character;
+            maskAsset = fontAsset.textureAsset;
+
             transform.SetWorldPosition(pos);
             (glyph, index) = fontAsset.atlasMetaData.GetGlyphAndIndex(character);
             this.px = new Vector2D<float>(glyph.glyphHeight * px, glyph.glyphWidth * px);

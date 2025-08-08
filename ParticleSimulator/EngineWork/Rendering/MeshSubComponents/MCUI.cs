@@ -25,7 +25,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             render = false;
             mesh = AssetRegistries.meshes.GetValueOrDefault("uidefault");
             fontAsset = AssetRegistries.fonts.GetValueOrDefault("default");
-            image = fontAsset.image.image;
+            image = fontAsset.textureAsset.image;
             CreateSampler();
         }
 
@@ -77,7 +77,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             base.UpdateMatrices();
         }
 
-        internal override void EnqueueDrawCommands(ref ulong[] offset, int loopIndex, int instanceID, ref CommandBuffer commandBuffer, ref PipelineLayout pipelineLayout, ref DescriptorSet descriptorSet)
+        internal override void EnqueueDrawCommands(ref ulong[] offset, int loopIndex, int instanceID, ref CommandBuffer commandBuffer, ref PipelineLayout pipelineLayout, ref DescriptorSet[][] descriptorSets)
         {
             if (render)
             {
@@ -86,7 +86,8 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
                     Renderer.vk.CmdBindVertexBuffers(commandBuffer, 0, 1, ref mesh.vertexBuffer, offsetsPtr);
                 }
                 Renderer.vk.CmdBindIndexBuffer(commandBuffer, mesh.indexBuffer, 0, IndexType.Uint32);
-                Renderer.vk.CmdBindDescriptorSets(commandBuffer, PipelineBindPoint.Graphics, pipelineLayout, 0, 1, descriptorSet, 0, null);
+                Renderer.vk.CmdBindDescriptorSets(commandBuffer, PipelineBindPoint.Graphics, pipelineLayout, 0, 1, descriptorSets[0][loopIndex], 0, null);
+                Renderer.vk.CmdBindDescriptorSets(commandBuffer, PipelineBindPoint.Graphics, pipelineLayout, 1, 1, descriptorSets[1][loopIndex], 0, null);
                 Renderer.vk.CmdDrawIndexed(commandBuffer, (uint)mesh.indices.Length, (uint)instances, 0, 0, (uint)instanceID);
             }
         }

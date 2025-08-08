@@ -7,6 +7,9 @@ using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Windows.Devices.HumanInterfaceDevice;
 using ArctisAurora.EngineWork.Physics.UICollision;
+using ArctisAurora.EngineWork.Rendering.UI.Controls;
+using Silk.NET.Maths;
+using ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable;
 
 namespace ArctisAurora.EngineWork
 {
@@ -80,7 +83,13 @@ namespace ArctisAurora.EngineWork
             renderer.CreateSyncObjects();
 
 
-            TextEntity _te = new TextEntity("A", 70);
+            TextEntity _te = new TextEntity("A", 70, new Vector3D<float>(1, 100, 100));
+            //TextEntity _te2 = new TextEntity("A", 70, new Vector3D<float>(1, 200, 200));
+            //PanelControl control = new PanelControl();
+            ButtonControl control = new ButtonControl();
+            control.RegisterOnEnter(TestEnter);
+            control.RegisterOnExit(TestExit);
+            control.transform.SetWorldPosition(new Vector3D<float>(1, 200, 200));
 
             Thread physics = new Thread(PhysicsThread);
             Thread rendering = new Thread(RenderThread);
@@ -132,6 +141,15 @@ namespace ArctisAurora.EngineWork
             //_te4.transform.SetRotationFromVector3(new Vector3D<float>(0.0f,0.0f,5.0f));
             //_entities.Add(_te4);
             //---------------------------------------------------------------------------
+        }
+
+        private void TestEnter()
+        {
+            Console.WriteLine("entered");
+        }
+        private void TestExit()
+        {
+            Console.WriteLine("exited");
         }
 
         private void PhysicsThread()

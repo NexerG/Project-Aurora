@@ -12,6 +12,14 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 {
     internal unsafe class UIModule : RenderingModule
     {
+        internal override ERendererTypes rendererType => ERendererTypes.UITemp;
+
+        internal override ERendererStage RendererStage => ERendererStage.UI;
+
+        internal override uint MAX_STORAGE_BUFFERS => 50000;
+        internal override uint MAX_TEXTURES => 50000;
+        internal override uint MAX_UNIFORMS_BUFFERS => 50000;
+
         internal override PhysicalDeviceFeatures features => new PhysicalDeviceFeatures()
         {
             SamplerAnisotropy = true,
@@ -30,27 +38,40 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             DescriptorBindingSampledImageUpdateAfterBind = true,
             DescriptorBindingStorageImageUpdateAfterBind = true,
             DescriptorBindingStorageTexelBufferUpdateAfterBind = true,
-            DescriptorBindingUniformTexelBufferUpdateAfterBind = true
+            DescriptorBindingUniformTexelBufferUpdateAfterBind = true,
+            ShaderStorageBufferArrayNonUniformIndexing = true,
+            ShaderSampledImageArrayNonUniformIndexing = true
         };
 
-        internal override List<DescriptorType> descriptorTypes => new List<DescriptorType> {
-            DescriptorType.UniformBuffer, DescriptorType.StorageBuffer,
-            DescriptorType.CombinedImageSampler, DescriptorType.StorageBuffer
+        internal override List<List<DescriptorType>> descriptorTypes => new List<List<DescriptorType>> {
+            new List<DescriptorType> {
+                DescriptorType.UniformBuffer, DescriptorType.StorageBuffer,
+                DescriptorType.CombinedImageSampler, DescriptorType.StorageBuffer
+            },
+            new List<DescriptorType> {
+                DescriptorType.CombinedImageSampler
+            }
         };
-
-        internal override List<ShaderStageFlags> shaderStages => new List<ShaderStageFlags> {
-            ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit,
-            ShaderStageFlags.FragmentBit, ShaderStageFlags.VertexBit
+        internal override List<List<ShaderStageFlags>> shaderStages => new List<List<ShaderStageFlags>> {
+            new List<ShaderStageFlags>{
+                ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit,
+                ShaderStageFlags.FragmentBit, ShaderStageFlags.VertexBit
+            },
+            new List<ShaderStageFlags>{
+                ShaderStageFlags.FragmentBit
+            },
         };
-
-        internal override DescriptorBindingFlags[] descriptorBindingFlags => new DescriptorBindingFlags[]{
-            DescriptorBindingFlags.None, DescriptorBindingFlags.None,
-            DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit
+        internal override DescriptorBindingFlags[][] descriptorBindingFlags => new DescriptorBindingFlags[][]{
+            new DescriptorBindingFlags[]{
+                DescriptorBindingFlags.None, DescriptorBindingFlags.None,
+                DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit | DescriptorBindingFlags.PartiallyBoundBit
+            },
+            new DescriptorBindingFlags[]{
+                DescriptorBindingFlags.VariableDescriptorCountBit | DescriptorBindingFlags.PartiallyBoundBit
+            }
         };
+        internal override int variableSetCount => 2;
 
-        internal override ERendererTypes rendererType => ERendererTypes.UITemp;
-
-        internal override ERendererStage RendererStage => ERendererStage.UI;
 
         internal static bool updateCommandBuffers = false;
         private static MCUI meshComponent;
@@ -62,6 +83,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override void UpdateModule()
         {
             meshComponent.MakeInstanced();
+            CreateDescriptorPool();
             AllocateDescriptorSets();
             UpdateDescriptorSets();
             WriteCommandBuffers();
@@ -156,55 +178,79 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.UniformBuffer,
-                    DescriptorCount = (uint)(swapchainImageCount * EntityManager.controls.Count) + 1 
+                    DescriptorCount = (uint)(swapchainImageCount * EntityManager.controls.Count * variableSetCount) + 1 
                 },
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.StorageBuffer,
-                    DescriptorCount = (uint)(swapchainImageCount * EntityManager.controls.Count * 2) + 1
+                    DescriptorCount = (uint)(swapchainImageCount * EntityManager.controls.Count * variableSetCount) + 1
                 },
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.CombinedImageSampler,
-                    DescriptorCount = (uint)(swapchainImageCount * EntityManager.controls.Count)
+                    DescriptorCount = (uint)(swapchainImageCount * EntityManager.controls.Count * variableSetCount)
                 }
             ];
         }
 
+        internal override void CreateDescriptorPool()
+        {
+            CreateDescriptorPoolSizes(Renderer.swapchainImageCount);
+            fixed(DescriptorPoolSize* sizesPtr = descriptorPoolSizes)
+            {
+                DescriptorPoolCreateInfo _createInfo = new DescriptorPoolCreateInfo()
+                {
+                    SType = StructureType.DescriptorPoolCreateInfo,
+                    PoolSizeCount = (uint)descriptorPoolSizes.Length,
+                    PPoolSizes = sizesPtr,
+                    MaxSets = (uint)(Renderer.swapchainImageCount * variableSetCount),
+                    Flags = DescriptorPoolCreateFlags.FreeDescriptorSetBit
+                };
+                if (Renderer.vk.CreateDescriptorPool(Renderer.logicalDevice, ref _createInfo, null, out descriptorPool) != Result.Success)
+                {
+                    throw new Exception("Failed to create descriptor pool");
+                }
+            }
+        }
+
         internal override void AllocateDescriptorSets()
         {
-            DescriptorSetLayout[] localLayout = new DescriptorSetLayout[Renderer.swapchainImageCount];
-            Array.Fill(localLayout, descriptorSetLayout);
-
-            fixed (DescriptorSetLayout* layoutsPtr = localLayout)
+            descriptorSets = new DescriptorSet[variableSetCount][];
+            for (int set = 0; set < variableSetCount; ++set)
             {
-                uint bufferCount = (uint)EntityManager.controls.Count;
-                uint[] entriesPer = { bufferCount, bufferCount, bufferCount };
-                fixed (uint* entriesPtr = entriesPer)
+                DescriptorSetLayout[] localLayout = new DescriptorSetLayout[Renderer.swapchainImageCount];
+                Array.Fill(localLayout, descriptorSetLayouts[set]);
+
+                fixed (DescriptorSetLayout* layoutsPtr = localLayout)
                 {
-                    DescriptorSetVariableDescriptorCountAllocateInfo _variableDSCount = new()
-                    {
-                        SType = StructureType.DescriptorSetVariableDescriptorCountAllocateInfo,
-                        DescriptorSetCount = Renderer.swapchainImageCount, // total amount of descriptor sets
-                        PDescriptorCounts = entriesPtr                     // how many descriptors we have per set
-                    };
+                    uint bufferCount = (uint)EntityManager.controls.Count;
+                    uint[] entriesPer = { bufferCount, bufferCount, bufferCount };
+                    descriptorSets[set] = new DescriptorSet[Renderer.swapchainImageCount];
 
-                    DescriptorSetAllocateInfo _allocateInfo = new DescriptorSetAllocateInfo()
+                    fixed (uint* entriesPtr = entriesPer)
                     {
-                        SType = StructureType.DescriptorSetAllocateInfo,
-                        DescriptorPool = Renderer.descriptorPool,
-                        DescriptorSetCount = Renderer.swapchainImageCount,
-                        PSetLayouts = layoutsPtr,
-                        PNext = &_variableDSCount
-                    };
-
-                    descriptorSets = new DescriptorSet[Renderer.swapchainImageCount];
-                    fixed (DescriptorSet* _descriptorSetsPtr = descriptorSets)
-                    {
-                        Result r = Renderer.vk.AllocateDescriptorSets(Renderer.logicalDevice, ref _allocateInfo, _descriptorSetsPtr);
-                        if (r != Result.Success)
+                        DescriptorSetVariableDescriptorCountAllocateInfo _variableDSCount = new()
                         {
-                            throw new Exception("Failed to allocate descriptor set with error code: " + r);
+                            SType = StructureType.DescriptorSetVariableDescriptorCountAllocateInfo,
+                            DescriptorSetCount = Renderer.swapchainImageCount,      // total amount of variable descriptor SETS (shader "set = 0...")
+                            PDescriptorCounts = entriesPtr                          // how many descriptors we have per set
+                        };
+
+                        DescriptorSetAllocateInfo _allocateInfo = new DescriptorSetAllocateInfo()
+                        {
+                            SType = StructureType.DescriptorSetAllocateInfo,
+                            DescriptorPool = descriptorPool,
+                            DescriptorSetCount = Renderer.swapchainImageCount,
+                            PSetLayouts = layoutsPtr,
+                            PNext = &_variableDSCount
+                        };
+                        fixed (DescriptorSet* _descriptorSetsPtr = descriptorSets[set])
+                        {
+                            Result r = Renderer.vk.AllocateDescriptorSets(Renderer.logicalDevice, ref _allocateInfo, _descriptorSetsPtr);
+                            if (r != Result.Success)
+                            {
+                                throw new Exception("Failed to allocate descriptor set with error code: " + r);
+                            }
                         }
                     }
                 }
@@ -212,6 +258,12 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         }
 
         internal override void UpdateDescriptorSets()
+        {
+            UpdateFirstDescriptorSets();
+            UpdateSecondDescriptorSets();
+        }
+
+        private void UpdateFirstDescriptorSets()
         {
             for (int i = 0; i < Renderer.swapchainImageCount; i++)
             {
@@ -230,14 +282,14 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 DescriptorImageInfo fontInfo = new DescriptorImageInfo()
                 {
                     ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
-                    ImageView = meshComponent.fontAsset.image.textureImageView,
+                    ImageView = meshComponent.fontAsset.textureAsset.textureImageView,
                     Sampler = meshComponent.textureSampler
                 };
 
                 DescriptorBufferInfo[] uvBufferInfos = new DescriptorBufferInfo[EntityManager.controls.Count];
                 for (int j = 0; j < EntityManager.controls.Count; j++)
                 {
-                    VulkanControl control = (VulkanControl)EntityManager.controls[j];
+                    VulkanControl control = EntityManager.controls[j];
                     uvBufferInfos[j] = new()
                     {
                         Buffer = control.controlDataBuffer,
@@ -252,7 +304,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                         new WriteDescriptorSet
                         {
                             SType = StructureType.WriteDescriptorSet,
-                            DstSet = descriptorSets[i],
+                            DstSet = descriptorSets[0][i],
                             DstBinding = 0,
                             DescriptorCount = 1,
                             DstArrayElement = 0,
@@ -262,7 +314,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                         new WriteDescriptorSet
                         {
                             SType = StructureType.WriteDescriptorSet,
-                            DstSet = descriptorSets[i],
+                            DstSet = descriptorSets[0][i],
                             DstBinding = 1,
                             DescriptorCount = 1,
                             DstArrayElement = 0,
@@ -272,7 +324,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                         new WriteDescriptorSet
                         {
                             SType = StructureType.WriteDescriptorSet,
-                            DstSet = descriptorSets[i],
+                            DstSet = descriptorSets[0][i],
                             DstBinding = 2,
                             DescriptorCount = 1,
                             DstArrayElement = 0,
@@ -282,12 +334,50 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                         new WriteDescriptorSet
                         {
                             SType = StructureType.WriteDescriptorSet,
-                            DstSet = descriptorSets[i],
+                            DstSet = descriptorSets[0][i],
                             DstBinding = 3,
                             DescriptorCount = (uint)EntityManager.controls.Count,
                             DstArrayElement = 0,
                             DescriptorType = DescriptorType.StorageBuffer,
                             PBufferInfo = uvBufferInfosPtr
+                        }
+                    };
+                    fixed (WriteDescriptorSet* descPtr = writeDescriptorSets)
+                    {
+                        Renderer.vk!.UpdateDescriptorSets(Renderer.logicalDevice, (uint)writeDescriptorSets.Length, descPtr, 0, null);
+                    }
+                }
+            }
+        }
+
+        private void UpdateSecondDescriptorSets()
+        {
+            for (int i = 0; i < Renderer.swapchainImageCount; i++)
+            {
+                DescriptorImageInfo[] samplersInfos = new DescriptorImageInfo[EntityManager.controls.Count];
+                for (int j = 0; j < EntityManager.controls.Count; j++)
+                {
+                    VulkanControl control = EntityManager.controls[j];
+                    samplersInfos[j] = new()
+                    {
+                        ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
+                        ImageView = control.maskAsset.textureImageView,
+                        Sampler = control.maskSampler
+                    };
+                }
+                fixed (DescriptorImageInfo* samplerInfosPtr = samplersInfos)
+                {
+                    var writeDescriptorSets = new WriteDescriptorSet[]
+                    {
+                        new WriteDescriptorSet
+                        {
+                            SType = StructureType.WriteDescriptorSet,
+                            DstSet = descriptorSets[1][i],
+                            DstBinding = 0,
+                            DescriptorCount = (uint)EntityManager.controls.Count,
+                            DstArrayElement = 0,
+                            DescriptorType = DescriptorType.CombinedImageSampler,
+                            PImageInfo = samplerInfosPtr
                         }
                     };
                     fixed (WriteDescriptorSet* descPtr = writeDescriptorSets)
@@ -333,7 +423,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
 
             fixed (VertexInputAttributeDescription* attribDescPtr = attribDesc)
-            fixed (DescriptorSetLayout* descriptorSetLayoutPtr = &descriptorSetLayout)
+            fixed (DescriptorSetLayout* descriptorSetLayoutsPtr = descriptorSetLayouts)
             {
                 PipelineVertexInputStateCreateInfo vertexInputInfo = new PipelineVertexInputStateCreateInfo
                 {
@@ -428,9 +518,9 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 PipelineLayoutCreateInfo pipelineLayoutInfo = new PipelineLayoutCreateInfo()
                 {
                     SType = StructureType.PipelineLayoutCreateInfo,
-                    SetLayoutCount = 1,
+                    SetLayoutCount = (uint)variableSetCount,
                     PushConstantRangeCount = 0,
-                    PSetLayouts = descriptorSetLayoutPtr
+                    PSetLayouts = descriptorSetLayoutsPtr
                 };
 
                 if (Renderer.vk.CreatePipelineLayout(Renderer.logicalDevice, ref pipelineLayoutInfo, null, out pipelineLayout) != Result.Success)
@@ -580,7 +670,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 var _offset = new ulong[] { 0 };
                 if (meshComponent.render == true)
                 {
-                    meshComponent.EnqueueDrawCommands(ref _offset, index, 0, ref commandBuffers[index], ref pipelineLayout, ref descriptorSets[index]);
+                    meshComponent.EnqueueDrawCommands(ref _offset, index, 0, ref commandBuffers[index], ref pipelineLayout, ref descriptorSets);
                 }
                 Renderer.vk.CmdEndRenderPass(commandBuffers[index]);
 

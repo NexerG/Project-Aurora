@@ -1,7 +1,7 @@
 ﻿using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
-using System.Windows.Forms;
+using ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable;
 
 namespace ArctisAurora.EngineWork
 {
@@ -15,20 +15,19 @@ namespace ArctisAurora.EngineWork
         private static List<Entity> _entities = new List<Entity>();
 
         private static List<VulkanControl> _controls = new List<VulkanControl>();
-        private static List<ButtonControl> _buttons = new List<ButtonControl>();
+        private static List<InteractableControl> _interactableControls = new List<InteractableControl>();
         private static List<Entity> _entitiesToRender = new List<Entity>();
 
         private static List<Entity> _entitiesToUpdate = new List<Entity>();
         private static List<Entity> _onStartEntities = new List<Entity>();
         private static List<Entity> _onDestroyedEntities = new List<Entity>();
 
-
         //----------
 
         internal static IReadOnlyList<Entity> entities => _entities;
 
         internal static IReadOnlyList<VulkanControl> controls => _controls;
-        internal static IReadOnlyList<ButtonControl> buttons => _buttons;
+        internal static IReadOnlyList<InteractableControl> interactableControls => _interactableControls;
         internal static IReadOnlyList<Entity> entitiesToRender => _entitiesToRender;
 
 
@@ -65,10 +64,10 @@ namespace ArctisAurora.EngineWork
             Renderer.renderer.UpdateUIRenderer();
         }
 
-        public static void AddButton(ButtonControl button)
+        public static void AddInteractableControl(InteractableControl button)
         {
             if (button == null) throw new ArgumentNullException(nameof(button));
-            _buttons.Add(button);
+            _interactableControls.Add(button);
         }
 
         public static void AddEntityToUpdate(Entity entity)

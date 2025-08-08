@@ -74,8 +74,6 @@ namespace ArctisAurora.EngineWork.Rendering
 
                 case ERendererTypes.UITemp:
                     _view = Matrix4X4.CreateLookAt(Vector3D<float>.Zero, _front, Vector3D<float>.UnitY);
-                    //float horizontalHalf = _extent.Width;
-                    //float verticalHalf = _extent.Height;
                     _projection = Matrix4X4.CreateOrthographicOffCenter(0, _extent.Width, 0, _extent.Height, 0.01f, 512f);
                     break;
                 default:
