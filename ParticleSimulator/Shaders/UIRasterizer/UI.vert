@@ -22,7 +22,7 @@ struct Style
     vec3 tintClick;
 };
 
-layout(set = 0, binding = 3, scalar) readonly buffer vertexData {
+layout(set = 0, binding = 2, scalar) readonly buffer vertexData {
     vec2[4] UV;
     vec3[4] offset;
     Style style;

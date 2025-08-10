@@ -43,7 +43,7 @@ namespace ArctisAurora.EngineWork.Rendering
         private ExtDebugUtils? _debugUtils;
         private DebugUtilsMessengerEXT _debugMessenger;
         //
-        internal static AGlfwWindow _glWindow = new AGlfwWindow();  //GLFW window
+        internal static AGlfwWindow _glWindow;                      //GLFW window
         internal static Vk _vulkan = Vk.GetApi();                   //vulkan api
         internal static Instance _instance;                         //vulkan instance
         //
@@ -79,10 +79,10 @@ namespace ArctisAurora.EngineWork.Rendering
             _extent = new Extent2D() { Height = (uint)_height, Width = (uint)_width };
             //end of prerequisites
 
-            _glWindow.CreateWindow(ref _extent);            //create glfw window
+            //_glWindow.CreateWindow(ref _extent);            //create glfw window
             CreateVulkanInstance();                         //create Vulkan instance
             SetupDebugMessenger();
-            _glWindow.CreateSurface(ref _vulkan, ref _instance); //create window surface
+            //_glWindow.CreateSurface(ref _vulkan, ref _instance); //create window surface
             ChoosePhysicalDevice();                         //we get the gpu
             switch (_rendererType)
             {

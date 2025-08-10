@@ -3,6 +3,8 @@ using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using Silk.NET.Core.Native;
+using Silk.NET.GLFW;
+using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
 using static ArctisAurora.EngineWork.Rendering.UI.Controls.VulkanControl;
@@ -46,7 +48,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override List<List<DescriptorType>> descriptorTypes => new List<List<DescriptorType>> {
             new List<DescriptorType> {
                 DescriptorType.UniformBuffer, DescriptorType.StorageBuffer,
-                DescriptorType.CombinedImageSampler, DescriptorType.StorageBuffer
+                DescriptorType.StorageBuffer
             },
             new List<DescriptorType> {
                 DescriptorType.CombinedImageSampler
@@ -55,7 +57,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override List<List<ShaderStageFlags>> shaderStages => new List<List<ShaderStageFlags>> {
             new List<ShaderStageFlags>{
                 ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit,
-                ShaderStageFlags.FragmentBit, ShaderStageFlags.VertexBit
+                ShaderStageFlags.VertexBit
             },
             new List<ShaderStageFlags>{
                 ShaderStageFlags.FragmentBit
@@ -64,7 +66,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override DescriptorBindingFlags[][] descriptorBindingFlags => new DescriptorBindingFlags[][]{
             new DescriptorBindingFlags[]{
                 DescriptorBindingFlags.None, DescriptorBindingFlags.None,
-                DescriptorBindingFlags.None, DescriptorBindingFlags.VariableDescriptorCountBit | DescriptorBindingFlags.PartiallyBoundBit
+                DescriptorBindingFlags.VariableDescriptorCountBit | DescriptorBindingFlags.PartiallyBoundBit
             },
             new DescriptorBindingFlags[]{
                 DescriptorBindingFlags.VariableDescriptorCountBit | DescriptorBindingFlags.PartiallyBoundBit
@@ -279,25 +281,19 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     Offset = 0,
                     Range = (ulong)(sizeof(float) * 16 * EntityManager.controls.Count)
                 };
-                DescriptorImageInfo fontInfo = new DescriptorImageInfo()
-                {
-                    ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
-                    ImageView = meshComponent.fontAsset.textureAsset.textureImageView,
-                    Sampler = meshComponent.textureSampler
-                };
 
-                DescriptorBufferInfo[] uvBufferInfos = new DescriptorBufferInfo[EntityManager.controls.Count];
+                DescriptorBufferInfo[] controlDataInfos = new DescriptorBufferInfo[EntityManager.controls.Count];
                 for (int j = 0; j < EntityManager.controls.Count; j++)
                 {
                     VulkanControl control = EntityManager.controls[j];
-                    uvBufferInfos[j] = new()
+                    controlDataInfos[j] = new()
                     {
                         Buffer = control.controlDataBuffer,
                         Offset = 0,
                         Range = (ulong)Unsafe.SizeOf<ControlData>()
                     };
                 }
-                fixed (DescriptorBufferInfo* uvBufferInfosPtr = uvBufferInfos)
+                fixed (DescriptorBufferInfo* controlDataInfosPtr = controlDataInfos)
                 {
                     var writeDescriptorSets = new WriteDescriptorSet[]
                     {
@@ -326,20 +322,10 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                             SType = StructureType.WriteDescriptorSet,
                             DstSet = descriptorSets[0][i],
                             DstBinding = 2,
-                            DescriptorCount = 1,
-                            DstArrayElement = 0,
-                            DescriptorType = DescriptorType.CombinedImageSampler,
-                            PImageInfo = &fontInfo
-                        },
-                        new WriteDescriptorSet
-                        {
-                            SType = StructureType.WriteDescriptorSet,
-                            DstSet = descriptorSets[0][i],
-                            DstBinding = 3,
                             DescriptorCount = (uint)EntityManager.controls.Count,
                             DstArrayElement = 0,
                             DescriptorType = DescriptorType.StorageBuffer,
-                            PBufferInfo = uvBufferInfosPtr
+                            PBufferInfo = controlDataInfosPtr
                         }
                     };
                     fixed (WriteDescriptorSet* descPtr = writeDescriptorSets)
@@ -444,15 +430,15 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 {
                     X = 0,
                     Y = 0,
-                    Width = Renderer.windowExtent.Width,
-                    Height = Renderer.windowExtent.Height,
+                    Width = Engine.window.windowSize.Width,
+                    Height = Engine.window.windowSize.Height,
                     MinDepth = 0,
                     MaxDepth = 1
                 };
                 Rect2D scissor = new Rect2D()
                 {
                     Offset = { X = 0, Y = 0 },
-                    Extent = Renderer.windowExtent
+                    Extent = Engine.window.windowSize
                 };
                 PipelineViewportStateCreateInfo viewportState = new PipelineViewportStateCreateInfo()
                 {
@@ -575,8 +561,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                         RenderPass = renderPass,
                         AttachmentCount = (uint)_attachment.Length,
                         PAttachments = _imAttachmentPtr,
-                        Width = Renderer.windowExtent.Width,
-                        Height = Renderer.windowExtent.Height,
+                        Width = Engine.window.windowSize.Width,
+                        Height = Engine.window.windowSize.Height,
                         Layers = 1
                     };
                     if (Renderer.vk.CreateFramebuffer(Renderer.logicalDevice, ref _framebufferInfo, null, out frameBuffers[i]) != Result.Success)
@@ -630,7 +616,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     RenderArea =
                     {
                         Offset = { X = 0, Y = 0 },
-                        Extent = Renderer.windowExtent
+                        Extent = Engine.window.windowSize
                     }
                 };
 
@@ -679,11 +665,6 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     throw new Exception("Failed to record command buffer");
                 }
             }
-        }
-
-        internal override void MouseUpdate(double xPos, double yPos)
-        {
-            UICollisionHandling.instance.SolveHover(xPos, yPos);
         }
     }
 }

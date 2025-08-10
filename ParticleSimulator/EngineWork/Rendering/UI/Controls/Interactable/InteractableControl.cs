@@ -68,7 +68,10 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
 
         internal virtual void ResolveClick()
         {
-            onClick?.Invoke();
+            if (!clicked)
+            {
+                onClick?.Invoke();
+            }
             clicked = true;
         }
 
@@ -80,7 +83,10 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
 
         internal virtual void ResolveRelease()
         {
-            onRelease?.Invoke();
+            if (clicked)
+            {
+                onRelease?.Invoke();
+            }
             clicked = false;
         }
     }

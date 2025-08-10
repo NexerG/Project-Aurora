@@ -1,19 +1,16 @@
 ﻿using ArctisAurora.CustomEntities;
 using ArctisAurora.EngineWork.Rendering;
-using Assimp;
-using ArctisAurora.EngineWork.Serialization;
 using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.Modules;
-using Windows.Devices.HumanInterfaceDevice;
 using ArctisAurora.EngineWork.Physics.UICollision;
-using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using Silk.NET.Maths;
 using ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable;
+using Silk.NET.Vulkan;
 
 namespace ArctisAurora.EngineWork
 {
-    public class Engine
+    public unsafe class Engine
     {
         public static bool isDebug
         {
@@ -27,18 +24,23 @@ namespace ArctisAurora.EngineWork
             }
         }
 
+        // pre vars
+        uint width = 1280;
+        uint height = 720;
+
         internal static Engine engineInstance = null;
+        internal static AGlfwWindow window;
         internal static Renderer renderer;
-        internal static UICollisionHandling collisionHandling2D;
+        internal static InputHandler inputHandler;
+        internal static UICollisionHandling uiCollisionHandler;
         //internal static JobSystem jobSystem;
         internal static AssetRegistries assetRegistry = new AssetRegistries();
+        internal static EntityManager entityManager;
 
+        // threading
         public bool running { get; private set; }
         static AutoResetEvent t_physics_start = new AutoResetEvent(false);
         static AutoResetEvent t_physics_end = new AutoResetEvent(false);
-        
-        static AutoResetEvent t_ECS_start = new AutoResetEvent(false);
-        static AutoResetEvent t_ECS_end = new AutoResetEvent(false);
 
         static AutoResetEvent t_render_start = new AutoResetEvent(false);
         static AutoResetEvent t_render_end = new AutoResetEvent(true);
@@ -62,8 +64,11 @@ namespace ArctisAurora.EngineWork
             running = true;
             SC = s;
 
-            EntityManager.manager = new EntityManager();
-            collisionHandling2D = new UICollisionHandling();
+            window = new AGlfwWindow(width, height);
+            window.CreateWindow();
+
+            entityManager = new EntityManager();
+            uiCollisionHandler = new UICollisionHandling();
 
             renderer = new Renderer();
             RenderingModule[] modules = new RenderingModule[]
@@ -72,7 +77,13 @@ namespace ArctisAurora.EngineWork
             };
             renderer.PreInitialize(modules);
             renderer.Initialize();
-            // asset and renderable objects can be loaded from here
+
+            // assets and renderable objects can be loaded from here alongside inputs
+
+            inputHandler = new InputHandler();
+            window.SetCursorPosCallback(inputHandler.ProcessMouseMove);
+            window.SetMouseButtonCallback(inputHandler.ProcessMouseClick);
+            window.SetKeyCallback(inputHandler.ProcessKeyboard);
 
             Bootstrapper.PreprareDefaultAssets();
             renderer.SetupObjects();
@@ -89,6 +100,8 @@ namespace ArctisAurora.EngineWork
             ButtonControl control = new ButtonControl();
             control.RegisterOnEnter(TestEnter);
             control.RegisterOnExit(TestExit);
+            control.RegisterOnClick(TestClick);
+            control.RegisterOnRelease(TestRelease);
             control.transform.SetWorldPosition(new Vector3D<float>(1, 200, 200));
 
             Thread physics = new Thread(PhysicsThread);
@@ -99,8 +112,8 @@ namespace ArctisAurora.EngineWork
 
             while (running)
             {
-                Renderer.window._glfw.PollEvents();
-
+                window._glfw.PollEvents();
+                HandleUI();
                 // skip this if we're no done interpolating last physics tick
                 // aka one in the over, another waitting.
 
@@ -151,6 +164,14 @@ namespace ArctisAurora.EngineWork
         {
             Console.WriteLine("exited");
         }
+        private void TestClick()
+        {
+            Console.WriteLine("clicked");
+        }
+        private void TestRelease()
+        {
+            Console.WriteLine("released");
+        }
 
         private void PhysicsThread()
         {
@@ -176,6 +197,11 @@ namespace ArctisAurora.EngineWork
                 renderer.Draw();
                 t_render_end.Set();
             }
+        }
+
+        private void HandleUI()
+        {
+            uiCollisionHandler.SolveHover(InputHandler.mousePos);
         }
 
         private void Interpolate()

@@ -14,14 +14,13 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
             instance = this;
         }
 
-        public void SolveHover(double xPos, double yPos)
+        public void SolveHover(Vector2D<float> mousePos)
         {
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
             foreach (InteractableControl entity in EntityManager.interactableControls)
             {
                 // check for hovering on each entity
-                Vector2D<float> pos = new Vector2D<float>((float)xPos, (float)yPos);
-                bool isHovering = SolvePositions(entity, pos, localVerts);
+                bool isHovering = SolvePositions(entity, mousePos, localVerts);
                 //Console.WriteLine($"IsHovering above {entity}: {isHovering}, with mouse pos {pos} & entity pos {entity.transform.position}");
                 if (isHovering)
                 {
@@ -30,6 +29,44 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
                 else
                 {
                     entity.ResolveExit();
+                }
+            }
+        }
+
+        public void SolveLMB(Vector2D<float> mousePos, bool pressed)
+        {
+            Vector2D<float>[] localVerts = new Vector2D<float>[4];
+            foreach (InteractableControl entity in EntityManager.interactableControls)
+            {
+                // check for hovering on each entity
+                bool isHovering = SolvePositions(entity, mousePos, localVerts);
+                //Console.WriteLine($"IsHovering above {entity}: {isHovering}, with mouse pos {pos} & entity pos {entity.transform.position}");
+                if (isHovering && pressed)
+                {
+                    entity.ResolveClick();
+                }
+                else if(!pressed)
+                {
+                    entity.ResolveRelease();
+                }
+            }
+        }
+
+        public void SolveRMB(Vector2D<float> mousePos)
+        {
+            Vector2D<float>[] localVerts = new Vector2D<float>[4];
+            foreach (InteractableControl entity in EntityManager.interactableControls)
+            {
+                // check for hovering on each entity
+                bool isHovering = SolvePositions(entity, mousePos, localVerts);
+                //Console.WriteLine($"IsHovering above {entity}: {isHovering}, with mouse pos {pos} & entity pos {entity.transform.position}");
+                if (isHovering)
+                {
+                    //entity.resolve();
+                }
+                else
+                {
+                    //entity.ResolveExit();
                 }
             }
         }

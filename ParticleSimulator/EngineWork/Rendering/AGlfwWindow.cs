@@ -2,48 +2,73 @@
 using Silk.NET.GLFW;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
+using Windows.UI.WebUI;
+using static Silk.NET.GLFW.GlfwCallbacks;
+using Keys = Silk.NET.GLFW.Keys;
 
 namespace ArctisAurora.EngineWork.Rendering
 {
     internal unsafe class AGlfwWindow
     {
         //GLFW window variables
-        internal Glfw _glfw = Glfw.GetApi();
+        internal Glfw _glfw;
         internal WindowHandle* windowHandle;
         internal SurfaceKHR surface;
         internal KhrSurface driverSurface;
         internal bool frameBufferResized = false;
+        internal Extent2D windowSize;
 
-        internal void CreateWindow(ref Extent2D _extent)
+        internal AGlfwWindow(uint width, uint height)
+        {
+            _glfw = Glfw.GetApi();
+            windowSize = new Extent2D(width, height);
+        }
+
+        internal void CreateWindow()
         {
             if (!_glfw.Init())
-                Console.WriteLine("Failed to initialize GLFW");
+                throw new Exception("Failed to initialize GLFW");
 
             _glfw.WindowHint(WindowHintClientApi.ClientApi, ClientApi.NoApi);
-            windowHandle = _glfw.CreateWindow((int)_extent.Width, (int)_extent.Height, "Arctis Auora", null, null);
+            windowHandle = _glfw.CreateWindow((int)windowSize.Width, (int)windowSize.Height, "Arctis Aurora", null, null);
 
             if (windowHandle == null)
             {
-                Console.WriteLine("Failed to create window");
                 _glfw.Terminate();
+                throw new Exception("Failed to create window");
             }
 
-            _glfw.SetWindowSizeCallback(windowHandle, WindwoResizeCallback);
-
-            _glfw.SetCursorPosCallback(windowHandle, MouseMoveCallback);
-            _glfw.SetKeyCallback(windowHandle, KeyboardCallback);
-            _glfw.SetMouseButtonCallback(windowHandle, MouseClickCallback);
+            SetResizeCallback(WindwoResizeCallback);
         }
 
-
-        internal void CreateSurface(ref Vk vk, ref Instance instance)
+        internal void SetResizeCallback(WindowSizeCallback callback)
         {
-            if (!vk.TryGetInstanceExtension(instance, out driverSurface))
+            _glfw.SetWindowSizeCallback(windowHandle, callback);
+        }
+
+        internal void SetCursorPosCallback(CursorPosCallback callback)
+        {
+            _glfw.SetCursorPosCallback(windowHandle, callback);
+        }
+
+        internal void SetKeyCallback(KeyCallback callback)
+        {
+            _glfw.SetKeyCallback(windowHandle, callback);
+        }
+
+        internal void SetMouseButtonCallback(MouseButtonCallback callback)
+        {
+            _glfw.SetMouseButtonCallback(windowHandle, callback);
+        }
+
+        internal void CreateSurface()
+        {
+            if (!Renderer.vk.TryGetInstanceExtension(Renderer.instance, out driverSurface))
             {
                 throw new NotSupportedException("KHR_surface extension not found.");
             }
             VkNonDispatchableHandle _surfaceHandle;
-            _glfw.CreateWindowSurface(instance.ToHandle(), windowHandle, null, &_surfaceHandle);
+            _glfw.CreateWindowSurface(Renderer.instance.ToHandle(), windowHandle, null, &_surfaceHandle);
             surface = _surfaceHandle.ToSurface();
         }
 
@@ -58,29 +83,6 @@ namespace ArctisAurora.EngineWork.Rendering
         private void WindwoResizeCallback(WindowHandle* window, int width, int height)
         {
             frameBufferResized = true;
-        }
-
-        private void MouseMoveCallback(WindowHandle* window, double xPos, double yPos)
-        {
-            //VulkanRenderer._rendererInstance.MouseUpdate(xPos, yPos);
-            Renderer.MouseUpdate(xPos,yPos);
-        }
-
-        private void MouseClickCallback(WindowHandle* window, MouseButton button, InputAction action, KeyModifiers mods)
-        {
-            VulkanRenderer._rendererInstance.MouseClick(button, action);
-        }
-
-        private void KeyboardCallback(WindowHandle* window, Silk.NET.GLFW.Keys _key, int _scanCode, InputAction _action, KeyModifiers _mods)
-        {
-            if (_action == InputAction.Press)
-            {
-                VulkanRenderer._camera._keyStates[_key] = true;
-            }
-            if (_action == InputAction.Release)
-            {
-                VulkanRenderer._camera._keyStates[_key] = false;
-            }
         }
     }
 }

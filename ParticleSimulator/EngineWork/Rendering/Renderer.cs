@@ -18,13 +18,6 @@ namespace ArctisAurora.EngineWork.Rendering
     internal unsafe class Renderer
     {
         internal static Renderer renderer;
-
-        // window
-        private int _width = 1280;
-        private int _height = 720;
-        internal static Extent2D windowExtent;
-        internal static AGlfwWindow window;
-
         // driver
         internal static Vk vk = Vk.GetApi();
         internal static Instance instance;
@@ -104,19 +97,13 @@ namespace ArctisAurora.EngineWork.Rendering
         // initializes the window and driver
         internal void Initialize()
         {
-            // windowing
-            windowExtent = new Extent2D((uint)_width, (uint)_height);
-            window = new AGlfwWindow();
-            window.CreateWindow(ref windowExtent);
-
             // driver
             CreateVulkanInstance();
-
-            window.CreateSurface(ref vk, ref instance);
+            Engine.window.CreateSurface();
             ChoosePhysicalDevice();
             
             queueFamilyIndex = FindQueueFamilyIndex(ref vk, ref gpu, ref queueFamilyProperties, QueueFlags.GraphicsBit);
-            presentSupportIndex = FindPresentSupportIndex(ref gpu, ref queueFamilyProperties, ref window.driverSurface, ref window.surface);
+            presentSupportIndex = FindPresentSupportIndex(ref gpu, ref queueFamilyProperties, ref Engine.window.driverSurface, ref Engine.window.surface);
 
             CreateLogicalDevice();
 
@@ -207,7 +194,7 @@ namespace ArctisAurora.EngineWork.Rendering
             };
 
             uint glfwExtensionCount;
-            byte** glfwExtensions = window._glfw.GetRequiredInstanceExtensions(out glfwExtensionCount);
+            byte** glfwExtensions = Engine.window._glfw.GetRequiredInstanceExtensions(out glfwExtensionCount);
             var localExtensions = SilkMarshal.PtrToStringArray((nint)glfwExtensions, (int)glfwExtensionCount);
             if (isDebugEnabled)
             {
@@ -398,23 +385,23 @@ namespace ArctisAurora.EngineWork.Rendering
 
         private void CreateSwapchain()
         {
-            SwapChainSupportDetails _support = GetSupportDetails(ref gpu, ref window.driverSurface, ref window.surface);
+            SwapChainSupportDetails _support = GetSupportDetails(ref gpu, ref Engine.window.driverSurface, ref Engine.window.surface);
             surfaceFormat = GetSwapchainSurfaceFormat(_support.Formats);
             PresentModeKHR _presentMode = GetPresentMode(_support.PresentModes);
 
-            QueueFamilyIndices _indices = FindQueueFamilies(ref queueFamilyProperties, ref gpu, ref window.driverSurface, ref window.surface);
+            QueueFamilyIndices _indices = FindQueueFamilies(ref queueFamilyProperties, ref gpu, ref Engine.window.driverSurface, ref Engine.window.surface);
             var _queueFamilyIndices = stackalloc[] { _indices.GraphicsFamily.Value, _indices.PresentFamily.Value };
 
             uint _imageCount = _support.Capabilities.MinImageCount + 1;
             SwapchainCreateInfoKHR _swapchainCreateInfo = new SwapchainCreateInfoKHR()
             {
                 SType = StructureType.SwapchainCreateInfoKhr,
-                Surface = window.surface,
+                Surface = Engine.window.surface,
 
                 MinImageCount = _imageCount,
                 ImageFormat = surfaceFormat.Format,
                 ImageColorSpace = surfaceFormat.ColorSpace,
-                ImageExtent = windowExtent,
+                ImageExtent = Engine.window.windowSize,
                 ImageArrayLayers = 1,
                 ImageUsage = ImageUsageFlags.ColorAttachmentBit | ImageUsageFlags.TransferDstBit,
                 ImageSharingMode = SharingMode.Exclusive,
@@ -450,7 +437,7 @@ namespace ArctisAurora.EngineWork.Rendering
             Format depthFormat = GetDepthFormat();
             for(int i = 0; i < swapchainImages.Length; i++)
             {
-                AVulkanBufferHandler.CreateImage(vk, logicalDevice, gpu, windowExtent.Width, windowExtent.Height, depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit, MemoryPropertyFlags.DeviceLocalBit, ref swapchainImagesDepth[i], ref swapchainImageMemoriesDepth[i]);
+                AVulkanBufferHandler.CreateImage(vk, logicalDevice, gpu, Engine.window.windowSize.Width, Engine.window.windowSize.Height, depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit, MemoryPropertyFlags.DeviceLocalBit, ref swapchainImagesDepth[i], ref swapchainImageMemoriesDepth[i]);
             }
 
             swapchainImageViews = new ImageView[_swapchainImageCount];
@@ -533,7 +520,7 @@ namespace ArctisAurora.EngineWork.Rendering
 
             for (int i = 0; i < renderingModules.Length; i++)
             {
-                renderingModules[i].camera.UpdateCameraMatrix(windowExtent, imageIndex, (uint)i);
+                renderingModules[i].camera.UpdateCameraMatrix(Engine.window.windowSize, imageIndex, (uint)i);
             }
             int localEntityCount = 0;
             foreach (Entity e in EntityManager.entitiesToUpdate)
@@ -614,9 +601,9 @@ namespace ArctisAurora.EngineWork.Rendering
                 PImageIndices = &imageIndex
             };
             r = swapchainKHR.QueuePresent(presentQueue, ref _presentInfo);
-            if (r == Result.ErrorOutOfDateKhr || r == Result.SuboptimalKhr || window.frameBufferResized)
+            if (r == Result.ErrorOutOfDateKhr || r == Result.SuboptimalKhr || Engine.window.frameBufferResized)
             {
-                window.frameBufferResized = false;
+                Engine.window.frameBufferResized = false;
                 //RecreateSwapChain();
             }
             else if (r != Result.Success)
@@ -627,14 +614,7 @@ namespace ArctisAurora.EngineWork.Rendering
             currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
         }
 
-        internal static void MouseUpdate(double xPos, double yPos)
-        {
-            for (int i = 0; i < renderingModules.Length; i++)
-            {
-                renderingModules[i].MouseUpdate(xPos, yPos);
-            }
-        }
-
+        // EXTRAS ------------------------------
         internal void CopyStructTrues<T>(ref T destination, T source) where T : struct
         {
             foreach (FieldInfo field in typeof(T).GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))

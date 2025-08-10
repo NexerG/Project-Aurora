@@ -1,4 +1,7 @@
-﻿using Silk.NET.Vulkan;
+﻿using Silk.NET.GLFW;
+using Silk.NET.Maths;
+using Silk.NET.Vulkan;
+using System.Numerics;
 using Windows.ApplicationModel.VoiceCommands;
 using Windows.Media.AppBroadcasting;
 
@@ -133,8 +136,6 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal abstract void PrepareCamera();
 
         internal abstract void WriteCommandBuffers();
-
-        internal abstract void MouseUpdate(double xPos, double yPos);
 
         internal static byte[] ReadFile(string FileName)
         {
