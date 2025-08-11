@@ -2,7 +2,6 @@
 using Silk.NET.GLFW;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
-using Windows.UI.WebUI;
 using static Silk.NET.GLFW.GlfwCallbacks;
 using Keys = Silk.NET.GLFW.Keys;
 

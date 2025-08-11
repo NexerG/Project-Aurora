@@ -33,9 +33,10 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
             }
         }
 
-        public void SolveLMB(Vector2D<float> mousePos, bool pressed)
+        public void SolveLMB(Vector2D<float> mousePos)
         {
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
+            bool pressed = InputHandler.instance.IsKeyDown(new Keybind(Silk.NET.GLFW.MouseButton.Left));
             foreach (InteractableControl entity in EntityManager.interactableControls)
             {
                 // check for hovering on each entity
@@ -55,18 +56,19 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
         public void SolveRMB(Vector2D<float> mousePos)
         {
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
+            bool pressed = InputHandler.instance.IsKeyDown(new Keybind(Silk.NET.GLFW.MouseButton.Right));
             foreach (InteractableControl entity in EntityManager.interactableControls)
             {
                 // check for hovering on each entity
                 bool isHovering = SolvePositions(entity, mousePos, localVerts);
                 //Console.WriteLine($"IsHovering above {entity}: {isHovering}, with mouse pos {pos} & entity pos {entity.transform.position}");
-                if (isHovering)
+                if (isHovering && pressed)
                 {
-                    //entity.resolve();
+                    entity.ResolveAltClick();
                 }
-                else
+                else if (!pressed)
                 {
-                    //entity.ResolveExit();
+                    entity.ResolveAltRelease();
                 }
             }
         }

@@ -1,20 +1,63 @@
-﻿using ArctisAurora.EngineWork.Rendering;
-using Silk.NET.GLFW;
+﻿using Silk.NET.GLFW;
 using Silk.NET.Maths;
 using Keys = Silk.NET.GLFW.Keys;
 
 namespace ArctisAurora.EngineWork
 {
+    internal class Keybind
+    {
+        public Keys? keyboardKey;
+        public MouseButton? mouseButton;
+
+        public Keybind(Keys key)
+        {
+            keyboardKey = key;
+        }
+
+        public Keybind(MouseButton key)
+        {
+            mouseButton = key;
+        }
+    }
+
+    public class KeybindComparer : IEqualityComparer<Keybind>
+    {
+        bool IEqualityComparer<Keybind>.Equals(Keybind? x, Keybind? y)
+        {
+            if(x == null || y == null) return false;
+
+            if (x.keyboardKey != null && y.keyboardKey != null)
+            {
+                if (x.keyboardKey == y.keyboardKey) return true;
+                else return false;
+            }
+            else if (x.mouseButton != null && y.mouseButton != null)
+            {
+                if (x.mouseButton == y.mouseButton) return true;
+                else return false;
+            }
+
+            return false;
+        }
+        
+        int IEqualityComparer<Keybind>.GetHashCode(Keybind obj)
+        {
+            if (obj.mouseButton != null) return obj.mouseButton.GetHashCode();
+            if (obj.keyboardKey != null) return obj.keyboardKey.GetHashCode();
+            return base.GetHashCode();
+        }
+    }
+
     internal unsafe class InputHandler
     {
         public static InputHandler instance { get; private set; }
 
-        public HashSet<Keys> KeysDown = new HashSet<Keys>();
-        public HashSet<MouseButton> MouseButtons = new HashSet<MouseButton>();
+        private static HashSet<Keybind> keysDown = new HashSet<Keybind>(new KeybindComparer());
         public static Vector2D<float> mousePos = new Vector2D<float>(0, 0);
 
-        public bool IsKeyDown(Keys k) => KeysDown.Contains(k);
-        public bool IsMouseDown(MouseButton button) => MouseButtons.Contains(button);
+        public static Dictionary<string, Dictionary<Keybind, Action>> keyBinds = new Dictionary<string, Dictionary<Keybind, Action>>();
+
+        public bool IsKeyDown(Keybind k) => keysDown.Contains(k);
 
         internal InputHandler()
         {
@@ -31,11 +74,11 @@ namespace ArctisAurora.EngineWork
         {
             if (action == InputAction.Press || action == InputAction.Repeat)
             {
-                MouseButtons.Add(button);
+                keysDown.Add(new Keybind(button));
             }
             else
             {
-                MouseButtons.Remove(button);
+                keysDown.Remove(new Keybind(button));
             }
         }
 
@@ -43,11 +86,11 @@ namespace ArctisAurora.EngineWork
         {
             if (action == InputAction.Press || action == InputAction.Repeat)
             {
-                KeysDown.Add(key);
+                keysDown.Add(new Keybind(key));
             }
             else
             {
-                KeysDown.Remove(key);
+                keysDown.Remove(new Keybind(key));
             }
         }
     }

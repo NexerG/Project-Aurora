@@ -27,6 +27,7 @@ namespace ArctisAurora.EngineWork
         // pre vars
         uint width = 1280;
         uint height = 720;
+        public static int doubleClickTime = 250;
 
         internal static Engine engineInstance = null;
         internal static AGlfwWindow window;
@@ -102,6 +103,9 @@ namespace ArctisAurora.EngineWork
             control.RegisterOnExit(TestExit);
             control.RegisterOnClick(TestClick);
             control.RegisterOnRelease(TestRelease);
+            control.RegisterAltClick(TestAltClick);
+            control.RegisterAltRelease(TestAltRelease);
+            control.RegisterDoubleClick(TestDoubleClick);
             control.transform.SetWorldPosition(new Vector3D<float>(1, 200, 200));
 
             Thread physics = new Thread(PhysicsThread);
@@ -172,6 +176,18 @@ namespace ArctisAurora.EngineWork
         {
             Console.WriteLine("released");
         }
+        private void TestAltClick()
+        {
+            Console.WriteLine("alt clicked");
+        }
+        private void TestAltRelease()
+        {
+            Console.WriteLine("alt released");
+        }
+        private void TestDoubleClick()
+        {
+            Console.WriteLine("double clicked");
+        }
 
         private void PhysicsThread()
         {
@@ -201,7 +217,10 @@ namespace ArctisAurora.EngineWork
 
         private void HandleUI()
         {
-            uiCollisionHandler.SolveHover(InputHandler.mousePos);
+            Vector2D<float> mp = InputHandler.mousePos;
+            uiCollisionHandler.SolveHover(mp);
+            uiCollisionHandler.SolveLMB(mp);
+            uiCollisionHandler.SolveRMB(mp);
         }
 
         private void Interpolate()
