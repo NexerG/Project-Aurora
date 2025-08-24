@@ -1,12 +1,12 @@
-﻿using ArctisAurora.CustomEntities;
-using ArctisAurora.EngineWork.Rendering;
+﻿using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using ArctisAurora.EngineWork.Physics.UICollision;
 using Silk.NET.Maths;
+using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
+using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable;
-using Silk.NET.Vulkan;
 
 namespace ArctisAurora.EngineWork
 {
@@ -62,6 +62,16 @@ namespace ArctisAurora.EngineWork
 
         public void Init(Frame s)
         {
+            //Image<Rgba32> im = new Image<Rgba32>(16, 16);
+            //for (int i = 0; i < 16; i++)
+            //{
+            //    for (int j = 0; j < 16; j++)
+            //    {
+            //        im[i, j] = new Rgba32(255, 255, 255, 255);
+            //    }
+            //}
+            //im.Save(Paths.UIMASKS + "\\defaultMask.png");
+
             running = true;
             SC = s;
 
@@ -85,6 +95,7 @@ namespace ArctisAurora.EngineWork
             window.SetCursorPosCallback(inputHandler.ProcessMouseMove);
             window.SetMouseButtonCallback(inputHandler.ProcessMouseClick);
             window.SetKeyCallback(inputHandler.ProcessKeyboard);
+            window.SetMouseOnWindowCallback(UICollisionHandling.instance.IsInWindow);
 
             Bootstrapper.PreprareDefaultAssets();
             renderer.SetupObjects();
@@ -95,18 +106,33 @@ namespace ArctisAurora.EngineWork
             renderer.CreateSyncObjects();
 
 
-            TextEntity _te = new TextEntity("A", 70, new Vector3D<float>(1, 100, 100));
+            //TextEntity _te = new TextEntity("A", 70, new Vector3D<float>(1, 100, 100));
             //TextEntity _te2 = new TextEntity("A", 70, new Vector3D<float>(1, 200, 200));
             //PanelControl control = new PanelControl();
             ButtonControl control = new ButtonControl();
-            control.RegisterOnEnter(TestEnter);
-            control.RegisterOnExit(TestExit);
-            control.RegisterOnClick(TestClick);
-            control.RegisterOnRelease(TestRelease);
-            control.RegisterAltClick(TestAltClick);
-            control.RegisterAltRelease(TestAltRelease);
-            control.RegisterDoubleClick(TestDoubleClick);
-            control.transform.SetWorldPosition(new Vector3D<float>(1, 200, 200));
+            ButtonControl control2 = new ButtonControl();
+            ButtonControl control3 = new ButtonControl();
+            ButtonControl control4 = new ButtonControl();
+            control2.controlData.style.tintDefault = new Vector3D<float>(0.8f, 0.1f, 0.1f);
+            control3.controlData.style.tintDefault = new Vector3D<float>(0.1f, 0.8f, 0.1f);
+            control4.controlData.style.tintDefault = new Vector3D<float>(0.1f, 0.1f, 0.8f);
+            //control2.UpdateControlData();
+            //control.RegisterOnEnter(TestEnter);
+            //control.RegisterOnExit(TestExit);
+            //control.RegisterOnClick(TestClick);
+            //control.RegisterOnRelease(TestRelease);
+            //control.RegisterAltClick(TestAltClick);
+            //control.RegisterAltRelease(TestAltRelease);
+            //control.RegisterDoubleClick(TestDoubleClick);
+            //control.transform.SetWorldPosition(new Vector3D<float>(1.1f, 200, 200));
+
+
+            DockingControl dock = new DockingControl(null);
+            dock.Dock(control, DockMode.bottom);
+            dock.Dock(control2, DockMode.left);
+            dock.Dock(control3, DockMode.top);
+            dock.Dock(control4, DockMode.right);
+            //uiCollisionHandler.defaultContextMenu = new ContextMenuControl();
 
             Thread physics = new Thread(PhysicsThread);
             Thread rendering = new Thread(RenderThread);
@@ -217,10 +243,14 @@ namespace ArctisAurora.EngineWork
 
         private void HandleUI()
         {
-            Vector2D<float> mp = InputHandler.mousePos;
-            uiCollisionHandler.SolveHover(mp);
-            uiCollisionHandler.SolveLMB(mp);
-            uiCollisionHandler.SolveRMB(mp);
+            if (uiCollisionHandler.isInWindow)
+            {
+                Vector2D<float> mp = InputHandler.mousePos;
+                uiCollisionHandler.SolveHover(mp);
+                uiCollisionHandler.SolveLMB(mp);
+                uiCollisionHandler.SolveRMB(mp);
+                uiCollisionHandler.SolveDrag(mp);
+            }
         }
 
         private void Interpolate()
@@ -257,6 +287,21 @@ namespace ArctisAurora.EngineWork
             {
                 entity.OnTick();
             }
+
+            if(EntityManager.entitiesToUpdate.Count > 0)
+            {
+                renderer.UpdateModules();
+                EntityManager.RemoveEntityUpdate(0, EntityManager.entitiesToUpdate.Count);
+            }
+
+            //foreach (Entity entity in EntityManager.entitiesToUpdate)
+            //{
+            //    MeshComponent mc = entity.GetComponent<MeshComponent>();
+            //    if (mc != null)
+            //    {
+            //        mc.UpdateMatrices();
+            //    }
+            //}
 
             // paralelization of this is a good idea, just the systems that are to be paralelized must be paralel safe as the current ones arent
             //if (EntityManager.onStartEntities.Count > 0)

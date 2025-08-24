@@ -3,7 +3,6 @@ using Silk.NET.GLFW;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 using static Silk.NET.GLFW.GlfwCallbacks;
-using Keys = Silk.NET.GLFW.Keys;
 
 namespace ArctisAurora.EngineWork.Rendering
 {
@@ -58,6 +57,11 @@ namespace ArctisAurora.EngineWork.Rendering
         internal void SetMouseButtonCallback(MouseButtonCallback callback)
         {
             _glfw.SetMouseButtonCallback(windowHandle, callback);
+        }
+
+        internal void SetMouseOnWindowCallback(CursorEnterCallback callback)
+        {
+            _glfw.SetCursorEnterCallback(windowHandle, callback);
         }
 
         internal void CreateSurface()

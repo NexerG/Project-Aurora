@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Helpers;
+using ArctisAurora.EngineWork.Serialization;
 using Silk.NET.Vulkan;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -38,12 +39,22 @@ namespace ArctisAurora.EngineWork.AssetRegistry
                 return;
             }
 
-            throw new NotImplementedException();
+            throw new Exception("Texture not found");
         }
 
         public override void LoadDefault()
         {
-            throw new NotImplementedException();
+            string path = Paths.UIMASKS + "\\defaultMask.png";
+            if (File.Exists(path))
+            {
+                image = Image.Load<Rgba32>(path);
+                AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image, Format.R8G8B8A8Srgb);
+                AVulkanBufferHandler.CreateImageView(ref Renderer.vk, ref Renderer.logicalDevice, ref _textureImage, ref textureImageView, Format.R8G8B8A8Srgb, ImageAspectFlags.ColorBit);
+                
+                return;
+            }
+
+            throw new Exception("Default texture not found");
         }
     }
 }

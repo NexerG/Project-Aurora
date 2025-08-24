@@ -1,10 +1,7 @@
-﻿using ArctisAurora.EngineWork.Physics.UICollision;
-using ArctisAurora.EngineWork.Rendering.Helpers;
+﻿using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using Silk.NET.Core.Native;
-using Silk.NET.GLFW;
-using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
 using static ArctisAurora.EngineWork.Rendering.UI.Controls.VulkanControl;
@@ -76,7 +73,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
 
         internal static bool updateCommandBuffers = false;
-        private static MCUI meshComponent;
+        internal static MCUI meshComponent;
 
 
         public UIModule()
@@ -468,7 +465,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 PipelineDepthStencilStateCreateInfo depthCreateInfo = new PipelineDepthStencilStateCreateInfo()
                 {
                     SType = StructureType.PipelineDepthStencilStateCreateInfo,
-                    DepthTestEnable = false,
+                    DepthTestEnable = true,
                     DepthWriteEnable = true,
                     DepthCompareOp = CompareOp.Less,
                     DepthBoundsTestEnable = false,

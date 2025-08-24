@@ -1,6 +1,4 @@
-﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
-using ArctisAurora.EngineWork.EngineEntity;
-using ArctisAurora.EngineWork.Rendering.Helpers;
+﻿using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Core;
 using Silk.NET.Core.Native;
@@ -478,7 +476,7 @@ namespace ArctisAurora.EngineWork.Rendering
             }
         }
 
-        internal void UpdateUIRenderer()
+        internal void UpdateModules()
         {
             for (int i = 0; i < renderingModules.Length; i++)
             {
@@ -500,10 +498,6 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal void Draw()
         {
-            for(int i=0;i< renderingModules.Length; i++)
-            {
-                renderingModules[i].camera.ProcessKeyboard();
-            }
             vk.WaitForFences(logicalDevice, 1, ref inFlightFences[currentFrame], true, ulong.MaxValue);
             uint imageIndex = 0;
             Result r = swapchainKHR.AcquireNextImage(logicalDevice, swapchain, ulong.MaxValue, imageAvailableSemaphores[currentFrame], default, ref imageIndex);
@@ -522,18 +516,18 @@ namespace ArctisAurora.EngineWork.Rendering
             {
                 renderingModules[i].camera.UpdateCameraMatrix(Engine.window.windowSize, imageIndex, (uint)i);
             }
-            int localEntityCount = 0;
-            foreach (Entity e in EntityManager.entitiesToUpdate)
-            {
-                MeshComponent meshComponent = e.GetComponent<MeshComponent>();
-                if (meshComponent == null)
-                {
-                    continue;
-                }
-                e.GetComponent<MeshComponent>().UpdateMatrices();
-                localEntityCount++;
-            }
-            EntityManager.RemoveEntityUpdate(0, localEntityCount);
+            //int localEntityCount = 0;
+            //foreach (Entity e in EntityManager.entitiesToUpdate)
+            //{
+            //    MeshComponent meshComponent = e.GetComponent<MeshComponent>();
+            //    if (meshComponent == null)
+            //    {
+            //        continue;
+            //    }
+            //    e.GetComponent<MeshComponent>().UpdateMatrices();
+            //    localEntityCount++;
+            //}
+            //EntityManager.RemoveEntityUpdate(0, localEntityCount);
             //uniforms done
             if (inFlightImages[imageIndex].Handle != default)
             {

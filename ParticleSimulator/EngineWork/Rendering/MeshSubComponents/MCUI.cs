@@ -74,7 +74,19 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 
         internal override void UpdateMatrices()
         {
-            base.UpdateMatrices();
+            transformMatrices = new List<Matrix4X4<float>>();
+            for (int i = 0; i < instances; i++)
+            {
+                Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0, 0, 0);
+                Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
+                _transform *= Matrix4X4.CreateScale(EntityManager.controls[i].transform.scale);
+                //_transform *= Matrix4X4.CreateFromQuaternion(q);
+                _transform *= Matrix4X4.CreateTranslation(EntityManager.controls[i].transform.position);
+
+                transformMatrices.Add(_transform);
+            }
+            Matrix4X4<float>[] _mats = transformMatrices.ToArray();
+            AVulkanBufferHandler.UpdateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
         }
 
         internal override void EnqueueDrawCommands(ref ulong[] offset, int loopIndex, int instanceID, ref CommandBuffer commandBuffer, ref PipelineLayout pipelineLayout, ref DescriptorSet[][] descriptorSets)

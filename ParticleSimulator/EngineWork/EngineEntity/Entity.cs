@@ -14,6 +14,7 @@ namespace ArctisAurora.EngineWork.EngineEntity
 
         public List<EntityComponent> _components = new List<EntityComponent>();
         public List<Entity> _children = new List<Entity>();
+        public Entity parent;
 
         public Entity()
         {

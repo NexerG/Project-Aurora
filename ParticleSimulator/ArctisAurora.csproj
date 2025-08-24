@@ -27,6 +27,8 @@
 
   <ItemGroup>
     <Folder Include="Data\Fonts\" />
+    <Folder Include="Data\UIMasks\" />
+    <Folder Include="EngineWork\Physics\Physics\" />
   </ItemGroup>
 
   <ItemGroup>
@@ -45,7 +47,7 @@
   </ItemGroup>
   
   <ItemGroup>
-	<Content Include="Data\Fonts\**\*.*">
+	<Content Include="Data\**\*.*">
 		<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	</Content>
   </ItemGroup>

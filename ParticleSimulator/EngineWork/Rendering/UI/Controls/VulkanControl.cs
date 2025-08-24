@@ -3,8 +3,6 @@ using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
 using System.Runtime.InteropServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
@@ -109,7 +107,8 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             controlData.style = ControlStyle.Default();
             controlData.quadData = new QuadData();
 
-            maskAsset = AssetRegistries.fonts.GetValueOrDefault("default").textureAsset;
+            //maskAsset = AssetRegistries.fonts.GetValueOrDefault("default").textureAsset;
+            maskAsset = AssetRegistries.textures.GetValueOrDefault("default");
 
             controlData.quadData.uvs.uv1 = new Vector2D<float>(0, 0);
             controlData.quadData.uvs.uv2 = new Vector2D<float>(1, 0);
@@ -119,13 +118,13 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             transform.SetWorldScale(new Vector3D<float>(1, px.X, px.Y));
 
             AVulkanBufferHandler.CreateBuffer(ref controlData, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
+            CreateSampler();
+            EntityManager.AddControl(this);
         }
 
         public override void OnStart()
         {
             base.OnStart();
-            CreateSampler();
-            EntityManager.AddControl(this);
         }
 
         private void CreateSampler()
@@ -134,8 +133,8 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             SamplerCreateInfo _createInfo = new SamplerCreateInfo()
             {
                 SType = StructureType.SamplerCreateInfo,
-                MagFilter = Filter.Linear,
-                MinFilter = Filter.Linear,
+                MagFilter = Filter.Nearest,
+                MinFilter = Filter.Nearest,
                 AddressModeU = SamplerAddressMode.Repeat,
                 AddressModeV = SamplerAddressMode.Repeat,
                 AddressModeW = SamplerAddressMode.Repeat,
@@ -145,7 +144,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
                 UnnormalizedCoordinates = false,
                 CompareEnable = false,
                 CompareOp = CompareOp.Always,
-                MipmapMode = SamplerMipmapMode.Linear
+                MipmapMode = SamplerMipmapMode.Nearest
             };
 
             fixed (Sampler* _textureSamplerPtr = &maskSampler)
@@ -156,6 +155,11 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
                     throw new Exception("Failed to create a texture sampler with error: " + r);
                 }
             }
+        }
+
+        internal void UpdateControlData()
+        {
+            AVulkanBufferHandler.UpdateBuffer(ref controlData, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
         }
     }
 }

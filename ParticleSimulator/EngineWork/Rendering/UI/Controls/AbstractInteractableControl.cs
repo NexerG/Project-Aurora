@@ -1,10 +1,13 @@
-﻿using Silk.NET.Maths;
-using Silk.NET.Vulkan;
+﻿using ArctisAurora.EngineWork.Physics.UICollision;
+using ArctisAurora.EngineWork.Rendering.Modules;
+using Silk.NET.Maths;
 
-namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
+namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 {
-    internal abstract class InteractableControl : PanelControl
+    internal abstract class AbstractInteractableControl : PanelControl
     {
+        // EVENTS
+        public event Action<Vector2D<float>> hover;
         public event Action onEnter;
         public event Action onExit;
 
@@ -16,7 +19,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
         public event Action onRelease;
         public event Action onAltRelease;
 
-        public event Action onDrag;
+        public event Action<Vector2D<float>> onDrag;
         public event Action onDragStop;
 
         private bool entered = false;
@@ -26,9 +29,30 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
 
         private DateTime lastClick = DateTime.Now;
 
-        internal InteractableControl()
+        // EXTRAS
+        internal ContextMenuControl contextMenu;
+
+
+        internal AbstractInteractableControl()
         {
             EntityManager.AddInteractableControl(this);
+        }
+
+        // HOVER
+        internal void RegisterHover(Action<Vector2D<float>> action)
+        {
+            hover += action;
+        }
+
+        internal void ResolveHover(Vector2D<float> pos)
+        {
+            if (clicked)
+            {
+                dragging = true;
+                UICollisionHandling.instance.dragging = this;
+                return;
+            }
+            hover?.Invoke(pos);
         }
 
         // ENTER
@@ -42,10 +66,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
             if (!entered)
             {
                 onEnter?.Invoke();
-            }
-            if (entered && clicked && !dragging)
-            {
-                onDrag?.Invoke();
             }
             entered = true;
         }
@@ -66,14 +86,18 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
         }
 
         // DRAG
-        internal void RegisterOnDrag(Action action)
+        internal void RegisterOnDrag(Action<Vector2D<float>> action)
         {
             onDrag += action;
         }
 
-        internal virtual void ResolveDrag()
+        internal virtual void ResolveDrag(Vector2D<float> drag)
         {
-            onDrag?.Invoke();
+            if (onDrag != null)
+            {
+                onDrag.Invoke(drag);
+                UIModule.meshComponent.UpdateMatrices();
+            }
         }
 
         internal virtual void RegisterDragStop(Action action)
@@ -84,6 +108,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
         internal virtual void StopDrag()
         {
             onDragStop?.Invoke();
+            UICollisionHandling.instance.dragging = null;
         }
 
         // CLICK
@@ -113,7 +138,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
         }
 
         // DOUBLE CLICK
-
         internal void RegisterDoubleClick(Action action)
         {
             onDoubleClick += action;
@@ -132,6 +156,10 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
 
         internal virtual void ResolveRelease()
         {
+            if (dragging)
+            {
+                StopDrag();
+            }
             if (clicked)
             {
                 onRelease?.Invoke();

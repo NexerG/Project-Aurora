@@ -32,6 +32,9 @@ namespace ArctisAurora.EngineWork
             FontAsset font = new FontAsset("default");
             font.LoadDefault();
 
+            TextureAsset texture = new TextureAsset("default");
+            texture.LoadDefault();
+
             // load default style
             ControlStyle style = new ControlStyle();
             style.tintDefault = new Silk.NET.Maths.Vector3D<float>(1, 1, 1);

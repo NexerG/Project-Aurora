@@ -1,13 +1,18 @@
 ﻿using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
-using ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable;
+using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
+using Silk.NET.GLFW;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.EngineWork.Physics.UICollision
 {
-    internal class UICollisionHandling
+    internal unsafe class UICollisionHandling
     {
         internal static UICollisionHandling instance;
+        internal bool isInWindow = true;
+        internal AbstractInteractableControl dragging;
+        internal AbstractContainerControl container;
+        internal ContextMenuControl defaultContextMenu;
 
         internal UICollisionHandling()
         {
@@ -17,14 +22,14 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
         public void SolveHover(Vector2D<float> mousePos)
         {
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
-            foreach (InteractableControl entity in EntityManager.interactableControls)
+            foreach (AbstractInteractableControl entity in EntityManager.interactableControls)
             {
                 // check for hovering on each entity
                 bool isHovering = SolvePositions(entity, mousePos, localVerts);
-                //Console.WriteLine($"IsHovering above {entity}: {isHovering}, with mouse pos {pos} & entity pos {entity.transform.position}");
                 if (isHovering)
                 {
                     entity.ResolveEnter();
+                    entity.ResolveHover(mousePos);
                 }
                 else
                 {
@@ -37,11 +42,10 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
         {
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
             bool pressed = InputHandler.instance.IsKeyDown(new Keybind(Silk.NET.GLFW.MouseButton.Left));
-            foreach (InteractableControl entity in EntityManager.interactableControls)
+            foreach (AbstractInteractableControl entity in EntityManager.interactableControls)
             {
                 // check for hovering on each entity
                 bool isHovering = SolvePositions(entity, mousePos, localVerts);
-                //Console.WriteLine($"IsHovering above {entity}: {isHovering}, with mouse pos {pos} & entity pos {entity.transform.position}");
                 if (isHovering && pressed)
                 {
                     entity.ResolveClick();
@@ -56,12 +60,12 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
         public void SolveRMB(Vector2D<float> mousePos)
         {
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
-            bool pressed = InputHandler.instance.IsKeyDown(new Keybind(Silk.NET.GLFW.MouseButton.Right));
-            foreach (InteractableControl entity in EntityManager.interactableControls)
+            bool pressed = InputHandler.instance.IsKeyDown(new Keybind(MouseButton.Right));
+            bool found = false;
+            foreach (AbstractInteractableControl entity in EntityManager.interactableControls)
             {
                 // check for hovering on each entity
                 bool isHovering = SolvePositions(entity, mousePos, localVerts);
-                //Console.WriteLine($"IsHovering above {entity}: {isHovering}, with mouse pos {pos} & entity pos {entity.transform.position}");
                 if (isHovering && pressed)
                 {
                     entity.ResolveAltClick();
@@ -69,8 +73,28 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
                 else if (!pressed)
                 {
                     entity.ResolveAltRelease();
+                    found = true;
                 }
             }
+            if (!found && defaultContextMenu != null)
+            {
+                defaultContextMenu.Open();
+            }
+        }
+
+
+        public void SolveDrag(Vector2D<float> mousePos)
+        {
+            if (dragging != null)
+            {
+                Vector2D<float> newPos = new Vector2D<float>(mousePos.Y, mousePos.X);
+                dragging.ResolveDrag(newPos);
+            }
+        }
+
+        public void IsInWindow(WindowHandle* handle, bool isInWindow)
+        {
+            this.isInWindow = isInWindow;
         }
 
         private bool SolvePositions(VulkanControl entity, Vector2D<float> pos, Vector2D<float>[] localVerts)
