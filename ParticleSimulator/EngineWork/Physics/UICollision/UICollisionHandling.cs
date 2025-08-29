@@ -14,6 +14,9 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
         internal AbstractContainerControl container;
         internal ContextMenuControl defaultContextMenu;
 
+        internal Vector2D<float> lastMousePos;
+        internal Vector2D<float> delta;
+
         internal UICollisionHandling()
         {
             instance = this;
@@ -22,38 +25,60 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
         public void SolveHover(Vector2D<float> mousePos)
         {
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
+            AbstractInteractableControl topMost = null;
+            float topZ = float.MaxValue;
             foreach (AbstractInteractableControl entity in EntityManager.interactableControls)
             {
                 // check for hovering on each entity
                 bool isHovering = SolvePositions(entity, mousePos, localVerts);
                 if (isHovering)
                 {
-                    entity.ResolveEnter();
-                    entity.ResolveHover(mousePos);
+                    if(entity.transform.position.X < topZ)
+                    {
+                        topZ = entity.transform.position.X;
+                        topMost = entity;
+                    }
                 }
                 else
                 {
                     entity.ResolveExit();
                 }
             }
+
+            if(topMost != null && dragging == null)
+            {
+                topMost.ResolveEnter();
+                topMost.ResolveHover(mousePos);
+            }
         }
 
         public void SolveLMB(Vector2D<float> mousePos)
         {
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
-            bool pressed = InputHandler.instance.IsKeyDown(new Keybind(Silk.NET.GLFW.MouseButton.Left));
+            bool pressed = InputHandler.instance.IsKeyDown(new Keybind(MouseButton.Left));
+
+            AbstractInteractableControl topMost = null;
+            float topZ = float.MaxValue;
             foreach (AbstractInteractableControl entity in EntityManager.interactableControls)
             {
                 // check for hovering on each entity
                 bool isHovering = SolvePositions(entity, mousePos, localVerts);
                 if (isHovering && pressed)
                 {
-                    entity.ResolveClick();
+                    if (entity.transform.position.X < topZ)
+                    {
+                        topZ = entity.transform.position.X;
+                        topMost = entity;
+                    }
                 }
                 else if(!pressed)
                 {
                     entity.ResolveRelease();
                 }
+            }
+            if (topMost != null)
+            {
+                topMost.ResolveClick(lastMousePos, delta);
             }
         }
 
@@ -62,19 +87,30 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
             bool pressed = InputHandler.instance.IsKeyDown(new Keybind(MouseButton.Right));
             bool found = false;
+
+            AbstractInteractableControl topMost = null;
+            float topZ = float.MaxValue;
             foreach (AbstractInteractableControl entity in EntityManager.interactableControls)
             {
                 // check for hovering on each entity
                 bool isHovering = SolvePositions(entity, mousePos, localVerts);
                 if (isHovering && pressed)
                 {
-                    entity.ResolveAltClick();
+                    if (entity.transform.position.X < topZ)
+                    {
+                        topZ = entity.transform.position.X;
+                        topMost = entity;
+                    }
                 }
                 else if (!pressed)
                 {
                     entity.ResolveAltRelease();
                     found = true;
                 }
+            }
+            if (topMost != null)
+            {
+                topMost.ResolveAltClick();
             }
             if (!found && defaultContextMenu != null)
             {
@@ -87,8 +123,7 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
         {
             if (dragging != null)
             {
-                Vector2D<float> newPos = new Vector2D<float>(mousePos.Y, mousePos.X);
-                dragging.ResolveDrag(newPos);
+                dragging.ResolveDrag(lastMousePos, delta);
             }
         }
 
@@ -102,10 +137,10 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
             float offsetX = entity.controlData.quadData.offsets.offset1.Z;
             float offsetY = entity.controlData.quadData.offsets.offset1.Y;
             // check for hovering on each entity
-            localVerts[0] = new Vector2D<float>(0 + offsetX, 0 + offsetY);
-            localVerts[1] = new Vector2D<float>(1 + offsetX, 0 + offsetY);
-            localVerts[2] = new Vector2D<float>(1 + offsetX, -1 + offsetY);
-            localVerts[3] = new Vector2D<float>(0 + offsetX, -1 + offsetY);
+            localVerts[0] = new Vector2D<float>(-0.5f + offsetX, -0.5f + offsetY);
+            localVerts[1] = new Vector2D<float>(0.5f + offsetX, -0.5f + offsetY);
+            localVerts[2] = new Vector2D<float>(0.5f + offsetX, 0.5f + offsetY);
+            localVerts[3] = new Vector2D<float>(-0.5f + offsetX, 0.5f + offsetY);
 
             localVerts = TransformToWorld(entity.transform, localVerts);
             return IsPointInQuad(pos, localVerts);

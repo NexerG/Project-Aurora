@@ -125,7 +125,7 @@ namespace ArctisAurora.EngineWork.Rendering
             };
 
             uint _glfwExtensionCount;
-            byte** _glfwExtensions = _glWindow._glfw.GetRequiredInstanceExtensions(out _glfwExtensionCount);
+            byte** _glfwExtensions = AGlfwWindow._glfw.GetRequiredInstanceExtensions(out _glfwExtensionCount);
             var _extensions = SilkMarshal.PtrToStringArray((nint)_glfwExtensions, (int)_glfwExtensionCount);
             if (_isValidationLayers)
             {

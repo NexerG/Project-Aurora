@@ -19,7 +19,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         public event Action onRelease;
         public event Action onAltRelease;
 
-        public event Action<Vector2D<float>> onDrag;
+        public event Action<Vector2D<float>, Vector2D<float>> onDrag;
         public event Action onDragStop;
 
         private bool entered = false;
@@ -86,18 +86,17 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         }
 
         // DRAG
-        internal void RegisterOnDrag(Action<Vector2D<float>> action)
+        internal void RegisterOnDrag(Action<Vector2D<float>, Vector2D<float>> action)
         {
             onDrag += action;
         }
 
-        internal virtual void ResolveDrag(Vector2D<float> drag)
+        internal virtual void ResolveDrag(Vector2D<float> lastPos,Vector2D<float> delta)
         {
-            if (onDrag != null)
-            {
-                onDrag.Invoke(drag);
-                UIModule.meshComponent.UpdateMatrices();
-            }
+            //if (onDrag != null)
+            //{
+            onDrag?.Invoke(lastPos, delta);
+            //}
         }
 
         internal virtual void RegisterDragStop(Action action)
@@ -117,14 +116,13 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             onClick += action;
         }
 
-        internal virtual void ResolveClick()
+        internal virtual void ResolveClick(Vector2D<float> oldPos, Vector2D<float> delta)
         {
             if (!clicked)
             {
                 DateTime click = DateTime.Now;
                 TimeSpan span = click - lastClick;
                 lastClick = click;
-                Console.WriteLine(span.TotalMilliseconds);
                 if (span.TotalMilliseconds < Engine.doubleClickTime)
                 {
                     ResolveDoubleClick();
@@ -134,6 +132,13 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 
                 onClick?.Invoke();
             }
+            /*else
+            {
+                TimeSpan t = DateTime.Now - lastClick;
+                if (t.TotalMilliseconds < Engine.doubleClickTime)
+                    return;
+                ResolveDrag(oldPos, delta);
+            }*/
             clicked = true;
         }
 

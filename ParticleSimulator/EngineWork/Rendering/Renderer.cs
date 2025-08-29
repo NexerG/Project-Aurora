@@ -192,7 +192,7 @@ namespace ArctisAurora.EngineWork.Rendering
             };
 
             uint glfwExtensionCount;
-            byte** glfwExtensions = Engine.window._glfw.GetRequiredInstanceExtensions(out glfwExtensionCount);
+            byte** glfwExtensions = AGlfwWindow._glfw.GetRequiredInstanceExtensions(out glfwExtensionCount);
             var localExtensions = SilkMarshal.PtrToStringArray((nint)glfwExtensions, (int)glfwExtensionCount);
             if (isDebugEnabled)
             {

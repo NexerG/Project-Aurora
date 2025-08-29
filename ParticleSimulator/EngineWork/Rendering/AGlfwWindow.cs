@@ -3,18 +3,20 @@ using Silk.NET.GLFW;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 using static Silk.NET.GLFW.GlfwCallbacks;
+using Cursor = Silk.NET.GLFW.Cursor;
 
 namespace ArctisAurora.EngineWork.Rendering
 {
     internal unsafe class AGlfwWindow
     {
         //GLFW window variables
-        internal Glfw _glfw;
-        internal WindowHandle* windowHandle;
+        internal static Glfw _glfw;
+        internal static WindowHandle* windowHandle;
         internal SurfaceKHR surface;
         internal KhrSurface driverSurface;
         internal bool frameBufferResized = false;
         internal Extent2D windowSize;
+        internal static Cursor* cursor;
 
         internal AGlfwWindow(uint width, uint height)
         {
@@ -37,6 +39,12 @@ namespace ArctisAurora.EngineWork.Rendering
             }
 
             SetResizeCallback(WindwoResizeCallback);
+        }
+
+        internal static void ChangeCursor(CursorShape shape)
+        {
+            cursor = Glfw.GetApi().CreateStandardCursor(shape);
+            _glfw.SetCursor(windowHandle, cursor);
         }
 
         internal void SetResizeCallback(WindowSizeCallback callback)

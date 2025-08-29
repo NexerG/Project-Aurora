@@ -43,24 +43,42 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             instances = EntityManager.controls.Count;
             if (instances > 0)
             {
-                render = true;
-                transformMatrices = new List<Matrix4X4<float>>();
-                for (int i = 0; i < instances; i++)
+                if (transformMatrices.Count != instances)
                 {
-                    Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0, 0, 0);
-                    Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-                    _transform *= Matrix4X4.CreateScale(EntityManager.controls[i].transform.scale);
-                    //_transform *= Matrix4X4.CreateFromQuaternion(q);
-                    _transform *= Matrix4X4.CreateTranslation(EntityManager.controls[i].transform.position);
+                    render = true;
+                    transformMatrices = new List<Matrix4X4<float>>();
+                    for (int i = 0; i < instances; i++)
+                    {
+                        Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0, 0, 0);
+                        Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
+                        _transform *= Matrix4X4.CreateScale(EntityManager.controls[i].transform.scale);
+                        //_transform *= Matrix4X4.CreateFromQuaternion(q);
+                        _transform *= Matrix4X4.CreateTranslation(EntityManager.controls[i].transform.position);
 
-                    transformMatrices.Add(_transform);
+                        transformMatrices.Add(_transform);
+                    }
+                    if (transformsBuffer.Handle != 0)
+                    {
+                        Renderer.vk.DestroyBuffer(Renderer.logicalDevice, transformsBuffer, null);
+                    }
+                    Matrix4X4<float>[] _mats = transformMatrices.ToArray();
+                    AVulkanBufferHandler.CreateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
                 }
-                if (transformsBuffer.Handle != 0)
+                else
                 {
-                    Renderer.vk.DestroyBuffer(Renderer.logicalDevice, transformsBuffer, null);
+                    for (int i = 0; i < instances; i++)
+                    {
+                        Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0, 0, 0);
+                        Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
+                        _transform *= Matrix4X4.CreateScale(EntityManager.controls[i].transform.scale);
+                        //_transform *= Matrix4X4.CreateFromQuaternion(q);
+                        _transform *= Matrix4X4.CreateTranslation(EntityManager.controls[i].transform.position);
+
+                        transformMatrices[i] = _transform;
+                    }
+                    Matrix4X4<float>[] _mats = transformMatrices.ToArray();
+                    AVulkanBufferHandler.UpdateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
                 }
-                Matrix4X4<float>[] _mats = transformMatrices.ToArray();
-                AVulkanBufferHandler.CreateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
             }
         }
 
