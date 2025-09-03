@@ -8,7 +8,7 @@ using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 {
-    internal unsafe class VulkanControl : Entity
+    public unsafe class VulkanControl : Entity
     {
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         public struct ControlStyle
@@ -89,17 +89,17 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             public ControlStyle style;
         }
 
-        internal Vector2D<float> px = new Vector2D<float>(72, 72);
+        public Vector2D<float> px = new Vector2D<float>(72, 72);
 
-        internal ControlData controlData;
-        internal Buffer controlDataBuffer;
-        internal DeviceMemory controlDataBufferMemory;
+        public ControlData controlData;
+        public Buffer controlDataBuffer;
+        public DeviceMemory controlDataBufferMemory;
 
-        internal Sampler maskSampler;
-        internal TextureAsset maskAsset;
+        public Sampler maskSampler;
+        public TextureAsset maskAsset;
 
-        internal Sampler colorSampler;
-        internal TextureAsset colorAsset;
+        public Sampler colorSampler;
+        public TextureAsset colorAsset;
 
         public VulkanControl()
         {

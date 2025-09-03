@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
 {
-    internal class ResizeableControl : AbstractInteractableControl
+    public class ResizeableControl : AbstractInteractableControl
     {
         bool isResizing = false;
         bool left = false;
@@ -16,7 +16,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
         bool top = false;
         bool bot = false;
 
-        internal ResizeableControl()
+        public ResizeableControl()
         {
             RegisterHover(Hover);
             RegisterOnExit(OnExit);

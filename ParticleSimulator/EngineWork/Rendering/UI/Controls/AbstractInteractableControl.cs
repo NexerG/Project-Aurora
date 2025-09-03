@@ -4,7 +4,7 @@ using Silk.NET.Maths;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 {
-    internal abstract class AbstractInteractableControl : PanelControl
+    public abstract class AbstractInteractableControl : PanelControl
     {
         // EVENTS
         public event Action<Vector2D<float>> hover;

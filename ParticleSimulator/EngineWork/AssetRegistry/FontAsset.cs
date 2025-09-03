@@ -11,6 +11,7 @@ namespace ArctisAurora.EngineWork.AssetRegistry
         public AtlasMetaData atlasMetaData;
         public TextureAsset textureAsset;
 
+        public FontAsset() { }
         public FontAsset(string name)
         {
             AssetRegistries.fonts.Add(name, this);

@@ -11,6 +11,8 @@ namespace ArctisAurora.EngineWork.EngineEntity
         internal Entity parent;
         internal bool _changed = false;
 
+        public Transform() {}
+
         internal Transform(Entity e)
         {
             parent = e;

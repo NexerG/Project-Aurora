@@ -16,7 +16,7 @@ namespace ArctisAurora.EngineWork.AssetRegistry
         internal Sampler textureSampler;
         internal Image<Rgba32> image;
 
-
+        public TextureAsset() { }
         public TextureAsset(string name)
         {
             AssetRegistries.textures.Add(name, this);

@@ -8,6 +8,8 @@ namespace ArctisAurora.EngineWork.Serialization
 {
     internal static class Paths
     {
+        public static readonly string BUILD_UI = GetPath("Data\\XML");
+
         public static readonly string FONTS = GetPath("Data\\Fonts");
         public static readonly string DATA = GetPath("Data");
         public static readonly string UIMASKS = GetPath("Data\\UIMasks");
