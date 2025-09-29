@@ -3,11 +3,14 @@ using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Physics.UICollision;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Modules;
+using ArctisAurora.EngineWork.Rendering.UI;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
 using ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable;
+using ArctisAurora.EngineWork.Serialization;
 using Silk.NET.Maths;
 using System.Runtime.InteropServices;
+using System.Xml.Linq;
 
 namespace ArctisAurora.EngineWork
 {
@@ -80,6 +83,8 @@ namespace ArctisAurora.EngineWork
             running = true;
             SC = s;
 
+            UIXSDGenerator.GenerateTestXSD();
+
             window = new AGlfwWindow(width, height);
             window.CreateWindow();
 
@@ -110,6 +115,11 @@ namespace ArctisAurora.EngineWork
             renderer.CreateCommandBuffers();
             renderer.CreateSyncObjects();
 
+            // UI testing
+            string path = Paths.UIXAML + "\\UITest.xml";
+            XDocument ui = XDocument.Load(path);
+            XElement root = ui.Root;
+            UIXaml.ParseXAML("UITest.xml");
 
             //TextEntity _te = new TextEntity("A", 70, new Vector3D<float>(1, 100, 100));
             //TextEntity _te2 = new TextEntity("A", 70, new Vector3D<float>(1, 200, 200));

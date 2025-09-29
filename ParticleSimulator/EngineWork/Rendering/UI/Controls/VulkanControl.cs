@@ -8,7 +8,23 @@ using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 {
-    public unsafe class VulkanControl : Entity
+
+    [AttributeUsage(AttributeTargets.Class, Inherited = false)]
+    public sealed class A_VulkanControlAttribute : Attribute
+    {
+        public string Name { get; }
+        public A_VulkanControlAttribute(string name)
+        {
+            Name = name;
+        }
+    }
+
+    public interface IControlChild
+    {
+        public void AddChild(VulkanControl control);
+    }
+
+    public unsafe class VulkanControl : Entity, IControlChild
     {
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         public struct ControlStyle
@@ -101,6 +117,8 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         public Sampler colorSampler;
         public TextureAsset colorAsset;
 
+        public VulkanControl? child;
+
         public VulkanControl()
         {
             controlData = new ControlData();
@@ -160,6 +178,12 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         internal void UpdateControlData()
         {
             AVulkanBufferHandler.UpdateBuffer(ref controlData, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
+        }
+
+        public void AddChild(VulkanControl control)
+        {
+            if(child != null) throw new Exception("Control can only have one child");
+            child = control;
         }
     }
 }

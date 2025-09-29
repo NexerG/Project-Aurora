@@ -9,10 +9,6 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <Target Name="GenXSD" AfterTargets="Build">
-    <Exec Command="dotnet exec &quot;$(TargetPath)&quot; --xsd-generate" />
-  </Target>
-
   <ItemGroup>
     <PackageReference Include="AssimpNet" Version="4.1.0" />
     <PackageReference Include="Silk.NET.Core" Version="2.21.0" />
@@ -32,7 +28,6 @@
   <ItemGroup>
     <Folder Include="Data\Fonts\" />
     <Folder Include="Data\UIMasks\" />
-    <Folder Include="Data\XML\" />
     <Folder Include="EngineWork\Physics\Physics\" />
   </ItemGroup>
 

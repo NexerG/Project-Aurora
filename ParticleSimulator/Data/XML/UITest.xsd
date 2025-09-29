@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           targetNamespace="http://schemas/arctis-aurora/ui"
+           xmlns="http://schemas/arctis-aurora/ui"
+           elementFormDefault="qualified">
+
+	<!-- Root element -->
+	<xs:element name="Window">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="Button" minOccurs="0" maxOccurs="unbounded"/>
+				<xs:element name="Label" minOccurs="0" maxOccurs="unbounded"/>
+			</xs:sequence>
+			<xs:attribute name="Width" type="xs:int"/>
+			<xs:attribute name="Height" type="xs:int"/>
+		</xs:complexType>
+	</xs:element>
+
+	<!-- Button -->
+	<xs:element name="Button">
+		<xs:complexType>
+			<xs:attribute name="Text" type="xs:string"/>
+			<xs:attribute name="Width" type="xs:int"/>
+			<xs:attribute name="Height" type="xs:int"/>
+		</xs:complexType>
+	</xs:element>
+
+	<!-- Label -->
+	<xs:element name="Label">
+		<xs:complexType>
+			<xs:attribute name="Text" type="xs:string"/>
+			<xs:attribute name="FontSize" type="xs:int"/>
+		</xs:complexType>
+	</xs:element>
+
+</xs:schema>

@@ -11,19 +11,19 @@ namespace ArctisAurora
         [STAThread]
         static void Main(string[] args)
         {
-            if(args.Length > 0 && args[0] == "--xsd-generate")
+            /*if(args.Length > 0 && args[0] == "--xsd-generate")
             {
                 Console.WriteLine("Generating XSD for VulkanControl...");
                 UIXSDGenerator.GenerateVulkanControlXsd();
                 return; // Exit after generating XSD
             }
             else
-            {
+            {*/
                 // To customize application configuration such as set high DPI settings or default font,
                 // see https://aka.ms/applicationconfiguration.
                 ApplicationConfiguration.Initialize();
                 Application.Run(new Frame());
-            }
+            //}
         }
     }
 }
