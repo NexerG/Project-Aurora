@@ -1,6 +1,10 @@
 ﻿<Window xmlns="http://schemas/arctis-aurora/ui"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://schemas/arctis-aurora/ui UITest.xsd"
+        xsi:schemaLocation="http://schemas/arctis-aurora/ui Test.xsd"
         Width="800" Height="600">
+
+	<Button>
+		
+	</Button>
 	
 </Window>

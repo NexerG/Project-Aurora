@@ -5,13 +5,13 @@ using Silk.NET.Vulkan;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 {
-    internal class GlyphControl : VulkanControl
+    public class GlyphControl : VulkanControl
     {
-        internal char character;
+        public char character;
         int index;
         Glyph glyph;
 
-        internal GlyphControl(char character, Vector3D<float> pos, Glyph gAsset, FontAsset fontAsset, int px)
+        public GlyphControl(char character, Vector3D<float> pos, Glyph gAsset, FontAsset fontAsset, int px)
         {
             this.character = character;
             maskAsset = fontAsset.textureAsset;

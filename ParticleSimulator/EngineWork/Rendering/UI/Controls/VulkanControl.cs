@@ -4,6 +4,7 @@ using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.InteropServices;
+using System.Xml.Serialization;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls
@@ -29,6 +30,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         public struct ControlStyle
         {
+            [XmlAttribute("Style")]
             public Vector3D<float> tintDefault;
             public Vector3D<float> tintHover;
             public Vector3D<float> tintClick;
@@ -44,10 +46,10 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         public struct QuadUVs
         {
-            public Vector2D<float> uv1 = new Vector2D<float>(0, 0);
-            public Vector2D<float> uv2 = new Vector2D<float>(1, 0);
-            public Vector2D<float> uv3 = new Vector2D<float>(0, 1);
-            public Vector2D<float> uv4 = new Vector2D<float>(1, 1);
+            public Vector2D<float> uv1;
+            public Vector2D<float> uv2;
+            public Vector2D<float> uv3;
+            public Vector2D<float> uv4;
 
             public QuadUVs(Vector2D<float> uv1, Vector2D<float> uv2, Vector2D<float> uv3, Vector2D<float> uv4)
             {
@@ -107,6 +109,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 
         public Vector2D<float> px = new Vector2D<float>(72, 72);
 
+
         public ControlData controlData;
         public Buffer controlDataBuffer;
         public DeviceMemory controlDataBufferMemory;
@@ -125,17 +128,11 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             controlData.style = ControlStyle.Default();
             controlData.quadData = new QuadData();
 
-            //maskAsset = AssetRegistries.fonts.GetValueOrDefault("default").textureAsset;
             maskAsset = AssetRegistries.textures.GetValueOrDefault("default");
-
-            controlData.quadData.uvs.uv1 = new Vector2D<float>(0, 0);
-            controlData.quadData.uvs.uv2 = new Vector2D<float>(1, 0);
-            controlData.quadData.uvs.uv3 = new Vector2D<float>(1, 1);
-            controlData.quadData.uvs.uv4 = new Vector2D<float>(0, 1);
-
             transform.SetWorldScale(new Vector3D<float>(1, px.X, px.Y));
 
-            AVulkanBufferHandler.CreateBuffer(ref controlData, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
+            ControlData tempData = controlData;
+            AVulkanBufferHandler.CreateBuffer(ref tempData, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
             CreateSampler();
             EntityManager.AddControl(this);
         }

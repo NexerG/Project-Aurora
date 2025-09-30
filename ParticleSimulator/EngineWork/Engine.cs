@@ -83,7 +83,7 @@ namespace ArctisAurora.EngineWork
             running = true;
             SC = s;
 
-            UIXSDGenerator.GenerateTestXSD();
+            VulkanUIHandler.GenerateTestXSD();
 
             window = new AGlfwWindow(width, height);
             window.CreateWindow();
@@ -119,7 +119,7 @@ namespace ArctisAurora.EngineWork
             string path = Paths.UIXAML + "\\UITest.xml";
             XDocument ui = XDocument.Load(path);
             XElement root = ui.Root;
-            UIXaml.ParseXAML("UITest.xml");
+            VulkanUIHandler.ParseXML("UITest.xml");
 
             //TextEntity _te = new TextEntity("A", 70, new Vector3D<float>(1, 100, 100));
             //TextEntity _te2 = new TextEntity("A", 70, new Vector3D<float>(1, 200, 200));

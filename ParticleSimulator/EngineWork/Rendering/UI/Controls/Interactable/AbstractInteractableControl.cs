@@ -1,8 +1,9 @@
 ﻿using ArctisAurora.EngineWork.Physics.UICollision;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Maths;
+using System.Xml.Serialization;
 
-namespace ArctisAurora.EngineWork.Rendering.UI.Controls
+namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
 {
     public abstract class AbstractInteractableControl : PanelControl
     {
@@ -31,7 +32,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 
         // EXTRAS
         internal ContextMenuControl contextMenu;
-
 
         internal AbstractInteractableControl()
         {

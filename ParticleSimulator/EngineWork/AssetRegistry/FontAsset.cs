@@ -6,7 +6,7 @@ using Image = SixLabors.ImageSharp.Image;
 
 namespace ArctisAurora.EngineWork.AssetRegistry
 {
-    internal class FontAsset : Asset
+    public class FontAsset : Asset
     {
         public AtlasMetaData atlasMetaData;
         public TextureAsset textureAsset;
