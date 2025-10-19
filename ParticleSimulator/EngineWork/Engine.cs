@@ -82,6 +82,7 @@ namespace ArctisAurora.EngineWork
 
             running = true;
             SC = s;
+            Bootstrapper.PrepareRegistries();
 
             VulkanUIHandler.GenerateTestXSD();
 
@@ -116,16 +117,13 @@ namespace ArctisAurora.EngineWork
             renderer.CreateSyncObjects();
 
             // UI testing
-            string path = Paths.UIXAML + "\\UITest.xml";
-            XDocument ui = XDocument.Load(path);
-            XElement root = ui.Root;
-            VulkanUIHandler.ParseXML("UITest.xml");
+            WindowControl windowControl = VulkanUIHandler.ParseXML("UITest.xml");
 
             //TextEntity _te = new TextEntity("A", 70, new Vector3D<float>(1, 100, 100));
             //TextEntity _te2 = new TextEntity("A", 70, new Vector3D<float>(1, 200, 200));
             //PanelControl control = new PanelControl();
-            ResizeableControl control = new();
-            control.transform.SetWorldPosition(new Vector3D<float>(0.9f, 200, 400));
+            //ResizeableControl control = new();
+            //control.transform.SetWorldPosition(new Vector3D<float>(0.9f, 200, 400));
             //ButtonControl control2 = new();
             //ButtonControl control3 = new();
             //ButtonControl control4 = new();
@@ -145,7 +143,7 @@ namespace ArctisAurora.EngineWork
             //control.transform.SetWorldPosition(new Vector3D<float>(1.1f, 200, 200));
 
 
-            DockingControl dock = new DockingControl(null);
+            //DockingControl dock = new DockingControl(null);
             //dock.Dock(control, DockMode.bottom);
             //dock.Dock(control2, DockMode.left);
             //dock.Dock(control3, DockMode.top);

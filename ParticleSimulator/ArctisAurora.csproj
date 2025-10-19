@@ -28,6 +28,7 @@
   <ItemGroup>
     <Folder Include="Data\Fonts\" />
     <Folder Include="Data\UIMasks\" />
+    <Folder Include="Data\XML\Registries\Preloads\" />
     <Folder Include="EngineWork\Physics\Physics\" />
   </ItemGroup>
 
@@ -56,6 +57,12 @@
     <Compile Remove="EngineWork\Rendering\Pipelines\**" />
     <EmbeddedResource Remove="EngineWork\Rendering\Pipelines\**" />
     <None Remove="EngineWork\Rendering\Pipelines\**" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Content Update="Data\XML\Registries\AbstractRegistry.xsd">
+      <SubType>Designer</SubType>
+    </Content>
   </ItemGroup>
   
 </Project>

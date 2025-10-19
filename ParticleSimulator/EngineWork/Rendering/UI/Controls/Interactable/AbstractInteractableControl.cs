@@ -1,5 +1,4 @@
 ﻿using ArctisAurora.EngineWork.Physics.UICollision;
-using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Maths;
 using System.Xml.Serialization;
 
@@ -9,19 +8,23 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
     {
         // EVENTS
         public event Action<Vector2D<float>> hover;
-        public event Action onEnter;
-        public event Action onExit;
+        [A_VulkanControlProperty("onEnter")]
+        public Action onEnter;
+        [A_VulkanControlProperty("onExit")]
+        public Action onExit;
 
-        public event Action onClick;
-        public event Action onAltClick;
+        [A_VulkanControlProperty("onClick")]
+        public Action onClick;
+        [A_VulkanControlProperty("onAltClick")]
+        public Action onAltClick;
 
-        public event Action onDoubleClick;
+        public Action onDoubleClick;
 
-        public event Action onRelease;
-        public event Action onAltRelease;
+        public Action onRelease;
+        public Action onAltRelease;
 
-        public event Action<Vector2D<float>, Vector2D<float>> onDrag;
-        public event Action onDragStop;
+        public Action<Vector2D<float>, Vector2D<float>> onDrag;
+        public Action onDragStop;
 
         private bool entered = false;
         private bool clicked = false;

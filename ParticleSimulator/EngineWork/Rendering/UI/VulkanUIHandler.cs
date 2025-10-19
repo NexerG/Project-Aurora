@@ -30,9 +30,15 @@ namespace ArctisAurora.EngineWork.Rendering.UI
             { typeof(char), "xs:string" },
             { typeof(decimal), "xs:decimal" },
             { typeof(Enum), "xs:string" },
-            { typeof(Vector3D<float>), "vec3" }
+            { typeof(Action), "Action" }
         };
         private static readonly Dictionary<string, Type> ControlMap = BuildControlMap();
+
+        public static void GenerateUIXSDs()
+        {
+            // generates the XSD for the UI XML editor
+            GenerateTestXSD();
+        }
 
         public static void GenerateTestXSD()
         {
@@ -48,22 +54,66 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                 schema.Namespaces.Add("xs", "http://www.w3.org/2001/XMLSchema");
                 schema.Namespaces.Add("", "http://schemas/arctis-aurora/ui"); // default namespace
 
-                XmlSchemaSimpleType vec3 = new XmlSchemaSimpleType
-                {
-                    Name = "vec3",
-                    Content = new XmlSchemaSimpleTypeRestriction
+                // actions
+                var generalAsm = Assembly.GetExecutingAssembly();
+                var actions = generalAsm.GetTypes()
+                    .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)
+                    .Where(m => m.GetCustomAttributes(typeof(A_VulkanActionAttribute), false).Any())
+                    .Select(m => new
                     {
-                        BaseTypeName = new XmlQualifiedName("xs:string"),
-                        Facets =
-                        {
-                            new XmlSchemaPatternFacet
-                            {
-                                Value = @"-?\d+(\.\d+)?,-?\d+(\.\d+)?,-?\d+(\.\d+)?"
-                            }
-                        }
-                    }
+                        Name = m.Name,
+                        DeclaringType = t,
+                        Attribute = (A_VulkanActionAttribute)m.GetCustomAttributes(typeof(A_VulkanActionAttribute), false).First()
+                    })).ToList();
+
+                XmlSchemaSimpleType actionType = new XmlSchemaSimpleType
+                {
+                    Name = "Action"
                 };
-                schema.Items.Add(vec3);
+
+                var actionRestriction = new XmlSchemaSimpleTypeRestriction
+                {
+                    BaseTypeName = new XmlQualifiedName("xs:string")
+                };
+
+                foreach (var action in actions)
+                {
+                    actionRestriction.Facets.Add(new XmlSchemaEnumerationFacet
+                    {
+                        Value = action.Name
+                    });
+                }
+
+                actionType.Content = actionRestriction;
+                schema.Items.Add(actionType);
+
+                // ENUMS
+                var asm = typeof(VulkanControl).Assembly;
+                var enumTypes = asm.GetTypes()
+                .Where(t => t.IsEnum && t.GetCustomAttributes(typeof(A_VulkanEnumAttribute), false).Any())
+                .Select(t => new
+                {
+                    Type = t,
+                    Attribute = (A_VulkanEnumAttribute)t.GetCustomAttributes(typeof(A_VulkanEnumAttribute), false).First()
+                }).ToList();
+
+                foreach (var enumType in enumTypes)
+                {
+                    XmlSchemaSimpleType enumSchemaType = new XmlSchemaSimpleType
+                    {
+                        Name = enumType.Attribute.Name
+                    };
+                    XmlSchemaSimpleTypeRestriction restriction = new XmlSchemaSimpleTypeRestriction
+                    {
+                        BaseTypeName = new XmlQualifiedName("xs:string")
+                    };
+                    foreach (var name in Enum.GetNames(enumType.Type))
+                    {
+                        restriction.Facets.Add(new XmlSchemaEnumerationFacet { Value = name });
+                    }
+                    enumSchemaType.Content = restriction;
+                    schema.Items.Add(enumSchemaType);
+                }
 
                 // create abstract base element to for derived controls (non containers)
                 XmlSchemaComplexType abstractControl = new XmlSchemaComplexType()
@@ -78,7 +128,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                     MaxOccurs = 1,
                 };
 
-                var asm = typeof(VulkanControl).Assembly;
+
                 var controls = asm.GetTypes()
                     .Where(t => t.GetCustomAttributes(typeof(A_VulkanControlAttribute), false).Any())
                     .Select(t => new
@@ -87,6 +137,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                         Attribute = (A_VulkanControlAttribute)t.GetCustomAttributes(typeof(A_VulkanControlAttribute), false).First()
                     }).ToList();
 
+                // setup controls with their attributes
                 foreach (var control in controls)
                 {
                     var extensionControl = new XmlSchemaComplexContentExtension
@@ -110,29 +161,21 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                         Content = extensionControl
                     };
 
-                    //var attributes = control.Type.GetProperties()
-                    //    .Where(p => p.CanRead && p.CanWrite && (p.PropertyType.IsPrimitive || p.PropertyType == typeof(string) || p.PropertyType.IsEnum))
-                    //    .Select(p => new
-                    //    {
-                    //        Property = p,
-                    //        XmlAttribute = (XmlAttributeAttribute?)p.GetCustomAttributes(typeof(XmlAttributeAttribute), false).FirstOrDefault()
-                    //    }).ToList();
-
-                    Console.WriteLine(control.Type);
-                    Console.WriteLine(control.Type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance));
-                    var attributes = control.Type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                        .Where(p => p.GetCustomAttributes(typeof(XmlAttributeAttribute), false).Any())
+                    //var testAttributes = control.Type.GetFields();
+                    
+                    var attributes = control.Type.GetFields()
+                        .Where(p => p.GetCustomAttributes(typeof(A_VulkanControlPropertyAttribute), true).Any())
                         .Select(p => new
                         {
                             Property = p,
-                            XmlAttribute = (XmlAttributeAttribute?)p.GetCustomAttributes(typeof(XmlAttributeAttribute), false).FirstOrDefault()
+                            XmlAttribute = (A_VulkanControlPropertyAttribute?)p.GetCustomAttributes(typeof(A_VulkanControlPropertyAttribute), true).FirstOrDefault()
                         }).ToList(); ;
 
                     foreach (var attr in attributes)
                     {
                         XmlSchemaAttribute schemaAttribute = new XmlSchemaAttribute
                         {
-                            Name = attr.XmlAttribute?.AttributeName ?? attr.Property.Name,
+                            Name = attr.XmlAttribute?.Name ?? attr.Property.Name,
                             SchemaTypeName = new XmlQualifiedName(TypeToXsdTypeMap[attr.Property.FieldType])
                         };
                         extensionControl.Attributes.Add(schemaAttribute);
@@ -235,26 +278,45 @@ namespace ArctisAurora.EngineWork.Rendering.UI
             }
         }
 
-        public static void ParseXML(string xaml)
+        public static WindowControl ParseXML(string xaml)
         {
-            string path = Paths.UIXAML + "\\" + xaml;
+            string path = Paths.ENGINEXML + "\\" + xaml;
 
             XDocument doc = XDocument.Load(path);
             XElement root = doc.Root;
             WindowControl topControl = new WindowControl();
-            RecursiveParse(root, topControl);
-            //VulkanControl control = CreateControlFromXML(root);
-            // Now 'control' is the root control created from the XML
+            float pos = 1.0f;
+            topControl.transform.SetWorldPosition(new Vector3D<float>(pos, 0, 0));
+            RecursiveParse(root, topControl, pos);
+            return topControl;
         }
 
-        private static void RecursiveParse(XElement root, VulkanControl topControl)
+        private static void RecursiveParse(XElement root, VulkanControl topControl, float pos)
         {
             foreach (XAttribute attr in root.Attributes())
             {
-                var prop = topControl.GetType().GetProperty(attr.Name.LocalName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-                if (prop != null && prop.CanWrite)
+                var prop = topControl.GetType().GetField(attr.Name.LocalName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                if (prop != null)
                 {
-                    object? value = TypeDescriptor.GetConverter(prop.PropertyType).ConvertFromInvariantString(attr.Value);
+                    if(prop.FieldType == typeof(Action))
+                    {
+                        MethodInfo? methodInfo = AppDomain.CurrentDomain.GetAssemblies()
+                        .SelectMany(a => a.GetTypes())
+                        .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
+                        .FirstOrDefault(m =>
+                                m.GetCustomAttributes(typeof(A_VulkanActionAttribute), false).Any() &&
+                                string.Equals(m.Name, attr.Value, StringComparison.OrdinalIgnoreCase));
+
+                        if (methodInfo == null)
+                            throw new Exception($"Action method '{attr.Value}' not found in A_VulkanControlPropertyAttribute.");
+
+                        Action actionDelegate = (Action)Delegate.CreateDelegate(typeof(Action), methodInfo);
+                        var current = (Action?)prop.GetValue(topControl);
+                        current += actionDelegate;
+                        prop.SetValue(topControl, current);
+                        continue;
+                    }
+                    object? value = TypeDescriptor.GetConverter(prop.FieldType).ConvertFromInvariantString(attr.Value);
                     prop.SetValue(topControl, value);
                 }
             }
@@ -263,9 +325,12 @@ namespace ArctisAurora.EngineWork.Rendering.UI
             {
                 if (!ControlMap.TryGetValue(element.Name.LocalName, out var controlType))
                     throw new Exception($"Unknown control type: {element.Name}");
-                topControl.AddChild((VulkanControl)Activator.CreateInstance(controlType));
+                VulkanControl c = (VulkanControl)Activator.CreateInstance(controlType);
+                pos -= 0.01f;
+                c.transform.SetWorldPosition(new Vector3D<float>(pos, 0, 0));
+                topControl.AddChild(c);
 
-                RecursiveParse(element, topControl.child);
+                RecursiveParse(element, topControl.child, pos);
             }
         }
 
@@ -280,54 +345,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                         Tag = t.GetCustomAttribute<A_VulkanControlAttribute>()?.Name ?? t.Name
                     })
                     .ToDictionary(x => x.Tag, x => x.Type);
-        }
-
-        public static void GenerateVulkanControlXsd()
-        {
-            try
-            {
-                var schemas = new XmlSchemas();
-                var exporter = new XmlSchemaExporter(schemas);
-                var importer = new XmlReflectionImporter();
-
-                var vulkanControlType = typeof(VulkanControl);
-                var assembly = vulkanControlType.Assembly;
-
-                var derivedTypes = assembly.GetTypes()
-                            .Where(t => t != vulkanControlType &&
-                                        vulkanControlType.IsAssignableFrom(t) &&
-                                        !t.IsAbstract && t.IsPublic).ToList();
-
-                Console.WriteLine($"Found {derivedTypes.Count} subclasses of VulkanControl");
-                foreach (var derivedType in derivedTypes)
-                {
-                    Console.WriteLine($"Generating XSD for: {derivedType.Name}");
-                    var mapping = importer.ImportTypeMapping(derivedType);
-                    exporter.ExportTypeMapping(mapping);
-                }
-
-                var outputPath = @"C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Data\XML\EngineUI.xsd";
-                var outputDir = Path.GetDirectoryName(outputPath);
-                if (!Directory.Exists(outputDir))
-                {
-                    Directory.CreateDirectory(outputDir);
-                }
-
-                using (var writer = new StreamWriter(outputPath))
-                {
-                    foreach (XmlSchema schema in schemas)
-                    {
-                        schema.Write(writer);
-                    }
-                }
-
-                Console.WriteLine($"XSD generated successfully for {derivedTypes.Count} types!");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error generating XSD: {ex.Message}");
-                throw;
-            }
         }
     }
 }

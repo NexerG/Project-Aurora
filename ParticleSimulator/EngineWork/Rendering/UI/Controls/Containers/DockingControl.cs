@@ -6,6 +6,7 @@ using System.Diagnostics;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
 {
+    [A_VulkanEnum("DockMode")]
     internal enum DockMode
     {
         fill, left, right, top, bottom, unknown

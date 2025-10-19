@@ -11,10 +11,10 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
     [A_VulkanControl("Window")]
     public class WindowControl : VulkanControl
     {
-        [XmlAttribute("Width")]
+        [A_VulkanControlProperty("Width")]
         public int Width;
 
-        [XmlAttribute("Height")]
+        [A_VulkanControlProperty("Height")]
         public int Height;
     }
 }

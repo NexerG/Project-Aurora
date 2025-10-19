@@ -1,6 +1,7 @@
 ﻿using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.Helpers;
+using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.InteropServices;
@@ -18,6 +19,22 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         {
             Name = name;
         }
+    }
+
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Event, Inherited = false)]
+    public sealed class A_VulkanControlPropertyAttribute: Attribute
+    {
+        public string Name { get; }
+        public A_VulkanControlPropertyAttribute(string name)
+        {
+            Name = name;
+        }
+    }
+
+    [A_VulkanEnum("ControlColor")]
+    public enum ControlColor
+    {
+        red, green, blue, white, black, yellow, cyan, magenta, gray, orange, purple, brown, pink, lime, navy, teal,
     }
 
     public interface IControlChild
@@ -181,6 +198,30 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         {
             if(child != null) throw new Exception("Control can only have one child");
             child = control;
+        }
+
+        public static string EnumColorToHex(ControlColor color)
+        {
+            return color switch
+            {
+                ControlColor.red => "#FF0000",
+                ControlColor.green => "#00FF00",
+                ControlColor.blue => "#0000FF",
+                ControlColor.white => "#FFFFFF",
+                ControlColor.black => "#000000",
+                ControlColor.yellow => "#FFFF00",
+                ControlColor.cyan => "#00FFFF",
+                ControlColor.magenta => "#FF00FF",
+                ControlColor.gray => "#808080",
+                ControlColor.orange => "#FFA500",
+                ControlColor.purple => "#800080",
+                ControlColor.brown => "#A52A2A",
+                ControlColor.pink => "#FFC0CB",
+                ControlColor.lime => "#00FF00",
+                ControlColor.navy => "#000080",
+                ControlColor.teal => "#008080",
+                _ => "#FFFFFF",
+            };
         }
     }
 }
