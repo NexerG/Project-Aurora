@@ -7,6 +7,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
     public abstract class AbstractInteractableControl : PanelControl
     {
         // EVENTS
+        //fuck do i do with this yet to figure out. tbh idk if this is even a problem
         public event Action<Vector2D<float>> hover;
         [A_VulkanControlProperty("onEnter")]
         public Action onEnter;
@@ -20,10 +21,13 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
 
         public Action onDoubleClick;
 
+        [A_VulkanControlProperty("onRelease")]
         public Action onRelease;
+        [A_VulkanControlProperty("onAltRelease")]
         public Action onAltRelease;
 
         public Action<Vector2D<float>, Vector2D<float>> onDrag;
+        [A_VulkanControlProperty("onDragStop")]
         public Action onDragStop;
 
         private bool entered = false;

@@ -21,7 +21,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         }
     }
 
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Event, Inherited = false)]
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Event | AttributeTargets.Property, Inherited = false)]
     public sealed class A_VulkanControlPropertyAttribute: Attribute
     {
         public string Name { get; }
@@ -56,7 +56,8 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 
             public static ControlStyle Default()
             {
-                return AssetRegistries.styles.GetValueOrDefault("default");
+                Dictionary<string, ControlStyle> dStyles = AssetRegistries.GetRegistry<ControlStyle>(typeof(ControlStyle));
+                return dStyles.GetValueOrDefault("default");
             }
         }
 
@@ -137,7 +138,23 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         public Sampler colorSampler;
         public TextureAsset colorAsset;
 
+        [A_VulkanControlProperty("DockMode")]
+        public DockMode dockMode;
+        [A_VulkanControlProperty("ControlColor")]
+        public ControlColor controlColor
+        {
+            get => color;
+            set
+            {
+                string hex = EnumColorToHex(value);
+                Vector3D<float> rgb = HexToRGB(hex);
+                controlData.style.tintDefault = rgb;
+                UpdateControlData();
+            }
+        }
+
         public VulkanControl? child;
+        private ControlColor color;
 
         public VulkanControl()
         {
@@ -145,7 +162,8 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             controlData.style = ControlStyle.Default();
             controlData.quadData = new QuadData();
 
-            maskAsset = AssetRegistries.textures.GetValueOrDefault("default");
+            Dictionary<string, TextureAsset> dTextures = AssetRegistries.GetRegistry<TextureAsset>(typeof(TextureAsset));
+            maskAsset = dTextures.GetValueOrDefault("default");
             transform.SetWorldScale(new Vector3D<float>(1, px.X, px.Y));
 
             ControlData tempData = controlData;
@@ -194,7 +212,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             AVulkanBufferHandler.UpdateBuffer(ref controlData, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
         }
 
-        public void AddChild(VulkanControl control)
+        public virtual void AddChild(VulkanControl control)
         {
             if(child != null) throw new Exception("Control can only have one child");
             child = control;
@@ -222,6 +240,22 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
                 ControlColor.teal => "#008080",
                 _ => "#FFFFFF",
             };
+        }
+
+        public static Vector3D<float> HexToRGB(string hex)
+        {
+            if (hex.StartsWith("#"))
+            {
+                hex = hex[1..];
+            }
+            if (hex.Length != 6)
+            {
+                throw new ArgumentException("Hex color must be 6 characters long.");
+            }
+            byte r = Convert.ToByte(hex.Substring(0, 2), 16);
+            byte g = Convert.ToByte(hex.Substring(2, 2), 16);
+            byte b = Convert.ToByte(hex.Substring(4, 2), 16);
+            return new Vector3D<float>(r / 255f, g / 255f, b / 255f);
         }
     }
 }

@@ -152,9 +152,7 @@ namespace ArctisAurora.EngineWork
             //uiCollisionHandler.defaultContextMenu = new ContextMenuControl();
 
             Thread physics = new Thread(PhysicsThread);
-            //Console.WriteLine($"Starting physics thread at ID {physics.}");
             Thread rendering = new Thread(RenderThread);
-            //Console.WriteLine($"Starting rendering thread at ID {rendering.ManagedThreadId}");
 
             physics.Start();
             rendering.Start();

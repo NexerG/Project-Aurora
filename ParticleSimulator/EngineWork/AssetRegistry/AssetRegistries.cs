@@ -35,13 +35,13 @@ namespace ArctisAurora.EngineWork.AssetRegistry
             return null;
         }
 
-        public static Dictionary<string, AVulkanMesh> meshes = new Dictionary<string, AVulkanMesh>();
-
-        public static Dictionary<string, FontAsset> fonts = new Dictionary<string, FontAsset>();
-        public static Dictionary<string, TextureAsset> textures = new Dictionary<string, TextureAsset>();
-
-        public static Dictionary<string, ControlStyle> styles = new Dictionary<string, ControlStyle>();
-        public static Dictionary<string, Action> uiActions = new Dictionary<string, Action>();
+        //public static Dictionary<string, AVulkanMesh> meshes = new Dictionary<string, AVulkanMesh>();
+        //
+        //public static Dictionary<string, FontAsset> fonts = new Dictionary<string, FontAsset>();
+        //public static Dictionary<string, TextureAsset> textures = new Dictionary<string, TextureAsset>();
+        //
+        //public static Dictionary<string, ControlStyle> styles = new Dictionary<string, ControlStyle>();
+        //public static Dictionary<string, Action> uiActions = new Dictionary<string, Action>();
 
         //public static Dictionary<string, audio> audio;
     }

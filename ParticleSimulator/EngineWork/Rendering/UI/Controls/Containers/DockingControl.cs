@@ -7,13 +7,13 @@ using System.Diagnostics;
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
 {
     [A_VulkanEnum("DockMode")]
-    internal enum DockMode
+    public enum DockMode
     {
         fill, left, right, top, bottom, unknown
     }
 
     [A_VulkanContainer("Dock")]
-    internal class DockingControl : AbstractContainerControl
+    public class DockingControl : AbstractContainerControl
     {
         public VulkanControl top;
         public VulkanControl bottom;
@@ -24,6 +24,11 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
         public Vector2D<float> splitSize;
         public Vector2D<float> spaceLeft;
         public Vector2D<float> location;
+
+        public DockingControl()
+        {
+
+        }
 
         public DockingControl(VulkanControl parent) : base(parent)
         {
@@ -61,10 +66,10 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
             base.OnStart();
         }
 
-        internal override void AddControlToContainer(VulkanControl control)
+        public override void AddControlToContainer(VulkanControl control)
         {
-            DockMode mode = ResolveDockType(control);
-            Dock(control, mode);
+            //DockMode mode = ResolveDockType(control);
+            Dock(control, control.dockMode);
         }
 
         private void Hovering(Vector2D<float> pos)
@@ -118,7 +123,17 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
 
         internal void Dock(VulkanControl control, DockMode mode)
         {
-            Console.WriteLine($"Docking: {control} at {mode}");
+            uint halfWidth = Engine.window.windowSize.Width / 2;
+            uint halfHeight = Engine.window.windowSize.Height / 2;
+            Vector3D<float> pos = new(1, halfHeight, halfWidth);
+            transform.SetWorldPosition(pos);
+            transform.SetWorldScale(pos * 2);
+
+            float splitH = Engine.window.windowSize.Height / 3;
+            float splitW = Engine.window.windowSize.Width / 3;
+            splitSize = new Vector2D<float>(splitW, splitH);
+            spaceLeft = new Vector2D<float>(Engine.window.windowSize.Width, Engine.window.windowSize.Height);
+            location = new Vector2D<float>(halfWidth, halfHeight);
             Vector2D<float> center = new Vector2D<float>(location.X, location.Y);
             switch (mode)
             {

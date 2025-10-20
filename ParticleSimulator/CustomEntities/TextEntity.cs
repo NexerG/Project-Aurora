@@ -18,7 +18,8 @@ namespace ArctisAurora.CustomEntities
             transform.SetWorldPosition(pos);
             this.text = text;
 
-            fontAsset = AssetRegistries.fonts["default"];
+            Dictionary<string, FontAsset> d = AssetRegistries.GetRegistry<FontAsset>(typeof(FontAsset));
+            fontAsset = d["default"];
 
             float horizontalOffset = 0;
             float verticalOffset = 0;

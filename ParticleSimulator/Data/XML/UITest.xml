@@ -3,5 +3,8 @@
         xsi:schemaLocation="http://schemas/arctis-aurora/ui Test.xsd"
         Width="800" Height="600">
 
-	<Button onClick="TestAction"/>
+	<Dock>
+		<Button DockMode="left" onClick="TestAction" ControlColor="red"/>
+		<Button DockMode="top" onClick="TestAction" />
+	</Dock>
 </Window>

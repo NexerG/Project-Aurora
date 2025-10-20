@@ -123,14 +123,15 @@ namespace ArctisAurora.EngineWork
             // but for now it'll just be a hardcoded list of assets
 
             // load default mesh
+            Dictionary<string, AVulkanMesh> dMeshes = AssetRegistries.GetRegistry<AVulkanMesh>(typeof(AVulkanMesh));
             AVulkanMesh mesh = AVulkanMesh.LoadDefault();
-            AssetRegistries.meshes.Add("default", mesh);
+            dMeshes.Add("default", mesh);
 
             AVulkanMesh UIMesh = new AVulkanMesh();
             MeshImporter importer = new MeshImporter();
             Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\VienetinisPlane.fbx");
             UIMesh.LoadCustomMesh(scene1);
-            AssetRegistries.meshes.Add("uidefault", UIMesh);
+            dMeshes.Add("uidefault", UIMesh);
 
             // load default font
             FontAsset font = new FontAsset("default");
@@ -140,11 +141,12 @@ namespace ArctisAurora.EngineWork
             texture.LoadDefault();
 
             // load default style
+            Dictionary<string, ControlStyle> dStyles = AssetRegistries.GetRegistry<ControlStyle>(typeof(ControlStyle));
             ControlStyle style = new ControlStyle();
             style.tintDefault = new Silk.NET.Maths.Vector3D<float>(1, 1, 1);
             style.tintHover = new Silk.NET.Maths.Vector3D<float>(1, 1, 1);
             style.tintClick = new Silk.NET.Maths.Vector3D<float>(1, 1, 1);
-            AssetRegistries.styles.Add("default", style);
+            dStyles.Add("default", style);
         }
 
         public static void RegisterFunctions()

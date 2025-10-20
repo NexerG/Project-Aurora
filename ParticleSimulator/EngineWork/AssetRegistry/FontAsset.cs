@@ -14,7 +14,8 @@ namespace ArctisAurora.EngineWork.AssetRegistry
         public FontAsset() { }
         public FontAsset(string name)
         {
-            AssetRegistries.fonts.Add(name, this);
+            Dictionary<string, FontAsset> d = AssetRegistries.GetRegistry<FontAsset>(typeof(FontAsset));
+            d.Add(name, this);
         }
 
         public Glyph GetGlyph(char c)
@@ -31,9 +32,10 @@ namespace ArctisAurora.EngineWork.AssetRegistry
 
         public override void LoadAsset(Asset asset, string name, string path)
         {
-            if (AssetRegistries.fonts.ContainsKey(name))
+            Dictionary<string, FontAsset> d = AssetRegistries.GetRegistry<FontAsset>(typeof(FontAsset));
+            if (d.ContainsKey(name))
             {
-                asset = AssetRegistries.fonts[name];
+                asset = d[name];
                 return;
             }
             atlasMetaData = new AtlasMetaData();
@@ -43,7 +45,7 @@ namespace ArctisAurora.EngineWork.AssetRegistry
             if (System.IO.File.Exists(imagePath))
             {
                 textureAsset.LoadAsset(asset, name, path);
-                AssetRegistries.fonts[name] = this;
+                d[name] = this;
                 return;
             }
 

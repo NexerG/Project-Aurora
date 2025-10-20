@@ -5,6 +5,7 @@ using Assimp;
 using Silk.NET.Maths;
 using System.ComponentModel;
 using System.Reflection;
+using System.Windows.Forms;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Schema;
@@ -29,9 +30,9 @@ namespace ArctisAurora.EngineWork.Rendering.UI
             { typeof(ulong), "xs:unsignedLong" },
             { typeof(char), "xs:string" },
             { typeof(decimal), "xs:decimal" },
-            { typeof(Enum), "xs:string" },
             { typeof(Action), "Action" }
         };
+        private static readonly Dictionary<Type, string> enumMap = BuildEnumMap();
         private static readonly Dictionary<string, Type> ControlMap = BuildControlMap();
 
         public static void GenerateUIXSDs()
@@ -127,6 +128,11 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                     MinOccurs = 0,
                     MaxOccurs = 1,
                 };
+                XmlSchemaChoice abstractContainerChoice = new XmlSchemaChoice
+                {
+                    MinOccurs = 0,
+                    MaxOccursString = "unbounded"
+                };
 
 
                 var controls = asm.GetTypes()
@@ -161,22 +167,36 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                         Content = extensionControl
                     };
 
-                    //var testAttributes = control.Type.GetFields();
-                    
-                    var attributes = control.Type.GetFields()
-                        .Where(p => p.GetCustomAttributes(typeof(A_VulkanControlPropertyAttribute), true).Any())
-                        .Select(p => new
+                    var testattributes = control.Type.GetFields();
+
+                    //var attributes = control.Type.GetFields()
+                    //    .Where(p => p.GetCustomAttributes(typeof(A_VulkanControlPropertyAttribute), true).Any())
+                    //    .Select(p => new
+                    //    {
+                    //        Property = p,
+                    //        XmlAttribute = (A_VulkanControlPropertyAttribute?)p.GetCustomAttributes(typeof(A_VulkanControlPropertyAttribute), true).FirstOrDefault()
+                    //    }).ToList();
+
+                    var attributes = control.Type.GetMembers(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                        .Where(m => (m.MemberType == MemberTypes.Field || m.MemberType == MemberTypes.Property) &&
+                            m.GetCustomAttributes(typeof(A_VulkanControlPropertyAttribute), true).Any())
+                        .Select(m => new
                         {
-                            Property = p,
-                            XmlAttribute = (A_VulkanControlPropertyAttribute?)p.GetCustomAttributes(typeof(A_VulkanControlPropertyAttribute), true).FirstOrDefault()
-                        }).ToList(); ;
+                            Property = m,
+                            XmlAttribute = (A_VulkanControlPropertyAttribute?)m.GetCustomAttributes(typeof(A_VulkanControlPropertyAttribute), true).FirstOrDefault()
+                        }).ToList();
 
                     foreach (var attr in attributes)
                     {
+                        Type memberType = attr.Property.MemberType == MemberTypes.Field
+                            ? ((FieldInfo)attr.Property).FieldType
+                            : ((PropertyInfo)attr.Property).PropertyType;
+                        string name = TypeToXsdTypeMap.ContainsKey(memberType) ? TypeToXsdTypeMap[memberType] : enumMap[memberType];
+                        XmlQualifiedName typeName = new XmlQualifiedName(name);
                         XmlSchemaAttribute schemaAttribute = new XmlSchemaAttribute
                         {
                             Name = attr.XmlAttribute?.Name ?? attr.Property.Name,
-                            SchemaTypeName = new XmlQualifiedName(TypeToXsdTypeMap[attr.Property.FieldType])
+                            SchemaTypeName = typeName
                         };
                         extensionControl.Attributes.Add(schemaAttribute);
                     }
@@ -184,8 +204,8 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                     schema.Items.Add(derivedType);
                     schema.Items.Add(xmlSchemaElement);
                     abstractControlChoice.Items.Add(xmlSchemaElement);
+                    abstractContainerChoice.Items.Add(xmlSchemaElement);
                 }
-
                 abstractControl.Particle = abstractControlChoice;
                 schema.Items.Add(abstractControl);
 
@@ -194,12 +214,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                 {
                     Name = "Container",
                     IsAbstract = true
-                };
-
-                XmlSchemaChoice abstractContainerChoice = new XmlSchemaChoice
-                {
-                    MinOccurs = 0,
-                    MaxOccursString = "unbounded"
                 };
 
                 var containers = asm.GetTypes()
@@ -223,6 +237,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                         Name = container.Attribute.Name,
                         SchemaTypeName = new XmlQualifiedName(container.Attribute.Name, schema.TargetNamespace)
                     };
+                    abstractControlChoice.Items.Add(derivedElement);
                     abstractContainerChoice.Items.Add(derivedElement);
                     
                     XmlSchemaComplexType derivedType = new XmlSchemaComplexType
@@ -233,24 +248,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                     {
                         Content = extensionContainer
                     };
-
-                    var attributes = container.Type.GetProperties()
-                        .Where(p => p.CanRead && p.CanWrite && (p.PropertyType.IsPrimitive || p.PropertyType == typeof(string) || p.PropertyType.IsEnum))
-                        .Select(p => new
-                        {
-                            Property = p,
-                            XmlAttribute = (XmlAttributeAttribute?)p.GetCustomAttributes(typeof(XmlAttributeAttribute), false).FirstOrDefault()
-                        }).ToList();
-
-                    foreach (var attr in attributes)
-                    {
-                        XmlSchemaAttribute schemaAttribute = new XmlSchemaAttribute
-                        {
-                            Name = attr.XmlAttribute?.AttributeName ?? attr.Property.Name,
-                            SchemaTypeName = new XmlQualifiedName(attr.XmlAttribute?.AttributeName ?? attr.Property.Name, attr.Property.GetType().Name)
-                        };
-                        derivedType.Attributes.Add(schemaAttribute);
-                    }
 
                     schema.Items.Add(derivedType);
                     schema.Items.Add(derivedElement);
@@ -285,20 +282,38 @@ namespace ArctisAurora.EngineWork.Rendering.UI
             XDocument doc = XDocument.Load(path);
             XElement root = doc.Root;
             WindowControl topControl = new WindowControl();
-            float pos = 1.0f;
-            topControl.transform.SetWorldPosition(new Vector3D<float>(pos, 0, 0));
+            ResolveAttributes(root, topControl);
+            Vector3D<float> pos = new Vector3D<float>(1.0f, topControl.Width, topControl.Height);
+            topControl.transform.SetWorldPosition(pos);
             RecursiveParse(root, topControl, pos);
             return topControl;
         }
 
-        private static void RecursiveParse(XElement root, VulkanControl topControl, float pos)
+        private static void RecursiveParse(XElement root, VulkanControl topControl, Vector3D<float> pos)
+        {
+            foreach (var element in root.Elements())
+            {
+                if (!ControlMap.TryGetValue(element.Name.LocalName, out var controlType))
+                    throw new Exception($"Unknown control type: {element.Name}");
+                VulkanControl c = (VulkanControl)Activator.CreateInstance(controlType);
+                pos -= new Vector3D<float>(0.1f, 0f, 0f);
+                c.transform.SetWorldPosition(pos);
+                ResolveAttributes(element, c);
+                topControl.AddChild(c);
+
+                RecursiveParse(element, c, pos);
+            }
+        }
+
+        private static void ResolveAttributes(XElement root, VulkanControl topControl)
         {
             foreach (XAttribute attr in root.Attributes())
             {
-                var prop = topControl.GetType().GetField(attr.Name.LocalName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                var prop = topControl.GetType().GetMember(attr.Name.LocalName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase).First();
                 if (prop != null)
                 {
-                    if(prop.FieldType == typeof(Action))
+                    Type memberType = prop.MemberType == MemberTypes.Field ? ((FieldInfo)prop).FieldType : ((PropertyInfo)prop).PropertyType;
+                    if (memberType == typeof(Action))
                     {
                         MethodInfo? methodInfo = AppDomain.CurrentDomain.GetAssemblies()
                         .SelectMany(a => a.GetTypes())
@@ -311,40 +326,87 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                             throw new Exception($"Action method '{attr.Value}' not found in A_VulkanControlPropertyAttribute.");
 
                         Action actionDelegate = (Action)Delegate.CreateDelegate(typeof(Action), methodInfo);
-                        var current = (Action?)prop.GetValue(topControl);
-                        current += actionDelegate;
-                        prop.SetValue(topControl, current);
+                        if (prop is PropertyInfo propertyInfo)
+                        {
+                            Action current = (Action?)propertyInfo.GetValue(topControl);
+                            current += actionDelegate;
+                            propertyInfo.SetValue(topControl, current);
+                            continue;
+                        }
+                        if(prop is FieldInfo fieldInfo)
+                        {
+                            Action current = (Action?)fieldInfo.GetValue(topControl);
+                            current += actionDelegate;
+                            fieldInfo.SetValue(topControl, current);
+                            continue;
+                        }
+                    }
+                    else if (memberType.IsEnum)
+                    {
+                        if (prop is PropertyInfo propertyInfo)
+                        {
+                            object enumValue = Enum.Parse(propertyInfo.PropertyType, attr.Value);
+                            propertyInfo.SetValue(topControl, enumValue);
+                            continue;
+                        }
+                        if (prop is FieldInfo fieldInfo)
+                        {
+                            object enumValue = Enum.Parse(fieldInfo.FieldType, attr.Value);
+                            fieldInfo.SetValue(topControl, enumValue);
+                            continue;
+                        }
                         continue;
                     }
-                    object? value = TypeDescriptor.GetConverter(prop.FieldType).ConvertFromInvariantString(attr.Value);
-                    prop.SetValue(topControl, value);
+                    else
+                    {
+                        if (prop is PropertyInfo propertyInfo)
+                        {
+                            object value = TypeDescriptor.GetConverter(propertyInfo.PropertyType).ConvertFromInvariantString(attr.Value);
+                            propertyInfo.SetValue(topControl, value);
+                            continue;
+                        }
+                        if (prop is FieldInfo fieldInfo)
+                        {
+                            object value = TypeDescriptor.GetConverter(fieldInfo.FieldType).ConvertFromInvariantString(attr.Value);
+                            fieldInfo.SetValue(topControl, value);
+                            continue;
+                        }
+                    }
                 }
-            }
-
-            foreach (var element in root.Elements())
-            {
-                if (!ControlMap.TryGetValue(element.Name.LocalName, out var controlType))
-                    throw new Exception($"Unknown control type: {element.Name}");
-                VulkanControl c = (VulkanControl)Activator.CreateInstance(controlType);
-                pos -= 0.01f;
-                c.transform.SetWorldPosition(new Vector3D<float>(pos, 0, 0));
-                topControl.AddChild(c);
-
-                RecursiveParse(element, topControl.child, pos);
+                topControl.UpdateControlData();
             }
         }
 
         private static Dictionary<string, Type> BuildControlMap()
         {
             var asm = typeof(VulkanControl).Assembly;
+
             return asm.GetTypes()
-                    .Where(t => !t.IsAbstract && typeof(VulkanControl).IsAssignableFrom(t) && t.GetCustomAttribute<A_VulkanControlAttribute>() != null)
+                    .Where(t => !t.IsAbstract && typeof(VulkanControl).IsAssignableFrom(t) && t.GetCustomAttribute<A_VulkanContainerAttribute>() != null || t.GetCustomAttribute<A_VulkanControlAttribute>() != null)
                     .Select(t => new
                     {
                         Type = t,
-                        Tag = t.GetCustomAttribute<A_VulkanControlAttribute>()?.Name ?? t.Name
+                        Tag = t.GetCustomAttribute<A_VulkanControlAttribute>()?.Name ?? t.GetCustomAttribute<A_VulkanContainerAttribute>()?.Name ?? t.Name
                     })
                     .ToDictionary(x => x.Tag, x => x.Type);
+        }
+
+        private static Dictionary<Type, string> BuildEnumMap()
+        {
+            var asm = typeof(VulkanControl).Assembly;
+            var enumTypes = asm.GetTypes()
+                .Where(t => t.IsEnum && t.GetCustomAttributes(typeof(A_VulkanEnumAttribute), false).Any())
+                .Select(t => new
+                {
+                    Type = t,
+                    Attribute = (A_VulkanEnumAttribute)t.GetCustomAttributes(typeof(A_VulkanEnumAttribute), false).First()
+                }).ToList();
+            Dictionary<Type, string> map = new Dictionary<Type, string>();
+            foreach (var enumType in enumTypes)
+            {
+                map[enumType.Type] = enumType.Attribute.Name;
+            }
+            return map;
         }
     }
 }

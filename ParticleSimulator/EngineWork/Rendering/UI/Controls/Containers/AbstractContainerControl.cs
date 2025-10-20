@@ -26,13 +26,26 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
     public sealed class A_VulkanActionAttribute : Attribute
     { }
 
-    internal abstract class AbstractContainerControl : AbstractInteractableControl
+    public abstract class AbstractContainerControl : AbstractInteractableControl
     {
-        internal AbstractContainerControl(VulkanControl parent)
+        public List<VulkanControl> children = new List<VulkanControl>();
+
+        public AbstractContainerControl()
+        {
+
+        }
+
+        public AbstractContainerControl(VulkanControl parent)
         {
             this.parent = parent;
         }
 
-        internal abstract void AddControlToContainer(VulkanControl control);
+        public override void AddChild(VulkanControl control)
+        {
+            children.Add(control);
+            AddControlToContainer(control);
+        }
+
+        public abstract void AddControlToContainer(VulkanControl control);
     }
 }

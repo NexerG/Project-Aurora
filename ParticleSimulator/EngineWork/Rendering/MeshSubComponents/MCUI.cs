@@ -23,8 +23,10 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
         internal MCUI()
         {
             render = false;
-            mesh = AssetRegistries.meshes.GetValueOrDefault("uidefault");
-            fontAsset = AssetRegistries.fonts.GetValueOrDefault("default");
+            Dictionary<string, AVulkanMesh> dMeshes = AssetRegistries.GetRegistry<AVulkanMesh>(typeof(AVulkanMesh));
+            Dictionary<string, FontAsset> dFonts = AssetRegistries.GetRegistry<FontAsset>(typeof(FontAsset));
+            mesh = dMeshes.GetValueOrDefault("uidefault");
+            fontAsset = dFonts.GetValueOrDefault("default");
             image = fontAsset.textureAsset.image;
             CreateSampler();
         }

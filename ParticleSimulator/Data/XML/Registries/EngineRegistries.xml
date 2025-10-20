@@ -2,7 +2,10 @@
 					xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 					xsi:schemaLocation="http://schemas/arctis-aurora/auroraregistries auroraregistries.xsd" >
 
-	<Dictionary name="uiActions" keyType="String" valueType="Action"/>
 	<Dictionary name="meshes" keyType="String" valueType="AVulkanMesh"/>
-	
+	<Dictionary name="fonts" keyType="String" valueType="FontAsset"/>
+	<Dictionary name="textures" keyType="String" valueType="TextureAsset"/>
+	<Dictionary name="styles" keyType="String" valueType="ControlStyle"/>
+	<Dictionary name="uiActions" keyType="String" valueType="Action"/>
+
 </EngineDictionaries>
