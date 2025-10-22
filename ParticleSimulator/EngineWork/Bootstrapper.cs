@@ -129,7 +129,7 @@ namespace ArctisAurora.EngineWork
 
             AVulkanMesh UIMesh = new AVulkanMesh();
             MeshImporter importer = new MeshImporter();
-            Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\VienetinisPlane.fbx");
+            Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\VienetinisPlaneRetry.fbx");
             UIMesh.LoadCustomMesh(scene1);
             dMeshes.Add("uidefault", UIMesh);
 
@@ -140,12 +140,13 @@ namespace ArctisAurora.EngineWork
             TextureAsset texture = new TextureAsset("default");
             texture.LoadDefault();
 
+            TextureAsset invisible = new TextureAsset("invisible");
+            invisible.LoadInvisible();
+
             // load default style
             Dictionary<string, ControlStyle> dStyles = AssetRegistries.GetRegistry<ControlStyle>(typeof(ControlStyle));
             ControlStyle style = new ControlStyle();
-            style.tintDefault = new Silk.NET.Maths.Vector3D<float>(1, 1, 1);
-            style.tintHover = new Silk.NET.Maths.Vector3D<float>(1, 1, 1);
-            style.tintClick = new Silk.NET.Maths.Vector3D<float>(1, 1, 1);
+            style.tint = new Silk.NET.Maths.Vector3D<float>(1, 1, 1);
             dStyles.Add("default", style);
         }
 

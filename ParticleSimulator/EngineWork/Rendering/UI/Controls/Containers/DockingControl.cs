@@ -32,12 +32,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
 
         public DockingControl(VulkanControl parent) : base(parent)
         {
-            //controlData.quadData.offsets.offset1 = new Vector3D<float>(0, 0.5f, -0.5f);
-            //controlData.quadData.offsets.offset2 = new Vector3D<float>(0, 0.5f, -0.5f);
-            //controlData.quadData.offsets.offset3 = new Vector3D<float>(0, 0.5f, -0.5f);
-            //controlData.quadData.offsets.offset4 = new Vector3D<float>(0, 0.5f, -0.5f);
-
-            controlData.style.tintDefault = new Vector3D<float>(0.22f, 0.22f, 0.22f);
+            controlData.style.tint = new Vector3D<float>(0.22f, 0.22f, 0.22f);
 
             RegisterHover(Hovering);
             if (parent != null)
@@ -125,12 +120,17 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
         {
             uint halfWidth = Engine.window.windowSize.Width / 2;
             uint halfHeight = Engine.window.windowSize.Height / 2;
-            Vector3D<float> pos = new(1, halfHeight, halfWidth);
+            if (parent != null && parent.GetType() != typeof(WindowControl))
+            {
+                halfWidth = (uint)(parent.transform.scale.X / 2);
+                halfHeight = (uint)(parent.transform.scale.Y / 2);
+            }
+            Vector3D<float> pos = new(halfHeight, halfWidth, -10);
             transform.SetWorldPosition(pos);
             transform.SetWorldScale(pos * 2);
 
-            float splitH = Engine.window.windowSize.Height / 3;
             float splitW = Engine.window.windowSize.Width / 3;
+            float splitH = Engine.window.windowSize.Height / 3;
             splitSize = new Vector2D<float>(splitW, splitH);
             spaceLeft = new Vector2D<float>(Engine.window.windowSize.Width, Engine.window.windowSize.Height);
             location = new Vector2D<float>(halfWidth, halfHeight);
@@ -142,8 +142,8 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
                     {
                         left = control;
                         center.X = splitSize.X / 2;
-                        control.transform.SetWorldPosition(new Vector3D<float>(transform.position.X - 0.1f, center.Y, center.X));
-                        control.transform.SetWorldScale(new Vector3D<float>(1, spaceLeft.Y, splitSize.X));
+                        control.transform.SetWorldPosition(new Vector3D<float>(center.X, center.Y, transform.position.Z + 0.1f));
+                        control.transform.SetWorldScale(new Vector3D<float>(splitSize.X, spaceLeft.Y, 1.0f));
                         spaceLeft.X -= splitSize.X;
                         location.X += splitSize.X / 2;
                     }
@@ -192,11 +192,11 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
                     }
                     if(left != null)
                     {
-                        center.X -= left.transform.scale.Z / 2;
+                        center.X -= left.transform.scale.X / 2;
                     }
                     if(right != null)
                     {
-                        center.X += right.transform.scale.Z / 2;
+                        center.X += right.transform.scale.X / 2;
                     }
                     control.transform.SetWorldPosition(new Vector3D<float>(transform.position.X - 0.1f, center.Y, center.X));
                     control.transform.SetWorldScale(new Vector3D<float>(1, spaceLeft.Y, spaceLeft.X));

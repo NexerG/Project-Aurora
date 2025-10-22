@@ -4,9 +4,7 @@
 
 struct Style
 {
-    vec3 tintDefault;
-    vec3 tintHover;
-    vec3 tintClick;
+    vec3 tint;
 };
 
 layout(location = 0) in vec2 fragUV;
@@ -29,6 +27,6 @@ void main()
     float opacity = clamp(sd / screenPxRange + 0.5f, 0.0f, 1.0f);
     //float opacity = smoothstep(-screenPxRange, screenPxRange, sd);
 
-    vec3 color = fragStyle.tintDefault;
+    vec3 color = fragStyle.tint;
     outColor = vec4(color, opacity);
 }

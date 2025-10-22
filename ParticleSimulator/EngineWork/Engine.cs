@@ -123,7 +123,8 @@ namespace ArctisAurora.EngineWork
             //TextEntity _te2 = new TextEntity("A", 70, new Vector3D<float>(1, 200, 200));
             //PanelControl control = new PanelControl();
             //ResizeableControl control = new();
-            //control.transform.SetWorldPosition(new Vector3D<float>(0.9f, 200, 400));
+            //control.transform.SetWorldPosition(new Vector3D<float>(213, 360, -10));
+            //control.transform.SetWorldScale(new Vector3D<float>(854, 720, 1));
             //ButtonControl control2 = new();
             //ButtonControl control3 = new();
             //ButtonControl control4 = new();
@@ -144,7 +145,7 @@ namespace ArctisAurora.EngineWork
 
 
             //DockingControl dock = new DockingControl(null);
-            //dock.Dock(control, DockMode.bottom);
+            //dock.Dock(control, DockMode.left);
             //dock.Dock(control2, DockMode.left);
             //dock.Dock(control3, DockMode.top);
             //dock.Dock(control4, DockMode.right);
@@ -285,7 +286,6 @@ namespace ArctisAurora.EngineWork
             }
 
             // do interpolation
-
             if (EntityManager.onStartEntities.Count > 0)
             {
                 foreach (Entity entity in EntityManager.onStartEntities)

@@ -7,13 +7,13 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
     {
         public ButtonControl()
         {
-            controlData.style.tintDefault = new Vector3D<float>(0.55f, 0.55f, 0.55f);
+            controlData.style.tint = new Vector3D<float>(0.55f, 0.55f, 0.55f);
         }
 
         public override void OnStart()
         {
-            UpdateControlData();
             base.OnStart();
+            UpdateControlData();
         }
     }
 }

@@ -47,10 +47,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         public struct ControlStyle
         {
-            [XmlAttribute("Style")]
-            public Vector3D<float> tintDefault;
-            public Vector3D<float> tintHover;
-            public Vector3D<float> tintClick;
+            public Vector3D<float> tint;
             //public Sampler image;
             //public Sampler mask;
 
@@ -87,41 +84,9 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
-        public struct QuadOffsets
-        {
-            public Vector3D<float> offset1; // bot left
-            public Vector3D<float> offset2; // bot right
-            public Vector3D<float> offset3; // top right
-            public Vector3D<float> offset4; // top left
-
-            public QuadOffsets(Vector3D<float> offset1, Vector3D<float> offset2, Vector3D<float> offset3, Vector3D<float> offset4)
-            {
-                this.offset1 = offset1;
-                this.offset2 = offset2;
-                this.offset3 = offset3;
-                this.offset4 = offset4;
-            }
-
-            public QuadOffsets(Vector3D<float>[] offsets)
-            {
-                offset1 = offsets[0];
-                offset2 = offsets[1];
-                offset3 = offsets[2];
-                offset4 = offsets[3];
-            }
-        }
-
-        [StructLayout(LayoutKind.Sequential, Pack = 1)]
-        public struct QuadData
-        {
-            public QuadUVs uvs;
-            public QuadOffsets offsets;
-        }
-
-        [StructLayout(LayoutKind.Sequential, Pack = 1)]
         public struct ControlData()
         {
-            public QuadData quadData;
+            public QuadUVs uvs;
             public ControlStyle style;
         }
 
@@ -148,7 +113,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             {
                 string hex = EnumColorToHex(value);
                 Vector3D<float> rgb = HexToRGB(hex);
-                controlData.style.tintDefault = rgb;
+                controlData.style.tint = rgb;
                 UpdateControlData();
             }
         }
@@ -160,11 +125,10 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         {
             controlData = new ControlData();
             controlData.style = ControlStyle.Default();
-            controlData.quadData = new QuadData();
+            controlData.uvs = new QuadUVs();
 
-            Dictionary<string, TextureAsset> dTextures = AssetRegistries.GetRegistry<TextureAsset>(typeof(TextureAsset));
-            maskAsset = dTextures.GetValueOrDefault("default");
-            transform.SetWorldScale(new Vector3D<float>(1, px.X, px.Y));
+            maskAsset = AssetRegistries.GetAsset<TextureAsset>("default");
+            transform.SetWorldScale(new Vector3D<float>(px.X, px.Y, 1));
 
             ControlData tempData = controlData;
             AVulkanBufferHandler.CreateBuffer(ref tempData, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);

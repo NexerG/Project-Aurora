@@ -27,7 +27,6 @@
 
   <ItemGroup>
     <Folder Include="Data\Fonts\" />
-    <Folder Include="Data\UIMasks\" />
     <Folder Include="Data\XML\Registries\Preloads\" />
     <Folder Include="EngineWork\Physics\Physics\" />
   </ItemGroup>

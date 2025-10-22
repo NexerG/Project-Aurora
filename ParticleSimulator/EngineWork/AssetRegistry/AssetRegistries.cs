@@ -35,6 +35,20 @@ namespace ArctisAurora.EngineWork.AssetRegistry
             return null;
         }
 
+        public static T GetAsset<T>(string name)
+        {
+            Type t = typeof(T);
+            if(library.TryGetValue(t, out var dict))
+            {
+                var d = (Dictionary<string, T>)dict;
+                if(d.TryGetValue(name, out var asset))
+                {
+                    return asset;
+                }
+            }
+            throw new Exception("Asset not found");
+        }
+
         //public static Dictionary<string, AVulkanMesh> meshes = new Dictionary<string, AVulkanMesh>();
         //
         //public static Dictionary<string, FontAsset> fonts = new Dictionary<string, FontAsset>();

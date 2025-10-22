@@ -135,13 +135,10 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
 
         private bool SolvePositions(VulkanControl entity, Vector2D<float> pos, Vector2D<float>[] localVerts)
         {
-            float offsetX = entity.controlData.quadData.offsets.offset1.Z;
-            float offsetY = entity.controlData.quadData.offsets.offset1.Y;
-            // check for hovering on each entity
-            localVerts[0] = new Vector2D<float>(-0.5f + offsetX, -0.5f + offsetY);
-            localVerts[1] = new Vector2D<float>(0.5f + offsetX, -0.5f + offsetY);
-            localVerts[2] = new Vector2D<float>(0.5f + offsetX, 0.5f + offsetY);
-            localVerts[3] = new Vector2D<float>(-0.5f + offsetX, 0.5f + offsetY);
+            localVerts[0] = new Vector2D<float>(-0.5f, -0.5f);
+            localVerts[1] = new Vector2D<float>(0.5f, -0.5f);
+            localVerts[2] = new Vector2D<float>(0.5f, 0.5f);
+            localVerts[3] = new Vector2D<float>(-0.5f, 0.5f);
 
             localVerts = TransformToWorld(entity.transform, localVerts);
             return IsPointInQuad(pos, localVerts);

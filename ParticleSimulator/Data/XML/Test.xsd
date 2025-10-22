@@ -77,6 +77,7 @@
       <xs:element name="Window" type="Window" />
       <xs:element name="Button" type="Button" />
       <xs:element name="Dock" type="Dock" />
+      <xs:element name="GridList" type="GridList" />
     </xs:choice>
   </xs:complexType>
   <xs:complexType name="Dock">
@@ -85,12 +86,19 @@
     </xs:complexContent>
   </xs:complexType>
   <xs:element name="Dock" type="Dock" />
+  <xs:complexType name="GridList">
+    <xs:complexContent mixed="false">
+      <xs:extension base="Container" />
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:element name="GridList" type="GridList" />
   <xs:complexType name="Container" abstract="true">
     <xs:choice minOccurs="0" maxOccurs="unbounded">
       <xs:element name="Panel" type="Panel" />
       <xs:element name="Window" type="Window" />
       <xs:element name="Button" type="Button" />
       <xs:element name="Dock" type="Dock" />
+      <xs:element name="GridList" type="GridList" />
     </xs:choice>
   </xs:complexType>
 </xs:schema>

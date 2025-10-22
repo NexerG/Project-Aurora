@@ -58,5 +58,20 @@ namespace ArctisAurora.EngineWork.AssetRegistry
 
             throw new Exception("Default texture not found");
         }
+
+        public void LoadInvisible()
+        {
+            string path = Paths.UIMASKS + "\\invisibleMask.png";
+            if (File.Exists(path))
+            {
+                image = Image.Load<Rgba32>(path);
+                AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image, Format.R8G8B8A8Srgb);
+                AVulkanBufferHandler.CreateImageView(ref Renderer.vk, ref Renderer.logicalDevice, ref _textureImage, ref textureImageView, Format.R8G8B8A8Srgb, ImageAspectFlags.ColorBit);
+
+                return;
+            }
+
+            throw new Exception("Alphaless texture not found");
+        }
     }
 }

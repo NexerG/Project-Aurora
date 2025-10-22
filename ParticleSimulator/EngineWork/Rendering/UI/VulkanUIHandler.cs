@@ -283,8 +283,9 @@ namespace ArctisAurora.EngineWork.Rendering.UI
             XElement root = doc.Root;
             WindowControl topControl = new WindowControl();
             ResolveAttributes(root, topControl);
-            Vector3D<float> pos = new Vector3D<float>(1.0f, topControl.Width, topControl.Height);
+            Vector3D<float> pos = new Vector3D<float>(topControl.Width / 2, topControl.Height / 2, -10.0f);
             topControl.transform.SetWorldPosition(pos);
+            topControl.transform.SetWorldScale(new Vector3D<float>(topControl.Width, topControl.Height, 1.0f));
             RecursiveParse(root, topControl, pos);
             return topControl;
         }
@@ -296,8 +297,9 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                 if (!ControlMap.TryGetValue(element.Name.LocalName, out var controlType))
                     throw new Exception($"Unknown control type: {element.Name}");
                 VulkanControl c = (VulkanControl)Activator.CreateInstance(controlType);
-                pos -= new Vector3D<float>(0.1f, 0f, 0f);
+                pos += new Vector3D<float>(0f, 0f, 0.1f);
                 c.transform.SetWorldPosition(pos);
+                c.parent = topControl;
                 ResolveAttributes(element, c);
                 topControl.AddChild(c);
 
@@ -309,7 +311,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
         {
             foreach (XAttribute attr in root.Attributes())
             {
-                var prop = topControl.GetType().GetMember(attr.Name.LocalName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase).First();
+                var prop = topControl.GetType().GetMember(attr.Name.LocalName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase).FirstOrDefault();
                 if (prop != null)
                 {
                     Type memberType = prop.MemberType == MemberTypes.Field ? ((FieldInfo)prop).FieldType : ((PropertyInfo)prop).PropertyType;

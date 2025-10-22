@@ -17,14 +17,11 @@ layout(set = 0, binding = 1) readonly buffer Transform{
 
 struct Style
 {
-    vec3 tintDefault;
-    vec3 tintHover;
-    vec3 tintClick;
+    vec3 tint;
 };
 
 layout(set = 0, binding = 2, scalar) readonly buffer vertexData {
     vec2[4] UV;
-    vec3[4] offset;
     Style style;
 } VD[];
 
@@ -33,7 +30,7 @@ layout(location = 1) out flat uint fragInstanceID;
 layout(location = 2) out Style fragStyle;
 
 void main() {
-    vec3 tPos = vec3(ts.transforms[gl_InstanceIndex] * vec4(inPosition + VD[gl_InstanceIndex].offset[gl_VertexIndex], 1.0));
+    vec3 tPos = vec3(ts.transforms[gl_InstanceIndex] * vec4(inPosition, 1.0));
     vec4 pos = ubo.proj * ubo.view * vec4(tPos, 1.0f);
 
     gl_Position = pos;

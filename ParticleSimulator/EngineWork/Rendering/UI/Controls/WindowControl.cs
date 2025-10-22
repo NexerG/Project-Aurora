@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ArctisAurora.EngineWork.AssetRegistry;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -16,5 +17,10 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 
         [A_VulkanControlProperty("Height")]
         public int Height;
+
+        public WindowControl()
+        {
+            maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");
+        }
     }
 }
