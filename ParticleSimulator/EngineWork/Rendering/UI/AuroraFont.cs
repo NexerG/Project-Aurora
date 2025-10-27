@@ -6,7 +6,6 @@ using System.Runtime.InteropServices;
 
 namespace ArctisAurora.EngineWork.Rendering.UI
 {
-    [@Serializable]
     public class AuroraFont : IDeserialize
     {
         [StructLayout(LayoutKind.Sequential, Pack = 1), @Serializable]
@@ -191,7 +190,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
 
             string baseName = fontName.Split('.')[0];
             string atlasDataPath = Path.Combine(Paths.FONTS, baseName, $"{baseName}.agd"); // aurora glyph data
-            Serializer.Serialize(glyphs, atlasDataPath);
+            Serializer.SerializeAttributed(glyphs, atlasDataPath);
 
             //here we generate the atlas
             int glyphsPerAxis = (int)Math.Ceiling(MathF.Sqrt(fontData.textData.characterCount));

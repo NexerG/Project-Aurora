@@ -49,7 +49,7 @@ namespace ArctisAurora.EngineWork.Serialization
             string baseName = fontName.Split('.')[0];
             string path = Paths.FONTS + $"\\{baseName}\\{baseName}" + ".afm";
 
-            Serializer.Serialize(font, path);
+            Serializer.SerializeAttributed(font, path);
             reader.Dispose();
             reader.Close();
             fs.Dispose();

@@ -83,6 +83,7 @@ namespace ArctisAurora.EngineWork
             running = true;
             SC = s;
             Bootstrapper.PrepareRegistries();
+            Bootstrapper.RegisterTypes();
 
             VulkanUIHandler.GenerateTestXSD();
 
@@ -117,6 +118,13 @@ namespace ArctisAurora.EngineWork
             renderer.CreateSyncObjects();
 
             // UI testing
+            AuroraScene testScene = new AuroraScene();
+            Entity testEnt = new Entity("testEnt");
+            testScene.entities.Add(testEnt);
+            string path = Paths.SCENES + "\\TestScene.as";
+            AuroraScene.SaveScene(testScene);
+            //Serializer.SerializeAll(testScene, path);
+
             WindowControl windowControl = VulkanUIHandler.ParseXML("UITest.xml");
 
             //TextEntity _te = new TextEntity("A", 70, new Vector3D<float>(1, 100, 100));

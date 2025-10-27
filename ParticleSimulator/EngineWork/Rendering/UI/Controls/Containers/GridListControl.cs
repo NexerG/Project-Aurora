@@ -38,7 +38,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
             transform.SetWorldPosition(parent.transform.position);
             transform.SetWorldScale(parent.transform.scale);
             float maxRows = MathF.Floor(transform.scale.Y / (cellHeight + verticalSpacing));
-            float maxCols = MathF.Floor(transform.scale.X / (cellWidth + horizontalSpacing)) * 2;
+                float maxCols = MathF.Floor(transform.scale.X / (cellWidth + horizontalSpacing)) * 2;
             if (parent != null && parent.GetType() == typeof(WindowControl))
             {
                 maxRows = MathF.Floor((Engine.window.windowSize.Height - verticalMargin) / (cellHeight + verticalSpacing));

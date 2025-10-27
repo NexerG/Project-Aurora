@@ -53,7 +53,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 
             public static ControlStyle Default()
             {
-                Dictionary<string, ControlStyle> dStyles = AssetRegistries.GetRegistry<ControlStyle>(typeof(ControlStyle));
+                Dictionary<string, ControlStyle> dStyles = AssetRegistries.GetRegistry<string, ControlStyle>(typeof(ControlStyle));
                 return dStyles.GetValueOrDefault("default");
             }
         }

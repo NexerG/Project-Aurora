@@ -19,13 +19,13 @@ namespace ArctisAurora.EngineWork.AssetRegistry
         public TextureAsset() { }
         public TextureAsset(string name)
         {
-            Dictionary<string, TextureAsset> d = AssetRegistries.GetRegistry<TextureAsset>(typeof(TextureAsset));
+            Dictionary<string, TextureAsset> d = AssetRegistries.GetRegistry<string, TextureAsset>(typeof(TextureAsset));
             d.Add(name, this);
         }
 
         public override void LoadAsset(Asset asset, string name, string path)
         {
-            Dictionary<string, TextureAsset> d = AssetRegistries.GetRegistry<TextureAsset>(typeof(TextureAsset));
+            Dictionary<string, TextureAsset> d = AssetRegistries.GetRegistry<string, TextureAsset>(typeof(TextureAsset));
             if (d.ContainsKey(name))
             {
                 asset = d[name];

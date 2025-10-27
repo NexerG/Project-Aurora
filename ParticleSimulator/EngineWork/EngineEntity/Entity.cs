@@ -2,19 +2,29 @@
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
+using ArctisAurora.EngineWork.Serialization;
 
 namespace ArctisAurora.EngineWork.EngineEntity
 {
+    [@Serializable]
     public class Entity
     {
         //variables
+        [@Serializable]
         bool enabled = true;
+        [@Serializable]
         public Transform transform;
+        [@Serializable]
         public string name = "entity";
 
+        [@Serializable]
         public List<EntityComponent> _components = new List<EntityComponent>();
-        public List<Entity> _children = new List<Entity>();
+        //public List<Entity> _children = new List<Entity>();
+        [NonSerializable]
         public Entity parent;
+
+        //[NonSerializable]
+        //public Entity child;
 
         public Entity()
         {
@@ -139,7 +149,7 @@ namespace ArctisAurora.EngineWork.EngineEntity
             return null;
         }
 
-        public Ent CreateChildEntity<Ent>() where Ent : Entity, new()
+        /*public Ent CreateChildEntity<Ent>() where Ent : Entity, new()
         {
             Ent entity = new Ent();
             _children.Add(entity);
@@ -174,7 +184,7 @@ namespace ArctisAurora.EngineWork.EngineEntity
         public List<Entity> GetAllChildrenEntities()
         {
             return _children;
-        }
+        }*/
 
         public EntComp RemoveComponent<EntComp>() where EntComp : EntityComponent
         {

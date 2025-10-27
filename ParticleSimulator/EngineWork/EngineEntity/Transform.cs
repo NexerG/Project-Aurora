@@ -1,13 +1,16 @@
 ﻿using ArctisAurora.EngineWork.Rendering;
+using ArctisAurora.EngineWork.Serialization;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.EngineWork.EngineEntity
 {
+    [@Serializable]
     public class Transform
     {
         public Vector3D<float> position = new Vector3D<float>(0, 0, 0);
         public Vector3D<float> rotation = new Vector3D<float>(0, 0, 0);
         public Vector3D<float> scale = new Vector3D<float>(1, 1, 1);
+        [NonSerializable]
         internal Entity parent;
         internal bool _changed = false;
 

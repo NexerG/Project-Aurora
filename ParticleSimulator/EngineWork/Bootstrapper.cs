@@ -2,6 +2,9 @@
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Serialization;
 using Assimp;
+using Microsoft.Extensions.DependencyModel;
+using System.Reflection;
+using System.Security.Cryptography.Pkcs;
 using System.Xml.Linq;
 using static ArctisAurora.EngineWork.Rendering.UI.Controls.VulkanControl;
 
@@ -35,6 +38,7 @@ namespace ArctisAurora.EngineWork
         {
             ["string"] = typeof(string),
             ["int"] = typeof(int),
+            ["uint"] = typeof(uint),
             ["float"] = typeof(float),
             ["double"] = typeof(double),
             ["bool"] = typeof(bool),
@@ -74,7 +78,7 @@ namespace ArctisAurora.EngineWork
                 Type dictType = typeof(Dictionary<,>).MakeGenericType(keyType, valueType);
                 object dictInstance = Activator.CreateInstance(dictType)!;
 
-                AssetRegistries.CreateEntry(valueType);
+                AssetRegistries.AddLibraryEntry(dictInstance, valueType);
 
                 //scan the registry type xml for pre-stored assets
                 string registryPath = Paths.REGISTRIES + "\\Preloads\\" + name + ".xml";
@@ -89,8 +93,6 @@ namespace ArctisAurora.EngineWork
                 }
             }
         }
-
-
 
         private static Type? FindType(string typeName)
         {
@@ -123,7 +125,7 @@ namespace ArctisAurora.EngineWork
             // but for now it'll just be a hardcoded list of assets
 
             // load default mesh
-            Dictionary<string, AVulkanMesh> dMeshes = AssetRegistries.GetRegistry<AVulkanMesh>(typeof(AVulkanMesh));
+            Dictionary<string, AVulkanMesh> dMeshes = AssetRegistries.GetRegistry<string, AVulkanMesh>(typeof(AVulkanMesh));
             AVulkanMesh mesh = AVulkanMesh.LoadDefault();
             dMeshes.Add("default", mesh);
 
@@ -144,7 +146,7 @@ namespace ArctisAurora.EngineWork
             invisible.LoadInvisible();
 
             // load default style
-            Dictionary<string, ControlStyle> dStyles = AssetRegistries.GetRegistry<ControlStyle>(typeof(ControlStyle));
+            Dictionary<string, ControlStyle> dStyles = AssetRegistries.GetRegistry<string, ControlStyle>(typeof(ControlStyle));
             ControlStyle style = new ControlStyle();
             style.tint = new Silk.NET.Maths.Vector3D<float>(1, 1, 1);
             dStyles.Add("default", style);
@@ -152,6 +154,35 @@ namespace ArctisAurora.EngineWork
 
         public static void RegisterFunctions()
         {
+
+        }
+
+        public static void RegisterTypes()
+        {
+            var asm = Assembly.GetExecutingAssembly();
+            var types = asm.GetTypes()
+            .Where(t => t.GetCustomAttribute<@Serializable>() != null)
+            .ToList();
+
+            Dictionary<uint, Type> serializableTypes = AssetRegistries.GetRegistry<uint, Type>(typeof(Type));
+            foreach (var t in types)
+            {
+                var attr = t.GetCustomAttribute<@Serializable>();
+                if (attr != null) 
+                {
+                    attr.ID = Serializable.GenerateID(t.Name);
+                    serializableTypes.Add((uint)attr.ID, t);
+                }
+            }
+        }
+
+        public static void EgineInitializer()
+        {
+            PrepareRegistries();
+            PreprareDefaultAssets();
+
+            //PreprareAssets();
+            //RegisterFunctions();
 
 
         }

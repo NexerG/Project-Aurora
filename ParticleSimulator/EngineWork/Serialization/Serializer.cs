@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using System.Text.Json.Serialization;
+using Windows.ApplicationModel.VoiceCommands;
 
 namespace ArctisAurora.EngineWork.Serialization
 {
@@ -8,15 +9,78 @@ namespace ArctisAurora.EngineWork.Serialization
         public void Deserialize(string path);
     }
 
-    internal class Serializer
+    internal sealed class Serializer
     {
-        public static void Serialize<T>(T obj, string path)
+        public static void SerializeAll<T>(T obj, string path)
         {
-            bool isSerializable = typeof(T).IsDefined(typeof(Serializable), false);
+            if (!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+            }
+
+            using FileStream stream = new FileStream(path, FileMode.Create, FileAccess.ReadWrite);
+            using BinaryWriter writer = new BinaryWriter(stream);
+
+            RecursiveSerializeAll(obj, writer);
+            writer.Flush();
+            writer.Close();
+        }
+
+        private static void RecursiveSerializeAll<T>(T obj, BinaryWriter writer)
+        {
+
+            Type type = obj.GetType();
+            var fields = type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+            foreach (var field in fields)
+            {
+                Type fieldType = field.FieldType;
+                //Console.WriteLine(obj.ToString() + "---" +fieldType.ToString());
+                object value = field.GetValue(obj);
+
+                if (field.IsDefined(typeof(NonSerializable), false)) // skip non-serializable fields
+                {
+                    //Console.Write("--- SKIPPED");
+                    continue;
+                }
+
+                if (fieldType.IsPrimitive || fieldType == typeof(string))
+                {
+                    writer.Write(ConvertToBytes(value));
+                }
+                else if (fieldType.IsValueType && !fieldType.IsPrimitive)
+                {
+                    //if(fieldType.IsDefined(typeof(Serializable), false))
+                    RecursiveSerializeAll(value, writer); // Recurse into struct
+                }
+                else if (fieldType.IsArray)
+                {
+                    Array array = (Array)value;
+                    //Type elementType = fieldType.GetElementType();
+
+                    foreach (var element in array)
+                    {
+                        if (element != null)
+                            RecursiveSerializeAll(element, writer); // recurse into each array element
+                    }
+                }
+                else if (!fieldType.IsPrimitive && fieldType != typeof(string)) //its a class so we do it again
+                {
+                    if (value != null)
+                        RecursiveSerializeAll(value, writer);
+                }
+            }
+        }
+
+
+
+        public static void SerializeAttributed<T>(T obj, string path)
+        {
+            /*bool isSerializable = typeof(T).IsDefined(typeof(Serializable), false);
             if (!isSerializable)
             {
                 throw new InvalidOperationException($"Type {typeof(T)} is not marked as serializable.");
-            }
+            }*/
 
             if (!Directory.Exists(path))
             {
@@ -55,25 +119,51 @@ namespace ArctisAurora.EngineWork.Serialization
                 else if (fieldType.IsValueType && !fieldType.IsPrimitive)
                 {
                     //if(fieldType.IsDefined(typeof(Serializable), false))
+                    /*var attribute = fieldType.GetCustomAttribute<@Serializable>();
+                    if (attribute != null)
+                    {
+                        attribute.ID = Serializable.GenerateID(field.Name);
+                        writer.Write(ConvertToBytes(attribute.ID));
+                    }*/
                     RecursiveSerialize(value, writer); // Recurse into struct
                 }
                 else if (fieldType.IsArray)
                 {
                     Array array = (Array)value;
-                    Type elementType = fieldType.GetElementType();
+                    writer.Write(array.Length); // write array length
 
                     foreach (var element in array)
                     {
                         if (element != null)
+                        {
+                            var attribute = fieldType.GetCustomAttribute<@Serializable>();
+                            if (attribute != null)
+                            {
+                                attribute.ID = Serializable.GenerateID(field.Name);
+                                writer.Write(ConvertToBytes(attribute.ID));
+                            }
                             RecursiveSerialize(element, writer); // recurse into each array element
+                        }
                     }
                 }
                 else if (!fieldType.IsPrimitive && fieldType != typeof(string))
                 {
-                    if (value != null && fieldType.IsDefined(typeof(Serializable), false))
+                    if (value != null && field.IsDefined(typeof(Serializable), false))
                         RecursiveSerialize(value, writer);
                 }
             }
+        }
+
+        private static T Deserialize<T>()
+        {
+            Type t = typeof(T);
+            var fields = t.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+            foreach (var field in fields)
+            {
+
+            }
+
+            return default(T);
         }
 
         private static byte[] ConvertToBytes(Object value)
