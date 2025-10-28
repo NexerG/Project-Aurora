@@ -4,14 +4,19 @@ using Silk.NET.Maths;
 
 namespace ArctisAurora.EngineWork.EngineEntity
 {
-    [@Serializable]
     public class Transform
     {
+        [@Serializable]
         public Vector3D<float> position = new Vector3D<float>(0, 0, 0);
+        [@Serializable]
         public Vector3D<float> rotation = new Vector3D<float>(0, 0, 0);
+        [@Serializable]
         public Vector3D<float> scale = new Vector3D<float>(1, 1, 1);
+
         [NonSerializable]
         internal Entity parent;
+
+        [@Serializable]
         internal bool _changed = false;
 
         public Transform() {}

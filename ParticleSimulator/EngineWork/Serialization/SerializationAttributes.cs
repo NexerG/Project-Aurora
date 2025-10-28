@@ -4,7 +4,7 @@ using System.Text;
 
 namespace ArctisAurora.EngineWork.Serialization
 {
-    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = false, Inherited = false)]
+    [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
     public class Serializable : Attribute
     {
         public uint? ID { get; set; }

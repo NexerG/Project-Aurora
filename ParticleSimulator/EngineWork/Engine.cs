@@ -1,4 +1,5 @@
-﻿using ArctisAurora.EngineWork.AssetRegistry;
+﻿using ArctisAurora.CustomEntityComponents;
+using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Physics.UICollision;
 using ArctisAurora.EngineWork.Rendering;
@@ -120,10 +121,16 @@ namespace ArctisAurora.EngineWork
             // UI testing
             AuroraScene testScene = new AuroraScene();
             Entity testEnt = new Entity("testEnt");
+            TestComponent testComp = new TestComponent();
+            testComp.testValue = 42;
+            testEnt._components.Add(testComp);
             testScene.entities.Add(testEnt);
-            string path = Paths.SCENES + "\\TestScene.as";
+            string path = Paths.SCENES + "\\NewScene.as";
             AuroraScene.SaveScene(testScene);
             //Serializer.SerializeAll(testScene, path);
+
+            AuroraScene deserializedScene = new AuroraScene();
+            Serializer.Deserialize<AuroraScene>(path, ref deserializedScene);
 
             WindowControl windowControl = VulkanUIHandler.ParseXML("UITest.xml");
 
