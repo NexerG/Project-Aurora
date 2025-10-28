@@ -222,7 +222,7 @@ namespace ArctisAurora.EngineWork.Serialization
                         TypeCode.UInt64 => BitConverter.ToUInt64(buffer, 0),
                         _ => throw new NotSupportedException($"Type {fieldtype} is not a supported primitive type."),
                     };
-                    field.SetValue(obj, value);
+                    field.SetValueDirect(__makeref(obj), value);
                 }
                 if(fieldtype == typeof(string))
                 {
@@ -240,8 +240,8 @@ namespace ArctisAurora.EngineWork.Serialization
                     // Recurse into struct
                     object subObj = Activator.CreateInstance(fieldtype);
                     var method = typeof(Serializer)
-                                        .GetMethod(nameof(RecursiveDeserialize), BindingFlags.NonPublic | BindingFlags.Static)!
-                                        .MakeGenericMethod(fieldtype);
+                                .GetMethod(nameof(RecursiveDeserialize), BindingFlags.NonPublic | BindingFlags.Static)!
+                                .MakeGenericMethod(fieldtype);
 
                     subObj = method.Invoke(null, new object[] { stream, subObj })!;
                     field.SetValue(obj, subObj);

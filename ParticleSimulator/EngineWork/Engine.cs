@@ -119,19 +119,6 @@ namespace ArctisAurora.EngineWork
             renderer.CreateSyncObjects();
 
             // UI testing
-            AuroraScene testScene = new AuroraScene();
-            Entity testEnt = new Entity("testEnt");
-            TestComponent testComp = new TestComponent();
-            testComp.testValue = 42;
-            testEnt._components.Add(testComp);
-            testScene.entities.Add(testEnt);
-            string path = Paths.SCENES + "\\NewScene.as";
-            AuroraScene.SaveScene(testScene);
-            //Serializer.SerializeAll(testScene, path);
-
-            AuroraScene deserializedScene = new AuroraScene();
-            Serializer.Deserialize<AuroraScene>(path, ref deserializedScene);
-
             WindowControl windowControl = VulkanUIHandler.ParseXML("UITest.xml");
 
             //TextEntity _te = new TextEntity("A", 70, new Vector3D<float>(1, 100, 100));
