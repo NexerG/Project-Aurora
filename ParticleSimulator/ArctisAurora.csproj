@@ -29,7 +29,7 @@
     <Folder Include="Data\Fonts\" />
     <Folder Include="Data\Scenes\" />
     <Folder Include="Data\XML\Registries\Preloads\" />
-    <Folder Include="EngineWork\Physics\Physics\" />
+    <Folder Include="Core\Physics\Physics\" />
   </ItemGroup>
 
   <ItemGroup>
@@ -54,9 +54,9 @@
   </ItemGroup>
   
   <ItemGroup>
-    <Compile Remove="EngineWork\Rendering\Pipelines\**" />
-    <EmbeddedResource Remove="EngineWork\Rendering\Pipelines\**" />
-    <None Remove="EngineWork\Rendering\Pipelines\**" />
+    <Compile Remove="Core\Rendering\Pipelines\**" />
+    <EmbeddedResource Remove="Core\Rendering\Pipelines\**" />
+    <None Remove="Core\Rendering\Pipelines\**" />
   </ItemGroup>
   
   <ItemGroup>
