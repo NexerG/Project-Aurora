@@ -3,6 +3,7 @@ using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using ArctisAurora.EngineWork.Serialization;
+using Windows.Web.UI;
 
 namespace ArctisAurora.EngineWork.EngineEntity
 {
@@ -23,8 +24,8 @@ namespace ArctisAurora.EngineWork.EngineEntity
         [NonSerializable]
         public Entity parent;
 
-        //[NonSerializable]
-        //public Entity child;
+        [@Serializable]
+        public List<Entity> children = new List<Entity>();
 
         public Entity()
         {
@@ -149,16 +150,22 @@ namespace ArctisAurora.EngineWork.EngineEntity
             return null;
         }
 
-        /*public Ent CreateChildEntity<Ent>() where Ent : Entity, new()
+        public virtual void AddChild(Entity entity)
+        {
+            children.Add(entity);
+            entity.parent = this;
+        }
+
+        public virtual Ent CreateChildEntity<Ent>() where Ent : Entity, new()
         {
             Ent entity = new Ent();
-            _children.Add(entity);
+            children.Add(entity);
             return entity;
         }
 
-        public Entity GetChildEntityByName(string querryName)
+        public virtual Entity GetChildEntityByName(string querryName)
         {
-            foreach(Entity ent in _children)
+            foreach(Entity ent in children)
             {
                 if(ent.name == querryName)
                 {
@@ -168,10 +175,10 @@ namespace ArctisAurora.EngineWork.EngineEntity
             return null;
         }
 
-        public List<Entity> GetAllChildrenEntitiesByName(string querryName)
+        public virtual List<Entity> GetAllChildrenEntitiesByName(string querryName)
         {
             List<Entity> _childrenByName = new List<Entity>();
-            foreach(Entity ent in _children)
+            foreach(Entity ent in children)
             {
                 if(ent.name == querryName)
                 {
@@ -181,10 +188,10 @@ namespace ArctisAurora.EngineWork.EngineEntity
             return _childrenByName;
         }
 
-        public List<Entity> GetAllChildrenEntities()
+        public virtual List<Entity> GetAllChildrenEntities()
         {
-            return _children;
-        }*/
+            return children;
+        }
 
         public EntComp RemoveComponent<EntComp>() where EntComp : EntityComponent
         {

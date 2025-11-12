@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace ArctisAurora.EngineWork
 {
-    internal class AuroraScene
+    public class AuroraScene
     {
         [@Serializable]
         public string sceneName = "NewScene";

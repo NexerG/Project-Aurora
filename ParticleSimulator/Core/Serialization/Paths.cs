@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ArctisAurora.EngineWork.Serialization
 {
-    internal static class Paths
+    public static class Paths
     {
         public static readonly string BUILD_UI = GetPath("Data\\XML");
 

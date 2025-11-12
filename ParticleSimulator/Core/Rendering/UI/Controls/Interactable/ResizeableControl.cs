@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
 {
-    public class ResizeableControl : AbstractInteractableControl
+    public class ResizeableControl : PanelControl
     {
         bool isResizing = false;
         bool left = false;

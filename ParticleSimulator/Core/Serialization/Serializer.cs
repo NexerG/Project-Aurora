@@ -15,7 +15,7 @@ namespace ArctisAurora.EngineWork.Serialization
         public void Deserialize(string path);
     }
 
-    internal sealed class Serializer
+    public sealed class Serializer
     {
         public static void SerializeAll<T>(T obj, string path)
         {
@@ -114,7 +114,7 @@ namespace ArctisAurora.EngineWork.Serialization
                 Type fieldType = field.FieldType;
                 object value = field.GetValue(obj);
 
-                if (field.IsDefined(typeof(NonSerializable), false))
+                if (field.IsDefined(typeof(NonSerializable), true))
                 {
                     continue;
                 }
@@ -176,7 +176,7 @@ namespace ArctisAurora.EngineWork.Serialization
                 }
                 else if (!fieldType.IsPrimitive && fieldType != typeof(string))
                 {
-                    if (value != null && field.IsDefined(typeof(Serializable), false))
+                    if (value != null && field.IsDefined(typeof(Serializable), true))
                         RecursiveSerialize(value, writer);
                 }
             }
@@ -195,7 +195,7 @@ namespace ArctisAurora.EngineWork.Serialization
             var fields = t.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
             foreach (var field in fields)
             {
-                if (field.IsDefined(typeof(NonSerializable), false))
+                if (field.IsDefined(typeof(NonSerializable), true))
                 {
                     continue;
                 }

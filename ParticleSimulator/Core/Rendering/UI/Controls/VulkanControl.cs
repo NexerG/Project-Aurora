@@ -1,11 +1,11 @@
 ﻿using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.EngineEntity;
+using ArctisAurora.EngineWork.Physics.UICollision;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.InteropServices;
-using System.Xml.Serialization;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls
@@ -25,9 +25,17 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
     public sealed class A_VulkanControlPropertyAttribute: Attribute
     {
         public string Name { get; }
+        public string Description { get; set; } = "";
+
         public A_VulkanControlPropertyAttribute(string name)
         {
             Name = name;
+        }
+
+        public A_VulkanControlPropertyAttribute(string name, string description)
+        {
+            Name = name;
+            Description = description;
         }
     }
 
@@ -37,12 +45,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         red, green, blue, white, black, yellow, cyan, magenta, gray, orange, purple, brown, pink, lime, navy, teal,
     }
 
-    public interface IControlChild
-    {
-        public void AddChild(VulkanControl control);
-    }
-
-    public unsafe class VulkanControl : Entity, IControlChild
+    public unsafe class VulkanControl : Entity
     {
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         public struct ControlStyle
@@ -90,9 +93,42 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             public ControlStyle style;
         }
 
+        private int _width = 72;
+        [A_VulkanControlProperty("Width", "Width in pixels")]
+        public int width
+        {
+            get => _width;
+            set
+            {
+                _width = value;
+                px.X = value;
+                transform.SetWorldScale(new Vector3D<float>(px.X, px.Y, 1));
+            }
+        }
+
+        private int _height = 72;
+        [A_VulkanControlProperty("Height", "Height in pixels")]
+        public int height
+        {
+            get => _height;
+            set
+            {
+                _height = value;
+                px.Y = value;
+                transform.SetWorldScale(new Vector3D<float>(px.X, px.Y, 1));
+            }
+        }
+
         public Vector2D<float> px = new Vector2D<float>(72, 72);
 
+        // postioning
+        [A_VulkanControlProperty("HorizontalPos", "Sets the position of the current control within it's parent. [0;1]")]
+        public float horizontalPosition = 0.5f;
 
+        [A_VulkanControlProperty("VerticalPos", "Sets the position of the current control within it's parent. [0;1]")]
+        public float verticalPosition = 0.5f;
+
+        // rendering
         public ControlData controlData;
         public Buffer controlDataBuffer;
         public DeviceMemory controlDataBufferMemory;
@@ -103,6 +139,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         public Sampler colorSampler;
         public TextureAsset colorAsset;
 
+        // settings
         [A_VulkanControlProperty("DockMode")]
         public DockMode dockMode;
         [A_VulkanControlProperty("ControlColor")]
@@ -118,8 +155,46 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             }
         }
 
+        [A_VulkanControlProperty("StackIndex")]
+        public int stackIndex = 0;
+
         public VulkanControl? child;
         private ControlColor color;
+
+        // EVENTS
+        //fuck do i do with this yet to figure out. tbh idk if this is even a problem
+        public event Action<Vector2D<float>> hover;
+        [A_VulkanControlProperty("onEnter")]
+        public Action onEnter;
+        [A_VulkanControlProperty("onExit")]
+        public Action onExit;
+
+        [A_VulkanControlProperty("onClick")]
+        public Action onClick;
+        [A_VulkanControlProperty("onAltClick")]
+        public Action onAltClick;
+
+        public Action onDoubleClick;
+
+        [A_VulkanControlProperty("onRelease")]
+        public Action onRelease;
+        [A_VulkanControlProperty("onAltRelease")]
+        public Action onAltRelease;
+
+        public Action<Vector2D<float>, Vector2D<float>> onDrag;
+        [A_VulkanControlProperty("onDragStop")]
+        public Action onDragStop;
+
+        private bool entered = false;
+        private bool clicked = false;
+        private bool altClicked = false;
+        private bool dragging = false;
+
+        private DateTime lastClick = DateTime.Now;
+
+        // EXTRAS
+        public ContextMenuControl contextMenu;
+
 
         public VulkanControl()
         {
@@ -176,11 +251,205 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             AVulkanBufferHandler.UpdateBuffer(ref controlData, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
         }
 
-        public virtual void AddChild(VulkanControl control)
+        public override void AddChild(Entity entity)
         {
-            if(child != null) throw new Exception("Control can only have one child");
-            child = control;
+            //vulkan control only
+
+            if (entity is not VulkanControl control) throw new Exception("Child entity must be a VulkanControl");
+
+            if(children.Count > 0)
+            {
+                throw new Exception("Control can only have one child");
+            }
+            else
+            {
+                children.Add(entity);
+            }
+            control.parent = this;
+
+            // transform child
+            Vector3D<float> transformedLoc = transform.position;
+            if(control is not AbstractContainerControl container)
+            {
+                // map chil horizontal and vertical pos to parent size
+                transformedLoc.X += (control.horizontalPosition - 0.5f) * transform.scale.X;
+                transformedLoc.Y += (control.verticalPosition - 0.5f) * transform.scale.Y;
+                //transformedLoc.Z = transform.position.Z;
+            }
+            else
+            {
+                container.transform.SetWorldScale(transform.scale);
+            }
+            control.transform.SetWorldPosition(transformedLoc);
         }
+
+
+        #region mouse_events
+        // HOVER
+        public void RegisterHover(Action<Vector2D<float>> action)
+        {
+            hover += action;
+        }
+
+        public void ResolveHover(Vector2D<float> pos)
+        {
+            if (clicked)
+            {
+                dragging = true;
+                UICollisionHandling.instance.dragging = this;
+                return;
+            }
+            hover?.Invoke(pos);
+        }
+
+        // ENTER
+        public void RegisterOnEnter(Action action)
+        {
+            onEnter += action;
+        }
+
+        public virtual void ResolveEnter()
+        {
+            if (!entered)
+            {
+                onEnter?.Invoke();
+            }
+            entered = true;
+        }
+
+        // EXIT
+        public void RegisterOnExit(Action action)
+        {
+            onExit += action;
+        }
+
+        public virtual void ResolveExit()
+        {
+            if (entered)
+            {
+                onExit?.Invoke();
+            }
+            entered = false;
+        }
+
+        // DRAG
+        public void RegisterOnDrag(Action<Vector2D<float>, Vector2D<float>> action)
+        {
+            onDrag += action;
+        }
+
+        public virtual void ResolveDrag(Vector2D<float> lastPos, Vector2D<float> delta)
+        {
+            //if (onDrag != null)
+            //{
+            onDrag?.Invoke(lastPos, delta);
+            //}
+        }
+
+        public virtual void RegisterDragStop(Action action)
+        {
+            onDragStop += action;
+        }
+
+        public virtual void StopDrag()
+        {
+            onDragStop?.Invoke();
+            UICollisionHandling.instance.dragging = null;
+        }
+
+        // CLICK
+        public void RegisterOnClick(Action action)
+        {
+            onClick += action;
+        }
+
+        public virtual void ResolveClick(Vector2D<float> oldPos, Vector2D<float> delta)
+        {
+            if (!clicked)
+            {
+                DateTime click = DateTime.Now;
+                TimeSpan span = click - lastClick;
+                lastClick = click;
+                if (span.TotalMilliseconds < Engine.doubleClickTime)
+                {
+                    ResolveDoubleClick();
+                    clicked = true;
+                    return;
+                }
+
+                onClick?.Invoke();
+            }
+            /*else
+            {
+                TimeSpan t = DateTime.Now - lastClick;
+                if (t.TotalMilliseconds < Engine.doubleClickTime)
+                    return;
+                ResolveDrag(oldPos, delta);
+            }*/
+            clicked = true;
+        }
+
+        // DOUBLE CLICK
+        public void RegisterDoubleClick(Action action)
+        {
+            onDoubleClick += action;
+        }
+
+        public virtual void ResolveDoubleClick()
+        {
+            onDoubleClick?.Invoke();
+        }
+
+        // RELEASE
+        public void RegisterOnRelease(Action action)
+        {
+            onRelease += action;
+        }
+
+        public virtual void ResolveRelease()
+        {
+            if (dragging)
+            {
+                StopDrag();
+            }
+            if (clicked)
+            {
+                onRelease?.Invoke();
+            }
+            clicked = false;
+        }
+
+        // ALT CLICK
+        public void RegisterAltClick(Action action)
+        {
+            onAltClick += action;
+        }
+
+        public virtual void ResolveAltClick()
+        {
+            if (!altClicked)
+            {
+                onAltClick?.Invoke();
+            }
+            altClicked = true;
+        }
+
+        // ALT RELEASE
+        public void RegisterAltRelease(Action action)
+        {
+            onAltRelease += action;
+        }
+
+        public virtual void ResolveAltRelease()
+        {
+            if (altClicked)
+            {
+                onAltRelease?.Invoke();
+            }
+            altClicked = false;
+        }
+        #endregion
+
 
         public static string EnumColorToHex(ControlColor color)
         {

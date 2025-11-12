@@ -9,7 +9,7 @@ using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 
 namespace ArctisAurora.EngineWork.Rendering.Modules
 {
-    internal unsafe class UIModule : RenderingModule
+    public unsafe class UIModule : RenderingModule
     {
         internal override ERendererTypes rendererType => ERendererTypes.UITemp;
 
@@ -465,8 +465,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 PipelineDepthStencilStateCreateInfo depthCreateInfo = new PipelineDepthStencilStateCreateInfo()
                 {
                     SType = StructureType.PipelineDepthStencilStateCreateInfo,
-                    DepthTestEnable = true,
-                    DepthWriteEnable = true,
+                    DepthTestEnable = false,
+                    DepthWriteEnable = false,
                     DepthCompareOp = CompareOp.Less,
                     DepthBoundsTestEnable = false,
                     StencilTestEnable = false

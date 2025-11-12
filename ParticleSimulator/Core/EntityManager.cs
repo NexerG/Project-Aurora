@@ -6,16 +6,16 @@ using ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable;
 namespace ArctisAurora.EngineWork
 {
     // Entity manager is a singleton working with entities as data.
-    internal class EntityManager
+    public class EntityManager
     {
-        internal static EntityManager manager;
+        public static EntityManager manager;
 
 
 
         private static List<Entity> _entities = new List<Entity>();
 
+        private static VulkanControl _uiTree;
         private static List<VulkanControl> _controls = new List<VulkanControl>();
-        private static List<AbstractInteractableControl> _interactableControls = new List<AbstractInteractableControl>();
         private static List<Entity> _entitiesToRender = new List<Entity>();
 
         private static List<Entity> _entitiesToUpdate = new List<Entity>();
@@ -24,17 +24,20 @@ namespace ArctisAurora.EngineWork
 
         //----------
 
-        internal static IReadOnlyList<Entity> entities => _entities;
+        public static IReadOnlyList<Entity> entities => _entities;
 
-        internal static IReadOnlyList<VulkanControl> controls => _controls;
-        internal static IReadOnlyList<AbstractInteractableControl> interactableControls => _interactableControls;
-        internal static IReadOnlyList<Entity> entitiesToRender => _entitiesToRender;
+        public static VulkanControl uiTree
+        {
+            get => _uiTree;
+            set => _uiTree = value;
+        }
+        public static IReadOnlyList<VulkanControl> controls => _controls;
+        public static IReadOnlyList<Entity> entitiesToRender => _entitiesToRender;
 
 
-        internal static IReadOnlyList<Entity> entitiesToUpdate => _entitiesToUpdate;
-        internal static IReadOnlyList<Entity> onStartEntities => _onStartEntities;
-        internal static IReadOnlyList<Entity> onDestroyEntities => _onDestroyedEntities;
-        //internal static IReadOnlyList<MeshComponent> entitiesToRender => _entitiesToRender;
+        public static IReadOnlyList<Entity> entitiesToUpdate => _entitiesToUpdate;
+        public static IReadOnlyList<Entity> onStartEntities => _onStartEntities;
+        public static IReadOnlyList<Entity> onDestroyEntities => _onDestroyedEntities;
 
         //internal static List<Entity> physicsEntities = new List<Entity>();
 
@@ -62,12 +65,6 @@ namespace ArctisAurora.EngineWork
             _controls.Add(control);
 
             Renderer.renderer.UpdateModules();
-        }
-
-        public static void AddInteractableControl(AbstractInteractableControl button)
-        {
-            if (button == null) throw new ArgumentNullException(nameof(button));
-            _interactableControls.Add(button);
         }
 
         public static void AddEntityToUpdate(Entity entity)

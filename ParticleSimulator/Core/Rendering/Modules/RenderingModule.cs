@@ -12,7 +12,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         Game, UI, PostProcessing
     }
 
-    internal unsafe abstract class RenderingModule
+    public unsafe abstract class RenderingModule
     {
         // type
         internal abstract ERendererTypes rendererType { get; }

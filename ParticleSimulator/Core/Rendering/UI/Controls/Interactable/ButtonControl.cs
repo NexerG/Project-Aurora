@@ -3,7 +3,7 @@
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
 {
     [A_VulkanControl("Button")]
-    public class ButtonControl : AbstractInteractableControl
+    public class ButtonControl : PanelControl
     {
         public ButtonControl()
         {

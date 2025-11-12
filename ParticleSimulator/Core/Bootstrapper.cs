@@ -159,10 +159,8 @@ namespace ArctisAurora.EngineWork
 
         public static void RegisterTypes()
         {
-            var asm = Assembly.GetExecutingAssembly();
-            var types = asm.GetTypes()
-            .Where(t => t.GetCustomAttribute<@Serializable>() != null)
-            .ToList();
+            var asm = AppDomain.CurrentDomain.GetAssemblies();
+            var types = asm.SelectMany(a => a.GetTypes()).Where(t => t.GetCustomAttribute<@Serializable>() != null).ToList();
 
             Dictionary<uint, Type> serializableTypes = AssetRegistries.GetRegistry<uint, Type>(typeof(Type));
             foreach (var t in types)

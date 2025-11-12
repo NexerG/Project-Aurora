@@ -55,7 +55,6 @@ namespace ArctisAurora.EngineWork
         internal static DateTime initTime;
         internal Frame SC;
 
-
         //private DateTime lastFrameTime = DateTime.Now;
 
         public Engine()
@@ -64,7 +63,7 @@ namespace ArctisAurora.EngineWork
             Console.WriteLine($"Starting main Thread at ID: {GetCurrentThreadId()}");
         }
 
-        public void Init(Frame s)
+        public void Init(RenderingModule[] modules, bool startImmediately)
         {
             //Image<Rgba32> im = new Image<Rgba32>(16, 16);
             //for (int i = 0; i < 16; i++)
@@ -77,23 +76,16 @@ namespace ArctisAurora.EngineWork
             //im.Save(Paths.UIMASKS + "\\defaultMask.png");
 
             running = true;
-            SC = s;
             Bootstrapper.PrepareRegistries();
             Bootstrapper.RegisterTypes();
-
-            VulkanUIHandler.GenerateTestXSD();
-
-            window = new AGlfwWindow(width, height);
-            window.CreateWindow();
 
             entityManager = new EntityManager();
             uiCollisionHandler = new UICollisionHandling();
 
+            window = new AGlfwWindow(width, height);
+            window.CreateWindow();
+
             renderer = new Renderer();
-            RenderingModule[] modules = new RenderingModule[]
-            {
-                new UIModule(),
-            };
             renderer.PreInitialize(modules);
             renderer.Initialize();
 
@@ -105,49 +97,17 @@ namespace ArctisAurora.EngineWork
             window.SetKeyCallback(inputHandler.ProcessKeyboard);
             window.SetMouseOnWindowCallback(UICollisionHandling.instance.IsInWindow);
 
+            // optionals
             Bootstrapper.PreprareDefaultAssets();
-            renderer.SetupObjects();
 
+            renderer.SetupObjects();
             renderer.PrepareDescriptors();
             renderer.SetupPipelines();
-            renderer.CreateCommandBuffers();
+            
+            // optional but has to go after objects / renderer
+            //renderer.CreateCommandBuffers();
+
             renderer.CreateSyncObjects();
-
-            // UI testing
-            WindowControl windowControl = VulkanUIHandler.ParseXML("UITest.xml");
-
-            //TextEntity _te = new TextEntity("A", 70, new Vector3D<float>(1, 100, 100));
-            //TextEntity _te2 = new TextEntity("A", 70, new Vector3D<float>(1, 200, 200));
-            //PanelControl control = new PanelControl();
-            //ResizeableControl control = new();
-            //control.transform.SetWorldPosition(new Vector3D<float>(213, 360, -10));
-            //control.transform.SetWorldScale(new Vector3D<float>(854, 720, 1));
-            //ButtonControl control2 = new();
-            //ButtonControl control3 = new();
-            //ButtonControl control4 = new();
-            //ResizeableControl control5 = new();
-            //control2.controlData.style.tintDefault = new Vector3D<float>(0.8f, 0.1f, 0.1f);
-            //control3.controlData.style.tintDefault = new Vector3D<float>(0.1f, 0.8f, 0.1f);
-            //control4.controlData.style.tintDefault = new Vector3D<float>(0.1f, 0.1f, 0.8f);
-            //control5.controlData.style.tintDefault = new Vector3D<float>(0.8f, 0.8f, 0.1f);
-            //control2.UpdateControlData();
-            //control.RegisterOnEnter(TestEnter);
-            //control.RegisterOnExit(TestExit);
-            //control.RegisterOnClick(TestClick);
-            //control.RegisterOnRelease(TestRelease);
-            //control.RegisterAltClick(TestAltClick);
-            //control.RegisterAltRelease(TestAltRelease);
-            //control.RegisterDoubleClick(TestDoubleClick);
-            //control.transform.SetWorldPosition(new Vector3D<float>(1.1f, 200, 200));
-
-
-            //DockingControl dock = new DockingControl(null);
-            //dock.Dock(control, DockMode.left);
-            //dock.Dock(control2, DockMode.left);
-            //dock.Dock(control3, DockMode.top);
-            //dock.Dock(control4, DockMode.right);
-            //dock.Dock(control5, DockMode.fill);
-            //uiCollisionHandler.defaultContextMenu = new ContextMenuControl();
 
             Thread physics = new Thread(PhysicsThread);
             Thread rendering = new Thread(RenderThread);
@@ -155,6 +115,14 @@ namespace ArctisAurora.EngineWork
             physics.Start();
             rendering.Start();
 
+            if(startImmediately)
+            {
+                Run();
+            }
+        }
+
+        public void Run()
+        {
             while (running)
             {
                 AGlfwWindow._glfw.PollEvents();
@@ -171,34 +139,6 @@ namespace ArctisAurora.EngineWork
                 t_render_end.WaitOne();
                 t_render_start.Set();
             }
-
-            //---------------------------------------------------------------------------
-            //Game logic
-            //first we setup lights
-            //LightSourceEntity _ls = new LightSourceEntity();
-            //_ls.transform.SetWorldPosition(new Vector3D<float>(1, 10 ,1));
-            //
-            /*SimulatorEntity _e = new SimulatorEntity();
-            _e.GetComponent<SPHSimComponent>().simSetup(15);
-            _entities.Add(_e);*/
-
-            //then we do meshes
-            //TestingEntity _te = new TestingEntity(new Vector3D<float>(1, 70, 70), new Vector3D<float>(2, 0, 0));
-            //_te.ChangeColor(new Vector3D<float>(0.5f, 0.5f, 0.5f));
-            //_te.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
-            //TestingEntity _te2 = new TestingEntity(new Vector3D<float>(20, 20, 20), new Vector3D<float>(0, 0, 0));
-            //_te2.ChangeColor(new Vector3D<float>(0.05f, 0.5f, 0.247f));
-            //_te2.GetComponent<MeshComponent>().LoadCustomMesh(scene1);
-            //_entities.Add(_te2);
-            //TestingEntity _te3 = new TestingEntity(new Vector3D<float>(20, 20, 20), new Vector3D<float>(0, 10, 10));
-            //_te2.ChangeColor(new Vector3D<float>(0f, 0f, 1f));
-            //_te3.transform.SetRotationFromVector3(new Vector3D<float>(0.0f,2f,0.0f));
-            //_entities.Add(_te3);
-            //TestingEntity _te4 = new TestingEntity(new Vector3D<float>(5, 5, 5), new Vector3D<float>(75, 29, 20));
-            //_te4.ChangeColor(new Vector3D<float>(1f, 0f, 0f));
-            //_te4.transform.SetRotationFromVector3(new Vector3D<float>(0.0f,0.0f,5.0f));
-            //_entities.Add(_te4);
-            //---------------------------------------------------------------------------
         }
 
         private void TestEnter()

@@ -1,4 +1,6 @@
-﻿using ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable;
+﻿using ArctisAurora.EngineWork.EngineEntity;
+using ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable;
+using System.Windows.Forms;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
 {
@@ -26,10 +28,8 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
     public sealed class A_VulkanActionAttribute : Attribute
     { }
 
-    public abstract class AbstractContainerControl : AbstractInteractableControl
+    public abstract class AbstractContainerControl : PanelControl
     {
-        public List<VulkanControl> children = new List<VulkanControl>();
-
         public AbstractContainerControl()
         {
 
@@ -40,10 +40,12 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
             this.parent = parent;
         }
 
-        public override void AddChild(VulkanControl control)
+        public override void AddChild(Entity entity)
         {
-            children.Add(control);
-            AddControlToContainer(control);
+            if (entity is not VulkanControl control)
+                throw new Exception("Only VulkanControl entities can be added to a VulkanContainerControl.");
+            children.Add(entity);
+            AddControlToContainer((VulkanControl)entity);
         }
 
         public abstract void AddControlToContainer(VulkanControl control);

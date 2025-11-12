@@ -25,8 +25,8 @@ namespace ArctisAurora
         {
             //GLControl.Paint += GLControl_Paint;
             //GLControl.Resize += GLControl_Resize;
-            engine = new Engine();
-            engine.Init(this);
+            //engine = new Engine();
+            //engine.Init();
         }
 
         private void Frame_FormClosing(object sender, FormClosingEventArgs e)

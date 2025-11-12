@@ -30,6 +30,9 @@ namespace ArctisAurora.EngineWork.Rendering
                 throw new Exception("Failed to initialize GLFW");
 
             _glfw.WindowHint(WindowHintClientApi.ClientApi, ClientApi.NoApi);
+            _glfw.WindowHint(WindowHintBool.Resizable, true);
+            _glfw.WindowHint(WindowHintBool.Decorated, false);
+            _glfw.WindowHint(WindowHintBool.DoubleBuffer, true);
             windowHandle = _glfw.CreateWindow((int)windowSize.Width, (int)windowSize.Height, "Arctis Aurora", null, null);
 
             if (windowHandle == null)

@@ -7,9 +7,9 @@ using System.Threading.Tasks;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 {
-    internal class ContextMenuControl : AbstractInteractableControl
+    public class ContextMenuControl : PanelControl
     {
-        internal void Open()
+        public void Open()
         {
             Console.WriteLine("Opened context menu");
         }

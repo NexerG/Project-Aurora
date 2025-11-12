@@ -1,7 +1,6 @@
 ﻿using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
-using ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable;
 using Silk.NET.GLFW;
 using Silk.NET.Maths;
 
@@ -11,7 +10,7 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
     {
         internal static UICollisionHandling instance;
         internal bool isInWindow = true;
-        internal AbstractInteractableControl dragging;
+        internal VulkanControl dragging;
         internal AbstractContainerControl container;
         internal ContextMenuControl defaultContextMenu;
 
@@ -26,30 +25,34 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
         public void SolveHover(Vector2D<float> mousePos)
         {
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
-            AbstractInteractableControl topMost = null;
-            float topZ = float.MaxValue;
-            foreach (AbstractInteractableControl entity in EntityManager.interactableControls)
+
+            VulkanControl mostDeep = null;
+            VulkanControl top = EntityManager.uiTree;
+            if (SolvePositions(EntityManager.uiTree, mousePos, localVerts))
             {
-                // check for hovering on each entity
-                bool isHovering = SolvePositions(entity, mousePos, localVerts);
-                if (isHovering)
+                mostDeep = EntityManager.uiTree;
+                foreach (VulkanControl child in top.GetAllChildrenEntities())
                 {
-                    if(entity.transform.position.X < topZ)
+                    bool isHovering = SolvePositions(child, mousePos, localVerts);
+                    if (isHovering)
                     {
-                        topZ = entity.transform.position.X;
-                        topMost = entity;
+                        mostDeep = child;
+                    }
+                    else
+                    {
+                        child.ResolveExit();
                     }
                 }
-                else
-                {
-                    entity.ResolveExit();
-                }
             }
-
-            if(topMost != null && dragging == null)
+            else if (EntityManager.uiTree != null)
             {
-                topMost.ResolveEnter();
-                topMost.ResolveHover(mousePos);
+                EntityManager.uiTree.ResolveExit();
+            }
+            
+            if (mostDeep!= null && dragging == null)
+            {
+                mostDeep.ResolveEnter();
+                mostDeep.ResolveHover(mousePos);
             }
         }
 
@@ -58,28 +61,32 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
             bool pressed = InputHandler.instance.IsKeyDown(new Keybind(MouseButton.Left));
 
-            AbstractInteractableControl topMost = null;
-            float topZ = float.MaxValue;
-            foreach (AbstractInteractableControl entity in EntityManager.interactableControls)
+            VulkanControl mostDeep = null;
+            VulkanControl top = EntityManager.uiTree;
+            if (pressed && SolvePositions(EntityManager.uiTree, mousePos, localVerts))
             {
-                // check for hovering on each entity
-                bool isHovering = SolvePositions(entity, mousePos, localVerts);
-                if (isHovering && pressed)
+                mostDeep = EntityManager.uiTree;
+                foreach (VulkanControl child in top.GetAllChildrenEntities())
                 {
-                    if (entity.transform.position.X < topZ)
+                    bool isHovering = SolvePositions(child, mousePos, localVerts);
+                    if (isHovering)
                     {
-                        topZ = entity.transform.position.X;
-                        topMost = entity;
+                            mostDeep = child;
+                    }
+                    else
+                    {
+                            child.ResolveRelease();
                     }
                 }
-                else if(!pressed)
-                {
-                    entity.ResolveRelease();
-                }
             }
-            if (topMost != null)
+            else if (EntityManager.uiTree != null)
             {
-                topMost.ResolveClick(lastMousePos, delta);
+                EntityManager.uiTree.ResolveExit();
+            }
+            
+            if (mostDeep != null && dragging == null)
+            {
+                mostDeep.ResolveClick(lastMousePos, delta);
             }
         }
 
@@ -87,35 +94,33 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
         {
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
             bool pressed = InputHandler.instance.IsKeyDown(new Keybind(MouseButton.Right));
-            bool found = false;
 
-            AbstractInteractableControl topMost = null;
-            float topZ = float.MaxValue;
-            foreach (AbstractInteractableControl entity in EntityManager.interactableControls)
+            VulkanControl mostDeep = null;
+            VulkanControl top = EntityManager.uiTree;
+            if (pressed && SolvePositions(EntityManager.uiTree, mousePos, localVerts))
             {
-                // check for hovering on each entity
-                bool isHovering = SolvePositions(entity, mousePos, localVerts);
-                if (isHovering && pressed)
+                mostDeep = EntityManager.uiTree;
+                foreach (VulkanControl child in top.GetAllChildrenEntities())
                 {
-                    if (entity.transform.position.X < topZ)
+                    bool isHovering = SolvePositions(child, mousePos, localVerts);
+                    if (isHovering)
                     {
-                        topZ = entity.transform.position.X;
-                        topMost = entity;
+                            mostDeep = child;
+                    }
+                    else
+                    {
+                            child.ResolveAltRelease();
                     }
                 }
-                else if (!pressed)
-                {
-                    entity.ResolveAltRelease();
-                    found = true;
-                }
             }
-            if (topMost != null)
+            else if (EntityManager.uiTree != null)
             {
-                topMost.ResolveAltClick();
+                EntityManager.uiTree.ResolveExit();
             }
-            if (!found && defaultContextMenu != null)
+            
+            if (mostDeep != null)
             {
-                defaultContextMenu.Open();
+                mostDeep.ResolveAltClick();
             }
         }
 
@@ -153,8 +158,8 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
 
             for (int i = 0; i < 4; i++)
             {
-                Vector2D<float> scaled = new Vector2D<float>(localVerts[i].X * transform.scale.Z, localVerts[i].Y * transform.scale.Y);
-                worldVerts[i] = new Vector2D<float>(scaled.X + transform.position.Z, scaled.Y + transform.position.Y);
+                Vector2D<float> scaled = new Vector2D<float>(localVerts[i].X * transform.scale.X, localVerts[i].Y * transform.scale.Y);
+                worldVerts[i] = new Vector2D<float>(scaled.X + transform.position.X, scaled.Y + transform.position.Y);
             }
 
             return worldVerts;

@@ -45,6 +45,10 @@ namespace ArctisAurora.EngineWork.Rendering.UI
         {
             try
             {
+                // assembly for reflection
+                var generalAsm = AppDomain.CurrentDomain.GetAssemblies();
+                
+                
                 XmlSchema schema = new XmlSchema
                 {
                     TargetNamespace = "http://schemas/arctis-aurora/ui",
@@ -56,8 +60,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                 schema.Namespaces.Add("", "http://schemas/arctis-aurora/ui"); // default namespace
 
                 // actions
-                var generalAsm = Assembly.GetExecutingAssembly();
-                var actions = generalAsm.GetTypes()
+                var actions = generalAsm.SelectMany(a => a.GetTypes()
                     .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)
                     .Where(m => m.GetCustomAttributes(typeof(A_VulkanActionAttribute), false).Any())
                     .Select(m => new
@@ -65,7 +68,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                         Name = m.Name,
                         DeclaringType = t,
                         Attribute = (A_VulkanActionAttribute)m.GetCustomAttributes(typeof(A_VulkanActionAttribute), false).First()
-                    })).ToList();
+                    }))).ToList();
 
                 XmlSchemaSimpleType actionType = new XmlSchemaSimpleType
                 {
@@ -89,14 +92,13 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                 schema.Items.Add(actionType);
 
                 // ENUMS
-                var asm = typeof(VulkanControl).Assembly;
-                var enumTypes = asm.GetTypes()
+                var enumTypes = generalAsm.SelectMany(a => a.GetTypes()
                 .Where(t => t.IsEnum && t.GetCustomAttributes(typeof(A_VulkanEnumAttribute), false).Any())
                 .Select(t => new
                 {
                     Type = t,
                     Attribute = (A_VulkanEnumAttribute)t.GetCustomAttributes(typeof(A_VulkanEnumAttribute), false).First()
-                }).ToList();
+                })).ToList();
 
                 foreach (var enumType in enumTypes)
                 {
@@ -135,13 +137,13 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                 };
 
 
-                var controls = asm.GetTypes()
+                var controls = generalAsm.SelectMany(a => a.GetTypes()
                     .Where(t => t.GetCustomAttributes(typeof(A_VulkanControlAttribute), false).Any())
                     .Select(t => new
                     {
                         Type = t,
                         Attribute = (A_VulkanControlAttribute)t.GetCustomAttributes(typeof(A_VulkanControlAttribute), false).First()
-                    }).ToList();
+                    })).ToList();
 
                 // setup controls with their attributes
                 foreach (var control in controls)
@@ -198,6 +200,15 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                             Name = attr.XmlAttribute?.Name ?? attr.Property.Name,
                             SchemaTypeName = typeName
                         };
+                        var annotation = new XmlSchemaAnnotation();
+                        var documentation = new XmlSchemaDocumentation();
+                        documentation.Markup = new XmlNode[]
+                        {
+                            new XmlDocument().CreateTextNode(attr.XmlAttribute?.Description ?? "")
+                        };
+                        annotation.Items.Add(documentation);
+                        schemaAttribute.Annotation = annotation;
+
                         extensionControl.Attributes.Add(schemaAttribute);
                     }
 
@@ -216,13 +227,13 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                     IsAbstract = true
                 };
 
-                var containers = asm.GetTypes()
+                var containers = generalAsm.SelectMany(a => a.GetTypes()
                     .Where(t => t.GetCustomAttributes(typeof(A_VulkanContainerAttribute), false).Any())
                     .Select(t => new
                     {
                         Type = t,
                         Attribute = (A_VulkanContainerAttribute)t.GetCustomAttributes(typeof(A_VulkanContainerAttribute), false).First()
-                    }).ToList();
+                    })).ToList();
 
                 var extensionContainer = new XmlSchemaComplexContentExtension
                 {
@@ -263,7 +274,8 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                 };
 
                 // Write schema to file
-                using (var writer = XmlWriter.Create("C:\\Projects-Repositories\\Aurora\\Project-Aurora\\ParticleSimulator\\Data\\XML\\Test.xsd", settings))
+                string path = Paths.ENGINEXML + "\\UI.xsd";
+                using (var writer = XmlWriter.Create(path, settings))
                 {
                     schema.Write(writer);
                 }
@@ -283,27 +295,25 @@ namespace ArctisAurora.EngineWork.Rendering.UI
             XElement root = doc.Root;
             WindowControl topControl = new WindowControl();
             ResolveAttributes(root, topControl);
-            Vector3D<float> pos = new Vector3D<float>(topControl.Width / 2, topControl.Height / 2, -10.0f);
+            EntityManager.uiTree = topControl;
+            Vector3D<float> pos = new Vector3D<float>(topControl.width / 2, topControl.height / 2, -10.0f);
             topControl.transform.SetWorldPosition(pos);
-            topControl.transform.SetWorldScale(new Vector3D<float>(topControl.Width, topControl.Height, 1.0f));
-            RecursiveParse(root, topControl, pos);
+            topControl.transform.SetWorldScale(new Vector3D<float>(topControl.width, topControl.height, 1.0f));
+            RecursiveParse(root, topControl);
             return topControl;
         }
 
-        private static void RecursiveParse(XElement root, VulkanControl topControl, Vector3D<float> pos)
+        private static void RecursiveParse(XElement root, VulkanControl topControl)
         {
             foreach (var element in root.Elements())
             {
                 if (!ControlMap.TryGetValue(element.Name.LocalName, out var controlType))
                     throw new Exception($"Unknown control type: {element.Name}");
                 VulkanControl c = (VulkanControl)Activator.CreateInstance(controlType);
-                pos += new Vector3D<float>(0f, 0f, 0.1f);
-                c.transform.SetWorldPosition(pos);
-                c.parent = topControl;
                 ResolveAttributes(element, c);
                 topControl.AddChild(c);
 
-                RecursiveParse(element, c, pos);
+                RecursiveParse(element, c);
             }
         }
 
@@ -381,28 +391,27 @@ namespace ArctisAurora.EngineWork.Rendering.UI
 
         private static Dictionary<string, Type> BuildControlMap()
         {
-            var asm = typeof(VulkanControl).Assembly;
+            var generalAsm = AppDomain.CurrentDomain.GetAssemblies();
 
-            return asm.GetTypes()
+            return generalAsm.SelectMany(asm => asm.GetTypes()
                     .Where(t => !t.IsAbstract && typeof(VulkanControl).IsAssignableFrom(t) && t.GetCustomAttribute<A_VulkanContainerAttribute>() != null || t.GetCustomAttribute<A_VulkanControlAttribute>() != null)
                     .Select(t => new
                     {
                         Type = t,
                         Tag = t.GetCustomAttribute<A_VulkanControlAttribute>()?.Name ?? t.GetCustomAttribute<A_VulkanContainerAttribute>()?.Name ?? t.Name
-                    })
-                    .ToDictionary(x => x.Tag, x => x.Type);
+                    })).ToDictionary(x => x.Tag, x => x.Type);
         }
 
         private static Dictionary<Type, string> BuildEnumMap()
         {
-            var asm = typeof(VulkanControl).Assembly;
-            var enumTypes = asm.GetTypes()
+            var generalAsm = AppDomain.CurrentDomain.GetAssemblies();
+            var enumTypes = generalAsm.SelectMany(asm => asm.GetTypes()
                 .Where(t => t.IsEnum && t.GetCustomAttributes(typeof(A_VulkanEnumAttribute), false).Any())
                 .Select(t => new
                 {
                     Type = t,
                     Attribute = (A_VulkanEnumAttribute)t.GetCustomAttributes(typeof(A_VulkanEnumAttribute), false).First()
-                }).ToList();
+                })).ToList();
             Dictionary<Type, string> map = new Dictionary<Type, string>();
             foreach (var enumType in enumTypes)
             {

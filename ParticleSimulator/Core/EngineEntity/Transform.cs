@@ -51,7 +51,6 @@ namespace ArctisAurora.EngineWork.EngineEntity
         {
             return rotation;
         }
-
         public Vector3D<float> CalculateRotationFromQuaternion()
         {
             return rotation;
@@ -64,8 +63,30 @@ namespace ArctisAurora.EngineWork.EngineEntity
             EntityManager.AddEntityToUpdate(parent);
         }
 
-        public void SetLocalPosition(Vector3D<float> newPos)
+        public void MoveToPosition(Vector3D<float> newPos)
         {
+            Vector3D<float> delta = newPos - position;
+            foreach (Entity child in parent.children)
+            {
+                child.transform.MoveLocalPosition(delta);
+            }
+            EntityManager.AddEntityToUpdate(parent);
+        }
+
+        public void SetLocalPosition(Vector3D<float> delta)
+        {
+            _changed = true;
+            position += delta;
+            EntityManager.AddEntityToUpdate(parent);
+        }
+
+        public void MoveLocalPosition(Vector3D<float> delta)
+        {
+            position += delta;
+            foreach (Entity child in parent.children)
+            {
+                child.transform.MoveLocalPosition(delta);
+            }
             _changed = true;
             EntityManager.AddEntityToUpdate(parent);
         }
