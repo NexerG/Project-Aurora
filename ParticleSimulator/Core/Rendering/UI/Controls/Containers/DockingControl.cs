@@ -220,5 +220,9 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
             return cross < 0; // true = point is to the right of the edge from e1 to e2
         }
 
+        public override void RecalculateLayout()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

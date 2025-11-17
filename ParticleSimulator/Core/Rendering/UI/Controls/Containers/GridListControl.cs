@@ -33,6 +33,11 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
             UpdateLayout();
         }
 
+        public override void RecalculateLayout()
+        {
+            throw new NotImplementedException();
+        }
+
         public void UpdateLayout()
         {
             transform.SetWorldPosition(parent.transform.position);

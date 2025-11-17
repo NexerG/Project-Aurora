@@ -43,6 +43,14 @@
       <xs:enumeration value="Vertical" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:simpleType name="Alignment">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="TopLeft" />
+      <xs:enumeration value="TopRight" />
+      <xs:enumeration value="BottomLeft" />
+      <xs:enumeration value="BottomRight" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:simpleType name="ContentScalingModeEnum">
     <xs:restriction base="xs:string">
       <xs:enumeration value="Vertical" />
@@ -51,6 +59,28 @@
       <xs:enumeration value="None" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:complexType name="RowSettings">
+    <xs:attribute name="CurrentX" type="xs:float">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="CurrentY" type="xs:float">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MaxHeightInRow" type="xs:float">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MaxWidthInColumn" type="xs:float">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
   <xs:complexType name="Panel">
     <xs:complexContent mixed="false">
       <xs:extension base="Control">
@@ -302,21 +332,293 @@
       <xs:element name="GridList" type="GridList" />
     </xs:choice>
   </xs:complexType>
+  <xs:complexType name="StackPanel.RowSettings">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="RowSettings" type="RowSettings" />
+    </xs:sequence>
+  </xs:complexType>
   <xs:complexType name="StackPanel">
     <xs:complexContent mixed="false">
-      <xs:extension base="Container" />
+      <xs:extension base="Container">
+        <xs:sequence>
+          <xs:element minOccurs="0" maxOccurs="unbounded" name="StackPanel.RowSettings" type="StackPanel.RowSettings">
+            <xs:annotation>
+              <xs:documentation></xs:documentation>
+            </xs:annotation>
+          </xs:element>
+        </xs:sequence>
+        <xs:attribute name="ControlColor" type="ControlColor">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="Spacing" type="xs:float">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="HorizontalMargin" type="xs:float">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="VerticalMargin" type="xs:float">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="Orientation" type="Orientation">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="Alignment" type="Alignment">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="HorizontalPos" type="xs:float">
+          <xs:annotation>
+            <xs:documentation>Sets the position of the current control within it's parent. [0;1]</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="VerticalPos" type="xs:float">
+          <xs:annotation>
+            <xs:documentation>Sets the position of the current control within it's parent. [0;1]</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="DockMode" type="DockMode">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="StackIndex" type="xs:int">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onEnter" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onExit" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onClick" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onAltClick" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onRelease" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onAltRelease" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onDragStop" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+      </xs:extension>
     </xs:complexContent>
   </xs:complexType>
   <xs:element name="StackPanel" type="StackPanel" />
   <xs:complexType name="Dock">
     <xs:complexContent mixed="false">
-      <xs:extension base="Container" />
+      <xs:extension base="Container">
+        <xs:sequence />
+        <xs:attribute name="Width" type="xs:int">
+          <xs:annotation>
+            <xs:documentation>Width in pixels</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="Height" type="xs:int">
+          <xs:annotation>
+            <xs:documentation>Height in pixels</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="ControlColor" type="ControlColor">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="HorizontalPos" type="xs:float">
+          <xs:annotation>
+            <xs:documentation>Sets the position of the current control within it's parent. [0;1]</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="VerticalPos" type="xs:float">
+          <xs:annotation>
+            <xs:documentation>Sets the position of the current control within it's parent. [0;1]</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="DockMode" type="DockMode">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="StackIndex" type="xs:int">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onEnter" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onExit" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onClick" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onAltClick" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onRelease" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onAltRelease" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onDragStop" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+      </xs:extension>
     </xs:complexContent>
   </xs:complexType>
   <xs:element name="Dock" type="Dock" />
   <xs:complexType name="GridList">
     <xs:complexContent mixed="false">
-      <xs:extension base="Container" />
+      <xs:extension base="Container">
+        <xs:sequence />
+        <xs:attribute name="Width" type="xs:int">
+          <xs:annotation>
+            <xs:documentation>Width in pixels</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="Height" type="xs:int">
+          <xs:annotation>
+            <xs:documentation>Height in pixels</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="ControlColor" type="ControlColor">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="CellWidth" type="xs:float">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="CellHeight" type="xs:float">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="HorizontalSpacing" type="xs:float">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="VerticalSpacing" type="xs:float">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="HorizontalMargin" type="xs:float">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="VerticalMargin" type="xs:float">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="HorizontalPos" type="xs:float">
+          <xs:annotation>
+            <xs:documentation>Sets the position of the current control within it's parent. [0;1]</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="VerticalPos" type="xs:float">
+          <xs:annotation>
+            <xs:documentation>Sets the position of the current control within it's parent. [0;1]</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="DockMode" type="DockMode">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="StackIndex" type="xs:int">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onEnter" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onExit" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onClick" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onAltClick" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onRelease" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onAltRelease" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="onDragStop" type="Action">
+          <xs:annotation>
+            <xs:documentation></xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+      </xs:extension>
     </xs:complexContent>
   </xs:complexType>
   <xs:element name="GridList" type="GridList" />

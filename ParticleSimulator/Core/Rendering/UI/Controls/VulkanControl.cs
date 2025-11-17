@@ -10,7 +10,10 @@ using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 {
-
+    #region control_attributes
+    /// <summary>
+    /// Used to create an element. Example: <Button></Button>
+    /// </summary>
     [AttributeUsage(AttributeTargets.Class, Inherited = false)]
     public sealed class A_VulkanControlAttribute : Attribute
     {
@@ -21,6 +24,9 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         }
     }
 
+    /// <summary>
+    /// Used to create a property for a vulkan control element. Example: <Button OnEnter="[event name]"/>
+    /// </summary>
     [AttributeUsage(AttributeTargets.Field | AttributeTargets.Event | AttributeTargets.Property, Inherited = false)]
     public sealed class A_VulkanControlPropertyAttribute: Attribute
     {
@@ -39,6 +45,46 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         }
     }
 
+    /// <summary>
+    /// Used to create an entry for a vulkan control element that shouldnt be used as a general element. Example: <Grid> <Grid.RowSettings/> </Grid>
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Class, Inherited = false)]
+    public sealed class A_VulkanUnlistedElementAttribute : Attribute
+    {
+        public string Name { get; }
+        public string Description { get; set; } = "";
+        public A_VulkanUnlistedElementAttribute(string name)
+        {
+            Name = name;
+        }
+        public A_VulkanUnlistedElementAttribute(string name, string description)
+        {
+            Name = name;
+            Description = description;
+        }
+    }
+
+    /// <summary>
+    /// Used to create an enum for vulkan controls. Example: <Button Color="Red"/>
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Enum, Inherited = false)]
+    public sealed class A_VulkanEnumAttribute : Attribute
+    {
+        public string Name { get; }
+        public A_VulkanEnumAttribute(string name)
+        {
+            Name = name;
+        }
+    }
+    
+    /// <summary>
+    /// Used to create an action for a vulkan control. Example: <Button OnClick="[event name]"/>
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Method, Inherited = false)]
+    public sealed class A_VulkanActionAttribute : Attribute
+    { }
+    #endregion
+
     [A_VulkanEnum("ControlColor")]
     public enum ControlColor
     {
@@ -47,6 +93,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 
     public unsafe class VulkanControl : Entity
     {
+        #region STRUCTS
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         public struct ControlStyle
         {
@@ -92,34 +139,44 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             public QuadUVs uvs;
             public ControlStyle style;
         }
+        #endregion
 
+        #region properties
+        // sizing
         private int _width = 72;
         [A_VulkanControlProperty("Width", "Width in pixels")]
-        public int width
+        public virtual int width
         {
             get => _width;
             set
             {
                 _width = value;
-                px.X = value;
-                transform.SetWorldScale(new Vector3D<float>(px.X, px.Y, 1));
+                transform.SetWorldScale(new Vector3D<float>(width, height, 1));
             }
         }
 
         private int _height = 72;
         [A_VulkanControlProperty("Height", "Height in pixels")]
-        public int height
+        public virtual int height
         {
             get => _height;
             set
             {
                 _height = value;
-                px.Y = value;
-                transform.SetWorldScale(new Vector3D<float>(px.X, px.Y, 1));
+                transform.SetWorldScale(new Vector3D<float>(width, height, 1));
             }
         }
 
-        public Vector2D<float> px = new Vector2D<float>(72, 72);
+        public virtual Vector2D<int> size
+        {
+            get => new Vector2D<int>(_width, _height);
+            set
+            {
+                _width = value.X;
+                _height = value.Y;
+                transform.SetWorldScale(new Vector3D<float>(width, height, 1));
+            }
+        }
 
         // postioning
         [A_VulkanControlProperty("HorizontalPos", "Sets the position of the current control within it's parent. [0;1]")]
@@ -127,17 +184,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 
         [A_VulkanControlProperty("VerticalPos", "Sets the position of the current control within it's parent. [0;1]")]
         public float verticalPosition = 0.5f;
-
-        // rendering
-        public ControlData controlData;
-        public Buffer controlDataBuffer;
-        public DeviceMemory controlDataBufferMemory;
-
-        public Sampler maskSampler;
-        public TextureAsset maskAsset;
-
-        public Sampler colorSampler;
-        public TextureAsset colorAsset;
 
         // settings
         [A_VulkanControlProperty("DockMode")]
@@ -161,7 +207,21 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         public VulkanControl? child;
         private ControlColor color;
 
-        // EVENTS
+        #endregion
+
+        #region rendering
+        public ControlData controlData;
+        public Buffer controlDataBuffer;
+        public DeviceMemory controlDataBufferMemory;
+
+        public Sampler maskSampler;
+        public TextureAsset maskAsset;
+
+        public Sampler colorSampler;
+        public TextureAsset colorAsset;
+        #endregion
+
+        #region EVENTS
         //fuck do i do with this yet to figure out. tbh idk if this is even a problem
         public event Action<Vector2D<float>> hover;
         [A_VulkanControlProperty("onEnter")]
@@ -191,6 +251,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         private bool dragging = false;
 
         private DateTime lastClick = DateTime.Now;
+        #endregion
 
         // EXTRAS
         public ContextMenuControl contextMenu;
@@ -203,7 +264,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             controlData.uvs = new QuadUVs();
 
             maskAsset = AssetRegistries.GetAsset<TextureAsset>("default");
-            transform.SetWorldScale(new Vector3D<float>(px.X, px.Y, 1));
 
             ControlData tempData = controlData;
             AVulkanBufferHandler.CreateBuffer(ref tempData, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
@@ -272,8 +332,8 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             if(control is not AbstractContainerControl container)
             {
                 // map chil horizontal and vertical pos to parent size
-                transformedLoc.X += (control.horizontalPosition - 0.5f) * transform.scale.X;
-                transformedLoc.Y += (control.verticalPosition - 0.5f) * transform.scale.Y;
+                transformedLoc.X += (control.horizontalPosition - 0.5f) * width;
+                transformedLoc.Y += (control.verticalPosition - 0.5f) * height;
                 //transformedLoc.Z = transform.position.Z;
             }
             else
@@ -282,6 +342,25 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             }
             control.transform.SetWorldPosition(transformedLoc);
         }
+
+        #region size_setters
+        public virtual void SetSize(Vector2D<float> size)
+        {
+            this.size = (Vector2D<int>)size;
+        }
+        public virtual void SetSize(Vector2D<int> size)
+        {
+            this.size = size;
+        }
+        public virtual void SetWidth(int x)
+        {
+            width = x;
+        }
+        public virtual void SetHeight(int y)
+        {
+            height = y;
+        }
+        #endregion
 
 
         #region mouse_events

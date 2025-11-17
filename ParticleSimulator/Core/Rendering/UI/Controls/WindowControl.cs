@@ -38,8 +38,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 
             if (fillWindow)
             {
-                width = (int)Engine.window.windowSize.Width;
-                height = (int)Engine.window.windowSize.Height;
+                SetSize(new Vector2D<float>(Engine.window.windowSize.Width, Engine.window.windowSize.Height));
             }
         }
     }

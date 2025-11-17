@@ -1,9 +1,11 @@
 ﻿using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.Rendering.Helpers;
+using ArctisAurora.EngineWork.Rendering.UI;
+using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 
-namespace ArctisAurora.EngineWork.Rendering.UI.Controls
+namespace ArctisAurora.Core.Rendering.UI.Controls.Text
 {
     public class GlyphControl : VulkanControl
     {
@@ -18,7 +20,8 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 
             transform.SetWorldPosition(pos);
             (glyph, index) = fontAsset.atlasMetaData.GetGlyphAndIndex(character);
-            this.px = new Vector2D<float>(glyph.glyphHeight * px, glyph.glyphWidth * px);
+            width = (int)(glyph.glyphWidth * px);
+            height = (int)(glyph.glyphHeight * px);
 
             float k = MathF.Ceiling(MathF.Sqrt(fontAsset.atlasMetaData.glyphCount));
             float glyphAtlasSize = 1f / k;
@@ -31,7 +34,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             controlData.uvs.uv3 = new Vector2D<float>(xOffset + glyphAtlasSize, yOffset + glyphAtlasSize);
             controlData.uvs.uv4 = new Vector2D<float>(xOffset, yOffset + glyphAtlasSize);
             AVulkanBufferHandler.UpdateBuffer(ref controlData, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
-            transform.SetWorldScale(new Vector3D<float>(1, this.px.X, this.px.Y));
+            transform.SetWorldScale(new Vector3D<float>(width, height, 1));
         }
     }
 }

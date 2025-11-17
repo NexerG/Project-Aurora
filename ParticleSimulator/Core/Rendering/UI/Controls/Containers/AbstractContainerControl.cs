@@ -1,5 +1,7 @@
-﻿using ArctisAurora.EngineWork.EngineEntity;
+﻿using ABI.System.Numerics;
+using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable;
+using Silk.NET.Maths;
 using System.Windows.Forms;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
@@ -14,22 +16,9 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
         }
     }
 
-    [AttributeUsage(AttributeTargets.Enum, Inherited = false)]
-    public sealed class A_VulkanEnumAttribute : Attribute
-    {
-        public string Name { get; }
-        public A_VulkanEnumAttribute(string name)
-        {
-            Name = name;
-        }
-    }
-
-    [AttributeUsage(AttributeTargets.Method, Inherited = false)]
-    public sealed class A_VulkanActionAttribute : Attribute
-    { }
-
     public abstract class AbstractContainerControl : PanelControl
     {
+
         public AbstractContainerControl()
         {
 
@@ -49,5 +38,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
         }
 
         public abstract void AddControlToContainer(VulkanControl control);
+        public abstract void RecalculateLayout();
     }
 }
