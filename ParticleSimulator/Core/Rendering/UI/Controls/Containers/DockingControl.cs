@@ -12,7 +12,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
         fill, left, right, top, bottom, unknown
     }
 
-    [A_VulkanContainer("Dock")]
+    [A_VulkanControl("Dock")]
     public class DockingControl : AbstractContainerControl
     {
         public VulkanControl top;

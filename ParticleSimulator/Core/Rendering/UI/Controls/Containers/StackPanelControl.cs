@@ -18,7 +18,7 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
     }
 
 
-    [A_VulkanContainer("StackPanel")]
+    [A_VulkanControl("StackPanel")]
     public class StackPanelControl : AbstractContainerControl
     {
         #region enums

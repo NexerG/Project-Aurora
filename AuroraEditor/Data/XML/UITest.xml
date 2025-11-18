@@ -16,5 +16,6 @@
 		<Button ControlColor="yellow" StackIndex="3"/>
 		<Button ControlColor="cyan" StackIndex="0" Height="180"/>
 		<Button ControlColor="magenta" StackIndex="3" />
+		<Button ControlColor="orange" StackIndex="2" Height="60"/>
 	</StackPanel>
 </Window>

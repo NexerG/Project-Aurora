@@ -50,7 +50,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                 // assembly for reflection
                 var generalAsm = AppDomain.CurrentDomain.GetAssemblies();
 
-                
+
                 XmlSchema schema = new XmlSchema
                 {
                     TargetNamespace = "http://schemas/arctis-aurora/ui",
@@ -184,26 +184,8 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                 }
                 #endregion
 
-                #region base Vulkan Control types
-                // create abstract base element to for derived controls (non containers)
-                XmlSchemaComplexType abstractControl = new XmlSchemaComplexType()
-                {
-                    Name = "Control",
-                    IsAbstract = true
-                };
-
-                XmlSchemaChoice abstractControlChoice = new XmlSchemaChoice
-                {
-                    MinOccurs = 0,
-                    MaxOccurs = 1,
-                };
-                XmlSchemaChoice abstractContainerChoice = new XmlSchemaChoice
-                {
-                    MinOccurs = 0,
-                    MaxOccursString = "unbounded"
-                };
-
-
+                #region controls
+                // controls
                 var controls = generalAsm.SelectMany(a => a.GetTypes()
                     .Where(t => t.GetCustomAttributes(typeof(A_VulkanControlAttribute), false).Any())
                     .Select(t => new
@@ -212,28 +194,38 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                         Attribute = (A_VulkanControlAttribute)t.GetCustomAttributes(typeof(A_VulkanControlAttribute), false).First()
                     })).ToList();
 
-                // setup controls with their attributes
+                // choice for control complex types
+                XmlSchemaChoice controlChoice = new XmlSchemaChoice
+                {
+                    MinOccurs = 0,
+                    MaxOccurs =1
+                };
+                // choice for container complex types
+                XmlSchemaChoice containerChoice = new XmlSchemaChoice
+                {
+                    MinOccurs = 0,
+                    MaxOccursString ="unbounded"
+                };
+
+                // elements
                 foreach (var control in controls)
                 {
-                    var extensionControl = new XmlSchemaComplexContentExtension
-                    {
-                        BaseTypeName = new XmlQualifiedName("Control", schema.TargetNamespace)
-                    };
-
-                    XmlSchemaElement xmlSchemaElement = new XmlSchemaElement
+                    XmlSchemaElement Control = new XmlSchemaElement()
                     {
                         Name = control.Attribute.Name,
                         SchemaTypeName = new XmlQualifiedName(control.Attribute.Name, schema.TargetNamespace)
                     };
+                    controlChoice.Items.Add(Control);
+                    containerChoice.Items.Add(Control);
+                    schema.Items.Add(Control);
+                }
 
-                    XmlSchemaComplexType derivedType = new XmlSchemaComplexType
+                // complex types
+                foreach (var control in controls)
+                {
+                    XmlSchemaComplexType complexType = new XmlSchemaComplexType
                     {
                         Name = control.Attribute.Name
-                    };
-
-                    derivedType.ContentModel = new XmlSchemaComplexContent
-                    {
-                        Content = extensionControl
                     };
                     // check for attributes
                     var attributes = control.Type.GetMembers(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
@@ -245,87 +237,15 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                             XmlAttribute = (A_VulkanControlPropertyAttribute?)m.GetCustomAttributes(typeof(A_VulkanControlPropertyAttribute), true).FirstOrDefault()
                         }).ToList();
 
-                    foreach (var attr in attributes)
+                    if (control.Type.IsSubclassOf(typeof(AbstractContainerControl)))
                     {
-                        Type memberType = attr.Property.MemberType == MemberTypes.Field
-                            ? ((FieldInfo)attr.Property).FieldType
-                            : ((PropertyInfo)attr.Property).PropertyType;
-                        string name = AttributeMap.ContainsKey(memberType) ? AttributeMap[memberType] : enumMap[memberType];
-                        XmlQualifiedName typeName = new XmlQualifiedName(name);
-                        XmlSchemaAttribute schemaAttribute = new XmlSchemaAttribute
-                        {
-                            Name = attr.XmlAttribute?.Name ?? attr.Property.Name,
-                            SchemaTypeName = typeName
-                        };
-                        var annotation = new XmlSchemaAnnotation();
-                        var documentation = new XmlSchemaDocumentation();
-                        documentation.Markup = new XmlNode[]
-                        {
-                            new XmlDocument().CreateTextNode(attr.XmlAttribute?.Description ?? "")
-                        };
-                        annotation.Items.Add(documentation);
-                        schemaAttribute.Annotation = annotation;
-
-                        extensionControl.Attributes.Add(schemaAttribute);
+                        complexType.Particle = CopyChoice(containerChoice);
+                    }
+                    else
+                    {
+                        complexType.Particle = CopyChoice(controlChoice);
                     }
 
-                    schema.Items.Add(derivedType);
-                    schema.Items.Add(xmlSchemaElement);
-                    abstractControlChoice.Items.Add(xmlSchemaElement);
-                    abstractContainerChoice.Items.Add(xmlSchemaElement);
-                }
-                abstractControl.Particle = abstractControlChoice;
-                schema.Items.Add(abstractControl);
-                #endregion
-
-                #region containers
-                // here we do the same for containers
-                XmlSchemaComplexType abstractContainer = new XmlSchemaComplexType()
-                {
-                    Name = "Container",
-                    IsAbstract = true
-                };
-
-                var containers = generalAsm.SelectMany(a => a.GetTypes()
-                    .Where(t => t.GetCustomAttributes(typeof(A_VulkanContainerAttribute), false).Any())
-                    .Select(t => new
-                    {
-                        Type = t,
-                        Attribute = (A_VulkanContainerAttribute)t.GetCustomAttributes(typeof(A_VulkanContainerAttribute), false).First()
-                    })).ToList();
-
-                foreach (var container in containers)
-                {
-                    var extensionContainer = new XmlSchemaComplexContentExtension
-                    {
-                        BaseTypeName = new XmlQualifiedName("Container", schema.TargetNamespace)
-                    };
-                    XmlSchemaElement derivedElement = new XmlSchemaElement
-                    {
-                        Name = container.Attribute.Name,
-                        SchemaTypeName = new XmlQualifiedName(container.Attribute.Name, schema.TargetNamespace)
-                    };
-                    abstractControlChoice.Items.Add(derivedElement);
-                    abstractContainerChoice.Items.Add(derivedElement);
-                    
-                    XmlSchemaComplexType derivedType = new XmlSchemaComplexType
-                    {
-                        Name = container.Attribute.Name
-                    };
-                    derivedType.ContentModel = new XmlSchemaComplexContent
-                    {
-                        Content = extensionContainer
-                    };
-                    var attributes = container.Type.GetMembers(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                            .Where(m => (m.MemberType == MemberTypes.Field || m.MemberType == MemberTypes.Property) &&
-                                m.GetCustomAttributes(typeof(A_VulkanControlPropertyAttribute), true).Any())
-                            .Select(m => new
-                            {
-                                Property = m,
-                                XmlAttribute = (A_VulkanControlPropertyAttribute?)m.GetCustomAttributes(typeof(A_VulkanControlPropertyAttribute), true).FirstOrDefault()
-                            }).ToList();
-
-                    extensionContainer.Particle = new XmlSchemaSequence();
                     foreach (var attr in attributes)
                     {
                         Type memberType = attr.Property.MemberType == MemberTypes.Field
@@ -344,33 +264,33 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                         if (memberType.IsGenericType && memberType.GetGenericTypeDefinition() == typeof(List<>))
                         {
                             memberType = memberType.GetGenericArguments()[0];
-                            string typeName = container.Attribute.Name + "." + UnlistedElementMap[memberType];
+                            string typeName = control.Attribute.Name + "." + UnlistedElementMap[memberType];
                             XmlQualifiedName xmlQualifiedName = new XmlQualifiedName(typeName);
 
-                            XmlSchemaComplexType containerComplexAttribute = new XmlSchemaComplexType()
+                            XmlSchemaComplexType listComplexType = new XmlSchemaComplexType()
                             {
-                                Name = container.Attribute.Name + "." + (attr.XmlAttribute?.Name ?? attr.Property.Name)
+                                Name = control.Attribute.Name + "." + (attr.XmlAttribute?.Name ?? attr.Property.Name)
                             };
-                            containerComplexAttribute.Particle = new XmlSchemaSequence();
+                            listComplexType.Particle = new XmlSchemaSequence();
                             XmlSchemaElement listElement = new XmlSchemaElement
                             {
                                 Name = UnlistedElementMap[memberType],
                                 SchemaTypeName = new XmlQualifiedName(UnlistedElementMap[memberType]),
                                 MinOccurs = 0,
-                                MaxOccursString = "unbounded"
+                                MaxOccursString = "unbounded",
                             };
-                            schema.Items.Add(containerComplexAttribute);
-                            ((XmlSchemaSequence)containerComplexAttribute.Particle).Items.Add(listElement);
+                            schema.Items.Add(listComplexType);
+                            ((XmlSchemaSequence)listComplexType.Particle).Items.Add(listElement);
 
                             XmlSchemaElement schemaElement = new XmlSchemaElement
                             {
-                                Name = container.Attribute.Name + "." + (attr.XmlAttribute?.Name ?? attr.Property.Name),
+                                Name = control.Attribute.Name + "." + (attr.XmlAttribute?.Name ?? attr.Property.Name),
                                 SchemaTypeName = xmlQualifiedName,
                                 MinOccurs = 0,
-                                MaxOccursString = "unbounded"
+                                MaxOccurs = 1
                             };
                             schemaElement.Annotation = annotation;
-                            ((XmlSchemaSequence)extensionContainer.Particle).Items.Add(schemaElement);
+                            ((XmlSchemaChoice)complexType.Particle).Items.Add(schemaElement);
                         }
                         else
                         {
@@ -382,15 +302,11 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                                 SchemaTypeName = qualifiedName
                             };
                             schemaAttribute.Annotation = annotation;
-                            extensionContainer.Attributes.Add(schemaAttribute);
+                            complexType.Attributes.Add(schemaAttribute);
                         }
                     }
-
-                    schema.Items.Add(derivedType);
-                    schema.Items.Add(derivedElement);
+                    schema.Items.Add(complexType);
                 }
-                abstractContainer.Particle = abstractContainerChoice;
-                schema.Items.Add(abstractContainer);
                 #endregion
 
                 // Settings for pretty printing
@@ -546,6 +462,19 @@ namespace ArctisAurora.EngineWork.Rendering.UI
             }
         }
 
+        private static XmlSchemaChoice CopyChoice(XmlSchemaChoice original)
+        {
+            XmlSchemaChoice copy = new XmlSchemaChoice
+            {
+                MinOccurs = original.MinOccurs,
+                MaxOccursString = original.MaxOccursString
+            };
+            foreach (XmlSchemaObject item in original.Items)
+            {
+                copy.Items.Add(item);
+            }
+            return copy;
+        }
 
         #region MapBuilders
         private static Dictionary<string, Type> BuildControlMap()
@@ -553,11 +482,11 @@ namespace ArctisAurora.EngineWork.Rendering.UI
             var generalAsm = AppDomain.CurrentDomain.GetAssemblies();
 
             return generalAsm.SelectMany(asm => asm.GetTypes()
-                    .Where(t => !t.IsAbstract && typeof(VulkanControl).IsAssignableFrom(t) && t.GetCustomAttribute<A_VulkanContainerAttribute>() != null || t.GetCustomAttribute<A_VulkanControlAttribute>() != null)
+                    .Where(t => !t.IsAbstract && typeof(VulkanControl).IsAssignableFrom(t) && t.GetCustomAttribute<A_VulkanControlAttribute>() != null)
                     .Select(t => new
                     {
                         Type = t,
-                        Tag = t.GetCustomAttribute<A_VulkanControlAttribute>()?.Name ?? t.GetCustomAttribute<A_VulkanContainerAttribute>()?.Name ?? t.Name
+                        Tag = t.GetCustomAttribute<A_VulkanControlAttribute>()?.Name ?? t.Name
                     })).ToDictionary(x => x.Tag, x => x.Type);
         }
 

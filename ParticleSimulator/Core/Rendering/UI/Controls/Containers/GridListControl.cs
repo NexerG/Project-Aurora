@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
 {
-    [A_VulkanContainer("GridList")]
+    [A_VulkanControl("GridList")]
     internal class GridListControl : AbstractContainerControl
     {
         [A_VulkanControlProperty("CellWidth")]

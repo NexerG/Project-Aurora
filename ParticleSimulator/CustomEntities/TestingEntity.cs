@@ -1,8 +1,4 @@
-﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
-using ArctisAurora.EngineWork.EngineEntity;
-using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
-using ArctisAurora.EngineWork.Serialization;
-using Silk.NET.Maths;
+﻿using ArctisAurora.EngineWork.EngineEntity;
 
 namespace ArctisAurora.CustomEntities
 {
