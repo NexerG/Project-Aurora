@@ -1,8 +1,5 @@
 ﻿using ArctisAurora.EngineWork.Physics.UICollision;
-using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Maths;
-using Silk.NET.Vulkan;
-using System.Diagnostics;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
 {
@@ -221,6 +218,16 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
         }
 
         public override void RecalculateLayout()
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void Measure(VulkanControl control)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void Arrange()
         {
             throw new NotImplementedException();
         }

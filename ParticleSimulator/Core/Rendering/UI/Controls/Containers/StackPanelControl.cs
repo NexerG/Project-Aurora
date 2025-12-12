@@ -1,20 +1,55 @@
 ﻿using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
 using Silk.NET.Maths;
+using System.Windows.Forms;
+using static ArctisAurora.EngineWork.Rendering.UI.Controls.VulkanControl;
 
 namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
 {
-    [A_VulkanUnlistedElement("RowSettings")]
-    public class StackPanelRowSettingsElement
+    [A_VulkanControlElement("LevelSettings")]
+    public class StackPanelLevelSettings
     {
-        [A_VulkanControlProperty("CurrentX")]
-        public float currentX = 0;
-        [A_VulkanControlProperty("CurrentY")]
-        public float currentY = 0;
-        [A_VulkanControlProperty("MaxHeightInRow")]
-        public float maxHeightInRow = 0;
-        [A_VulkanControlProperty("MaxWidthInColumn")]
-        public float maxWidthInColumn = 0;
+        #region enums
+        [A_VulkanEnum("LevelScaling")]
+        public enum LevelBounds
+        {
+            ScaleToContent, Fill, HardScale
+        }
+
+        [A_VulkanEnum("HorizontalAlignment")]
+        public enum HorizontalAlignment
+        {
+            Center, Left, Right
+        }
+
+        [A_VulkanEnum("VeticalAlignment")]
+        public enum VerticalAlignment
+        {
+            Top, Center, Bottom
+        }
+        #endregion
+
+        [A_VulkanControlProperty("Height", "Sets the height of the level when using scalar.")]
+        public float height = 0;
+        [A_VulkanControlProperty("Width", "Sets the width of the level when using scalar.")]
+        public float width = 0;
+        [A_VulkanControlProperty("Spacing")]
+        public float spacing = 0;
+
+        [A_VulkanControlProperty("WidthScaling", "Sets how the width scales on this level")]
+        public LevelBounds widthScaling = LevelBounds.ScaleToContent;
+        [A_VulkanControlProperty("HeightScaling", "Sets how the height scales on this level")]
+        public LevelBounds heightScaling = LevelBounds.ScaleToContent;
+        [A_VulkanControlProperty("HorizontalAlignment", "Sets the horizontal justification for this level")]
+        public HorizontalAlignment horizontalAlignment = HorizontalAlignment.Left;
+        [A_VulkanControlProperty("VerticalAlignment", "Sets the vertical alignment for this level")]
+        public VerticalAlignment verticalAlignment = VerticalAlignment.Center;
+
+        public Vector3D<float> nextPosition = new Vector3D<float>(0, 0, 0);
+
+        public Vector2D<float> bounds = new Vector2D<float>(0, 0);
+        public Vector2D<float> position = new Vector2D<float>(0, 0);
+        public List<VulkanControl> children = new List<VulkanControl>();
     }
 
 
@@ -40,8 +75,6 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
         #endregion
 
         #region properties
-        [A_VulkanControlProperty("Spacing")]
-        public float spacing = 5;
         [A_VulkanControlProperty("HorizontalMargin")]
         public float horizontalMargin = 10;
         [A_VulkanControlProperty("VerticalMargin")]
@@ -50,19 +83,23 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
         // settings
         [A_VulkanControlProperty("Orientation")]
         public Orientation orientation = Orientation.Vertical;
-
-        [A_VulkanControlProperty("Alignment")]
-        public Alignment alignment = Alignment.TopLeft;
         #endregion
 
         #region private_elements
-        [A_VulkanControlProperty("RowSettings")]
-        public List<StackPanelRowSettingsElement> rowSettings = new List<StackPanelRowSettingsElement>();
+        [A_VulkanControlProperty("LevelSettings")]
+        private List<StackPanelLevelSettings> _stackPanelLevelSettings = new List<StackPanelLevelSettings>();
+
+        public List<StackPanelLevelSettings> stackPanelLevelSettings
+        {
+            get => _stackPanelLevelSettings;
+            set
+            {
+                _stackPanelLevelSettings = value;
+            }
+        }
         #endregion
 
-        public List<Vector3D<float>> offsets = new List<Vector3D<float>>();
-
-        public override int height
+        /*public override int height
         {
             get => int.MaxValue;
             set
@@ -76,124 +113,258 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
         {
             get => int.MaxValue;
             set => base.width = value;
-        }
+        }*/
+
+        //private bool reposition = false;
 
         public override void AddControlToContainer(VulkanControl control)
         {
-            children.Add(control);
+            stackPanelLevelSettings[control.stackIndex].children.Add(control);
+            Measure(control);
+            MeasureSelf();
+            Arrange();
         }
 
         public override void RecalculateLayout()
         {
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
         }
-
-        private void AddManually(VulkanControl control)
+        
+        public override void Measure(VulkanControl control)
         {
-            //inserting new object into stackpanel
-            while (offsets.Count <= control.stackIndex + 1)
+            if(orientation == Orientation.Vertical)
             {
-                offsets.Add(new Vector3D<float>(horizontalMargin, verticalMargin, 0));
-            }
-
-
-            Vector3D<float> pos = CalcPos(control);
-            switch (alignment)
-            {
-                case Alignment.TopLeft:
-                    control.transform.SetWorldPosition(pos);
-                    break;
-                case Alignment.TopRight:
-                    control.transform.SetWorldPosition(new Vector3D<float>(transform.scale.X - pos.X, pos.Y, pos.Z));
-                    break;
-                case Alignment.BottomLeft:
-                    control.transform.SetWorldPosition(new Vector3D<float>(pos.X, transform.scale.Y - pos.Y, pos.Z));
-                    break;
-                case Alignment.BottomRight:
-                    control.transform.SetWorldPosition(new Vector3D<float>(transform.scale.X - pos.X, transform.scale.Y - pos.Y, pos.Z));
-                    break;
-            }
-            if (orientation == Orientation.Horizontal)
-            {
-                offsets[control.stackIndex] += new Vector3D<float>(0, spacing + control.transform.scale.Y, 0);
-                if (offsets[control.stackIndex + 1].X < control.transform.scale.X)
+                stackPanelLevelSettings[control.stackIndex].bounds.Y = Math.Max(stackPanelLevelSettings[control.stackIndex].bounds.Y, control.height);
+                switch(stackPanelLevelSettings[control.stackIndex].widthScaling)
                 {
-                    Vector3D<float> adjust = new Vector3D<float>(control.transform.scale.X - offsets[control.stackIndex + 1].X + horizontalMargin - spacing, 0, 0) / 2;
-                    switch (alignment)
-                    {
-                        case Alignment.TopLeft:
-                            break;
-                        case Alignment.TopRight:
-                            adjust = new Vector3D<float>(-adjust.X, adjust.Y, adjust.Z);
-                            break;
-                        case Alignment.BottomLeft:
-                            adjust = new Vector3D<float>(adjust.X, -adjust.Y, adjust.Z);
-                            break;
-                        case Alignment.BottomRight:
-                            adjust = new Vector3D<float>(-adjust.X, -adjust.Y, adjust.Z);
-                            break;
-                    }
-                    foreach (VulkanControl child in children)
-                    {
-                        if (child.stackIndex > control.stackIndex)
-                        {
-                            child.transform.SetLocalPosition(adjust);
-                        }
-                    }
-                    offsets[control.stackIndex + 1] = new Vector3D<float>(spacing + control.transform.scale.X, verticalMargin, 0);
+                    case StackPanelLevelSettings.LevelBounds.ScaleToContent:
+                        stackPanelLevelSettings[control.stackIndex].bounds.X += control.width + stackPanelLevelSettings[control.stackIndex].spacing;
+                        break;
+                    case StackPanelLevelSettings.LevelBounds.Fill:
+                        stackPanelLevelSettings[control.stackIndex].bounds.X = transform.scale.X - (horizontalMargin * 2);
+                        break;
+                    case StackPanelLevelSettings.LevelBounds.HardScale:
+                        stackPanelLevelSettings[control.stackIndex].bounds.X = stackPanelLevelSettings[control.stackIndex].width;
+                        break;
                 }
             }
             else
             {
-                offsets[control.stackIndex] += new Vector3D<float>(spacing + control.transform.scale.X, 0, 0);
-                if (offsets[control.stackIndex + 1].Y < control.transform.scale.Y)
+                stackPanelLevelSettings[control.stackIndex].bounds.X = Math.Max(stackPanelLevelSettings[control.stackIndex].bounds.X, control.width);
+                switch(stackPanelLevelSettings[control.stackIndex].heightScaling)
                 {
-                    Vector3D<float> adjust = new Vector3D<float>(0, control.transform.scale.Y - offsets[control.stackIndex + 1].Y + verticalMargin - spacing, 0) / 2;
-                    switch (alignment)
+                    case StackPanelLevelSettings.LevelBounds.ScaleToContent:
+                        stackPanelLevelSettings[control.stackIndex].bounds.Y += control.height + stackPanelLevelSettings[control.stackIndex].spacing;
+                        break;
+                    case StackPanelLevelSettings.LevelBounds.Fill:
+                        stackPanelLevelSettings[control.stackIndex].bounds.Y = transform.scale.Y - (verticalMargin * 2);
+                        break;
+                    case StackPanelLevelSettings.LevelBounds.HardScale:
+                        stackPanelLevelSettings[control.stackIndex].bounds.Y = stackPanelLevelSettings[control.stackIndex].height;
+                        break;
+                }
+            }
+        }
+
+        private void MeasureSelf()
+        {
+            //figure out how much space is left after fixed sizes
+            Vector2D<float> availableSpace = new Vector2D<float>(transform.scale.X - (horizontalMargin * stackPanelLevelSettings.Count), transform.scale.Y - (verticalMargin * stackPanelLevelSettings.Count));
+            int fillCount = 0;
+            foreach (var level in stackPanelLevelSettings)
+            {
+                if(orientation == Orientation.Horizontal)
+                {
+                    if (level.widthScaling == StackPanelLevelSettings.LevelBounds.Fill)
+                        fillCount++;
+                    else
+                        availableSpace.X -= level.bounds.X;
+                }
+                else
+                {
+                    if (level.heightScaling == StackPanelLevelSettings.LevelBounds.Fill)
+                        fillCount++;
+                    else
+                        availableSpace.Y -= level.bounds.Y;
+                }
+            }
+            if (fillCount > 0)
+            {
+                if (orientation == Orientation.Horizontal)
+                {
+                    availableSpace.X /= fillCount;
+                }
+                else
+                {
+                    availableSpace.Y /= fillCount;
+                }
+                //apply available space to fill levels
+                foreach (var level in stackPanelLevelSettings)
+                {
+                    if (orientation == Orientation.Horizontal)
                     {
-                        case Alignment.TopLeft:
-                            break;
-                        case Alignment.TopRight:
-                            adjust = new Vector3D<float>(-adjust.X, adjust.Y, adjust.Z);
-                            break;
-                        case Alignment.BottomLeft:
-                            adjust = new Vector3D<float>(adjust.X, -adjust.Y, adjust.Z);
-                            break;
-                        case Alignment.BottomRight:
-                            adjust = new Vector3D<float>(-adjust.X, -adjust.Y, adjust.Z);
-                            break;
+                        if (level.widthScaling == StackPanelLevelSettings.LevelBounds.Fill)
+                            level.bounds.X = availableSpace.X;
+                        if (level.heightScaling == StackPanelLevelSettings.LevelBounds.Fill)
+                            level.bounds.Y = availableSpace.Y;
                     }
-                    foreach (VulkanControl child in children)
+                    else
                     {
-                        if (child.stackIndex > control.stackIndex)
-                        {
-                            child.transform.SetLocalPosition(adjust);
-                        }
+                        if (level.heightScaling == StackPanelLevelSettings.LevelBounds.Fill)
+                            level.bounds.Y = availableSpace.Y;
+                        if (level.widthScaling == StackPanelLevelSettings.LevelBounds.Fill)
+                            level.bounds.X = availableSpace.X;
                     }
-                    offsets[control.stackIndex + 1] = new Vector3D<float>(horizontalMargin, spacing + control.transform.scale.Y, 0);
                 }
             }
 
-            children.Add(control);
+            // calculate each level's center position based on bounds and justification
+            for (int i = 0; i < stackPanelLevelSettings.Count; i++)
+            {
+                Vector2D<float> pos = new Vector2D<float>(0, 0);
+                if(orientation == Orientation.Horizontal)
+                {
+                    switch (stackPanelLevelSettings[i].verticalAlignment)
+                    {
+                        case StackPanelLevelSettings.VerticalAlignment.Center:
+                            pos.Y = transform.scale.Y / 2;
+                            break;
+                        case StackPanelLevelSettings.VerticalAlignment.Top:
+                            pos.Y = verticalMargin + (stackPanelLevelSettings[i].bounds.Y / 2);
+                            break;
+                        case StackPanelLevelSettings.VerticalAlignment.Bottom:
+                            pos.Y = transform.scale.Y - (stackPanelLevelSettings[i].bounds.Y / 2) - verticalMargin;
+                            break;
+                    }
+                    for(int k = i - 1; k >= 0; k--)
+                    {
+                        pos.X += stackPanelLevelSettings[k].bounds.X + stackPanelLevelSettings[k].spacing;
+                    }
+                    pos.X += horizontalMargin + stackPanelLevelSettings[i].bounds.X / 2;
+                }
+                else
+                {
+                    switch (stackPanelLevelSettings[i].horizontalAlignment)
+                    {
+                        case StackPanelLevelSettings.HorizontalAlignment.Center:
+                            pos.X = transform.scale.X / 2;
+                            break;
+                        case StackPanelLevelSettings.HorizontalAlignment.Left:
+                            pos.X = horizontalMargin + (stackPanelLevelSettings[i].bounds.X / 2);
+                            break;
+                        case StackPanelLevelSettings.HorizontalAlignment.Right:
+                            pos.X = transform.scale.X - (stackPanelLevelSettings[i].bounds.X / 2) - horizontalMargin;
+                            break;
+                    }
+                    for (int k = i - 1; k >= 0; k--)
+                    {
+                        pos.Y += stackPanelLevelSettings[k].bounds.Y + stackPanelLevelSettings[k].spacing;
+                    }
+                    pos.Y += verticalMargin + stackPanelLevelSettings[i].bounds.Y / 2;
+                }
+                stackPanelLevelSettings[i].position = pos;
+            }
 
+            // calculate starting nextPosition for each level
+            for (int i = 0; i < stackPanelLevelSettings.Count; i++)
+            {
+                Vector3D<float> startPosRelative = new Vector3D<float>();
+                switch (stackPanelLevelSettings[i].horizontalAlignment)
+                {
+                    case StackPanelLevelSettings.HorizontalAlignment.Center:
+                        startPosRelative.X = startPosRelative.X - (stackPanelLevelSettings[i].bounds.X / 2);
+                        break;
+                    case StackPanelLevelSettings.HorizontalAlignment.Right:
+                        startPosRelative.X = startPosRelative.X - (stackPanelLevelSettings[i].bounds.X / 2);
+                        break;
+                    case StackPanelLevelSettings.HorizontalAlignment.Left:
+                        startPosRelative.X = startPosRelative.X - (stackPanelLevelSettings[i].bounds.X / 2);
+                        break;
+                }
+
+                switch (stackPanelLevelSettings[i].verticalAlignment)
+                {
+                    case StackPanelLevelSettings.VerticalAlignment.Top:
+                        startPosRelative.Y = startPosRelative.Y - (stackPanelLevelSettings[i].bounds.Y / 2);
+                        break;
+                    case StackPanelLevelSettings.VerticalAlignment.Center:
+                        startPosRelative.Y += 0;
+                        break;
+                    case StackPanelLevelSettings.VerticalAlignment.Bottom:
+                        startPosRelative.Y = startPosRelative.Y + (stackPanelLevelSettings[i].bounds.Y / 2);
+                        break;
+                }
+
+                stackPanelLevelSettings[i].nextPosition = startPosRelative;
+            }
         }
 
         private Vector3D<float> CalcPos(VulkanControl control)
         {
-            Vector3D<float> halfScale = control.transform.scale / 2;
             float z = transform.position.Z;
-            Vector3D<float> pos = halfScale;
-            for (int i = 0; i < control.stackIndex; i++)
+            Vector3D<float> halfscale = new Vector3D<float>(control.width, control.height, 0) / 2;
+            Vector3D<float> pos = new Vector3D<float>(stackPanelLevelSettings[control.stackIndex].position.X, stackPanelLevelSettings[control.stackIndex].position.Y, 0);
+            if (orientation == Orientation.Horizontal)
             {
-                if (orientation == Orientation.Horizontal)
-                    pos.X += offsets[i].X;
+                // vertical alignment
+                if (stackPanelLevelSettings[control.stackIndex].verticalAlignment == StackPanelLevelSettings.VerticalAlignment.Bottom)
+                {
+                    pos = pos + stackPanelLevelSettings[control.stackIndex].nextPosition;
+                    pos.Y = pos.Y - halfscale.Y;
+                    stackPanelLevelSettings[control.stackIndex].nextPosition.Y = stackPanelLevelSettings[control.stackIndex].nextPosition.Y - halfscale.Y * 2 - stackPanelLevelSettings[control.stackIndex].spacing;
+                }
                 else
-                    pos.Y += offsets[i].Y;
+                {
+                    pos = pos + stackPanelLevelSettings[control.stackIndex].nextPosition;
+                    pos.Y = pos.Y + halfscale.Y;
+                    stackPanelLevelSettings[control.stackIndex].nextPosition.Y = stackPanelLevelSettings[control.stackIndex].nextPosition.Y + halfscale.Y * 2 + stackPanelLevelSettings[control.stackIndex].spacing;
+                }
+                // horizontal alignment
+                if(stackPanelLevelSettings[control.stackIndex].horizontalAlignment == StackPanelLevelSettings.HorizontalAlignment.Right)
+                {
+                    pos.X = pos.X - halfscale.X;
+                }
+                else if(stackPanelLevelSettings[control.stackIndex].horizontalAlignment == StackPanelLevelSettings.HorizontalAlignment.Left)
+                {
+                    pos.X = pos.X + halfscale.X;
+                }
             }
-            pos += offsets[control.stackIndex];
+            else
+            {
+                if(stackPanelLevelSettings[control.stackIndex].horizontalAlignment == StackPanelLevelSettings.HorizontalAlignment.Right)
+                {
+                    pos = pos - stackPanelLevelSettings[control.stackIndex].nextPosition;
+                    pos.X = pos.X - halfscale.X;
+                    stackPanelLevelSettings[control.stackIndex].nextPosition.X = stackPanelLevelSettings[control.stackIndex].nextPosition.X - halfscale.X * 2 + stackPanelLevelSettings[control.stackIndex].spacing;
+                }
+                else
+                {
+                    pos = pos + stackPanelLevelSettings[control.stackIndex].nextPosition;
+                    pos.X = pos.X + halfscale.X;
+                    stackPanelLevelSettings[control.stackIndex].nextPosition.X = stackPanelLevelSettings[control.stackIndex].nextPosition.X + halfscale.X * 2 + stackPanelLevelSettings[control.stackIndex].spacing;
+                }
+                // vertical alignment
+                if (stackPanelLevelSettings[control.stackIndex].verticalAlignment == StackPanelLevelSettings.VerticalAlignment.Bottom)
+                {
+                    pos.Y = pos.Y - halfscale.Y;
+                }
+                else if (stackPanelLevelSettings[control.stackIndex].verticalAlignment == StackPanelLevelSettings.VerticalAlignment.Top)
+                {
+                    pos.Y = pos.Y + halfscale.Y;
+                }
+            }
             pos.Z = z;
-            
+
             return pos;
         }
+
+        public override void Arrange()
+        {
+            foreach (VulkanControl child in children)
+            {
+                Vector3D<float> pos = CalcPos(child);
+                child.transform.SetWorldPosition(pos);
+            }
+        } 
     }
 }

@@ -49,15 +49,15 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
     /// Used to create an entry for a vulkan control element that shouldnt be used as a general element. Example: <Grid> <Grid.RowSettings/> </Grid>
     /// </summary>
     [AttributeUsage(AttributeTargets.Class, Inherited = false)]
-    public sealed class A_VulkanUnlistedElementAttribute : Attribute
+    public sealed class A_VulkanControlElementAttribute : Attribute
     {
         public string Name { get; }
         public string Description { get; set; } = "";
-        public A_VulkanUnlistedElementAttribute(string name)
+        public A_VulkanControlElementAttribute(string name)
         {
             Name = name;
         }
-        public A_VulkanUnlistedElementAttribute(string name, string description)
+        public A_VulkanControlElementAttribute(string name, string description)
         {
             Name = name;
             Description = description;
@@ -71,9 +71,17 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
     public sealed class A_VulkanEnumAttribute : Attribute
     {
         public string Name { get; }
+        public string Description { get; set; } = "";
+
         public A_VulkanEnumAttribute(string name)
         {
             Name = name;
+        }
+
+        public A_VulkanEnumAttribute(string name, string description)
+        {
+            Name = name;
+            Description = description;
         }
     }
     
@@ -84,12 +92,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
     public sealed class A_VulkanActionAttribute : Attribute
     { }
     #endregion
-
-    [A_VulkanEnum("ControlColor")]
-    public enum ControlColor
-    {
-        red, green, blue, white, black, yellow, cyan, magenta, gray, orange, purple, brown, pink, lime, navy, teal,
-    }
 
     public unsafe class VulkanControl : Entity
     {
@@ -139,11 +141,17 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             public QuadUVs uvs;
             public ControlStyle style;
         }
+
+        [A_VulkanEnum("ControlColor")]
+        public enum ControlColor
+        {
+            red, green, blue, white, black, yellow, cyan, magenta, gray, orange, purple, brown, pink, lime, navy, teal,
+        }
         #endregion
 
         #region properties
         // sizing
-        private int _width = 72;
+        private int _width;
         [A_VulkanControlProperty("Width", "Width in pixels")]
         public virtual int width
         {
@@ -155,7 +163,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             }
         }
 
-        private int _height = 72;
+        private int _height;
         [A_VulkanControlProperty("Height", "Height in pixels")]
         public virtual int height
         {
@@ -179,11 +187,14 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         }
 
         // postioning
-        [A_VulkanControlProperty("HorizontalPos", "Sets the position of the current control within it's parent. [0;1]")]
+        [A_VulkanControlProperty("HorizontalPos", "Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.")]
         public float horizontalPosition = 0.5f;
 
-        [A_VulkanControlProperty("VerticalPos", "Sets the position of the current control within it's parent. [0;1]")]
+        [A_VulkanControlProperty("VerticalPos", "Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.")]
         public float verticalPosition = 0.5f;
+
+        [A_VulkanControlProperty("ClipToBounds", "Clips child controls to the bounds of this control.")]
+        public bool clipToBounds = false;
 
         // settings
         [A_VulkanControlProperty("DockMode")]
@@ -200,7 +211,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
                 UpdateControlData();
             }
         }
-
         [A_VulkanControlProperty("StackIndex")]
         public int stackIndex = 0;
 
@@ -259,6 +269,9 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 
         public VulkanControl()
         {
+            width = 72;
+            height = 72;
+
             controlData = new ControlData();
             controlData.style = ControlStyle.Default();
             controlData.uvs = new QuadUVs();
@@ -317,7 +330,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 
             if (entity is not VulkanControl control) throw new Exception("Child entity must be a VulkanControl");
 
-            if(children.Count > 0)
+            if (children.Count > 0)
             {
                 throw new Exception("Control can only have one child");
             }
@@ -329,7 +342,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 
             // transform child
             Vector3D<float> transformedLoc = transform.position;
-            if(control is not AbstractContainerControl container)
+            if (control is not AbstractContainerControl container)
             {
                 // map chil horizontal and vertical pos to parent size
                 transformedLoc.X += (control.horizontalPosition - 0.5f) * width;
@@ -568,6 +581,15 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             byte g = Convert.ToByte(hex.Substring(2, 2), 16);
             byte b = Convert.ToByte(hex.Substring(4, 2), 16);
             return new Vector3D<float>(r / 255f, g / 255f, b / 255f);
+        }
+
+        public override void Invalidate()
+        {
+            base.Invalidate();
+            foreach (Entity child in children)
+            {
+                child.Invalidate();
+            }
         }
     }
 }

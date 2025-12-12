@@ -7,6 +7,51 @@
       <xs:enumeration value="TestAction" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:simpleType name="DockMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="fill" />
+      <xs:enumeration value="left" />
+      <xs:enumeration value="right" />
+      <xs:enumeration value="top" />
+      <xs:enumeration value="bottom" />
+      <xs:enumeration value="unknown" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="LevelScaling">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="ScaleToContent" />
+      <xs:enumeration value="Fill" />
+      <xs:enumeration value="HardScale" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="HorizontalAlignment">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Center" />
+      <xs:enumeration value="Left" />
+      <xs:enumeration value="Right" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="VeticalAlignment">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Top" />
+      <xs:enumeration value="Center" />
+      <xs:enumeration value="Bottom" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Orientation">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Horizontal" />
+      <xs:enumeration value="Vertical" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Alignment">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="TopLeft" />
+      <xs:enumeration value="TopRight" />
+      <xs:enumeration value="BottomLeft" />
+      <xs:enumeration value="BottomRight" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:simpleType name="ControlColor">
     <xs:restriction base="xs:string">
       <xs:enumeration value="red" />
@@ -27,30 +72,6 @@
       <xs:enumeration value="teal" />
     </xs:restriction>
   </xs:simpleType>
-  <xs:simpleType name="DockMode">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="fill" />
-      <xs:enumeration value="left" />
-      <xs:enumeration value="right" />
-      <xs:enumeration value="top" />
-      <xs:enumeration value="bottom" />
-      <xs:enumeration value="unknown" />
-    </xs:restriction>
-  </xs:simpleType>
-  <xs:simpleType name="Orientation">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="Horizontal" />
-      <xs:enumeration value="Vertical" />
-    </xs:restriction>
-  </xs:simpleType>
-  <xs:simpleType name="Alignment">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="TopLeft" />
-      <xs:enumeration value="TopRight" />
-      <xs:enumeration value="BottomLeft" />
-      <xs:enumeration value="BottomRight" />
-    </xs:restriction>
-  </xs:simpleType>
   <xs:simpleType name="ContentScalingModeEnum">
     <xs:restriction base="xs:string">
       <xs:enumeration value="Vertical" />
@@ -59,25 +80,40 @@
       <xs:enumeration value="None" />
     </xs:restriction>
   </xs:simpleType>
-  <xs:complexType name="RowSettings">
-    <xs:attribute name="CurrentX" type="xs:float">
+  <xs:complexType name="LevelSettings">
+    <xs:attribute name="Height" type="xs:float">
+      <xs:annotation>
+        <xs:documentation>Sets the height of the level when using scalar.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Width" type="xs:float">
+      <xs:annotation>
+        <xs:documentation>Sets the width of the level when using scalar.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Spacing" type="xs:float">
       <xs:annotation>
         <xs:documentation></xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="CurrentY" type="xs:float">
+    <xs:attribute name="WidthScaling" type="LevelScaling">
       <xs:annotation>
-        <xs:documentation></xs:documentation>
+        <xs:documentation>Sets how the width scales on this level</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="MaxHeightInRow" type="xs:float">
+    <xs:attribute name="HeightScaling" type="LevelScaling">
       <xs:annotation>
-        <xs:documentation></xs:documentation>
+        <xs:documentation>Sets how the height scales on this level</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="MaxWidthInColumn" type="xs:float">
+    <xs:attribute name="HorizontalAlignment" type="HorizontalAlignment">
       <xs:annotation>
-        <xs:documentation></xs:documentation>
+        <xs:documentation>Sets the horizontal justification for this level</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="VerticalAlignment" type="VeticalAlignment">
+      <xs:annotation>
+        <xs:documentation>Sets the vertical alignment for this level</xs:documentation>
       </xs:annotation>
     </xs:attribute>
   </xs:complexType>
@@ -87,9 +123,9 @@
   <xs:element name="Button" type="Button" />
   <xs:element name="Dock" type="Dock" />
   <xs:element name="GridList" type="GridList" />
-  <xs:complexType name="StackPanel.RowSettings">
+  <xs:complexType name="StackPanel.LevelSettings">
     <xs:sequence>
-      <xs:element minOccurs="0" maxOccurs="unbounded" name="RowSettings" type="RowSettings" />
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="LevelSettings" type="LevelSettings" />
     </xs:sequence>
   </xs:complexType>
   <xs:complexType name="StackPanel">
@@ -100,18 +136,23 @@
       <xs:element name="Button" type="Button" />
       <xs:element name="Dock" type="Dock" />
       <xs:element name="GridList" type="GridList" />
-      <xs:element minOccurs="0" maxOccurs="1" name="StackPanel.RowSettings" type="StackPanel.RowSettings">
+      <xs:element minOccurs="0" maxOccurs="1" name="StackPanel.LevelSettings" type="StackPanel.LevelSettings">
         <xs:annotation>
           <xs:documentation></xs:documentation>
         </xs:annotation>
       </xs:element>
     </xs:choice>
-    <xs:attribute name="ControlColor" type="ControlColor">
+    <xs:attribute name="Width" type="xs:int">
       <xs:annotation>
-        <xs:documentation></xs:documentation>
+        <xs:documentation>Width in pixels</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="Spacing" type="xs:float">
+    <xs:attribute name="Height" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Height in pixels</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ControlColor" type="ControlColor">
       <xs:annotation>
         <xs:documentation></xs:documentation>
       </xs:annotation>
@@ -131,19 +172,19 @@
         <xs:documentation></xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="Alignment" type="Alignment">
-      <xs:annotation>
-        <xs:documentation></xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
     <xs:attribute name="HorizontalPos" type="xs:float">
       <xs:annotation>
-        <xs:documentation>Sets the position of the current control within it's parent. [0;1]</xs:documentation>
+        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="VerticalPos" type="xs:float">
       <xs:annotation>
-        <xs:documentation>Sets the position of the current control within it's parent. [0;1]</xs:documentation>
+        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ClipToBounds" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Clips child controls to the bounds of this control.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="DockMode" type="DockMode">
@@ -218,12 +259,17 @@
     </xs:attribute>
     <xs:attribute name="HorizontalPos" type="xs:float">
       <xs:annotation>
-        <xs:documentation>Sets the position of the current control within it's parent. [0;1]</xs:documentation>
+        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="VerticalPos" type="xs:float">
       <xs:annotation>
-        <xs:documentation>Sets the position of the current control within it's parent. [0;1]</xs:documentation>
+        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ClipToBounds" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Clips child controls to the bounds of this control.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="DockMode" type="DockMode">
@@ -308,12 +354,17 @@
     </xs:attribute>
     <xs:attribute name="HorizontalPos" type="xs:float">
       <xs:annotation>
-        <xs:documentation>Sets the position of the current control within it's parent. [0;1]</xs:documentation>
+        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="VerticalPos" type="xs:float">
       <xs:annotation>
-        <xs:documentation>Sets the position of the current control within it's parent. [0;1]</xs:documentation>
+        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ClipToBounds" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Clips child controls to the bounds of this control.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="DockMode" type="DockMode">
@@ -388,12 +439,17 @@
     </xs:attribute>
     <xs:attribute name="HorizontalPos" type="xs:float">
       <xs:annotation>
-        <xs:documentation>Sets the position of the current control within it's parent. [0;1]</xs:documentation>
+        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="VerticalPos" type="xs:float">
       <xs:annotation>
-        <xs:documentation>Sets the position of the current control within it's parent. [0;1]</xs:documentation>
+        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ClipToBounds" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Clips child controls to the bounds of this control.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="DockMode" type="DockMode">
@@ -468,12 +524,17 @@
     </xs:attribute>
     <xs:attribute name="HorizontalPos" type="xs:float">
       <xs:annotation>
-        <xs:documentation>Sets the position of the current control within it's parent. [0;1]</xs:documentation>
+        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="VerticalPos" type="xs:float">
       <xs:annotation>
-        <xs:documentation>Sets the position of the current control within it's parent. [0;1]</xs:documentation>
+        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ClipToBounds" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Clips child controls to the bounds of this control.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="DockMode" type="DockMode">
@@ -578,12 +639,17 @@
     </xs:attribute>
     <xs:attribute name="HorizontalPos" type="xs:float">
       <xs:annotation>
-        <xs:documentation>Sets the position of the current control within it's parent. [0;1]</xs:documentation>
+        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="VerticalPos" type="xs:float">
       <xs:annotation>
-        <xs:documentation>Sets the position of the current control within it's parent. [0;1]</xs:documentation>
+        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ClipToBounds" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Clips child controls to the bounds of this control.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="DockMode" type="DockMode">

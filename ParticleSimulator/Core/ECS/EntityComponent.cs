@@ -38,5 +38,10 @@ namespace ArctisAurora.EngineWork.ComponentBehaviour
         {
 
         }
+
+        public virtual void OnInvalidate()
+        {
+
+        }
     }
 }

@@ -245,11 +245,21 @@ namespace ArctisAurora.EngineWork
             {
                 entity.OnTick();
             }
+            
 
             if(EntityManager.entitiesToUpdate.Count > 0)
             {
+                List<Entity> entitiesCopy;
+                lock (EntityManager.entitiesToUpdate)
+                {
+                    entitiesCopy = new List<Entity>(EntityManager.entitiesToUpdate);
+                    EntityManager.RemoveEntityUpdate(0, EntityManager.entitiesToUpdate.Count);
+                }
+                foreach (Entity e in entitiesCopy)
+                {
+                    e.Invalidate();
+                }
                 renderer.UpdateModules();
-                EntityManager.RemoveEntityUpdate(0, EntityManager.entitiesToUpdate.Count);
             }
 
             // some if clause to check if we caught up

@@ -1,14 +1,9 @@
-﻿using ABI.System.Numerics;
-using ArctisAurora.EngineWork.EngineEntity;
-using ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable;
-using Silk.NET.Maths;
-using System.Windows.Forms;
+﻿using ArctisAurora.EngineWork.EngineEntity;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
 {
     public abstract class AbstractContainerControl : PanelControl
     {
-
         public AbstractContainerControl()
         {
 
@@ -28,6 +23,13 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
         }
 
         public abstract void AddControlToContainer(VulkanControl control);
+
         public abstract void RecalculateLayout();
+
+        public abstract void Measure(VulkanControl control);
+
+        public abstract void Arrange();
+
+        //public abstract void MeasureSelf();
     }
 }

@@ -28,14 +28,14 @@ namespace ArctisAurora.EngineWork.EngineEntity
 
         public void SetRotationFromQuaternion(Quaternion<float> q)
         {
-            EntityManager.AddEntityToUpdate(parent);
+            parent.MarkDirty();
         }
 
         public void SetRotationFromVector3(Vector3D<float> _r)
         {
             rotation = _r;
             _changed = true;
-            EntityManager.AddEntityToUpdate(parent);
+            parent.MarkDirty();
         }
 
         public Quaternion<float> GetQuaternion()
@@ -60,7 +60,7 @@ namespace ArctisAurora.EngineWork.EngineEntity
         {
             position = newPos;
             _changed = true;
-            EntityManager.AddEntityToUpdate(parent);
+            parent.MarkDirty();
         }
 
         public void MoveToPosition(Vector3D<float> newPos)
@@ -70,14 +70,14 @@ namespace ArctisAurora.EngineWork.EngineEntity
             {
                 child.transform.MoveLocalPosition(delta);
             }
-            EntityManager.AddEntityToUpdate(parent);
+            parent.MarkDirty();
         }
 
         public void SetLocalPosition(Vector3D<float> delta)
         {
             _changed = true;
             position += delta;
-            EntityManager.AddEntityToUpdate(parent);
+            parent.MarkDirty();
         }
 
         public void MoveLocalPosition(Vector3D<float> delta)
@@ -88,7 +88,7 @@ namespace ArctisAurora.EngineWork.EngineEntity
                 child.transform.MoveLocalPosition(delta);
             }
             _changed = true;
-            EntityManager.AddEntityToUpdate(parent);
+            parent.MarkDirty();
         }
 
         public Vector3D<float> GetEntityPosition()
@@ -105,14 +105,14 @@ namespace ArctisAurora.EngineWork.EngineEntity
         {
             scale = s;
             _changed = true;
-            EntityManager.AddEntityToUpdate(parent);
+            parent.MarkDirty();
         }
 
         public void SetWorldScale(Vector3D<float> s)
         {
             scale = s;
             _changed = true;
-            EntityManager.AddEntityToUpdate(parent);
+            parent.MarkDirty();
         }
 
         private float DegreesToRadians(float degrees)

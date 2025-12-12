@@ -33,6 +33,16 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
             UpdateLayout();
         }
 
+        public override void Arrange()
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void Measure(VulkanControl control)
+        {
+            throw new NotImplementedException();
+        }
+
         public override void RecalculateLayout()
         {
             throw new NotImplementedException();

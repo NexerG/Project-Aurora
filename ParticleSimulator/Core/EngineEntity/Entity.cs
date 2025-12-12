@@ -24,6 +24,28 @@ namespace ArctisAurora.EngineWork.EngineEntity
         [NonSerializable]
         public Entity parent;
 
+        private bool _isDirty = true;
+        [NonSerializable]
+        public bool isDirty
+        {
+            get => _isDirty;
+            set
+            {
+                _isDirty = value;
+                EntityManager.AddEntityToUpdate(this);
+                foreach(var child in children)
+                {
+                    child.isDirty = true;
+                }
+            }
+        }
+
+        public bool MarkDirty()
+        {
+            isDirty = true;
+            return isDirty;
+        }
+
         [@Serializable]
         public List<Entity> children = new List<Entity>();
 
@@ -204,6 +226,15 @@ namespace ArctisAurora.EngineWork.EngineEntity
                 }
             }
             return null;
+        }
+
+        public virtual void Invalidate()
+        {
+            foreach(EntityComponent c in _components)
+            {
+                c.OnInvalidate();
+            }
+            EntityManager.AddEntityToUpdate(this);
         }
     }
 }

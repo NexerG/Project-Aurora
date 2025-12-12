@@ -4,18 +4,22 @@
         Width="1280" Height="720" ContentScalingMode="Vertical" Fill="true">
 
 
-	<StackPanel Alignment="BottomLeft" ControlColor="gray">
-		<StackPanel.RowSettings>
-			<RowSettings CurrentX="1"/>
-		</StackPanel.RowSettings>
+	<StackPanel ControlColor="gray" Orientation="Vertical">
+		<StackPanel.LevelSettings>
+			<LevelSettings Spacing="5" VerticalAlignment="Bottom"/>
+			<LevelSettings Spacing="5" VerticalAlignment="Top"/>
+			<LevelSettings Spacing="5" VerticalAlignment="Bottom"/>
+			<LevelSettings Spacing="5"/>
+		</StackPanel.LevelSettings>
 		
-		<Button ControlColor="red" Width="36" Height="120"/>
+		<Button ControlColor="red" Width="150" Height="150"/>
 		<Button ControlColor="green"/>
-		<Button ControlColor="blue" StackIndex="1"/>
+		<Button ControlColor="green"/>
+		<Button ControlColor="green"/>
+		<Button ControlColor="blue" StackIndex="1" />
 		<Button ControlColor="black" StackIndex="2"/>
 		<Button ControlColor="yellow" StackIndex="3"/>
-		<Button ControlColor="cyan" StackIndex="0" Height="180"/>
-		<Button ControlColor="magenta" StackIndex="3" />
-		<Button ControlColor="orange" StackIndex="2" Height="60"/>
+		<Button ControlColor="cyan" StackIndex="2" Height="180"/>
+		<Button ControlColor="orange" StackIndex="2" />
 	</StackPanel>
 </Window>

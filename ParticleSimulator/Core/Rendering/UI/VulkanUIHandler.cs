@@ -127,11 +127,11 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                 #region unlisted elements
                 // unlisted elements
                 var unlistedTypes = generalAsm.SelectMany(a => a.GetTypes()
-                .Where(t => t.IsClass && t.GetCustomAttributes(typeof(A_VulkanUnlistedElementAttribute), false).Any())
+                .Where(t => t.IsClass && t.GetCustomAttributes(typeof(A_VulkanControlElementAttribute), false).Any())
                 .Select(t => new
                 {
                     Type = t,
-                    Attribute = (A_VulkanUnlistedElementAttribute)t.GetCustomAttributes(typeof(A_VulkanUnlistedElementAttribute), false).First()
+                    Attribute = (A_VulkanControlElementAttribute)t.GetCustomAttributes(typeof(A_VulkanControlElementAttribute), false).First()
                 })).ToList();
 
                 foreach (var unlistedType in unlistedTypes)
@@ -361,6 +361,20 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                         Type listType = typeof(List<>).MakeGenericType(unlistedType);
                         var listInstance = Activator.CreateInstance(listType);
                         ResolveObjects(element, listInstance, unlistedType);
+                        var member = (MemberInfo)topControl.GetType()
+                                .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                                .FirstOrDefault(p => p.PropertyType == listType)
+                            ?? (MemberInfo)topControl.GetType()
+                                .GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                                .FirstOrDefault(f => f.FieldType == listType);
+                        if (member is PropertyInfo prop)
+                            prop.SetValue(topControl, listInstance);
+                        else if (member is FieldInfo field)
+                            field.SetValue(topControl, listInstance);
+
+                        //var prop = topControl.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic)
+                        //    .FirstOrDefault(p => p.PropertyType == listType);
+                        //prop.SetValue(topControl, listInstance);
                     }
                 }
                 else
@@ -512,11 +526,11 @@ namespace ArctisAurora.EngineWork.Rendering.UI
         {
             var generalAsm = AppDomain.CurrentDomain.GetAssemblies();
             return generalAsm.SelectMany(asm => asm.GetTypes()
-                    .Where(t => t.IsClass && t.GetCustomAttributes(typeof(A_VulkanUnlistedElementAttribute), false).Any())
+                    .Where(t => t.IsClass && t.GetCustomAttributes(typeof(A_VulkanControlElementAttribute), false).Any())
                     .Select(t => new
                     {
                         Type = t,
-                        Tag = t.GetCustomAttribute<A_VulkanUnlistedElementAttribute>()?.Name ?? t.Name
+                        Tag = t.GetCustomAttribute<A_VulkanControlElementAttribute>()?.Name ?? t.Name
                     })).ToDictionary(x => x.Type, x => x.Tag);
         }
         #endregion
