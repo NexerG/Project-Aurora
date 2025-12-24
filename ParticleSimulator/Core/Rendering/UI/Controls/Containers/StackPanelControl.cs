@@ -2,11 +2,10 @@
 using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
 using Silk.NET.Maths;
 using System.Windows.Forms;
-using static ArctisAurora.EngineWork.Rendering.UI.Controls.VulkanControl;
 
 namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
 {
-    [A_VulkanControlElement("LevelSettings")]
+    [A_VulkanControlElement("LevelSettings", "Settings for a level of the StackPanel")]
     public class StackPanelLevelSettings
     {
         #region enums
@@ -50,6 +49,8 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
         public Vector2D<float> bounds = new Vector2D<float>(0, 0);
         public Vector2D<float> position = new Vector2D<float>(0, 0);
         public List<VulkanControl> children = new List<VulkanControl>();
+        public int fillers = 0;
+        public int spaceLeft = 0;
     }
 
 
@@ -62,15 +63,6 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
         {
             Horizontal,
             Vertical
-        }
-
-        [A_VulkanEnum("Alignment")]
-        public enum Alignment
-        {
-            TopLeft,
-            TopRight,
-            BottomLeft,
-            BottomRight
         }
         #endregion
 
@@ -99,28 +91,10 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
         }
         #endregion
 
-        /*public override int height
-        {
-            get => int.MaxValue;
-            set
-            {
-                base.height = value;
-                RecalculateLayout();
-            }
-        }
-
-        public override int width
-        {
-            get => int.MaxValue;
-            set => base.width = value;
-        }*/
-
-        //private bool reposition = false;
-
         public override void AddControlToContainer(VulkanControl control)
         {
             stackPanelLevelSettings[control.stackIndex].children.Add(control);
-            Measure(control);
+            Measure();
             MeasureSelf();
             Arrange();
         }
@@ -130,47 +104,87 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
             //throw new NotImplementedException();
         }
         
-        public override void Measure(VulkanControl control)
+        public override void Measure()
         {
-            if(orientation == Orientation.Vertical)
+            foreach(var level in stackPanelLevelSettings)
             {
-                stackPanelLevelSettings[control.stackIndex].bounds.Y = Math.Max(stackPanelLevelSettings[control.stackIndex].bounds.Y, control.height);
-                switch(stackPanelLevelSettings[control.stackIndex].widthScaling)
+                level.bounds = new Vector2D<float>(0, 0);
+                level.fillers = 0;
+                level.nextPosition = new Vector3D<float>(0, 0, 0);
+                foreach (var child in level.children)
                 {
-                    case StackPanelLevelSettings.LevelBounds.ScaleToContent:
-                        stackPanelLevelSettings[control.stackIndex].bounds.X += control.width + stackPanelLevelSettings[control.stackIndex].spacing;
+                    MeasureChild(level, child);
+                }
+            }
+        }
+
+        private void MeasureChild(StackPanelLevelSettings level, VulkanControl child)
+        {
+            if (orientation == Orientation.Vertical)
+            {
+                switch(child.scalingMode)
+                {
+                    case ScalingMode.Fill:
+                        level.bounds.Y = Math.Max(level.bounds.Y, child.preferredHeight);
+                        level.fillers++;
                         break;
-                    case StackPanelLevelSettings.LevelBounds.Fill:
-                        stackPanelLevelSettings[control.stackIndex].bounds.X = transform.scale.X - (horizontalMargin * 2);
+                    case ScalingMode.None:
+                        level.bounds.Y = Math.Max(level.bounds.Y, child.preferredHeight);
+                        switch (level.widthScaling)
+                        {
+                            case StackPanelLevelSettings.LevelBounds.ScaleToContent:
+                                level.bounds.X += child.preferredWidth + level.spacing;
+                                break;
+                            case StackPanelLevelSettings.LevelBounds.Fill:
+                                level.bounds.X = width - (horizontalMargin * 2);
+                                break;
+                            case StackPanelLevelSettings.LevelBounds.HardScale:
+                                level.bounds.X = level.width;
+                                break;
+                        }
+                        child.SetControlScale(child.preferredWidth, child.preferredHeight);
                         break;
-                    case StackPanelLevelSettings.LevelBounds.HardScale:
-                        stackPanelLevelSettings[control.stackIndex].bounds.X = stackPanelLevelSettings[control.stackIndex].width;
+                    case ScalingMode.Uniform:
                         break;
                 }
+
             }
             else
             {
-                stackPanelLevelSettings[control.stackIndex].bounds.X = Math.Max(stackPanelLevelSettings[control.stackIndex].bounds.X, control.width);
-                switch(stackPanelLevelSettings[control.stackIndex].heightScaling)
+                switch(child.scalingMode)
                 {
-                    case StackPanelLevelSettings.LevelBounds.ScaleToContent:
-                        stackPanelLevelSettings[control.stackIndex].bounds.Y += control.height + stackPanelLevelSettings[control.stackIndex].spacing;
+                    case ScalingMode.Fill:
+                        level.bounds.X = Math.Max(level.bounds.X, child.preferredWidth);
+                        level.fillers++;
                         break;
-                    case StackPanelLevelSettings.LevelBounds.Fill:
-                        stackPanelLevelSettings[control.stackIndex].bounds.Y = transform.scale.Y - (verticalMargin * 2);
+                    case ScalingMode.None:
+                        level.bounds.X = Math.Max(level.bounds.X, child.preferredWidth);
+                        switch (level.heightScaling)
+                        {
+                            case StackPanelLevelSettings.LevelBounds.ScaleToContent:
+                                level.bounds.Y += child.preferredHeight + level.spacing;
+                                break;
+                            case StackPanelLevelSettings.LevelBounds.Fill:
+                                level.bounds.Y = transform.scale.Y - (verticalMargin * 2);
+                                break;
+                            case StackPanelLevelSettings.LevelBounds.HardScale:
+                                level.bounds.Y = level.height;
+                                break;
+                        }
+                        child.SetControlScale(child.preferredWidth, child.preferredHeight);
                         break;
-                    case StackPanelLevelSettings.LevelBounds.HardScale:
-                        stackPanelLevelSettings[control.stackIndex].bounds.Y = stackPanelLevelSettings[control.stackIndex].height;
+                    case ScalingMode.Uniform:
                         break;
                 }
             }
         }
 
-        private void MeasureSelf()
+        public override void MeasureSelf()
         {
             //figure out how much space is left after fixed sizes
-            Vector2D<float> availableSpace = new Vector2D<float>(transform.scale.X - (horizontalMargin * stackPanelLevelSettings.Count), transform.scale.Y - (verticalMargin * stackPanelLevelSettings.Count));
+            Vector2D<float> availableSpace = new Vector2D<float>(width - (horizontalMargin * stackPanelLevelSettings.Count), height - (verticalMargin * stackPanelLevelSettings.Count));
             int fillCount = 0;
+            // subtract non-fill levels from available space
             foreach (var level in stackPanelLevelSettings)
             {
                 if(orientation == Orientation.Horizontal)
@@ -188,6 +202,7 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
                         availableSpace.Y -= level.bounds.Y;
                 }
             }
+            // measure the fill children
             if (fillCount > 0)
             {
                 if (orientation == Orientation.Horizontal)
@@ -217,6 +232,46 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
                     }
                 }
             }
+            if (orientation == Orientation.Horizontal)
+            {
+                foreach (var level in stackPanelLevelSettings)
+                {
+                    if (level.fillers > 0)
+                    {
+                        level.spaceLeft = (int)(height - (int)level.bounds.Y - level.spacing * level.fillers - verticalMargin);
+                        level.spaceLeft /= level.fillers;
+                    }
+                }
+            }
+            else
+            {
+                foreach (var level in stackPanelLevelSettings)
+                {
+                    if(level.fillers > 0)
+                    {
+                        level.spaceLeft = (int)(width - (int)level.bounds.X - level.spacing * level.fillers - horizontalMargin);
+                        level.spaceLeft /= level.fillers;
+                    }
+                }
+            }
+            foreach (var level in stackPanelLevelSettings)
+            {
+                foreach (var child in level.children)
+                {
+                    if (child.scalingMode == ScalingMode.Fill)
+                    {
+                        if (orientation == Orientation.Horizontal)
+                        {
+                            child.SetControlScale(child.preferredWidth, level.spaceLeft);
+                        }
+                        else
+                        {
+                            child.SetControlScale(level.spaceLeft, child.preferredHeight);
+                        }
+                    }
+                }
+            }
+
 
             // calculate each level's center position based on bounds and justification
             for (int i = 0; i < stackPanelLevelSettings.Count; i++)

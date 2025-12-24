@@ -1,7 +1,7 @@
 ﻿<Window xmlns="http://schemas/arctis-aurora/ui"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://schemas/arctis-aurora/ui UI.xsd"
-        Width="1280" Height="720" ContentScalingMode="Vertical" Fill="true">
+        Width="1280" Height="720" ContentScalingMode="Vertical" Fill="true" ControlColor="gray">
 
 
 	<StackPanel ControlColor="gray" Orientation="Vertical">
@@ -16,10 +16,10 @@
 		<Button ControlColor="green"/>
 		<Button ControlColor="green"/>
 		<Button ControlColor="green"/>
-		<Button ControlColor="blue" StackIndex="1" />
+		<Button ControlColor="blue" StackIndex="1"/>
 		<Button ControlColor="black" StackIndex="2"/>
 		<Button ControlColor="yellow" StackIndex="3"/>
-		<Button ControlColor="cyan" StackIndex="2" Height="180"/>
-		<Button ControlColor="orange" StackIndex="2" />
+		<Button ControlColor="cyan" StackIndex="2" Height="180" ScalingMode ="Fill"/>
+		<Button ControlColor="orange" StackIndex="2" Height="50" ScalingMode="Fill"/>
 	</StackPanel>
 </Window>

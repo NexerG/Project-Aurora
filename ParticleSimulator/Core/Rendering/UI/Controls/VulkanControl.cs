@@ -147,13 +147,29 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         {
             red, green, blue, white, black, yellow, cyan, magenta, gray, orange, purple, brown, pink, lime, navy, teal,
         }
+
+        [A_VulkanEnum("FillMode")]
+        public enum ScalingMode
+        {
+            Uniform,
+            Fill,
+            None
+        }
+
+        /*[A_VulkanEnum("ScaleMode")]
+        public enum ScaleMode
+        {
+            PrioritizeWidth,
+            PrioritizeHeight,
+            None
+        }*/
         #endregion
 
         #region properties
         // sizing
-        private int _width;
-        [A_VulkanControlProperty("Width", "Width in pixels")]
-        public virtual int width
+        private int _width = 72;
+        private int _height = 72;
+        public int width
         {
             get => _width;
             set
@@ -162,10 +178,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
                 transform.SetWorldScale(new Vector3D<float>(width, height, 1));
             }
         }
-
-        private int _height;
-        [A_VulkanControlProperty("Height", "Height in pixels")]
-        public virtual int height
+        public int height
         {
             get => _height;
             set
@@ -174,6 +187,29 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
                 transform.SetWorldScale(new Vector3D<float>(width, height, 1));
             }
         }
+
+
+        [A_VulkanControlProperty("Width", "Width in pixels")]
+        public int preferredWidth = 72;
+        [A_VulkanControlProperty("Height", "Height in pixels")]
+        public int preferredHeight = 72;
+
+        [A_VulkanControlProperty("MinHeight", "Minimum height in pixels")]
+        public int minHeight = 0;
+        [A_VulkanControlProperty("MinWidth", "Minimum width in pixels")]
+        public int minWidth = 0;
+
+        [A_VulkanControlProperty("ScalingMode", "Sets how the control scales vertically within it's parent.")]
+        public ScalingMode scalingMode = ScalingMode.None;
+
+        /*public new VulkanControl parent
+        {
+            get => (VulkanControl)base.parent;
+            set
+            {
+                base.parent = value;
+            }
+        }*/
 
         public virtual Vector2D<int> size
         {
@@ -211,7 +247,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
                 UpdateControlData();
             }
         }
-        [A_VulkanControlProperty("StackIndex")]
+        [A_VulkanControlProperty("StackIndex", "Tells the StackPanel parent (if its the parent) in which stack level the control should reside.")]
         public int stackIndex = 0;
 
         public VulkanControl? child;
@@ -269,9 +305,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 
         public VulkanControl()
         {
-            width = 72;
-            height = 72;
-
             controlData = new ControlData();
             controlData.style = ControlStyle.Default();
             controlData.uvs = new QuadUVs();
@@ -349,13 +382,77 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
                 transformedLoc.Y += (control.verticalPosition - 0.5f) * height;
                 //transformedLoc.Z = transform.position.Z;
             }
-            else
-            {
-                container.transform.SetWorldScale(transform.scale);
-            }
             control.transform.SetWorldPosition(transformedLoc);
+
+            control.SetControlScale(new Vector2D<float>(width, height));
         }
 
+        public virtual void SetControlScale(int availableWidth, int availableHeight)
+        {
+            switch (scalingMode)
+            {
+                case ScalingMode.Uniform:
+                    {
+                        float parentAspect = (float)availableWidth / (float)availableHeight;
+                        if (parentAspect >= 1)
+                        {
+                            SetHeight(availableHeight);
+                            SetWidth((int)(availableHeight * parentAspect));
+                        }
+                        else
+                        {
+                            SetWidth(availableWidth);
+                            SetHeight((int)(availableWidth / parentAspect));
+                        }
+                        break;
+                    }
+                case ScalingMode.Fill:
+                    {
+                        SetWidth(availableWidth);
+                        SetHeight(availableHeight);
+                        break;
+                    }
+                case ScalingMode.None:
+                    {
+                        SetSize(new Vector2D<int>(availableWidth, availableHeight));
+                        break;
+                    }
+            }
+        }
+
+        public virtual void SetControlScale(Vector2D<float> availableSpace)
+        {
+            switch(scalingMode)
+            {
+                case ScalingMode.Uniform:
+                    {
+                        float parentAspect = availableSpace.X / availableSpace.Y;
+                        if (parentAspect >= 1)
+                        {
+                            SetHeight((int)availableSpace.Y);
+                            SetWidth((int)(availableSpace.Y * parentAspect));
+                        }
+                        else
+                        {
+                            SetWidth((int)availableSpace.X);
+                            SetHeight((int)(availableSpace.X / parentAspect));
+                        }
+                        break;
+                    }
+                case ScalingMode.Fill:
+                    {
+                        SetWidth((int)availableSpace.X);
+                        SetHeight((int)availableSpace.Y);
+                        break;
+                    }
+                case ScalingMode.None:
+                    {
+                        SetSize(availableSpace);
+                        break;
+                    }
+            }
+        }
+        
         #region size_setters
         public virtual void SetSize(Vector2D<float> size)
         {

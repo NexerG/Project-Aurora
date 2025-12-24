@@ -257,7 +257,7 @@ namespace ArctisAurora.EngineWork
                 }
                 foreach (Entity e in entitiesCopy)
                 {
-                    e.Invalidate();
+                    //e.Invalidate();
                 }
                 renderer.UpdateModules();
             }

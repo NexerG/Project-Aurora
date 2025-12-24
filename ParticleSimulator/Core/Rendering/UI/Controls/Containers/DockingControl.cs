@@ -222,12 +222,17 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
             throw new NotImplementedException();
         }
 
-        public override void Measure(VulkanControl control)
+        public override void Arrange()
         {
             throw new NotImplementedException();
         }
 
-        public override void Arrange()
+        public override void MeasureSelf()
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void Measure()
         {
             throw new NotImplementedException();
         }

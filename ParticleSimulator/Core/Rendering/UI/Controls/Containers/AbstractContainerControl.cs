@@ -6,7 +6,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
     {
         public AbstractContainerControl()
         {
-
+            scalingMode = ScalingMode.Fill;
         }
 
         public AbstractContainerControl(VulkanControl parent)
@@ -26,10 +26,10 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
 
         public abstract void RecalculateLayout();
 
-        public abstract void Measure(VulkanControl control);
+        public abstract void Measure();
 
         public abstract void Arrange();
 
-        //public abstract void MeasureSelf();
+        public abstract void MeasureSelf();
     }
 }

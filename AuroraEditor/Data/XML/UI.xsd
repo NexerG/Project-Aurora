@@ -44,14 +44,6 @@
       <xs:enumeration value="Vertical" />
     </xs:restriction>
   </xs:simpleType>
-  <xs:simpleType name="Alignment">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="TopLeft" />
-      <xs:enumeration value="TopRight" />
-      <xs:enumeration value="BottomLeft" />
-      <xs:enumeration value="BottomRight" />
-    </xs:restriction>
-  </xs:simpleType>
   <xs:simpleType name="ControlColor">
     <xs:restriction base="xs:string">
       <xs:enumeration value="red" />
@@ -70,6 +62,13 @@
       <xs:enumeration value="lime" />
       <xs:enumeration value="navy" />
       <xs:enumeration value="teal" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="FillMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Uniform" />
+      <xs:enumeration value="Fill" />
+      <xs:enumeration value="None" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="ContentScalingModeEnum">
@@ -117,6 +116,50 @@
       </xs:annotation>
     </xs:attribute>
   </xs:complexType>
+  <xs:complexType name="GridListRowSettings">
+    <xs:attribute name="Bounds" type="LevelScaling">
+      <xs:annotation>
+        <xs:documentation>Level bounds for the grid's rows</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Height" type="xs:float">
+      <xs:annotation>
+        <xs:documentation>Grid's height</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Alignment" type="HorizontalAlignment">
+      <xs:annotation>
+        <xs:documentation>Horizontal alignment of the grid's rows</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="VerticalAlignment" type="VeticalAlignment">
+      <xs:annotation>
+        <xs:documentation>Vertical alignment of the grid's rows</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  <xs:complexType name="GridListColumnSettings">
+    <xs:attribute name="Bounds" type="LevelScaling">
+      <xs:annotation>
+        <xs:documentation>Level bounds for the grid's columns</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Width" type="xs:float">
+      <xs:annotation>
+        <xs:documentation>Grid's width</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Alignment" type="HorizontalAlignment">
+      <xs:annotation>
+        <xs:documentation>Horizontal alignment of the grid's columns</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="VerticalAlignment" type="VeticalAlignment">
+      <xs:annotation>
+        <xs:documentation>Vertical alignment of the grid's columns</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
   <xs:element name="StackPanel" type="StackPanel" />
   <xs:element name="Panel" type="Panel" />
   <xs:element name="Window" type="Window" />
@@ -142,16 +185,6 @@
         </xs:annotation>
       </xs:element>
     </xs:choice>
-    <xs:attribute name="Width" type="xs:int">
-      <xs:annotation>
-        <xs:documentation>Width in pixels</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="Height" type="xs:int">
-      <xs:annotation>
-        <xs:documentation>Height in pixels</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
     <xs:attribute name="ControlColor" type="ControlColor">
       <xs:annotation>
         <xs:documentation></xs:documentation>
@@ -170,6 +203,31 @@
     <xs:attribute name="Orientation" type="Orientation">
       <xs:annotation>
         <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Width" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Width in pixels</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Height" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Height in pixels</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinHeight" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum height in pixels</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinWidth" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum width in pixels</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="HorizontalPos" type="xs:float">
@@ -194,7 +252,7 @@
     </xs:attribute>
     <xs:attribute name="StackIndex" type="xs:int">
       <xs:annotation>
-        <xs:documentation></xs:documentation>
+        <xs:documentation>Tells the StackPanel parent (if its the parent) in which stack level the control should reside.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="onEnter" type="Action">
@@ -242,6 +300,11 @@
       <xs:element name="Dock" type="Dock" />
       <xs:element name="GridList" type="GridList" />
     </xs:choice>
+    <xs:attribute name="ControlColor" type="ControlColor">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
     <xs:attribute name="Width" type="xs:int">
       <xs:annotation>
         <xs:documentation>Width in pixels</xs:documentation>
@@ -252,9 +315,19 @@
         <xs:documentation>Height in pixels</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="ControlColor" type="ControlColor">
+    <xs:attribute name="MinHeight" type="xs:int">
       <xs:annotation>
-        <xs:documentation></xs:documentation>
+        <xs:documentation>Minimum height in pixels</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinWidth" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum width in pixels</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="HorizontalPos" type="xs:float">
@@ -279,7 +352,7 @@
     </xs:attribute>
     <xs:attribute name="StackIndex" type="xs:int">
       <xs:annotation>
-        <xs:documentation></xs:documentation>
+        <xs:documentation>Tells the StackPanel parent (if its the parent) in which stack level the control should reside.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="onEnter" type="Action">
@@ -327,16 +400,6 @@
       <xs:element name="Dock" type="Dock" />
       <xs:element name="GridList" type="GridList" />
     </xs:choice>
-    <xs:attribute name="Width" type="xs:int">
-      <xs:annotation>
-        <xs:documentation>Width in pixels</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="Height" type="xs:int">
-      <xs:annotation>
-        <xs:documentation>Height in pixels</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
     <xs:attribute name="ControlColor" type="ControlColor">
       <xs:annotation>
         <xs:documentation></xs:documentation>
@@ -350,6 +413,31 @@
     <xs:attribute name="ContentScalingMode" type="ContentScalingModeEnum">
       <xs:annotation>
         <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Width" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Width in pixels</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Height" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Height in pixels</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinHeight" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum height in pixels</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinWidth" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum width in pixels</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="HorizontalPos" type="xs:float">
@@ -374,7 +462,7 @@
     </xs:attribute>
     <xs:attribute name="StackIndex" type="xs:int">
       <xs:annotation>
-        <xs:documentation></xs:documentation>
+        <xs:documentation>Tells the StackPanel parent (if its the parent) in which stack level the control should reside.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="onEnter" type="Action">
@@ -422,6 +510,11 @@
       <xs:element name="Dock" type="Dock" />
       <xs:element name="GridList" type="GridList" />
     </xs:choice>
+    <xs:attribute name="ControlColor" type="ControlColor">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
     <xs:attribute name="Width" type="xs:int">
       <xs:annotation>
         <xs:documentation>Width in pixels</xs:documentation>
@@ -432,9 +525,19 @@
         <xs:documentation>Height in pixels</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="ControlColor" type="ControlColor">
+    <xs:attribute name="MinHeight" type="xs:int">
       <xs:annotation>
-        <xs:documentation></xs:documentation>
+        <xs:documentation>Minimum height in pixels</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinWidth" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum width in pixels</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="HorizontalPos" type="xs:float">
@@ -459,7 +562,7 @@
     </xs:attribute>
     <xs:attribute name="StackIndex" type="xs:int">
       <xs:annotation>
-        <xs:documentation></xs:documentation>
+        <xs:documentation>Tells the StackPanel parent (if its the parent) in which stack level the control should reside.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="onEnter" type="Action">
@@ -507,6 +610,11 @@
       <xs:element name="Dock" type="Dock" />
       <xs:element name="GridList" type="GridList" />
     </xs:choice>
+    <xs:attribute name="ControlColor" type="ControlColor">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
     <xs:attribute name="Width" type="xs:int">
       <xs:annotation>
         <xs:documentation>Width in pixels</xs:documentation>
@@ -517,9 +625,19 @@
         <xs:documentation>Height in pixels</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="ControlColor" type="ControlColor">
+    <xs:attribute name="MinHeight" type="xs:int">
       <xs:annotation>
-        <xs:documentation></xs:documentation>
+        <xs:documentation>Minimum height in pixels</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinWidth" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum width in pixels</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="HorizontalPos" type="xs:float">
@@ -544,7 +662,7 @@
     </xs:attribute>
     <xs:attribute name="StackIndex" type="xs:int">
       <xs:annotation>
-        <xs:documentation></xs:documentation>
+        <xs:documentation>Tells the StackPanel parent (if its the parent) in which stack level the control should reside.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="onEnter" type="Action">
@@ -592,16 +710,6 @@
       <xs:element name="Dock" type="Dock" />
       <xs:element name="GridList" type="GridList" />
     </xs:choice>
-    <xs:attribute name="Width" type="xs:int">
-      <xs:annotation>
-        <xs:documentation>Width in pixels</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="Height" type="xs:int">
-      <xs:annotation>
-        <xs:documentation>Height in pixels</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
     <xs:attribute name="ControlColor" type="ControlColor">
       <xs:annotation>
         <xs:documentation></xs:documentation>
@@ -637,6 +745,31 @@
         <xs:documentation></xs:documentation>
       </xs:annotation>
     </xs:attribute>
+    <xs:attribute name="Width" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Width in pixels</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Height" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Height in pixels</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinHeight" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum height in pixels</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinWidth" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum width in pixels</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
     <xs:attribute name="HorizontalPos" type="xs:float">
       <xs:annotation>
         <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
@@ -659,7 +792,7 @@
     </xs:attribute>
     <xs:attribute name="StackIndex" type="xs:int">
       <xs:annotation>
-        <xs:documentation></xs:documentation>
+        <xs:documentation>Tells the StackPanel parent (if its the parent) in which stack level the control should reside.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="onEnter" type="Action">

@@ -371,10 +371,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                             prop.SetValue(topControl, listInstance);
                         else if (member is FieldInfo field)
                             field.SetValue(topControl, listInstance);
-
-                        //var prop = topControl.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.NonPublic)
-                        //    .FirstOrDefault(p => p.PropertyType == listType);
-                        //prop.SetValue(topControl, listInstance);
                     }
                 }
                 else
@@ -391,7 +387,16 @@ namespace ArctisAurora.EngineWork.Rendering.UI
         {
             foreach (XAttribute attr in root.Attributes())
             {
-                var prop = topControl.GetType().GetMember(attr.Name.LocalName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase).FirstOrDefault();
+                var prop = topControl.GetType().GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase).FirstOrDefault(m =>
+                {
+                    var a = m.GetCustomAttributes(typeof(A_VulkanControlPropertyAttribute), true).FirstOrDefault() as A_VulkanControlPropertyAttribute;
+                    if (a != null)
+                    {
+                        return string.Equals(a.Name, attr.Name.LocalName, StringComparison.OrdinalIgnoreCase);
+                    }
+                    return false;
+                });
+
                 if (prop != null)
                 {
                     Type memberType = prop.MemberType == MemberTypes.Field ? ((FieldInfo)prop).FieldType : ((PropertyInfo)prop).PropertyType;

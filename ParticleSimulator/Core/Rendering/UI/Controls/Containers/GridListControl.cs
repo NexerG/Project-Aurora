@@ -1,13 +1,36 @@
 ﻿using Silk.NET.Maths;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
+using static ArctisAurora.Core.Rendering.UI.Controls.Containers.StackPanelLevelSettings;
+using HorizontalAlignment = ArctisAurora.Core.Rendering.UI.Controls.Containers.StackPanelLevelSettings.HorizontalAlignment;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
 {
+    [A_VulkanControlElement("GridListRowSettings", "Settings for grid's rows")]
+    public class GridListRowSettings
+    {
+        [A_VulkanControlProperty("Bounds", "Level bounds for the grid's rows")]
+        public LevelBounds bounds = LevelBounds.ScaleToContent;
+        [A_VulkanControlProperty("Height", "Grid's height")]
+        public float height;
+        [A_VulkanControlProperty("Alignment", "Horizontal alignment of the grid's rows")]
+        public HorizontalAlignment horizontalAlignment = HorizontalAlignment.Left;
+        [A_VulkanControlProperty("VerticalAlignment", "Vertical alignment of the grid's rows")]
+        public VerticalAlignment verticalAlignment = VerticalAlignment.Center;
+    }
+
+    [A_VulkanControlElement("GridListColumnSettings", "Settings for grid's columns")]
+    public class GridListColumnSettings
+    {
+        [A_VulkanControlProperty("Bounds", "Level bounds for the grid's columns")]
+        public LevelBounds bounds = LevelBounds.ScaleToContent;
+        [A_VulkanControlProperty("Width", "Grid's width")]
+        public float width;
+        [A_VulkanControlProperty("Alignment", "Horizontal alignment of the grid's columns")]
+        public HorizontalAlignment horizontalAlignment = HorizontalAlignment.Left;
+        [A_VulkanControlProperty("VerticalAlignment", "Vertical alignment of the grid's columns")]
+        public VerticalAlignment verticalAlignment = VerticalAlignment.Center;
+    }
+
+
     [A_VulkanControl("GridList")]
     internal class GridListControl : AbstractContainerControl
     {
@@ -29,23 +52,31 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
         public override void AddControlToContainer(VulkanControl control)
         {
             //organize the list in a alpahebetical order and then position them in a grid
-            children = children.OrderBy(c => c.name).ToList();
-            UpdateLayout();
+            //children = children.OrderBy(c => c.name).ToList();
+            //UpdateLayout();
+            Measure();
+            MeasureSelf();
+            Arrange();
         }
 
         public override void Arrange()
         {
+            //throw new NotImplementedException();
+        }
+
+        public override void Measure()
+        {
             throw new NotImplementedException();
         }
 
-        public override void Measure(VulkanControl control)
+        public override void MeasureSelf()
         {
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
         }
 
         public override void RecalculateLayout()
         {
-            throw new NotImplementedException();
+            //throw new NotImplementedException();
         }
 
         public void UpdateLayout()
