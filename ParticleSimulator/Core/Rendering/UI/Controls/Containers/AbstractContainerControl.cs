@@ -6,7 +6,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
     {
         public AbstractContainerControl()
         {
-            scalingMode = ScalingMode.Fill;
+            scalingMode = ScalingMode.Stretch;
         }
 
         public AbstractContainerControl(VulkanControl parent)

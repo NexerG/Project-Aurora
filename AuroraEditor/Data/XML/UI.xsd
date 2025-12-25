@@ -67,6 +67,7 @@
   <xs:simpleType name="FillMode">
     <xs:restriction base="xs:string">
       <xs:enumeration value="Uniform" />
+      <xs:enumeration value="Stretch" />
       <xs:enumeration value="Fill" />
       <xs:enumeration value="None" />
     </xs:restriction>
@@ -185,6 +186,11 @@
         </xs:annotation>
       </xs:element>
     </xs:choice>
+    <xs:attribute name="ColorHex" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Sets the control color via hex code</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
     <xs:attribute name="ControlColor" type="ControlColor">
       <xs:annotation>
         <xs:documentation></xs:documentation>
@@ -242,7 +248,7 @@
     </xs:attribute>
     <xs:attribute name="ClipToBounds" type="xs:boolean">
       <xs:annotation>
-        <xs:documentation>Clips child controls to the bounds of this control.</xs:documentation>
+        <xs:documentation>Will not render kids outside the bounds.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="DockMode" type="DockMode">
@@ -300,6 +306,11 @@
       <xs:element name="Dock" type="Dock" />
       <xs:element name="GridList" type="GridList" />
     </xs:choice>
+    <xs:attribute name="ColorHex" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Sets the control color via hex code</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
     <xs:attribute name="ControlColor" type="ControlColor">
       <xs:annotation>
         <xs:documentation></xs:documentation>
@@ -342,7 +353,7 @@
     </xs:attribute>
     <xs:attribute name="ClipToBounds" type="xs:boolean">
       <xs:annotation>
-        <xs:documentation>Clips child controls to the bounds of this control.</xs:documentation>
+        <xs:documentation>Will not render kids outside the bounds.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="DockMode" type="DockMode">
@@ -400,6 +411,11 @@
       <xs:element name="Dock" type="Dock" />
       <xs:element name="GridList" type="GridList" />
     </xs:choice>
+    <xs:attribute name="ColorHex" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Sets the control color via hex code</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
     <xs:attribute name="ControlColor" type="ControlColor">
       <xs:annotation>
         <xs:documentation></xs:documentation>
@@ -452,7 +468,7 @@
     </xs:attribute>
     <xs:attribute name="ClipToBounds" type="xs:boolean">
       <xs:annotation>
-        <xs:documentation>Clips child controls to the bounds of this control.</xs:documentation>
+        <xs:documentation>Will not render kids outside the bounds.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="DockMode" type="DockMode">
@@ -510,6 +526,11 @@
       <xs:element name="Dock" type="Dock" />
       <xs:element name="GridList" type="GridList" />
     </xs:choice>
+    <xs:attribute name="ColorHex" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Sets the control color via hex code</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
     <xs:attribute name="ControlColor" type="ControlColor">
       <xs:annotation>
         <xs:documentation></xs:documentation>
@@ -552,7 +573,7 @@
     </xs:attribute>
     <xs:attribute name="ClipToBounds" type="xs:boolean">
       <xs:annotation>
-        <xs:documentation>Clips child controls to the bounds of this control.</xs:documentation>
+        <xs:documentation>Will not render kids outside the bounds.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="DockMode" type="DockMode">
@@ -610,6 +631,11 @@
       <xs:element name="Dock" type="Dock" />
       <xs:element name="GridList" type="GridList" />
     </xs:choice>
+    <xs:attribute name="ColorHex" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Sets the control color via hex code</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
     <xs:attribute name="ControlColor" type="ControlColor">
       <xs:annotation>
         <xs:documentation></xs:documentation>
@@ -652,7 +678,7 @@
     </xs:attribute>
     <xs:attribute name="ClipToBounds" type="xs:boolean">
       <xs:annotation>
-        <xs:documentation>Clips child controls to the bounds of this control.</xs:documentation>
+        <xs:documentation>Will not render kids outside the bounds.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="DockMode" type="DockMode">
@@ -710,6 +736,11 @@
       <xs:element name="Dock" type="Dock" />
       <xs:element name="GridList" type="GridList" />
     </xs:choice>
+    <xs:attribute name="ColorHex" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Sets the control color via hex code</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
     <xs:attribute name="ControlColor" type="ControlColor">
       <xs:annotation>
         <xs:documentation></xs:documentation>
@@ -782,7 +813,7 @@
     </xs:attribute>
     <xs:attribute name="ClipToBounds" type="xs:boolean">
       <xs:annotation>
-        <xs:documentation>Clips child controls to the bounds of this control.</xs:documentation>
+        <xs:documentation>Will not render kids outside the bounds.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="DockMode" type="DockMode">

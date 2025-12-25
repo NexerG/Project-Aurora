@@ -152,6 +152,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         public enum ScalingMode
         {
             Uniform,
+            Stretch,
             Fill,
             None
         }
@@ -165,7 +166,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         }*/
         #endregion
 
-        #region properties
+        #region UI XML properties
         // sizing
         private int _width = 72;
         private int _height = 72;
@@ -202,15 +203,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         [A_VulkanControlProperty("ScalingMode", "Sets how the control scales vertically within it's parent.")]
         public ScalingMode scalingMode = ScalingMode.None;
 
-        /*public new VulkanControl parent
-        {
-            get => (VulkanControl)base.parent;
-            set
-            {
-                base.parent = value;
-            }
-        }*/
-
         public virtual Vector2D<int> size
         {
             get => new Vector2D<int>(_width, _height);
@@ -229,12 +221,29 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         [A_VulkanControlProperty("VerticalPos", "Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.")]
         public float verticalPosition = 0.5f;
 
-        [A_VulkanControlProperty("ClipToBounds", "Clips child controls to the bounds of this control.")]
+        [A_VulkanControlProperty("ClipToBounds", "Will not render kids outside the bounds.")]
         public bool clipToBounds = false;
 
         // settings
         [A_VulkanControlProperty("DockMode")]
         public DockMode dockMode;
+
+        private string _controlColorHex = "#FFFFFF";
+        [A_VulkanControlProperty("ColorHex", "Sets the control color via hex code")]
+        public string controlColorHex
+        {
+            get => _controlColorHex;
+            set 
+            {
+                _controlColorHex = value;
+                Vector3D<float> rgb = HexToRGB(value);
+                controlData.style.tint = rgb;
+                UpdateControlData();
+            }
+        }
+
+
+        private ControlColor color;
         [A_VulkanControlProperty("ControlColor")]
         public ControlColor controlColor
         {
@@ -251,7 +260,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         public int stackIndex = 0;
 
         public VulkanControl? child;
-        private ControlColor color;
 
         #endregion
 
@@ -383,63 +391,36 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
                 //transformedLoc.Z = transform.position.Z;
             }
             control.transform.SetWorldPosition(transformedLoc);
-
             control.SetControlScale(new Vector2D<float>(width, height));
         }
 
-        public virtual void SetControlScale(int availableWidth, int availableHeight)
+        public virtual void SetControlScale(Vector2D<float> availableSpace)
         {
             switch (scalingMode)
             {
                 case ScalingMode.Uniform:
                     {
-                        float parentAspect = (float)availableWidth / (float)availableHeight;
-                        if (parentAspect >= 1)
+                        float aspect = (float)preferredWidth / (float)preferredHeight;
+                        if (availableSpace.X / availableSpace.Y > aspect)
                         {
-                            SetHeight(availableHeight);
-                            SetWidth((int)(availableHeight * parentAspect));
-                        }
-                        else
-                        {
-                            SetWidth(availableWidth);
-                            SetHeight((int)(availableWidth / parentAspect));
-                        }
-                        break;
-                    }
-                case ScalingMode.Fill:
-                    {
-                        SetWidth(availableWidth);
-                        SetHeight(availableHeight);
-                        break;
-                    }
-                case ScalingMode.None:
-                    {
-                        SetSize(new Vector2D<int>(availableWidth, availableHeight));
-                        break;
-                    }
-            }
-        }
-
-        public virtual void SetControlScale(Vector2D<float> availableSpace)
-        {
-            switch(scalingMode)
-            {
-                case ScalingMode.Uniform:
-                    {
-                        float parentAspect = availableSpace.X / availableSpace.Y;
-                        if (parentAspect >= 1)
-                        {
+                            // limited by height
                             SetHeight((int)availableSpace.Y);
-                            SetWidth((int)(availableSpace.Y * parentAspect));
+                            SetWidth((int)(availableSpace.Y * aspect));
                         }
                         else
                         {
+                            // limited by width
                             SetWidth((int)availableSpace.X);
-                            SetHeight((int)(availableSpace.X / parentAspect));
+                            SetHeight((int)(availableSpace.X / aspect));
                         }
                         break;
                     }
                 case ScalingMode.Fill:
+                    {
+                        SetSize(availableSpace);
+                        break;
+                    }
+                case ScalingMode.Stretch:
                     {
                         SetWidth((int)availableSpace.X);
                         SetHeight((int)availableSpace.Y);

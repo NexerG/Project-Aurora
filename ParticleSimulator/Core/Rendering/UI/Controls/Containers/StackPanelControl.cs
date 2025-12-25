@@ -50,7 +50,7 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
         public Vector2D<float> position = new Vector2D<float>(0, 0);
         public List<VulkanControl> children = new List<VulkanControl>();
         public int fillers = 0;
-        public int spaceLeft = 0;
+        public Vector2D<float> spaceLeft = new Vector2D<float>(0, 0);
     }
 
 
@@ -124,7 +124,7 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
             {
                 switch(child.scalingMode)
                 {
-                    case ScalingMode.Fill:
+                    case ScalingMode.Stretch:
                         level.bounds.Y = Math.Max(level.bounds.Y, child.preferredHeight);
                         level.fillers++;
                         break;
@@ -142,9 +142,12 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
                                 level.bounds.X = level.width;
                                 break;
                         }
-                        child.SetControlScale(child.preferredWidth, child.preferredHeight);
                         break;
                     case ScalingMode.Uniform:
+                        level.fillers++;
+                        break;
+                    case ScalingMode.Fill:
+                        level.fillers++;
                         break;
                 }
 
@@ -153,7 +156,7 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
             {
                 switch(child.scalingMode)
                 {
-                    case ScalingMode.Fill:
+                    case ScalingMode.Stretch:
                         level.bounds.X = Math.Max(level.bounds.X, child.preferredWidth);
                         level.fillers++;
                         break;
@@ -171,9 +174,9 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
                                 level.bounds.Y = level.height;
                                 break;
                         }
-                        child.SetControlScale(child.preferredWidth, child.preferredHeight);
                         break;
                     case ScalingMode.Uniform:
+                        level.fillers++;
                         break;
                 }
             }
@@ -238,8 +241,9 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
                 {
                     if (level.fillers > 0)
                     {
-                        level.spaceLeft = (int)(height - (int)level.bounds.Y - level.spacing * level.fillers - verticalMargin);
-                        level.spaceLeft /= level.fillers;
+                        level.spaceLeft.X = level.bounds.X - level.spacing;
+                        level.spaceLeft.Y = (int)(height - (int)level.bounds.Y - level.spacing * level.fillers - verticalMargin);
+                        level.spaceLeft.Y /= level.fillers;
                     }
                 }
             }
@@ -249,25 +253,38 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
                 {
                     if(level.fillers > 0)
                     {
-                        level.spaceLeft = (int)(width - (int)level.bounds.X - level.spacing * level.fillers - horizontalMargin);
-                        level.spaceLeft /= level.fillers;
+                        level.spaceLeft.Y = level.bounds.Y - level.spacing;
+                        level.spaceLeft.X = (int)(width - (int)level.bounds.X - level.spacing * level.fillers - horizontalMargin);
+                        level.spaceLeft.X /= level.fillers;
                     }
                 }
             }
+            
             foreach (var level in stackPanelLevelSettings)
             {
                 foreach (var child in level.children)
                 {
-                    if (child.scalingMode == ScalingMode.Fill)
+                    switch(child.scalingMode)
                     {
-                        if (orientation == Orientation.Horizontal)
-                        {
-                            child.SetControlScale(child.preferredWidth, level.spaceLeft);
-                        }
-                        else
-                        {
-                            child.SetControlScale(level.spaceLeft, child.preferredHeight);
-                        }
+                        case ScalingMode.None:
+                            child.SetControlScale(new Vector2D<float>(child.preferredWidth, child.preferredHeight));
+                            break;
+                        case ScalingMode.Stretch:
+                            if (orientation == Orientation.Horizontal)
+                            {
+                                child.SetControlScale(new Vector2D<float>(child.preferredWidth, level.spaceLeft.Y));
+                            }
+                            else
+                            {
+                                child.SetControlScale(new Vector2D<float>(level.spaceLeft.X, child.preferredHeight));
+                            }
+                            break;
+                        case ScalingMode.Fill:
+                            child.SetControlScale(level.spaceLeft);
+                            break;
+                        case ScalingMode.Uniform:
+                            child.SetControlScale(level.spaceLeft);
+                            break;
                     }
                 }
             }
