@@ -29,10 +29,10 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Text
 
             float yOffset = MathF.Floor(index / k) * glyphAtlasSize;
 
-            controlData.uvs.uv1 = new Vector2D<float>(xOffset, yOffset);
-            controlData.uvs.uv2 = new Vector2D<float>(xOffset + glyphAtlasSize, yOffset);
-            controlData.uvs.uv3 = new Vector2D<float>(xOffset + glyphAtlasSize, yOffset + glyphAtlasSize);
-            controlData.uvs.uv4 = new Vector2D<float>(xOffset, yOffset + glyphAtlasSize);
+            controlData.uvs.uv1 = new Vector2D<float>(xOffset + glyphAtlasSize, yOffset + glyphAtlasSize);
+            controlData.uvs.uv2 = new Vector2D<float>(xOffset, yOffset);
+            controlData.uvs.uv3 = new Vector2D<float>(xOffset, yOffset + glyphAtlasSize);
+            controlData.uvs.uv4 = new Vector2D<float>(xOffset + glyphAtlasSize, yOffset);
             AVulkanBufferHandler.UpdateBuffer(ref controlData, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
             transform.SetWorldScale(new Vector3D<float>(width, height, 1));
         }

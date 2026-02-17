@@ -60,12 +60,6 @@ namespace ArctisAurora.EngineWork.Serialization
             AuroraFont.GenerateGlyphAtlas(f, "arial.ttf", 128);
         }
 
-        //internal static Image<Rgba32> GenerateGlyphAtlas(string characters, string fontName = "arial.ttf")
-        //{
-        //    Glyph glyph;
-        //    return ImportFont(out glyph, letter, fontName);
-        //}
-
         internal static Image<Rgba32> ImportFont(out Glyph glyph, char letter, string fontName = "arial.ttf")
         {
             var fs = new FileStream("C:\\Windows\\Fonts\\" + fontName, FileMode.Open, FileAccess.Read);

@@ -161,124 +161,12 @@
       </xs:annotation>
     </xs:attribute>
   </xs:complexType>
-  <xs:element name="ShortText" type="ShortText" />
   <xs:element name="StackPanel" type="StackPanel" />
   <xs:element name="Panel" type="Panel" />
   <xs:element name="Window" type="Window" />
   <xs:element name="Button" type="Button" />
   <xs:element name="Dock" type="Dock" />
   <xs:element name="GridList" type="GridList" />
-  <xs:complexType name="ShortText">
-    <xs:choice minOccurs="0" maxOccurs="1">
-      <xs:element name="ShortText" type="ShortText" />
-      <xs:element name="StackPanel" type="StackPanel" />
-      <xs:element name="Panel" type="Panel" />
-      <xs:element name="Window" type="Window" />
-      <xs:element name="Button" type="Button" />
-      <xs:element name="Dock" type="Dock" />
-      <xs:element name="GridList" type="GridList" />
-    </xs:choice>
-    <xs:attribute name="Text" type="xs:string">
-      <xs:annotation>
-        <xs:documentation>The text to display on the control.</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="ColorHex" type="xs:string">
-      <xs:annotation>
-        <xs:documentation>Sets the control color via hex code</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="ControlColor" type="ControlColor">
-      <xs:annotation>
-        <xs:documentation></xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="Width" type="xs:int">
-      <xs:annotation>
-        <xs:documentation>Width in pixels</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="Height" type="xs:int">
-      <xs:annotation>
-        <xs:documentation>Height in pixels</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="MinHeight" type="xs:int">
-      <xs:annotation>
-        <xs:documentation>Minimum height in pixels</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="MinWidth" type="xs:int">
-      <xs:annotation>
-        <xs:documentation>Minimum width in pixels</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="ScalingMode" type="FillMode">
-      <xs:annotation>
-        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="HorizontalPos" type="xs:float">
-      <xs:annotation>
-        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="VerticalPos" type="xs:float">
-      <xs:annotation>
-        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="ClipToBounds" type="xs:boolean">
-      <xs:annotation>
-        <xs:documentation>Will not render kids outside the bounds.</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="DockMode" type="DockMode">
-      <xs:annotation>
-        <xs:documentation></xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="StackIndex" type="xs:int">
-      <xs:annotation>
-        <xs:documentation>Tells the StackPanel parent (if its the parent) in which stack level the control should reside.</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="onEnter" type="Action">
-      <xs:annotation>
-        <xs:documentation></xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="onExit" type="Action">
-      <xs:annotation>
-        <xs:documentation></xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="onClick" type="Action">
-      <xs:annotation>
-        <xs:documentation></xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="onAltClick" type="Action">
-      <xs:annotation>
-        <xs:documentation></xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="onRelease" type="Action">
-      <xs:annotation>
-        <xs:documentation></xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="onAltRelease" type="Action">
-      <xs:annotation>
-        <xs:documentation></xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-    <xs:attribute name="onDragStop" type="Action">
-      <xs:annotation>
-        <xs:documentation></xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
-  </xs:complexType>
   <xs:complexType name="StackPanel.LevelSettings">
     <xs:sequence>
       <xs:element minOccurs="0" maxOccurs="unbounded" name="LevelSettings" type="LevelSettings" />
@@ -286,7 +174,6 @@
   </xs:complexType>
   <xs:complexType name="StackPanel">
     <xs:choice minOccurs="0" maxOccurs="unbounded">
-      <xs:element name="ShortText" type="ShortText" />
       <xs:element name="StackPanel" type="StackPanel" />
       <xs:element name="Panel" type="Panel" />
       <xs:element name="Window" type="Window" />
@@ -412,7 +299,6 @@
   </xs:complexType>
   <xs:complexType name="Panel">
     <xs:choice minOccurs="0" maxOccurs="1">
-      <xs:element name="ShortText" type="ShortText" />
       <xs:element name="StackPanel" type="StackPanel" />
       <xs:element name="Panel" type="Panel" />
       <xs:element name="Window" type="Window" />
@@ -518,7 +404,6 @@
   </xs:complexType>
   <xs:complexType name="Window">
     <xs:choice minOccurs="0" maxOccurs="1">
-      <xs:element name="ShortText" type="ShortText" />
       <xs:element name="StackPanel" type="StackPanel" />
       <xs:element name="Panel" type="Panel" />
       <xs:element name="Window" type="Window" />
@@ -634,7 +519,6 @@
   </xs:complexType>
   <xs:complexType name="Button">
     <xs:choice minOccurs="0" maxOccurs="1">
-      <xs:element name="ShortText" type="ShortText" />
       <xs:element name="StackPanel" type="StackPanel" />
       <xs:element name="Panel" type="Panel" />
       <xs:element name="Window" type="Window" />
@@ -740,7 +624,6 @@
   </xs:complexType>
   <xs:complexType name="Dock">
     <xs:choice minOccurs="0" maxOccurs="unbounded">
-      <xs:element name="ShortText" type="ShortText" />
       <xs:element name="StackPanel" type="StackPanel" />
       <xs:element name="Panel" type="Panel" />
       <xs:element name="Window" type="Window" />
@@ -846,7 +729,6 @@
   </xs:complexType>
   <xs:complexType name="GridList">
     <xs:choice minOccurs="0" maxOccurs="unbounded">
-      <xs:element name="ShortText" type="ShortText" />
       <xs:element name="StackPanel" type="StackPanel" />
       <xs:element name="Panel" type="Panel" />
       <xs:element name="Window" type="Window" />

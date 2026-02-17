@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema elementFormDefault="qualified" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="PanelControl" nillable="true" type="PanelControl" />
+  <xs:complexType name="PanelControl">
+    <xs:complexContent mixed="false">
+      <xs:extension base="VulkanControl" />
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="VulkanControl">
+    <xs:complexContent mixed="false">
+      <xs:extension base="Entity">
+        <xs:sequence>
+          <xs:element minOccurs="1" maxOccurs="1" name="px" type="Vector2DOfSingle" />
+          <xs:element minOccurs="1" maxOccurs="1" name="controlData" type="ControlData" />
+          <xs:element minOccurs="1" maxOccurs="1" name="controlDataBuffer" type="Buffer" />
+          <xs:element minOccurs="1" maxOccurs="1" name="controlDataBufferMemory" type="DeviceMemory" />
+          <xs:element minOccurs="1" maxOccurs="1" name="maskSampler" type="Sampler" />
+          <xs:element minOccurs="0" maxOccurs="1" name="maskAsset" type="TextureAsset" />
+          <xs:element minOccurs="1" maxOccurs="1" name="colorSampler" type="Sampler" />
+          <xs:element minOccurs="0" maxOccurs="1" name="colorAsset" type="TextureAsset" />
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Entity">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="1" name="transform" type="Transform" />
+      <xs:element minOccurs="0" maxOccurs="1" name="name" type="xs:string" />
+      <xs:element minOccurs="0" maxOccurs="1" name="_components" type="ArrayOfEntityComponent" />
+      <xs:element minOccurs="0" maxOccurs="1" name="_children" type="ArrayOfEntity" />
+      <xs:element minOccurs="0" maxOccurs="1" name="parent" type="Entity" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Transform">
+    <xs:sequence>
+      <xs:element minOccurs="1" maxOccurs="1" name="position" type="Vector3DOfSingle" />
+      <xs:element minOccurs="1" maxOccurs="1" name="rotation" type="Vector3DOfSingle" />
+      <xs:element minOccurs="1" maxOccurs="1" name="scale" type="Vector3DOfSingle" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Vector3DOfSingle">
+    <xs:sequence>
+      <xs:element minOccurs="1" maxOccurs="1" name="X" type="xs:float" />
+      <xs:element minOccurs="1" maxOccurs="1" name="Y" type="xs:float" />
+      <xs:element minOccurs="1" maxOccurs="1" name="Z" type="xs:float" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="ArrayOfEntityComponent">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="EntityComponent" nillable="true" type="EntityComponent" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="EntityComponent">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="1" name="parent" type="Entity" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="ArrayOfEntity">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Entity" nillable="true" type="Entity" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Vector2DOfSingle">
+    <xs:sequence>
+      <xs:element minOccurs="1" maxOccurs="1" name="X" type="xs:float" />
+      <xs:element minOccurs="1" maxOccurs="1" name="Y" type="xs:float" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="ControlData">
+    <xs:sequence>
+      <xs:element minOccurs="1" maxOccurs="1" name="quadData" type="QuadData" />
+      <xs:element minOccurs="1" maxOccurs="1" name="style" type="ControlStyle" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="QuadData">
+    <xs:sequence>
+      <xs:element minOccurs="1" maxOccurs="1" name="uvs" type="QuadUVs" />
+      <xs:element minOccurs="1" maxOccurs="1" name="offsets" type="QuadOffsets" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="QuadUVs">
+    <xs:sequence>
+      <xs:element minOccurs="1" maxOccurs="1" name="uv1" type="Vector2DOfSingle" />
+      <xs:element minOccurs="1" maxOccurs="1" name="uv2" type="Vector2DOfSingle" />
+      <xs:element minOccurs="1" maxOccurs="1" name="uv3" type="Vector2DOfSingle" />
+      <xs:element minOccurs="1" maxOccurs="1" name="uv4" type="Vector2DOfSingle" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="QuadOffsets">
+    <xs:sequence>
+      <xs:element minOccurs="1" maxOccurs="1" name="offset1" type="Vector3DOfSingle" />
+      <xs:element minOccurs="1" maxOccurs="1" name="offset2" type="Vector3DOfSingle" />
+      <xs:element minOccurs="1" maxOccurs="1" name="offset3" type="Vector3DOfSingle" />
+      <xs:element minOccurs="1" maxOccurs="1" name="offset4" type="Vector3DOfSingle" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="ControlStyle">
+    <xs:sequence>
+      <xs:element minOccurs="1" maxOccurs="1" name="tintDefault" type="Vector3DOfSingle" />
+      <xs:element minOccurs="1" maxOccurs="1" name="tintHover" type="Vector3DOfSingle" />
+      <xs:element minOccurs="1" maxOccurs="1" name="tintClick" type="Vector3DOfSingle" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Buffer">
+    <xs:sequence>
+      <xs:element minOccurs="1" maxOccurs="1" name="Handle" type="xs:unsignedLong" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="DeviceMemory">
+    <xs:sequence>
+      <xs:element minOccurs="1" maxOccurs="1" name="Handle" type="xs:unsignedLong" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Sampler">
+    <xs:sequence>
+      <xs:element minOccurs="1" maxOccurs="1" name="Handle" type="xs:unsignedLong" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="TextureAsset">
+    <xs:complexContent mixed="false">
+      <xs:extension base="Asset" />
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="Asset" abstract="true" />
+  <xs:element name="ButtonControl" nillable="true" type="ButtonControl" />
+  <xs:complexType name="ButtonControl">
+    <xs:complexContent mixed="false">
+      <xs:extension base="AbstractInteractableControl">
+        <xs:sequence>
+          <xs:element minOccurs="1" maxOccurs="1" name="testas" type="xs:float" />
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:complexType name="AbstractInteractableControl" abstract="true">
+    <xs:complexContent mixed="false">
+      <xs:extension base="PanelControl" />
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:element name="ResizeableControl" nillable="true" type="ResizeableControl" />
+  <xs:complexType name="ResizeableControl">
+    <xs:complexContent mixed="false">
+      <xs:extension base="AbstractInteractableControl" />
+    </xs:complexContent>
+  </xs:complexType>
+</xs:schema>

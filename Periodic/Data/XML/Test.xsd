@@ -1,0 +1,104 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns="http://schemas/arctis-aurora/ui" elementFormDefault="qualified" targetNamespace="http://schemas/arctis-aurora/ui" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:simpleType name="Action">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="TestAction" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ControlColor">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="red" />
+      <xs:enumeration value="green" />
+      <xs:enumeration value="blue" />
+      <xs:enumeration value="white" />
+      <xs:enumeration value="black" />
+      <xs:enumeration value="yellow" />
+      <xs:enumeration value="cyan" />
+      <xs:enumeration value="magenta" />
+      <xs:enumeration value="gray" />
+      <xs:enumeration value="orange" />
+      <xs:enumeration value="purple" />
+      <xs:enumeration value="brown" />
+      <xs:enumeration value="pink" />
+      <xs:enumeration value="lime" />
+      <xs:enumeration value="navy" />
+      <xs:enumeration value="teal" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="DockMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="fill" />
+      <xs:enumeration value="left" />
+      <xs:enumeration value="right" />
+      <xs:enumeration value="top" />
+      <xs:enumeration value="bottom" />
+      <xs:enumeration value="unknown" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="Panel">
+    <xs:complexContent mixed="false">
+      <xs:extension base="Control">
+        <xs:attribute name="ControlColor" type="ControlColor" />
+        <xs:attribute name="DockMode" type="DockMode" />
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:element name="Panel" type="Panel" />
+  <xs:complexType name="Window">
+    <xs:complexContent mixed="false">
+      <xs:extension base="Control">
+        <xs:attribute name="ControlColor" type="ControlColor" />
+        <xs:attribute name="Width" type="xs:int" />
+        <xs:attribute name="Height" type="xs:int" />
+        <xs:attribute name="DockMode" type="DockMode" />
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:element name="Window" type="Window" />
+  <xs:complexType name="Button">
+    <xs:complexContent mixed="false">
+      <xs:extension base="Control">
+        <xs:attribute name="ControlColor" type="ControlColor" />
+        <xs:attribute name="onEnter" type="Action" />
+        <xs:attribute name="onExit" type="Action" />
+        <xs:attribute name="onClick" type="Action" />
+        <xs:attribute name="onAltClick" type="Action" />
+        <xs:attribute name="onRelease" type="Action" />
+        <xs:attribute name="onAltRelease" type="Action" />
+        <xs:attribute name="onDragStop" type="Action" />
+        <xs:attribute name="DockMode" type="DockMode" />
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:element name="Button" type="Button" />
+  <xs:complexType name="Control" abstract="true">
+    <xs:choice minOccurs="0" maxOccurs="1">
+      <xs:element name="Panel" type="Panel" />
+      <xs:element name="Window" type="Window" />
+      <xs:element name="Button" type="Button" />
+      <xs:element name="Dock" type="Dock" />
+      <xs:element name="GridList" type="GridList" />
+    </xs:choice>
+  </xs:complexType>
+  <xs:complexType name="Dock">
+    <xs:complexContent mixed="false">
+      <xs:extension base="Container" />
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:element name="Dock" type="Dock" />
+  <xs:complexType name="GridList">
+    <xs:complexContent mixed="false">
+      <xs:extension base="Container" />
+    </xs:complexContent>
+  </xs:complexType>
+  <xs:element name="GridList" type="GridList" />
+  <xs:complexType name="Container" abstract="true">
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="Panel" type="Panel" />
+      <xs:element name="Window" type="Window" />
+      <xs:element name="Button" type="Button" />
+      <xs:element name="Dock" type="Dock" />
+      <xs:element name="GridList" type="GridList" />
+    </xs:choice>
+  </xs:complexType>
+</xs:schema>

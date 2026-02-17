@@ -394,6 +394,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             control.SetControlScale(new Vector2D<float>(width, height));
         }
 
+        //public virtual Vector2D<float> SetControlScale(Vector2D<float> availableSpace)
         public virtual void SetControlScale(Vector2D<float> availableSpace)
         {
             switch (scalingMode)

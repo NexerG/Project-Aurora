@@ -21,6 +21,5 @@
 		<Button ControlColor="yellow" StackIndex="3"/>
 		<Button ControlColor="cyan" StackIndex="2" Height="150" ScalingMode ="Uniform"/>
 		<Button ControlColor="orange" StackIndex="2" Height="50" ScalingMode="Fill"/>
-		<ShortText ControlColor="white" Text="BBB" />
 	</StackPanel>
 </Window>

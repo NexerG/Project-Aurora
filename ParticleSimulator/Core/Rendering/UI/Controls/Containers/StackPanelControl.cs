@@ -1,7 +1,6 @@
 ﻿using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
 using Silk.NET.Maths;
-using System.Windows.Forms;
 
 namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
 {

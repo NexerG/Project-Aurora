@@ -1,7 +1,10 @@
-﻿using ArctisAurora.EngineWork;
+﻿using ArctisAurora.Core.Filing;
+using ArctisAurora.Core.Rendering.UI.Controls.Text;
+using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using ArctisAurora.EngineWork.Rendering.UI;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
+using Silk.NET.Maths;
 
 namespace AuroraEditor
 {
@@ -33,7 +36,12 @@ namespace AuroraEditor
             //Serializer.Deserialize(path, ref newS);
 
             // prepare level
-            WindowControl windowControl = VulkanUIHandler.ParseXML("UITest.xml");
+            //WindowControl windowControl = VulkanUIHandler.ParseXML("UITest.xml");
+
+            ShortTextControl test = new ShortTextControl();
+            EntityManager.uiTree = test;
+            test.transform.SetWorldPosition(new Vector3D<float>(300, 300, -10));
+            test.text = "Hello World";
 
             //ButtonControl control = new();
             //control.transform.SetWorldPosition(new Vector3D<float>(300, 300, -10));
