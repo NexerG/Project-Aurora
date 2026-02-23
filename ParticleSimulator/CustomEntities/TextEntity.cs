@@ -26,13 +26,13 @@ namespace ArctisAurora.CustomEntities
             for (int i = 0; i< text.Length; i++)
             {
                 Glyph gAsset= fontAsset.atlasMetaData.GetGlyph(text[i]);
-                horizontalOffset += (gAsset.lsb * px);
+                horizontalOffset += (gAsset.leftSideOffset * px);
                 verticalOffset = (gAsset.tsb * px);
                 Vector3D<float> glyphPos = transform.position + new Vector3D<float>(0, verticalOffset, horizontalOffset);
-                GlyphControl glyph = new GlyphControl(text[i], glyphPos, gAsset, fontAsset, px);
+                GlyphControl glyph = new GlyphControl(text[i], glyphPos, fontAsset, px);
                 children.Add(glyph);
 
-                horizontalOffset += (gAsset.rsb * px);
+                horizontalOffset += (gAsset.advanceWidth * px);
             }
         }
     }

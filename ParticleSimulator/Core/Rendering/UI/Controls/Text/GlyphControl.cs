@@ -13,7 +13,7 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Text
         int index;
         Glyph glyph;
 
-        public GlyphControl(char character, Vector3D<float> pos, Glyph gAsset, FontAsset fontAsset, int px)
+        public GlyphControl(char character, Vector3D<float> pos, FontAsset fontAsset, int px)
         {
             this.character = character;
             maskAsset = fontAsset.textureAsset;

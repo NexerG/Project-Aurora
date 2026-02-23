@@ -2,12 +2,6 @@
 using ArctisAurora.EngineWork.Rendering.UI;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using Silk.NET.Maths;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ArctisAurora.Core.Rendering.UI.Controls.Text
 {
@@ -28,21 +22,34 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Text
 
                 float horizontalOffset = 0;
                 float verticalOffset = 0;
+
+                //if (text.Length > 0)
+                //{
+                //    horizontalOffset -= (fontSize * 0.5f);
+                //}
+
+                if (text.Length == 0)
+                {
+                    return;
+                }
+
+                Glyph gAsset = fontAsset.atlasMetaData.GetGlyph(text[0]);
                 for (int i = 0; i < text.Length; i++)
                 {
-                    Glyph gAsset = fontAsset.atlasMetaData.GetGlyph(text[i]);
-                    horizontalOffset += (gAsset.lsb * fontSize);
+                    gAsset = fontAsset.atlasMetaData.GetGlyph(text[i]);
+                    float halfWidth = (gAsset.glyphWidth * fontSize) * 0.5f;
+                    horizontalOffset += (gAsset.leftSideOffset * fontSize) + halfWidth;
                     verticalOffset = (gAsset.tsb * fontSize);
                     Vector3D<float> glyphPos = transform.position + new Vector3D<float>(horizontalOffset, verticalOffset, 0);
-                    GlyphControl glyph = new GlyphControl(text[i], glyphPos, gAsset, fontAsset, fontSize);
+                    GlyphControl glyph = new GlyphControl(text[i], glyphPos, fontAsset, fontSize);
                     children.Add(glyph);
 
-                    horizontalOffset += (gAsset.rsb * fontSize);
+                    horizontalOffset += (gAsset.advanceWidth * fontSize) - halfWidth;
                 }
             }
         }
 
-        public int fontSize { get; set; } = 72;
+        public int fontSize { get; set; } = 140;
 
         public ShortTextControl()
         {

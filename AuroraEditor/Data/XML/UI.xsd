@@ -213,11 +213,6 @@
         <xs:documentation>Minimum width in pixels</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="ScalingMode" type="FillMode">
-      <xs:annotation>
-        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
     <xs:attribute name="HorizontalPos" type="xs:float">
       <xs:annotation>
         <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
@@ -226,6 +221,11 @@
     <xs:attribute name="VerticalPos" type="xs:float">
       <xs:annotation>
         <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="ClipToBounds" type="xs:boolean">
@@ -344,11 +344,6 @@
         <xs:documentation>Minimum width in pixels</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="ScalingMode" type="FillMode">
-      <xs:annotation>
-        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
     <xs:attribute name="HorizontalPos" type="xs:float">
       <xs:annotation>
         <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
@@ -357,6 +352,11 @@
     <xs:attribute name="VerticalPos" type="xs:float">
       <xs:annotation>
         <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="ClipToBounds" type="xs:boolean">
@@ -450,11 +450,6 @@
         <xs:documentation>Minimum width in pixels</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="ScalingMode" type="FillMode">
-      <xs:annotation>
-        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
     <xs:attribute name="HorizontalPos" type="xs:float">
       <xs:annotation>
         <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
@@ -463,6 +458,11 @@
     <xs:attribute name="VerticalPos" type="xs:float">
       <xs:annotation>
         <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="ClipToBounds" type="xs:boolean">
@@ -566,11 +566,6 @@
         <xs:documentation>Minimum width in pixels</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="ScalingMode" type="FillMode">
-      <xs:annotation>
-        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
     <xs:attribute name="HorizontalPos" type="xs:float">
       <xs:annotation>
         <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
@@ -579,6 +574,11 @@
     <xs:attribute name="VerticalPos" type="xs:float">
       <xs:annotation>
         <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="ClipToBounds" type="xs:boolean">
@@ -672,11 +672,6 @@
         <xs:documentation>Minimum width in pixels</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="ScalingMode" type="FillMode">
-      <xs:annotation>
-        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
     <xs:attribute name="HorizontalPos" type="xs:float">
       <xs:annotation>
         <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
@@ -685,6 +680,11 @@
     <xs:attribute name="VerticalPos" type="xs:float">
       <xs:annotation>
         <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="ClipToBounds" type="xs:boolean">
@@ -778,11 +778,6 @@
         <xs:documentation>Minimum width in pixels</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="ScalingMode" type="FillMode">
-      <xs:annotation>
-        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
     <xs:attribute name="HorizontalPos" type="xs:float">
       <xs:annotation>
         <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
@@ -791,6 +786,11 @@
     <xs:attribute name="VerticalPos" type="xs:float">
       <xs:annotation>
         <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="ClipToBounds" type="xs:boolean">
@@ -914,11 +914,6 @@
         <xs:documentation>Minimum width in pixels</xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="ScalingMode" type="FillMode">
-      <xs:annotation>
-        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
-      </xs:annotation>
-    </xs:attribute>
     <xs:attribute name="HorizontalPos" type="xs:float">
       <xs:annotation>
         <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
@@ -927,6 +922,11 @@
     <xs:attribute name="VerticalPos" type="xs:float">
       <xs:annotation>
         <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="ClipToBounds" type="xs:boolean">

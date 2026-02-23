@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 
 namespace ArctisAurora.EngineWork.Rendering.UI
 {
+    [@Serializable]
     public class AuroraFont : IDeserialize
     {
         [StructLayout(LayoutKind.Sequential, Pack = 1), @Serializable]
@@ -28,14 +29,18 @@ namespace ArctisAurora.EngineWork.Rendering.UI
         [StructLayout(LayoutKind.Sequential, Pack = 1), @Serializable]
         public struct TextData
         {
+            //[@Serializable]
             public int characterCount;
+            //[@Serializable]
             public char[] characters;
         }
 
-
+        [@Serializable]
         public FontMeta fontMeta;
+        [@Serializable]
         public TableEntry[] tableEntries;
 
+        [@Serializable]
         public TextData textData;
 
         public void Deserialize(string path)
@@ -54,17 +59,17 @@ namespace ArctisAurora.EngineWork.Rendering.UI
 
             // table entries
             tableEntries = new TableEntry[fontMeta.tableCount];
-            byte[] tableEntryBuffer = new byte[Marshal.SizeOf<TableEntry>() * fontMeta.tableCount];
+            byte[] tableEntryBuffer = new byte[(Marshal.SizeOf<TableEntry>() + sizeof(int)) * fontMeta.tableCount];
 
             using (FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Read))
             {
-                fileStream.Seek(Marshal.SizeOf<FontMeta>(), SeekOrigin.Begin);
+                fileStream.Seek(Marshal.SizeOf<FontMeta>() + sizeof(int), SeekOrigin.Begin);
                 fileStream.Read(tableEntryBuffer, 0, tableEntryBuffer.Length);
             }
             GCHandle handleTables = GCHandle.Alloc(tableEntryBuffer, GCHandleType.Pinned);
             for (int i = 0; i < fontMeta.tableCount; i++)
             {
-                IntPtr entryPtr = handleTables.AddrOfPinnedObject() + (i * Marshal.SizeOf<TableEntry>());
+                IntPtr entryPtr = handleTables.AddrOfPinnedObject() + (i * (Marshal.SizeOf<TableEntry>()) + sizeof(int));
                 tableEntries[i] = Marshal.PtrToStructure<TableEntry>(entryPtr);
             }
             handleTables.Free();
@@ -139,18 +144,19 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                 ushort numberOfHMetrics = AssetImporter.ReadUInt16BE(reader);
 
                 TableEntry hmtx = fontData.tableEntries.First(t => t.name == "hmtx"); // for distances between glyphs
-                ushort[] rsb = new ushort[numberOfHMetrics];
+                ushort[] advanceWidth = new ushort[numGlyphs];
                 short[] lsb = new short[numGlyphs];
                 reader.BaseStream.Position = hmtx.offset;
                 for (int i = 0; i < numberOfHMetrics; i++)
                 {
-                    rsb[i] = AssetImporter.ReadUInt16BE(reader);
+                    advanceWidth[i] = AssetImporter.ReadUInt16BE(reader);
                     lsb[i] = AssetImporter.ReadInt16BE(reader);
                 }
 
                 for (int i = numberOfHMetrics; i < numGlyphs ; i++)
                 {
                     lsb[i] = AssetImporter.ReadInt16BE(reader);
+                    advanceWidth[i] = advanceWidth[numberOfHMetrics - 1];
                 }
 
                 //TableEntry vhea = fontData.tableEntries.First(t => t.name == "vhea");
@@ -175,8 +181,8 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                 {
                     char character = fontData.textData.characters[i];
                     ushort glyphIndex = GetGlyphIndex(character, reader, cmap);
-                    glyphs.glyphs[i].rsb = (float)rsb[glyphIndex] / 2048f;
-                    glyphs.glyphs[i].lsb = (float)lsb[glyphIndex] / 2048f;
+                    glyphs.glyphs[i].advanceWidth = (float)advanceWidth[glyphIndex] / 2048f;
+                    glyphs.glyphs[i].leftSideOffset = (float)lsb[glyphIndex] / 2048f;
                     if(glyphs.glyphs[i].yMin < 0)
                     {
                         float tsb = -(glyphs.glyphs[i].yMin) / 2048f;
@@ -455,7 +461,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
             return glyph;
         }
 
-        internal static void GenerateMSDF(Glyph g, ref Image<Rgba32> image, int startX, int startY, int glyphsPerAxis, float distanceFactor)
+        private static void GenerateMSDF(Glyph glyph, ref Image<Rgba32> image, int startX, int startY, int glyphsPerAxis, float distanceFactor)
         {
             int width = image.Width / glyphsPerAxis;
             int height = image.Height / glyphsPerAxis;
@@ -466,9 +472,9 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                 for (int y = 0; y < height; y++)
                 {
                     Vector2D<float> p = new Vector2D<float>((x + 0.5f) / width, (y + 0.5f) / height);
-                    float redDist = Math.Clamp(GetClosestDistance(p, g, new Vector3D<int>(1, 0, 0)) * distanceFactor, -1, 1);
-                    float greenDist = Math.Clamp(GetClosestDistance(p, g, new Vector3D<int>(0, 1, 0)) * distanceFactor, -1, 1);
-                    float blueDist = Math.Clamp(GetClosestDistance(p, g, new Vector3D<int>(0, 0, 1)) * distanceFactor, -1, 1);
+                    float redDist = Math.Clamp(GetClosestDistance(p, glyph, new Vector3D<int>(1, 0, 0)) * distanceFactor, -1, 1);
+                    float greenDist = Math.Clamp(GetClosestDistance(p, glyph, new Vector3D<int>(0, 1, 0)) * distanceFactor, -1, 1);
+                    float blueDist = Math.Clamp(GetClosestDistance(p, glyph, new Vector3D<int>(0, 0, 1)) * distanceFactor, -1, 1);
 
                     redDist = redDist * 0.5f + 0.5f;
                     greenDist = greenDist * 0.5f + 0.5f;
@@ -619,8 +625,11 @@ namespace ArctisAurora.EngineWork.Rendering.UI
     [@Serializable]
     public class AtlasMetaData : IDeserialize
     {
+        [@Serializable]
         public int glyphCount;
+        [@Serializable]
         public char[] chars;
+        [@Serializable]
         public Glyph[] glyphs;
 
         public void Deserialize(string name)
@@ -660,8 +669,8 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                     glyphs[i].glyphWidth = reader.ReadSingle();
                     glyphs[i].glyphHeight = reader.ReadSingle();
 
-                    glyphs[i].rsb = reader.ReadSingle();
-                    glyphs[i].lsb = reader.ReadSingle();
+                    glyphs[i].advanceWidth = reader.ReadSingle();
+                    glyphs[i].leftSideOffset = reader.ReadSingle();
                     glyphs[i].tsb = reader.ReadSingle();
                 }
             }

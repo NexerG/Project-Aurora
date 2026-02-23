@@ -4,6 +4,7 @@ using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using ArctisAurora.EngineWork.Rendering.UI;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
+using ArctisAurora.EngineWork.Serialization;
 using Silk.NET.Maths;
 
 namespace AuroraEditor
@@ -21,6 +22,7 @@ namespace AuroraEditor
             };
 
             engine.Init(modules, false);
+            //AssetImporter.ImportFont("abcdefghijklmnoprstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ", "arial.ttf");
 
             // SERIALIZATION TESTING
             //AuroraScene scene = new AuroraScene();

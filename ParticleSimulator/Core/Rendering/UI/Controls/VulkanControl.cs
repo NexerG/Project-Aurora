@@ -166,100 +166,107 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         }*/
         #endregion
 
-        #region UI XML properties
-        // sizing
-        private int _width = 72;
-        private int _height = 72;
-        public int width
-        {
-            get => _width;
-            set
+        #region UI XML fields
+        
+            #region scaling
+            private int _width = 72;
+            private int _height = 72;
+            public int width
             {
-                _width = value;
-                transform.SetWorldScale(new Vector3D<float>(width, height, 1));
+                get => _width;
+                set
+                {
+                    _width = value;
+                    transform.SetWorldScale(new Vector3D<float>(width, height, 1));
+                }
             }
-        }
-        public int height
-        {
-            get => _height;
-            set
+            public int height
             {
-                _height = value;
-                transform.SetWorldScale(new Vector3D<float>(width, height, 1));
+                get => _height;
+                set
+                {
+                    _height = value;
+                    transform.SetWorldScale(new Vector3D<float>(width, height, 1));
+                }
             }
-        }
 
 
-        [A_VulkanControlProperty("Width", "Width in pixels")]
-        public int preferredWidth = 72;
-        [A_VulkanControlProperty("Height", "Height in pixels")]
-        public int preferredHeight = 72;
+            [A_VulkanControlProperty("Width", "Width in pixels")]
+            public int preferredWidth = 72;
+            [A_VulkanControlProperty("Height", "Height in pixels")]
+            public int preferredHeight = 72;
 
-        [A_VulkanControlProperty("MinHeight", "Minimum height in pixels")]
-        public int minHeight = 0;
-        [A_VulkanControlProperty("MinWidth", "Minimum width in pixels")]
-        public int minWidth = 0;
+            [A_VulkanControlProperty("MinHeight", "Minimum height in pixels")]
+            public int minHeight = 0;
+            [A_VulkanControlProperty("MinWidth", "Minimum width in pixels")]
+            public int minWidth = 0;
 
-        [A_VulkanControlProperty("ScalingMode", "Sets how the control scales vertically within it's parent.")]
-        public ScalingMode scalingMode = ScalingMode.None;
-
-        public virtual Vector2D<int> size
-        {
-            get => new Vector2D<int>(_width, _height);
-            set
+            public virtual Vector2D<int> size
             {
-                _width = value.X;
-                _height = value.Y;
-                transform.SetWorldScale(new Vector3D<float>(width, height, 1));
+                get => new Vector2D<int>(_width, _height);
+                set
+                {
+                    _width = value.X;
+                    _height = value.Y;
+                    transform.SetWorldScale(new Vector3D<float>(width, height, 1));
+                }
             }
-        }
+            #endregion
 
-        // postioning
-        [A_VulkanControlProperty("HorizontalPos", "Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.")]
-        public float horizontalPosition = 0.5f;
+            #region positioning
+            // postioning
+            [A_VulkanControlProperty("HorizontalPos", "Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.")]
+            public float horizontalPosition = 0.5f;
 
-        [A_VulkanControlProperty("VerticalPos", "Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.")]
-        public float verticalPosition = 0.5f;
+            [A_VulkanControlProperty("VerticalPos", "Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.")]
+            public float verticalPosition = 0.5f;
+            #endregion
 
-        [A_VulkanControlProperty("ClipToBounds", "Will not render kids outside the bounds.")]
-        public bool clipToBounds = false;
+            #region settings
+            [A_VulkanControlProperty("ScalingMode", "Sets how the control scales vertically within it's parent.")]
+            public ScalingMode scalingMode = ScalingMode.None;
 
-        // settings
-        [A_VulkanControlProperty("DockMode")]
-        public DockMode dockMode;
+            [A_VulkanControlProperty("ClipToBounds", "Will not render kids outside the bounds.")]
+            public bool clipToBounds = false;
 
-        private string _controlColorHex = "#FFFFFF";
-        [A_VulkanControlProperty("ColorHex", "Sets the control color via hex code")]
-        public string controlColorHex
-        {
-            get => _controlColorHex;
-            set 
+            [A_VulkanControlProperty("DockMode")]
+            public DockMode dockMode;
+
+            [A_VulkanControlProperty("StackIndex", "Tells the StackPanel parent (if its the parent) in which stack level the control should reside.")]
+            public int stackIndex = 0;
+
+            public VulkanControl? child;
+            #endregion
+
+            #region styling
+            private string _controlColorHex = "#FFFFFF";
+            [A_VulkanControlProperty("ColorHex", "Sets the control color via hex code")]
+            public string controlColorHex
             {
-                _controlColorHex = value;
-                Vector3D<float> rgb = HexToRGB(value);
-                controlData.style.tint = rgb;
-                UpdateControlData();
+                get => _controlColorHex;
+                set 
+                {
+                    _controlColorHex = value;
+                    Vector3D<float> rgb = HexToRGB(value);
+                    controlData.style.tint = rgb;
+                    UpdateControlData();
+                }
             }
-        }
 
-
-        private ControlColor color;
-        [A_VulkanControlProperty("ControlColor")]
-        public ControlColor controlColor
-        {
-            get => color;
-            set
+            private ControlColor color;
+            [A_VulkanControlProperty("ControlColor")]
+            public ControlColor controlColor
             {
-                string hex = EnumColorToHex(value);
-                Vector3D<float> rgb = HexToRGB(hex);
-                controlData.style.tint = rgb;
-                UpdateControlData();
+                get => color;
+                set
+                {
+                    string hex = EnumColorToHex(value);
+                    Vector3D<float> rgb = HexToRGB(hex);
+                    controlData.style.tint = rgb;
+                    UpdateControlData();
+                }
             }
-        }
-        [A_VulkanControlProperty("StackIndex", "Tells the StackPanel parent (if its the parent) in which stack level the control should reside.")]
-        public int stackIndex = 0;
-
-        public VulkanControl? child;
+            #endregion
 
         #endregion
 
@@ -395,6 +402,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         }
 
         //public virtual Vector2D<float> SetControlScale(Vector2D<float> availableSpace)
+
         public virtual void SetControlScale(Vector2D<float> availableSpace)
         {
             switch (scalingMode)
@@ -479,7 +487,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             onEnter += action;
         }
 
-        public virtual void ResolveEnter()
+        public virtual void ResolveOnEnter()
         {
             if (!entered)
             {
@@ -534,7 +542,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             onClick += action;
         }
 
-        public virtual void ResolveClick(Vector2D<float> oldPos, Vector2D<float> delta)
+        public virtual void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
         {
             if (!clicked)
             {
@@ -543,7 +551,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
                 lastClick = click;
                 if (span.TotalMilliseconds < Engine.doubleClickTime)
                 {
-                    ResolveDoubleClick();
+                    ResolveOnDoubleClick();
                     clicked = true;
                     return;
                 }
@@ -561,12 +569,12 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         }
 
         // DOUBLE CLICK
-        public void RegisterDoubleClick(Action action)
+        public void RegisterOnDoubleClick(Action action)
         {
             onDoubleClick += action;
         }
 
-        public virtual void ResolveDoubleClick()
+        public virtual void ResolveOnDoubleClick()
         {
             onDoubleClick?.Invoke();
         }
@@ -577,7 +585,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             onRelease += action;
         }
 
-        public virtual void ResolveRelease()
+        public virtual void ResolveOnRelease()
         {
             if (dragging)
             {
@@ -591,12 +599,12 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         }
 
         // ALT CLICK
-        public void RegisterAltClick(Action action)
+        public void RegisterOnAltClick(Action action)
         {
             onAltClick += action;
         }
 
-        public virtual void ResolveAltClick()
+        public virtual void ResolveOnAltClick()
         {
             if (!altClicked)
             {
@@ -606,12 +614,12 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         }
 
         // ALT RELEASE
-        public void RegisterAltRelease(Action action)
+        public void RegisterOnAltRelease(Action action)
         {
             onAltRelease += action;
         }
 
-        public virtual void ResolveAltRelease()
+        public virtual void ResolveOnAltRelease()
         {
             if (altClicked)
             {

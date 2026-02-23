@@ -7,9 +7,9 @@ using AuroraFont = ArctisAurora.EngineWork.Rendering.UI.AuroraFont;
 
 namespace ArctisAurora.EngineWork.Serialization
 {
-    internal unsafe static class AssetImporter
+    public unsafe static class AssetImporter
     {
-        internal static void ImportFont(string characters, string fontName)
+        public static void ImportFont(string characters, string fontName)
         {
             var fs = new FileStream("C:\\Windows\\Fonts\\" + fontName, FileMode.Open, FileAccess.Read);
             var reader = new BinaryReader(fs);
@@ -56,11 +56,12 @@ namespace ArctisAurora.EngineWork.Serialization
             fs.Close();
 
             AuroraFont f = new AuroraFont();
-            f.Deserialize(path);
+            Serializer.DeserializeAttributed(path, ref f);
+            //f.Deserialize(path);
             AuroraFont.GenerateGlyphAtlas(f, "arial.ttf", 128);
         }
 
-        internal static Image<Rgba32> ImportFont(out Glyph glyph, char letter, string fontName = "arial.ttf")
+        public static Image<Rgba32> ImportFont(out Glyph glyph, char letter, string fontName = "arial.ttf")
         {
             var fs = new FileStream("C:\\Windows\\Fonts\\" + fontName, FileMode.Open, FileAccess.Read);
             var reader = new BinaryReader(fs);

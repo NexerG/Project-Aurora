@@ -55,7 +55,9 @@ namespace ArctisAurora.EngineWork.AssetRegistry
         public override void LoadDefault()
         {
             atlasMetaData = new AtlasMetaData();
-            atlasMetaData.Deserialize("arial");
+            string path = Paths.FONTS + $"\\{"arial"}\\{"arial"}.agd";
+            Serializer.DeserializeAttributed(path, ref atlasMetaData);
+            //atlasMetaData.Deserialize("arial");
 
             string imagePath = Paths.FONTS + "\\arial\\" + "arial_atlas.png";
             textureAsset = new TextureAsset("uidefault");

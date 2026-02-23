@@ -51,7 +51,7 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
             
             if (mostDeep!= null && dragging == null)
             {
-                mostDeep.ResolveEnter();
+                mostDeep.ResolveOnEnter();
                 mostDeep.ResolveHover(mousePos);
             }
         }
@@ -75,7 +75,7 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
                     }
                     else
                     {
-                            child.ResolveRelease();
+                            child.ResolveOnRelease();
                     }
                 }
             }
@@ -86,7 +86,7 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
             
             if (mostDeep != null && dragging == null)
             {
-                mostDeep.ResolveClick(lastMousePos, delta);
+                mostDeep.ResolveOnClick(lastMousePos, delta);
             }
         }
 
@@ -109,7 +109,7 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
                     }
                     else
                     {
-                            child.ResolveAltRelease();
+                            child.ResolveOnAltRelease();
                     }
                 }
             }
@@ -120,7 +120,7 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
             
             if (mostDeep != null)
             {
-                mostDeep.ResolveAltClick();
+                mostDeep.ResolveOnAltClick();
             }
         }
 
