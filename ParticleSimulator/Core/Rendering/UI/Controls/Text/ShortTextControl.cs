@@ -23,37 +23,39 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Text
                 float horizontalOffset = 0;
                 float verticalOffset = 0;
 
-                //if (text.Length > 0)
-                //{
-                //    horizontalOffset -= (fontSize * 0.5f);
-                //}
-
                 if (text.Length == 0)
                 {
                     return;
                 }
 
-                Glyph gAsset = fontAsset.atlasMetaData.GetGlyph(text[0]);
+                Glyph gAsset;
                 for (int i = 0; i < text.Length; i++)
                 {
                     gAsset = fontAsset.atlasMetaData.GetGlyph(text[i]);
                     float halfWidth = (gAsset.glyphWidth * fontSize) * 0.5f;
-                    horizontalOffset += (gAsset.leftSideOffset * fontSize) + halfWidth;
-                    verticalOffset = (gAsset.tsb * fontSize);
+                    horizontalOffset += (gAsset.leftSideOffset * (float)fontSize) + halfWidth;
                     Vector3D<float> glyphPos = transform.position + new Vector3D<float>(horizontalOffset, verticalOffset, 0);
                     GlyphControl glyph = new GlyphControl(text[i], glyphPos, fontAsset, fontSize);
                     children.Add(glyph);
 
-                    horizontalOffset += (gAsset.advanceWidth * fontSize) - halfWidth;
+                    horizontalOffset += (gAsset.advanceWidth * (float)fontSize) - halfWidth - (gAsset.leftSideOffset * (float)fontSize);
                 }
             }
         }
 
-        public int fontSize { get; set; } = 140;
+        private int _fontSize = 72;
+        public int fontSize {
+            get => _fontSize;
+            set
+            {
+                _fontSize = (int)Math.Ceiling(((float)value * (96f/72f)));
+            }
+        }
 
         public ShortTextControl()
         {
             controlData.style.tint = new Vector3D<float>(1, 1, 1);
+            fontSize = 96;
         }
     }
 

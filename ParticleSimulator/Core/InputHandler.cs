@@ -4,7 +4,7 @@ using Keys = Silk.NET.GLFW.Keys;
 
 namespace ArctisAurora.EngineWork
 {
-    internal class Keybind
+    public class Keybind
     {
         public Keys? keyboardKey;
         public MouseButton? mouseButton;
@@ -48,7 +48,7 @@ namespace ArctisAurora.EngineWork
         }
     }
 
-    internal unsafe class InputHandler
+    public unsafe class InputHandler
     {
         public static InputHandler instance { get; private set; }
 
@@ -59,7 +59,7 @@ namespace ArctisAurora.EngineWork
 
         public bool IsKeyDown(Keybind k) => keysDown.Contains(k);
 
-        internal InputHandler()
+        public InputHandler()
         {
             instance = this;
         }
