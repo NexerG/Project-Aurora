@@ -1,4 +1,5 @@
-﻿using ArctisAurora.Core.Filing;
+﻿using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Rendering.UI.Controls.Text;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering.Modules;
@@ -23,6 +24,8 @@ namespace AuroraEditor
 
             engine.Init(modules, false);
             //AssetImporter.ImportFont("abcdefghijklmnoprstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ", "arial.ttf");
+
+            XSDGenerator.GenerateXSD();
 
             // SERIALIZATION TESTING
             //AuroraScene scene = new AuroraScene();

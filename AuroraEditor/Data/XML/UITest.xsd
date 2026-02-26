@@ -1,0 +1,5 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xsd:schema xmlns:UI="http://arctisaurora/UI" xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" targetNamespace="http://arctisaurora/UI" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
+  <xs:complexType name="Panel" />
+</xsd:schema>

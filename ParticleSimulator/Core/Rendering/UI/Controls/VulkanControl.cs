@@ -1,4 +1,5 @@
-﻿using ArctisAurora.EngineWork.AssetRegistry;
+﻿using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Physics.UICollision;
 using ArctisAurora.EngineWork.Rendering.Helpers;
@@ -191,9 +192,9 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             }
 
 
-            [A_VulkanControlProperty("Width", "Width in pixels")]
+            [A_VulkanControlProperty("Width", "Width in pixels"), A_XSDElementProperty("Width")]
             public int preferredWidth = 72;
-            [A_VulkanControlProperty("Height", "Height in pixels")]
+            [A_VulkanControlProperty("Height", "Height in pixels"), A_XSDElementProperty("Height")]
             public int preferredHeight = 72;
 
             [A_VulkanControlProperty("MinHeight", "Minimum height in pixels")]
@@ -285,7 +286,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         #region EVENTS
         //fuck do i do with this yet to figure out. tbh idk if this is even a problem
         public event Action<Vector2D<float>> hover;
-        [A_VulkanControlProperty("onEnter")]
+        [A_VulkanControlProperty("onEnter"), A_XSDElementProperty("onEnter", "UI")]
         public Action onEnter;
         [A_VulkanControlProperty("onExit")]
         public Action onExit;

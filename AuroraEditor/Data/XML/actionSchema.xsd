@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xsd:schema xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" targetNamespace="http://arctisaurora/ActionDependencies" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <xs:simpleType name="UI">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="ExitApplication" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Input">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="DummyHover" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="DummyKeyPress">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="DummyKeyPress" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="AllActions">
+    <xs:union memberTypes="actions:UI actions:Input actions:DummyKeyPress" />
+  </xs:simpleType>
+</xsd:schema>

@@ -4,6 +4,7 @@
     <xs:restriction base="xs:string">
       <xs:enumeration value="ExitApplication" />
       <xs:enumeration value="DummyHover" />
+      <xs:enumeration value="DummyKeyPress" />
       <xs:enumeration value="TestAction" />
     </xs:restriction>
   </xs:simpleType>
