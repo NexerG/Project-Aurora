@@ -143,7 +143,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             public ControlStyle style;
         }
 
-        [A_VulkanEnum("ControlColor")]
+        [A_VulkanEnum("ControlColor"), A_XSDEnumDependency("ControlColor", "UI")]
         public enum ControlColor
         {
             red, green, blue, white, black, yellow, cyan, magenta, gray, orange, purple, brown, pink, lime, navy, teal,

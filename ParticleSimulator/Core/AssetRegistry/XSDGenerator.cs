@@ -1,12 +1,6 @@
 ﻿using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using ArctisAurora.EngineWork.Serialization;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
 using System.Xml;
 using System.Xml.Schema;
 
@@ -32,9 +26,9 @@ namespace ArctisAurora.Core.AssetRegistry
     {
         public string Name { get; set; }
         public string Description { get; } = string.Empty;
-        public string Category { get; set; } = string.Empty;
+        public string Category { get; set; } = "AllActions";
 
-        public A_XSDElementPropertyAttribute(string name, string? category="", string? description = "")
+        public A_XSDElementPropertyAttribute(string name, string? category="AllActions", string? description = "")
         {
             Name = name;
             Description = description;
@@ -89,7 +83,7 @@ namespace ArctisAurora.Core.AssetRegistry
             { typeof(ulong), "xs:unsignedLong" },
             { typeof(char), "xs:string" },
             { typeof(decimal), "xs:decimal" },
-            { typeof(Action), "Action" }
+            { typeof(Action), "actions" }
         };
 
 
@@ -124,13 +118,22 @@ namespace ArctisAurora.Core.AssetRegistry
                 };
                 elementSchema.Namespaces.Add("xsd", "http://www.w3.org/2001/XMLSchema");
                 elementSchema.Namespaces.Add(category.Key, $"http://arctisaurora/{category.Key}");
+                elementSchema.Namespaces.Add("actions", "http://arctisaurora/ActionDependencies");
+                elementSchema.Namespaces.Add("enums", "http://arctisaurora/EnumDependencies");
 
-                XmlSchemaImport import = new XmlSchemaImport
+                XmlSchemaImport actionImport = new XmlSchemaImport
                 {
                     Namespace = "http://arctisaurora/ActionDependencies",
                     SchemaLocation = "actionSchema.xsd"
                 };
-                elementSchema.Includes.Add(import);
+                elementSchema.Includes.Add(actionImport);
+
+                XmlSchemaImport enumImport = new XmlSchemaImport
+                {
+                    Namespace = "http://arctisaurora/EnumDependencies",
+                    SchemaLocation = "enumSchema.xsd"
+                };
+                elementSchema.Includes.Add(enumImport);
 
                 XmlSchemaChoice controlChoice = new XmlSchemaChoice
                 {
@@ -143,7 +146,7 @@ namespace ArctisAurora.Core.AssetRegistry
                     XmlSchemaElement schemaElement = new XmlSchemaElement
                     {
                         Name = element.Attribute.Name,
-                        SchemaTypeName = new XmlQualifiedName(element.Attribute.Schema, $"http://arctisaurora/{element.Attribute.Schema}")
+                        SchemaTypeName = new XmlQualifiedName($"{element.Attribute.Schema}:{element.Attribute.Name}")
                     };
                     controlChoice.Items.Add(schemaElement);
                     elementSchema.Items.Add(schemaElement);
@@ -180,11 +183,15 @@ namespace ArctisAurora.Core.AssetRegistry
                         // check if its a list
                         if (memberType.IsGenericType && memberType.GetGenericTypeDefinition() == typeof(List<>))
                         {
-
+                            // lol no list implementations yet
                         }
                         else
                         {
                             string typeName = MemberMap.ContainsKey(memberType) ? MemberMap[memberType] : enumMap[memberType];
+                            if (typeName == "actions")
+                            {
+                                typeName += $":{attribute.XmlAttribute?.Category}";
+                            }
                             XmlQualifiedName qualifiedName = new XmlQualifiedName(typeName);
                             XmlSchemaAttribute schemaAttribute = new XmlSchemaAttribute
                             {
@@ -222,6 +229,56 @@ namespace ArctisAurora.Core.AssetRegistry
 
         private static void GenerateEnumXSD(Assembly[] generalAsm)
         {
+            var enums = generalAsm.SelectMany(a => a.GetTypes())
+                .Where(t => t.IsEnum && t.GetCustomAttributes(typeof(A_XSDEnumDependencyAttribute), false).Any()).ToList();
+
+            var categorizedEnums = enums.Where(x => !string.IsNullOrEmpty(x.GetCustomAttribute<A_XSDEnumDependencyAttribute>()?.Category))
+                .GroupBy(x => x.GetCustomAttribute<A_XSDEnumDependencyAttribute>()?.Category)
+                .ToDictionary(g => g.Key ?? "Uncategorized", g => g.ToList());
+
+            XmlSchema enumSchema = new XmlSchema()
+            {
+                TargetNamespace = "http://arctisaurora/EnumDependencies",
+                ElementFormDefault = XmlSchemaForm.Qualified
+            };
+            enumSchema.Namespaces.Add("enums", "http://arctisaurora/EnumDependencies");
+            enumSchema.Namespaces.Add("xsd", "http://www.w3.org/2001/XMLSchema");
+            foreach (var category in categorizedEnums)
+            {
+                XmlSchemaSimpleType enumType = new XmlSchemaSimpleType
+                {
+                    Name = category.Key
+                };
+                var enumRestriction = new XmlSchemaSimpleTypeRestriction
+                {
+                    BaseTypeName = new XmlQualifiedName("xs:string")
+                };
+                foreach (var enumValue in category.Value)
+                {
+                    var attribute = enumValue.GetCustomAttribute<A_XSDEnumDependencyAttribute>();
+                    if (attribute != null)
+                    {
+                        XmlSchemaEnumerationFacet enumElement = new XmlSchemaEnumerationFacet
+                        {
+                            Value = attribute.Name
+                        };
+                        enumRestriction.Facets.Add(enumElement);
+                    }
+                }
+                enumType.Content = enumRestriction;
+                enumSchema.Items.Add(enumType);
+            }
+
+            var settings = new XmlWriterSettings
+            {
+                Indent = true,
+                Encoding = System.Text.Encoding.UTF8
+            };
+            string path = Paths.ENGINEXML + "\\enumSchema.xsd";
+            using (var writer = XmlWriter.Create(path, settings))
+            {
+                enumSchema.Write(writer);
+            }
         }
 
         private static void GenerateActionXSD(Assembly[] generalAsm)
@@ -341,11 +398,11 @@ namespace ArctisAurora.Core.AssetRegistry
         {
             var generalAsm = AppDomain.CurrentDomain.GetAssemblies();
             var enumTypes = generalAsm.SelectMany(asm => asm.GetTypes()
-                .Where(t => t.IsEnum && t.GetCustomAttributes(typeof(A_VulkanEnumAttribute), false).Any())
+                .Where(t => t.IsEnum && t.GetCustomAttributes(typeof(A_XSDEnumDependencyAttribute), false).Any())
                 .Select(t => new
                 {
                     Type = t,
-                    Attribute = (A_VulkanEnumAttribute)t.GetCustomAttributes(typeof(A_VulkanEnumAttribute), false).First()
+                    Attribute = (A_XSDEnumDependencyAttribute)t.GetCustomAttributes(typeof(A_XSDEnumDependencyAttribute), false).First()
                 })).ToList();
             Dictionary<Type, string> map = new Dictionary<Type, string>();
             foreach (var enumType in enumTypes)

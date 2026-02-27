@@ -1,5 +1,22 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<xsd:schema xmlns:UI="http://arctisaurora/UI" xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" targetNamespace="http://arctisaurora/UI" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+<xsd:schema xmlns:UI="http://arctisaurora/UI" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" targetNamespace="http://arctisaurora/UI" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
-  <xs:complexType name="Panel" />
+  <xs:element name="Panel" type="UI:Panel" />
+  <xs:complexType name="Panel">
+    <xs:attribute name="Width" type="xs:int">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Height" type="xs:int">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onEnter" type="actions:AllActions">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
 </xsd:schema>

@@ -1,16 +1,13 @@
 ﻿using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
 using ArctisAurora.EngineWork.Serialization;
-using Assimp;
 using Silk.NET.Maths;
 using System.Collections;
 using System.ComponentModel;
 using System.Reflection;
-using System.Windows.Forms;
 using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Schema;
-using System.Xml.Serialization;
 
 namespace ArctisAurora.EngineWork.Rendering.UI
 {
