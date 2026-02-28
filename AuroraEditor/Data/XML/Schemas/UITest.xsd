@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<xsd:schema xmlns:UI="http://arctisaurora/UI" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:types="http://arctisaurora/AuroraTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" targetNamespace="http://arctisaurora/UI" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+<xs:schema xmlns:UI="http://arctisaurora/UI" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:types="http://arctisaurora/AuroraUITypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/UI" xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
-  <xs:import schemaLocation="typeSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
+  <xs:import schemaLocation="UITypeSchema.xsd" namespace="http://arctisaurora/AuroraUITypes" />
   <xs:element name="Panel" type="UI:Panel" />
   <xs:element name="VulkanControl" type="UI:VulkanControl" />
   <xs:complexType name="Panel">
@@ -15,7 +15,7 @@
         <xs:documentation></xs:documentation>
       </xs:annotation>
     </xs:attribute>
-    <xs:attribute name="ScalingMode" type="FillMode">
+    <xs:attribute name="ScalingMode" type="types:FillMode">
       <xs:annotation>
         <xs:documentation></xs:documentation>
       </xs:annotation>
@@ -48,4 +48,4 @@
       </xs:annotation>
     </xs:attribute>
   </xs:complexType>
-</xsd:schema>
+</xs:schema>

@@ -94,6 +94,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
     { }
     #endregion
 
+    [A_XSDElement("VulkanControl","UI","UI")]
     public unsafe class VulkanControl : Entity
     {
         #region STRUCTS
@@ -143,13 +144,13 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             public ControlStyle style;
         }
 
-        [A_VulkanEnum("ControlColor"), A_XSDEnumDependency("ControlColor", "UI")]
+        [A_VulkanEnum("ControlColor"), A_XSDType("ControlColor", "UI")]
         public enum ControlColor
         {
             red, green, blue, white, black, yellow, cyan, magenta, gray, orange, purple, brown, pink, lime, navy, teal,
         }
 
-        [A_VulkanEnum("FillMode")]
+        [A_VulkanEnum("FillMode"), A_XSDType("FillMode", "UI")]
         public enum ScalingMode
         {
             Uniform,
@@ -224,7 +225,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             #endregion
 
             #region settings
-            [A_VulkanControlProperty("ScalingMode", "Sets how the control scales vertically within it's parent.")]
+            [A_VulkanControlProperty("ScalingMode", "Sets how the control scales vertically within it's parent."), A_XSDElementProperty("ScalingMode","UI")]
             public ScalingMode scalingMode = ScalingMode.None;
 
             [A_VulkanControlProperty("ClipToBounds", "Will not render kids outside the bounds.")]

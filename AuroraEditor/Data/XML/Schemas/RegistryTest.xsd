@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:Registry="http://arctisaurora/Registry" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:types="http://arctisaurora/AuroraRegistryTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/Registry" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
+  <xs:import schemaLocation="RegistryTypeSchema.xsd" namespace="http://arctisaurora/AuroraRegistryTypes" />
+  <xs:element name="AssetRegistries" type="Registry:AssetRegistries" />
+  <xs:complexType name="AssetRegistries">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Dictionary" type="types:Entry">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

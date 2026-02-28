@@ -13,7 +13,9 @@ namespace ArctisAurora.EngineWork.Serialization
         public static readonly string FONTS = GetPath("Data\\Fonts");
         public static readonly string DATA = GetPath("Data");
         public static readonly string UIMASKS = GetPath("Data\\UIMasks");
-        public static readonly string ENGINEXML = GetPath("Data\\XML");
+        public static readonly string XML = GetPath("Data\\XML");
+        public static readonly string XMLSCHEMAS = GetPath("Data\\XML\\Schemas");
+        public static readonly string XMLDOCUMENTS = GetPath("Data\\XML\\Documents");
         public static readonly string REGISTRIES = GetPath("Data\\XML\\Registries");
         public static readonly string SCENES = GetPath("Data\\Scenes");
 

@@ -14,7 +14,7 @@ namespace AuroraEditor
     {
         static void Main(string[] args)
         {
-            VulkanUIHandler.GenerateTestXSD();
+            //VulkanUIHandler.GenerateTestXSD();
 
             Engine engine = new Engine();
             RenderingModule[] modules = new RenderingModule[]

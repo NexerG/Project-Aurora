@@ -314,7 +314,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                 };
 
                 // Write schema to file
-                string path = Paths.ENGINEXML + "\\UI.xsd";
+                string path = Paths.XMLSCHEMAS + "\\UI.xsd";
                 using (var writer = XmlWriter.Create(path, settings))
                 {
                     schema.Write(writer);
@@ -329,7 +329,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
 
         public static WindowControl ParseXML(string xaml)
         {
-            string path = Paths.ENGINEXML + "\\" + xaml;
+            string path = Paths.XMLDOCUMENTS + "\\" + xaml;
 
             XDocument doc = XDocument.Load(path);
             XElement root = doc.Root;

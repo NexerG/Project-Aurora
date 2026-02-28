@@ -51,6 +51,8 @@
 
   <ItemGroup>
     <Folder Include="Data\Scenes\" />
+    <Folder Include="Data\XML\Documents\" />
+    <Folder Include="Data\XML\Schemas\" />
     <Folder Include="Data\XML\Registries\Preloads\" />
     <Folder Include="EditorProgram\Entities\" />
   </ItemGroup>
