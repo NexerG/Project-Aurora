@@ -1,4 +1,5 @@
-﻿using ArctisAurora.EngineWork.Rendering.Helpers;
+﻿using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.EngineWork.Rendering.Helpers;
 using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
@@ -55,7 +56,8 @@ namespace ArctisAurora.EngineWork.Rendering
         }
     }
 
-    internal class AVulkanMesh
+    [A_XSDType("AVulkanMesh", "Registry")]
+    public class AVulkanMesh
     {
         internal Buffer vertexBuffer;
         internal DeviceMemory _vertexBufferMemory;

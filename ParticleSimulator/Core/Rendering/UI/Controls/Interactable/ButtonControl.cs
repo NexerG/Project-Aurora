@@ -1,8 +1,9 @@
-﻿using Silk.NET.Maths;
+﻿using ArctisAurora.Core.AssetRegistry;
+using Silk.NET.Maths;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
 {
-    [A_VulkanControl("Button")]
+    [A_XSDElement("Button", "UI", "UI")]
     public class ButtonControl : PanelControl
     {
         public ButtonControl()

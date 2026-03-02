@@ -1,4 +1,5 @@
-﻿using ArctisAurora.EngineWork.AssetRegistry;
+﻿using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Serialization;
 using Assimp;
@@ -53,7 +54,10 @@ namespace ArctisAurora.EngineWork
         public static void PrepareRegistries()
         {
             //scan the EngineRegistries.xml and create the registries that will be used to quick store/access assets
-            string path = Paths.REGISTRIES + "\\EngineRegistries.xml";
+            AssetRegistries assetRegistries = new AssetRegistries();
+            AssetRegistries.assetRegistries = assetRegistries;
+            ((IXMLParser)assetRegistries).ParseXML("Registry.XML");
+            /*string path = Paths.REGISTRIES + "\\EngineRegistries.xml";
             XElement root = XElement.Load(path);
             XNamespace ns = root.GetDefaultNamespace();
 
@@ -91,7 +95,7 @@ namespace ArctisAurora.EngineWork
                         //string assetPath = assetElem.Attribute("path")?.Value ?? throw new Exception("Missing asset path");
                     }
                 }
-            }
+            }*/
         }
 
         private static Type? FindType(string typeName)

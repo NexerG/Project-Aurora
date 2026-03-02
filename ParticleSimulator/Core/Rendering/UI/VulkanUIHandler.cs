@@ -30,9 +30,9 @@ namespace ArctisAurora.EngineWork.Rendering.UI
             { typeof(decimal), "xs:decimal" },
             { typeof(Action), "Action" }
         };
-        private static readonly Dictionary<Type, string> enumMap = BuildEnumMap();
-        private static readonly Dictionary<Type, String> UnlistedElementMap = BuildUnlistedElementMap();
-        private static readonly Dictionary<string, Type> ControlMap = BuildControlMap();
+        private static readonly Dictionary<Type, string> enumMap;// = BuildEnumMap();
+        private static readonly Dictionary<Type, String> UnlistedElementMap;// = BuildUnlistedElementMap();
+        private static readonly Dictionary<string, Type> ControlMap;// = BuildControlMap();
 
         public static void GenerateUIXSDs()
         {
@@ -42,7 +42,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
 
         public static void GenerateTestXSD()
         {
-            try
+            /*try
             {
                 // assembly for reflection
                 var generalAsm = AppDomain.CurrentDomain.GetAssemblies();
@@ -324,7 +324,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
             {
                 Console.WriteLine($"Error generating XSD: {ex.Message}");
                 throw;
-            }
+            }*/
         }
 
         public static WindowControl ParseXML(string xaml)
@@ -382,7 +382,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
 
         private static void ResolveAttributes(XElement root, object topControl)
         {
-            foreach (XAttribute attr in root.Attributes())
+            /*foreach (XAttribute attr in root.Attributes())
             {
                 var prop = topControl.GetType().GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase).FirstOrDefault(m =>
                 {
@@ -462,7 +462,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                     ((VulkanControl)topControl).UpdateControlData();
 
                 }
-            }
+            }*/
         }
 
         private static void ResolveObjects(XElement root, object list, Type childType)
@@ -492,7 +492,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
             return copy;
         }
 
-        #region MapBuilders
+        /*#region MapBuilders
         private static Dictionary<string, Type> BuildControlMap()
         {
             var generalAsm = AppDomain.CurrentDomain.GetAssemblies();
@@ -535,6 +535,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                         Tag = t.GetCustomAttribute<A_VulkanControlElementAttribute>()?.Name ?? t.Name
                     })).ToDictionary(x => x.Type, x => x.Tag);
         }
-        #endregion
+        #endregion*/
     }
 }

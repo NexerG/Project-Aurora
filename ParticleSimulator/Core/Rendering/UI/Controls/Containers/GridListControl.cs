@@ -1,52 +1,53 @@
-﻿using Silk.NET.Maths;
+﻿using ArctisAurora.Core.AssetRegistry;
+using Silk.NET.Maths;
 using static ArctisAurora.Core.Rendering.UI.Controls.Containers.StackPanelLevelSettings;
 using HorizontalAlignment = ArctisAurora.Core.Rendering.UI.Controls.Containers.StackPanelLevelSettings.HorizontalAlignment;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
 {
-    [A_VulkanControlElement("GridListRowSettings", "Settings for grid's rows")]
+    [A_XSDType("GridListRowSettings", "UI", description:"Settings for grid's rows")]
     public class GridListRowSettings
     {
-        [A_VulkanControlProperty("Bounds", "Level bounds for the grid's rows")]
+        [A_XSDElementProperty("Bounds", "UI", "Level bounds for the grid's rows")]
         public LevelBounds bounds = LevelBounds.ScaleToContent;
-        [A_VulkanControlProperty("Height", "Grid's height")]
+        [A_XSDElementProperty("Height","UI", "Grid's height")]
         public float height;
-        [A_VulkanControlProperty("Alignment", "Horizontal alignment of the grid's rows")]
+        [A_XSDElementProperty("Alignment", "UI", "Horizontal alignment of the grid's rows")]
         public HorizontalAlignment horizontalAlignment = HorizontalAlignment.Left;
-        [A_VulkanControlProperty("VerticalAlignment", "Vertical alignment of the grid's rows")]
+        [A_XSDElementProperty("VerticalAlignment", "UI", "Vertical alignment of the grid's rows")]
         public VerticalAlignment verticalAlignment = VerticalAlignment.Center;
     }
 
-    [A_VulkanControlElement("GridListColumnSettings", "Settings for grid's columns")]
+    [A_XSDType("GridListColumnSettings", "UI", "Settings for grid's columns")]
     public class GridListColumnSettings
     {
-        [A_VulkanControlProperty("Bounds", "Level bounds for the grid's columns")]
+        [A_XSDElementProperty("Bounds", "UI", "Level bounds for the grid's columns")]
         public LevelBounds bounds = LevelBounds.ScaleToContent;
-        [A_VulkanControlProperty("Width", "Grid's width")]
+        [A_XSDElementProperty("Width", "Grid's width")]
         public float width;
-        [A_VulkanControlProperty("Alignment", "Horizontal alignment of the grid's columns")]
+        [A_XSDElementProperty("Alignment", "UI", "Horizontal alignment of the grid's columns")]
         public HorizontalAlignment horizontalAlignment = HorizontalAlignment.Left;
-        [A_VulkanControlProperty("VerticalAlignment", "Vertical alignment of the grid's columns")]
+        [A_XSDElementProperty("VerticalAlignment", "UI", "Vertical alignment of the grid's columns")]
         public VerticalAlignment verticalAlignment = VerticalAlignment.Center;
     }
 
 
-    [A_VulkanControl("GridList")]
+    [A_XSDElement("GridList", "UI", "UI")]
     internal class GridListControl : AbstractContainerControl
     {
-        [A_VulkanControlProperty("CellWidth")]
+        [A_XSDElementProperty("CellWidth", "UI")]
         public float cellWidth = 40;
-        [A_VulkanControlProperty("CellHeight")]
+        [A_XSDElementProperty("CellHeight", "UI")]
         public float cellHeight = 35;
 
-        [A_VulkanControlProperty("HorizontalSpacing")]
+        [A_XSDElementProperty("HorizontalSpacing", "UI")]
         public float horizontalSpacing = 100;
-        [A_VulkanControlProperty("VerticalSpacing")]
+        [A_XSDElementProperty("VerticalSpacing", "UI")]
         public float verticalSpacing = 15;
 
-        [A_VulkanControlProperty("HorizontalMargin")]
+        [A_XSDElementProperty("HorizontalMargin", "UI")]
         public float horizontalMargin = 10;
-        [A_VulkanControlProperty("VerticalMargin")]
+        [A_XSDElementProperty("VerticalMargin", "UI")]
         public float verticalMargin = 10;
 
         public override void AddControlToContainer(VulkanControl control)

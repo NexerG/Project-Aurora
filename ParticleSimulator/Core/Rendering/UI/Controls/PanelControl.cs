@@ -2,7 +2,7 @@
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 {
-    [A_VulkanControl("Panel"), A_XSDElement("Panel", "UI")]
+    [A_XSDElement("Panel", "UI", "UI")]
     public class PanelControl : VulkanControl
     {
         public PanelControl() { }

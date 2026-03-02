@@ -1,7 +1,13 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<xs:schema xmlns:types="http://arctisaurora/AuroraRegistryTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraRegistryTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<xs:schema xmlns:types="http://arctisaurora/AuroraRegistryTypes" xmlns:allTypes="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraRegistryTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
+  <xs:complexType name="AVulkanMesh" />
   <xs:complexType name="Entry">
-    <xs:attribute name="KeyType" type="xs:int" />
-    <xs:attribute name="ValueType" type="xs:int" />
+    <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="KeyType" type="allTypes:Uncategorized" />
+    <xs:attribute name="ValueType" type="allTypes:Uncategorized" />
   </xs:complexType>
+  <xs:complexType name="FontAsset" />
+  <xs:complexType name="TextureAsset" />
+  <xs:complexType name="ControlStyle" />
 </xs:schema>

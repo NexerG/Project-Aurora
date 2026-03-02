@@ -1,7 +1,66 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<xs:schema xmlns:types="http://arctisaurora/AuroraUITypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraUITypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<xs:schema xmlns:types="http://arctisaurora/AuroraUITypes" xmlns:allTypes="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraUITypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:ControlColor types:FillMode" />
+    <xs:union memberTypes="types:DockMode types:LevelScaling types:HorizontalAlignment types:VeticalAlignment types:Orientation types:ControlColor types:FillMode types:ContentScalingModeEnum" />
+  </xs:simpleType>
+  <xs:complexType name="LevelSettings">
+    <xs:attribute name="Height" type="xs:float" />
+    <xs:attribute name="Width" type="xs:float" />
+    <xs:attribute name="Spacing" type="xs:float" />
+    <xs:attribute name="WidthScaling" type="types:LevelScaling" />
+    <xs:attribute name="HeightScaling" type="types:LevelScaling" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
+  </xs:complexType>
+  <xs:simpleType name="DockMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="fill" />
+      <xs:enumeration value="left" />
+      <xs:enumeration value="right" />
+      <xs:enumeration value="top" />
+      <xs:enumeration value="bottom" />
+      <xs:enumeration value="unknown" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="GridListRowSettings">
+    <xs:attribute name="Bounds" type="types:LevelScaling" />
+    <xs:attribute name="Height" type="xs:float" />
+    <xs:attribute name="Alignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
+  </xs:complexType>
+  <xs:complexType name="GridListColumnSettings">
+    <xs:attribute name="Bounds" type="types:LevelScaling" />
+    <xs:attribute name="Width" type="xs:float" />
+    <xs:attribute name="Alignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
+  </xs:complexType>
+  <xs:simpleType name="LevelScaling">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="ScaleToContent" />
+      <xs:enumeration value="Fill" />
+      <xs:enumeration value="HardScale" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="HorizontalAlignment">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Center" />
+      <xs:enumeration value="Left" />
+      <xs:enumeration value="Right" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="VeticalAlignment">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Top" />
+      <xs:enumeration value="Center" />
+      <xs:enumeration value="Bottom" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Orientation">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Horizontal" />
+      <xs:enumeration value="Vertical" />
+    </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="ControlColor">
     <xs:restriction base="xs:string">
@@ -28,6 +87,14 @@
       <xs:enumeration value="Uniform" />
       <xs:enumeration value="Stretch" />
       <xs:enumeration value="Fill" />
+      <xs:enumeration value="None" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ContentScalingModeEnum">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Vertical" />
+      <xs:enumeration value="Horizontal" />
+      <xs:enumeration value="Both" />
       <xs:enumeration value="None" />
     </xs:restriction>
   </xs:simpleType>

@@ -41,12 +41,12 @@ namespace AuroraEditor
             //Serializer.Deserialize(path, ref newS);
 
             // prepare level
-            //WindowControl windowControl = VulkanUIHandler.ParseXML("UITest.xml");
+            WindowControl windowControl = VulkanUIHandler.ParseXML("UITest.xml");
 
-            ShortTextControl test = new ShortTextControl();
+            /*ShortTextControl test = new ShortTextControl();
             EntityManager.uiTree = test;
             test.transform.SetWorldPosition(new Vector3D<float>(300, 300, -10));
-            test.text = "Hello World";
+            test.text = "Hello World";*/
 
             //ButtonControl control = new();
             //control.transform.SetWorldPosition(new Vector3D<float>(300, 300, -10));

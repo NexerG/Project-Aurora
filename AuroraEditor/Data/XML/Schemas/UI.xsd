@@ -1,0 +1,758 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:UI="http://arctisaurora/UI" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:types="http://arctisaurora/AuroraUITypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/UI" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
+  <xs:import schemaLocation="UITypeSchema.xsd" namespace="http://arctisaurora/AuroraUITypes" />
+  <xs:element name="ShortText" type="UI:ShortText" />
+  <xs:element name="StackPanel" type="UI:StackPanel" />
+  <xs:element name="Panel" type="UI:Panel" />
+  <xs:element name="Window" type="UI:Window" />
+  <xs:element name="Button" type="UI:Button" />
+  <xs:element name="Dock" type="UI:Dock" />
+  <xs:element name="GridList" type="UI:GridList" />
+  <xs:complexType name="ShortText">
+    <xs:attribute name="Text" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>The text to display on the control.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ColorHex" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Sets the control color via hex code.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ControlColor" type="types:ControlColor">
+      <xs:annotation>
+        <xs:documentation>Sets the color of the control.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Width" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Width in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Height" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Height in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinHeight" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum height in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinWidth" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum width in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="HorizontalPos" type="xs:float">
+      <xs:annotation>
+        <xs:documentation>"Sets the position of the current control within it's parent. [0;1]. Works with non-container controls."</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="VerticalPos" type="xs:float">
+      <xs:annotation>
+        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="types:FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ClipToBounds" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Will not render kids outside the bounds.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="DockMode" type="types:DockMode">
+      <xs:annotation>
+        <xs:documentation>Sets the control's dock mode to the desired setting. Fill - fills the entire area.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="StackIndex" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Tells the StackPanel parent (if its the parent) in which stack level the control should reside.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onEnter" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onExit" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onClick" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onAltClick" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onRelease" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onAltRelease" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onDragStop" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  <xs:complexType name="StackPanel">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="LevelSettings" type="types:LevelSettings">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="ColorHex" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Sets the control color via hex code.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ControlColor" type="types:ControlColor">
+      <xs:annotation>
+        <xs:documentation>Sets the color of the control.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="HorizontalMargin" type="xs:float">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="VerticalMargin" type="xs:float">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Orientation" type="types:Orientation">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Width" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Width in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Height" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Height in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinHeight" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum height in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinWidth" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum width in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="HorizontalPos" type="xs:float">
+      <xs:annotation>
+        <xs:documentation>"Sets the position of the current control within it's parent. [0;1]. Works with non-container controls."</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="VerticalPos" type="xs:float">
+      <xs:annotation>
+        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="types:FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ClipToBounds" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Will not render kids outside the bounds.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="DockMode" type="types:DockMode">
+      <xs:annotation>
+        <xs:documentation>Sets the control's dock mode to the desired setting. Fill - fills the entire area.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="StackIndex" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Tells the StackPanel parent (if its the parent) in which stack level the control should reside.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onEnter" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onExit" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onClick" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onAltClick" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onRelease" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onAltRelease" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onDragStop" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  <xs:complexType name="Panel">
+    <xs:attribute name="ColorHex" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Sets the control color via hex code.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ControlColor" type="types:ControlColor">
+      <xs:annotation>
+        <xs:documentation>Sets the color of the control.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Width" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Width in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Height" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Height in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinHeight" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum height in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinWidth" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum width in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="HorizontalPos" type="xs:float">
+      <xs:annotation>
+        <xs:documentation>"Sets the position of the current control within it's parent. [0;1]. Works with non-container controls."</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="VerticalPos" type="xs:float">
+      <xs:annotation>
+        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="types:FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ClipToBounds" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Will not render kids outside the bounds.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="DockMode" type="types:DockMode">
+      <xs:annotation>
+        <xs:documentation>Sets the control's dock mode to the desired setting. Fill - fills the entire area.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="StackIndex" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Tells the StackPanel parent (if its the parent) in which stack level the control should reside.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onEnter" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onExit" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onClick" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onAltClick" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onRelease" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onAltRelease" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onDragStop" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  <xs:complexType name="Window">
+    <xs:attribute name="ColorHex" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Sets the control color via hex code.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ControlColor" type="types:ControlColor">
+      <xs:annotation>
+        <xs:documentation>Sets the color of the control.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Fill" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ContentScalingMode" type="types:ContentScalingModeEnum">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Width" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Width in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Height" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Height in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinHeight" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum height in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinWidth" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum width in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="HorizontalPos" type="xs:float">
+      <xs:annotation>
+        <xs:documentation>"Sets the position of the current control within it's parent. [0;1]. Works with non-container controls."</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="VerticalPos" type="xs:float">
+      <xs:annotation>
+        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="types:FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ClipToBounds" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Will not render kids outside the bounds.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="DockMode" type="types:DockMode">
+      <xs:annotation>
+        <xs:documentation>Sets the control's dock mode to the desired setting. Fill - fills the entire area.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="StackIndex" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Tells the StackPanel parent (if its the parent) in which stack level the control should reside.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onEnter" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onExit" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onClick" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onAltClick" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onRelease" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onAltRelease" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onDragStop" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  <xs:complexType name="Button">
+    <xs:attribute name="ColorHex" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Sets the control color via hex code.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ControlColor" type="types:ControlColor">
+      <xs:annotation>
+        <xs:documentation>Sets the color of the control.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Width" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Width in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Height" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Height in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinHeight" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum height in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinWidth" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum width in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="HorizontalPos" type="xs:float">
+      <xs:annotation>
+        <xs:documentation>"Sets the position of the current control within it's parent. [0;1]. Works with non-container controls."</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="VerticalPos" type="xs:float">
+      <xs:annotation>
+        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="types:FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ClipToBounds" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Will not render kids outside the bounds.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="DockMode" type="types:DockMode">
+      <xs:annotation>
+        <xs:documentation>Sets the control's dock mode to the desired setting. Fill - fills the entire area.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="StackIndex" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Tells the StackPanel parent (if its the parent) in which stack level the control should reside.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onEnter" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onExit" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onClick" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onAltClick" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onRelease" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onAltRelease" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onDragStop" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  <xs:complexType name="Dock">
+    <xs:attribute name="ColorHex" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Sets the control color via hex code.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ControlColor" type="types:ControlColor">
+      <xs:annotation>
+        <xs:documentation>Sets the color of the control.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Width" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Width in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Height" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Height in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinHeight" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum height in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinWidth" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum width in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="HorizontalPos" type="xs:float">
+      <xs:annotation>
+        <xs:documentation>"Sets the position of the current control within it's parent. [0;1]. Works with non-container controls."</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="VerticalPos" type="xs:float">
+      <xs:annotation>
+        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="types:FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ClipToBounds" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Will not render kids outside the bounds.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="DockMode" type="types:DockMode">
+      <xs:annotation>
+        <xs:documentation>Sets the control's dock mode to the desired setting. Fill - fills the entire area.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="StackIndex" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Tells the StackPanel parent (if its the parent) in which stack level the control should reside.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onEnter" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onExit" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onClick" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onAltClick" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onRelease" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onAltRelease" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onDragStop" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  <xs:complexType name="GridList">
+    <xs:attribute name="ColorHex" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Sets the control color via hex code.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ControlColor" type="types:ControlColor">
+      <xs:annotation>
+        <xs:documentation>Sets the color of the control.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="CellWidth" type="xs:float">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="CellHeight" type="xs:float">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="HorizontalSpacing" type="xs:float">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="VerticalSpacing" type="xs:float">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="HorizontalMargin" type="xs:float">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="VerticalMargin" type="xs:float">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Width" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Width in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Height" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Height in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinHeight" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum height in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MinWidth" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Minimum width in pixels.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="HorizontalPos" type="xs:float">
+      <xs:annotation>
+        <xs:documentation>"Sets the position of the current control within it's parent. [0;1]. Works with non-container controls."</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="VerticalPos" type="xs:float">
+      <xs:annotation>
+        <xs:documentation>Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ScalingMode" type="types:FillMode">
+      <xs:annotation>
+        <xs:documentation>Sets how the control scales vertically within it's parent.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ClipToBounds" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Will not render kids outside the bounds.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="DockMode" type="types:DockMode">
+      <xs:annotation>
+        <xs:documentation>Sets the control's dock mode to the desired setting. Fill - fills the entire area.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="StackIndex" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Tells the StackPanel parent (if its the parent) in which stack level the control should reside.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onEnter" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onExit" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onClick" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onAltClick" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onRelease" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onAltRelease" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="onDragStop" type="actions:UI">
+      <xs:annotation>
+        <xs:documentation></xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+</xs:schema>

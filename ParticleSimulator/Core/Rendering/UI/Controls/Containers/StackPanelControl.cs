@@ -1,46 +1,47 @@
-﻿using ArctisAurora.EngineWork.Rendering.UI.Controls;
+﻿using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
 {
-    [A_VulkanControlElement("LevelSettings", "Settings for a level of the StackPanel")]
+    [A_XSDType("LevelSettings", "UI", description:"Settings for a level of the StackPanel")]
     public class StackPanelLevelSettings
     {
         #region enums
-        [A_VulkanEnum("LevelScaling")]
+        [A_XSDType("LevelScaling", "UI")]
         public enum LevelBounds
         {
             ScaleToContent, Fill, HardScale
         }
 
-        [A_VulkanEnum("HorizontalAlignment")]
+        [A_XSDType("HorizontalAlignment", "UI")]
         public enum HorizontalAlignment
         {
             Center, Left, Right
         }
 
-        [A_VulkanEnum("VeticalAlignment")]
+        [A_XSDType("VeticalAlignment", "UI")]
         public enum VerticalAlignment
         {
             Top, Center, Bottom
         }
         #endregion
 
-        [A_VulkanControlProperty("Height", "Sets the height of the level when using scalar.")]
+        [A_XSDElementProperty("Height", "UI", "Sets the height of the level when using scalar.")]
         public float height = 0;
-        [A_VulkanControlProperty("Width", "Sets the width of the level when using scalar.")]
+        [A_XSDElementProperty("Width", "UI", "Sets the width of the level when using scalar.")]
         public float width = 0;
-        [A_VulkanControlProperty("Spacing")]
+        [A_XSDElementProperty("Spacing", "UI")]
         public float spacing = 0;
 
-        [A_VulkanControlProperty("WidthScaling", "Sets how the width scales on this level")]
+        [A_XSDElementProperty("WidthScaling", "UI", "Sets how the width scales on this level")]
         public LevelBounds widthScaling = LevelBounds.ScaleToContent;
-        [A_VulkanControlProperty("HeightScaling", "Sets how the height scales on this level")]
+        [A_XSDElementProperty("HeightScaling", "UI", "Sets how the height scales on this level")]
         public LevelBounds heightScaling = LevelBounds.ScaleToContent;
-        [A_VulkanControlProperty("HorizontalAlignment", "Sets the horizontal justification for this level")]
+        [A_XSDElementProperty("HorizontalAlignment", "UI", "Sets the horizontal justification for this level")]
         public HorizontalAlignment horizontalAlignment = HorizontalAlignment.Left;
-        [A_VulkanControlProperty("VerticalAlignment", "Sets the vertical alignment for this level")]
+        [A_XSDElementProperty("VerticalAlignment", "UI", "Sets the vertical alignment for this level")]
         public VerticalAlignment verticalAlignment = VerticalAlignment.Center;
 
         public Vector3D<float> nextPosition = new Vector3D<float>(0, 0, 0);
@@ -53,11 +54,11 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
     }
 
 
-    [A_VulkanControl("StackPanel")]
+    [A_XSDElement("StackPanel", "UI", "UI")]
     public class StackPanelControl : AbstractContainerControl
     {
         #region enums
-        [A_VulkanEnum("Orientation")]
+        [A_XSDType("Orientation", "UI")]
         public enum Orientation
         {
             Horizontal,
@@ -66,18 +67,18 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
         #endregion
 
         #region properties
-        [A_VulkanControlProperty("HorizontalMargin")]
+        [A_XSDElementProperty("HorizontalMargin", "UI", "")]
         public float horizontalMargin = 10;
-        [A_VulkanControlProperty("VerticalMargin")]
+        [A_XSDElementProperty("VerticalMargin", "UI", "")]
         public float verticalMargin = 10;
 
         // settings
-        [A_VulkanControlProperty("Orientation")]
+        [A_XSDElementProperty("Orientation", "UI", "")]
         public Orientation orientation = Orientation.Vertical;
         #endregion
 
         #region private_elements
-        [A_VulkanControlProperty("LevelSettings")]
+        [A_XSDElementProperty("LevelSettings", "UI")]
         private List<StackPanelLevelSettings> _stackPanelLevelSettings = new List<StackPanelLevelSettings>();
 
         public List<StackPanelLevelSettings> stackPanelLevelSettings

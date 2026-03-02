@@ -11,7 +11,7 @@ using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 {
-    #region control_attributes
+    /*#region control_attributes
     /// <summary>
     /// Used to create an element. Example: <Button></Button>
     /// </summary>
@@ -92,13 +92,12 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
     [AttributeUsage(AttributeTargets.Method, Inherited = false)]
     public sealed class A_VulkanActionAttribute : Attribute
     { }
-    #endregion
+    #endregion*/
 
-    [A_XSDElement("VulkanControl","UI","UI")]
-    public unsafe class VulkanControl : Entity
+    public unsafe class VulkanControl : Entity, IXMLParser
     {
         #region STRUCTS
-        [StructLayout(LayoutKind.Sequential, Pack = 1)]
+        [StructLayout(LayoutKind.Sequential, Pack = 1), A_XSDType("ControlStyle", "Registry")]
         public struct ControlStyle
         {
             public Vector3D<float> tint;
@@ -144,13 +143,13 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             public ControlStyle style;
         }
 
-        [A_VulkanEnum("ControlColor"), A_XSDType("ControlColor", "UI")]
+        [A_XSDType("ControlColor", "UI")]
         public enum ControlColor
         {
             red, green, blue, white, black, yellow, cyan, magenta, gray, orange, purple, brown, pink, lime, navy, teal,
         }
 
-        [A_VulkanEnum("FillMode"), A_XSDType("FillMode", "UI")]
+        [A_XSDType("FillMode", "UI")]
         public enum ScalingMode
         {
             Uniform,
@@ -193,14 +192,14 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             }
 
 
-            [A_VulkanControlProperty("Width", "Width in pixels"), A_XSDElementProperty("Width")]
+            [A_XSDElementProperty("Width", "UI", "Width in pixels.")]
             public int preferredWidth = 72;
-            [A_VulkanControlProperty("Height", "Height in pixels"), A_XSDElementProperty("Height")]
+            [A_XSDElementProperty("Height", "UI", "Height in pixels.")]
             public int preferredHeight = 72;
 
-            [A_VulkanControlProperty("MinHeight", "Minimum height in pixels")]
+            [A_XSDElementProperty("MinHeight", "UI", "Minimum height in pixels.")]
             public int minHeight = 0;
-            [A_VulkanControlProperty("MinWidth", "Minimum width in pixels")]
+            [A_XSDElementProperty("MinWidth", "UI", "Minimum width in pixels.")]
             public int minWidth = 0;
 
             public virtual Vector2D<int> size
@@ -217,24 +216,24 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 
             #region positioning
             // postioning
-            [A_VulkanControlProperty("HorizontalPos", "Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.")]
+            [A_XSDElementProperty("HorizontalPos", "UI", "\"Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.\"")]
             public float horizontalPosition = 0.5f;
 
-            [A_VulkanControlProperty("VerticalPos", "Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.")]
+            [A_XSDElementProperty("VerticalPos", "UI", "Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.")]
             public float verticalPosition = 0.5f;
             #endregion
 
             #region settings
-            [A_VulkanControlProperty("ScalingMode", "Sets how the control scales vertically within it's parent."), A_XSDElementProperty("ScalingMode","UI")]
+            [A_XSDElementProperty("ScalingMode","UI", "Sets how the control scales vertically within it's parent.")]
             public ScalingMode scalingMode = ScalingMode.None;
 
-            [A_VulkanControlProperty("ClipToBounds", "Will not render kids outside the bounds.")]
+            [A_XSDElementProperty("ClipToBounds", "UI", "Will not render kids outside the bounds.")]
             public bool clipToBounds = false;
 
-            [A_VulkanControlProperty("DockMode")]
+            [A_XSDElementProperty("DockMode", "UI", "Sets the control's dock mode to the desired setting. Fill - fills the entire area.")]
             public DockMode dockMode;
 
-            [A_VulkanControlProperty("StackIndex", "Tells the StackPanel parent (if its the parent) in which stack level the control should reside.")]
+            [A_XSDElementProperty("StackIndex", "UI", "Tells the StackPanel parent (if its the parent) in which stack level the control should reside.")]
             public int stackIndex = 0;
 
             public VulkanControl? child;
@@ -242,7 +241,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 
             #region styling
             private string _controlColorHex = "#FFFFFF";
-            [A_VulkanControlProperty("ColorHex", "Sets the control color via hex code")]
+            [A_XSDElementProperty("ColorHex", "UI", "Sets the control color via hex code.")]
             public string controlColorHex
             {
                 get => _controlColorHex;
@@ -256,7 +255,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             }
 
             private ControlColor color;
-            [A_VulkanControlProperty("ControlColor")]
+            [A_XSDElementProperty("ControlColor", "UI", "Sets the color of the control.")]
             public ControlColor controlColor
             {
                 get => color;
@@ -287,25 +286,25 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         #region EVENTS
         //fuck do i do with this yet to figure out. tbh idk if this is even a problem
         public event Action<Vector2D<float>> hover;
-        [A_VulkanControlProperty("onEnter"), A_XSDElementProperty("onEnter", "UI")]
+        [A_XSDElementProperty("onEnter", "UI")]
         public Action onEnter;
-        [A_VulkanControlProperty("onExit")]
+        [A_XSDElementProperty("onExit", "UI")]
         public Action onExit;
 
-        [A_VulkanControlProperty("onClick")]
+        [A_XSDElementProperty("onClick", "UI")]
         public Action onClick;
-        [A_VulkanControlProperty("onAltClick")]
+        [A_XSDElementProperty("onAltClick", "UI")]
         public Action onAltClick;
 
         public Action onDoubleClick;
 
-        [A_VulkanControlProperty("onRelease")]
+        [A_XSDElementProperty("onRelease", "UI")]
         public Action onRelease;
-        [A_VulkanControlProperty("onAltRelease")]
+        [A_XSDElementProperty("onAltRelease", "UI")]
         public Action onAltRelease;
 
         public Action<Vector2D<float>, Vector2D<float>> onDrag;
-        [A_VulkanControlProperty("onDragStop")]
+        [A_XSDElementProperty("onDragStop", "UI")]
         public Action onDragStop;
 
         private bool entered = false;
@@ -679,6 +678,11 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             {
                 child.Invalidate();
             }
+        }
+
+        public void ParseXML(string xmlName)
+        {
+
         }
     }
 }

@@ -1,15 +1,16 @@
-﻿using ArctisAurora.EngineWork.Physics.UICollision;
+﻿using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.EngineWork.Physics.UICollision;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
 {
-    [A_VulkanEnum("DockMode")]
+    [A_XSDType("DockMode", "UI")]
     public enum DockMode
     {
         fill, left, right, top, bottom, unknown
     }
 
-    [A_VulkanControl("Dock")]
+    [A_XSDElement("Dock", "UI", "UI")]
     public class DockingControl : AbstractContainerControl
     {
         public VulkanControl top;

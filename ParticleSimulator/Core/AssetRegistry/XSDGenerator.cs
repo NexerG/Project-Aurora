@@ -1,4 +1,5 @@
-﻿using ArctisAurora.EngineWork.Rendering.UI.Controls;
+﻿using ArctisAurora.EngineWork.AssetRegistry;
+using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using ArctisAurora.EngineWork.Serialization;
 using System.Reflection;
 using System.Xml;
@@ -24,6 +25,7 @@ namespace ArctisAurora.Core.AssetRegistry
         }
     }
 
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
     public sealed class A_XSDElementPropertyAttribute : Attribute
     {
         public string Name { get; set; }
@@ -34,10 +36,11 @@ namespace ArctisAurora.Core.AssetRegistry
         {
             Name = name;
             Description = description;
+            Category = category;
         }
     }
 
-    [AttributeUsage(AttributeTargets.Enum | AttributeTargets.Class)]
+    [AttributeUsage(AttributeTargets.Enum | AttributeTargets.Class | AttributeTargets.Struct)]
     public sealed class A_XSDTypeAttribute : Attribute
     {
         public string Name { get; set; }
@@ -70,8 +73,9 @@ namespace ArctisAurora.Core.AssetRegistry
 
     public interface IXMLParser
     {
-        void ParseXML(string xmlName);
+        public void ParseXML(string xmlName);
     }
+
     public static class XSDGenerator
     {
         private static readonly Dictionary<Type, string> typeMap = BuildTypeMap();
@@ -91,9 +95,10 @@ namespace ArctisAurora.Core.AssetRegistry
             { typeof(ulong), "xs:unsignedLong" },
             { typeof(char), "xs:string" },
             { typeof(decimal), "xs:decimal" },
-            { typeof(Action), "actions" }
+            { typeof(Action), "Action" },
+            { typeof(Type), "Type"},
+            { typeof(AnyXMLType), "types:Uncategorized" }
         };
-
 
         public static void GenerateXSD()
         {
@@ -109,7 +114,7 @@ namespace ArctisAurora.Core.AssetRegistry
                 .Select(t => new
                 {
                     Type = t,
-                    Attribute = (A_XSDElementAttribute)t.GetCustomAttributes(typeof(A_XSDElementAttribute), false).First()
+                    Attribute = (A_XSDElementAttribute)t.GetCustomAttributes(typeof(A_XSDElementAttribute), true).First()
                 }))
                 .Where(x => x.Attribute != null).ToList();
 
@@ -166,13 +171,13 @@ namespace ArctisAurora.Core.AssetRegistry
                     {
                         Name = element.Attribute.Name
                     };
-                    var attributes = element.Type.GetMembers(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                    var attributes = element.Type.GetMembers(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
                         .Where(m => (m.MemberType == MemberTypes.Field || m.MemberType == MemberTypes.Property) &&
                         m.GetCustomAttributes(typeof(A_XSDElementPropertyAttribute), true).Any())
                         .Select(m => new
                         {
                             Property = m,
-                            XmlAttribute = (A_XSDElementPropertyAttribute?)m.GetCustomAttributes(typeof(A_XSDElementPropertyAttribute), true).FirstOrDefault()
+                            XmlAttribute = (A_XSDElementPropertyAttribute?)m.GetCustomAttributes(typeof(A_XSDElementPropertyAttribute), true).FirstOrDefault(),
                         }).ToList();
                     foreach (var attribute in attributes)
                     {
@@ -193,14 +198,19 @@ namespace ArctisAurora.Core.AssetRegistry
                         {
                             memberType = memberType.GetGenericArguments()[0];
                             string typeName = MemberMap.ContainsKey(memberType) ? MemberMap[memberType] : typeMap[memberType];
-                            if (typeName == "actions")
+                            if (typeName == "Action")
                             {
-                                typeName += $":{attribute.XmlAttribute?.Category}";
+                                typeName = $"actions:{attribute.XmlAttribute?.Category}";
+                            }
+                            if(typeName == "types:Uncategorized")
+                            {
+                                typeName = $"types:{attribute.XmlAttribute?.Category}";
                             }
                             if (!MemberMap.ContainsKey(memberType))
                             {
                                 typeName = $"types:{typeName}";
                             }
+
                             XmlQualifiedName qualifiedName = new XmlQualifiedName(typeName);
                             XmlSchemaElement listElement = new XmlSchemaElement
                             {
@@ -218,9 +228,13 @@ namespace ArctisAurora.Core.AssetRegistry
                         else
                         {
                             string typeName = MemberMap.ContainsKey(memberType) ? MemberMap[memberType] : typeMap[memberType];
-                            if (typeName == "actions")
+                            if (typeName == "Action")
                             {
-                                typeName += $":{attribute.XmlAttribute?.Category}";
+                                typeName = $"actions:{attribute.XmlAttribute?.Category}";
+                            }
+                            if (typeName == "types:Uncategorized")
+                            {
+                                typeName = $"types:{attribute.XmlAttribute?.Category}";
                             }
                             if (!MemberMap.ContainsKey(memberType))
                             {
@@ -236,7 +250,6 @@ namespace ArctisAurora.Core.AssetRegistry
                             elementComplexType.Attributes.Add(schemaAttribute);
                         }
                     }
-
                     elementSchema.Items.Add(elementComplexType);
                 }
 
@@ -247,7 +260,7 @@ namespace ArctisAurora.Core.AssetRegistry
                 };
 
                 // Write schema to file
-                string path = Paths.XMLSCHEMAS + $"\\{category.Key}Test.xsd";
+                string path = Paths.XMLSCHEMAS + $"\\{category.Key}.xsd";
                 using (var writer = XmlWriter.Create(path, settings))
                 {
                     elementSchema.Write(writer);
@@ -263,8 +276,14 @@ namespace ArctisAurora.Core.AssetRegistry
 
         private static void GenerateTypeXSD(Assembly[] generalAsm)
         {
+            GenerateSubTypeXSD(generalAsm);
+            GenerateAllTypesXSD(generalAsm);
+        }
+
+        private static void GenerateSubTypeXSD(Assembly[] generalAsm)
+        {
             var types = generalAsm.SelectMany(a => a.GetTypes())
-                .Where(t => t.GetCustomAttributes(typeof(A_XSDTypeAttribute), false).Any()).ToList();
+                .Where(t => t.GetCustomAttributes(typeof(A_XSDTypeAttribute), true).Any()).ToList();
 
             var categorizedTypes = types.Where(x => !string.IsNullOrEmpty(x.GetCustomAttribute<A_XSDTypeAttribute>()?.Category))
                 .GroupBy(x => x.GetCustomAttribute<A_XSDTypeAttribute>()?.Category)
@@ -279,6 +298,15 @@ namespace ArctisAurora.Core.AssetRegistry
                 };
                 typechema.Namespaces.Add("types", $"http://arctisaurora/Aurora{category.Key}Types");
                 typechema.Namespaces.Add("xs", "http://www.w3.org/2001/XMLSchema");
+
+                typechema.Namespaces.Add("allTypes", "http://arctisaurora/AuroraTypes");
+                XmlSchemaImport allTypeImport = new XmlSchemaImport
+                {
+                    Namespace = "http://arctisaurora/AuroraTypes",
+                    SchemaLocation = "AllTypesSchema.xsd"
+                };
+                typechema.Includes.Add(allTypeImport);
+
                 XmlSchemaSimpleTypeUnion categoryUnion = new XmlSchemaSimpleTypeUnion
                 {
                     MemberTypes = category.Value
@@ -286,7 +314,7 @@ namespace ArctisAurora.Core.AssetRegistry
                         .Select(t => new XmlQualifiedName("types:" + t.GetCustomAttribute<A_XSDTypeAttribute>()?.Name))
                         .ToArray()
                 };
-                if(categoryUnion.MemberTypes.Length != 0)
+                if (categoryUnion.MemberTypes.Length != 0)
                 {
                     XmlSchemaSimpleType typeSimpleCategory = new XmlSchemaSimpleType
                     {
@@ -308,7 +336,7 @@ namespace ArctisAurora.Core.AssetRegistry
                             BaseTypeName = new XmlQualifiedName("xs:string")
                         };
                         var enumValues = Enum.GetNames(t);
-                        foreach(var value in enumValues)
+                        foreach (var value in enumValues)
                         {
                             XmlSchemaEnumerationFacet enumElement = new XmlSchemaEnumerationFacet
                             {
@@ -317,7 +345,8 @@ namespace ArctisAurora.Core.AssetRegistry
                             typeRestriction.Facets.Add(enumElement);
                         }
                         typeSimpleType.Content = typeRestriction;
-                        typechema.Items.Add(typeSimpleType);
+                        if (category.Key != "Uncategorized")
+                            typechema.Items.Add(typeSimpleType);
                     }
                     else
                     {
@@ -338,7 +367,11 @@ namespace ArctisAurora.Core.AssetRegistry
                             Type memberType = member.Member.MemberType == MemberTypes.Field
                                 ? ((FieldInfo)member.Member).FieldType
                                 : ((PropertyInfo)member.Member).PropertyType;
-                            string typeName = MemberMap.ContainsKey(memberType) ? MemberMap[memberType] : typeMap[memberType];
+                            string typeName = MemberMap.ContainsKey(memberType) ? MemberMap[memberType] : $"types:{typeMap[memberType]}";
+                            if (typeName == "types:Uncategorized")
+                            {
+                                typeName = $"allTypes:{member.XmlAttribute.Category}";
+                            }
                             XmlQualifiedName qualifiedName = new XmlQualifiedName(typeName);
                             XmlSchemaAttribute schemaAttribute = new XmlSchemaAttribute
                             {
@@ -347,8 +380,8 @@ namespace ArctisAurora.Core.AssetRegistry
                             };
                             typeComplexType.Attributes.Add(schemaAttribute);
                         }
-                        typechema.Items.Add(typeComplexType);
-
+                        if (category.Key != "Uncategorized")
+                            typechema.Items.Add(typeComplexType);
                     }
                 }
                 var settings = new XmlWriterSettings
@@ -357,10 +390,85 @@ namespace ArctisAurora.Core.AssetRegistry
                     Encoding = System.Text.Encoding.UTF8
                 };
                 string path = Paths.XMLSCHEMAS + $"\\{category.Key}TypeSchema.xsd";
-                using (var writer = XmlWriter.Create(path, settings))
+                if (category.Key != "Uncategorized")
+                    using (var writer = XmlWriter.Create(path, settings))
+                    {
+                        typechema.Write(writer);
+                    }
+            }
+        }
+
+        private static void GenerateAllTypesXSD(Assembly[] generalAsm)
+        {
+            XmlSchema allTypeSchema = new XmlSchema()
+            {
+                TargetNamespace = $"http://arctisaurora/AuroraTypes",
+                ElementFormDefault = XmlSchemaForm.Qualified
+            };
+            allTypeSchema.Namespaces.Add("types", $"http://arctisaurora/AuroraTypes");
+            allTypeSchema.Namespaces.Add("xs", "http://www.w3.org/2001/XMLSchema");
+
+            XmlSchemaSimpleType allTypesType = new XmlSchemaSimpleType
+            {
+                Name = "Uncategorized"
+            };
+            XmlSchemaSimpleTypeRestriction allTypesRestriction = new XmlSchemaSimpleTypeRestriction
+            {
+                BaseTypeName = new XmlQualifiedName("xs:string")
+            };
+            allTypesType.Content = allTypesRestriction;
+            allTypeSchema.Items.Add(allTypesType);
+
+            var types = generalAsm.SelectMany(a => a.GetTypes())
+                .Where(t => t.GetCustomAttributes(typeof(A_XSDTypeAttribute), false).Any()).ToList();
+
+            var categorizedTypes = types.Where(x => !string.IsNullOrEmpty(x.GetCustomAttribute<A_XSDTypeAttribute>()?.Category))
+                .GroupBy(x => x.GetCustomAttribute<A_XSDTypeAttribute>()?.Category)
+                .ToDictionary(g => g.Key ?? "Uncategorized", g => g.ToList());
+
+            foreach (var category in categorizedTypes)
+            {
+                XmlSchemaSimpleTypeRestriction categoryRestriction = new XmlSchemaSimpleTypeRestriction
                 {
-                    typechema.Write(writer);
+                    BaseTypeName = new XmlQualifiedName("xs:string")
+                };
+
+                foreach (var t in category.Value)
+                {
+                    XmlSchemaEnumerationFacet typeElement = new XmlSchemaEnumerationFacet
+                    {
+                        Value = t.GetCustomAttribute<A_XSDTypeAttribute>()?.Name ?? t.Name
+                    };
+                    categoryRestriction.Facets.Add(typeElement);
+                    allTypesRestriction.Facets.Add(typeElement);
                 }
+                if (category.Key == "Uncategorized")
+                    continue;
+                allTypeSchema.Items.Add(new XmlSchemaSimpleType
+                {
+                    Name = category.Key,
+                    Content = categoryRestriction
+                });
+            }
+
+            foreach(var type in MemberMap.Values)
+            {
+                XmlSchemaEnumerationFacet typeElement = new XmlSchemaEnumerationFacet
+                {
+                    Value = type
+                };
+                allTypesRestriction.Facets.Add(typeElement);
+            }
+
+            var allSettings = new XmlWriterSettings
+            {
+                Indent = true,
+                Encoding = System.Text.Encoding.UTF8
+            };
+            string allPath = Paths.XMLSCHEMAS + $"\\AllTypesSchema.xsd";
+            using (var writer = XmlWriter.Create(allPath, allSettings))
+            {
+                allTypeSchema.Write(writer);
             }
         }
 
@@ -372,7 +480,7 @@ namespace ArctisAurora.Core.AssetRegistry
                 {
                     Method = m,
                     DeclaringType = t,
-                    Attribute = m.GetCustomAttributes(typeof(A_XSDActionDependencyAttribute), false)
+                    Attribute = m.GetCustomAttributes(typeof(A_XSDActionDependencyAttribute), true)
                                     .FirstOrDefault() as A_XSDActionDependencyAttribute
                 })
                 .Where(x => x.Attribute != null))).ToList();
@@ -443,7 +551,7 @@ namespace ArctisAurora.Core.AssetRegistry
                 MemberTypes = categorizedMethods.Keys
                     .Select(k => new XmlQualifiedName(k, "http://arctisaurora/ActionDependencies"))
                     .Union(globalMethods
-                        .Select(m => new XmlQualifiedName(m.Attribute.Name, "http://arctisaurora/ActionDependencies")))
+                    .Select(m => new XmlQualifiedName(m.Attribute.Name, "http://arctisaurora/ActionDependencies")))
                     .ToArray()
             };
             uncategorizedActions.Content = allActionsUnion;
@@ -464,7 +572,7 @@ namespace ArctisAurora.Core.AssetRegistry
         }
 
         #region MapBuilders
-        private static Dictionary<string, Type> BuildControlMap()
+        /*private static Dictionary<string, Type> BuildControlMap()
         {
             var generalAsm = AppDomain.CurrentDomain.GetAssemblies();
 
@@ -475,17 +583,17 @@ namespace ArctisAurora.Core.AssetRegistry
                         Type = t,
                         Tag = t.GetCustomAttribute<A_VulkanControlAttribute>()?.Name ?? t.Name
                     })).ToDictionary(x => x.Tag, x => x.Type);
-        }
+        }*/
 
         private static Dictionary<Type, string> BuildTypeMap()
         {
             var generalAsm = AppDomain.CurrentDomain.GetAssemblies();
             var types = generalAsm.SelectMany(asm => asm.GetTypes()
-                .Where(t => t.GetCustomAttributes(typeof(A_XSDTypeAttribute), false).Any())
+                .Where(t => t.GetCustomAttributes(typeof(A_XSDTypeAttribute), true).Any())
                 .Select(t => new
                 {
                     Type = t,
-                    Attribute = (A_XSDTypeAttribute)t.GetCustomAttributes(typeof(A_XSDTypeAttribute), false).First()
+                    Attribute = (A_XSDTypeAttribute)t.GetCustomAttributes(typeof(A_XSDTypeAttribute), true).First()
                 })).ToList();
             Dictionary<Type, string> map = new Dictionary<Type, string>();
             foreach (var type in types)
@@ -495,7 +603,7 @@ namespace ArctisAurora.Core.AssetRegistry
             return map;
         }
 
-        private static Dictionary<Type, String> BuildUnlistedElementMap()
+        /*private static Dictionary<Type, String> BuildUnlistedElementMap()
         {
             var generalAsm = AppDomain.CurrentDomain.GetAssemblies();
             return generalAsm.SelectMany(asm => asm.GetTypes()
@@ -505,7 +613,7 @@ namespace ArctisAurora.Core.AssetRegistry
                         Type = t,
                         Tag = t.GetCustomAttribute<A_VulkanControlElementAttribute>()?.Name ?? t.Name
                     })).ToDictionary(x => x.Type, x => x.Tag);
-        }
+        }*/
         #endregion
     }
 }

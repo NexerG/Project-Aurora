@@ -1,17 +1,18 @@
-﻿using ArctisAurora.EngineWork.AssetRegistry;
+﻿using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.Rendering.UI;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.Rendering.UI.Controls.Text
 {
-    [A_VulkanControl("ShortText")]
+    [A_XSDElement("ShortText", "UI", "UI")]
     public class ShortTextControl : VulkanControl
     {
         private string _text = string.Empty;
         public FontAsset fontAsset;
 
-        [A_VulkanControlProperty("Text", "The text to display on the control.")]
+        [A_XSDElementProperty("Text", "UI", "The text to display on the control.")]
         public string text {
             get => _text; 
             set
