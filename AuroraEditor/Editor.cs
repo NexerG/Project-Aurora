@@ -41,7 +41,8 @@ namespace AuroraEditor
             //Serializer.Deserialize(path, ref newS);
 
             // prepare level
-            WindowControl windowControl = VulkanUIHandler.ParseXML("UITest.xml");
+            WindowControl windowControl = (WindowControl)VulkanControl.ParseXML("UI.xml");
+            EntityManager.uiTree = windowControl;
 
             /*ShortTextControl test = new ShortTextControl();
             EntityManager.uiTree = test;

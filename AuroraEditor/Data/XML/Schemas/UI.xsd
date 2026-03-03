@@ -124,7 +124,7 @@
   </xs:complexType>
   <xs:complexType name="StackPanel">
     <xs:sequence>
-      <xs:element minOccurs="0" maxOccurs="unbounded" name="LevelSettings" type="types:StackPanel.settings">
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="StackPanel.settings" type="types:StackPanel.settings">
         <xs:annotation>
           <xs:documentation>Settings for each layer of the stack panel</xs:documentation>
         </xs:annotation>

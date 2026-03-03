@@ -54,9 +54,7 @@ namespace ArctisAurora.EngineWork
         public static void PrepareRegistries()
         {
             //scan the EngineRegistries.xml and create the registries that will be used to quick store/access assets
-            AssetRegistries assetRegistries = new AssetRegistries();
-            AssetRegistries.assetRegistries = assetRegistries;
-            ((IXMLParser)assetRegistries).ParseXML("Registry.XML");
+            AssetRegistries.assetRegistries = (AssetRegistries)AssetRegistries.ParseXML("Registry.XML");
             /*string path = Paths.REGISTRIES + "\\EngineRegistries.xml";
             XElement root = XElement.Load(path);
             XNamespace ns = root.GetDefaultNamespace();

@@ -71,11 +71,11 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
                     bool isHovering = SolvePositions(child, mousePos, localVerts);
                     if (isHovering)
                     {
-                            mostDeep = child;
+                        mostDeep = child;
                     }
                     else
                     {
-                            child.ResolveOnRelease();
+                        child.ResolveOnRelease();
                     }
                 }
             }

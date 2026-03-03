@@ -2,10 +2,17 @@
 <xs:schema xmlns:types="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:simpleType name="Uncategorized">
     <xs:restriction base="xs:string">
+      <xs:enumeration value="ShortText" />
       <xs:enumeration value="StackPanel.settings" />
+      <xs:enumeration value="StackPanel" />
+      <xs:enumeration value="Panel" />
+      <xs:enumeration value="Window" />
+      <xs:enumeration value="Button" />
       <xs:enumeration value="DockMode" />
+      <xs:enumeration value="Dock" />
       <xs:enumeration value="GridListRowSettings" />
       <xs:enumeration value="GridListColumnSettings" />
+      <xs:enumeration value="GridList" />
       <xs:enumeration value="LevelScaling" />
       <xs:enumeration value="HorizontalAlignment" />
       <xs:enumeration value="VeticalAlignment" />
@@ -15,6 +22,7 @@
       <xs:enumeration value="ContentScalingModeEnum" />
       <xs:enumeration value="AVulkanMesh" />
       <xs:enumeration value="Entry" />
+      <xs:enumeration value="AssetRegistries" />
       <xs:enumeration value="FontAsset" />
       <xs:enumeration value="TextureAsset" />
       <xs:enumeration value="ControlStyle" />
@@ -38,10 +46,17 @@
   </xs:simpleType>
   <xs:simpleType name="UI">
     <xs:restriction base="xs:string">
+      <xs:enumeration value="ShortText" />
       <xs:enumeration value="StackPanel.settings" />
+      <xs:enumeration value="StackPanel" />
+      <xs:enumeration value="Panel" />
+      <xs:enumeration value="Window" />
+      <xs:enumeration value="Button" />
       <xs:enumeration value="DockMode" />
+      <xs:enumeration value="Dock" />
       <xs:enumeration value="GridListRowSettings" />
       <xs:enumeration value="GridListColumnSettings" />
+      <xs:enumeration value="GridList" />
       <xs:enumeration value="LevelScaling" />
       <xs:enumeration value="HorizontalAlignment" />
       <xs:enumeration value="VeticalAlignment" />
@@ -55,6 +70,7 @@
     <xs:restriction base="xs:string">
       <xs:enumeration value="AVulkanMesh" />
       <xs:enumeration value="Entry" />
+      <xs:enumeration value="AssetRegistries" />
       <xs:enumeration value="FontAsset" />
       <xs:enumeration value="TextureAsset" />
       <xs:enumeration value="ControlStyle" />

@@ -10,22 +10,17 @@ namespace ArctisAurora.Core.AssetRegistry
 {
     #region Attributes
     [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
-    public sealed class A_XSDElementAttribute : Attribute
+    public sealed class A_XSDElementAttribute : A_XSDTypeAttribute
     {
-        public string Name { get; set; }
-        public string Description { get; } = string.Empty;
         public string Schema { get; set; }
-        public string TypeDepedency { get; set; } = "Uncategorized";
         public Type? AllowedChildren { get; set; } = null;
         public int MinChildren { get; set; } = 0;
         public int MaxChildren { get; set; } = -1;
 
-        public A_XSDElementAttribute(string name, string schema, string? typeDependency = "Uncategorized", string? description = "")
+        public A_XSDElementAttribute(string name, string schema, string? category = "Uncategorized", string? description = "", string? patternValue="")
+            : base(name, category, patternValue, description)
         {
-            Name = name;
-            Description = description;
             Schema = schema;
-            TypeDepedency = typeDependency;
         }
     }
 
@@ -45,10 +40,10 @@ namespace ArctisAurora.Core.AssetRegistry
     }
 
     [AttributeUsage(AttributeTargets.Enum | AttributeTargets.Class | AttributeTargets.Struct)]
-    public sealed class A_XSDTypeAttribute : Attribute
+    public class A_XSDTypeAttribute : Attribute
     {
         public string Name { get; set; }
-        public string Description { get; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
         public string Category { get; set; } = "Uncategorized";
         public string PatternValue { get; set; } = string.Empty;
 
@@ -77,14 +72,13 @@ namespace ArctisAurora.Core.AssetRegistry
 
     public interface IXMLParser
     {
-        public void ParseXML(string xmlName);
+        public static object ParseXML(string xmlName) { return null; }
     }
 
     public static class XSDGenerator
     {
-        private static readonly Dictionary<Type, string> typeMap = BuildTypeMap();
-        private static readonly Dictionary<string, Type> XMLElementMap;
-        private static readonly Dictionary<Type, string> MemberMap = new Dictionary<Type, string>
+        public static readonly Dictionary<Type, string> typeMap = BuildTypeMap();
+        public static readonly Dictionary<Type, string> MemberMap = new Dictionary<Type, string>
         {
             { typeof(string), "xs:string" },
             { typeof(int), "xs:int" },
@@ -319,7 +313,8 @@ namespace ArctisAurora.Core.AssetRegistry
         private static void GenerateSubTypeXSD(Assembly[] generalAsm)
         {
             var types = generalAsm.SelectMany(a => a.GetTypes())
-                .Where(t => t.GetCustomAttributes(typeof(A_XSDTypeAttribute), true).Any()).ToList();
+                .Where(t => t.GetCustomAttributes(typeof(A_XSDTypeAttribute), true).Any() 
+                && !t.GetCustomAttributes(typeof(A_XSDElementAttribute),true).Any()).ToList();
 
             var categorizedTypes = types.Where(x => !string.IsNullOrEmpty(x.GetCustomAttribute<A_XSDTypeAttribute>()?.Category))
                 .GroupBy(x => x.GetCustomAttribute<A_XSDTypeAttribute>()?.Category)

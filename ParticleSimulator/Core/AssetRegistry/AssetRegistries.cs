@@ -1,6 +1,7 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Serialization;
+using System.Reflection;
 using System.Xml.Linq;
 using static ArctisAurora.EngineWork.Rendering.UI.Controls.VulkanControl;
 
@@ -47,7 +48,16 @@ namespace ArctisAurora.EngineWork.AssetRegistry
 
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
-                type = assembly.GetTypes().FirstOrDefault(t => t.Name == typeName || t.FullName == typeName);
+                var types = assembly.GetTypes()
+                    .Where(t => t.GetCustomAttributes(typeof(A_XSDTypeAttribute), false).Any())
+                    .Select(t => new
+                    {
+                        Type = t,
+                        Attribute = (A_XSDTypeAttribute)t.GetCustomAttributes(typeof(A_XSDTypeAttribute), false).First()
+                    }).ToList();
+
+                type = types.FirstOrDefault(t => t.Attribute.Name == typeName)?.Type;
+
                 if (type != null)
                 {
                     return type;
@@ -116,10 +126,11 @@ namespace ArctisAurora.EngineWork.AssetRegistry
             throw new Exception("Asset not found");
         }
 
-        public void ParseXML(string xmlName)
+        public static object ParseXML(string xmlName)
         {
             //parse the XML and create the registries
             string path = Paths.XMLDOCUMENTS + "\\" + xmlName;
+            AssetRegistries registries = new AssetRegistries();
             XElement root = XElement.Load(path);
             XNamespace ns = root.GetDefaultNamespace();
             foreach (var dictElem in root.Elements(ns + "Dictionary"))
@@ -154,6 +165,7 @@ namespace ArctisAurora.EngineWork.AssetRegistry
                 object dictInstance = Activator.CreateInstance(dictType);
                 AddLibraryEntry(dictInstance, valueType);
             }
+            return registries;
         }
     }
 }

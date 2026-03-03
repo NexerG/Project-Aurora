@@ -5,10 +5,10 @@
         Width="1280" Height="720" ContentScalingMode="Vertical" Fill="true" >
 
 	<StackPanel ColorHex="#121212" Orientation="Vertical">
-		<LevelSettings Spacing="5" VerticalAlignment="Bottom"/>
-		<LevelSettings Spacing="5" VerticalAlignment="Top"/>
-		<LevelSettings Spacing="5" VerticalAlignment="Bottom"/>
-		<LevelSettings Spacing="5" />
+		<StackPanel.settings Spacing="5" VerticalAlignment="Bottom"/>
+		<StackPanel.settings Spacing="5" VerticalAlignment="Top"/>
+		<StackPanel.settings Spacing="5" VerticalAlignment="Bottom"/>
+		<StackPanel.settings Spacing="5" />
 
 		<Button ControlColor="red" Width="150" Height="150" onClick="ExitApplication"/>
 		<Button ControlColor="green"/>

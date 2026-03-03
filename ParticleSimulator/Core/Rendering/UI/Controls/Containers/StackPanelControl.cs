@@ -77,7 +77,7 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
         public Orientation orientation = Orientation.Vertical;
         #endregion
 
-        [A_XSDElementProperty("LevelSettings", "UI", "Settings for each layer of the stack panel")]
+        [A_XSDElementProperty("StackPanel.settings", "UI", "Settings for each layer of the stack panel")]
         public List<StackPanelLevelSettings> stackPanelLevelSettings { get; set; } = new List<StackPanelLevelSettings>();
 
         public override void AddControlToContainer(VulkanControl control)

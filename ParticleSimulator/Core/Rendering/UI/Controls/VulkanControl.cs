@@ -4,9 +4,16 @@ using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Physics.UICollision;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
+using ArctisAurora.EngineWork.Serialization;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
+using System;
+using System.Collections;
+using System.ComponentModel;
+using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Xml.Linq;
+using static ArctisAurora.EngineWork.Rendering.UI.Controls.VulkanControl;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls
@@ -95,7 +102,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
     #endregion*/
 
     public interface IXMLChild_UI
-    {}
+    { }
 
     public unsafe class VulkanControl : Entity, IXMLParser, IXMLChild_UI
     {
@@ -171,106 +178,106 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         #endregion
 
         #region UI XML fields
-        
-            #region scaling
-            private int _width = 72;
-            private int _height = 72;
-            public int width
+
+        #region scaling
+        private int _width = 72;
+        private int _height = 72;
+        public int width
+        {
+            get => _width;
+            set
             {
-                get => _width;
-                set
-                {
-                    _width = value;
-                    transform.SetWorldScale(new Vector3D<float>(width, height, 1));
-                }
+                _width = value;
+                transform.SetWorldScale(new Vector3D<float>(width, height, 1));
             }
-            public int height
+        }
+        public int height
+        {
+            get => _height;
+            set
             {
-                get => _height;
-                set
-                {
-                    _height = value;
-                    transform.SetWorldScale(new Vector3D<float>(width, height, 1));
-                }
+                _height = value;
+                transform.SetWorldScale(new Vector3D<float>(width, height, 1));
             }
+        }
 
 
-            [A_XSDElementProperty("Width", "UI", "Width in pixels.")]
-            public int preferredWidth = 72;
-            [A_XSDElementProperty("Height", "UI", "Height in pixels.")]
-            public int preferredHeight = 72;
+        [A_XSDElementProperty("Width", "UI", "Width in pixels.")]
+        public int preferredWidth = 72;
+        [A_XSDElementProperty("Height", "UI", "Height in pixels.")]
+        public int preferredHeight = 72;
 
-            [A_XSDElementProperty("MinHeight", "UI", "Minimum height in pixels.")]
-            public int minHeight = 0;
-            [A_XSDElementProperty("MinWidth", "UI", "Minimum width in pixels.")]
-            public int minWidth = 0;
+        [A_XSDElementProperty("MinHeight", "UI", "Minimum height in pixels.")]
+        public int minHeight = 0;
+        [A_XSDElementProperty("MinWidth", "UI", "Minimum width in pixels.")]
+        public int minWidth = 0;
 
-            public virtual Vector2D<int> size
+        public virtual Vector2D<int> size
+        {
+            get => new Vector2D<int>(_width, _height);
+            set
             {
-                get => new Vector2D<int>(_width, _height);
-                set
-                {
-                    _width = value.X;
-                    _height = value.Y;
-                    transform.SetWorldScale(new Vector3D<float>(width, height, 1));
-                }
+                _width = value.X;
+                _height = value.Y;
+                transform.SetWorldScale(new Vector3D<float>(width, height, 1));
             }
-            #endregion
+        }
+        #endregion
 
-            #region positioning
-            // postioning
-            [A_XSDElementProperty("HorizontalPos", "UI", "\"Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.\"")]
-            public float horizontalPosition = 0.5f;
+        #region positioning
+        // postioning
+        [A_XSDElementProperty("HorizontalPos", "UI", "\"Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.\"")]
+        public float horizontalPosition = 0.5f;
 
-            [A_XSDElementProperty("VerticalPos", "UI", "Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.")]
-            public float verticalPosition = 0.5f;
-            #endregion
+        [A_XSDElementProperty("VerticalPos", "UI", "Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.")]
+        public float verticalPosition = 0.5f;
+        #endregion
 
-            #region settings
-            [A_XSDElementProperty("ScalingMode","UI", "Sets how the control scales vertically within it's parent.")]
-            public ScalingMode scalingMode = ScalingMode.None;
+        #region settings
+        [A_XSDElementProperty("ScalingMode", "UI", "Sets how the control scales vertically within it's parent.")]
+        public ScalingMode scalingMode = ScalingMode.None;
 
-            [A_XSDElementProperty("ClipToBounds", "UI", "Will not render kids outside the bounds.")]
-            public bool clipToBounds = false;
+        [A_XSDElementProperty("ClipToBounds", "UI", "Will not render kids outside the bounds.")]
+        public bool clipToBounds = false;
 
-            [A_XSDElementProperty("DockMode", "UI", "Sets the control's dock mode to the desired setting. Fill - fills the entire area.")]
-            public DockMode dockMode;
+        [A_XSDElementProperty("DockMode", "UI", "Sets the control's dock mode to the desired setting. Fill - fills the entire area.")]
+        public DockMode dockMode;
 
-            [A_XSDElementProperty("StackIndex", "UI", "Tells the StackPanel parent (if its the parent) in which stack level the control should reside.")]
-            public int stackIndex = 0;
+        [A_XSDElementProperty("StackIndex", "UI", "Tells the StackPanel parent (if its the parent) in which stack level the control should reside.")]
+        public int stackIndex = 0;
 
-            public VulkanControl? child;
-            #endregion
+        public VulkanControl? child;
+        #endregion
 
-            #region styling
-            private string _controlColorHex = "#FFFFFF";
-            [A_XSDElementProperty("ColorHex", "UI", "Sets the control color via hex code.")]
-            public string controlColorHex
+        #region styling
+        private string _controlColorHex = "#FFFFFF";
+        [A_XSDElementProperty("ColorHex", "UI", "Sets the control color via hex code.")]
+        public string controlColorHex
+        {
+            get => _controlColorHex;
+            set
             {
-                get => _controlColorHex;
-                set 
-                {
-                    _controlColorHex = value;
-                    Vector3D<float> rgb = HexToRGB(value);
-                    controlData.style.tint = rgb;
-                    UpdateControlData();
-                }
+                _controlColorHex = value;
+                Vector3D<float> rgb = HexToRGB(value);
+                controlData.style.tint = rgb;
+                UpdateControlData();
             }
+        }
 
-            private ControlColor color;
-            [A_XSDElementProperty("ControlColor", "UI", "Sets the color of the control.")]
-            public ControlColor controlColor
+        private ControlColor color;
+        [A_XSDElementProperty("ControlColor", "UI", "Sets the color of the control.")]
+        public ControlColor controlColor
+        {
+            get => color;
+            set
             {
-                get => color;
-                set
-                {
-                    string hex = EnumColorToHex(value);
-                    Vector3D<float> rgb = HexToRGB(hex);
-                    controlData.style.tint = rgb;
-                    UpdateControlData();
-                }
+                string hex = EnumColorToHex(value);
+                Vector3D<float> rgb = HexToRGB(hex);
+                controlData.style.tint = rgb;
+                UpdateControlData();
             }
-            #endregion
+        }
+        #endregion
 
         #endregion
 
@@ -446,7 +453,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
                     }
             }
         }
-        
+
         #region size_setters
         public virtual void SetSize(Vector2D<float> size)
         {
@@ -683,9 +690,127 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             }
         }
 
-        public void ParseXML(string xmlName)
+        public static object ParseXML(string xmlName)
         {
+            string path = Paths.XMLDOCUMENTS + "\\" + xmlName;
+            XDocument doc = XDocument.Load(path);
+            XElement root = doc.Root;
+            WindowControl window = new WindowControl();
+            ResolveAttributes(root, window);
 
+            Vector3D<float> pos = new Vector3D<float>(window.width / 2f, window.height / 2f, -10.0f);
+            window.transform.SetWorldPosition(pos);
+            window.transform.SetWorldScale(new Vector3D<float>(window.width, window.height, 1));
+            RecursiveParse(root, window);
+
+            return window;
+        }
+
+        private static void RecursiveParse(XElement root, VulkanControl topControl)
+        {
+            foreach (var element in root.Elements())
+            {
+                Type type = AnyXMLType.FindType(element.Name.LocalName);
+                var control = Activator.CreateInstance(type);
+                ResolveAttributes(element, control);
+                if(type.IsDefined(typeof(A_XSDTypeAttribute),true) && !type.IsDefined(typeof(A_XSDElementAttribute),false))
+                {
+                    FieldInfo field = topControl.GetType()
+                        .GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                        .FirstOrDefault(f => f.FieldType.IsGenericType &&
+                                             f.FieldType.GetGenericTypeDefinition() == typeof(List<>));
+                    IList list = (IList)field.GetValue(topControl);
+
+                    list.Add(control);
+                    continue;
+                }
+                topControl.AddChild((VulkanControl)control);
+                RecursiveParse(element, (VulkanControl)control);
+            }
+        }
+
+        private static void ResolveAttributes(XElement root, object topControl)
+        {
+            foreach (XAttribute attr in root.Attributes())
+            {
+                var prop = topControl.GetType().GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase).FirstOrDefault(m =>
+                {
+                    var a = m.GetCustomAttributes(typeof(A_XSDElementPropertyAttribute), true).FirstOrDefault() as A_XSDElementPropertyAttribute;
+                    if (a != null)
+                    {
+                        return string.Equals(a.Name, attr.Name.LocalName, StringComparison.OrdinalIgnoreCase);
+                    }
+                    return false;
+                });
+
+                if (prop != null)
+                {
+                    Type memberType = prop.MemberType == MemberTypes.Field ? ((FieldInfo)prop).FieldType : ((PropertyInfo)prop).PropertyType;
+                    if (memberType == typeof(Action))
+                    {
+                        MethodInfo? methodInfo = AppDomain.CurrentDomain.GetAssemblies()
+                        .SelectMany(a => a.GetTypes())
+                        .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
+                        .FirstOrDefault(m =>
+                                m.GetCustomAttributes(typeof(A_XSDActionDependencyAttribute), false).Any() &&
+                                string.Equals(m.Name, attr.Value, StringComparison.OrdinalIgnoreCase));
+
+                        if (methodInfo == null)
+                            throw new Exception($"Action method '{attr.Value}' not found in A_VulkanControlPropertyAttribute.");
+
+                        Action actionDelegate = (Action)Delegate.CreateDelegate(typeof(Action), methodInfo);
+                        if (prop is PropertyInfo propertyInfo)
+                        {
+                            Action current = (Action?)propertyInfo.GetValue(topControl);
+                            current += actionDelegate;
+                            propertyInfo.SetValue(topControl, current);
+                            continue;
+                        }
+                        if(prop is FieldInfo fieldInfo)
+                        {
+                            Action current = (Action?)fieldInfo.GetValue(topControl);
+                            current += actionDelegate;
+                            fieldInfo.SetValue(topControl, current);
+                            continue;
+                        }
+                    }
+                    else if (memberType.IsEnum)
+                    {
+                        if (prop is PropertyInfo propertyInfo)
+                        {
+                            object enumValue = Enum.Parse(propertyInfo.PropertyType, attr.Value);
+                            propertyInfo.SetValue(topControl, enumValue);
+                            continue;
+                        }
+                        if (prop is FieldInfo fieldInfo)
+                        {
+                            object enumValue = Enum.Parse(fieldInfo.FieldType, attr.Value);
+                            fieldInfo.SetValue(topControl, enumValue);
+                            continue;
+                        }
+                        continue;
+                    }
+                    else
+                    {
+                        if (prop is PropertyInfo propertyInfo)
+                        {
+                            object value = TypeDescriptor.GetConverter(propertyInfo.PropertyType).ConvertFromInvariantString(attr.Value);
+                            propertyInfo.SetValue(topControl, value);
+                            continue;
+                        }
+                        if (prop is FieldInfo fieldInfo)
+                        {
+                            object value = TypeDescriptor.GetConverter(fieldInfo.FieldType).ConvertFromInvariantString(attr.Value);
+                            fieldInfo.SetValue(topControl, value);
+                            continue;
+                        }
+                    }
+                }
+                if (topControl.GetType() == typeof(VulkanControl))
+                {
+                    ((VulkanControl)topControl).UpdateControlData();
+                }
+            }
         }
     }
 }
