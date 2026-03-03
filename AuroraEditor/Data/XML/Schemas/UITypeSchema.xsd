@@ -4,7 +4,7 @@
   <xs:simpleType name="UI">
     <xs:union memberTypes="types:DockMode types:LevelScaling types:HorizontalAlignment types:VeticalAlignment types:Orientation types:ControlColor types:FillMode types:ContentScalingModeEnum" />
   </xs:simpleType>
-  <xs:complexType name="LevelSettings">
+  <xs:complexType name="StackPanel.settings">
     <xs:attribute name="Height" type="xs:float" />
     <xs:attribute name="Width" type="xs:float" />
     <xs:attribute name="Spacing" type="xs:float" />

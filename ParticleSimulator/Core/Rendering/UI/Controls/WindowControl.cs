@@ -13,7 +13,7 @@ using System.Xml.Serialization;
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 {
 
-    [A_XSDElement("Window", "UI", "UI")]
+    [A_XSDElement("Window", "UI", "UI", AllowedChildren = typeof(IXMLChild_UI), MaxChildren = 1)]
     public class WindowControl : VulkanControl
     {
         //[A_VulkanEnum("WindowMode")]

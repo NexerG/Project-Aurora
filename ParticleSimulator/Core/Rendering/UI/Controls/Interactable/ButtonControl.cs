@@ -3,7 +3,7 @@ using Silk.NET.Maths;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
 {
-    [A_XSDElement("Button", "UI", "UI")]
+    [A_XSDElement("Button", "UI", "UI", AllowedChildren = typeof(IXMLChild_UI), MaxChildren = 1)]
     public class ButtonControl : PanelControl
     {
         public ButtonControl()

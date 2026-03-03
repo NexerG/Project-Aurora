@@ -6,7 +6,7 @@ using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.Rendering.UI.Controls.Text
 {
-    [A_XSDElement("ShortText", "UI", "UI")]
+    [A_XSDElement("ShortText", "UI", "UI", AllowedChildren = typeof(IXMLChild_UI), MaxChildren = 1)]
     public class ShortTextControl : VulkanControl
     {
         private string _text = string.Empty;

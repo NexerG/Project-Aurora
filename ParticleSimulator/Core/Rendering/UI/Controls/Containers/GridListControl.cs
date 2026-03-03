@@ -32,7 +32,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
     }
 
 
-    [A_XSDElement("GridList", "UI", "UI")]
+    [A_XSDElement("GridList", "UI", "UI", AllowedChildren = typeof(IXMLChild_UI))]
     internal class GridListControl : AbstractContainerControl
     {
         [A_XSDElementProperty("CellWidth", "UI")]

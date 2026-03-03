@@ -5,7 +5,7 @@ using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
 {
-    [A_XSDType("LevelSettings", "UI", description:"Settings for a level of the StackPanel")]
+    [A_XSDType("StackPanel.settings", "UI", description:"Settings for a level of the StackPanel")]
     public class StackPanelLevelSettings
     {
         #region enums
@@ -54,7 +54,7 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
     }
 
 
-    [A_XSDElement("StackPanel", "UI", "UI")]
+    [A_XSDElement("StackPanel", "UI", "UI", AllowedChildren = typeof(IXMLChild_UI))]
     public class StackPanelControl : AbstractContainerControl
     {
         #region enums
@@ -77,19 +77,8 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
         public Orientation orientation = Orientation.Vertical;
         #endregion
 
-        #region private_elements
-        [A_XSDElementProperty("LevelSettings", "UI")]
-        private List<StackPanelLevelSettings> _stackPanelLevelSettings = new List<StackPanelLevelSettings>();
-
-        public List<StackPanelLevelSettings> stackPanelLevelSettings
-        {
-            get => _stackPanelLevelSettings;
-            set
-            {
-                _stackPanelLevelSettings = value;
-            }
-        }
-        #endregion
+        [A_XSDElementProperty("LevelSettings", "UI", "Settings for each layer of the stack panel")]
+        public List<StackPanelLevelSettings> stackPanelLevelSettings { get; set; } = new List<StackPanelLevelSettings>();
 
         public override void AddControlToContainer(VulkanControl control)
         {

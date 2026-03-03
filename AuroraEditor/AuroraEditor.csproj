@@ -26,15 +26,15 @@
     <Content Include="Data\XML\EngineUI.xsd.farse">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Data\XML\Registries\AbstractRegistry.xsd">
+    <Content Include="Data\XML\RegistriesDEPRECATED\AbstractRegistry.xsd">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <SubType>Designer</SubType>
     </Content>
-    <Content Include="Data\XML\Registries\AuroraRegistries.xsd">
+    <Content Include="Data\XML\RegistriesDEPRECATED\AuroraRegistries.xsd">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <SubType>Designer</SubType>
     </Content>
-    <Content Include="Data\XML\Registries\EngineRegistries.xml">
+    <Content Include="Data\XML\RegistriesDEPRECATED\EngineRegistries.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Data\XML\Test.xsd">
@@ -52,7 +52,7 @@
   <ItemGroup>
     <Folder Include="Data\Scenes\" />
     <Folder Include="Data\XML\Schemas\" />
-    <Folder Include="Data\XML\Registries\Preloads\" />
+    <Folder Include="Data\XML\RegistriesDEPRECATED\Preloads\" />
     <Folder Include="EditorProgram\Entities\" />
   </ItemGroup>
 

@@ -94,7 +94,10 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
     { }
     #endregion*/
 
-    public unsafe class VulkanControl : Entity, IXMLParser
+    public interface IXMLChild_UI
+    {}
+
+    public unsafe class VulkanControl : Entity, IXMLParser, IXMLChild_UI
     {
         #region STRUCTS
         [StructLayout(LayoutKind.Sequential, Pack = 1), A_XSDType("ControlStyle", "Registry")]

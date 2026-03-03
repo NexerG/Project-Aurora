@@ -1,6 +1,7 @@
 ﻿using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using ArctisAurora.EngineWork.Serialization;
+using Silk.NET.Vulkan;
 using System.Reflection;
 using System.Xml;
 using System.Xml.Schema;
@@ -15,6 +16,9 @@ namespace ArctisAurora.Core.AssetRegistry
         public string Description { get; } = string.Empty;
         public string Schema { get; set; }
         public string TypeDepedency { get; set; } = "Uncategorized";
+        public Type? AllowedChildren { get; set; } = null;
+        public int MinChildren { get; set; } = 0;
+        public int MaxChildren { get; set; } = -1;
 
         public A_XSDElementAttribute(string name, string schema, string? typeDependency = "Uncategorized", string? description = "")
         {
@@ -171,6 +175,8 @@ namespace ArctisAurora.Core.AssetRegistry
                     {
                         Name = element.Attribute.Name
                     };
+                    XmlSchemaSequence elementChildSequence = new XmlSchemaSequence();
+
                     var attributes = element.Type.GetMembers(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
                         .Where(m => (m.MemberType == MemberTypes.Field || m.MemberType == MemberTypes.Property) &&
                         m.GetCustomAttributes(typeof(A_XSDElementPropertyAttribute), true).Any())
@@ -220,10 +226,11 @@ namespace ArctisAurora.Core.AssetRegistry
                                 MaxOccursString = "unbounded"
                             };
                             listElement.Annotation = annotation;
-                            elementComplexType.Particle = new XmlSchemaSequence
+                            /*elementComplexType.Particle = new XmlSchemaSequence
                             {
                                 Items = { listElement }
-                            };
+                            };*/
+                            elementChildSequence.Items.Add(listElement);
                         }
                         else
                         {
@@ -250,6 +257,35 @@ namespace ArctisAurora.Core.AssetRegistry
                             elementComplexType.Attributes.Add(schemaAttribute);
                         }
                     }
+
+                    if(element.Attribute.AllowedChildren != null)
+                    {
+                        XmlSchemaChoice childChoice = new XmlSchemaChoice
+                        {
+                            MinOccurs = element.Attribute.MinChildren,
+                            MaxOccursString = element.Attribute.MaxChildren == -1 ? "unbounded" : element.Attribute.MaxChildren.ToString()
+                        };
+
+                        var children = generalAsm.SelectMany(a => a.GetTypes()
+                            .Where(t => element.Attribute.AllowedChildren.IsAssignableFrom(t) 
+                                && t != element.Attribute.AllowedChildren)).ToList();
+                        foreach (var child in children)
+                        {
+                            string childName = child.GetCustomAttribute<A_XSDElementAttribute>(false)?.Name ?? string.Empty;
+                            if(childName == string.Empty)
+                            {
+                                continue;
+                            }
+                            XmlSchemaElement childElement = new XmlSchemaElement
+                            {
+                                Name = childName,
+                                SchemaTypeName = new XmlQualifiedName($"{element.Attribute.Schema}:{childName}")
+                            };
+                            childChoice.Items.Add(childElement);
+                        }
+                        elementChildSequence.Items.Add(childChoice);
+                    }
+                    elementComplexType.Particle = elementChildSequence;
                     elementSchema.Items.Add(elementComplexType);
                 }
 

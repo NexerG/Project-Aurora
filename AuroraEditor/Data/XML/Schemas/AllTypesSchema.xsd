@@ -2,7 +2,7 @@
 <xs:schema xmlns:types="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:simpleType name="Uncategorized">
     <xs:restriction base="xs:string">
-      <xs:enumeration value="LevelSettings" />
+      <xs:enumeration value="StackPanel.settings" />
       <xs:enumeration value="DockMode" />
       <xs:enumeration value="GridListRowSettings" />
       <xs:enumeration value="GridListColumnSettings" />
@@ -38,7 +38,7 @@
   </xs:simpleType>
   <xs:simpleType name="UI">
     <xs:restriction base="xs:string">
-      <xs:enumeration value="LevelSettings" />
+      <xs:enumeration value="StackPanel.settings" />
       <xs:enumeration value="DockMode" />
       <xs:enumeration value="GridListRowSettings" />
       <xs:enumeration value="GridListColumnSettings" />
