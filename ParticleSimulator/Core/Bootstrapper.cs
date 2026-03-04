@@ -53,47 +53,7 @@ namespace ArctisAurora.EngineWork
 
         public static void PrepareRegistries()
         {
-            //scan the EngineRegistries.xml and create the registries that will be used to quick store/access assets
             AssetRegistries.assetRegistries = (AssetRegistries)AssetRegistries.ParseXML("Registry.XML");
-            /*string path = Paths.REGISTRIES + "\\EngineRegistries.xml";
-            XElement root = XElement.Load(path);
-            XNamespace ns = root.GetDefaultNamespace();
-
-            foreach (var dictElem in root.Elements(ns+"Dictionary"))
-            {
-                string name = dictElem.Attribute("name")?.Value ?? throw new Exception("Missing name");
-                string keyTypeName = dictElem.Attribute("keyType")?.Value ?? throw new Exception("Missing keyType");
-                string valueTypeName = dictElem.Attribute("valueType")?.Value ?? throw new Exception("Missing valueType");
-
-                if (Aliases.ContainsKey(keyTypeName.ToLower()))
-                {
-                    keyTypeName = Aliases[keyTypeName.ToLower()].FullName!;
-                }
-                if (Aliases.ContainsKey(valueTypeName.ToLower()))
-                {
-                    valueTypeName = Aliases[valueTypeName.ToLower()].FullName!;
-                }
-
-                Type keyType = FindType(keyTypeName) ?? throw new Exception("Type not found");
-                Type valueType = FindType(valueTypeName) ?? throw new Exception("Type not found");
-
-                Type dictType = typeof(Dictionary<,>).MakeGenericType(keyType, valueType);
-                object dictInstance = Activator.CreateInstance(dictType)!;
-
-                AssetRegistries.AddLibraryEntry(dictInstance, valueType);
-
-                //scan the registry type xml for pre-stored assets
-                string registryPath = Paths.REGISTRIES + "\\Preloads\\" + name + ".xml";
-                if (File.Exists(registryPath))
-                {
-                    XElement registryRoot = XElement.Load(registryPath);
-                    foreach (var assetElem in registryRoot.Elements(ns + "Asset"))
-                    {
-                        //string assetName = assetElem.Attribute("name")?.Value ?? throw new Exception("Missing asset name");
-                        //string assetPath = assetElem.Attribute("path")?.Value ?? throw new Exception("Missing asset path");
-                    }
-                }
-            }*/
         }
 
         private static Type? FindType(string typeName)
@@ -176,7 +136,12 @@ namespace ArctisAurora.EngineWork
             }
         }
 
-        public static void EgineInitializer()
+        public static void PrepareInputs()
+        {
+            InputHandler.ParseXML("InputMap.xml");
+        }
+
+        public static void EngineInitializer()
         {
             PrepareRegistries();
             PreprareDefaultAssets();

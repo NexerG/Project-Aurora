@@ -56,6 +56,7 @@ namespace ArctisAurora.Core.AssetRegistry
         }
     }
 
+    [AttributeUsage(AttributeTargets.Method)]
     public sealed class A_XSDActionDependencyAttribute : Attribute
     {
         public string Name { get; set; }
@@ -73,6 +74,60 @@ namespace ArctisAurora.Core.AssetRegistry
     public interface IXMLParser
     {
         public static object ParseXML(string xmlName) { return null; }
+    }
+
+    public sealed class AnyXMLType
+    {
+        public static readonly Dictionary<string, Type> typeMap = BuildTypeMap();
+        private static Dictionary<string, Type> BuildTypeMap()
+        {
+            Dictionary<string, Type> map = new Dictionary<string, Type>();
+            map.Add("xs:string", typeof(string));
+            map.Add("xs:int", typeof(int));
+            map.Add("xs:float", typeof(float));
+            map.Add("xs:double", typeof(double));
+            map.Add("xs:boolean", typeof(bool));
+            map.Add("xs:byte", typeof(byte));
+            map.Add("xs:short", typeof(short));
+            map.Add("xs:long", typeof(long));
+            map.Add("xs:unsignedInt", typeof(uint));
+            map.Add("xs:unsignedShort", typeof(ushort));
+            map.Add("xs:unsignedLong", typeof(ulong));
+            map.Add("xs:char", typeof(string));
+            map.Add("xs:decimal", typeof(decimal));
+            map.Add("Action", typeof(Action));
+            map.Add("Type", typeof(Type));
+
+            return map;
+        }
+        public static Type? FindType(string typeName)
+        {
+            var type = Type.GetType(typeName);
+            if (type != null)
+            {
+                return type;
+            }
+
+            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                var types = assembly.GetTypes()
+                    .Where(t => t.GetCustomAttributes(typeof(A_XSDTypeAttribute), false).Any())
+                    .Select(t => new
+                    {
+                        Type = t,
+                        Attribute = (A_XSDTypeAttribute)t.GetCustomAttributes(typeof(A_XSDTypeAttribute), false).First()
+                    }).ToList();
+
+                type = types.FirstOrDefault(t => t.Attribute.Name == typeName)?.Type;
+
+                if (type != null)
+                {
+                    return type;
+                }
+            }
+
+            return null;
+        }
     }
 
     public static class XSDGenerator
@@ -194,7 +249,8 @@ namespace ArctisAurora.Core.AssetRegistry
                         annotation.Items.Add(documentation);
 
                         // check if its a list
-                        if (memberType.IsGenericType && memberType.GetGenericTypeDefinition() == typeof(List<>))
+                        //if (memberType.IsGenericType && memberType.GetGenericTypeDefinition() == typeof(List<>))
+                        if (memberType.IsGenericType && typeof(IEnumerable<>).MakeGenericType(memberType.GetGenericArguments()).IsAssignableFrom(memberType))
                         {
                             memberType = memberType.GetGenericArguments()[0];
                             string typeName = MemberMap.ContainsKey(memberType) ? MemberMap[memberType] : typeMap[memberType];
@@ -220,10 +276,6 @@ namespace ArctisAurora.Core.AssetRegistry
                                 MaxOccursString = "unbounded"
                             };
                             listElement.Annotation = annotation;
-                            /*elementComplexType.Particle = new XmlSchemaSequence
-                            {
-                                Items = { listElement }
-                            };*/
                             elementChildSequence.Items.Add(listElement);
                         }
                         else
@@ -338,6 +390,14 @@ namespace ArctisAurora.Core.AssetRegistry
                 };
                 typechema.Includes.Add(allTypeImport);
 
+                typechema.Namespaces.Add("actions", "http://arctisaurora/ActionDependencies");
+                XmlSchemaImport actionImport = new XmlSchemaImport
+                {
+                    Namespace = "http://arctisaurora/ActionDependencies",
+                    SchemaLocation = "actionSchema.xsd"
+                };
+                typechema.Includes.Add(actionImport);
+
                 XmlSchemaSimpleTypeUnion categoryUnion = new XmlSchemaSimpleTypeUnion
                 {
                     MemberTypes = category.Value
@@ -402,6 +462,10 @@ namespace ArctisAurora.Core.AssetRegistry
                             if (typeName == "types:Uncategorized")
                             {
                                 typeName = $"allTypes:{member.XmlAttribute.Category}";
+                            }
+                            if(typeName == "Action")
+                            {
+                                typeName = $"actions:{member.XmlAttribute?.Category}";
                             }
                             XmlQualifiedName qualifiedName = new XmlQualifiedName(typeName);
                             XmlSchemaAttribute schemaAttribute = new XmlSchemaAttribute

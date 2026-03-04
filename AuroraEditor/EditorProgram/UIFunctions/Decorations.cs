@@ -12,7 +12,7 @@ namespace AuroraEditor.EditorProgram.UIFunctions
     public class Decorations
     {
 
-        [A_XSDActionDependency("ExitApplication", category: "UI")]
+        [A_XSDActionDependency("ExitApplication", category: "Input")]
         public static void ExitApplication()
         {
             Console.WriteLine("Exiting application...");

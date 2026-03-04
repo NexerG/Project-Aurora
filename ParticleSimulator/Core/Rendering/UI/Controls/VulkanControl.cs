@@ -756,7 +756,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
                                 string.Equals(m.Name, attr.Value, StringComparison.OrdinalIgnoreCase));
 
                         if (methodInfo == null)
-                            throw new Exception($"Action method '{attr.Value}' not found in A_VulkanControlPropertyAttribute.");
+                            throw new Exception($"Action method '{attr.Value}' not found in A_XSDActionDependency.");
 
                         Action actionDelegate = (Action)Delegate.CreateDelegate(typeof(Action), methodInfo);
                         if (prop is PropertyInfo propertyInfo)

@@ -152,7 +152,7 @@ namespace ArctisAurora.EngineWork.Rendering
                 _pos += _speed * -Vector3D<float>.UnitY;
             }
             //space ctrl local up down
-            if (_keyStates[Keys.ControlLeft])
+            if (_keyStates[Keys.LeftControl])
             {
                 _pos += _speed * -_localUp;
             }

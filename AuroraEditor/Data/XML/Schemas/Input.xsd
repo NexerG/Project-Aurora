@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:Input="http://arctisaurora/Input" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:types="http://arctisaurora/AuroraInputTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/Input" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
+  <xs:import schemaLocation="InputTypeSchema.xsd" namespace="http://arctisaurora/AuroraInputTypes" />
+  <xs:element name="KeybindMap" type="Input:KeybindMap" />
+  <xs:complexType name="KeybindMap">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Keybind" type="types:Keybind">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

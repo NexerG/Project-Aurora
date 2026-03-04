@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<xs:schema xmlns:types="http://arctisaurora/AuroraRegistryTypes" xmlns:allTypes="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraRegistryTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<xs:schema xmlns:types="http://arctisaurora/AuroraRegistryTypes" xmlns:allTypes="http://arctisaurora/AuroraTypes" xmlns:actions="http://arctisaurora/ActionDependencies" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraRegistryTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
+  <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:complexType name="AVulkanMesh" />
   <xs:complexType name="Entry">
     <xs:attribute name="Name" type="xs:string" />

@@ -20,6 +20,9 @@
       <xs:enumeration value="ControlColor" />
       <xs:enumeration value="FillMode" />
       <xs:enumeration value="ContentScalingModeEnum" />
+      <xs:enumeration value="Keys" />
+      <xs:enumeration value="Keybind" />
+      <xs:enumeration value="KeybindMap" />
       <xs:enumeration value="AVulkanMesh" />
       <xs:enumeration value="Entry" />
       <xs:enumeration value="AssetRegistries" />
@@ -64,6 +67,13 @@
       <xs:enumeration value="ControlColor" />
       <xs:enumeration value="FillMode" />
       <xs:enumeration value="ContentScalingModeEnum" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Input">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Keys" />
+      <xs:enumeration value="Keybind" />
+      <xs:enumeration value="KeybindMap" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Registry">

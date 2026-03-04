@@ -1,6 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<xs:schema xmlns:types="http://arctisaurora/AuroraUITypes" xmlns:allTypes="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraUITypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<xs:schema xmlns:types="http://arctisaurora/AuroraUITypes" xmlns:allTypes="http://arctisaurora/AuroraTypes" xmlns:actions="http://arctisaurora/ActionDependencies" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraUITypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
+  <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:simpleType name="UI">
     <xs:union memberTypes="types:DockMode types:LevelScaling types:HorizontalAlignment types:VeticalAlignment types:Orientation types:ControlColor types:FillMode types:ContentScalingModeEnum" />
   </xs:simpleType>

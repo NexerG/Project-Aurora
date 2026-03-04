@@ -59,7 +59,7 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
         public void SolveLMB(Vector2D<float> mousePos)
         {
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
-            bool pressed = InputHandler.instance.IsKeyDown(new Keybind(MouseButton.Left));
+            bool pressed = InputHandler.instance.IsKeyDown(new Keybind(Keybind.MouseKey(MouseButton.Left)));
 
             VulkanControl mostDeep = null;
             VulkanControl top = EntityManager.uiTree;
@@ -93,7 +93,7 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
         public void SolveRMB(Vector2D<float> mousePos)
         {
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
-            bool pressed = InputHandler.instance.IsKeyDown(new Keybind(MouseButton.Right));
+            bool pressed = InputHandler.instance.IsKeyDown(new Keybind(Keybind.MouseKey(MouseButton.Right)));
 
             VulkanControl mostDeep = null;
             VulkanControl top = EntityManager.uiTree;

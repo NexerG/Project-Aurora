@@ -14,61 +14,6 @@ namespace ArctisAurora.EngineWork.AssetRegistry
         public abstract void LoadDefault();
     }
 
-    public sealed class AnyXMLType
-    {
-        public static readonly Dictionary<string, Type> typeMap = BuildTypeMap();
-        private static Dictionary<string, Type> BuildTypeMap()
-        {
-            Dictionary<string, Type> map = new Dictionary<string, Type>();
-            map.Add("xs:string", typeof(string));
-            map.Add("xs:int", typeof(int));
-            map.Add("xs:float", typeof(float));
-            map.Add("xs:double", typeof(double));
-            map.Add("xs:boolean", typeof(bool));
-            map.Add("xs:byte", typeof(byte));
-            map.Add("xs:short", typeof(short));
-            map.Add("xs:long", typeof(long));
-            map.Add("xs:unsignedInt", typeof(uint));
-            map.Add("xs:unsignedShort", typeof(ushort));
-            map.Add("xs:unsignedLong", typeof(ulong));
-            map.Add("xs:char", typeof(string));
-            map.Add("xs:decimal", typeof(decimal));
-            map.Add("Action", typeof(Action));
-            map.Add("Type", typeof(Type));
-
-            return map;
-        }
-        public static Type? FindType(string typeName)
-        {
-            var type = Type.GetType(typeName);
-            if (type != null)
-            {
-                return type;
-            }
-
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                var types = assembly.GetTypes()
-                    .Where(t => t.GetCustomAttributes(typeof(A_XSDTypeAttribute), false).Any())
-                    .Select(t => new
-                    {
-                        Type = t,
-                        Attribute = (A_XSDTypeAttribute)t.GetCustomAttributes(typeof(A_XSDTypeAttribute), false).First()
-                    }).ToList();
-
-                type = types.FirstOrDefault(t => t.Attribute.Name == typeName)?.Type;
-
-                if (type != null)
-                {
-                    return type;
-                }
-            }
-
-            return null;
-        }
-
-    }
-
     [A_XSDType("Entry", "Registry")]
     public class AssetRegistryEntry
     {

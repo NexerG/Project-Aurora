@@ -3,8 +3,6 @@ using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Physics.UICollision;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Modules;
-using ArctisAurora.EngineWork.Rendering.UI;
-using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using Silk.NET.Maths;
 using System.Runtime.InteropServices;
 
@@ -78,6 +76,7 @@ namespace ArctisAurora.EngineWork
             running = true;
             Bootstrapper.PrepareRegistries();
             Bootstrapper.RegisterTypes();
+            Bootstrapper.PrepareInputs();
 
             entityManager = new EntityManager();
             uiCollisionHandler = new UICollisionHandling();
@@ -126,6 +125,7 @@ namespace ArctisAurora.EngineWork
             while (running)
             {
                 AGlfwWindow._glfw.PollEvents();
+                InputHandler.instance.ActivateKeybinds();
                 HandleUI();
                 // skip this if we're no done interpolating last physics tick
                 // aka one in the over, another waitting.
