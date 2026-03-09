@@ -1,0 +1,7 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xsd:schema xmlns:Registry="http://arctisaurora/Registry" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:enums="http://arctisaurora/EnumDependencies" xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" targetNamespace="http://arctisaurora/Registry" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
+  <xs:import schemaLocation="enumSchema.xsd" namespace="http://arctisaurora/EnumDependencies" />
+  <xs:element name="AssetRegistries" type="Registry:AssetRegistries" />
+  <xs:complexType name="AssetRegistries" />
+</xsd:schema>

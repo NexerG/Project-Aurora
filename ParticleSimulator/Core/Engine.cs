@@ -53,6 +53,8 @@ namespace ArctisAurora.EngineWork
         internal static DateTime initTime;
         internal Frame SC;
 
+        public static TimeSpan deltaTime;
+        private static DateTime lastFrameTime = DateTime.Now;
         //private DateTime lastFrameTime = DateTime.Now;
 
         public Engine()
@@ -94,6 +96,7 @@ namespace ArctisAurora.EngineWork
             window.SetCursorPosCallback(inputHandler.ProcessMouseMove);
             window.SetMouseButtonCallback(inputHandler.ProcessMouseClick);
             window.SetKeyCallback(inputHandler.ProcessKeyboard);
+            window.SetCharCallback(inputHandler.ProcessCharInput);
             window.SetMouseOnWindowCallback(UICollisionHandling.instance.IsInWindow);
 
             // optionals
@@ -124,6 +127,7 @@ namespace ArctisAurora.EngineWork
         {
             while (running)
             {
+                DateTime tickStart = DateTime.Now;
                 AGlfwWindow._glfw.PollEvents();
                 InputHandler.instance.ActivateKeybinds();
                 HandleUI();
@@ -138,6 +142,9 @@ namespace ArctisAurora.EngineWork
 
                 t_render_end.WaitOne();
                 t_render_start.Set();
+
+                deltaTime = DateTime.Now - tickStart;
+                //Console.WriteLine($"Engine Tick Time: {deltaTime.TotalSeconds}s");
             }
         }
 

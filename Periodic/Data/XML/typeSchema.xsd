@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:types="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:complexType name="Entry">
+    <xs:attribute name="KeyType" type="xs:int" />
+    <xs:attribute name="ValueType" type="xs:int" />
+  </xs:complexType>
+  <xs:simpleType name="UI">
+    <xs:union memberTypes="types:ControlColor types:FillMode" />
+  </xs:simpleType>
+  <xs:simpleType name="ControlColor">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="red" />
+      <xs:enumeration value="green" />
+      <xs:enumeration value="blue" />
+      <xs:enumeration value="white" />
+      <xs:enumeration value="black" />
+      <xs:enumeration value="yellow" />
+      <xs:enumeration value="cyan" />
+      <xs:enumeration value="magenta" />
+      <xs:enumeration value="gray" />
+      <xs:enumeration value="orange" />
+      <xs:enumeration value="purple" />
+      <xs:enumeration value="brown" />
+      <xs:enumeration value="pink" />
+      <xs:enumeration value="lime" />
+      <xs:enumeration value="navy" />
+      <xs:enumeration value="teal" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="FillMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Uniform" />
+      <xs:enumeration value="Stretch" />
+      <xs:enumeration value="Fill" />
+      <xs:enumeration value="None" />
+    </xs:restriction>
+  </xs:simpleType>
+</xs:schema>

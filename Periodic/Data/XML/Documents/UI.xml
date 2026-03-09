@@ -1,17 +1,15 @@
-﻿<Window xmlns="http://schemas/arctis-aurora/ui"
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Window xmlns="http://arctisaurora/UI"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://schemas/arctis-aurora/ui UI.xsd"
-        Width="1280" Height="720" ContentScalingMode="Vertical" Fill="true">
-
+        xsi:schemaLocation="http://arctisaurora/UI ../Schemas/UI.xsd"
+        Width="1280" Height="720" ContentScalingMode="Vertical" Fill="true" >
 
 	<StackPanel ColorHex="#121212" Orientation="Vertical">
-		<StackPanel.LevelSettings>
-			<LevelSettings Spacing="5" VerticalAlignment="Bottom"/>
-			<LevelSettings Spacing="5" VerticalAlignment="Top"/>
-			<LevelSettings Spacing="5" VerticalAlignment="Bottom"/>
-			<LevelSettings Spacing="5"/>
-		</StackPanel.LevelSettings>
-		
+		<StackPanel.settings Spacing="5" VerticalAlignment="Bottom"/>
+		<StackPanel.settings Spacing="5" VerticalAlignment="Top"/>
+		<StackPanel.settings Spacing="5" VerticalAlignment="Bottom"/>
+		<StackPanel.settings Spacing="5" />
+
 		<Button ControlColor="red" Width="150" Height="150" onClick="ExitApplication"/>
 		<Button ControlColor="green"/>
 		<Button ControlColor="green"/>
@@ -23,4 +21,5 @@
 		<Button ControlColor="orange" StackIndex="2" Height="50" ScalingMode="Fill"/>
 		<ShortText ControlColor="white" Text="BBB" />
 	</StackPanel>
+
 </Window>

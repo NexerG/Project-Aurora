@@ -1,0 +1,156 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:types="http://arctisaurora/AuroraInputTypes" xmlns:allTypes="http://arctisaurora/AuroraTypes" xmlns:actions="http://arctisaurora/ActionDependencies" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraInputTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
+  <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
+  <xs:simpleType name="Input">
+    <xs:union memberTypes="types:Keys types:Keystate" />
+  </xs:simpleType>
+  <xs:simpleType name="Keys">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="A" />
+      <xs:enumeration value="B" />
+      <xs:enumeration value="C" />
+      <xs:enumeration value="D" />
+      <xs:enumeration value="E" />
+      <xs:enumeration value="F" />
+      <xs:enumeration value="G" />
+      <xs:enumeration value="H" />
+      <xs:enumeration value="I" />
+      <xs:enumeration value="J" />
+      <xs:enumeration value="K" />
+      <xs:enumeration value="L" />
+      <xs:enumeration value="M" />
+      <xs:enumeration value="N" />
+      <xs:enumeration value="O" />
+      <xs:enumeration value="P" />
+      <xs:enumeration value="Q" />
+      <xs:enumeration value="R" />
+      <xs:enumeration value="S" />
+      <xs:enumeration value="T" />
+      <xs:enumeration value="U" />
+      <xs:enumeration value="V" />
+      <xs:enumeration value="W" />
+      <xs:enumeration value="X" />
+      <xs:enumeration value="Y" />
+      <xs:enumeration value="Z" />
+      <xs:enumeration value="Apostrophe" />
+      <xs:enumeration value="Comma" />
+      <xs:enumeration value="Minus" />
+      <xs:enumeration value="Period" />
+      <xs:enumeration value="Slash" />
+      <xs:enumeration value="Semicolon" />
+      <xs:enumeration value="Equal" />
+      <xs:enumeration value="LeftBracket" />
+      <xs:enumeration value="Backslash" />
+      <xs:enumeration value="RightBracket" />
+      <xs:enumeration value="GraveAccent" />
+      <xs:enumeration value="Numpad0" />
+      <xs:enumeration value="Numpad1" />
+      <xs:enumeration value="Numpad2" />
+      <xs:enumeration value="Numpad3" />
+      <xs:enumeration value="Numpad4" />
+      <xs:enumeration value="Numpad5" />
+      <xs:enumeration value="Numpad6" />
+      <xs:enumeration value="Numpad7" />
+      <xs:enumeration value="Numpad8" />
+      <xs:enumeration value="Numpad9" />
+      <xs:enumeration value="NumpadDecimal" />
+      <xs:enumeration value="NumpadDivide" />
+      <xs:enumeration value="NumpadMultiply" />
+      <xs:enumeration value="NumpadSubtract" />
+      <xs:enumeration value="NumpadAdd" />
+      <xs:enumeration value="NumpadEnter" />
+      <xs:enumeration value="NumpadEqual" />
+      <xs:enumeration value="Num0" />
+      <xs:enumeration value="Num1" />
+      <xs:enumeration value="Num2" />
+      <xs:enumeration value="Num3" />
+      <xs:enumeration value="Num4" />
+      <xs:enumeration value="Num5" />
+      <xs:enumeration value="Num6" />
+      <xs:enumeration value="Num7" />
+      <xs:enumeration value="Num8" />
+      <xs:enumeration value="Num9" />
+      <xs:enumeration value="Space" />
+      <xs:enumeration value="Enter" />
+      <xs:enumeration value="Tab" />
+      <xs:enumeration value="AnySymbol" />
+      <xs:enumeration value="Backspace" />
+      <xs:enumeration value="Escape" />
+      <xs:enumeration value="LeftControl" />
+      <xs:enumeration value="RightControl" />
+      <xs:enumeration value="LeftShift" />
+      <xs:enumeration value="RightShift" />
+      <xs:enumeration value="LeftWin" />
+      <xs:enumeration value="RightWin" />
+      <xs:enumeration value="Menu" />
+      <xs:enumeration value="CapsLock" />
+      <xs:enumeration value="ScrollLock" />
+      <xs:enumeration value="NumLock" />
+      <xs:enumeration value="PrintScreen" />
+      <xs:enumeration value="Pause" />
+      <xs:enumeration value="LeftAlt" />
+      <xs:enumeration value="RightAlt" />
+      <xs:enumeration value="LeftSuper" />
+      <xs:enumeration value="RightSuper" />
+      <xs:enumeration value="Up" />
+      <xs:enumeration value="Down" />
+      <xs:enumeration value="Left" />
+      <xs:enumeration value="Right" />
+      <xs:enumeration value="Home" />
+      <xs:enumeration value="End" />
+      <xs:enumeration value="PageUp" />
+      <xs:enumeration value="PageDown" />
+      <xs:enumeration value="Insert" />
+      <xs:enumeration value="Delete" />
+      <xs:enumeration value="F1" />
+      <xs:enumeration value="F2" />
+      <xs:enumeration value="F3" />
+      <xs:enumeration value="F4" />
+      <xs:enumeration value="F5" />
+      <xs:enumeration value="F6" />
+      <xs:enumeration value="F7" />
+      <xs:enumeration value="F8" />
+      <xs:enumeration value="F9" />
+      <xs:enumeration value="F10" />
+      <xs:enumeration value="F11" />
+      <xs:enumeration value="F12" />
+      <xs:enumeration value="F13" />
+      <xs:enumeration value="F14" />
+      <xs:enumeration value="F15" />
+      <xs:enumeration value="F16" />
+      <xs:enumeration value="F17" />
+      <xs:enumeration value="F18" />
+      <xs:enumeration value="F19" />
+      <xs:enumeration value="F20" />
+      <xs:enumeration value="F21" />
+      <xs:enumeration value="F22" />
+      <xs:enumeration value="F23" />
+      <xs:enumeration value="F24" />
+      <xs:enumeration value="F25" />
+      <xs:enumeration value="MouseLeft" />
+      <xs:enumeration value="MouseRight" />
+      <xs:enumeration value="MouseMiddle" />
+      <xs:enumeration value="MouseButton4" />
+      <xs:enumeration value="MouseButton5" />
+      <xs:enumeration value="MouseButton6" />
+      <xs:enumeration value="MouseButton7" />
+      <xs:enumeration value="MouseButton8" />
+      <xs:enumeration value="unknown" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Keystate">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Pressed" />
+      <xs:enumeration value="Released" />
+      <xs:enumeration value="Held" />
+      <xs:enumeration value="Unknown" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:complexType name="Keybind">
+    <xs:attribute name="Button" type="types:Keys" />
+    <xs:attribute name="Action" type="actions:Input" />
+    <xs:attribute name="State" type="types:Keystate" />
+    <xs:attribute name="OnTick" type="xs:boolean" />
+  </xs:complexType>
+</xs:schema>

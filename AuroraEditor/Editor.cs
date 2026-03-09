@@ -23,6 +23,7 @@ namespace AuroraEditor
             };
 
             engine.Init(modules, false);
+            InputHandler.SetActiveKeybindGroup("InputMap");
             //AssetImporter.ImportFont("abcdefghijklmnoprstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ", "arial.ttf");
 
             XSDGenerator.GenerateXSD();

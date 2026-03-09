@@ -8,6 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Data\XML\RegistriesDEPRECATED\AbstractRegistry.xsd" />
+    <None Remove="Data\XML\RegistriesDEPRECATED\AuroraRegistries.xsd" />
+    <None Remove="Data\XML\RegistriesDEPRECATED\EngineRegistries.xml" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Include="Data\Fonts\arial\arial.afm">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
@@ -24,6 +30,17 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Data\XML\EngineUI.xsd.farse">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Data\XML\RegistriesDEPRECATED\AbstractRegistry.xsd">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="Data\XML\RegistriesDEPRECATED\AuroraRegistries.xsd">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <SubType>Designer</SubType>
+    </Content>
+    <Content Include="Data\XML\RegistriesDEPRECATED\EngineRegistries.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Data\XML\Registries\AbstractRegistry.xsd">
@@ -51,8 +68,51 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Data\XML\RegistriesDEPRECATED\Preloads\" />
     <Folder Include="Data\XML\Registries\Preloads\" />
     <Folder Include="Editor\CustomControls\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Data\XML\actionSchema.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Update="Data\XML\enumSchema.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Update="Data\XML\RegistryTest.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Update="Data\XML\Schemas\actionSchema.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Update="Data\XML\Schemas\AllTypesSchema.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Update="Data\XML\Schemas\Input.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Update="Data\XML\Schemas\InputTypeSchema.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Update="Data\XML\Schemas\Registry.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Update="Data\XML\Schemas\RegistryTypeSchema.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Update="Data\XML\Schemas\UI.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Update="Data\XML\Schemas\UITypeSchema.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Update="Data\XML\typeSchema.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Update="Data\XML\UITest.xsd">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
 
 </Project>

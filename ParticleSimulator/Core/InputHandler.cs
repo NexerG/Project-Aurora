@@ -2,10 +2,8 @@
 using ArctisAurora.EngineWork.Serialization;
 using Silk.NET.GLFW;
 using Silk.NET.Maths;
-using System;
 using System.Reflection;
 using System.Xml.Linq;
-using glfwkey = Silk.NET.GLFW.Keys;
 
 namespace ArctisAurora.EngineWork
 {
@@ -13,36 +11,60 @@ namespace ArctisAurora.EngineWork
     public enum Keys
     {
         A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
-        a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z,
+        //a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z,
         Apostrophe, Comma, Minus, Period, Slash, Semicolon, Equal, LeftBracket, Backslash, RightBracket, GraveAccent,
         Numpad0, Numpad1, Numpad2, Numpad3, Numpad4, Numpad5, Numpad6, Numpad7, Numpad8, Numpad9, NumpadDecimal, NumpadDivide, NumpadMultiply, NumpadSubtract, NumpadAdd, NumpadEnter, NumpadEqual,
         Num0, Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9,
-        Space, Enter, Tab, Backspace, Escape, LeftControl, RightControl, LeftShift, RightShift, LeftWin, RightWin, Menu, CapsLock, ScrollLock, NumLock, PrintScreen, Pause,
+        Space, Enter, Tab,
+        AnySymbol,
+        Backspace, Escape, LeftControl, RightControl, LeftShift, RightShift, LeftWin, RightWin, Menu, CapsLock, ScrollLock, NumLock, PrintScreen, Pause,
         LeftAlt, RightAlt, LeftSuper, RightSuper,
         Up, Down, Left, Right, Home, End, PageUp, PageDown, Insert, Delete,
         F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, F23, F24, F25,
-        Number0, Number1, Number2, Number3, Number4, Number5, Number6, Number7, Number8, Number9,
+        MouseLeft, MouseRight, MouseMiddle, MouseButton4, MouseButton5, MouseButton6, MouseButton7, MouseButton8,
         unknown,
-        MouseLeft, MouseRight, MouseMiddle, MouseButton4, MouseButton5, MouseButton6, MouseButton7, MouseButton8
+    }
+
+    [A_XSDType("Keystate", "Input")]
+    public enum KeyState
+    {
+        Pressed,
+        Released,
+        Held,
+        Unknown
     }
 
     [A_XSDType("Keybind", "Input")]
     public class Keybind
     {
         [A_XSDElementProperty("Button", "Input")]
-        public Keys keyboardKey;
+        public Keys button;
         [A_XSDElementProperty("Action", "Input")]
         public Action action;
+        [A_XSDElementProperty("State", "Input")]
+        public KeyState state;
+        [A_XSDElementProperty("OnTick", "Input")]
+        public bool onTick = false;
+        public double repeatWatch = 0;
+        public bool isRepeating = false;
 
+        [Obsolete("Currently legacy, here only for input solving error handling.")]
         public Keybind(Keys key)
         {
-            keyboardKey = key;
+            button = key;
         }
 
-        public Keybind(Keys keyboardKey, Action action)
+        public Keybind(Keys key, KeyState state)
         {
-            this.keyboardKey = keyboardKey;
+            button = key;
+            this.state = state;
+        }
+
+        public Keybind(Keys button, Action action, KeyState state)
+        {
+            this.button = button;
             this.action = action;
+            this.state = state;
         }
 
         public void AddAction(Action action)
@@ -80,17 +102,20 @@ namespace ArctisAurora.EngineWork
             Silk.NET.GLFW.Keys.Y => Keys.Y,
             Silk.NET.GLFW.Keys.Z => Keys.Z,
 
-            // numbers
-            Silk.NET.GLFW.Keys.Number0 => Keys.Number0,
-            Silk.NET.GLFW.Keys.Number1 => Keys.Number1,
-            Silk.NET.GLFW.Keys.Number2 => Keys.Number2,
-            Silk.NET.GLFW.Keys.Number3 => Keys.Number3,
-            Silk.NET.GLFW.Keys.Number4 => Keys.Number4,
-            Silk.NET.GLFW.Keys.Number5 => Keys.Number5,
-            Silk.NET.GLFW.Keys.Number6 => Keys.Number6,
-            Silk.NET.GLFW.Keys.Number7 => Keys.Number7,
-            Silk.NET.GLFW.Keys.Number8 => Keys.Number8,
-            Silk.NET.GLFW.Keys.Number9 => Keys.Number9,
+            // lowercase
+            //silk.net.glfw.keys.
+
+            //numbers
+            Silk.NET.GLFW.Keys.Number0 => Keys.Num0,
+            Silk.NET.GLFW.Keys.Number1 => Keys.Num1,
+            Silk.NET.GLFW.Keys.Number2 => Keys.Num2,
+            Silk.NET.GLFW.Keys.Number3 => Keys.Num3,
+            Silk.NET.GLFW.Keys.Number4 => Keys.Num4,
+            Silk.NET.GLFW.Keys.Number5 => Keys.Num5,
+            Silk.NET.GLFW.Keys.Number6 => Keys.Num6,
+            Silk.NET.GLFW.Keys.Number7 => Keys.Num7,
+            Silk.NET.GLFW.Keys.Number8 => Keys.Num8,
+            Silk.NET.GLFW.Keys.Number9 => Keys.Num9,
 
             // function keys
             Silk.NET.GLFW.Keys.F1 => Keys.F1,
@@ -201,6 +226,32 @@ namespace ArctisAurora.EngineWork
             Silk.NET.GLFW.MouseButton.Button8 => Keys.MouseButton8,
             _ => Keys.unknown
         };
+
+        public static KeyState MapState(InputAction action) => action switch
+        {
+            InputAction.Press => KeyState.Pressed,
+            InputAction.Release => KeyState.Released,
+            InputAction.Repeat => KeyState.Held,
+            _ => KeyState.Unknown
+        };
+
+        public static bool IsCharacter(Keys key) => key switch
+        {
+            Keys.A or Keys.B or Keys.C or Keys.D or Keys.E or Keys.F or Keys.G or
+            Keys.H or Keys.I or Keys.J or Keys.K or Keys.L or Keys.M or Keys.N or
+            Keys.O or Keys.P or Keys.Q or Keys.R or Keys.S or Keys.T or Keys.U or
+            Keys.V or Keys.W or Keys.X or Keys.Y or Keys.Z or
+            Keys.Num0 or Keys.Num1 or Keys.Num2 or Keys.Num3 or Keys.Num4 or Keys.Num5 or
+            Keys.Num6 or Keys.Num7 or Keys.Num8 or Keys.Num9 or
+            Keys.Space or Keys.Enter or Keys.Tab or
+            Keys.Apostrophe or Keys.Comma or Keys.Minus or Keys.Period or Keys.Slash or
+            Keys.Semicolon or Keys.Equal or Keys.LeftBracket or Keys.Backslash or Keys.RightBracket or Keys.GraveAccent or
+            Keys.Numpad0 or Keys.Numpad1 or Keys.Numpad2 or Keys.Numpad3 or Keys.Numpad4 or
+            Keys.Numpad5 or Keys.Numpad6 or Keys.Numpad7 or Keys.Numpad8 or Keys.Numpad9 or
+            Keys.NumpadDecimal or Keys.NumpadDivide or Keys.NumpadMultiply or Keys.NumpadSubtract or Keys.NumpadAdd or Keys.NumpadEnter or Keys.NumpadEqual
+            => true,
+            _ => false
+        };
     }
 
     public class KeybindComparer : IEqualityComparer<Keybind>
@@ -211,7 +262,7 @@ namespace ArctisAurora.EngineWork
 
             //if (x.keyboardKey != null && y.keyboardKey != null)
             //{
-            if (x.keyboardKey == y.keyboardKey) return true;
+            if (x.button == y.button && x.action == y.action) return true;
             else return false;
             //}
             /*else if (x.mouseButton != null && y.mouseButton != null)
@@ -226,7 +277,7 @@ namespace ArctisAurora.EngineWork
         int IEqualityComparer<Keybind>.GetHashCode(Keybind obj)
         {
             //if (obj.mouseButton != null) return obj.mouseButton.GetHashCode();
-            if (obj.keyboardKey != null) return obj.keyboardKey.GetHashCode();
+            if (obj.button != null) return obj.button.GetHashCode();
             return base.GetHashCode();
         }
     }
@@ -237,17 +288,36 @@ namespace ArctisAurora.EngineWork
     {
         public static InputHandler instance { get; private set; }
 
-        private static HashSet<Keybind> keysDown = new HashSet<Keybind>(new KeybindComparer());
+        public static char lastCharInput = '\0';
+        public static Queue<char> charInputWriteQueue = new Queue<char>();
+        private static Queue<char> charInputReadQueue = new Queue<char>();
+
+        public static Queue<Keybind> inputWriteQueue = new Queue<Keybind>();
+        private static Queue<Keybind> inputReadQueue = new Queue<Keybind>();
+        public static float repeatDelay = 0.35f; // seconds before a held key starts repeating
+        public static float repeatRate = 0.01f; // seconds between repeats after the initial delay
+
+        private static HashSet<Keybind> keysDownRead = new HashSet<Keybind>(new KeybindComparer());
+        public static HashSet<Keybind> keysDownWrite = new HashSet<Keybind>(new KeybindComparer());
         public static Vector2D<float> mousePos = new Vector2D<float>(0, 0);
 
         [A_XSDElementProperty("Keybind", "Input")]
-        public List<Keybind> keybindActions = new List<Keybind>();
+        public List<Keybind> activeKeybindActions = new List<Keybind>();
 
-        public bool IsKeyDown(Keybind k) => keysDown.Contains(k);
+        public static Dictionary<string, List<Keybind>> keybindGroups = new Dictionary<string, List<Keybind>>();
+
+
+        public bool IsKeyDown(Keybind k) => keysDownRead.Contains(k);
 
         public InputHandler()
         {
             //instance = this;
+        }
+
+        internal void ProcessCharInput(WindowHandle* window, uint codepoint)
+        {
+            lastCharInput = (char)codepoint;
+            charInputWriteQueue.Enqueue((char)codepoint);
         }
 
         internal void ProcessMouseMove(WindowHandle* window, double xPos, double yPos)
@@ -258,72 +328,173 @@ namespace ArctisAurora.EngineWork
 
         internal void ProcessMouseClick(WindowHandle* window, MouseButton button, InputAction action, KeyModifiers mods)
         {
-            if (action == InputAction.Press || action == InputAction.Repeat)
+            if (keysDownWrite.Add(new Keybind(Keybind.MouseKey(button), Keybind.MapState(action))))
             {
-                keysDown.Add(new Keybind(Keybind.MouseKey(button)));
+                inputWriteQueue.Enqueue(new Keybind(Keybind.MouseKey(button), Keybind.MapState(action)));
             }
             else
             {
-                keysDown.Remove(new Keybind(Keybind.MouseKey(button)));
+                inputWriteQueue.Enqueue(new Keybind(Keybind.MouseKey(button), Keybind.MapState(action)));
             }
         }
 
-        internal void ProcessKeyboard(WindowHandle* window, Silk.NET.GLFW.Keys key, int _scanCode, InputAction action, KeyModifiers mods)
+        internal void ProcessKeyboard(WindowHandle* window, Silk.NET.GLFW.Keys key, int _scanCode, InputAction state, KeyModifiers mods)
         {
-            if (action == InputAction.Press || action == InputAction.Repeat)
+            if(keysDownWrite.Add(new Keybind(Keybind.MapKey(key), Keybind.MapState(state))))
             {
-                keysDown.Add(new Keybind(Keybind.MapKey(key)));
+                inputWriteQueue.Enqueue(new Keybind(Keybind.MapKey(key), Keybind.MapState(state)));
             }
             else
             {
-                keysDown.Remove(new Keybind(Keybind.MapKey(key)));
+                inputWriteQueue.Enqueue(new Keybind(Keybind.MapKey(key), Keybind.MapState(state)));
             }
         }
 
         public void ActivateKeybinds()
         {
-            foreach (Keybind keybind in keysDown)
+            lock (keysDownRead)
             {
-                Console.WriteLine($"Keybind {keybind.keyboardKey} is down. There are {instance.keybindActions.Count} keybinds registered");
-                if (instance.keybindActions.Any(k => k.keyboardKey == keybind.keyboardKey))
-                    keybindActions.First(k => k.keyboardKey == keybind.keyboardKey).action?.Invoke();
+                lock (inputWriteQueue)
+                {
+                    (inputWriteQueue, inputReadQueue) = (inputReadQueue, inputWriteQueue);
+                    (keysDownRead, keysDownWrite) = (keysDownWrite, keysDownRead);
+                }
+                lock (charInputWriteQueue)
+                {
+                    (charInputWriteQueue, charInputReadQueue) = (charInputReadQueue, charInputWriteQueue);
+                }
+            }
+
+            foreach (Keybind keybind in inputReadQueue)
+            {
+                if(Keybind.IsCharacter(keybind.button))
+                {
+                    foreach (Keybind any in activeKeybindActions.Where(k => k.button == Keys.AnySymbol && k.state == keybind.state))
+                    {
+                        ActivateKeyByState(any);
+                    }
+                }
+                ActivateKeyByState(keybind);
+            }
+            inputReadQueue.Clear();
+            keysDownRead.Clear();
+            charInputReadQueue.Clear();
+        }
+
+        private void ActivateKeyByState(Keybind keybind)
+        {
+            switch (keybind.state)
+            {
+                case KeyState.Pressed:
+                    {
+                        Keybind k = activeKeybindActions.FirstOrDefault(k => k.button == keybind.button && k.state == KeyState.Pressed);
+                        if (k != null)
+                        {
+                            k.action?.Invoke();
+                        }
+                        break;
+                    }
+                case KeyState.Released:
+                    {
+                        Keybind k = activeKeybindActions.FirstOrDefault(k => k.button == keybind.button && k.state == KeyState.Released);
+                        if (k != null)
+                        {
+                            k.action?.Invoke();
+                            k.repeatWatch = 0;
+                            k.isRepeating = false;
+                        }
+                        break;
+                    }
+                case KeyState.Held:
+                    {
+                        Keybind k = activeKeybindActions.FirstOrDefault(k => k.button == keybind.button && k.state == KeyState.Held);
+                        if (k != null)
+                        {
+                            if (!k.isRepeating)
+                            {
+                                k.repeatWatch += Engine.deltaTime.TotalSeconds;
+                                if (k.repeatWatch >= repeatDelay)
+                                {
+                                    k.isRepeating = true;
+                                    k.repeatWatch = 0;
+                                    k.action?.Invoke();
+                                }
+                            }
+                            else
+                            {
+                                k.repeatWatch += Engine.deltaTime.TotalSeconds;
+                                if (k.repeatWatch >= repeatRate)
+                                {
+                                    k.repeatWatch = 0;
+                                    k.action?.Invoke();
+                                }
+                            }
+                        }
+                    }
+                    break;
             }
         }
 
         public static object ParseXML(string xml)
         {
-            string path = Paths.XMLDOCUMENTS + "\\" + xml;
             instance = new InputHandler();
-            XElement root = XElement.Load(path);
-            XNamespace ns = root.GetDefaultNamespace();
-            foreach (XElement keybindElement in root.Elements())
+            foreach (string path in Directory.GetFiles(Paths.XMLDOCUMENTS_INPUTS, "*.xml"))
             {
-                foreach (var attribute in keybindElement.Attributes())
+                XElement root = XElement.Load(path);
+                XNamespace ns = root.GetDefaultNamespace();
+                List<Keybind> keybinds = new List<Keybind>();
+
+                foreach (XElement keybindElement in root.Elements())
                 {
-                    if (attribute.Name == "Button")
-                    {
-                        Keybind keybind = new Keybind((Keys)Enum.Parse(typeof(Keys), attribute.Value));
-                        instance.keybindActions.Add(keybind);
-                    }
-                    else if (attribute.Name == "Action")
-                    {
-                        MethodInfo? methodInfo = AppDomain.CurrentDomain.GetAssemblies()
-                            .SelectMany(a => a.GetTypes())
-                            .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
-                            .FirstOrDefault(m =>
-                                    m.GetCustomAttributes(typeof(A_XSDActionDependencyAttribute), false).Any() &&
-                                    string.Equals(m.Name, attribute.Value, StringComparison.OrdinalIgnoreCase));
+                    var attributes = keybindElement.Attributes().ToList();
 
-                        if (methodInfo == null)
-                            throw new Exception($"Action method '{attribute.Value}' not found in A_XSDActionDependency.");
+                    var buttonAttr = attributes.FirstOrDefault(a => a.Name == "Button");
+                    var actionAttr = attributes.FirstOrDefault(a => a.Name == "Action");
+                    var stateAttr = attributes.FirstOrDefault(a => a.Name == "State");
 
-                        Action actionDelegate = (Action)Delegate.CreateDelegate(typeof(Action), methodInfo);
-                        instance.keybindActions.Last().AddAction(actionDelegate);
-                    }
+                    KeyState state = stateAttr.Value switch
+                    {
+                        "Pressed" => KeyState.Pressed,
+                        "Released" => KeyState.Released,
+                        "Held" => KeyState.Held,
+                        _ => KeyState.Unknown
+                    };
+
+                    Console.WriteLine($"Found Attributes of Button: {buttonAttr}, action: {actionAttr}, state: {stateAttr}");
+
+                    MethodInfo? methodInfo = AppDomain.CurrentDomain.GetAssemblies()
+                        .SelectMany(a => a.GetTypes())
+                        .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
+                        .FirstOrDefault(m =>
+                                m.GetCustomAttributes(typeof(A_XSDActionDependencyAttribute), false).Any() &&
+                                string.Equals(m.Name,
+                                actionAttr.Value, StringComparison.OrdinalIgnoreCase));
+
+                    if (methodInfo == null)
+                        throw new Exception($"Action method '{actionAttr.Value}' not found in A_XSDActionDependency.");
+
+                    Action actionDelegate = (Action)Delegate.CreateDelegate(typeof(Action), methodInfo);
+
+                    Keybind keybind = new Keybind((Keys)Enum.Parse(typeof(Keys), buttonAttr.Value), actionDelegate, state);
+                    keybinds.Add(keybind);
+                    Console.WriteLine($"Created keybind of: {keybind.button}, action: {keybind.action}, state: {keybind.state}");
                 }
+                keybindGroups.Add(Path.GetFileNameWithoutExtension(path), keybinds);
             }
-            Console.WriteLine($"Loaded {instance.keybindActions.Count} keybinds from {xml}");
+
             return instance;
+        }
+
+        public static void SetActiveKeybindGroup(string groupName)
+        {
+            if (keybindGroups.ContainsKey(groupName))
+            {
+                instance.activeKeybindActions = keybindGroups[groupName];
+            }
+            else
+            {
+                Console.WriteLine($"Keybind group '{groupName}' not found.");
+            }
         }
     }
 }

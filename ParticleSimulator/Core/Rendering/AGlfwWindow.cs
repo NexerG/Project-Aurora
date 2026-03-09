@@ -65,6 +65,16 @@ namespace ArctisAurora.EngineWork.Rendering
             _glfw.SetKeyCallback(windowHandle, callback);
         }
 
+        internal void SetScrollCallback(ScrollCallback callback)
+        {
+            _glfw.SetScrollCallback(windowHandle, callback);
+        }
+
+        internal void SetCharCallback(CharCallback callback)
+        {
+            _glfw.SetCharCallback(windowHandle, callback);
+        }
+
         internal void SetMouseButtonCallback(MouseButtonCallback callback)
         {
             _glfw.SetMouseButtonCallback(windowHandle, callback);

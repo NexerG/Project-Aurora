@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<KeybindMap xmlns="http://arctisaurora/Input"
+		  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		  xsi:schemaLocation="http://arctisaurora/Input ../../Schemas/Input.xsd" >
+
+	<Keybind Button="Escape" Action="ExitApplication" State="Pressed"/>
+	<Keybind Button="Backspace" Action="ExitApplication" State="Released"/>
+	<Keybind Button="AnySymbol" Action="DummyKeyPress" State="Pressed"/>
+
+</KeybindMap>
