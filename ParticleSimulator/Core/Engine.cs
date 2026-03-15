@@ -76,9 +76,8 @@ namespace ArctisAurora.EngineWork
             //im.Save(Paths.UIMASKS + "\\defaultMask.png");
 
             running = true;
-            Bootstrapper.PrepareRegistries();
-            Bootstrapper.RegisterTypes();
-            Bootstrapper.PrepareInputs();
+            Bootstrapper.Bootstrap(BootstrapStage.PreGPUAPI);
+            //Bootstrapper.PrepareInputs();
 
             entityManager = new EntityManager();
             uiCollisionHandler = new UICollisionHandling();
@@ -92,7 +91,6 @@ namespace ArctisAurora.EngineWork
 
             // assets and renderable objects can be loaded from here alongside inputs
 
-            inputHandler = new InputHandler();
             window.SetCursorPosCallback(inputHandler.ProcessMouseMove);
             window.SetMouseButtonCallback(inputHandler.ProcessMouseClick);
             window.SetKeyCallback(inputHandler.ProcessKeyboard);
@@ -100,7 +98,7 @@ namespace ArctisAurora.EngineWork
             window.SetMouseOnWindowCallback(UICollisionHandling.instance.IsInWindow);
 
             // optionals
-            Bootstrapper.PreprareDefaultAssets();
+            Bootstrapper.Bootstrap(BootstrapStage.PostGPUAPI);
 
             renderer.SetupObjects();
             renderer.PrepareDescriptors();

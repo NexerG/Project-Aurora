@@ -11,7 +11,7 @@ namespace Periodic.Editor
     public class Decorations
     {
         [A_XSDActionDependency("WriteInput", "Writer", "Writes the input to the active textbox")]
-        public static void Writer()
+        public static void Write()
         {
 
         }

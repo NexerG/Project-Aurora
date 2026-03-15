@@ -3,6 +3,7 @@ using ArctisAurora.Core.AssetRegistry;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
+using ArctisAurora.EngineWork.Serialization;
 
 namespace AuroraPeriodic
 {
@@ -16,12 +17,13 @@ namespace AuroraPeriodic
                 new UIModule(),
             };
 
+            XSDGenerator.GenerateXSD();
+
             engine.Init(modules, false);
             InputHandler.SetActiveKeybindGroup("InputMap");
-            //AssetImporter.ImportFont("abcdefghijklmnoprstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ", "arial.ttf");
+            //AssetImporter.ImportFont("abcdefghijklmnoprstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ <>", "arial.ttf");
             // prepare level
 
-            XSDGenerator.GenerateXSD();
 
             WindowControl windowControl = (WindowControl)VulkanControl.ParseXML("UI.xml");
             EntityManager.uiTree = windowControl;

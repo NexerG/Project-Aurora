@@ -282,11 +282,15 @@ namespace ArctisAurora.EngineWork
         }
     }
 
+    public interface ICharacterInput
+    {
+        public void HandleInput(char character);
+    }
 
     [A_XSDElement("KeybindMap", "Input", "Input")]
-    public unsafe class InputHandler : IXMLParser
+    public unsafe class InputHandler : IXMLParser<InputHandler>, IBootstrap
     {
-        public static InputHandler instance { get; private set; }
+        public static InputHandler instance { get; set; }
 
         public static char lastCharInput = '\0';
         public static Queue<char> charInputWriteQueue = new Queue<char>();
@@ -310,9 +314,7 @@ namespace ArctisAurora.EngineWork
         public bool IsKeyDown(Keybind k) => keysDownRead.Contains(k);
 
         public InputHandler()
-        {
-            //instance = this;
-        }
+        {}
 
         internal void ProcessCharInput(WindowHandle* window, uint codepoint)
         {
@@ -435,9 +437,9 @@ namespace ArctisAurora.EngineWork
             }
         }
 
-        public static object ParseXML(string xml)
+        public static InputHandler ParseXML(string xmlName)
         {
-            instance = new InputHandler();
+            InputHandler handler = new InputHandler();
             foreach (string path in Directory.GetFiles(Paths.XMLDOCUMENTS_INPUTS, "*.xml"))
             {
                 XElement root = XElement.Load(path);
@@ -481,8 +483,7 @@ namespace ArctisAurora.EngineWork
                 }
                 keybindGroups.Add(Path.GetFileNameWithoutExtension(path), keybinds);
             }
-
-            return instance;
+            return handler;
         }
 
         public static void SetActiveKeybindGroup(string groupName)
@@ -495,6 +496,13 @@ namespace ArctisAurora.EngineWork
             {
                 Console.WriteLine($"Keybind group '{groupName}' not found.");
             }
+        }
+
+        [A_BootstrapStage(BootstrapStage.PreGPUAPI)]
+        public static void Bootstrap(BootstrapStage? stage)
+        {
+            instance = ParseXML("InputMap.xml");
+            Engine.inputHandler = instance;
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Serialization;
+using Assimp;
 using System.Reflection;
 using System.Xml.Linq;
 using static ArctisAurora.EngineWork.Rendering.UI.Controls.VulkanControl;
@@ -14,22 +15,35 @@ namespace ArctisAurora.EngineWork.AssetRegistry
         public abstract void LoadDefault();
     }
 
+    public interface IActiveObject
+    {
+
+    }
+
+    public enum RegistryStage
+    {
+        PreXML,
+        PostXML,
+        RegisterTypes,
+        LoadAssets
+    }
+
     [A_XSDType("Entry", "Registry")]
     public class AssetRegistryEntry
     {
         [A_XSDElementProperty("Name")]
         public string name { get; set; }
         [A_XSDElementProperty("KeyType")]
-        public AnyXMLType keyType { get; set; }
+        public List<AnyXMLType> keyType { get; set; } = new List<AnyXMLType>();
         [A_XSDElementProperty("ValueType")]
-        public AnyXMLType valueType { get; set; }
+        public List<AnyXMLType> valueType { get; set; } = new List<AnyXMLType>();
     }
 
     [A_XSDElement("AssetRegistries", "Registry", "Registry")]
-    public class AssetRegistries : IXMLParser
+    public class AssetRegistries : IXMLParser<AssetRegistries>, IBootstrap
     {
         [A_XSDElementProperty("Dictionary", "Registry")]
-        public static List<AssetRegistryEntry> registries { get; set; } = new List<AssetRegistryEntry>();
+        public static List<AssetRegistryEntry> registries { get; set; }
 
         public static Dictionary<Type, object> library = new Dictionary<Type, object>();
 
@@ -71,7 +85,7 @@ namespace ArctisAurora.EngineWork.AssetRegistry
             throw new Exception("Asset not found");
         }
 
-        public static object ParseXML(string xmlName)
+        public static AssetRegistries ParseXML(string xmlName)
         {
             //parse the XML and create the registries
             string path = Paths.XMLDOCUMENTS + "\\" + xmlName;
@@ -111,6 +125,75 @@ namespace ArctisAurora.EngineWork.AssetRegistry
                 AddLibraryEntry(dictInstance, valueType);
             }
             return registries;
+        }
+        
+        [A_BootstrapStage(BootstrapStage.PostGPUAPI)]
+        [A_BootstrapStage(BootstrapStage.PreGPUAPI)]
+        public static void Bootstrap(BootstrapStage? stage)
+        {
+            var asm = AppDomain.CurrentDomain.GetAssemblies();
+            switch (stage)
+            {
+                case BootstrapStage.PreGPUAPI:
+                    InstantiateRegistries();
+                    RegisterSerializableTypes(asm);
+                    break;
+                case BootstrapStage.PostGPUAPI:
+                    PrepareDefaultAssets();
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        private static void RegisterSerializableTypes(Assembly[] asm)
+        {
+            var types = asm.SelectMany(a => a.GetTypes()).Where(t => t.GetCustomAttribute<@Serializable>() != null).ToList();
+
+            Dictionary<uint, Type> serializableTypes = GetRegistry<uint, Type>(typeof(Type));
+            foreach (var t in types)
+            {
+                var attr = t.GetCustomAttribute<@Serializable>();
+                if (attr != null)
+                {
+                    attr.ID = Serializable.GenerateID(t.Name);
+                    serializableTypes.Add((uint)attr.ID, t);
+                }
+            }
+        }
+
+        private static void InstantiateRegistries()
+        {
+            assetRegistries = ParseXML("Registry.xml");
+        }
+
+        private static void PrepareDefaultAssets()
+        {
+            Dictionary<string, AVulkanMesh> dMeshes = GetRegistry<string, AVulkanMesh>(typeof(AVulkanMesh));
+            AVulkanMesh mesh = AVulkanMesh.LoadDefault();
+            dMeshes.Add("default", mesh);
+
+            AVulkanMesh UIMesh = new AVulkanMesh();
+            MeshImporter importer = new MeshImporter();
+            Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\VienetinisPlaneRetry.fbx");
+            UIMesh.LoadCustomMesh(scene1);
+            dMeshes.Add("uidefault", UIMesh);
+
+            // load default font
+            FontAsset font = new FontAsset("default");
+            font.LoadDefault();
+
+            TextureAsset texture = new TextureAsset("default");
+            texture.LoadDefault();
+
+            TextureAsset invisible = new TextureAsset("invisible");
+            invisible.LoadInvisible();
+
+            // load default style
+            Dictionary<string, ControlStyle> dStyles = GetRegistry<string, ControlStyle>(typeof(ControlStyle));
+            ControlStyle style = new ControlStyle();
+            style.tint = new Silk.NET.Maths.Vector3D<float>(1, 1, 1);
+            dStyles.Add("default", style);
         }
     }
 }

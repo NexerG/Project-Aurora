@@ -104,7 +104,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
     public interface IXMLChild_UI
     { }
 
-    public unsafe class VulkanControl : Entity, IXMLParser, IXMLChild_UI
+    public unsafe class VulkanControl : Entity, IXMLParser<VulkanControl>, IXMLChild_UI
     {
         #region STRUCTS
         [StructLayout(LayoutKind.Sequential, Pack = 1), A_XSDType("ControlStyle", "Registry")]
@@ -690,7 +690,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             }
         }
 
-        public static object ParseXML(string xmlName)
+        public static VulkanControl ParseXML(string xmlName)
         {
             string path = Paths.XMLDOCUMENTS + "\\" + xmlName;
             XDocument doc = XDocument.Load(path);
@@ -812,5 +812,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
                 }
             }
         }
+
     }
 }
