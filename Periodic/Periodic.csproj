@@ -89,19 +89,10 @@
     <None Update="Data\XML\Schemas\AllTypesSchema.xsd">
       <SubType>Designer</SubType>
     </None>
-    <None Update="Data\XML\Schemas\Input.xsd">
-      <SubType>Designer</SubType>
-    </None>
     <None Update="Data\XML\Schemas\InputTypeSchema.xsd">
       <SubType>Designer</SubType>
     </None>
-    <None Update="Data\XML\Schemas\Registry.xsd">
-      <SubType>Designer</SubType>
-    </None>
     <None Update="Data\XML\Schemas\RegistryTypeSchema.xsd">
-      <SubType>Designer</SubType>
-    </None>
-    <None Update="Data\XML\Schemas\UI.xsd">
       <SubType>Designer</SubType>
     </None>
     <None Update="Data\XML\Schemas\UITypeSchema.xsd">

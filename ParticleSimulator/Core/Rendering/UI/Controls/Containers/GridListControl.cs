@@ -18,7 +18,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
         public VerticalAlignment verticalAlignment = VerticalAlignment.Center;
     }
 
-    [A_XSDType("GridListColumnSettings", "UI", "Settings for grid's columns")]
+    [A_XSDType("GridListColumnSettings", "UI", description:"Settings for grid's columns")]
     public class GridListColumnSettings
     {
         [A_XSDElementProperty("Bounds", "UI", "Level bounds for the grid's columns")]
@@ -32,7 +32,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
     }
 
 
-    [A_XSDElement("GridList", "UI", "UI", AllowedChildren = typeof(IXMLChild_UI))]
+    [A_XSDType("GridList", "UI", AllowedChildren = typeof(IXMLChild_UI))]
     internal class GridListControl : AbstractContainerControl
     {
         [A_XSDElementProperty("CellWidth", "UI")]

@@ -32,14 +32,16 @@ namespace ArctisAurora.EngineWork.AssetRegistry
     public class AssetRegistryEntry
     {
         [A_XSDElementProperty("Name")]
-        public string name { get; set; }
+        public string name { get; set; } = string.Empty;
         [A_XSDElementProperty("KeyType")]
-        public List<AnyXMLType> keyType { get; set; } = new List<AnyXMLType>();
+        //public List<AnyXMLType> keyType { get; set; } = new List<AnyXMLType>();
+        public AnyXMLType keyType { get; set; }
         [A_XSDElementProperty("ValueType")]
-        public List<AnyXMLType> valueType { get; set; } = new List<AnyXMLType>();
+        //public List<AnyXMLType> valueType { get; set; } = new List<AnyXMLType>();
+        public AnyXMLType valueType { get; set; }
     }
 
-    [A_XSDElement("AssetRegistries", "Registry", "Registry")]
+    [A_XSDType("AssetRegistries", "Registry")]
     public class AssetRegistries : IXMLParser<AssetRegistries>, IBootstrap
     {
         [A_XSDElementProperty("Dictionary", "Registry")]

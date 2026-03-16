@@ -10,7 +10,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
         fill, left, right, top, bottom, unknown
     }
 
-    [A_XSDElement("Dock", "UI", "UI", AllowedChildren = typeof(IXMLChild_UI))]
+    [A_XSDType("Dock", "UI", AllowedChildren = typeof(IXMLChild_UI))]
     public class DockingControl : AbstractContainerControl
     {
         public VulkanControl top;

@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<xs:schema xmlns:types="http://arctisaurora/AuroraInputTypes" xmlns:allTypes="http://arctisaurora/AuroraTypes" xmlns:actions="http://arctisaurora/ActionDependencies" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraInputTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
-  <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
+<xs:schema xmlns:types="http://arctisaurora/AuroraInputTypes" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:allTypes="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraInputTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
+  <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:simpleType name="Input">
     <xs:union memberTypes="types:Keys types:Keystate" />
   </xs:simpleType>
@@ -147,10 +147,22 @@
       <xs:enumeration value="Unknown" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:element name="Keybind" type="types:Keybind" />
   <xs:complexType name="Keybind">
+    <xs:sequence />
     <xs:attribute name="Button" type="types:Keys" />
     <xs:attribute name="Action" type="actions:Input" />
     <xs:attribute name="State" type="types:Keystate" />
     <xs:attribute name="OnTick" type="xs:boolean" />
+  </xs:complexType>
+  <xs:element name="KeybindMap" type="types:KeybindMap" />
+  <xs:complexType name="KeybindMap">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Keybind" type="types:Keybind">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
   </xs:complexType>
 </xs:schema>

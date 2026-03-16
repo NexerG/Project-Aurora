@@ -54,7 +54,7 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
     }
 
 
-    [A_XSDElement("StackPanel", "UI", "UI", AllowedChildren = typeof(IXMLChild_UI))]
+    [A_XSDType("StackPanel", "UI", AllowedChildren = typeof(IXMLChild_UI))]
     public class StackPanelControl : AbstractContainerControl
     {
         #region enums

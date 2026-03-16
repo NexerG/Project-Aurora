@@ -287,7 +287,7 @@ namespace ArctisAurora.EngineWork
         public void HandleInput(char character);
     }
 
-    [A_XSDElement("KeybindMap", "Input", "Input")]
+    [A_XSDType("KeybindMap", "Input")]
     public unsafe class InputHandler : IXMLParser<InputHandler>, IBootstrap
     {
         public static InputHandler instance { get; set; }

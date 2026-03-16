@@ -1,15 +1,42 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<xs:schema xmlns:types="http://arctisaurora/AuroraRegistryTypes" xmlns:allTypes="http://arctisaurora/AuroraTypes" xmlns:actions="http://arctisaurora/ActionDependencies" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraRegistryTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
-  <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
+<xs:schema xmlns:types="http://arctisaurora/AuroraRegistryTypes" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:allTypes="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraRegistryTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
-  <xs:complexType name="IParseableTypes" />
-  <xs:complexType name="AVulkanMesh" />
+  <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
+  <xs:element name="IParseableTypes" type="types:IParseableTypes" />
+  <xs:complexType name="IParseableTypes">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="AVulkanMesh" type="types:AVulkanMesh" />
+  <xs:complexType name="AVulkanMesh">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="Entry" type="types:Entry" />
   <xs:complexType name="Entry">
+    <xs:sequence />
     <xs:attribute name="Name" type="xs:string" />
     <xs:attribute name="KeyType" type="allTypes:Uncategorized" />
     <xs:attribute name="ValueType" type="allTypes:Uncategorized" />
   </xs:complexType>
-  <xs:complexType name="FontAsset" />
-  <xs:complexType name="TextureAsset" />
-  <xs:complexType name="ControlStyle" />
+  <xs:element name="AssetRegistries" type="types:AssetRegistries" />
+  <xs:complexType name="AssetRegistries">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Dictionary" type="types:Entry">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="FontAsset" type="types:FontAsset" />
+  <xs:complexType name="FontAsset">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="TextureAsset" type="types:TextureAsset" />
+  <xs:complexType name="TextureAsset">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="ControlStyle" type="types:ControlStyle" />
+  <xs:complexType name="ControlStyle">
+    <xs:sequence />
+  </xs:complexType>
 </xs:schema>

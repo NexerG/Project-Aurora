@@ -8,6 +8,7 @@ using ArctisAurora.EngineWork.Serialization;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System;
+using System.CodeDom;
 using System.Collections;
 using System.ComponentModel;
 using System.Reflection;
@@ -713,12 +714,13 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
                 Type type = AnyXMLType.FindType(element.Name.LocalName);
                 var control = Activator.CreateInstance(type);
                 ResolveAttributes(element, control);
-                if(type.IsDefined(typeof(A_XSDTypeAttribute),true) && !type.IsDefined(typeof(A_XSDElementAttribute),false))
+                if(!typeof(VulkanControl).IsAssignableFrom(type))
                 {
                     FieldInfo field = topControl.GetType()
                         .GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                         .FirstOrDefault(f => f.FieldType.IsGenericType &&
-                                             f.FieldType.GetGenericTypeDefinition() == typeof(List<>));
+                                             f.FieldType.GetGenericTypeDefinition() == typeof(List<>)
+                                             && f.FieldType.GetGenericArguments()[0].IsAssignableFrom(control.GetType()));
                     IList list = (IList)field.GetValue(topControl);
 
                     list.Add(control);

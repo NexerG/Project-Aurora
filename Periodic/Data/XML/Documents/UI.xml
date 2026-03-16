@@ -1,7 +1,6 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<Window xmlns="http://arctisaurora/UI"
+﻿<Window xmlns="http://arctisaurora/AuroraUITypes"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://arctisaurora/UI ../Schemas/UI.xsd"
+        xsi:schemaLocation="http://arctisaurora/UI ../Schemas/UITypeSchema.xsd"
         Width="1280" Height="720" ContentScalingMode="Vertical" Fill="true" >
 
 	<StackPanel ColorHex="#121212" Orientation="Vertical">
@@ -10,7 +9,7 @@
 		<StackPanel.settings Spacing="5" VerticalAlignment="Bottom"/>
 		<StackPanel.settings Spacing="5" />
 
-		<Button ControlColor="red" Width="150" Height="150" onClick="ExitApplication"/>
+		<Button ControlColor="red" Width="150" Height="150" onClick="TestAction"/>
 		<Button ControlColor="green"/>
 		<Button ControlColor="green"/>
 		<Button ControlColor="green"/>

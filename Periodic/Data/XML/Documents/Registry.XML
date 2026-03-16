@@ -1,5 +1,6 @@
-﻿<?xml version="1.0" encoding="utf-8" ?> 
-<AssetRegistries  xmlns="http://arctisaurora/Registry" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://arctisaurora/Registry ../Schemas/Registry.xsd">
+﻿<AssetRegistries xmlns="http://arctisaurora/AuroraRegistryTypes"
+				 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+				 xsi:schemaLocation="http://arctisaurora/AuroraRegistryTypes ../Schemas/RegistryTypeSchema.xsd" >
 	<Dictionary Name="IDMap" KeyType="xs:unsignedInt" ValueType="Type"/>
 	<Dictionary Name="meshes" KeyType="xs:string" ValueType="AVulkanMesh"/>
 	<Dictionary Name="fonts" KeyType="xs:string" ValueType="FontAsset"/>
@@ -7,4 +8,5 @@
 	<Dictionary Name="styles" KeyType="xs:string" ValueType="ControlStyle"/>
 	<Dictionary Name="uiActions" KeyType="xs:string" ValueType="Action"/>
 	<Dictionary Name="ActiveContexts" KeyType="Type" ValueType="Object"/>
+
 </AssetRegistries>
