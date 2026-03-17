@@ -300,7 +300,7 @@ namespace ArctisAurora.EngineWork.Serialization
                 else if (fieldtype.IsArray)
                 {
                     // Read array length and recurse into each element
-                    Dictionary<uint, Type> dict = AssetRegistries.GetRegistry<uint, Type>(typeof(Type));
+                    Dictionary<uint, Type> dict = AssetRegistries.GetRegistryByValueType<uint, Type>(typeof(Type));
 
                     byte[] lengthBuffer = new byte[sizeof(int)];
                     stream.Read(lengthBuffer, 0, lengthBuffer.Length);

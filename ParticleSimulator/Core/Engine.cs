@@ -209,10 +209,10 @@ namespace ArctisAurora.EngineWork
             {
                 Vector2D<float> mp = InputHandler.mousePos;
                 uiCollisionHandler.delta = mp - uiCollisionHandler.lastMousePos;
-                uiCollisionHandler.SolveHover(mp);
-                uiCollisionHandler.SolveLMB(mp);
-                uiCollisionHandler.SolveRMB(mp);
-                uiCollisionHandler.SolveDrag(mp);
+                uiCollisionHandler.SolverHover(mp);
+                //uiCollisionHandler.SolveLMB(mp);
+                //uiCollisionHandler.SolveRMB(mp);
+                //uiCollisionHandler.SolveDrag(mp);
                 uiCollisionHandler.lastMousePos = mp;
             }
         }

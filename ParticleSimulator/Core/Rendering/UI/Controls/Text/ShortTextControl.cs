@@ -18,7 +18,7 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Text
             set
             {
                 _text = value;
-                Dictionary<string, FontAsset> d = AssetRegistries.GetRegistry<string, FontAsset>(typeof(FontAsset));
+                Dictionary<string, FontAsset> d = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset));
                 fontAsset = d["default"];
 
                 float horizontalOffset = 0;

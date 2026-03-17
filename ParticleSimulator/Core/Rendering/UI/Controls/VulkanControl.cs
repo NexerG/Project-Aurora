@@ -117,7 +117,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 
             public static ControlStyle Default()
             {
-                Dictionary<string, ControlStyle> dStyles = AssetRegistries.GetRegistry<string, ControlStyle>(typeof(ControlStyle));
+                Dictionary<string, ControlStyle> dStyles = AssetRegistries.GetRegistryByValueType<string, ControlStyle>(typeof(ControlStyle));
                 return dStyles.GetValueOrDefault("default");
             }
         }
@@ -265,17 +265,19 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             }
         }
 
-        private ControlColor color;
+        private ControlColor _color;
         [A_XSDElementProperty("ControlColor", "UI", "Sets the color of the control.")]
         public ControlColor controlColor
         {
-            get => color;
+            get => _color;
             set
             {
                 string hex = EnumColorToHex(value);
                 Vector3D<float> rgb = HexToRGB(hex);
                 controlData.style.tint = rgb;
                 UpdateControlData();
+                _color = value;
+                _controlColorHex = hex;
             }
         }
         #endregion

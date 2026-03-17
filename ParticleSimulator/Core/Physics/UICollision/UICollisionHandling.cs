@@ -1,4 +1,6 @@
-﻿using ArctisAurora.EngineWork.EngineEntity;
+﻿using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.EngineWork.AssetRegistry;
+using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
 using Silk.NET.GLFW;
@@ -6,23 +8,31 @@ using Silk.NET.Maths;
 
 namespace ArctisAurora.EngineWork.Physics.UICollision
 {
-    internal unsafe class UICollisionHandling
+    public unsafe class UICollisionHandling
     {
-        internal static UICollisionHandling instance;
-        internal bool isInWindow = true;
-        internal VulkanControl dragging;
-        internal AbstractContainerControl container;
-        internal ContextMenuControl defaultContextMenu;
+        public static UICollisionHandling instance;
+        public bool isInWindow = true;
+        public VulkanControl dragging;
+        public AbstractContainerControl container;
+        public ContextMenuControl defaultContextMenu;
 
-        internal Vector2D<float> lastMousePos;
-        internal Vector2D<float> delta;
+        public Vector2D<float> lastMousePos;
+        public Vector2D<float> delta;
 
-        internal UICollisionHandling()
+        [A_ActiveContext("Hovering")]
+        public static VulkanControl hovering { get; set; }
+        [A_ActiveContext("ActiveContainer")]
+        public static VulkanControl activeContainer;
+        [A_ActiveContext("ActiveControl")]
+        public static VulkanControl activeControl;
+
+
+        public UICollisionHandling()
         {
             instance = this;
         }
 
-        public void SolveHover(Vector2D<float> mousePos)
+        /*public void SolveHover(Vector2D<float> mousePos)
         {
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
 
@@ -54,6 +64,38 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
                 mostDeep.ResolveOnEnter();
                 mostDeep.ResolveHover(mousePos);
             }
+        }*/
+
+        public void SolverHover(Vector2D<float> mousePos)
+        {
+            Vector2D<float>[] localVerts = new Vector2D<float>[4];
+
+            VulkanControl deepest = FindDeepestValid(mousePos, EntityManager.uiTree, ref localVerts);
+            if (deepest != EntityManager.uiTree && deepest != null)
+            {
+                Context.Set("Hovering", deepest);
+                deepest.ResolveHover(mousePos);
+            }
+            else
+            {
+                deepest = Context.Get<VulkanControl>("Hovering");
+                deepest.ResolveExit();
+                Context.Clear("Hovering");
+            }
+        }
+
+        private VulkanControl FindDeepestValid(Vector2D<float> mousePos, VulkanControl current, ref Vector2D<float>[] localVerts)
+        {
+            if (!SolvePositions(current, mousePos, localVerts))
+                return null;
+
+            foreach (VulkanControl child in current.GetAllChildrenEntities())
+            {
+                VulkanControl? deeper = FindDeepestValid(mousePos, child, ref localVerts);
+                if (deeper != null)
+                    return deeper;
+            }
+            return current;
         }
 
         public void SolveLMB(Vector2D<float> mousePos)
@@ -124,7 +166,6 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
             }
         }
 
-
         public void SolveDrag(Vector2D<float> mousePos)
         {
             if (dragging != null)
@@ -185,6 +226,11 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
             }
 
             return true;
+        }
+
+        public void SetContext()
+        {
+            throw new NotImplementedException();
         }
     }
 }

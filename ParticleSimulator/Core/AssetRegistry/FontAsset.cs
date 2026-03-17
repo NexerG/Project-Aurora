@@ -16,7 +16,7 @@ namespace ArctisAurora.EngineWork.AssetRegistry
         public FontAsset() { }
         public FontAsset(string name)
         {
-            Dictionary<string, FontAsset> d = AssetRegistries.GetRegistry<string, FontAsset>(typeof(FontAsset));
+            Dictionary<string, FontAsset> d = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset));
             d.Add(name, this);
         }
 
@@ -34,7 +34,7 @@ namespace ArctisAurora.EngineWork.AssetRegistry
 
         public override void LoadAsset(Asset asset, string name, string path)
         {
-            Dictionary<string, FontAsset> d = AssetRegistries.GetRegistry<string, FontAsset>(typeof(FontAsset));
+            Dictionary<string, FontAsset> d = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset));
             if (d.ContainsKey(name))
             {
                 asset = d[name];

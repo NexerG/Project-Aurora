@@ -1,10 +1,6 @@
-﻿using ArctisAurora.EngineWork.AssetRegistry;
-using ArctisAurora.EngineWork.Rendering.UI.Controls;
-using ArctisAurora.EngineWork.Serialization;
-using Silk.NET.Vulkan;
+﻿using ArctisAurora.EngineWork.Serialization;
 using System.Reflection;
 using System.Xml;
-using System.Xml.Linq;
 using System.Xml.Schema;
 
 namespace ArctisAurora.Core.AssetRegistry

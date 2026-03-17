@@ -7,6 +7,6 @@
 	<Dictionary Name="textures" KeyType="xs:string" ValueType="TextureAsset"/>
 	<Dictionary Name="styles" KeyType="xs:string" ValueType="ControlStyle"/>
 	<Dictionary Name="uiActions" KeyType="xs:string" ValueType="Action"/>
-	<Dictionary Name="ActiveContexts" KeyType="Type" ValueType="Object"/>
-
+	<Dictionary Name="ActiveContexts" KeyType="xs:string" ValueType="Object"/>
+	
 </AssetRegistries>

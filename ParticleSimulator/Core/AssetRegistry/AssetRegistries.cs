@@ -3,6 +3,7 @@ using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Serialization;
 using Assimp;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Xml.Linq;
 using static ArctisAurora.EngineWork.Rendering.UI.Controls.VulkanControl;
 
@@ -48,6 +49,7 @@ namespace ArctisAurora.EngineWork.AssetRegistry
         public static List<AssetRegistryEntry> registries { get; set; }
 
         public static Dictionary<Type, object> library = new Dictionary<Type, object>();
+        public static Dictionary<string, object> libraryByName = new Dictionary<string, object>();
 
         public static AssetRegistries assetRegistries;
 
@@ -55,22 +57,35 @@ namespace ArctisAurora.EngineWork.AssetRegistry
         {
         }
 
-        public static void AddLibraryEntry(object dict, Type t)
+        public static void AddLibraryEntry(string name, object dict, Type t)
         {
             if (library.TryGetValue(t, out var _))
             {
                 return;
             }
             library.Add(t, dict);
+            libraryByName.Add(name, dict);
         }
 
-        public static Dictionary<key, type> GetRegistry<key, type>(Type t)
+        public static Dictionary<key, type> GetRegistryByValueType<key, type>(Type t)
         {
             if (library.TryGetValue(t, out var dict))
             {
                 return (Dictionary<key, type>)dict;
             }
             return null;
+        }
+
+        public static Dictionary<key, type> GetRegistryByKeyType<key, type>(Type t)
+        {
+            var match = library.FirstOrDefault(kvp => kvp.Value.GetType().GetGenericArguments()[0] == t);
+            return match as Dictionary<key, type>;
+        }
+
+        public static Dictionary<key, type> GetRegistryByName<key, type>(string name)
+        {
+            libraryByName.TryGetValue(name, out var dict);
+            return (Dictionary<key, type>)dict;
         }
 
         public static T GetAsset<T>(string name)
@@ -119,12 +134,10 @@ namespace ArctisAurora.EngineWork.AssetRegistry
                     valueType = AnyXMLType.FindType(valueTypeStr);
                 }
 
-                //keyType = AnyXMLType.typeMap[keyTypeStr];
-                //Type valueType = AnyXMLType.typeMap[valueTypeStr];
-
                 Type dictType = typeof(Dictionary<,>).MakeGenericType(keyType, valueType);
                 object dictInstance = Activator.CreateInstance(dictType);
-                AddLibraryEntry(dictInstance, valueType);
+
+                AddLibraryEntry(name, dictInstance, valueType);
             }
             return registries;
         }
@@ -133,11 +146,11 @@ namespace ArctisAurora.EngineWork.AssetRegistry
         [A_BootstrapStage(BootstrapStage.PreGPUAPI)]
         public static void Bootstrap(BootstrapStage? stage)
         {
-            var asm = AppDomain.CurrentDomain.GetAssemblies();
             switch (stage)
             {
                 case BootstrapStage.PreGPUAPI:
                     InstantiateRegistries();
+                    var asm = AppDomain.CurrentDomain.GetAssemblies();
                     RegisterSerializableTypes(asm);
                     break;
                 case BootstrapStage.PostGPUAPI:
@@ -152,7 +165,7 @@ namespace ArctisAurora.EngineWork.AssetRegistry
         {
             var types = asm.SelectMany(a => a.GetTypes()).Where(t => t.GetCustomAttribute<@Serializable>() != null).ToList();
 
-            Dictionary<uint, Type> serializableTypes = GetRegistry<uint, Type>(typeof(Type));
+            Dictionary<uint, Type> serializableTypes = GetRegistryByValueType<uint, Type>(typeof(Type));
             foreach (var t in types)
             {
                 var attr = t.GetCustomAttribute<@Serializable>();
@@ -171,7 +184,7 @@ namespace ArctisAurora.EngineWork.AssetRegistry
 
         private static void PrepareDefaultAssets()
         {
-            Dictionary<string, AVulkanMesh> dMeshes = GetRegistry<string, AVulkanMesh>(typeof(AVulkanMesh));
+            Dictionary<string, AVulkanMesh> dMeshes = GetRegistryByValueType<string, AVulkanMesh>(typeof(AVulkanMesh));
             AVulkanMesh mesh = AVulkanMesh.LoadDefault();
             dMeshes.Add("default", mesh);
 
@@ -192,7 +205,7 @@ namespace ArctisAurora.EngineWork.AssetRegistry
             invisible.LoadInvisible();
 
             // load default style
-            Dictionary<string, ControlStyle> dStyles = GetRegistry<string, ControlStyle>(typeof(ControlStyle));
+            Dictionary<string, ControlStyle> dStyles = GetRegistryByValueType<string, ControlStyle>(typeof(ControlStyle));
             ControlStyle style = new ControlStyle();
             style.tint = new Silk.NET.Maths.Vector3D<float>(1, 1, 1);
             dStyles.Add("default", style);
