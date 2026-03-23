@@ -1,0 +1,13 @@
+{
+  "state": {
+    "now": "2026-03-13T10:00:00Z",
+    "shipments_backlog": [],
+    "stock_bins": [],
+    "truck_arrival_schedules": {
+	  "sorting_direction": "DIR-A",
+	  "pull_times": ["14:00", "18:00"],
+	  "weekdays": ["Monday", "Tuesday"]
+	},
+    "grids": []
+  }
+}
