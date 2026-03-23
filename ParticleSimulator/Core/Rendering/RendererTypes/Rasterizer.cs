@@ -6,7 +6,7 @@ using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using System.Runtime.CompilerServices;
 using static ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan.LightsourceComponent;
-using ArctisAurora.EngineWork.EngineEntity;
+using ArctisAurora.Core.ECS.EngineEntity;
 
 namespace ArctisAurora.EngineWork.Rendering.RendererTypes
 {

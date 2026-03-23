@@ -1,6 +1,6 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.EngineWork.AssetRegistry;
-using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
 using Silk.NET.GLFW;
@@ -32,40 +32,6 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
             instance = this;
         }
 
-        /*public void SolveHover(Vector2D<float> mousePos)
-        {
-            Vector2D<float>[] localVerts = new Vector2D<float>[4];
-
-            VulkanControl mostDeep = null;
-            VulkanControl top = EntityManager.uiTree;
-            if (SolvePositions(EntityManager.uiTree, mousePos, localVerts))
-            {
-                mostDeep = EntityManager.uiTree;
-                foreach (VulkanControl child in top.GetAllChildrenEntities())
-                {
-                    bool isHovering = SolvePositions(child, mousePos, localVerts);
-                    if (isHovering)
-                    {
-                        mostDeep = child;
-                    }
-                    else
-                    {
-                        child.ResolveExit();
-                    }
-                }
-            }
-            else if (EntityManager.uiTree != null)
-            {
-                EntityManager.uiTree.ResolveExit();
-            }
-            
-            if (mostDeep!= null && dragging == null)
-            {
-                mostDeep.ResolveOnEnter();
-                mostDeep.ResolveHover(mousePos);
-            }
-        }*/
-
         public void SolverHover(Vector2D<float> mousePos)
         {
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
@@ -79,23 +45,10 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
             else
             {
                 deepest = Context.Get<VulkanControl>("Hovering");
-                deepest.ResolveExit();
+                if(deepest != null)
+                    deepest.ResolveExit();
                 Context.Clear("Hovering");
             }
-        }
-
-        private VulkanControl FindDeepestValid(Vector2D<float> mousePos, VulkanControl current, ref Vector2D<float>[] localVerts)
-        {
-            if (!SolvePositions(current, mousePos, localVerts))
-                return null;
-
-            foreach (VulkanControl child in current.GetAllChildrenEntities())
-            {
-                VulkanControl? deeper = FindDeepestValid(mousePos, child, ref localVerts);
-                if (deeper != null)
-                    return deeper;
-            }
-            return current;
         }
 
         public void SolveLMB(Vector2D<float> mousePos)
@@ -172,6 +125,21 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
             {
                 dragging.ResolveDrag(lastMousePos, delta);
             }
+        }
+
+
+        private VulkanControl FindDeepestValid(Vector2D<float> mousePos, VulkanControl current, ref Vector2D<float>[] localVerts)
+        {
+            if (!SolvePositions(current, mousePos, localVerts))
+                return null;
+
+            foreach (VulkanControl child in current.GetAllChildrenEntities())
+            {
+                VulkanControl? deeper = FindDeepestValid(mousePos, child, ref localVerts);
+                if (deeper != null)
+                    return deeper;
+            }
+            return current;
         }
 
         public void IsInWindow(WindowHandle* handle, bool isInWindow)

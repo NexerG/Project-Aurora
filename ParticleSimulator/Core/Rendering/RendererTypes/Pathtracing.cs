@@ -11,7 +11,7 @@ using static ArctisAurora.EngineWork.Rendering.MeshSubComponents.MCRaytracing;
 using Silk.NET.Maths;
 using System.Runtime.CompilerServices;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
-using ArctisAurora.EngineWork.EngineEntity;
+using ArctisAurora.Core.ECS.EngineEntity;
 
 namespace ArctisAurora.EngineWork.Rendering.RendererTypes
 {

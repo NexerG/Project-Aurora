@@ -8,7 +8,7 @@ using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.Vulkan;
 using Image = Silk.NET.Vulkan.Image;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
-using ArctisAurora.EngineWork.EngineEntity;
+using ArctisAurora.Core.ECS.EngineEntity;
 
 namespace ArctisAurora.CustomEntities
 {

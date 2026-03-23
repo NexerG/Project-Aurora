@@ -1,4 +1,4 @@
-﻿using ArctisAurora.EngineWork.EngineEntity;
+﻿using ArctisAurora.Core.ECS.EngineEntity;
 
 namespace ArctisAurora.CustomEntities
 {

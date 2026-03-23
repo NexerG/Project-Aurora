@@ -8,8 +8,8 @@ using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Silk.NET.GLFW;
 using ArctisAurora.EngineWork.Rendering.UI;
-using ArctisAurora.EngineWork.EngineEntity;
 using System.Runtime.CompilerServices;
+using ArctisAurora.Core.ECS.EngineEntity;
 
 namespace ArctisAurora.EngineWork.Rendering
 {

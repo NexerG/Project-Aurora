@@ -1,5 +1,6 @@
 ﻿
 using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.Core.Rendering.UI.Controls.Text;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
@@ -27,6 +28,10 @@ namespace AuroraPeriodic
 
             WindowControl windowControl = (WindowControl)VulkanControl.ParseXML("UI.xml");
             EntityManager.uiTree = windowControl;
+            //ShortTextControl test = new ShortTextControl();
+            //test.transform.position = new Silk.NET.Maths.Vector3D<float>(640, 360, -10);
+            //test.text = "somethingBlack";
+            //EntityManager.uiTree = test;
 
             engine.Run();
         }

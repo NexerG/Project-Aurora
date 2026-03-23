@@ -125,26 +125,6 @@ namespace ArctisAurora.Core.AssetRegistry
         #region quick access
         // dictionaries
         public static readonly Dictionary<Type, string> typeMap = BuildTypeMap();
-        public static readonly Dictionary<Type, string> MemberMap = new Dictionary<Type, string>
-        {
-            { typeof(string), "xs:string" },
-            { typeof(int), "xs:int" },
-            { typeof(float), "xs:float" },
-            { typeof(double), "xs:double" },
-            { typeof(bool), "xs:boolean" },
-            { typeof(byte), "xs:byte" },
-            { typeof(short), "xs:short" },
-            { typeof(long), "xs:long" },
-            { typeof(uint), "xs:unsignedInt" },
-            { typeof(ushort), "xs:unsignedShort" },
-            { typeof(ulong), "xs:unsignedLong" },
-            { typeof(char), "xs:string" },
-            { typeof(decimal), "xs:decimal" },
-            { typeof(object), "Object" },
-            { typeof(Action), "Action" },
-            { typeof(Type), "Type" },
-            { typeof(AnyXMLType), "types:Uncategorized" }
-        };
 
         // static variables that all schemas use
         private static XmlSchemaImport actionDependency = new XmlSchemaImport
@@ -291,12 +271,9 @@ namespace ArctisAurora.Core.AssetRegistry
                 });
             }
 
-            foreach(var type in MemberMap.Values)
+            foreach (var key in AnyXMLType.typeMap.Keys)
             {
-                XmlSchemaEnumerationFacet typeElement = new XmlSchemaEnumerationFacet
-                {
-                    Value = type
-                };
+                XmlSchemaEnumerationFacet typeElement = new XmlSchemaEnumerationFacet { Value = key };
                 allTypesRestriction.Facets.Add(typeElement);
             }
 
@@ -528,7 +505,8 @@ namespace ArctisAurora.Core.AssetRegistry
         {
             Type resolved = Nullable.GetUnderlyingType(memberType) ?? memberType;
 
-            if (MemberMap.TryGetValue(resolved, out string? mapped))
+            string? mapped = AnyXMLType.typeMap.FirstOrDefault(kvp => kvp.Value == resolved).Key;
+            if (mapped != null)
             {
                 if (mapped == "Action") return $"actions:{xmlAttr?.Category}";
                 if (mapped == "types:Uncategorized") return $"allTypes:{xmlAttr?.Category}";
@@ -538,7 +516,7 @@ namespace ArctisAurora.Core.AssetRegistry
             if (typeMap.TryGetValue(resolved, out string? typeMapped))
                 return $"types:{typeMapped}";
 
-            return "xs:string"; // fallback
+            return "xs:string";
         }
 
         private static void WriteSchema(XmlSchema schema, string fileName)

@@ -1,11 +1,11 @@
-﻿using ArctisAurora.EngineWork.ComponentBehaviour;
+﻿using ArctisAurora.EngineWork;
+using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using ArctisAurora.EngineWork.Serialization;
-using Windows.Web.UI;
 
-namespace ArctisAurora.EngineWork.EngineEntity
+namespace ArctisAurora.Core.ECS.EngineEntity
 {
     [@Serializable]
     public class Entity
@@ -20,7 +20,6 @@ namespace ArctisAurora.EngineWork.EngineEntity
 
         [@Serializable]
         public List<EntityComponent> _components = new List<EntityComponent>();
-        //public List<Entity> _children = new List<Entity>();
         [NonSerializable]
         public Entity parent;
 

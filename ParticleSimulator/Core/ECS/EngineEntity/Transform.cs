@@ -2,7 +2,7 @@
 using ArctisAurora.EngineWork.Serialization;
 using Silk.NET.Maths;
 
-namespace ArctisAurora.EngineWork.EngineEntity
+namespace ArctisAurora.Core.ECS.EngineEntity
 {
     public class Transform
     {
@@ -26,12 +26,12 @@ namespace ArctisAurora.EngineWork.EngineEntity
             parent = e;
         }
 
-        public void SetRotationFromQuaternion(Quaternion<float> q)
+        public virtual void SetRotationFromQuaternion(Quaternion<float> q)
         {
             parent.MarkDirty();
         }
 
-        public void SetRotationFromVector3(Vector3D<float> _r)
+        public virtual void SetRotationFromVector3(Vector3D<float> _r)
         {
             rotation = _r;
             _changed = true;
@@ -56,15 +56,16 @@ namespace ArctisAurora.EngineWork.EngineEntity
             return rotation;
         }
 
-        public void SetWorldPosition(Vector3D<float> newPos)
+        public virtual void SetWorldPosition(Vector3D<float> newPos)
         {
             position = newPos;
             _changed = true;
             parent.MarkDirty();
         }
 
-        public void MoveToPosition(Vector3D<float> newPos)
+        public virtual void MoveToPosition(Vector3D<float> newPos)
         {
+            SetWorldPosition(newPos);
             Vector3D<float> delta = newPos - position;
             foreach (Entity child in parent.children)
             {
@@ -73,14 +74,18 @@ namespace ArctisAurora.EngineWork.EngineEntity
             parent.MarkDirty();
         }
 
-        public void SetLocalPosition(Vector3D<float> delta)
+        public virtual void SetLocalPosition(Vector3D<float> delta)
         {
             _changed = true;
             position += delta;
+            /*foreach (Entity child in parent.children)
+            {
+                child.transform.SetLocalPosition(position);
+            }*/
             parent.MarkDirty();
         }
 
-        public void MoveLocalPosition(Vector3D<float> delta)
+        public virtual void MoveLocalPosition(Vector3D<float> delta)
         {
             position += delta;
             foreach (Entity child in parent.children)
@@ -101,14 +106,14 @@ namespace ArctisAurora.EngineWork.EngineEntity
             return scale;
         }
 
-        public void SetLocalScale(Vector3D<float> s)
+        public virtual void SetLocalScale(Vector3D<float> s)
         {
             scale = s;
             _changed = true;
             parent.MarkDirty();
         }
 
-        public void SetWorldScale(Vector3D<float> s)
+        public virtual void SetWorldScale(Vector3D<float> s)
         {
             scale = s;
             _changed = true;

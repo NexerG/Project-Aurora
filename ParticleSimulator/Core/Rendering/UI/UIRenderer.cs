@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
+using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
-using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using Silk.NET.Maths;

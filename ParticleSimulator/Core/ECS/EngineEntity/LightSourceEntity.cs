@@ -2,7 +2,7 @@
 using Silk.NET.Maths;
 using System.Numerics;
 
-namespace ArctisAurora.EngineWork.EngineEntity
+namespace ArctisAurora.Core.ECS.EngineEntity
 {
     internal class LightSourceEntity : Entity
     {

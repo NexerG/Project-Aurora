@@ -7,7 +7,7 @@ using Silk.NET.Maths;
 namespace ArctisAurora.Core.Rendering.UI.Controls.Text
 {
     [A_XSDType("ShortText", "UI", AllowedChildren = typeof(IXMLChild_UI), MaxChildren = 1)]
-    public class ShortTextControl : VulkanControl
+    public class ShortTextControl : TextControl
     {
         private string _text = string.Empty;
         public FontAsset fontAsset;
@@ -36,8 +36,8 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Text
                     float halfWidth = (gAsset.glyphWidth * fontSize) * 0.5f;
                     horizontalOffset += (gAsset.leftSideOffset * (float)fontSize) + halfWidth;
                     Vector3D<float> glyphPos = transform.position + new Vector3D<float>(horizontalOffset, verticalOffset, 0);
-                    GlyphControl glyph = new GlyphControl(text[i], glyphPos, fontAsset, fontSize);
-                    children.Add(glyph);
+                    GlyphControl glyph = new GlyphControl(text[i], fontAsset, fontSize);
+                    AddChild(glyph);
 
                     horizontalOffset += (gAsset.advanceWidth * (float)fontSize) - halfWidth - (gAsset.leftSideOffset * (float)fontSize);
                 }
@@ -56,7 +56,7 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Text
         public ShortTextControl()
         {
             controlData.style.tint = new Vector3D<float>(1, 1, 1);
-            fontSize = 96;
+            fontSize = 24;
         }
     }
 

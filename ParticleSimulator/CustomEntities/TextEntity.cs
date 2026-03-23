@@ -1,6 +1,6 @@
-﻿using ArctisAurora.Core.Rendering.UI.Controls.Text;
+﻿using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Rendering.UI.Controls.Text;
 using ArctisAurora.EngineWork.AssetRegistry;
-using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.UI;
 using Silk.NET.Maths;
 

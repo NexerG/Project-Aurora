@@ -1,5 +1,5 @@
-﻿using ArctisAurora.EngineWork.AssetRegistry;
-using ArctisAurora.EngineWork.EngineEntity;
+﻿using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.Physics.UICollision;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Modules;

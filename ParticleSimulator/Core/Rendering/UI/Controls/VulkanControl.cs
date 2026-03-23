@@ -1,6 +1,6 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.EngineWork.AssetRegistry;
-using ArctisAurora.EngineWork.EngineEntity;
 using ArctisAurora.EngineWork.Physics.UICollision;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
@@ -19,89 +19,6 @@ using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 {
-    /*#region control_attributes
-    /// <summary>
-    /// Used to create an element. Example: <Button></Button>
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Class, Inherited = false)]
-    public sealed class A_VulkanControlAttribute : Attribute
-    {
-        public string Name { get; }
-        public A_VulkanControlAttribute(string name)
-        {
-            Name = name;
-        }
-    }
-
-    /// <summary>
-    /// Used to create a property for a vulkan control element. Example: <Button OnEnter="[event name]"/>
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Event | AttributeTargets.Property, Inherited = false)]
-    public sealed class A_VulkanControlPropertyAttribute: Attribute
-    {
-        public string Name { get; }
-        public string Description { get; set; } = "";
-
-        public A_VulkanControlPropertyAttribute(string name)
-        {
-            Name = name;
-        }
-
-        public A_VulkanControlPropertyAttribute(string name, string description)
-        {
-            Name = name;
-            Description = description;
-        }
-    }
-
-    /// <summary>
-    /// Used to create an entry for a vulkan control element that shouldnt be used as a general element. Example: <Grid> <Grid.RowSettings/> </Grid>
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Class, Inherited = false)]
-    public sealed class A_VulkanControlElementAttribute : Attribute
-    {
-        public string Name { get; }
-        public string Description { get; set; } = "";
-        public A_VulkanControlElementAttribute(string name)
-        {
-            Name = name;
-        }
-        public A_VulkanControlElementAttribute(string name, string description)
-        {
-            Name = name;
-            Description = description;
-        }
-    }
-
-    /// <summary>
-    /// Used to create an enum for vulkan controls. Example: <Button Color="Red"/>
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Enum, Inherited = false)]
-    public sealed class A_VulkanEnumAttribute : Attribute
-    {
-        public string Name { get; }
-        public string Description { get; set; } = "";
-
-        public A_VulkanEnumAttribute(string name)
-        {
-            Name = name;
-        }
-
-        public A_VulkanEnumAttribute(string name, string description)
-        {
-            Name = name;
-            Description = description;
-        }
-    }
-    
-    /// <summary>
-    /// Used to create an action for a vulkan control. Example: <Button OnClick="[event name]"/>
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Method, Inherited = false)]
-    public sealed class A_VulkanActionAttribute : Attribute
-    { }
-    #endregion*/
-
     public interface IXMLChild_UI
     { }
 
@@ -389,7 +306,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         public override void AddChild(Entity entity)
         {
             //vulkan control only
-
             if (entity is not VulkanControl control) throw new Exception("Child entity must be a VulkanControl");
 
             if (children.Count > 0)
@@ -406,12 +322,12 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             Vector3D<float> transformedLoc = transform.position;
             if (control is not AbstractContainerControl container)
             {
-                // map chil horizontal and vertical pos to parent size
+                // map child horizontal and vertical pos to parent size
                 transformedLoc.X += (control.horizontalPosition - 0.5f) * width;
                 transformedLoc.Y += (control.verticalPosition - 0.5f) * height;
                 //transformedLoc.Z = transform.position.Z;
             }
-            control.transform.SetWorldPosition(transformedLoc);
+            control.transform.MoveToPosition(transformedLoc);
             control.SetControlScale(new Vector2D<float>(width, height));
         }
 
@@ -716,7 +632,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
                 Type type = AnyXMLType.FindType(element.Name.LocalName);
                 var control = Activator.CreateInstance(type);
                 ResolveAttributes(element, control);
-                if(!typeof(VulkanControl).IsAssignableFrom(type))
+                if (!typeof(VulkanControl).IsAssignableFrom(type))
                 {
                     FieldInfo field = topControl.GetType()
                         .GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)

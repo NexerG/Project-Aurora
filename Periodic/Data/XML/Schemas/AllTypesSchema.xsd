@@ -44,12 +44,11 @@
       <xs:enumeration value="xs:unsignedInt" />
       <xs:enumeration value="xs:unsignedShort" />
       <xs:enumeration value="xs:unsignedLong" />
-      <xs:enumeration value="xs:string" />
+      <xs:enumeration value="xs:char" />
       <xs:enumeration value="xs:decimal" />
-      <xs:enumeration value="Object" />
       <xs:enumeration value="Action" />
       <xs:enumeration value="Type" />
-      <xs:enumeration value="types:Uncategorized" />
+      <xs:enumeration value="Object" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="UI">

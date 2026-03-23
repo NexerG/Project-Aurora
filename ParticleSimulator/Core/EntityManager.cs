@@ -1,4 +1,4 @@
-﻿using ArctisAurora.EngineWork.EngineEntity;
+﻿using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable;

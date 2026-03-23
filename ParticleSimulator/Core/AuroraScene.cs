@@ -1,4 +1,4 @@
-﻿using ArctisAurora.EngineWork.EngineEntity;
+﻿using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.EngineWork.Serialization;
 using Assimp;
 using System;

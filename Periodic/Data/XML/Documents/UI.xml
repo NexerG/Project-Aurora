@@ -1,7 +1,7 @@
 ﻿<Window xmlns="http://arctisaurora/AuroraUITypes"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://arctisaurora/UI ../Schemas/UITypeSchema.xsd"
-        Width="1280" Height="720" ContentScalingMode="Vertical" Fill="true" >
+        Width="1280" Height="720" ContentScalingMode="Vertical" Fill="true" ColorHex="#000000">
 
 	<StackPanel ColorHex="#121212" Orientation="Vertical">
 		<StackPanel.settings Spacing="5" VerticalAlignment="Bottom"/>

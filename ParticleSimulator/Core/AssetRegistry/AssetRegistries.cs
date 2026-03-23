@@ -16,11 +16,6 @@ namespace ArctisAurora.EngineWork.AssetRegistry
         public abstract void LoadDefault();
     }
 
-    public interface IActiveObject
-    {
-
-    }
-
     public enum RegistryStage
     {
         PreXML,
