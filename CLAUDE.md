@@ -1,11 +1,41 @@
-# Engine — Context File
+# MyEngine — Solution Briefing
+**Stack:** C#, .NET | Silk.NET.Vulkan, Silk.NET.GLFW | Visual Studio 2026 | GitHub
+
+## Solution Structure
+| Project | Purpose | Status |
+|---------|---------|--------|
+| `Engine` | Core game engine | Active — see Engine/CLAUDE.md |
+| `Editor` | Visual editor built on Engine | Early stage |
+| `TextEditor` | Obsidian/Notion-style note app | Planning |
+| `Hackathon` | Standalone hackathon project | Active |
+
+## Shared Conventions
+- **Style:** Mix of OOP and data-oriented (ECS-first for runtime, OOP for tooling/editor)
+- **Naming:** PascalCase types, camelCase locals, `I`-prefix interfaces
+- **No raw resource management** — wrap Vulkan handles in disposable C# types
+- **GitHub branching:** [add your branch strategy here if any]
+
+## Techdebt
+This paragraph will describe of the known issues with the engine that at some point will be tried to fix
+
+Engine's ECS is currently object based and not data (struct (or even record)) based system
+Vulkan renderer currently renders only UI (rendering modules not yet ready)
+Hardcoded absolute paths in default asset preparation
+undefined bootstrap execution order
+unfinished or unsafe threading
+
+## Projects
+
+
+
+### Engine — Context File
 **Language:** C# | **Libs:** Silk.NET.Vulkan, Silk.NET.GLFW
 
-## Architecture Overview
+#### Architecture Overview
 Mixed OOP + ECS. ECS drives runtime simulation; OOP used for engine services and tooling boundaries.
 ECS design is still being settled — avoid refactoring the entity/component model without asking first.
 
-## Systems & Status
+#### Systems & Status
 | System | Status | Notes |
 |--------|--------|-------|
 | Rendering | ✅ Stable | Full Vulkan pipeline rendering UI. Needs CPU-side logic work. |
@@ -15,7 +45,7 @@ ECS design is still being settled — avoid refactoring the entity/component mod
 | Filing | 🔧 In progress | File I/O utilities |
 | Threading | 🔧 In progress | Basic threading, design not finalised |
 
-## Engine Loop & Threading — Key Facts
+#### Engine Loop & Threading — Key Facts
 - **3 threads:** main thread (engine tick), physics thread, render thread
 - Threads are synchronised with `AutoResetEvent` pairs — not locks or mutexes:
   - `t_physics_start` / `t_physics_end` — main signals physics, waits for it to finish
@@ -38,7 +68,7 @@ ECS design is still being settled — avoid refactoring the entity/component mod
 - **Do not** move entity logic into the render or physics threads
 - **Physics thread design is unsettled** — don't suggest physics system changes without asking
 
-## Input System — Key Facts
+#### Input System — Key Facts
 - `InputHandler` is a singleton (`InputHandler.instance`) bootstrapped at `PreGPUAPI`
   via `InputHandler.Bootstrap()` — this is also where `Engine.inputHandler` is assigned,
   so it is never null by the time `Init()` runs
@@ -62,7 +92,7 @@ ECS design is still being settled — avoid refactoring the entity/component mod
 - Mouse and keyboard share the `Keys` enum — mouse buttons are `MouseLeft`, `MouseRight` etc.
 - **Do not** add new input processing outside `InputHandler` — all input flows through here
 
-## Bootstrapper — Key Facts
+#### Bootstrapper — Key Facts
 - `Bootstrapper.Bootstrap(stage)` reflects over all loaded assemblies and invokes every
   `public static` method tagged with `[A_BootstrapStage(stage)]` for the given stage
 - `[A_BootstrapStage]` is `AllowMultiple = true` — one method can register for multiple
@@ -74,20 +104,20 @@ ECS design is still being settled — avoid refactoring the entity/component mod
   marked `NOTIMPLEMENTED`
 - Execution order within a stage is **undefined** — reflection order, not declaration order
 
-## Bootstrapper — Planned Rework
+#### Bootstrapper — Planned Rework
 - Goal: bootstrap order and configuration driven by XSD/XML, not hardcoded stage enums
 - Methods to be bootstrapped will still be marked by an attribute
 - Sequencing and dependencies will be declared in XML and executed via reflection
 - **Do not** suggest adding new `BootstrapStage` enum values — the enum is being replaced
 - **Do not** assume current stage ordering is intentional — it is a temporary design
 
-## Rendering — Key Facts
+#### Rendering — Key Facts
 The full Vulkan pipeline is working and rendering UI:
 - Instance, device, swapchain, render passes, pipelines, shader loading — all present
 - **Current pain point:** CPU-side widget logic — positioning, parenting, children, scaling
 - Do NOT redesign the Vulkan pipeline; focus help on the scene/widget graph layer above it
 
-## Asset Registry — Key Facts
+#### Asset Registry — Key Facts
 - `AssetRegistries` is a **type-indexed library of typed dictionaries** — each registry
   is a `Dictionary<TKey, TValue>` stored in two parallel lookups:
   - `library`: keyed by **value Type** (e.g. `typeof(AVulkanMesh)`)
@@ -105,11 +135,11 @@ The full Vulkan pipeline is working and rendering UI:
   stored as `Dictionary<uint, Type>` with hashed IDs
 - **Do not** assume direct field-based asset access — always go through the registry API
 
-## ECS — Key Facts
+#### ECS — Key Facts
 - Architecture is not finalised — ask before assuming storage strategy
 - Components and entities exist; query/iteration pattern TBD
 
-## XSD / Data Layer — Key Facts
+#### XSD / Data Layer — Key Facts
 - `XSDGenerator` reflects over all loaded assemblies at runtime and emits `.xsd` schema
   files to `Paths.XMLSCHEMAS` — fully automatic, no manual schema authoring
 - **Three attribute types drive everything:**
@@ -134,15 +164,41 @@ The full Vulkan pipeline is working and rendering UI:
 - **Do not** add new primitive mappings to `MemberMap`/`AnyXMLType.typeMap` separately —
   they must be kept in sync manually (both maps exist, one for each direction)
   
-## What Claude Should NOT Do
+### What Claude Should NOT Do
 - Don't refactor the Vulkan pipeline internals
 - Don't assume a specific ECS storage model
 - Don't replace XSD with another serialization approach unprompted
 - Don't introduce new NuGet dependencies without flagging it first
 
-## Current TODO
-- [ ] UI widget parenting & children logic
-- [ ] Widget scaling / anchoring
-- [ ] Positioning system (relative, absolute?)
-- [ ] Threading design
-- [ ] ECS query/iteration API
+### Editor
+Depends on: **Engine project**
+
+#### Purpose
+Visual editor for MyEngine. Built on top of the Engine — uses the same ECS, rendering, and asset systems.
+
+#### Status
+Early stage. Core editor shell is being set up.
+
+#### Architecture Notes
+- Editor is a consumer of the Engine, not a fork of it
+- UI is rendered through Engine's Vulkan pipeline
+- [Add: docking, panels, tool windows — describe once they exist]
+
+#### What Claude Should Know
+- Editor-specific code lives here; Engine internals are in Engine/CLAUDE.md
+- Don't duplicate engine logic in the editor — extend via engine APIs
+
+### TextEditor — Context File
+Obsidian/Notion-style note-taking and document app.
+
+#### Status
+Planning phase.
+
+#### Goals
+- Rich text editing
+- [Add: linked notes, graph view, tags, blocks — whatever you plan]
+- [Add: file format — markdown? proprietary?]
+
+#### Architecture Notes
+- [Does this use the Engine renderer, or its own UI stack?]
+- [Desktop app? Embedded? Cross-platform target?]

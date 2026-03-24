@@ -1,0 +1,3 @@
+@echo off
+set SOLUTION_DIR=%~dp0..
+powershell -ExecutionPolicy Bypass -Command "$root = '%SOLUTION_DIR%\'; Get-ChildItem -Path $root -Recurse -Filter '*.cs' | Select-String '^namespace ' | ForEach-Object { $ns = $_.Line.Trim() -replace '^namespace ',''; $path = $_.Path -replace [regex]::Escape($root),''; $ns + ' -> ' + $path } | Sort-Object -Unique | Out-File ($root + 'NAMESPACES.md') -Encoding UTF8"

@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AuroraEditor\AuroraEditor.csproj" />
+    <ProjectReference Include="..\ParticleSimulator\ArctisAurora.csproj" />
+    <ProjectReference Include="..\Periodic\Periodic.csproj" />
+  </ItemGroup>
+
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="&quot;$(ProjectDir)GenerateNamespaces.cmd&quot; &quot;$(SolutionDir)..\&quot;" />
+  </Target>
+
+</Project>
