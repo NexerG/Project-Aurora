@@ -1,10 +1,8 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
 using ArctisAurora.Core.ECS.EngineEntity;
-using ArctisAurora.EngineWork.Rendering.UI.Controls;
-using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
 using Silk.NET.Maths;
 
-namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
+namespace ArctisAurora.Core.UISystem.Controls.Containers
 {
     [A_XSDType("StackPanel", "UI", AllowedChildren = typeof(IXMLChild_UI))]
     public class StackPanelControl : AbstractContainerControl

@@ -1,4 +1,6 @@
-﻿using Silk.NET.GLFW;
+﻿using ArctisAurora.Core.UISystem.Controls;
+using ArctisAurora.EngineWork.Rendering;
+using Silk.NET.GLFW;
 using Silk.NET.Maths;
 using System;
 using System.Collections.Generic;
@@ -6,7 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Interactable
+namespace ArctisAurora.Core.UISystem.Controls.Interactable
 {
     public class ResizeableControl : PanelControl
     {

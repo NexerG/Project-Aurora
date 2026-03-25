@@ -1,13 +1,5 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
 using ArctisAurora.EngineWork;
-using ArctisAurora.EngineWork.Rendering.UI.Controls;
-using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
-using Silk.NET.GLFW;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AuroraEditor.EditorProgram.UIFunctions
 {

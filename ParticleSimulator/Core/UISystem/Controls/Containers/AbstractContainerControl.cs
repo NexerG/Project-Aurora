@@ -1,6 +1,6 @@
 ﻿using ArctisAurora.Core.ECS.EngineEntity;
 
-namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
+namespace ArctisAurora.Core.UISystem.Controls.Containers
 {
     public abstract class AbstractContainerControl : PanelControl
     {

@@ -1,5 +1,5 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
-using ArctisAurora.EngineWork.Rendering.UI;
+using ArctisAurora.Core.UISystem;
 using ArctisAurora.EngineWork.Serialization;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;

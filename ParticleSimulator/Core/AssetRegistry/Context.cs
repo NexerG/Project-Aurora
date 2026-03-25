@@ -1,8 +1,6 @@
 ﻿using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.AssetRegistry;
-using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using System.Reflection;
-using Windows.ApplicationModel.VoiceCommands;
 
 namespace ArctisAurora.Core.AssetRegistry
 {

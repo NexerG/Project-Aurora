@@ -1,6 +1,6 @@
 ﻿using ArctisAurora.EngineWork.Serialization;
 
-namespace ArctisAurora.EngineWork.Rendering.UI
+namespace ArctisAurora.Core.UISystem
 {
     [@Serializable]
     public class Glyph

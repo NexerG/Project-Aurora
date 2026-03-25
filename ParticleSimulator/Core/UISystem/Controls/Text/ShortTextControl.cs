@@ -1,10 +1,9 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork.AssetRegistry;
-using ArctisAurora.EngineWork.Rendering.UI;
-using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using Silk.NET.Maths;
 
-namespace ArctisAurora.Core.Rendering.UI.Controls.Text
+namespace ArctisAurora.Core.UISystem.Controls.Text
 {
     [A_XSDType("ShortText", "UI", AllowedChildren = typeof(IXMLChild_UI), MaxChildren = 1)]
     public class ShortTextControl : TextControl

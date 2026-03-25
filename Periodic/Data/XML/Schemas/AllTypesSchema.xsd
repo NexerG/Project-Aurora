@@ -3,21 +3,25 @@
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:simpleType name="Uncategorized">
     <xs:restriction base="xs:string">
-      <xs:enumeration value="ShortText" />
-      <xs:enumeration value="LevelScaling" />
-      <xs:enumeration value="HorizontalAlignment" />
-      <xs:enumeration value="VeticalAlignment" />
-      <xs:enumeration value="StackPanel" />
       <xs:enumeration value="Panel" />
       <xs:enumeration value="Window" />
+      <xs:enumeration value="ShortText" />
+      <xs:enumeration value="TextControl" />
       <xs:enumeration value="Button" />
       <xs:enumeration value="DockMode" />
       <xs:enumeration value="Dock" />
+      <xs:enumeration value="GridSizeMode" />
+      <xs:enumeration value="RowDefinition" />
+      <xs:enumeration value="ColumnDefinition" />
+      <xs:enumeration value="GridCell" />
       <xs:enumeration value="GridList" />
-      <xs:enumeration value="Orientation" />
+      <xs:enumeration value="StackPanel" />
       <xs:enumeration value="ControlColor" />
       <xs:enumeration value="FillMode" />
+      <xs:enumeration value="HorizontalAlignment" />
+      <xs:enumeration value="VeticalAlignment" />
       <xs:enumeration value="ContentScalingModeEnum" />
+      <xs:enumeration value="Orientation" />
       <xs:enumeration value="ActiveContext" />
       <xs:enumeration value="IParseableTypes" />
       <xs:enumeration value="AVulkanMesh" />
@@ -50,21 +54,25 @@
   </xs:simpleType>
   <xs:simpleType name="UI">
     <xs:restriction base="xs:string">
-      <xs:enumeration value="ShortText" />
-      <xs:enumeration value="LevelScaling" />
-      <xs:enumeration value="HorizontalAlignment" />
-      <xs:enumeration value="VeticalAlignment" />
-      <xs:enumeration value="StackPanel" />
       <xs:enumeration value="Panel" />
       <xs:enumeration value="Window" />
+      <xs:enumeration value="ShortText" />
+      <xs:enumeration value="TextControl" />
       <xs:enumeration value="Button" />
       <xs:enumeration value="DockMode" />
       <xs:enumeration value="Dock" />
+      <xs:enumeration value="GridSizeMode" />
+      <xs:enumeration value="RowDefinition" />
+      <xs:enumeration value="ColumnDefinition" />
+      <xs:enumeration value="GridCell" />
       <xs:enumeration value="GridList" />
-      <xs:enumeration value="Orientation" />
+      <xs:enumeration value="StackPanel" />
       <xs:enumeration value="ControlColor" />
       <xs:enumeration value="FillMode" />
+      <xs:enumeration value="HorizontalAlignment" />
+      <xs:enumeration value="VeticalAlignment" />
       <xs:enumeration value="ContentScalingModeEnum" />
+      <xs:enumeration value="Orientation" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Context">

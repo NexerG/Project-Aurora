@@ -1,12 +1,7 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
-using ArctisAurora.Core.Filing;
-using ArctisAurora.Core.Rendering.UI.Controls.Text;
+using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering.Modules;
-using ArctisAurora.EngineWork.Rendering.UI;
-using ArctisAurora.EngineWork.Rendering.UI.Controls;
-using ArctisAurora.EngineWork.Serialization;
-using Silk.NET.Maths;
 
 namespace AuroraEditor
 {

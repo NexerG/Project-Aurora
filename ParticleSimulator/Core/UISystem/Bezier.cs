@@ -1,7 +1,7 @@
 ﻿using ArctisAurora.EngineWork.Serialization;
 using Silk.NET.Maths;
 
-namespace ArctisAurora.EngineWork.Rendering.UI
+namespace ArctisAurora.Core.UISystem
 {
     [@Serializable]
     internal class Bezier

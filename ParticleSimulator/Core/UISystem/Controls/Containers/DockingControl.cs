@@ -1,8 +1,10 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.Core.UISystem.Controls;
+using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Physics.UICollision;
 using Silk.NET.Maths;
 
-namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
+namespace ArctisAurora.Core.UISystem.Controls.Containers
 {
     [A_XSDType("DockMode", "UI")]
     public enum DockMode

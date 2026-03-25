@@ -3,7 +3,7 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.EngineWork.AssetRegistry;
 using Silk.NET.Maths;
 
-namespace ArctisAurora.EngineWork.Rendering.UI.Controls
+namespace ArctisAurora.Core.UISystem.Controls
 {
 
     [A_XSDType("Window", "UI", AllowedChildren = typeof(IXMLChild_UI), MaxChildren = 1)]

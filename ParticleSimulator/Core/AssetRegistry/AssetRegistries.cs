@@ -5,7 +5,7 @@ using Assimp;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Xml.Linq;
-using static ArctisAurora.EngineWork.Rendering.UI.Controls.VulkanControl;
+using static ArctisAurora.Core.UISystem.Controls.VulkanControl;
 
 namespace ArctisAurora.EngineWork.AssetRegistry
 {

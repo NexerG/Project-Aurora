@@ -1,10 +1,10 @@
-﻿using ArctisAurora.EngineWork.Rendering.Helpers;
+﻿using ArctisAurora.Core.UISystem.Controls;
+using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
-using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
-using static ArctisAurora.EngineWork.Rendering.UI.Controls.VulkanControl;
+using static ArctisAurora.Core.UISystem.Controls.VulkanControl;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 
 namespace ArctisAurora.EngineWork.Rendering.Modules

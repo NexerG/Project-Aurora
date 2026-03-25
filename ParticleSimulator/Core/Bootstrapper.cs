@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyModel;
 using System.Reflection;
 using System.Security.Cryptography.Pkcs;
 using System.Xml.Linq;
-using static ArctisAurora.EngineWork.Rendering.UI.Controls.VulkanControl;
+using static ArctisAurora.Core.UISystem.Controls.VulkanControl;
 
 namespace ArctisAurora.EngineWork
 {

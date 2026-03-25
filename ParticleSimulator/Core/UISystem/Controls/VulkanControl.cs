@@ -1,10 +1,11 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
 using ArctisAurora.Core.ECS.EngineEntity;
-using ArctisAurora.Core.UISystem;
+using ArctisAurora.Core.UISystem.Controls.Containers;
+using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.Physics.UICollision;
+using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Helpers;
-using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
 using ArctisAurora.EngineWork.Serialization;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
@@ -15,7 +16,7 @@ using System.Runtime.InteropServices;
 using System.Xml.Linq;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
-namespace ArctisAurora.EngineWork.Rendering.UI.Controls
+namespace ArctisAurora.Core.UISystem.Controls
 {
     public interface IXMLChild_UI
     { }
@@ -283,7 +284,11 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         [A_XSDElementProperty("DockMode", "UI", "Sets the control's dock mode to the desired setting. Fill - fills the entire area.")]
         public DockMode dockMode;
 
-        //public VulkanControl? child;
+        [A_XSDElementProperty("Grid.Column", "UI", "If present in a grid sets the control's grid column.")]
+        public int GridColumn = 0;
+
+        [A_XSDElementProperty("Grid.Row", "UI", "If present in a grid sets the control's grid row.")]
+        public int GridRow = 0;
         #endregion
 
         #region ---- styling ----

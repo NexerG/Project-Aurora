@@ -3,6 +3,22 @@
         xsi:schemaLocation="http://arctisaurora/UI ../Schemas/UITypeSchema.xsd"
         Width="1280" Height="720" ContentScalingMode="Vertical" Fill="true" ColorHex="#1f6331">
 
+	<GridList ColorHex="c2961d">
+		<RowDefinition SizeMode="Star"/>
+		<RowDefinition SizeMode="Star"/>
+		<RowDefinition SizeMode="Star"/>
+		<ColumnDefinition SizeMode="Star"/>
+		<ColumnDefinition SizeMode="Star"/>
+		<ColumnDefinition SizeMode="Star"/>
+
+		<Button ControlColor="black" Grid.Column="0" Grid.Row="0">
+			<TextControl FontSize="24" Text="BBBBBBBB"/>
+		</Button>
+		<Button ControlColor="black" Grid.Column="1" Grid.Row="1"/>
+		<Button ControlColor="black" Grid.Column="2" Grid.Row="2"/>
+	</GridList>
+		
+	<!--
 	<StackPanel ColorHex="#c2961d" Orientation="Vertical" Spacing="5">
 		<StackPanel ColorHex="#257578" Orientation="Horizontal" Spacing="5">
 			<Button ControlColor="red" Width="150" Height="150" onClick="TestAction"/>
@@ -21,5 +37,5 @@
 			<ShortText ControlColor="white" Text="BBB&lt;gg&gt;after" />
 		</StackPanel>
 	</StackPanel>
-
+	-->
 </Window>

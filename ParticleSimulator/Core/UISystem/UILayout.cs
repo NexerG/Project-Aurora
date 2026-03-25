@@ -1,6 +1,6 @@
-﻿using ArctisAurora.EngineWork.Rendering.UI.Controls;
+﻿using ArctisAurora.Core.UISystem.Controls;
 using Silk.NET.Maths;
-using static ArctisAurora.EngineWork.Rendering.UI.Controls.VulkanControl;
+using static ArctisAurora.Core.UISystem.Controls.VulkanControl;
 
 namespace ArctisAurora.Core.UISystem
 {

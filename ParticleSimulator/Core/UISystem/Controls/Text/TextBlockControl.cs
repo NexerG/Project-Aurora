@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ArctisAurora.Core.Rendering.UI.Controls.Text
+namespace ArctisAurora.Core.UISystem.Controls.Text
 {
     internal class TextBlockControl
     {
