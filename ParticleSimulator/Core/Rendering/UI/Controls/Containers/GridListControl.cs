@@ -1,11 +1,9 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
 using Silk.NET.Maths;
-using static ArctisAurora.Core.Rendering.UI.Controls.Containers.StackPanelLevelSettings;
-using HorizontalAlignment = ArctisAurora.Core.Rendering.UI.Controls.Containers.StackPanelLevelSettings.HorizontalAlignment;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
 {
-    [A_XSDType("GridListRowSettings", "UI", description:"Settings for grid's rows")]
+    /*[A_XSDType("GridListRowSettings", "UI", description:"Settings for grid's rows")]
     public class GridListRowSettings
     {
         [A_XSDElementProperty("Bounds", "UI", "Level bounds for the grid's rows")]
@@ -29,7 +27,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
         public HorizontalAlignment horizontalAlignment = HorizontalAlignment.Left;
         [A_XSDElementProperty("VerticalAlignment", "UI", "Vertical alignment of the grid's columns")]
         public VerticalAlignment verticalAlignment = VerticalAlignment.Center;
-    }
+    }*/
 
 
     [A_XSDType("GridList", "UI", AllowedChildren = typeof(IXMLChild_UI))]
@@ -50,7 +48,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
         [A_XSDElementProperty("VerticalMargin", "UI")]
         public float verticalMargin = 10;
 
-        public override void AddControlToContainer(VulkanControl control)
+        /*public override void AddControlToContainer(VulkanControl control)
         {
             //organize the list in a alpahebetical order and then position them in a grid
             //children = children.OrderBy(c => c.name).ToList();
@@ -78,7 +76,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
         public override void RecalculateLayout()
         {
             //throw new NotImplementedException();
-        }
+        }*/
 
         public void UpdateLayout()
         {

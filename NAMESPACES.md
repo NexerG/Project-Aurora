@@ -15,6 +15,7 @@ ArctisAurora.Core.Rendering.UI.Controls.Text -> C:\Projects-Repositories\Aurora\
 ArctisAurora.Core.Rendering.UI.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Rendering\UI\Controls\Text\TextBlockControl.cs
 ArctisAurora.Core.Rendering.UI.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Rendering\UI\Controls\Text\TextControl.cs
 ArctisAurora.Core.Rendering.UI.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Rendering\UI\Controls\Text\TextEditorControl.cs
+ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\UILayout.cs
 ArctisAurora.CustomEntities -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\CustomEntities\Layer.cs
 ArctisAurora.CustomEntities -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\CustomEntities\SimulatorEntity.cs
 ArctisAurora.CustomEntities -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\CustomEntities\TestingEntity.cs

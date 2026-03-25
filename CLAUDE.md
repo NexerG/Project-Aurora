@@ -1,6 +1,15 @@
 # MyEngine — Solution Briefing
 **Stack:** C#, .NET | Silk.NET.Vulkan, Silk.NET.GLFW | Visual Studio 2026 | GitHub
 
+## Instructions
+This project is a C# game engine called Aurora using Silk.NET/Vulkan/GLFW.
+Always check CLAUDE.md and NAMESPACES.md before suggesting new code.
+Always check DECISIONS.md before suggesting architectural changes.
+Current focus is in TODO.md.
+Use deep thinking for architectural problems. Try to explain architectural questions - why they we're made as opposed to another solution.
+When given to generate code DO NOT copy the whole file. Only write what (or if needs to be added where) needs to be changed and with what new code. When creating new classes write them out in entirety (without includes). Skip includes unless they're from a new nuget package.
+If can use xml - use xml. NO JSON or other similar formats
+
 ## Solution Structure
 | Project | Purpose | Status |
 |---------|---------|--------|

@@ -1,59 +1,11 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.EngineWork.Rendering.UI.Controls;
 using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
 {
-    [A_XSDType("StackPanel.settings", "UI", description:"Settings for a level of the StackPanel")]
-    public class StackPanelLevelSettings
-    {
-        #region enums
-        [A_XSDType("LevelScaling", "UI")]
-        public enum LevelBounds
-        {
-            ScaleToContent, Fill, HardScale
-        }
-
-        [A_XSDType("HorizontalAlignment", "UI")]
-        public enum HorizontalAlignment
-        {
-            Center, Left, Right
-        }
-
-        [A_XSDType("VeticalAlignment", "UI")]
-        public enum VerticalAlignment
-        {
-            Top, Center, Bottom
-        }
-        #endregion
-
-        [A_XSDElementProperty("Height", "UI", "Sets the height of the level when using scalar.")]
-        public float height = 0;
-        [A_XSDElementProperty("Width", "UI", "Sets the width of the level when using scalar.")]
-        public float width = 0;
-        [A_XSDElementProperty("Spacing", "UI")]
-        public float spacing = 0;
-
-        [A_XSDElementProperty("WidthScaling", "UI", "Sets how the width scales on this level")]
-        public LevelBounds widthScaling = LevelBounds.ScaleToContent;
-        [A_XSDElementProperty("HeightScaling", "UI", "Sets how the height scales on this level")]
-        public LevelBounds heightScaling = LevelBounds.ScaleToContent;
-        [A_XSDElementProperty("HorizontalAlignment", "UI", "Sets the horizontal justification for this level")]
-        public HorizontalAlignment horizontalAlignment = HorizontalAlignment.Left;
-        [A_XSDElementProperty("VerticalAlignment", "UI", "Sets the vertical alignment for this level")]
-        public VerticalAlignment verticalAlignment = VerticalAlignment.Center;
-
-        public Vector3D<float> nextPosition = new Vector3D<float>(0, 0, 0);
-
-        public Vector2D<float> bounds = new Vector2D<float>(0, 0);
-        public Vector2D<float> position = new Vector2D<float>(0, 0);
-        public List<VulkanControl> children = new List<VulkanControl>();
-        public int fillers = 0;
-        public Vector2D<float> spaceLeft = new Vector2D<float>(0, 0);
-    }
-
-
     [A_XSDType("StackPanel", "UI", AllowedChildren = typeof(IXMLChild_UI))]
     public class StackPanelControl : AbstractContainerControl
     {
@@ -67,47 +19,144 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
         #endregion
 
         #region properties
-        [A_XSDElementProperty("HorizontalMargin", "UI", "")]
-        public float horizontalMargin = 10;
-        [A_XSDElementProperty("VerticalMargin", "UI", "")]
-        public float verticalMargin = 10;
-
         // settings
         [A_XSDElementProperty("Orientation", "UI", "")]
         public Orientation orientation = Orientation.Vertical;
+        
+        [A_XSDElementProperty("Spacing", "UI", "Space between children in pixels.")]
+        public float Spacing = 0f;
         #endregion
 
-        [A_XSDElementProperty("StackPanel.settings", "UI", "Settings for each layer of the stack panel")]
-        public List<StackPanelLevelSettings> stackPanelLevelSettings { get; set; } = new List<StackPanelLevelSettings>();
-
-        public override void AddControlToContainer(VulkanControl control)
+        public StackPanelControl()
         {
-            stackPanelLevelSettings[control.stackIndex].children.Add(control);
-            Measure();
-            MeasureSelf();
-            Arrange();
+            preferredWidth = 0;
+            preferredHeight = 0;
         }
 
-        public override void RecalculateLayout()
+        public override Vector2D<float> Measure(Vector2D<float> availableSize)
         {
-            //throw new NotImplementedException();
-        }
-        
-        public override void Measure()
-        {
-            foreach(var level in stackPanelLevelSettings)
+            LayoutRect inner = new LayoutRect(0, 0, availableSize.X, availableSize.Y)
+                .Shrink(padding);
+
+            float totalMain = 0f;
+            float maxCross = 0f;
+            int childCount = 0;
+
+            foreach (Entity e in children)
             {
-                level.bounds = new Vector2D<float>(0, 0);
-                level.fillers = 0;
-                level.nextPosition = new Vector3D<float>(0, 0, 0);
-                foreach (var child in level.children)
+                if (e is not VulkanControl child) continue;
+
+                // Offer full cross-axis, unconstrained main-axis.
+                Vector2D<float> offer = orientation == Orientation.Vertical
+                    ? new Vector2D<float>(inner.width, float.MaxValue)
+                    : new Vector2D<float>(float.MaxValue, inner.height);
+
+                Vector2D<float> desired = child.Measure(offer);
+
+                float childMain = orientation == Orientation.Vertical
+                    ? desired.Y + child.margin.totalVertical
+                    : desired.X + child.margin.totalHorizontal;
+                float childCross = orientation == Orientation.Vertical
+                    ? desired.X + child.margin.totalHorizontal
+                    : desired.Y + child.margin.totalVertical;
+
+                totalMain += childMain;
+                maxCross = MathF.Max(maxCross, childCross);
+                childCount++;
+            }
+
+            if (childCount > 1)
+                totalMain += Spacing * (childCount - 1);
+
+            float w = orientation == Orientation.Vertical
+                ? maxCross + padding.totalHorizontal
+                : totalMain + padding.totalHorizontal;
+            float h = orientation == Orientation.Vertical
+                ? totalMain + padding.totalVertical
+                : maxCross + padding.totalVertical;
+
+            // Only override measured size when preferredWidth/Height is explicitly set.
+            if (preferredWidth > 0) w = preferredWidth;
+            if (preferredHeight > 0) h = preferredHeight;
+
+            DesiredSize = new Vector2D<float>(w, h);
+            IsMeasureDirty = false;
+            return DesiredSize;
+        }
+
+        public override void Arrange(LayoutRect finalRect)
+        {
+            arrangedRect = finalRect;
+
+            transform.SetWorldPosition(new Vector3D<float>(
+                finalRect.x + finalRect.width / 2f,
+                finalRect.y + finalRect.height / 2f,
+                parent.transform.GetEntityPosition().Z + 0.001f));
+            transform.SetWorldScale(new Vector3D<float>(finalRect.width, finalRect.height, 1));
+
+            ClipRect = parent is VulkanControl p
+                ? (clipOutOfBounds ? LayoutRect.Intersect(finalRect, p.ClipRect) : p.ClipRect)
+                : finalRect;
+
+            LayoutRect inner = finalRect.Shrink(padding);
+            float cursor = orientation == Orientation.Vertical ? inner.y : inner.x;
+            bool first = true;
+
+            foreach (Entity e in children)
+            {
+                if (e is not VulkanControl child) continue;
+
+                if (!first) cursor += Spacing;
+                first = false;
+
+                if (orientation == Orientation.Vertical)
                 {
-                    MeasureChild(level, child);
+                    // Main axis: Y.  Cross axis: X — driven by child.HorizontalAlignment.
+                    float availCrossW = inner.width - child.margin.totalHorizontal;
+
+                    float childW = child.horizontalAlignment == HorizontalAlignment.Stretch
+                        ? availCrossW
+                        : child.DesiredSize.X;
+
+                    float childX = child.horizontalAlignment switch
+                    {
+                        HorizontalAlignment.Left => inner.x + child.margin.left,
+                        HorizontalAlignment.Right => inner.x + child.margin.left + (availCrossW - childW),
+                        HorizontalAlignment.Center => inner.x + child.margin.left + (availCrossW - childW) * 0.5f,
+                        _ => inner.x + child.margin.left,  // Stretch
+                    };
+
+                    float childY = cursor + child.margin.top;
+                    child.Arrange(new LayoutRect(childX, childY, childW, child.DesiredSize.Y));
+                    cursor += child.DesiredSize.Y + child.margin.totalVertical;
+                }
+                else
+                {
+                    // Main axis: X.  Cross axis: Y — driven by child.VerticalAlignment.
+                    float availCrossH = inner.height - child.margin.totalVertical;
+
+                    float childH = child.verticalAlignment == VerticalAlignment.Stretch
+                        ? availCrossH
+                        : child.DesiredSize.Y;
+
+                    float childY = child.verticalAlignment switch
+                    {
+                        VerticalAlignment.Top => inner.y + child.margin.top,
+                        VerticalAlignment.Bottom => inner.y + child.margin.top + (availCrossH - childH),
+                        VerticalAlignment.Center => inner.y + child.margin.top + (availCrossH - childH) * 0.5f,
+                        _ => inner.y + child.margin.top,  // Stretch
+                    };
+
+                    float childX = cursor + child.margin.left;
+                    child.Arrange(new LayoutRect(childX, childY, child.DesiredSize.X, childH));
+                    cursor += child.DesiredSize.X + child.margin.totalHorizontal;
                 }
             }
+
+            isArrangeDirty = false;
         }
 
-        private void MeasureChild(StackPanelLevelSettings level, VulkanControl child)
+        /*private void MeasureChild(StackPanelLevelSettings level, VulkanControl child)
         {
             if (orientation == Orientation.Vertical)
             {
@@ -169,9 +218,9 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
                         break;
                 }
             }
-        }
+        }*/
 
-        public override void MeasureSelf()
+        /*public override void MeasureSelf()
         {
             //figure out how much space is left after fixed sizes
             Vector2D<float> availableSpace = new Vector2D<float>(width - (horizontalMargin * stackPanelLevelSettings.Count), height - (verticalMargin * stackPanelLevelSettings.Count));
@@ -358,9 +407,9 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
 
                 stackPanelLevelSettings[i].nextPosition = startPosRelative;
             }
-        }
+        }*/
 
-        private Vector3D<float> CalcPos(VulkanControl control)
+        /*private Vector3D<float> CalcPos(VulkanControl control)
         {
             float z = transform.position.Z;
             Vector3D<float> halfscale = new Vector3D<float>(control.width, control.height, 0) / 2;
@@ -417,15 +466,6 @@ namespace ArctisAurora.Core.Rendering.UI.Controls.Containers
             pos.Z = z;
 
             return pos;
-        }
-
-        public override void Arrange()
-        {
-            foreach (VulkanControl child in children)
-            {
-                Vector3D<float> pos = CalcPos(child);
-                child.transform.SetWorldPosition(pos);
-            }
-        } 
+        }*/
     }
 }

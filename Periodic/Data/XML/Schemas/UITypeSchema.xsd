@@ -3,7 +3,7 @@
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:DockMode types:LevelScaling types:HorizontalAlignment types:VeticalAlignment types:Orientation types:ControlColor types:FillMode types:ContentScalingModeEnum" />
+    <xs:union memberTypes="types:LevelScaling types:HorizontalAlignment types:VeticalAlignment types:DockMode types:Orientation types:ControlColor types:FillMode types:ContentScalingModeEnum" />
   </xs:simpleType>
   <xs:element name="ShortText" type="types:ShortText" />
   <xs:complexType name="ShortText">
@@ -19,18 +19,20 @@
       </xs:choice>
     </xs:sequence>
     <xs:attribute name="Text" type="xs:string" />
-    <xs:attribute name="ColorHex" type="xs:string" />
-    <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="Width" type="xs:int" />
     <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="MinHeight" type="xs:int" />
     <xs:attribute name="MinWidth" type="xs:int" />
     <xs:attribute name="HorizontalPos" type="xs:float" />
     <xs:attribute name="VerticalPos" type="xs:float" />
-    <xs:attribute name="ScalingMode" type="types:FillMode" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
     <xs:attribute name="ClipToBounds" type="xs:boolean" />
     <xs:attribute name="DockMode" type="types:DockMode" />
-    <xs:attribute name="StackIndex" type="xs:int" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="onExit" type="actions:UI" />
     <xs:attribute name="onClick" type="actions:UI" />
@@ -39,25 +41,32 @@
     <xs:attribute name="onAltRelease" type="actions:UI" />
     <xs:attribute name="onDragStop" type="actions:UI" />
   </xs:complexType>
-  <xs:element name="StackPanel.settings" type="types:StackPanel.settings" />
-  <xs:complexType name="StackPanel.settings">
-    <xs:sequence />
-    <xs:attribute name="Height" type="xs:float" />
-    <xs:attribute name="Width" type="xs:float" />
-    <xs:attribute name="Spacing" type="xs:float" />
-    <xs:attribute name="WidthScaling" type="types:LevelScaling" />
-    <xs:attribute name="HeightScaling" type="types:LevelScaling" />
-    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
-    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
-  </xs:complexType>
+  <xs:simpleType name="LevelScaling">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="ScaleToContent" />
+      <xs:enumeration value="Fill" />
+      <xs:enumeration value="HardScale" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="HorizontalAlignment">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Center" />
+      <xs:enumeration value="Left" />
+      <xs:enumeration value="Right" />
+      <xs:enumeration value="Stretch" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="VeticalAlignment">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Top" />
+      <xs:enumeration value="Center" />
+      <xs:enumeration value="Bottom" />
+      <xs:enumeration value="Stretch" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:element name="StackPanel" type="types:StackPanel" />
   <xs:complexType name="StackPanel">
     <xs:sequence>
-      <xs:element minOccurs="0" maxOccurs="unbounded" name="StackPanel.settings" type="types:StackPanel.settings">
-        <xs:annotation>
-          <xs:documentation>Settings for each layer of the stack panel</xs:documentation>
-        </xs:annotation>
-      </xs:element>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
         <xs:element name="ShortText" type="types:ShortText" />
         <xs:element name="StackPanel" type="types:StackPanel" />
@@ -68,21 +77,22 @@
         <xs:element name="GridList" type="types:GridList" />
       </xs:choice>
     </xs:sequence>
-    <xs:attribute name="ColorHex" type="xs:string" />
-    <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="HorizontalMargin" type="xs:float" />
-    <xs:attribute name="VerticalMargin" type="xs:float" />
-    <xs:attribute name="Orientation" type="types:Orientation" />
     <xs:attribute name="Width" type="xs:int" />
     <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="Orientation" type="types:Orientation" />
+    <xs:attribute name="Spacing" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
     <xs:attribute name="MinWidth" type="xs:int" />
     <xs:attribute name="HorizontalPos" type="xs:float" />
     <xs:attribute name="VerticalPos" type="xs:float" />
-    <xs:attribute name="ScalingMode" type="types:FillMode" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
     <xs:attribute name="ClipToBounds" type="xs:boolean" />
     <xs:attribute name="DockMode" type="types:DockMode" />
-    <xs:attribute name="StackIndex" type="xs:int" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="onExit" type="actions:UI" />
     <xs:attribute name="onClick" type="actions:UI" />
@@ -104,18 +114,20 @@
         <xs:element name="GridList" type="types:GridList" />
       </xs:choice>
     </xs:sequence>
-    <xs:attribute name="ColorHex" type="xs:string" />
-    <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="Width" type="xs:int" />
     <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="MinHeight" type="xs:int" />
     <xs:attribute name="MinWidth" type="xs:int" />
     <xs:attribute name="HorizontalPos" type="xs:float" />
     <xs:attribute name="VerticalPos" type="xs:float" />
-    <xs:attribute name="ScalingMode" type="types:FillMode" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
     <xs:attribute name="ClipToBounds" type="xs:boolean" />
     <xs:attribute name="DockMode" type="types:DockMode" />
-    <xs:attribute name="StackIndex" type="xs:int" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="onExit" type="actions:UI" />
     <xs:attribute name="onClick" type="actions:UI" />
@@ -137,20 +149,22 @@
         <xs:element name="GridList" type="types:GridList" />
       </xs:choice>
     </xs:sequence>
+    <xs:attribute name="Width" type="xs:int" />
+    <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="Fill" type="xs:boolean" />
     <xs:attribute name="ContentScalingMode" type="types:ContentScalingModeEnum" />
-    <xs:attribute name="Width" type="xs:int" />
-    <xs:attribute name="Height" type="xs:int" />
     <xs:attribute name="MinHeight" type="xs:int" />
     <xs:attribute name="MinWidth" type="xs:int" />
     <xs:attribute name="HorizontalPos" type="xs:float" />
     <xs:attribute name="VerticalPos" type="xs:float" />
-    <xs:attribute name="ScalingMode" type="types:FillMode" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
     <xs:attribute name="ClipToBounds" type="xs:boolean" />
     <xs:attribute name="DockMode" type="types:DockMode" />
-    <xs:attribute name="StackIndex" type="xs:int" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="onExit" type="actions:UI" />
     <xs:attribute name="onClick" type="actions:UI" />
@@ -172,18 +186,20 @@
         <xs:element name="GridList" type="types:GridList" />
       </xs:choice>
     </xs:sequence>
-    <xs:attribute name="ColorHex" type="xs:string" />
-    <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="Width" type="xs:int" />
     <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="MinHeight" type="xs:int" />
     <xs:attribute name="MinWidth" type="xs:int" />
     <xs:attribute name="HorizontalPos" type="xs:float" />
     <xs:attribute name="VerticalPos" type="xs:float" />
-    <xs:attribute name="ScalingMode" type="types:FillMode" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
     <xs:attribute name="ClipToBounds" type="xs:boolean" />
     <xs:attribute name="DockMode" type="types:DockMode" />
-    <xs:attribute name="StackIndex" type="xs:int" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="onExit" type="actions:UI" />
     <xs:attribute name="onClick" type="actions:UI" />
@@ -215,18 +231,20 @@
         <xs:element name="GridList" type="types:GridList" />
       </xs:choice>
     </xs:sequence>
-    <xs:attribute name="ColorHex" type="xs:string" />
-    <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="Width" type="xs:int" />
     <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="MinHeight" type="xs:int" />
     <xs:attribute name="MinWidth" type="xs:int" />
     <xs:attribute name="HorizontalPos" type="xs:float" />
     <xs:attribute name="VerticalPos" type="xs:float" />
-    <xs:attribute name="ScalingMode" type="types:FillMode" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
     <xs:attribute name="ClipToBounds" type="xs:boolean" />
     <xs:attribute name="DockMode" type="types:DockMode" />
-    <xs:attribute name="StackIndex" type="xs:int" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="onExit" type="actions:UI" />
     <xs:attribute name="onClick" type="actions:UI" />
@@ -234,22 +252,6 @@
     <xs:attribute name="onRelease" type="actions:UI" />
     <xs:attribute name="onAltRelease" type="actions:UI" />
     <xs:attribute name="onDragStop" type="actions:UI" />
-  </xs:complexType>
-  <xs:element name="GridListRowSettings" type="types:GridListRowSettings" />
-  <xs:complexType name="GridListRowSettings">
-    <xs:sequence />
-    <xs:attribute name="Bounds" type="types:LevelScaling" />
-    <xs:attribute name="Height" type="xs:float" />
-    <xs:attribute name="Alignment" type="types:HorizontalAlignment" />
-    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
-  </xs:complexType>
-  <xs:element name="GridListColumnSettings" type="types:GridListColumnSettings" />
-  <xs:complexType name="GridListColumnSettings">
-    <xs:sequence />
-    <xs:attribute name="Bounds" type="types:LevelScaling" />
-    <xs:attribute name="Width" type="xs:float" />
-    <xs:attribute name="Alignment" type="types:HorizontalAlignment" />
-    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
   </xs:complexType>
   <xs:element name="GridList" type="types:GridList" />
   <xs:complexType name="GridList">
@@ -264,6 +266,10 @@
         <xs:element name="GridList" type="types:GridList" />
       </xs:choice>
     </xs:sequence>
+    <xs:attribute name="Width" type="xs:int" />
+    <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CellWidth" type="xs:float" />
@@ -272,16 +278,14 @@
     <xs:attribute name="VerticalSpacing" type="xs:float" />
     <xs:attribute name="HorizontalMargin" type="xs:float" />
     <xs:attribute name="VerticalMargin" type="xs:float" />
-    <xs:attribute name="Width" type="xs:int" />
-    <xs:attribute name="Height" type="xs:int" />
     <xs:attribute name="MinHeight" type="xs:int" />
     <xs:attribute name="MinWidth" type="xs:int" />
     <xs:attribute name="HorizontalPos" type="xs:float" />
     <xs:attribute name="VerticalPos" type="xs:float" />
-    <xs:attribute name="ScalingMode" type="types:FillMode" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
     <xs:attribute name="ClipToBounds" type="xs:boolean" />
     <xs:attribute name="DockMode" type="types:DockMode" />
-    <xs:attribute name="StackIndex" type="xs:int" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="onExit" type="actions:UI" />
     <xs:attribute name="onClick" type="actions:UI" />
@@ -290,27 +294,6 @@
     <xs:attribute name="onAltRelease" type="actions:UI" />
     <xs:attribute name="onDragStop" type="actions:UI" />
   </xs:complexType>
-  <xs:simpleType name="LevelScaling">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="ScaleToContent" />
-      <xs:enumeration value="Fill" />
-      <xs:enumeration value="HardScale" />
-    </xs:restriction>
-  </xs:simpleType>
-  <xs:simpleType name="HorizontalAlignment">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="Center" />
-      <xs:enumeration value="Left" />
-      <xs:enumeration value="Right" />
-    </xs:restriction>
-  </xs:simpleType>
-  <xs:simpleType name="VeticalAlignment">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="Top" />
-      <xs:enumeration value="Center" />
-      <xs:enumeration value="Bottom" />
-    </xs:restriction>
-  </xs:simpleType>
   <xs:simpleType name="Orientation">
     <xs:restriction base="xs:string">
       <xs:enumeration value="Horizontal" />

@@ -59,11 +59,11 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
             base.OnStart();
         }
 
-        public override void AddControlToContainer(VulkanControl control)
+        /*public override void AddControlToContainer(VulkanControl control)
         {
             //DockMode mode = ResolveDockType(control);
             Dock(control, control.dockMode);
-        }
+        }*/
 
         private void Hovering(Vector2D<float> pos)
         {
@@ -218,7 +218,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
             return cross < 0; // true = point is to the right of the edge from e1 to e2
         }
 
-        public override void RecalculateLayout()
+        /*public override void RecalculateLayout()
         {
             throw new NotImplementedException();
         }
@@ -236,6 +236,6 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
         public override void Measure()
         {
             throw new NotImplementedException();
-        }
+        }*/
     }
 }

@@ -6,7 +6,8 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
     {
         public AbstractContainerControl()
         {
-            scalingMode = ScalingMode.Stretch;
+            verticalAlignment = VerticalAlignment.Stretch;
+            horizontalAlignment = HorizontalAlignment.Stretch;
         }
 
         public AbstractContainerControl(VulkanControl parent)
@@ -17,19 +18,10 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls.Containers
         public override void AddChild(Entity entity)
         {
             if (entity is not VulkanControl control)
-                throw new Exception("Only VulkanControl entities can be added to a VulkanContainerControl.");
+                throw new Exception("Child entity must be a VulkanControl");
             children.Add(entity);
-            AddControlToContainer((VulkanControl)entity);
+            control.parent = this;
+            InvalidateLayout();
         }
-
-        public abstract void AddControlToContainer(VulkanControl control);
-
-        public abstract void RecalculateLayout();
-
-        public abstract void Measure();
-
-        public abstract void Arrange();
-
-        public abstract void MeasureSelf();
     }
 }

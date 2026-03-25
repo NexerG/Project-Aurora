@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.UISystem;
 using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.Physics.UICollision;
 using ArctisAurora.EngineWork.Rendering;
@@ -210,9 +211,6 @@ namespace ArctisAurora.EngineWork
                 Vector2D<float> mp = InputHandler.mousePos;
                 uiCollisionHandler.delta = mp - uiCollisionHandler.lastMousePos;
                 uiCollisionHandler.SolverHover(mp);
-                //uiCollisionHandler.SolveLMB(mp);
-                //uiCollisionHandler.SolveRMB(mp);
-                //uiCollisionHandler.SolveDrag(mp);
                 uiCollisionHandler.lastMousePos = mp;
             }
         }
@@ -251,6 +249,7 @@ namespace ArctisAurora.EngineWork
                 entity.OnTick();
             }
             
+            UILayout.ResolveLayout();
 
             if(EntityManager.entitiesToUpdate.Count > 0)
             {

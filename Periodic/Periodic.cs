@@ -27,6 +27,15 @@ namespace AuroraPeriodic
 
 
             WindowControl windowControl = (WindowControl)VulkanControl.ParseXML("UI.xml");
+            //PanelControl windowControl = new PanelControl();
+            //windowControl.width = 1280;
+            //windowControl.height = 720;
+            //windowControl.transform.position = new Silk.NET.Maths.Vector3D<float>(640, 360, -10);
+            //windowControl.controlColor = VulkanControl.ControlColor.purple;
+            //windowControl.contentScalingMode = WindowControl.ScalingMode.Vertical;
+            //windowControl.fillWindow = true;
+            //windowControl.controlColorHex = "#1f6331";
+
             EntityManager.uiTree = windowControl;
             //ShortTextControl test = new ShortTextControl();
             //test.transform.position = new Silk.NET.Maths.Vector3D<float>(640, 360, -10);

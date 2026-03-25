@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
 using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.UISystem;
 using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.Physics.UICollision;
 using ArctisAurora.EngineWork.Rendering.Helpers;
@@ -7,14 +8,11 @@ using ArctisAurora.EngineWork.Rendering.UI.Controls.Containers;
 using ArctisAurora.EngineWork.Serialization;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
-using System;
-using System.CodeDom;
 using System.Collections;
 using System.ComponentModel;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Xml.Linq;
-using static ArctisAurora.EngineWork.Rendering.UI.Controls.VulkanControl;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Rendering.UI.Controls
@@ -24,7 +22,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 
     public unsafe class VulkanControl : Entity, IXMLParser<VulkanControl>, IXMLChild_UI
     {
-        #region STRUCTS
+        #region ---- STRUCTS ----
         [StructLayout(LayoutKind.Sequential, Pack = 1), A_XSDType("ControlStyle", "Registry")]
         public struct ControlStyle
         {
@@ -86,18 +84,109 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             None
         }
 
-        /*[A_VulkanEnum("ScaleMode")]
-        public enum ScaleMode
+        [A_XSDType("HorizontalAlignment", "UI")]
+        public enum HorizontalAlignment
         {
-            PrioritizeWidth,
-            PrioritizeHeight,
-            None
-        }*/
+            Center, Left, Right, Stretch
+        }
+
+        [A_XSDType("VeticalAlignment", "UI")]
+        public enum VerticalAlignment
+        {
+            Top, Center, Bottom, Stretch
+        }
+
+        public struct Thickness
+        {
+            public float top;
+            public float right;
+            public float bottom;
+            public float left;
+
+            public Thickness(float uniform)
+            {
+                top = right = bottom = left = uniform;
+            }
+
+            public Thickness(float horizontal, float vertical)
+            {
+                left = right = horizontal;
+                top = bottom = vertical;
+            }
+
+            public Thickness(float top, float right, float bottom, float left)
+            {
+                this.top = top;
+                this.right = right;
+                this.bottom = bottom;
+                this.left = left;
+            }
+
+            public float totalHorizontal => left + right;
+            public float totalVertical => top + bottom;
+
+            public static Thickness Zero => new Thickness(0);
+        }
+
+        public struct LayoutRect
+        {
+            public float x;
+            public float y;
+            public float width;
+            public float height;
+
+            public LayoutRect(float x, float y, float width, float height)
+            {
+                this.x = x;
+                this.y = y;
+                this.width = width;
+                this.height = height;
+            }
+
+            public LayoutRect(Vector2D<float> position, Vector2D<float> size)
+            {
+                x = position.X;
+                y = position.Y;
+                width = size.X;
+                height = size.Y;
+            }
+
+            public float Right => x + width;
+            public float Bottom => y + height;
+
+            public Vector2D<float> Position => new Vector2D<float>(x, y);
+            public Vector2D<float> size => new Vector2D<float>(width, height);
+
+            // Returns a rect inset by the given thickness on all sides.
+            // Width/height are clamped to 0 — the rect cannot invert.
+            public LayoutRect Shrink(Thickness t) => new LayoutRect(
+                x + t.left,
+                y + t.top,
+                MathF.Max(0, width - t.totalHorizontal),
+                MathF.Max(0, height - t.totalVertical)
+            );
+
+            public bool Contains(Vector2D<float> point) =>
+                point.X >= x && point.X <= Right &&
+                point.Y >= y && point.Y <= Bottom;
+
+            public static LayoutRect Intersect(LayoutRect a, LayoutRect b)
+            {
+                float rx = MathF.Max(a.x, b.x);
+                float ry = MathF.Max(a.y, b.y);
+                float rr = MathF.Min(a.Right, b.Right);
+                float rb = MathF.Min(a.Bottom, b.Bottom);
+                return new LayoutRect(rx, ry, MathF.Max(0, rr - rx), MathF.Max(0, rb - ry));
+            }
+
+            public static LayoutRect Empty => new LayoutRect(0, 0, 0, 0);
+            public static LayoutRect Infinite => new LayoutRect(0, 0, float.MaxValue, float.MaxValue);
+        }
         #endregion
 
-        #region UI XML fields
+        #region ---- UI XML fields ----
 
-        #region scaling
+        #region ---- scaling ----
         private int _width = 72;
         private int _height = 72;
         public int width
@@ -105,25 +194,38 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             get => _width;
             set
             {
+                if (_width == value) return;
                 _width = value;
-                transform.SetWorldScale(new Vector3D<float>(width, height, 1));
+                InvalidateLayout();
             }
         }
         public int height
         {
             get => _height;
-            set
+            set 
             {
+                if (_height == value) return;
                 _height = value;
-                transform.SetWorldScale(new Vector3D<float>(width, height, 1));
+                InvalidateLayout();
             }
         }
 
+        private int _preferredWidth = 72;
+        private int _preferredHeight = 72;
 
         [A_XSDElementProperty("Width", "UI", "Width in pixels.")]
-        public int preferredWidth = 72;
+        public int preferredWidth
+        {
+            get => _preferredWidth;
+            set { if (_preferredWidth == value) return; _preferredWidth = value; InvalidateLayout(); }
+        }
+
         [A_XSDElementProperty("Height", "UI", "Height in pixels.")]
-        public int preferredHeight = 72;
+        public int preferredHeight
+        {
+            get => _preferredHeight;
+            set { if (_preferredHeight == value) return; _preferredHeight = value; InvalidateLayout(); }
+        }
 
         [A_XSDElementProperty("MinHeight", "UI", "Minimum height in pixels.")]
         public int minHeight = 0;
@@ -135,14 +237,31 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             get => new Vector2D<int>(_width, _height);
             set
             {
+                bool changed = _width != value.X || _height != value.Y;
                 _width = value.X;
                 _height = value.Y;
-                transform.SetWorldScale(new Vector3D<float>(width, height, 1));
+                if (changed) InvalidateLayout();
             }
+        }
+
+        private Thickness _margin = Thickness.Zero;
+        [A_XSDElementProperty("Margin", "UI", "Space outside the control in pixels.")]
+        public Thickness margin
+        {
+            get => _margin;
+            set { _margin = value; InvalidateLayout(); }
+        }
+
+        private Thickness _padding = Thickness.Zero;
+        [A_XSDElementProperty("Padding", "UI", "Space inside the control in pixels.")]
+        public Thickness padding
+        {
+            get => _padding;
+            set { _padding = value; InvalidateLayout(); }
         }
         #endregion
 
-        #region positioning
+        #region ---- positioning ----
         // postioning
         [A_XSDElementProperty("HorizontalPos", "UI", "\"Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.\"")]
         public float horizontalPosition = 0.5f;
@@ -151,23 +270,23 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         public float verticalPosition = 0.5f;
         #endregion
 
-        #region settings
-        [A_XSDElementProperty("ScalingMode", "UI", "Sets how the control scales vertically within it's parent.")]
-        public ScalingMode scalingMode = ScalingMode.None;
+        #region ---- settings ----
+        [A_XSDElementProperty("HorizontalAlignment", "UI", "How this control fills its parent's horizontal slot.")]
+        public HorizontalAlignment horizontalAlignment = HorizontalAlignment.Left;
 
-        [A_XSDElementProperty("ClipToBounds", "UI", "Will not render kids outside the bounds.")]
-        public bool clipToBounds = false;
+        [A_XSDElementProperty("VerticalAlignment", "UI", "How this control fills its parent's vertical slot.")]
+        public VerticalAlignment verticalAlignment = VerticalAlignment.Top;
+
+        [A_XSDElementProperty("ClipToBounds", "UI", "Will not render or hit-test children outside bounds.")]
+        public bool clipOutOfBounds = false;
 
         [A_XSDElementProperty("DockMode", "UI", "Sets the control's dock mode to the desired setting. Fill - fills the entire area.")]
         public DockMode dockMode;
 
-        [A_XSDElementProperty("StackIndex", "UI", "Tells the StackPanel parent (if its the parent) in which stack level the control should reside.")]
-        public int stackIndex = 0;
-
-        public VulkanControl? child;
+        //public VulkanControl? child;
         #endregion
 
-        #region styling
+        #region ---- styling ----
         private string _controlColorHex = "#FFFFFF";
         [A_XSDElementProperty("ColorHex", "UI", "Sets the control color via hex code.")]
         public string controlColorHex
@@ -201,7 +320,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
 
         #endregion
 
-        #region rendering
+        #region ---- rendering ----
         public ControlData controlData;
         public Buffer controlDataBuffer;
         public DeviceMemory controlDataBufferMemory;
@@ -213,7 +332,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         public TextureAsset colorAsset;
         #endregion
 
-        #region EVENTS
+        #region ---- EVENTS ----
         //fuck do i do with this yet to figure out. tbh idk if this is even a problem
         public event Action<Vector2D<float>> hover;
         [A_XSDElementProperty("onEnter", "UI")]
@@ -243,11 +362,113 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         private bool dragging = false;
 
         private DateTime lastClick = DateTime.Now;
+        public bool HitTest(Vector2D<float> point) => ClipRect.Contains(point);
         #endregion
 
         // EXTRAS
         public ContextMenuControl contextMenu;
 
+
+        #region ---- Layout State ----
+        public Vector2D<float> DesiredSize { get; protected set; }
+        public LayoutRect arrangedRect { get; protected set; }
+        public LayoutRect ClipRect { get; protected set; }
+
+        private bool _isMeasureDirty = true;
+        private bool _isArrangeDirty = true;
+
+        public bool IsMeasureDirty { get => _isMeasureDirty; internal set => _isMeasureDirty = value; }
+        public bool isArrangeDirty { get => _isArrangeDirty; internal set => _isArrangeDirty = value; }
+
+        public void InvalidateLayout()
+        {
+            if (_isMeasureDirty) return;
+            _isMeasureDirty = true;
+            _isArrangeDirty = true;
+            VulkanControl current = parent as VulkanControl;
+            VulkanControl topDirty = this;
+            while (current != null)
+            {
+                if (current._isMeasureDirty) return;
+                current._isMeasureDirty = true;
+                current._isArrangeDirty = true;
+                topDirty = current;
+                current = current.parent as VulkanControl;
+            }
+            UILayout.RegisterDirtyRoot(topDirty);
+        }
+
+        public void InvalidateArrange()
+        {
+            if (_isArrangeDirty) return;
+            _isArrangeDirty = true;
+            VulkanControl current = parent as VulkanControl;
+            VulkanControl topDirty = this;
+            while (current != null)
+            {
+                if (current._isArrangeDirty) return;
+                current._isArrangeDirty = true;
+                topDirty = current;
+                current = current.parent as VulkanControl;
+            }
+            UILayout.RegisterDirtyRoot(topDirty);
+        }
+        #endregion
+
+        #region ---- Layout API (two-pass) ----
+        public virtual Vector2D<float> Measure(Vector2D<float> availableSize)
+        {
+            float w = preferredWidth > 0 ? preferredWidth : MathF.Min(availableSize.X, minWidth);
+            float h = preferredHeight > 0 ? preferredHeight : MathF.Min(availableSize.Y, minHeight);
+            if (children.Count == 1 && children[0] is VulkanControl childControl)
+            {
+                Vector2D<float> childDesired = childControl.Measure(new Vector2D<float>(
+                    MathF.Max(0, w - padding.totalHorizontal),
+                    MathF.Max(0, h - padding.totalVertical)));
+                if (preferredWidth == 0) w = childDesired.X + padding.totalHorizontal;
+                if (preferredHeight == 0) h = childDesired.Y + padding.totalVertical;
+            }
+            DesiredSize = new Vector2D<float>(w, h);
+            _isMeasureDirty = false;
+            return DesiredSize;
+        }
+
+        public virtual void Arrange(LayoutRect finalRect)
+        {
+            arrangedRect = finalRect;
+            if (parent != null)
+            {
+                transform.SetWorldPosition(new Vector3D<float>(
+                    finalRect.x + finalRect.width / 2f,
+                    finalRect.y + finalRect.height / 2f,
+                    parent.transform.GetEntityPosition().Z + 0.001f));
+            }
+            else
+            {
+                transform.SetWorldPosition(new Vector3D<float>(
+                    finalRect.x + finalRect.width / 2f,
+                    finalRect.y + finalRect.height / 2f,
+                    transform.GetEntityPosition().Z));
+            }
+
+            transform.SetWorldScale(new Vector3D<float>(finalRect.width, finalRect.height, 1));
+            if (parent is VulkanControl parentControl)
+                ClipRect = clipOutOfBounds
+                    ? LayoutRect.Intersect(finalRect, parentControl.ClipRect)
+                    : parentControl.ClipRect;
+            else
+                ClipRect = finalRect;
+            if (children.Count == 1 && children[0] is VulkanControl child)
+            {
+                LayoutRect innerRect = finalRect.Shrink(padding);
+                LayoutRect childRect = innerRect.Shrink(child.margin);
+                float cx = childRect.x + (childRect.width - child.DesiredSize.X) * child.horizontalPosition;
+                float cy = childRect.y + (childRect.height - child.DesiredSize.Y) * child.verticalPosition;
+                child.Arrange(new LayoutRect(cx, cy, child.DesiredSize.X, child.DesiredSize.Y));
+            }
+            _isArrangeDirty = false;
+        }
+        #endregion
 
         public VulkanControl()
         {
@@ -261,6 +482,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             AVulkanBufferHandler.CreateBuffer(ref tempData, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
             CreateSampler();
             EntityManager.AddControl(this);
+            InvalidateLayout();
         }
 
         public override void OnStart()
@@ -306,34 +528,18 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
         public override void AddChild(Entity entity)
         {
             //vulkan control only
-            if (entity is not VulkanControl control) throw new Exception("Child entity must be a VulkanControl");
-
+            if (entity is not VulkanControl control)
+                throw new Exception("Child entity must be a VulkanControl");
             if (children.Count > 0)
-            {
-                throw new Exception("Control can only have one child");
-            }
-            else
-            {
-                children.Add(entity);
-            }
-            control.parent = this;
-
-            // transform child
-            Vector3D<float> transformedLoc = transform.position;
-            if (control is not AbstractContainerControl container)
-            {
-                // map child horizontal and vertical pos to parent size
-                transformedLoc.X += (control.horizontalPosition - 0.5f) * width;
-                transformedLoc.Y += (control.verticalPosition - 0.5f) * height;
-                //transformedLoc.Z = transform.position.Z;
-            }
-            control.transform.MoveToPosition(transformedLoc);
-            control.SetControlScale(new Vector2D<float>(width, height));
+                throw new Exception("Plain VulkanControl supports only one child. Use a container control for multiple children.");
+            entity.parent = this;
+            children.Add(entity);
+            InvalidateLayout();
         }
 
         //public virtual Vector2D<float> SetControlScale(Vector2D<float> availableSpace)
 
-        public virtual void SetControlScale(Vector2D<float> availableSpace)
+        /*public virtual void SetControlScale(Vector2D<float> availableSpace)
         {
             switch (scalingMode)
             {
@@ -341,37 +547,20 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
                     {
                         float aspect = (float)preferredWidth / (float)preferredHeight;
                         if (availableSpace.X / availableSpace.Y > aspect)
-                        {
-                            // limited by height
-                            SetHeight((int)availableSpace.Y);
-                            SetWidth((int)(availableSpace.Y * aspect));
-                        }
+                        { _height = (int)availableSpace.Y; _width = (int)(availableSpace.Y * aspect); }
                         else
-                        {
-                            // limited by width
-                            SetWidth((int)availableSpace.X);
-                            SetHeight((int)(availableSpace.X / aspect));
-                        }
+                        { _width = (int)availableSpace.X; _height = (int)(availableSpace.X / aspect); }
                         break;
                     }
                 case ScalingMode.Fill:
-                    {
-                        SetSize(availableSpace);
-                        break;
-                    }
                 case ScalingMode.Stretch:
-                    {
-                        SetWidth((int)availableSpace.X);
-                        SetHeight((int)availableSpace.Y);
-                        break;
-                    }
+                    _width = (int)availableSpace.X; _height = (int)availableSpace.Y;
+                    break;
                 case ScalingMode.None:
-                    {
-                        SetSize(availableSpace);
-                        break;
-                    }
+                    _width = preferredWidth; _height = preferredHeight;
+                    break;
             }
-        }
+        }*/
 
         #region size_setters
         public virtual void SetSize(Vector2D<float> size)
@@ -617,9 +806,11 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
             WindowControl window = new WindowControl();
             ResolveAttributes(root, window);
 
-            Vector3D<float> pos = new Vector3D<float>(window.width / 2f, window.height / 2f, -10.0f);
+            Vector3D<float> pos = new Vector3D<float>(window.preferredWidth / 2f, window.preferredHeight / 2f, -10.0f);
+            window.arrangedRect = new LayoutRect(0, 0, window.preferredWidth, window.preferredHeight);
+            UILayout.RegisterDirtyRoot(window);
             window.transform.SetWorldPosition(pos);
-            window.transform.SetWorldScale(new Vector3D<float>(window.width, window.height, 1));
+            window.transform.SetWorldScale(new Vector3D<float>(window.preferredWidth, window.preferredHeight, 1));
             RecursiveParse(root, window);
 
             return window;
@@ -732,6 +923,5 @@ namespace ArctisAurora.EngineWork.Rendering.UI.Controls
                 }
             }
         }
-
     }
 }
