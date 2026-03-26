@@ -97,6 +97,7 @@ namespace ArctisAurora.EngineWork
             window.SetKeyCallback(inputHandler.ProcessKeyboard);
             window.SetCharCallback(inputHandler.ProcessCharInput);
             window.SetMouseOnWindowCallback(UICollisionHandling.instance.IsInWindow);
+            window.SetScrollCallback(inputHandler.ProcessScrollWheel);
 
             // optionals
             Bootstrapper.Bootstrap(BootstrapStage.PostGPUAPI);
@@ -210,7 +211,29 @@ namespace ArctisAurora.EngineWork
             {
                 Vector2D<float> mp = InputHandler.mousePos;
                 uiCollisionHandler.delta = mp - uiCollisionHandler.lastMousePos;
-                uiCollisionHandler.SolverHover(mp);
+                uiCollisionHandler.SolveHover(mp);
+                uiCollisionHandler.SolveDrag(mp);
+
+                foreach (Keybind kbind in InputHandler.mouseEventReadQueue)
+                {
+                    switch (kbind.button)
+                    {
+                        case Keys.MouseLeft when kbind.state == KeyState.Pressed:
+                            uiCollisionHandler.SolveLMBPress(mp);
+                            break;
+                        case Keys.MouseLeft when kbind.state == KeyState.Released:
+                            uiCollisionHandler.SolveLMBRelease(mp);
+                            break;
+                        case Keys.MouseRight when kbind.state == KeyState.Pressed:
+                            uiCollisionHandler.SolveRMBPress(mp);
+                            break;
+                        case Keys.MouseRight when kbind.state == KeyState.Released:
+                            uiCollisionHandler.SolveRMBRelease(mp);
+                            break;
+                    }
+                }
+                InputHandler.mouseEventReadQueue.Clear();
+
                 uiCollisionHandler.lastMousePos = mp;
             }
         }

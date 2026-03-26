@@ -12,232 +12,317 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         fill, left, right, top, bottom, unknown
     }
 
+    /// <summary>
+    /// A container that docks children to edges (top/bottom/left/right) in declaration
+    /// order, with the last `fill` child taking the remaining space.
+    /// 
+    /// Layout algorithm (same for Measure and Arrange):
+    ///   - Maintain a "remaining rect" starting at the full inner area.
+    ///   - For each child in declaration order:
+    ///     - left:   child takes the left slice, remaining rect shrinks from the left
+    ///     - right:  child takes the right slice, remaining rect shrinks from the right
+    ///     - top:    child takes the top slice, remaining rect shrinks from the top
+    ///     - bottom: child takes the bottom slice, remaining rect shrinks from the bottom
+    ///     - fill:   child gets the entire remaining rect (should be last)
+    ///   - Multiple children can dock to the same edge — they stack in order.
+    ///
+    /// Scroll compatibility: reports true content size from Measure. If docked children
+    /// exceed available space, a parent ScrollableControl will detect the overflow.
+    /// </summary>
     [A_XSDType("Dock", "UI", AllowedChildren = typeof(IXMLChild_UI))]
     public class DockingControl : AbstractContainerControl
     {
+        /// <summary>
+        /// If true, the last child added without an explicit dockMode is treated as fill.
+        /// Matches WPF DockPanel.LastChildFill behavior.
+        /// </summary>
+        [A_XSDElementProperty("LastChildFill", "UI", "If true, the last child fills remaining space regardless of its DockMode.")]
+        public bool lastChildFill = true;
+
+        // Quick-access references populated during Arrange.
+        // Not used for layout logic — children list + dockMode is the source of truth.
         public VulkanControl top;
         public VulkanControl bottom;
         public VulkanControl left;
         public VulkanControl right;
         public VulkanControl center;
 
-        public Vector2D<float> splitSize;
-        public Vector2D<float> spaceLeft;
-        public Vector2D<float> location;
-
         public DockingControl()
         {
-
+            preferredWidth = 0;
+            preferredHeight = 0;
         }
 
-        public DockingControl(VulkanControl parent) : base(parent)
+        public override Vector2D<float> Measure(Vector2D<float> availableSize)
         {
-            controlData.style.tint = new Vector3D<float>(0.22f, 0.22f, 0.22f);
+            float w = preferredWidth > 0 ? preferredWidth : availableSize.X;
+            float h = preferredHeight > 0 ? preferredHeight : availableSize.Y;
 
-            RegisterHover(Hovering);
-            if (parent != null)
+            LayoutRect remaining = new LayoutRect(0, 0, w, h).Shrink(padding);
+
+            // Track the total extent of all docked children to report true content size.
+            // usedLeft/usedRight accumulate horizontal carve-offs,
+            // usedTop/usedBottom accumulate vertical carve-offs.
+            float usedLeft = 0f;
+            float usedRight = 0f;
+            float usedTop = 0f;
+            float usedBottom = 0f;
+            float fillW = 0f;
+            float fillH = 0f;
+
+            for (int i = 0; i < children.Count; i++)
             {
+                if (children[i] is not VulkanControl child) continue;
 
+                DockMode mode = ResolveDockMode(child, i);
+                Vector2D<float> offer = new Vector2D<float>(
+                    MathF.Max(0, remaining.width),
+                    MathF.Max(0, remaining.height));
+                Vector2D<float> desired = child.Measure(offer);
+
+                switch (mode)
+                {
+                    case DockMode.left:
+                        usedLeft += desired.X + child.margin.totalHorizontal;
+                        remaining = new LayoutRect(
+                            remaining.x + desired.X + child.margin.totalHorizontal,
+                            remaining.y,
+                            MathF.Max(0, remaining.width - desired.X - child.margin.totalHorizontal),
+                            remaining.height);
+                        break;
+
+                    case DockMode.right:
+                        usedRight += desired.X + child.margin.totalHorizontal;
+                        remaining = new LayoutRect(
+                            remaining.x,
+                            remaining.y,
+                            MathF.Max(0, remaining.width - desired.X - child.margin.totalHorizontal),
+                            remaining.height);
+                        break;
+
+                    case DockMode.top:
+                        usedTop += desired.Y + child.margin.totalVertical;
+                        remaining = new LayoutRect(
+                            remaining.x,
+                            remaining.y + desired.Y + child.margin.totalVertical,
+                            remaining.width,
+                            MathF.Max(0, remaining.height - desired.Y - child.margin.totalVertical));
+                        break;
+
+                    case DockMode.bottom:
+                        usedBottom += desired.Y + child.margin.totalVertical;
+                        remaining = new LayoutRect(
+                            remaining.x,
+                            remaining.y,
+                            remaining.width,
+                            MathF.Max(0, remaining.height - desired.Y - child.margin.totalVertical));
+                        break;
+
+                    case DockMode.fill:
+                        fillW = desired.X + child.margin.totalHorizontal;
+                        fillH = desired.Y + child.margin.totalVertical;
+                        break;
+                }
             }
-            else
-            {
-                uint halfWidth = Engine.window.windowSize.Width / 2;
-                uint halfHeight = Engine.window.windowSize.Height / 2;
-                Vector3D<float> pos = new(1, halfHeight, halfWidth);
-                transform.SetWorldPosition(pos);
-                transform.SetWorldScale(pos * 2);
 
-                float splitH = Engine.window.windowSize.Height / 3;
-                float splitW = Engine.window.windowSize.Width / 3;
-                splitSize = new Vector2D<float>(splitW, splitH);
-                spaceLeft = new Vector2D<float>(Engine.window.windowSize.Width, Engine.window.windowSize.Height);
-                location = new Vector2D<float>(halfWidth, halfHeight);
+            // True content size: horizontal edges + fill + padding
+            float contentW = usedLeft + usedRight + MathF.Max(fillW, remaining.width) + padding.totalHorizontal;
+            float contentH = usedTop + usedBottom + MathF.Max(fillH, remaining.height) + padding.totalVertical;
+
+            // Preferred size as floor, not cap — scroll parents see the overflow
+            float finalW = preferredWidth > 0 ? MathF.Max(contentW, preferredWidth) : contentW;
+            float finalH = preferredHeight > 0 ? MathF.Max(contentH, preferredHeight) : contentH;
+
+            DesiredSize = new Vector2D<float>(finalW, finalH);
+            IsMeasureDirty = false;
+            return DesiredSize;
+        }
+
+        public override void Arrange(LayoutRect finalRect)
+        {
+            arrangedRect = finalRect;
+
+            transform.SetWorldPosition(new Vector3D<float>(
+                finalRect.x + finalRect.width / 2f,
+                finalRect.y + finalRect.height / 2f,
+                parent != null
+                    ? parent.transform.GetEntityPosition().Z + 0.001f
+                    : transform.GetEntityPosition().Z));
+            transform.SetWorldScale(new Vector3D<float>(finalRect.width, finalRect.height, 1));
+
+            ClipRect = parent is VulkanControl p
+                ? (clipOutOfBounds ? LayoutRect.Intersect(finalRect, p.ClipRect) : p.ClipRect)
+                : finalRect;
+
+            // Reset quick-access references
+            top = null;
+            bottom = null;
+            left = null;
+            right = null;
+            center = null;
+
+            LayoutRect remaining = finalRect.Shrink(padding);
+
+            for (int i = 0; i < children.Count; i++)
+            {
+                if (children[i] is not VulkanControl child) continue;
+
+                DockMode mode = ResolveDockMode(child, i);
+                LayoutRect childRect;
+
+                switch (mode)
+                {
+                    case DockMode.left:
+                        {
+                            float sliceW = child.DesiredSize.X + child.margin.totalHorizontal;
+                            childRect = new LayoutRect(remaining.x, remaining.y, sliceW, remaining.height)
+                                .Shrink(child.margin);
+
+                            // Apply vertical alignment within the slice
+                            childRect = AlignVertically(child, childRect);
+
+                            remaining = new LayoutRect(
+                                remaining.x + sliceW,
+                                remaining.y,
+                                MathF.Max(0, remaining.width - sliceW),
+                                remaining.height);
+                            left ??= child;
+                            break;
+                        }
+
+                    case DockMode.right:
+                        {
+                            float sliceW = child.DesiredSize.X + child.margin.totalHorizontal;
+                            float sliceX = remaining.x + remaining.width - sliceW;
+                            childRect = new LayoutRect(sliceX, remaining.y, sliceW, remaining.height)
+                                .Shrink(child.margin);
+
+                            childRect = AlignVertically(child, childRect);
+
+                            remaining = new LayoutRect(
+                                remaining.x,
+                                remaining.y,
+                                MathF.Max(0, remaining.width - sliceW),
+                                remaining.height);
+                            right ??= child;
+                            break;
+                        }
+
+                    case DockMode.top:
+                        {
+                            float sliceH = child.DesiredSize.Y + child.margin.totalVertical;
+                            childRect = new LayoutRect(remaining.x, remaining.y, remaining.width, sliceH)
+                                .Shrink(child.margin);
+
+                            childRect = AlignHorizontally(child, childRect);
+
+                            remaining = new LayoutRect(
+                                remaining.x,
+                                remaining.y + sliceH,
+                                remaining.width,
+                                MathF.Max(0, remaining.height - sliceH));
+                            top ??= child;
+                            break;
+                        }
+
+                    case DockMode.bottom:
+                        {
+                            float sliceH = child.DesiredSize.Y + child.margin.totalVertical;
+                            float sliceY = remaining.y + remaining.height - sliceH;
+                            childRect = new LayoutRect(remaining.x, sliceY, remaining.width, sliceH)
+                                .Shrink(child.margin);
+
+                            childRect = AlignHorizontally(child, childRect);
+
+                            remaining = new LayoutRect(
+                                remaining.x,
+                                remaining.y,
+                                remaining.width,
+                                MathF.Max(0, remaining.height - sliceH));
+                            bottom ??= child;
+                            break;
+                        }
+
+                    case DockMode.fill:
+                    default:
+                        {
+                            // Fill child gets whatever remains
+                            childRect = remaining.Shrink(child.margin);
+                            center ??= child;
+                            // Remaining is now consumed — but we don't break the loop
+                            // in case there are more children (they'd get zero-size rects)
+                            remaining = LayoutRect.Empty;
+                            break;
+                        }
+                }
+
+                child.Arrange(childRect);
             }
-            UpdateControlData();
+
+            isArrangeDirty = false;
         }
 
-        public override void OnStart()
+        /// <summary>
+        /// Determines the dock mode for a child. If lastChildFill is true and this
+        /// is the last VulkanControl child, it's forced to fill regardless of its
+        /// declared dockMode.
+        /// </summary>
+        private DockMode ResolveDockMode(VulkanControl child, int index)
         {
-            base.OnStart();
-        }
-
-        /*public override void AddControlToContainer(VulkanControl control)
-        {
-            //DockMode mode = ResolveDockType(control);
-            Dock(control, control.dockMode);
-        }*/
-
-        private void Hovering(Vector2D<float> pos)
-        {
-            UICollisionHandling.instance.container = this;
-        }
-
-        internal DockMode ResolveDockType(VulkanControl control)
-        {
-            Vector2D<float> pos = new Vector2D<float>(control.transform.position.Z, control.transform.position.Y);
-            Vector2D<float> planarPos = new Vector2D<float>(transform.position.Z, transform.position.Y);
-            float dist = Vector2D.Distance(planarPos, pos);
-            float factor = MathF.Min(transform.scale.Z, transform.scale.Y) / 3;
-            if (factor > dist)
-            {
+            if (lastChildFill && IsLastVulkanChild(index))
                 return DockMode.fill;
-            }
-            float horizontalFactor = MathF.Abs(pos.X - planarPos.X);
-            if (horizontalFactor > factor)
+
+            if (child.dockMode == DockMode.unknown)
+                return DockMode.fill;
+
+            return child.dockMode;
+        }
+
+        private bool IsLastVulkanChild(int fromIndex)
+        {
+            for (int i = fromIndex + 1; i < children.Count; i++)
             {
-                Vector2D<float> e1 = new Vector2D<float>(Engine.window.windowSize.Width / 2, 0);
-                Vector2D<float> e2 = new Vector2D<float>(Engine.window.windowSize.Width / 2, Engine.window.windowSize.Height);
-                bool isRight = IsRightOfSegement(pos, e1, e2);
-                if (isRight)
-                {
-                    return DockMode.right;
-                }
-                else
-                {
-                    return DockMode.left;
-                }
+                if (children[i] is VulkanControl) return false;
             }
-            float verticalFactor = MathF.Abs(pos.Y - planarPos.Y);
-            if (verticalFactor > factor)
+            return true;
+        }
+
+        /// <summary>
+        /// For left/right slices: applies vertical alignment within the slice.
+        /// Stretch fills the full slice height. Otherwise the child uses its DesiredSize.Y.
+        /// </summary>
+        private static LayoutRect AlignVertically(VulkanControl child, LayoutRect slot)
+        {
+            if (child.verticalAlignment == VerticalAlignment.Stretch)
+                return slot;
+
+            float childH = MathF.Min(child.DesiredSize.Y, slot.height);
+            float oy = child.verticalAlignment switch
             {
-                Vector2D<float> e1 = new Vector2D<float>(0, Engine.window.windowSize.Height / 2);
-                Vector2D<float> e2 = new Vector2D<float>(Engine.window.windowSize.Width, Engine.window.windowSize.Height / 2);
-                bool isTop = IsRightOfSegement(pos, e1, e2);
-                if (isTop)
-                {
-                    return DockMode.top;
-                }
-                else
-                {
-                    return DockMode.bottom;
-                }
-            }
-
-            return DockMode.unknown;
+                VerticalAlignment.Center => (slot.height - childH) * 0.5f,
+                VerticalAlignment.Bottom => slot.height - childH,
+                _ => 0f // Top
+            };
+            return new LayoutRect(slot.x, slot.y + oy, slot.width, childH);
         }
 
-        internal void Dock(VulkanControl control, DockMode mode)
+        /// <summary>
+        /// For top/bottom slices: applies horizontal alignment within the slice.
+        /// Stretch fills the full slice width. Otherwise the child uses its DesiredSize.X.
+        /// </summary>
+        private static LayoutRect AlignHorizontally(VulkanControl child, LayoutRect slot)
         {
-            uint halfWidth = Engine.window.windowSize.Width / 2;
-            uint halfHeight = Engine.window.windowSize.Height / 2;
-            if (parent != null && parent.GetType() != typeof(WindowControl))
+            if (child.horizontalAlignment == HorizontalAlignment.Stretch)
+                return slot;
+
+            float childW = MathF.Min(child.DesiredSize.X, slot.width);
+            float ox = child.horizontalAlignment switch
             {
-                halfWidth = (uint)(parent.transform.scale.X / 2);
-                halfHeight = (uint)(parent.transform.scale.Y / 2);
-            }
-            Vector3D<float> pos = new(halfHeight, halfWidth, -10);
-            transform.SetWorldPosition(pos);
-            transform.SetWorldScale(pos * 2);
-
-            float splitW = Engine.window.windowSize.Width / 3;
-            float splitH = Engine.window.windowSize.Height / 3;
-            splitSize = new Vector2D<float>(splitW, splitH);
-            spaceLeft = new Vector2D<float>(Engine.window.windowSize.Width, Engine.window.windowSize.Height);
-            location = new Vector2D<float>(halfWidth, halfHeight);
-            Vector2D<float> center = new Vector2D<float>(location.X, location.Y);
-            switch (mode)
-            {
-                case DockMode.left:
-                    if (left == null)
-                    {
-                        left = control;
-                        center.X = splitSize.X / 2;
-                        control.transform.SetWorldPosition(new Vector3D<float>(center.X, center.Y, transform.position.Z + 0.1f));
-                        control.transform.SetWorldScale(new Vector3D<float>(splitSize.X, spaceLeft.Y, 1.0f));
-                        spaceLeft.X -= splitSize.X;
-                        location.X += splitSize.X / 2;
-                    }
-                    break;
-                case DockMode.right:
-                    if (right == null)
-                    {
-                        right = control;
-                        center.X = transform.scale.Z - (splitSize.X / 2);
-                        control.transform.SetWorldPosition(new Vector3D<float>(transform.position.X - 0.1f, center.Y, center.X));
-                        control.transform.SetWorldScale(new Vector3D<float>(1, spaceLeft.Y, splitSize.X));
-                        spaceLeft.X -= splitSize.X;
-                        location.X -= splitSize.X / 2;
-                    }
-                    break;
-                case DockMode.top:
-                    if (top == null)
-                    {
-                        top = control;
-                        center.Y = splitSize.Y / 2;
-                        control.transform.SetWorldPosition(new Vector3D<float>(transform.position.X - 0.1f, center.Y, center.X));
-                        control.transform.SetWorldScale(new Vector3D<float>(1, splitSize.Y, spaceLeft.X));
-                        spaceLeft.Y -= splitSize.Y;
-                        location.Y += splitSize.Y / 2;
-                    }
-                    break;
-                case DockMode.bottom:
-                    if (bottom == null)
-                    {
-                        bottom = control;
-                        center.Y = transform.scale.Y - (splitSize.Y / 2);
-                        control.transform.SetWorldPosition(new Vector3D<float>(transform.position.X - 0.1f, center.Y, center.X));
-                        control.transform.SetWorldScale(new Vector3D<float>(1, splitSize.Y, spaceLeft.X));
-                        spaceLeft.Y -= splitSize.Y;
-                        location.Y -= splitSize.Y / 2;
-                    }
-                    break;
-                case DockMode.fill:
-                    if(top != null)
-                    {
-                        center.Y -= top.transform.scale.Y / 2;
-                    }
-                    if(bottom != null)
-                    {
-                        center.Y += bottom.transform.scale.Y / 2;
-                    }
-                    if(left != null)
-                    {
-                        center.X -= left.transform.scale.X / 2;
-                    }
-                    if(right != null)
-                    {
-                        center.X += right.transform.scale.X / 2;
-                    }
-                    control.transform.SetWorldPosition(new Vector3D<float>(transform.position.X - 0.1f, center.Y, center.X));
-                    control.transform.SetWorldScale(new Vector3D<float>(1, spaceLeft.Y, spaceLeft.X));
-                    break;
-                default: break;
-            }
+                HorizontalAlignment.Center => (slot.width - childW) * 0.5f,
+                HorizontalAlignment.Right => slot.width - childW,
+                _ => 0f // Left
+            };
+            return new LayoutRect(slot.x + ox, slot.y, childW, slot.height);
         }
-
-        private void Fill()
-        {
-            Console.WriteLine("Filling");
-        }
-
-        private static bool IsRightOfSegement(Vector2D<float> point, Vector2D<float> e1, Vector2D<float> e2)
-        {
-            var ab = new Vector2D<float>(e2.X - e1.X, e2.Y - e1.Y);
-            var ap = new Vector2D<float>(point.X - e1.X, point.Y - e1.Y);
-
-            float cross = ab.X * ap.Y - ab.Y * ap.X;
-
-            return cross < 0; // true = point is to the right of the edge from e1 to e2
-        }
-
-        /*public override void RecalculateLayout()
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void Arrange()
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void MeasureSelf()
-        {
-            throw new NotImplementedException();
-        }
-
-        public override void Measure()
-        {
-            throw new NotImplementedException();
-        }*/
     }
 }

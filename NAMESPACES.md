@@ -21,6 +21,7 @@ ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-A
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Controls\Containers\AbstractContainerControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Controls\Containers\DockingControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Controls\Containers\GridListControl.cs
+ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Controls\Containers\ScrollableControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Controls\Containers\StackPanelControl.cs
 ArctisAurora.Core.UISystem.Controls.Interactable -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Controls\Interactable\ButtonControl.cs
 ArctisAurora.Core.UISystem.Controls.Interactable -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Controls\Interactable\ResizeableControl.cs

@@ -74,8 +74,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                 : maxCross + padding.totalVertical;
 
             // Only override measured size when preferredWidth/Height is explicitly set.
-            if (preferredWidth > 0) w = preferredWidth;
-            if (preferredHeight > 0) h = preferredHeight;
+            if (preferredWidth > 0) w = MathF.Max(w, preferredWidth);
+            if (preferredHeight > 0) h = MathF.Max(h, preferredHeight);
 
             DesiredSize = new Vector2D<float>(w, h);
             IsMeasureDirty = false;

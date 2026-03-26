@@ -5,6 +5,7 @@ using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.EngineWork.AssetRegistry;
 using Silk.NET.GLFW;
 using Silk.NET.Maths;
+using ScrollableControl = ArctisAurora.Core.UISystem.Controls.Containers.ScrollableControl;
 
 namespace ArctisAurora.EngineWork.Physics.UICollision
 {
@@ -12,8 +13,7 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
     {
         public static UICollisionHandling instance;
         public bool isInWindow = true;
-        public VulkanControl dragging;
-        public AbstractContainerControl container;
+        //public AbstractContainerControl container;
         public ContextMenuControl defaultContextMenu;
 
         public Vector2D<float> lastMousePos;
@@ -21,10 +21,13 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
 
         [A_ActiveContext("Hovering")]
         public static VulkanControl hovering { get; set; }
-        [A_ActiveContext("ActiveContainer")]
+        [A_ActiveContext("Draggin")]
+        public static VulkanControl dragging;
+        
+        /*[A_ActiveContext("ActiveContainer")]
         public static VulkanControl activeContainer;
         [A_ActiveContext("ActiveControl")]
-        public static VulkanControl activeControl;
+        public static VulkanControl activeControl;*/
 
 
         public UICollisionHandling()
@@ -32,7 +35,7 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
             instance = this;
         }
 
-        public void SolverHover(Vector2D<float> mousePos)
+        public void SolveHover(Vector2D<float> mousePos)
         {
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
 
@@ -51,83 +54,74 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
             }
         }
 
-        public void SolveLMB(Vector2D<float> mousePos)
+        public void SolveLMBPress(Vector2D<float> mousePos)
         {
-            Vector2D<float>[] localVerts = new Vector2D<float>[4];
-            bool pressed = InputHandler.instance.IsKeyDown(new Keybind(Keybind.MouseKey(MouseButton.Left)));
+            if (hovering == null) return;
+            hovering?.ResolveOnClick(lastMousePos, delta);
+        }
 
-            VulkanControl mostDeep = null;
-            VulkanControl top = EntityManager.uiTree;
-            if (pressed && SolvePositions(EntityManager.uiTree, mousePos, localVerts))
+        public void SolveLMBRelease(Vector2D<float> mousePos)
+        {
+            VulkanControl dragTarget = dragging;
+            if (dragTarget != null)
             {
-                mostDeep = EntityManager.uiTree;
-                foreach (VulkanControl child in top.GetAllChildrenEntities())
-                {
-                    bool isHovering = SolvePositions(child, mousePos, localVerts);
-                    if (isHovering)
-                    {
-                        mostDeep = child;
-                    }
-                    else
-                    {
-                        child.ResolveOnRelease();
-                    }
-                }
+                dragTarget.StopDrag();
+                dragTarget.ResolveOnRelease();
             }
-            else if (EntityManager.uiTree != null)
+            else
             {
-                EntityManager.uiTree.ResolveExit();
-            }
-            
-            if (mostDeep != null && dragging == null)
-            {
-                mostDeep.ResolveOnClick(lastMousePos, delta);
+                hovering?.ResolveOnRelease();
             }
         }
 
-        public void SolveRMB(Vector2D<float> mousePos)
+        public void SolveRMBPress(Vector2D<float> mousePos)
         {
-            Vector2D<float>[] localVerts = new Vector2D<float>[4];
-            bool pressed = InputHandler.instance.IsKeyDown(new Keybind(Keybind.MouseKey(MouseButton.Right)));
-
-            VulkanControl mostDeep = null;
-            VulkanControl top = EntityManager.uiTree;
-            if (pressed && SolvePositions(EntityManager.uiTree, mousePos, localVerts))
-            {
-                mostDeep = EntityManager.uiTree;
-                foreach (VulkanControl child in top.GetAllChildrenEntities())
-                {
-                    bool isHovering = SolvePositions(child, mousePos, localVerts);
-                    if (isHovering)
-                    {
-                            mostDeep = child;
-                    }
-                    else
-                    {
-                            child.ResolveOnAltRelease();
-                    }
-                }
-            }
-            else if (EntityManager.uiTree != null)
-            {
-                EntityManager.uiTree.ResolveExit();
-            }
-            
-            if (mostDeep != null)
-            {
-                mostDeep.ResolveOnAltClick();
-            }
+            if (hovering == null) return;
+            hovering?.ResolveOnAltClick();
         }
 
+        public void SolveRMBRelease(Vector2D<float> mousePos)
+        {
+            if (hovering == null) return;
+            hovering?.ResolveOnAltRelease();
+        }
+        
         public void SolveDrag(Vector2D<float> mousePos)
         {
             if (dragging != null)
-            {
                 dragging.ResolveDrag(lastMousePos, delta);
+        }
+
+        public void SolveScroll(Vector2D<float> offset)
+        {
+            VulkanControl target = hovering;
+            while (target != null)
+            {
+                // Let individual controls consume scroll first (e.g. spinners, sliders)
+                if (offset.Y > 0)
+                {
+                    if (target.ResolveOnScrollUp()) return;
+                }
+                else if (offset.Y < 0)
+                {
+                    if (target.ResolveOnScrollDown()) return;
+                }
+
+                // If not consumed, check for a scrollable container
+                if (target is ScrollableControl scroll)
+                {
+                    // GLFW: positive Y = scroll up, negative Y = scroll down
+                    // OnScrollInput expects positive = scroll content down (increase offset)
+                    // So we negate: scroll wheel up → content moves down → negative deltaY
+                    scroll.OnScrollInput(offset.X, -offset.Y);
+                    return;
+                }
+
+                target = target.parent as VulkanControl;
             }
         }
 
-
+        #region ---- HELPERS ----
         private VulkanControl FindDeepestValid(Vector2D<float> mousePos, VulkanControl current, ref Vector2D<float>[] localVerts)
         {
             if (!SolvePositions(current, mousePos, localVerts))
@@ -195,10 +189,6 @@ namespace ArctisAurora.EngineWork.Physics.UICollision
 
             return true;
         }
-
-        public void SetContext()
-        {
-            throw new NotImplementedException();
-        }
+        #endregion
     }
 }

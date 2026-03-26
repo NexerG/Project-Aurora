@@ -361,10 +361,10 @@ namespace ArctisAurora.Core.UISystem.Controls
         [A_XSDElementProperty("onDragStop", "UI")]
         public Action onDragStop;
 
-        private bool entered = false;
-        private bool clicked = false;
-        private bool altClicked = false;
-        private bool dragging = false;
+        [A_XSDElementProperty("onScrollUp", "UI")]
+        public Action onScrollUp;
+        [A_XSDElementProperty("onScrollDown", "UI")]
+        public Action onScrollDown;
 
         private DateTime lastClick = DateTime.Now;
         public bool HitTest(Vector2D<float> point) => ClipRect.Contains(point);
@@ -423,8 +423,8 @@ namespace ArctisAurora.Core.UISystem.Controls
         #region ---- Layout API (two-pass) ----
         public virtual Vector2D<float> Measure(Vector2D<float> availableSize)
         {
-            float w = preferredWidth > 0 ? preferredWidth : MathF.Min(availableSize.X, minWidth);
-            float h = preferredHeight > 0 ? preferredHeight : MathF.Min(availableSize.Y, minHeight);
+            float w = preferredWidth > 0 ? preferredWidth : MathF.Max(minWidth, availableSize.X);
+            float h = preferredHeight > 0 ? preferredHeight : MathF.Max(minHeight, availableSize.Y); 
             if (children.Count == 1 && children[0] is VulkanControl childControl)
             {
                 Vector2D<float> childDesired = childControl.Measure(new Vector2D<float>(
@@ -596,12 +596,6 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         public void ResolveHover(Vector2D<float> pos)
         {
-            if (clicked)
-            {
-                dragging = true;
-                UICollisionHandling.instance.dragging = this;
-                return;
-            }
             hover?.Invoke(pos);
         }
 
@@ -613,11 +607,7 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         public virtual void ResolveOnEnter()
         {
-            if (!entered)
-            {
-                onEnter?.Invoke();
-            }
-            entered = true;
+            onEnter?.Invoke();
         }
 
         // EXIT
@@ -628,11 +618,7 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         public virtual void ResolveExit()
         {
-            if (entered)
-            {
-                onExit?.Invoke();
-            }
-            entered = false;
+            onExit?.Invoke();
         }
 
         // DRAG
@@ -657,7 +643,6 @@ namespace ArctisAurora.Core.UISystem.Controls
         public virtual void StopDrag()
         {
             onDragStop?.Invoke();
-            UICollisionHandling.instance.dragging = null;
         }
 
         // CLICK
@@ -668,28 +653,7 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         public virtual void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
         {
-            if (!clicked)
-            {
-                DateTime click = DateTime.Now;
-                TimeSpan span = click - lastClick;
-                lastClick = click;
-                if (span.TotalMilliseconds < Engine.doubleClickTime)
-                {
-                    ResolveOnDoubleClick();
-                    clicked = true;
-                    return;
-                }
-
-                onClick?.Invoke();
-            }
-            /*else
-            {
-                TimeSpan t = DateTime.Now - lastClick;
-                if (t.TotalMilliseconds < Engine.doubleClickTime)
-                    return;
-                ResolveDrag(oldPos, delta);
-            }*/
-            clicked = true;
+            onClick?.Invoke();
         }
 
         // DOUBLE CLICK
@@ -711,15 +675,7 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         public virtual void ResolveOnRelease()
         {
-            if (dragging)
-            {
-                StopDrag();
-            }
-            if (clicked)
-            {
-                onRelease?.Invoke();
-            }
-            clicked = false;
+            onRelease?.Invoke();
         }
 
         // ALT CLICK
@@ -730,11 +686,7 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         public virtual void ResolveOnAltClick()
         {
-            if (!altClicked)
-            {
-                onAltClick?.Invoke();
-            }
-            altClicked = true;
+            onAltClick?.Invoke();
         }
 
         // ALT RELEASE
@@ -745,11 +697,37 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         public virtual void ResolveOnAltRelease()
         {
-            if (altClicked)
+            onAltRelease?.Invoke();
+        }
+
+        public void RegisterOnScrollUp(Action action)
+        {
+            onScrollUp += action;
+        }
+
+        public void RegisterOnScrollDown(Action action)
+        {
+            onScrollDown += action;
+        }
+
+        public virtual bool ResolveOnScrollUp()
+        {
+            if (onScrollUp != null)
             {
-                onAltRelease?.Invoke();
+                onScrollUp.Invoke();
+                return true;
             }
-            altClicked = false;
+            return false;
+        }
+
+        public virtual bool ResolveOnScrollDown()
+        {
+            if (onScrollDown != null)
+            {
+                onScrollDown.Invoke();
+                return true;
+            }
+            return false;
         }
         #endregion
 
@@ -803,6 +781,7 @@ namespace ArctisAurora.Core.UISystem.Controls
             }
         }
 
+        #region ---- XML ----
         public static VulkanControl ParseXML(string xmlName)
         {
             string path = Paths.XMLDOCUMENTS + "\\" + xmlName;
@@ -928,5 +907,6 @@ namespace ArctisAurora.Core.UISystem.Controls
                 }
             }
         }
+        #endregion
     }
 }

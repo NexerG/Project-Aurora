@@ -259,26 +259,12 @@ namespace ArctisAurora.EngineWork
         bool IEqualityComparer<Keybind>.Equals(Keybind? x, Keybind? y)
         {
             if(x == null || y == null) return false;
-
-            //if (x.keyboardKey != null && y.keyboardKey != null)
-            //{
-            if (x.button == y.button && x.action == y.action) return true;
-            else return false;
-            //}
-            /*else if (x.mouseButton != null && y.mouseButton != null)
-            {
-                if (x.mouseButton == y.mouseButton) return true;
-                else return false;
-            }*/
-
-            return false;
+            return x.button == y.button && x.state == y.state && x.action == y.action;
         }
-        
+
         int IEqualityComparer<Keybind>.GetHashCode(Keybind obj)
         {
-            //if (obj.mouseButton != null) return obj.mouseButton.GetHashCode();
-            if (obj.button != null) return obj.button.GetHashCode();
-            return base.GetHashCode();
+            return HashCode.Combine(obj.button, obj.state);
         }
     }
 
@@ -301,9 +287,15 @@ namespace ArctisAurora.EngineWork
         public static float repeatDelay = 0.35f; // seconds before a held key starts repeating
         public static float repeatRate = 0.01f; // seconds between repeats after the initial delay
 
-        private static HashSet<Keybind> keysDownRead = new HashSet<Keybind>(new KeybindComparer());
-        public static HashSet<Keybind> keysDownWrite = new HashSet<Keybind>(new KeybindComparer());
+        private static HashSet<Keys> _keysHeldRead = new HashSet<Keys>();
+        public static HashSet<Keys> _keysHeldWrite = new HashSet<Keys>();
         public static Vector2D<float> mousePos = new Vector2D<float>(0, 0);
+
+        public static Queue<Keybind> mouseEventReadQueue = new Queue<Keybind>();
+        private static Queue<Keybind> mouseEventWriteQueue = new Queue<Keybind>();
+
+        public static Vector2D<float> scrollDelta = new Vector2D<float>(0, 0);
+        private static Vector2D<float> scrollDeltaWrite = new Vector2D<float>(0, 0);
 
         [A_XSDElementProperty("Keybind", "Input")]
         public List<Keybind> activeKeybindActions = new List<Keybind>();
@@ -311,11 +303,12 @@ namespace ArctisAurora.EngineWork
         public static Dictionary<string, List<Keybind>> keybindGroups = new Dictionary<string, List<Keybind>>();
 
 
-        public bool IsKeyDown(Keybind k) => keysDownRead.Contains(k);
+        public bool IsKeyDown(Keys k) => _keysHeldRead.Contains(k);
 
         public InputHandler()
         {}
 
+        #region ---- Input callbacks ----
         internal void ProcessCharInput(WindowHandle* window, uint codepoint)
         {
             lastCharInput = (char)codepoint;
@@ -330,57 +323,69 @@ namespace ArctisAurora.EngineWork
 
         internal void ProcessMouseClick(WindowHandle* window, MouseButton button, InputAction action, KeyModifiers mods)
         {
-            if (keysDownWrite.Add(new Keybind(Keybind.MouseKey(button), Keybind.MapState(action))))
-            {
-                inputWriteQueue.Enqueue(new Keybind(Keybind.MouseKey(button), Keybind.MapState(action)));
-            }
-            else
-            {
-                inputWriteQueue.Enqueue(new Keybind(Keybind.MouseKey(button), Keybind.MapState(action)));
-            }
+            Keys mapped = Keybind.MouseKey(button);
+            KeyState ks = Keybind.MapState(action);
+            if (ks == KeyState.Pressed) _keysHeldWrite.Add(mapped);
+            if (ks == KeyState.Released) _keysHeldWrite.Remove(mapped);
+            inputWriteQueue.Enqueue(new Keybind(mapped, ks));
+            mouseEventWriteQueue.Enqueue(new Keybind(mapped, ks));
         }
 
         internal void ProcessKeyboard(WindowHandle* window, Silk.NET.GLFW.Keys key, int _scanCode, InputAction state, KeyModifiers mods)
         {
-            if(keysDownWrite.Add(new Keybind(Keybind.MapKey(key), Keybind.MapState(state))))
-            {
-                inputWriteQueue.Enqueue(new Keybind(Keybind.MapKey(key), Keybind.MapState(state)));
-            }
-            else
-            {
-                inputWriteQueue.Enqueue(new Keybind(Keybind.MapKey(key), Keybind.MapState(state)));
-            }
+            Keys mapped = Keybind.MapKey(key);
+            KeyState ks = Keybind.MapState(state);
+            if (ks == KeyState.Pressed) _keysHeldWrite.Add(mapped);
+            if (ks == KeyState.Released) _keysHeldWrite.Remove(mapped);
+            inputWriteQueue.Enqueue(new Keybind(mapped, ks));
         }
+
+        internal void ProcessScrollWheel(WindowHandle* window, double offsetX, double offsetY)
+        {
+            scrollDeltaWrite.X += (float)offsetX;
+            scrollDeltaWrite.Y += (float)offsetY;
+        }
+        #endregion
 
         public void ActivateKeybinds()
         {
-            lock (keysDownRead)
+            lock (_keysHeldRead)
             {
                 lock (inputWriteQueue)
                 {
                     (inputWriteQueue, inputReadQueue) = (inputReadQueue, inputWriteQueue);
-                    (keysDownRead, keysDownWrite) = (keysDownWrite, keysDownRead);
+                    (_keysHeldWrite, _keysHeldRead) = (_keysHeldRead, _keysHeldWrite);
                 }
                 lock (charInputWriteQueue)
                 {
                     (charInputWriteQueue, charInputReadQueue) = (charInputReadQueue, charInputWriteQueue);
                 }
+                lock (mouseEventWriteQueue)
+                {
+                    (mouseEventWriteQueue, mouseEventReadQueue) = (mouseEventReadQueue, mouseEventWriteQueue);
+                }
+                scrollDelta = scrollDeltaWrite;
+                scrollDeltaWrite = new Vector2D<float>(0, 0);
             }
 
             foreach (Keybind keybind in inputReadQueue)
             {
-                if(Keybind.IsCharacter(keybind.button))
+                if (Keybind.IsCharacter(keybind.button))
                 {
                     foreach (Keybind any in activeKeybindActions.Where(k => k.button == Keys.AnySymbol && k.state == keybind.state))
-                    {
                         ActivateKeyByState(any);
-                    }
                 }
                 ActivateKeyByState(keybind);
             }
             inputReadQueue.Clear();
-            keysDownRead.Clear();
             charInputReadQueue.Clear();
+
+            // ON TICK - do regardless of timeout
+            foreach (Keys heldKey in _keysHeldRead)
+            {
+                Keybind k = activeKeybindActions.FirstOrDefault(kb => kb.button == heldKey && kb.onTick);
+                k?.action?.Invoke();
+            }
         }
 
         private void ActivateKeyByState(Keybind keybind)
