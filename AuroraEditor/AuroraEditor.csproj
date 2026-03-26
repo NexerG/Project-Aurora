@@ -22,26 +22,6 @@
     <Content Include="Data\UIMasks\invisibleMask.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="Data\XML\EngineUI.xsd.farse">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Data\XML\RegistriesDEPRECATED\AbstractRegistry.xsd">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <SubType>Designer</SubType>
-    </Content>
-    <Content Include="Data\XML\RegistriesDEPRECATED\AuroraRegistries.xsd">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <SubType>Designer</SubType>
-    </Content>
-    <Content Include="Data\XML\RegistriesDEPRECATED\EngineRegistries.xml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Data\XML\Test.xsd">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Data\XML\UITest.xml">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
 
   <ItemGroup>
@@ -51,7 +31,6 @@
   <ItemGroup>
     <Folder Include="Data\Scenes\" />
     <Folder Include="Data\XML\Schemas\" />
-    <Folder Include="Data\XML\RegistriesDEPRECATED\Preloads\" />
     <Folder Include="EditorProgram\Entities\" />
   </ItemGroup>
 

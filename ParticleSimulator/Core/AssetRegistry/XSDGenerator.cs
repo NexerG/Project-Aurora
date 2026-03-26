@@ -1,6 +1,7 @@
 ﻿using ArctisAurora.EngineWork.Serialization;
 using System.Reflection;
 using System.Xml;
+using System.Xml.Linq;
 using System.Xml.Schema;
 
 namespace ArctisAurora.Core.AssetRegistry
@@ -122,7 +123,7 @@ namespace ArctisAurora.Core.AssetRegistry
 
     public static class XSDGenerator
     {
-        #region quick access
+        #region ---- QUICK ACCESS ----
         // dictionaries
         public static readonly Dictionary<Type, string> typeMap = BuildTypeMap();
 
@@ -146,10 +147,128 @@ namespace ArctisAurora.Core.AssetRegistry
 
         #endregion
 
+        #region ---- HASHING ----
+        private static Dictionary<string, string> _previousHashes = new Dictionary<string, string>();
+        private static Dictionary<string, string> _currentHashes = new Dictionary<string, string>();
+        private static string ManifestPath => Path.Combine(Paths.XMLSCHEMAS, "SchemaManifest.xml");
+
+        private static void LoadHashes()
+        {
+            _previousHashes.Clear();
+            if (!File.Exists(ManifestPath)) return;
+
+            XElement root = XElement.Load(ManifestPath);
+            foreach (XElement entry in root.Elements("Schema"))
+            {
+                string file = entry.Attribute("FileName")?.Value;
+                string hash = entry.Attribute("Hash")?.Value;
+                if (file != null && hash != null)
+                    _previousHashes[file] = hash;
+            }
+        }
+
+        private static void SaveHashes()
+        {
+            foreach (var kvp in _previousHashes)
+            {
+                if (!_currentHashes.ContainsKey(kvp.Key))
+                    _currentHashes[kvp.Key] = kvp.Value;
+            }
+
+            XElement root = new XElement("SchemaManifest");
+            foreach (var kvp in _currentHashes.OrderBy(k => k.Key))
+            {
+                root.Add(new XElement("Schema",
+                    new XAttribute("FileName", kvp.Key),
+                    new XAttribute("Hash", kvp.Value)));
+            }
+            root.Save(ManifestPath);
+        }
+
+        private static string ComputeHash(string content)
+        {
+            byte[] bytes = System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(content));
+            return Convert.ToHexString(bytes);
+        }
+
+        private static bool NeedsRegeneration(string fileName, string fingerprint)
+        {
+            string hash = ComputeHash(fingerprint);
+            _currentHashes[fileName] = hash;
+            return !_previousHashes.TryGetValue(fileName, out string old) || old != hash;
+        }
+
+        #region ---- XSD FINGERPRINT ----
+        private static string BuildCategoryFingerprint(string category,
+            List<(Type Type, A_XSDTypeAttribute Attribute)> categoryTypes, Assembly[] generalAsm)
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append($"category:{category}|");
+            foreach (var t in categoryTypes.OrderBy(x => x.Attribute.Name))
+            {
+                sb.Append($"type:{t.Attribute.Name}:{t.Type.FullName}|");
+                if (t.Type.IsEnum)
+                {
+                    foreach (string name in Enum.GetNames(t.Type).OrderBy(n => n))
+                        sb.Append($"ev:{name}|");
+                }
+                else
+                {
+                    foreach (var member in GetAnnotatedMembers(t.Type).OrderBy(m => m.XmlAttribute?.Name))
+                    {
+                        Type memberType = member.Member.MemberType == MemberTypes.Field
+                            ? ((FieldInfo)member.Member).FieldType
+                            : ((PropertyInfo)member.Member).PropertyType;
+                        sb.Append($"m:{member.XmlAttribute?.Name}:{memberType.FullName}:{member.XmlAttribute?.Category}|");
+                    }
+                    if (t.Attribute.AllowedChildren != null)
+                    {
+                        var children = generalAsm.SelectMany(a => a.GetTypes()
+                            .Where(ty => t.Attribute.AllowedChildren.IsAssignableFrom(ty) && ty != t.Attribute.AllowedChildren))
+                            .Select(c => c.GetCustomAttribute<A_XSDTypeAttribute>(false)?.Name ?? "")
+                            .Where(n => n != "").OrderBy(n => n);
+                        foreach (string cn in children)
+                            sb.Append($"child:{cn}|");
+                    }
+                }
+            }
+            return sb.ToString();
+        }
+
+        private static string BuildAllTypesFingerprint(Assembly[] generalAsm)
+        {
+            var sb = new System.Text.StringBuilder();
+            var types = generalAsm.SelectMany(a => a.GetTypes())
+                .Where(t => t.GetCustomAttributes(typeof(A_XSDTypeAttribute), false).Any())
+                .Select(t => t.GetCustomAttribute<A_XSDTypeAttribute>()?.Name ?? t.Name)
+                .OrderBy(n => n);
+            foreach (string n in types) sb.Append($"t:{n}|");
+            foreach (string k in AnyXMLType.typeMap.Keys.OrderBy(k => k)) sb.Append($"p:{k}|");
+            return sb.ToString();
+        }
+
+        private static string BuildActionFingerprint(Assembly[] generalAsm)
+        {
+            var sb = new System.Text.StringBuilder();
+            var allMethods = generalAsm.SelectMany(a => a.GetTypes()
+                .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance))
+                .Select(m => m.GetCustomAttributes(typeof(A_XSDActionDependencyAttribute), true)
+                    .FirstOrDefault() as A_XSDActionDependencyAttribute)
+                .Where(attr => attr != null))
+                .OrderBy(a => a.Category).ThenBy(a => a.Name);
+            foreach (var a in allMethods) sb.Append($"a:{a.Category}:{a.Name}|");
+            return sb.ToString();
+        }
+        #endregion
+        #endregion
+
         public static void GenerateXSD()
         {
             var generalAsm = AppDomain.CurrentDomain.GetAssemblies();
+            LoadHashes();
             GenerateDependencyXSD(generalAsm);
+            SaveHashes();
         }
 
         private static void GenerateDependencyXSD(Assembly[] generalAsm)
@@ -168,11 +287,10 @@ namespace ArctisAurora.Core.AssetRegistry
         {
             var types = generalAsm.SelectMany(asm => asm.GetTypes()
                 .Where(t => t.GetCustomAttributes(typeof(A_XSDTypeAttribute), false).Any())
-                .Select(t => new
-                {
-                    Type = t,
-                    Attribute = (A_XSDTypeAttribute)t.GetCustomAttributes(typeof(A_XSDTypeAttribute), true).First()
-                }))
+                .Select(t => (
+                    Type: t,
+                    Attribute: (A_XSDTypeAttribute)t.GetCustomAttributes(typeof(A_XSDTypeAttribute), true).First()
+                )))
                 .Where(x => x.Attribute != null).ToList();
 
             var categorizedTypes = types.Where(x => x.Attribute.Category != "Uncategorized")
@@ -181,6 +299,16 @@ namespace ArctisAurora.Core.AssetRegistry
 
             foreach (var category in categorizedTypes)
             {
+                if (category.Key == "Uncategorized") continue;
+
+                string fileName = $"{category.Key}TypeSchema.xsd";
+                string fp = BuildCategoryFingerprint(category.Key, category.Value, generalAsm);
+                if (!NeedsRegeneration(fileName, fp))
+                {
+                    Console.WriteLine($"[XSD] Skipping {fileName} — unchanged");
+                    continue;
+                }
+
                 XmlSchema typeSchema = BuildSchemaBase(category.Key);
 
                 XmlSchemaSimpleTypeUnion categoryUnion = new XmlSchemaSimpleTypeUnion
@@ -226,6 +354,15 @@ namespace ArctisAurora.Core.AssetRegistry
 
         private static void GenerateAllTypesXSD(Assembly[] generalAsm)
         {
+            string fileName = "AllTypesSchema.xsd";
+            string fp = BuildAllTypesFingerprint(generalAsm);
+            if (!NeedsRegeneration(fileName, fp))
+            {
+                Console.WriteLine($"[XSD] Skipping {fileName} — unchanged");
+                return;
+            }
+
+
             XmlSchema allTypeSchema = BuildSchemaBase("");
 
             XmlSchemaSimpleType allTypesType = new XmlSchemaSimpleType
@@ -282,6 +419,16 @@ namespace ArctisAurora.Core.AssetRegistry
 
         private static void GenerateActionXSD(Assembly[] generalAsm)
         {
+            string fileName = "actionSchema.xsd";
+            string fp = BuildActionFingerprint(generalAsm);
+            if (!NeedsRegeneration(fileName, fp))
+            {
+                Console.WriteLine($"[XSD] Skipping {fileName} — unchanged");
+                return;
+            }
+
+
+
             var allMethods = generalAsm.SelectMany(a => a.GetTypes()
                 .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)
                 .Select(m => new
@@ -524,6 +671,7 @@ namespace ArctisAurora.Core.AssetRegistry
             string path = Path.Combine(Paths.XMLSCHEMAS, fileName);
             using var writer = XmlWriter.Create(path, settings);
             schema.Write(writer);
+            Console.WriteLine($"{fileName} XSD updated");
         }
 
         #region MapBuilders

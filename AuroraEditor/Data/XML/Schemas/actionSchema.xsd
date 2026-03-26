@@ -4,6 +4,7 @@
     <xs:restriction base="xs:string">
       <xs:enumeration value="ExitApplication" />
       <xs:enumeration value="DummyHover" />
+      <xs:enumeration value="DummyKeyPress" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="UI">
@@ -11,12 +12,7 @@
       <xs:enumeration value="TestAction" />
     </xs:restriction>
   </xs:simpleType>
-  <xs:simpleType name="DummyKeyPress">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="DummyKeyPress" />
-    </xs:restriction>
-  </xs:simpleType>
   <xs:simpleType name="Uncategorized">
-    <xs:union memberTypes="actions:Input actions:UI actions:DummyKeyPress" />
+    <xs:union memberTypes="actions:Input actions:UI" />
   </xs:simpleType>
 </xsd:schema>

@@ -16,12 +16,12 @@ namespace AuroraEditor
             {
                 new UIModule(),
             };
+            XSDGenerator.GenerateXSD();
 
             engine.Init(modules, false);
             InputHandler.SetActiveKeybindGroup("InputMap");
             //AssetImporter.ImportFont("abcdefghijklmnoprstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ ", "arial.ttf");
 
-            XSDGenerator.GenerateXSD();
 
             // SERIALIZATION TESTING
             //AuroraScene scene = new AuroraScene();

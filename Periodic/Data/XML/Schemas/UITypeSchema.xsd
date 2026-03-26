@@ -3,7 +3,7 @@
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:DockMode types:GridSizeMode types:ControlColor types:FillMode types:HorizontalAlignment types:VeticalAlignment types:ContentScalingModeEnum types:Orientation" />
+    <xs:union memberTypes="types:DockMode types:GridSizeMode types:Scrollable types:ControlColor types:FillMode types:HorizontalAlignment types:VeticalAlignment types:ContentScalingModeEnum types:Orientation" />
   </xs:simpleType>
   <xs:element name="Panel" type="types:Panel" />
   <xs:complexType name="Panel">
@@ -16,6 +16,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
+        <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="StackPanel" type="types:StackPanel" />
       </xs:choice>
     </xs:sequence>
@@ -42,6 +43,8 @@
     <xs:attribute name="onRelease" type="actions:UI" />
     <xs:attribute name="onAltRelease" type="actions:UI" />
     <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
   </xs:complexType>
   <xs:element name="Window" type="types:Window" />
   <xs:complexType name="Window">
@@ -54,6 +57,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
+        <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="StackPanel" type="types:StackPanel" />
       </xs:choice>
     </xs:sequence>
@@ -82,6 +86,8 @@
     <xs:attribute name="onRelease" type="actions:UI" />
     <xs:attribute name="onAltRelease" type="actions:UI" />
     <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
   </xs:complexType>
   <xs:element name="ShortText" type="types:ShortText" />
   <xs:complexType name="ShortText">
@@ -94,6 +100,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
+        <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="StackPanel" type="types:StackPanel" />
       </xs:choice>
     </xs:sequence>
@@ -121,6 +128,8 @@
     <xs:attribute name="onRelease" type="actions:UI" />
     <xs:attribute name="onAltRelease" type="actions:UI" />
     <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
   </xs:complexType>
   <xs:element name="TextControl" type="types:TextControl" />
   <xs:complexType name="TextControl">
@@ -133,6 +142,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
+        <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="StackPanel" type="types:StackPanel" />
       </xs:choice>
     </xs:sequence>
@@ -161,6 +171,8 @@
     <xs:attribute name="onRelease" type="actions:UI" />
     <xs:attribute name="onAltRelease" type="actions:UI" />
     <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
   </xs:complexType>
   <xs:element name="Button" type="types:Button" />
   <xs:complexType name="Button">
@@ -173,6 +185,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
+        <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="StackPanel" type="types:StackPanel" />
       </xs:choice>
     </xs:sequence>
@@ -199,6 +212,8 @@
     <xs:attribute name="onRelease" type="actions:UI" />
     <xs:attribute name="onAltRelease" type="actions:UI" />
     <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
   </xs:complexType>
   <xs:simpleType name="DockMode">
     <xs:restriction base="xs:string">
@@ -221,6 +236,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
+        <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="StackPanel" type="types:StackPanel" />
       </xs:choice>
     </xs:sequence>
@@ -230,6 +246,7 @@
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="LastChildFill" type="xs:boolean" />
     <xs:attribute name="MinHeight" type="xs:int" />
     <xs:attribute name="MinWidth" type="xs:int" />
     <xs:attribute name="HorizontalPos" type="xs:float" />
@@ -247,6 +264,8 @@
     <xs:attribute name="onRelease" type="actions:UI" />
     <xs:attribute name="onAltRelease" type="actions:UI" />
     <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
   </xs:complexType>
   <xs:simpleType name="GridSizeMode">
     <xs:restriction base="xs:string">
@@ -260,12 +279,14 @@
     <xs:sequence />
     <xs:attribute name="Height" type="xs:float" />
     <xs:attribute name="SizeMode" type="types:GridSizeMode" />
+    <xs:attribute name="GapAfter" type="xs:float" />
   </xs:complexType>
   <xs:element name="ColumnDefinition" type="types:ColumnDefinition" />
   <xs:complexType name="ColumnDefinition">
     <xs:sequence />
     <xs:attribute name="Width" type="xs:float" />
     <xs:attribute name="SizeMode" type="types:GridSizeMode" />
+    <xs:attribute name="GapAfter" type="xs:float" />
   </xs:complexType>
   <xs:element name="GridCell" type="types:GridCell" />
   <xs:complexType name="GridCell">
@@ -296,6 +317,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
+        <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="StackPanel" type="types:StackPanel" />
       </xs:choice>
     </xs:sequence>
@@ -322,6 +344,58 @@
     <xs:attribute name="onRelease" type="actions:UI" />
     <xs:attribute name="onAltRelease" type="actions:UI" />
     <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
+  </xs:complexType>
+  <xs:simpleType name="Scrollable">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Vertical" />
+      <xs:enumeration value="Horizontal" />
+      <xs:enumeration value="Both" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+  <xs:complexType name="ScrollableControl">
+    <xs:sequence>
+      <xs:choice minOccurs="0" maxOccurs="1">
+        <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="Window" type="types:Window" />
+        <xs:element name="ShortText" type="types:ShortText" />
+        <xs:element name="TextControl" type="types:TextControl" />
+        <xs:element name="Button" type="types:Button" />
+        <xs:element name="Dock" type="types:Dock" />
+        <xs:element name="GridList" type="types:GridList" />
+        <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+        <xs:element name="StackPanel" type="types:StackPanel" />
+      </xs:choice>
+    </xs:sequence>
+    <xs:attribute name="Width" type="xs:int" />
+    <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="ScrollDirection" type="types:Scrollable" />
+    <xs:attribute name="ScrollSensitivity" type="xs:float" />
+    <xs:attribute name="MinHeight" type="xs:int" />
+    <xs:attribute name="MinWidth" type="xs:int" />
+    <xs:attribute name="HorizontalPos" type="xs:float" />
+    <xs:attribute name="VerticalPos" type="xs:float" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
+    <xs:attribute name="ClipToBounds" type="xs:boolean" />
+    <xs:attribute name="DockMode" type="types:DockMode" />
+    <xs:attribute name="Grid.Column" type="xs:int" />
+    <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="onEnter" type="actions:UI" />
+    <xs:attribute name="onExit" type="actions:UI" />
+    <xs:attribute name="onClick" type="actions:UI" />
+    <xs:attribute name="onAltClick" type="actions:UI" />
+    <xs:attribute name="onRelease" type="actions:UI" />
+    <xs:attribute name="onAltRelease" type="actions:UI" />
+    <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
   </xs:complexType>
   <xs:element name="StackPanel" type="types:StackPanel" />
   <xs:complexType name="StackPanel">
@@ -334,6 +408,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
+        <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="StackPanel" type="types:StackPanel" />
       </xs:choice>
     </xs:sequence>
@@ -362,6 +437,8 @@
     <xs:attribute name="onRelease" type="actions:UI" />
     <xs:attribute name="onAltRelease" type="actions:UI" />
     <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
   </xs:complexType>
   <xs:simpleType name="ControlColor">
     <xs:restriction base="xs:string">

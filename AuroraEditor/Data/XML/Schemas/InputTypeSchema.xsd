@@ -1,9 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<xs:schema xmlns:types="http://arctisaurora/AuroraInputTypes" xmlns:allTypes="http://arctisaurora/AuroraTypes" xmlns:actions="http://arctisaurora/ActionDependencies" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraInputTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
-  <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
+<xs:schema xmlns:types="http://arctisaurora/AuroraInputTypes" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:allTypes="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraInputTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
+  <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:simpleType name="Input">
-    <xs:union memberTypes="types:Keys" />
+    <xs:union memberTypes="types:Keys types:Keystate" />
   </xs:simpleType>
   <xs:simpleType name="Keys">
     <xs:restriction base="xs:string">
@@ -33,32 +33,6 @@
       <xs:enumeration value="X" />
       <xs:enumeration value="Y" />
       <xs:enumeration value="Z" />
-      <xs:enumeration value="a" />
-      <xs:enumeration value="b" />
-      <xs:enumeration value="c" />
-      <xs:enumeration value="d" />
-      <xs:enumeration value="e" />
-      <xs:enumeration value="f" />
-      <xs:enumeration value="g" />
-      <xs:enumeration value="h" />
-      <xs:enumeration value="i" />
-      <xs:enumeration value="j" />
-      <xs:enumeration value="k" />
-      <xs:enumeration value="l" />
-      <xs:enumeration value="m" />
-      <xs:enumeration value="n" />
-      <xs:enumeration value="o" />
-      <xs:enumeration value="p" />
-      <xs:enumeration value="q" />
-      <xs:enumeration value="r" />
-      <xs:enumeration value="s" />
-      <xs:enumeration value="t" />
-      <xs:enumeration value="u" />
-      <xs:enumeration value="v" />
-      <xs:enumeration value="w" />
-      <xs:enumeration value="x" />
-      <xs:enumeration value="y" />
-      <xs:enumeration value="z" />
       <xs:enumeration value="Apostrophe" />
       <xs:enumeration value="Comma" />
       <xs:enumeration value="Minus" />
@@ -100,6 +74,7 @@
       <xs:enumeration value="Space" />
       <xs:enumeration value="Enter" />
       <xs:enumeration value="Tab" />
+      <xs:enumeration value="AnySymbol" />
       <xs:enumeration value="Backspace" />
       <xs:enumeration value="Escape" />
       <xs:enumeration value="LeftControl" />
@@ -153,17 +128,6 @@
       <xs:enumeration value="F23" />
       <xs:enumeration value="F24" />
       <xs:enumeration value="F25" />
-      <xs:enumeration value="Number0" />
-      <xs:enumeration value="Number1" />
-      <xs:enumeration value="Number2" />
-      <xs:enumeration value="Number3" />
-      <xs:enumeration value="Number4" />
-      <xs:enumeration value="Number5" />
-      <xs:enumeration value="Number6" />
-      <xs:enumeration value="Number7" />
-      <xs:enumeration value="Number8" />
-      <xs:enumeration value="Number9" />
-      <xs:enumeration value="unknown" />
       <xs:enumeration value="MouseLeft" />
       <xs:enumeration value="MouseRight" />
       <xs:enumeration value="MouseMiddle" />
@@ -172,10 +136,33 @@
       <xs:enumeration value="MouseButton6" />
       <xs:enumeration value="MouseButton7" />
       <xs:enumeration value="MouseButton8" />
+      <xs:enumeration value="unknown" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:simpleType name="Keystate">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Pressed" />
+      <xs:enumeration value="Released" />
+      <xs:enumeration value="Held" />
+      <xs:enumeration value="Unknown" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:element name="Keybind" type="types:Keybind" />
   <xs:complexType name="Keybind">
+    <xs:sequence />
     <xs:attribute name="Button" type="types:Keys" />
     <xs:attribute name="Action" type="actions:Input" />
+    <xs:attribute name="State" type="types:Keystate" />
+    <xs:attribute name="OnTick" type="xs:boolean" />
+  </xs:complexType>
+  <xs:element name="KeybindMap" type="types:KeybindMap" />
+  <xs:complexType name="KeybindMap">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Keybind" type="types:Keybind">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
   </xs:complexType>
 </xs:schema>

@@ -27,7 +27,8 @@
   <ItemGroup>
     <Folder Include="Data\Fonts\" />
     <Folder Include="Data\Scenes\" />
-    <Folder Include="Data\XML\Registries\Preloads\" />
+    <Folder Include="Data\XML\Documents\Inputs\" />
+    <Folder Include="Data\XML\Schemas\" />
     <Folder Include="Core\Physics\Physics\" />
   </ItemGroup>
 
@@ -56,12 +57,6 @@
     <Compile Remove="Core\Rendering\Pipelines\**" />
     <EmbeddedResource Remove="Core\Rendering\Pipelines\**" />
     <None Remove="Core\Rendering\Pipelines\**" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <Content Update="Data\XML\Registries\AbstractRegistry.xsd">
-      <SubType>Designer</SubType>
-    </Content>
   </ItemGroup>
   
 </Project>

@@ -1,34 +1,41 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<xs:schema xmlns:types="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<xs:schema xmlns:types="http://arctisaurora/AuroraTypes" xmlns:actions="http://arctisaurora/ActionDependencies" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:simpleType name="Uncategorized">
     <xs:restriction base="xs:string">
-      <xs:enumeration value="ShortText" />
-      <xs:enumeration value="StackPanel.settings" />
-      <xs:enumeration value="StackPanel" />
       <xs:enumeration value="Panel" />
       <xs:enumeration value="Window" />
+      <xs:enumeration value="ShortText" />
+      <xs:enumeration value="TextControl" />
       <xs:enumeration value="Button" />
       <xs:enumeration value="DockMode" />
       <xs:enumeration value="Dock" />
-      <xs:enumeration value="GridListRowSettings" />
-      <xs:enumeration value="GridListColumnSettings" />
+      <xs:enumeration value="GridSizeMode" />
+      <xs:enumeration value="RowDefinition" />
+      <xs:enumeration value="ColumnDefinition" />
+      <xs:enumeration value="GridCell" />
       <xs:enumeration value="GridList" />
-      <xs:enumeration value="LevelScaling" />
-      <xs:enumeration value="HorizontalAlignment" />
-      <xs:enumeration value="VeticalAlignment" />
-      <xs:enumeration value="Orientation" />
+      <xs:enumeration value="Scrollable" />
+      <xs:enumeration value="ScrollableControl" />
+      <xs:enumeration value="StackPanel" />
       <xs:enumeration value="ControlColor" />
       <xs:enumeration value="FillMode" />
+      <xs:enumeration value="HorizontalAlignment" />
+      <xs:enumeration value="VeticalAlignment" />
       <xs:enumeration value="ContentScalingModeEnum" />
-      <xs:enumeration value="Keys" />
-      <xs:enumeration value="Keybind" />
-      <xs:enumeration value="KeybindMap" />
+      <xs:enumeration value="Orientation" />
+      <xs:enumeration value="ActiveContext" />
+      <xs:enumeration value="IParseableTypes" />
       <xs:enumeration value="AVulkanMesh" />
       <xs:enumeration value="Entry" />
       <xs:enumeration value="AssetRegistries" />
       <xs:enumeration value="FontAsset" />
       <xs:enumeration value="TextureAsset" />
       <xs:enumeration value="ControlStyle" />
+      <xs:enumeration value="Keys" />
+      <xs:enumeration value="Keystate" />
+      <xs:enumeration value="Keybind" />
+      <xs:enumeration value="KeybindMap" />
       <xs:enumeration value="xs:string" />
       <xs:enumeration value="xs:int" />
       <xs:enumeration value="xs:float" />
@@ -40,50 +47,60 @@
       <xs:enumeration value="xs:unsignedInt" />
       <xs:enumeration value="xs:unsignedShort" />
       <xs:enumeration value="xs:unsignedLong" />
-      <xs:enumeration value="xs:string" />
+      <xs:enumeration value="xs:char" />
       <xs:enumeration value="xs:decimal" />
       <xs:enumeration value="Action" />
       <xs:enumeration value="Type" />
-      <xs:enumeration value="types:Uncategorized" />
+      <xs:enumeration value="Object" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="UI">
     <xs:restriction base="xs:string">
-      <xs:enumeration value="ShortText" />
-      <xs:enumeration value="StackPanel.settings" />
-      <xs:enumeration value="StackPanel" />
       <xs:enumeration value="Panel" />
       <xs:enumeration value="Window" />
+      <xs:enumeration value="ShortText" />
+      <xs:enumeration value="TextControl" />
       <xs:enumeration value="Button" />
       <xs:enumeration value="DockMode" />
       <xs:enumeration value="Dock" />
-      <xs:enumeration value="GridListRowSettings" />
-      <xs:enumeration value="GridListColumnSettings" />
+      <xs:enumeration value="GridSizeMode" />
+      <xs:enumeration value="RowDefinition" />
+      <xs:enumeration value="ColumnDefinition" />
+      <xs:enumeration value="GridCell" />
       <xs:enumeration value="GridList" />
-      <xs:enumeration value="LevelScaling" />
-      <xs:enumeration value="HorizontalAlignment" />
-      <xs:enumeration value="VeticalAlignment" />
-      <xs:enumeration value="Orientation" />
+      <xs:enumeration value="Scrollable" />
+      <xs:enumeration value="ScrollableControl" />
+      <xs:enumeration value="StackPanel" />
       <xs:enumeration value="ControlColor" />
       <xs:enumeration value="FillMode" />
+      <xs:enumeration value="HorizontalAlignment" />
+      <xs:enumeration value="VeticalAlignment" />
       <xs:enumeration value="ContentScalingModeEnum" />
+      <xs:enumeration value="Orientation" />
     </xs:restriction>
   </xs:simpleType>
-  <xs:simpleType name="Input">
+  <xs:simpleType name="Context">
     <xs:restriction base="xs:string">
-      <xs:enumeration value="Keys" />
-      <xs:enumeration value="Keybind" />
-      <xs:enumeration value="KeybindMap" />
+      <xs:enumeration value="ActiveContext" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Registry">
     <xs:restriction base="xs:string">
+      <xs:enumeration value="IParseableTypes" />
       <xs:enumeration value="AVulkanMesh" />
       <xs:enumeration value="Entry" />
       <xs:enumeration value="AssetRegistries" />
       <xs:enumeration value="FontAsset" />
       <xs:enumeration value="TextureAsset" />
       <xs:enumeration value="ControlStyle" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Input">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Keys" />
+      <xs:enumeration value="Keystate" />
+      <xs:enumeration value="Keybind" />
+      <xs:enumeration value="KeybindMap" />
     </xs:restriction>
   </xs:simpleType>
 </xs:schema>

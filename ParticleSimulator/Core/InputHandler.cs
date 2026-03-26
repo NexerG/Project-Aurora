@@ -48,23 +48,18 @@ namespace ArctisAurora.EngineWork
         public double repeatWatch = 0;
         public bool isRepeating = false;
 
-        [Obsolete("Currently legacy, here only for input solving error handling.")]
-        public Keybind(Keys key)
-        {
-            button = key;
-        }
-
         public Keybind(Keys key, KeyState state)
         {
             button = key;
             this.state = state;
         }
 
-        public Keybind(Keys button, Action action, KeyState state)
+        public Keybind(Keys button, Action action, KeyState state, bool onTick)
         {
             this.button = button;
             this.action = action;
             this.state = state;
+            this.onTick = onTick;
         }
 
         public void AddAction(Action action)
@@ -458,6 +453,9 @@ namespace ArctisAurora.EngineWork
                     var buttonAttr = attributes.FirstOrDefault(a => a.Name == "Button");
                     var actionAttr = attributes.FirstOrDefault(a => a.Name == "Action");
                     var stateAttr = attributes.FirstOrDefault(a => a.Name == "State");
+                    var onTickAttr = attributes.FirstOrDefault(a => a.Name == "OnTick");
+
+                    bool onTick = onTickAttr != null && bool.Parse(onTickAttr.Value);
 
                     KeyState state = stateAttr.Value switch
                     {
@@ -482,7 +480,7 @@ namespace ArctisAurora.EngineWork
 
                     Action actionDelegate = (Action)Delegate.CreateDelegate(typeof(Action), methodInfo);
 
-                    Keybind keybind = new Keybind((Keys)Enum.Parse(typeof(Keys), buttonAttr.Value), actionDelegate, state);
+                    Keybind keybind = new Keybind((Keys)Enum.Parse(typeof(Keys), buttonAttr.Value), actionDelegate, state, onTick);
                     keybinds.Add(keybind);
                     Console.WriteLine($"Created keybind of: {keybind.button}, action: {keybind.action}, state: {keybind.state}");
                 }
