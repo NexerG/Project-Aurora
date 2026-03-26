@@ -1,7 +1,4 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
-using ArctisAurora.Core.UISystem.Controls;
-using ArctisAurora.EngineWork;
-using ArctisAurora.EngineWork.Physics.UICollision;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.UISystem.Controls.Containers

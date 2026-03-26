@@ -25,11 +25,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Core\Physics\" />
     <Folder Include="Data\Fonts\" />
     <Folder Include="Data\Scenes\" />
     <Folder Include="Data\XML\Documents\Inputs\" />
     <Folder Include="Data\XML\Schemas\" />
-    <Folder Include="Core\Physics\Physics\" />
   </ItemGroup>
 
   <ItemGroup>

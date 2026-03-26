@@ -26,6 +26,8 @@
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
     <xs:attribute name="MinWidth" type="xs:int" />
     <xs:attribute name="HorizontalPos" type="xs:float" />
@@ -69,6 +71,8 @@
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="Fill" type="xs:boolean" />
     <xs:attribute name="ContentScalingMode" type="types:ContentScalingModeEnum" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
     <xs:attribute name="MinWidth" type="xs:int" />
     <xs:attribute name="HorizontalPos" type="xs:float" />
@@ -111,6 +115,8 @@
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
     <xs:attribute name="MinWidth" type="xs:int" />
     <xs:attribute name="HorizontalPos" type="xs:float" />
@@ -154,6 +160,8 @@
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
     <xs:attribute name="MinWidth" type="xs:int" />
     <xs:attribute name="HorizontalPos" type="xs:float" />
@@ -195,6 +203,8 @@
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
     <xs:attribute name="MinWidth" type="xs:int" />
     <xs:attribute name="HorizontalPos" type="xs:float" />
@@ -247,6 +257,8 @@
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="LastChildFill" type="xs:boolean" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
     <xs:attribute name="MinWidth" type="xs:int" />
     <xs:attribute name="HorizontalPos" type="xs:float" />
@@ -327,6 +339,8 @@
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
     <xs:attribute name="MinWidth" type="xs:int" />
     <xs:attribute name="HorizontalPos" type="xs:float" />
@@ -377,6 +391,8 @@
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="ScrollDirection" type="types:Scrollable" />
     <xs:attribute name="ScrollSensitivity" type="xs:float" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
     <xs:attribute name="MinWidth" type="xs:int" />
     <xs:attribute name="HorizontalPos" type="xs:float" />
@@ -420,6 +436,8 @@
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="Orientation" type="types:Orientation" />
     <xs:attribute name="Spacing" type="xs:float" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
     <xs:attribute name="MinWidth" type="xs:int" />
     <xs:attribute name="HorizontalPos" type="xs:float" />

@@ -1,7 +1,6 @@
 ﻿using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.UISystem;
 using ArctisAurora.EngineWork.AssetRegistry;
-using ArctisAurora.EngineWork.Physics.UICollision;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Maths;

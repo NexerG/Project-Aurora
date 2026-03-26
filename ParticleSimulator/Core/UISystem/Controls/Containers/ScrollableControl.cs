@@ -1,11 +1,6 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
 using ArctisAurora.Core.ECS.EngineEntity;
 using Silk.NET.Maths;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ArctisAurora.Core.UISystem.Controls.Containers
 {

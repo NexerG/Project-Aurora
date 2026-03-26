@@ -1,5 +1,4 @@
-﻿using ArctisAurora.EngineWork.Rendering;
-using ArctisAurora.EngineWork.Serialization;
+﻿using ArctisAurora.EngineWork.Serialization;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.ECS.EngineEntity

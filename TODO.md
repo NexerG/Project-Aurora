@@ -1,33 +1,28 @@
-- [ ] fix resolution stuff associated with DPI and stuff. use `glfwGetMonitorContentScale`
-- [ ] XSD generation
-	- [ ] implement hash generator for xsd types so it doesnt need to generate a new one every time if nothing has changed
-- [ ] implement keybinds system
-	- [ ] implement an xml keybind system
-		- [x] add normal press checks. bugs out on repeat. always triggers pressed because the handler counts pressed and held as the same'ish. on the back end held and pressed are kept both in the hashset. problem if the keybind input handler picks up held quicker than the engine can do a tick then the pressed would be removed in favor of held and pressed wouldnt trigger.
-		- [x] add general check to fire on any key
-		- [x] add on release. figure out how to tackle on release. currently all we do is on press. 
-		- [x] add on hold. current way on hold doesnt count. only press.
-		- [ ] add fire on tick
+- [ ] UI collision
+	- [ ] add handle states - game, ui etc
+	- [ ] Update engine class so the mouse inputs are handled in input handler
 - [ ] Registry Update
 	- [ ] add registry functions at classes with either `Interface` or `Attribute` to dynamically load registry stuff at different stages.
 	- [x] implement dictionary names
-- [ ] Fix up the `UI Interaction` system.
-	- [ ] might need to work with the click methods of the new input system
-		- [x] On hover (enter)
-		- [x] on exit
-		- [ ] on click (left/right) ? 
-		- [ ] release (left/right) ?
 - [ ] Update bootstrapper
 	- [ ] integrate with xsd system: tag methods with an attribute that then can be used like keybind/dictionary entries in an xml that defines what methods go in what sequence for initialization. this way some can have multiple, and be sequenced
-- [ ] prepare the .md file documentation for Claude
-	- [ ] documentation on obsidian
-	- [ ] documentation on files for claude
 - [ ] renderer update
 	- [ ] bring mesh component up to speed with the new system
 	- [ ] try to add normal rasterizer to the new renderer ecosystem 
 	- [ ] figure out how to blend the game render and ui render
 	- [ ] fix normal rasterizer
+	- [ ] Lazy renderer
+- [ ] UI
+	- [x] Stack panel
+	- [x] Grid
+		- [x] update grid logic
+		- [x] add gaps in between grid cells
+		- [x] only one item per grid cell
+	- [ ] Window Splitter
+	- [x] Scroll
+	- [ ] UI "start" scaler with multipliers
 - [ ] text editor
+	- [ ] 
 	- [ ] implement the text writer method with the "last character inputs"
 	- [ ] fix beziers
 	- [ ] fix multi character reads

@@ -2,12 +2,13 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.Core.UISystem.Controls.Containers;
+using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.AssetRegistry;
 using Silk.NET.GLFW;
 using Silk.NET.Maths;
 using ScrollableControl = ArctisAurora.Core.UISystem.Controls.Containers.ScrollableControl;
 
-namespace ArctisAurora.EngineWork.Physics.UICollision
+namespace ArctisAurora.Core.UISystem
 {
     public unsafe class UICollisionHandling
     {

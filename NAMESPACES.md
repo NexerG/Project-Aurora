@@ -12,6 +12,7 @@ ArctisAurora.Core.Filing -> C:\Projects-Repositories\Aurora\Project-Aurora\Parti
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\AuroraFont.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Bezier.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Glyph.cs
+ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\UICollisionHandling.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\UILayout.cs
 ArctisAurora.Core.UISystem.Actions -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Actions\UIActions.cs
 ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Controls\ContextMenuControl.cs
@@ -50,7 +51,6 @@ ArctisAurora.EngineWork.ComponentBehaviour -> C:\Projects-Repositories\Aurora\Pr
 ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\ECS\RenderingComponents\Vulkan\LightsourceComponent.cs
 ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\ECS\RenderingComponents\Vulkan\MeshComponent.cs
 ArctisAurora.EngineWork.MathHelpers -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\MathHelpers\AuroraMath.cs
-ArctisAurora.EngineWork.Physics.UICollision -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Physics\UICollision\UICollisionHandling.cs
 ArctisAurora.EngineWork.Rendering -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Rendering\AGlfwWindow.cs
 ArctisAurora.EngineWork.Rendering -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Rendering\AuroraCamera.cs
 ArctisAurora.EngineWork.Rendering -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Rendering\AVulkanMesh.cs

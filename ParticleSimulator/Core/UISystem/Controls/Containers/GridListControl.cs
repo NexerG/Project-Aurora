@@ -1,7 +1,5 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
 using ArctisAurora.Core.ECS.EngineEntity;
-using ArctisAurora.Core.UISystem.Controls;
-using ArctisAurora.EngineWork;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.UISystem.Controls.Containers
@@ -77,25 +75,24 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         {
             if (entity is not VulkanControl control)
                 throw new Exception("GridControl only accepts VulkanControl children.");
+
             foreach (var cell in _cellAssignments)
             {
                 if (cell.column == control.GridColumn && cell.row == control.GridRow)
-                {
                     throw new Exception("One cell - one control.");
-                }
             }
-            base.AddChild(entity);
 
-            GridCellAssignment cellAssignment = new GridCellAssignment { row = control.GridRow, column = control.GridColumn, child = control };
-            int existing = _cellAssignments.FindIndex(a => a.child == cellAssignment.child);
-            if (existing >= 0) _cellAssignments[existing] = cellAssignment;
-            else
+            children.Add(entity);
+            control.parent = this;
+
+            _cellAssignments.Add(new GridCellAssignment
             {
-                base.AddChild(cellAssignment.child);
-                _cellAssignments.Add(cellAssignment);
-            }
+                row = control.GridRow,
+                column = control.GridColumn,
+                child = control
+            });
 
-            _cellAssignments.Add(cellAssignment);
+            InvalidateLayout();
         }
 
         private void EnsureDefaults()
@@ -221,9 +218,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                 // Apply child margin and alignment within the cell.
                 LayoutRect cellRect = new LayoutRect(cellX, cellY, cellW, cellH).Shrink(child.margin);
 
-                float childW = child.horizontalAlignment == HorizontalAlignment.Stretch
+                float childW = (child.preferredWidth == 0 || child.horizontalAlignment == HorizontalAlignment.Stretch)
                     ? cellRect.width : MathF.Min(child.DesiredSize.X, cellRect.width);
-                float childH = child.verticalAlignment == VerticalAlignment.Stretch
+                float childH = (child.preferredHeight == 0 || child.verticalAlignment == VerticalAlignment.Stretch)
                     ? cellRect.height : MathF.Min(child.DesiredSize.Y, cellRect.height);
 
                 float ox = child.horizontalAlignment switch

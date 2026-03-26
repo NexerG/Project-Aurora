@@ -3,7 +3,6 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.AssetRegistry;
-using ArctisAurora.EngineWork.Physics.UICollision;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Serialization;
@@ -79,10 +78,7 @@ namespace ArctisAurora.Core.UISystem.Controls
         [A_XSDType("FillMode", "UI")]
         public enum ScalingMode
         {
-            Uniform,
-            Stretch,
-            Fill,
-            None
+            Uniform, Stretch, Fill, None
         }
 
         [A_XSDType("HorizontalAlignment", "UI")]
@@ -210,6 +206,15 @@ namespace ArctisAurora.Core.UISystem.Controls
                 InvalidateLayout();
             }
         }
+
+        [A_XSDElementProperty("WidthStar", "UI", "Proportional width share when inside a StackPanel (horizontal). 0 = fixed/auto. 1 = equal share, 2 = double share.")]
+        public float widthStar = 0f;
+
+        [A_XSDElementProperty("HeightStar", "UI", "Proportional height share when inside a StackPanel (vertical). 0 = fixed/auto. 1 = equal share, 2 = double share.")]
+        public float heightStar = 0f;
+
+        public bool IsWidthStar => widthStar > 0f;
+        public bool IsHeightStar => heightStar > 0f;
 
         private int _preferredWidth = 72;
         private int _preferredHeight = 72;
@@ -372,7 +377,6 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         // EXTRAS
         public ContextMenuControl contextMenu;
-
 
         #region ---- Layout State ----
         public Vector2D<float> DesiredSize { get; protected set; }
@@ -541,31 +545,6 @@ namespace ArctisAurora.Core.UISystem.Controls
             children.Add(entity);
             InvalidateLayout();
         }
-
-        //public virtual Vector2D<float> SetControlScale(Vector2D<float> availableSpace)
-
-        /*public virtual void SetControlScale(Vector2D<float> availableSpace)
-        {
-            switch (scalingMode)
-            {
-                case ScalingMode.Uniform:
-                    {
-                        float aspect = (float)preferredWidth / (float)preferredHeight;
-                        if (availableSpace.X / availableSpace.Y > aspect)
-                        { _height = (int)availableSpace.Y; _width = (int)(availableSpace.Y * aspect); }
-                        else
-                        { _width = (int)availableSpace.X; _height = (int)(availableSpace.X / aspect); }
-                        break;
-                    }
-                case ScalingMode.Fill:
-                case ScalingMode.Stretch:
-                    _width = (int)availableSpace.X; _height = (int)availableSpace.Y;
-                    break;
-                case ScalingMode.None:
-                    _width = preferredWidth; _height = preferredHeight;
-                    break;
-            }
-        }*/
 
         #region size_setters
         public virtual void SetSize(Vector2D<float> size)
