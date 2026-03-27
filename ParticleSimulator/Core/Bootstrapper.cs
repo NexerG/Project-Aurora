@@ -1,52 +1,84 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
-using ArctisAurora.EngineWork.AssetRegistry;
-using ArctisAurora.EngineWork.Rendering;
-using ArctisAurora.EngineWork.Serialization;
-using Assimp;
-using Microsoft.Extensions.DependencyModel;
 using System.Reflection;
-using System.Security.Cryptography.Pkcs;
 using System.Xml.Linq;
-using static ArctisAurora.Core.UISystem.Controls.VulkanControl;
 
 namespace ArctisAurora.EngineWork
 {
-    [AttributeUsage(AttributeTargets.Method, AllowMultiple =true)]
-    public sealed class A_BootstrapStageAttribute : Attribute
+    [A_XSDType("Step", "Bootstrap")]
+    public class BootstrapStep
     {
-        public BootstrapStage stage { get; set; }
-
-        public A_BootstrapStageAttribute(BootstrapStage stage)
-        {
-            this.stage = stage;
-        }
+        [A_XSDElementProperty("Action", "Bootstrap")]
+        public Action action { get; set; }
     }
 
-    public interface IBootstrap
+    [A_XSDType("Phase", "Bootstrap")]
+    public class BootstrapPhase
     {
-        public static abstract void Bootstrap(BootstrapStage? stage);
+        [A_XSDElementProperty("Name", "Bootstrap")]
+        public string name { get; set; } = string.Empty;
+
+        [A_XSDElementProperty("Step", "Bootstrap")]
+        public List<BootstrapStep> steps { get; set; } = new();
     }
 
-    public enum BootstrapStage
-    {
-        PreGPUAPI,
-        PostGPUAPI,
-        PrePhysicsNOTMPLEMENTED,
-        PostPhysicsNOTMPLEMENTED,
-    }
-
+    [A_XSDType("BootstrapSequence", "Bootstrap")]
     internal static class Bootstrapper
     {
-        public static void Bootstrap(BootstrapStage stage)
+        [A_XSDElementProperty("Phase", "Bootstrap")]
+        public static List<BootstrapPhase> phases { get; set; } = new();
+
+        private static Dictionary<string, List<string>> _phases = new();  // phase name -> ordered step names
+        private static Dictionary<string, MethodInfo> _actions = new();   // step name -> method
+
+        public static void Load(string xmlPath)
         {
             var generalAsm = AppDomain.CurrentDomain.GetAssemblies();
-            var stagedMethods = generalAsm.SelectMany(a => a.GetTypes())
-                .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.Static))
-                .Where(m => m.IsDefined(typeof(A_BootstrapStageAttribute), false) &&
-                            m.GetCustomAttributes<A_BootstrapStageAttribute>().Any(a => a.stage == stage)).ToList();
+            foreach (var asm in generalAsm)
+            {
+                foreach (var type in asm.GetTypes())
+                {
+                    foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic))
+                    {
+                        var attr = method.GetCustomAttribute<A_XSDActionDependencyAttribute>();
+                        if (attr != null && attr.Category == "Bootstrap")
+                            _actions[attr.Name] = method;
+                    }
+                }
+            }
 
-            foreach (var method in stagedMethods)
-                method.Invoke(null, new object[] { stage });
+            XElement root = XElement.Load(xmlPath);
+            XNamespace ns = root.GetDefaultNamespace();
+            foreach (XElement phaseElem in root.Elements(ns + "Phase"))
+            {
+                string phaseName = phaseElem.Attribute("Name")?.Value ?? "Default";
+                List<string> steps = new List<string>();
+                foreach (XElement step in phaseElem.Elements(ns + "Step"))
+                {
+                    string action = step.Attribute("Action")?.Value;
+                    if (action != null)
+                        steps.Add(action);
+                }
+                _phases[phaseName] = steps;
+            }
+        }
+
+        public static void RunPhase(string phaseName)
+        {
+            if (!_phases.TryGetValue(phaseName, out List<string> steps))
+            {
+                Console.WriteLine($"[Bootstrap] Phase '{phaseName}' not found.");
+                return;
+            }
+            foreach (string stepName in steps)
+            {
+                if (!_actions.TryGetValue(stepName, out MethodInfo method))
+                {
+                    Console.WriteLine($"[Bootstrap] Action '{stepName}' not found — skipping.");
+                    continue;
+                }
+                Console.WriteLine($"[Bootstrap] Running: {stepName}");
+                method.Invoke(null, null);
+            }
         }
     }
 }

@@ -1,9 +1,12 @@
-﻿using ArctisAurora.Core.ECS.EngineEntity;
+﻿using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.UISystem;
 using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Maths;
+using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace ArctisAurora.EngineWork
@@ -63,7 +66,7 @@ namespace ArctisAurora.EngineWork
             Console.WriteLine($"Starting main Thread at ID: {GetCurrentThreadId()}");
         }
 
-        public void Init(RenderingModule[] modules, bool startImmediately)
+        public void Init(bool startImmediately)
         {
             //Image<Rgba32> im = new Image<Rgba32>(16, 16);
             //for (int i = 0; i < 16; i++)
@@ -76,39 +79,8 @@ namespace ArctisAurora.EngineWork
             //im.Save(Paths.UIMASKS + "\\defaultMask.png");
 
             running = true;
-            Bootstrapper.Bootstrap(BootstrapStage.PreGPUAPI);
-            //Bootstrapper.PrepareInputs();
-
-            entityManager = new EntityManager();
-            uiCollisionHandler = new UICollisionHandling();
-
-            window = new AGlfwWindow(width, height);
-            window.CreateWindow();
-
-            renderer = new Renderer();
-            renderer.PreInitialize(modules);
-            renderer.Initialize();
-
-            // assets and renderable objects can be loaded from here alongside inputs
-
-            window.SetCursorPosCallback(inputHandler.ProcessMouseMove);
-            window.SetMouseButtonCallback(inputHandler.ProcessMouseClick);
-            window.SetKeyCallback(inputHandler.ProcessKeyboard);
-            window.SetCharCallback(inputHandler.ProcessCharInput);
-            window.SetMouseOnWindowCallback(UICollisionHandling.instance.IsInWindow);
-            window.SetScrollCallback(inputHandler.ProcessScrollWheel);
-
-            // optionals
-            Bootstrapper.Bootstrap(BootstrapStage.PostGPUAPI);
-
-            renderer.SetupObjects();
-            renderer.PrepareDescriptors();
-            renderer.SetupPipelines();
-            
-            // optional but has to go after objects / renderer
-            //renderer.CreateCommandBuffers();
-
-            renderer.CreateSyncObjects();
+            Bootstrapper.Load(Paths.BOOTSTRAP);
+            Bootstrapper.RunPhase("Bootstrap");
 
             Thread physics = new Thread(PhysicsThread);
             Thread rendering = new Thread(RenderThread);
@@ -121,6 +93,44 @@ namespace ArctisAurora.EngineWork
                 Run();
             }
         }
+
+        #region ---- BOOTSTRAPPING ----
+        [A_XSDActionDependency("Engine.SystemSetup", "Bootstrap")]
+        public static void SetupSystems()
+        {
+            entityManager = new EntityManager();
+            uiCollisionHandler = new UICollisionHandling();
+        }
+
+        [A_XSDActionDependency("Engine.InitWindowing", "Bootstrap")]
+        public static void InitWindowing()
+        {
+            window = new AGlfwWindow(engineInstance.width, engineInstance.height);
+            window.CreateWindow();
+            window.SetCursorPosCallback(inputHandler.ProcessMouseMove);
+            window.SetMouseButtonCallback(inputHandler.ProcessMouseClick);
+            window.SetKeyCallback(inputHandler.ProcessKeyboard);
+            window.SetCharCallback(inputHandler.ProcessCharInput);
+            window.SetMouseOnWindowCallback(UICollisionHandling.instance.IsInWindow);
+            window.SetScrollCallback(inputHandler.ProcessScrollWheel);
+        }
+
+        [A_XSDActionDependency("Renderer.InitRenderer", "Bootstrap")]
+        public static void InitiateRenderer()
+        {
+            renderer = new Renderer();
+        }
+
+        [A_XSDActionDependency("Renderer.PreInitialize", "Bootstrap")]
+        public static void SetupModules()
+        {
+            RenderingModule[] modules = new RenderingModule[]
+            {
+                new UIModule(),
+            };
+            renderer.PreInitialize(modules);
+        }
+        #endregion
 
         public void Run()
         {

@@ -1,12 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <xsd:schema xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" targetNamespace="http://arctisaurora/ActionDependencies" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-  <xs:simpleType name="Writer">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="WriteInput" />
-    </xs:restriction>
-  </xs:simpleType>
   <xs:simpleType name="Input">
     <xs:restriction base="xs:string">
+      <xs:enumeration value="WriteInput" />
       <xs:enumeration value="ExitApplication" />
       <xs:enumeration value="DummyHover" />
       <xs:enumeration value="DummyKeyPress" />
@@ -14,10 +10,29 @@
   </xs:simpleType>
   <xs:simpleType name="UI">
     <xs:restriction base="xs:string">
+      <xs:enumeration value="ExitApplication2" />
       <xs:enumeration value="TestAction" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:simpleType name="Bootstrap">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Context.LoadContexts" />
+      <xs:enumeration value="Engine.SystemSetup" />
+      <xs:enumeration value="Engine.InitWindowing" />
+      <xs:enumeration value="Renderer.InitRenderer" />
+      <xs:enumeration value="Renderer.PreInitialize" />
+      <xs:enumeration value="InputHandler.LoadInputs" />
+      <xs:enumeration value="Renderer.Initialize" />
+      <xs:enumeration value="Renderer.PrepareDescriptors" />
+      <xs:enumeration value="Renderer.SetupObjects" />
+      <xs:enumeration value="Renderer.SetupPipelines" />
+      <xs:enumeration value="Renderer.CreateSyncObjects" />
+      <xs:enumeration value="AssetRegistries.RegisterSerializableTypes" />
+      <xs:enumeration value="AssetRegistries.InstantiateRegistries" />
+      <xs:enumeration value="AssetRegistries.PrepareDefaultAssets" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:simpleType name="Uncategorized">
-    <xs:union memberTypes="actions:Writer actions:Input actions:UI" />
+    <xs:union memberTypes="actions:Input actions:UI actions:Bootstrap" />
   </xs:simpleType>
 </xsd:schema>

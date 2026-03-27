@@ -5,7 +5,7 @@ using SixLabors.ImageSharp.PixelFormats;
 using static ArctisAurora.Core.UISystem.AuroraFont;
 using AuroraFont = ArctisAurora.Core.UISystem.AuroraFont;
 
-namespace ArctisAurora.EngineWork.Serialization
+namespace ArctisAurora.Core.Filing.Serialization
 {
     public unsafe static class AssetImporter
     {

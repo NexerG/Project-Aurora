@@ -1,16 +1,11 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
 using ArctisAurora.EngineWork;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Periodic.Editor
 {
     public class Decorations
     {
-        [A_XSDActionDependency("WriteInput", "Writer", "Writes the input to the active textbox")]
+        [A_XSDActionDependency("WriteInput", category:"Input", "Writes the input to the active textbox")]
         public static void Write()
         {
 
@@ -33,6 +28,12 @@ namespace Periodic.Editor
         public static void DummyKeyPress()
         {
             Console.WriteLine($"Last character input was: {InputHandler.lastCharInput}");
+        }
+
+        [A_XSDActionDependency("ExitApplication2", category: "UI")]
+        public static void ExitApplication2()
+        {
+            Environment.Exit(0);
         }
     }
 }

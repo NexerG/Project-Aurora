@@ -2,7 +2,7 @@
 using SixLabors.ImageSharp.PixelFormats;
 using System.Reflection;
 
-namespace ArctisAurora.EngineWork.Serialization
+namespace ArctisAurora.Core.Filing.Serialization
 {
     internal interface IDeserialize
     {

@@ -1,9 +1,8 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.EngineWork.Rendering;
-using ArctisAurora.EngineWork.Serialization;
 using Assimp;
 using System.Reflection;
-using System.Runtime.InteropServices;
 using System.Xml.Linq;
 using static ArctisAurora.Core.UISystem.Controls.VulkanControl;
 
@@ -38,7 +37,7 @@ namespace ArctisAurora.EngineWork.AssetRegistry
     }
 
     [A_XSDType("AssetRegistries", "Registry")]
-    public class AssetRegistries : IXMLParser<AssetRegistries>, IBootstrap
+    public class AssetRegistries : IXMLParser<AssetRegistries>//, IBootstrap
     {
         [A_XSDElementProperty("Dictionary", "Registry")]
         public static List<AssetRegistryEntry> registries { get; set; }
@@ -137,27 +136,10 @@ namespace ArctisAurora.EngineWork.AssetRegistry
             return registries;
         }
         
-        [A_BootstrapStage(BootstrapStage.PostGPUAPI)]
-        [A_BootstrapStage(BootstrapStage.PreGPUAPI)]
-        public static void Bootstrap(BootstrapStage? stage)
+        [A_XSDActionDependency("AssetRegistries.RegisterSerializableTypes", "Bootstrap")]
+        internal static void RegisterSerializableTypes()
         {
-            switch (stage)
-            {
-                case BootstrapStage.PreGPUAPI:
-                    InstantiateRegistries();
-                    var asm = AppDomain.CurrentDomain.GetAssemblies();
-                    RegisterSerializableTypes(asm);
-                    break;
-                case BootstrapStage.PostGPUAPI:
-                    PrepareDefaultAssets();
-                    break;
-                default:
-                    break;
-            }
-        }
-
-        private static void RegisterSerializableTypes(Assembly[] asm)
-        {
+            var asm = AppDomain.CurrentDomain.GetAssemblies();
             var types = asm.SelectMany(a => a.GetTypes()).Where(t => t.GetCustomAttribute<@Serializable>() != null).ToList();
 
             Dictionary<uint, Type> serializableTypes = GetRegistryByValueType<uint, Type>(typeof(Type));
@@ -172,12 +154,14 @@ namespace ArctisAurora.EngineWork.AssetRegistry
             }
         }
 
-        private static void InstantiateRegistries()
+        [A_XSDActionDependency("AssetRegistries.InstantiateRegistries", "Bootstrap")]
+        internal static void InstantiateRegistries()
         {
             assetRegistries = ParseXML("Registry.xml");
         }
 
-        private static void PrepareDefaultAssets()
+        [A_XSDActionDependency("AssetRegistries.PrepareDefaultAssets", "Bootstrap")]
+        internal static void PrepareDefaultAssets()
         {
             Dictionary<string, AVulkanMesh> dMeshes = GetRegistryByValueType<string, AVulkanMesh>(typeof(AVulkanMesh));
             AVulkanMesh mesh = AVulkanMesh.LoadDefault();

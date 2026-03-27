@@ -1,0 +1,29 @@
+﻿<BootstrapSequence xmlns="http://arctisaurora/AuroraBootstrapTypes"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://arctisaurora/AuroraBootstrapTypes ../Schemas/BootstrapTypeSchema.xsd">
+
+	<Phase Name="Bootstrap">
+		<!--pre-renderer-->
+		<Step Action="InputHandler.LoadInputs"/>
+		<Step Action="Engine.SystemSetup"/>
+		<Step Action="Engine.InitWindowing"/>
+		<Step Action="AssetRegistries.InstantiateRegistries"/>
+		<Step Action="AssetRegistries.RegisterSerializableTypes"/>
+		<!--pre-renderer-->
+		
+		<Step Action="Renderer.InitRenderer"/>
+		<Step Action="Renderer.PreInitialize"/>
+		<Step Action="Renderer.Initialize"/>
+		
+		<!--post-renderer-->
+		<Step Action="Context.LoadContexts"/>
+		<Step Action="AssetRegistries.PrepareDefaultAssets"/>
+		<!--post-renderer-->
+		
+		<Step Action="Renderer.SetupObjects"/>
+		<Step Action="Renderer.PrepareDescriptors"/>
+		<Step Action="Renderer.SetupPipelines"/>
+		<Step Action="Renderer.CreateSyncObjects"/>
+	</Phase>
+	
+</BootstrapSequence>

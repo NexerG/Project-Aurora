@@ -1,6 +1,6 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.UISystem;
-using ArctisAurora.EngineWork.Serialization;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using Image = SixLabors.ImageSharp.Image;

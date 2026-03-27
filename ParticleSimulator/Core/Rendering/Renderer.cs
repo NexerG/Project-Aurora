@@ -1,4 +1,5 @@
-﻿using ArctisAurora.EngineWork.Rendering.Helpers;
+﻿using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Core;
 using Silk.NET.Core.Native;
@@ -80,11 +81,17 @@ namespace ArctisAurora.EngineWork.Rendering
         private ExtDebugUtils _debugUtils;
         private DebugUtilsMessengerEXT _debugMessenger;
 
-
+        
         internal Renderer()
         {
             renderer = this;
         }
+
+        /*[A_XSDActionDependency("Renderer.NewRenderer", "Bootstrap")]
+        internal void InitRenderer()
+        {
+            renderer = new Renderer();
+        }*/
 
         // setup prerequisites
         internal void PreInitialize(RenderingModule[] modules)
@@ -93,35 +100,38 @@ namespace ArctisAurora.EngineWork.Rendering
         }
 
         // initializes the window and driver
-        internal void Initialize()
+        [A_XSDActionDependency("Renderer.Initialize", "Bootstrap")]
+        internal static void Initialize()
         {
             // driver
-            CreateVulkanInstance();
+            renderer.CreateVulkanInstance();
             Engine.window.CreateSurface();
-            ChoosePhysicalDevice();
-            
-            queueFamilyIndex = FindQueueFamilyIndex(ref vk, ref gpu, ref queueFamilyProperties, QueueFlags.GraphicsBit);
-            presentSupportIndex = FindPresentSupportIndex(ref gpu, ref queueFamilyProperties, ref Engine.window.driverSurface, ref Engine.window.surface);
+            renderer.ChoosePhysicalDevice();
 
-            CreateLogicalDevice();
+            renderer.queueFamilyIndex = FindQueueFamilyIndex(ref vk, ref gpu, ref queueFamilyProperties, QueueFlags.GraphicsBit);
+            renderer.presentSupportIndex = FindPresentSupportIndex(ref gpu, ref queueFamilyProperties, ref Engine.window.driverSurface, ref Engine.window.surface);
 
-            graphicsQueue = vk.GetDeviceQueue(logicalDevice, (uint)queueFamilyIndex, 0);
-            presentQueue = vk.GetDeviceQueue(logicalDevice, presentSupportIndex, 0);
+            renderer.CreateLogicalDevice();
 
-            CreateSwapchain();
-            CreateCommandPool();
+            graphicsQueue = vk.GetDeviceQueue(logicalDevice, (uint)renderer.queueFamilyIndex, 0);
+            presentQueue = vk.GetDeviceQueue(logicalDevice, renderer.presentSupportIndex, 0);
+
+            renderer.CreateSwapchain();
+            renderer.CreateCommandPool();
         }
 
         // initializes the rendering modules
-        internal void PrepareDescriptors()
+        [A_XSDActionDependency("Renderer.PrepareDescriptors", "Bootstrap")]
+        internal static void PrepareDescriptors()
         {
-            CreateDescriptorSetLayouts();
+            renderer.CreateDescriptorSetLayouts();
             //CreateDescriptorPool();
             //AllocateDescriptorSets();
             //UpdateGlobalDescriptorSet();
         }
 
-        internal void SetupObjects()
+        [A_XSDActionDependency("Renderer.SetupObjects", "Bootstrap")]
+        internal static void SetupObjects()
         {
             for (int i = 0; i < renderingModules.Length; i++)
             {
@@ -129,12 +139,13 @@ namespace ArctisAurora.EngineWork.Rendering
             }
         }
 
-        internal void SetupPipelines()
+        [A_XSDActionDependency("Renderer.SetupPipelines", "Bootstrap")]
+        internal static void SetupPipelines()
         {
             for(int i=0;i< renderingModules.Length; i++)
             {
-                renderingModules[i].CreateRenderPass(ref surfaceFormat);
-                renderingModules[i].CreateFrameBuffers(swapchainImageViews, swapchainImageViewsDepth);
+                renderingModules[i].CreateRenderPass(ref renderer.surfaceFormat);
+                renderingModules[i].CreateFrameBuffers(renderer.swapchainImageViews, renderer.swapchainImageViewsDepth);
                 renderingModules[i].CreatePipeline();
             }
         }
@@ -147,7 +158,8 @@ namespace ArctisAurora.EngineWork.Rendering
             }
         }
 
-        internal void CreateSyncObjects()
+        [A_XSDActionDependency("Renderer.CreateSyncObjects", "Bootstrap")]
+        internal static void CreateSyncObjects()
         {
             imageAvailableSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
             renderFinishedSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];

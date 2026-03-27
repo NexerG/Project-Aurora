@@ -12,14 +12,9 @@ namespace AuroraPeriodic
         static void Main(string[] args)
         {
             Engine engine = new Engine();
-            RenderingModule[] modules = new RenderingModule[]
-            {
-                new UIModule(),
-            };
-
             XSDGenerator.GenerateXSD();
 
-            engine.Init(modules, false);
+            engine.Init(false);
             InputHandler.SetActiveKeybindGroup("InputMap");
             //AssetImporter.ImportFont("abcdefghijklmnoprstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ <>", "arial.ttf");
             // prepare level

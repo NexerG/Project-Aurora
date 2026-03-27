@@ -1,7 +1,7 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Helpers;
-using ArctisAurora.EngineWork.Serialization;
 using Silk.NET.Vulkan;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;

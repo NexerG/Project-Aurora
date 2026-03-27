@@ -1,4 +1,4 @@
-﻿using ArctisAurora.EngineWork.Serialization;
+﻿using ArctisAurora.Core.Filing.Serialization;
 using Silk.NET.Maths;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;

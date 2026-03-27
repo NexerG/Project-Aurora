@@ -9,6 +9,11 @@ ArctisAurora.Core.ECS.EngineEntity -> C:\Projects-Repositories\Aurora\Project-Au
 ArctisAurora.Core.ECS.EngineEntity -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\ECS\EngineEntity\LightSourceEntity.cs
 ArctisAurora.Core.ECS.EngineEntity -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\ECS\EngineEntity\Transform.cs
 ArctisAurora.Core.Filing -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Filing\FileObject.cs
+ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Filing\Serialization\AssetImporter.cs
+ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Filing\Serialization\MeshImporter.cs
+ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Filing\Serialization\Paths.cs
+ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Filing\Serialization\SerializationAttributes.cs
+ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Filing\Serialization\Serializer.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\AuroraFont.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Bezier.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Glyph.cs
@@ -69,11 +74,6 @@ ArctisAurora.EngineWork.Rendering.RendererTypes -> C:\Projects-Repositories\Auro
 ArctisAurora.EngineWork.Rendering.RendererTypes -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Rendering\RendererTypes\RadianceCascades2D.cs
 ArctisAurora.EngineWork.Rendering.RendererTypes -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Rendering\RendererTypes\Rasterizer.cs
 ArctisAurora.EngineWork.Rendering.UI -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Rendering\UI\UIRenderer.cs
-ArctisAurora.EngineWork.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Serialization\AssetImporter.cs
-ArctisAurora.EngineWork.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Serialization\MeshImporter.cs
-ArctisAurora.EngineWork.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Serialization\Paths.cs
-ArctisAurora.EngineWork.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Serialization\SerializationAttributes.cs
-ArctisAurora.EngineWork.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Serialization\Serializer.cs
 ArctisAurora.Forces -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Forces\Force.cs
 ArctisAurora.Forces -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Forces\Gravity.cs
 ArctisAurora.ParticleTypes -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Simulators\ParticleTypes\Particle3D.cs

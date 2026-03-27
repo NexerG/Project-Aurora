@@ -1,4 +1,4 @@
-﻿using ArctisAurora.EngineWork.Serialization;
+﻿using ArctisAurora.Core.Filing.Serialization;
 using System.Reflection;
 using System.Xml;
 using System.Xml.Linq;

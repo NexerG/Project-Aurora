@@ -14,7 +14,7 @@
 		<StackPanel ControlColor="gray" Grid.Column="0" Grid.Row="0">
 			<Button ControlColor="red" Height="25"/>
 			<Button HeightStar="1"/>
-			<Button ControlColor="black" Grid.Column="0" Grid.Row="0" HeightStar="2" HorizontalAlignment="Stretch">
+			<Button ControlColor="black" Grid.Column="0" Grid.Row="0" HeightStar="2" HorizontalAlignment="Stretch" onClick="ExitApplication2">
 				<TextControl FontSize="24" Text="BBBBBBBB"/>
 			</Button>
 		</StackPanel>

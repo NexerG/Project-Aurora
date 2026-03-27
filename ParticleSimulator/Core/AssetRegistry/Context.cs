@@ -16,7 +16,7 @@ namespace ArctisAurora.Core.AssetRegistry
     public record ContextEntry(Type valueType, Func<object?> Get, Action<object?> set);
 
     [A_XSDType("ActiveContext", "Context")]
-    public sealed class Context : IBootstrap
+    public sealed class Context
     {
 
         public static readonly Dictionary<string, object> activeContexts =
@@ -38,8 +38,10 @@ namespace ArctisAurora.Core.AssetRegistry
 
         public static void Clear(string name) => Set(name, null);
 
-        [A_BootstrapStage(BootstrapStage.PostGPUAPI)]
-        public static void Bootstrap(BootstrapStage? stage)
+        
+        //[A_BootstrapStage(BootstrapStage.PostGPUAPI)]
+        [A_XSDActionDependency("Context.LoadContexts", "Bootstrap")]
+        internal static void LoadContexts()
         {
             var generalAsm = AppDomain.CurrentDomain.GetAssemblies();
             var members = generalAsm.SelectMany(a => a.GetTypes())

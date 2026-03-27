@@ -32,6 +32,9 @@
       <xs:enumeration value="FontAsset" />
       <xs:enumeration value="TextureAsset" />
       <xs:enumeration value="ControlStyle" />
+      <xs:enumeration value="Step" />
+      <xs:enumeration value="Phase" />
+      <xs:enumeration value="BootstrapSequence" />
       <xs:enumeration value="Keys" />
       <xs:enumeration value="Keystate" />
       <xs:enumeration value="Keybind" />
@@ -93,6 +96,13 @@
       <xs:enumeration value="FontAsset" />
       <xs:enumeration value="TextureAsset" />
       <xs:enumeration value="ControlStyle" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Bootstrap">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Step" />
+      <xs:enumeration value="Phase" />
+      <xs:enumeration value="BootstrapSequence" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Input">

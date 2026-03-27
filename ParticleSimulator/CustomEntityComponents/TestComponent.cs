@@ -1,5 +1,5 @@
-﻿using ArctisAurora.EngineWork.ComponentBehaviour;
-using ArctisAurora.EngineWork.Serialization;
+﻿using ArctisAurora.Core.Filing.Serialization;
+using ArctisAurora.EngineWork.ComponentBehaviour;
 
 namespace ArctisAurora.CustomEntityComponents
 {

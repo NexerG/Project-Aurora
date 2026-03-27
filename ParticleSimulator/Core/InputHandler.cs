@@ -1,5 +1,5 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
-using ArctisAurora.EngineWork.Serialization;
+using ArctisAurora.Core.Filing.Serialization;
 using Silk.NET.GLFW;
 using Silk.NET.Maths;
 using System.Reflection;
@@ -209,7 +209,7 @@ namespace ArctisAurora.EngineWork
             _ => Keys.unknown
         };
 
-        public static Keys MouseKey(Silk.NET.GLFW.MouseButton button) => button switch
+        public static Keys MouseKey(MouseButton button) => button switch
         {
             Silk.NET.GLFW.MouseButton.Left => Keys.MouseLeft,
             Silk.NET.GLFW.MouseButton.Right => Keys.MouseRight,
@@ -269,7 +269,7 @@ namespace ArctisAurora.EngineWork
     }
 
     [A_XSDType("KeybindMap", "Input")]
-    public unsafe class InputHandler : IXMLParser<InputHandler>, IBootstrap
+    public unsafe class InputHandler : IXMLParser<InputHandler>//, IBootstrap
     {
         public static InputHandler instance { get; set; }
 
@@ -501,8 +501,9 @@ namespace ArctisAurora.EngineWork
             }
         }
 
-        [A_BootstrapStage(BootstrapStage.PreGPUAPI)]
-        public static void Bootstrap(BootstrapStage? stage)
+        //[A_BootstrapStage(BootstrapStage.PreGPUAPI)]
+        [A_XSDActionDependency("InputHandler.LoadInputs", "Bootstrap")]
+        public static void LoadInputs()
         {
             instance = ParseXML("InputMap.xml");
             Engine.inputHandler = instance;

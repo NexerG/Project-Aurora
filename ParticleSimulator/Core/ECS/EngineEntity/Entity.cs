@@ -1,9 +1,9 @@
-﻿using ArctisAurora.EngineWork;
+﻿using ArctisAurora.Core.Filing.Serialization;
+using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
-using ArctisAurora.EngineWork.Serialization;
 
 namespace ArctisAurora.Core.ECS.EngineEntity
 {
