@@ -1,9 +1,7 @@
 ﻿
 using ArctisAurora.Core.AssetRegistry;
 using ArctisAurora.Core.UISystem.Controls;
-using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.EngineWork;
-using ArctisAurora.EngineWork.Rendering.Modules;
 
 namespace AuroraPeriodic
 {

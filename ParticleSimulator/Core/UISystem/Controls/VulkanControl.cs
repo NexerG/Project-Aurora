@@ -290,10 +290,10 @@ namespace ArctisAurora.Core.UISystem.Controls
         public DockMode dockMode;
 
         [A_XSDElementProperty("Grid.Column", "UI", "If present in a grid sets the control's grid column.")]
-        public int GridColumn = 0;
+        public int gridColumn = 0;
 
         [A_XSDElementProperty("Grid.Row", "UI", "If present in a grid sets the control's grid row.")]
-        public int GridRow = 0;
+        public int gridRow = 0;
         #endregion
 
         #region ---- styling ----
@@ -307,6 +307,7 @@ namespace ArctisAurora.Core.UISystem.Controls
                 _controlColorHex = value;
                 Vector3D<float> rgb = HexToRGB(value);
                 controlData.style.tint = rgb;
+                //isDirty = true;
                 UpdateControlData();
             }
         }
@@ -352,15 +353,26 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         [A_XSDElementProperty("onClick", "UI")]
         public Action onClick;
+        [A_XSDElementProperty("BubbleClick", "UI")]
+        public bool bubbleClick = false;
+
         [A_XSDElementProperty("onAltClick", "UI")]
         public Action onAltClick;
+        [A_XSDElementProperty("BubbleAltClick", "UI")]
+        public bool bubbleAltClick = false;
 
         public Action onDoubleClick;
+        public bool bubbleDoubleClick = false;
 
         [A_XSDElementProperty("onRelease", "UI")]
         public Action onRelease;
+        [A_XSDElementProperty("BubbleRelease", "UI")]
+        public bool bubbleRelease = false;
+
         [A_XSDElementProperty("onAltRelease", "UI")]
         public Action onAltRelease;
+        [A_XSDElementProperty("BubbleAltRelease", "UI")]
+        public bool bubbleAltRelease = false;
 
         public Action<Vector2D<float>, Vector2D<float>> onDrag;
         [A_XSDElementProperty("onDragStop", "UI")]
@@ -370,6 +382,8 @@ namespace ArctisAurora.Core.UISystem.Controls
         public Action onScrollUp;
         [A_XSDElementProperty("onScrollDown", "UI")]
         public Action onScrollDown;
+        [A_XSDElementProperty("BubbleScroll", "UI")]
+        public bool bubbleScroll = false;
 
         private DateTime lastClick = DateTime.Now;
         public bool HitTest(Vector2D<float> point) => ClipRect.Contains(point);
@@ -568,126 +582,65 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         #region mouse_events
         // HOVER
-        public void RegisterHover(Action<Vector2D<float>> action)
-        {
-            hover += action;
-        }
+        public void RegisterHover(Action<Vector2D<float>> action) => hover += action;
+        public void ResolveHover(Vector2D<float> pos) => hover?.Invoke(pos);
 
-        public void ResolveHover(Vector2D<float> pos)
-        {
-            hover?.Invoke(pos);
-        }
+        public void RegisterOnEnter(Action action) => onEnter += action;
+        public virtual void ResolveOnEnter() => onEnter?.Invoke();
 
-        // ENTER
-        public void RegisterOnEnter(Action action)
-        {
-            onEnter += action;
-        }
+        public void RegisterOnExit(Action action) => onExit += action;
+        public virtual void ResolveExit() => onExit?.Invoke();
 
-        public virtual void ResolveOnEnter()
-        {
-            onEnter?.Invoke();
-        }
+        public void RegisterOnDrag(Action<Vector2D<float>, Vector2D<float>> action) => onDrag += action;
+        public virtual void ResolveDrag(Vector2D<float> lastPos, Vector2D<float> delta) => onDrag?.Invoke(lastPos, delta);
 
-        // EXIT
-        public void RegisterOnExit(Action action)
-        {
-            onExit += action;
-        }
+        public virtual void RegisterDragStop(Action action) => onDragStop += action;
+        public virtual void StopDrag() => onDragStop?.Invoke();
 
-        public virtual void ResolveExit()
-        {
-            onExit?.Invoke();
-        }
-
-        // DRAG
-        public void RegisterOnDrag(Action<Vector2D<float>, Vector2D<float>> action)
-        {
-            onDrag += action;
-        }
-
-        public virtual void ResolveDrag(Vector2D<float> lastPos, Vector2D<float> delta)
-        {
-            //if (onDrag != null)
-            //{
-            onDrag?.Invoke(lastPos, delta);
-            //}
-        }
-
-        public virtual void RegisterDragStop(Action action)
-        {
-            onDragStop += action;
-        }
-
-        public virtual void StopDrag()
-        {
-            onDragStop?.Invoke();
-        }
-
-        // CLICK
-        public void RegisterOnClick(Action action)
-        {
-            onClick += action;
-        }
-
+        public void RegisterOnClick(Action action) => onClick += action;
         public virtual void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
         {
             onClick?.Invoke();
+            if (bubbleClick && parent is VulkanControl parentControl)
+            {
+                parentControl.ResolveOnClick(oldPos, delta);
+            }
         }
 
-        // DOUBLE CLICK
-        public void RegisterOnDoubleClick(Action action)
-        {
-            onDoubleClick += action;
-        }
-
+        public void RegisterOnDoubleClick(Action action) => onDoubleClick += action;
         public virtual void ResolveOnDoubleClick()
         {
             onDoubleClick?.Invoke();
+            if (bubbleDoubleClick && parent is VulkanControl parentControl)
+                parentControl.ResolveOnDoubleClick();
         }
 
-        // RELEASE
-        public void RegisterOnRelease(Action action)
-        {
-            onRelease += action;
-        }
-
+        public void RegisterOnRelease(Action action) => onRelease += action;
         public virtual void ResolveOnRelease()
         {
             onRelease?.Invoke();
+            if (bubbleRelease && parent is VulkanControl parentControl)
+                parentControl.ResolveOnRelease();
         }
 
-        // ALT CLICK
-        public void RegisterOnAltClick(Action action)
-        {
-            onAltClick += action;
-        }
-
+        public void RegisterOnAltClick(Action action) => onAltClick += action;
         public virtual void ResolveOnAltClick()
         {
             onAltClick?.Invoke();
+            if (bubbleAltClick && parent is VulkanControl parentControl)
+                parentControl.ResolveOnAltClick();
         }
 
-        // ALT RELEASE
-        public void RegisterOnAltRelease(Action action)
-        {
-            onAltRelease += action;
-        }
-
+        public void RegisterOnAltRelease(Action action) => onAltRelease += action;
         public virtual void ResolveOnAltRelease()
         {
             onAltRelease?.Invoke();
+            if (bubbleAltRelease && parent is VulkanControl parentControl)
+                parentControl.ResolveOnAltRelease();
         }
 
-        public void RegisterOnScrollUp(Action action)
-        {
-            onScrollUp += action;
-        }
-
-        public void RegisterOnScrollDown(Action action)
-        {
-            onScrollDown += action;
-        }
+        public void RegisterOnScrollUp(Action action) => onScrollUp += action;
+        public void RegisterOnScrollDown(Action action) => onScrollDown += action;
 
         public virtual bool ResolveOnScrollUp()
         {
@@ -707,6 +660,16 @@ namespace ArctisAurora.Core.UISystem.Controls
                 return true;
             }
             return false;
+        }
+
+        public void BubbleAll()
+        {
+            bubbleClick = true;
+            bubbleAltClick = true;
+            bubbleDoubleClick = true;
+            bubbleRelease = true;
+            bubbleAltRelease = true;
+            bubbleScroll = true;
         }
         #endregion
 

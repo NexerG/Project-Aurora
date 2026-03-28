@@ -78,7 +78,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
             foreach (var cell in _cellAssignments)
             {
-                if (cell.column == control.GridColumn && cell.row == control.GridRow)
+                if (cell.column == control.gridColumn && cell.row == control.gridRow)
                     throw new Exception("One cell - one control.");
             }
 
@@ -87,8 +87,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
             _cellAssignments.Add(new GridCellAssignment
             {
-                row = control.GridRow,
-                column = control.GridColumn,
+                row = control.gridRow,
+                column = control.gridColumn,
                 child = control
             });
 

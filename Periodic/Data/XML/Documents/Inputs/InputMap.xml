@@ -4,6 +4,7 @@
 		  xsi:schemaLocation="http://arctisaurora/AuroraInputTypes ../../Schemas/InputTypeSchema.xsd" >
 	<Keybind Button="Escape" Action="ExitApplication" State="Pressed"/>
 	<Keybind Button="Backspace" Action="ExitApplication" State="Released"/>
-	<Keybind Button="AnySymbol" Action="DummyKeyPress" State="Pressed"/>
+	<Keybind Button="AnySymbol" Action="Write" State="Pressed"/>
+	<Keybind Button="AnySymbol" Action="Write" State="Held"/>
 
 </KeybindMap>

@@ -1,9 +1,7 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.UISystem.Controls;
-using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.EngineWork;
-using ArctisAurora.EngineWork.AssetRegistry;
 using Silk.NET.GLFW;
 using Silk.NET.Maths;
 using ScrollableControl = ArctisAurora.Core.UISystem.Controls.Containers.ScrollableControl;
@@ -14,7 +12,6 @@ namespace ArctisAurora.Core.UISystem
     {
         public static UICollisionHandling instance;
         public bool isInWindow = true;
-        //public AbstractContainerControl container;
         public ContextMenuControl defaultContextMenu;
 
         public Vector2D<float> lastMousePos;
@@ -26,9 +23,9 @@ namespace ArctisAurora.Core.UISystem
         public static VulkanControl dragging;
         
         /*[A_ActiveContext("ActiveContainer")]
-        public static VulkanControl activeContainer;
+        public static VulkanControl activeContainer;*/
         [A_ActiveContext("ActiveControl")]
-        public static VulkanControl activeControl;*/
+        public static VulkanControl activeControl;
 
 
         public UICollisionHandling()
@@ -43,14 +40,21 @@ namespace ArctisAurora.Core.UISystem
             VulkanControl deepest = FindDeepestValid(mousePos, EntityManager.uiTree, ref localVerts);
             if (deepest != EntityManager.uiTree && deepest != null)
             {
-                Context.Set("Hovering", deepest);
+                if (deepest != hovering)
+                {
+                    Context.Set("Hovering", deepest);
+                    (deepest as IContext)?.OnContextAdded();
+                }
                 deepest.ResolveHover(mousePos);
             }
             else
             {
                 deepest = Context.Get<VulkanControl>("Hovering");
-                if(deepest != null)
+                if (deepest != null)
+                {
+                    (deepest as IContext)?.OnContextRemoved();
                     deepest.ResolveExit();
+                }
                 Context.Clear("Hovering");
             }
         }
@@ -58,6 +62,12 @@ namespace ArctisAurora.Core.UISystem
         public void SolveLMBPress(Vector2D<float> mousePos)
         {
             if (hovering == null) return;
+            if (activeControl != hovering)
+            {
+                (activeControl as IContext)?.OnContextRemoved();
+                activeControl = hovering;
+                (activeControl as IContext)?.OnContextAdded();
+            }
             hovering?.ResolveOnClick(lastMousePos, delta);
         }
 

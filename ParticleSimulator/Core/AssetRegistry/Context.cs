@@ -13,6 +13,13 @@ namespace ArctisAurora.Core.AssetRegistry
             this.name = name;
         }
     }
+
+    public interface IContext
+    {
+        public abstract void OnContextAdded();
+        public abstract void OnContextRemoved();
+    }
+
     public record ContextEntry(Type valueType, Func<object?> Get, Action<object?> set);
 
     [A_XSDType("ActiveContext", "Context")]

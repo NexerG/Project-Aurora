@@ -6,7 +6,8 @@
       <xs:enumeration value="Panel" />
       <xs:enumeration value="Window" />
       <xs:enumeration value="ShortText" />
-      <xs:enumeration value="TextControl" />
+      <xs:enumeration value="TextBox" />
+      <xs:enumeration value="TextInput" />
       <xs:enumeration value="Button" />
       <xs:enumeration value="DockMode" />
       <xs:enumeration value="Dock" />
@@ -62,7 +63,8 @@
       <xs:enumeration value="Panel" />
       <xs:enumeration value="Window" />
       <xs:enumeration value="ShortText" />
-      <xs:enumeration value="TextControl" />
+      <xs:enumeration value="TextBox" />
+      <xs:enumeration value="TextInput" />
       <xs:enumeration value="Button" />
       <xs:enumeration value="DockMode" />
       <xs:enumeration value="Dock" />

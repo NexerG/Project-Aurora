@@ -57,6 +57,26 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             controlData.style.tint = new Vector3D<float>(1, 1, 1);
             fontSize = 24;
         }
+
+        public override void BeginEdit()
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void CommitEdit()
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void CancelEdit()
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void WriteChar(char c)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     /*[A_VulkanControlElement("TextBlock", "Data class for ShortTextControl. Contains properties related to the control's appearance and behavior.")]

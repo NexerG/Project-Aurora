@@ -2,7 +2,7 @@
 <xsd:schema xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" targetNamespace="http://arctisaurora/ActionDependencies" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <xs:simpleType name="Input">
     <xs:restriction base="xs:string">
-      <xs:enumeration value="WriteInput" />
+      <xs:enumeration value="Write" />
       <xs:enumeration value="ExitApplication" />
       <xs:enumeration value="DummyHover" />
       <xs:enumeration value="DummyKeyPress" />

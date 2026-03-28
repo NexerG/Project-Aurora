@@ -1,4 +1,4 @@
-﻿using ArctisAurora.Core.UISystem.Controls;
+﻿using ArctisAurora.Core.AssetRegistry;
 using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Maths;
@@ -6,7 +6,7 @@ using Silk.NET.Vulkan;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text
 {
-    public class GlyphControl : VulkanControl
+    public class GlyphControl : VulkanControl, IContext
     {
         public char character;
         int index;
@@ -14,6 +14,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
 
         public GlyphControl(char character, FontAsset fontAsset, int px)
         {
+            BubbleAll();
             this.character = character;
             maskAsset = fontAsset.textureAsset;
 
@@ -32,6 +33,17 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             controlData.uvs.uv3 = new Vector2D<float>(xOffset, yOffset + glyphAtlasSize);
             controlData.uvs.uv4 = new Vector2D<float>(xOffset + glyphAtlasSize, yOffset);
             AVulkanBufferHandler.UpdateBuffer(ref controlData, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
+        }
+
+        public void OnContextAdded()
+        {
+            (parent as IContext)?.OnContextAdded();
+            UICollisionHandling.activeControl = (VulkanControl)parent;
+        }
+
+        public void OnContextRemoved()
+        {
+            (parent as IContext)?.OnContextRemoved();
         }
     }
 }

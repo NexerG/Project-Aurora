@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Core;
@@ -494,7 +495,8 @@ namespace ArctisAurora.EngineWork.Rendering
             {
                 if (renderingModules[i].RendererStage == ERendererStage.UI)
                 {
-                    renderingModules[i].UpdateModule();
+                    renderingModules[i].isDirty = true;
+                    //renderingModules[i].UpdateModule();
                     //return;
                 }
             }
@@ -526,6 +528,8 @@ namespace ArctisAurora.EngineWork.Rendering
 
             for (int i = 0; i < renderingModules.Length; i++)
             {
+                if(renderingModules[i].isDirty)
+                    renderingModules[i].UpdateModule();
                 renderingModules[i].camera.UpdateCameraMatrix(Engine.window.windowSize, imageIndex, (uint)i);
             }
             //int localEntityCount = 0;

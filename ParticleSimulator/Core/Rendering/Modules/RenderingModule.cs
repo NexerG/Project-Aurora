@@ -48,6 +48,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal abstract uint MAX_STORAGE_BUFFERS { get; }
         internal abstract uint MAX_UNIFORMS_BUFFERS { get; }
 
+        // Updates
+        public bool isDirty = true;
 
         // others
         internal AuroraCamera camera;

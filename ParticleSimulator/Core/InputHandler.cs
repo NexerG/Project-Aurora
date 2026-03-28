@@ -2,6 +2,7 @@
 using ArctisAurora.Core.Filing.Serialization;
 using Silk.NET.GLFW;
 using Silk.NET.Maths;
+using Silk.NET.Vulkan;
 using System.Reflection;
 using System.Xml.Linq;
 
@@ -247,6 +248,83 @@ namespace ArctisAurora.EngineWork
             => true,
             _ => false
         };
+
+        public static char GetCharacter(Keys key) => key switch
+        {
+            Keys.A => 'a',
+            Keys.B => 'b',
+            Keys.C => 'c',
+            Keys.D => 'd',
+            Keys.E => 'e',
+            Keys.F => 'f',
+            Keys.G => 'g',
+            Keys.H => 'h',
+            Keys.I => 'i',
+            Keys.J => 'j',
+            Keys.K => 'k',
+            Keys.L => 'l',
+            Keys.M => 'm',
+            Keys.N => 'n',
+            Keys.O => 'o',
+            Keys.P => 'p',
+            Keys.Q => 'q',
+            Keys.R => 'r',
+            Keys.S => 's',
+            Keys.T => 't',
+            Keys.U => 'u',
+            Keys.V => 'v',
+            Keys.W => 'w',
+            Keys.X => 'x',
+            Keys.Y => 'y',
+            Keys.Z => 'z',
+
+            Keys.Num0 => '0',
+            Keys.Num1 => '1',
+            Keys.Num2 => '2',
+            Keys.Num3 => '3',
+            Keys.Num4 => '4',
+            Keys.Num5 => '5',
+            Keys.Num6 => '6',
+            Keys.Num7 => '7',
+            Keys.Num8 => '8',
+            Keys.Num9 => '9',
+
+            Keys.Numpad0 => '0',
+            Keys.Numpad1 => '1',
+            Keys.Numpad2 => '2',
+            Keys.Numpad3 => '3',
+            Keys.Numpad4 => '4',
+            Keys.Numpad5 => '5',
+            Keys.Numpad6 => '6',
+            Keys.Numpad7 => '7',
+            Keys.Numpad8 => '8',
+            Keys.Numpad9 => '9',
+            Keys.NumpadDecimal => '.',
+            Keys.NumpadDivide => '/',
+            Keys.NumpadMultiply => '*',
+            Keys.NumpadSubtract => '-',
+            Keys.NumpadAdd => '+',
+            Keys.NumpadEnter => '\n',
+            Keys.NumpadEqual => '=',
+
+            Keys.Space => ' ',
+            Keys.Enter => '\n',
+            Keys.Tab => '\t',
+
+            Keys.Apostrophe => '\'',
+            Keys.Comma => ',',
+            Keys.Minus => '-',
+            Keys.Period => '.',
+            Keys.Slash => '/',
+            Keys.Semicolon => ';',
+            Keys.Equal => '=',
+            Keys.LeftBracket => '[',
+            Keys.Backslash => '\\',
+            Keys.RightBracket => ']',
+            Keys.GraveAccent => '`',
+
+            _ => '\0'
+        };
     }
 
     public class KeybindComparer : IEqualityComparer<Keybind>
@@ -275,7 +353,7 @@ namespace ArctisAurora.EngineWork
 
         public static char lastCharInput = '\0';
         public static Queue<char> charInputWriteQueue = new Queue<char>();
-        private static Queue<char> charInputReadQueue = new Queue<char>();
+        public static Queue<char> charInputReadQueue = new Queue<char>();
 
         public static Queue<Keybind> inputWriteQueue = new Queue<Keybind>();
         private static Queue<Keybind> inputReadQueue = new Queue<Keybind>();
@@ -307,7 +385,7 @@ namespace ArctisAurora.EngineWork
         internal void ProcessCharInput(WindowHandle* window, uint codepoint)
         {
             lastCharInput = (char)codepoint;
-            charInputWriteQueue.Enqueue((char)codepoint);
+            //charInputWriteQueue.Enqueue((char)codepoint);
         }
 
         internal void ProcessMouseMove(WindowHandle* window, double xPos, double yPos)
@@ -333,6 +411,13 @@ namespace ArctisAurora.EngineWork
             if (ks == KeyState.Pressed) _keysHeldWrite.Add(mapped);
             if (ks == KeyState.Released) _keysHeldWrite.Remove(mapped);
             inputWriteQueue.Enqueue(new Keybind(mapped, ks));
+
+            if ((ks == KeyState.Pressed || ks == KeyState.Held) && Keybind.IsCharacter(mapped))
+            {
+                char c = Keybind.GetCharacter(mapped);
+                if (c != '\0')
+                    charInputWriteQueue.Enqueue(c);
+            }
         }
 
         internal void ProcessScrollWheel(WindowHandle* window, double offsetX, double offsetY)
@@ -368,7 +453,10 @@ namespace ArctisAurora.EngineWork
                 if (Keybind.IsCharacter(keybind.button))
                 {
                     foreach (Keybind any in activeKeybindActions.Where(k => k.button == Keys.AnySymbol && k.state == keybind.state))
+                    {
                         ActivateKeyByState(any);
+                        charInputReadQueue.Enqueue(Keybind.GetCharacter(any.button));
+                    }
                 }
                 ActivateKeyByState(keybind);
             }
@@ -390,10 +478,12 @@ namespace ArctisAurora.EngineWork
                 case KeyState.Pressed:
                     {
                         Keybind k = activeKeybindActions.FirstOrDefault(k => k.button == keybind.button && k.state == KeyState.Pressed);
-                        if (k != null)
+                        if (k != null) k.action?.Invoke();
+                        /*if (Keybind.IsCharacter(keybind.button))
                         {
-                            k.action?.Invoke();
-                        }
+                            char c = Keybind.GetCharacter(keybind.button);
+                            if(c != '\0') charInputWriteQueue.Enqueue(c);
+                        }*/
                         break;
                     }
                 case KeyState.Released:
@@ -417,9 +507,16 @@ namespace ArctisAurora.EngineWork
                                 k.repeatWatch += Engine.deltaTime.TotalSeconds;
                                 if (k.repeatWatch >= repeatDelay)
                                 {
+                                    Console.WriteLine("started repeating");
                                     k.isRepeating = true;
                                     k.repeatWatch = 0;
                                     k.action?.Invoke();
+
+                                    /*if (Keybind.IsCharacter(keybind.button))
+                                    {
+                                        char c = Keybind.GetCharacter(keybind.button);
+                                        if (c != '\0') charInputWriteQueue.Enqueue(c);
+                                    }*/
                                 }
                             }
                             else
@@ -427,8 +524,15 @@ namespace ArctisAurora.EngineWork
                                 k.repeatWatch += Engine.deltaTime.TotalSeconds;
                                 if (k.repeatWatch >= repeatRate)
                                 {
+                                    Console.WriteLine("repeat");
                                     k.repeatWatch = 0;
                                     k.action?.Invoke();
+
+                                    /*if (Keybind.IsCharacter(keybind.button))
+                                    {
+                                        char c = Keybind.GetCharacter(keybind.button);
+                                        if (c != '\0') charInputWriteQueue.Enqueue(c);
+                                    }*/
                                 }
                             }
                         }
@@ -506,6 +610,27 @@ namespace ArctisAurora.EngineWork
         public static void LoadInputs()
         {
             instance = ParseXML("InputMap.xml");
+            /*foreach (var keybindGroup in keybindGroups)
+            {
+                Keybind anySymbol = null;
+                for (int i = 0; i < keybindGroup.Value.Count; i++)
+                {
+                    if (keybindGroup.Value[i].button == Keys.AnySymbol)
+                    {
+                        anySymbol = keybindGroup.Value[i];
+                        break;
+                    }
+                }
+                if (anySymbol == null) continue;
+                keybindGroup.Value.Remove(anySymbol);
+                foreach (Keys key in Enum.GetValues(typeof(Keys)))
+                {
+                    if (!Keybind.IsCharacter(key)) continue;
+                    Keybind k = new Keybind(key, anySymbol.action, anySymbol.state, false);
+                    keybindGroup.Value.Add(k);
+                }
+            }*/
+
             Engine.inputHandler = instance;
         }
     }

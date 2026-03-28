@@ -6,9 +6,10 @@ using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text
 {
-    [A_XSDType("TextControl", "UI", allowedChildren:typeof(IXMLChild_UI))]
-    public class TextControl : AbstractContainerControl
+    public abstract class TextControl : AbstractContainerControl
     {
+        internal string newEdit = string.Empty;
+        public bool isEditing = false;
         private string _text = string.Empty;
         private FontAsset _fontAsset;
         private int _fontSize = 16;
@@ -141,5 +142,13 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             children.Add(control);
             InvalidateLayout();
         }
+
+        public abstract void BeginEdit();
+
+        public abstract void CommitEdit();
+
+        public abstract void CancelEdit();
+
+        public abstract void WriteChar(char c);
     }
 }
