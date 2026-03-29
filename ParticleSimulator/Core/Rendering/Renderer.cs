@@ -1,5 +1,5 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
-using ArctisAurora.Core.UISystem.Controls;
+using ArctisAurora.Core.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Core;
@@ -9,6 +9,7 @@ using Silk.NET.Vulkan.Extensions.EXT;
 using Silk.NET.Vulkan.Extensions.KHR;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using static ArctisAurora.Core.Rendering.Helpers.QueueAllocator;
 using static ArctisAurora.EngineWork.Rendering.Helpers.AVulkanHelper;
 using Image = Silk.NET.Vulkan.Image;
 using Semaphore = Silk.NET.Vulkan.Semaphore;
@@ -18,6 +19,7 @@ namespace ArctisAurora.EngineWork.Rendering
     internal unsafe class Renderer
     {
         internal static Renderer renderer;
+        internal static QueueAllocator queueAllocator;
         // driver
         internal static Vk vk = Vk.GetApi();
         internal static Instance instance;
@@ -25,11 +27,15 @@ namespace ArctisAurora.EngineWork.Rendering
         internal static Device logicalDevice;
         internal SurfaceFormatKHR surfaceFormat;
 
-        internal int queueFamilyIndex;
-        internal uint presentSupportIndex;
-        internal static QueueFamilyProperties[] queueFamilyProperties;
-        internal static Queue graphicsQueue;
-        internal static Queue presentQueue;
+        // commands
+        internal static Queue presentQueue;     // present surface queue
+        internal static Queue graphicsQueue;    // graphics queue
+        internal static CommandPool graphicsCommandPool;
+        //internal CommandBuffer[] graphicsCommandBuffers;
+
+        internal static Queue transferQueue;      // for buffer transfers
+        internal CommandBuffer[] transferCommandBuffers;
+        internal static CommandPool transferCommandPool;
 
         internal static Semaphore[] imageAvailableSemaphores;
         internal static Semaphore[] renderFinishedSemaphores;
@@ -73,10 +79,6 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal static RenderingModule[] renderingModules;
 
-        // commands
-        internal static CommandPool commandPool;
-        internal CommandBuffer[] commandBuffers;
-
         // debug
         private bool isDebugEnabled = true;
         private ExtDebugUtils _debugUtils;
@@ -109,16 +111,16 @@ namespace ArctisAurora.EngineWork.Rendering
             Engine.window.CreateSurface();
             renderer.ChoosePhysicalDevice();
 
-            renderer.queueFamilyIndex = FindQueueFamilyIndex(ref vk, ref gpu, ref queueFamilyProperties, QueueFlags.GraphicsBit);
-            renderer.presentSupportIndex = FindPresentSupportIndex(ref gpu, ref queueFamilyProperties, ref Engine.window.driverSurface, ref Engine.window.surface);
-
+            queueAllocator = new QueueAllocator(vk, ref gpu);
             renderer.CreateLogicalDevice();
 
-            graphicsQueue = vk.GetDeviceQueue(logicalDevice, (uint)renderer.queueFamilyIndex, 0);
-            presentQueue = vk.GetDeviceQueue(logicalDevice, renderer.presentSupportIndex, 0);
+            graphicsQueue = queueAllocator.AllocateQueue(vk, logicalDevice, QueueFlags.GraphicsBit);
+            presentQueue = queueAllocator.AllocatePresentQueue(vk, logicalDevice);
+            transferQueue = queueAllocator.AllocateQueue(vk, logicalDevice, QueueFlags.TransferBit);
 
             renderer.CreateSwapchain();
-            renderer.CreateCommandPool();
+            renderer.CreateCommandPool((uint)queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit), out graphicsCommandPool, CommandPoolCreateFlags.ResetCommandBufferBit);
+            renderer.CreateCommandPool((uint)queueAllocator.GetFamilyIndex(QueueFlags.TransferBit), out transferCommandPool, CommandPoolCreateFlags.TransientBit);
         }
 
         // initializes the rendering modules
@@ -309,15 +311,6 @@ namespace ArctisAurora.EngineWork.Rendering
 
         private void CreateLogicalDevice()
         {
-            float queuePriority = 1.0f;
-            DeviceQueueCreateInfo queueCreateInfo = new DeviceQueueCreateInfo
-            {
-                SType = StructureType.DeviceQueueCreateInfo,
-                QueueFamilyIndex = (uint)queueFamilyIndex,
-                QueueCount = 1,
-                PQueuePriorities = &queuePriority
-            };
-
             for (int i = 0; i < renderingModules.Length; i++)
             {
                 CopyStructTrues(ref features, renderingModules[i].features);
@@ -359,11 +352,29 @@ namespace ArctisAurora.EngineWork.Rendering
             nint ppEnabledExtensions = Marshal.AllocHGlobal(nint.Size * enabledExtensions.Length);
             Marshal.Copy(enabledExtensions, 0, ppEnabledExtensions, enabledExtensions.Length);
 
+            float queuePriority = 1.0f;
+            DeviceQueueCreateInfo graphicsQueue = new DeviceQueueCreateInfo
+            {
+                SType = StructureType.DeviceQueueCreateInfo,
+                QueueFamilyIndex = (uint)queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit),
+                QueueCount = 1,
+                PQueuePriorities = &queuePriority
+            };
+            DeviceQueueCreateInfo transferQueue = new DeviceQueueCreateInfo
+            {
+                SType = StructureType.DeviceQueueCreateInfo,
+                QueueFamilyIndex = (uint)queueAllocator.GetFamilyIndex(QueueFlags.TransferBit),
+                QueueCount = 1,
+                PQueuePriorities = &queuePriority
+            };
+            var queues = stackalloc[] { graphicsQueue, transferQueue };
+
+
             DeviceCreateInfo createInfo = new DeviceCreateInfo
             {
                 SType = StructureType.DeviceCreateInfo,
-                QueueCreateInfoCount = 1,
-                PQueueCreateInfos = &queueCreateInfo,
+                QueueCreateInfoCount = 2,
+                PQueueCreateInfos = queues,
 
                 EnabledExtensionCount = (uint)enabledExtensions.Length,
                 PpEnabledExtensionNames = (byte**)ppEnabledExtensions,
@@ -400,9 +411,7 @@ namespace ArctisAurora.EngineWork.Rendering
             surfaceFormat = GetSwapchainSurfaceFormat(_support.Formats);
             PresentModeKHR _presentMode = GetPresentMode(_support.PresentModes);
 
-            QueueFamilyIndices _indices = FindQueueFamilies(ref queueFamilyProperties, ref gpu, ref Engine.window.driverSurface, ref Engine.window.surface);
-            var _queueFamilyIndices = stackalloc[] { _indices.GraphicsFamily.Value, _indices.PresentFamily.Value };
-
+            var _queueFamilyIndices = stackalloc[] { (uint)queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit), (uint)queueAllocator.presentFamilyIndex };
             uint _imageCount = _support.Capabilities.MinImageCount + 1;
             SwapchainCreateInfoKHR _swapchainCreateInfo = new SwapchainCreateInfoKHR()
             {
@@ -460,14 +469,15 @@ namespace ArctisAurora.EngineWork.Rendering
             }
         }
 
-        private void CreateCommandPool()
+        private void CreateCommandPool(uint qfIndex, out CommandPool pool, CommandPoolCreateFlags flags)
         {
             CommandPoolCreateInfo _createInfo = new CommandPoolCreateInfo()
             {
                 SType = StructureType.CommandPoolCreateInfo,
-                QueueFamilyIndex = (uint)queueFamilyIndex,
+                QueueFamilyIndex = qfIndex,
+                Flags = flags
             };
-            if (vk.CreateCommandPool(logicalDevice, ref _createInfo, null, out commandPool) != Result.Success)
+            if (vk.CreateCommandPool(logicalDevice, ref _createInfo, null, out pool) != Result.Success)
             {
                 throw new Exception("Failed to create command pool");
             }
@@ -565,13 +575,11 @@ namespace ArctisAurora.EngineWork.Rendering
                 PipelineStageFlags.ColorAttachmentOutputBit
             };
 
-            //CommandBuffer _buffer = commandBuffers[imageIndex];
             CommandBuffer[] executionBuffer = new CommandBuffer[renderingModules.Length];
             for (int i = 0; i < renderingModules.Length; i++)
             {
                 executionBuffer[i] = renderingModules[i].commandBuffers[imageIndex];
             }
-            //fixed
             var _signalSemaphores = stackalloc[]
 {
                 renderFinishedSemaphores[currentFrame]

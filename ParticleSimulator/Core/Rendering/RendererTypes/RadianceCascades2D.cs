@@ -145,11 +145,11 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
             CreateCommandPool();
 
             //create buffers
-            AVulkanBufferHandler.CreateBuffer(ref worldData, ref mousePosBuffer, ref mousePosMemory, BufferUsageFlags.UniformBufferBit);
-            AVulkanBufferHandler.UpdateBuffer(ref worldData, ref mousePosBuffer, ref mousePosMemory, BufferUsageFlags.UniformBufferBit);
+            //AVulkanBufferHandler.CreateBuffer(ref worldData, ref mousePosBuffer, ref mousePosMemory, BufferUsageFlags.UniformBufferBit);
+            //AVulkanBufferHandler.UpdateBuffer(ref worldData, ref mousePosBuffer, ref mousePosMemory, BufferUsageFlags.UniformBufferBit);
             CreateImages();
-            AVulkanBufferHandler.CreateBuffer(ref pd, ref phosphorusDataBuffer, ref phosphorusDM, BufferUsageFlags.UniformBufferBit);
-            AVulkanBufferHandler.UpdateBuffer(ref pd, ref phosphorusDataBuffer, ref phosphorusDM, BufferUsageFlags.UniformBufferBit);
+            //AVulkanBufferHandler.CreateBuffer(ref pd, ref phosphorusDataBuffer, ref phosphorusDM, BufferUsageFlags.UniformBufferBit);
+            //AVulkanBufferHandler.UpdateBuffer(ref pd, ref phosphorusDataBuffer, ref phosphorusDM, BufferUsageFlags.UniformBufferBit);
 
             CreateDescriptorPool();
             CreateDrawingDescriptorPool();
@@ -274,10 +274,10 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
             }
 
 
-            AVulkanBufferHandler.CreateBuffer(ref probeLayers, ref probesB, ref probesDM, BufferUsageFlags.StorageBufferBit);
+            //AVulkanBufferHandler.CreateBuffer(ref probeLayers, ref probesB, ref probesDM, BufferUsageFlags.StorageBufferBit);
             for (int k = 0; k < layers; k++)
             {
-                AVulkanBufferHandler.CreateBuffer(ref pos[k], ref probesPostionB[k], ref probesPositionDM[k], BufferUsageFlags.StorageBufferBit);
+                //AVulkanBufferHandler.CreateBuffer(ref pos[k], ref probesPostionB[k], ref probesPositionDM[k], BufferUsageFlags.StorageBufferBit);
             }
             SetupProbeImages(probeLayers);
         }
@@ -299,7 +299,7 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
         {
             // here we do mouse updates for the compute shader.
             worldData.mousePos = new Vector2D<int>((int)xPos, (int)yPos);
-            AVulkanBufferHandler.UpdateBuffer(ref worldData, ref mousePosBuffer, ref mousePosMemory, BufferUsageFlags.UniformBufferBit);
+            //AVulkanBufferHandler.UpdateBuffer(ref worldData, ref mousePosBuffer, ref mousePosMemory, BufferUsageFlags.UniformBufferBit);
         }
 
         internal override void MouseClick(MouseButton button, InputAction action)
@@ -349,7 +349,7 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
                     break;
                 default: break;
             }
-            AVulkanBufferHandler.UpdateBuffer(ref worldData, ref mousePosBuffer, ref mousePosMemory, BufferUsageFlags.UniformBufferBit);
+            //AVulkanBufferHandler.UpdateBuffer(ref worldData, ref mousePosBuffer, ref mousePosMemory, BufferUsageFlags.UniformBufferBit);
         }
 
         private void CreateDescriptorsetlayout()
@@ -739,7 +739,7 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
             AVulkanBufferHandler.CreateImage(size.Width, size.Height, format, ImageTiling.Optimal, ImageUsageFlags.TransferSrcBit | ImageUsageFlags.StorageBit | ImageUsageFlags.TransferDstBit, MemoryPropertyFlags.DeviceLocalBit, ref image, ref deviceMemory);
             _swapchain.CreateImageView(ref imageView, ref image, ImageAspectFlags.ColorBit, format);
 
-            CommandBuffer _imageTransition = AVulkanBufferHandler.BeginSingleTimeCommands();
+            //CommandBuffer _imageTransition = AVulkanBufferHandler.BeginSingleTimeCommands();
 
             ImageMemoryBarrier _barrier = new()
             {
@@ -760,8 +760,8 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
                 SrcAccessMask = 0,
                 DstAccessMask = AccessFlags.ShaderReadBit | AccessFlags.ShaderWriteBit,
             };
-            _vulkan.CmdPipelineBarrier(_imageTransition, PipelineStageFlags.TopOfPipeBit, PipelineStageFlags.ComputeShaderBit, 0, 0, null, 0, null, 1, ref _barrier);
-            AVulkanBufferHandler.EndSingleTimeCommands(ref _imageTransition);
+            //_vulkan.CmdPipelineBarrier(_imageTransition, PipelineStageFlags.TopOfPipeBit, PipelineStageFlags.ComputeShaderBit, 0, 0, null, 0, null, 1, ref _barrier);
+            //AVulkanBufferHandler.EndSingleTimeCommands(ref _imageTransition);
         }
 
         internal override void CreateDescriptorPool()

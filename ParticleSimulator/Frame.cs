@@ -293,7 +293,7 @@ namespace ArctisAurora
             float b = (float)clr.B / 255;
 
             RadianceCascades2D.worldData.brushColor = new Silk.NET.Maths.Vector3D<float>(r, g, b);
-            AVulkanBufferHandler.UpdateBuffer(ref RadianceCascades2D.worldData, ref RadianceCascades2D.mousePosBuffer, ref RadianceCascades2D.mousePosMemory, Silk.NET.Vulkan.BufferUsageFlags.UniformBufferBit);
+            //AVulkanBufferHandler.UpdateBuffer(ref RadianceCascades2D.worldData, ref RadianceCascades2D.mousePosBuffer, ref RadianceCascades2D.mousePosMemory, Silk.NET.Vulkan.BufferUsageFlags.UniformBufferBit);
         }
 
         private void isDrawingLight_CheckedChanged(object sender, EventArgs e)
@@ -305,7 +305,7 @@ namespace ArctisAurora
         private void LayerIndex_ValueChanged(object sender, EventArgs e)
         {
             RadianceCascades2D.worldData.editableLayer = (int)LayerIndex.Value;
-            AVulkanBufferHandler.UpdateBuffer(ref RadianceCascades2D.worldData, ref RadianceCascades2D.mousePosBuffer, ref RadianceCascades2D.mousePosMemory, Silk.NET.Vulkan.BufferUsageFlags.UniformBufferBit);
+            //AVulkanBufferHandler.UpdateBuffer(ref RadianceCascades2D.worldData, ref RadianceCascades2D.mousePosBuffer, ref RadianceCascades2D.mousePosMemory, Silk.NET.Vulkan.BufferUsageFlags.UniformBufferBit);
         }
 
         private void BrushSizeBar_ValueChanged(object sender, EventArgs e)
@@ -318,14 +318,14 @@ namespace ArctisAurora
         {
             RadianceCascades2D.worldData.lightStr = (float)LightStrBar.Value / 100;
             LightStrLabel.Text = ((float)LightStrBar.Value / 100).ToString();
-            AVulkanBufferHandler.UpdateBuffer(ref RadianceCascades2D.worldData, ref RadianceCascades2D.mousePosBuffer, ref RadianceCascades2D.mousePosMemory, Silk.NET.Vulkan.BufferUsageFlags.UniformBufferBit);
+            //AVulkanBufferHandler.UpdateBuffer(ref RadianceCascades2D.worldData, ref RadianceCascades2D.mousePosBuffer, ref RadianceCascades2D.mousePosMemory, Silk.NET.Vulkan.BufferUsageFlags.UniformBufferBit);
         }
 
         private void ColorAlphaBar_ValueChanged(object sender, EventArgs e)
         {
             RadianceCascades2D.worldData.emissive = (float)EmissiveBar.Value / 100;
             EmissiveLabel.Text = ((float)EmissiveBar.Value / 100).ToString();
-            AVulkanBufferHandler.UpdateBuffer(ref RadianceCascades2D.worldData, ref RadianceCascades2D.mousePosBuffer, ref RadianceCascades2D.mousePosMemory, Silk.NET.Vulkan.BufferUsageFlags.UniformBufferBit);
+            //AVulkanBufferHandler.UpdateBuffer(ref RadianceCascades2D.worldData, ref RadianceCascades2D.mousePosBuffer, ref RadianceCascades2D.mousePosMemory, Silk.NET.Vulkan.BufferUsageFlags.UniformBufferBit);
         }
 
         private void IsPhosphorous_CheckedChanged(object sender, EventArgs e)
@@ -341,7 +341,7 @@ namespace ArctisAurora
         {
             ColorPreviewLabel.BackColor = Color.White;
             RadianceCascades2D.worldData.brushColor = new Silk.NET.Maths.Vector3D<float>(1, 1, 1);
-            AVulkanBufferHandler.UpdateBuffer(ref RadianceCascades2D.worldData, ref RadianceCascades2D.mousePosBuffer, ref RadianceCascades2D.mousePosMemory, Silk.NET.Vulkan.BufferUsageFlags.UniformBufferBit);
+            //AVulkanBufferHandler.UpdateBuffer(ref RadianceCascades2D.worldData, ref RadianceCascades2D.mousePosBuffer, ref RadianceCascades2D.mousePosMemory, Silk.NET.Vulkan.BufferUsageFlags.UniformBufferBit);
         }
     }
 }

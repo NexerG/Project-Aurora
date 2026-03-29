@@ -76,7 +76,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
             transformMatrices[0] = _transform;
             Matrix4X4<float>[] _mats = transformMatrices.ToArray();
-            AVulkanBufferHandler.UpdateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, _aditionalUsageFlags);
+            AVulkanBufferHandler.UpdateBuffer(ref _mats, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer, ref _transformsBufferMemory, _aditionalUsageFlags);
         }
 
         internal virtual void EnqueueDrawCommands(ref ulong[] _offset, int _loopIndex, ref CommandBuffer _commandBuffer)

@@ -92,7 +92,7 @@ namespace ArctisAurora.EngineWork.Rendering
                 //_camPos = _camera._pos
             };
 
-            AVulkanBufferHandler.UpdateBuffer(ref _ubo, ref _cameraBuffer[currentImage], ref _camBmemory[currentImage], BufferUsageFlags.None);
+            AVulkanBufferHandler.UpdateBuffer(ref _ubo, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref _cameraBuffer[currentImage], ref _camBmemory[currentImage], BufferUsageFlags.None);
         }
 
         internal void ProcessMouseMovements(double xPos, double yPos, bool _constrainPitch = true)

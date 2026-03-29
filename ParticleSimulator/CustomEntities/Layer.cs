@@ -53,7 +53,7 @@ namespace ArctisAurora.CustomEntities
             AVulkanBufferHandler.CreateImage(size.Width, size.Height, format, ImageTiling.Optimal, ImageUsageFlags.TransferSrcBit | ImageUsageFlags.StorageBit | ImageUsageFlags.TransferDstBit, MemoryPropertyFlags.DeviceLocalBit, ref image, ref deviceMemory);
             VulkanRenderer._swapchain.CreateImageView(ref imageView, ref image, ImageAspectFlags.ColorBit, format);
 
-            CommandBuffer _imageTransition = AVulkanBufferHandler.BeginSingleTimeCommands();
+            //CommandBuffer _imageTransition = AVulkanBufferHandler.BeginSingleTimeCommands();
 
             ImageMemoryBarrier _barrier = new()
             {
@@ -74,8 +74,8 @@ namespace ArctisAurora.CustomEntities
                 SrcAccessMask = 0,
                 DstAccessMask = AccessFlags.ShaderReadBit | AccessFlags.ShaderWriteBit,
             };
-            VulkanRenderer._vulkan.CmdPipelineBarrier(_imageTransition, PipelineStageFlags.TopOfPipeBit, PipelineStageFlags.ComputeShaderBit, 0, 0, null, 0, null, 1, ref _barrier);
-            AVulkanBufferHandler.EndSingleTimeCommands(ref _imageTransition);
+            //SVulkanRenderer._vulkan.CmdPipelineBarrier(_imageTransition, PipelineStageFlags.TopOfPipeBit, PipelineStageFlags.ComputeShaderBit, 0, 0, null, 0, null, 1, ref _barrier);
+            //AVulkanBufferHandler.EndSingleTimeCommands(ref _imageTransition);
         }
     }
 }

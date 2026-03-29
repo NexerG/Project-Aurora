@@ -1,12 +1,15 @@
 ﻿using ArctisAurora.EngineWork.Rendering.RendererTypes;
+using Silk.NET.GLFW;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using System.Collections;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using Format = Silk.NET.Vulkan.Format;
 using Image = SixLabors.ImageSharp.Image;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
+using Queue = Silk.NET.Vulkan.Queue;
 
 namespace ArctisAurora.EngineWork.Rendering.Helpers
 {
@@ -21,9 +24,9 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 
     internal static unsafe class AVulkanBufferHandler
     {
-        internal static void CreateTextureBuffer(ref Silk.NET.Vulkan.Image _textureImage, ref DeviceMemory _textureBufferMemory, string pathToImage, Format imageFormat)
+        internal static void CreateTextureBuffer(ref Silk.NET.Vulkan.Image _textureImage, ref DeviceMemory _textureBufferMemory, string pathToImage, Format imageFormat, ref Queue queue, ref CommandPool cPool)
         {
-            using var _image = Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(pathToImage);
+            using var _image = Image.Load<Rgba32>(pathToImage);
             ulong _imageSize = (ulong)(_image.Width * _image.Height * _image.PixelType.BitsPerPixel / 8);
 
             Buffer _stagingBuffer = default;
@@ -37,15 +40,15 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 
             CreateImage((uint)_image.Width, (uint)_image.Height, imageFormat, ImageTiling.Optimal, ImageUsageFlags.TransferDstBit | ImageUsageFlags.SampledBit, MemoryPropertyFlags.DeviceLocalBit, ref _textureImage, ref _textureBufferMemory);
 
-            TransitionImageLayout(_textureImage, ImageLayout.Undefined, ImageLayout.TransferDstOptimal);
-            CopyBufferToImage(_stagingBuffer, _textureImage, (uint)_image.Width, (uint)_image.Height);
-            TransitionImageLayout(_textureImage, ImageLayout.TransferDstOptimal, ImageLayout.ShaderReadOnlyOptimal);
+            TransitionImageLayout(_textureImage, ImageLayout.Undefined, ImageLayout.TransferDstOptimal, ref queue, ref cPool);
+            CopyBufferToImage(ref _stagingBuffer, ref queue, ref cPool, _textureImage, (uint)_image.Width, (uint)_image.Height);
+            TransitionImageLayout(_textureImage, ImageLayout.TransferDstOptimal, ImageLayout.ShaderReadOnlyOptimal, ref queue, ref cPool);
 
             Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
             Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
         }
 
-        internal static void CreateTextureBuffer(ref Silk.NET.Vulkan.Image _textureImage, ref DeviceMemory _textureBufferMemory, ref Image<Rgba32> image, Format imageFormat)
+        internal static void CreateTextureBuffer(ref Silk.NET.Vulkan.Image _textureImage, ref DeviceMemory _textureBufferMemory, ref Image<Rgba32> image, Format imageFormat, ref Queue queue, ref CommandPool cPool)
         {
             using var _image = image;
             ulong _imageSize = (ulong)(_image.Width * _image.Height * _image.PixelType.BitsPerPixel);
@@ -61,17 +64,17 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 
             CreateImage((uint)_image.Width, (uint)_image.Height, imageFormat, ImageTiling.Optimal, ImageUsageFlags.TransferDstBit | ImageUsageFlags.SampledBit, MemoryPropertyFlags.DeviceLocalBit, ref _textureImage, ref _textureBufferMemory);
 
-            TransitionImageLayout(_textureImage, ImageLayout.Undefined, ImageLayout.TransferDstOptimal);
-            CopyBufferToImage(_stagingBuffer, _textureImage, (uint)_image.Width, (uint)_image.Height);
-            TransitionImageLayout(_textureImage, ImageLayout.TransferDstOptimal, ImageLayout.ShaderReadOnlyOptimal);
+            TransitionImageLayout(_textureImage, ImageLayout.Undefined, ImageLayout.TransferDstOptimal, ref queue, ref cPool);
+            CopyBufferToImage(ref _stagingBuffer, ref queue, ref cPool, _textureImage, (uint)_image.Width, (uint)_image.Height);
+            TransitionImageLayout(_textureImage, ImageLayout.TransferDstOptimal, ImageLayout.ShaderReadOnlyOptimal, ref queue, ref cPool);
 
             Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
             Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
         }
 
-        private static void CopyBufferToImage(Buffer _buffer, Silk.NET.Vulkan.Image _image, uint _width, uint _height)
+        private static void CopyBufferToImage(ref Buffer _buffer, ref Queue queue, ref CommandPool cPool, Silk.NET.Vulkan.Image _image, uint _width, uint _height)
         {
-            CommandBuffer _commandBuffer = BeginSingleTimeCommands();
+            CommandBuffer _commandBuffer = BeginSingleTimeCommands(ref cPool);
 
             BufferImageCopy _bufferImageCopy = new BufferImageCopy()
             {
@@ -91,12 +94,12 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             };
 
             Renderer.vk!.CmdCopyBufferToImage(_commandBuffer, _buffer, _image, ImageLayout.TransferDstOptimal, 1, ref _bufferImageCopy);
-            EndSingleTimeCommands(ref _commandBuffer);
+            EndSingleTimeCommands(ref _commandBuffer, ref queue, ref cPool);
         }
 
-        private static void TransitionImageLayout(Silk.NET.Vulkan.Image _image, ImageLayout _oldLayout, ImageLayout _newLayout)
+        private static void TransitionImageLayout(Silk.NET.Vulkan.Image _image, ImageLayout _oldLayout, ImageLayout _newLayout, ref Queue queue, ref CommandPool cPool)
         {
-            CommandBuffer _commandBuffer = BeginSingleTimeCommands();
+            CommandBuffer _commandBuffer = BeginSingleTimeCommands(ref cPool);
 
             ImageMemoryBarrier _barrier = new()
             {
@@ -140,7 +143,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             }
 
             Renderer.vk!.CmdPipelineBarrier(_commandBuffer, sourceStage, destinationStage, 0, 0, null, 0, null, 1, ref _barrier);
-            EndSingleTimeCommands(ref _commandBuffer);
+            EndSingleTimeCommands(ref _commandBuffer, ref queue, ref cPool);
         }
 
         internal static void CreateImage(uint _width, uint _height, Format _format, ImageTiling _tiling, ImageUsageFlags _usage, MemoryPropertyFlags _properties, ref Silk.NET.Vulkan.Image _im, ref DeviceMemory _devMemory)
@@ -277,7 +280,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
         private static MemoryPropertyFlags defaultStagingMemoryFlags = MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCachedBit;
 
 
-        internal static void CreateBuffer<T>(ref T[] data, ref Buffer buffer, ref DeviceMemory memory, BufferUsageFlags usageFlags) where T : unmanaged
+        internal static void CreateBuffer<T>(ref T[] data, ref Queue queue, ref CommandPool cPool, ref Buffer buffer, ref DeviceMemory memory, BufferUsageFlags usageFlags) where T : unmanaged
         {
             ulong bufferSize = (ulong)(sizeof(T) * data.Length);
 
@@ -292,12 +295,12 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 
             CreateBuffer(bufferSize, ref buffer, ref memory, defaultBufferFlags | usageFlags, defaultStagingMemoryFlags);
 
-            CopyBuffer(ref _stagingBuffer, ref buffer, bufferSize);
+            CopyBuffer(ref _stagingBuffer, ref buffer, bufferSize, ref queue, ref cPool);
             Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
             Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
         }
 
-        internal static void CreateBuffer<T>(ref T data, ref Buffer buffer, ref DeviceMemory memory, BufferUsageFlags usageFlags) where T : unmanaged
+        internal static void CreateBuffer<T>(ref T data, ref Queue queue, ref CommandPool cPool, ref Buffer buffer, ref DeviceMemory memory, BufferUsageFlags usageFlags) where T : unmanaged
         {
             ulong bufferSize = (ulong)(sizeof(T));
 
@@ -312,12 +315,12 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 
             CreateBuffer(bufferSize, ref buffer, ref memory, defaultBufferFlags | usageFlags, defaultStagingMemoryFlags);
 
-            CopyBuffer(ref _stagingBuffer, ref buffer, bufferSize);
+            CopyBuffer(ref _stagingBuffer, ref buffer, bufferSize, ref queue, ref cPool);
             Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
             Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
         }
 
-        internal static void UpdateBuffer<T>(ref T[] data, ref Buffer buffer, ref DeviceMemory memory, BufferUsageFlags usageFlags) where T : unmanaged
+        internal static void UpdateBuffer<T>(ref T[] data, ref Queue queue, ref CommandPool cPool, ref Buffer buffer, ref DeviceMemory memory, BufferUsageFlags usageFlags) where T : unmanaged
         {
             ulong bufferSize = (ulong)(sizeof(T) * data.Length);
 
@@ -330,12 +333,12 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             data.AsSpan().CopyTo(new Span<T>(_dataPtr, data.Length));
             Renderer.vk.UnmapMemory(Renderer.logicalDevice, _stagingBufferMemory);
 
-            CopyBuffer(ref _stagingBuffer, ref buffer, bufferSize);
+            CopyBuffer(ref _stagingBuffer, ref buffer, bufferSize, ref queue, ref cPool);
             Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
             Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
         }
 
-        internal static void UpdateBuffer<T>(ref T data, ref Buffer buffer, ref DeviceMemory memory, BufferUsageFlags usageFlags) where T : unmanaged
+        internal static void UpdateBuffer<T>(ref T data, ref Queue queue, ref CommandPool cPool, ref Buffer buffer, ref DeviceMemory memory, BufferUsageFlags usageFlags) where T : unmanaged
         {
             ulong bufferSize = (ulong)(sizeof(T));
 
@@ -348,7 +351,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             new Span<T>(_dataPtr, 1)[0] = data;
             Renderer.vk.UnmapMemory(Renderer.logicalDevice, _stagingBufferMemory);
 
-            CopyBuffer(ref _stagingBuffer, ref buffer, bufferSize);
+            CopyBuffer(ref _stagingBuffer, ref buffer, bufferSize, ref queue, ref cPool);
             Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
             Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
         }
@@ -397,13 +400,13 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             Renderer.vk.BindBufferMemory(Renderer.logicalDevice, _buffer, _bufferMemory, 0);
         }
 
-        private static void CopyBuffer(ref Buffer _sourceBuffer, ref Buffer _dstBuffer, ulong bufferSize)
+        private static void CopyBuffer(ref Buffer _sourceBuffer, ref Buffer _dstBuffer, ulong bufferSize, ref Queue queue, ref CommandPool commandPool)
         {
             CommandBufferAllocateInfo _allocInfo = new CommandBufferAllocateInfo()
             {
                 SType = StructureType.CommandBufferAllocateInfo,
                 Level = CommandBufferLevel.Primary,
-                CommandPool = Renderer.commandPool,
+                CommandPool = commandPool,
                 CommandBufferCount = 1
             };
             CommandBuffer _localCommandBuffer;
@@ -429,15 +432,15 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
                 CommandBufferCount = 1,
                 PCommandBuffers = &_localCommandBuffer
             };
-            Result queue, wait;
-            queue = Renderer.vk.QueueSubmit(Renderer.graphicsQueue, 1, ref _subInfo, default);
-            wait = Renderer.vk.QueueWaitIdle(Renderer.graphicsQueue);
-            if (queue != Result.Success && wait != Result.Success)
+            Result rQueue, rWait;
+            rQueue = Renderer.vk.QueueSubmit(queue, 1, ref _subInfo, default);
+            rWait = Renderer.vk.QueueWaitIdle(queue);
+            if (rQueue != Result.Success && rWait != Result.Success)
             {
                 Console.WriteLine("Exception thrown");
                 throw new Exception("failed to submit 'copy buffer' commands");
             }
-            Renderer.vk.FreeCommandBuffers(Renderer.logicalDevice, Renderer.commandPool, 1, ref _localCommandBuffer);
+            Renderer.vk.FreeCommandBuffers(Renderer.logicalDevice, commandPool, 1, ref _localCommandBuffer);
         }
 
         internal static uint FindMemoryType(uint _typeFilter, MemoryPropertyFlags _properties)
@@ -470,13 +473,13 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             throw new Exception("Failed to find suitable memory type");
         }
 
-        internal static CommandBuffer BeginSingleTimeCommands()
+        internal static CommandBuffer BeginSingleTimeCommands(ref CommandPool cPool)
         {
             CommandBufferAllocateInfo _allocInfo = new CommandBufferAllocateInfo()
             {
                 SType = StructureType.CommandBufferAllocateInfo,
                 Level = CommandBufferLevel.Primary,
-                CommandPool = Renderer.commandPool,
+                CommandPool = cPool,
                 CommandBufferCount = 1,
             };
 
@@ -493,7 +496,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             return _commandBuffer;
         }
 
-        internal static void EndSingleTimeCommands(ref CommandBuffer commandBuffer)
+        internal static void EndSingleTimeCommands(ref CommandBuffer commandBuffer, ref Queue queue, ref CommandPool cPool)
         {
             Renderer.vk!.EndCommandBuffer(commandBuffer);
 
@@ -505,17 +508,17 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
                     CommandBufferCount = 1,
                     PCommandBuffers = _cptr,
                 };
-                Result queue, queuewait, devicewait;
-                queue = Renderer.vk!.QueueSubmit(Renderer.graphicsQueue, 1, ref submitInfo, default);
-                queuewait = Renderer.vk!.QueueWaitIdle(Renderer.graphicsQueue);
-                devicewait = Renderer.vk!.DeviceWaitIdle(Renderer.logicalDevice);
-                if (queue != Result.Success && queue != Result.Success && queue != Result.Success)
+                Result rRueue, rQueueWait, rDeviceWait;
+                rRueue = Renderer.vk!.QueueSubmit(queue, 1, ref submitInfo, default);
+                rQueueWait = Renderer.vk!.QueueWaitIdle(queue);
+                rDeviceWait = Renderer.vk!.DeviceWaitIdle(Renderer.logicalDevice);
+                if (rRueue != Result.Success && rRueue != Result.Success && rRueue != Result.Success)
                 {
                     Console.WriteLine("Exception thrown");
                     throw new Exception("failed to submit single time commands");
                 }
 
-                Renderer.vk!.FreeCommandBuffers(Renderer.logicalDevice, Renderer.commandPool, 1, _cptr);
+                Renderer.vk!.FreeCommandBuffers(Renderer.logicalDevice, cPool, 1, _cptr);
             }
         }
     }

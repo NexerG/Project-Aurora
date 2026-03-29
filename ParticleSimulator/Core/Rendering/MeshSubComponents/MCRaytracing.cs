@@ -55,7 +55,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             //AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
 
             BufferUsageFlags additionalColorFlags = BufferUsageFlags.UniformBufferBit | BufferUsageFlags.ShaderDeviceAddressBit;
-            AVulkanBufferHandler.CreateBuffer(ref _color, ref _colorBuffer, ref _colorMemory, additionalColorFlags);
+            //AVulkanBufferHandler.CreateBuffer(ref _color, ref _colorBuffer, ref _colorMemory, additionalColorFlags);
         }
 
         public override void OnStart()
@@ -69,7 +69,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
         internal void UpdateColor(Vector3D<float> color)
         {
             _color = color;
-            AVulkanBufferHandler.UpdateBuffer(ref _color, ref _colorBuffer, ref _colorMemory, BufferUsageFlags.None);
+            //AVulkanBufferHandler.UpdateBuffer(ref _color, ref _colorBuffer, ref _colorMemory, BufferUsageFlags.None);
         }
 
         internal override void LoadCustomMesh(Scene sc)
@@ -181,9 +181,9 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
                 TransformOffset = 0
             };
 
-            CommandBuffer _commandBuffer = AVulkanBufferHandler.BeginSingleTimeCommands();
-            _accelerationStructure.CmdBuildAccelerationStructures(_commandBuffer, 1, &_abgInfo, &_asbrInfo);
-            AVulkanBufferHandler.EndSingleTimeCommands(ref _commandBuffer);
+            //CommandBuffer _commandBuffer = AVulkanBufferHandler.BeginSingleTimeCommands();
+            //_accelerationStructure.CmdBuildAccelerationStructures(_commandBuffer, 1, &_abgInfo, &_asbrInfo);
+            //AVulkanBufferHandler.EndSingleTimeCommands(ref _commandBuffer);
 
 
             AccelerationStructureDeviceAddressInfoKHR _adaInfo = new AccelerationStructureDeviceAddressInfoKHR()
@@ -264,9 +264,9 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
                 TransformOffset = 0
             };
 
-            CommandBuffer _commandBuffer = AVulkanBufferHandler.BeginSingleTimeCommands();
-            _accelerationStructure.CmdBuildAccelerationStructures(_commandBuffer, 1, &_abgInfo, &_asbrInfo);
-            AVulkanBufferHandler.EndSingleTimeCommands(ref _commandBuffer);
+            //CommandBuffer _commandBuffer = AVulkanBufferHandler.BeginSingleTimeCommands();
+            //_accelerationStructure.CmdBuildAccelerationStructures(_commandBuffer, 1, &_abgInfo, &_asbrInfo);
+            //AVulkanBufferHandler.EndSingleTimeCommands(ref _commandBuffer);
 
 
             AccelerationStructureDeviceAddressInfoKHR _adaInfo = new AccelerationStructureDeviceAddressInfoKHR()
@@ -362,7 +362,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             Unsafe.CopyBlock(_entityVulkanTransform.Matrix, Unsafe.AsPointer(ref transformMatrices.ToArray()[0]), 48);
 
             BufferUsageFlags bufferUsageFlags = BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr | BufferUsageFlags.UniformBufferBit;
-            AVulkanBufferHandler.CreateBuffer(ref _entityVulkanTransform, ref transformsBuffer, ref _transformsBufferMemory, bufferUsageFlags);
+            //AVulkanBufferHandler.CreateBuffer(ref _entityVulkanTransform, ref transformsBuffer, ref _transformsBufferMemory, bufferUsageFlags);
         }
 
         internal override void UpdateMatrices()
@@ -379,7 +379,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             Unsafe.CopyBlock(_entityVulkanMatrix.Matrix, Unsafe.AsPointer(ref transformMatrices.ToArray()[0]), 48);
             //_accelerationInstance.Transform = _entityVulkanMatrix;
             BufferUsageFlags bufferUsageFlags = BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr | BufferUsageFlags.UniformBufferBit;
-            AVulkanBufferHandler.UpdateBuffer(ref _entityVulkanMatrix, ref transformsBuffer, ref _transformsBufferMemory, bufferUsageFlags);
+            //AVulkanBufferHandler.UpdateBuffer(ref _entityVulkanMatrix, ref transformsBuffer, ref _transformsBufferMemory, bufferUsageFlags);
 
             UpdateBLAS();
 

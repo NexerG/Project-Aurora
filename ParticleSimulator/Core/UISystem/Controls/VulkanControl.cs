@@ -502,7 +502,7 @@ namespace ArctisAurora.Core.UISystem.Controls
             maskAsset = AssetRegistries.GetAsset<TextureAsset>("default");
 
             ControlData tempData = controlData;
-            AVulkanBufferHandler.CreateBuffer(ref tempData, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
+            AVulkanBufferHandler.CreateBuffer(ref tempData, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
             CreateSampler();
             EntityManager.AddControl(this);
             InvalidateLayout();
@@ -545,7 +545,7 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         internal void UpdateControlData()
         {
-            AVulkanBufferHandler.UpdateBuffer(ref controlData, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
+            AVulkanBufferHandler.UpdateBuffer(ref controlData, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
         }
 
         public override void AddChild(Entity entity)

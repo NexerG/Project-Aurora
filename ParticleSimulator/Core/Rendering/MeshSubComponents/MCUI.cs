@@ -64,7 +64,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
                         Renderer.vk.DestroyBuffer(Renderer.logicalDevice, transformsBuffer, null);
                     }
                     Matrix4X4<float>[] _mats = transformMatrices.ToArray();
-                    AVulkanBufferHandler.CreateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
+                    AVulkanBufferHandler.CreateBuffer(ref _mats, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
                 }
                 else
                 {
@@ -79,7 +79,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
                         transformMatrices[i] = _transform;
                     }
                     Matrix4X4<float>[] _mats = transformMatrices.ToArray();
-                    AVulkanBufferHandler.UpdateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
+                    AVulkanBufferHandler.UpdateBuffer(ref _mats, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
                 }
             }
         }
@@ -89,7 +89,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             base.SingletonMatrix();
 
             Matrix4X4<float>[] _mats = transformMatrices.ToArray();
-            AVulkanBufferHandler.CreateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
+            AVulkanBufferHandler.CreateBuffer(ref _mats, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
         }
 
         internal override void UpdateMatrices()
@@ -106,7 +106,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
                 transformMatrices.Add(_transform);
             }
             Matrix4X4<float>[] _mats = transformMatrices.ToArray();
-            AVulkanBufferHandler.UpdateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
+            AVulkanBufferHandler.UpdateBuffer(ref _mats, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
         }
 
         internal override void EnqueueDrawCommands(ref ulong[] offset, int loopIndex, int instanceID, ref CommandBuffer commandBuffer, ref PipelineLayout pipelineLayout, ref DescriptorSet[][] descriptorSets)

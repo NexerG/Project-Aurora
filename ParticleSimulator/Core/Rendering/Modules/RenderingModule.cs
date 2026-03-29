@@ -1,9 +1,7 @@
-﻿using Silk.NET.GLFW;
-using Silk.NET.Maths;
+﻿using ArctisAurora.Core.Rendering.Helpers;
 using Silk.NET.Vulkan;
-using System.Numerics;
-using Windows.ApplicationModel.VoiceCommands;
-using Windows.Media.AppBroadcasting;
+using Image = Silk.NET.Vulkan.Image;
+using Semaphore = Silk.NET.Vulkan.Semaphore;
 
 namespace ArctisAurora.EngineWork.Rendering.Modules
 {
@@ -30,6 +28,9 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal Framebuffer[] frameBuffers;
         internal Framebuffer[] depthFrameBuffers;
 
+        // commands
+        //public Queue graphicsQueue;
+        //public CommandPool moduleCommandPool;
         internal CommandBuffer[] commandBuffers;
 
         // descriptors
@@ -48,6 +49,11 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal abstract uint MAX_STORAGE_BUFFERS { get; }
         internal abstract uint MAX_UNIFORMS_BUFFERS { get; }
 
+        // rendered result
+        public Image[] outputImages;
+        public ImageView[] outputImageViews;
+        public Semaphore[] renderFinishedSemaphores;
+
         // Updates
         public bool isDirty = true;
 
@@ -56,6 +62,11 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
 
         internal abstract void PrepareObjects();
+
+        internal virtual void RegisterVulkanQueue(QueueAllocator allocator, Vk vk, ref Device device)
+        {
+            //graphicsQueue = allocator.AllocateQueue(vk, device, QueueFlags.GraphicsBit);
+        }
 
         internal abstract void UpdateModule();
 

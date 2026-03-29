@@ -120,7 +120,6 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             return _qfi;
         }
 
-
         internal static SwapChainSupportDetails GetSupportDetails(ref PhysicalDevice gpu, ref KhrSurface _driverSurface, ref SurfaceKHR _surface)
         {
             var _details = new SwapChainSupportDetails();

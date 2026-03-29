@@ -429,7 +429,7 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
                 AVulkanBufferHandler.CreateImage(_extent.Width, _extent.Height, Format.R8G8B8A8Unorm, ImageTiling.Optimal, ImageUsageFlags.TransferSrcBit | ImageUsageFlags.StorageBit, MemoryPropertyFlags.DeviceLocalBit, ref _storageImage[i], ref _storageDM[i]);
                 _swapchain.CreateImageView(ref _storageImageView[i], ref _storageImage[i], ImageAspectFlags.ColorBit, Format.R8G8B8A8Unorm);
 
-                CommandBuffer _imageTransition = AVulkanBufferHandler.BeginSingleTimeCommands();
+                //CommandBuffer _imageTransition = AVulkanBufferHandler.BeginSingleTimeCommands();
 
                 ImageMemoryBarrier _barrier = new()
                 {
@@ -450,8 +450,8 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
                     SrcAccessMask = 0,
                     DstAccessMask = AccessFlags.ShaderReadBit | AccessFlags.ShaderWriteBit,
                 };
-                _vulkan.CmdPipelineBarrier(_imageTransition, PipelineStageFlags.TopOfPipeBit, PipelineStageFlags.RayTracingShaderBitKhr, 0, 0, null, 0, null, 1, ref _barrier);
-                AVulkanBufferHandler.EndSingleTimeCommands(ref _imageTransition);
+                //_vulkan.CmdPipelineBarrier(_imageTransition, PipelineStageFlags.TopOfPipeBit, PipelineStageFlags.RayTracingShaderBitKhr, 0, 0, null, 0, null, 1, ref _barrier);
+                //AVulkanBufferHandler.EndSingleTimeCommands(ref _imageTransition);
             }
         }
 
@@ -487,7 +487,7 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
                 }
             }
             BufferUsageFlags accBFlags = BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr;
-            AVulkanBufferHandler.CreateBuffer(ref _structures, ref _accelerationInstanceBuffer, ref _accelerationInstanceDM, accBFlags);
+            //AVulkanBufferHandler.CreateBuffer(ref _structures, ref _accelerationInstanceBuffer, ref _accelerationInstanceDM, accBFlags);
             _addressInstance.DeviceAddress = AVulkanHelper.GetBufferAdress(ref _accelerationInstanceBuffer);
 
             AccelerationStructureGeometryKHR _asg = new AccelerationStructureGeometryKHR()
@@ -564,9 +564,9 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
                     _asbrInfo
             };
 
-            CommandBuffer _commandBuffer = AVulkanBufferHandler.BeginSingleTimeCommands();
-            _accelerationStructure.CmdBuildAccelerationStructures(_commandBuffer, 1, &_abgInfo, ref _buildRangeInfos);
-            AVulkanBufferHandler.EndSingleTimeCommands(ref _commandBuffer);
+            //CommandBuffer _commandBuffer = AVulkanBufferHandler.BeginSingleTimeCommands();
+            //_accelerationStructure.CmdBuildAccelerationStructures(_commandBuffer, 1, &_abgInfo, ref _buildRangeInfos);
+            //AVulkanBufferHandler.EndSingleTimeCommands(ref _commandBuffer);
 
             AccelerationStructureDeviceAddressInfoKHR _adaInfo = new AccelerationStructureDeviceAddressInfoKHR()
             {
@@ -586,7 +586,7 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
             }
 
             BufferUsageFlags accBFlags = BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr;
-            AVulkanBufferHandler.UpdateBuffer(ref _structures, ref _accelerationInstanceBuffer, ref _accelerationInstanceDM, accBFlags);
+            //AVulkanBufferHandler.UpdateBuffer(ref _structures, ref _accelerationInstanceBuffer, ref _accelerationInstanceDM, accBFlags);
 
             AccelerationStructureGeometryKHR _asg = new AccelerationStructureGeometryKHR()
             {
@@ -648,9 +648,9 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
                 _asbrInfo
             };
 
-            CommandBuffer _commandBuffer = AVulkanBufferHandler.BeginSingleTimeCommands();
-            _accelerationStructure.CmdBuildAccelerationStructures(_commandBuffer, 1, &_abgInfo, ref _buildRangeInfos);
-            AVulkanBufferHandler.EndSingleTimeCommands(ref _commandBuffer);
+            //CommandBuffer _commandBuffer = AVulkanBufferHandler.BeginSingleTimeCommands();
+            //_accelerationStructure.CmdBuildAccelerationStructures(_commandBuffer, 1, &_abgInfo, ref _buildRangeInfos);
+            //AVulkanBufferHandler.EndSingleTimeCommands(ref _commandBuffer);
             DeleteScratchBuffer(ref _scratchBuffer);
         }
 

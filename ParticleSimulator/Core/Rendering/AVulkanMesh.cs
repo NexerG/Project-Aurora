@@ -100,8 +100,8 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal void BufferMesh()
         {
-            AVulkanBufferHandler.CreateBuffer(ref _vertices, ref vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags);
-            AVulkanBufferHandler.CreateBuffer(ref indices, ref indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags);
+            AVulkanBufferHandler.CreateBuffer(ref _vertices, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags);
+            AVulkanBufferHandler.CreateBuffer(ref indices, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags);
         }
 
         internal Vertex[] _vertices;
@@ -132,14 +132,14 @@ namespace ArctisAurora.EngineWork.Rendering
                 _vertices[i]._normal = new Vector3D<float>(normals[i].X, normals[i].Y, normals[i].Z);
             }
 
-            AVulkanBufferHandler.CreateBuffer(ref _vertices, ref vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags);
-            AVulkanBufferHandler.CreateBuffer(ref indices, ref indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags);
+            AVulkanBufferHandler.CreateBuffer(ref _vertices, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags);
+            AVulkanBufferHandler.CreateBuffer(ref indices, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags);
         }
 
         internal unsafe void UpdateBuffers()
         {
-            AVulkanBufferHandler.UpdateBuffer(ref _vertices, ref vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags);
-            AVulkanBufferHandler.UpdateBuffer(ref indices, ref indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags);
+            AVulkanBufferHandler.UpdateBuffer(ref _vertices, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags);
+            AVulkanBufferHandler.UpdateBuffer(ref indices, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags);
         }
 
         internal static unsafe AVulkanMesh LoadDefault()

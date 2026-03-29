@@ -14,6 +14,7 @@ ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Projec
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Filing\Serialization\Paths.cs
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Filing\Serialization\SerializationAttributes.cs
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Filing\Serialization\Serializer.cs
+ArctisAurora.Core.Rendering.Helpers -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Rendering\Helpers\QueueAllocator.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\AuroraFont.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Bezier.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Glyph.cs

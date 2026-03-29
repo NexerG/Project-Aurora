@@ -25,7 +25,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             //AVulkanBufferHandler.CreateBuffer(ref _mesh._indices, ref _indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags | _aditionalUsageFlags);
             mesh = new AVulkanMesh();
             mesh.BufferMesh();
-            AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, "../../../Shaders/Brick2.png", Format.R8G8B8A8Srgb);
+            //AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, "../../../Shaders/Brick2.png", Format.R8G8B8A8Srgb);
             AVulkanBufferHandler.CreateImageView(ref VulkanRenderer._vulkan, ref VulkanRenderer._logicalDevice, ref _textureImage, ref _textureImageView, Format.R8G8B8A8Srgb, ImageAspectFlags.ColorBit);
         }
 
@@ -262,7 +262,9 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             transformMatrices = _matrices;
 
             Matrix4X4<float>[] _mats = _matrices.ToArray();
-            AVulkanBufferHandler.CreateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
+            // commented out
+            //AVulkanBufferHandler.CreateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
+
             //VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPool, (uint)_descriptorSets.Length, _descriptorSets);
             //VulkanRenderer._vulkan.FreeDescriptorSets(VulkanRenderer._logicalDevice, Rasterizer._descriptorPoolShadow, (uint)_descriptorSetsShadow.Length, _descriptorSetsShadow);
             //CreateDescriptorSet();
@@ -274,7 +276,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             base.SingletonMatrix();
 
             Matrix4X4<float>[] _mats = transformMatrices.ToArray();
-            AVulkanBufferHandler.CreateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
+            //AVulkanBufferHandler.CreateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
         }
 
         internal override void UpdateMatrices()

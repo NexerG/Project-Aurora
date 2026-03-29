@@ -77,7 +77,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
 
         public UIModule()
-        { }
+        {}
 
         internal override void UpdateModule()
         {
@@ -90,6 +90,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal override void PrepareObjects()
         {
+            //RegisterVulkanQueue(Renderer.allocator, Renderer.vk, ref Renderer.logicalDevice);
             meshComponent = new MCUI();
             PrepareCamera();
         }
@@ -579,27 +580,33 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         {
             if (commandBuffers != null)
             {
-                fixed (CommandBuffer* CBPtr = commandBuffers)
-                {
-                    Renderer.vk.FreeCommandBuffers(Renderer.logicalDevice, Renderer.commandPool, (uint)commandBuffers.Length, CBPtr);
-                }
+                //fixed (CommandBuffer* CBPtr = commandBuffers)
+                //{
+                    //Renderer.vk.FreeCommandBuffers(Renderer.logicalDevice, Renderer.graphicsCommandPool, (uint)commandBuffers.Length, CBPtr);
+                //}
+                Renderer.vk.ResetCommandBuffer(commandBuffers[0], CommandBufferResetFlags.None);
+                Renderer.vk.ResetCommandBuffer(commandBuffers[1], CommandBufferResetFlags.None);
+                Renderer.vk.ResetCommandBuffer(commandBuffers[0], CommandBufferResetFlags.None);
             }
-
-            commandBuffers = new CommandBuffer[Renderer.swapchainImageCount];
-
-            CommandBufferAllocateInfo _allocInfo = new CommandBufferAllocateInfo()
+            else
             {
-                SType = StructureType.CommandBufferAllocateInfo,
-                CommandPool = Renderer.commandPool,
-                Level = CommandBufferLevel.Primary,
-                CommandBufferCount = (uint)commandBuffers.Length
-            };
-            fixed (CommandBuffer* _commandBufferPtr = commandBuffers)
-            {
-                Result r = Renderer.vk.AllocateCommandBuffers(Renderer.logicalDevice, ref _allocInfo, _commandBufferPtr);
-                if (r != Result.Success)
+                commandBuffers = new CommandBuffer[Renderer.swapchainImageCount];
+
+                CommandBufferAllocateInfo _allocInfo = new CommandBufferAllocateInfo()
                 {
-                    throw new Exception("Failed to allocate command buffer with error " + r);
+                    SType = StructureType.CommandBufferAllocateInfo,
+                    //CommandPool = moduleCommandPool,
+                    CommandPool = Renderer.graphicsCommandPool,
+                    Level = CommandBufferLevel.Primary,
+                    CommandBufferCount = (uint)commandBuffers.Length
+                };
+                fixed (CommandBuffer* _commandBufferPtr = commandBuffers)
+                {
+                    Result r = Renderer.vk.AllocateCommandBuffers(Renderer.logicalDevice, ref _allocInfo, _commandBufferPtr);
+                    if (r != Result.Success)
+                    {
+                        throw new Exception("Failed to allocate command buffer with error " + r);
+                    }
                 }
             }
 
