@@ -29,8 +29,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal Framebuffer[] depthFrameBuffers;
 
         // commands
-        //public Queue graphicsQueue;
-        //public CommandPool moduleCommandPool;
+        public Queue graphicsQueue;
+        public CommandPool moduleCommandPool;
         internal CommandBuffer[] commandBuffers;
 
         // descriptors
@@ -55,7 +55,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         public Semaphore[] renderFinishedSemaphores;
 
         // Updates
-        public bool isDirty = true;
+        public bool[] isDirty = { true, true, true };
 
         // others
         internal AuroraCamera camera;
@@ -65,10 +65,10 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal virtual void RegisterVulkanQueue(QueueAllocator allocator, Vk vk, ref Device device)
         {
-            //graphicsQueue = allocator.AllocateQueue(vk, device, QueueFlags.GraphicsBit);
+            graphicsQueue = allocator.AllocateQueue(vk, device, QueueFlags.GraphicsBit);
         }
 
-        internal abstract void UpdateModule();
+        internal abstract void UpdateModule(int currentFrame);
 
         internal abstract void CreateRenderPass(ref SurfaceFormatKHR format);
 
@@ -148,7 +148,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal abstract void PrepareCamera();
 
-        internal abstract void WriteCommandBuffers();
+        internal abstract void WriteCommandBuffers(int currentFrame);
 
         internal static byte[] ReadFile(string FileName)
         {

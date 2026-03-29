@@ -9,7 +9,6 @@ using Silk.NET.Vulkan.Extensions.EXT;
 using Silk.NET.Vulkan.Extensions.KHR;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using static ArctisAurora.Core.Rendering.Helpers.QueueAllocator;
 using static ArctisAurora.EngineWork.Rendering.Helpers.AVulkanHelper;
 using Image = Silk.NET.Vulkan.Image;
 using Semaphore = Silk.NET.Vulkan.Semaphore;
@@ -157,7 +156,7 @@ namespace ArctisAurora.EngineWork.Rendering
         {
             for (int modulesIndex = 0; modulesIndex < renderingModules.Length; modulesIndex++)
             {
-                renderingModules[modulesIndex].WriteCommandBuffers();
+                renderingModules[modulesIndex].WriteCommandBuffers(currentFrame);
             }
         }
 
@@ -165,7 +164,7 @@ namespace ArctisAurora.EngineWork.Rendering
         internal static void CreateSyncObjects()
         {
             imageAvailableSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
-            renderFinishedSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
+            renderFinishedSemaphores = new Semaphore[swapchainImageCount];
             inFlightFences = new Fence[MAX_FRAMES_IN_FLIGHT];
             inFlightImages = new Fence[swapchainImageCount];
 
@@ -182,11 +181,25 @@ namespace ArctisAurora.EngineWork.Rendering
 
             for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
             {
-                if (vk.CreateSemaphore(logicalDevice, ref _semaphoreCreateInfo, null, out imageAvailableSemaphores[i]) != Result.Success ||
-                    vk.CreateSemaphore(logicalDevice, ref _semaphoreCreateInfo, null, out renderFinishedSemaphores[i]) != Result.Success ||
-                    vk.CreateFence(logicalDevice, ref _fenceCreateInfo, null, out inFlightFences[i]) != Result.Success)
+                if (vk.CreateSemaphore(logicalDevice, ref _semaphoreCreateInfo, null, out imageAvailableSemaphores[i]) != Result.Success)
                 {
-                    throw new Exception("Failed to create synch objects for a frame at index " + i);
+                    throw new Exception("Failed to create 'Image Available Semaphore' at index " + i);
+                }
+            }
+
+            for (int i = 0; i < swapchainImageCount; i++)
+            {
+                if (vk.CreateSemaphore(logicalDevice, ref _semaphoreCreateInfo, null, out renderFinishedSemaphores[i]) != Result.Success)
+                {
+                    throw new Exception("Failed to create 'Render Finished Semaphore' at index " + i);
+                }
+            }
+
+            for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+            {
+                if (vk.CreateFence(logicalDevice, ref _fenceCreateInfo, null, out inFlightFences[i]) != Result.Success)
+                {
+                    throw new Exception("Failed to create 'In Flight Fence' at index " + i);
                 }
             }
         }
@@ -505,9 +518,9 @@ namespace ArctisAurora.EngineWork.Rendering
             {
                 if (renderingModules[i].RendererStage == ERendererStage.UI)
                 {
-                    renderingModules[i].isDirty = true;
-                    //renderingModules[i].UpdateModule();
-                    //return;
+                    renderingModules[i].isDirty[0] = true;
+                    renderingModules[i].isDirty[1] = true;
+                    renderingModules[i].isDirty[2] = true;
                 }
             }
         }
@@ -538,10 +551,11 @@ namespace ArctisAurora.EngineWork.Rendering
 
             for (int i = 0; i < renderingModules.Length; i++)
             {
-                if(renderingModules[i].isDirty)
-                    renderingModules[i].UpdateModule();
+                if (renderingModules[i].isDirty[currentFrame])
+                    renderingModules[i].UpdateModule(currentFrame);
                 renderingModules[i].camera.UpdateCameraMatrix(Engine.window.windowSize, imageIndex, (uint)i);
             }
+
             //int localEntityCount = 0;
             //foreach (Entity e in EntityManager.entitiesToUpdate)
             //{
@@ -560,6 +574,7 @@ namespace ArctisAurora.EngineWork.Rendering
                 vk.WaitForFences(logicalDevice, 1, ref inFlightImages[imageIndex], true, ulong.MaxValue);
             }
             inFlightImages[imageIndex] = inFlightFences[currentFrame];
+
 
             SubmitInfo _submitInfo = new SubmitInfo()
             {
@@ -581,8 +596,8 @@ namespace ArctisAurora.EngineWork.Rendering
                 executionBuffer[i] = renderingModules[i].commandBuffers[imageIndex];
             }
             var _signalSemaphores = stackalloc[]
-{
-                renderFinishedSemaphores[currentFrame]
+            {
+                renderFinishedSemaphores[imageIndex]
             };
 
             fixed (CommandBuffer* ptrCommandBuffer = executionBuffer)

@@ -33,7 +33,7 @@ namespace ArctisAurora.EngineWork.AssetRegistry
                 asset = d[name];
                 return;
             }
-            else if (System.IO.File.Exists(path))
+            else if (File.Exists(path))
             { 
                 image = Image.Load<Rgba32>(path);
 

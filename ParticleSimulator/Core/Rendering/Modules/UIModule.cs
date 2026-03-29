@@ -79,18 +79,18 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         public UIModule()
         {}
 
-        internal override void UpdateModule()
+        internal override void UpdateModule(int currentFrame)
         {
             meshComponent.MakeInstanced();
             CreateDescriptorPool();
             AllocateDescriptorSets();
             UpdateDescriptorSets();
-            WriteCommandBuffers();
+            WriteCommandBuffers(currentFrame);
         }
 
         internal override void PrepareObjects()
         {
-            //RegisterVulkanQueue(Renderer.allocator, Renderer.vk, ref Renderer.logicalDevice);
+            RegisterVulkanQueue(Renderer.queueAllocator, Renderer.vk, ref Renderer.logicalDevice);
             meshComponent = new MCUI();
             PrepareCamera();
         }
@@ -576,17 +576,12 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             camera = new AuroraCamera();
         }
 
-        internal override void WriteCommandBuffers()
+        internal override void WriteCommandBuffers(int currentFrame)
         {
             if (commandBuffers != null)
             {
-                //fixed (CommandBuffer* CBPtr = commandBuffers)
-                //{
-                    //Renderer.vk.FreeCommandBuffers(Renderer.logicalDevice, Renderer.graphicsCommandPool, (uint)commandBuffers.Length, CBPtr);
-                //}
-                Renderer.vk.ResetCommandBuffer(commandBuffers[0], CommandBufferResetFlags.None);
-                Renderer.vk.ResetCommandBuffer(commandBuffers[1], CommandBufferResetFlags.None);
-                Renderer.vk.ResetCommandBuffer(commandBuffers[0], CommandBufferResetFlags.None);
+                Renderer.vk.ResetCommandBuffer(commandBuffers[currentFrame], CommandBufferResetFlags.None);
+                WriteCommandBuffer(currentFrame);
             }
             else
             {
@@ -608,35 +603,41 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                         throw new Exception("Failed to allocate command buffer with error " + r);
                     }
                 }
-            }
-
-            for (int index=0;index< commandBuffers.Length; index++)
-            {
-                RenderPassBeginInfo _renderPassInfo = new RenderPassBeginInfo()
+                for(int i=0; i < commandBuffers.Length; i++)
                 {
-                    SType = StructureType.RenderPassBeginInfo,
-                    RenderPass = renderPass,
-                    Framebuffer = frameBuffers[index],
-                    RenderArea =
+                    WriteCommandBuffer(i);
+                }
+            }
+            isDirty[currentFrame] = false;
+        }
+
+        private void WriteCommandBuffer(int currentFrame)
+        {
+            RenderPassBeginInfo _renderPassInfo = new RenderPassBeginInfo()
+            {
+                SType = StructureType.RenderPassBeginInfo,
+                RenderPass = renderPass,
+                Framebuffer = frameBuffers[currentFrame],
+                RenderArea =
                     {
                         Offset = { X = 0, Y = 0 },
                         Extent = Engine.window.windowSize
                     }
-                };
+            };
 
-                CommandBufferBeginInfo _beginInfo = new CommandBufferBeginInfo()
-                {
-                    SType = StructureType.CommandBufferBeginInfo
-                };
+            CommandBufferBeginInfo _beginInfo = new CommandBufferBeginInfo()
+            {
+                SType = StructureType.CommandBufferBeginInfo
+            };
 
-                if (Renderer.vk.BeginCommandBuffer(commandBuffers[index], ref _beginInfo) != Result.Success)
-                {
-                    throw new Exception("Failed to create BEGIN command buffer at index " + index);
-                }
+            if (Renderer.vk.BeginCommandBuffer(commandBuffers[currentFrame], ref _beginInfo) != Result.Success)
+            {
+                throw new Exception("Failed to create BEGIN command buffer at index " + currentFrame);
+            }
 
 
-                var _clearValues = new ClearValue[]
-                {
+            var _clearValues = new ClearValue[]
+            {
                 new ClearValue()
                 {
                     Color = new ClearColorValue() { Float32_0 = 0.05f, Float32_1 = 0.05f, Float32_2 = 0.05f, Float32_3 = 1f },
@@ -645,30 +646,30 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 {
                     DepthStencil = new ClearDepthStencilValue() { Depth = 1f, Stencil = 0 }
                 },
-                };
+            };
 
-                fixed (ClearValue* _clrValuesPtr = _clearValues)
-                {
-                    _renderPassInfo.ClearValueCount = (uint)_clearValues.Length;
-                    _renderPassInfo.PClearValues = _clrValuesPtr;
-                }
-                //player view
-                Renderer.vk.CmdBindPipeline(commandBuffers[index], PipelineBindPoint.Graphics, pipeline);
-                Renderer.vk.CmdBeginRenderPass(commandBuffers[index], &_renderPassInfo, SubpassContents.Inline);
+            fixed (ClearValue* _clrValuesPtr = _clearValues)
+            {
+                _renderPassInfo.ClearValueCount = (uint)_clearValues.Length;
+                _renderPassInfo.PClearValues = _clrValuesPtr;
+            }
+            //player view
+            Renderer.vk.CmdBindPipeline(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipeline);
+            Renderer.vk.CmdBeginRenderPass(commandBuffers[currentFrame], &_renderPassInfo, SubpassContents.Inline);
 
-                //IReadOnlyList<Entity> entities = EntityManager.controls;
-                var _offset = new ulong[] { 0 };
-                if (meshComponent.render == true)
-                {
-                    meshComponent.EnqueueDrawCommands(ref _offset, index, 0, ref commandBuffers[index], ref pipelineLayout, ref descriptorSets);
-                }
-                Renderer.vk.CmdEndRenderPass(commandBuffers[index]);
+            //IReadOnlyList<Entity> entities = EntityManager.controls;
+            var _offset = new ulong[] { 0 };
+            if (meshComponent.render == true)
+            {
+                meshComponent.EnqueueDrawCommands(ref _offset, currentFrame, 0, ref commandBuffers[currentFrame], ref pipelineLayout, ref descriptorSets);
+            }
+            Renderer.vk.CmdEndRenderPass(commandBuffers[currentFrame]);
 
-                if (Renderer.vk.EndCommandBuffer(commandBuffers[index]) != Result.Success)
-                {
-                    throw new Exception("Failed to record command buffer");
-                }
+            if (Renderer.vk.EndCommandBuffer(commandBuffers[currentFrame]) != Result.Success)
+            {
+                throw new Exception("Failed to record command buffer");
             }
         }
+
     }
 }

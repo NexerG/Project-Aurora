@@ -135,7 +135,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
                 _barrier.DstAccessMask = AccessFlags.ShaderReadBit;
 
                 sourceStage = PipelineStageFlags.TransferBit;
-                destinationStage = PipelineStageFlags.FragmentShaderBit;
+                destinationStage = PipelineStageFlags.AllCommandsBit;
             }
             else
             {
