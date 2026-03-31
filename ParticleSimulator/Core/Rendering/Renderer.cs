@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.Core.AssetRegistry;
 using ArctisAurora.Core.Rendering.Helpers;
+using ArctisAurora.Core.Rendering.Modules;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Core;
@@ -28,8 +29,8 @@ namespace ArctisAurora.EngineWork.Rendering
 
         // commands
         internal static Queue presentQueue;     // present surface queue
-        internal static Queue graphicsQueue;    // graphics queue
-        internal static CommandPool graphicsCommandPool;
+        internal static Queue compositeQueue;    // graphics queue
+        internal static CommandPool compositeCommandPool;
         //internal CommandBuffer[] graphicsCommandBuffers;
 
         internal static Queue transferQueue;      // for buffer transfers
@@ -40,6 +41,10 @@ namespace ArctisAurora.EngineWork.Rendering
         internal static Semaphore[] renderFinishedSemaphores;
         internal static Fence[] inFlightFences;
         internal static Fence[] inFlightImages;
+
+        // compositor
+        internal static CompositorModule compositorModule;
+        internal static Semaphore[] modulesFinishedSemaphores;
 
         // features
         private readonly string[] extensions = new string[]
@@ -69,9 +74,9 @@ namespace ArctisAurora.EngineWork.Rendering
         internal Image[] swapchainImages;
         internal ImageView[] swapchainImageViews;
 
-        internal DeviceMemory[] swapchainImageMemoriesDepth;
-        internal Image[] swapchainImagesDepth;
-        internal ImageView[] swapchainImageViewsDepth;
+        //internal DeviceMemory[] swapchainImageMemoriesDepth;
+        //internal Image[] swapchainImagesDepth;
+        //internal ImageView[] swapchainImageViewsDepth;
 
         internal const int MAX_FRAMES_IN_FLIGHT = 2;
         internal static int currentFrame = 0;
@@ -88,12 +93,6 @@ namespace ArctisAurora.EngineWork.Rendering
         {
             renderer = this;
         }
-
-        /*[A_XSDActionDependency("Renderer.NewRenderer", "Bootstrap")]
-        internal void InitRenderer()
-        {
-            renderer = new Renderer();
-        }*/
 
         // setup prerequisites
         internal void PreInitialize(RenderingModule[] modules)
@@ -113,12 +112,12 @@ namespace ArctisAurora.EngineWork.Rendering
             queueAllocator = new QueueAllocator(vk, ref gpu);
             renderer.CreateLogicalDevice();
 
-            graphicsQueue = queueAllocator.AllocateQueue(vk, logicalDevice, QueueFlags.GraphicsBit);
+            compositeQueue = queueAllocator.AllocateQueue(vk, logicalDevice, QueueFlags.GraphicsBit);
             presentQueue = queueAllocator.AllocatePresentQueue(vk, logicalDevice);
             transferQueue = queueAllocator.AllocateQueue(vk, logicalDevice, QueueFlags.TransferBit);
 
             renderer.CreateSwapchain();
-            renderer.CreateCommandPool((uint)queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit), out graphicsCommandPool, CommandPoolCreateFlags.ResetCommandBufferBit);
+            renderer.CreateCommandPool((uint)queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit), out compositeCommandPool, CommandPoolCreateFlags.ResetCommandBufferBit);
             renderer.CreateCommandPool((uint)queueAllocator.GetFamilyIndex(QueueFlags.TransferBit), out transferCommandPool, CommandPoolCreateFlags.TransientBit);
         }
 
@@ -144,12 +143,17 @@ namespace ArctisAurora.EngineWork.Rendering
         [A_XSDActionDependency("Renderer.SetupPipelines", "Bootstrap")]
         internal static void SetupPipelines()
         {
-            for(int i=0;i< renderingModules.Length; i++)
+            for (int i = 0; i < renderingModules.Length; i++)
             {
-                renderingModules[i].CreateRenderPass(ref renderer.surfaceFormat);
-                renderingModules[i].CreateFrameBuffers(renderer.swapchainImageViews, renderer.swapchainImageViewsDepth);
+                renderingModules[i].CreateRenderPass();
+                renderingModules[i].CreateOutputImages();
+                renderingModules[i].CreateModuleFrameBuffers();
                 renderingModules[i].CreatePipeline();
             }
+            compositorModule = new CompositorModule();
+            compositorModule.CreateRenderPass();
+            compositorModule.CreateModuleFrameBuffers();
+            compositorModule.Init(renderingModules, renderer.swapchainImageViews);
         }
 
         internal void CreateCommandBuffers()
@@ -201,6 +205,13 @@ namespace ArctisAurora.EngineWork.Rendering
                 {
                     throw new Exception("Failed to create 'In Flight Fence' at index " + i);
                 }
+            }
+
+            modulesFinishedSemaphores = new Semaphore[swapchainImageCount];
+            for (int i = 0; i < swapchainImageCount; i++)
+            {
+                if (vk.CreateSemaphore(logicalDevice, ref _semaphoreCreateInfo, null, out modulesFinishedSemaphores[i]) != Result.Success)
+                    throw new Exception("Failed to create 'Modules Finished Semaphore' at index " + i);
             }
         }
 
@@ -465,24 +476,24 @@ namespace ArctisAurora.EngineWork.Rendering
                 swapchainKHR.GetSwapchainImages(logicalDevice, swapchain, &_swapchainImageCount, _imagePtr);
             }
 
-            swapchainImagesDepth = new Image[_swapchainImageCount];
-            swapchainImageMemoriesDepth = new DeviceMemory[_swapchainImageCount];
-            Format depthFormat = GetDepthFormat();
-            for(int i = 0; i < swapchainImages.Length; i++)
-            {
-                AVulkanBufferHandler.CreateImage(vk, logicalDevice, gpu, Engine.window.windowSize.Width, Engine.window.windowSize.Height, depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit, MemoryPropertyFlags.DeviceLocalBit, ref swapchainImagesDepth[i], ref swapchainImageMemoriesDepth[i]);
-            }
+            //swapchainImagesDepth = new Image[_swapchainImageCount];
+            //swapchainImageMemoriesDepth = new DeviceMemory[_swapchainImageCount];
+            //Format depthFormat = GetDepthFormat();
+            //for(int i = 0; i < swapchainImages.Length; i++)
+            //{
+            //    AVulkanBufferHandler.CreateImage(vk, ref logicalDevice, gpu, Engine.window.windowSize.Width, Engine.window.windowSize.Height, depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit, MemoryPropertyFlags.DeviceLocalBit, ref swapchainImagesDepth[i], ref swapchainImageMemoriesDepth[i]);
+            //}
 
             swapchainImageViews = new ImageView[_swapchainImageCount];
-            swapchainImageViewsDepth = new ImageView[_swapchainImageCount];
+            //swapchainImageViewsDepth = new ImageView[_swapchainImageCount];
             for (int i = 0; i < swapchainImages.Length; i++)
             {
-                AVulkanBufferHandler.CreateImageView(ref vk, ref logicalDevice, ref swapchainImages[i], ref swapchainImageViews[i], surfaceFormat.Format, ImageAspectFlags.ColorBit);
-                AVulkanBufferHandler.CreateImageView(ref vk, ref logicalDevice, ref swapchainImagesDepth[i], ref swapchainImageViewsDepth[i], depthFormat, ImageAspectFlags.DepthBit);
+                AVulkanBufferHandler.CreateImageView(vk, ref logicalDevice, ref swapchainImages[i], ref swapchainImageViews[i], surfaceFormat.Format, ImageAspectFlags.ColorBit);
+                //AVulkanBufferHandler.CreateImageView(vk, ref logicalDevice, ref swapchainImagesDepth[i], ref swapchainImageViewsDepth[i], depthFormat, ImageAspectFlags.DepthBit);
             }
         }
 
-        private void CreateCommandPool(uint qfIndex, out CommandPool pool, CommandPoolCreateFlags flags)
+        public void CreateCommandPool(uint qfIndex, out CommandPool pool, CommandPoolCreateFlags flags)
         {
             CommandPoolCreateInfo _createInfo = new CommandPoolCreateInfo()
             {
@@ -568,6 +579,7 @@ namespace ArctisAurora.EngineWork.Rendering
             //    localEntityCount++;
             //}
             //EntityManager.RemoveEntityUpdate(0, localEntityCount);
+
             //uniforms done
             if (inFlightImages[imageIndex].Handle != default)
             {
@@ -590,45 +602,59 @@ namespace ArctisAurora.EngineWork.Rendering
                 PipelineStageFlags.ColorAttachmentOutputBit
             };
 
-            CommandBuffer[] executionBuffer = new CommandBuffer[renderingModules.Length];
+            CommandBuffer[] moduleCBs = new CommandBuffer[renderingModules.Length];
             for (int i = 0; i < renderingModules.Length; i++)
-            {
-                executionBuffer[i] = renderingModules[i].commandBuffers[imageIndex];
-            }
-            var _signalSemaphores = stackalloc[]
-            {
-                renderFinishedSemaphores[imageIndex]
-            };
+                moduleCBs[i] = renderingModules[i].commandBuffers[imageIndex];
 
-            fixed (CommandBuffer* ptrCommandBuffer = executionBuffer)
+            var waitSemaphores1 = stackalloc[] { imageAvailableSemaphores[currentFrame] };
+            var waitStages1 = stackalloc[] { PipelineStageFlags.ColorAttachmentOutputBit };
+            var signalSemaphores1 = stackalloc[] { modulesFinishedSemaphores[imageIndex] };
+
+            fixed (CommandBuffer* moduleCBsPtr = moduleCBs)
             {
-                _submitInfo = _submitInfo with
+                SubmitInfo modulesSubmit = new SubmitInfo()
                 {
+                    SType = StructureType.SubmitInfo,
                     WaitSemaphoreCount = 1,
-                    PWaitSemaphores = _waitSemaphores,
-                    PWaitDstStageMask = _waitStages,
-
+                    PWaitSemaphores = waitSemaphores1,
+                    PWaitDstStageMask = waitStages1,
                     CommandBufferCount = (uint)renderingModules.Length,
-                    PCommandBuffers = ptrCommandBuffer
+                    PCommandBuffers = moduleCBsPtr,
+                    SignalSemaphoreCount = 1,
+                    PSignalSemaphores = signalSemaphores1
                 };
-
-                _submitInfo.SignalSemaphoreCount = 1;
-                _submitInfo.PSignalSemaphores = _signalSemaphores;
-
                 vk.ResetFences(logicalDevice, 1, ref inFlightFences[currentFrame]);
-                r = vk.QueueSubmit(graphicsQueue, 1, ref _submitInfo, inFlightFences[currentFrame]);
-                if (r != Result.Success)
-                {
-                    throw new Exception("Failed to send command buffer to the GPU with error code:" + r);
-                }
+                if (vk.QueueSubmit(compositeQueue, 1, ref modulesSubmit, inFlightFences[currentFrame]) != Result.Success)
+                    throw new Exception("Failed to submit module command buffers");
             }
+            if (compositorModule.isDirty[currentFrame])
+                compositorModule.UpdateModule(currentFrame);
+
+            CommandBuffer compositorCB = compositorModule.commandBuffers[imageIndex];
+            var waitSemaphores2 = stackalloc[] { modulesFinishedSemaphores[imageIndex] };
+            var waitStages2 = stackalloc[] { PipelineStageFlags.FragmentShaderBit };
+            var signalSemaphores2 = stackalloc[] { renderFinishedSemaphores[imageIndex] };
+
+            SubmitInfo compositorSubmit = new SubmitInfo()
+            {
+                SType = StructureType.SubmitInfo,
+                WaitSemaphoreCount = 1,
+                PWaitSemaphores = waitSemaphores2,
+                PWaitDstStageMask = waitStages2,
+                CommandBufferCount = 1,
+                PCommandBuffers = &compositorCB,
+                SignalSemaphoreCount = 1,
+                PSignalSemaphores = signalSemaphores2
+            };
+            if (vk.QueueSubmit(compositeQueue, 1, ref compositorSubmit, default) != Result.Success)
+                throw new Exception("Failed to submit compositor command buffer");
 
             var _swapChains = stackalloc[] { swapchain };
             PresentInfoKHR _presentInfo = new PresentInfoKHR()
             {
                 SType = StructureType.PresentInfoKhr,
                 WaitSemaphoreCount = 1,
-                PWaitSemaphores = _signalSemaphores,
+                PWaitSemaphores = signalSemaphores2,
                 SwapchainCount = 1,
                 PSwapchains = _swapChains,
                 PImageIndices = &imageIndex

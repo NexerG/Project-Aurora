@@ -1,23 +1,14 @@
 ﻿using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
+using Windows.Foundation.Metadata;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
 namespace ArctisAurora.EngineWork.Rendering.Helpers
 {
+    [Obsolete("no longer used")]
     internal unsafe static class AVulkanHelper
     {
-        internal struct QueueFamilyIndices
-        {
-            public uint? GraphicsFamily { get; set; }
-            public uint? PresentFamily { get; set; }
-
-            public bool IsComplete()
-            {
-                return GraphicsFamily.HasValue && PresentFamily.HasValue;
-            }
-        }
-
         internal static uint Version(uint major, uint minor, uint patch)
         {
             return major << 22 | minor << 12 | patch;
@@ -59,7 +50,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             throw new Exception("Failed to find requested format");
         }
 
-        internal static QueueFamilyIndices FindQueueFamilies(ref KhrSurface _driverSurface, ref SurfaceKHR _surface)
+        /*internal static QueueFamilyIndices FindQueueFamilies(ref KhrSurface _driverSurface, ref SurfaceKHR _surface)
         {
             QueueFamilyIndices _qfi = new QueueFamilyIndices();
 
@@ -92,33 +83,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
                 i++;
             }
             return _qfi;
-        }
-
-        internal static QueueFamilyIndices FindQueueFamilies(ref QueueFamilyProperties[] queueFamilyProperties, ref PhysicalDevice gpu, ref KhrSurface _driverSurface, ref SurfaceKHR _surface)
-        {
-            QueueFamilyIndices _qfi = new QueueFamilyIndices();
-
-            uint i = 0;
-            foreach (var _qf in queueFamilyProperties)
-            {
-                if (_qf.QueueFlags.HasFlag(QueueFlags.GraphicsBit))
-                {
-                    _qfi.GraphicsFamily = i;
-                }
-                _driverSurface.GetPhysicalDeviceSurfaceSupport(gpu, i, _surface, out var _presentSupport);
-
-                if (_presentSupport)
-                {
-                    _qfi.PresentFamily = i;
-                }
-                if (_qfi.IsComplete())
-                {
-                    break;
-                }
-                i++;
-            }
-            return _qfi;
-        }
+        }*/
 
         internal static SwapChainSupportDetails GetSupportDetails(ref PhysicalDevice gpu, ref KhrSurface _driverSurface, ref SurfaceKHR _surface)
         {
@@ -211,25 +176,6 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
         {
             uint a = (_value + _alignment - 1) & ~(_alignment - 1);
             return a;
-        }
-
-        internal static nint StringToNint(string str)
-        {
-            if (str == null) throw new ArgumentNullException(nameof(str));
-            byte[] bytes = System.Text.Encoding.UTF8.GetBytes(str);
-            fixed (byte* ptr = bytes)
-            {
-                return (nint)ptr;
-            }
-        }
-
-        internal static nint ArrayToNint<T>(T[] array) where T : unmanaged
-        {
-            if (array == null) throw new ArgumentNullException(nameof(array));
-            fixed (T* ptr = array)
-            {
-                return (nint)ptr;
-            }
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using ArctisAurora.EngineWork.Rendering.Helpers;
+﻿using ArctisAurora.Core.Rendering.Helpers;
+using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
@@ -45,8 +46,8 @@ namespace ArctisAurora.EngineWork.Rendering
             _surfaceFormat = GetSwapchainSurfaceFormat(_support.Formats);
             PresentModeKHR _presentMode = GetPresentMode(_support.PresentModes);
 
-            QueueFamilyIndices _indices = FindQueueFamilies(ref _driverSurface, ref _surface);
-            var _queueFamilyIndices = stackalloc[] { _indices.GraphicsFamily.Value, _indices.PresentFamily.Value };
+            //QueueFamilyIndices _indices = QueueAllocator.FindQueueFamilies(ref _driverSurface, ref _surface);
+            //var _queueFamilyIndices = stackalloc[] { _indices.GraphicsFamily.Value, _indices.PresentFamily.Value };
 
             uint _imageCount = _support.Capabilities.MinImageCount + 1;
             SwapchainCreateInfoKHR _swapchainCreateInfo = new SwapchainCreateInfoKHR()
@@ -67,7 +68,7 @@ namespace ArctisAurora.EngineWork.Rendering
                 CompositeAlpha = CompositeAlphaFlagsKHR.OpaqueBitKhr,
                 PreTransform = _support.Capabilities.CurrentTransform,
                 QueueFamilyIndexCount = 2,
-                PQueueFamilyIndices = _queueFamilyIndices,
+                //PQueueFamilyIndices = _queueFamilyIndices,
             };
 
             if (!VulkanRenderer._vulkan.TryGetDeviceExtension(VulkanRenderer._instance, VulkanRenderer._logicalDevice, out _driverSwapchain))

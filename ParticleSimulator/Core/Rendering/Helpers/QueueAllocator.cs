@@ -11,7 +11,7 @@ namespace ArctisAurora.Core.Rendering.Helpers
         public int defaultIndex;  // -1 = not available, 0 = shares with another
         public int count;
     }
-    
+
     public unsafe class QueueAllocator
     {
         public QueueFamilyProperties[] properties; 

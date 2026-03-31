@@ -19,12 +19,12 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override uint MAX_TEXTURES => 50000;
         internal override uint MAX_UNIFORMS_BUFFERS => 50000;
 
-        internal override PhysicalDeviceFeatures features => new PhysicalDeviceFeatures()
+        internal override PhysicalDeviceFeatures features => new()
         {
             SamplerAnisotropy = true,
         };
 
-        internal override PhysicalDeviceVulkan12Features features12 => new PhysicalDeviceVulkan12Features()
+        internal override PhysicalDeviceVulkan12Features features12 => new()
         {
             SType = StructureType.PhysicalDeviceVulkan12Features,
             BufferDeviceAddress = true,
@@ -42,7 +42,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             ShaderSampledImageArrayNonUniformIndexing = true
         };
 
-        internal override List<List<DescriptorType>> descriptorTypes => new List<List<DescriptorType>> {
+        internal override List<List<DescriptorType>> descriptorTypes => new()
+        {
             new List<DescriptorType> {
                 DescriptorType.UniformBuffer, DescriptorType.StorageBuffer,
                 DescriptorType.StorageBuffer
@@ -51,7 +52,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 DescriptorType.CombinedImageSampler
             }
         };
-        internal override List<List<ShaderStageFlags>> shaderStages => new List<List<ShaderStageFlags>> {
+        internal override List<List<ShaderStageFlags>> shaderStages => new()
+        {
             new List<ShaderStageFlags>{
                 ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit,
                 ShaderStageFlags.VertexBit
@@ -72,7 +74,6 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override int variableSetCount => 2;
 
 
-        internal static bool updateCommandBuffers = false;
         internal static MCUI meshComponent;
 
 
@@ -90,22 +91,23 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal override void PrepareObjects()
         {
+            Renderer.renderer.CreateCommandPool((uint)Renderer.queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit), out moduleCommandPool, CommandPoolCreateFlags.ResetCommandBufferBit);
             RegisterVulkanQueue(Renderer.queueAllocator, Renderer.vk, ref Renderer.logicalDevice);
             meshComponent = new MCUI();
             PrepareCamera();
         }
 
-        internal override void CreateRenderPass(ref SurfaceFormatKHR format)
+        internal override void CreateRenderPass()
         {
             AttachmentDescription _colorAttachment = new AttachmentDescription()
             {
-                Format = format.Format,
+                Format = Renderer.renderer.surfaceFormat.Format,
                 Samples = SampleCountFlags.Count1Bit,
                 LoadOp = AttachmentLoadOp.Clear,
                 StoreOp = AttachmentStoreOp.Store,
                 StencilLoadOp = AttachmentLoadOp.DontCare,
                 InitialLayout = ImageLayout.Undefined,
-                FinalLayout = ImageLayout.PresentSrcKhr,
+                FinalLayout = ImageLayout.ShaderReadOnlyOptimal,
             };
 
             AttachmentReference _colorAttachmentRef = new AttachmentReference()
@@ -114,7 +116,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 Layout = ImageLayout.ColorAttachmentOptimal,
             };
 
-            AttachmentDescription _depthAttachment = new AttachmentDescription()
+            /*AttachmentDescription _depthAttachment = new AttachmentDescription()
             {
                 Format = AVulkanHelper.GetDepthFormat(),
                 Samples = SampleCountFlags.Count1Bit,
@@ -124,33 +126,45 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 StencilStoreOp = AttachmentStoreOp.DontCare,
                 InitialLayout = ImageLayout.Undefined,
                 FinalLayout = ImageLayout.DepthStencilAttachmentOptimal
-            };
+            };*/
 
-            AttachmentReference _depthAttachmentRef = new AttachmentReference()
+            /*AttachmentReference _depthAttachmentRef = new AttachmentReference()
             {
                 Attachment = 1,
                 Layout = ImageLayout.DepthStencilAttachmentOptimal
-            };
+            };*/
 
             SubpassDescription _subpass = new SubpassDescription()
             {
                 PipelineBindPoint = PipelineBindPoint.Graphics,
                 ColorAttachmentCount = 1,
                 PColorAttachments = &_colorAttachmentRef,
-                PDepthStencilAttachment = &_depthAttachmentRef
+                //PDepthStencilAttachment = &_depthAttachmentRef
             };
 
-            SubpassDependency _subDepend = new SubpassDependency()
+            SubpassDependency _writeDependency = new SubpassDependency()
             {
                 SrcSubpass = Vk.SubpassExternal,
                 DstSubpass = 0,
-                SrcStageMask = PipelineStageFlags.ColorAttachmentOutputBit | PipelineStageFlags.EarlyFragmentTestsBit,
+                SrcStageMask = PipelineStageFlags.ColorAttachmentOutputBit /*| PipelineStageFlags.EarlyFragmentTestsBit*/,
                 SrcAccessMask = 0,
-                DstStageMask = PipelineStageFlags.ColorAttachmentOutputBit | PipelineStageFlags.EarlyFragmentTestsBit,
-                DstAccessMask = AccessFlags.ColorAttachmentWriteBit | AccessFlags.DepthStencilAttachmentWriteBit
+                DstStageMask = PipelineStageFlags.ColorAttachmentOutputBit /*| PipelineStageFlags.EarlyFragmentTestsBit*/,
+                DstAccessMask = AccessFlags.ColorAttachmentWriteBit //| AccessFlags.DepthStencilAttachmentWriteBit
             };
 
-            var _attachments = new[] { _colorAttachment, _depthAttachment };
+            SubpassDependency _readDependency = new SubpassDependency()
+            {
+                SrcSubpass = 0,
+                DstSubpass = Vk.SubpassExternal,
+                SrcStageMask = PipelineStageFlags.ColorAttachmentOutputBit /*| PipelineStageFlags.EarlyFragmentTestsBit*/,
+                SrcAccessMask = AccessFlags.ColorAttachmentWriteBit /*| AccessFlags.DepthStencilAttachmentWriteBit*/,
+                DstStageMask = PipelineStageFlags.FragmentShaderBit,
+                DstAccessMask = AccessFlags.ShaderReadBit
+            };
+
+            var _dependencies = new[] { _writeDependency, _readDependency };
+            var _attachments = new[] { _colorAttachment/*, _depthAttachment*/ };
+            fixed (SubpassDependency* _dependencyPtr = _dependencies)
             fixed (AttachmentDescription* _attachmentPtr = _attachments)
             {
                 RenderPassCreateInfo _renderPassInfo = new RenderPassCreateInfo()
@@ -161,8 +175,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     SubpassCount = 1,
                     PSubpasses = &_subpass,
                     DependencyCount = 1,
-                    PDependencies = &_subDepend
-                };
+                    PDependencies = _dependencyPtr
+                    };
 
                 if (Renderer.vk.CreateRenderPass(Renderer.logicalDevice, ref _renderPassInfo, null, out renderPass) != Result.Success)
                 {
@@ -543,13 +557,12 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             SilkMarshal.Free((nint)fragmentShaderStageInfo.PName);
         }
 
-        internal override void CreateFrameBuffers(ImageView[] swapchainImageViews, ImageView[] swapchainImageViewsDepth)
+        internal override void CreateModuleFrameBuffers()
         {
             frameBuffers = new Framebuffer[Renderer.swapchainImageCount];
-            depthFrameBuffers = new Framebuffer[Renderer.swapchainImageCount];
             for (int i = 0; i < Renderer.swapchainImageCount; i++)
             {
-                var _attachment = new[] { swapchainImageViews[i], swapchainImageViewsDepth[i] };
+                var _attachment = new[] { outputImageViews[i] };
 
                 fixed (ImageView* _imAttachmentPtr = _attachment)
                 {
@@ -590,8 +603,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 CommandBufferAllocateInfo _allocInfo = new CommandBufferAllocateInfo()
                 {
                     SType = StructureType.CommandBufferAllocateInfo,
-                    //CommandPool = moduleCommandPool,
-                    CommandPool = Renderer.graphicsCommandPool,
+                    CommandPool = moduleCommandPool,
+                    //CommandPool = Renderer.compositeCommandPool,
                     Level = CommandBufferLevel.Primary,
                     CommandBufferCount = (uint)commandBuffers.Length
                 };
@@ -641,11 +654,11 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 new ClearValue()
                 {
                     Color = new ClearColorValue() { Float32_0 = 0.05f, Float32_1 = 0.05f, Float32_2 = 0.05f, Float32_3 = 1f },
-                },
+                }/*,
                 new ClearValue()
                 {
                     DepthStencil = new ClearDepthStencilValue() { Depth = 1f, Stencil = 0 }
-                },
+                },*/
             };
 
             fixed (ClearValue* _clrValuesPtr = _clearValues)
@@ -670,6 +683,5 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 throw new Exception("Failed to record command buffer");
             }
         }
-
     }
 }

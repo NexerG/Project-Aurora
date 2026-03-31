@@ -26,7 +26,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             mesh = new AVulkanMesh();
             mesh.BufferMesh();
             //AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, "../../../Shaders/Brick2.png", Format.R8G8B8A8Srgb);
-            AVulkanBufferHandler.CreateImageView(ref VulkanRenderer._vulkan, ref VulkanRenderer._logicalDevice, ref _textureImage, ref _textureImageView, Format.R8G8B8A8Srgb, ImageAspectFlags.ColorBit);
+            //AVulkanBufferHandler.CreateImageView(ref VulkanRenderer._vulkan, ref VulkanRenderer._logicalDevice, ref _textureImage, ref _textureImageView, Format.R8G8B8A8Srgb, ImageAspectFlags.ColorBit);
         }
 
         public override void OnStart()

@@ -6,7 +6,6 @@ using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Maths;
-using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace ArctisAurora.EngineWork

@@ -1,10 +1,7 @@
-﻿using ArctisAurora.EngineWork.Rendering.RendererTypes;
-using Silk.NET.GLFW;
-using Silk.NET.Maths;
+﻿using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
-using System.Collections;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using Format = Silk.NET.Vulkan.Format;
 using Image = SixLabors.ImageSharp.Image;
@@ -195,7 +192,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 
             Renderer.vk!.BindImageMemory(Renderer.logicalDevice, _im, _devMemory, 0);
         }
-        internal static void CreateImage(Vk vk, Device logicalDevice, PhysicalDevice gpu, uint _width, uint _height, Format _format, ImageTiling _tiling, ImageUsageFlags _usage, MemoryPropertyFlags _properties, ref Silk.NET.Vulkan.Image _im, ref DeviceMemory _devMemory)
+        internal static void CreateImage(Vk vk, ref Device logicalDevice, PhysicalDevice gpu, uint _width, uint _height, Format _format, ImageTiling _tiling, ImageUsageFlags _usage, MemoryPropertyFlags _properties, ref Silk.NET.Vulkan.Image _im, ref DeviceMemory _devMemory)
         {
             ImageCreateInfo _imageInfo = new()
             {
@@ -245,7 +242,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             vk.BindImageMemory(logicalDevice, _im, _devMemory, 0);
         }
 
-        internal static void CreateImageView(ref Vk vk, ref Device logicalDevice, ref Silk.NET.Vulkan.Image _textureImage, ref ImageView _imageView, Format imageFormat, ImageAspectFlags aspectFlags)
+        internal static void CreateImageView(Vk vk, ref Device logicalDevice, ref Silk.NET.Vulkan.Image _textureImage, ref ImageView _imageView, Format imageFormat, ImageAspectFlags aspectFlags)
         {
             ImageViewCreateInfo _createInfo = new ImageViewCreateInfo
             {

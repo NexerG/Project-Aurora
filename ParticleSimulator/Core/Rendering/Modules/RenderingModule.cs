@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.Core.Rendering.Helpers;
+using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Vulkan;
 using Image = Silk.NET.Vulkan.Image;
 using Semaphore = Silk.NET.Vulkan.Semaphore;
@@ -26,12 +27,13 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal RenderPass renderPass;
 
         internal Framebuffer[] frameBuffers;
-        internal Framebuffer[] depthFrameBuffers;
 
         // commands
         public Queue graphicsQueue;
         public CommandPool moduleCommandPool;
         internal CommandBuffer[] commandBuffers;
+        public bool[] isDirty = { true, true, true };
+        public Semaphore[] moduleFinishedSemaphores;
 
         // descriptors
         internal abstract List<List<DescriptorType>> descriptorTypes { get; }
@@ -52,10 +54,9 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         // rendered result
         public Image[] outputImages;
         public ImageView[] outputImageViews;
+        public DeviceMemory[] imageDeviceMemory;
         public Semaphore[] renderFinishedSemaphores;
-
-        // Updates
-        public bool[] isDirty = { true, true, true };
+        public int compositorOrder = 0;
 
         // others
         internal AuroraCamera camera;
@@ -69,8 +70,6 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         }
 
         internal abstract void UpdateModule(int currentFrame);
-
-        internal abstract void CreateRenderPass(ref SurfaceFormatKHR format);
 
         internal virtual void CreateDescriptorSetLayout()
         {
@@ -144,7 +143,29 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal abstract void CreatePipeline();
 
-        internal abstract void CreateFrameBuffers(ImageView[] swapchainImageViews, ImageView[] swapchainImageViewsDepth);
+        internal abstract void CreateModuleFrameBuffers();
+
+        internal abstract void CreateRenderPass();
+
+        internal virtual void CreateOutputImages()
+        {
+            uint imageceCount = Renderer.swapchainImageCount;
+            outputImages = new Image[imageceCount];
+            outputImageViews = new ImageView[imageceCount];
+            imageDeviceMemory = new DeviceMemory[imageceCount];
+
+            for (int i = 0; i < imageceCount; i++)
+            {
+                AVulkanBufferHandler.CreateImage(Renderer.vk, ref Renderer.logicalDevice, Renderer.gpu,
+                    Engine.window.windowSize.Width, Engine.window.windowSize.Height,
+                    Format.R8G8B8A8Unorm,
+                    ImageTiling.Optimal,
+                    ImageUsageFlags.ColorAttachmentBit | ImageUsageFlags.SampledBit,
+                    MemoryPropertyFlags.DeviceLocalBit,
+                    ref outputImages[i], ref imageDeviceMemory[i]);
+                AVulkanBufferHandler.CreateImageView(Renderer.vk, ref Renderer.logicalDevice, ref outputImages[i], ref outputImageViews[i], Format.R8G8B8A8Unorm, ImageAspectFlags.ColorBit);
+            }
+        }
 
         internal abstract void PrepareCamera();
 
