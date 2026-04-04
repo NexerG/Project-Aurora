@@ -11,10 +11,13 @@ namespace ArctisAurora.Core.Rendering.Modules
     {
         internal override ERendererTypes rendererType => ERendererTypes.UITemp;
         internal override ERendererStage RendererStage => ERendererStage.PostProcessing;
-        internal override uint MAX_STORAGE_BUFFERS => 1;
-        internal override uint MAX_TEXTURES => 16;
-        internal override uint MAX_UNIFORMS_BUFFERS => 1;
-
+        internal override uint[][] descriptorMaxCounts => new uint[][] {
+            new uint[] { 16 }    // set 0: sampler array, max 16 module outputs
+        };
+        internal override uint GetVariableDescriptorCount(int set)
+        {
+            return (uint)_moduleCount;
+        }
         internal override PhysicalDeviceFeatures features => new();
         internal override PhysicalDeviceVulkan12Features features12 => new()
         {
@@ -52,49 +55,14 @@ namespace ArctisAurora.Core.Rendering.Modules
 
             CreateSampler();
             CreateDescriptorSetLayout();
-            CreateDescriptorPool();
-            AllocateDescriptorSets();
-            UpdateDescriptorSets();
-            CreatePipeline();
-        }
-
-        internal override void CreateDescriptorSetLayout()
-        {
-            descriptorSetLayouts = new DescriptorSetLayout[1];
-
-
-            DescriptorSetLayoutBinding binding = new DescriptorSetLayoutBinding()
+            frameResources = new FrameResources[Renderer.swapchainImageCount];
+            for (int i = 0; i < Renderer.swapchainImageCount; i++)
             {
-                Binding = 0,
-                DescriptorType = DescriptorType.CombinedImageSampler,
-                DescriptorCount = (uint)_moduleCount,
-                StageFlags = ShaderStageFlags.FragmentBit,
-                PImmutableSamplers = null
-            };
-
-            DescriptorBindingFlags bindingFlags = DescriptorBindingFlags.VariableDescriptorCountBit
-                                                | DescriptorBindingFlags.PartiallyBoundBit;
-
-            DescriptorSetLayout localLayout;
-            fixed (DescriptorBindingFlags* flagsPtr = new[] { bindingFlags })
-            {
-                DescriptorSetLayoutBindingFlagsCreateInfo flagsInfo = new()
-                {
-                    SType = StructureType.DescriptorSetLayoutBindingFlagsCreateInfoExt,
-                    BindingCount = 1,
-                    PBindingFlags = flagsPtr
-                };
-                DescriptorSetLayoutCreateInfo layoutInfo = new DescriptorSetLayoutCreateInfo()
-                {
-                    SType = StructureType.DescriptorSetLayoutCreateInfo,
-                    BindingCount = 1,
-                    PBindings = &binding,
-                    PNext = &flagsInfo
-                };
-                if (Renderer.vk.CreateDescriptorSetLayout(Renderer.logicalDevice, ref layoutInfo, null, &localLayout) != Result.Success)
-                    throw new Exception("Failed to create compositor descriptor set layout");
+                CreateDescriptorPool(i);
+                AllocateDescriptorSets(i);
+                UpdateDescriptorSets(i);
             }
-            descriptorSetLayouts[0] = localLayout;
+            CreatePipeline();
         }
 
         private void CreateSampler()
@@ -120,50 +88,15 @@ namespace ArctisAurora.Core.Rendering.Modules
             }
         }
 
-        internal override void AllocateDescriptorSets() // well be right back as this might be bad
+        internal override void CreateDescriptorPool(int currentFrame)
         {
-            descriptorSets = new DescriptorSet[1][];
-            descriptorSets[0] = new DescriptorSet[Renderer.swapchainImageCount];
+            if (frameResources[currentFrame] == null)
+                frameResources[currentFrame] = new FrameResources();
 
-            // 3 sets, all sharing the same layout
-            DescriptorSetLayout[] layouts = new DescriptorSetLayout[Renderer.swapchainImageCount];
-            for (int i = 0; i < layouts.Length; i++)
-                layouts[i] = descriptorSetLayouts[0];
+            if (frameResources[currentFrame].pool.Handle != default)
+                Renderer.vk.DestroyDescriptorPool(Renderer.logicalDevice, frameResources[currentFrame].pool, null);
 
-            uint moduleCount = (uint)_moduleCount;
-            // one entry per set telling the driver how many descriptors each variable binding holds
-            uint[] countsPerSet = new uint[Renderer.swapchainImageCount];
-            for (int i = 0; i < countsPerSet.Length; i++)
-                countsPerSet[i] = moduleCount;
-
-            fixed (DescriptorSetLayout* layoutsPtr = layouts)
-            fixed (uint* countPtr = countsPerSet)
-            {
-                DescriptorSetVariableDescriptorCountAllocateInfo varCount = new()
-                {
-                    SType = StructureType.DescriptorSetVariableDescriptorCountAllocateInfo,
-                    DescriptorSetCount = Renderer.swapchainImageCount,
-                    PDescriptorCounts = countPtr
-                };
-                DescriptorSetAllocateInfo allocInfo = new DescriptorSetAllocateInfo()
-                {
-                    SType = StructureType.DescriptorSetAllocateInfo,
-                    DescriptorPool = descriptorPool,
-                    DescriptorSetCount = Renderer.swapchainImageCount,
-                    PSetLayouts = layoutsPtr,
-                    PNext = &varCount
-                };
-                fixed (DescriptorSet* setsPtr = descriptorSets[0])
-                {
-                    if (Renderer.vk.AllocateDescriptorSets(Renderer.logicalDevice, ref allocInfo, setsPtr) != Result.Success)
-                        throw new Exception("Failed to allocate compositor descriptor sets");
-                }
-            }
-        }
-
-        internal override void CreateDescriptorPool()
-        {
-            CreateDescriptorPoolSizes(Renderer.swapchainImageCount);
+            CreateDescriptorPoolSizes(1);
             fixed (DescriptorPoolSize* sizesPtr = descriptorPoolSizes)
             {
                 DescriptorPoolCreateInfo info = new DescriptorPoolCreateInfo()
@@ -171,10 +104,10 @@ namespace ArctisAurora.Core.Rendering.Modules
                     SType = StructureType.DescriptorPoolCreateInfo,
                     PoolSizeCount = (uint)descriptorPoolSizes.Length,
                     PPoolSizes = sizesPtr,
-                    MaxSets = Renderer.swapchainImageCount,
-                    Flags = DescriptorPoolCreateFlags.FreeDescriptorSetBit
+                    MaxSets = (uint)variableSetCount,
+                    Flags = DescriptorPoolCreateFlags.None
                 };
-                if (Renderer.vk.CreateDescriptorPool(Renderer.logicalDevice, ref info, null, out descriptorPool) != Result.Success)
+                if (Renderer.vk.CreateDescriptorPool(Renderer.logicalDevice, ref info, null, out frameResources[currentFrame].pool) != Result.Success)
                     throw new Exception("Failed to create compositor descriptor pool");
             }
         }
@@ -186,17 +119,7 @@ namespace ArctisAurora.Core.Rendering.Modules
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.CombinedImageSampler,
-                    DescriptorCount = (uint)(swapchainImageCount * _moduleCount)
-                },
-                new DescriptorPoolSize()
-                {
-                    Type = DescriptorType.CombinedImageSampler,
-                    DescriptorCount = (uint)(swapchainImageCount * _moduleCount)
-                },
-                new DescriptorPoolSize()
-                {
-                    Type = DescriptorType.CombinedImageSampler,
-                    DescriptorCount = (uint)(swapchainImageCount * _moduleCount)
+                    DescriptorCount = (uint)(swapchainImageCount * _moduleCount) + 1
                 }
             };
         }
@@ -427,40 +350,37 @@ namespace ArctisAurora.Core.Rendering.Modules
         internal override void CreateOutputImages()
         {}
 
-        internal override void UpdateDescriptorSets() // might be wrong alongside allocation
+        internal override void UpdateDescriptorSets(int currentFrame)
         {
-            for (int i = 0; i < Renderer.swapchainImageCount; i++)
+            DescriptorImageInfo[] imageInfos = new DescriptorImageInfo[_moduleCount];
+            for (int m = 0; m < _moduleCount; m++)
             {
-                DescriptorImageInfo[] imageInfos = new DescriptorImageInfo[_moduleCount];
-                for (int m = 0; m < _moduleCount; m++)
+                imageInfos[m] = new DescriptorImageInfo()
                 {
-                    imageInfos[m] = new DescriptorImageInfo()
-                    {
-                        ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
-                        ImageView = _sourceModules[m].outputImageViews[i],
-                        Sampler = _sampler
-                    };
-                }
-                fixed (DescriptorImageInfo* imageInfosPtr = imageInfos)
+                    ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
+                    ImageView = _sourceModules[m].outputImageViews[currentFrame],
+                    Sampler = _sampler
+                };
+            }
+            fixed (DescriptorImageInfo* imageInfosPtr = imageInfos)
+            {
+                WriteDescriptorSet write = new WriteDescriptorSet()
                 {
-                    WriteDescriptorSet write = new WriteDescriptorSet()
-                    {
-                        SType = StructureType.WriteDescriptorSet,
-                        DstSet = descriptorSets[0][i],
-                        DstBinding = 0,
-                        DstArrayElement = 0,
-                        DescriptorCount = (uint)_moduleCount,
-                        DescriptorType = DescriptorType.CombinedImageSampler,
-                        PImageInfo = imageInfosPtr
-                    };
-                    Renderer.vk.UpdateDescriptorSets(Renderer.logicalDevice, 1, ref write, 0, null);
-                }
+                    SType = StructureType.WriteDescriptorSet,
+                    DstSet = frameResources[currentFrame].sets[0],
+                    DstBinding = 0,
+                    DstArrayElement = 0,
+                    DescriptorCount = (uint)_moduleCount,
+                    DescriptorType = DescriptorType.CombinedImageSampler,
+                    PImageInfo = imageInfosPtr
+                };
+                Renderer.vk.UpdateDescriptorSets(Renderer.logicalDevice, 1, ref write, 0, null);
             }
         }
 
         internal override void UpdateModule(int currentFrame)
         {
-            UpdateDescriptorSets();
+            UpdateDescriptorSets(currentFrame);
             WriteCommandBuffers(currentFrame);
         }
 
@@ -518,11 +438,9 @@ namespace ArctisAurora.Core.Rendering.Modules
             Renderer.vk.CmdBeginRenderPass(commandBuffers[index], &renderPassInfo, SubpassContents.Inline);
             Renderer.vk.CmdBindPipeline(commandBuffers[index], PipelineBindPoint.Graphics, pipeline);
 
-            fixed (DescriptorSet* setsPtr = descriptorSets[0])
-            {
-                Renderer.vk.CmdBindDescriptorSets(commandBuffers[index], PipelineBindPoint.Graphics,
-                    pipelineLayout, 0, 1, setsPtr + index, 0, null);
-            }
+            DescriptorSet set = frameResources[index].sets[0];
+            Renderer.vk.CmdBindDescriptorSets(commandBuffers[index], PipelineBindPoint.Graphics,
+                pipelineLayout, 0, 1, &set, 0, null);
 
             // fullscreen triangle — 3 vertices, no vertex buffer
             Renderer.vk.CmdDraw(commandBuffers[index], 3, 1, 0, 0);

@@ -11,6 +11,12 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         Game, UI, PostProcessing
     }
 
+    internal class FrameResources
+    {
+        internal DescriptorPool pool;
+        internal DescriptorSet[] sets;  // one per set layout
+    }
+
     public unsafe abstract class RenderingModule
     {
         // type
@@ -42,14 +48,10 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal abstract int variableSetCount { get; }
 
 
-        internal DescriptorPool descriptorPool;
-        internal DescriptorPoolSize[] descriptorPoolSizes;
         internal DescriptorSetLayout[] descriptorSetLayouts;
-        internal DescriptorSet[][] descriptorSets;
-
-        internal abstract uint MAX_TEXTURES { get; }
-        internal abstract uint MAX_STORAGE_BUFFERS { get; }
-        internal abstract uint MAX_UNIFORMS_BUFFERS { get; }
+        internal DescriptorPoolSize[] descriptorPoolSizes;
+        internal FrameResources[] frameResources;  // one per MAX_FRAMES_IN_FLIGHT
+        internal abstract uint[][] descriptorMaxCounts { get; }
 
         // rendered result
         public Image[] outputImages;
@@ -78,27 +80,22 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             for (int set = 0; set < setCount; ++set)
             {
                 uint typeCount = (uint)descriptorTypes[set].Count;
-                uint[] descriptorCount = new uint[typeCount];
 
-                for (int i = 0; i < typeCount; i++)
+                // Validation: variable flag only allowed on last binding
+                for (int i = 0; i < (int)typeCount; i++)
                 {
-                    if (descriptorBindingFlags[set][i].HasFlag(DescriptorBindingFlags.VariableDescriptorCountBit))
-                    {
-                        descriptorCount[i] = MAX_STORAGE_BUFFERS;
-                    }
-                    else
-                    {
-                        descriptorCount[i] = 1;
-                    }
+                    bool isVariable = descriptorBindingFlags[set][i].HasFlag(DescriptorBindingFlags.VariableDescriptorCountBit);
+                    if (isVariable && i != (int)typeCount - 1)
+                        throw new Exception($"Set {set} binding {i}: VariableDescriptorCountBit is only allowed on the last binding (binding {typeCount - 1})");
                 }
 
                 DescriptorSetLayoutBinding[] bindingList = new DescriptorSetLayoutBinding[typeCount];
-                for (int i = 0; i < typeCount; i++)
+                for (int i = 0; i < (int)typeCount; i++)
                 {
                     bindingList[i] = new DescriptorSetLayoutBinding()
                     {
                         Binding = (uint)i,
-                        DescriptorCount = descriptorCount[i],
+                        DescriptorCount = descriptorMaxCounts[set][i],
                         DescriptorType = descriptorTypes[set][i],
                         PImmutableSamplers = null,
                         StageFlags = shaderStages[set][i]
@@ -135,11 +132,73 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal abstract void CreateDescriptorPoolSizes(uint swapchainImageCount);
 
-        internal abstract void UpdateDescriptorSets();
+        internal abstract void UpdateDescriptorSets(int currentFrame);
 
-        internal abstract void CreateDescriptorPool();
+        internal abstract void CreateDescriptorPool(int currentFrame);
 
-        internal abstract void AllocateDescriptorSets();
+        internal virtual void AllocateDescriptorSets(int currentFrame)
+        {
+            if (frameResources[currentFrame] == null)
+                frameResources[currentFrame] = new FrameResources();
+
+            frameResources[currentFrame].sets = new DescriptorSet[variableSetCount];
+
+            for (int set = 0; set < variableSetCount; ++set)
+            {
+                DescriptorSetLayout layout = descriptorSetLayouts[set];
+
+                int lastBinding = descriptorTypes[set].Count - 1;
+                bool hasVariable = descriptorBindingFlags[set][lastBinding]
+                    .HasFlag(DescriptorBindingFlags.VariableDescriptorCountBit);
+
+                if (hasVariable)
+                {
+                    uint actualCount = GetVariableDescriptorCount(set);
+                    DescriptorSetVariableDescriptorCountAllocateInfo variableInfo = new()
+                    {
+                        SType = StructureType.DescriptorSetVariableDescriptorCountAllocateInfo,
+                        DescriptorSetCount = 1,
+                        PDescriptorCounts = &actualCount
+                    };
+
+                    DescriptorSetAllocateInfo allocInfo = new()
+                    {
+                        SType = StructureType.DescriptorSetAllocateInfo,
+                        DescriptorPool = frameResources[currentFrame].pool,
+                        DescriptorSetCount = 1,
+                        PSetLayouts = &layout,
+                        PNext = &variableInfo
+                    };
+                    fixed (DescriptorSet* setPtr = &frameResources[currentFrame].sets[set])
+                    {
+                        Result r = Renderer.vk.AllocateDescriptorSets(Renderer.logicalDevice, ref allocInfo, setPtr);
+                        if (r != Result.Success)
+                            throw new Exception($"Failed to allocate descriptor set {set} for frame {currentFrame} with error: {r}");
+                    }
+                }
+                else
+                {
+                    DescriptorSetAllocateInfo allocInfo = new()
+                    {
+                        SType = StructureType.DescriptorSetAllocateInfo,
+                        DescriptorPool = frameResources[currentFrame].pool,
+                        DescriptorSetCount = 1,
+                        PSetLayouts = &layout
+                    };
+                    fixed (DescriptorSet* setPtr = &frameResources[currentFrame].sets[set])
+                    {
+                        Result r = Renderer.vk.AllocateDescriptorSets(Renderer.logicalDevice, ref allocInfo, setPtr);
+                        if (r != Result.Success)
+                            throw new Exception($"Failed to allocate descriptor set {set} for frame {currentFrame} with error: {r}");
+                    }
+                }
+            }
+        }
+
+        internal virtual uint GetVariableDescriptorCount(int set)
+        {
+            throw new Exception($"Module has variable binding in set {set} but doesn't override GetVariableDescriptorCount");
+        }
 
         internal abstract void CreatePipeline();
 

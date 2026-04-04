@@ -106,6 +106,7 @@ namespace ArctisAurora.EngineWork.Rendering
         {
             // driver
             renderer.CreateVulkanInstance();
+            renderer.SetupDebugMessenger();
             Engine.window.CreateSurface();
             renderer.ChoosePhysicalDevice();
 
@@ -289,7 +290,13 @@ namespace ArctisAurora.EngineWork.Rendering
 
         private uint DebugCallback(DebugUtilsMessageSeverityFlagsEXT messageSeverity, DebugUtilsMessageTypeFlagsEXT messageTypes, DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
         {
-            Console.WriteLine($"validation layer:" + Marshal.PtrToStringAnsi((nint)pCallbackData->PMessage));
+            if (messageSeverity < DebugUtilsMessageSeverityFlagsEXT.WarningBitExt)
+                return Vk.False;
+
+            string msg = Marshal.PtrToStringAnsi((nint)pCallbackData->PMessage);
+            string stack = new System.Diagnostics.StackTrace(true).ToString();
+            Console.WriteLine($"[Vulkan {messageSeverity}] {msg}");
+            Console.WriteLine(stack);
             return Vk.False;
         }
 
@@ -297,7 +304,7 @@ namespace ArctisAurora.EngineWork.Rendering
         {
             if (!isDebugEnabled) return;
 
-            if (vk.TryGetInstanceExtension(instance, out _debugUtils)) return;
+            if (!vk.TryGetInstanceExtension(instance, out _debugUtils)) return;
 
             DebugUtilsMessengerCreateInfoEXT createInfo = new DebugUtilsMessengerCreateInfoEXT();
             PopulateDebugMessengerCreateInfo(ref createInfo);
@@ -306,6 +313,24 @@ namespace ArctisAurora.EngineWork.Rendering
                 throw new Exception("Failed to create debug messenger");
             }
         }
+
+        /*internal static void SetDebugName(ulong objectHandle, ObjectType objectType, string name)
+        {
+            if (!vk.TryGetInstanceExtension<ExtDebugUtils>(instance, out var debugUtils))
+                return;
+
+            fixed (byte* namePtr = System.Text.Encoding.UTF8.GetBytes(name + '\0'))
+            {
+                DebugUtilsObjectNameInfoEXT nameInfo = new()
+                {
+                    SType = StructureType.DebugUtilsObjectNameInfoExt,
+                    ObjectType = objectType,
+                    ObjectHandle = objectHandle,
+                    PObjectName = namePtr
+                };
+                debugUtils.SetDebugUtilsObjectName(logicalDevice, &nameInfo);
+            }
+        }*/
 
         private void PopulateDebugMessengerCreateInfo(ref DebugUtilsMessengerCreateInfoEXT createInfo)
         {
@@ -476,20 +501,10 @@ namespace ArctisAurora.EngineWork.Rendering
                 swapchainKHR.GetSwapchainImages(logicalDevice, swapchain, &_swapchainImageCount, _imagePtr);
             }
 
-            //swapchainImagesDepth = new Image[_swapchainImageCount];
-            //swapchainImageMemoriesDepth = new DeviceMemory[_swapchainImageCount];
-            //Format depthFormat = GetDepthFormat();
-            //for(int i = 0; i < swapchainImages.Length; i++)
-            //{
-            //    AVulkanBufferHandler.CreateImage(vk, ref logicalDevice, gpu, Engine.window.windowSize.Width, Engine.window.windowSize.Height, depthFormat, ImageTiling.Optimal, ImageUsageFlags.DepthStencilAttachmentBit, MemoryPropertyFlags.DeviceLocalBit, ref swapchainImagesDepth[i], ref swapchainImageMemoriesDepth[i]);
-            //}
-
             swapchainImageViews = new ImageView[_swapchainImageCount];
-            //swapchainImageViewsDepth = new ImageView[_swapchainImageCount];
             for (int i = 0; i < swapchainImages.Length; i++)
             {
                 AVulkanBufferHandler.CreateImageView(vk, ref logicalDevice, ref swapchainImages[i], ref swapchainImageViews[i], surfaceFormat.Format, ImageAspectFlags.ColorBit);
-                //AVulkanBufferHandler.CreateImageView(vk, ref logicalDevice, ref swapchainImagesDepth[i], ref swapchainImageViewsDepth[i], depthFormat, ImageAspectFlags.DepthBit);
             }
         }
 
@@ -511,7 +526,7 @@ namespace ArctisAurora.EngineWork.Rendering
         {
             for(int i = 0; i < renderingModules.Length; i++)
             {
-                renderingModules[i].AllocateDescriptorSets();
+                renderingModules[i].AllocateDescriptorSets(currentFrame);
             }
         }
 
@@ -519,7 +534,7 @@ namespace ArctisAurora.EngineWork.Rendering
         {
             for(int i=0; i < renderingModules.Length; i++)
             {
-                renderingModules[i].UpdateDescriptorSets();
+                renderingModules[i].UpdateDescriptorSets(currentFrame);
             }
         }
 
