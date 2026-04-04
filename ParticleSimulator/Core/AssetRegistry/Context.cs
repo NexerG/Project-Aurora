@@ -84,11 +84,5 @@ namespace ArctisAurora.Core.AssetRegistry
             activeContexts.TryGetValue(name, out var context);
             return context;
         }
-
-        /*public T GetContextOfType(Type t)
-        {
-            activeContexts.TryGetValue(t, out object value);
-            return (T)value;
-        }*/
     }
 }

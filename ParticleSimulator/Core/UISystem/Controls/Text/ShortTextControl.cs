@@ -8,15 +8,14 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
     [A_XSDType("ShortText", "UI", AllowedChildren = typeof(IXMLChild_UI), MaxChildren = 1)]
     public class ShortTextControl : TextControl
     {
-        private string _text = string.Empty;
         public FontAsset fontAsset;
 
         [A_XSDElementProperty("Text", "UI", "The text to display on the control.")]
         public string text {
-            get => _text; 
+            get => field; 
             set
             {
-                _text = value;
+                field = value;
                 Dictionary<string, FontAsset> d = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset));
                 fontAsset = d["default"];
 
@@ -41,16 +40,16 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                     horizontalOffset += (gAsset.advanceWidth * (float)fontSize) - halfWidth - (gAsset.leftSideOffset * (float)fontSize);
                 }
             }
-        }
+        } = string.Empty;
 
-        private int _fontSize = 72;
-        public int fontSize {
-            get => _fontSize;
+        public int fontSize
+        {
+            get => field;
             set
             {
-                _fontSize = (int)Math.Ceiling(((float)value * (96f/72f)));
+                field = (int)Math.Ceiling(((float)value * (96f / 72f)));
             }
-        }
+        } = 72;
 
         public ShortTextControl()
         {

@@ -184,28 +184,26 @@ namespace ArctisAurora.Core.UISystem.Controls
         #region ---- UI XML fields ----
 
         #region ---- scaling ----
-        private int _width = 72;
-        private int _height = 72;
         public int width
         {
-            get => _width;
+            get => field;
             set
             {
-                if (_width == value) return;
-                _width = value;
+                if (field == value) return;
+                field = value;
                 InvalidateLayout();
             }
-        }
+        } = 72;
         public int height
         {
-            get => _height;
-            set 
+            get => field;
+            set
             {
-                if (_height == value) return;
-                _height = value;
+                if (field == value) return;
+                field = value;
                 InvalidateLayout();
             }
-        }
+        } = 72;
 
         [A_XSDElementProperty("WidthStar", "UI", "Proportional width share when inside a StackPanel (horizontal). 0 = fixed/auto. 1 = equal share, 2 = double share.")]
         public float widthStar = 0f;
@@ -216,22 +214,28 @@ namespace ArctisAurora.Core.UISystem.Controls
         public bool IsWidthStar => widthStar > 0f;
         public bool IsHeightStar => heightStar > 0f;
 
-        private int _preferredWidth = 72;
-        private int _preferredHeight = 72;
-
         [A_XSDElementProperty("Width", "UI", "Width in pixels.")]
         public int preferredWidth
         {
-            get => _preferredWidth;
-            set { if (_preferredWidth == value) return; _preferredWidth = value; InvalidateLayout(); }
-        }
+            get => field;
+            set
+            {
+                if (field == value) return;
+                field = value; InvalidateLayout();
+            }
+        } = 72;
 
         [A_XSDElementProperty("Height", "UI", "Height in pixels.")]
         public int preferredHeight
         {
-            get => _preferredHeight;
-            set { if (_preferredHeight == value) return; _preferredHeight = value; InvalidateLayout(); }
-        }
+            get => field;
+            set
+            {
+                if (field == value) return;
+                field = value;
+                InvalidateLayout();
+            }
+        } = 72;
 
         [A_XSDElementProperty("MinHeight", "UI", "Minimum height in pixels.")]
         public int minHeight = 0;
@@ -250,21 +254,27 @@ namespace ArctisAurora.Core.UISystem.Controls
             }
         }
 
-        private Thickness _margin = Thickness.Zero;
         [A_XSDElementProperty("Margin", "UI", "Space outside the control in pixels.")]
         public Thickness margin
         {
-            get => _margin;
-            set { _margin = value; InvalidateLayout(); }
-        }
+            get => field;
+            set
+            {
+                field = value;
+                InvalidateLayout();
+            }
+        } = Thickness.Zero;
 
-        private Thickness _padding = Thickness.Zero;
         [A_XSDElementProperty("Padding", "UI", "Space inside the control in pixels.")]
         public Thickness padding
         {
-            get => _padding;
-            set { _padding = value; InvalidateLayout(); }
-        }
+            get => field;
+            set
+            { 
+                field = value;
+                InvalidateLayout();
+            }
+        } = Thickness.Zero;
         #endregion
 
         #region ---- positioning ----
@@ -297,34 +307,32 @@ namespace ArctisAurora.Core.UISystem.Controls
         #endregion
 
         #region ---- styling ----
-        private string _controlColorHex = "#FFFFFF";
         [A_XSDElementProperty("ColorHex", "UI", "Sets the control color via hex code.")]
         public string controlColorHex
         {
-            get => _controlColorHex;
+            get => field;
             set
             {
-                _controlColorHex = value;
+                field = value;
                 Vector3D<float> rgb = HexToRGB(value);
                 controlData.style.tint = rgb;
                 //isDirty = true;
                 UpdateControlData();
             }
-        }
+        } = "#FFFFFF";
 
-        private ControlColor _color;
         [A_XSDElementProperty("ControlColor", "UI", "Sets the color of the control.")]
         public ControlColor controlColor
         {
-            get => _color;
+            get => field;
             set
             {
                 string hex = EnumColorToHex(value);
                 Vector3D<float> rgb = HexToRGB(hex);
                 controlData.style.tint = rgb;
                 UpdateControlData();
-                _color = value;
-                _controlColorHex = hex;
+                field = value;
+                controlColorHex = hex;
             }
         }
         #endregion
@@ -397,11 +405,8 @@ namespace ArctisAurora.Core.UISystem.Controls
         public LayoutRect arrangedRect { get; protected set; }
         public LayoutRect ClipRect { get; protected set; }
 
-        private bool _isMeasureDirty = true;
-        private bool _isArrangeDirty = true;
-
-        public bool IsMeasureDirty { get => _isMeasureDirty; internal set => _isMeasureDirty = value; }
-        public bool isArrangeDirty { get => _isArrangeDirty; internal set => _isArrangeDirty = value; }
+        public bool IsMeasureDirty { get => field; internal set => field = value; } = true;
+        public bool isArrangeDirty { get => field; internal set => field = value; } = true;
 
         public void InvalidateLayout()
         {

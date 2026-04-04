@@ -10,33 +10,31 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
     {
         internal string newEdit = string.Empty;
         public bool isEditing = false;
-        private string _text = string.Empty;
         private FontAsset _fontAsset;
-        private int _fontSize = 16;
 
         [A_XSDElementProperty("Text", "UI", "The string to display.")]
         public string text
         {
-            get => _text;
-            set 
+            get => field;
+            set
             {
-                if (_text == value) return;
-                _text = value;
+                if (field == value) return;
+                field = value;
                 RebuildGlyphs();
             }
-        }
+        } = string.Empty;
 
         [A_XSDElementProperty("FontSize", "UI", "Font size in pixels.")]
         public int fontSize
         {
-            get => _fontSize;
-            set 
+            get => field;
+            set
             {
-                if (_fontSize == value) return;
-                _fontSize = value;
+                if (field == value) return;
+                field = value;
                 RebuildGlyphs();
             }
-        }
+        } = 16;
 
         public TextControl()
         {
@@ -48,8 +46,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         public TextControl(string text, FontAsset fontAsset, int fontSize = 16)
         {
             _fontAsset = fontAsset;
-            _fontSize = fontSize;
-            _text = text;
+            fontSize = fontSize;
+            text = text;
             RebuildGlyphs();
             maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");
         }
@@ -59,11 +57,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             // Clear old glyph children without triggering full entity destroy
             children.Clear();
 
-            if (_fontAsset == null || string.IsNullOrEmpty(_text)) return;
+            if (_fontAsset == null || string.IsNullOrEmpty(text)) return;
 
-            foreach (char c in _text)
+            foreach (char c in text)
             {
-                GlyphControl glyph = new GlyphControl(c, _fontAsset, _fontSize);
+                GlyphControl glyph = new GlyphControl(c, _fontAsset, fontSize);
                 glyph.parent = this;
                 children.Add(glyph);
             }

@@ -9,12 +9,6 @@ namespace ArctisAurora.Core.UISystem.Controls
     [A_XSDType("Window", "UI", AllowedChildren = typeof(IXMLChild_UI), MaxChildren = 1)]
     public class WindowControl : VulkanControl
     {
-        //[A_VulkanEnum("WindowMode")]
-        //public enum WindowMode
-        //{
-        //    Autoscale
-        //}
-
         [A_XSDElementProperty("Fill", "UI")]
         public bool fillWindow = true;
 
@@ -29,12 +23,8 @@ namespace ArctisAurora.Core.UISystem.Controls
         public WindowControl()
         {
             maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");
-
-            /*if (fillWindow)
-            {
-                SetSize(new Vector2D<float>(Engine.window.windowSize.Width, Engine.window.windowSize.Height));
-            }*/
         }
+
         public override void Arrange(LayoutRect finalRect)
         {
             arrangedRect = finalRect;
