@@ -15,7 +15,7 @@
 			<Button ControlColor="red" Height="25"/>
 			<Button HeightStar="1"/>
 			<Button ControlColor="black" Grid.Column="0" Grid.Row="0" HeightStar="2" HorizontalAlignment="Stretch" onClick="ExitApplication2">
-				<TextInput FontSize="24" Text="BBBBBBBB"/>
+				<TextInput FontSize="24" Text="BBB BBB BBB"/>
 			</Button>
 		</StackPanel>
 		<Button ControlColor="black" Grid.Column="1" Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>

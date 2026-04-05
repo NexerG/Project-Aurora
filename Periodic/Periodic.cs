@@ -1,5 +1,6 @@
 ﻿
 using ArctisAurora.Core.AssetRegistry;
+using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork;
 

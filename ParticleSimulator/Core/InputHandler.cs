@@ -610,27 +610,6 @@ namespace ArctisAurora.EngineWork
         public static void LoadInputs()
         {
             instance = ParseXML("InputMap.xml");
-            /*foreach (var keybindGroup in keybindGroups)
-            {
-                Keybind anySymbol = null;
-                for (int i = 0; i < keybindGroup.Value.Count; i++)
-                {
-                    if (keybindGroup.Value[i].button == Keys.AnySymbol)
-                    {
-                        anySymbol = keybindGroup.Value[i];
-                        break;
-                    }
-                }
-                if (anySymbol == null) continue;
-                keybindGroup.Value.Remove(anySymbol);
-                foreach (Keys key in Enum.GetValues(typeof(Keys)))
-                {
-                    if (!Keybind.IsCharacter(key)) continue;
-                    Keybind k = new Keybind(key, anySymbol.action, anySymbol.state, false);
-                    keybindGroup.Value.Add(k);
-                }
-            }*/
-
             Engine.inputHandler = instance;
         }
     }

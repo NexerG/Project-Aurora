@@ -177,6 +177,12 @@ namespace ArctisAurora.Core.UISystem
                 //    tsb[i] = AssetImporter.ReadInt16BE(reader);
                 //}
 
+                reader.BaseStream.Position = hhea.offset + 4; // ascender is at offset 4
+                short ascender = AssetImporter.ReadInt16BE(reader);
+                reader.BaseStream.Position = hhea.offset + 6;
+                short descender = AssetImporter.ReadInt16BE(reader);
+                float lineHeight = (ascender - descender) / 2048f;
+
                 for (int i = 0; i < glyphs.glyphCount; i++)
                 {
                     char character = fontData.textData.characters[i];
@@ -185,12 +191,13 @@ namespace ArctisAurora.Core.UISystem
                     glyphs.glyphs[i].leftSideOffset = (float)lsb[glyphIndex] / 2048f;
                     if(glyphs.glyphs[i].yMin < 0)
                     {
-                        float tsb = -(glyphs.glyphs[i].yMin) / 2048f;
-                        glyphs.glyphs[i].tsb = tsb;
+                        glyphs.glyphs[i].tsb = -(glyphs.glyphs[i].yMin) / 2048f;
                     }
-                    //glyphs.glyphs[i].bsb = (float)bsb[glyphIndex] / 2048f;
+                    if (glyphs.glyphs[i].glyphHeight == 0)
+                        glyphs.glyphs[i].glyphHeight = lineHeight;
 
-                    //Console.WriteLine($"LSB : {glyphs.glyphs[i].lsb} , RSB : {glyphs.glyphs[i].rsb}");
+                    if (glyphs.glyphs[i].glyphWidth == 0)
+                        glyphs.glyphs[i].glyphWidth = glyphs.glyphs[i].advanceWidth;
                 }
             }
 
@@ -268,7 +275,7 @@ namespace ArctisAurora.Core.UISystem
 
                         long idRangeOffsetStart = reader.BaseStream.Position;
                         ushort[] idRangeOffsets = new ushort[segCount];
-                        for (int j = 0; j < segCount; j++) idRangeOffsets[i] = AssetImporter.ReadUInt16BE(reader);
+                        for (int j = 0; j < segCount; j++) idRangeOffsets[j] = AssetImporter.ReadUInt16BE(reader);
 
                         // Find glyph index for the character
                         for (int j = 0; j < segCount; j++)
@@ -291,7 +298,7 @@ namespace ArctisAurora.Core.UISystem
                                 reader.BaseStream.Position = saved;
 
                                 if (glyphIndex != 0)
-                                    return (ushort)((glyphIndex + idDeltas[i]) % 65536);
+                                    return (ushort)((glyphIndex + idDeltas[j]) % 65536);
                                 else
                                     return 0;
                             }

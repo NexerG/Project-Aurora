@@ -20,6 +20,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             maskAsset = fontAsset.textureAsset;
 
             (glyph, index) = fontAsset.atlasMetaData.GetGlyphAndIndex(character);
+
             preferredWidth = (int)(glyph.glyphWidth * px);
             preferredHeight = (int)(glyph.glyphHeight * px);
 
