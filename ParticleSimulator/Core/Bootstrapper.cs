@@ -1,4 +1,4 @@
-﻿using ArctisAurora.Core.AssetRegistry;
+﻿using ArctisAurora.Core.Registry;
 using System.Reflection;
 using System.Xml.Linq;
 

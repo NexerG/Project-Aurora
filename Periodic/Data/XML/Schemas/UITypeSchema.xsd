@@ -10,6 +10,7 @@
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="1">
         <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="VulkanControl" type="types:VulkanControl" />
         <xs:element name="Window" type="types:Window" />
         <xs:element name="ShortText" type="types:ShortText" />
         <xs:element name="TextBox" type="types:TextBox" />
@@ -59,6 +60,7 @@
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="1">
         <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="VulkanControl" type="types:VulkanControl" />
         <xs:element name="Window" type="types:Window" />
         <xs:element name="ShortText" type="types:ShortText" />
         <xs:element name="TextBox" type="types:TextBox" />
@@ -110,6 +112,7 @@
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="1">
         <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="VulkanControl" type="types:VulkanControl" />
         <xs:element name="Window" type="types:Window" />
         <xs:element name="ShortText" type="types:ShortText" />
         <xs:element name="TextBox" type="types:TextBox" />
@@ -240,6 +243,7 @@
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="1">
         <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="VulkanControl" type="types:VulkanControl" />
         <xs:element name="Window" type="types:Window" />
         <xs:element name="ShortText" type="types:ShortText" />
         <xs:element name="TextBox" type="types:TextBox" />
@@ -299,6 +303,7 @@
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
         <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="VulkanControl" type="types:VulkanControl" />
         <xs:element name="Window" type="types:Window" />
         <xs:element name="ShortText" type="types:ShortText" />
         <xs:element name="TextBox" type="types:TextBox" />
@@ -388,6 +393,7 @@
       </xs:element>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
         <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="VulkanControl" type="types:VulkanControl" />
         <xs:element name="Window" type="types:Window" />
         <xs:element name="ShortText" type="types:ShortText" />
         <xs:element name="TextBox" type="types:TextBox" />
@@ -444,6 +450,7 @@
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="1">
         <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="VulkanControl" type="types:VulkanControl" />
         <xs:element name="Window" type="types:Window" />
         <xs:element name="ShortText" type="types:ShortText" />
         <xs:element name="TextBox" type="types:TextBox" />
@@ -495,6 +502,7 @@
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
         <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="VulkanControl" type="types:VulkanControl" />
         <xs:element name="Window" type="types:Window" />
         <xs:element name="ShortText" type="types:ShortText" />
         <xs:element name="TextBox" type="types:TextBox" />

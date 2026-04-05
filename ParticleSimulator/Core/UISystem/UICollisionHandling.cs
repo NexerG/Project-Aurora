@@ -1,7 +1,6 @@
-﻿using ArctisAurora.Core.AssetRegistry;
+﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.UISystem.Controls;
-using ArctisAurora.EngineWork;
 using Silk.NET.GLFW;
 using Silk.NET.Maths;
 using ScrollableControl = ArctisAurora.Core.UISystem.Controls.Containers.ScrollableControl;
@@ -37,8 +36,8 @@ namespace ArctisAurora.Core.UISystem
         {
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
 
-            VulkanControl deepest = FindDeepestValid(mousePos, EntityManager.uiTree, ref localVerts);
-            if (deepest != EntityManager.uiTree && deepest != null)
+            VulkanControl deepest = FindDeepestValid(mousePos, EntityRegistry.uiTree, ref localVerts);
+            if (deepest != EntityRegistry.uiTree && deepest != null)
             {
                 if (deepest != hovering)
                 {

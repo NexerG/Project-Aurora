@@ -1,4 +1,4 @@
-﻿using ArctisAurora.Core.AssetRegistry;
+﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
 
 namespace AuroraEditor.EditorProgram.UIFunctions

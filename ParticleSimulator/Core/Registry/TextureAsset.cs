@@ -1,5 +1,5 @@
-﻿using ArctisAurora.Core.AssetRegistry;
-using ArctisAurora.Core.Filing.Serialization;
+﻿using ArctisAurora.Core.Filing.Serialization;
+using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Vulkan;
@@ -7,9 +7,9 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using Image = SixLabors.ImageSharp.Image;
 
-namespace ArctisAurora.EngineWork.AssetRegistry
+namespace ArctisAurora.EngineWork.Registry
 {
-    [A_XSDType("TextureAsset", "Registry")]
+    [A_XSDType("TextureAsset", "AssetRegistry")]
     public class TextureAsset : Asset
     {
         internal Silk.NET.Vulkan.Image _textureImage;

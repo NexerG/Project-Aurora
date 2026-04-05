@@ -1,9 +1,8 @@
-﻿using ArctisAurora.Core.AssetRegistry;
+﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.UISystem.Controls.Containers;
-using ArctisAurora.EngineWork;
-using ArctisAurora.EngineWork.AssetRegistry;
+using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Maths;
@@ -20,10 +19,11 @@ namespace ArctisAurora.Core.UISystem.Controls
     public interface IXMLChild_UI
     { }
 
+    [A_XSDType("VulkanControl")]
     public unsafe class VulkanControl : Entity, IXMLParser<VulkanControl>, IXMLChild_UI
     {
         #region ---- STRUCTS ----
-        [StructLayout(LayoutKind.Sequential, Pack = 1), A_XSDType("ControlStyle", "Registry")]
+        [StructLayout(LayoutKind.Sequential, Pack = 1), A_XSDType("ControlStyle", "AssetRegistry")]
         public struct ControlStyle
         {
             public Vector3D<float> tint;
@@ -509,7 +509,8 @@ namespace ArctisAurora.Core.UISystem.Controls
             ControlData tempData = controlData;
             AVulkanBufferHandler.CreateBuffer(ref tempData, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
             CreateSampler();
-            EntityManager.AddControl(this);
+            //EntityRegistry.AddControl(this);
+            EntityRegistry.AddToGroup("Controls", this);
             InvalidateLayout();
         }
 

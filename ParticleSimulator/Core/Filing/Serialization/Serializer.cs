@@ -1,4 +1,4 @@
-﻿using ArctisAurora.EngineWork.AssetRegistry;
+﻿using ArctisAurora.EngineWork.Registry;
 using SixLabors.ImageSharp.PixelFormats;
 using System.Reflection;
 

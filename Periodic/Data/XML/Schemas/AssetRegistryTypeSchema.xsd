@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<xs:schema xmlns:types="http://arctisaurora/AuroraRegistryTypes" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:allTypes="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraRegistryTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<xs:schema xmlns:types="http://arctisaurora/AuroraAssetRegistryTypes" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:allTypes="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraAssetRegistryTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:element name="IParseableTypes" type="types:IParseableTypes" />
@@ -10,17 +10,17 @@
   <xs:complexType name="AVulkanMesh">
     <xs:sequence />
   </xs:complexType>
-  <xs:element name="Entry" type="types:Entry" />
-  <xs:complexType name="Entry">
+  <xs:element name="AssetEntry" type="types:AssetEntry" />
+  <xs:complexType name="AssetEntry">
     <xs:sequence />
     <xs:attribute name="Name" type="xs:string" />
-    <xs:attribute name="KeyType" type="xs:string" />
-    <xs:attribute name="ValueType" type="xs:string" />
+    <xs:attribute name="KeyType" type="allTypes:Uncategorized" />
+    <xs:attribute name="ValueType" type="allTypes:Uncategorized" />
   </xs:complexType>
   <xs:element name="AssetRegistries" type="types:AssetRegistries" />
   <xs:complexType name="AssetRegistries">
     <xs:sequence>
-      <xs:element minOccurs="0" maxOccurs="unbounded" name="Dictionary" type="types:Entry">
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Dictionary" type="types:AssetEntry">
         <xs:annotation>
           <xs:documentation></xs:documentation>
         </xs:annotation>

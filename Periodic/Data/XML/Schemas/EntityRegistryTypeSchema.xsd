@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:types="http://arctisaurora/AuroraEntityRegistryTypes" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:allTypes="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraEntityRegistryTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
+  <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
+  <xs:element name="Entry" type="types:Entry" />
+  <xs:complexType name="Entry">
+    <xs:sequence />
+    <xs:attribute name="ListName" type="xs:string" />
+    <xs:attribute name="EntityType" type="allTypes:Uncategorized" />
+  </xs:complexType>
+  <xs:element name="EntityRegistries" type="types:EntityRegistries" />
+  <xs:complexType name="EntityRegistries">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="List" type="types:Entry">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="Entity" type="types:Entity" />
+  <xs:complexType name="Entity">
+    <xs:sequence />
+  </xs:complexType>
+</xs:schema>

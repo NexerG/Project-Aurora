@@ -1,4 +1,4 @@
-﻿using ArctisAurora.Core.AssetRegistry;
+﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Rendering.Helpers;
 using ArctisAurora.Core.Rendering.Modules;
 using ArctisAurora.EngineWork.Rendering.Helpers;

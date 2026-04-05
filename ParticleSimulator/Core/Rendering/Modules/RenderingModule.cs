@@ -1,4 +1,5 @@
-﻿using ArctisAurora.Core.Rendering.Helpers;
+﻿using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Vulkan;
 using Image = Silk.NET.Vulkan.Image;
@@ -60,9 +61,9 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         public Semaphore[] renderFinishedSemaphores;
         public int compositorOrder = 0;
 
-        // others
+        // quick access
         internal AuroraCamera camera;
-
+        internal abstract IReadOnlyList<Entity> renderEntities { get; set; }
 
         internal abstract void PrepareObjects();
 

@@ -1,8 +1,8 @@
 ﻿using ArctisAurora.EngineWork;
-using ArctisAurora.EngineWork.AssetRegistry;
+using ArctisAurora.EngineWork.Registry;
 using System.Reflection;
 
-namespace ArctisAurora.Core.AssetRegistry
+namespace ArctisAurora.Core.Registry
 {
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = true)]
     public sealed class A_ActiveContextAttribute : Attribute

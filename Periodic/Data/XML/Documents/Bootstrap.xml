@@ -4,6 +4,7 @@
 
 	<Phase Name="Bootstrap">
 		<!--pre-renderer-->
+		<Step Action="EntityRegistry.ParseXML"/>
 		<Step Action="InputHandler.LoadInputs"/>
 		<Step Action="Engine.SystemSetup"/>
 		<Step Action="Engine.InitWindowing"/>

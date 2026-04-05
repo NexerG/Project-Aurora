@@ -1,4 +1,4 @@
-﻿using ArctisAurora.Core.AssetRegistry;
+﻿using ArctisAurora.Core.Registry;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text.Editing

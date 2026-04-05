@@ -1,5 +1,5 @@
 ﻿using ArctisAurora.Core.UISystem;
-using ArctisAurora.EngineWork.AssetRegistry;
+using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.Modules;
@@ -7,6 +7,8 @@ using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using SixLabors.ImageSharp.PixelFormats;
+using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.UISystem.Controls;
 
 namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 {
@@ -14,6 +16,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
     {
         internal Sampler textureSampler;
         internal SixLabors.ImageSharp.Image<Rgba32> image;
+        internal List<VulkanControl> controls;
 
         // font asset
         internal FontAsset fontAsset;
@@ -29,6 +32,9 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             mesh = dMeshes.GetValueOrDefault("uidefault");
             fontAsset = dFonts.GetValueOrDefault("default");
             image = fontAsset.textureAsset.image;
+
+            controls = EntityRegistry.GetGroup("Controls").As<VulkanControl>();
+
             CreateSampler();
         }
 
@@ -43,7 +49,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 
         internal override void MakeInstanced(RenderingModule module, int currentFrame)
         {
-            instances = EntityManager.controls.Count;
+            instances = controls.Count;
             if (instances > 0)
             {
                 if (transformMatrices.Count != instances)
@@ -54,9 +60,9 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
                     {
                         Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0, 0, 0);
                         Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-                        _transform *= Matrix4X4.CreateScale(EntityManager.controls[i].transform.scale);
+                        _transform *= Matrix4X4.CreateScale(controls[i].transform.scale);
                         //_transform *= Matrix4X4.CreateFromQuaternion(q);
-                        _transform *= Matrix4X4.CreateTranslation(EntityManager.controls[i].transform.position);
+                        _transform *= Matrix4X4.CreateTranslation(controls[i].transform.position);
 
                         transformMatrices.Add(_transform);
                     }
@@ -74,9 +80,9 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
                     {
                         Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0, 0, 0);
                         Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-                        _transform *= Matrix4X4.CreateScale(EntityManager.controls[i].transform.scale);
+                        _transform *= Matrix4X4.CreateScale(controls[i].transform.scale);
                         //_transform *= Matrix4X4.CreateFromQuaternion(q);
-                        _transform *= Matrix4X4.CreateTranslation(EntityManager.controls[i].transform.position);
+                        _transform *= Matrix4X4.CreateTranslation(controls[i].transform.position);
 
                         transformMatrices[i] = _transform;
                     }
@@ -101,9 +107,9 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             {
                 Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0, 0, 0);
                 Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-                _transform *= Matrix4X4.CreateScale(EntityManager.controls[i].transform.scale);
+                _transform *= Matrix4X4.CreateScale(controls[i].transform.scale);
                 //_transform *= Matrix4X4.CreateFromQuaternion(q);
-                _transform *= Matrix4X4.CreateTranslation(EntityManager.controls[i].transform.position);
+                _transform *= Matrix4X4.CreateTranslation(controls[i].transform.position);
 
                 transformMatrices.Add(_transform);
             }

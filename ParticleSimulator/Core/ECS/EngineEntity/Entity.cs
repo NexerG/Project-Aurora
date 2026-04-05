@@ -1,5 +1,5 @@
 ﻿using ArctisAurora.Core.Filing.Serialization;
-using ArctisAurora.EngineWork;
+using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering;
@@ -7,6 +7,7 @@ using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 
 namespace ArctisAurora.Core.ECS.EngineEntity
 {
+    [A_XSDType("Entity", "EntityRegistry")]
     [@Serializable]
     public class Entity
     {
@@ -31,8 +32,8 @@ namespace ArctisAurora.Core.ECS.EngineEntity
             set
             {
                 _isDirty = value;
-                EntityManager.AddEntityToUpdate(this);
-                foreach(var child in children)
+                EntityRegistry.AddToGroup("EntitiesToUpdate", this);
+                foreach (var child in children)
                 {
                     child.isDirty = true;
                 }
@@ -51,14 +52,16 @@ namespace ArctisAurora.Core.ECS.EngineEntity
         public Entity()
         {
             transform = new Transform(this);
-            EntityManager.AddEntity(this);
-            EntityManager.EntityCreated(this);
+            EntityRegistry.AddToGroup("Entities", this);
+            EntityRegistry.AddToGroup("EntitiesOnStart", this);
         }
 
         public Entity(string name)
         {
             this.name = name;
             transform = new Transform(this);
+            EntityRegistry.AddToGroup("Entities", this);
+            EntityRegistry.AddToGroup("EntitiesOnStart", this);
         }
 
         public virtual void OnStart()
@@ -233,7 +236,7 @@ namespace ArctisAurora.Core.ECS.EngineEntity
             {
                 c.OnInvalidate();
             }
-            EntityManager.AddEntityToUpdate(this);
+            EntityRegistry.AddToGroup("EntitiesToUpdate", this);
         }
     }
 }

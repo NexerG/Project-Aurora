@@ -1,4 +1,4 @@
-﻿using ArctisAurora.Core.AssetRegistry;
+﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.EngineWork.Rendering;
 using Assimp;
@@ -6,7 +6,7 @@ using System.Reflection;
 using System.Xml.Linq;
 using static ArctisAurora.Core.UISystem.Controls.VulkanControl;
 
-namespace ArctisAurora.EngineWork.AssetRegistry
+namespace ArctisAurora.EngineWork.Registry
 {
     public abstract class Asset()
     {
@@ -15,31 +15,21 @@ namespace ArctisAurora.EngineWork.AssetRegistry
         public abstract void LoadDefault();
     }
 
-    public enum RegistryStage
-    {
-        PreXML,
-        PostXML,
-        RegisterTypes,
-        LoadAssets
-    }
-
-    [A_XSDType("Entry", "Registry")]
+    [A_XSDType("AssetEntry", "AssetRegistry")]
     public class AssetRegistryEntry
     {
-        [A_XSDElementProperty("Name")]
+        [A_XSDElementProperty("Name", "AssetRegistry")]
         public string name { get; set; } = string.Empty;
-        [A_XSDElementProperty("KeyType")]
-        //public List<AnyXMLType> keyType { get; set; } = new List<AnyXMLType>();
+        [A_XSDElementProperty("KeyType", "AssetRegistry")]
         public AnyXMLType keyType { get; set; }
-        [A_XSDElementProperty("ValueType")]
-        //public List<AnyXMLType> valueType { get; set; } = new List<AnyXMLType>();
+        [A_XSDElementProperty("ValueType", "AssetRegistry")]
         public AnyXMLType valueType { get; set; }
     }
 
-    [A_XSDType("AssetRegistries", "Registry")]
-    public class AssetRegistries : IXMLParser<AssetRegistries>//, IBootstrap
+    [A_XSDType("AssetRegistries", "AssetRegistry")]
+    public class AssetRegistries : IXMLParser<AssetRegistries>
     {
-        [A_XSDElementProperty("Dictionary", "Registry")]
+        [A_XSDElementProperty("Dictionary", "AssetRegistry")]
         public static List<AssetRegistryEntry> registries { get; set; }
 
         public static Dictionary<Type, object> library = new Dictionary<Type, object>();

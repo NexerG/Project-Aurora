@@ -1,7 +1,7 @@
 ﻿using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.UISystem;
 using ArctisAurora.Core.UISystem.Controls.Text;
-using ArctisAurora.EngineWork.AssetRegistry;
+using ArctisAurora.EngineWork.Registry;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.CustomEntities

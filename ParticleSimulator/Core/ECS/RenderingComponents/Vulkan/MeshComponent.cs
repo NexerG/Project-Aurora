@@ -31,7 +31,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         public override void OnStart()
         {
             SingletonMatrix();
-            EntityManager.AddEntityToRender(parent);
+            //EntityRegistry.AddEntityToRender(parent);
         }
 
         internal virtual void LoadCustomMesh(Scene sc)

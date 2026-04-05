@@ -1,4 +1,4 @@
-﻿using ArctisAurora.Core.AssetRegistry;
+﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Filing.Serialization;
 using Silk.NET.GLFW;
 using Silk.NET.Maths;
@@ -347,7 +347,7 @@ namespace ArctisAurora.EngineWork
     }
 
     [A_XSDType("KeybindMap", "Input")]
-    public unsafe class InputHandler : IXMLParser<InputHandler>//, IBootstrap
+    public unsafe class InputHandler : IXMLParser<InputHandler>
     {
         public static InputHandler instance { get; set; }
 
@@ -569,7 +569,6 @@ namespace ArctisAurora.EngineWork
                         _ => KeyState.Unknown
                     };
 
-                    Console.WriteLine($"Found Attributes of Button: {buttonAttr}, action: {actionAttr}, state: {stateAttr}");
 
                     MethodInfo? methodInfo = AppDomain.CurrentDomain.GetAssemblies()
                         .SelectMany(a => a.GetTypes())
@@ -586,7 +585,6 @@ namespace ArctisAurora.EngineWork
 
                     Keybind keybind = new Keybind((Keys)Enum.Parse(typeof(Keys), buttonAttr.Value), actionDelegate, state, onTick);
                     keybinds.Add(keybind);
-                    Console.WriteLine($"Created keybind of: {keybind.button}, action: {keybind.action}, state: {keybind.state}");
                 }
                 keybindGroups.Add(Path.GetFileNameWithoutExtension(path), keybinds);
             }
@@ -605,7 +603,6 @@ namespace ArctisAurora.EngineWork
             }
         }
 
-        //[A_BootstrapStage(BootstrapStage.PreGPUAPI)]
         [A_XSDActionDependency("InputHandler.LoadInputs", "Bootstrap")]
         public static void LoadInputs()
         {

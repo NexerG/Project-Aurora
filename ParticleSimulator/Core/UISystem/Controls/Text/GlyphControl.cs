@@ -1,5 +1,5 @@
-﻿using ArctisAurora.Core.AssetRegistry;
-using ArctisAurora.EngineWork.AssetRegistry;
+﻿using ArctisAurora.Core.Registry;
+using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Maths;

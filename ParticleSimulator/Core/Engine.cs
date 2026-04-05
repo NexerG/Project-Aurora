@@ -1,8 +1,8 @@
-﻿using ArctisAurora.Core.AssetRegistry;
+﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.UISystem;
-using ArctisAurora.EngineWork.AssetRegistry;
+using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Maths;
@@ -39,7 +39,12 @@ namespace ArctisAurora.EngineWork
         internal static UICollisionHandling uiCollisionHandler;
         //internal static JobSystem jobSystem;
         internal static AssetRegistries assetRegistry = new AssetRegistries();
-        internal static EntityManager entityManager;
+        internal static EntityRegistry entityManager;
+
+        // quick access
+        internal static List<Entity> entities;
+        internal static List<Entity> entitiesOnStart;
+        internal static List<Entity> entitiesOnDestroy;
 
         // threading
         public bool running { get; private set; }
@@ -97,7 +102,9 @@ namespace ArctisAurora.EngineWork
         [A_XSDActionDependency("Engine.SystemSetup", "Bootstrap")]
         public static void SetupSystems()
         {
-            entityManager = new EntityManager();
+            entityManager = EntityRegistry.manager;
+            entities = EntityRegistry.GetGroup("Entities").As<Entity>();
+            entitiesOnStart = EntityRegistry.GetGroup("EntitiesOnStart").As<Entity>();
             uiCollisionHandler = new UICollisionHandling();
         }
 
@@ -154,35 +161,6 @@ namespace ArctisAurora.EngineWork
                 deltaTime = DateTime.Now - tickStart;
                 //Console.WriteLine($"Engine Tick Time: {deltaTime.TotalSeconds}s");
             }
-        }
-
-        private void TestEnter()
-        {
-            Console.WriteLine("entered");
-        }
-        private void TestExit()
-        {
-            Console.WriteLine("exited");
-        }
-        private void TestClick()
-        {
-            Console.WriteLine("clicked");
-        }
-        private void TestRelease()
-        {
-            Console.WriteLine("released");
-        }
-        private void TestAltClick()
-        {
-            Console.WriteLine("alt clicked");
-        }
-        private void TestAltRelease()
-        {
-            Console.WriteLine("alt released");
-        }
-        private void TestDoubleClick()
-        {
-            Console.WriteLine("double clicked");
         }
 
         private void PhysicsThread()
@@ -257,45 +235,45 @@ namespace ArctisAurora.EngineWork
             }
 
             // do interpolation
-            if (EntityManager.onStartEntities.Count > 0)
+            if (entitiesOnStart.Count > 0)
             {
-                foreach (Entity entity in EntityManager.onStartEntities)
+                foreach (Entity entity in entitiesOnStart)
                 {
                     entity.OnStart();
                 }
-                EntityManager.ClearOnStart();
+                entitiesOnStart.Clear();
             }
 
-            if (EntityManager.onDestroyEntities.Count > 0)
+            /*if (EntityRegistry.onDestroyEntities.Count > 0)
             {
-                foreach (Entity entity in EntityManager.onDestroyEntities)
+                foreach (Entity entity in EntityRegistry.onDestroyEntities)
                 {
                     entity.OnDestroy();
                 }
-                EntityManager.ClearOnDestroy();
-            }
+                EntityRegistry.ClearOnDestroy();
+            }*/
 
-            foreach (Entity entity in EntityManager.entities)
+            foreach (Entity entity in entities)
             {
                 entity.OnTick();
             }
             
             UILayout.ResolveLayout();
 
-            if(EntityManager.entitiesToUpdate.Count > 0)
+            /*if(EntityRegistry.entitiesToUpdate.Count > 0)
             {
                 List<Entity> entitiesCopy;
-                lock (EntityManager.entitiesToUpdate)
+                lock (EntityRegistry.entitiesToUpdate)
                 {
-                    entitiesCopy = new List<Entity>(EntityManager.entitiesToUpdate);
-                    EntityManager.RemoveEntityUpdate(0, EntityManager.entitiesToUpdate.Count);
+                    entitiesCopy = new List<Entity>(EntityRegistry.entitiesToUpdate);
+                    EntityRegistry.RemoveEntityUpdate(0, EntityRegistry.entitiesToUpdate.Count);
                 }
                 foreach (Entity e in entitiesCopy)
                 {
                     //e.Invalidate();
                 }
                 renderer.UpdateModules();
-            }
+            }*/
 
             // some if clause to check if we caught up
             isCaughtUp = true;

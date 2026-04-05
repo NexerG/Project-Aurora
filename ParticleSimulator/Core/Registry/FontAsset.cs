@@ -1,13 +1,10 @@
-﻿using ArctisAurora.Core.AssetRegistry;
-using ArctisAurora.Core.Filing.Serialization;
+﻿using ArctisAurora.Core.Filing.Serialization;
+using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using Image = SixLabors.ImageSharp.Image;
 
-namespace ArctisAurora.EngineWork.AssetRegistry
+namespace ArctisAurora.EngineWork.Registry
 {
-    [A_XSDType("FontAsset", "Registry")]
+    [A_XSDType("FontAsset", "AssetRegistry")]
     public class FontAsset : Asset
     {
         public AtlasMetaData atlasMetaData;

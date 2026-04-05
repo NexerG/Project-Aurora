@@ -42,9 +42,6 @@
     <None Update="Data\XML\Schemas\InputTypeSchema.xsd">
       <SubType>Designer</SubType>
     </None>
-    <None Update="Data\XML\Schemas\RegistryTypeSchema.xsd">
-      <SubType>Designer</SubType>
-    </None>
     <None Update="Data\XML\Schemas\UITypeSchema.xsd">
       <SubType>Designer</SubType>
     </None>

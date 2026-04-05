@@ -4,7 +4,7 @@ using System.Xml;
 using System.Xml.Linq;
 using System.Xml.Schema;
 
-namespace ArctisAurora.Core.AssetRegistry
+namespace ArctisAurora.Core.Registry
 {
     #region Attributes
     [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
@@ -60,7 +60,7 @@ namespace ArctisAurora.Core.AssetRegistry
     }
     #endregion
 
-    [A_XSDType("IParseableTypes", category:"Registry")]
+    [A_XSDType("IParseableTypes", category:"AssetRegistry")]
     public interface IXMLParser<T> where T: class
     {
         public static abstract T ParseXML(string xmlName);
@@ -662,6 +662,9 @@ namespace ArctisAurora.Core.AssetRegistry
 
             if (typeMap.TryGetValue(resolved, out string? typeMapped))
                 return $"types:{typeMapped}";
+
+            if (resolved == typeof(AnyXMLType))
+                return $"allTypes:Uncategorized";
 
             return "xs:string";
         }

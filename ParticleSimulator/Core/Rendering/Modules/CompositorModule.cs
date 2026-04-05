@@ -1,4 +1,5 @@
-﻿using ArctisAurora.EngineWork;
+﻿using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Core.Native;
@@ -44,6 +45,8 @@ namespace ArctisAurora.Core.Rendering.Modules
         private RenderingModule[] _sourceModules;
         private Sampler _sampler;
         private int _moduleCount;
+
+        internal override IReadOnlyList<Entity> renderEntities { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         public void Init(RenderingModule[] modules, ImageView[] swapchainImageViews)
         {

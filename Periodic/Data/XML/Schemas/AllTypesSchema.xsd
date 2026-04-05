@@ -25,10 +25,14 @@
       <xs:enumeration value="VeticalAlignment" />
       <xs:enumeration value="ContentScalingModeEnum" />
       <xs:enumeration value="Orientation" />
+      <xs:enumeration value="VulkanControl" />
       <xs:enumeration value="ActiveContext" />
+      <xs:enumeration value="Entry" />
+      <xs:enumeration value="EntityRegistries" />
+      <xs:enumeration value="Entity" />
       <xs:enumeration value="IParseableTypes" />
       <xs:enumeration value="AVulkanMesh" />
-      <xs:enumeration value="Entry" />
+      <xs:enumeration value="AssetEntry" />
       <xs:enumeration value="AssetRegistries" />
       <xs:enumeration value="FontAsset" />
       <xs:enumeration value="TextureAsset" />
@@ -89,11 +93,18 @@
       <xs:enumeration value="ActiveContext" />
     </xs:restriction>
   </xs:simpleType>
-  <xs:simpleType name="Registry">
+  <xs:simpleType name="EntityRegistry">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Entry" />
+      <xs:enumeration value="EntityRegistries" />
+      <xs:enumeration value="Entity" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="AssetRegistry">
     <xs:restriction base="xs:string">
       <xs:enumeration value="IParseableTypes" />
       <xs:enumeration value="AVulkanMesh" />
-      <xs:enumeration value="Entry" />
+      <xs:enumeration value="AssetEntry" />
       <xs:enumeration value="AssetRegistries" />
       <xs:enumeration value="FontAsset" />
       <xs:enumeration value="TextureAsset" />

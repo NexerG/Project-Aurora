@@ -1,6 +1,4 @@
-﻿
-using ArctisAurora.Core.AssetRegistry;
-using ArctisAurora.Core.Filing.Serialization;
+﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork;
 
@@ -29,7 +27,7 @@ namespace AuroraPeriodic
             //windowControl.fillWindow = true;
             //windowControl.controlColorHex = "#1f6331";
 
-            EntityManager.uiTree = windowControl;
+            EntityRegistry.uiTree = windowControl;
             //ShortTextControl test = new ShortTextControl();
             //test.transform.position = new Silk.NET.Maths.Vector3D<float>(640, 360, -10);
             //test.text = "somethingBlack";

@@ -1,4 +1,6 @@
-﻿using ArctisAurora.Core.UISystem.Controls;
+﻿using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using Silk.NET.Core.Native;
@@ -81,6 +83,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
 
         internal static MCUI meshComponent;
+        internal override IReadOnlyList<Entity> renderEntities { get => field; set { field = value; } }
+
         internal struct DeferredResources
         {
             internal Silk.NET.Vulkan.Buffer buffer;
@@ -89,6 +93,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         }
         internal List<DeferredResources>[] deferredDeletions;
         private static int controlCount = 0;
+        
 
         public UIModule()
         {
@@ -111,7 +116,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             }
             deferredDeletions[currentFrame].Clear();
 
-            controlCount = EntityManager.controls.Count;
+            controlCount = renderEntities.Count;
             meshComponent.MakeInstanced(this, currentFrame);
             if (frameResources == null)
             {
@@ -138,6 +143,16 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             RegisterVulkanQueue(Renderer.queueAllocator, Renderer.vk, ref Renderer.logicalDevice);
             meshComponent = new MCUI();
             PrepareCamera();
+
+            EntityGroup controls = EntityRegistry.GetGroup("Controls");
+            controls.onChanged += OnControlsChanged;
+            renderEntities = controls.As<VulkanControl>();
+        }
+
+        private void OnControlsChanged()
+        {
+            for (int i = 0; i < isDirty.Length; i++)
+                isDirty[i] = true;
         }
 
         internal override void CreateRenderPass()
@@ -306,7 +321,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 DescriptorBufferInfo[] controlDataInfos = new DescriptorBufferInfo[entityCount];
                 for (int j = 0; j < entityCount; j++)
                 {
-                    VulkanControl control = EntityManager.controls[j];
+                    VulkanControl control = (VulkanControl)renderEntities[j];
                     controlDataInfos[j] = new()
                     {
                         Buffer = control.controlDataBuffer,
@@ -364,7 +379,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 DescriptorImageInfo[] samplersInfos = new DescriptorImageInfo[entityCount];
                 for (int j = 0; j < entityCount; j++)
                 {
-                    VulkanControl control = EntityManager.controls[j];
+                    VulkanControl control = (VulkanControl)renderEntities[j];
                     samplersInfos[j] = new()
                     {
                         ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
