@@ -58,9 +58,9 @@ namespace ArctisAurora.Core.Rendering.Modules
             frameResources = new FrameResources[Renderer.swapchainImageCount];
             for (int i = 0; i < Renderer.swapchainImageCount; i++)
             {
-                CreateDescriptorPool(i);
+                CreateDescriptorPool(i, 0);
                 AllocateDescriptorSets(i);
-                UpdateDescriptorSets(i);
+                UpdateDescriptorSets(i, 0);
             }
             CreatePipeline();
         }
@@ -88,7 +88,7 @@ namespace ArctisAurora.Core.Rendering.Modules
             }
         }
 
-        internal override void CreateDescriptorPool(int currentFrame)
+        internal override void CreateDescriptorPool(int currentFrame, int entityCount)
         {
             if (frameResources[currentFrame] == null)
                 frameResources[currentFrame] = new FrameResources();
@@ -350,7 +350,7 @@ namespace ArctisAurora.Core.Rendering.Modules
         internal override void CreateOutputImages()
         {}
 
-        internal override void UpdateDescriptorSets(int currentFrame)
+        internal override void UpdateDescriptorSets(int currentFrame, int entityCount)
         {
             DescriptorImageInfo[] imageInfos = new DescriptorImageInfo[_moduleCount];
             for (int m = 0; m < _moduleCount; m++)
@@ -380,7 +380,7 @@ namespace ArctisAurora.Core.Rendering.Modules
 
         internal override void UpdateModule(int currentFrame)
         {
-            UpdateDescriptorSets(currentFrame);
+            UpdateDescriptorSets(currentFrame, 0);
             WriteCommandBuffers(currentFrame);
         }
 

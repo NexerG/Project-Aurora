@@ -22,7 +22,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal override uint GetVariableDescriptorCount(int set)
         {
-            return (uint)EntityManager.controls.Count;
+            return (uint)controlCount;
         }
 
         internal override PhysicalDeviceFeatures features => new()
@@ -81,29 +81,53 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
 
         internal static MCUI meshComponent;
-
+        internal struct DeferredResources
+        {
+            internal Silk.NET.Vulkan.Buffer buffer;
+            internal DeviceMemory memory;
+            internal DescriptorPool pool;
+        }
+        internal List<DeferredResources>[] deferredDeletions;
+        private static int controlCount = 0;
 
         public UIModule()
-        {}
+        {
+            deferredDeletions = new List<DeferredResources>[Renderer.swapchainImageCount];
+            for (int i = 0; i < Renderer.swapchainImageCount; i++)
+                deferredDeletions[i] = new List<DeferredResources>();
+        }
 
         internal override void UpdateModule(int currentFrame)
         {
-            meshComponent.MakeInstanced();
+            foreach (var d in deferredDeletions[currentFrame])
+            {
+                if (d.buffer.Handle != 0)
+                {
+                    Renderer.vk.DestroyBuffer(Renderer.logicalDevice, d.buffer, null);
+                    Renderer.vk.FreeMemory(Renderer.logicalDevice, d.memory, null);
+                }
+                if (d.pool.Handle != 0)
+                    Renderer.vk.DestroyDescriptorPool(Renderer.logicalDevice, d.pool, null);
+            }
+            deferredDeletions[currentFrame].Clear();
+
+            controlCount = EntityManager.controls.Count;
+            meshComponent.MakeInstanced(this, currentFrame);
             if (frameResources == null)
             {
                 frameResources = new FrameResources[Renderer.swapchainImageCount];
                 for (int i = 0; i < Renderer.swapchainImageCount; i++)
                 {
-                    CreateDescriptorPool(i);
+                    CreateDescriptorPool(i, controlCount);
                     AllocateDescriptorSets(i);
-                    UpdateDescriptorSets(i);
+                    UpdateDescriptorSets(i, controlCount);
                 }
             }
             else
             {
-                CreateDescriptorPool(currentFrame);
+                CreateDescriptorPool(currentFrame, controlCount);
                 AllocateDescriptorSets(currentFrame);
-                UpdateDescriptorSets(currentFrame);
+                UpdateDescriptorSets(currentFrame, controlCount);
             }
             WriteCommandBuffers(currentFrame);
         }
@@ -206,7 +230,6 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal override void CreateDescriptorPoolSizes(uint swapchainImageCount)
         {
-            uint controlCount = (uint)EntityManager.controls.Count;
             descriptorPoolSizes =
             [
                 new DescriptorPoolSize()
@@ -217,23 +240,26 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.StorageBuffer,
-                    DescriptorCount = swapchainImageCount * controlCount + 2
+                    DescriptorCount = (uint)(swapchainImageCount * controlCount + 2)
                 },
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.CombinedImageSampler,
-                    DescriptorCount = swapchainImageCount * controlCount + 1
+                    DescriptorCount = (uint)(swapchainImageCount * controlCount + 1)
                 }
             ];
         }
 
-        internal override void CreateDescriptorPool(int currentFrame)
+        internal override void CreateDescriptorPool(int currentFrame, int entityCount)
         {
             if (frameResources[currentFrame] == null)
                 frameResources[currentFrame] = new FrameResources();
 
             if (frameResources[currentFrame].pool.Handle != default)
-                Renderer.vk.DestroyDescriptorPool(Renderer.logicalDevice, frameResources[currentFrame].pool, null);
+            {
+                //Renderer.vk.DestroyDescriptorPool(Renderer.logicalDevice, frameResources[currentFrame].pool, null);
+                deferredDeletions[currentFrame].Add(new DeferredResources { pool = frameResources[currentFrame].pool });
+            }
 
             CreateDescriptorPoolSizes(1);
             fixed (DescriptorPoolSize* sizesPtr = descriptorPoolSizes)
@@ -254,13 +280,13 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         }
 
 
-        internal override void UpdateDescriptorSets(int currentFrame)
+        internal override void UpdateDescriptorSets(int currentFrame, int entityCount)
         {
-            UpdateFirstDescriptorSets(currentFrame);
-            UpdateSecondDescriptorSets(currentFrame);
+            UpdateFirstDescriptorSets(currentFrame, entityCount);
+            UpdateSecondDescriptorSets(currentFrame, entityCount);
         }
 
-        private void UpdateFirstDescriptorSets(int currentFrame)
+        private void UpdateFirstDescriptorSets(int currentFrame, int entityCount)
         {
             //for (int i = 0; i < Renderer.swapchainImageCount; i++)
             //{
@@ -274,11 +300,11 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 {
                     Buffer = meshComponent.transformsBuffer,
                     Offset = 0,
-                    Range = (ulong)(sizeof(float) * 16 * EntityManager.controls.Count)
+                    Range = (ulong)(sizeof(float) * 16 * entityCount)
                 };
 
-                DescriptorBufferInfo[] controlDataInfos = new DescriptorBufferInfo[EntityManager.controls.Count];
-                for (int j = 0; j < EntityManager.controls.Count; j++)
+                DescriptorBufferInfo[] controlDataInfos = new DescriptorBufferInfo[entityCount];
+                for (int j = 0; j < entityCount; j++)
                 {
                     VulkanControl control = EntityManager.controls[j];
                     controlDataInfos[j] = new()
@@ -317,7 +343,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                             SType = StructureType.WriteDescriptorSet,
                             DstSet = frameResources[currentFrame].sets[0],
                             DstBinding = 2,
-                            DescriptorCount = (uint)EntityManager.controls.Count,
+                            DescriptorCount = (uint)entityCount,
                             DstArrayElement = 0,
                             DescriptorType = DescriptorType.StorageBuffer,
                             PBufferInfo = controlDataInfosPtr
@@ -331,12 +357,12 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             //}
         }
 
-        private void UpdateSecondDescriptorSets(int currentFrame)
+        private void UpdateSecondDescriptorSets(int currentFrame, int entityCount)
         {
             for (int i = 0; i < Renderer.swapchainImageCount; i++)
             {
-                DescriptorImageInfo[] samplersInfos = new DescriptorImageInfo[EntityManager.controls.Count];
-                for (int j = 0; j < EntityManager.controls.Count; j++)
+                DescriptorImageInfo[] samplersInfos = new DescriptorImageInfo[entityCount];
+                for (int j = 0; j < entityCount; j++)
                 {
                     VulkanControl control = EntityManager.controls[j];
                     samplersInfos[j] = new()
@@ -355,7 +381,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                             SType = StructureType.WriteDescriptorSet,
                             DstSet = frameResources[currentFrame].sets[1],
                             DstBinding = 0,
-                            DescriptorCount = (uint)EntityManager.controls.Count,
+                            DescriptorCount = (uint)entityCount,
                             DstArrayElement = 0,
                             DescriptorType = DescriptorType.CombinedImageSampler,
                             PImageInfo = samplerInfosPtr

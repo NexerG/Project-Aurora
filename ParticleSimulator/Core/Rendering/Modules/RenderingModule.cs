@@ -132,9 +132,9 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal abstract void CreateDescriptorPoolSizes(uint swapchainImageCount);
 
-        internal abstract void UpdateDescriptorSets(int currentFrame);
+        internal abstract void UpdateDescriptorSets(int currentFrame, int entityCount);
 
-        internal abstract void CreateDescriptorPool(int currentFrame);
+        internal abstract void CreateDescriptorPool(int currentFrame, int entityCount);
 
         internal virtual void AllocateDescriptorSets(int currentFrame)
         {

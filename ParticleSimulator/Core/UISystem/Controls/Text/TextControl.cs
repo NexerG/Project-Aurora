@@ -87,7 +87,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             float h = preferredHeight > 0 ? preferredHeight : maxHeight;
 
             DesiredSize = new Vector2D<float>(w, h);
-            IsMeasureDirty = false;
+            isMeasureDirty = false;
             return DesiredSize;
         }
 

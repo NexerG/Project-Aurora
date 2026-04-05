@@ -128,7 +128,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             if (preferredHeight > 0) h = MathF.Max(h, preferredHeight);
 
             DesiredSize = new Vector2D<float>(w, h);
-            IsMeasureDirty = false;
+            isMeasureDirty = false;
             return DesiredSize;
         }
 

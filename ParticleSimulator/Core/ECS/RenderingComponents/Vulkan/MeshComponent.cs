@@ -1,6 +1,7 @@
 ﻿using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Helpers;
+using ArctisAurora.EngineWork.Rendering.Modules;
 using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
@@ -52,6 +53,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
         internal virtual void MakeInstanced(ref List<Matrix4X4<float>> _matrices) { }
         internal virtual void MakeInstanced() { }
+        internal virtual void MakeInstanced(RenderingModule module, int currentFrame) { }
 
         internal virtual void SingletonMatrix()
         {

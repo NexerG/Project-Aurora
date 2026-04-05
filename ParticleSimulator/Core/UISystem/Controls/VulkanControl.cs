@@ -244,12 +244,12 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         public virtual Vector2D<int> size
         {
-            get => new Vector2D<int>(_width, _height);
+            get => new Vector2D<int>(width, height);
             set
             {
-                bool changed = _width != value.X || _height != value.Y;
-                _width = value.X;
-                _height = value.Y;
+                bool changed = width != value.X || height != value.Y;
+                width = value.X;
+                height = value.Y;
                 if (changed) InvalidateLayout();
             }
         }
@@ -405,21 +405,21 @@ namespace ArctisAurora.Core.UISystem.Controls
         public LayoutRect arrangedRect { get; protected set; }
         public LayoutRect ClipRect { get; protected set; }
 
-        public bool IsMeasureDirty { get => field; internal set => field = value; } = true;
+        public bool isMeasureDirty { get => field; internal set => field = value; } = true;
         public bool isArrangeDirty { get => field; internal set => field = value; } = true;
 
         public void InvalidateLayout()
         {
-            if (_isMeasureDirty) return;
-            _isMeasureDirty = true;
-            _isArrangeDirty = true;
+            if (isMeasureDirty) return;
+            isMeasureDirty = true;
+            isArrangeDirty = true;
             VulkanControl current = parent as VulkanControl;
             VulkanControl topDirty = this;
             while (current != null)
             {
-                if (current._isMeasureDirty) return;
-                current._isMeasureDirty = true;
-                current._isArrangeDirty = true;
+                if (current.isMeasureDirty) return;
+                current.isMeasureDirty = true;
+                current.isArrangeDirty = true;
                 topDirty = current;
                 current = current.parent as VulkanControl;
             }
@@ -428,14 +428,14 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         public void InvalidateArrange()
         {
-            if (_isArrangeDirty) return;
-            _isArrangeDirty = true;
+            if (isArrangeDirty) return;
+            isArrangeDirty = true;
             VulkanControl current = parent as VulkanControl;
             VulkanControl topDirty = this;
             while (current != null)
             {
-                if (current._isArrangeDirty) return;
-                current._isArrangeDirty = true;
+                if (current.isArrangeDirty) return;
+                current.isArrangeDirty = true;
                 topDirty = current;
                 current = current.parent as VulkanControl;
             }
@@ -457,7 +457,7 @@ namespace ArctisAurora.Core.UISystem.Controls
                 if (preferredHeight == 0) h = childDesired.Y + padding.totalVertical;
             }
             DesiredSize = new Vector2D<float>(w, h);
-            _isMeasureDirty = false;
+            isMeasureDirty = false;
             return DesiredSize;
         }
 
@@ -494,7 +494,7 @@ namespace ArctisAurora.Core.UISystem.Controls
                 float cy = childRect.y + (childRect.height - child.DesiredSize.Y) * child.verticalPosition;
                 child.Arrange(new LayoutRect(cx, cy, child.DesiredSize.X, child.DesiredSize.Y));
             }
-            _isArrangeDirty = false;
+            isArrangeDirty = false;
         }
         #endregion
 

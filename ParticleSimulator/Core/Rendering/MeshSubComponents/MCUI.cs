@@ -2,6 +2,7 @@
 using ArctisAurora.EngineWork.AssetRegistry;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering.Helpers;
+using ArctisAurora.EngineWork.Rendering.Modules;
 using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
@@ -40,7 +41,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             base.LoadCustomMesh(sc);
         }
 
-        internal override void MakeInstanced()
+        internal override void MakeInstanced(RenderingModule module, int currentFrame)
         {
             instances = EntityManager.controls.Count;
             if (instances > 0)
@@ -61,7 +62,8 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
                     }
                     if (transformsBuffer.Handle != 0)
                     {
-                        Renderer.vk.DestroyBuffer(Renderer.logicalDevice, transformsBuffer, null);
+                        (module as UIModule).deferredDeletions[currentFrame].Add(new UIModule.DeferredResources { buffer = transformsBuffer, memory = _transformsBufferMemory });
+                        //Renderer.vk.DestroyBuffer(Renderer.logicalDevice, transformsBuffer, null);
                     }
                     Matrix4X4<float>[] _mats = transformMatrices.ToArray();
                     AVulkanBufferHandler.CreateBuffer(ref _mats, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);

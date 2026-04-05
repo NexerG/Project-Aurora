@@ -399,45 +399,50 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 
         private static void CopyBuffer(ref Buffer _sourceBuffer, ref Buffer _dstBuffer, ulong bufferSize, ref Queue queue, ref CommandPool commandPool)
         {
-            CommandBufferAllocateInfo _allocInfo = new CommandBufferAllocateInfo()
+            lock (Renderer.transferCommandLock)
             {
-                SType = StructureType.CommandBufferAllocateInfo,
-                Level = CommandBufferLevel.Primary,
-                CommandPool = commandPool,
-                CommandBufferCount = 1
-            };
-            CommandBuffer _localCommandBuffer;
-            Renderer.vk.AllocateCommandBuffers(Renderer.logicalDevice, ref _allocInfo, out _localCommandBuffer);
+                CommandBufferAllocateInfo _allocInfo = new CommandBufferAllocateInfo()
+                {
+                    SType = StructureType.CommandBufferAllocateInfo,
+                    Level = CommandBufferLevel.Primary,
+                    CommandPool = commandPool,
+                    CommandBufferCount = 1
+                };
+                CommandBuffer _localCommandBuffer;
+                Renderer.vk.AllocateCommandBuffers(Renderer.logicalDevice, ref _allocInfo, out _localCommandBuffer);
 
-            CommandBufferBeginInfo _cBBeginInfo = new CommandBufferBeginInfo()
-            {
-                SType = StructureType.CommandBufferBeginInfo,
-                Flags = CommandBufferUsageFlags.OneTimeSubmitBit
-            };
-            Renderer.vk.BeginCommandBuffer(_localCommandBuffer, ref _cBBeginInfo);
+                CommandBufferBeginInfo _cBBeginInfo = new CommandBufferBeginInfo()
+                {
+                    SType = StructureType.CommandBufferBeginInfo,
+                    Flags = CommandBufferUsageFlags.OneTimeSubmitBit
+                };
+                Renderer.vk.BeginCommandBuffer(_localCommandBuffer, ref _cBBeginInfo);
 
-            BufferCopy _copyRegion = new BufferCopy()
-            {
-                Size = bufferSize
-            };
-            Renderer.vk.CmdCopyBuffer(_localCommandBuffer, _sourceBuffer, _dstBuffer, 1, ref _copyRegion);
-            Renderer.vk.EndCommandBuffer(_localCommandBuffer);
+                BufferCopy _copyRegion = new BufferCopy()
+                {
+                    Size = bufferSize
+                };
+                Renderer.vk.CmdCopyBuffer(_localCommandBuffer, _sourceBuffer, _dstBuffer, 1, ref _copyRegion);
+                Renderer.vk.EndCommandBuffer(_localCommandBuffer);
 
-            SubmitInfo _subInfo = new SubmitInfo()
-            {
-                SType = StructureType.SubmitInfo,
-                CommandBufferCount = 1,
-                PCommandBuffers = &_localCommandBuffer
-            };
-            Result rQueue, rWait;
-            rQueue = Renderer.vk.QueueSubmit(queue, 1, ref _subInfo, default);
-            rWait = Renderer.vk.QueueWaitIdle(queue);
-            if (rQueue != Result.Success && rWait != Result.Success)
-            {
-                Console.WriteLine("Exception thrown");
-                throw new Exception("failed to submit 'copy buffer' commands");
+                SubmitInfo _subInfo = new SubmitInfo()
+                {
+                    SType = StructureType.SubmitInfo,
+                    CommandBufferCount = 1,
+                    PCommandBuffers = &_localCommandBuffer
+                };
+                
+                Renderer.vk.QueueWaitIdle(queue);
+                Result rQueue, rWait;
+                rQueue = Renderer.vk.QueueSubmit(queue, 1, ref _subInfo, default);
+                rWait = Renderer.vk.QueueWaitIdle(queue);
+                if (rQueue != Result.Success && rWait != Result.Success)
+                {
+                    Console.WriteLine("Exception thrown");
+                    throw new Exception("failed to submit 'copy buffer' commands");
+                }
+                Renderer.vk.FreeCommandBuffers(Renderer.logicalDevice, commandPool, 1, ref _localCommandBuffer);
             }
-            Renderer.vk.FreeCommandBuffers(Renderer.logicalDevice, commandPool, 1, ref _localCommandBuffer);
         }
 
         internal static uint FindMemoryType(uint _typeFilter, MemoryPropertyFlags _properties)

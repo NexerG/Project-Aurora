@@ -33,6 +33,7 @@ namespace ArctisAurora.EngineWork.Rendering
         internal static CommandPool compositeCommandPool;
         //internal CommandBuffer[] graphicsCommandBuffers;
 
+        internal static readonly object transferCommandLock = new object();
         internal static Queue transferQueue;      // for buffer transfers
         internal CommandBuffer[] transferCommandBuffers;
         internal static CommandPool transferCommandPool;
@@ -534,7 +535,7 @@ namespace ArctisAurora.EngineWork.Rendering
         {
             for(int i=0; i < renderingModules.Length; i++)
             {
-                renderingModules[i].UpdateDescriptorSets(currentFrame);
+                renderingModules[i].UpdateDescriptorSets(currentFrame, 0);
             }
         }
 
@@ -577,10 +578,12 @@ namespace ArctisAurora.EngineWork.Rendering
 
             for (int i = 0; i < renderingModules.Length; i++)
             {
-                if (renderingModules[i].isDirty[currentFrame])
-                    renderingModules[i].UpdateModule(currentFrame);
+                if (renderingModules[i].isDirty[imageIndex])
+                    renderingModules[i].UpdateModule((int)imageIndex);
                 renderingModules[i].camera.UpdateCameraMatrix(Engine.window.windowSize, imageIndex, (uint)i);
             }
+            if (compositorModule.isDirty[imageIndex])
+                compositorModule.UpdateModule((int)imageIndex);
 
             //int localEntityCount = 0;
             //foreach (Entity e in EntityManager.entitiesToUpdate)
@@ -642,8 +645,6 @@ namespace ArctisAurora.EngineWork.Rendering
                 if (vk.QueueSubmit(compositeQueue, 1, ref modulesSubmit, inFlightFences[currentFrame]) != Result.Success)
                     throw new Exception("Failed to submit module command buffers");
             }
-            if (compositorModule.isDirty[currentFrame])
-                compositorModule.UpdateModule(currentFrame);
 
             CommandBuffer compositorCB = compositorModule.commandBuffers[imageIndex];
             var waitSemaphores2 = stackalloc[] { modulesFinishedSemaphores[imageIndex] };

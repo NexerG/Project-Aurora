@@ -23,7 +23,7 @@ namespace ArctisAurora.Core.UISystem
 
             foreach (VulkanControl root in roots)
             {
-                if (root.IsMeasureDirty)
+                if (root.isMeasureDirty)
                 {
                     // Pass 1 — offer the root its own current arranged size (or infinite
                     // if it has never been arranged, meaning it's a window root).

@@ -85,7 +85,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
             // We always report our own viewport size, never the child's overflow.
             DesiredSize = new Vector2D<float>(w, h);
-            IsMeasureDirty = false;
+            isMeasureDirty = false;
             return DesiredSize;
         }
 
