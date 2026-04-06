@@ -9,6 +9,7 @@ using Silk.NET.Vulkan;
 using SixLabors.ImageSharp.PixelFormats;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls;
+using ArctisAurora.Core.Registry.Assets;
 
 namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 {
@@ -155,16 +156,16 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
                 SType = StructureType.SamplerCreateInfo,
                 MagFilter = Filter.Linear,
                 MinFilter = Filter.Linear,
-                AddressModeU = SamplerAddressMode.Repeat,
-                AddressModeV = SamplerAddressMode.Repeat,
-                AddressModeW = SamplerAddressMode.Repeat,
+                AddressModeU = Silk.NET.Vulkan.SamplerAddressMode.Repeat,
+                AddressModeV = Silk.NET.Vulkan.SamplerAddressMode.Repeat,
+                AddressModeW = Silk.NET.Vulkan.SamplerAddressMode.Repeat,
                 AnisotropyEnable = true,
                 MaxAnisotropy = _properties.Limits.MaxSamplerAnisotropy,
                 BorderColor = BorderColor.IntOpaqueBlack,
                 UnnormalizedCoordinates = false,
                 CompareEnable = false,
                 CompareOp = CompareOp.Always,
-                MipmapMode = SamplerMipmapMode.Linear
+                MipmapMode = Silk.NET.Vulkan.SamplerMipmapMode.Linear
             };
 
             fixed (Sampler* _textureSamplerPtr = &textureSampler)

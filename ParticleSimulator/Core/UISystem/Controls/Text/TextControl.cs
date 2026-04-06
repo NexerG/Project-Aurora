@@ -3,6 +3,7 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.EngineWork.Registry;
 using Silk.NET.Maths;
+using ArctisAurora.Core.Registry.Assets;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text
 {

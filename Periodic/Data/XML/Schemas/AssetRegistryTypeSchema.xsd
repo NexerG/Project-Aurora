@@ -6,6 +6,14 @@
   <xs:complexType name="IParseableTypes">
     <xs:sequence />
   </xs:complexType>
+  <xs:element name="FontAsset" type="types:FontAsset" />
+  <xs:complexType name="FontAsset">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="TextureAsset" type="types:TextureAsset" />
+  <xs:complexType name="TextureAsset">
+    <xs:sequence />
+  </xs:complexType>
   <xs:element name="AVulkanMesh" type="types:AVulkanMesh" />
   <xs:complexType name="AVulkanMesh">
     <xs:sequence />
@@ -26,14 +34,6 @@
         </xs:annotation>
       </xs:element>
     </xs:sequence>
-  </xs:complexType>
-  <xs:element name="FontAsset" type="types:FontAsset" />
-  <xs:complexType name="FontAsset">
-    <xs:sequence />
-  </xs:complexType>
-  <xs:element name="TextureAsset" type="types:TextureAsset" />
-  <xs:complexType name="TextureAsset">
-    <xs:sequence />
   </xs:complexType>
   <xs:element name="ControlStyle" type="types:ControlStyle" />
   <xs:complexType name="ControlStyle">

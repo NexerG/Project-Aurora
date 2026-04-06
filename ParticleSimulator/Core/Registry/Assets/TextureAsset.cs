@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Vulkan;
@@ -7,10 +8,10 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using Image = SixLabors.ImageSharp.Image;
 
-namespace ArctisAurora.EngineWork.Registry
+namespace ArctisAurora.Core.Registry.Assets
 {
     [A_XSDType("TextureAsset", "AssetRegistry")]
-    public class TextureAsset : Asset
+    public class TextureAsset : AbstractAsset
     {
         internal Silk.NET.Vulkan.Image _textureImage;
         internal ImageView textureImageView;
@@ -25,7 +26,12 @@ namespace ArctisAurora.EngineWork.Registry
             d.Add(name, this);
         }
 
-        public override void LoadAsset(Asset asset, string name, string path)
+        public override void LoadAll(string path)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void LoadAsset(AbstractAsset asset, string name, string path)
         {
             Dictionary<string, TextureAsset> d = AssetRegistries.GetRegistryByValueType<string, TextureAsset>(typeof(TextureAsset));
             if (d.ContainsKey(name))

@@ -8,5 +8,6 @@
 	<Dictionary Name="styles" KeyType="xs:string" ValueType="ControlStyle"/>
 	<Dictionary Name="uiActions" KeyType="xs:string" ValueType="Action"/>
 	<Dictionary Name="ActiveContexts" KeyType="xs:string" ValueType="Object"/>
+	<Dictionary Name="Samplers" KeyType="xs:string" ValueType="SamplerAsset"/>
 	
 </AssetRegistries>

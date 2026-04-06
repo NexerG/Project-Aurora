@@ -5,16 +5,10 @@ using Assimp;
 using System.Reflection;
 using System.Xml.Linq;
 using static ArctisAurora.Core.UISystem.Controls.VulkanControl;
+using ArctisAurora.Core.Registry.Assets;
 
 namespace ArctisAurora.EngineWork.Registry
 {
-    public abstract class Asset()
-    {
-        public abstract void LoadAsset(Asset asset, string name, string path);
-
-        public abstract void LoadDefault();
-    }
-
     [A_XSDType("AssetEntry", "AssetRegistry")]
     public class AssetRegistryEntry
     {
@@ -178,6 +172,18 @@ namespace ArctisAurora.EngineWork.Registry
             ControlStyle style = new ControlStyle();
             style.tint = new Silk.NET.Maths.Vector3D<float>(1, 1, 1);
             dStyles.Add("default", style);
+
+            // load default sampler
+            SamplerAsset sampler = new SamplerAsset("default");
+            sampler.LoadDefault();
+        }
+
+        [A_XSDActionDependency("AssetRegistries.PrepareAllAssets", "Bootstrap")]
+        internal static void PrepareAllAssets()
+        {
+            // samplers
+            SamplerAsset sampler = new SamplerAsset();
+            sampler.LoadAll(Paths.XMLDOCUMENTS_SAMPLERS);
         }
     }
 }

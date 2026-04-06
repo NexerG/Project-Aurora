@@ -1,0 +1,7 @@
+﻿<SamplerAsset xmlns="http://arctisaurora/AuroraRenderingTypes"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://arctisaurora/AuroraRenderingTypes ../../Schemas/RenderingTypeSchema.xsd" 
+        Name="ControlSampler"
+		MagFilter="Nearest" MinFilter="Nearest" 
+		AddressModeU="Repeat" AddressModeV="Repeat" AddressModeW="Repeat"
+		Anisotropy="true" MipmapMode="Nearest"/>

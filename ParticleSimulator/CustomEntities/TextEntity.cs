@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.UISystem;
 using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.EngineWork.Registry;

@@ -13,6 +13,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Xml.Linq;
 using Buffer = Silk.NET.Vulkan.Buffer;
+using ArctisAurora.Core.Registry.Assets;
 
 namespace ArctisAurora.Core.UISystem.Controls
 {
@@ -508,8 +509,7 @@ namespace ArctisAurora.Core.UISystem.Controls
 
             ControlData tempData = controlData;
             AVulkanBufferHandler.CreateBuffer(ref tempData, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
-            CreateSampler();
-            //EntityRegistry.AddControl(this);
+            maskSampler = AssetRegistries.GetRegistryByValueType<string, SamplerAsset>(typeof(SamplerAsset))["ControlSampler"].handle;
             EntityRegistry.AddToGroup("Controls", this);
             InvalidateLayout();
         }
@@ -527,16 +527,16 @@ namespace ArctisAurora.Core.UISystem.Controls
                 SType = StructureType.SamplerCreateInfo,
                 MagFilter = Filter.Nearest,
                 MinFilter = Filter.Nearest,
-                AddressModeU = SamplerAddressMode.Repeat,
-                AddressModeV = SamplerAddressMode.Repeat,
-                AddressModeW = SamplerAddressMode.Repeat,
+                AddressModeU = Silk.NET.Vulkan.SamplerAddressMode.Repeat,
+                AddressModeV = Silk.NET.Vulkan.SamplerAddressMode.Repeat,
+                AddressModeW = Silk.NET.Vulkan.SamplerAddressMode.Repeat,
                 AnisotropyEnable = true,
                 MaxAnisotropy = _properties.Limits.MaxSamplerAnisotropy,
                 BorderColor = BorderColor.IntOpaqueBlack,
                 UnnormalizedCoordinates = false,
                 CompareEnable = false,
                 CompareOp = CompareOp.Always,
-                MipmapMode = SamplerMipmapMode.Nearest
+                MipmapMode = Silk.NET.Vulkan.SamplerMipmapMode.Nearest
             };
 
             fixed (Sampler* _textureSamplerPtr = &maskSampler)

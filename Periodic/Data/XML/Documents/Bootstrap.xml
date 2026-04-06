@@ -19,6 +19,7 @@
 		<!--post-renderer-->
 		<Step Action="Context.LoadContexts"/>
 		<Step Action="AssetRegistries.PrepareDefaultAssets"/>
+		<Step Action="AssetRegistries.PrepareAllAssets"/>
 		<!--post-renderer-->
 		
 		<Step Action="Renderer.SetupObjects"/>

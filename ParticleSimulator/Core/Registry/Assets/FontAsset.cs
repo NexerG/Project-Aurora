@@ -1,11 +1,12 @@
 ﻿using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem;
+using ArctisAurora.EngineWork.Registry;
 
-namespace ArctisAurora.EngineWork.Registry
+namespace ArctisAurora.Core.Registry.Assets
 {
     [A_XSDType("FontAsset", "AssetRegistry")]
-    public class FontAsset : Asset
+    public class FontAsset : AbstractAsset
     {
         public AtlasMetaData atlasMetaData;
         public TextureAsset textureAsset;
@@ -29,7 +30,12 @@ namespace ArctisAurora.EngineWork.Registry
             return null;
         }
 
-        public override void LoadAsset(Asset asset, string name, string path)
+        public override void LoadAll(string path)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override void LoadAsset(AbstractAsset asset, string name, string path)
         {
             Dictionary<string, FontAsset> d = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset));
             if (d.ContainsKey(name))

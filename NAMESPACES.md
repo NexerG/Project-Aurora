@@ -15,7 +15,10 @@ ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Projec
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Registry\Context.cs
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Registry\EntityRegistry.cs
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Registry\XSDGenerator.cs
-ArctisAurora.Core.Rendering -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Rendering\SamplerController.cs
+ArctisAurora.Core.Registry.Assets -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Registry\Assets\AbstractAsset.cs
+ArctisAurora.Core.Registry.Assets -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Registry\Assets\FontAsset.cs
+ArctisAurora.Core.Registry.Assets -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Registry\Assets\SamplerAsset.cs
+ArctisAurora.Core.Registry.Assets -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Registry\Assets\TextureAsset.cs
 ArctisAurora.Core.Rendering.Helpers -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Rendering\Helpers\QueueAllocator.cs
 ArctisAurora.Core.Rendering.Modules -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Rendering\Modules\CompositorModule.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\AuroraFont.cs
@@ -60,8 +63,6 @@ ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan -> C:\Projects-Repositori
 ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\ECS\RenderingComponents\Vulkan\MeshComponent.cs
 ArctisAurora.EngineWork.MathHelpers -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\MathHelpers\AuroraMath.cs
 ArctisAurora.EngineWork.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Registry\AssetRegistries.cs
-ArctisAurora.EngineWork.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Registry\FontAsset.cs
-ArctisAurora.EngineWork.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Registry\TextureAsset.cs
 ArctisAurora.EngineWork.Rendering -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Rendering\AGlfwWindow.cs
 ArctisAurora.EngineWork.Rendering -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Rendering\AuroraCamera.cs
 ArctisAurora.EngineWork.Rendering -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Rendering\AVulkanMesh.cs
