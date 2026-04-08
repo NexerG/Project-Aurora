@@ -28,24 +28,20 @@ namespace ArctisAurora.EngineWork.Rendering
         internal SurfaceFormatKHR surfaceFormat;
 
         // commands
-        internal static Queue presentQueue;     // present surface queue
-        internal static Queue compositeQueue;    // graphics queue
+        internal static Queue presentQueue;                     // present surface queue
+        internal static Queue compositeQueue;                   // graphics queue
         internal static CommandPool compositeCommandPool;
-        //internal CommandBuffer[] graphicsCommandBuffers;
 
         internal static readonly object transferCommandLock = new object();
-        internal static Queue transferQueue;      // for buffer transfers
+        internal static Queue transferQueue;                    // for buffer transfers
         internal CommandBuffer[] transferCommandBuffers;
         internal static CommandPool transferCommandPool;
 
-        internal static Semaphore[] imageAvailableSemaphores;
-        internal static Semaphore[] renderFinishedSemaphores;
-        //internal static Fence[] inFlightFences;
-        //internal static Fence[] inFlightImages;
-
-        internal static Semaphore timelineSemaphore;
-        internal static ulong frameCounter = 0;
-        internal static ulong timelineValue = 0;
+        internal static Semaphore[] imageAvailableSemaphores;   // are display images ready?
+        internal static Semaphore[] renderFinishedSemaphores;   // are images for displays ready?
+        internal static Semaphore timelineSemaphore;            // timeline semaphore for synchronizing frames across modules and compositor
+        internal static ulong frameCounter = 0;                 
+        // timeline semaphore value is (frameCounter - MAX_FRAMES_IN_FLIGHT) * 2 + 2, modules signal at +1, compositor signals at + 2
 
         // compositor
         internal static CompositorModule compositorModule;
@@ -171,20 +167,12 @@ namespace ArctisAurora.EngineWork.Rendering
         {
             imageAvailableSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
             renderFinishedSemaphores = new Semaphore[swapchainImageCount];
-            frameCounter = MAX_FRAMES_IN_FLIGHT + 1;
-            //inFlightFences = new Fence[MAX_FRAMES_IN_FLIGHT];
-            //inFlightImages = new Fence[swapchainImageCount];
+            frameCounter = MAX_FRAMES_IN_FLIGHT;
             timelineSemaphore = new Semaphore();
 
             SemaphoreCreateInfo _semaphoreCreateInfo = new SemaphoreCreateInfo()
             {
                 SType = StructureType.SemaphoreCreateInfo
-            };
-
-            FenceCreateInfo _fenceCreateInfo = new FenceCreateInfo()
-            {
-                SType = StructureType.FenceCreateInfo,
-                Flags = FenceCreateFlags.SignaledBit
             };
 
             for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -203,14 +191,6 @@ namespace ArctisAurora.EngineWork.Rendering
                 }
             }
 
-            /*for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-            {
-                if (vk.CreateFence(logicalDevice, ref _fenceCreateInfo, null, out inFlightFences[i]) != Result.Success)
-                {
-                    throw new Exception("Failed to create 'In Flight Fence' at index " + i);
-                }
-            }*/
-
             modulesFinishedSemaphores = new Semaphore[swapchainImageCount];
             for (int i = 0; i < swapchainImageCount; i++)
             {
@@ -222,7 +202,7 @@ namespace ArctisAurora.EngineWork.Rendering
             {
                 SType = StructureType.SemaphoreTypeCreateInfo,
                 SemaphoreType = SemaphoreType.Timeline,
-                InitialValue = MAX_FRAMES_IN_FLIGHT + 1
+                InitialValue = MAX_FRAMES_IN_FLIGHT * 2
             };
             SemaphoreCreateInfo semCI = new SemaphoreCreateInfo()
             {
@@ -580,7 +560,7 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal void Draw()
         {
-            ulong waitValue = (frameCounter - MAX_FRAMES_IN_FLIGHT) * 2;
+            ulong waitValue = (frameCounter - MAX_FRAMES_IN_FLIGHT) * 2 + 2;
             fixed(Semaphore* timelineSemaphorePtr = &timelineSemaphore)
             {
                 SemaphoreWaitInfo waitInfo = new SemaphoreWaitInfo()
@@ -592,13 +572,9 @@ namespace ArctisAurora.EngineWork.Rendering
                 };
                 vk.WaitSemaphores(logicalDevice, ref waitInfo, ulong.MaxValue);
             }
-
-            //vk.WaitForFences(logicalDevice, 1, ref inFlightFences[currentFrame], true, ulong.MaxValue);
-
             // get next image
             uint imageIndex = 0;
             Result r = swapchainKHR.AcquireNextImage(logicalDevice, swapchain, ulong.MaxValue, imageAvailableSemaphores[currentFrame], default, ref imageIndex);
-            //inFlightImages[imageIndex] = inFlightFences[currentFrame];
 
             // update renderer if needed before draw
             if (r == Result.ErrorOutOfDateKhr)
@@ -627,31 +603,17 @@ namespace ArctisAurora.EngineWork.Rendering
                 SType = StructureType.SubmitInfo
             };
 
-            /*var _waitSemaphores = stackalloc[]
-            {
-                imageAvailableSemaphores[currentFrame]
-            };
-            var _waitStages = stackalloc[]
-            {
-                PipelineStageFlags.ColorAttachmentOutputBit
-            };*/
-
             CommandBuffer[] moduleCBs = new CommandBuffer[renderingModules.Length];
             for (int i = 0; i < renderingModules.Length; i++)
                 moduleCBs[i] = renderingModules[i].commandBuffers[imageIndex];
 
-            // wait stages
-            //var waitSemaphores1 = stackalloc[] { imageAvailableSemaphores[currentFrame] };
-            //var waitStages1 = stackalloc[] { PipelineStageFlags.ColorAttachmentOutputBit };
-            //var signalSemaphores1 = stackalloc[] { modulesFinishedSemaphores[imageIndex] };
-
             var semaphoreImageAvailable = stackalloc[] { imageAvailableSemaphores[currentFrame] };
             var semaphoreStage = stackalloc[] { PipelineStageFlags.ColorAttachmentOutputBit };
             var semaphoreSignalModulesFinished = stackalloc[] { timelineSemaphore };
-            ulong waitValueModulesFinished = frameCounter;
-            ulong signalValueModulesFinished = frameCounter + 1;
+            ulong waitValueModulesFinished = waitValue + 2;
+            ulong signalValueModulesFinished = waitValue + 3;
 
-            TimelineSemaphoreSubmitInfo tssInfo = new TimelineSemaphoreSubmitInfo()
+            TimelineSemaphoreSubmitInfo tssInfoModules = new TimelineSemaphoreSubmitInfo()
             {
                 SType = StructureType.TimelineSemaphoreSubmitInfo,
                 WaitSemaphoreValueCount = 1,
@@ -672,7 +634,7 @@ namespace ArctisAurora.EngineWork.Rendering
                     PCommandBuffers = moduleCBsPtr,
                     SignalSemaphoreCount = 1,
                     PSignalSemaphores = semaphoreSignalModulesFinished,
-                    PNext = &tssInfo
+                    PNext = &tssInfoModules
                 };
                 //vk.ResetFences(logicalDevice, 1, ref inFlightFences[currentFrame]);
                 if (vk.QueueSubmit(compositeQueue, 1, ref modulesSubmit, default /*inFlightFences[currentFrame]*/) != Result.Success)
@@ -681,21 +643,20 @@ namespace ArctisAurora.EngineWork.Rendering
 
             // compositor submit and wait
             CommandBuffer compositorCB = compositorModule.commandBuffers[imageIndex];
-            //var waitSemaphores2 = stackalloc[] { modulesFinishedSemaphores[imageIndex] };
-            //var waitStages2 = stackalloc[] { PipelineStageFlags.FragmentShaderBit };
-            //var signalSemaphores2 = stackalloc[] { renderFinishedSemaphores[imageIndex] };
             var waitSemaphoreModulesFinished = stackalloc[] { timelineSemaphore };
             var waitStageCompositor = stackalloc[] { PipelineStageFlags.FragmentShaderBit };
             var signalSemaphoreRenderFinished = stackalloc[] { renderFinishedSemaphores[imageIndex], timelineSemaphore };
 
-            ulong signalValueRenderFinished = frameCounter + 2;
+            ulong* signalValsCompositor = stackalloc ulong[2];
+            signalValsCompositor[0] = 0;                    // binary — ignored
+            signalValsCompositor[1] = waitValue + 4;        // timeline
             TimelineSemaphoreSubmitInfo tssInfoCompositor = new TimelineSemaphoreSubmitInfo()
             {
                 SType = StructureType.TimelineSemaphoreSubmitInfo,
                 WaitSemaphoreValueCount = 1,
                 PWaitSemaphoreValues = &signalValueModulesFinished,
-                SignalSemaphoreValueCount = 1,
-                PSignalSemaphoreValues = &signalValueRenderFinished,
+                SignalSemaphoreValueCount = 2,
+                PSignalSemaphoreValues = signalValsCompositor,
             };
 
             SubmitInfo compositorSubmit = new SubmitInfo()
