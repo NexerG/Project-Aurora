@@ -2,6 +2,42 @@
 <xs:schema xmlns:types="http://arctisaurora/AuroraEntityRegistryTypes" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:allTypes="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraEntityRegistryTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
+  <xs:element name="VulkanControl" type="types:VulkanControl" />
+  <xs:complexType name="VulkanControl">
+    <xs:sequence />
+    <xs:attribute name="Width" type="xs:int" />
+    <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
+    <xs:attribute name="MinHeight" type="xs:int" />
+    <xs:attribute name="MinWidth" type="xs:int" />
+    <xs:attribute name="HorizontalPos" type="xs:float" />
+    <xs:attribute name="VerticalPos" type="xs:float" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
+    <xs:attribute name="ClipToBounds" type="xs:boolean" />
+    <xs:attribute name="DockMode" type="types:DockMode" />
+    <xs:attribute name="Grid.Column" type="xs:int" />
+    <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="onEnter" type="actions:UI" />
+    <xs:attribute name="onExit" type="actions:UI" />
+    <xs:attribute name="onClick" type="actions:UI" />
+    <xs:attribute name="BubbleClick" type="xs:boolean" />
+    <xs:attribute name="onAltClick" type="actions:UI" />
+    <xs:attribute name="BubbleAltClick" type="xs:boolean" />
+    <xs:attribute name="onRelease" type="actions:UI" />
+    <xs:attribute name="BubbleRelease" type="xs:boolean" />
+    <xs:attribute name="onAltRelease" type="actions:UI" />
+    <xs:attribute name="BubbleAltRelease" type="xs:boolean" />
+    <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
+    <xs:attribute name="BubbleScroll" type="xs:boolean" />
+  </xs:complexType>
   <xs:element name="Entry" type="types:Entry" />
   <xs:complexType name="Entry">
     <xs:sequence />

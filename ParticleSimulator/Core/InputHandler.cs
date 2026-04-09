@@ -479,11 +479,6 @@ namespace ArctisAurora.EngineWork
                     {
                         Keybind k = activeKeybindActions.FirstOrDefault(k => k.button == keybind.button && k.state == KeyState.Pressed);
                         if (k != null) k.action?.Invoke();
-                        /*if (Keybind.IsCharacter(keybind.button))
-                        {
-                            char c = Keybind.GetCharacter(keybind.button);
-                            if(c != '\0') charInputWriteQueue.Enqueue(c);
-                        }*/
                         break;
                     }
                 case KeyState.Released:
@@ -512,11 +507,6 @@ namespace ArctisAurora.EngineWork
                                     k.repeatWatch = 0;
                                     k.action?.Invoke();
 
-                                    /*if (Keybind.IsCharacter(keybind.button))
-                                    {
-                                        char c = Keybind.GetCharacter(keybind.button);
-                                        if (c != '\0') charInputWriteQueue.Enqueue(c);
-                                    }*/
                                 }
                             }
                             else
@@ -527,12 +517,6 @@ namespace ArctisAurora.EngineWork
                                     Console.WriteLine("repeat");
                                     k.repeatWatch = 0;
                                     k.action?.Invoke();
-
-                                    /*if (Keybind.IsCharacter(keybind.button))
-                                    {
-                                        char c = Keybind.GetCharacter(keybind.button);
-                                        if (c != '\0') charInputWriteQueue.Enqueue(c);
-                                    }*/
                                 }
                             }
                         }

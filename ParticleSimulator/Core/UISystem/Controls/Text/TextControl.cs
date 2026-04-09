@@ -21,7 +21,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             {
                 if (field == value) return;
                 field = value;
-                RebuildGlyphs();
+                //RebuildGlyphs();
+                SyncGlyphs();
             }
         } = string.Empty;
 
@@ -33,7 +34,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             {
                 if (field == value) return;
                 field = value;
-                RebuildGlyphs();
+                //RebuildGlyphs();
+                //SyncGlyphs();
+                InvalidateLayout();
             }
         } = 16;
 
@@ -49,7 +52,14 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             _fontAsset = fontAsset;
             fontSize = fontSize;
             text = text;
-            RebuildGlyphs();
+            //RebuildGlyphs();
+            foreach (char c in text)
+            {
+                GlyphControl glyph = new GlyphControl(c, _fontAsset, fontSize);
+                glyph.parent = this;
+                children.Add(glyph);
+            }
+            InvalidateLayout();
             maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");
         }
 
@@ -67,6 +77,73 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                 children.Add(glyph);
             }
             InvalidateLayout();
+        }
+
+        private void SyncGlyphs()
+        {
+            if (_fontAsset == null)
+            {
+                children.Clear();
+                return;
+            }
+
+            string target = text ?? string.Empty;
+            int targetLen = target.Length;
+            int existingLen = children.Count;
+
+            // Update or reuse existing glyphs
+            int i = 0;
+            for (; i < targetLen; i++)
+            {
+                if (i < existingLen)
+                {
+                    GlyphControl existing = children[i] as GlyphControl;
+                    if (existing != null && existing.character == target[i])
+                        continue; // same char — skip
+
+                    // Different char — replace in place
+                    GlyphControl replacement = new GlyphControl(target[i], _fontAsset, fontSize);
+                    replacement.parent = this;
+                    children[i] = replacement;
+                    // TODO: dispose old glyph's Vulkan resources via deferred deletion
+                }
+                else
+                {
+                    // Append new glyph
+                    GlyphControl glyph = new GlyphControl(target[i], _fontAsset, fontSize);
+                    glyph.parent = this;
+                    children.Add(glyph);
+                }
+            }
+
+            // Remove excess glyphs from the end
+            if (existingLen > targetLen)
+            {
+                // TODO: queue removed glyphs for deferred Vulkan resource cleanup
+                children.RemoveRange(targetLen, existingLen - targetLen);
+            }
+
+            InvalidateLayout();
+        }
+
+        internal void InsertGlyph(int index, char c)
+        {
+            GlyphControl glyph = new GlyphControl(c, _fontAsset, fontSize);
+            glyph.parent = this;
+            text = text.Insert(index, c.ToString());
+        }
+
+        internal void RemoveGlyph(int index)
+        {
+            if (index < 0 || index >= children.Count) return;
+            // TODO: queue for deferred Vulkan resource cleanup
+            text = text.Remove(index, 1);
+        }
+
+        internal void RemoveGlyphRange(int start, int count)
+        {
+            // TODO: queue for deferred Vulkan resource cleanup
+            text = text.Remove(start, count);
         }
 
         // Measure: sum glyph widths, take max height
@@ -147,6 +224,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         public abstract void CommitEdit();
 
         public abstract void CancelEdit();
+
+        /*public virtual void InsertAt(int charOffset, string insert)
+        {
+            text = text[..charOffset] + insert + text[charOffset..];
+        }*/
 
         public abstract void WriteChar(char c);
     }

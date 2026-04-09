@@ -3,6 +3,9 @@
         xsi:schemaLocation="http://arctisaurora/UI ../Schemas/UITypeSchema.xsd"
         Width="1280" Height="720" ContentScalingMode="Vertical" Fill="true" ColorHex="#1f6331">
 
+	<TextInput FontSize="24" Text="BBB BBB BBB"/>
+
+	<!--
 	<GridList ColorHex="c2961d">
 		<RowDefinition SizeMode="Star"/>
 		<RowDefinition SizeMode="Star"/>
@@ -21,4 +24,5 @@
 		<Button ControlColor="black" Grid.Column="1" Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
 		<Button ControlColor="black" Grid.Column="2" Grid.Row="2"/>
 	</GridList>
+	-->
 </Window>
