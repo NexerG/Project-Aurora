@@ -1,4 +1,5 @@
-﻿using ArctisAurora.Core.Registry;
+﻿using ArctisAurora.Core.Filing.Serialization;
+using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork;
 
@@ -13,9 +14,9 @@ namespace AuroraPeriodic
 
             engine.Init(false);
             InputHandler.SetActiveKeybindGroup("InputMap");
-            //AssetImporter.ImportFont("abcdefghijklmnoprstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ <>", "arial.ttf");
             // prepare level
 
+            //AssetImporter.ImportFont("abcdefghijklmnoprstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ <>", "arial.ttf");
 
             WindowControl windowControl = (WindowControl)VulkanControl.ParseXML("UI.xml");
             //PanelControl windowControl = new PanelControl();

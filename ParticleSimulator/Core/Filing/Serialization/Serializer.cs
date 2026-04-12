@@ -1,5 +1,4 @@
 ﻿using ArctisAurora.EngineWork.Registry;
-using SixLabors.ImageSharp.PixelFormats;
 using System.Reflection;
 
 namespace ArctisAurora.Core.Filing.Serialization

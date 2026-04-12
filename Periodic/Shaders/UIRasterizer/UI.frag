@@ -21,11 +21,19 @@ float median(float r, float g, float b) {
 
 void main()
 {
-    vec3 msdf = texture(samplers[fragInstanceID], fragUV).rgb;
-    float sd = median(msdf.r, msdf.g, msdf.b) - 0.5f;
+    vec4 mtsdf = texture(samplers[fragInstanceID], fragUV);
+    float msdfDist = median(mtsdf.r, mtsdf.g, mtsdf.b);
+    float trueDist = mtsdf.a;
+
+    float sd = msdfDist - 0.5f;
+    float trueSD = trueDist - 0.5f;
+    if(abs(sd - trueSD) > 0.1f)
+    {
+        sd = trueSD;
+    }
+
     float screenPxRange = fwidth(sd);
     float opacity = clamp(sd / screenPxRange + 0.5f, 0.0f, 1.0f);
-    //float opacity = smoothstep(-screenPxRange, screenPxRange, sd);
 
     vec3 color = fragStyle.tint;
     outColor = vec4(color, opacity);

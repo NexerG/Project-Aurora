@@ -3,7 +3,7 @@
         xsi:schemaLocation="http://arctisaurora/UI ../Schemas/UITypeSchema.xsd"
         Width="1280" Height="720" ContentScalingMode="Vertical" Fill="true" ColorHex="#1f6331">
 
-	<TextInput FontSize="24" Text="BBB BBB BBB"/>
+	<TextInput FontSize="248" Text="BGX"/>
 
 	<!--
 	<GridList ColorHex="c2961d">

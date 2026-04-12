@@ -3,14 +3,22 @@ using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.UISystem
 {
+    [@NonSerializable]
+    public class Edge
+    {
+        public Vector2D<float> p0;     // start anchor
+        public Vector2D<float> control; // control point
+        public Vector2D<float> p1;     // end anchor
+        public Vector3D<int> color;
+    }
+
     [@Serializable]
-    internal class Bezier
+    public class Bezier
     {
         [@Serializable]
-        internal class Point
+        public class Point
         {
-            public Vector2D<float> pos = new Vector2D<float>(1,1);
-            public Vector3D<int> color = new Vector3D<int>(0, 0, 0);
+            public Vector2D<float> pos = new Vector2D<float>(1, 1);
             public bool isAnchor;
             public bool isFill;
 
@@ -54,32 +62,32 @@ namespace ArctisAurora.Core.UISystem
             }
         }
 
-        internal List<Point> points = new List<Point>();
+        public List<Point> points = new List<Point>();
 
-        internal Bezier() { }
+        public Bezier() { }
 
-        internal Bezier(List<Point> points)
+        public Bezier(List<Point> points)
         {
             this.points = points;
         }
 
-        internal void AddPoint(Point p)
+        public void AddPoint(Point p)
         {
             points.Add(p);
         }
 
-        internal void AddPoint(Vector2D<float> np, bool isAnchored)
+        public void AddPoint(Vector2D<float> np, bool isAnchored)
         {
             Point point = new Point(np, isAnchored);
             points.Add(point);
         }
 
-        internal void RemovePointAt(int i)
+        public void RemovePointAt(int i)
         {
             points.RemoveAt(i);
         }
 
-        internal void Clear()
+        public void Clear()
         {
             points.Clear();
         }

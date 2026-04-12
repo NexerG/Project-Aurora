@@ -61,11 +61,17 @@ namespace ArctisAurora.Core.Registry.Assets
         {
             atlasMetaData = new AtlasMetaData();
             string path = Paths.FONTS + $"\\{"arial"}\\{"arial"}.agd";
-            Serializer.DeserializeAttributed(path, ref atlasMetaData);
+            if(File.Exists(path))
+            {
+                Serializer.DeserializeAttributed(path, ref atlasMetaData);
+            }
 
             string imagePath = Paths.FONTS + "\\arial\\" + "arial_atlas.png";
-            textureAsset = new TextureAsset("uidefault");
-            textureAsset.LoadAsset(this, "arial", imagePath);
+            if (File.Exists(imagePath))
+            {
+                textureAsset = new TextureAsset("uidefault");
+                textureAsset.LoadAsset(this, "arial", imagePath);
+            }
         }
 
         /*public FontAsset LoadFont(string name)
