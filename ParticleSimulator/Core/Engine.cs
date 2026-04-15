@@ -62,6 +62,7 @@ namespace ArctisAurora.EngineWork
 
         public static TimeSpan deltaTime;
         private static DateTime lastFrameTime = DateTime.Now;
+        public static double totalTime = 0;
         //private DateTime lastFrameTime = DateTime.Now;
 
         public Engine()
@@ -159,6 +160,7 @@ namespace ArctisAurora.EngineWork
                 t_render_start.Set();
 
                 deltaTime = DateTime.Now - tickStart;
+                totalTime += deltaTime.TotalSeconds;
                 //Console.WriteLine($"Engine Tick Time: {deltaTime.TotalSeconds}s");
             }
         }
@@ -193,35 +195,36 @@ namespace ArctisAurora.EngineWork
 
         private void HandleUI()
         {
-            if (uiCollisionHandler.isInWindow)
+            if (!uiCollisionHandler.isInWindow) return;
+
+            Vector2D<float> mp = InputHandler.mousePos;
+            uiCollisionHandler.delta = mp - uiCollisionHandler.lastMousePos;
+            uiCollisionHandler.SolveHover(mp);
+            uiCollisionHandler.SolveDrag(mp);
+
+            KeyStateEntry lmb = inputHandler.keyTracker.GetState(Keys.MouseLeft);
+            KeyStateEntry rmb = inputHandler.keyTracker.GetState(Keys.MouseRight);
+
+            if (lmb != null)
             {
-                Vector2D<float> mp = InputHandler.mousePos;
-                uiCollisionHandler.delta = mp - uiCollisionHandler.lastMousePos;
-                uiCollisionHandler.SolveHover(mp);
-                uiCollisionHandler.SolveDrag(mp);
-
-                foreach (Keybind kbind in InputHandler.mouseEventReadQueue)
-                {
-                    switch (kbind.button)
-                    {
-                        case Keys.MouseLeft when kbind.state == KeyState.Pressed:
-                            uiCollisionHandler.SolveLMBPress(mp);
-                            break;
-                        case Keys.MouseLeft when kbind.state == KeyState.Released:
-                            uiCollisionHandler.SolveLMBRelease(mp);
-                            break;
-                        case Keys.MouseRight when kbind.state == KeyState.Pressed:
-                            uiCollisionHandler.SolveRMBPress(mp);
-                            break;
-                        case Keys.MouseRight when kbind.state == KeyState.Released:
-                            uiCollisionHandler.SolveRMBRelease(mp);
-                            break;
-                    }
-                }
-                InputHandler.mouseEventReadQueue.Clear();
-
-                uiCollisionHandler.lastMousePos = mp;
+                if (lmb.justPressed)
+                    uiCollisionHandler.SolveLMBPress(mp);
+                if (lmb.justReleased)
+                    uiCollisionHandler.SolveLMBRelease(mp);
             }
+
+            if (rmb != null)
+            {
+                if (rmb.justPressed)
+                    uiCollisionHandler.SolveRMBPress(mp);
+                if (rmb.justReleased)
+                    uiCollisionHandler.SolveRMBRelease(mp);
+            }
+
+            if (InputHandler.scrollDelta.X != 0 || InputHandler.scrollDelta.Y != 0)
+                uiCollisionHandler.SolveScroll(InputHandler.scrollDelta);
+
+            uiCollisionHandler.lastMousePos = mp;
         }
 
         private void Interpolate()

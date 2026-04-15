@@ -2,9 +2,13 @@
 <KeybindMap xmlns="http://arctisaurora/AuroraInputTypes"
 		  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 		  xsi:schemaLocation="http://arctisaurora/AuroraInputTypes ../../Schemas/InputTypeSchema.xsd" >
-	<Keybind Button="Escape" Action="ExitApplication" State="Pressed"/>
-	<Keybind Button="Backspace" Action="ExitApplication" State="Released"/>
-	<Keybind Button="AnySymbol" Action="Write" State="Pressed"/>
-	<Keybind Button="AnySymbol" Action="Write" State="Held"/>
+	<Keybind Trigger="Backspace" Action="ExitApplication">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
 
+	<Keybind Trigger="AnySymbol" Action="Write">
+		<Repeat Rate="0.1"/>
+	</Keybind>
+	
 </KeybindMap>

@@ -18,10 +18,7 @@ namespace Periodic.Editor
 
             // if text box is editable
             Queue<char> inputChars = new Queue<char>(InputHandler.charInputReadQueue);
-            while (inputChars.Count > 0)
-            {
-                control.WriteChar(inputChars.Dequeue());
-            }
+            control.WriteChar(inputChars.Dequeue());
         }
 
         [A_XSDActionDependency("ExitApplication", category: "Input")]

@@ -45,10 +45,22 @@
       <xs:enumeration value="Step" />
       <xs:enumeration value="Phase" />
       <xs:enumeration value="BootstrapSequence" />
-      <xs:enumeration value="Keys" />
-      <xs:enumeration value="Keystate" />
+      <xs:enumeration value="KeybindModifier" />
       <xs:enumeration value="Keybind" />
+      <xs:enumeration value="Keys" />
       <xs:enumeration value="KeybindMap" />
+      <xs:enumeration value="Condition" />
+      <xs:enumeration value="Press" />
+      <xs:enumeration value="Release" />
+      <xs:enumeration value="Hold" />
+      <xs:enumeration value="HoldRelease" />
+      <xs:enumeration value="MaxHoldTime" />
+      <xs:enumeration value="MultiTap" />
+      <xs:enumeration value="Continuous" />
+      <xs:enumeration value="Repeat" />
+      <xs:enumeration value="Toggle" />
+      <xs:enumeration value="HoldContinuous" />
+      <xs:enumeration value="Chord" />
       <xs:enumeration value="xs:string" />
       <xs:enumeration value="xs:int" />
       <xs:enumeration value="xs:float" />
@@ -135,10 +147,22 @@
   </xs:simpleType>
   <xs:simpleType name="Input">
     <xs:restriction base="xs:string">
-      <xs:enumeration value="Keys" />
-      <xs:enumeration value="Keystate" />
+      <xs:enumeration value="KeybindModifier" />
       <xs:enumeration value="Keybind" />
+      <xs:enumeration value="Keys" />
       <xs:enumeration value="KeybindMap" />
+      <xs:enumeration value="Condition" />
+      <xs:enumeration value="Press" />
+      <xs:enumeration value="Release" />
+      <xs:enumeration value="Hold" />
+      <xs:enumeration value="HoldRelease" />
+      <xs:enumeration value="MaxHoldTime" />
+      <xs:enumeration value="MultiTap" />
+      <xs:enumeration value="Continuous" />
+      <xs:enumeration value="Repeat" />
+      <xs:enumeration value="Toggle" />
+      <xs:enumeration value="HoldContinuous" />
+      <xs:enumeration value="Chord" />
     </xs:restriction>
   </xs:simpleType>
 </xs:schema>

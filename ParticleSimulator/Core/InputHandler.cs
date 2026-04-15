@@ -5,68 +5,560 @@ using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Reflection;
 using System.Xml.Linq;
+using static ArctisAurora.EngineWork.KeyStateTracker;
 
 namespace ArctisAurora.EngineWork
 {
-    [A_XSDType("Keys", "Input")]
-    public enum Keys
+    public enum RawAction
     {
-        A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
-        //a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z,
-        Apostrophe, Comma, Minus, Period, Slash, Semicolon, Equal, LeftBracket, Backslash, RightBracket, GraveAccent,
-        Numpad0, Numpad1, Numpad2, Numpad3, Numpad4, Numpad5, Numpad6, Numpad7, Numpad8, Numpad9, NumpadDecimal, NumpadDivide, NumpadMultiply, NumpadSubtract, NumpadAdd, NumpadEnter, NumpadEqual,
-        Num0, Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9,
-        Space, Enter, Tab,
-        AnySymbol,
-        Backspace, Escape, LeftControl, RightControl, LeftShift, RightShift, LeftWin, RightWin, Menu, CapsLock, ScrollLock, NumLock, PrintScreen, Pause,
-        LeftAlt, RightAlt, LeftSuper, RightSuper,
-        Up, Down, Left, Right, Home, End, PageUp, PageDown, Insert, Delete,
-        F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, F23, F24, F25,
-        MouseLeft, MouseRight, MouseMiddle, MouseButton4, MouseButton5, MouseButton6, MouseButton7, MouseButton8,
-        unknown,
+        Down,
+        Up
     }
 
-    [A_XSDType("Keystate", "Input")]
-    public enum KeyState
+    public struct RawInputEvent
     {
-        Pressed,
-        Released,
-        Held,
-        Unknown
-    }
+        public Keys key;
+        public RawAction action;
+        public double timestamp;
 
-    [A_XSDType("Keybind", "Input")]
-    public class Keybind
-    {
-        [A_XSDElementProperty("Button", "Input")]
-        public Keys button;
-        [A_XSDElementProperty("Action", "Input")]
-        public Action action;
-        [A_XSDElementProperty("State", "Input")]
-        public KeyState state;
-        [A_XSDElementProperty("OnTick", "Input")]
-        public bool onTick = false;
-        public double repeatWatch = 0;
-        public bool isRepeating = false;
-
-        public Keybind(Keys key, KeyState state)
+        public RawInputEvent(Keys key, RawAction action, double timestamp)
         {
-            button = key;
-            this.state = state;
-        }
-
-        public Keybind(Keys button, Action action, KeyState state, bool onTick)
-        {
-            this.button = button;
+            this.key = key;
             this.action = action;
-            this.state = state;
-            this.onTick = onTick;
+            this.timestamp = timestamp;
+        }
+    }
+
+    public class KeyStateEntry
+    {
+        public Keys key;
+        public bool isDown;
+        public double downTimestamp;
+        public double upTimestamp;
+        public double holdDuration;
+        public int tapCount;
+        public double lastTapTimestamp;
+        public bool consumed;
+
+        // Per-frame flags
+        public bool justPressed;
+        public bool justReleased;
+
+        public void ResetFrame()
+        {
+            justPressed = false;
+            justReleased = false;
+            consumed = false;
+        }
+    }
+
+    public class KeyStateTracker
+    {
+        private Dictionary<Keys, KeyStateEntry> _states = new Dictionary<Keys, KeyStateEntry>();
+        private List<RawInputEvent> _writeQueue = new List<RawInputEvent>();
+        private List<RawInputEvent> _readQueue = new List<RawInputEvent>();
+        private readonly object _lock = new object();
+
+        public double tapWindow = 0.3;
+
+        public KeyStateEntry GetState(Keys key)
+        {
+            _states.TryGetValue(key, out KeyStateEntry entry);
+            return entry;
         }
 
-        public void AddAction(Action action)
+        public bool IsDown(Keys key)
         {
-            this.action += action;
+            if (_states.TryGetValue(key, out KeyStateEntry entry))
+                return entry.isDown;
+            return false;
         }
+
+        public double HoldDuration(Keys key)
+        {
+            if (_states.TryGetValue(key, out KeyStateEntry entry) && entry.isDown)
+                return entry.holdDuration;
+            return 0;
+        }
+
+        // Called from GLFW callback thread
+        public void EnqueueEvent(Keys key, RawAction action, double timestamp)
+        {
+            lock (_lock)
+            {
+                _writeQueue.Add(new RawInputEvent(key, action, timestamp));
+            }
+        }
+
+        // Called once per tick on main thread
+        public void Update(double currentTime, double deltaTime)
+        {
+            lock (_lock)
+            {
+                (_writeQueue, _readQueue) = (_readQueue, _writeQueue);
+            }
+
+            foreach (KeyStateEntry entry in _states.Values)
+                entry.ResetFrame();
+
+            for (int i = 0; i < _readQueue.Count; i++)
+            {
+                RawInputEvent evt = _readQueue[i];
+                KeyStateEntry entry = GetOrCreate(evt.key);
+
+                if (evt.action == RawAction.Down)
+                {
+                    if (!entry.isDown)
+                    {
+                        entry.justPressed = true;
+                        entry.isDown = true;
+                        entry.downTimestamp = evt.timestamp;
+                        entry.holdDuration = 0;
+
+                        if (evt.timestamp - entry.lastTapTimestamp < tapWindow)
+                            entry.tapCount++;
+                        else
+                            entry.tapCount = 1;
+
+                        entry.lastTapTimestamp = evt.timestamp;
+
+                        // Mirror to AnySymbol
+                        if (IsCharacterKey(evt.key))
+                            MirrorToAnySymbol(evt.timestamp);
+                    }
+                }
+                else
+                {
+                    if (entry.isDown)
+                    {
+                        entry.justReleased = true;
+                        entry.isDown = false;
+                        entry.upTimestamp = evt.timestamp;
+
+                        // Release AnySymbol only if no other character keys are held
+                        if (IsCharacterKey(evt.key) && !AnyCharacterKeyHeld())
+                            ReleaseAnySymbol(evt.timestamp);
+                    }
+                }
+            }
+            _readQueue.Clear();
+
+            foreach (KeyStateEntry entry in _states.Values)
+            {
+                if (entry.isDown)
+                    entry.holdDuration += deltaTime;
+
+                if (!entry.isDown && currentTime - entry.lastTapTimestamp > tapWindow)
+                    entry.tapCount = 0;
+            }
+        }
+
+        private void MirrorToAnySymbol(double timestamp)
+        {
+            KeyStateEntry any = GetOrCreate(Keys.AnySymbol);
+            any.justPressed = true;
+            any.isDown = true;
+            any.downTimestamp = timestamp;
+            any.holdDuration = 0;
+
+            if (timestamp - any.lastTapTimestamp < tapWindow)
+                any.tapCount++;
+            else
+                any.tapCount = 1;
+
+            any.lastTapTimestamp = timestamp;
+        }
+
+        private void ReleaseAnySymbol(double timestamp)
+        {
+            KeyStateEntry any = GetOrCreate(Keys.AnySymbol);
+            any.justReleased = true;
+            any.isDown = false;
+            any.upTimestamp = timestamp;
+        }
+
+        private bool AnyCharacterKeyHeld()
+        {
+            foreach (KeyStateEntry entry in _states.Values)
+            {
+                if (entry.key != Keys.AnySymbol && entry.isDown && IsCharacterKey(entry.key))
+                    return true;
+            }
+            return false;
+        }
+
+        private static bool IsCharacterKey(Keys key)
+        {
+            return key >= Keys.A && key <= Keys.Z ||
+                   key >= Keys.Num0 && key <= Keys.Num9 ||
+                   key >= Keys.Numpad0 && key <= Keys.NumpadEqual ||
+                   key == Keys.Space || key == Keys.Enter || key == Keys.Tab ||
+                   key == Keys.Apostrophe || key == Keys.Comma || key == Keys.Minus ||
+                   key == Keys.Period || key == Keys.Slash || key == Keys.Semicolon ||
+                   key == Keys.Equal || key == Keys.LeftBracket || key == Keys.Backslash ||
+                   key == Keys.RightBracket || key == Keys.GraveAccent;
+        }
+
+        public enum ConditionResult
+        {
+            Idle,       // not relevant yet
+            Ongoing,    // in progress, don't fire yet
+            Triggered,  // fire now
+            Canceled    // was ongoing, now failed
+        }
+
+        [A_XSDType("Condition", "Input", description: "Base input condition type")]
+        public abstract class InputCondition : IKeybindChild
+        {
+            // Called every tick. Returns the current state of this condition.
+            public abstract ConditionResult Evaluate(KeyStateEntry trigger, KeyStateTracker tracker, double deltaTime);
+
+            // Called when the keybind fires or resets
+            public abstract void Reset();
+        }
+
+        // ──────────────────────────────────────────────
+        // PRESS — fires the frame the key goes down
+        // ──────────────────────────────────────────────
+        [A_XSDType("Press", "Input", description: "Fires the frame the key goes down")]
+        public class PressCondition : InputCondition
+        {
+            public override ConditionResult Evaluate(KeyStateEntry trigger, KeyStateTracker tracker, double deltaTime)
+            {
+                if (trigger.justPressed)
+                    return ConditionResult.Triggered;
+                return ConditionResult.Idle;
+            }
+
+            public override void Reset() { }
+        }
+
+        // ──────────────────────────────────────────────
+        // RELEASE — fires the frame the key goes up
+        // ──────────────────────────────────────────────
+        [A_XSDType("Release", "Input", description: "Fires the frame the key goes up")]
+        public class ReleaseCondition : InputCondition
+        {
+            public override ConditionResult Evaluate(KeyStateEntry trigger, KeyStateTracker tracker, double deltaTime)
+            {
+                if (trigger.justReleased)
+                    return ConditionResult.Triggered;
+                return ConditionResult.Idle;
+            }
+
+            public override void Reset() { }
+        }
+
+        // ──────────────────────────────────────────────
+        // HOLD — fires once after holding for threshold
+        // ──────────────────────────────────────────────
+        [A_XSDType("Hold", "Input", description: "Fires once after holding for threshold seconds")]
+        public class HoldCondition : InputCondition
+        {
+            [A_XSDElementProperty("Threshold", "Input")]
+            public float threshold { get; set; } = 0.3f;
+
+            private bool _fired;
+
+            public override ConditionResult Evaluate(KeyStateEntry trigger, KeyStateTracker tracker, double deltaTime)
+            {
+                if (!trigger.isDown)
+                {
+                    if (_fired)
+                    {
+                        _fired = false;
+                        return ConditionResult.Idle;
+                    }
+                    return ConditionResult.Idle;
+                }
+
+                if (_fired)
+                    return ConditionResult.Idle;
+
+                if (trigger.holdDuration >= threshold)
+                {
+                    _fired = true;
+                    return ConditionResult.Triggered;
+                }
+
+                return ConditionResult.Ongoing;
+            }
+
+            public override void Reset() { _fired = false; }
+        }
+
+        // ──────────────────────────────────────────────
+        // HOLD RELEASE — fires on release, only if held
+        // longer than threshold
+        // ──────────────────────────────────────────────
+        [A_XSDType("HoldRelease", "Input", description: "Fires on release only if held longer than threshold")]
+        public class HoldReleaseCondition : InputCondition
+        {
+            [A_XSDElementProperty("Threshold", "Input")]
+            public float threshold { get; set; } = 0.3f;
+
+            public override ConditionResult Evaluate(KeyStateEntry trigger, KeyStateTracker tracker, double deltaTime)
+            {
+                if (trigger.justReleased)
+                {
+                    double heldFor = trigger.upTimestamp - trigger.downTimestamp;
+                    if (heldFor >= threshold)
+                        return ConditionResult.Triggered;
+                    return ConditionResult.Canceled;
+                }
+
+                if (trigger.isDown)
+                    return ConditionResult.Ongoing;
+
+                return ConditionResult.Idle;
+            }
+
+            public override void Reset() { }
+        }
+
+        // ──────────────────────────────────────────────
+        // MAX HOLD TIME — passes only if key was held
+        // LESS than threshold (combine with Release)
+        // ──────────────────────────────────────────────
+        [A_XSDType("MaxHoldTime", "Input", description: "Passes only if key was held less than threshold. Combine with Release")]
+        public class MaxHoldTimeCondition : InputCondition
+        {
+            [A_XSDElementProperty("Threshold", "Input")]
+            public float threshold { get; set; } = 0.5f;
+
+            public override ConditionResult Evaluate(KeyStateEntry trigger, KeyStateTracker tracker, double deltaTime)
+            {
+                if (trigger.justReleased)
+                {
+                    double heldFor = trigger.upTimestamp - trigger.downTimestamp;
+                    if (heldFor < threshold)
+                        return ConditionResult.Triggered;
+                    return ConditionResult.Canceled;
+                }
+
+                if (trigger.isDown)
+                {
+                    if (trigger.holdDuration >= threshold)
+                        return ConditionResult.Canceled;
+                    return ConditionResult.Ongoing;
+                }
+
+                return ConditionResult.Idle;
+            }
+
+            public override void Reset() { }
+        }
+
+        // ──────────────────────────────────────────────
+        // MULTI TAP — fires on Nth consecutive press
+        // within tap window
+        // ──────────────────────────────────────────────
+        [A_XSDType("MultiTap", "Input", description: "Fires on Nth consecutive press within tap window")]
+        public class MultiTapCondition : InputCondition
+        {
+            [A_XSDElementProperty("Count", "Input")]
+            public int count { get; set; } = 2;
+
+            public override ConditionResult Evaluate(KeyStateEntry trigger, KeyStateTracker tracker, double deltaTime)
+            {
+                if (trigger.justPressed)
+                {
+                    if (trigger.tapCount >= count)
+                    {
+                        trigger.tapCount = 0;
+                        return ConditionResult.Triggered;
+                    }
+                    return ConditionResult.Ongoing;
+                }
+
+                if (trigger.tapCount > 0 && trigger.tapCount < count)
+                    return ConditionResult.Ongoing;
+
+                return ConditionResult.Idle;
+            }
+
+            public override void Reset() { }
+        }
+
+        // ──────────────────────────────────────────────
+        // CONTINUOUS — fires every tick while held
+        // ──────────────────────────────────────────────
+        [A_XSDType("Continuous", "Input", description: "Fires every tick while held")]
+        public class ContinuousCondition : InputCondition
+        {
+            public override ConditionResult Evaluate(KeyStateEntry trigger, KeyStateTracker tracker, double deltaTime)
+            {
+                if (trigger.isDown)
+                    return ConditionResult.Triggered;
+                return ConditionResult.Idle;
+            }
+
+            public override void Reset() { }
+        }
+
+        // ──────────────────────────────────────────────
+        // REPEAT — fires on press, then repeats after
+        // delay at rate
+        // ──────────────────────────────────────────────
+        [A_XSDType("Repeat", "Input", description: "Fires on press then repeats after delay at rate")]
+        public class RepeatCondition : InputCondition
+        {
+            [A_XSDElementProperty("Delay", "Input")]
+            public float delay { get; set; } = 0.35f;
+
+            [A_XSDElementProperty("Rate", "Input")]
+            public float rate { get; set; } = 0.03f;
+
+            private double _accumulator;
+            private bool _delayPassed;
+
+            public override ConditionResult Evaluate(KeyStateEntry trigger, KeyStateTracker tracker, double deltaTime)
+            {
+                if (trigger.justPressed)
+                {
+                    _accumulator = 0;
+                    _delayPassed = false;
+                    return ConditionResult.Triggered;
+                }
+
+                if (!trigger.isDown)
+                {
+                    _accumulator = 0;
+                    _delayPassed = false;
+                    return ConditionResult.Idle;
+                }
+
+                _accumulator += deltaTime;
+
+                if (!_delayPassed)
+                {
+                    if (_accumulator >= delay)
+                    {
+                        _delayPassed = true;
+                        _accumulator = 0;
+                        return ConditionResult.Triggered;
+                    }
+                    return ConditionResult.Ongoing;
+                }
+                else
+                {
+                    if (_accumulator >= rate)
+                    {
+                        _accumulator = 0;
+                        return ConditionResult.Triggered;
+                    }
+                    return ConditionResult.Ongoing;
+                }
+            }
+
+            public override void Reset()
+            {
+                _accumulator = 0;
+                _delayPassed = false;
+            }
+        }
+
+        // ──────────────────────────────────────────────
+        // TOGGLE — alternates active/inactive on press
+        // ──────────────────────────────────────────────
+        [A_XSDType("Toggle", "Input", description: "Alternates active/inactive on each press")]
+        public class ToggleCondition : InputCondition
+        {
+            public bool isActive;
+
+            public override ConditionResult Evaluate(KeyStateEntry trigger, KeyStateTracker tracker, double deltaTime)
+            {
+                if (trigger.justPressed)
+                {
+                    isActive = !isActive;
+                    return ConditionResult.Triggered;
+                }
+                return ConditionResult.Idle;
+            }
+
+            public override void Reset() { isActive = false; }
+        }
+
+        // ──────────────────────────────────────────────
+        // HOLD CONTINUOUS — fires every tick, but only
+        // after holding for threshold
+        // ──────────────────────────────────────────────
+        [A_XSDType("HoldContinuous", "Input", description: "Fires every tick but only after holding for threshold")]
+        public class HoldContinuousCondition : InputCondition
+        {
+            [A_XSDElementProperty("Threshold", "Input")]
+            public float threshold { get; set; } = 0.3f;
+
+            public override ConditionResult Evaluate(KeyStateEntry trigger, KeyStateTracker tracker, double deltaTime)
+            {
+                if (!trigger.isDown)
+                    return ConditionResult.Idle;
+
+                if (trigger.holdDuration >= threshold)
+                    return ConditionResult.Triggered;
+
+                return ConditionResult.Ongoing;
+            }
+
+            public override void Reset() { }
+        }
+
+        // ──────────────────────────────────────────────
+        // CHORD — requires another key to be held
+        // (alternative to modifier list, usable as condition)
+        // ──────────────────────────────────────────────
+        [A_XSDType("Chord", "Input", description: "Requires another key to be held simultaneously")]
+        public class ChordCondition : InputCondition
+        {
+            [A_XSDElementProperty("Key", "Input")]
+            public Keys key { get; set; }
+
+            public override ConditionResult Evaluate(KeyStateEntry trigger, KeyStateTracker tracker, double deltaTime)
+            {
+                if (tracker.IsDown(key))
+                    return ConditionResult.Triggered;
+                return ConditionResult.Canceled;
+            }
+
+            public override void Reset() { }
+        }
+
+        private KeyStateEntry GetOrCreate(Keys key)
+        {
+            if (!_states.TryGetValue(key, out KeyStateEntry entry))
+            {
+                entry = new KeyStateEntry();
+                entry.key = key;
+                _states.Add(key, entry);
+            }
+            return entry;
+        }
+    }
+
+    [A_XSDType("KeybindModifier", "Input", description: "Key that must be held for the keybind to activate")]
+    public class KeybindModifier : IKeybindChild
+    {
+        [A_XSDElementProperty("Key", "Input")]
+        public Keys key { get; set; }
+    }
+
+    [A_XSDType("Keybind", "Input", AllowedChildren = typeof(IKeybindChild), Description = "Maps a trigger key with optional modifiers and conditions to an action")]
+    public class KeybindDefinition
+    {
+        [A_XSDElementProperty("Trigger", "Input")]
+        public Keys trigger { get; set; }
+
+        [A_XSDElementProperty("Action", "Input")]
+        public Action action { get; set; }
+
+        [A_XSDElementProperty("Modifier", "Input")]
+        public List<KeybindModifier> modifiers = new List<KeybindModifier>();
+
+        // Conditions are child elements — parsed by RecursiveParse
+        public List<InputCondition> conditions = new List<InputCondition>();
+
+        // If no conditions specified, default to Press
+        public bool hasConditions => conditions.Count > 0;
 
         public static Keys MapKey(Silk.NET.GLFW.Keys glfwkey) => glfwkey switch
         {
@@ -222,170 +714,276 @@ namespace ArctisAurora.EngineWork
             Silk.NET.GLFW.MouseButton.Button8 => Keys.MouseButton8,
             _ => Keys.unknown
         };
-
-        public static KeyState MapState(InputAction action) => action switch
-        {
-            InputAction.Press => KeyState.Pressed,
-            InputAction.Release => KeyState.Released,
-            InputAction.Repeat => KeyState.Held,
-            _ => KeyState.Unknown
-        };
-
-        public static bool IsCharacter(Keys key) => key switch
-        {
-            Keys.A or Keys.B or Keys.C or Keys.D or Keys.E or Keys.F or Keys.G or
-            Keys.H or Keys.I or Keys.J or Keys.K or Keys.L or Keys.M or Keys.N or
-            Keys.O or Keys.P or Keys.Q or Keys.R or Keys.S or Keys.T or Keys.U or
-            Keys.V or Keys.W or Keys.X or Keys.Y or Keys.Z or
-            Keys.Num0 or Keys.Num1 or Keys.Num2 or Keys.Num3 or Keys.Num4 or Keys.Num5 or
-            Keys.Num6 or Keys.Num7 or Keys.Num8 or Keys.Num9 or
-            Keys.Space or Keys.Enter or Keys.Tab or
-            Keys.Apostrophe or Keys.Comma or Keys.Minus or Keys.Period or Keys.Slash or
-            Keys.Semicolon or Keys.Equal or Keys.LeftBracket or Keys.Backslash or Keys.RightBracket or Keys.GraveAccent or
-            Keys.Numpad0 or Keys.Numpad1 or Keys.Numpad2 or Keys.Numpad3 or Keys.Numpad4 or
-            Keys.Numpad5 or Keys.Numpad6 or Keys.Numpad7 or Keys.Numpad8 or Keys.Numpad9 or
-            Keys.NumpadDecimal or Keys.NumpadDivide or Keys.NumpadMultiply or Keys.NumpadSubtract or Keys.NumpadAdd or Keys.NumpadEnter or Keys.NumpadEqual
-            => true,
-            _ => false
-        };
-
-        public static char GetCharacter(Keys key) => key switch
-        {
-            Keys.A => 'a',
-            Keys.B => 'b',
-            Keys.C => 'c',
-            Keys.D => 'd',
-            Keys.E => 'e',
-            Keys.F => 'f',
-            Keys.G => 'g',
-            Keys.H => 'h',
-            Keys.I => 'i',
-            Keys.J => 'j',
-            Keys.K => 'k',
-            Keys.L => 'l',
-            Keys.M => 'm',
-            Keys.N => 'n',
-            Keys.O => 'o',
-            Keys.P => 'p',
-            Keys.Q => 'q',
-            Keys.R => 'r',
-            Keys.S => 's',
-            Keys.T => 't',
-            Keys.U => 'u',
-            Keys.V => 'v',
-            Keys.W => 'w',
-            Keys.X => 'x',
-            Keys.Y => 'y',
-            Keys.Z => 'z',
-
-            Keys.Num0 => '0',
-            Keys.Num1 => '1',
-            Keys.Num2 => '2',
-            Keys.Num3 => '3',
-            Keys.Num4 => '4',
-            Keys.Num5 => '5',
-            Keys.Num6 => '6',
-            Keys.Num7 => '7',
-            Keys.Num8 => '8',
-            Keys.Num9 => '9',
-
-            Keys.Numpad0 => '0',
-            Keys.Numpad1 => '1',
-            Keys.Numpad2 => '2',
-            Keys.Numpad3 => '3',
-            Keys.Numpad4 => '4',
-            Keys.Numpad5 => '5',
-            Keys.Numpad6 => '6',
-            Keys.Numpad7 => '7',
-            Keys.Numpad8 => '8',
-            Keys.Numpad9 => '9',
-            Keys.NumpadDecimal => '.',
-            Keys.NumpadDivide => '/',
-            Keys.NumpadMultiply => '*',
-            Keys.NumpadSubtract => '-',
-            Keys.NumpadAdd => '+',
-            Keys.NumpadEnter => '\n',
-            Keys.NumpadEqual => '=',
-
-            Keys.Space => ' ',
-            Keys.Enter => '\n',
-            Keys.Tab => '\t',
-
-            Keys.Apostrophe => '\'',
-            Keys.Comma => ',',
-            Keys.Minus => '-',
-            Keys.Period => '.',
-            Keys.Slash => '/',
-            Keys.Semicolon => ';',
-            Keys.Equal => '=',
-            Keys.LeftBracket => '[',
-            Keys.Backslash => '\\',
-            Keys.RightBracket => ']',
-            Keys.GraveAccent => '`',
-
-            _ => '\0'
-        };
     }
 
-    public class KeybindComparer : IEqualityComparer<Keybind>
+    public class GestureMatcher
     {
-        bool IEqualityComparer<Keybind>.Equals(Keybind? x, Keybind? y)
+        private KeyStateTracker _tracker;
+        private string _activeGroup = "default";
+        private Dictionary<string, List<KeybindDefinition>> _groups = new Dictionary<string, List<KeybindDefinition>>();
+        private List<KeybindDefinition> _activeBinds = new List<KeybindDefinition>();
+
+        // Default condition when none specified
+        private static PressCondition _defaultPress = new PressCondition();
+
+        public GestureMatcher(KeyStateTracker tracker)
         {
-            if(x == null || y == null) return false;
-            return x.button == y.button && x.state == y.state && x.action == y.action;
+            _tracker = tracker;
         }
 
-        int IEqualityComparer<Keybind>.GetHashCode(Keybind obj)
+        public void SetActiveGroup(string group)
         {
-            return HashCode.Combine(obj.button, obj.state);
+            _activeGroup = group;
+            if (_groups.TryGetValue(group, out List<KeybindDefinition> binds))
+                _activeBinds = binds;
+            else
+                _activeBinds = new List<KeybindDefinition>();
+        }
+
+        public void AddKeybind(string group, KeybindDefinition def)
+        {
+            if (!_groups.TryGetValue(group, out List<KeybindDefinition> list))
+            {
+                list = new List<KeybindDefinition>();
+                _groups.Add(group, list);
+            }
+            list.Add(def);
+
+            if (group == _activeGroup)
+                _activeBinds = list;
+        }
+
+        public void Update(double deltaTime)
+        {
+            // Track which trigger keys have been consumed this frame
+            // to prevent less-specific binds from also firing
+            HashSet<Keys> consumedTriggers = null;
+
+            // Process in order of specificity (most modifiers first)
+            // Sort once when group changes, not every frame — but for correctness here:
+            for (int pass = 0; pass < 2; pass++)
+            {
+                for (int i = 0; i < _activeBinds.Count; i++)
+                {
+                    KeybindDefinition def = _activeBinds[i];
+
+                    // Pass 0: only process binds with modifiers
+                    // Pass 1: only process binds without modifiers
+                    bool hasModifiers = def.modifiers.Count > 0;
+                    if (pass == 0 && !hasModifiers) continue;
+                    if (pass == 1 && hasModifiers) continue;
+
+                    // Skip if a more specific bind already consumed this trigger
+                    if (consumedTriggers != null && consumedTriggers.Contains(def.trigger))
+                    {
+                        // But only skip if this bind has fewer modifiers
+                        // (same modifier count = different combo, allow it)
+                        if (IsShadowed(def))
+                            continue;
+                    }
+
+                    // Check trigger key exists in tracker
+                    KeyStateEntry triggerState = _tracker.GetState(def.trigger);
+                    if (triggerState == null) continue;
+
+                    // Check all modifiers are held
+                    bool modsHeld = true;
+                    for (int m = 0; m < def.modifiers.Count; m++)
+                    {
+                        if (!_tracker.IsDown(def.modifiers[m].key))
+                        {
+                            modsHeld = false;
+                            break;
+                        }
+                    }
+                    if (!modsHeld) continue;
+
+                    // Evaluate conditions
+                    ConditionResult result = EvaluateConditions(def, triggerState, deltaTime);
+
+                    if (result == ConditionResult.Triggered)
+                    {
+                        def.action?.Invoke();
+                        triggerState.consumed = true;
+
+                        if (consumedTriggers == null)
+                            consumedTriggers = new HashSet<Keys>();
+                        consumedTriggers.Add(def.trigger);
+                    }
+                }
+            }
+        }
+
+        private ConditionResult EvaluateConditions(KeybindDefinition def, KeyStateEntry trigger, double deltaTime)
+        {
+            // No conditions = default Press behavior
+            if (!def.hasConditions)
+            {
+                return _defaultPress.Evaluate(trigger, _tracker, deltaTime);
+            }
+
+            // ALL conditions must agree.
+            // Triggered requires ALL to be Triggered.
+            // If ANY is Canceled, result is Canceled.
+            // If ANY is Ongoing (and none Canceled), result is Ongoing.
+            // Otherwise Idle.
+
+            bool allTriggered = true;
+            bool anyCanceled = false;
+            bool anyOngoing = false;
+
+            for (int c = 0; c < def.conditions.Count; c++)
+            {
+                ConditionResult cr = def.conditions[c].Evaluate(trigger, _tracker, deltaTime);
+
+                if (cr == ConditionResult.Canceled)
+                {
+                    anyCanceled = true;
+                    allTriggered = false;
+                }
+                else if (cr == ConditionResult.Ongoing)
+                {
+                    anyOngoing = true;
+                    allTriggered = false;
+                }
+                else if (cr == ConditionResult.Idle)
+                {
+                    allTriggered = false;
+                }
+            }
+
+            if (anyCanceled)
+            {
+                // Reset all conditions when canceled
+                for (int c = 0; c < def.conditions.Count; c++)
+                    def.conditions[c].Reset();
+                return ConditionResult.Canceled;
+            }
+
+            if (allTriggered)
+            {
+                // Reset after firing
+                for (int c = 0; c < def.conditions.Count; c++)
+                    def.conditions[c].Reset();
+                return ConditionResult.Triggered;
+            }
+
+            if (anyOngoing)
+                return ConditionResult.Ongoing;
+
+            return ConditionResult.Idle;
+        }
+
+        private bool IsShadowed(KeybindDefinition def)
+        {
+            for (int i = 0; i < _activeBinds.Count; i++)
+            {
+                KeybindDefinition other = _activeBinds[i];
+                if (other == def) continue;
+                if (other.trigger != def.trigger) continue;
+                if (other.modifiers.Count <= def.modifiers.Count) continue;
+
+                // Check other's modifiers are a superset
+                bool isSuperset = true;
+                for (int m = 0; m < def.modifiers.Count; m++)
+                {
+                    bool found = false;
+                    for (int n = 0; n < other.modifiers.Count; n++)
+                    {
+                        if (other.modifiers[n].key == def.modifiers[m].key)
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) { isSuperset = false; break; }
+                }
+                if (!isSuperset) continue;
+
+                // Check all of other's modifiers are currently held
+                bool allHeld = true;
+                for (int m = 0; m < other.modifiers.Count; m++)
+                {
+                    if (!_tracker.IsDown(other.modifiers[m].key))
+                    {
+                        allHeld = false;
+                        break;
+                    }
+                }
+                if (allHeld) return true;
+            }
+            return false;
+        }
+
+        // Suppress char input when a modified keybind fired this frame
+        public bool ShouldSuppressCharInput()
+        {
+            for (int i = 0; i < _activeBinds.Count; i++)
+            {
+                KeybindDefinition def = _activeBinds[i];
+                if (def.modifiers.Count == 0) continue;
+
+                KeyStateEntry state = _tracker.GetState(def.trigger);
+                if (state != null && state.consumed)
+                    return true;
+            }
+            return false;
         }
     }
+    // -------------------------------
 
-    public interface ICharacterInput
+    [A_XSDType("Keys", "Input")]
+    public enum Keys
     {
-        public void HandleInput(char character);
+        A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
+        //a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z,
+        Apostrophe, Comma, Minus, Period, Slash, Semicolon, Equal, LeftBracket, Backslash, RightBracket, GraveAccent,
+        Numpad0, Numpad1, Numpad2, Numpad3, Numpad4, Numpad5, Numpad6, Numpad7, Numpad8, Numpad9, NumpadDecimal, NumpadDivide, NumpadMultiply, NumpadSubtract, NumpadAdd, NumpadEnter, NumpadEqual,
+        Num0, Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8, Num9,
+        Space, Enter, Tab,
+        AnySymbol,
+        Backspace, Escape, LeftControl, RightControl, LeftShift, RightShift, LeftWin, RightWin, Menu, CapsLock, ScrollLock, NumLock, PrintScreen, Pause,
+        LeftAlt, RightAlt, LeftSuper, RightSuper,
+        Up, Down, Left, Right, Home, End, PageUp, PageDown, Insert, Delete,
+        F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12, F13, F14, F15, F16, F17, F18, F19, F20, F21, F22, F23, F24, F25,
+        MouseLeft, MouseRight, MouseMiddle, MouseButton4, MouseButton5, MouseButton6, MouseButton7, MouseButton8,
+        unknown,
     }
 
-    [A_XSDType("KeybindMap", "Input")]
+    public interface IKeybindChild { }
+
+
+    [A_XSDType("KeybindMap", "Input", AllowedChildren = typeof(KeybindDefinition), Description = "Root container for keybind definitions")]
     public unsafe class InputHandler : IXMLParser<InputHandler>
     {
         public static InputHandler instance { get; set; }
 
+        public KeyStateTracker keyTracker = new KeyStateTracker();
+        public GestureMatcher gestureMatcher;
+
         public static char lastCharInput = '\0';
         public static Queue<char> charInputWriteQueue = new Queue<char>();
         public static Queue<char> charInputReadQueue = new Queue<char>();
-
-        public static Queue<Keybind> inputWriteQueue = new Queue<Keybind>();
-        private static Queue<Keybind> inputReadQueue = new Queue<Keybind>();
-        public static float repeatDelay = 0.35f; // seconds before a held key starts repeating
-        public static float repeatRate = 0.01f; // seconds between repeats after the initial delay
-
-        private static HashSet<Keys> _keysHeldRead = new HashSet<Keys>();
-        public static HashSet<Keys> _keysHeldWrite = new HashSet<Keys>();
         public static Vector2D<float> mousePos = new Vector2D<float>(0, 0);
-
-        public static Queue<Keybind> mouseEventReadQueue = new Queue<Keybind>();
-        private static Queue<Keybind> mouseEventWriteQueue = new Queue<Keybind>();
-
         public static Vector2D<float> scrollDelta = new Vector2D<float>(0, 0);
         private static Vector2D<float> scrollDeltaWrite = new Vector2D<float>(0, 0);
 
         [A_XSDElementProperty("Keybind", "Input")]
-        public List<Keybind> activeKeybindActions = new List<Keybind>();
+        public List<KeybindDefinition> keybindDefinitions = new List<KeybindDefinition>();
 
-        public static Dictionary<string, List<Keybind>> keybindGroups = new Dictionary<string, List<Keybind>>();
-
-
-        public bool IsKeyDown(Keys k) => _keysHeldRead.Contains(k);
+        public bool IsKeyDown(Keys k) => keyTracker.IsDown(k);
 
         public InputHandler()
-        {}
+        {
+            gestureMatcher = new GestureMatcher(keyTracker);
+        }
 
         #region ---- Input callbacks ----
         internal void ProcessCharInput(WindowHandle* window, uint codepoint)
         {
-            lastCharInput = (char)codepoint;
-            //charInputWriteQueue.Enqueue((char)codepoint);
+            char c = (char)codepoint;
+            if (c != '\0')
+                charInputWriteQueue.Enqueue(c);
         }
 
         internal void ProcessMouseMove(WindowHandle* window, double xPos, double yPos)
@@ -396,28 +994,21 @@ namespace ArctisAurora.EngineWork
 
         internal void ProcessMouseClick(WindowHandle* window, MouseButton button, InputAction action, KeyModifiers mods)
         {
-            Keys mapped = Keybind.MouseKey(button);
-            KeyState ks = Keybind.MapState(action);
-            if (ks == KeyState.Pressed) _keysHeldWrite.Add(mapped);
-            if (ks == KeyState.Released) _keysHeldWrite.Remove(mapped);
-            inputWriteQueue.Enqueue(new Keybind(mapped, ks));
-            mouseEventWriteQueue.Enqueue(new Keybind(mapped, ks));
+            Keys key = KeybindDefinition.MouseKey(button);
+
+            if (action == InputAction.Press)
+                keyTracker.EnqueueEvent(key, RawAction.Down, Engine.totalTime);
+            else if (action == InputAction.Release)
+                keyTracker.EnqueueEvent(key, RawAction.Up, Engine.totalTime);
         }
 
-        internal void ProcessKeyboard(WindowHandle* window, Silk.NET.GLFW.Keys key, int _scanCode, InputAction state, KeyModifiers mods)
+        internal void ProcessKeyboard(WindowHandle* window, Silk.NET.GLFW.Keys key, int _scanCode, InputAction action, KeyModifiers mods)
         {
-            Keys mapped = Keybind.MapKey(key);
-            KeyState ks = Keybind.MapState(state);
-            if (ks == KeyState.Pressed) _keysHeldWrite.Add(mapped);
-            if (ks == KeyState.Released) _keysHeldWrite.Remove(mapped);
-            inputWriteQueue.Enqueue(new Keybind(mapped, ks));
-
-            if ((ks == KeyState.Pressed || ks == KeyState.Held) && Keybind.IsCharacter(mapped))
-            {
-                char c = Keybind.GetCharacter(mapped);
-                if (c != '\0')
-                    charInputWriteQueue.Enqueue(c);
-            }
+            Keys mapped = KeybindDefinition.MapKey(key);
+            if (action == InputAction.Press)
+                keyTracker.EnqueueEvent(mapped, RawAction.Down, Engine.totalTime);
+            else if (action == InputAction.Release)
+                keyTracker.EnqueueEvent(mapped, RawAction.Up, Engine.totalTime);
         }
 
         internal void ProcessScrollWheel(WindowHandle* window, double offsetX, double offsetY)
@@ -429,162 +1020,161 @@ namespace ArctisAurora.EngineWork
 
         public void ActivateKeybinds()
         {
-            lock (_keysHeldRead)
+            lock (charInputWriteQueue)
             {
-                lock (inputWriteQueue)
-                {
-                    (inputWriteQueue, inputReadQueue) = (inputReadQueue, inputWriteQueue);
-                    (_keysHeldWrite, _keysHeldRead) = (_keysHeldRead, _keysHeldWrite);
-                }
-                lock (charInputWriteQueue)
-                {
-                    (charInputWriteQueue, charInputReadQueue) = (charInputReadQueue, charInputWriteQueue);
-                }
-                lock (mouseEventWriteQueue)
-                {
-                    (mouseEventWriteQueue, mouseEventReadQueue) = (mouseEventReadQueue, mouseEventWriteQueue);
-                }
-                scrollDelta = scrollDeltaWrite;
-                scrollDeltaWrite = new Vector2D<float>(0, 0);
+                (charInputWriteQueue, charInputReadQueue) = (charInputReadQueue, charInputWriteQueue);
             }
+            scrollDelta = scrollDeltaWrite;
+            scrollDeltaWrite = new Vector2D<float>(0, 0);
 
-            foreach (Keybind keybind in inputReadQueue)
-            {
-                if (Keybind.IsCharacter(keybind.button))
-                {
-                    foreach (Keybind any in activeKeybindActions.Where(k => k.button == Keys.AnySymbol && k.state == keybind.state))
-                    {
-                        ActivateKeyByState(any);
-                        charInputReadQueue.Enqueue(Keybind.GetCharacter(any.button));
-                    }
-                }
-                ActivateKeyByState(keybind);
-            }
-            inputReadQueue.Clear();
-            charInputReadQueue.Clear();
+            // Update key states from raw GLFW events
+            keyTracker.Update(Engine.totalTime, Engine.deltaTime.TotalSeconds);
 
-            // ON TICK - do regardless of timeout
-            foreach (Keys heldKey in _keysHeldRead)
-            {
-                Keybind k = activeKeybindActions.FirstOrDefault(kb => kb.button == heldKey && kb.onTick);
-                k?.action?.Invoke();
-            }
-        }
+            // Evaluate all gesture keybinds
+            gestureMatcher.Update(Engine.deltaTime.TotalSeconds);
 
-        private void ActivateKeyByState(Keybind keybind)
-        {
-            switch (keybind.state)
-            {
-                case KeyState.Pressed:
-                    {
-                        Keybind k = activeKeybindActions.FirstOrDefault(k => k.button == keybind.button && k.state == KeyState.Pressed);
-                        if (k != null) k.action?.Invoke();
-                        break;
-                    }
-                case KeyState.Released:
-                    {
-                        Keybind k = activeKeybindActions.FirstOrDefault(k => k.button == keybind.button && k.state == KeyState.Released);
-                        if (k != null)
-                        {
-                            k.action?.Invoke();
-                            k.repeatWatch = 0;
-                            k.isRepeating = false;
-                        }
-                        break;
-                    }
-                case KeyState.Held:
-                    {
-                        Keybind k = activeKeybindActions.FirstOrDefault(k => k.button == keybind.button && k.state == KeyState.Held);
-                        if (k != null)
-                        {
-                            if (!k.isRepeating)
-                            {
-                                k.repeatWatch += Engine.deltaTime.TotalSeconds;
-                                if (k.repeatWatch >= repeatDelay)
-                                {
-                                    Console.WriteLine("started repeating");
-                                    k.isRepeating = true;
-                                    k.repeatWatch = 0;
-                                    k.action?.Invoke();
-
-                                }
-                            }
-                            else
-                            {
-                                k.repeatWatch += Engine.deltaTime.TotalSeconds;
-                                if (k.repeatWatch >= repeatRate)
-                                {
-                                    Console.WriteLine("repeat");
-                                    k.repeatWatch = 0;
-                                    k.action?.Invoke();
-                                }
-                            }
-                        }
-                    }
-                    break;
-            }
+            // Suppress char input if a modifier combo fired
+            if (gestureMatcher.ShouldSuppressCharInput())
+                charInputReadQueue.Clear();
         }
 
         public static InputHandler ParseXML(string xmlName)
         {
             InputHandler handler = new InputHandler();
+
             foreach (string path in Directory.GetFiles(Paths.XMLDOCUMENTS_INPUTS, "*.xml"))
             {
                 XElement root = XElement.Load(path);
                 XNamespace ns = root.GetDefaultNamespace();
-                List<Keybind> keybinds = new List<Keybind>();
+                string groupName = Path.GetFileNameWithoutExtension(path);
 
                 foreach (XElement keybindElement in root.Elements())
                 {
-                    var attributes = keybindElement.Attributes().ToList();
+                    KeybindDefinition def = new KeybindDefinition();
 
-                    var buttonAttr = attributes.FirstOrDefault(a => a.Name == "Button");
-                    var actionAttr = attributes.FirstOrDefault(a => a.Name == "Action");
-                    var stateAttr = attributes.FirstOrDefault(a => a.Name == "State");
-                    var onTickAttr = attributes.FirstOrDefault(a => a.Name == "OnTick");
+                    // Trigger key
+                    XAttribute triggerAttr = keybindElement.Attribute("Trigger");
+                    if (triggerAttr != null)
+                        def.trigger = (Keys)Enum.Parse(typeof(Keys), triggerAttr.Value);
 
-                    bool onTick = onTickAttr != null && bool.Parse(onTickAttr.Value);
-
-                    KeyState state = stateAttr.Value switch
+                    // Action — resolve via A_XSDActionDependency
+                    XAttribute actionAttr = keybindElement.Attribute("Action");
+                    if (actionAttr != null)
                     {
-                        "Pressed" => KeyState.Pressed,
-                        "Released" => KeyState.Released,
-                        "Held" => KeyState.Held,
-                        _ => KeyState.Unknown
-                    };
+                        MethodInfo methodInfo = AppDomain.CurrentDomain.GetAssemblies()
+                            .SelectMany(a => a.GetTypes())
+                            .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
+                            .FirstOrDefault(m =>
+                                m.GetCustomAttributes(typeof(A_XSDActionDependencyAttribute), false).Length > 0 &&
+                                string.Equals(m.Name, actionAttr.Value, StringComparison.OrdinalIgnoreCase));
 
+                        if (methodInfo == null)
+                            throw new Exception($"Action method '{actionAttr.Value}' not found in A_XSDActionDependency.");
 
-                    MethodInfo? methodInfo = AppDomain.CurrentDomain.GetAssemblies()
-                        .SelectMany(a => a.GetTypes())
-                        .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
-                        .FirstOrDefault(m =>
-                                m.GetCustomAttributes(typeof(A_XSDActionDependencyAttribute), false).Any() &&
-                                string.Equals(m.Name,
-                                actionAttr.Value, StringComparison.OrdinalIgnoreCase));
+                        def.action = (Action)Delegate.CreateDelegate(typeof(Action), methodInfo);
+                    }
 
-                    if (methodInfo == null)
-                        throw new Exception($"Action method '{actionAttr.Value}' not found in A_XSDActionDependency.");
+                    // Child elements: Modifiers and Conditions
+                    foreach (XElement child in keybindElement.Elements())
+                    {
+                        string localName = child.Name.LocalName;
 
-                    Action actionDelegate = (Action)Delegate.CreateDelegate(typeof(Action), methodInfo);
+                        if (localName == "Modifier")
+                        {
+                            KeybindModifier mod = new KeybindModifier();
+                            XAttribute keyAttr = child.Attribute("Key");
+                            if (keyAttr != null)
+                                mod.key = (Keys)Enum.Parse(typeof(Keys), keyAttr.Value);
+                            def.modifiers.Add(mod);
+                        }
+                        else
+                        {
+                            // It's a condition — resolve type via XSD
+                            InputCondition condition = CreateCondition(localName, child);
+                            if (condition != null)
+                                def.conditions.Add(condition);
+                        }
+                    }
 
-                    Keybind keybind = new Keybind((Keys)Enum.Parse(typeof(Keys), buttonAttr.Value), actionDelegate, state, onTick);
-                    keybinds.Add(keybind);
+                    handler.gestureMatcher.AddKeybind(groupName, def);
                 }
-                keybindGroups.Add(Path.GetFileNameWithoutExtension(path), keybinds);
             }
             return handler;
         }
 
+        private static InputCondition CreateCondition(string typeName, XElement element)
+        {
+            InputCondition condition = typeName switch
+            {
+                "Press" => new KeyStateTracker.PressCondition(),
+                "Release" => new KeyStateTracker.ReleaseCondition(),
+                "Hold" => new KeyStateTracker.HoldCondition(),
+                "HoldRelease" => new KeyStateTracker.HoldReleaseCondition(),
+                "MaxHoldTime" => new KeyStateTracker.MaxHoldTimeCondition(),
+                "MultiTap" => new KeyStateTracker.MultiTapCondition(),
+                "Continuous" => new KeyStateTracker.ContinuousCondition(),
+                "Repeat" => new KeyStateTracker.RepeatCondition(),
+                "Toggle" => new KeyStateTracker.ToggleCondition(),
+                "HoldContinuous" => new KeyStateTracker.HoldContinuousCondition(),
+                "Chord" => new KeyStateTracker.ChordCondition(),
+                _ => null
+            };
+
+            if (condition == null)
+            {
+                Console.WriteLine($"Unknown condition type: {typeName}");
+                return null;
+            }
+
+            // Parse attributes onto the condition object
+            foreach (XAttribute attr in element.Attributes())
+            {
+                // Try property first (most condition params are properties)
+                PropertyInfo prop = condition.GetType().GetProperty(
+                    attr.Name.LocalName,
+                    BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+
+                if (prop != null && prop.CanWrite)
+                {
+                    if (prop.PropertyType == typeof(float))
+                        prop.SetValue(condition, float.Parse(attr.Value,
+                            System.Globalization.CultureInfo.InvariantCulture));
+                    else if (prop.PropertyType == typeof(int))
+                        prop.SetValue(condition, int.Parse(attr.Value));
+                    else if (prop.PropertyType == typeof(Keys))
+                        prop.SetValue(condition, Enum.Parse(typeof(Keys), attr.Value));
+                    else if (prop.PropertyType == typeof(double))
+                        prop.SetValue(condition, double.Parse(attr.Value,
+                            System.Globalization.CultureInfo.InvariantCulture));
+                    continue;
+                }
+
+                // Fall back to field
+                FieldInfo field = condition.GetType().GetField(
+                    attr.Name.LocalName,
+                    BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+
+                if (field != null)
+                {
+                    if (field.FieldType == typeof(float))
+                        field.SetValue(condition, float.Parse(attr.Value,
+                            System.Globalization.CultureInfo.InvariantCulture));
+                    else if (field.FieldType == typeof(int))
+                        field.SetValue(condition, int.Parse(attr.Value));
+                    else if (field.FieldType == typeof(Keys))
+                        field.SetValue(condition, Enum.Parse(typeof(Keys), attr.Value));
+                    else if (field.FieldType == typeof(double))
+                        field.SetValue(condition, double.Parse(attr.Value,
+                            System.Globalization.CultureInfo.InvariantCulture));
+                }
+            }
+
+            return condition;
+        }
+
         public static void SetActiveKeybindGroup(string groupName)
         {
-            if (keybindGroups.ContainsKey(groupName))
-            {
-                instance.activeKeybindActions = keybindGroups[groupName];
-            }
-            else
-            {
-                Console.WriteLine($"Keybind group '{groupName}' not found.");
-            }
+            instance.gestureMatcher.SetActiveGroup(groupName);
         }
 
         [A_XSDActionDependency("InputHandler.LoadInputs", "Bootstrap")]
@@ -592,6 +1182,8 @@ namespace ArctisAurora.EngineWork
         {
             instance = ParseXML("InputMap.xml");
             Engine.inputHandler = instance;
+            // Activate the default group (or first available)
+            instance.gestureMatcher.SetActiveGroup("default");
         }
     }
 }
