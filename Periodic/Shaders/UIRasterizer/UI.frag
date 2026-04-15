@@ -25,15 +25,21 @@ void main()
     float msdfDist = median(mtsdf.r, mtsdf.g, mtsdf.b);
     float trueDist = mtsdf.a;
 
-    float sd = msdfDist - 0.5f;
-    float trueSD = trueDist - 0.5f;
-    if(abs(sd - trueSD) > 0.1f)
+    float sd = msdfDist;
+    float trueSD = trueDist;
+    if(abs((sd - 0.5f) - (trueSD - 0.5f)) > 0.1f)
     {
         sd = trueSD;
     }
 
-    float screenPxRange = fwidth(sd);
-    float opacity = clamp(sd / screenPxRange + 0.5f, 0.0f, 1.0f);
+    float pxRange = 4.0;
+    vec2 atlasSize = vec2(textureSize(samplers[fragInstanceID], 0));
+    vec2 unitRange = vec2(pxRange) / atlasSize;
+    vec2 screenTexSize = vec2(1.0) / fwidth(fragUV);
+    float screenPxRange = max(1.0, length(unitRange * screenTexSize));
+
+    float screenPxDist = screenPxRange * (sd - 0.5);
+    float opacity = clamp(screenPxDist + 0.5, 0.0, 1.0);
 
     vec3 color = fragStyle.tint;
     outColor = vec4(color, opacity);

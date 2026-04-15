@@ -23,6 +23,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
 
             preferredWidth = (int)(glyph.glyphWidth * px);
             preferredHeight = (int)(glyph.glyphHeight * px);
+            if (preferredWidth == 0) preferredWidth = (int)(px * 0.1f);
+            if (preferredHeight == 0) preferredHeight = (int)(px * 0.1f);
 
             float k = MathF.Ceiling(MathF.Sqrt(fontAsset.atlasMetaData.glyphCount));
             float glyphAtlasSize = 1f / k;
@@ -30,10 +32,17 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
 
             float yOffset = MathF.Floor(index / k) * glyphAtlasSize;
 
-            controlData.uvs.uv1 = new Vector2D<float>(xOffset + glyphAtlasSize, yOffset + glyphAtlasSize);
-            controlData.uvs.uv2 = new Vector2D<float>(xOffset, yOffset);
-            controlData.uvs.uv3 = new Vector2D<float>(xOffset, yOffset + glyphAtlasSize);
-            controlData.uvs.uv4 = new Vector2D<float>(xOffset + glyphAtlasSize, yOffset);
+            float texelPad = 1f / fontAsset.textureAsset.image.Width;
+
+            float u0 = xOffset + texelPad;
+            float v0 = yOffset + texelPad;
+            float u1 = xOffset + glyphAtlasSize - texelPad;
+            float v1 = yOffset + glyphAtlasSize - texelPad;
+
+            controlData.uvs.uv1 = new Vector2D<float>(u1, v1);
+            controlData.uvs.uv2 = new Vector2D<float>(u0, v0);
+            controlData.uvs.uv3 = new Vector2D<float>(u0, v1);
+            controlData.uvs.uv4 = new Vector2D<float>(u1, v0);
             AVulkanBufferHandler.UpdateBuffer(ref controlData, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
         }
 

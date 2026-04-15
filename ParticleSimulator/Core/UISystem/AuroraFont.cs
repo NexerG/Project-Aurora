@@ -489,12 +489,18 @@ namespace ArctisAurora.Core.UISystem
             float normW = (glyph.xMax - glyph.xMin) / scale;
             float normH = (glyph.yMax - glyph.yMin) / scale;
 
-            for (int x = 0; x < cellSize; x++)
+            int pad = 2;
+            int innerSize = cellSize - pad * 2;
+            int spreadPx = innerSize / 8;
+            float spreadU = (spreadPx / (float)innerSize) * normW;
+            float spreadV = (spreadPx / (float)innerSize) * normH;
+
+            for (int x = 0; x < innerSize; x++)
             {
-                for (int y = 0; y < cellSize; y++)
+                for (int y = 0; y < innerSize; y++)
                 {
-                    float px = ((x + 0.5f) / cellSize) * normW;
-                    float py = ((y + 0.5f) / cellSize) * normH;
+                    float px = ((x + 0.5f) / innerSize) * (normW + 2 * spreadU) - spreadU;
+                    float py = ((y + 0.5f) / innerSize) * (normH + 2 * spreadV) - spreadV;
                     Vector2D<float> p = new Vector2D<float>(px, py);
 
                     float redDist = Math.Clamp(GetClosestDistanceOfChannel(p, glyph, new Vector3D<int>(1, 0, 0)) * distanceFactor, -1, 1);
@@ -514,7 +520,7 @@ namespace ArctisAurora.Core.UISystem
 
         private static float GetClosestDistanceOfChannel(Vector2D<float> p, Glyph glyph, Vector3D<int> channel)
         {
-            if (glyph.edgeContours.Count == 0) return 0;
+            if (glyph.edgeContours.Count == 0) return -1;
 
             float minDist = float.MaxValue;
             int contourIndex = 0;

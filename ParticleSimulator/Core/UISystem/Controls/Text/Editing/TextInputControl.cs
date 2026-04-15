@@ -30,13 +30,17 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
         // Set during Measure — where our last line ends, so parent knows where to place next sibling
         public float lastLineEndX;
         public float lastLineHeight;
+        public float minLineHeight = 0f;
         #endregion
 
         #region ---- cursor ----
         public int cursorPosition = 0;
         #endregion
 
-        public TextInputControl() { }
+        public TextInputControl() 
+        {
+            minLineHeight = 50f;
+        }
 
         #region ---- EDITING ----
         public override void BeginEdit()
@@ -197,7 +201,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
                 {
                     // Line break
                     if (cursorX > maxWidth) maxWidth = cursorX;
-                    totalHeight += lineHeight;
+                    totalHeight += MathF.Max(lineHeight, minLineHeight);
                     cursorX = 0f;
                     lineHeight = 0f;
                     firstLine = false;
@@ -209,7 +213,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
 
             // Last line
             if (cursorX > maxWidth) maxWidth = cursorX;
-            totalHeight += lineHeight;
+            totalHeight += MathF.Max(lineHeight, minLineHeight);
             lastLineEndX = cursorX;
             lastLineHeight = lineHeight;
 
@@ -249,7 +253,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
 
                 if (cursorX + glyphW > fullWidth && cursorX > (firstLine ? firstLineOffset : 0))
                 {
-                    cursorY += lineHeight;
+                    cursorY += MathF.Max(lineHeight, minLineHeight);
                     cursorX = 0f;
                     lineHeight = 0f;
                     firstLine = false;
