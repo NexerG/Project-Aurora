@@ -185,7 +185,7 @@ namespace ArctisAurora.Core.UISystem
                 short ascender = AssetImporter.ReadInt16BE(reader);
                 reader.BaseStream.Position = hhea.offset + 6;
                 short descender = AssetImporter.ReadInt16BE(reader);
-                float lineHeight = (ascender - descender) / unitsPerEm;
+                float lineHeight = 0.1f;
 
                 for (int i = 0; i < glyphs.glyphCount; i++)
                 {
@@ -197,10 +197,10 @@ namespace ArctisAurora.Core.UISystem
                     {
                         glyphs.glyphs[i].tsb = -(glyphs.glyphs[i].yMin) / unitsPerEm;
                     }
-                    if (glyphs.glyphs[i].glyphHeight == 0)
+                    if (glyphs.glyphs[i].glyphHeight == 1)
                         glyphs.glyphs[i].glyphHeight = lineHeight;
 
-                    if (glyphs.glyphs[i].glyphWidth == 0)
+                    if (glyphs.glyphs[i].glyphWidth == 1)
                         glyphs.glyphs[i].glyphWidth = glyphs.glyphs[i].advanceWidth;
                 }
             }
@@ -489,7 +489,7 @@ namespace ArctisAurora.Core.UISystem
             float normW = (glyph.xMax - glyph.xMin) / scale;
             float normH = (glyph.yMax - glyph.yMin) / scale;
 
-            int pad = 2;
+            int pad = 1;
             int innerSize = cellSize - pad * 2;
             int spreadPx = innerSize / 8;
             float spreadU = (spreadPx / (float)innerSize) * normW;

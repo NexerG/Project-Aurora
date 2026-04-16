@@ -23,8 +23,6 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
 
             preferredWidth = (int)(glyph.glyphWidth * px);
             preferredHeight = (int)(glyph.glyphHeight * px);
-            if (preferredWidth == 0) preferredWidth = (int)(px * 0.1f);
-            if (preferredHeight == 0) preferredHeight = (int)(px * 0.1f);
 
             float k = MathF.Ceiling(MathF.Sqrt(fontAsset.atlasMetaData.glyphCount));
             float glyphAtlasSize = 1f / k;

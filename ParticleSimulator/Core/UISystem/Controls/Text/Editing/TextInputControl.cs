@@ -39,7 +39,6 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
 
         public TextInputControl() 
         {
-            minLineHeight = 50f;
         }
 
         #region ---- EDITING ----

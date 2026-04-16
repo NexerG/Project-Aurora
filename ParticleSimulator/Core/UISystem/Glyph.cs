@@ -7,8 +7,8 @@ namespace ArctisAurora.Core.UISystem
     public class Glyph
     {
         public short xMin, yMin, xMax, yMax;
-        public float glyphWidth;
-        public float glyphHeight;
+        public float glyphWidth = 1;
+        public float glyphHeight = 1;
 
         [@NonSerializable]
         public List<List<Edge>> edgeContours = new List<List<Edge>>();
