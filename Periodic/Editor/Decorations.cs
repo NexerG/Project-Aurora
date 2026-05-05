@@ -17,8 +17,8 @@ namespace Periodic.Editor
             if (!control.isEditing) return;
 
             // if text box is editable
-            Queue<char> inputChars = InputHandler.charInputReadQueue;
-            control.WriteChar(inputChars.Dequeue());
+            //Queue<char> inputChars = InputHandler.charInputReadQueue;
+            //control.WriteChar(inputChars.Dequeue());
         }
 
         [A_XSDActionDependency("ExitApplication", category: "Input")]

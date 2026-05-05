@@ -983,7 +983,10 @@ namespace ArctisAurora.EngineWork
         {
             char c = (char)codepoint;
             if (c != '\0')
+            {
                 charInputWriteQueue.Enqueue(c);
+                lastCharInput = c;
+            }
         }
 
         internal void ProcessMouseMove(WindowHandle* window, double xPos, double yPos)
