@@ -1,22 +1,102 @@
-# MyEngine — Solution Briefing
+# Arctis Aurora Engine — Solution Briefing
 **Stack:** C#, .NET | Silk.NET.Vulkan, Silk.NET.GLFW | Visual Studio 2026 | GitHub
 
-## Instructions
+## 1. Think Before Coding
+
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+## 2. Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+## 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the user's request.
+
+## 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
 This project is a C# game engine called Aurora using Silk.NET/Vulkan/GLFW.
 Always check CLAUDE.md and NAMESPACES.md before suggesting new code.
-Always check DECISIONS.md before suggesting architectural changes.
-Current focus is in TODO.md.
+Current focus is in "DOCUMENTATION/Work in Progress List.md".
 Use deep thinking for architectural problems. Try to explain architectural questions - why they we're made as opposed to another solution.
 When given to generate code DO NOT copy the whole file. Only write what (or if needs to be added where) needs to be changed and with what new code. When creating new classes write them out in entirety (without includes). Skip includes unless they're from a new nuget package.
-If can use xml - use xml. NO JSON or other similar formats
+If can use xml - use xml. NO JSON or other similar formats.
+When creating new logic or systems update DOCUMENTATION/ClaudeMemory/* and DOCUMENTATION/Engine*
 
 ## Solution Structure
-| Project | Purpose | Status |
-|---------|---------|--------|
-| `Engine` | Core game engine | Active — see Engine/CLAUDE.md |
-| `Editor` | Visual editor built on Engine | Early stage |
-| `TextEditor` | Obsidian/Notion-style note app | Planning |
-| `Hackathon` | Standalone hackathon project | Active |
+Abstract names below map to real top-level folders. Source of truth for code locations is
+`NAMESPACES.md` (repo root). Detailed name↔folder mapping: `DOCUMENTATION/ClaudeMemory/Context/project-map.md`.
+
+| Name | Real folder | Root namespace(s) | Purpose | Status |
+|------|-------------|-------------------|---------|--------|
+| `Engine` | `ParticleSimulator` | `ArctisAurora.*` (`Core`, `EngineWork`) | Core game engine — lives **inside** ParticleSimulator under `Core/`; no separate Engine project | Active |
+| `Editor` | `AuroraEditor` | `AuroraEditor.*` | Visual editor; consumer of the Engine | Early stage |
+| `TextEditor` | `Periodic` | `AuroraPeriodic`, `Periodic.*` | Obsidian/Notion-style note app; host that boots the Engine (mapping inferred, unconfirmed) | Planning |
+| — | `AuroraTesting` | — | Test project | — |
+| — | `_Build` | `_Build` | Tooling; `GenerateNamespaces.cmd` regenerates `NAMESPACES.md` | — |
+
+## Memory
+Claude keeps repo-committed working memory under **`DOCUMENTATION/ClaudeMemory/`**. This is
+machine-readable (terse bullets/tables) and version-controlled — distinct from the
+human-readable Obsidian vault under `DOCUMENTATION/Engine` and `DOCUMENTATION/Extras` (do not
+apply the vault's single-line-prose / pseudocode style to ClaudeMemory files).
+
+Layout:
+- `ClaudeMemory/Context/` — solution layout, project↔folder↔namespace mapping, orientation.
+- `ClaudeMemory/Patterns/` — recurring "how to do X here" recipes.
+- `ClaudeMemory/Decisions/` — Claude-facing complements to the root `Decisions.md`.
+- `ClaudeMemory/Mistakes/` — past errors, so they are not repeated.
+
+**Referencing code via `NAMESPACES.md`:** `NAMESPACES.md` (repo root) is an auto-generated
+`namespace -> relative path` index (built by `_Build/GenerateNamespaces.cmd`; do not hand-edit
+— regenerate it). ClaudeMemory notes reference code by **namespace + class name** and resolve
+the path through `NAMESPACES.md` rather than hardcoding paths, which rot on refactor. See
+`ClaudeMemory/Patterns/finding-code.md`.
+
+**Workflow before suggesting code:** read `CLAUDE.md` → check `NAMESPACES.md` → check
+`DOCUMENTATION/ClaudeMemory/`. (Architectural changes: also read root `Decisions.md`.)
 
 ## Shared Conventions
 - **Style:** Mix of OOP and data-oriented (ECS-first for runtime, OOP for tooling/editor)

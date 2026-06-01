@@ -83,7 +83,7 @@ namespace ArctisAurora.EngineWork.Registry
         public static AssetRegistries ParseXML(string xmlName)
         {
             //parse the XML and create the registries
-            string path = Paths.XMLDOCUMENTS + "\\" + xmlName;
+            string path = Paths.Doc(xmlName);
             AssetRegistries registries = new AssetRegistries();
             XElement root = XElement.Load(path);
             XNamespace ns = root.GetDefaultNamespace();

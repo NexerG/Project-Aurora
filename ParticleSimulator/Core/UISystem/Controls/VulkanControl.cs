@@ -732,7 +732,7 @@ namespace ArctisAurora.Core.UISystem.Controls
         #region ---- XML ----
         public static VulkanControl ParseXML(string xmlName)
         {
-            string path = Paths.XMLDOCUMENTS + "\\" + xmlName;
+            string path = Paths.Doc(xmlName);
             XDocument doc = XDocument.Load(path);
             XElement root = doc.Root;
             WindowControl window = new WindowControl();

@@ -1,4 +1,4 @@
-﻿<AssetRegistries xmlns="http://arctisaurora/AuroraAssetRegistryTypes"
+<AssetRegistries xmlns="http://arctisaurora/AuroraAssetRegistryTypes"
 				 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 				 xsi:schemaLocation="http://arctisaurora/AuroraAssetRegistryTypes ../Schemas/AssetRegistryTypeSchema.xsd" >
 	<Dictionary Name="IDMap" KeyType="xs:unsignedInt" ValueType="Type"/>
@@ -9,5 +9,5 @@
 	<Dictionary Name="uiActions" KeyType="xs:string" ValueType="Action"/>
 	<Dictionary Name="ActiveContexts" KeyType="xs:string" ValueType="Object"/>
 	<Dictionary Name="Samplers" KeyType="xs:string" ValueType="SamplerAsset"/>
-	
+
 </AssetRegistries>

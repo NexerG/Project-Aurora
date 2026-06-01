@@ -227,6 +227,32 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             }
         }
 
+        // Destroys everything sized to the window/swapchain (framebuffers + output images).
+        // Called on resize before recreation. Null-safe so the compositor (no output images)
+        // can reuse it to drop just its framebuffers.
+        internal virtual void DestroySizeDependentResources()
+        {
+            if (frameBuffers != null)
+                for (int i = 0; i < frameBuffers.Length; i++)
+                    if (frameBuffers[i].Handle != 0)
+                        Renderer.vk.DestroyFramebuffer(Renderer.logicalDevice, frameBuffers[i], null);
+
+            if (outputImageViews != null)
+                for (int i = 0; i < outputImageViews.Length; i++)
+                    if (outputImageViews[i].Handle != 0)
+                        Renderer.vk.DestroyImageView(Renderer.logicalDevice, outputImageViews[i], null);
+
+            if (outputImages != null)
+                for (int i = 0; i < outputImages.Length; i++)
+                    if (outputImages[i].Handle != 0)
+                        Renderer.vk.DestroyImage(Renderer.logicalDevice, outputImages[i], null);
+
+            if (imageDeviceMemory != null)
+                for (int i = 0; i < imageDeviceMemory.Length; i++)
+                    if (imageDeviceMemory[i].Handle != 0)
+                        Renderer.vk.FreeMemory(Renderer.logicalDevice, imageDeviceMemory[i], null);
+        }
+
         internal abstract void PrepareCamera();
 
         internal abstract void WriteCommandBuffers(int currentFrame);

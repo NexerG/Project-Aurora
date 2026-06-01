@@ -6,7 +6,9 @@
       <xs:enumeration value="Panel" />
       <xs:enumeration value="Window" />
       <xs:enumeration value="ShortText" />
-      <xs:enumeration value="TextControl" />
+      <xs:enumeration value="TextBlock" />
+      <xs:enumeration value="TextBox" />
+      <xs:enumeration value="TextInput" />
       <xs:enumeration value="Button" />
       <xs:enumeration value="DockMode" />
       <xs:enumeration value="Dock" />
@@ -24,18 +26,41 @@
       <xs:enumeration value="VeticalAlignment" />
       <xs:enumeration value="ContentScalingModeEnum" />
       <xs:enumeration value="Orientation" />
+      <xs:enumeration value="VulkanControl" />
+      <xs:enumeration value="Entry" />
+      <xs:enumeration value="EntityRegistries" />
+      <xs:enumeration value="Entity" />
       <xs:enumeration value="ActiveContext" />
       <xs:enumeration value="IParseableTypes" />
-      <xs:enumeration value="AVulkanMesh" />
-      <xs:enumeration value="Entry" />
-      <xs:enumeration value="AssetRegistries" />
       <xs:enumeration value="FontAsset" />
       <xs:enumeration value="TextureAsset" />
+      <xs:enumeration value="AVulkanMesh" />
+      <xs:enumeration value="AssetEntry" />
+      <xs:enumeration value="AssetRegistries" />
       <xs:enumeration value="ControlStyle" />
-      <xs:enumeration value="Keys" />
-      <xs:enumeration value="Keystate" />
+      <xs:enumeration value="SamplerFilter" />
+      <xs:enumeration value="SamplerAddressMode" />
+      <xs:enumeration value="SamplerMipmapMode" />
+      <xs:enumeration value="SamplerAsset" />
+      <xs:enumeration value="Step" />
+      <xs:enumeration value="Phase" />
+      <xs:enumeration value="BootstrapSequence" />
+      <xs:enumeration value="KeybindModifier" />
       <xs:enumeration value="Keybind" />
+      <xs:enumeration value="Keys" />
       <xs:enumeration value="KeybindMap" />
+      <xs:enumeration value="Condition" />
+      <xs:enumeration value="Press" />
+      <xs:enumeration value="Release" />
+      <xs:enumeration value="Hold" />
+      <xs:enumeration value="HoldRelease" />
+      <xs:enumeration value="MaxHoldTime" />
+      <xs:enumeration value="MultiTap" />
+      <xs:enumeration value="Continuous" />
+      <xs:enumeration value="Repeat" />
+      <xs:enumeration value="Toggle" />
+      <xs:enumeration value="HoldContinuous" />
+      <xs:enumeration value="Chord" />
       <xs:enumeration value="xs:string" />
       <xs:enumeration value="xs:int" />
       <xs:enumeration value="xs:float" />
@@ -59,7 +84,9 @@
       <xs:enumeration value="Panel" />
       <xs:enumeration value="Window" />
       <xs:enumeration value="ShortText" />
-      <xs:enumeration value="TextControl" />
+      <xs:enumeration value="TextBlock" />
+      <xs:enumeration value="TextBox" />
+      <xs:enumeration value="TextInput" />
       <xs:enumeration value="Button" />
       <xs:enumeration value="DockMode" />
       <xs:enumeration value="Dock" />
@@ -79,28 +106,63 @@
       <xs:enumeration value="Orientation" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:simpleType name="EntityRegistry">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="VulkanControl" />
+      <xs:enumeration value="Entry" />
+      <xs:enumeration value="EntityRegistries" />
+      <xs:enumeration value="Entity" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:simpleType name="Context">
     <xs:restriction base="xs:string">
       <xs:enumeration value="ActiveContext" />
     </xs:restriction>
   </xs:simpleType>
-  <xs:simpleType name="Registry">
+  <xs:simpleType name="AssetRegistry">
     <xs:restriction base="xs:string">
       <xs:enumeration value="IParseableTypes" />
-      <xs:enumeration value="AVulkanMesh" />
-      <xs:enumeration value="Entry" />
-      <xs:enumeration value="AssetRegistries" />
       <xs:enumeration value="FontAsset" />
       <xs:enumeration value="TextureAsset" />
+      <xs:enumeration value="AVulkanMesh" />
+      <xs:enumeration value="AssetEntry" />
+      <xs:enumeration value="AssetRegistries" />
       <xs:enumeration value="ControlStyle" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Rendering">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="SamplerFilter" />
+      <xs:enumeration value="SamplerAddressMode" />
+      <xs:enumeration value="SamplerMipmapMode" />
+      <xs:enumeration value="SamplerAsset" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Bootstrap">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Step" />
+      <xs:enumeration value="Phase" />
+      <xs:enumeration value="BootstrapSequence" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Input">
     <xs:restriction base="xs:string">
-      <xs:enumeration value="Keys" />
-      <xs:enumeration value="Keystate" />
+      <xs:enumeration value="KeybindModifier" />
       <xs:enumeration value="Keybind" />
+      <xs:enumeration value="Keys" />
       <xs:enumeration value="KeybindMap" />
+      <xs:enumeration value="Condition" />
+      <xs:enumeration value="Press" />
+      <xs:enumeration value="Release" />
+      <xs:enumeration value="Hold" />
+      <xs:enumeration value="HoldRelease" />
+      <xs:enumeration value="MaxHoldTime" />
+      <xs:enumeration value="MultiTap" />
+      <xs:enumeration value="Continuous" />
+      <xs:enumeration value="Repeat" />
+      <xs:enumeration value="Toggle" />
+      <xs:enumeration value="HoldContinuous" />
+      <xs:enumeration value="Chord" />
     </xs:restriction>
   </xs:simpleType>
 </xs:schema>

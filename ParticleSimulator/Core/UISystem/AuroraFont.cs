@@ -100,7 +100,7 @@ namespace ArctisAurora.Core.UISystem
 
         internal static void GenerateGlyphAtlas(AuroraFont fontData, string fontName, int perGlyphSize)
         {
-            string path = "C:\\Windows\\Fonts\\" + fontName;
+            string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts), fontName);
             AtlasMetaData glyphs = new AtlasMetaData();
             using (BinaryReader reader = new BinaryReader(new FileStream(path, FileMode.Open, FileAccess.Read)))
             {
@@ -232,6 +232,18 @@ namespace ArctisAurora.Core.UISystem
                     // Copy the glyph image to the atlas
                 }
             }
+
+            Image<Rgba32> SDF = new Image<Rgba32>(64, 64);
+            Glyph A = glyphs.glyphs[glyphs.chars.IndexOf('A')];
+            for (int i = 0; i < 64; i++)
+            {
+                for (int j = 0; j < 64; j++)
+                {
+                    float value = Math.Clamp(GetClosestDistanceOfChannel(new Vector2D<float>(i / 64f, j / 64f), A, new Vector3D<int>(1, 1, 1)) * 16, -1, 1);
+                    SDF[i, j] = new Rgba32(value, value, value, 1);
+                }
+            }
+            SDF.Save(Path.Combine(Paths.FONTS, baseName, $"SDF_A.png"));
 
             atlasImage.Save(Path.Combine(Paths.FONTS, baseName, $"{baseName}_atlas.png"));
         }
@@ -518,7 +530,7 @@ namespace ArctisAurora.Core.UISystem
             }
         }
 
-        private static float GetClosestDistanceOfChannel(Vector2D<float> p, Glyph glyph, Vector3D<int> channel)
+        public static float GetClosestDistanceOfChannel(Vector2D<float> p, Glyph glyph, Vector3D<int> channel)
         {
             if (glyph.edgeContours.Count == 0) return -1;
 

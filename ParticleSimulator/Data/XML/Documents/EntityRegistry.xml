@@ -1,4 +1,4 @@
-﻿<EntityRegistries xmlns="http://arctisaurora/AuroraEntityRegistryTypes"
+<EntityRegistries xmlns="http://arctisaurora/AuroraEntityRegistryTypes"
 				 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 				 xsi:schemaLocation="http://arctisaurora/AuroraEntityRegistryTypes ../Schemas/EntityRegistryTypeSchema.xsd" >
 	<List ListName="Entities" EntityType="Entity"/>
@@ -6,5 +6,5 @@
 	<List ListName="EntitiesOnStart" EntityType="Entity"/>
 	<List ListName="EntitiesOnDestroy" EntityType="Entity"/>
 	<List ListName="Controls" EntityType="VulkanControl"/>
-	
+
 </EntityRegistries>

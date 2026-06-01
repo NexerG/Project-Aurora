@@ -507,6 +507,52 @@ namespace ArctisAurora.EngineWork.Rendering
             }
         }
 
+        // Rebuilds the swapchain and every window-sized resource after a resize. Pipelines use
+        // dynamic viewport/scissor (see modules), so they are NOT recreated here.
+        internal void RecreateSwapchain()
+        {
+            // wait until the GPU is idle before tearing down resources still in use
+            vk.DeviceWaitIdle(logicalDevice);
+
+            // refresh the framebuffer size (in pixels); bail if minimized
+            Engine.window.UpdateWindowSize(ref Engine.window.windowSize);
+            if (Engine.window.windowSize.Width == 0 || Engine.window.windowSize.Height == 0)
+                return;
+
+            // tear down size-dependent resources (output images, framebuffers)
+            for (int i = 0; i < renderingModules.Length; i++)
+                renderingModules[i].DestroySizeDependentResources();
+            compositorModule.DestroySizeDependentResources();
+
+            // tear down the swapchain image views and the swapchain itself
+            for (int i = 0; i < swapchainImageViews.Length; i++)
+                vk.DestroyImageView(logicalDevice, swapchainImageViews[i], null);
+            swapchainKHR.DestroySwapchain(logicalDevice, swapchain, null);
+
+            // recreate the swapchain at the new size (CreateSwapchain reads window size)
+            CreateSwapchain();
+
+            // recreate per-module output images + framebuffers at the new size
+            for (int i = 0; i < renderingModules.Length; i++)
+            {
+                renderingModules[i].CreateOutputImages();
+                renderingModules[i].CreateModuleFrameBuffers();
+            }
+
+            // compositor framebuffers target the new swapchain views and its descriptors
+            // sample the freshly created module output views — rebuild both
+            compositorModule.CreateModuleFrameBuffers();
+            for (int f = 0; f < (int)swapchainImageCount; f++)
+                compositorModule.UpdateDescriptorSets(f, 0);
+
+            // force command buffers to be re-recorded at the new size on every image
+            for (int i = 0; i < renderingModules.Length; i++)
+                for (int d = 0; d < renderingModules[i].isDirty.Length; d++)
+                    renderingModules[i].isDirty[d] = true;
+            for (int d = 0; d < compositorModule.isDirty.Length; d++)
+                compositorModule.isDirty[d] = true;
+        }
+
         public void CreateCommandPool(uint qfIndex, out CommandPool pool, CommandPoolCreateFlags flags)
         {
             CommandPoolCreateInfo _createInfo = new CommandPoolCreateInfo()
@@ -560,6 +606,10 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal void Draw()
         {
+            // skip rendering while minimized (0-area framebuffer) — also avoids recreating at 0x0
+            if (Engine.window.windowSize.Width == 0 || Engine.window.windowSize.Height == 0)
+                return;
+
             ulong waitValue = (frameCounter - MAX_FRAMES_IN_FLIGHT) * 2 + 2;
             fixed(Semaphore* timelineSemaphorePtr = &timelineSemaphore)
             {
@@ -579,7 +629,7 @@ namespace ArctisAurora.EngineWork.Rendering
             // update renderer if needed before draw
             if (r == Result.ErrorOutOfDateKhr)
             {
-                //RecreateSwapChain();
+                RecreateSwapchain();
                 return;
             }
             else if (r != Result.Success && r != Result.SuboptimalKhr)
@@ -691,7 +741,7 @@ namespace ArctisAurora.EngineWork.Rendering
             if (r == Result.ErrorOutOfDateKhr || r == Result.SuboptimalKhr || Engine.window.frameBufferResized)
             {
                 Engine.window.frameBufferResized = false;
-                //RecreateSwapChain();
+                RecreateSwapchain();
             }
             else if (r != Result.Success)
             {

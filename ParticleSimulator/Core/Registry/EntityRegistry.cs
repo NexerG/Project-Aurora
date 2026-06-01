@@ -137,7 +137,7 @@ namespace ArctisAurora.Core.Registry
 
         public static EntityRegistry ParseXML(string xmlName)
         {
-            string path = Paths.XMLDOCUMENTS + "\\" + xmlName;
+            string path = Paths.Doc(xmlName);
             EntityRegistry registry = new EntityRegistry();
             XElement root = XElement.Load(path);
             XNamespace ns = root.GetDefaultNamespace();

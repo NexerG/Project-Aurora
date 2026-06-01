@@ -270,6 +270,15 @@ namespace ArctisAurora.Core.Rendering.Modules
                 // then on fragStage:
                 fragStage.PSpecializationInfo = &specInfo;
 
+                // viewport + scissor are dynamic so the pipeline survives window resize
+                DynamicState* dynamicStatesPtr = stackalloc DynamicState[] { DynamicState.Viewport, DynamicState.Scissor };
+                PipelineDynamicStateCreateInfo dynamicStateInfo = new PipelineDynamicStateCreateInfo()
+                {
+                    SType = StructureType.PipelineDynamicStateCreateInfo,
+                    DynamicStateCount = 2,
+                    PDynamicStates = dynamicStatesPtr
+                };
+
                 GraphicsPipelineCreateInfo pipelineInfo = new GraphicsPipelineCreateInfo()
                 {
                     SType = StructureType.GraphicsPipelineCreateInfo,
@@ -282,6 +291,7 @@ namespace ArctisAurora.Core.Rendering.Modules
                     PMultisampleState = &multisampling,
                     PDepthStencilState = &depthStencil,
                     PColorBlendState = &colorBlend,
+                    PDynamicState = &dynamicStateInfo,
                     Layout = pipelineLayout,
                     RenderPass = renderPass,
                     Subpass = 0
@@ -440,6 +450,11 @@ namespace ArctisAurora.Core.Rendering.Modules
 
             Renderer.vk.CmdBeginRenderPass(commandBuffers[index], &renderPassInfo, SubpassContents.Inline);
             Renderer.vk.CmdBindPipeline(commandBuffers[index], PipelineBindPoint.Graphics, pipeline);
+
+            Viewport _viewport = new Viewport() { X = 0, Y = 0, Width = Engine.window.windowSize.Width, Height = Engine.window.windowSize.Height, MinDepth = 0, MaxDepth = 1 };
+            Rect2D _scissor = new Rect2D() { Offset = { X = 0, Y = 0 }, Extent = Engine.window.windowSize };
+            Renderer.vk.CmdSetViewport(commandBuffers[index], 0, 1, &_viewport);
+            Renderer.vk.CmdSetScissor(commandBuffers[index], 0, 1, &_scissor);
 
             DescriptorSet set = frameResources[index].sets[0];
             Renderer.vk.CmdBindDescriptorSets(commandBuffers[index], PipelineBindPoint.Graphics,

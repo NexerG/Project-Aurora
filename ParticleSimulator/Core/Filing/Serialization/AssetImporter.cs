@@ -11,7 +11,7 @@ namespace ArctisAurora.Core.Filing.Serialization
     {
         public static void ImportFont(string characters, string fontName)
         {
-            var fs = new FileStream("C:\\Windows\\Fonts\\" + fontName, FileMode.Open, FileAccess.Read);
+            var fs = new FileStream(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts), fontName), FileMode.Open, FileAccess.Read);
             var reader = new BinaryReader(fs);
 
             AuroraFont font = new AuroraFont();

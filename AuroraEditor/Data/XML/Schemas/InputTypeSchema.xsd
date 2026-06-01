@@ -3,8 +3,40 @@
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:simpleType name="Input">
-    <xs:union memberTypes="types:Keys types:Keystate" />
+    <xs:union memberTypes="types:Keys" />
   </xs:simpleType>
+  <xs:element name="KeybindModifier" type="types:KeybindModifier" />
+  <xs:complexType name="KeybindModifier">
+    <xs:sequence />
+    <xs:attribute name="Key" type="types:Keys" />
+  </xs:complexType>
+  <xs:element name="Keybind" type="types:Keybind" />
+  <xs:complexType name="Keybind">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Modifier" type="types:KeybindModifier">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="KeybindModifier" type="types:KeybindModifier" />
+        <xs:element name="Condition" type="types:Condition" />
+        <xs:element name="Press" type="types:Press" />
+        <xs:element name="Release" type="types:Release" />
+        <xs:element name="Hold" type="types:Hold" />
+        <xs:element name="HoldRelease" type="types:HoldRelease" />
+        <xs:element name="MaxHoldTime" type="types:MaxHoldTime" />
+        <xs:element name="MultiTap" type="types:MultiTap" />
+        <xs:element name="Continuous" type="types:Continuous" />
+        <xs:element name="Repeat" type="types:Repeat" />
+        <xs:element name="Toggle" type="types:Toggle" />
+        <xs:element name="HoldContinuous" type="types:HoldContinuous" />
+        <xs:element name="Chord" type="types:Chord" />
+      </xs:choice>
+    </xs:sequence>
+    <xs:attribute name="Trigger" type="types:Keys" />
+    <xs:attribute name="Action" type="actions:Input" />
+  </xs:complexType>
   <xs:simpleType name="Keys">
     <xs:restriction base="xs:string">
       <xs:enumeration value="A" />
@@ -139,22 +171,6 @@
       <xs:enumeration value="unknown" />
     </xs:restriction>
   </xs:simpleType>
-  <xs:simpleType name="Keystate">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="Pressed" />
-      <xs:enumeration value="Released" />
-      <xs:enumeration value="Held" />
-      <xs:enumeration value="Unknown" />
-    </xs:restriction>
-  </xs:simpleType>
-  <xs:element name="Keybind" type="types:Keybind" />
-  <xs:complexType name="Keybind">
-    <xs:sequence />
-    <xs:attribute name="Button" type="types:Keys" />
-    <xs:attribute name="Action" type="actions:Input" />
-    <xs:attribute name="State" type="types:Keystate" />
-    <xs:attribute name="OnTick" type="xs:boolean" />
-  </xs:complexType>
   <xs:element name="KeybindMap" type="types:KeybindMap" />
   <xs:complexType name="KeybindMap">
     <xs:sequence>
@@ -163,6 +179,63 @@
           <xs:documentation></xs:documentation>
         </xs:annotation>
       </xs:element>
+      <xs:choice minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
+  </xs:complexType>
+  <xs:element name="Condition" type="types:Condition" />
+  <xs:complexType name="Condition">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="Press" type="types:Press" />
+  <xs:complexType name="Press">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="Release" type="types:Release" />
+  <xs:complexType name="Release">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="Hold" type="types:Hold" />
+  <xs:complexType name="Hold">
+    <xs:sequence />
+    <xs:attribute name="Threshold" type="xs:float" />
+  </xs:complexType>
+  <xs:element name="HoldRelease" type="types:HoldRelease" />
+  <xs:complexType name="HoldRelease">
+    <xs:sequence />
+    <xs:attribute name="Threshold" type="xs:float" />
+  </xs:complexType>
+  <xs:element name="MaxHoldTime" type="types:MaxHoldTime" />
+  <xs:complexType name="MaxHoldTime">
+    <xs:sequence />
+    <xs:attribute name="Threshold" type="xs:float" />
+  </xs:complexType>
+  <xs:element name="MultiTap" type="types:MultiTap" />
+  <xs:complexType name="MultiTap">
+    <xs:sequence />
+    <xs:attribute name="Count" type="xs:int" />
+  </xs:complexType>
+  <xs:element name="Continuous" type="types:Continuous" />
+  <xs:complexType name="Continuous">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="Repeat" type="types:Repeat" />
+  <xs:complexType name="Repeat">
+    <xs:sequence />
+    <xs:attribute name="Delay" type="xs:float" />
+    <xs:attribute name="Rate" type="xs:float" />
+  </xs:complexType>
+  <xs:element name="Toggle" type="types:Toggle" />
+  <xs:complexType name="Toggle">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="HoldContinuous" type="types:HoldContinuous" />
+  <xs:complexType name="HoldContinuous">
+    <xs:sequence />
+    <xs:attribute name="Threshold" type="xs:float" />
+  </xs:complexType>
+  <xs:element name="Chord" type="types:Chord" />
+  <xs:complexType name="Chord">
+    <xs:sequence />
+    <xs:attribute name="Key" type="types:Keys" />
   </xs:complexType>
 </xs:schema>

@@ -550,6 +550,15 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     throw new Exception("Failed to create pipeline layout");
                 }
 
+                // viewport + scissor are dynamic so the pipeline survives window resize
+                DynamicState* dynamicStatesPtr = stackalloc DynamicState[] { DynamicState.Viewport, DynamicState.Scissor };
+                PipelineDynamicStateCreateInfo dynamicStateInfo = new PipelineDynamicStateCreateInfo()
+                {
+                    SType = StructureType.PipelineDynamicStateCreateInfo,
+                    DynamicStateCount = 2,
+                    PDynamicStates = dynamicStatesPtr
+                };
+
                 GraphicsPipelineCreateInfo graphicsPipelineInfo = new GraphicsPipelineCreateInfo()
                 {
                     SType = StructureType.GraphicsPipelineCreateInfo,
@@ -562,6 +571,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     PMultisampleState = &multisampling,
                     PDepthStencilState = &depthCreateInfo,
                     PColorBlendState = &colorBlending,
+                    PDynamicState = &dynamicStateInfo,
                     Layout = pipelineLayout,
                     RenderPass = renderPass,
                     Subpass = 0,
@@ -693,6 +703,11 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             //player view
             Renderer.vk.CmdBindPipeline(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipeline);
             Renderer.vk.CmdBeginRenderPass(commandBuffers[currentFrame], &_renderPassInfo, SubpassContents.Inline);
+
+            Viewport _viewport = new Viewport() { X = 0, Y = 0, Width = Engine.window.windowSize.Width, Height = Engine.window.windowSize.Height, MinDepth = 0, MaxDepth = 1 };
+            Rect2D _scissor = new Rect2D() { Offset = { X = 0, Y = 0 }, Extent = Engine.window.windowSize };
+            Renderer.vk.CmdSetViewport(commandBuffers[currentFrame], 0, 1, &_viewport);
+            Renderer.vk.CmdSetScissor(commandBuffers[currentFrame], 0, 1, &_scissor);
 
             //IReadOnlyList<Entity> entities = EntityManager.controls;
             var _offset = new ulong[] { 0 };

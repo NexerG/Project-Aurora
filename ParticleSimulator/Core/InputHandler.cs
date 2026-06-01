@@ -1045,7 +1045,7 @@ namespace ArctisAurora.EngineWork
         {
             InputHandler handler = new InputHandler();
 
-            foreach (string path in Directory.GetFiles(Paths.XMLDOCUMENTS_INPUTS, "*.xml"))
+            foreach (string path in VirtualFileSystem.EnumerateAll("XML/Documents/Inputs", "*.xml"))
             {
                 XElement root = XElement.Load(path);
                 XNamespace ns = root.GetDefaultNamespace();

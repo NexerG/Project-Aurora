@@ -56,7 +56,7 @@ namespace ArctisAurora.Core.Registry.Assets
         public override void LoadAsset(AbstractAsset asset, string name, string path)
         {
             Dictionary<string, SamplerAsset> dSamplers = AssetRegistries.GetRegistryByValueType<string, SamplerAsset>(typeof(SamplerAsset));
-            string samplerPath = Paths.XMLDOCUMENTS_SAMPLERS + $"\\{name}.xml";
+            string samplerPath = Paths.SamplerDoc(name + ".xml");
             XElement samplerRoot = XElement.Load(samplerPath);
             XNamespace sns = samplerRoot.GetDefaultNamespace();
             foreach (XElement elem in samplerRoot.Elements(sns + "SamplerAsset"))
@@ -84,7 +84,7 @@ namespace ArctisAurora.Core.Registry.Assets
         {
             Dictionary<string, SamplerAsset> dSamplers = AssetRegistries.GetRegistryByValueType<string, SamplerAsset>(typeof(SamplerAsset));
 
-            string[] files = Directory.GetFiles(Paths.XMLDOCUMENTS_SAMPLERS, "*.xml");
+            string[] files = VirtualFileSystem.EnumerateAll("XML/Documents/Samplers", "*.xml").ToArray();
             for (int i = 0; i < files.Length; i++)
             {
                 XElement samplerRoot = XElement.Load(files[i]);

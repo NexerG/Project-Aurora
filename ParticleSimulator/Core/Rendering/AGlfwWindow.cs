@@ -107,6 +107,10 @@ namespace ArctisAurora.EngineWork.Rendering
         private void WindwoResizeCallback(WindowHandle* window, int width, int height)
         {
             frameBufferResized = true;
+            // width/height here are in screen coordinates; Vulkan needs framebuffer (pixel)
+            // size, so query it directly. On minimize this reports 0x0, which Draw() guards on.
+            _glfw.GetFramebufferSize(windowHandle, out int fbWidth, out int fbHeight);
+            windowSize = new Extent2D((uint)fbWidth, (uint)fbHeight);
         }
     }
 }
