@@ -32,8 +32,9 @@ namespace ArctisAurora.Core.Registry
         public Type? AllowedChildren { get; set; } = null;
         public int MinChildren { get; set; } = 0;
         public int MaxChildren { get; set; } = -1;
+        public bool IsAbstract { get; set; } = false;
 
-        public A_XSDTypeAttribute(string name, string category = "Uncategorized", Type allowedChildren = null, int minChildren = 0, int maxChildren = -1, string patternValue="", string description = "")
+        public A_XSDTypeAttribute(string name, string category = "Uncategorized", Type allowedChildren = null, int minChildren = 0, int maxChildren = -1, string patternValue="", string description = "", bool isAbstract = false)
         {
             Name = name;
             Description = description;
@@ -42,6 +43,7 @@ namespace ArctisAurora.Core.Registry
             AllowedChildren = allowedChildren;
             MaxChildren = maxChildren;
             MinChildren = minChildren;
+            IsAbstract = isAbstract;
         }
     }
 
@@ -207,6 +209,7 @@ namespace ArctisAurora.Core.Registry
             sb.Append($"category:{category}|");
             foreach (var t in categoryTypes.OrderBy(x => x.Attribute.Name))
             {
+                if (t.Attribute.IsAbstract) continue;   // mirror emission: abstract types produce no schema output
                 sb.Append($"type:{t.Attribute.Name}:{t.Type.FullName}|");
                 if (t.Type.IsEnum)
                 {
@@ -226,8 +229,9 @@ namespace ArctisAurora.Core.Registry
                     {
                         var children = generalAsm.SelectMany(a => a.GetTypes()
                             .Where(ty => t.Attribute.AllowedChildren.IsAssignableFrom(ty) && ty != t.Attribute.AllowedChildren))
-                            .Select(c => c.GetCustomAttribute<A_XSDTypeAttribute>(false)?.Name ?? "")
-                            .Where(n => n != "").OrderBy(n => n);
+                            .Select(c => c.GetCustomAttribute<A_XSDTypeAttribute>(false))
+                            .Where(a => a != null && a.Name != "" && !a.IsAbstract)
+                            .Select(a => a.Name).OrderBy(n => n);
                         foreach (string cn in children)
                             sb.Append($"child:{cn}|");
                     }
@@ -329,6 +333,9 @@ namespace ArctisAurora.Core.Registry
                 }
                 foreach (var t in category.Value)
                 {
+                    // Abstract (base) types are registered but never authored — no element, no complexType.
+                    if (t.Attribute.IsAbstract) continue;
+
                     if (t.Type.IsEnum)
                     {
                         GenerateEnumType(t.Type, t.Attribute.Name, typeSchema);
@@ -618,15 +625,16 @@ namespace ArctisAurora.Core.Registry
                         && ty != attribute.AllowedChildren)).ToList();
                 foreach (var child in children)
                 {
-                    string childName = child.GetCustomAttribute<A_XSDTypeAttribute>(false)?.Name ?? string.Empty;
-                    if (childName == string.Empty)
+                    A_XSDTypeAttribute childAttr = child.GetCustomAttribute<A_XSDTypeAttribute>(false);
+                    // No [A_XSDType] name, or an abstract base (e.g. VulkanControl) → never a valid child.
+                    if (childAttr == null || childAttr.Name == string.Empty || childAttr.IsAbstract)
                     {
                         continue;
                     }
                     XmlSchemaElement childElement = new XmlSchemaElement
                     {
-                        Name = childName,
-                        SchemaTypeName = new XmlQualifiedName($"types:{childName}")
+                        Name = childAttr.Name,
+                        SchemaTypeName = new XmlQualifiedName($"types:{childAttr.Name}")
                     };
                     childChoice.Items.Add(childElement);
                 }

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Document xmlns="http://arctisaurora/AuroraUITypes"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../Schemas/UITypeSchema.xsd">
+  <Heading Level="1">
+    <Run Text="Welcome to Periodic" />
+  </Heading>
+  <Paragraph>
+    <Run Text="This note is stored as engine XML and rendered by the document view. " />
+    <Run Text="This run is bold." Bold="true" />
+  </Paragraph>
+  <Heading Level="2">
+    <Run Text="A second section" />
+  </Heading>
+  <Paragraph>
+    <Run Text="Paragraphs flow and wrap inside the editor viewport, and the whole document scrolls when it grows taller than the window. Keep typing past the edge to see the text reflow onto the next line within this same paragraph block." />
+  </Paragraph>
+	<Paragraph>
+		<Run Text="Another paragraph follows the first with vertical spacing handled by the stack panel." />
+	</Paragraph>
+	<Paragraph>
+		<Run Text="Another paragraph follows the first with vertical spacing handled by the stack panel." />
+	</Paragraph>
+	<Paragraph>
+		<Run Text="Another paragraph follows the first with vertical spacing handled by the stack panel." />
+	</Paragraph>
+</Document>

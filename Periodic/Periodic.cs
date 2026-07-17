@@ -16,7 +16,7 @@ namespace AuroraPeriodic
             InputHandler.SetActiveKeybindGroup("InputMap");
             // prepare level
 
-            //AssetImporter.ImportFont("abcdefghijklmnoprstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ <>", "arial.ttf");
+            //AssetImporter.ImportFont("abcdefghijklmnoprstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ <>.,", "arial.ttf");
 
             WindowControl windowControl = (WindowControl)VulkanControl.ParseXML("UI.xml");
             //PanelControl windowControl = new PanelControl();

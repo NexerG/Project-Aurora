@@ -20,7 +20,7 @@ namespace ArctisAurora.Core.UISystem.Controls
     public interface IXMLChild_UI
     { }
 
-    [A_XSDType("VulkanControl", "EntityRegistry")]
+    [A_XSDType("VulkanControl", "EntityRegistry", isAbstract: true)]
     public unsafe class VulkanControl : Entity, IXMLParser<VulkanControl>, IXMLChild_UI
     {
         #region ---- STRUCTS ----

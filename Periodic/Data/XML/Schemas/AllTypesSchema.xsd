@@ -9,6 +9,11 @@
       <xs:enumeration value="TextBlock" />
       <xs:enumeration value="TextBox" />
       <xs:enumeration value="TextInput" />
+      <xs:enumeration value="Paragraph" />
+      <xs:enumeration value="Heading" />
+      <xs:enumeration value="DocumentEditor" />
+      <xs:enumeration value="Run" />
+      <xs:enumeration value="Document" />
       <xs:enumeration value="Button" />
       <xs:enumeration value="DockMode" />
       <xs:enumeration value="Dock" />
@@ -87,6 +92,11 @@
       <xs:enumeration value="TextBlock" />
       <xs:enumeration value="TextBox" />
       <xs:enumeration value="TextInput" />
+      <xs:enumeration value="Paragraph" />
+      <xs:enumeration value="Heading" />
+      <xs:enumeration value="DocumentEditor" />
+      <xs:enumeration value="Run" />
+      <xs:enumeration value="Document" />
       <xs:enumeration value="Button" />
       <xs:enumeration value="DockMode" />
       <xs:enumeration value="Dock" />

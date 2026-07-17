@@ -12,6 +12,7 @@ ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Projec
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Filing\Serialization\Paths.cs
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Filing\Serialization\SerializationAttributes.cs
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Filing\Serialization\Serializer.cs
+ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Filing\Serialization\VirtualFileSystem.cs
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Registry\Context.cs
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Registry\EntityRegistry.cs
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\Registry\XSDGenerator.cs
@@ -42,6 +43,11 @@ ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Proj
 ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Controls\Text\ShortTextControl.cs
 ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Controls\Text\TextBlockControl.cs
 ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Controls\Text\TextControl.cs
+ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Controls\Text\Document\Blocks.cs
+ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Controls\Text\Document\DocumentEditorControl.cs
+ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Controls\Text\Document\DocumentXml.cs
+ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Controls\Text\Document\Inlines.cs
+ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Controls\Text\Document\RichTextDocument.cs
 ArctisAurora.Core.UISystem.Controls.Text.Editing -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Controls\Text\Editing\TextBoxControl.cs
 ArctisAurora.Core.UISystem.Controls.Text.Editing -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\Core\UISystem\Controls\Text\Editing\TextInputControl.cs
 ArctisAurora.CustomEntities -> C:\Projects-Repositories\Aurora\Project-Aurora\ParticleSimulator\CustomEntities\Layer.cs

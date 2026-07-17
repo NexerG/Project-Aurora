@@ -180,18 +180,27 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
             CommitEdit();
         }
 
+        // One wrapped line's glyphs plus the line's shared baseline metrics.
+        private sealed class GlyphLine
+        {
+            public List<(GlyphControl glyph, float x)> glyphs = new();
+            public float ascent;
+            public float descent;
+        }
+
         public override Vector2D<float> Measure(Vector2D<float> availableSize)
         {
             float fullWidth = availableSize.X;
             float cursorX = firstLineOffset;
-            float lineHeight = 0f;
+            float lineAscent = 0f;
+            float lineDescent = 0f;
             float totalHeight = 0f;
             float maxWidth = 0f;
             bool firstLine = true;
 
             for (int i = 0; i < children.Count; i++)
             {
-                if (children[i] is not VulkanControl glyph) continue;
+                if (children[i] is not GlyphControl glyph) continue;
 
                 Vector2D<float> desired = glyph.Measure(new Vector2D<float>(float.MaxValue, float.MaxValue));
 
@@ -200,21 +209,23 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
                 {
                     // Line break
                     if (cursorX > maxWidth) maxWidth = cursorX;
-                    totalHeight += MathF.Max(lineHeight, minLineHeight);
+                    totalHeight += MathF.Max(lineAscent + lineDescent, minLineHeight);
                     cursorX = 0f;
-                    lineHeight = 0f;
+                    lineAscent = 0f;
+                    lineDescent = 0f;
                     firstLine = false;
                 }
 
                 cursorX += desired.X;
-                if (desired.Y > lineHeight) lineHeight = desired.Y;
+                if (glyph.ascent > lineAscent) lineAscent = glyph.ascent;
+                if (glyph.descent > lineDescent) lineDescent = glyph.descent;
             }
 
             // Last line
             if (cursorX > maxWidth) maxWidth = cursorX;
-            totalHeight += MathF.Max(lineHeight, minLineHeight);
+            totalHeight += MathF.Max(lineAscent + lineDescent, minLineHeight);
             lastLineEndX = cursorX;
-            lastLineHeight = lineHeight;
+            lastLineHeight = lineAscent + lineDescent;
 
             float w = preferredWidth > 0 ? MathF.Max(preferredWidth, maxWidth) : maxWidth;
             float h = preferredHeight > 0 ? MathF.Max(preferredHeight, totalHeight) : totalHeight;
@@ -238,32 +249,40 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
                 : finalRect;
 
             float fullWidth = finalRect.width;
+
+            List<GlyphLine> lines = new List<GlyphLine>();
+            GlyphLine line = new GlyphLine();
             float cursorX = firstLineOffset;
-            float cursorY = finalRect.y;
-            float lineHeight = 0f;
             bool firstLine = true;
 
             for (int i = 0; i < children.Count; i++)
             {
-                if (children[i] is not VulkanControl glyph) continue;
+                if (children[i] is not GlyphControl glyph) continue;
 
                 float glyphW = glyph.DesiredSize.X;
-                float glyphH = glyph.DesiredSize.Y;
 
                 if (cursorX + glyphW > fullWidth && cursorX > (firstLine ? firstLineOffset : 0))
                 {
-                    cursorY += MathF.Max(lineHeight, minLineHeight);
+                    lines.Add(line);
+                    line = new GlyphLine();
                     cursorX = 0f;
-                    lineHeight = 0f;
                     firstLine = false;
                 }
 
-                float cx = finalRect.x + cursorX;
-                float cy = cursorY;
-                glyph.Arrange(new LayoutRect(cx, cy, glyphW, glyphH));
-
+                line.glyphs.Add((glyph, cursorX));
+                if (glyph.ascent > line.ascent) line.ascent = glyph.ascent;
+                if (glyph.descent > line.descent) line.descent = glyph.descent;
                 cursorX += glyphW;
-                if (glyphH > lineHeight) lineHeight = glyphH;
+            }
+            lines.Add(line);
+
+            float cursorY = finalRect.y;
+            foreach (GlyphLine l in lines)
+            {
+                float baselineY = cursorY + l.ascent;
+                foreach ((GlyphControl glyph, float x) in l.glyphs)
+                    glyph.Arrange(new LayoutRect(finalRect.x + x, baselineY - glyph.ascent, glyph.DesiredSize.X, glyph.DesiredSize.Y));
+                cursorY += MathF.Max(l.ascent + l.descent, minLineHeight);
             }
 
             isArrangeDirty = false;

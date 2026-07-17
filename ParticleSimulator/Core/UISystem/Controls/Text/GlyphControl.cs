@@ -13,6 +13,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         int index;
         Glyph glyph;
 
+        public float ascent;
+        public float descent;
+
         public GlyphControl(char character, FontAsset fontAsset, int px)
         {
             BubbleAll();
@@ -23,6 +26,15 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
 
             preferredWidth = (int)(glyph.glyphWidth * px);
             preferredHeight = (int)(glyph.glyphHeight * px);
+
+            const float atlasInkMargin = 0.1f;
+            int range = glyph.yMax - glyph.yMin;
+            if (range != 0)
+            {
+                float baselineFromTop = atlasInkMargin + (1f - 2f * atlasInkMargin) * glyph.yMax / range;
+                ascent = baselineFromTop * preferredHeight;
+                descent = preferredHeight - ascent;
+            }
 
             float k = MathF.Ceiling(MathF.Sqrt(fontAsset.atlasMetaData.glyphCount));
             float glyphAtlasSize = 1f / k;
