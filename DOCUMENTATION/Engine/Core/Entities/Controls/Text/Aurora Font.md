@@ -1,4 +1,4 @@
----
+﻿---
 date: 2026-05-30
 Status: Current
 tags:
@@ -21,7 +21,7 @@ Type:
 Attributes:
   - Serializable
 Namespace: ArctisAurora.Core.UISystem
-SourceFile: ParticleSimulator/Core/UISystem/AuroraFont.cs
+SourceFile: AuroraEngine/Core/UISystem/AuroraFont.cs
 VerifiedAgainst: 2026-05-30
 ---
 ## Description
@@ -34,7 +34,7 @@ Parses a TrueType (`.ttf`) font and bakes an **MTSDF** glyph atlas. Two roles: (
 
 | Member | Kind | Summary |
 | --- | --- | --- |
-| `Deserialize(string path)` | public | Load `.afm` → `FontMeta`, the `TableEntry[]` directory, and the char set. |
+| `Deserialize(string path)` | public | Load `.afm` â†’ `FontMeta`, the `TableEntry[]` directory, and the char set. |
 | `GenerateGlyphAtlas(AuroraFont fontData, string fontName, int perGlyphSize)` | static | Bake the atlas + `.agd` from a system `.ttf`. |
 
 ## Fields & Properties
@@ -56,24 +56,24 @@ Reads the `FontMeta`, the `TableEntry` directory, and the character list from th
 
 ### `GenerateGlyphAtlas` *(static)*
 Reads the `.ttf` from the **system fonts folder** (`Environment.SpecialFolder.Fonts`), then:
-	`maxp` → glyph count
-	`head` → `unitsPerEm` + `indexToLocFormat`
-	`loca` → glyph offsets
-	per character: `cmap` (`GetGlyphIndex`) → `glyf` (`GetGlyphOutline`) → a [[Glyph]] of bezier contours
-	`hhea`/`hmtx` → `advanceWidth` + left side bearings
+	`maxp` â†’ glyph count
+	`head` â†’ `unitsPerEm` + `indexToLocFormat`
+	`loca` â†’ glyph offsets
+	per character: `cmap` (`GetGlyphIndex`) â†’ `glyf` (`GetGlyphOutline`) â†’ a [[Glyph]] of bezier contours
+	`hhea`/`hmtx` â†’ `advanceWidth` + left side bearings
 	derive `tsb`
-	serialize the [[Atlas Meta Data]] → `.agd`
+	serialize the [[Atlas Meta Data]] â†’ `.agd`
 	render each glyph cell via `GenerateMTSDF`
 	save `{font}_atlas.png` (plus a debug `SDF_A.png`)
 
 ## Helpers
 
-- `GetGlyphIndex` — `cmap` format-4 segmented lookup (char → glyph index).
-- `GetGlyphOutline` — parse `glyf` contours into beziers, `BuildEdges`, then assign MSDF **edge colors** (R/G/B) by corner detection so channels can be combined.
-- `GenerateMTSDF` — per pixel: three per-channel signed distances + a true distance, packed into RGBA.
-- `GetClosestDistanceOfChannel` · `ClosestTOnBezier` (coarse sample + Newton refinement) · `ComputeWindingNumber` (ray-cast via quadratic roots) · `SolveCubic` / `SolveQuadratic`.
+- `GetGlyphIndex` â€” `cmap` format-4 segmented lookup (char â†’ glyph index).
+- `GetGlyphOutline` â€” parse `glyf` contours into beziers, `BuildEdges`, then assign MSDF **edge colors** (R/G/B) by corner detection so channels can be combined.
+- `GenerateMTSDF` â€” per pixel: three per-channel signed distances + a true distance, packed into RGBA.
+- `GetClosestDistanceOfChannel` Â· `ClosestTOnBezier` (coarse sample + Newton refinement) Â· `ComputeWindingNumber` (ray-cast via quadratic roots) Â· `SolveCubic` / `SolveQuadratic`.
 
 ## Related
-- [[Glyph]] — the outline/metrics type produced here
-- [[Atlas Meta Data]] — the serialized atlas metadata
-- [[IDeserialize]] · [[Serializer]]
+- [[Glyph]] â€” the outline/metrics type produced here
+- [[Atlas Meta Data]] â€” the serialized atlas metadata
+- [[IDeserialize]] Â· [[Serializer]]

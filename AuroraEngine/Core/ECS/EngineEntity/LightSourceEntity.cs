@@ -23,7 +23,7 @@ namespace ArctisAurora.Core.ECS.EngineEntity
 
         public void UpdateLightPosition(Vector3D<float> newPos)
         {
-            transform.position = newPos;
+            //transform.position = newPos;
 
             //GetComponent<LightsourceComponent>().UpdatePosition();
         }

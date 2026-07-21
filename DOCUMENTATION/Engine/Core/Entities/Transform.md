@@ -1,4 +1,4 @@
----
+﻿---
 date: 2026-05-30
 tags:
   - d_Entity
@@ -18,7 +18,7 @@ Type:
 Attributes:
   - Serializable
 Namespace: ArctisAurora.Core.ECS.EngineEntity
-SourceFile: ParticleSimulator/Core/ECS/EngineEntity/Transform.cs
+SourceFile: AuroraEngine/Core/ECS/EngineEntity/Transform.cs
 VerifiedAgainst: 2026-05-30
 ---
 ## Description
@@ -34,7 +34,7 @@ The position / rotation / scale of an [[Entity]]. Every mutating setter flips `_
 | `SetLocalPosition(Vector3D)` / `MoveLocalPosition(Vector3D)` | public | Offset by a delta (the `Move*` variant also offsets children). |
 | `SetWorldScale` / `SetLocalScale(Vector3D)` | public | Set scale. |
 | `SetRotationFromVector3(Vector3D)` | public | Set Euler-degree rotation. |
-| `GetQuaternion()` | public | Euler degrees → `Quaternion`. |
+| `GetQuaternion()` | public | Euler degrees â†’ `Quaternion`. |
 | `GetEntityPosition()` / `GetEntityRotation()` / `GetScale()` | public | Accessors. |
 
 ## Fields & Properties
@@ -57,7 +57,7 @@ The position / rotation / scale of an [[Entity]]. Every mutating setter flips `_
 `SetLocalScale` / `SetWorldScale` set `scale` directly. Rotation is set via `SetRotationFromVector3` (degrees) and read back as a quaternion via `GetQuaternion()`.
 
 ### Notes / gotchas
-- `SetRotationFromQuaternion(q)` currently only calls `MarkDirty()` — it does **not** store the quaternion, so it has no visible effect yet.
+- `SetRotationFromQuaternion(q)` currently only calls `MarkDirty()` â€” it does **not** store the quaternion, so it has no visible effect yet.
 - `MoveToPosition` computes its child delta *after* overwriting `position`, so the delta is always zero and children don't actually move. Use `MoveLocalPosition` if you need children to follow.
 
 ## Helpers
@@ -67,4 +67,4 @@ private float DegreesToRadians(float degrees) => degrees * (MathF.PI / 180f);
 ```
 
 ## Related
-- [[Entity]] — owns one Transform
+- [[Entity]] â€” owns one Transform

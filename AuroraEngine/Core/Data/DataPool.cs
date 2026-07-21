@@ -1,7 +1,5 @@
 namespace ArctisAurora.Core.Data
 {
-    public enum PoolGrowth { Multiplicative, Additive }
-
     // A homogeneous block of entities: one dense array per component type, plus an
     // indirection table so packed storage survives removal and reordering.
     //
@@ -20,7 +18,7 @@ namespace ArctisAurora.Core.Data
         public string Name { get; }
         public bool Ordered { get; }
 
-        private readonly PoolGrowth _growthMode;
+        private readonly PoolGrowthType _growthMode;
         private readonly int _growthValue;
 
         private readonly Dictionary<Type, IPoolColumn> _columns = new();
@@ -38,14 +36,22 @@ namespace ArctisAurora.Core.Data
 
         public int Count => _count;
         public int Capacity => _capacity;
-        public bool ContentDirty { get; private set; }
         public bool StructuralDirty { get; private set; }
+
+        // Dirty range in dense-index space: the contiguous slice [DirtyMin, DirtyMax] (inclusive)
+        // with unuploaded changes. DirtyMax < DirtyMin means nothing is dirty. The renderer
+        // re-uploads only this slice — requires the GPU buffer to mirror pool dense order.
+        private int _dirtyMin = int.MaxValue;
+        private int _dirtyMax = -1;
+        public int DirtyMin => _dirtyMin;
+        public int DirtyMax => _dirtyMax;
+        public bool ContentDirty => _dirtyMax >= _dirtyMin;
 
         // Supplies the desired dense order (as stableIds) when the pool is resequenced.
         // Resolved from the pool's SortAction, or set directly (tests / systems).
         public Func<DataPool, IReadOnlyList<int>> SortProvider { get; set; }
 
-        public DataPool(ushort id, string name, int capacity, bool ordered, PoolGrowth growthMode, int growthValue, IEnumerable<Type> componentTypes)
+        public DataPool(ushort id, string name, int capacity, bool ordered, PoolGrowthType growthMode, int growthValue, IEnumerable<Type> componentTypes)
         {
             if (capacity < 1) capacity = 1;
             Id = id;
@@ -79,6 +85,34 @@ namespace ArctisAurora.Core.Data
             return ref ((PoolColumn<T>)_columns[typeof(T)]).data[dense];
         }
 
+        private T[] Column<T>() where T : struct => ((PoolColumn<T>)_columns[typeof(T)]).data;
+
+        // ---- bulk data transfer (per component type) ----
+
+        // Copy this pool's full live data for component T out into dest (dest.Length >= Count).
+        public void CopyTo<T>(Span<T> dest) where T : struct
+            => GetSpan<T>().CopyTo(dest);
+
+        // Copy an external array into component T's dense storage from index 0, and dirty it.
+        // A raw data refresh — Count is unchanged (lifecycle stays with Allocate/Free).
+        public void CopyFrom<T>(ReadOnlySpan<T> src) where T : struct
+        {
+            src.CopyTo(Column<T>().AsSpan(0, src.Length));
+            MarkRangeDirty(0, src.Length - 1);
+        }
+
+        // Copy a dense range [from, to] (inclusive) of component T out into dest.
+        public void CopyRange<T>(int from, int to, Span<T> dest) where T : struct
+            => Column<T>().AsSpan(from, to - from + 1).CopyTo(dest);
+
+        // Overwrite a dense range [from, to] (inclusive) of component T from src, and dirty it.
+        public void UpdateRange<T>(int from, int to, ReadOnlySpan<T> src) where T : struct
+        {
+            int len = to - from + 1;
+            src.Slice(0, len).CopyTo(Column<T>().AsSpan(from, len));
+            MarkRangeDirty(from, to);
+        }
+
         public bool Alive(DataHandle h)
             => h.PoolId == Id
                && (uint)h.StableId < (uint)_capacity
@@ -97,6 +131,10 @@ namespace ArctisAurora.Core.Data
             _slots[stableId] = dense;
             _backMap[dense] = stableId;
             _owners[dense] = owner;
+
+            StructuralDirty = true;                    // instance count changed
+            if (dense < _dirtyMin) _dirtyMin = dense;  // the new element needs uploading
+            if (dense > _dirtyMax) _dirtyMax = dense;
             return new DataHandle(Id, stableId, _versions[stableId]);
         }
 
@@ -108,9 +146,37 @@ namespace ArctisAurora.Core.Data
             _pendingFree.Add(h.StableId);
         }
 
-        public void MarkContentDirty() => ContentDirty = true;
+        // Expand the dirty range to include this element (dense index resolved from the handle).
+        public void MarkContentDirty(DataHandle h)
+        {
+            int dense = _slots[h.StableId];
+            if (dense < 0) return;
+            if (dense < _dirtyMin) _dirtyMin = dense;
+            if (dense > _dirtyMax) _dirtyMax = dense;
+        }
+
+        // Whole buffer changed (reorder / realloc / count change) — dirty the entire live range.
+        public void MarkAllDirty()
+        {
+            _dirtyMin = 0;
+            _dirtyMax = _count - 1;
+        }
+
+        // Expand the dirty range to cover the dense range [from, to] (inclusive).
+        public void MarkRangeDirty(int from, int to)
+        {
+            if (from < _dirtyMin) _dirtyMin = from;
+            if (to > _dirtyMax) _dirtyMax = to;
+        }
+
         public void MarkOrderDirty() => _orderDirty = true;
-        public void ClearDirty() { ContentDirty = false; StructuralDirty = false; }
+
+        public void ClearDirty()
+        {
+            _dirtyMin = int.MaxValue;
+            _dirtyMax = -1;
+            StructuralDirty = false;
+        }
 
         // Runs between frames. Order matters: remove dead, then resequence survivors.
         public void FrameEdge()
@@ -121,6 +187,7 @@ namespace ArctisAurora.Core.Data
                 else SwapRemoveDead();
                 _pendingFree.Clear();
                 StructuralDirty = true;
+                MarkAllDirty();
             }
 
             if (Ordered && _orderDirty && SortProvider != null)
@@ -128,6 +195,7 @@ namespace ArctisAurora.Core.Data
                 Resequence();
                 _orderDirty = false;
                 StructuralDirty = true;
+                MarkAllDirty();
             }
         }
 
@@ -221,7 +289,7 @@ namespace ArctisAurora.Core.Data
 
         private void Grow()
         {
-            int newCap = _growthMode == PoolGrowth.Multiplicative
+            int newCap = _growthMode == PoolGrowthType.Multiplicative
                 ? _capacity * _growthValue
                 : _capacity + _growthValue;
             if (newCap <= _capacity) newCap = _capacity + 1;
@@ -238,6 +306,8 @@ namespace ArctisAurora.Core.Data
                 _versions[i] = 1;
 
             _capacity = newCap;
+            StructuralDirty = true;   // buffer reallocated — full re-upload + descriptor rebuild
+            MarkAllDirty();
         }
     }
 }

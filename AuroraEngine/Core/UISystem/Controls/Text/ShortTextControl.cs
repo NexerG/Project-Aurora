@@ -34,7 +34,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                     gAsset = fontAsset.atlasMetaData.GetGlyph(text[i]);
                     float halfWidth = (gAsset.glyphWidth * fontSize) * 0.5f;
                     horizontalOffset += (gAsset.leftSideOffset * (float)fontSize) + halfWidth;
-                    Vector3D<float> glyphPos = PoolTransform.position + new Vector3D<float>(horizontalOffset, verticalOffset, 0);
+                    Vector3D<float> glyphPos = transform.position + new Vector3D<float>(horizontalOffset, verticalOffset, 0);
                     GlyphControl glyph = new GlyphControl(text[i], fontAsset, fontSize);
                     AddChild(glyph);
 

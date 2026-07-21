@@ -61,9 +61,9 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
                     {
                         Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0, 0, 0);
                         Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-                        _transform *= Matrix4X4.CreateScale(controls[i].PoolTransform.scale);
+                        _transform *= Matrix4X4.CreateScale(controls[i].transform.scale);
                         //_transform *= Matrix4X4.CreateFromQuaternion(q);
-                        _transform *= Matrix4X4.CreateTranslation(controls[i].PoolTransform.position);
+                        _transform *= Matrix4X4.CreateTranslation(controls[i].transform.position);
 
                         transformMatrices.Add(_transform);
                     }
@@ -81,9 +81,9 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
                     {
                         Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0, 0, 0);
                         Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-                        _transform *= Matrix4X4.CreateScale(controls[i].PoolTransform.scale);
+                        _transform *= Matrix4X4.CreateScale(controls[i].transform.scale);
                         //_transform *= Matrix4X4.CreateFromQuaternion(q);
-                        _transform *= Matrix4X4.CreateTranslation(controls[i].PoolTransform.position);
+                        _transform *= Matrix4X4.CreateTranslation(controls[i].transform.position);
 
                         transformMatrices[i] = _transform;
                     }
@@ -108,9 +108,9 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             {
                 Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0, 0, 0);
                 Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-                _transform *= Matrix4X4.CreateScale(controls[i].PoolTransform.scale);
+                _transform *= Matrix4X4.CreateScale(controls[i].transform.scale);
                 //_transform *= Matrix4X4.CreateFromQuaternion(q);
-                _transform *= Matrix4X4.CreateTranslation(controls[i].PoolTransform.position);
+                _transform *= Matrix4X4.CreateTranslation(controls[i].transform.position);
 
                 transformMatrices.Add(_transform);
             }

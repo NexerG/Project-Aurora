@@ -399,7 +399,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
             int localEntityCount = 0;
             foreach (Entity e in _updateEntities)
             {
-                e.transform._changed = false;
+                //e.transform._changed = false;
                 e.GetComponent<MeshComponent>().UpdateMatrices();
                 localEntityCount++;
             }

@@ -486,35 +486,28 @@ namespace ArctisAurora.Core.UISystem.Controls
         #endregion
 
         #region ---- data pool ----
-        private static DataPool _controlPool;
-        internal static DataPool ControlPool => _controlPool ??= DataManager.Get("UIControls");
-
-        internal DataHandle dataHandle;
-
-        // This control's pooled transform (position + scale) — a direct ref into the dense
-        // array. Replaces the per-entity Transform for controls.
-        internal ref TransformData PoolTransform => ref ControlPool.GetRef<TransformData>(dataHandle);
+        // Controls store their transform (and, later, ControlData) in the "UIControls" pool.
+        protected override string PoolName => "UIControls";
 
         // Write an arranged rect into the pooled transform, z-biased just above the parent
         // (painter order: child draws over parent). Shared by every control's Arrange.
         protected void WriteArrangedTransform(LayoutRect finalRect)
         {
             float z = parent is VulkanControl pc
-                ? pc.PoolTransform.position.Z + 0.001f
-                : PoolTransform.position.Z;
-            ref TransformData t = ref PoolTransform;
+                ? pc.transform.position.Z + 0.001f
+                : transform.position.Z;
+            ref TransformData t = ref transform;
             t.position = new Vector3D<float>(
                 finalRect.x + finalRect.width / 2f,
                 finalRect.y + finalRect.height / 2f,
                 z);
             t.scale = new Vector3D<float>(finalRect.width, finalRect.height, 1);
-            ControlPool.MarkContentDirty();
+            Pool.MarkContentDirty(dataHandle);
         }
         #endregion
 
         public VulkanControl()
         {
-            dataHandle = ControlPool.Allocate(this);
             controlData = new ControlData();
             controlData.style = ControlStyle.Default();
             controlData.uvs = new QuadUVs();
@@ -755,10 +748,10 @@ namespace ArctisAurora.Core.UISystem.Controls
             Vector3D<float> pos = new Vector3D<float>(window.preferredWidth / 2f, window.preferredHeight / 2f, -10.0f);
             window.arrangedRect = new LayoutRect(0, 0, window.preferredWidth, window.preferredHeight);
             UILayout.RegisterDirtyRoot(window);
-            ref TransformData wt = ref window.PoolTransform;
+            ref TransformData wt = ref window.transform;
             wt.position = pos;
             wt.scale = new Vector3D<float>(window.preferredWidth, window.preferredHeight, 1);
-            ControlPool.MarkContentDirty();
+            window.Pool.MarkContentDirty(window.dataHandle);
             RecursiveParse(root, window);
 
             return window;

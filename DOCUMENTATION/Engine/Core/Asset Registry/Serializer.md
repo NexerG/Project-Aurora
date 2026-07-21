@@ -1,4 +1,4 @@
----
+﻿---
 date: 2026-05-30
 Status: Current
 tags:
@@ -21,7 +21,7 @@ Type:
   - Sealed
 Attributes:
 Namespace: ArctisAurora.Core.Filing.Serialization
-SourceFile: ParticleSimulator/Core/Filing/Serialization/Serializer.cs
+SourceFile: AuroraEngine/Core/Filing/Serialization/Serializer.cs
 VerifiedAgainst: 2026-05-30
 ---
 ## Description
@@ -35,7 +35,7 @@ A reflection-driven **binary** serializer. It walks an object's fields and write
 | `SerializeAttributed<T>(T obj, string path)` | static | Write only `[@Serializable]` fields. |
 | `DeserializeAttributed<T>(string path, ref T obj)` | static | Read them back. |
 | `SerializeAll<T>(T obj, string path)` | static | Write **every** field (ignores attributes). Use at your own risk. |
-| `DeserializeAll<T>(string path, ref T obj)` | static | **NOT IMPLEMENTED** — `RecursiveDeserializeAll` is a stub. |
+| `DeserializeAll<T>(string path, ref T obj)` | static | **NOT IMPLEMENTED** â€” `RecursiveDeserializeAll` is a stub. |
 
 ## Fields & Properties
 
@@ -49,10 +49,10 @@ private static readonly HashSet<Type> _builtInTypes = { string, decimal, DateTim
 ### Serialize
 `RecursiveSerialize{All,Attributed}` walk the fields:
 	skip `[NonSerializable]`
-	primitive → `ConvertToBytes` → write
-	`string` → length + UTF-8 bytes
-	struct → recurse
-	array → length, then each element
+	primitive â†’ `ConvertToBytes` â†’ write
+	`string` â†’ length + UTF-8 bytes
+	struct â†’ recurse
+	array â†’ length, then each element
 	In **Attributed** mode, array/complex elements must themselves be `[@Serializable]` and are written with a **hashed type ID** (`Serializable.GenerateID`) before the element body.
 
 ### Deserialize
@@ -66,12 +66,12 @@ private static readonly HashSet<Type> _builtInTypes = { string, decimal, DateTim
 ## Helpers
 
 ```C#
-private static byte[] ConvertToBytes(object value);  // primitive → bytes
+private static byte[] ConvertToBytes(object value);  // primitive â†’ bytes
 private static byte[] ConvertToBytes(Type type);     // zeroed buffer sized to the primitive (for reads)
 private static byte[] ReturnDefault(Type type);      // default bytes for a null serializable
 ```
 
 ## Related
-- [[IDeserialize]] — interface for types that need *custom* (non-reflection) deserialization
-- [[Atlas Meta Data]] · [[Aurora Font]] — serialized via this
-- [[Asset Registries]] — provides the `IDMap` type→ID table used for polymorphic arrays
+- [[IDeserialize]] â€” interface for types that need *custom* (non-reflection) deserialization
+- [[Atlas Meta Data]] Â· [[Aurora Font]] â€” serialized via this
+- [[Asset Registries]] â€” provides the `IDMap` typeâ†’ID table used for polymorphic arrays

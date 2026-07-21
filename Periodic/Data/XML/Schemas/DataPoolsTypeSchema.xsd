@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:types="http://arctisaurora/AuroraDataPoolsTypes" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:allTypes="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraDataPoolsTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
+  <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
+  <xs:simpleType name="DataPools">
+    <xs:union memberTypes="types:PoolGrowthType" />
+  </xs:simpleType>
+  <xs:simpleType name="PoolGrowthType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Multiplicative" />
+      <xs:enumeration value="Additive" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:element name="Component" type="types:Component" />
+  <xs:complexType name="Component">
+    <xs:sequence />
+    <xs:attribute name="Type" type="allTypes:Uncategorized" />
+  </xs:complexType>
+  <xs:element name="Pool" type="types:Pool" />
+  <xs:complexType name="Pool">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Component" type="types:Component">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="Capacity" type="xs:int" />
+    <xs:attribute name="Ordered" type="xs:boolean" />
+    <xs:attribute name="SortAction" type="xs:string" />
+    <xs:attribute name="Growth" type="types:PoolGrowthType" />
+    <xs:attribute name="GrowthValue" type="xs:int" />
+  </xs:complexType>
+  <xs:element name="EnginePools" type="types:EnginePools" />
+  <xs:complexType name="EnginePools">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Pool" type="types:Pool">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="TransformData" type="types:TransformData" />
+  <xs:complexType name="TransformData">
+    <xs:sequence />
+  </xs:complexType>
+</xs:schema>

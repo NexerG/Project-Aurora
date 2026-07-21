@@ -39,7 +39,7 @@ namespace ArctisAurora.Core.Data
                 int capacity = int.Parse(poolElem.Attribute("Capacity").Value);
                 bool ordered = bool.Parse(poolElem.Attribute("Ordered")?.Value ?? "false");
                 string sortAction = poolElem.Attribute("SortAction")?.Value;
-                PoolGrowth growth = Enum.Parse<PoolGrowth>(poolElem.Attribute("Growth")?.Value ?? "Multiplicative");
+                PoolGrowthType growth = Enum.Parse<PoolGrowthType>(poolElem.Attribute("Growth")?.Value ?? "Multiplicative");
                 int growthValue = int.Parse(poolElem.Attribute("GrowthValue")?.Value ?? "2");
 
                 List<Type> componentTypes = new();

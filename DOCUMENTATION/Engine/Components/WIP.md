@@ -1,4 +1,4 @@
----
+﻿---
 date: 2026-05-30
 aliases:
   - EntityComponent
@@ -21,17 +21,17 @@ Type:
 Attributes:
   - Serializable
 Namespace: ArctisAurora.EngineWork.ComponentBehaviour
-SourceFile: ParticleSimulator/Core/ECS/EntityComponent.cs
+SourceFile: AuroraEngine/Core/ECS/EntityComponent.cs
 VerifiedAgainst: 2026-05-30
 ---
-%% Historically linked as [[WIP]] from class docs while unwritten — now the EntityComponent base.
+%% Historically linked as [[WIP]] from class docs while unwritten â€” now the EntityComponent base.
    Aliased so both [[WIP]] and [[EntityComponent]] resolve here. %%
 
 ## Description
 
-The base class for **components** attached to an [[Entity]] — the object-oriented half of the engine's ECS. A component holds a back-reference to its `parent` entity and exposes virtual lifecycle hooks the engine calls at the right moments. Concrete components (mesh, light, simulation, etc.) override the hooks they care about.
+The base class for **components** attached to an [[Entity]] â€” the object-oriented half of the engine's ECS. A component holds a back-reference to its `parent` entity and exposes virtual lifecycle hooks the engine calls at the right moments. Concrete components (mesh, light, simulation, etc.) override the hooks they care about.
 
-> Note: the ECS is currently class/object-based rather than data-oriented (a known piece of engine techdebt — a struct/data-oriented model is planned).
+> Note: the ECS is currently class/object-based rather than data-oriented (a known piece of engine techdebt â€” a struct/data-oriented model is planned).
 
 ## API summary
 
@@ -50,4 +50,4 @@ The base class for **components** attached to an [[Entity]] — the object-orien
 ```
 
 ## Related
-- [[Entity]] — owns a list of components; `CreateComponent<T>()` / `GetComponent<T>()` / `RemoveComponent<T>()` operate on this type
+- [[Entity]] â€” owns a list of components; `CreateComponent<T>()` / `GetComponent<T>()` / `RemoveComponent<T>()` operate on this type

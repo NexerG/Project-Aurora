@@ -1,4 +1,4 @@
----
+﻿---
 date: 2026-05-30
 Status: Current
 tags:
@@ -21,12 +21,12 @@ Attributes:
   - A_XSDType
   - A_XSDElementProperty
 Namespace: ArctisAurora.Core.UISystem.Controls.Containers
-SourceFile: ParticleSimulator/Core/UISystem/Controls/Containers/StackPanelControl.cs
+SourceFile: AuroraEngine/Core/UISystem/Controls/Containers/StackPanelControl.cs
 VerifiedAgainst: 2026-05-30
 ---
 ## Description
 
-A container control that lays its children out along one axis — vertical by default — with optional `Spacing` between them and WPF-style **star sizing**. Extends `AbstractContainerControl` (itself a [[Vulkan Control]]). Declarable from UI XML as `<StackPanel>`.
+A container control that lays its children out along one axis â€” vertical by default â€” with optional `Spacing` between them and WPF-style **star sizing**. Extends `AbstractContainerControl` (itself a [[Vulkan Control]]). Declarable from UI XML as `<StackPanel>`.
 
 ## API summary
 
@@ -61,5 +61,5 @@ Recomputes the star allocation against the final size, then walks a cursor along
 ```
 
 ## Related
-- [[Vulkan Control]] — base control + layout fields (`heightStar`, `margin`, alignment)
+- [[Vulkan Control]] â€” base control + layout fields (`heightStar`, `margin`, alignment)
 - Sibling containers: Grid, Scrollable, Docking

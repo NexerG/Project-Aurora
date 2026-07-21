@@ -31,7 +31,6 @@
     <Folder Include="Data\Fonts\" />
     <Folder Include="Data\Scenes\" />
     <Folder Include="Data\XML\Documents\Inputs\" />
-    <Folder Include="Data\XML\Schemas\" />
   </ItemGroup>
 
   <ItemGroup>
@@ -59,6 +58,22 @@
     <Compile Remove="Core\Rendering\Pipelines\**" />
     <EmbeddedResource Remove="Core\Rendering\Pipelines\**" />
     <None Remove="Core\Rendering\Pipelines\**" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Content Remove="Data\XML\Schemas\actionSchema.xsd" />
+    <Content Remove="Data\XML\Schemas\AllTypesSchema.xsd" />
+    <Content Remove="Data\XML\Schemas\DataPoolsTypeSchema.xsd" />
+    <Content Remove="Data\XML\Schemas\PoolsTypeSchema.xsd" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <None Update="Data\XML\Schemas\actionSchema.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Update="Data\XML\Schemas\AllTypesSchema.xsd">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   
 </Project>

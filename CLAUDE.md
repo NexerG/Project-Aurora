@@ -71,7 +71,7 @@ Abstract names below map to real top-level folders. Source of truth for code loc
 
 | Name | Real folder | Root namespace(s) | Purpose | Status |
 |------|-------------|-------------------|---------|--------|
-| `Engine` | `ParticleSimulator` | `ArctisAurora.*` (`Core`, `EngineWork`) | Core game engine — lives **inside** ParticleSimulator under `Core/`; no separate Engine project | Active |
+| `Engine` | `AuroraEngine` | `ArctisAurora.*` (`Core`, `EngineWork`) | Core game engine — lives in `AuroraEngine/` under `Core/`; no separate Engine project. Folder renamed from `ParticleSimulator` (2026-07); assembly/root namespace still `ArctisAurora`. | Active |
 | `Editor` | `AuroraEditor` | `AuroraEditor.*` | Visual editor; consumer of the Engine | Early stage |
 | `TextEditor` | `Periodic` | `AuroraPeriodic`, `Periodic.*` | Obsidian/Notion-style note app; host that boots the Engine (mapping inferred, unconfirmed) | Planning |
 | — | `AuroraTesting` | — | Test project | — |

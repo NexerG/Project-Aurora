@@ -1,4 +1,4 @@
----
+﻿---
 date: 2026-05-30
 tags:
   - d_Rendering
@@ -21,12 +21,12 @@ Type:
   - Abstract
 Attributes:
 Namespace: ArctisAurora.EngineWork.Rendering.Modules
-SourceFile: ParticleSimulator/Core/Rendering/Modules/RenderingModule.cs
+SourceFile: AuroraEngine/Core/Rendering/Modules/RenderingModule.cs
 VerifiedAgainst: 2026-05-30
 ---
 ## Description
 
-The abstract base for a **render module** — a self-contained mini-renderer with its own queue, render pass, pipeline, descriptors, and an **offscreen output image**. Modules render into their own target; the compositor then samples and blends every module's output into the swapchain. This is how the [[VULKAN]] renderer keeps game/UI/post passes independent and composes them at the end.
+The abstract base for a **render module** â€” a self-contained mini-renderer with its own queue, render pass, pipeline, descriptors, and an **offscreen output image**. Modules render into their own target; the compositor then samples and blends every module's output into the swapchain. This is how the [[VULKAN]] renderer keeps game/UI/post passes independent and composes them at the end.
 
 A concrete module (e.g. [[UI Rasterizer Module]]) supplies its feature set, descriptor layout, render pass, pipeline, and draw commands by overriding the abstract members below.
 
@@ -43,7 +43,7 @@ A concrete module (e.g. [[UI Rasterizer Module]]) supplies its feature set, desc
 | `CreateModuleFrameBuffers()` | abstract | Framebuffers over the output images. |
 | `UpdateModule(frame)` | abstract | Per-frame rebuild (descriptors, instance buffers) when dirty. |
 | `WriteCommandBuffers(frame)` | abstract | Record the draw commands. |
-| `DestroySizeDependentResources()` | virtual | Tear down output images + framebuffers on window resize (see [[VULKAN]] → swapchain recreation). |
+| `DestroySizeDependentResources()` | virtual | Tear down output images + framebuffers on window resize (see [[VULKAN]] â†’ swapchain recreation). |
 
 ## Fields & Properties
 
@@ -71,7 +71,7 @@ internal FrameResources[] frameResources;       // descriptor pool + sets, one p
 %% Grouped by responsibility; access shown inline. %%
 
 ### Lifecycle (driven by the renderer)
-The renderer calls these in order during bootstrap: `PrepareObjects` → `CreateRenderPass` → `CreateOutputImages` → `CreateModuleFrameBuffers` → `CreatePipeline`. Each frame, if the module's `isDirty[image]` is set, the renderer calls `UpdateModule`, which re-records via `WriteCommandBuffers`.
+The renderer calls these in order during bootstrap: `PrepareObjects` â†’ `CreateRenderPass` â†’ `CreateOutputImages` â†’ `CreateModuleFrameBuffers` â†’ `CreatePipeline`. Each frame, if the module's `isDirty[image]` is set, the renderer calls `UpdateModule`, which re-records via `WriteCommandBuffers`.
 
 ### Descriptors
 `CreateDescriptorSetLayout` (virtual) builds the layouts from the declarative `descriptorTypes` / `shaderStages` / `descriptorBindingFlags` arrays; `AllocateDescriptorSets` handles the variable-count last binding (bindless arrays). Concrete modules fill them in `UpdateDescriptorSets`.
@@ -87,5 +87,5 @@ internal static byte[] ReadFile(string fileName);
 ```
 
 ## Related
-- [[VULKAN]] — the system that owns and drives modules
-- [[UI Rasterizer Module]] — the concrete UI module
+- [[VULKAN]] â€” the system that owns and drives modules
+- [[UI Rasterizer Module]] â€” the concrete UI module

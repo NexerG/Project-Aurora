@@ -159,7 +159,7 @@ namespace ArctisAurora.Core.UISystem
             localVerts[2] = new Vector2D<float>(0.5f, 0.5f);
             localVerts[3] = new Vector2D<float>(-0.5f, 0.5f);
 
-            localVerts = TransformToWorld(entity.PoolTransform, localVerts);
+            localVerts = TransformToWorld(entity.transform, localVerts);
             return IsPointInQuad(pos, localVerts);
         }
 

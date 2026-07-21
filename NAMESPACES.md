@@ -3,7 +3,6 @@ ArctisAurora -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Fram
 ArctisAurora -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Frame.Designer.cs
 ArctisAurora -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Program.cs
 ArctisAurora.Core -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Game.cs
-ArctisAurora.Core.Data -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\DataHandle.cs
 ArctisAurora.Core.Data -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\DataManager.cs
 ArctisAurora.Core.Data -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\DataPool.cs
 ArctisAurora.Core.Data -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\PoolColumn.cs
@@ -11,7 +10,6 @@ ArctisAurora.Core.Data -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraE
 ArctisAurora.Core.Data -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\TransformData.cs
 ArctisAurora.Core.ECS.EngineEntity -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\ECS\EngineEntity\Entity.cs
 ArctisAurora.Core.ECS.EngineEntity -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\ECS\EngineEntity\LightSourceEntity.cs
-ArctisAurora.Core.ECS.EngineEntity -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\ECS\EngineEntity\Transform.cs
 ArctisAurora.Core.Filing -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\FileObject.cs
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\Serialization\AssetImporter.cs
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\Serialization\MeshImporter.cs

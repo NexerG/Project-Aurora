@@ -1,5 +1,7 @@
 ﻿using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Data;
+using Silk.NET.Maths;
 using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering;
@@ -14,8 +16,6 @@ namespace ArctisAurora.Core.ECS.EngineEntity
         //variables
         [@Serializable]
         bool enabled = true;
-        [@Serializable]
-        public Transform transform;
         [@Serializable]
         public string name = "entity";
 
@@ -49,9 +49,53 @@ namespace ArctisAurora.Core.ECS.EngineEntity
         [@Serializable]
         public List<Entity> children = new List<Entity>();
 
+        #region ---- data pool ----
+        // Which pool this entity's transform lives in. Overridden by subclasses (e.g. controls
+        // use "UIControls"). Resolved during construction, so it must not touch derived fields.
+        protected virtual string PoolName => "Entities";
+        private DataPool _pool;
+        internal DataHandle dataHandle;
+        public DataPool Pool => _pool;
+        // This entity's pooled transform (position/rotation/scale) — a ref into the dense array.
+        // Direct writes (transform.position = ...) are allowed and fast but do NOT mark the pool
+        // dirty; use the Set* helpers below when the change must be re-uploaded.
+        public ref TransformData transform => ref _pool.GetRef<TransformData>(dataHandle);
+
+        public void SetPosition(Vector3D<float> position)
+        {
+            transform.position = position;
+            _pool.MarkContentDirty(dataHandle);
+        }
+
+        public void SetScale(Vector3D<float> scale)
+        {
+            transform.scale = scale;
+            _pool.MarkContentDirty(dataHandle);
+        }
+
+        public void SetRotation(Vector3D<float> rotation)
+        {
+            transform.rotation = rotation;
+            _pool.MarkContentDirty(dataHandle);
+        }
+
+        public void SetTransform(TransformData value)
+        {
+            transform = value;
+            _pool.MarkContentDirty(dataHandle);
+        }
+
+        private void AllocatePooledTransform()
+        {
+            _pool = DataManager.Get(PoolName);
+            dataHandle = _pool.Allocate(this);
+            transform.scale = new Vector3D<float>(1, 1, 1);   // preserve the old default scale
+        }
+        #endregion
+
         public Entity()
         {
-            transform = new Transform(this);
+            AllocatePooledTransform();
             EntityRegistry.AddToGroup("Entities", this);
             EntityRegistry.AddToGroup("EntitiesOnStart", this);
         }
@@ -59,7 +103,7 @@ namespace ArctisAurora.Core.ECS.EngineEntity
         public Entity(string name)
         {
             this.name = name;
-            transform = new Transform(this);
+            AllocatePooledTransform();
             EntityRegistry.AddToGroup("Entities", this);
             EntityRegistry.AddToGroup("EntitiesOnStart", this);
         }

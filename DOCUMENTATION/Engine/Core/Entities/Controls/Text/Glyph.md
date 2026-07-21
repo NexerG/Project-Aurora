@@ -1,4 +1,4 @@
----
+﻿---
 date: 2026-05-30
 Status: Current
 tags:
@@ -21,7 +21,7 @@ Type:
 Attributes:
   - Serializable
 Namespace: ArctisAurora.Core.UISystem
-SourceFile: ParticleSimulator/Core/UISystem/Glyph.cs
+SourceFile: AuroraEngine/Core/UISystem/Glyph.cs
 VerifiedAgainst: 2026-05-30
 ---
 ## Description
@@ -38,7 +38,7 @@ public float glyphHeight = 1;
 [@NonSerializable] public List<List<Edge>> edgeContours = new();  // built for MTSDF
 [NonSerializable]  public List<Bezier> contours = new();          // raw outline
 
-public float advanceWidth;     // horizontal advance (÷ unitsPerEm)
+public float advanceWidth;     // horizontal advance (Ã· unitsPerEm)
 public float leftSideOffset;   // left side bearing
 public float tsb = 0;          // top side bearing (when yMin < 0)
 ```
@@ -46,11 +46,11 @@ public float tsb = 0;          // top side bearing (when yMin < 0)
 ## Methods
 
 ### `BuildEdges` *(public)*
-Converts the raw `contours` (on-/off-curve bezier points) into `edgeContours` of quadratic `Edge`s. Consecutive off-curve points get an *implied* on-curve midpoint inserted between them — standard TrueType outline reconstruction.
+Converts the raw `contours` (on-/off-curve bezier points) into `edgeContours` of quadratic `Edge`s. Consecutive off-curve points get an *implied* on-curve midpoint inserted between them â€” standard TrueType outline reconstruction.
 
 ### `SetParams` *(public)*
 Stores the glyph bounds and computes the normalized `glyphWidth`/`glyphHeight` from `unitsPerEm`.
 
 ## Related
-- [[Aurora Font]] — parses outlines into glyphs and bakes the MTSDF atlas
-- [[Atlas Meta Data]] — stores the serialized glyphs
+- [[Aurora Font]] â€” parses outlines into glyphs and bakes the MTSDF atlas
+- [[Atlas Meta Data]] â€” stores the serialized glyphs

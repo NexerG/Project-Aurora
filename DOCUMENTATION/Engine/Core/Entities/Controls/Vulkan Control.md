@@ -1,4 +1,4 @@
----
+﻿---
 date: 2026-05-30
 Status: Current
 tags:
@@ -24,14 +24,14 @@ Attributes:
   - A_XSDType
   - A_XSDElementProperty
 Namespace: ArctisAurora.Core.UISystem.Controls
-SourceFile: ParticleSimulator/Core/UISystem/Controls/VulkanControl.cs
+SourceFile: AuroraEngine/Core/UISystem/Controls/VulkanControl.cs
 VerifiedAgainst: 2026-05-30
 ---
 ## Description
 
 The base class for everything in the UI. A `VulkanControl` is an [[Entity]] that participates in a **two-pass (Measure/Arrange) layout system**, carries per-control GPU data (color/UV/mask), and exposes a bubbling **event** model. It is declarable from UI XML (its properties are tagged `[A_XSDElementProperty]`, its enums `[A_XSDType]`), and it is rendered by the [[UI Rasterizer Module]].
 
-A plain `VulkanControl` holds **one** child; use a container ([[StackPanel]], Grid, …) for multiple.
+A plain `VulkanControl` holds **one** child; use a container ([[StackPanel]], Grid, â€¦) for multiple.
 
 ## API summary
 
@@ -99,7 +99,7 @@ public Sampler colorSampler; public TextureAsset colorAsset;
 ## Methods
 
 ### Layout
-`Measure` returns the desired size (uses `preferred*`, falls back to `min*`/available; a single child is measured inside `padding`). `Arrange` positions the control (writes `transform`), computes `ClipRect`, and arranges its single child by `horizontalPosition`/`verticalPosition`. Containers like [[StackPanel]] override both. `InvalidateLayout`/`InvalidateArrange` mark the chain dirty up to the top root and hand that root to `UILayout.RegisterDirtyRoot` (resolved each tick → triggers a UI re-render).
+`Measure` returns the desired size (uses `preferred*`, falls back to `min*`/available; a single child is measured inside `padding`). `Arrange` positions the control (writes `transform`), computes `ClipRect`, and arranges its single child by `horizontalPosition`/`verticalPosition`. Containers like [[StackPanel]] override both. `InvalidateLayout`/`InvalidateArrange` mark the chain dirty up to the top root and hand that root to `UILayout.RegisterDirtyRoot` (resolved each tick â†’ triggers a UI re-render).
 
 ### Events
 `Register*` add handlers; `Resolve*` fire them and, if the matching `bubble*` flag is set, call the parent's resolver. `BubbleAll()` turns bubbling on for everything.
@@ -108,7 +108,7 @@ public Sampler colorSampler; public TextureAsset colorAsset;
 `ParseXML(name)` loads the doc via `Paths.Doc(name)`, builds a `WindowControl` root, then `RecursiveParse` instantiates child controls by element name (`AnyXMLType.FindType`) and `ResolveAttributes` maps XML attributes onto `[A_XSDElementProperty]` members (actions resolve via `[A_XSDActionDependency]`).
 
 ## Structs & enums
-`ControlStyle` (tint) · `ControlData` (QuadUVs + style) · `QuadUVs` · `Thickness` (margins/padding) · `LayoutRect` (Shrink/Intersect/Contains). Enums: `ControlColor`, `ScalingMode`, `HorizontalAlignment`, `VerticalAlignment`.
+`ControlStyle` (tint) Â· `ControlData` (QuadUVs + style) Â· `QuadUVs` Â· `Thickness` (margins/padding) Â· `LayoutRect` (Shrink/Intersect/Contains). Enums: `ControlColor`, `ScalingMode`, `HorizontalAlignment`, `VerticalAlignment`.
 
 ## Helpers
 ```C#
@@ -117,5 +117,5 @@ public static Vector3D<float> HexToRGB(string hex);
 ```
 
 ## Related
-- [[Entity]] — base class · [[StackPanel]] — a container subclass
-- [[UI Rasterizer Module]] — renders controls · [[VULKAN]] — the renderer
+- [[Entity]] â€” base class Â· [[StackPanel]] â€” a container subclass
+- [[UI Rasterizer Module]] â€” renders controls Â· [[VULKAN]] â€” the renderer

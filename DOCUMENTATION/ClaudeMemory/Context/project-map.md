@@ -5,7 +5,7 @@ folders/projects as follows (source of truth for namespaces: `NAMESPACES.md` at 
 
 | CLAUDE.md name | Real folder         | Root namespace(s)                                                  | Notes                                                                                                                        |
 | -------------- | ------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| `Engine`       | `ParticleSimulator` | `ArctisAurora`, `ArctisAurora.Core.*`, `ArctisAurora.EngineWork.*` | The engine lives **inside** ParticleSimulator (no separate `Engine` project). Engine core is under `ParticleSimulator/Core`. |
+| `Engine`       | `AuroraEngine`      | `ArctisAurora`, `ArctisAurora.Core.*`, `ArctisAurora.EngineWork.*` | The engine lives in `AuroraEngine/` (folder renamed from `ParticleSimulator` 2026-07). Project file `AuroraEngine.csproj`; assembly + root namespace pinned to `ArctisAurora`. Engine core under `AuroraEngine/Core`. |
 | `Editor`       | `AuroraEditor`      | `AuroraEditor.*`                                                   | Visual editor; consumer of the Engine.                                                                                       |
 | `TextEditor`   | `Periodic`          | `AuroraPeriodic`, `Periodic.*`                                     | **Inferred** (name ↔ Obsidian "periodic-notes"; unconfirmed). A host app whose `Main` boots `Engine` and loads UI from XML.  |
 | `Hackathon`    | —                   | —                                                                  | No such folder exists in the repo.                                                                                           |
@@ -16,7 +16,7 @@ Additional top-level items not in the table:
 - `_Build` — tooling. `_Build/GenerateNamespaces.cmd` regenerates `NAMESPACES.md`.
 - `DOCUMENTATION` — Obsidian vault (human docs) + this `ClaudeMemory` folder.
 
-## Engine internal layout (under `ParticleSimulator/Core`)
+## Engine internal layout (under `AuroraEngine/Core`)
 
 - `Core/` — `Engine.cs`, `Bootstrapper.cs`, `InputHandler.cs`, `JobSystem.cs`, `AuroraScene.cs`.
 - `Core/ECS/` — entities + components (`EngineEntity/`, `RenderingComponents/`).

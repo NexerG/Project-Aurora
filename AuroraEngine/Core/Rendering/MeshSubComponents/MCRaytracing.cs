@@ -383,7 +383,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 
             UpdateBLAS();
 
-            parent.transform._changed = false;
+            //parent.transform._changed = false;
         }
 
         internal override void EnqueueDrawCommands(ref ulong[] _offset, int _loopIndex, ref CommandBuffer _commandBuffer)

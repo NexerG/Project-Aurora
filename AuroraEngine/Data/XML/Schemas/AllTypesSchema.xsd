@@ -47,10 +47,10 @@
       <xs:enumeration value="SamplerAddressMode" />
       <xs:enumeration value="SamplerMipmapMode" />
       <xs:enumeration value="SamplerAsset" />
-      <xs:enumeration value="PoolGrowthType" />
+      <xs:enumeration value="PoolGrowthMode" />
       <xs:enumeration value="Component" />
       <xs:enumeration value="Pool" />
-      <xs:enumeration value="EnginePools" />
+      <xs:enumeration value="Pools" />
       <xs:enumeration value="TransformData" />
       <xs:enumeration value="ControlData" />
       <xs:enumeration value="Step" />
@@ -156,10 +156,10 @@
   </xs:simpleType>
   <xs:simpleType name="Pools">
     <xs:restriction base="xs:string">
-      <xs:enumeration value="PoolGrowthType" />
+      <xs:enumeration value="PoolGrowthMode" />
       <xs:enumeration value="Component" />
       <xs:enumeration value="Pool" />
-      <xs:enumeration value="EnginePools" />
+      <xs:enumeration value="Pools" />
       <xs:enumeration value="TransformData" />
       <xs:enumeration value="ControlData" />
     </xs:restriction>

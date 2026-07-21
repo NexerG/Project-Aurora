@@ -1,4 +1,4 @@
----
+﻿---
 date: 2026-05-30
 tags:
   - d_Filing
@@ -20,7 +20,7 @@ Type:
   - Static
 Attributes:
 Namespace: ArctisAurora.Core.Filing.Serialization
-SourceFile: ParticleSimulator/Core/Filing/Serialization/VirtualFileSystem.cs
+SourceFile: AuroraEngine/Core/Filing/Serialization/VirtualFileSystem.cs
 VerifiedAgainst: 2026-05-30
 ---
 ## Description
@@ -41,7 +41,7 @@ See [[Paths]] for how the mounts are set up, and [[Attributes & Conventions]] fo
 | `EnumerateAll(relDir, pattern)`                | static | Union of files across all mounts; first mount wins on a name clash.                     |
 
 ### `IDataMount` (the backend contract)
-`FileExists(rel)` · `DirExists(rel)` · `Open(rel)` → `Stream` · `GetFullPath(rel)`· `Enumerate(relDir, pattern)`.
+`FileExists(rel)` Â· `DirExists(rel)` Â· `Open(rel)` â†’ `Stream` Â· `GetFullPath(rel)`Â· `Enumerate(relDir, pattern)`.
 
 ### `DirectoryMount : IDataMount`
 Maps logical paths onto a real folder (`Root`). The current (and only) backend.
@@ -55,12 +55,12 @@ public static IReadOnlyList<IDataMount> Mounts => _mounts;
 
 ## Methods
 
-### Single-file lookup — first mount wins
+### Single-file lookup â€” first mount wins
 `ResolveFile` / `TryResolveFile` / `ResolveDir` / `Open` walk the mounts in order and stop at the first that has the path. This is what lets an app override an engine-default file simply by shipping its own copy at the same relative path.
 
-### Enumeration — union across mounts
-`EnumerateAll` concatenates every mount's matches under `relDir`, de-duplicating by file name (the higher-priority mount wins). Used by directory-driven loaders — samplers, inputs, fonts — so an app inherits the engine's defaults *and* adds its own.
+### Enumeration â€” union across mounts
+`EnumerateAll` concatenates every mount's matches under `relDir`, de-duplicating by file name (the higher-priority mount wins). Used by directory-driven loaders â€” samplers, inputs, fonts â€” so an app inherits the engine's defaults *and* adds its own.
 
 ## Related
-- [[Paths]] — mounts the application's `Data` plus the engine project's `Data` (fallback)
-- [[XML-XSD]] / [[Bootstrapper]] — consumers that load through the VFS
+- [[Paths]] â€” mounts the application's `Data` plus the engine project's `Data` (fallback)
+- [[XML-XSD]] / [[Bootstrapper]] â€” consumers that load through the VFS

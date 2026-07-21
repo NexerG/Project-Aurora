@@ -1,4 +1,4 @@
----
+﻿---
 date: 2026-05-30
 tags:
   - d_Module
@@ -22,7 +22,7 @@ Type:
   - Public
 Attributes:
 Namespace: ArctisAurora.EngineWork.Rendering.Modules
-SourceFile: ParticleSimulator/Core/Rendering/Modules/UIModule.cs
+SourceFile: AuroraEngine/Core/Rendering/Modules/UIModule.cs
 VerifiedAgainst: 2026-05-30
 ---
 ## Description
@@ -58,7 +58,7 @@ Descriptor counts are sized generously (50 000) with `VariableDescriptorCountBit
 ## Methods
 
 ### Dirtying
-The module is marked dirty (all frames) whenever the `Controls` group changes (add/remove) via `OnControlsChanged`, and whenever layout changes — `UILayout.ResolveLayout()` → the renderer's `UpdateModules()`. A dirty frame triggers a full instance-buffer + descriptor rebuild in `UpdateModule`.
+The module is marked dirty (all frames) whenever the `Controls` group changes (add/remove) via `OnControlsChanged`, and whenever layout changes â€” `UILayout.ResolveLayout()` â†’ the renderer's `UpdateModules()`. A dirty frame triggers a full instance-buffer + descriptor rebuild in `UpdateModule`.
 
 ### Drawing
 `WriteCommandBuffer` begins the render pass, binds the pipeline, sets the dynamic viewport/scissor from the window size, then `MCUI.EnqueueDrawCommands` binds both descriptor sets and issues one `CmdDrawIndexed` with `instanceCount = controlCount`.
@@ -71,6 +71,6 @@ private void CreateCircleSDF(...);            // procedural SDF helpers (mask ex
 ```
 
 ## Related
-- [[Renderer Module]] — the base class
-- [[Vulkan Control]] — the entities this module renders
-- [[VULKAN]] — renderer system + descriptor strategy
+- [[Renderer Module]] â€” the base class
+- [[Vulkan Control]] â€” the entities this module renders
+- [[VULKAN]] â€” renderer system + descriptor strategy

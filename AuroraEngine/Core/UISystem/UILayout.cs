@@ -36,8 +36,8 @@ namespace ArctisAurora.Core.UISystem
                     // Pass 2 — re-arrange from the root's current rect.
                     // Window roots have their ArrangedRect set externally (on window resize).
                     LayoutRect finalRect = root.arrangedRect.size == Vector2D<float>.Zero
-                        ? new LayoutRect(root.PoolTransform.position.X,
-                                         root.PoolTransform.position.Y,
+                        ? new LayoutRect(root.transform.position.X,
+                                         root.transform.position.Y,
                                          root.DesiredSize.X,
                                          root.DesiredSize.Y)
                         : root.arrangedRect;

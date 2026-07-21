@@ -45,20 +45,20 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
         {
             if (!isResizing)
             {
-                bool isByEdgeHorizontally = MathF.Abs(MathF.Abs(lastPos.X - PoolTransform.position.Z) - MathF.Abs(PoolTransform.scale.Z) / 2) < 7;
-                bool isByEdgeVertically = MathF.Abs(MathF.Abs(lastPos.Y - PoolTransform.position.Y) - MathF.Abs(PoolTransform.scale.Y) / 2) < 7;
+                bool isByEdgeHorizontally = MathF.Abs(MathF.Abs(lastPos.X - transform.position.Z) - MathF.Abs(transform.scale.Z) / 2) < 7;
+                bool isByEdgeVertically = MathF.Abs(MathF.Abs(lastPos.Y - transform.position.Y) - MathF.Abs(transform.scale.Y) / 2) < 7;
                 if (!(isByEdgeHorizontally || isByEdgeVertically))
                     return;
                 isResizing = true;
 
                 if (isByEdgeHorizontally)
                 {
-                    left = (lastPos.X - PoolTransform.position.Z) * MathF.Sign(PoolTransform.scale.Z) < 0;
+                    left = (lastPos.X - transform.position.Z) * MathF.Sign(transform.scale.Z) < 0;
                     right = !left;
                 }
                 if (isByEdgeVertically)
                 {
-                    top = (lastPos.Y - PoolTransform.position.Y) * MathF.Sign(PoolTransform.scale.Y) < 0;
+                    top = (lastPos.Y - transform.position.Y) * MathF.Sign(transform.scale.Y) < 0;
                     bot = !top;
                 }
             }
@@ -70,8 +70,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
 
         internal void Resize(Vector2D<float> delta, bool left, bool right, bool top, bool bot)
         {
-            Vector3D<float> newControlPos = PoolTransform.position;
-            Vector3D<float> newControlScale = PoolTransform.scale;
+            Vector3D<float> newControlPos = transform.position;
+            Vector3D<float> newControlScale = transform.scale;
 
             if (left)
             {
@@ -94,27 +94,27 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
                 newControlPos += new Vector3D<float>(0, delta.Y / 2, 0);
                 newControlScale += new Vector3D<float>(0, delta.Y, 0);
             }
-            ref var t = ref PoolTransform;
+            ref var t = ref transform;
             t.position = newControlPos;
             t.scale = newControlScale;
-            ControlPool.MarkContentDirty();
+            Pool.MarkContentDirty(dataHandle);
         }
 
         internal CursorShape GetCursor(Vector2D<float> pos)
         {
-            bool isByEdgeHorizontally = MathF.Abs(MathF.Abs(pos.X - PoolTransform.position.Z) - MathF.Abs(PoolTransform.scale.Z) / 2) < 7;
-            bool isByEdgeVertically = MathF.Abs(MathF.Abs(pos.Y - PoolTransform.position.Y) - MathF.Abs(PoolTransform.scale.Y) / 2) < 7;
+            bool isByEdgeHorizontally = MathF.Abs(MathF.Abs(pos.X - transform.position.Z) - MathF.Abs(transform.scale.Z) / 2) < 7;
+            bool isByEdgeVertically = MathF.Abs(MathF.Abs(pos.Y - transform.position.Y) - MathF.Abs(transform.scale.Y) / 2) < 7;
 
             if (!(isByEdgeHorizontally || isByEdgeVertically))
                 return CursorShape.Arrow;
 
-            bool left = (pos.X - PoolTransform.position.Z) < 0;
+            bool left = (pos.X - transform.position.Z) < 0;
             if (!isByEdgeVertically)
             {
                 return CursorShape.HResize;
             }
 
-            bool up = (pos.Y - PoolTransform.position.Y) < 0;
+            bool up = (pos.Y - transform.position.Y) < 0;
             if (!isByEdgeHorizontally)
             {
                 return CursorShape.VResize;
