@@ -47,6 +47,12 @@
       <xs:enumeration value="SamplerAddressMode" />
       <xs:enumeration value="SamplerMipmapMode" />
       <xs:enumeration value="SamplerAsset" />
+      <xs:enumeration value="PoolGrowthMode" />
+      <xs:enumeration value="Component" />
+      <xs:enumeration value="Pool" />
+      <xs:enumeration value="Pools" />
+      <xs:enumeration value="TransformData" />
+      <xs:enumeration value="ControlData" />
       <xs:enumeration value="Step" />
       <xs:enumeration value="Phase" />
       <xs:enumeration value="BootstrapSequence" />
@@ -146,6 +152,16 @@
       <xs:enumeration value="SamplerAddressMode" />
       <xs:enumeration value="SamplerMipmapMode" />
       <xs:enumeration value="SamplerAsset" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Pools">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="PoolGrowthMode" />
+      <xs:enumeration value="Component" />
+      <xs:enumeration value="Pool" />
+      <xs:enumeration value="Pools" />
+      <xs:enumeration value="TransformData" />
+      <xs:enumeration value="ControlData" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Bootstrap">

@@ -18,6 +18,7 @@
     <xs:restriction base="xs:string">
       <xs:enumeration value="Context.LoadContexts" />
       <xs:enumeration value="EntityRegistry.ParseXML" />
+      <xs:enumeration value="DataManager.ParseXML" />
       <xs:enumeration value="Engine.SystemSetup" />
       <xs:enumeration value="Engine.InitWindowing" />
       <xs:enumeration value="Renderer.InitRenderer" />

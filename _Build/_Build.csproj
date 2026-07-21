@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AuroraEditor\AuroraEditor.csproj" />
-    <ProjectReference Include="..\ParticleSimulator\ArctisAurora.csproj" />
+    <ProjectReference Include="..\AuroraEngine\AuroraEngine.csproj" />
     <ProjectReference Include="..\Periodic\Periodic.csproj" />
   </ItemGroup>
 
