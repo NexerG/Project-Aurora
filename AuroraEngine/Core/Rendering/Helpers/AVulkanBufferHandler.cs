@@ -353,6 +353,36 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
         }
 
+        // Overwrite a sub-range of an existing buffer without reallocating it. Uploads
+        // `count` elements from data[srcStart..] into buffer starting at element `dstStart`.
+        // Used to patch pooled GPU mirrors (transforms) in place instead of recreating them.
+        internal static void UpdateBufferRange<T>(T[] data, int srcStart, int dstStart, int count, ref Queue queue, ref CommandPool cPool, ref Buffer buffer) where T : unmanaged
+        {
+            if (count <= 0) return;
+            ulong regionSize = (ulong)(sizeof(T) * count);
+            ulong dstOffset = (ulong)(sizeof(T) * dstStart);
+
+            Buffer _stagingBuffer = default;
+            DeviceMemory _stagingBufferMemory = default;
+            CreateBuffer(regionSize, ref _stagingBuffer, ref _stagingBufferMemory, defaultStagingBufferFlags, defaultStagingMemoryFlags);
+
+            void* _dataPtr;
+            Renderer.vk.MapMemory(Renderer.logicalDevice, _stagingBufferMemory, 0, regionSize, 0, &_dataPtr);
+            data.AsSpan(srcStart, count).CopyTo(new Span<T>(_dataPtr, count));
+            Renderer.vk.UnmapMemory(Renderer.logicalDevice, _stagingBufferMemory);
+
+            lock (Renderer.transferCommandLock)
+            {
+                CommandBuffer _commandBuffer = BeginSingleTimeCommands(ref cPool);
+                BufferCopy _copyRegion = new BufferCopy() { SrcOffset = 0, DstOffset = dstOffset, Size = regionSize };
+                Renderer.vk.CmdCopyBuffer(_commandBuffer, _stagingBuffer, buffer, 1, ref _copyRegion);
+                EndSingleTimeCommands(ref _commandBuffer, ref queue, ref cPool);
+            }
+
+            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
+            Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
+        }
+
         internal static void CreateBuffer(ulong _size, ref Buffer _buffer, ref DeviceMemory _bufferMemory, BufferUsageFlags _usage, MemoryPropertyFlags _properties)
         {
             BufferCreateInfo _bufferCreateInfo = new BufferCreateInfo()

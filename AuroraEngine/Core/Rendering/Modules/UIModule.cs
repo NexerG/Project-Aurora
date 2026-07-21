@@ -1,4 +1,5 @@
-﻿using ArctisAurora.Core.ECS.EngineEntity;
+﻿using ArctisAurora.Core.Data;
+using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork.Rendering.Helpers;
@@ -24,7 +25,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal override uint GetVariableDescriptorCount(int set)
         {
-            return (uint)controlCount;
+            // sets are sized to the pool's capacity once, then partially bound as controls fill in
+            return (uint)ControlPool.Capacity;
         }
 
         internal override PhysicalDeviceFeatures features => new()
@@ -92,14 +94,28 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             internal DescriptorPool pool;
         }
         internal List<DeferredResources>[] deferredDeletions;
-        private static int controlCount = 0;
-        
+
+        // UIControls data pool — transforms live here; the renderer mirrors it to the GPU.
+        private DataPool _controlPool;
+        internal DataPool ControlPool => _controlPool ??= DataManager.Get("UIControls");
+
+        // Per swapchain image: the pool capacity the descriptor sets were built against (-1 =
+        // not built) and how many per-control descriptors have already been written. Adds append
+        // the [written, live) tail in place; a capacity change forces a full rebuild of the set.
+        private int[] _frameBuiltCapacity;
+        private int[] _frameWrittenControls;
+
 
         public UIModule()
         {
             deferredDeletions = new List<DeferredResources>[Renderer.swapchainImageCount];
             for (int i = 0; i < Renderer.swapchainImageCount; i++)
                 deferredDeletions[i] = new List<DeferredResources>();
+
+            frameResources = new FrameResources[Renderer.swapchainImageCount];
+            _frameBuiltCapacity = new int[Renderer.swapchainImageCount];
+            _frameWrittenControls = new int[Renderer.swapchainImageCount];
+            Array.Fill(_frameBuiltCapacity, -1);
         }
 
         internal override void UpdateModule(int currentFrame)
@@ -116,24 +132,36 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             }
             deferredDeletions[currentFrame].Clear();
 
-            controlCount = renderEntities.Count;
+            DataPool pool = ControlPool;
+            int live = pool.Count;
+
+            // refresh the pooled transform mirror (persistent buffer, patched in place)
             meshComponent.MakeInstanced(this, currentFrame);
-            if (frameResources == null)
+
+            // Nothing to bind yet — record an empty (clear-only) command buffer and wait.
+            if (live > 0)
             {
-                frameResources = new FrameResources[Renderer.swapchainImageCount];
-                for (int i = 0; i < Renderer.swapchainImageCount; i++)
+                // Rebuild this frame's descriptor sets only when the pool's capacity changed
+                // (buffers moved) or the live count shrank; otherwise keep them and append the
+                // newly added controls.
+                bool structural = _frameBuiltCapacity[currentFrame] != pool.Capacity
+                                  || live < _frameWrittenControls[currentFrame];
+                if (structural)
                 {
-                    CreateDescriptorPool(i, controlCount);
-                    AllocateDescriptorSets(i);
-                    UpdateDescriptorSets(i, controlCount);
+                    CreateDescriptorPool(currentFrame, 0);
+                    AllocateDescriptorSets(currentFrame);
+                    UpdateDescriptorSets(currentFrame, live);
+                    _frameWrittenControls[currentFrame] = live;
+                    _frameBuiltCapacity[currentFrame] = pool.Capacity;
+                }
+                else if (live > _frameWrittenControls[currentFrame])
+                {
+                    WriteControlDataDescriptors(currentFrame, _frameWrittenControls[currentFrame], live);
+                    WriteSamplerDescriptors(currentFrame, _frameWrittenControls[currentFrame], live);
+                    _frameWrittenControls[currentFrame] = live;
                 }
             }
-            else
-            {
-                CreateDescriptorPool(currentFrame, controlCount);
-                AllocateDescriptorSets(currentFrame);
-                UpdateDescriptorSets(currentFrame, controlCount);
-            }
+
             WriteCommandBuffers(currentFrame);
         }
 
@@ -245,22 +273,25 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal override void CreateDescriptorPoolSizes(uint swapchainImageCount)
         {
+            // one pool per image, holding the two sets sized to the full pool capacity:
+            // camera UBO ×1, transforms SSBO ×1 + control-data SSBO array ×cap, sampler array ×cap
+            int cap = ControlPool.Capacity;
             descriptorPoolSizes =
             [
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.UniformBuffer,
-                    DescriptorCount = swapchainImageCount + 1
+                    DescriptorCount = 1
                 },
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.StorageBuffer,
-                    DescriptorCount = (uint)(swapchainImageCount * controlCount + 2)
+                    DescriptorCount = (uint)(cap + 1)
                 },
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.CombinedImageSampler,
-                    DescriptorCount = (uint)(swapchainImageCount * controlCount + 1)
+                    DescriptorCount = (uint)cap
                 }
             ];
         }
@@ -295,118 +326,123 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         }
 
 
+        // Full (re)write of a frame's sets — used on the structural rebuild path only.
         internal override void UpdateDescriptorSets(int currentFrame, int entityCount)
         {
-            UpdateFirstDescriptorSets(currentFrame, entityCount);
-            UpdateSecondDescriptorSets(currentFrame, entityCount);
+            WriteStaticDescriptors(currentFrame);
+            WriteControlDataDescriptors(currentFrame, 0, entityCount);
+            WriteSamplerDescriptors(currentFrame, 0, entityCount);
         }
 
-        private void UpdateFirstDescriptorSets(int currentFrame, int entityCount)
+        // The per-frame-constant bindings: camera UBO (set0/b0) and the transforms SSBO
+        // (set0/b1). Only rewritten when the set is rebuilt (the transforms buffer moves).
+        private void WriteStaticDescriptors(int currentFrame)
         {
-            //for (int i = 0; i < Renderer.swapchainImageCount; i++)
-            //{
-                DescriptorBufferInfo cameraInfo = new DescriptorBufferInfo()
-                {
-                    Buffer = camera._cameraBuffer[0],
-                    Offset = 0,
-                    Range = (ulong)Unsafe.SizeOf<UBO>()
-                };
-                DescriptorBufferInfo transformInfo = new DescriptorBufferInfo()
-                {
-                    Buffer = meshComponent.transformsBuffer,
-                    Offset = 0,
-                    Range = (ulong)(sizeof(float) * 16 * entityCount)
-                };
-
-                DescriptorBufferInfo[] controlDataInfos = new DescriptorBufferInfo[entityCount];
-                for (int j = 0; j < entityCount; j++)
-                {
-                    VulkanControl control = (VulkanControl)renderEntities[j];
-                    controlDataInfos[j] = new()
-                    {
-                        Buffer = control.controlDataBuffer,
-                        Offset = 0,
-                        Range = (ulong)Unsafe.SizeOf<ControlData>()
-                    };
-                }
-                fixed (DescriptorBufferInfo* controlDataInfosPtr = controlDataInfos)
-                {
-                    var writeDescriptorSets = new WriteDescriptorSet[]
-                    {
-                        new WriteDescriptorSet
-                        {
-                            SType = StructureType.WriteDescriptorSet,
-                            DstSet = frameResources[currentFrame].sets[0],
-                            DstBinding = 0,
-                            DescriptorCount = 1,
-                            DstArrayElement = 0,
-                            DescriptorType = DescriptorType.UniformBuffer,
-                            PBufferInfo = &cameraInfo
-                        },
-                        new WriteDescriptorSet
-                        {
-                            SType = StructureType.WriteDescriptorSet,
-                            DstSet = frameResources[currentFrame].sets[0],
-                            DstBinding = 1,
-                            DescriptorCount = 1,
-                            DstArrayElement = 0,
-                            DescriptorType = DescriptorType.StorageBuffer,
-                            PBufferInfo = &transformInfo
-                        },
-                        new WriteDescriptorSet
-                        {
-                            SType = StructureType.WriteDescriptorSet,
-                            DstSet = frameResources[currentFrame].sets[0],
-                            DstBinding = 2,
-                            DescriptorCount = (uint)entityCount,
-                            DstArrayElement = 0,
-                            DescriptorType = DescriptorType.StorageBuffer,
-                            PBufferInfo = controlDataInfosPtr
-                        }
-                    };
-                    fixed (WriteDescriptorSet* descPtr = writeDescriptorSets)
-                    {
-                        Renderer.vk!.UpdateDescriptorSets(Renderer.logicalDevice, (uint)writeDescriptorSets.Length, descPtr, 0, null);
-                    }
-                }
-            //}
-        }
-
-        private void UpdateSecondDescriptorSets(int currentFrame, int entityCount)
-        {
-            for (int i = 0; i < Renderer.swapchainImageCount; i++)
+            DescriptorBufferInfo cameraInfo = new DescriptorBufferInfo()
             {
-                DescriptorImageInfo[] samplersInfos = new DescriptorImageInfo[entityCount];
-                for (int j = 0; j < entityCount; j++)
+                Buffer = camera._cameraBuffer[0],
+                Offset = 0,
+                Range = (ulong)Unsafe.SizeOf<UBO>()
+            };
+            DescriptorBufferInfo transformInfo = new DescriptorBufferInfo()
+            {
+                Buffer = meshComponent.transformsBuffer,
+                Offset = 0,
+                Range = (ulong)(sizeof(float) * 16 * ControlPool.Capacity)
+            };
+            var writeDescriptorSets = new WriteDescriptorSet[]
+            {
+                new WriteDescriptorSet
                 {
-                    VulkanControl control = (VulkanControl)renderEntities[j];
-                    samplersInfos[j] = new()
-                    {
-                        ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
-                        ImageView = control.maskAsset.textureImageView,
-                        Sampler = control.maskSampler
-                    };
-                }
-                fixed (DescriptorImageInfo* samplerInfosPtr = samplersInfos)
+                    SType = StructureType.WriteDescriptorSet,
+                    DstSet = frameResources[currentFrame].sets[0],
+                    DstBinding = 0,
+                    DescriptorCount = 1,
+                    DstArrayElement = 0,
+                    DescriptorType = DescriptorType.UniformBuffer,
+                    PBufferInfo = &cameraInfo
+                },
+                new WriteDescriptorSet
                 {
-                    var writeDescriptorSets = new WriteDescriptorSet[]
-                    {
-                        new WriteDescriptorSet
-                        {
-                            SType = StructureType.WriteDescriptorSet,
-                            DstSet = frameResources[currentFrame].sets[1],
-                            DstBinding = 0,
-                            DescriptorCount = (uint)entityCount,
-                            DstArrayElement = 0,
-                            DescriptorType = DescriptorType.CombinedImageSampler,
-                            PImageInfo = samplerInfosPtr
-                        }
-                    };
-                    fixed (WriteDescriptorSet* descPtr = writeDescriptorSets)
-                    {
-                        Renderer.vk!.UpdateDescriptorSets(Renderer.logicalDevice, (uint)writeDescriptorSets.Length, descPtr, 0, null);
-                    }
+                    SType = StructureType.WriteDescriptorSet,
+                    DstSet = frameResources[currentFrame].sets[0],
+                    DstBinding = 1,
+                    DescriptorCount = 1,
+                    DstArrayElement = 0,
+                    DescriptorType = DescriptorType.StorageBuffer,
+                    PBufferInfo = &transformInfo
                 }
+            };
+            fixed (WriteDescriptorSet* descPtr = writeDescriptorSets)
+            {
+                Renderer.vk!.UpdateDescriptorSets(Renderer.logicalDevice, (uint)writeDescriptorSets.Length, descPtr, 0, null);
+            }
+        }
+
+        // Write the control-data SSBO array (set0/b2) for the dense control range [from, to).
+        // Elements are sourced by pool dense index so they line up with the transform mirror.
+        private void WriteControlDataDescriptors(int currentFrame, int from, int to)
+        {
+            int count = to - from;
+            if (count <= 0) return;
+
+            DescriptorBufferInfo[] controlDataInfos = new DescriptorBufferInfo[count];
+            for (int k = 0; k < count; k++)
+            {
+                VulkanControl control = (VulkanControl)ControlPool.OwnerAt(from + k);
+                controlDataInfos[k] = new()
+                {
+                    Buffer = control.controlDataBuffer,
+                    Offset = 0,
+                    Range = (ulong)Unsafe.SizeOf<ControlData>()
+                };
+            }
+            fixed (DescriptorBufferInfo* controlDataInfosPtr = controlDataInfos)
+            {
+                WriteDescriptorSet write = new WriteDescriptorSet
+                {
+                    SType = StructureType.WriteDescriptorSet,
+                    DstSet = frameResources[currentFrame].sets[0],
+                    DstBinding = 2,
+                    DstArrayElement = (uint)from,
+                    DescriptorCount = (uint)count,
+                    DescriptorType = DescriptorType.StorageBuffer,
+                    PBufferInfo = controlDataInfosPtr
+                };
+                Renderer.vk!.UpdateDescriptorSets(Renderer.logicalDevice, 1, &write, 0, null);
+            }
+        }
+
+        // Write the sampler array (set1/b0) for the dense control range [from, to).
+        private void WriteSamplerDescriptors(int currentFrame, int from, int to)
+        {
+            int count = to - from;
+            if (count <= 0) return;
+
+            DescriptorImageInfo[] samplersInfos = new DescriptorImageInfo[count];
+            for (int k = 0; k < count; k++)
+            {
+                VulkanControl control = (VulkanControl)ControlPool.OwnerAt(from + k);
+                samplersInfos[k] = new()
+                {
+                    ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
+                    ImageView = control.maskAsset.textureImageView,
+                    Sampler = control.maskSampler
+                };
+            }
+            fixed (DescriptorImageInfo* samplerInfosPtr = samplersInfos)
+            {
+                WriteDescriptorSet write = new WriteDescriptorSet
+                {
+                    SType = StructureType.WriteDescriptorSet,
+                    DstSet = frameResources[currentFrame].sets[1],
+                    DstBinding = 0,
+                    DstArrayElement = (uint)from,
+                    DescriptorCount = (uint)count,
+                    DescriptorType = DescriptorType.CombinedImageSampler,
+                    PImageInfo = samplerInfosPtr
+                };
+                Renderer.vk!.UpdateDescriptorSets(Renderer.logicalDevice, 1, &write, 0, null);
             }
         }
 
@@ -625,12 +661,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal override void WriteCommandBuffers(int currentFrame)
         {
-            if (commandBuffers != null)
-            {
-                Renderer.vk.ResetCommandBuffer(commandBuffers[currentFrame], CommandBufferResetFlags.None);
-                WriteCommandBuffer(currentFrame);
-            }
-            else
+            if (commandBuffers == null)
             {
                 commandBuffers = new CommandBuffer[Renderer.swapchainImageCount];
 
@@ -650,11 +681,14 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                         throw new Exception("Failed to allocate command buffer with error " + r);
                     }
                 }
-                for(int i=0; i < commandBuffers.Length; i++)
-                {
-                    WriteCommandBuffer(i);
-                }
             }
+            else
+            {
+                Renderer.vk.ResetCommandBuffer(commandBuffers[currentFrame], CommandBufferResetFlags.None);
+            }
+            // Record only this image; the other images each record on their own first dirty pass
+            // (all start dirty), by which point their descriptor sets are built.
+            WriteCommandBuffer(currentFrame);
             isDirty[currentFrame] = false;
         }
 
