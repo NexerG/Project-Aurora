@@ -38,7 +38,7 @@ Phases, dates and standing decisions live in [[Roadmap]]. Items below are groupe
 		- [x] only one item per grid cell
 	- [x] Scroll
 	- [x] UI "start" scaler with multipliers
-	- [ ] fix action xsd attribute bcz it dont find actions if theyre not named EXACTLY the same (action - attribute)
+	- [x] fix action xsd attribute bcz it dont find actions if theyre not named EXACTLY the same (action - attribute)
 - [ ] fix resolution stuff associated with DPI and stuff. use `glfwGetMonitorContentScale` *(non-essential)*
 
 ---

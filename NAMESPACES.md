@@ -5,6 +5,7 @@ ArctisAurora -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Prog
 ArctisAurora.Core -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Game.cs
 ArctisAurora.Core.Data -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\DataManager.cs
 ArctisAurora.Core.Data -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\DataPool.cs
+ArctisAurora.Core.Data -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\GpuTransform.cs
 ArctisAurora.Core.Data -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\PoolColumn.cs
 ArctisAurora.Core.Data -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\PoolDefinition.cs
 ArctisAurora.Core.Data -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\TransformData.cs

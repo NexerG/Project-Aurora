@@ -804,8 +804,10 @@ namespace ArctisAurora.Core.UISystem.Controls
                         .SelectMany(a => a.GetTypes())
                         .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
                         .FirstOrDefault(m =>
-                                m.GetCustomAttributes(typeof(A_XSDActionDependencyAttribute), false).Any() &&
-                                string.Equals(m.Name, attr.Value, StringComparison.OrdinalIgnoreCase));
+                        {
+                            A_XSDActionDependencyAttribute actionDep = m.GetCustomAttribute<A_XSDActionDependencyAttribute>();
+                            return actionDep != null && string.Equals(actionDep.Name, attr.Value, StringComparison.OrdinalIgnoreCase);
+                        });
 
                         if (methodInfo == null)
                             throw new Exception($"Action method '{attr.Value}' not found in A_XSDActionDependency.");

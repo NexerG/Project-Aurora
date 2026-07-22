@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Data;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.UISystem;
@@ -157,6 +158,10 @@ namespace ArctisAurora.EngineWork
                 Interpolate();
 
                 t_render_end.WaitOne();
+                // The render thread is parked here (previous frame drained, next not yet kicked),
+                // so this is the only window where it is safe to move pool memory: drain queued
+                // destroys -> compact -> resequence across every data pool.
+                DataManager.FrameEdge();
                 t_render_start.Set();
 
                 deltaTime = DateTime.Now - tickStart;
@@ -246,6 +251,11 @@ namespace ArctisAurora.EngineWork
                 }
                 entitiesOnStart.Clear();
             }
+
+            // drain queued destroys before ticking: removed entities won't be ticked, the live
+            // lists aren't mutated mid-iteration, and their pool slots free now so the FrameEdge
+            // later this tick compacts them.
+            EntityRegistry.ProcessDestroys();
 
             /*if (EntityRegistry.onDestroyEntities.Count > 0)
             {

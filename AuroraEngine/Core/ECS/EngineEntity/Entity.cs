@@ -91,6 +91,31 @@ namespace ArctisAurora.Core.ECS.EngineEntity
             dataHandle = _pool.Allocate(this);
             transform.scale = new Vector3D<float>(1, 1, 1);   // preserve the old default scale
         }
+
+        private bool _destroyed = false;
+
+        // Tear this entity (and its whole subtree) down. Deferred: the subtree is enqueued now
+        // and actually unregistered + pool-freed at the next frame boundary (EntityRegistry.
+        // ProcessDestroys -> DataManager.FrameEdge), so it is safe to call from inside OnTick or
+        // an input handler without mutating the live iteration lists or moving pool memory.
+        public void Destroy()
+        {
+            if (_destroyed) return;
+            if (parent != null)
+            {
+                parent.children.Remove(this);   // detach the subtree root from the live tree
+                parent = null;
+            }
+            EnqueueSubtree(this);
+        }
+
+        private static void EnqueueSubtree(Entity entity)
+        {
+            entity._destroyed = true;
+            EntityRegistry.EnqueueDestroy(entity);
+            foreach (Entity child in entity.children)
+                EnqueueSubtree(child);
+        }
         #endregion
 
         public Entity()

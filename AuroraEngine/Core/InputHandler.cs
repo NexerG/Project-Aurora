@@ -1068,8 +1068,10 @@ namespace ArctisAurora.EngineWork
                             .SelectMany(a => a.GetTypes())
                             .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
                             .FirstOrDefault(m =>
-                                m.GetCustomAttributes(typeof(A_XSDActionDependencyAttribute), false).Length > 0 &&
-                                string.Equals(m.Name, actionAttr.Value, StringComparison.OrdinalIgnoreCase));
+                            {
+                                A_XSDActionDependencyAttribute actionDep = m.GetCustomAttribute<A_XSDActionDependencyAttribute>();
+                                return actionDep != null && string.Equals(actionDep.Name, actionAttr.Value, StringComparison.OrdinalIgnoreCase);
+                            });
 
                         if (methodInfo == null)
                             throw new Exception($"Action method '{actionAttr.Value}' not found in A_XSDActionDependency.");

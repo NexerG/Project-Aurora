@@ -1,4 +1,7 @@
-﻿using ArctisAurora.Core.UISystem.Controls;
+﻿using ArctisAurora.Core.Data;
+using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.UISystem.Controls;
 using Silk.NET.Maths;
 using static ArctisAurora.Core.UISystem.Controls.VulkanControl;
 
@@ -7,6 +10,33 @@ namespace ArctisAurora.Core.UISystem
     public class UILayout
     {
         private static readonly HashSet<VulkanControl> _dirtyRoots = new HashSet<VulkanControl>();
+
+        // Canonical UIControls dense order = DFS pre-order of the control tree (parent before
+        // children = painter order AND layout-dependency order). Resolved by DataManager for the
+        // pool's SortAction="UI.DFSOrder"; returns the live stableIds in the desired dense order.
+        // Registered but only consumed when something marks the pool orderDirty (insert / reparent
+        // / bring-to-front) — plain adds and destroys keep dense order without it.
+        [A_XSDActionDependency("UI.DFSOrder", "PoolSort")]
+        public static IReadOnlyList<int> DFSOrder(DataPool pool)
+        {
+            int count = pool.Count;
+            List<int> order = new List<int>(count);
+            for (int i = 0; i < count; i++)
+            {
+                // roots = live controls with no VulkanControl parent; DFS each in dense-scan order
+                if (pool.OwnerAt(i) is VulkanControl control && control.parent is not VulkanControl)
+                    CollectDFS(control, order);
+            }
+            return order;
+        }
+
+        private static void CollectDFS(VulkanControl control, List<int> order)
+        {
+            order.Add(control.dataHandle.StableId);
+            foreach (Entity child in control.children)
+                if (child is VulkanControl childControl)
+                    CollectDFS(childControl, order);
+        }
 
         public static void RegisterDirtyRoot(VulkanControl vulkanControl)
         {

@@ -27,10 +27,11 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
         internal Glyph glyph;
 
         // Pooled transforms: a persistent GPU mirror sized to the UIControls pool's capacity,
-        // patched in place. The buffer is (re)created only when the pool grows; ordinary adds
-        // just re-bake and sub-upload the live range instead of tearing the buffer down.
+        // patched in place. The baked matrices live in the pool's GpuTransform column (so they
+        // ride along through compaction/resequence), and this buffer just mirrors that column.
+        // The buffer is (re)created only when the pool grows; ordinary adds re-bake and
+        // sub-upload the live range instead of tearing the buffer down.
         private int _transformCapacity = -1;
-        private Matrix4X4<float>[] _matrixScratch = Array.Empty<Matrix4X4<float>>();
 
         internal MCUI()
         {
@@ -63,6 +64,11 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             render = live > 0;
             if (live == 0) return;
 
+            // bake the live transforms straight into the pool's GpuTransform column, then mirror
+            // that column (which stays dense-aligned through compaction/resequence) to the GPU.
+            BakeMatrices(pool, live);
+            GpuTransform[] gpu = pool.Backing<GpuTransform>();
+
             if (_transformCapacity != pool.Capacity)
             {
                 // pool grew (or first build): resize the persistent mirror to match. Rare, so a
@@ -73,32 +79,31 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
                     Renderer.vk.DestroyBuffer(Renderer.logicalDevice, transformsBuffer, null);
                     Renderer.vk.FreeMemory(Renderer.logicalDevice, _transformsBufferMemory, null);
                 }
-                _matrixScratch = new Matrix4X4<float>[pool.Capacity];
-                BakeMatrices(pool, live);
-                AVulkanBufferHandler.CreateBuffer(ref _matrixScratch, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
+                AVulkanBufferHandler.CreateBuffer(ref gpu, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
                 _transformCapacity = pool.Capacity;
             }
             else
             {
-                // bake the live transforms straight out of the pool's dense column and patch
-                // just that range into the existing buffer — no teardown, no full re-upload.
-                BakeMatrices(pool, live);
-                AVulkanBufferHandler.UpdateBufferRange(_matrixScratch, 0, 0, live, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer);
+                // patch just the live range into the existing buffer — no teardown, no full re-upload
+                AVulkanBufferHandler.UpdateBufferRange(gpu, 0, 0, live, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer);
             }
         }
 
-        // Compose a translate*scale matrix per live control from the pool's TransformData column.
-        // Dense index i here matches instance i in the draw and descriptor arrays (append-only
-        // order today; revisit once frees / DFS re-sequencing land).
+        // Compose a translate*scale matrix per live control from the pool's TransformData column
+        // into the index-aligned GpuTransform column. Dense index i matches instance i in the
+        // draw and descriptor arrays; the GpuTransform column is moved with its row through pool
+        // compaction/resequence, so it stays aligned without a hand-managed parallel array.
         private void BakeMatrices(DataPool pool, int live)
         {
             Span<TransformData> transforms = pool.GetSpan<TransformData>();
+            Span<GpuTransform> gpu = pool.GetSpan<GpuTransform>();
+            Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
             for (int i = 0; i < live; i++)
             {
-                Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
+                _transform = Matrix4X4<float>.Identity;
                 _transform *= Matrix4X4.CreateScale(transforms[i].scale);
                 _transform *= Matrix4X4.CreateTranslation(transforms[i].position);
-                _matrixScratch[i] = _transform;
+                gpu[i].matrix = _transform;
             }
         }
 

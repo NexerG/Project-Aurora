@@ -1,6 +1,6 @@
 # ECS Rework — Data-Oriented Pools (PARTIALLY IMPLEMENTED)
 
-Status: design settled 2026-07-17; first slice implemented 2026-07-21.
+Status: design settled 2026-07-17; slices implemented 2026-07-21 (pools + pooled UI mirror) and 2026-07-22 (GpuTransform column + frame-edge destroy lifecycle).
 
 ## Implemented so far (2026-07-21)
 - **Folder rename** `ParticleSimulator` → `AuroraEngine` (assembly/root namespace pinned to `ArctisAurora` via csproj). See [[project-map]].
@@ -42,7 +42,47 @@ Status: design settled 2026-07-17; first slice implemented 2026-07-21.
   content upload re-bakes the live range each dirty pass instead of using a cross-thread
   dirty-range clear.
 
+## Implemented so far (2026-07-22, third slice — GpuTransform column + frame-edge lifecycle)
+- **Baked matrix moved into a pool column (DONE).** New `GpuTransform` struct (blittable
+  `Matrix4X4<float>` wrapper, `[A_XSDType("GpuTransform","DataPools")]`) is now a third column on
+  the `UIControls` pool (`Pools.xml`). `MCUI.BakeMatrices` writes translate*scale into
+  `pool.GetSpan<GpuTransform>()`; `MakeInstanced` mirrors `pool.Backing<GpuTransform>()` (new
+  `DataPool.Backing<T>()` = full capacity-length column array) to the persistent SSBO — recreate
+  on capacity change, `UpdateBufferRange` on the live range otherwise. Killed the hand-managed
+  `_matrixScratch` parallel array. The column now rides along through compaction/resequence
+  (columns move together in `MoveDense`/`Permute`), so it stays dense-aligned automatically.
+- **`DataManager.FrameEdge()` wired into the tick (DONE).** Called in `Engine.Run()` AFTER
+  `t_render_end.WaitOne()` and BEFORE `t_render_start.Set()` — the only window where the render
+  thread is parked, so compaction/resequence can move pool memory safely. NOT inside
+  `Interpolate()` (that runs concurrently with the previous frame's `Draw()`).
+- **Deferred destroy lifecycle (DONE, destroy half only).** `Entity.Destroy()` detaches the
+  subtree root from the live tree and enqueues the whole subtree to `EntityRegistry`'s
+  `_toDestroy`. `EntityRegistry.ProcessDestroys()` drains it at the TOP of `Interpolate()`
+  (before the OnTick loop, so no mid-iteration list mutation): `Unregister` (removes from all
+  matching groups incl. "Controls" → fires onChanged → UI module marks dirty) → `OnDestroy()` →
+  `pool.Free(handle)` (deferred). The actual slot compaction happens at that tick's later
+  `FrameEdge()`. Ordered pool → `CompactOrdered` preserves DFS order, so the renderer needs no
+  new path: compaction shrinks `live`, hitting UIModule's existing `live < writtenCount`
+  structural-rebuild guard. `Destroy()` is idempotent (`_destroyed` flag) and `Pool.Free` is too.
+- **`UI.DFSOrder` sort provider registered (DONE, dormant).** `UILayout.DFSOrder(DataPool)`
+  (`[A_XSDActionDependency("UI.DFSOrder","PoolSort")]`) = DFS pre-order of the control tree,
+  returning live stableIds. Resolves the previously-dangling `Pools.xml SortAction` (was logging
+  "not found" at bootstrap). Roots = live controls whose parent is not a VulkanControl, DFS'd in
+  dense-scan order. **Consumed only when something marks the pool `orderDirty` — nothing does yet.**
+
 ## NOT yet done (remaining Phase 2/3)
+- **Reorder/resequence NOT triggered.** `MarkOrderDirty()` still has no callers, so `Resequence`
+  never runs; dense order == DFS order holds only because XML parse order IS DFS pre-order and
+  plain adds append at the DFS tail. Runtime mid-tree insert / reparent / bring-to-front will
+  break this. Wiring `orderDirty` on tree mutation ALSO needs a renderer change first: a pure
+  permute (no count change) currently takes UIModule's descriptor APPEND path and leaves stale
+  descriptor→control mappings — resequence needs a forced FULL descriptor rebuild (e.g. consume
+  `pool.StructuralDirty`). Do these together. This is the next step after this slice.
+- **Per-control `controlDataBuffer` leaks on destroy** — the control's own Vulkan buffer is not
+  reclaimed by `OnDestroy` (no deferred-deletion hook). Fine at current destroy volume; the clean
+  fix is folding ControlData into the pooled SSBO (below), which removes per-control buffers.
+- **`Entity.OnDestroy()` has a pre-existing modify-during-iteration bug** (`foreach _components`
+  + `Remove`). Latent: controls carry no components so the loop body never runs. Left as-is.
 - `controlData` still per-control field + own SSBO; pool's ControlData column allocated but UNUSED
   (per-control buffers are still bound into set0/b2 as an array; only their descriptor writes are
   now incremental). Folding into one pooled SSBO is the clean follow-up (needs the shader change).

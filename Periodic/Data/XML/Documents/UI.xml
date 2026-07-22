@@ -13,7 +13,7 @@
 		<ColumnDefinition SizeMode="Star"/>
 
 		<StackPanel ControlColor="gray" Grid.Column="0" Grid.Row="0">
-			<Button ControlColor="red" Height="25"/>
+			<Button ControlColor="red" Height="25" onClick="DestroySelf"/>
 			<Button HeightStar="1"/>
 			<Button ControlColor="black" Grid.Column="0" Grid.Row="0" HeightStar="2" HorizontalAlignment="Stretch" onClick="ExitApplication2">
 				<TextInput FontSize="24" Text="BBBaaad to the Bone BBB BBB"/>

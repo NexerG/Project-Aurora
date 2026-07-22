@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.Core.Filing.Serialization;
+using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.UISystem.Controls;
 using System.Collections;
 using System.Xml.Linq;
@@ -114,6 +115,29 @@ namespace ArctisAurora.Core.Registry
             {
                 if (kvp.Value.elementType.IsAssignableFrom(t))
                     kvp.Value.Remove(item);
+            }
+        }
+
+        // Deferred destroy queue: Entity.Destroy() enqueues here; ProcessDestroys drains it once
+        // per tick (before OnTick) so the live group lists are never mutated mid-iteration.
+        private static readonly List<Entity> _toDestroy = new List<Entity>();
+
+        public static void EnqueueDestroy(Entity entity) => _toDestroy.Add(entity);
+
+        // Unregister + free every queued entity. Group removal fires the groups' onChanged (e.g.
+        // "Controls" -> the UI module marks itself dirty). Pool.Free is deferred inside the pool,
+        // so the freed slots are actually compacted at the next DataManager.FrameEdge().
+        public static void ProcessDestroys()
+        {
+            if (_toDestroy.Count == 0) return;
+
+            Entity[] batch = _toDestroy.ToArray();
+            _toDestroy.Clear();
+            foreach (Entity entity in batch)
+            {
+                Unregister(entity);
+                entity.OnDestroy();
+                entity.Pool.Free(entity.dataHandle);
             }
         }
 

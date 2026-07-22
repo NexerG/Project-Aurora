@@ -45,5 +45,17 @@ namespace Periodic.Editor
         {
             Environment.Exit(0);
         }
+
+        // Test action for the pooled-control destroy lifecycle: tears down the clicked control.
+        // hovering is the control whose onClick is firing, so this is "destroy self". Destroy is
+        // deferred — the control is freed + compacted at the next frame edge.
+        // NOTE: the method name intentionally differs from the action name ("DestroySelf") to
+        // exercise attribute-name resolution — onClick="DestroySelf" now binds by the attribute
+        // Name, not the C# method name.
+        [A_XSDActionDependency("DestroySelf", category: "UI")]
+        public static void KillMe()
+        {
+            UICollisionHandling.hovering?.Destroy();
+        }
     }
 }

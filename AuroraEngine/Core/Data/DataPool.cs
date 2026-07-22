@@ -87,6 +87,12 @@ namespace ArctisAurora.Core.Data
 
         private T[] Column<T>() where T : struct => ((PoolColumn<T>)_columns[typeof(T)]).data;
 
+        // The full backing array for component T (length Capacity), for a bulk GPU upload sized
+        // to the pool's capacity. Only dense [0,Count) is live; the tail is unused slack. The
+        // renderer mirrors this straight to a GPU buffer, so it must stay in dense order — read
+        // only, never structurally mutated by the caller.
+        public T[] Backing<T>() where T : struct => Column<T>();
+
         // ---- bulk data transfer (per component type) ----
 
         // Copy this pool's full live data for component T out into dest (dest.Length >= Count).

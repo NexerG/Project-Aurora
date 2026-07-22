@@ -5,6 +5,10 @@
   <xs:simpleType name="DataPools">
     <xs:union memberTypes="types:PoolGrowthType" />
   </xs:simpleType>
+  <xs:element name="GpuTransform" type="types:GpuTransform" />
+  <xs:complexType name="GpuTransform">
+    <xs:sequence />
+  </xs:complexType>
   <xs:simpleType name="PoolGrowthType">
     <xs:restriction base="xs:string">
       <xs:enumeration value="Multiplicative" />
