@@ -8,7 +8,7 @@
 	</Keybind>
 
 	<Keybind Trigger="AnySymbol" Action="Write">
-		<Repeat Rate="0.1"/>
+		<Continuous />
 	</Keybind>
 	
 </KeybindMap>

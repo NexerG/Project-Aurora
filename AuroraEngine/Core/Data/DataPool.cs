@@ -18,6 +18,14 @@ namespace ArctisAurora.Core.Data
         public string Name { get; }
         public bool Ordered { get; }
 
+        // Owning system, named in Pools.xml. OwnerSystemId is filled in once the systems exist
+        // (DataManager.ResolveOwners) — pools are parsed at bootstrap, before Engine constructs
+        // them, so the name is the only thing available at parse time. Zero means unresolved.
+        public string OwnerName { get; }
+        public byte OwnerSystemId { get; private set; }
+
+        internal void SetOwnerSystemId(byte systemId) => OwnerSystemId = systemId;
+
         private readonly PoolGrowthType _growthMode;
         private readonly int _growthValue;
 
@@ -51,11 +59,12 @@ namespace ArctisAurora.Core.Data
         // Resolved from the pool's SortAction, or set directly (tests / systems).
         public Func<DataPool, IReadOnlyList<int>> SortProvider { get; set; }
 
-        public DataPool(ushort id, string name, int capacity, bool ordered, PoolGrowthType growthMode, int growthValue, IEnumerable<Type> componentTypes)
+        public DataPool(ushort id, string name, string ownerName, int capacity, bool ordered, PoolGrowthType growthMode, int growthValue, IEnumerable<Type> componentTypes)
         {
             if (capacity < 1) capacity = 1;
             Id = id;
             Name = name;
+            OwnerName = ownerName;
             Ordered = ordered;
             _growthMode = growthMode;
             _growthValue = growthValue < 1 ? 1 : growthValue;

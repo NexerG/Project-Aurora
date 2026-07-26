@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Data;
+using ArctisAurora.Core.Threading;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.UISystem;
@@ -47,16 +48,15 @@ namespace ArctisAurora.EngineWork
         internal static List<Entity> entitiesOnStart;
         internal static List<Entity> entitiesOnDestroy;
 
-        // threading
-        public bool running { get; private set; }
-        static AutoResetEvent t_physics_start = new AutoResetEvent(false);
-        static AutoResetEvent t_physics_end = new AutoResetEvent(false);
+        // threading — main, physics and render each run free at their own rate and never wait on
+        // one another. Each owns its loop, its pacing and its epoch; see ThreadedSystem.
+        internal static MainSystem mainSystem;
+        internal static PhysicsSystem physicsSystem;
+        internal static RenderSystem renderSystem;
 
-        static AutoResetEvent t_render_start = new AutoResetEvent(false);
-        static AutoResetEvent t_render_end = new AutoResetEvent(true);
+        public bool running => mainSystem != null && mainSystem.Running;
 
         static bool isCaughtUp = true;
-        static bool isPhysicsReady = false;
 
         internal static DateTime initTime;
         internal Frame SC;
@@ -84,15 +84,19 @@ namespace ArctisAurora.EngineWork
             //}
             //im.Save(Paths.UIMASKS + "\\defaultMask.png");
 
-            running = true;
             Bootstrapper.Load(Paths.BOOTSTRAP);
             Bootstrapper.RunPhase("Bootstrap");
 
-            Thread physics = new Thread(PhysicsThread);
-            Thread rendering = new Thread(RenderThread);
+            mainSystem = new MainSystem();
+            physicsSystem = new PhysicsSystem();
+            renderSystem = new RenderSystem();
 
-            physics.Start();
-            rendering.Start();
+            // Pools were parsed during bootstrap and only know their owner by name; bind them now
+            // that the systems exist.
+            DataManager.ResolveOwners();
+
+            physicsSystem.Start();
+            renderSystem.Start();
 
             if(startImmediately)
             {
@@ -140,62 +144,25 @@ namespace ArctisAurora.EngineWork
         }
         #endregion
 
-        public void Run()
+        // Blocks on the calling thread — main cannot be handed a spawned thread, GLFW requires
+        // PollEvents on the one that created the window.
+        public void Run() => mainSystem.Adopt();
+
+        // One main tick. MainSystem drives this; the body stays here because it touches the
+        // registries, input handler and UI state that Engine owns.
+        internal void MainTick()
         {
-            while (running)
-            {
-                DateTime tickStart = DateTime.Now;
-                AGlfwWindow._glfw.PollEvents();
-                InputHandler.instance.ActivateKeybinds();
-                HandleUI();
-                // skip this if we're no done interpolating last physics tick
-                // aka one in the over, another waitting.
+            AGlfwWindow._glfw.PollEvents();
+            InputHandler.instance.ActivateKeybinds();
+            HandleUI();
 
-                t_physics_start.Set();
-                t_physics_end.WaitOne();
+            // here should go entity updates &/or interpolation
+            Interpolate();
 
-                // here should go entity updates &/or interpolation
-                Interpolate();
-
-                t_render_end.WaitOne();
-                // The render thread is parked here (previous frame drained, next not yet kicked),
-                // so this is the only window where it is safe to move pool memory: drain queued
-                // destroys -> compact -> resequence across every data pool.
-                DataManager.FrameEdge();
-                t_render_start.Set();
-
-                deltaTime = DateTime.Now - tickStart;
-                totalTime += deltaTime.TotalSeconds;
-                //Console.WriteLine($"Engine Tick Time: {deltaTime.TotalSeconds}s");
-            }
-        }
-
-        private void PhysicsThread()
-        {
-            Console.WriteLine($"Starting physics thread at ID: {GetCurrentThreadId()}");
-            while (running)
-            {
-                t_physics_start.WaitOne();
-                //Console.WriteLine("running physics thread");
-                if (!isPhysicsReady) // we're lacking ?
-                {
-                    //Console.WriteLine("Doing phyics");
-                    isPhysicsReady = true;
-                }
-                Thread.Sleep(32);
-                t_physics_end.Set();
-            }
-        }
-
-        private void RenderThread()
-        {
-            Console.WriteLine($"Starting rendering thread at ID: {GetCurrentThreadId()}");
-            while (running)
-            {
-                t_render_start.WaitOne();
-                renderer.Draw();
-                t_render_end.Set();
-            }
+            // Drain queued destroys -> compact -> resequence across every data pool. This still
+            // MOVES pool memory, and the render thread is no longer parked while it runs — the
+            // address-stable storage rework is what makes this safe.
+            DataManager.FrameEdge();
         }
 
         private void HandleUI()
@@ -239,7 +206,6 @@ namespace ArctisAurora.EngineWork
             {
                 isCaughtUp = false;
                 // switch active buffers
-                isPhysicsReady = false;
             }
 
             // do interpolation
@@ -294,7 +260,9 @@ namespace ArctisAurora.EngineWork
 
         public void Stop()
         {
-            running = false;
+            mainSystem?.Stop();
+            physicsSystem?.Stop();
+            renderSystem?.Stop();
         }
     }
 }

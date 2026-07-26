@@ -23,6 +23,10 @@ namespace ArctisAurora.Core.Data
     {
         [A_XSDElementProperty("Name", "DataPools")]
         public string name { get; set; } = string.Empty;
+        // Which ThreadedSystem owns this pool. That system writes the columns in place on its own
+        // thread; everything else has to go through its command queue.
+        [A_XSDElementProperty("System", "DataPools")]
+        public string system { get; set; } = string.Empty;
         [A_XSDElementProperty("Capacity", "DataPools")]
         public int capacity { get; set; }
         [A_XSDElementProperty("Ordered", "DataPools")]

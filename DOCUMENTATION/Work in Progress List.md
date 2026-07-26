@@ -9,7 +9,7 @@ Phases, dates and standing decisions live in [[Roadmap]]. Items below are groupe
 	- [ ] Update engine class so the mouse inputs are handled in input handler
 - [ ] text editor
 	- [ ] fix beziers
-	- [ ] turn msdf into mtsdf
+	- [x] turn msdf into mtsdf
 	- [ ] add the rest of the alphabet (eu languages)
 		- [ ] create language packs?
 	- [ ] editor
@@ -151,13 +151,13 @@ Phases, dates and standing decisions live in [[Roadmap]]. Items below are groupe
 	- [ ] Controls
 		- [ ] Default
 		- [ ] Containers
-- [ ] Registry
-- [ ] Bootstrapper
-- [ ] Keybinds
-- [ ] Context
-- [ ] XSD
+- [x] Registry
+- [x] Bootstrapper
+- [x] Keybinds
+- [x] Context
+- [x] XSD
 	- [x] Code
-	- [ ] System
+	- [x] System
 - [ ] Renderer
 	- [x] The Renderer system
 	- [ ] Rasterizer

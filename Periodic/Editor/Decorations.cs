@@ -17,8 +17,13 @@ namespace Periodic.Editor
             if (!control.isEditing) return;
 
             // if text box is editable
-            //Queue<char> inputChars = InputHandler.charInputReadQueue;
-            //control.WriteChar(inputChars.Dequeue());
+            // drain every char polled this tick — the OS repeat rate can outpace the frame rate
+            Queue<char> inputChars = InputHandler.charInputReadQueue;
+            while (inputChars.Count > 0)
+            {
+                control.WriteChar(inputChars.Dequeue());
+                Console.WriteLine(control.children.Count);
+            }
         }
 
         [A_XSDActionDependency("ExitApplication", category: "Input")]

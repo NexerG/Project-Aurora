@@ -9,6 +9,8 @@ ArctisAurora.Core.Data -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraE
 ArctisAurora.Core.Data -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\PoolColumn.cs
 ArctisAurora.Core.Data -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\PoolDefinition.cs
 ArctisAurora.Core.Data -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\TransformData.cs
+ArctisAurora.Core.Data.Commands -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\Commands\CommandArena.cs
+ArctisAurora.Core.Data.Commands -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\Commands\SystemCommand.cs
 ArctisAurora.Core.ECS.EngineEntity -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\ECS\EngineEntity\Entity.cs
 ArctisAurora.Core.ECS.EngineEntity -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\ECS\EngineEntity\LightSourceEntity.cs
 ArctisAurora.Core.Filing -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\FileObject.cs
@@ -27,6 +29,10 @@ ArctisAurora.Core.Registry.Assets -> C:\Projects-Repositories\Aurora\Project-Aur
 ArctisAurora.Core.Registry.Assets -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\Assets\TextureAsset.cs
 ArctisAurora.Core.Rendering.Helpers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Rendering\Helpers\QueueAllocator.cs
 ArctisAurora.Core.Rendering.Modules -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Rendering\Modules\CompositorModule.cs
+ArctisAurora.Core.Threading -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Threading\MainSystem.cs
+ArctisAurora.Core.Threading -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Threading\PhysicsSystem.cs
+ArctisAurora.Core.Threading -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Threading\RenderSystem.cs
+ArctisAurora.Core.Threading -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Threading\ThreadedSystem.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\AuroraFont.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Bezier.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Glyph.cs

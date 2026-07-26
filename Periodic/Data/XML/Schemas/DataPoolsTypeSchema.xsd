@@ -30,6 +30,7 @@
       </xs:element>
     </xs:sequence>
     <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="System" type="xs:string" />
     <xs:attribute name="Capacity" type="xs:int" />
     <xs:attribute name="Ordered" type="xs:boolean" />
     <xs:attribute name="SortAction" type="xs:string" />

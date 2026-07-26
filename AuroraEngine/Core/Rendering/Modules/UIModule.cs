@@ -26,7 +26,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override uint GetVariableDescriptorCount(int set)
         {
             // sets are sized to the pool's capacity once, then partially bound as controls fill in
-            return (uint)ControlPool.Capacity;
+            return (uint)BuildCapacity;
         }
 
         internal override PhysicalDeviceFeatures features => new()
@@ -105,6 +105,14 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         private int[] _frameBuiltCapacity;
         private int[] _frameWrittenControls;
 
+        // The pool capacity the current build is sized against, sampled once at the top of
+        // UpdateModule. The main thread can Grow() the pool mid-build, so every consumer in one
+        // build (pool sizes, variable descriptor count, SSBO range, _frameBuiltCapacity) must
+        // agree on a single value — a set allocated against one capacity but recorded as another
+        // lets the append path write past the end of the variable-length binding.
+        private int _buildCapacity = -1;
+        private int BuildCapacity => _buildCapacity < 0 ? ControlPool.Capacity : _buildCapacity;
+
 
         public UIModule()
         {
@@ -134,6 +142,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
             DataPool pool = ControlPool;
             int live = pool.Count;
+            _buildCapacity = pool.Capacity;
 
             // refresh the pooled transform mirror (persistent buffer, patched in place)
             meshComponent.MakeInstanced(this, currentFrame);
@@ -144,15 +153,18 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 // Rebuild this frame's descriptor sets only when the pool's capacity changed
                 // (buffers moved) or the live count shrank; otherwise keep them and append the
                 // newly added controls.
-                bool structural = _frameBuiltCapacity[currentFrame] != pool.Capacity
-                                  || live < _frameWrittenControls[currentFrame];
+                // live > builtCapacity can only mean the set was allocated against a capacity that
+                // has since been outgrown — appending into it would overrun the binding.
+                bool structural = _frameBuiltCapacity[currentFrame] != _buildCapacity
+                                  || live < _frameWrittenControls[currentFrame]
+                                  || live > _frameBuiltCapacity[currentFrame];
                 if (structural)
                 {
                     CreateDescriptorPool(currentFrame, 0);
                     AllocateDescriptorSets(currentFrame);
                     UpdateDescriptorSets(currentFrame, live);
                     _frameWrittenControls[currentFrame] = live;
-                    _frameBuiltCapacity[currentFrame] = pool.Capacity;
+                    _frameBuiltCapacity[currentFrame] = _buildCapacity;
                 }
                 else if (live > _frameWrittenControls[currentFrame])
                 {
@@ -275,7 +287,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         {
             // one pool per image, holding the two sets sized to the full pool capacity:
             // camera UBO ×1, transforms SSBO ×1 + control-data SSBO array ×cap, sampler array ×cap
-            int cap = ControlPool.Capacity;
+            int cap = BuildCapacity;
             descriptorPoolSizes =
             [
                 new DescriptorPoolSize()
@@ -348,7 +360,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             {
                 Buffer = meshComponent.transformsBuffer,
                 Offset = 0,
-                Range = (ulong)(sizeof(float) * 16 * ControlPool.Capacity)
+                Range = (ulong)(sizeof(float) * 16 * BuildCapacity)
             };
             var writeDescriptorSets = new WriteDescriptorSet[]
             {

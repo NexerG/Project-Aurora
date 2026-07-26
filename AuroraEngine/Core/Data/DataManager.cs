@@ -1,4 +1,5 @@
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Threading;
 using ArctisAurora.Core.Filing.Serialization;
 using System.Reflection;
 using System.Xml.Linq;
@@ -36,6 +37,7 @@ namespace ArctisAurora.Core.Data
             foreach (XElement poolElem in root.Elements(ns + "Pool"))
             {
                 string name = poolElem.Attribute("Name").Value;
+                string system = poolElem.Attribute("System")?.Value ?? string.Empty;
                 int capacity = int.Parse(poolElem.Attribute("Capacity").Value);
                 bool ordered = bool.Parse(poolElem.Attribute("Ordered")?.Value ?? "false");
                 string sortAction = poolElem.Attribute("SortAction")?.Value;
@@ -54,7 +56,7 @@ namespace ArctisAurora.Core.Data
                     componentTypes.Add(t);
                 }
 
-                DataPool pool = new((ushort)_pools.Count, name, capacity, ordered, growth, growthValue, componentTypes);
+                DataPool pool = new((ushort)_pools.Count, name, system, capacity, ordered, growth, growthValue, componentTypes);
                 if (!string.IsNullOrEmpty(sortAction))
                     pool.SortProvider = ResolveSortProvider(sortAction);
 
@@ -66,6 +68,23 @@ namespace ArctisAurora.Core.Data
         {
             _pools.Add(pool);
             _byName[pool.Name] = pool;
+        }
+
+        // Bind each pool to the system named by its Pools.xml System attribute. Runs after Engine
+        // constructs the systems, since pools are parsed during bootstrap and the systems do not
+        // exist yet at that point. Fails loudly: a pool naming a system that was never created is
+        // a pool nobody may legally write, which is a silent data race waiting to happen.
+        public static void ResolveOwners()
+        {
+            for (int i = 0; i < _pools.Count; i++)
+            {
+                DataPool pool = _pools[i];
+                if (string.IsNullOrEmpty(pool.OwnerName))
+                    throw new Exception($"[DataManager] Pool '{pool.Name}' has no System attribute in Pools.xml — every pool needs exactly one owning system.");
+
+                ThreadedSystem owner = ThreadedSystem.Find(pool.OwnerName) ?? throw new Exception($"[DataManager] Pool '{pool.Name}' names system '{pool.OwnerName}', which does not exist.");
+                pool.SetOwnerSystemId(owner.SystemId);
+            }
         }
 
         public static void FrameEdge()

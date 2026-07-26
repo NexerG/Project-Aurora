@@ -35,6 +35,9 @@
       <xs:enumeration value="Entry" />
       <xs:enumeration value="EntityRegistries" />
       <xs:enumeration value="Entity" />
+      <xs:enumeration value="Main" />
+      <xs:enumeration value="Physics" />
+      <xs:enumeration value="Render" />
       <xs:enumeration value="ActiveContext" />
       <xs:enumeration value="IParseableTypes" />
       <xs:enumeration value="FontAsset" />
@@ -47,12 +50,12 @@
       <xs:enumeration value="SamplerAddressMode" />
       <xs:enumeration value="SamplerMipmapMode" />
       <xs:enumeration value="SamplerAsset" />
-      <xs:enumeration value="PoolGrowthMode" />
+      <xs:enumeration value="GpuTransform" />
+      <xs:enumeration value="PoolGrowthType" />
       <xs:enumeration value="Component" />
       <xs:enumeration value="Pool" />
-      <xs:enumeration value="Pools" />
+      <xs:enumeration value="EnginePools" />
       <xs:enumeration value="TransformData" />
-      <xs:enumeration value="ControlData" />
       <xs:enumeration value="Step" />
       <xs:enumeration value="Phase" />
       <xs:enumeration value="BootstrapSequence" />
@@ -72,6 +75,7 @@
       <xs:enumeration value="Toggle" />
       <xs:enumeration value="HoldContinuous" />
       <xs:enumeration value="Chord" />
+      <xs:enumeration value="ControlData" />
       <xs:enumeration value="xs:string" />
       <xs:enumeration value="xs:int" />
       <xs:enumeration value="xs:float" />
@@ -130,6 +134,13 @@
       <xs:enumeration value="Entity" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:simpleType name="Systems">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Main" />
+      <xs:enumeration value="Physics" />
+      <xs:enumeration value="Render" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:simpleType name="Context">
     <xs:restriction base="xs:string">
       <xs:enumeration value="ActiveContext" />
@@ -154,14 +165,14 @@
       <xs:enumeration value="SamplerAsset" />
     </xs:restriction>
   </xs:simpleType>
-  <xs:simpleType name="Pools">
+  <xs:simpleType name="DataPools">
     <xs:restriction base="xs:string">
-      <xs:enumeration value="PoolGrowthMode" />
+      <xs:enumeration value="GpuTransform" />
+      <xs:enumeration value="PoolGrowthType" />
       <xs:enumeration value="Component" />
       <xs:enumeration value="Pool" />
-      <xs:enumeration value="Pools" />
+      <xs:enumeration value="EnginePools" />
       <xs:enumeration value="TransformData" />
-      <xs:enumeration value="ControlData" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Bootstrap">
@@ -189,6 +200,11 @@
       <xs:enumeration value="Toggle" />
       <xs:enumeration value="HoldContinuous" />
       <xs:enumeration value="Chord" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Pools">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="ControlData" />
     </xs:restriction>
   </xs:simpleType>
 </xs:schema>
