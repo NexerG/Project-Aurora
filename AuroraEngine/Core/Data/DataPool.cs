@@ -346,9 +346,11 @@ namespace ArctisAurora.Core.Data
                 _orderPending = true;   // survivors shifted down into the holes
             }
 
-            if (Ordered && _orderDirty && SortProvider != null)
+            // A refused resequence keeps the flag, so the reorder is retried at the next edge
+            // rather than dropped — clearing it unconditionally would leave dense order
+            // permanently disagreeing with the tree over one bad frame.
+            if (Ordered && _orderDirty && SortProvider != null && Resequence())
             {
-                Resequence();
                 _orderDirty = false;
                 StructuralDirty = true;
                 MarkAllDirty();
@@ -447,13 +449,17 @@ namespace ArctisAurora.Core.Data
             }
         }
 
-        private void Resequence()
+        // False when the sort provider did not account for every live element — a live row it
+        // cannot reach would be dropped out of the permutation entirely, so refusing is the only
+        // safe answer. For UIControls that means a control the DFS walk never reached: its parent
+        // is a control that does not list it as a child.
+        private bool Resequence()
         {
             IReadOnlyList<int> order = SortProvider(this);
             if (order.Count != _count)
             {
                 Console.WriteLine($"[DataPool] '{Name}' resequence order count {order.Count} != live count {_count} — skipping.");
-                return;
+                return false;
             }
 
             int[] destToSrc = new int[_count];
@@ -474,6 +480,7 @@ namespace ArctisAurora.Core.Data
                 _backMap[i] = sid;
                 _slots[sid] = i;
             }
+            return true;
         }
 
         // Move one dense element (all columns + sidecar + back/forward maps) from -> to.

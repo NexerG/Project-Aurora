@@ -84,6 +84,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
             children.Add(entity);
             control.parent = this;
+            MarkTreeOrderDirty();
 
             _cellAssignments.Add(new GridCellAssignment
             {

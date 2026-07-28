@@ -63,9 +63,26 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");
         }
 
+        // Drop a glyph out of the tree for good: pool row, Vulkan buffer and registry entries all
+        // go at the next frame edge. parent is cleared first because Destroy() would otherwise
+        // remove the glyph from `children` itself, shifting the list under the loop editing it.
+        //
+        // Detaching without destroying is what used to happen here, and it leaked twice over: the
+        // glyph kept its UIControls slot forever (so the pool only ever grew, and every growth
+        // forced a full descriptor rebuild) and it stayed unreachable from the control tree, which
+        // is exactly the case UI.DFSOrder cannot produce an order for.
+        private static void DiscardGlyph(Entity glyph)
+        {
+            glyph.parent = null;
+            glyph.Destroy();
+        }
+
+        // NOTE: dead — every caller is commented out in favour of SyncGlyphs. Kept in sync with it
+        // anyway so uncommenting it does not reintroduce the leak.
         private void RebuildGlyphs()
         {
-            // Clear old glyph children without triggering full entity destroy
+            foreach (Entity glyph in children)
+                DiscardGlyph(glyph);
             children.Clear();
 
             if (_fontAsset == null || string.IsNullOrEmpty(text)) return;
@@ -76,6 +93,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                 glyph.parent = this;
                 children.Add(glyph);
             }
+            MarkTreeOrderDirty();
             InvalidateLayout();
         }
 
@@ -83,6 +101,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         {
             if (_fontAsset == null)
             {
+                foreach (Entity glyph in children)
+                    DiscardGlyph(glyph);
                 children.Clear();
                 return;
             }
@@ -90,6 +110,10 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             string target = text ?? string.Empty;
             int targetLen = target.Length;
             int existingLen = children.Count;
+
+            // Every new glyph's pool row lands at the dense tail, but in DFS order it belongs
+            // wherever this control sits — so any change here puts the pool out of paint order.
+            bool treeChanged = false;
 
             // Update or reuse existing glyphs
             int i = 0;
@@ -102,10 +126,12 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                         continue; // same char — skip
 
                     // Different char — replace in place
+                    Entity replaced = children[i];
                     GlyphControl replacement = new GlyphControl(target[i], _fontAsset, fontSize);
                     replacement.parent = this;
-                    children[i] = replacement;
-                    // TODO: dispose old glyph's Vulkan resources via deferred deletion
+                    children[i] = replacement;   // detached by the overwrite
+                    DiscardGlyph(replaced);
+                    treeChanged = true;
                 }
                 else
                 {
@@ -113,36 +139,41 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                     GlyphControl glyph = new GlyphControl(target[i], _fontAsset, fontSize);
                     glyph.parent = this;
                     children.Add(glyph);
+                    treeChanged = true;
                 }
             }
 
             // Remove excess glyphs from the end
             if (existingLen > targetLen)
             {
-                // TODO: queue removed glyphs for deferred Vulkan resource cleanup
+                for (int r = targetLen; r < existingLen; r++)
+                    DiscardGlyph(children[r]);
                 children.RemoveRange(targetLen, existingLen - targetLen);
+                treeChanged = true;
             }
 
+            if (treeChanged) MarkTreeOrderDirty();
             InvalidateLayout();
         }
 
+        // These three only edit the string — the setter runs SyncGlyphs, which owns glyph creation
+        // and disposal. InsertGlyph used to also build a GlyphControl and parent it here without
+        // ever adding it to `children`; SyncGlyphs then built the real one, so every keystroke
+        // leaked an entire control (pool slot, SSBO and a "Controls" group entry that was still
+        // being drawn) that nothing could reach to destroy.
         internal void InsertGlyph(int index, char c)
         {
-            GlyphControl glyph = new GlyphControl(c, _fontAsset, fontSize);
-            glyph.parent = this;
             text = text.Insert(index, c.ToString());
         }
 
         internal void RemoveGlyph(int index)
         {
             if (index < 0 || index >= children.Count) return;
-            // TODO: queue for deferred Vulkan resource cleanup
             text = text.Remove(index, 1);
         }
 
         internal void RemoveGlyphRange(int start, int count)
         {
-            // TODO: queue for deferred Vulkan resource cleanup
             text = text.Remove(start, count);
         }
 
@@ -210,6 +241,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                 throw new Exception("TextControl children must be VulkanControls");
             control.parent = this;
             children.Add(control);
+            MarkTreeOrderDirty();
             InvalidateLayout();
         }
 

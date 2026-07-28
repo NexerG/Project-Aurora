@@ -95,6 +95,21 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         }
         internal List<DeferredResources>[] deferredDeletions;
 
+        // Per-control SSBOs handed over by VulkanControl.OnDestroy, on the MAIN thread. Concurrent
+        // because that is the only cross-thread step: UpdateModule moves each entry into ONE image's
+        // deferredDeletions, and that image frees it on its next visit.
+        //
+        // Handing it to a single image rather than all of them is what keeps this a handover and
+        // not a double free, and one visit of that image is a full swapchain cycle — by then every
+        // other image has had its fence waited on and its descriptors rebuilt without the control.
+        private static readonly System.Collections.Concurrent.ConcurrentQueue<DeferredResources> _retiredControlBuffers = new();
+
+        internal static void RetireControlBuffer(Silk.NET.Vulkan.Buffer buffer, DeviceMemory memory)
+        {
+            if (buffer.Handle == 0) return;
+            _retiredControlBuffers.Enqueue(new DeferredResources { buffer = buffer, memory = memory });
+        }
+
         // UIControls data pool — transforms live here; the renderer mirrors it to the GPU.
         private DataPool _controlPool;
         internal DataPool ControlPool => _controlPool ??= DataManager.Get("UIControls");
@@ -160,6 +175,11 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     Renderer.vk.DestroyDescriptorPool(Renderer.logicalDevice, d.pool, null);
             }
             deferredDeletions[currentFrame].Clear();
+
+            // Adopt anything destroyed controls handed over since the last pass. It goes onto the
+            // list we have just drained, so it survives until this image comes back around.
+            while (_retiredControlBuffers.TryDequeue(out DeferredResources retired))
+                deferredDeletions[currentFrame].Add(retired);
 
             DataPool pool = ControlPool;
             PoolCursor cursor = Cursor(currentFrame);

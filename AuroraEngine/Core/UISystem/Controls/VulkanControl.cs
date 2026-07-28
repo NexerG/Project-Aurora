@@ -6,6 +6,7 @@ using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Helpers;
+using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Collections;
@@ -549,6 +550,23 @@ namespace ArctisAurora.Core.UISystem.Controls
             base.OnStart();
         }
 
+        // Hand this control's per-control SSBO back. It cannot be destroyed here: OnDestroy runs on
+        // the main thread from ProcessDestroys, while descriptor sets and submitted command buffers
+        // for frames still in flight point at the buffer. The renderer takes ownership and frees it
+        // a full swapchain cycle later.
+        //
+        // This has to be pushed by the control rather than discovered by the renderer from the
+        // pool's Destroyed list: by the time the pool reports the slot dead, compaction has already
+        // dropped the row, so OwnerAt can no longer hand back the control that owned the buffer.
+        public override void OnDestroy()
+        {
+            base.OnDestroy();
+
+            UIModule.RetireControlBuffer(controlDataBuffer, controlDataBufferMemory);
+            controlDataBuffer = default;
+            controlDataBufferMemory = default;
+        }
+
         private void CreateSampler()
         {
             Renderer.vk.GetPhysicalDeviceProperties(Renderer.gpu, out PhysicalDeviceProperties _properties);
@@ -584,6 +602,16 @@ namespace ArctisAurora.Core.UISystem.Controls
             AVulkanBufferHandler.UpdateBuffer(ref controlData, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
         }
 
+        // A control's pool row is appended at the dense tail, but its place in paint order is
+        // wherever its parent sits in the tree — so any insert other than at the DFS tail leaves
+        // dense order disagreeing with the tree, and the pool has to be resequenced at the frame
+        // edge. Telling the two cases apart is not worth it: this is a flag, not a queue, so N
+        // inserts in one tick still cost exactly one permute.
+        //
+        // Removal deliberately does NOT come through here — CompactOrdered preserves the
+        // survivors' relative order, so a destroy never needs a permute.
+        protected void MarkTreeOrderDirty() => Pool.MarkOrderDirty();
+
         public override void AddChild(Entity entity)
         {
             //vulkan control only
@@ -593,6 +621,7 @@ namespace ArctisAurora.Core.UISystem.Controls
                 throw new Exception("Plain VulkanControl supports only one child. Use a container control for multiple children.");
             entity.parent = this;
             children.Add(entity);
+            MarkTreeOrderDirty();
             InvalidateLayout();
         }
 

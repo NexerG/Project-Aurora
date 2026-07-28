@@ -217,6 +217,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                 throw new Exception("ScrollableControl supports only one child. Wrap multiple children in a container.");
             entity.parent = this;
             children.Add(entity);
+            MarkTreeOrderDirty();
             scrollOffset = new Vector2D<float>(0, 0); // reset scroll when content changes
             InvalidateLayout();
         }

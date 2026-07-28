@@ -21,6 +21,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                 throw new Exception("Child entity must be a VulkanControl");
             children.Add(entity);
             control.parent = this;
+            MarkTreeOrderDirty();
             InvalidateLayout();
         }
     }
