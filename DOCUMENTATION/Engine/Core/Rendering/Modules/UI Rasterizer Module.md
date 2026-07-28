@@ -50,8 +50,7 @@ internal override int variableSetCount => 2;
 internal static MCUI meshComponent;                 // the quad mesh + instancing
 internal override IReadOnlyList<Entity> renderEntities { get; set; }  // the Controls group
 
-internal List<DeferredResources>[] deferredDeletions; // buffers/pools freed N frames later
-private static ConcurrentQueue<DeferredResources> _retiredControlBuffers; // handed over by destroyed controls
+internal List<DeferredResources>[] deferredDeletions; // descriptor pools freed N frames later
 ```
 
 Descriptor counts are sized generously (50 000) with `VariableDescriptorCountBit | PartiallyBoundBit` on the last binding of each set, so the control count can grow without recreating layouts. See the descriptor discussion in [[VULKAN]].
@@ -66,8 +65,10 @@ The module is marked dirty (all frames) whenever the `Controls` group changes (a
 ### Pooled transforms
 `MCUI.MakeInstanced` mirrors the `UIControls` pool's dense `GpuTransform` column into a persistent transforms SSBO sized to the pool capacity — patched in place (`AVulkanBufferHandler.UpdateBufferRange`) over the dense range the module's `PoolCursor` reported, recreated only on pool growth. The matrices themselves are baked at the write by `VulkanControl.CommitTransform`, so the column is read-only to the render thread. Per-control descriptor data is fetched by pool dense index (`ControlPool.OwnerAt`) so it lines up with the transform mirror; the pool is no longer append-only (inserts resequence it, destroys compact it), so `PoolCursor.OrderChanged` forces a full descriptor rebuild on any frame where dense indices moved.
 
-### Destroyed controls
-A control's per-control SSBO cannot be destroyed in `VulkanControl.OnDestroy` — that runs on the main thread while descriptor sets and submitted command buffers for frames still in flight point at it. The control pushes the buffer to `RetireControlBuffer` instead, and the next `UpdateModule` moves it onto that image's `deferredDeletions`, which frees it when that image next comes around — a full swapchain cycle later, by which point every other image has had its fence waited on and its descriptors rebuilt. It has to be pushed by the control rather than discovered from the pool's `Destroyed` list, because by the time the pool reports the slot dead, compaction has already dropped the row and `OwnerAt` can no longer name the owner.
+### Pooled control data
+`ControlData` (quad UVs + style) is a pool column too, mirrored to its own persistent SSBO bound once at set0/b2. It used to be one small Vulkan buffer per control, bound as a descriptor array — so every control owned a GPU resource that had to be created on construction, re-bound whenever the set was rebuilt, and deferred-deleted on destroy. As a column it rides compaction and resequence like everything else, and a destroyed control now frees nothing on the GPU at all. `VulkanControl.controlData` is a `ref` into the column; writers call `UpdateControlData()` to widen the dirty range, the same contract as `CommitTransform()`.
+
+The binding relies on `GL_EXT_scalar_block_layout`: the C# struct is `Pack = 1` at 44 bytes, and scalar layout gives the GLSL struct the same 44-byte array stride. Under `std430` it would round to 48 and every control past the first would read shifted data.
 
 ### Drawing
 `WriteCommandBuffer` begins the render pass, binds the pipeline, sets the dynamic viewport/scissor from the window size, then `MCUI.EnqueueDrawCommands` binds both descriptor sets and issues one `CmdDrawIndexed` with `instanceCount` = the live control count. `WriteCommandBuffers` allocates the command-buffer array once but records only the current image; each image records itself on its first dirty pass.

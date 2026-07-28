@@ -19,7 +19,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override ERendererStage RendererStage => ERendererStage.UI;
 
         internal override uint[][] descriptorMaxCounts => new uint[][] {
-            new uint[] { 1, 1, 50000 },       // set 0: UBO ×1, SSBO ×1, SSBO array ×50k
+            new uint[] { 1, 1, 1 },            // set 0: camera UBO, transforms SSBO, control-data SSBO
             new uint[] { 50000 }               // set 1: sampler array ×50k
         };
 
@@ -75,7 +75,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override DescriptorBindingFlags[][] descriptorBindingFlags => [
             [
                 DescriptorBindingFlags.None, DescriptorBindingFlags.None,
-                DescriptorBindingFlags.VariableDescriptorCountBit | DescriptorBindingFlags.PartiallyBoundBit
+                DescriptorBindingFlags.None
             ],
             [
                 DescriptorBindingFlags.VariableDescriptorCountBit | DescriptorBindingFlags.PartiallyBoundBit
@@ -94,21 +94,6 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             internal DescriptorPool pool;
         }
         internal List<DeferredResources>[] deferredDeletions;
-
-        // Per-control SSBOs handed over by VulkanControl.OnDestroy, on the MAIN thread. Concurrent
-        // because that is the only cross-thread step: UpdateModule moves each entry into ONE image's
-        // deferredDeletions, and that image frees it on its next visit.
-        //
-        // Handing it to a single image rather than all of them is what keeps this a handover and
-        // not a double free, and one visit of that image is a full swapchain cycle — by then every
-        // other image has had its fence waited on and its descriptors rebuilt without the control.
-        private static readonly System.Collections.Concurrent.ConcurrentQueue<DeferredResources> _retiredControlBuffers = new();
-
-        internal static void RetireControlBuffer(Silk.NET.Vulkan.Buffer buffer, DeviceMemory memory)
-        {
-            if (buffer.Handle == 0) return;
-            _retiredControlBuffers.Enqueue(new DeferredResources { buffer = buffer, memory = memory });
-        }
 
         // UIControls data pool — transforms live here; the renderer mirrors it to the GPU.
         private DataPool _controlPool;
@@ -176,11 +161,6 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             }
             deferredDeletions[currentFrame].Clear();
 
-            // Adopt anything destroyed controls handed over since the last pass. It goes onto the
-            // list we have just drained, so it survives until this image comes back around.
-            while (_retiredControlBuffers.TryDequeue(out DeferredResources retired))
-                deferredDeletions[currentFrame].Add(retired);
-
             DataPool pool = ControlPool;
             PoolCursor cursor = Cursor(currentFrame);
 
@@ -218,7 +198,6 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 }
                 else if (live > _frameWrittenControls[currentFrame])
                 {
-                    WriteControlDataDescriptors(currentFrame, _frameWrittenControls[currentFrame], live);
                     WriteSamplerDescriptors(currentFrame, _frameWrittenControls[currentFrame], live);
                     _frameWrittenControls[currentFrame] = live;
                 }
@@ -336,7 +315,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override void CreateDescriptorPoolSizes(uint swapchainImageCount)
         {
             // one pool per image, holding the two sets sized to the full pool capacity:
-            // camera UBO ×1, transforms SSBO ×1 + control-data SSBO array ×cap, sampler array ×cap
+            // camera UBO ×1, transforms + control-data SSBOs ×2, sampler array ×cap
             int cap = BuildCapacity;
             descriptorPoolSizes =
             [
@@ -348,7 +327,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.StorageBuffer,
-                    DescriptorCount = (uint)(cap + 1)
+                    DescriptorCount = 2
                 },
                 new DescriptorPoolSize()
                 {
@@ -392,12 +371,12 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override void UpdateDescriptorSets(int currentFrame, int entityCount)
         {
             WriteStaticDescriptors(currentFrame);
-            WriteControlDataDescriptors(currentFrame, 0, entityCount);
             WriteSamplerDescriptors(currentFrame, 0, entityCount);
         }
 
-        // The per-frame-constant bindings: camera UBO (set0/b0) and the transforms SSBO
-        // (set0/b1). Only rewritten when the set is rebuilt (the transforms buffer moves).
+        // The per-frame-constant bindings: camera UBO (set0/b0), the transforms SSBO (set0/b1) and
+        // the control-data SSBO (set0/b2). All three are single descriptors pointing at whole-pool
+        // mirrors, so they only need rewriting when the set is rebuilt (i.e. those buffers moved).
         private void WriteStaticDescriptors(int currentFrame)
         {
             DescriptorBufferInfo cameraInfo = new DescriptorBufferInfo()
@@ -411,6 +390,12 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 Buffer = meshComponent.transformsBuffer,
                 Offset = 0,
                 Range = (ulong)(sizeof(float) * 16 * BuildCapacity)
+            };
+            DescriptorBufferInfo controlDataInfo = new DescriptorBufferInfo()
+            {
+                Buffer = meshComponent.controlDataBuffer,
+                Offset = 0,
+                Range = (ulong)(Unsafe.SizeOf<ControlData>() * BuildCapacity)
             };
             var writeDescriptorSets = new WriteDescriptorSet[]
             {
@@ -433,45 +418,21 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     DstArrayElement = 0,
                     DescriptorType = DescriptorType.StorageBuffer,
                     PBufferInfo = &transformInfo
+                },
+                new WriteDescriptorSet
+                {
+                    SType = StructureType.WriteDescriptorSet,
+                    DstSet = frameResources[currentFrame].sets[0],
+                    DstBinding = 2,
+                    DescriptorCount = 1,
+                    DstArrayElement = 0,
+                    DescriptorType = DescriptorType.StorageBuffer,
+                    PBufferInfo = &controlDataInfo
                 }
             };
             fixed (WriteDescriptorSet* descPtr = writeDescriptorSets)
             {
                 Renderer.vk!.UpdateDescriptorSets(Renderer.logicalDevice, (uint)writeDescriptorSets.Length, descPtr, 0, null);
-            }
-        }
-
-        // Write the control-data SSBO array (set0/b2) for the dense control range [from, to).
-        // Elements are sourced by pool dense index so they line up with the transform mirror.
-        private void WriteControlDataDescriptors(int currentFrame, int from, int to)
-        {
-            int count = to - from;
-            if (count <= 0) return;
-
-            DescriptorBufferInfo[] controlDataInfos = new DescriptorBufferInfo[count];
-            for (int k = 0; k < count; k++)
-            {
-                VulkanControl control = (VulkanControl)ControlPool.OwnerAt(from + k);
-                controlDataInfos[k] = new()
-                {
-                    Buffer = control.controlDataBuffer,
-                    Offset = 0,
-                    Range = (ulong)Unsafe.SizeOf<ControlData>()
-                };
-            }
-            fixed (DescriptorBufferInfo* controlDataInfosPtr = controlDataInfos)
-            {
-                WriteDescriptorSet write = new WriteDescriptorSet
-                {
-                    SType = StructureType.WriteDescriptorSet,
-                    DstSet = frameResources[currentFrame].sets[0],
-                    DstBinding = 2,
-                    DstArrayElement = (uint)from,
-                    DescriptorCount = (uint)count,
-                    DescriptorType = DescriptorType.StorageBuffer,
-                    PBufferInfo = controlDataInfosPtr
-                };
-                Renderer.vk!.UpdateDescriptorSets(Renderer.logicalDevice, 1, &write, 0, null);
             }
         }
 

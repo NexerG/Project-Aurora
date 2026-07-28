@@ -5,8 +5,6 @@ using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
-using ArctisAurora.EngineWork.Rendering.Helpers;
-using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Collections;
@@ -14,7 +12,6 @@ using System.ComponentModel;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Xml.Linq;
-using Buffer = Silk.NET.Vulkan.Buffer;
 using ArctisAurora.Core.Registry.Assets;
 
 namespace ArctisAurora.Core.UISystem.Controls
@@ -343,9 +340,14 @@ namespace ArctisAurora.Core.UISystem.Controls
         #endregion
 
         #region ---- rendering ----
-        public ControlData controlData;
-        public Buffer controlDataBuffer;
-        public DeviceMemory controlDataBufferMemory;
+        // A ref into the UIControls pool's ControlData column, not a field. The row travels with
+        // the rest of this control's data through compaction and resequence, and the renderer
+        // mirrors the whole column to one SSBO — so there is no per-control Vulkan buffer to
+        // create, rebind on every structural change, or defer the deletion of.
+        //
+        // Writes go straight into the pool; call UpdateControlData() afterwards to widen the dirty
+        // range, exactly as transform writes end in CommitTransform().
+        public ref ControlData controlData => ref Pool.GetRef<ControlData>(dataHandle);
 
         public Sampler maskSampler;
         public TextureAsset maskAsset;
@@ -527,14 +529,14 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         public VulkanControl()
         {
+            // The pool slot may be recycled, so seed every field rather than assuming zeroes.
             controlData = new ControlData();
             controlData.style = ControlStyle.Default();
             controlData.uvs = new QuadUVs();
+            UpdateControlData();
 
             maskAsset = AssetRegistries.GetAsset<TextureAsset>("default");
 
-            ControlData tempData = controlData;
-            AVulkanBufferHandler.CreateBuffer(ref tempData, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
             maskSampler = AssetRegistries.GetRegistryByValueType<string, SamplerAsset>(typeof(SamplerAsset))["ControlSampler"].handle;
             EntityRegistry.AddToGroup("Controls", this);
 
@@ -548,23 +550,6 @@ namespace ArctisAurora.Core.UISystem.Controls
         public override void OnStart()
         {
             base.OnStart();
-        }
-
-        // Hand this control's per-control SSBO back. It cannot be destroyed here: OnDestroy runs on
-        // the main thread from ProcessDestroys, while descriptor sets and submitted command buffers
-        // for frames still in flight point at the buffer. The renderer takes ownership and frees it
-        // a full swapchain cycle later.
-        //
-        // This has to be pushed by the control rather than discovered by the renderer from the
-        // pool's Destroyed list: by the time the pool reports the slot dead, compaction has already
-        // dropped the row, so OwnerAt can no longer hand back the control that owned the buffer.
-        public override void OnDestroy()
-        {
-            base.OnDestroy();
-
-            UIModule.RetireControlBuffer(controlDataBuffer, controlDataBufferMemory);
-            controlDataBuffer = default;
-            controlDataBufferMemory = default;
         }
 
         private void CreateSampler()
@@ -597,10 +582,9 @@ namespace ArctisAurora.Core.UISystem.Controls
             }
         }
 
-        internal void UpdateControlData()
-        {
-            AVulkanBufferHandler.UpdateBuffer(ref controlData, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
-        }
+        // Publish a ControlData edit. The row already sits in the column the renderer mirrors, so
+        // this only has to widen the pool's dirty range — no upload, no per-control buffer.
+        internal void UpdateControlData() => Pool.MarkContentDirty(dataHandle);
 
         // A control's pool row is appended at the dense tail, but its place in paint order is
         // wherever its parent sits in the tree — so any insert other than at the DFS tail leaves

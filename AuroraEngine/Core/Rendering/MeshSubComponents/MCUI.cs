@@ -11,6 +11,7 @@ using SixLabors.ImageSharp.PixelFormats;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.Core.Registry.Assets;
+using static ArctisAurora.Core.UISystem.Controls.VulkanControl;
 
 namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 {
@@ -26,11 +27,13 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
         // glyph data
         internal Glyph glyph;
 
-        // Pooled transforms: a persistent GPU mirror sized to the UIControls pool's capacity,
-        // patched in place. The baked matrices live in the pool's GpuTransform column (so they
-        // ride along through compaction/resequence), and this buffer just mirrors that column.
-        // The buffer is (re)created only when the pool grows; ordinary adds re-bake and
-        // sub-upload the live range instead of tearing the buffer down.
+        // Two persistent GPU mirrors sized to the UIControls pool's capacity, patched in place:
+        // the baked matrices (GpuTransform column) and the per-control data (ControlData column).
+        // Both ride along through compaction/resequence because they are pool columns, so these
+        // buffers only ever need the same dense range copied across. They are (re)created solely
+        // when the pool grows; ordinary edits sub-upload the dirty range.
+        internal Silk.NET.Vulkan.Buffer controlDataBuffer;
+        private DeviceMemory _controlDataBufferMemory;
         private int _transformCapacity = -1;
 
         internal MCUI()
@@ -70,20 +73,27 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             if (live == 0) return;
 
             GpuTransform[] gpu = pool.Backing<GpuTransform>();
+            ControlData[] cd = pool.Backing<ControlData>();
 
             if (_transformCapacity != pool.Capacity)
             {
-                // pool grew (or first build): resize the persistent mirror to match. Rare, so a
-                // full idle+recreate is fine and avoids in-flight aliasing of the old buffer.
+                // pool grew (or first build): resize both persistent mirrors to match. Rare, so a
+                // full idle+recreate is fine and avoids in-flight aliasing of the old buffers.
                 Renderer.vk.DeviceWaitIdle(Renderer.logicalDevice);
                 if (transformsBuffer.Handle != 0)
                 {
                     Renderer.vk.DestroyBuffer(Renderer.logicalDevice, transformsBuffer, null);
                     Renderer.vk.FreeMemory(Renderer.logicalDevice, _transformsBufferMemory, null);
                 }
+                if (controlDataBuffer.Handle != 0)
+                {
+                    Renderer.vk.DestroyBuffer(Renderer.logicalDevice, controlDataBuffer, null);
+                    Renderer.vk.FreeMemory(Renderer.logicalDevice, _controlDataBufferMemory, null);
+                }
                 AVulkanBufferHandler.CreateBuffer(ref gpu, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
+                AVulkanBufferHandler.CreateBuffer(ref cd, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref controlDataBuffer, ref _controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
                 _transformCapacity = pool.Capacity;
-                return;   // the fresh buffer already carries the whole column
+                return;   // the fresh buffers already carry the whole columns
             }
 
             // Clamp to what is live — rows past Count are slack the shader never reads.
@@ -91,7 +101,10 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             if (dirtyMin < 0) dirtyMin = 0;
             if (dirtyMax < dirtyMin) return;
 
-            AVulkanBufferHandler.UpdateBufferRange(gpu, dirtyMin, dirtyMin, dirtyMax - dirtyMin + 1, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer);
+            // One dirty range covers every column, so both mirrors copy the same slice.
+            int count = dirtyMax - dirtyMin + 1;
+            AVulkanBufferHandler.UpdateBufferRange(gpu, dirtyMin, dirtyMin, count, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer);
+            AVulkanBufferHandler.UpdateBufferRange(cd, dirtyMin, dirtyMin, count, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref controlDataBuffer);
         }
 
         internal override void SingletonMatrix()

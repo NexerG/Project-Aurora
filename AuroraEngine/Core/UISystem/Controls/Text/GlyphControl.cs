@@ -1,7 +1,5 @@
 ﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
-using ArctisAurora.EngineWork.Rendering;
-using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 
@@ -53,7 +51,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             controlData.uvs.uv2 = new Vector2D<float>(u0, v0);
             controlData.uvs.uv3 = new Vector2D<float>(u0, v1);
             controlData.uvs.uv4 = new Vector2D<float>(u1, v0);
-            AVulkanBufferHandler.UpdateBuffer(ref controlData, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
+            UpdateControlData();
         }
 
         public void OnContextAdded()

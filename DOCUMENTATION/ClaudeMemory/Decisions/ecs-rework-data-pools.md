@@ -234,6 +234,35 @@ rebuild — landed in slice 6 as `PoolCursor.OrderChanged`.
   retired buffer was adopted by image 2 — the retire fires from `ProcessDestroys` BEFORE the main
   thread reaches `FrameEdge`, so the renderer can adopt it first; both orderings are correct.
 
+## Implemented so far (2026-07-28, eighth slice — ControlData folded into the pool)
+The last per-control GPU resource is gone; both UI columns are now whole-pool mirrors.
+- **`VulkanControl.controlData` is a `ref` into the pool's ControlData column**, not a field —
+  `public ref ControlData controlData => ref Pool.GetRef<ControlData>(dataHandle)`. The column was
+  declared in `Pools.xml` from the first slice and had sat unused since.
+- **`controlDataBuffer` / `controlDataBufferMemory` DELETED**, and with them
+  `UIModule.RetireControlBuffer`, `_retiredControlBuffers` and `VulkanControl.OnDestroy` — the
+  seventh slice's retire path existed only to defer-delete these buffers. `UpdateControlData()`
+  survives as the publish call but is now just `Pool.MarkContentDirty(dataHandle)`.
+- **`MCUI` carries a second persistent SSBO** mirroring `pool.Backing<ControlData>()`, with the
+  same recreate-on-growth / patch-the-dirty-range lifecycle as the transforms mirror. One dirty
+  range covers every column, so both mirrors copy the same slice.
+- **Shader: `set 0, binding 2` went from an array-of-buffers to ONE buffer of structs**
+  (`UI.vert`, recompiled to `.spv` for all three projects — engine, Periodic, editor — since each
+  loads from its own `Shaders/` folder). `VD[gl_InstanceIndex]` → `CD.controls[gl_InstanceIndex]`.
+  Binding 2 lost `VariableDescriptorCountBit | PartiallyBoundBit` and is now written once in
+  `WriteStaticDescriptors`; `WriteControlDataDescriptors` is gone. Descriptor pool storage-buffer
+  count dropped from `capacity + 1` to a flat 2.
+- **`scalar` block layout is load-bearing.** C# `ControlData` is `Pack = 1`: `QuadUVs` (4 × vec2 =
+  32B) + `ControlStyle` (vec3 = 12B) = 44 bytes. `GL_EXT_scalar_block_layout` gives the GLSL struct
+  alignment 4 and therefore an array stride of 44, matching exactly. Under `std430` the stride
+  would round to 48 and every control past index 0 would read shifted data. Do not drop `scalar`.
+- **Why this beats the retire queue:** deferred deletion was managing a problem created by having
+  one Vulkan buffer per control. Folding the data into the pool deletes the problem — descriptors
+  no longer reference per-control resources at all, so a destroy frees nothing on the GPU, and
+  `ControlData` now rides compaction/resequence for free like every other column.
+- **Verified pixel-identical.** Built a worktree at `a2f07f3`, ran both, screenshotted the 1280x720
+  window: 0 differing pixels of 230,400 sampled, max channel delta 0.
+
 ## NOT yet done (remaining Phase 2/3)
 - **Reparenting has no API to hook.** `MarkTreeOrderDirty` covers inserts; there is no
   `SetParent`/`Reparent`/bring-to-front method in the tree today, so "move subtree to end of
@@ -249,10 +278,11 @@ rebuild — landed in slice 6 as `PoolCursor.OrderChanged`.
 - **`Entity.OnDestroy()` has a pre-existing modify-during-iteration bug** (`foreach _components`
   + `Remove`). Latent: controls carry no components so the loop body never runs. Left as-is.
   `VulkanControl.OnDestroy` now overrides it and calls `base` first.
-- `controlData` still per-control field + own SSBO; pool's ControlData column allocated but UNUSED
-  (per-control buffers are still bound into set0/b2 as an array; only their descriptor writes are
-  now incremental). Folding into one pooled SSBO is the clean follow-up (needs the shader change)
-  and would delete the retire path above entirely.
+- **The `ColorHex` tint does not render** — `Periodic`'s window declares `ColorHex="#1f6331"` but
+  draws as #0D0D0D. PRE-EXISTING, confirmed identical before and after the eighth slice by pixel
+  diff, so it is not a pooling bug. Most likely the fragment shader runs MSDF median/opacity math
+  on every control, not just glyphs, so a plain control's mask collapses its alpha. Belongs to the
+  WIP item "UI → fix up UI shaders (samplers, transparency)".
 - **`DataManager.FrameEdge()` is still a flat loop over every pool from `MainTick`** — throws the
   day a pool is owned by Physics. Needs to become per-system. Cannot fire today (both pools Main).
 - Schema location issue (engine XML docs reference empty `AuroraEngine/Data/XML/Schemas`; XSDGenerator writes schemas to the running app's folder) — pre-existing, DEFERRED, user aware.
