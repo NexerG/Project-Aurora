@@ -219,6 +219,14 @@ rebuild — landed in slice 6 as `PoolCursor.OrderChanged`.
   then every other image has had its fence waited on and rebuilt without the control. This closes
   the `controlDataBuffer`-leaks-on-destroy gap and is the "initiated by the control, not discovered
   by the renderer" hook [[cross-system-change-notification]] called for.
+- **`DataPool.ReleaseOwnerSlack` (NEW).** Both removal paths now `Array.Clear` the `_owners` range
+  they vacated. `MoveDense` copies the managed back-reference down WITHOUT clearing the source, so
+  before this a compaction left a duplicate for every shifted survivor and the entity itself for
+  every dead row — the destroyed entity stayed reachable from the pool, and so uncollectable, until
+  a later `Allocate` happened to reuse that exact dense index. Bounded (capacity-worth at worst),
+  not a growing leak, but it meant "destroyed" did not imply "collectable". Only `_owners` needs
+  this; the component columns are unmanaged, so their slack is just numbers nobody reads. Nothing
+  reads `OwnerAt` above `Count`, so clearing the slack cannot be observed by a consumer.
 - **Verified by running Periodic** (no automated tests — see auto-memory). Boot: one resequence of
   5 rows, then quiet (flag clears, nothing re-dirties per frame). Click + type: 6 → 7 → 8 rows, one
   resequence per keystroke, glyph children 3 → 8, no mismatch warning. Destroy (temporary scene

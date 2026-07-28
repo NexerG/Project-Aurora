@@ -424,6 +424,7 @@ namespace ArctisAurora.Core.Data
                     MoveDense(r, w);
                 w++;
             }
+            ReleaseOwnerSlack(w, _count);
             _count = w;
         }
 
@@ -437,6 +438,7 @@ namespace ArctisAurora.Core.Data
                 deadDense[n++] = _slots[sid];
             Array.Sort(deadDense);
 
+            int oldCount = _count;
             for (int i = n - 1; i >= 0; i--)
             {
                 int hole = deadDense[i];
@@ -447,6 +449,21 @@ namespace ArctisAurora.Core.Data
                 _count--;
                 Recycle(sid);
             }
+            ReleaseOwnerSlack(_count, oldCount);
+        }
+
+        // Drop the managed back-references in the vacated range [newCount, oldCount). MoveDense
+        // copies _owners down without clearing the source, so a removal pass leaves a duplicate for
+        // every survivor it shifted and the entity itself for every row that died. Only _owners
+        // needs this — the component columns are unmanaged, so their slack is just numbers nobody
+        // reads.
+        //
+        // Without it a destroyed entity stays reachable from the pool, and so uncollectable, until
+        // some later Allocate happens to reuse that exact dense index.
+        private void ReleaseOwnerSlack(int newCount, int oldCount)
+        {
+            if (oldCount > newCount)
+                Array.Clear(_owners, newCount, oldCount - newCount);
         }
 
         // False when the sort provider did not account for every live element — a live row it
