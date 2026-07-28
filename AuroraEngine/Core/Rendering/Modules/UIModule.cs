@@ -102,8 +102,29 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         // Per swapchain image: the pool capacity the descriptor sets were built against (-1 =
         // not built) and how many per-control descriptors have already been written. Adds append
         // the [written, live) tail in place; a capacity change forces a full rebuild of the set.
+        //
+        // The written count is a DENSE high-water mark, sound only while dense indices stay put —
+        // which is what PoolCursor.OrderChanged guards. After a compaction or resequence the append
+        // path would leave descriptors pointing at whoever used to live in those slots.
         private int[] _frameBuiltCapacity;
         private int[] _frameWrittenControls;
+
+        // This image's position in the control pool's history. One per image, not per module: each
+        // image provisions its own sets and advances independently.
+        //
+        // Lazy because pools are parsed in the same bootstrap phase that constructs this module and
+        // intra-phase order is undefined, so the pool may not exist yet at construction.
+        private PoolCursor[] _cursors;
+
+        private PoolCursor Cursor(int frame)
+        {
+            _cursors ??= new PoolCursor[Renderer.swapchainImageCount];
+            return _cursors[frame] ??= new PoolCursor(ControlPool);
+        }
+
+        // Lets Draw() call UpdateModule for pool changes the module finds itself, rather than only
+        // when something else remembered to push isDirty.
+        internal override bool HasPendingWork(int frame) => Cursor(frame).HasPending;
 
         // The pool capacity the current build is sized against, sampled once at the top of
         // UpdateModule. The main thread can Grow() the pool mid-build, so every consumer in one
@@ -141,21 +162,30 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             deferredDeletions[currentFrame].Clear();
 
             DataPool pool = ControlPool;
+            PoolCursor cursor = Cursor(currentFrame);
+
+            // Ask the pool what moved since this image last looked. Both are consumed even if only
+            // one is acted on — an unconsumed generation looks pending forever.
+            cursor.TryConsumeStructural();
+            bool content = cursor.TryConsumeContent(out int dirtyMin, out int dirtyMax);
+
             int live = pool.Count;
             _buildCapacity = pool.Capacity;
 
-            // refresh the pooled transform mirror (persistent buffer, patched in place)
-            meshComponent.MakeInstanced(this, currentFrame);
+            // Copy across only the rows that actually changed. A capacity change is handled inside:
+            // the buffer is recreated from the whole column and the range is ignored.
+            meshComponent.MakeInstanced(this, currentFrame, content ? dirtyMin : 0, content ? dirtyMax : -1);
 
             // Nothing to bind yet — record an empty (clear-only) command buffer and wait.
             if (live > 0)
             {
-                // Rebuild this frame's descriptor sets only when the pool's capacity changed
-                // (buffers moved) or the live count shrank; otherwise keep them and append the
-                // newly added controls.
+                // Rebuild this frame's descriptor sets when the pool's capacity changed (buffers
+                // moved), when dense indices were permuted or compacted, or when the live count
+                // shrank; otherwise keep them and append the newly added controls.
                 // live > builtCapacity can only mean the set was allocated against a capacity that
                 // has since been outgrown — appending into it would overrun the binding.
                 bool structural = _frameBuiltCapacity[currentFrame] != _buildCapacity
+                                  || cursor.OrderChanged
                                   || live < _frameWrittenControls[currentFrame]
                                   || live > _frameBuiltCapacity[currentFrame];
                 if (structural)

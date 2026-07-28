@@ -53,7 +53,6 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
         internal virtual void MakeInstanced(ref List<Matrix4X4<float>> _matrices) { }
         internal virtual void MakeInstanced() { }
-        internal virtual void MakeInstanced(RenderingModule module, int currentFrame) { }
 
         internal virtual void SingletonMatrix()
         {

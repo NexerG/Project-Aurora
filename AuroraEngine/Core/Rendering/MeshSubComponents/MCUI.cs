@@ -56,10 +56,12 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             base.LoadCustomMesh(sc);
         }
 
-        // Mirror the pool's GpuTransform column to the GPU. Matrices are already baked by
-        // VulkanControl.CommitTransform, so nothing is derived here and the column is read-only
-        // to the render thread.
-        internal override void MakeInstanced(RenderingModule module, int currentFrame)
+        // Mirror the pool's GpuTransform column to the GPU. dirtyMin/dirtyMax is the dense range the
+        // caller's PoolCursor reported; dirtyMax < dirtyMin means nothing to copy.
+        //
+        // Matrices are already baked by VulkanControl.CommitTransform, so nothing is derived here
+        // and the column is read-only to the render thread.
+        internal void MakeInstanced(RenderingModule module, int currentFrame, int dirtyMin, int dirtyMax)
         {
             DataPool pool = ((UIModule)module).ControlPool;
             int live = pool.Count;
@@ -81,12 +83,15 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
                 }
                 AVulkanBufferHandler.CreateBuffer(ref gpu, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
                 _transformCapacity = pool.Capacity;
+                return;   // the fresh buffer already carries the whole column
             }
-            else
-            {
-                // patch just the live range into the existing buffer — no teardown, no full re-upload
-                AVulkanBufferHandler.UpdateBufferRange(gpu, 0, 0, live, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer);
-            }
+
+            // Clamp to what is live — rows past Count are slack the shader never reads.
+            if (dirtyMax >= live) dirtyMax = live - 1;
+            if (dirtyMin < 0) dirtyMin = 0;
+            if (dirtyMax < dirtyMin) return;
+
+            AVulkanBufferHandler.UpdateBufferRange(gpu, dirtyMin, dirtyMin, dirtyMax - dirtyMin + 1, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer);
         }
 
         internal override void SingletonMatrix()

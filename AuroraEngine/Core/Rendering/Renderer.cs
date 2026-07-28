@@ -640,7 +640,7 @@ namespace ArctisAurora.EngineWork.Rendering
             // update modules if needed
             for (int i = 0; i < renderingModules.Length; i++)
             {
-                if (renderingModules[i].isDirty[imageIndex])
+                if (renderingModules[i].isDirty[imageIndex] || renderingModules[i].HasPendingWork((int)imageIndex))
                     renderingModules[i].UpdateModule((int)imageIndex);
                 renderingModules[i].camera.UpdateCameraMatrix(Engine.window.windowSize, imageIndex, (uint)i);
             }

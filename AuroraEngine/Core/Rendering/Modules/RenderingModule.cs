@@ -74,6 +74,11 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal abstract void UpdateModule(int currentFrame);
 
+        // Work this module found for itself by polling, as opposed to being told. isDirty stays for
+        // invalidation from outside the module (swapchain rebuild, window resize); this covers what
+        // the module can see, so producers no longer have to flag the renderer after changing data.
+        internal virtual bool HasPendingWork(int frame) => false;
+
         internal virtual void CreateDescriptorSetLayout()
         {
             uint setCount = (uint)variableSetCount;
