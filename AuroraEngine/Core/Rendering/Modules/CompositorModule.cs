@@ -127,29 +127,6 @@ namespace ArctisAurora.Core.Rendering.Modules
             };
         }
 
-        internal override void CreateModuleFrameBuffers()
-        {
-            frameBuffers = new Framebuffer[Renderer.swapchainImageCount];
-            for (int i = 0; i < Renderer.swapchainImageCount; i++)
-            {
-                fixed (ImageView* attachPtr = new[] { Renderer.renderer.swapchainImageViews[i] })
-                {
-                    FramebufferCreateInfo info = new FramebufferCreateInfo()
-                    {
-                        SType = StructureType.FramebufferCreateInfo,
-                        RenderPass = renderPass,
-                        AttachmentCount = 1,
-                        PAttachments = attachPtr,
-                        Width = Engine.window.windowSize.Width,
-                        Height = Engine.window.windowSize.Height,
-                        Layers = 1
-                    };
-                    if (Renderer.vk.CreateFramebuffer(Renderer.logicalDevice, ref info, null, out frameBuffers[i]) != Result.Success)
-                        throw new Exception("Failed to create compositor framebuffer");
-                }
-            }
-        }
-
         internal override void CreatePipeline()
         {
             byte[] vertCode = ReadFile("../../../Shaders/Modules/Compositor/compositor.vert.spv");
@@ -279,6 +256,18 @@ namespace ArctisAurora.Core.Rendering.Modules
                     PDynamicStates = dynamicStatesPtr
                 };
 
+                // Replaces the render pass handle. This one presents, so the format is the
+                // swapchain's rather than the modules' offscreen format.
+                Format colorFormat = Renderer.renderer.surfaceFormat.Format;
+                PipelineRenderingCreateInfo renderingCreateInfo = new PipelineRenderingCreateInfo()
+                {
+                    SType = StructureType.PipelineRenderingCreateInfo,
+                    ColorAttachmentCount = 1,
+                    PColorAttachmentFormats = &colorFormat,
+                    DepthAttachmentFormat = Format.Undefined,
+                    StencilAttachmentFormat = Format.Undefined
+                };
+
                 GraphicsPipelineCreateInfo pipelineInfo = new GraphicsPipelineCreateInfo()
                 {
                     SType = StructureType.GraphicsPipelineCreateInfo,
@@ -293,8 +282,9 @@ namespace ArctisAurora.Core.Rendering.Modules
                     PColorBlendState = &colorBlend,
                     PDynamicState = &dynamicStateInfo,
                     Layout = pipelineLayout,
-                    RenderPass = renderPass,
-                    Subpass = 0
+                    RenderPass = default,
+                    Subpass = 0,
+                    PNext = &renderingCreateInfo
                 };
                 if (Renderer.vk.CreateGraphicsPipelines(Renderer.logicalDevice, default, 1, ref pipelineInfo, null, out pipeline) != Result.Success)
                     throw new Exception("Failed to create compositor pipeline");
@@ -306,54 +296,6 @@ namespace ArctisAurora.Core.Rendering.Modules
             SilkMarshal.Free((nint)fragStage.PName);
         }
         
-        internal override void CreateRenderPass()
-        {
-            AttachmentDescription color = new AttachmentDescription()
-            {
-                Format = Renderer.renderer.surfaceFormat.Format,
-                Samples = SampleCountFlags.Count1Bit,
-                LoadOp = AttachmentLoadOp.Clear,
-                StoreOp = AttachmentStoreOp.Store,
-                InitialLayout = ImageLayout.Undefined,
-                FinalLayout = ImageLayout.PresentSrcKhr
-            };
-            AttachmentReference colorRef = new AttachmentReference()
-            {
-                Attachment = 0,
-                Layout = ImageLayout.ColorAttachmentOptimal
-            };
-            SubpassDescription subpass = new SubpassDescription()
-            {
-                PipelineBindPoint = PipelineBindPoint.Graphics,
-                ColorAttachmentCount = 1,
-                PColorAttachments = &colorRef
-            };
-            SubpassDependency dep = new SubpassDependency()
-            {
-                SrcSubpass = Vk.SubpassExternal,
-                DstSubpass = 0,
-                SrcStageMask = PipelineStageFlags.ColorAttachmentOutputBit,
-                SrcAccessMask = 0,
-                DstStageMask = PipelineStageFlags.ColorAttachmentOutputBit,
-                DstAccessMask = AccessFlags.ColorAttachmentWriteBit
-            };
-            fixed (AttachmentDescription* attachPtr = new[] { color })
-            {
-                RenderPassCreateInfo info = new RenderPassCreateInfo()
-                {
-                    SType = StructureType.RenderPassCreateInfo,
-                    AttachmentCount = 1,
-                    PAttachments = attachPtr,
-                    SubpassCount = 1,
-                    PSubpasses = &subpass,
-                    DependencyCount = 1,
-                    PDependencies = &dep
-                };
-                if (Renderer.vk.CreateRenderPass(Renderer.logicalDevice, ref info, null, out renderPass) != Result.Success)
-                    throw new Exception("Failed to create compositor render pass");
-            }
-        }
-
         internal override void PrepareCamera()
         {}
 
@@ -434,21 +376,37 @@ namespace ArctisAurora.Core.Rendering.Modules
             if (Renderer.vk.BeginCommandBuffer(commandBuffers[index], ref beginInfo) != Result.Success)
                 throw new Exception("Failed to begin compositor command buffer");
 
-            ClearValue clearValue = new ClearValue()
+            // Was the render pass's InitialLayout=Undefined plus its EXTERNAL->0 dependency. The acquire
+            // is already ordered ahead of this by the module submit's imageAvailable wait and the timeline
+            // semaphore between the two submits, so this barrier only has to do the layout transition.
+            ImageBarrier(commandBuffers[index], Renderer.renderer.swapchainImages[index],
+                ImageLayout.Undefined, ImageLayout.ColorAttachmentOptimal,
+                PipelineStageFlags.ColorAttachmentOutputBit, PipelineStageFlags.ColorAttachmentOutputBit,
+                AccessFlags.None, AccessFlags.ColorAttachmentWriteBit);
+
+            RenderingAttachmentInfo colorAttachment = new RenderingAttachmentInfo()
             {
-                Color = new ClearColorValue() { Float32_0 = 0f, Float32_1 = 0f, Float32_2 = 0f, Float32_3 = 1f }
-            };
-            RenderPassBeginInfo renderPassInfo = new RenderPassBeginInfo()
-            {
-                SType = StructureType.RenderPassBeginInfo,
-                RenderPass = renderPass,
-                Framebuffer = frameBuffers[index],
-                RenderArea = { Offset = { X = 0, Y = 0 }, Extent = Engine.window.windowSize },
-                ClearValueCount = 1,
-                PClearValues = &clearValue
+                SType = StructureType.RenderingAttachmentInfo,
+                ImageView = Renderer.renderer.swapchainImageViews[index],
+                ImageLayout = ImageLayout.ColorAttachmentOptimal,
+                LoadOp = AttachmentLoadOp.Clear,
+                StoreOp = AttachmentStoreOp.Store,
+                ClearValue = new ClearValue()
+                {
+                    Color = new ClearColorValue() { Float32_0 = 0f, Float32_1 = 0f, Float32_2 = 0f, Float32_3 = 1f }
+                }
             };
 
-            Renderer.vk.CmdBeginRenderPass(commandBuffers[index], &renderPassInfo, SubpassContents.Inline);
+            RenderingInfo renderingInfo = new RenderingInfo()
+            {
+                SType = StructureType.RenderingInfo,
+                RenderArea = new Rect2D() { Offset = { X = 0, Y = 0 }, Extent = Engine.window.windowSize },
+                LayerCount = 1,
+                ColorAttachmentCount = 1,
+                PColorAttachments = &colorAttachment
+            };
+
+            Renderer.vk.CmdBeginRendering(commandBuffers[index], &renderingInfo);
             Renderer.vk.CmdBindPipeline(commandBuffers[index], PipelineBindPoint.Graphics, pipeline);
 
             Viewport _viewport = new Viewport() { X = 0, Y = 0, Width = Engine.window.windowSize.Width, Height = Engine.window.windowSize.Height, MinDepth = 0, MaxDepth = 1 };
@@ -462,7 +420,14 @@ namespace ArctisAurora.Core.Rendering.Modules
 
             // fullscreen triangle — 3 vertices, no vertex buffer
             Renderer.vk.CmdDraw(commandBuffers[index], 3, 1, 0, 0);
-            Renderer.vk.CmdEndRenderPass(commandBuffers[index]);
+            Renderer.vk.CmdEndRendering(commandBuffers[index]);
+
+            // Was the render pass's FinalLayout=PresentSrcKhr. QueuePresent waits on
+            // renderFinishedSemaphores, so this only has to hand the image over in the right layout.
+            ImageBarrier(commandBuffers[index], Renderer.renderer.swapchainImages[index],
+                ImageLayout.ColorAttachmentOptimal, ImageLayout.PresentSrcKhr,
+                PipelineStageFlags.ColorAttachmentOutputBit, PipelineStageFlags.BottomOfPipeBit,
+                AccessFlags.ColorAttachmentWriteBit, AccessFlags.None);
 
             if (Renderer.vk.EndCommandBuffer(commandBuffers[index]) != Result.Success)
                 throw new Exception("Failed to record compositor command buffer");

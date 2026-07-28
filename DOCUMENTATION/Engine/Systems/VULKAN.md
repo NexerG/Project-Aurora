@@ -48,8 +48,7 @@ The Renderer's sequence goes as follows:
 	- Descriptor sets
 - Pipelines
 	- For each module
-		- Render pass
-		- Frame buffers
+		- Render target
 			- Image
 			- Image View
 			- Device Memory
@@ -91,11 +90,13 @@ Modules in my Vulkan renderer are sub renderers meant to do some sort of graphic
 `Render Pipeline`
 a pipeline is a per renderer system that works as a static conveyor. Given shaders (compiled into shader byte code) the system creates shader modules. With those the system needs a pipeline shader stage. Essentially telling the pipeline what stage each shader will be used at. Those a usually predetermined like vertex going before fragment. After shaders the pipeline is setup with pipeline settings like vertex input state, input assembly, viewport, scissor, sampling, raster/raytracing/compute states. And after those settings passed to the `Logical Device` to be created.
 
-`Framebuffer`
-Each module has to have a render target it renders to. That's why in the list `Image`, `Image View` and `Device Memory` are marked under frame buffer. They're meant for storage but for the module to be able to render to an image it has to be tied to a framebuffer.
+`Render Target`
+Each module has to have a render target it renders to. That's why in the list `Image`, `Image View` and `Device Memory` are marked under render target. The image is the storage, the image view is the handle the renderer actually hands to a draw, and the device memory is what the image is backed by.
 
-`Render Pass`
-A render pass is just a resource describer of what images are used in a render. Color, depth, etc. It also describes what format they're in (single channel, 3 channel (rgb), 4 channel (rgba), etc).
+`Dynamic Rendering`
+A render pass used to be the resource describer of what images a render uses, what format they're in, and what layout they start and end in — and a framebuffer was the object that bound actual image views to those slots. The engine uses dynamic rendering (Vulkan 1.3 core, `PhysicalDeviceVulkan13Features::dynamicRendering`) instead, so neither object exists any more. What each of them carried moved somewhere more direct: the attachment formats are declared once on the pipeline through `PipelineRenderingCreateInfo`, and the image view, load/store ops and clear colour are handed straight to `CmdBeginRendering` when the command buffer is recorded.
+The catch is that a render pass was also doing the image layout transitions for free — its initial/final layouts moved the image in and out, and its subpass dependencies supplied the barrier around it. `CmdBeginRendering` does none of that, so every module now issues those transitions itself with an explicit `vkCmdPipelineBarrier`: one before to reach `ColorAttachmentOptimal`, one after to reach whatever the next consumer needs (`ShaderReadOnlyOptimal` for a module the compositor samples, `PresentSrcKhr` for the compositor). That's the whole trade — you delete two object lifetimes and their resize handling, and you take on writing the barriers by hand.
+This is what sets the engine's hardware floor: roughly NVIDIA Maxwell (2014), AMD Polaris (2016) or Intel Skylake (2015) on Windows. `Renderer.VerifyRequiredFeatures` checks for it before `vkCreateDevice` so an unsupported driver says so plainly instead of failing with a bare `ErrorFeatureNotPresent`.
 
 #### UI Rasterizer Module
 

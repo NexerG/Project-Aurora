@@ -66,6 +66,11 @@ namespace ArctisAurora.EngineWork.Rendering
         internal PhysicalDeviceVulkan12Features _features12;
         internal ref PhysicalDeviceVulkan12Features features12 => ref _features12;
 
+        // Not aggregated from the modules like the other two. Dynamic rendering replaces VkRenderPass and
+        // VkFramebuffer for every module at once, so it is a renderer-wide requirement, not a module opt-in.
+        internal PhysicalDeviceVulkan13Features _features13;
+        internal ref PhysicalDeviceVulkan13Features features13 => ref _features13;
+
 
         // rendering
         internal static uint swapchainImageCount = 3;
@@ -143,14 +148,10 @@ namespace ArctisAurora.EngineWork.Rendering
         {
             for (int i = 0; i < renderingModules.Length; i++)
             {
-                renderingModules[i].CreateRenderPass();
                 renderingModules[i].CreateOutputImages();
-                renderingModules[i].CreateModuleFrameBuffers();
                 renderingModules[i].CreatePipeline();
             }
             compositorModule = new CompositorModule();
-            compositorModule.CreateRenderPass();
-            compositorModule.CreateModuleFrameBuffers();
             compositorModule.Init(renderingModules, renderer.swapchainImageViews);
         }
 
@@ -356,17 +357,42 @@ namespace ArctisAurora.EngineWork.Rendering
             gpu = devices[0];
         }
 
+        // Asks the GPU what it actually supports before vkCreateDevice does. Without this an unsupported
+        // driver only reports a bare ErrorFeatureNotPresent with no indication of which feature was missing.
+        private void VerifyRequiredFeatures()
+        {
+            PhysicalDeviceVulkan13Features supported13 = new PhysicalDeviceVulkan13Features()
+            {
+                SType = StructureType.PhysicalDeviceVulkan13Features
+            };
+            PhysicalDeviceFeatures2 supported = new PhysicalDeviceFeatures2()
+            {
+                SType = StructureType.PhysicalDeviceFeatures2,
+                PNext = &supported13
+            };
+            vk.GetPhysicalDeviceFeatures2(gpu, &supported);
+
+            if (!supported13.DynamicRendering)
+                throw new Exception("GPU driver does not support dynamic rendering (VkPhysicalDeviceVulkan13Features::dynamicRendering). Minimum: NVIDIA Maxwell, AMD Polaris, Intel Skylake.");
+        }
+
         private void CreateLogicalDevice()
         {
             features12.TimelineSemaphore = true;
+            features13.DynamicRendering = true;
             for (int i = 0; i < renderingModules.Length; i++)
             {
                 CopyStructTrues(ref features, renderingModules[i].features);
                 CopyStructTrues(ref features12, renderingModules[i].features12);
             }
 
+            VerifyRequiredFeatures();
+
+            PhysicalDeviceVulkan13Features f13 = features13;
+            f13.SType = StructureType.PhysicalDeviceVulkan13Features;
             PhysicalDeviceVulkan12Features f12 = features12;
             f12.SType = StructureType.PhysicalDeviceVulkan12Features;
+            f12.PNext = &f13;
             PhysicalDeviceFeatures2 physicalDeviceFeatures2 = new PhysicalDeviceFeatures2()
             {
                 SType = StructureType.PhysicalDeviceFeatures2,
@@ -519,7 +545,7 @@ namespace ArctisAurora.EngineWork.Rendering
             if (Engine.window.windowSize.Width == 0 || Engine.window.windowSize.Height == 0)
                 return;
 
-            // tear down size-dependent resources (output images, framebuffers)
+            // tear down size-dependent resources (the module output images)
             for (int i = 0; i < renderingModules.Length; i++)
                 renderingModules[i].DestroySizeDependentResources();
             compositorModule.DestroySizeDependentResources();
@@ -532,16 +558,11 @@ namespace ArctisAurora.EngineWork.Rendering
             // recreate the swapchain at the new size (CreateSwapchain reads window size)
             CreateSwapchain();
 
-            // recreate per-module output images + framebuffers at the new size
+            // recreate per-module output images at the new size
             for (int i = 0; i < renderingModules.Length; i++)
-            {
                 renderingModules[i].CreateOutputImages();
-                renderingModules[i].CreateModuleFrameBuffers();
-            }
 
-            // compositor framebuffers target the new swapchain views and its descriptors
-            // sample the freshly created module output views — rebuild both
-            compositorModule.CreateModuleFrameBuffers();
+            // the compositor's descriptors sample the freshly created module output views — rewrite them
             for (int f = 0; f < (int)swapchainImageCount; f++)
                 compositorModule.UpdateDescriptorSets(f, 0);
 

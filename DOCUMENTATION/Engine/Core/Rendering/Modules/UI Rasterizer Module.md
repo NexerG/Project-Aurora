@@ -37,7 +37,7 @@ The concrete [[Renderer Module]] that draws the UI control tree. It renders ever
 | `PrepareObjects()` | override | Builds the `MCUI` mesh, subscribes to the `Controls` entity group's `onChanged`, prepares the camera. |
 | `UpdateModule(frame)` | override | Refreshes the pooled transform mirror, then either appends the newly added controls' descriptors (normal case) or rebuilds the frame's descriptor pool/sets (only when the pool's capacity changed); queues stale resources for deferred deletion. |
 | `CreatePipeline()` | override | `UIRasterizer/UI.vert+frag`, alpha blending, **dynamic viewport/scissor**. |
-| `CreateRenderPass()` | override | Single color attachment, final layout `ShaderReadOnlyOptimal` so the compositor can sample it. |
+| `CreatePipeline()` | override | Declares a single colour attachment of `outputFormat` in `PipelineRenderingCreateInfo`; no render pass handle. |
 | `WriteCommandBuffers(frame)` | override | Binds the pipeline, sets viewport/scissor, issues the instanced indexed draw. |
 
 ## Fields & Properties
@@ -71,7 +71,7 @@ The module is marked dirty (all frames) whenever the `Controls` group changes (a
 The binding relies on `GL_EXT_scalar_block_layout`: the C# struct is `Pack = 1` at 44 bytes, and scalar layout gives the GLSL struct the same 44-byte array stride. Under `std430` it would round to 48 and every control past the first would read shifted data.
 
 ### Drawing
-`WriteCommandBuffer` begins the render pass, binds the pipeline, sets the dynamic viewport/scissor from the window size, then `MCUI.EnqueueDrawCommands` binds both descriptor sets and issues one `CmdDrawIndexed` with `instanceCount` = the live control count. `WriteCommandBuffers` allocates the command-buffer array once but records only the current image; each image records itself on its first dirty pass.
+`WriteCommandBuffer` barriers the output image from `Undefined` to `ColorAttachmentOptimal`, opens a rendering instance with `CmdBeginRendering` (the output image view, `Clear`/`Store`, the dark clear colour), binds the pipeline, sets the dynamic viewport/scissor from the window size, then `MCUI.EnqueueDrawCommands` binds both descriptor sets and issues one `CmdDrawIndexed` with `instanceCount` = the live control count. After `CmdEndRendering` a second barrier moves the image to `ShaderReadOnlyOptimal` for the compositor to sample. `WriteCommandBuffers` allocates the command-buffer array once but records only the current image; each image records itself on its first dirty pass.
 
 ## Helpers
 

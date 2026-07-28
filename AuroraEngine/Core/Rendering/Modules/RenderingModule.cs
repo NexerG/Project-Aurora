@@ -3,6 +3,7 @@ using ArctisAurora.Core.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Vulkan;
 using Image = Silk.NET.Vulkan.Image;
+using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 using Semaphore = Silk.NET.Vulkan.Semaphore;
 
 namespace ArctisAurora.EngineWork.Rendering.Modules
@@ -31,9 +32,6 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         // rendering
         internal Pipeline pipeline;
         internal PipelineLayout pipelineLayout;
-        internal RenderPass renderPass;
-
-        internal Framebuffer[] frameBuffers;
 
         // commands
         public Queue graphicsQueue;
@@ -55,6 +53,9 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal abstract uint[][] descriptorMaxCounts { get; }
 
         // rendered result
+        // Dynamic rendering makes the pipeline name its attachment format up front, and it has to
+        // agree with the images below — hence one constant instead of a literal per use site.
+        internal const Format outputFormat = Format.R8G8B8A8Unorm;
         public Image[] outputImages;
         public ImageView[] outputImageViews;
         public DeviceMemory[] imageDeviceMemory;
@@ -208,10 +209,6 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal abstract void CreatePipeline();
 
-        internal abstract void CreateModuleFrameBuffers();
-
-        internal abstract void CreateRenderPass();
-
         internal virtual void CreateOutputImages()
         {
             uint imageceCount = Renderer.swapchainImageCount;
@@ -223,25 +220,19 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             {
                 AVulkanBufferHandler.CreateImage(Renderer.vk, ref Renderer.logicalDevice, Renderer.gpu,
                     Engine.window.windowSize.Width, Engine.window.windowSize.Height,
-                    Format.R8G8B8A8Unorm,
+                    outputFormat,
                     ImageTiling.Optimal,
                     ImageUsageFlags.ColorAttachmentBit | ImageUsageFlags.SampledBit,
                     MemoryPropertyFlags.DeviceLocalBit,
                     ref outputImages[i], ref imageDeviceMemory[i]);
-                AVulkanBufferHandler.CreateImageView(Renderer.vk, ref Renderer.logicalDevice, ref outputImages[i], ref outputImageViews[i], Format.R8G8B8A8Unorm, ImageAspectFlags.ColorBit);
+                AVulkanBufferHandler.CreateImageView(Renderer.vk, ref Renderer.logicalDevice, ref outputImages[i], ref outputImageViews[i], outputFormat, ImageAspectFlags.ColorBit);
             }
         }
 
-        // Destroys everything sized to the window/swapchain (framebuffers + output images).
-        // Called on resize before recreation. Null-safe so the compositor (no output images)
-        // can reuse it to drop just its framebuffers.
+        // Destroys everything sized to the window/swapchain (the output images). Called on resize before
+        // recreation. Null-safe so the compositor, which owns no output images, can call it harmlessly.
         internal virtual void DestroySizeDependentResources()
         {
-            if (frameBuffers != null)
-                for (int i = 0; i < frameBuffers.Length; i++)
-                    if (frameBuffers[i].Handle != 0)
-                        Renderer.vk.DestroyFramebuffer(Renderer.logicalDevice, frameBuffers[i], null);
-
             if (outputImageViews != null)
                 for (int i = 0; i < outputImageViews.Length; i++)
                     if (outputImageViews[i].Handle != 0)
@@ -261,6 +252,37 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal abstract void PrepareCamera();
 
         internal abstract void WriteCommandBuffers(int currentFrame);
+
+        // A render pass used to do the layout transitions for free — initial/final layouts moved the
+        // attachment in and out, and the subpass dependencies supplied the execution and memory barrier
+        // around it. CmdBeginRendering does none of that, so every transition the render pass used to
+        // imply is now an explicit barrier either side of the CmdBeginRendering/CmdEndRendering pair.
+        internal static void ImageBarrier(CommandBuffer commandBuffer, Image image,
+            ImageLayout oldLayout, ImageLayout newLayout,
+            PipelineStageFlags srcStage, PipelineStageFlags dstStage,
+            AccessFlags srcAccess, AccessFlags dstAccess)
+        {
+            ImageMemoryBarrier barrier = new ImageMemoryBarrier()
+            {
+                SType = StructureType.ImageMemoryBarrier,
+                OldLayout = oldLayout,
+                NewLayout = newLayout,
+                SrcQueueFamilyIndex = Vk.QueueFamilyIgnored,
+                DstQueueFamilyIndex = Vk.QueueFamilyIgnored,
+                Image = image,
+                SrcAccessMask = srcAccess,
+                DstAccessMask = dstAccess,
+                SubresourceRange = new ImageSubresourceRange()
+                {
+                    AspectMask = ImageAspectFlags.ColorBit,
+                    BaseMipLevel = 0,
+                    LevelCount = 1,
+                    BaseArrayLayer = 0,
+                    LayerCount = 1
+                }
+            };
+            Renderer.vk.CmdPipelineBarrier(commandBuffer, srcStage, dstStage, 0, 0, null, 0, null, 1, &barrier);
+        }
 
         internal static byte[] ReadFile(string FileName)
         {

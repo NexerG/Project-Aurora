@@ -224,94 +224,6 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 isDirty[i] = true;
         }
 
-        internal override void CreateRenderPass()
-        {
-            AttachmentDescription _colorAttachment = new AttachmentDescription()
-            {
-                Format = Renderer.renderer.surfaceFormat.Format,
-                Samples = SampleCountFlags.Count1Bit,
-                LoadOp = AttachmentLoadOp.Clear,
-                StoreOp = AttachmentStoreOp.Store,
-                StencilLoadOp = AttachmentLoadOp.DontCare,
-                InitialLayout = ImageLayout.Undefined,
-                FinalLayout = ImageLayout.ShaderReadOnlyOptimal,
-            };
-
-            AttachmentReference _colorAttachmentRef = new AttachmentReference()
-            {
-                Attachment = 0,
-                Layout = ImageLayout.ColorAttachmentOptimal,
-            };
-
-            /*AttachmentDescription _depthAttachment = new AttachmentDescription()
-            {
-                Format = AVulkanHelper.GetDepthFormat(),
-                Samples = SampleCountFlags.Count1Bit,
-                LoadOp = AttachmentLoadOp.Clear,
-                StoreOp = AttachmentStoreOp.DontCare,
-                StencilLoadOp = AttachmentLoadOp.DontCare,
-                StencilStoreOp = AttachmentStoreOp.DontCare,
-                InitialLayout = ImageLayout.Undefined,
-                FinalLayout = ImageLayout.DepthStencilAttachmentOptimal
-            };*/
-
-            /*AttachmentReference _depthAttachmentRef = new AttachmentReference()
-            {
-                Attachment = 1,
-                Layout = ImageLayout.DepthStencilAttachmentOptimal
-            };*/
-
-            SubpassDescription _subpass = new SubpassDescription()
-            {
-                PipelineBindPoint = PipelineBindPoint.Graphics,
-                ColorAttachmentCount = 1,
-                PColorAttachments = &_colorAttachmentRef,
-                //PDepthStencilAttachment = &_depthAttachmentRef
-            };
-
-            SubpassDependency _writeDependency = new SubpassDependency()
-            {
-                SrcSubpass = Vk.SubpassExternal,
-                DstSubpass = 0,
-                SrcStageMask = PipelineStageFlags.ColorAttachmentOutputBit /*| PipelineStageFlags.EarlyFragmentTestsBit*/,
-                SrcAccessMask = 0,
-                DstStageMask = PipelineStageFlags.ColorAttachmentOutputBit /*| PipelineStageFlags.EarlyFragmentTestsBit*/,
-                DstAccessMask = AccessFlags.ColorAttachmentWriteBit //| AccessFlags.DepthStencilAttachmentWriteBit
-            };
-
-            SubpassDependency _readDependency = new SubpassDependency()
-            {
-                SrcSubpass = 0,
-                DstSubpass = Vk.SubpassExternal,
-                SrcStageMask = PipelineStageFlags.ColorAttachmentOutputBit /*| PipelineStageFlags.EarlyFragmentTestsBit*/,
-                SrcAccessMask = AccessFlags.ColorAttachmentWriteBit /*| AccessFlags.DepthStencilAttachmentWriteBit*/,
-                DstStageMask = PipelineStageFlags.FragmentShaderBit,
-                DstAccessMask = AccessFlags.ShaderReadBit
-            };
-
-            var _dependencies = new[] { _writeDependency, _readDependency };
-            var _attachments = new[] { _colorAttachment/*, _depthAttachment*/ };
-            fixed (SubpassDependency* _dependencyPtr = _dependencies)
-            fixed (AttachmentDescription* _attachmentPtr = _attachments)
-            {
-                RenderPassCreateInfo _renderPassInfo = new RenderPassCreateInfo()
-                {
-                    SType = StructureType.RenderPassCreateInfo,
-                    AttachmentCount = (uint)_attachments.Length,
-                    PAttachments = _attachmentPtr,
-                    SubpassCount = 1,
-                    PSubpasses = &_subpass,
-                    DependencyCount = 1,
-                    PDependencies = _dependencyPtr
-                    };
-
-                if (Renderer.vk.CreateRenderPass(Renderer.logicalDevice, ref _renderPassInfo, null, out renderPass) != Result.Success)
-                {
-                    throw new Exception("failed to create render pass!");
-                }
-            }
-        }
-
         internal override void CreateDescriptorPoolSizes(uint swapchainImageCount)
         {
             // one pool per image, holding the two sets sized to the full pool capacity:
@@ -618,6 +530,18 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     PDynamicStates = dynamicStatesPtr
                 };
 
+                // Replaces the render pass handle: the pipeline is now compatible with any rendering
+                // instance whose attachment formats match these, rather than with one VkRenderPass object.
+                Format colorFormat = outputFormat;
+                PipelineRenderingCreateInfo renderingCreateInfo = new PipelineRenderingCreateInfo()
+                {
+                    SType = StructureType.PipelineRenderingCreateInfo,
+                    ColorAttachmentCount = 1,
+                    PColorAttachmentFormats = &colorFormat,
+                    DepthAttachmentFormat = Format.Undefined,
+                    StencilAttachmentFormat = Format.Undefined
+                };
+
                 GraphicsPipelineCreateInfo graphicsPipelineInfo = new GraphicsPipelineCreateInfo()
                 {
                     SType = StructureType.GraphicsPipelineCreateInfo,
@@ -632,9 +556,10 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     PColorBlendState = &colorBlending,
                     PDynamicState = &dynamicStateInfo,
                     Layout = pipelineLayout,
-                    RenderPass = renderPass,
+                    RenderPass = default,
                     Subpass = 0,
-                    BasePipelineHandle = default
+                    BasePipelineHandle = default,
+                    PNext = &renderingCreateInfo
                 };
 
                 Result r = Renderer.vk.CreateGraphicsPipelines(Renderer.logicalDevice, default, 1, ref graphicsPipelineInfo, null, out pipeline);
@@ -648,33 +573,6 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             Renderer.vk.DestroyShaderModule(Renderer.logicalDevice, fragmentShader, null);
             SilkMarshal.Free((nint)vertexShaderStageInfo.PName);
             SilkMarshal.Free((nint)fragmentShaderStageInfo.PName);
-        }
-
-        internal override void CreateModuleFrameBuffers()
-        {
-            frameBuffers = new Framebuffer[Renderer.swapchainImageCount];
-            for (int i = 0; i < Renderer.swapchainImageCount; i++)
-            {
-                var _attachment = new[] { outputImageViews[i] };
-
-                fixed (ImageView* _imAttachmentPtr = _attachment)
-                {
-                    FramebufferCreateInfo _framebufferInfo = new FramebufferCreateInfo()
-                    {
-                        SType = StructureType.FramebufferCreateInfo,
-                        RenderPass = renderPass,
-                        AttachmentCount = (uint)_attachment.Length,
-                        PAttachments = _imAttachmentPtr,
-                        Width = Engine.window.windowSize.Width,
-                        Height = Engine.window.windowSize.Height,
-                        Layers = 1
-                    };
-                    if (Renderer.vk.CreateFramebuffer(Renderer.logicalDevice, ref _framebufferInfo, null, out frameBuffers[i]) != Result.Success)
-                    {
-                        throw new Exception("Failed to create frame buffer");
-                    }
-                }
-            }
         }
 
         internal override void PrepareCamera()
@@ -717,18 +615,6 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         private void WriteCommandBuffer(int currentFrame)
         {
-            RenderPassBeginInfo _renderPassInfo = new RenderPassBeginInfo()
-            {
-                SType = StructureType.RenderPassBeginInfo,
-                RenderPass = renderPass,
-                Framebuffer = frameBuffers[currentFrame],
-                RenderArea =
-                    {
-                        Offset = { X = 0, Y = 0 },
-                        Extent = Engine.window.windowSize
-                    }
-            };
-
             CommandBufferBeginInfo _beginInfo = new CommandBufferBeginInfo()
             {
                 SType = StructureType.CommandBufferBeginInfo
@@ -739,27 +625,38 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 throw new Exception("Failed to create BEGIN command buffer at index " + currentFrame);
             }
 
+            // Was the render pass's InitialLayout=Undefined plus its EXTERNAL->0 dependency. Undefined
+            // discards the previous contents, which is what we want — the attachment is cleared on load.
+            ImageBarrier(commandBuffers[currentFrame], outputImages[currentFrame],
+                ImageLayout.Undefined, ImageLayout.ColorAttachmentOptimal,
+                PipelineStageFlags.TopOfPipeBit, PipelineStageFlags.ColorAttachmentOutputBit,
+                AccessFlags.None, AccessFlags.ColorAttachmentWriteBit);
 
-            var _clearValues = new ClearValue[]
+            RenderingAttachmentInfo _colorAttachment = new RenderingAttachmentInfo()
             {
-                new ClearValue()
+                SType = StructureType.RenderingAttachmentInfo,
+                ImageView = outputImageViews[currentFrame],
+                ImageLayout = ImageLayout.ColorAttachmentOptimal,
+                LoadOp = AttachmentLoadOp.Clear,
+                StoreOp = AttachmentStoreOp.Store,
+                ClearValue = new ClearValue()
                 {
-                    Color = new ClearColorValue() { Float32_0 = 0.05f, Float32_1 = 0.05f, Float32_2 = 0.05f, Float32_3 = 1f },
-                }/*,
-                new ClearValue()
-                {
-                    DepthStencil = new ClearDepthStencilValue() { Depth = 1f, Stencil = 0 }
-                },*/
+                    Color = new ClearColorValue() { Float32_0 = 0.05f, Float32_1 = 0.05f, Float32_2 = 0.05f, Float32_3 = 1f }
+                }
             };
 
-            fixed (ClearValue* _clrValuesPtr = _clearValues)
+            RenderingInfo _renderingInfo = new RenderingInfo()
             {
-                _renderPassInfo.ClearValueCount = (uint)_clearValues.Length;
-                _renderPassInfo.PClearValues = _clrValuesPtr;
-            }
+                SType = StructureType.RenderingInfo,
+                RenderArea = new Rect2D() { Offset = { X = 0, Y = 0 }, Extent = Engine.window.windowSize },
+                LayerCount = 1,
+                ColorAttachmentCount = 1,
+                PColorAttachments = &_colorAttachment
+            };
+
             //player view
+            Renderer.vk.CmdBeginRendering(commandBuffers[currentFrame], &_renderingInfo);
             Renderer.vk.CmdBindPipeline(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipeline);
-            Renderer.vk.CmdBeginRenderPass(commandBuffers[currentFrame], &_renderPassInfo, SubpassContents.Inline);
 
             Viewport _viewport = new Viewport() { X = 0, Y = 0, Width = Engine.window.windowSize.Width, Height = Engine.window.windowSize.Height, MinDepth = 0, MaxDepth = 1 };
             Rect2D _scissor = new Rect2D() { Offset = { X = 0, Y = 0 }, Extent = Engine.window.windowSize };
@@ -773,7 +670,14 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 DescriptorSet[] frameSets = frameResources[currentFrame].sets;
                 meshComponent.EnqueueDrawCommands(ref _offset, currentFrame, 0, ref commandBuffers[currentFrame], ref pipelineLayout, ref frameSets);
             }
-            Renderer.vk.CmdEndRenderPass(commandBuffers[currentFrame]);
+            Renderer.vk.CmdEndRendering(commandBuffers[currentFrame]);
+
+            // Was the render pass's FinalLayout=ShaderReadOnlyOptimal. The compositor samples this
+            // image, so the transition and the write->read visibility both have to happen here.
+            ImageBarrier(commandBuffers[currentFrame], outputImages[currentFrame],
+                ImageLayout.ColorAttachmentOptimal, ImageLayout.ShaderReadOnlyOptimal,
+                PipelineStageFlags.ColorAttachmentOutputBit, PipelineStageFlags.FragmentShaderBit,
+                AccessFlags.ColorAttachmentWriteBit, AccessFlags.ShaderReadBit);
 
             if (Renderer.vk.EndCommandBuffer(commandBuffers[currentFrame]) != Result.Success)
             {

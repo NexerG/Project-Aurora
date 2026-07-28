@@ -43,10 +43,10 @@ Phases, dates and standing decisions live in [[Roadmap]]. Items below are groupe
 
 ---
 # PHASE B — ECS rework + renderer/settings foundation (~Jul–Sep 2026)
-- [ ] ECS rework — object lists → data-oriented struct components, designed determinism/snapshot-friendly for later netcode
+- [x] ECS rework — object lists → data-oriented struct components, designed determinism/snapshot-friendly for later netcode
 - [ ] renderer foundation
-	- [ ] framebuffer removal
-	- [ ] `vk_khr_dynamic_rendering` - removes render pass and framebuffer.
+	- [x] framebuffer removal
+	- [x] `vk_khr_dynamic_rendering` - removes render pass and framebuffer.
 	- [ ] figure out why the renderer breaks the second monitor
 - [ ] Engine settings/preferences — XSD/XML-driven (GPU device selection, CPU/thread counts, misc engine options)
 	- [ ] Settings (some day) *(graduated from the Registry/Bootstrapper rework item)*
