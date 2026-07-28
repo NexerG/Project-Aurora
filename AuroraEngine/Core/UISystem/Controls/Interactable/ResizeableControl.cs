@@ -97,7 +97,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
             ref var t = ref transform;
             t.position = newControlPos;
             t.scale = newControlScale;
-            Pool.MarkContentDirty(dataHandle);
+            CommitTransform();
         }
 
         internal CursorShape GetCursor(Vector2D<float> pos)

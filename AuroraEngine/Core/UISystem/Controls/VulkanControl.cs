@@ -502,6 +502,24 @@ namespace ArctisAurora.Core.UISystem.Controls
                 finalRect.y + finalRect.height / 2f,
                 z);
             t.scale = new Vector3D<float>(finalRect.width, finalRect.height, 1);
+            CommitTransform();
+        }
+
+        // Bake this control's pooled transform into its GpuTransform row and dirty it. EVERY write
+        // to a control's transform must end here, or the matrix the renderer uploads goes stale.
+        //
+        // This used to be MCUI.BakeMatrices on the render thread, re-deriving the whole live range
+        // every dirty pass — move one window, rebuild all 1024. The matrix is a pure per-row
+        // function of the transform, so baking at the write costs one matrix per real change and
+        // leaves the renderer a column it only reads, off a pool Pools.xml says Main owns.
+        protected void CommitTransform()
+        {
+            ref TransformData t = ref transform;
+            Matrix4X4<float> m = Matrix4X4<float>.Identity;
+            m *= Matrix4X4.CreateScale(t.scale);
+            m *= Matrix4X4.CreateTranslation(t.position);
+
+            Pool.GetRef<GpuTransform>(dataHandle).matrix = m;
             Pool.MarkContentDirty(dataHandle);
         }
         #endregion
@@ -518,6 +536,11 @@ namespace ArctisAurora.Core.UISystem.Controls
             AVulkanBufferHandler.CreateBuffer(ref tempData, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref controlDataBuffer, ref controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
             maskSampler = AssetRegistries.GetRegistryByValueType<string, SamplerAsset>(typeof(SamplerAsset))["ControlSampler"].handle;
             EntityRegistry.AddToGroup("Controls", this);
+
+            // Seed the baked matrix from the default transform the base ctor allocated. The old
+            // render-side sweep covered rows that reached the GPU before their first Arrange; now
+            // that the bake happens at the write, an unwritten row uploads as a zero matrix.
+            CommitTransform();
             InvalidateLayout();
         }
 
@@ -751,7 +774,7 @@ namespace ArctisAurora.Core.UISystem.Controls
             ref TransformData wt = ref window.transform;
             wt.position = pos;
             wt.scale = new Vector3D<float>(window.preferredWidth, window.preferredHeight, 1);
-            window.Pool.MarkContentDirty(window.dataHandle);
+            window.CommitTransform();
             RecursiveParse(root, window);
 
             return window;

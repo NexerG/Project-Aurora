@@ -56,6 +56,9 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             base.LoadCustomMesh(sc);
         }
 
+        // Mirror the pool's GpuTransform column to the GPU. Matrices are already baked by
+        // VulkanControl.CommitTransform, so nothing is derived here and the column is read-only
+        // to the render thread.
         internal override void MakeInstanced(RenderingModule module, int currentFrame)
         {
             DataPool pool = ((UIModule)module).ControlPool;
@@ -64,9 +67,6 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             render = live > 0;
             if (live == 0) return;
 
-            // bake the live transforms straight into the pool's GpuTransform column, then mirror
-            // that column (which stays dense-aligned through compaction/resequence) to the GPU.
-            BakeMatrices(pool, live);
             GpuTransform[] gpu = pool.Backing<GpuTransform>();
 
             if (_transformCapacity != pool.Capacity)
@@ -86,24 +86,6 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             {
                 // patch just the live range into the existing buffer — no teardown, no full re-upload
                 AVulkanBufferHandler.UpdateBufferRange(gpu, 0, 0, live, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer);
-            }
-        }
-
-        // Compose a translate*scale matrix per live control from the pool's TransformData column
-        // into the index-aligned GpuTransform column. Dense index i matches instance i in the
-        // draw and descriptor arrays; the GpuTransform column is moved with its row through pool
-        // compaction/resequence, so it stays aligned without a hand-managed parallel array.
-        private void BakeMatrices(DataPool pool, int live)
-        {
-            Span<TransformData> transforms = pool.GetSpan<TransformData>();
-            Span<GpuTransform> gpu = pool.GetSpan<GpuTransform>();
-            Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-            for (int i = 0; i < live; i++)
-            {
-                _transform = Matrix4X4<float>.Identity;
-                _transform *= Matrix4X4.CreateScale(transforms[i].scale);
-                _transform *= Matrix4X4.CreateTranslation(transforms[i].position);
-                gpu[i].matrix = _transform;
             }
         }
 
