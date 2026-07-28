@@ -1,3 +1,6 @@
+using System.Diagnostics;
+using ArctisAurora.Core.Threading;
+
 namespace ArctisAurora.Core.Data
 {
     // A homogeneous block of entities: one dense array per component type, plus an
@@ -30,6 +33,8 @@ namespace ArctisAurora.Core.Data
         private readonly int _growthValue;
 
         private readonly Dictionary<Type, IPoolColumn> _columns = new();
+        private readonly Dictionary<Type, ushort> _columnIds = new();
+        private readonly IPoolColumn[] _columnsByIndex;
         private int[] _slots;      // stableId -> dense index (-1 if free)
         private int[] _backMap;    // dense index -> stableId
         private int[] _versions;   // stableId -> version (>= 1 for a live/recyclable slot)
@@ -55,6 +60,71 @@ namespace ArctisAurora.Core.Data
         public int DirtyMax => _dirtyMax;
         public bool ContentDirty => _dirtyMax >= _dirtyMin;
 
+        // ---- generation versioning (what consumers poll) ----
+        //
+        // Versions count GENERATIONS, not writes: a write widens the open generation's dirty range,
+        // FrameEdge closes it and bumps the counter. Per-write versions would burn one per dirtied
+        // control — 1000 in a tick — blowing past any bounded history, so every consumer would fall
+        // back to full-range and the mechanism would buy nothing. Publishing at the frame edge also
+        // hands consumers a settled batch and gives one place for the release write.
+        private const int DirtyLogSize = 16;   // power of two: indexed with & (DirtyLogSize - 1)
+
+        private readonly (ulong version, int min, int max)[] _dirtyLog = new (ulong, int, int)[DirtyLogSize];
+        private ulong _contentVersion;
+        private ulong _structuralVersion;
+        private ulong _orderVersion;
+        private bool _structuralPending;
+        private bool _orderPending;
+
+        // Snapshot of the live set in stableId space as of StructuralVersion: slot version if live,
+        // 0 if free. Immutable once published, so a consumer can hold it across a scan with no
+        // tearing and no locks.
+        //
+        // A bitset would be a quarter the size but cannot see ABA: free slot 5 and reallocate it
+        // before the next frame edge and the bit reads 1 both times while the occupant changed. Not
+        // a corner case — _freeIds is LIFO, so a just-freed slot is the first one reissued. The
+        // version makes that show up as a destroy plus a create, which is what it is.
+        private int[] _publishedSlotVersion;
+
+        // Latest closed generation. Read these first, then read the data they describe.
+        public ulong ContentVersion => Volatile.Read(ref _contentVersion);
+        public ulong StructuralVersion => Volatile.Read(ref _structuralVersion);
+
+        // Bumped only when dense indices MOVE — compaction and resequence. Separate from
+        // StructuralVersion (the live set changing) so a plain Allocate can still take the cheap
+        // append path; folded together, every added control would force a full descriptor rebuild.
+        public ulong OrderVersion => Volatile.Read(ref _orderVersion);
+
+        // Immutable snapshot of slot occupancy as of StructuralVersion. Index is stableId.
+        public int[] PublishedSlotVersion => Volatile.Read(ref _publishedSlotVersion);
+
+        // Union of the dirty ranges published in generations (since, current]. False when nothing
+        // changed. A consumer more than DirtyLogSize generations behind has had its history
+        // overwritten and gets the whole live range instead — correct, just not minimal.
+        public bool TryGetDirtyRange(ulong since, out int min, out int max, out ulong current)
+        {
+            current = Volatile.Read(ref _contentVersion);
+            min = int.MaxValue;
+            max = -1;
+            if (since >= current) return false;
+
+            if (current - since > DirtyLogSize)
+            {
+                min = 0;
+                max = _count - 1;
+                return max >= min;
+            }
+
+            for (ulong v = since + 1; v <= current; v++)
+            {
+                ref (ulong version, int min, int max) rec = ref _dirtyLog[v & (DirtyLogSize - 1)];
+                if (rec.version != v) continue;   // never written (no dirt that generation)
+                if (rec.min < min) min = rec.min;
+                if (rec.max > max) max = rec.max;
+            }
+            return max >= min;
+        }
+
         // Supplies the desired dense order (as stableIds) when the pool is resequenced.
         // Resolved from the pool's SortAction, or set directly (tests / systems).
         public Func<DataPool, IReadOnlyList<int>> SortProvider { get; set; }
@@ -76,20 +146,67 @@ namespace ArctisAurora.Core.Data
             _owners = new object[capacity];
             Array.Fill(_versions, 1);
 
+            _publishedSlotVersion = new int[capacity];
+
+            // Column ids come from Pools.xml declaration order, like pool ids from parse order.
+            // Nothing in C# declares the mapping — reorder the <Component> elements and every
+            // in-flight command's ColumnId means something else.
+            List<IPoolColumn> columnOrder = new();
             foreach (Type t in componentTypes)
             {
                 Type columnType = typeof(PoolColumn<>).MakeGenericType(t);
-                _columns[t] = (IPoolColumn)Activator.CreateInstance(columnType, _capacity);
+                IPoolColumn column = (IPoolColumn)Activator.CreateInstance(columnType, _capacity);
+                _columnIds[t] = (ushort)columnOrder.Count;
+                _columns[t] = column;
+                columnOrder.Add(column);
             }
+            _columnsByIndex = columnOrder.ToArray();
+        }
+
+        // Single-writer enforcement. Pools.xml names one owning system per pool; everything else
+        // has to go through that system's command lane. Nothing enforced that until now — GetSpan
+        // is public, hands out a mutable Span, to any thread — so the rule lived entirely in
+        // comments and was already being broken.
+        //
+        // DEBUG only: this turns a data race into a startup exception, which is the whole point.
+        // In release the calls compile away.
+        //
+        // Two deliberate holes. Current is null outside a system loop, which covers all of
+        // bootstrap — single-threaded there, nothing to catch, and controls are parsed from XML
+        // long before any thread starts. OwnerSystemId is 0 until DataManager.ResolveOwners runs.
+        [Conditional("DEBUG")]
+        private void AssertOwner(string op)
+        {
+            ThreadedSystem current = ThreadedSystem.Current;
+            if (current == null || OwnerSystemId == 0) return;
+            if (current.SystemId == OwnerSystemId) return;
+
+            throw new Exception($"[DataPool] '{Name}' is owned by '{OwnerName}' but {op} was called from system '{current.Name}'. Send a command to the owner instead, or change the System attribute in Pools.xml.");
         }
 
         public bool HasComponent(Type t) => _columns.ContainsKey(t);
 
+        public int ColumnCount => _columnsByIndex.Length;
+
+        public IPoolColumn ColumnAt(ushort columnId) => _columnsByIndex[columnId];
+
+        public ushort ColumnId(Type t) => _columnIds[t];
+
+        public ushort ColumnId<T>() where T : struct => _columnIds[typeof(T)];
+
+        // Dense index for a handle, or -1 if stale. Lets a command enqueued several ticks ago be
+        // dropped rather than written over whoever holds the slot now.
+        public int DenseOf(DataHandle h) => Alive(h) ? _slots[h.StableId] : -1;
+
         public Span<T> GetSpan<T>() where T : struct
-            => ((PoolColumn<T>)_columns[typeof(T)]).data.AsSpan(0, _count);
+        {
+            AssertOwner(nameof(GetSpan));
+            return ((PoolColumn<T>)_columns[typeof(T)]).data.AsSpan(0, _count);
+        }
 
         public ref T GetRef<T>(DataHandle h) where T : struct
         {
+            AssertOwner(nameof(GetRef));
             int dense = _slots[h.StableId];
             return ref ((PoolColumn<T>)_columns[typeof(T)]).data[dense];
         }
@@ -100,6 +217,11 @@ namespace ArctisAurora.Core.Data
         // to the pool's capacity. Only dense [0,Count) is live; the tail is unused slack. The
         // renderer mirrors this straight to a GPU buffer, so it must stay in dense order — read
         // only, never structurally mutated by the caller.
+        //
+        // Deliberately NOT AssertOwner'd: this and CopyTo/CopyRange/OwnerAt are the sanctioned
+        // cross-thread reads, which is how the render thread gets at a Main-owned pool at all. C#
+        // cannot hand out a read-only T[], so "read only" here is still convention — but a reader
+        // that writes through it is a different mistake from one that calls a write API.
         public T[] Backing<T>() where T : struct => Column<T>();
 
         // ---- bulk data transfer (per component type) ----
@@ -112,6 +234,7 @@ namespace ArctisAurora.Core.Data
         // A raw data refresh — Count is unchanged (lifecycle stays with Allocate/Free).
         public void CopyFrom<T>(ReadOnlySpan<T> src) where T : struct
         {
+            AssertOwner(nameof(CopyFrom));
             src.CopyTo(Column<T>().AsSpan(0, src.Length));
             MarkRangeDirty(0, src.Length - 1);
         }
@@ -123,6 +246,7 @@ namespace ArctisAurora.Core.Data
         // Overwrite a dense range [from, to] (inclusive) of component T from src, and dirty it.
         public void UpdateRange<T>(int from, int to, ReadOnlySpan<T> src) where T : struct
         {
+            AssertOwner(nameof(UpdateRange));
             int len = to - from + 1;
             src.Slice(0, len).CopyTo(Column<T>().AsSpan(from, len));
             MarkRangeDirty(from, to);
@@ -138,6 +262,7 @@ namespace ArctisAurora.Core.Data
 
         public DataHandle Allocate(object owner = null)
         {
+            AssertOwner(nameof(Allocate));
             if (_count >= _capacity)
                 Grow();
 
@@ -146,6 +271,8 @@ namespace ArctisAurora.Core.Data
             _slots[stableId] = dense;
             _backMap[dense] = stableId;
             _owners[dense] = owner;
+
+            _structuralPending = true;
 
             StructuralDirty = true;                    // instance count changed
             if (dense < _dirtyMin) _dirtyMin = dense;  // the new element needs uploading
@@ -157,6 +284,7 @@ namespace ArctisAurora.Core.Data
         // it. A repeat or stale Free is a no-op.
         public void Free(DataHandle h)
         {
+            AssertOwner(nameof(Free));
             if (!Alive(h)) return;
             _pendingFree.Add(h.StableId);
         }
@@ -164,6 +292,7 @@ namespace ArctisAurora.Core.Data
         // Expand the dirty range to include this element (dense index resolved from the handle).
         public void MarkContentDirty(DataHandle h)
         {
+            AssertOwner(nameof(MarkContentDirty));
             int dense = _slots[h.StableId];
             if (dense < 0) return;
             if (dense < _dirtyMin) _dirtyMin = dense;
@@ -180,11 +309,16 @@ namespace ArctisAurora.Core.Data
         // Expand the dirty range to cover the dense range [from, to] (inclusive).
         public void MarkRangeDirty(int from, int to)
         {
+            AssertOwner(nameof(MarkRangeDirty));
             if (from < _dirtyMin) _dirtyMin = from;
             if (to > _dirtyMax) _dirtyMax = to;
         }
 
-        public void MarkOrderDirty() => _orderDirty = true;
+        public void MarkOrderDirty()
+        {
+            AssertOwner(nameof(MarkOrderDirty));
+            _orderDirty = true;
+        }
 
         public void ClearDirty()
         {
@@ -194,8 +328,14 @@ namespace ArctisAurora.Core.Data
         }
 
         // Runs between frames. Order matters: remove dead, then resequence survivors.
+        //
+        // Guarded like a write because it is one — compaction moves pool memory. Note this makes
+        // DataManager.FrameEdge()'s flat loop over every pool a latent problem: it runs from
+        // MainTick, so the day a pool is owned by Physics this throws. That loop needs to become
+        // per-system before that happens. Both pools are Main-owned today, so it cannot fire yet.
         public void FrameEdge()
         {
+            AssertOwner(nameof(FrameEdge));
             if (_pendingFree.Count > 0)
             {
                 if (Ordered) CompactOrdered();
@@ -203,6 +343,7 @@ namespace ArctisAurora.Core.Data
                 _pendingFree.Clear();
                 StructuralDirty = true;
                 MarkAllDirty();
+                _orderPending = true;   // survivors shifted down into the holes
             }
 
             if (Ordered && _orderDirty && SortProvider != null)
@@ -211,6 +352,49 @@ namespace ArctisAurora.Core.Data
                 _orderDirty = false;
                 StructuralDirty = true;
                 MarkAllDirty();
+
+                // A permute leaves the live SET identical, so the slot-version snapshot shows no
+                // difference. OrderVersion is what says "your dense-keyed resources are wrong now"
+                // when nothing was born or died; structural is bumped too so a consumer watching
+                // only that still reacts.
+                _structuralPending = true;
+                _orderPending = true;
+            }
+
+            PublishGeneration();
+        }
+
+        // Close the open generation and hand it to consumers. Runs at the end of FrameEdge, after
+        // compaction and resequence, so what it publishes describes the settled layout.
+        //
+        // Order is load-bearing: record and snapshot stored first, version last with a release
+        // write, so a consumer that has observed V observes everything V describes.
+        private void PublishGeneration()
+        {
+            if (_dirtyMax >= _dirtyMin)
+            {
+                ulong next = _contentVersion + 1;
+                _dirtyLog[next & (DirtyLogSize - 1)] = (next, _dirtyMin, _dirtyMax);
+                Volatile.Write(ref _contentVersion, next);
+                _dirtyMin = int.MaxValue;
+                _dirtyMax = -1;
+            }
+
+            if (_structuralPending)
+            {
+                int[] snapshot = new int[_capacity];
+                for (int sid = 0; sid < _highStableId; sid++)
+                    snapshot[sid] = _slots[sid] >= 0 ? _versions[sid] : 0;
+
+                Volatile.Write(ref _publishedSlotVersion, snapshot);
+                Volatile.Write(ref _structuralVersion, _structuralVersion + 1);
+                _structuralPending = false;
+            }
+
+            if (_orderPending)
+            {
+                Volatile.Write(ref _orderVersion, _orderVersion + 1);
+                _orderPending = false;
             }
         }
 
@@ -218,6 +402,7 @@ namespace ArctisAurora.Core.Data
         {
             _versions[stableId]++;   // invalidates every outstanding handle to this slot
             _slots[stableId] = -1;
+            _structuralPending = true;
             _freeIds.Push(stableId);
         }
 
@@ -319,6 +504,8 @@ namespace ArctisAurora.Core.Data
             Array.Resize(ref _versions, newCap);
             for (int i = old; i < newCap; i++)
                 _versions[i] = 1;
+
+            _structuralPending = true;   // consumers size their own tables off the published one
 
             _capacity = newCap;
             StructuralDirty = true;   // buffer reallocated — full re-upload + descriptor rebuild

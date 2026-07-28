@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Reflection;
+using ArctisAurora.Core.Data;
+using ArctisAurora.Core.Data.Commands;
 using ArctisAurora.Core.Registry;
 
 namespace ArctisAurora.Core.Threading
@@ -42,6 +44,54 @@ namespace ArctisAurora.Core.Threading
         public byte SystemId { get; }
 
         public Thread? Worker { get; private set; }
+
+        // Lanes indexed by the other system's id: _inbox[p] carries p's commands here, _outbox[o]
+        // carries ours to o. Null at the own-id slot — a system writes its own tables in place.
+        private CommandLane?[] _inbox = Array.Empty<CommandLane?>();
+        private CommandLane?[] _outbox = Array.Empty<CommandLane?>();
+
+        // Wire every ordered pair of systems. Call once, after all systems are constructed and
+        // before any starts, alongside DataManager.ResolveOwners.
+        public static void BuildLanes(int commandCapacity = 1024, int arenaBytes = 64 * 1024)
+        {
+            int n = _all.Count + 1;   // ids are 1-based; index 0 is the "no system" hole
+
+            for (int i = 0; i < _all.Count; i++)
+            {
+                _all[i]._inbox = new CommandLane?[n];
+                _all[i]._outbox = new CommandLane?[n];
+            }
+
+            foreach (ThreadedSystem producer in _all)
+            {
+                foreach (ThreadedSystem owner in _all)
+                {
+                    if (ReferenceEquals(producer, owner)) continue;
+
+                    CommandLane lane = new(producer.SystemId, owner.SystemId, commandCapacity, arenaBytes);
+                    producer._outbox[owner.SystemId] = lane;
+                    owner._inbox[producer.SystemId] = lane;
+                }
+            }
+        }
+
+        // Queue a single-element write to a table this system does not own. False means the lane is
+        // full — real backpressure, and the caller's problem: dropping silently would be data loss
+        // and blocking here would re-couple the threads.
+        public static bool Send<T>(DataHandle target, ushort columnId, in T value) where T : unmanaged
+        {
+            ThreadedSystem? producer = _current;
+            if (producer == null) return false;
+
+            DataPool pool = DataManager.Get(target.PoolId);
+            CommandLane? lane = producer._outbox[pool.OwnerSystemId];
+            if (lane == null) return false;   // this system owns the pool — write it in place
+
+            if (!lane.HasSpace) return false;
+            if (!lane.TryWritePayload(value, out int offset)) return false;
+
+            return lane.TryEnqueue(SystemCommand.SetOne(target, columnId, offset, producer.SystemId));
+        }
 
         private volatile bool _running;
         private int _epoch;
@@ -125,11 +175,31 @@ namespace ArctisAurora.Core.Threading
 
         // Apply everything queued for the tables this system owns. Never capped: a full drain
         // settles at the producer/consumer rate ratio, whereas a per-tick cap turns that into a
-        // queue that grows forever once the producer outpaces it. Empty until the inbox exists.
-        private void Drain() { }
+        // queue that grows forever once the producer outpaces it.
+        private void Drain()
+        {
+            for (int i = 0; i < _inbox.Length; i++)
+            {
+                CommandLane? lane = _inbox[i];
+                if (lane == null) continue;
 
-        // Flush this system's outbound lanes. Empty until the lanes exist.
-        private void Publish() { }
+                lane.BeginDrain(out long from, out long to, out long arenaTo);
+                if (from == to) continue;
+
+                for (long seq = from; seq < to; seq++)
+                    CommandApplier.Apply(lane.At(seq), lane.Arena);
+
+                lane.EndDrain(to, arenaTo);
+            }
+        }
+
+        // Flush outbound lanes, so a tick's commands become visible as one batch. Publishing per
+        // enqueue would let an owner drain half a tick's writes.
+        private void Publish()
+        {
+            for (int i = 0; i < _outbox.Length; i++)
+                _outbox[i]?.Commit();
+        }
 
         private void Pace(long tickStart)
         {

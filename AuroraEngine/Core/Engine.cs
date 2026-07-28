@@ -92,8 +92,10 @@ namespace ArctisAurora.EngineWork
             renderSystem = new RenderSystem();
 
             // Pools were parsed during bootstrap and only know their owner by name; bind them now
-            // that the systems exist.
+            // that the systems exist, then wire the lanes between them. Both have to happen before
+            // anything starts — a running system drains its inbox on its first tick.
             DataManager.ResolveOwners();
+            ThreadedSystem.BuildLanes();
 
             physicsSystem.Start();
             renderSystem.Start();
