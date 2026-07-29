@@ -16,7 +16,13 @@ namespace AuroraPeriodic
             InputHandler.SetActiveKeybindGroup("InputMap");
             // prepare level
 
-            //AssetImporter.ImportFont("abcdefghijklmnoprstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ <>.,", "arial.ttf");
+            // One-shot atlas bake — this is the set currently in Data/Fonts/arial.
+            //AssetImporter.ImportFont(
+            //    " !\"#$%&'()*+,-./0123456789:;<=>?@" +
+            //    "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`" +
+            //    "abcdefghijklmnopqrstuvwxyz{|}~" +
+            //    "ĄČĘĖĮŠŲŪŽąčęėįšųūž",
+            //    "arial.ttf");
 
             WindowControl windowControl = (WindowControl)VulkanControl.ParseXML("UI.xml");
             //PanelControl windowControl = new PanelControl();

@@ -187,7 +187,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             {
                 if (child is not VulkanControl vc) continue;
                 Vector2D<float> desired = vc.Measure(new Vector2D<float>(availableSize.X - totalWidth, availableSize.Y));
-                totalWidth += desired.X;
+                // Glyphs advance by their typographic advance; anything else by its own width.
+                totalWidth += vc is GlyphControl g ? g.advance : desired.X;
                 if (desired.Y > maxHeight) maxHeight = desired.Y;
             }
 
@@ -228,8 +229,10 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                 // Vertically center each glyph in the row
                 float cy = innerRect.y + (innerRect.height - glyphH) * 0.5f;
 
-                vc.Arrange(new LayoutRect(cursor, cy, glyphW, glyphH));
-                cursor += glyphW;
+                // Ink sits at pen + bearing; the pen then moves by the advance.
+                GlyphControl glyph = vc as GlyphControl;
+                vc.Arrange(new LayoutRect(cursor + (glyph?.bearingX ?? 0f), cy, glyphW, glyphH));
+                cursor += glyph?.advance ?? glyphW;
             }
 
             isArrangeDirty = false;

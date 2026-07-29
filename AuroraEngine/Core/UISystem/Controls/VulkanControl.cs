@@ -214,7 +214,9 @@ namespace ArctisAurora.Core.UISystem.Controls
         public bool IsWidthStar => widthStar > 0f;
         public bool IsHeightStar => heightStar > 0f;
 
-        [A_XSDElementProperty("Width", "UI", "Width in pixels.")]
+        // 0 = auto. Every Measure override already reads it that way; the old default of 72 was a
+        // legal explicit size, so "unset" and "72px" were indistinguishable.
+        [A_XSDElementProperty("Width", "UI", "Width in pixels. 0 = auto.")]
         public int preferredWidth
         {
             get => field;
@@ -223,9 +225,9 @@ namespace ArctisAurora.Core.UISystem.Controls
                 if (field == value) return;
                 field = value; InvalidateLayout();
             }
-        } = 72;
+        } = 0;
 
-        [A_XSDElementProperty("Height", "UI", "Height in pixels.")]
+        [A_XSDElementProperty("Height", "UI", "Height in pixels. 0 = auto.")]
         public int preferredHeight
         {
             get => field;
@@ -235,7 +237,7 @@ namespace ArctisAurora.Core.UISystem.Controls
                 field = value;
                 InvalidateLayout();
             }
-        } = 72;
+        } = 0;
 
         [A_XSDElementProperty("MinHeight", "UI", "Minimum height in pixels.")]
         public int minHeight = 0;

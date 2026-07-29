@@ -39,6 +39,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             SType = StructureType.PhysicalDeviceVulkan12Features,
             BufferDeviceAddress = true,
             RuntimeDescriptorArray = true,
+            ScalarBlockLayout = true,
             DescriptorBindingVariableDescriptorCount = true,
             DescriptorIndexing = true,
             DescriptorBindingPartiallyBound = true,
@@ -122,15 +123,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             return _cursors[frame] ??= new PoolCursor(ControlPool);
         }
 
-        // Lets Draw() call UpdateModule for pool changes the module finds itself, rather than only
-        // when something else remembered to push isDirty.
         internal override bool HasPendingWork(int frame) => Cursor(frame).HasPending;
 
-        // The pool capacity the current build is sized against, sampled once at the top of
-        // UpdateModule. The main thread can Grow() the pool mid-build, so every consumer in one
-        // build (pool sizes, variable descriptor count, SSBO range, _frameBuiltCapacity) must
-        // agree on a single value — a set allocated against one capacity but recorded as another
-        // lets the append path write past the end of the variable-length binding.
         private int _buildCapacity = -1;
         private int BuildCapacity => _buildCapacity < 0 ? ControlPool.Capacity : _buildCapacity;
 

@@ -202,10 +202,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
             {
                 if (children[i] is not GlyphControl glyph) continue;
 
-                Vector2D<float> desired = glyph.Measure(new Vector2D<float>(float.MaxValue, float.MaxValue));
+                glyph.Measure(new Vector2D<float>(float.MaxValue, float.MaxValue));
 
-                // Would this glyph exceed current line?
-                if (cursorX + desired.X > fullWidth && cursorX > (firstLine ? firstLineOffset : 0))
+                // Advance, not ink width: the pen moves by the glyph's advance regardless of how
+                // wide its ink happens to be.
+                if (cursorX + glyph.advance > fullWidth && cursorX > (firstLine ? firstLineOffset : 0))
                 {
                     // Line break
                     if (cursorX > maxWidth) maxWidth = cursorX;
@@ -216,7 +217,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
                     firstLine = false;
                 }
 
-                cursorX += desired.X;
+                cursorX += glyph.advance;
                 if (glyph.ascent > lineAscent) lineAscent = glyph.ascent;
                 if (glyph.descent > lineDescent) lineDescent = glyph.descent;
             }
@@ -255,9 +256,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
             {
                 if (children[i] is not GlyphControl glyph) continue;
 
-                float glyphW = glyph.DesiredSize.X;
-
-                if (cursorX + glyphW > fullWidth && cursorX > (firstLine ? firstLineOffset : 0))
+                if (cursorX + glyph.advance > fullWidth && cursorX > (firstLine ? firstLineOffset : 0))
                 {
                     lines.Add(line);
                     line = new GlyphLine();
@@ -265,10 +264,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
                     firstLine = false;
                 }
 
+                // Store the PEN position; the ink offset is applied at Arrange time.
                 line.glyphs.Add((glyph, cursorX));
                 if (glyph.ascent > line.ascent) line.ascent = glyph.ascent;
                 if (glyph.descent > line.descent) line.descent = glyph.descent;
-                cursorX += glyphW;
+                cursorX += glyph.advance;
             }
             lines.Add(line);
 
@@ -277,7 +277,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
             {
                 float baselineY = cursorY + l.ascent;
                 foreach ((GlyphControl glyph, float x) in l.glyphs)
-                    glyph.Arrange(new LayoutRect(finalRect.x + x, baselineY - glyph.ascent, glyph.DesiredSize.X, glyph.DesiredSize.Y));
+                    glyph.Arrange(new LayoutRect(finalRect.x + x + glyph.bearingX, baselineY - glyph.ascent, glyph.DesiredSize.X, glyph.DesiredSize.Y));
                 cursorY += MathF.Max(l.ascent + l.descent, minLineHeight);
             }
 

@@ -12,8 +12,6 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
     {
         public TextBlockControl()
         {
-            preferredWidth = 0;
-            preferredHeight = 0;
             maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");
         }
 

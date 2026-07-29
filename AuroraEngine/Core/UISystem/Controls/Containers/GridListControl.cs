@@ -67,8 +67,6 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
         public GridListControl()
         {
-            preferredHeight = 0;
-            preferredWidth = 0;
         }
 
         public override void AddChild(Entity entity)

@@ -46,8 +46,6 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
         public DockingControl()
         {
-            preferredWidth = 0;
-            preferredHeight = 0;
         }
 
         public override Vector2D<float> Measure(Vector2D<float> availableSize)

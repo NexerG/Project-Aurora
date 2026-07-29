@@ -3,8 +3,10 @@
         xsi:schemaLocation="http://arctisaurora/UI ../Schemas/UITypeSchema.xsd"
         Width="1280" Height="720" ContentScalingMode="Vertical" Fill="true" ColorHex="#1f6331">
 
-	<TextInput FontSize="64" Text="BGX"/>
+	<DocumentEditor Source="SampleNote.xml"/>
 	<!--
+	<TextInput FontSize="64" Text="BGX"/>
+	--><!--
 	<GridList ColorHex="c2961d">
 		<RowDefinition SizeMode="Star"/>
 		<RowDefinition SizeMode="Star"/>

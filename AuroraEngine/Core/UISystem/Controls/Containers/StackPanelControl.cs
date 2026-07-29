@@ -27,8 +27,6 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
         public StackPanelControl()
         {
-            preferredWidth = 0;
-            preferredHeight = 0;
         }
 
         public override Vector2D<float> Measure(Vector2D<float> availableSize)
@@ -183,10 +181,13 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
                 if (orientation == Orientation.Vertical)
                 {
+                    // Same rule as GridListControl: auto (preferredWidth 0) or Stretch fills the
+                    // cross axis, anything else is clamped to it. Measure offers a loose size and
+                    // Arrange tightens, so an unclamped DesiredSize overflows the panel.
                     float availCrossW = inner.width - child.margin.totalHorizontal;
-                    float childW = child.horizontalAlignment == HorizontalAlignment.Stretch
+                    float childW = child.preferredWidth == 0 || child.horizontalAlignment == HorizontalAlignment.Stretch
                         ? availCrossW
-                        : child.DesiredSize.X;
+                        : MathF.Min(child.DesiredSize.X, availCrossW);
                     float childX = child.horizontalAlignment switch
                     {
                         HorizontalAlignment.Left => inner.x + child.margin.left,
@@ -207,9 +208,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                 else
                 {
                     float availCrossH = inner.height - child.margin.totalVertical;
-                    float childH = child.verticalAlignment == VerticalAlignment.Stretch
+                    float childH = child.preferredHeight == 0 || child.verticalAlignment == VerticalAlignment.Stretch
                         ? availCrossH
-                        : child.DesiredSize.Y;
+                        : MathF.Min(child.DesiredSize.Y, availCrossH);
                     float childY = child.verticalAlignment switch
                     {
                         VerticalAlignment.Top => inner.y + child.margin.top,
