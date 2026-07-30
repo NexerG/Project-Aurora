@@ -128,6 +128,10 @@ namespace ArctisAurora.Core.Registry
         #region ---- QUICK ACCESS ----
         // dictionaries
         public static readonly Dictionary<Type, string> typeMap = BuildTypeMap();
+        // Which category owns each [A_XSDType]. Category decides both the file a type is written to
+        // and the namespace that owns it, so any reference to a type from another category has to be
+        // qualified with that category's prefix instead of the local "types:".
+        private static readonly Dictionary<Type, string> categoryMap = BuildCategoryMap();
 
         // static variables that all schemas use
         private static XmlSchemaImport actionDependency = new XmlSchemaImport
@@ -223,7 +227,7 @@ namespace ArctisAurora.Core.Registry
                         Type memberType = member.Member.MemberType == MemberTypes.Field
                             ? ((FieldInfo)member.Member).FieldType
                             : ((PropertyInfo)member.Member).PropertyType;
-                        sb.Append($"m:{member.XmlAttribute?.Name}:{memberType.FullName}:{member.XmlAttribute?.Category}|");
+                        sb.Append($"m:{member.XmlAttribute?.Name}:{memberType.FullName}:{member.XmlAttribute?.Category}:{OwningCategoryOf(ReferencedTypeOf(memberType))}|");
                     }
                     if (t.Attribute.AllowedChildren != null)
                     {
@@ -231,13 +235,27 @@ namespace ArctisAurora.Core.Registry
                             .Where(ty => t.Attribute.AllowedChildren.IsAssignableFrom(ty) && ty != t.Attribute.AllowedChildren))
                             .Select(c => c.GetCustomAttribute<A_XSDTypeAttribute>(false))
                             .Where(a => a != null && a.Name != "" && !a.IsAbstract)
-                            .Select(a => a.Name).OrderBy(n => n);
+                            .Select(a => $"{a.Category}:{a.Name}").OrderBy(n => n);
                         foreach (string cn in children)
                             sb.Append($"child:{cn}|");
                     }
                 }
             }
             return sb.ToString();
+        }
+
+        // The type a member actually points at, unwrapping the collection and nullable the same way
+        // GenerateComplexType/ResolveTypeName do — the fingerprint has to track the category that
+        // owns it, or moving a type between categories rewrites the schema without changing its
+        // hash and the stale file is never regenerated.
+        private static Type ReferencedTypeOf(Type memberType)
+        {
+            Type referenced = memberType.IsGenericType
+                && typeof(IEnumerable<>).MakeGenericType(memberType.GetGenericArguments()).IsAssignableFrom(memberType)
+                ? memberType.GetGenericArguments()[0]
+                : memberType;
+
+            return Nullable.GetUnderlyingType(referenced) ?? referenced;
         }
 
         private static string BuildAllTypesFingerprint(Assembly[] generalAsm)
@@ -314,6 +332,9 @@ namespace ArctisAurora.Core.Registry
                 }
 
                 XmlSchema typeSchema = BuildSchemaBase(category.Key);
+                // Which other categories this schema ended up pointing at. Only known once every
+                // type is emitted, so the imports go on just before the write.
+                HashSet<string> foreignCategories = new HashSet<string>();
 
                 XmlSchemaSimpleTypeUnion categoryUnion = new XmlSchemaSimpleTypeUnion
                 {
@@ -350,12 +371,15 @@ namespace ArctisAurora.Core.Registry
                         typeSchema.Items.Add(schemaElement);
 
                         if(category.Key != "Uncategorized")
-                            GenerateComplexType(t.Type, t.Attribute, typeSchema, generalAsm);
+                            GenerateComplexType(t.Type, t.Attribute, typeSchema, generalAsm, category.Key, foreignCategories);
 
                     }
                 }
                 if (category.Key != "Uncategorized")
+                {
+                    AddForeignImports(typeSchema, foreignCategories);
                     WriteSchema(typeSchema, $"{category.Key}TypeSchema.xsd");
+                }
             }
         }
 
@@ -543,6 +567,40 @@ namespace ArctisAurora.Core.Registry
             return schema;
         }
 
+        // "types:" is only ever the schema being written. A type owned by another category lives in
+        // that category's namespace, so referencing it locally names something that was never
+        // declared — and XSD rejects the whole file, not just the reference. Uncategorized types get
+        // no schema file at all, so they stay local: there is nothing to import for them, and a
+        // dangling schemaLocation would break the file the same way.
+        private static string Qualify(string owningCategory, string typeName, string currentCategory, HashSet<string> foreignCategories)
+        {
+            if (owningCategory == currentCategory || owningCategory == "Uncategorized")
+                return $"types:{typeName}";
+
+            foreignCategories.Add(owningCategory);
+            return $"{owningCategory}:{typeName}";
+        }
+
+        // A qualified reference only resolves once the schema declares the owning category's prefix
+        // and imports its file. Categories reference each other both ways — UI containers hold
+        // EntityRegistry types and vice versa — and XSD resolves mutual imports fine.
+        private static void AddForeignImports(XmlSchema schema, HashSet<string> foreignCategories)
+        {
+            foreach (string category in foreignCategories.OrderBy(c => c))
+            {
+                string ns = $"http://arctisaurora/Aurora{category}Types";
+                schema.Namespaces.Add(category, ns);
+                schema.Includes.Add(new XmlSchemaImport
+                {
+                    Namespace = ns,
+                    SchemaLocation = $"{category}TypeSchema.xsd"
+                });
+            }
+        }
+
+        private static string OwningCategoryOf(Type type)
+            => categoryMap.TryGetValue(type, out string? category) ? category : "Uncategorized";
+
         private static void GenerateEnumType(Type t, string name, XmlSchema schema)
         {
             XmlSchemaSimpleTypeRestriction restriction = new()
@@ -561,7 +619,7 @@ namespace ArctisAurora.Core.Registry
             });
         }
 
-        private static void GenerateComplexType(Type t, A_XSDTypeAttribute attribute, XmlSchema schema, Assembly[] generalAsm)
+        private static void GenerateComplexType(Type t, A_XSDTypeAttribute attribute, XmlSchema schema, Assembly[] generalAsm, string currentCategory, HashSet<string> foreignCategories)
         {
             XmlSchemaComplexType complexType = new XmlSchemaComplexType()
             {
@@ -585,7 +643,7 @@ namespace ArctisAurora.Core.Registry
 
                 if (memberType.IsGenericType && typeof(IEnumerable<>).MakeGenericType(memberType.GetGenericArguments()).IsAssignableFrom(memberType))
                 {
-                    string typeName = ResolveTypeName(memberType.GetGenericArguments()[0], member.XmlAttribute);
+                    string typeName = ResolveTypeName(memberType.GetGenericArguments()[0], member.XmlAttribute, currentCategory, foreignCategories);
 
                     XmlQualifiedName qualifiedName = new(typeName);
                     XmlSchemaElement listElement = new()
@@ -600,7 +658,7 @@ namespace ArctisAurora.Core.Registry
                 }
                 else
                 {
-                    string typeName = ResolveTypeName(memberType, member.XmlAttribute);
+                    string typeName = ResolveTypeName(memberType, member.XmlAttribute, currentCategory, foreignCategories);
 
                     XmlQualifiedName qualifiedName = new XmlQualifiedName(typeName);
                     XmlSchemaAttribute schemaAttribute = new XmlSchemaAttribute
@@ -634,7 +692,7 @@ namespace ArctisAurora.Core.Registry
                     XmlSchemaElement childElement = new XmlSchemaElement
                     {
                         Name = childAttr.Name,
-                        SchemaTypeName = new XmlQualifiedName($"types:{childAttr.Name}")
+                        SchemaTypeName = new XmlQualifiedName(Qualify(childAttr.Category, childAttr.Name, currentCategory, foreignCategories))
                     };
                     childChoice.Items.Add(childElement);
                 }
@@ -656,7 +714,7 @@ namespace ArctisAurora.Core.Registry
                 )).ToList();
         }
         
-        private static string ResolveTypeName(Type memberType, A_XSDElementPropertyAttribute? xmlAttr)
+        private static string ResolveTypeName(Type memberType, A_XSDElementPropertyAttribute? xmlAttr, string currentCategory, HashSet<string> foreignCategories)
         {
             Type resolved = Nullable.GetUnderlyingType(memberType) ?? memberType;
 
@@ -669,7 +727,7 @@ namespace ArctisAurora.Core.Registry
             }
 
             if (typeMap.TryGetValue(resolved, out string? typeMapped))
-                return $"types:{typeMapped}";
+                return Qualify(OwningCategoryOf(resolved), typeMapped, currentCategory, foreignCategories);
 
             if (resolved == typeof(AnyXMLType))
                 return $"allTypes:Uncategorized";
@@ -719,6 +777,25 @@ namespace ArctisAurora.Core.Registry
             foreach (var type in types)
             {
                 map[type.Type] = type.Attribute.Name;
+            }
+            return map;
+        }
+
+        private static Dictionary<Type, string> BuildCategoryMap()
+        {
+            var generalAsm = AppDomain.CurrentDomain.GetAssemblies();
+            var types = generalAsm.SelectMany(asm => asm.GetTypes()
+                .Where(t => t.GetCustomAttributes(typeof(A_XSDTypeAttribute), true).Any())
+                .Select(t => new
+                {
+                    Type = t,
+                    Attribute = (A_XSDTypeAttribute)t.GetCustomAttributes(typeof(A_XSDTypeAttribute), true).First()
+                })).ToList();
+
+            Dictionary<Type, string> map = new Dictionary<Type, string>();
+            foreach (var type in types)
+            {
+                map[type.Type] = type.Attribute.Category;
             }
             return map;
         }
