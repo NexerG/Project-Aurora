@@ -7,7 +7,7 @@ End goal: Tarkov-style extraction FPS (~2030); side projects sequenced to force 
 
 | Phase | When | Focus | Key outputs |
 |-------|------|-------|-------------|
-| A | now → ~Jul 2026 | Periodic MVP + hygiene | Periodic P3–P5; `AuroraTesting` headless tests; input handle states (game/ui); mouse → `InputHandler` |
+| A | now → ~Jul 2026 | Periodic MVP + hygiene | Periodic P3–P5; UI-hosted test/profiling platform (**after** editor v1); input handle states (game/ui); mouse → `InputHandler` |
 | B | ~Jul–Sep 2026 | Foundations | ECS rework (object → data-oriented structs, snapshot-friendly); `VK_KHR_dynamic_rendering`; XSD/XML engine settings (GPU/CPU/misc) |
 | C | ~Sep–Dec 2026 | Animation + AuroraMotion | Animation/evaluation core; procedural geometry/SDF op chains (XML); XML scene format; offscreen render + readback; ffmpeg video export (H.264/VP9/AV1); simple audio (play + mux); timeline UI; `AuroraMotion` host project |
 | D | 2027 | Editor + renderer maturity | AuroraEditor shell (hierarchy/inspector/asset browser); bindless descriptors, BDA, lazy renderer, culling, LODs; Bootstrapper/Registry rework done |
@@ -15,7 +15,7 @@ End goal: Tarkov-style extraction FPS (~2030); side projects sequenced to force 
 | F | 2028–2030 | Game | World streaming; procedural land gen/props; AI; inventory UI; netcode (~year 3) on snapshot-ready ECS |
 
 ## Dependency spine
-headless tests → ECS rework + dynamic rendering + settings → animation core → procedural + scenes + export → editor + renderer maturity → physics + audio → game → netcode
+text editor v1 → UI test/profiling platform → ECS rework + dynamic rendering + settings → animation core → procedural + scenes + export → editor + renderer maturity → physics + audio → game → netcode
 
 ## Standing decisions (user-confirmed 2026-06-10)
 - Video export: ffmpeg **subprocess** (frames piped via stdin) — no NuGet; codecs = ffmpeg presets (H.264/mp4, VP9, AV1).

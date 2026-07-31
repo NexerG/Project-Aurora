@@ -5,7 +5,8 @@ tags:
   - d_UI
   - d_Data
 Class:
-  - "[[DocumentLayoutEngine]]"
+  - "[[TextMeasurer]]"
+  - "[[DocumentLayoutCache]]"
 Type:
   - Public
 ---
@@ -15,7 +16,11 @@ The geometry layer between the [[Rich Text Document]] model and the document vie
 The split exists because view materialization, not data, is the memory problem: each character today is a [[GlyphControl]] — a full [[Vulkan Control]] entity with its own `ControlData` GPU struct, storage buffer and slot in the [[UI Rasterizer Module|UIModule]] 50,000-cap descriptor array. 100 pages ≈ 300k characters would be 6× over that cap and O(300k) per reflow, while the visible viewport is only ~3–6k glyphs. So the cache holds geometry for everything, and controls are disposable presenters placed *from* cache coordinates — the cache and the visuals cannot disagree.
 
 ## Cache shape
-Per document: `blockTops[]` — prefix sum of block heights, so `blockTops[i]` is block `i`'s Y in document space and the last entry is the total scroll extent. Per block: its height plus a line table. Line granularity (not block granularity) is deliberate — it is what lets paged mode split a paragraph across a page break and lets hit-testing binary-search inside a block.
+The layer splits in two: [[TextMeasurer]] is stateless and turns one block's runs into lines, and [[DocumentLayoutCache]] is the stateful half that holds those lines for a whole document and answers every geometry question about it. Per document: `blockTops[]` — the prefix sum of block heights and the gaps between them, so `blockTops[i]` is block `i`'s Y in document space and the final entry is the total scroll extent, which is why it carries one entry more than there are blocks. Per block: its height plus a line table. Line granularity (not block granularity) is deliberate — it is what lets paged mode split a paragraph across a page break and lets hit-testing binary-search inside a block.
+
+The gap between blocks is `DocumentLayout.blockSpacing` rather than a number on the view, for the same reason heading sizes moved there: the cache stacks blocks by it and the view draws them by it, and a value the two disagreed on would put every cached block top further out of step with the drawn one the further down the document you scrolled.
+
+Per-character advances are deliberately **not** stored. One float per character is megabytes at 100 pages against a cache budget of ~100 KB, and the operations that need them — hit-testing a click, placing a caret — only ever need the single line they landed on, so they re-derive that line's advances through the same [[TextMeasurer]] call the lines were measured with.
 
 A line is **not** one run: a paragraph with a bold word mid-sentence puts three runs on one visual line, so a line owns a list of `LineSegment` — `(runIndex, charStart, charCount, width)` — plus its own `width`, `ascent`, `descent` and `top` (Y within the block, so the measurer never sees document coordinates). Segments are cut wherever the run index changes, which means walking a line's advances for hit-testing is a walk across its segments in order.
 
@@ -34,10 +39,15 @@ The scalar settings (`lineHeight`, `paragraphFontSize`) do **not** cascade yet �
 ## Geometry policy
 All document geometry resolves on the cache — mouse clicks, caret placement, arrow keys / PageDown / Ctrl-End, selection drag (including auto-scroll past the viewport, where the anchor has no control), find-next, `ScrollIntoView`, pagination. The control tree's only hit-testing job is the app shell's: deciding the click landed on the document editor at all rather than a toolbar or file tree. Inside the editor, glyph / run / block controls are **not** hit-targets; the editor converts the click to document space and asks the cache. One code path for clicks and keyboard alike, and it works for content that has no controls materialized.
 
+## Caret slots
+A caret sits between characters, so a line of `n` characters has `n + 1` slots and the boundary ones are shared. Two rules settle who owns them. Horizontally, a click resolves to the nearest slot rather than the character it landed inside — past a character's midpoint belongs to the slot after it — because snapping to the containing cell instead would make it impossible to click the end of a word. Vertically, the offset one past a segment's last character is a real slot on that line when another run follows it there, but at the end of a **wrapped** line that same offset is also the first slot of the line below, and the line below claims it: the caret then sits in front of the wrapped word rather than trailing off the right edge of the line above. Full affinity tracking — where the two are distinct positions the user can toggle between — is not implemented and is not needed until selection rendering makes the difference visible.
+
 ## Advance formula & testability
 The pen advances by `glyph.advanceWidth * px`, each glyph quad is offset within its pen cell by `leftSideOffset * px` and sized `glyphWidth * px` — all three are em-normalized in [[AuroraFont]]. The legacy [[ShortTextControl]] and `TextEntity` already used this formula, and [[INPUT|TextInputControl]] was corrected onto it too, so pen advance is no longer in dispute; what the flow controls still do differently is wrap **per character**, which the measurer replaces with word-boundary wrapping rather than matching.
 
 Because the measurer needs only per-glyph metrics, it takes a narrow glyph-metrics lookup (char → [[Glyph]], plus the font's line box) rather than a [[Vulkan Control]] or GPU handle — so a test can feed fabricated glyphs with known advances and assert line breaks with no font file, no asset registry and no GPU (the L1 verification vehicle, kept NuGet-free). The overload taking a `ContentBlock` is the one place that reads text off a control, and it exists precisely so the measuring overload beneath it stays plain data: blocks and runs are [[Vulkan Control|VulkanControls]] whose constructor reaches the asset registry, the entity registry and the data pool, so anything taking one cannot run headless.
+
+[[DocumentLayoutCache]] does not inherit that testability — it holds a [[Rich Text Document]], whose blocks *are* controls, and it reaches through them for run text and heading level, so it cannot be exercised without booting. That is a consequence of the P0 decision that the document model is the control tree, not an oversight to fix here: narrowing the cache to plain data would mean a second model beside the one that renders. It is the reason the cache's own verification is deferred to the in-app test/profiling platform rather than done the way the measurer's was.
 
 #### Measure Block (runs, content width, glyph metrics, document layout)
 `chars` = empty
@@ -75,18 +85,39 @@ block height += `line` height
 shift `blockTops` after `index` by `delta`
 
 #### Hit Test (point in document space)
-`block` = binary search `blockTops` for `point` y
+`block` = binary search `blockTops` for `point` y   // clamps, so a drag off the top or bottom edge still resolves
 `line` = binary search `block` line tops for `point` y − block top
-`char` = walk advance widths of `line` from `charStart` until accumulated width > `point` x
-return (`block` index, `line` run index, `char` offset)
+`pen` = 0
+for each `segment` in `line`
+	if `point` x is past `pen` + `segment` width
+		`pen` += `segment` width, next `segment`   // skipped on its cached width, no characters measured
+	for each `char` in `segment`
+		if `point` x < `pen` + half of `char` advance   // nearest slot, not the containing cell
+			return (`block` index, `segment` run index, `char` offset)
+		`pen` += `char` advance
+return the slot after the last `segment`
 
 #### Char To Point (block index, run index, char offset)
-`line` = line of `block` containing (`run index`, `char offset`)
-`x` = sum of advance widths from `line` `charStart` to `char offset`
-return (`x`, `blockTops[block index]` + `line` top, `line` baseline)   // caret + ScrollIntoView
+for each `line` in `block`
+	`x` = 0
+	for each `segment` in `line`
+		`end is a slot here` = `line` is the block's last, or `segment` is not the line's last
+		if `segment` covers (`run index`, `char offset`), counting its end slot only when `end is a slot here`
+			`x` += advance widths from `segment` `charStart` up to `char offset`
+			return (`x`, `blockTops[block index]` + `line` top, `line` height, `line` baseline)
+		`x` += `segment` width
+return the end of the block's last `line`   // clamp — a caret always has somewhere to be
 
 ## Virtualization
-The document view keeps its [[Rich Text Document#^scrollable|ScrollableControl]] base but takes its scroll extent from `blockTops`, not from child measurement. On scroll or resize it binary-searches the visible block range ± one viewport of buffer, materializes controls for blocks entering the range and releases leaving ones to a pool. Read-only runs are presented by a lightweight `TextRunControl` (glyphs + style tint), not the editable [[INPUT|TextInputControl]]. Prerequisite: the deferred-Vulkan-cleanup TODOs in [[INPUT|TextControl]] (`SyncGlyphs` / `RemoveGlyph`) must be finished and [[GlyphControl]]s pooled via the [[UI Rasterizer Module|UIModule]] deferred-deletion queue, because scrolling churns controls constantly.
+The document view keeps its [[Rich Text Document#^scrollable|ScrollableControl]] base but takes its scroll extent from `blockTops`, not from child measurement. On scroll or resize it binary-searches the visible range ± one viewport of buffer, materializes controls entering the range and releases leaving ones. Read-only runs are presented by a lightweight `TextRunControl` (glyphs + style tint), not the editable [[INPUT|TextInputControl]] — and the unit materialized is the **line segment**, not the block, because a segment cannot wrap by construction and so needs no wrapping code at all: its x, y and width are read straight off the cache.
+
+The deferred-Vulkan-cleanup prerequisite this section used to carry is **done**. Glyph teardown is complete — `DiscardGlyph` destroys rather than detaches, `ProcessDestroys` unregisters and frees the pool row once per tick, and there is no per-control Vulkan buffer left to leak because `ControlData` now lives in the pooled SSBO.
+
+Materialization is split by what invalidates it. Content width and the scroll extent resolve in `Measure`, because a width change rewraps every block and changes what a line or segment index *means* — which is why `SetContentWidth` reports whether it rewrapped, so the view can drop every control it had keyed against the old indices. The visible range resolves in `Arrange`, because scrolling only invalidates arrangement. Materializing inside `Arrange` does invalidate layout again, and it converges rather than oscillating: the frame after a range changes finds the same range and adds nothing.
+
+The buffer of one viewport either side is load-bearing rather than slack. `Destroy()` only enqueues, so a released strip still draws until `ProcessDestroys` runs at the top of the next tick; the buffer is what guarantees the frame it survives is a frame spent a full viewport outside the clip rect. Measured on a 400-block, 22,392-pixel note scrolled end to end, the view holds 57–59 strips and roughly 4,800 glyphs at every position, the `"Controls"` group stays flat across the whole sweep, and memory sawtooths without trending — so the churn neither leaks nor grows. `GlyphControl` pooling is therefore still unbuilt: strips are rebuilt at the buffer edge rather than recycled, and nothing measured yet argues for the extra machinery.
+
+**The view is no longer the binding constraint, and the remaining one is not a drawing problem.** Every character exists as a [[GlyphControl]] the instant a note is *parsed*: blocks and runs are controls, so assigning a run's text runs `SyncGlyphs` at load. Virtualizing the view removed the second, parallel set of glyphs it used to build for itself — a note cost two full copies and now costs the model plus a viewport — but the model's own copy is untouched and is fixed before the view is consulted. On that 400-block note the total sits past the 50,000-slot descriptor array on the strength of the model alone. Making the document model plain data is the precondition for moving it; culling off-screen controls does not substitute, since culled entities keep their pool rows and their slots.
 
 ## Paged vs pageless
 A mode on the engine — the [[Rich Text Document]] model never knows about pages. Pageless: one column at min(viewport, max content width), blocks stacked, extent = `blockTops` last entry. Paged: a paginator pass deals cached lines onto pages of fixed content height (so paragraphs split across breaks) and the view draws page-background panels with gaps between them.
@@ -101,5 +132,6 @@ A mode on the engine — the [[Rich Text Document]] model never knows about page
 | Font atlases (MTSDF, per font used, lazy) | ~1–4 MB each |
 
 ## Status
-- **L1 part done.** `TextMeasurer` (word-boundary wrap, uniform line boxes, per-run segments) and `DocumentLayout` (line height, text sizing, heading style cascade) exist and are verified against fabricated metrics. The per-block line cache and the prefix-summed `blockTops[]` with per-block invalidation are **not** built yet, so nothing calls the measurer — it is deliberately additive, so the cache can be raised alongside what already renders and compared against it before the view trusts it.
+- **L1 done, unwired.** [[TextMeasurer]] (word-boundary wrap, uniform line boxes, per-run segments), `DocumentLayout` (line height, text sizing, heading style cascade) and [[DocumentLayoutCache]] (`Rebuild`, `InvalidateBlock`, `SetContentWidth`, `Extent`, `HitTest`, `CharToPoint`) all exist. Nothing drives the view off the cache yet — it is deliberately additive, so the geometry can be raised alongside what already renders and compared against it before anything trusts it, which also means nothing can regress from it being wrong. The measurer is verified against fabricated metrics; the cache is compile-verified only, for the reason given under [[#Advance formula & testability]].
+- Structural edits (a block added or removed) go through a full `Rebuild` rather than a splice. Correct, and a few hundred blocks re-measure fast enough that the splice is not worth writing until P3 shows otherwise.
 - L2 (virtualized view + `TextRunControl` + glyph GPU cleanup) precedes the P3 edit session so caret/hit-test math is written once against the cache. Paged mode is L3. Phase order: `DOCUMENTATION/ClaudeMemory/Context/periodic-editor-architecture.md`.

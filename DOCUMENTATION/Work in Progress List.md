@@ -3,7 +3,7 @@ Phases, dates and standing decisions live in [[Roadmap]]. Items below are groupe
 
 ---
 # PHASE A — Periodic MVP + engine hygiene (now → ~Jul 2026)
-- [ ] Headless test project — wire `AuroraTesting` into the solution + a test framework so engine logic can be tested without booting the GPU/window (e.g. `RichTextDocument` XML round-trip, editor edit ops). Currently empty/not in solution; editor work is manually GUI-verified until this exists.
+- [ ] Test/profiling platform — built **on the UI**, scheduled **after the text editor's first version**: GC/allocation, execution time, and general "does it work" checks. Dogfoods the UI while doubling as the profiler. Engine work stays manually GUI-verified until then. (Supersedes the headless `AuroraTesting` console runner.)
 - [ ] UI collision
 	- [ ] add handle states - game, ui etc
 	- [ ] Update engine class so the mouse inputs are handled in input handler
@@ -14,8 +14,10 @@ Phases, dates and standing decisions live in [[Roadmap]]. Items below are groupe
 		- [ ] create language packs?
 	- [ ] editor
 		- [ ] Markdown insertions
-		- [ ] L1 — layout engine (pageless): `TextMeasurer` + per-block line cache + prefix-summed block tops; all geometry (incl. mouse hit-testing) resolves on the cache
-		- [ ] L2 — virtualized view: materialize only visible blocks ± 1 viewport, `TextRunControl`, glyph GPU cleanup + pooling (the `TextControl` deferred-cleanup TODOs)
+		- [x] L1 — layout engine (pageless): `TextMeasurer` + `DocumentLayoutCache` (per-block line cache, prefix-summed block tops, per-block invalidation, `HitTest`/`CharToPoint`). Built additive — nothing consumes it yet, and no runtime verification until the profiling platform
+		- [x] L2 — virtualized view: `TextRunControl` + `DocumentCanvasControl`, view driven off the cache, materialized per visible line segment ±1 viewport. Measured flat at 57–59 strips over a 400-block/22k-px note scrolled end to end, no leak. Not GUI-verified. Wrapping is now word-boundary, not per-character
+			- [ ] `GlyphControl` pooling — strips are rebuilt at the buffer edge, not recycled. Deferred: no leak and flat memory measured, so it needs the profiler before it's worth the machinery
+			- [ ] load-time glyph explosion — notes still build one `GlyphControl` per character at *load* (blocks/runs are controls), so the total is model + viewport rather than viewport. Waiting on the control frustum culling go-ahead; note culling alone does not fix it
 		- [ ] L3 — page system (paginator over cached lines + page chrome; pageless is the L1 default mode)
 		- [ ] code blocks (B1 — monospace, no wrap, view-time syntax coloring)
 		- [ ] custom expressions (maths)
@@ -29,6 +31,7 @@ Phases, dates and standing decisions live in [[Roadmap]]. Items below are groupe
 		- [ ] tables
 	- [ ] cursor change on context
 - [ ] UI
+	- [ ] control frustum culling — engine-wide cull of off-screen controls (user's intended answer to document virtualization; note it cuts *draw* work only — culled controls keep their pool row and their slot in the 50,000-cap descriptor array)
 	- [ ] fix up UI shaders (samplers, transparency)
 	- [ ] checkout `Pretext` by Cheng Lou for UI layout calculations (apparently 500x faster than the current implementation)	
 	- [x] Stack panel

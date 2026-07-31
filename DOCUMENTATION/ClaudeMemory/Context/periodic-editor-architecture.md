@@ -9,8 +9,8 @@ layout-engine/scale revision (L1/L2/L3, B1/B2): `C:\Users\gmgyt\.claude\plans\le
 - **Editing UX:** live-preview WYSIWYG; edits hit a **working copy**; **Ctrl+S** commits + writes XML.
 - **Architecture:** plain-data **document model = source of truth**; control tree is a **view**.
 - **Scope now:** offline desktop only. Online multi-editor / browser are later (model/view split chosen to allow a CRDT layer later).
-- **Layout cache is the single geometry system** (user decision): a `DocumentLayoutEngine`
-  measures blocks from font metrics (no controls) into a per-block line cache; **all** geometry
+- **Layout cache is the single geometry system** (user decision): `TextMeasurer` + `DocumentLayoutCache`
+  measure blocks from font metrics into a per-block line cache; **all** geometry
   queries — mouse clicks, caret placement, arrows/PageDown/Ctrl-End, selection drag, find-next,
   `ScrollIntoView`, pagination — resolve on the cache. Control tree only answers the app-shell
   question "did the click land on the editor at all". Glyph/run/block controls are **not**
@@ -27,9 +27,11 @@ layout-engine/scale revision (L1/L2/L3, B1/B2): `C:\Users\gmgyt\.claude\plans\le
 
 ## Scale rationale
 - 100 pages ≈ 300k chars; model (strings + runs) < 1 MB — data is never the memory problem.
-- Today each char = one `GlyphControl` = full `VulkanControl` entity + `ControlData` GPU struct
-  + own storage buffer + slot in `UIModule`'s 50,000-cap descriptor array. 300k glyphs = 6× over
-  the cap, hundreds of MB, O(300k) Measure/Arrange reflows → the view must be virtualized.
+- Today each char = one `GlyphControl` = full `VulkanControl` entity + a `ControlData` row in the
+  pooled SSBO + slot in `UIModule`'s 50,000-cap descriptor array. 300k glyphs = 6× over the cap,
+  hundreds of MB, O(300k) Measure/Arrange reflows. (Stale as of `7b5e032`: glyphs no longer own a
+  *separate* storage buffer each — `ControlData` lives in the shared pooled SSBO, so the pool row is
+  the GPU cost.)
 - Layout cache ≈ 100 KB per 100 pages (per block: height + lines
   `(runIndex, charStart, charCount, width, baseline)`; prefix-summed block tops → any Y + scroll
   extent). Visible glyphs ≈ 3–6k, constant for any document length.
@@ -59,8 +61,8 @@ layout-engine/scale revision (L1/L2/L3, B1/B2): `C:\Users\gmgyt\.claude\plans\le
   note at `Periodic/Data/XML/Documents/SampleNote.xml`. Note: `ScrollableControl` clashes with
   `System.Windows.Forms.ScrollableControl` (WinForms on) — alias the engine type when subclassing.
   The StackPanel-of-everything presentation and `TextInputControl`-as-run-renderer are replaced in L2.
-- **L1 — measurer done (2026-07-31), cache not started.**
-  - `TextMeasurer` exists: word-boundary wrap, uniform line boxes, per-run segments. Advance =
+- **L1 — done (2026-07-31), nothing consumes it yet.**
+  - `TextMeasurer`: word-boundary wrap, uniform line boxes, per-run segments. Advance =
     `glyph.advanceWidth * px`, em-normalized in `AuroraFont`. **Nothing calls it yet** — L1 is
     deliberately additive so the cache can be built beside what already renders.
   - A line is **not** one run. `TextLine` owns a `List<LineSegment>` (`runIndex`, `charStart`,
@@ -80,11 +82,80 @@ layout-engine/scale revision (L1/L2/L3, B1/B2): `C:\Users\gmgyt\.claude\plans\le
   - Verified with fabricated glyphs (no font file, no registry, no GPU): wrap points, mid-word
     split for an over-wide word, trailing space not wrapping, multi-run segmentation, equal
     heights for `"AAA"` vs `"ggg"`, empty block matching a full line, multiplier arithmetic.
-  - **Remaining:** per-block line cache + prefix-summed `blockTops[]` + per-block invalidation.
-- **L2** — virtualized view: `DocumentEditorControl` presents only the visible block range ± 1
-  viewport from the cache; `TextRunControl` (lightweight read-only run); glyph GPU cleanup +
-  `GlyphControl` pooling (hook `UIModule` deferred-deletion). Verify: generated ~100-page note
-  scrolls smoothly; `"Controls"` count stays viewport-sized; memory flat.
+  - `DocumentLayoutCache` holds `List<BlockLayout>` + `blockTops` (prefix sum, **N+1 entries** — the
+    last is the scroll extent). API: `Rebuild(doc, width)`, `InvalidateBlock(i)` (re-measure one +
+    slide the tail by the height delta), `SetContentWidth` (rewrap = full rebuild), `Extent`,
+    `HitTest(x,y) -> DocumentPosition`, `CharToPoint(pos) -> CaretGeometry`.
+  - `DocumentPosition` (block/run/charOffset) is the caret address P3's cursor will be a pair of.
+  - **Per-char advances are not stored** — one float per char is MBs at 100 pages vs a ~100 KB budget.
+    Hit-test/caret re-derive the one line they need via `TextMeasurer.MeasureAdvance` (made `public`
+    for exactly this: two copies of the pen formula would drift).
+  - **Two caret-slot rules**, both non-obvious: a click snaps to the *nearest* slot (past a char's
+    midpoint = the slot after it), else you could never click the end of a word; and the slot at the
+    end of a **wrapped** line is claimed by the line *below*, so the caret sits before the wrapped
+    word instead of off the right edge above. No affinity tracking — not needed until selection
+    rendering makes the two visibly distinct.
+  - `DocumentLayout.blockSpacing` (new, default 8, in `DocumentStyles.xml`) replaced the hardcoded
+    `Spacing = 8f` on `DocumentEditorControl`'s StackPanel — cache and view stack blocks by the same
+    number, same rationale as `FontSizeFor`. Divergence here compounds with scroll depth.
+  - Structural edits (block added/removed) = full `Rebuild`, no splice. Fine at a few hundred blocks.
+  - **The cache is NOT headless-testable** (unlike the measurer): it holds a `RichTextDocument`, whose
+    blocks *are* controls, and reaches through them for run text + heading level. Consequence of the
+    P0 "model is the control tree" decision, not a fixable oversight. Compile-verified only;
+    behaviour lands on the in-app profiling platform.
+  - **Remaining before it means anything:** nothing calls it — L2 is what makes the view consume it.
+- **L2 — done, view side (2026-07-31). NOT GUI-verified.**
+  `TextRunControl` + `DocumentCanvasControl` + a cache-driven materialization diff in
+  `DocumentEditorControl`. `TextBlockControl`/`TextInputControl` are no longer used to render a note.
+  - **The view materializes per `LineSegment`, not per block** (user decision). A segment cannot wrap
+    by construction, so `TextRunControl` has **no wrapping code at all** — x, y, width and baseline
+    all arrive from the cache. `TextInputControl`'s per-character wrapping Measure/Arrange and the
+    `firstLineOffset`/`lastLineEndX` handshake are simply not on this path.
+  - Sharing wrap *code* between cache and view was considered and **rejected**: the view wraps per-run
+    against `finalRect.width`, the cache per-**block** against `contentWidth`, so one shared function
+    with two different arguments still desynchronises the caret from the glyph it points at. Single
+    authority, not shared implementation.
+  - `DocumentCanvasControl` height = `cache.Extent`, **not** the sum of its children — measuring
+    children would only ever see the materialized viewport and size the scrollbar to it.
+  - Split of responsibility: **`Measure`** owns content width → `cache.SetContentWidth` (now returns
+    `bool`, because a rewrap changes what line/segment indices *mean* and every keyed control must be
+    dropped) and sets the canvas extent; **`Arrange`** owns materialization, since scroll only fires
+    `InvalidateArrange`.
+  - Buffer = **± one viewport**. This is load-bearing, not padding: `Destroy()` only enqueues, so a
+    released strip still draws until `ProcessDestroys` runs next tick — the buffer guarantees that
+    frame is spent a full viewport outside the clip rect.
+  - **Measured, 400-block / 22,392 px synthetic note, full scroll sweep (32 steps):** strips 57–59 and
+    view glyphs ~4,700–4,950 flat end to end; `"Controls"` flat at ~56.5k across the sweep (**no leak**
+    through the create/destroy churn); GC sawtooth 47–63 MB, no upward trend; layout settles after
+    **2** `Arrange` calls (materializing inside `Arrange` calls `InvalidateLayout`, and it converges —
+    it does not oscillate).
+  - **What this did and did not buy.** It removed the *second* full glyph set: `BuildBlock` used to
+    build a whole parallel copy beside the model's, so a note cost 2×. Now it is model + viewport. It
+    did **not** make the total viewport-sized — the model still builds one `GlyphControl` per
+    character at load (user's explicit decision to keep, 2026-07-31). On the 400-block note the total
+    was ~56.7k controls, i.e. **already past `UIModule`'s 50,000-cap descriptor array**, from the
+    model alone. Nothing crashed, so the cap does not appear hard, but that is the ceiling being
+    leaned on. See the load-time note under **Deferred**.
+  - **Visible change:** wrapping moved from **per-character** to **word-boundary**.
+  - Not done: `GlyphControl` pooling. Strips are destroyed and rebuilt at the buffer edge rather than
+    recycled. The sweep shows no leak and flat memory, so this stays a profiling question.
+- **Deferred — load-time glyph explosion (user, 2026-07-31).** Loading a note builds one
+  `GlyphControl` per character before the view is consulted: `DocumentXml.ParseElement`
+  `Activator.CreateInstance`s each `<Run>` as `TextRun : TextInputControl : TextControl`, and setting
+  the `Text` attribute hits the `text` setter → `SyncGlyphs()`. Accepted as-is for now; the user will
+  give the word and intends **control frustum culling** (engine-wide off-screen cull).
+  - **Culling alone will not fix this.** It stops off-screen controls being *drawn*; the entities,
+    pool rows and descriptor slots all still exist. Raise this before implementing culling as the
+    answer.
+  - Root cause is the P0 model-as-controls decision, which contradicts this file's own Confirmed
+    decisions line (*"plain-data document model = source of truth"*). P0's rationale — blocks are
+    controls so the engine UI layout lays the document out for free — was **voided by L1**: the cache
+    does layout now, and L2 confirmed the view never touches those model controls either.
+  - Two exits were offered, neither taken: (a) make `Block`/`TextRun` POCOs like
+    `DocumentLayout`/`HeadingStyle` already are — also restores cache headless-testability and deletes
+    `DocumentXml.AttachChild`'s "most-specific accepting list" hack, which exists *only* because
+    blocks/runs inherit `Entity.children`; (b) keep the inheritance, stop the `text` setter building
+    glyphs.
 - **P3** — editing, rebased onto the cache: `DocumentEditSession` (working copy) + `DocumentCursor`
   + `CaretControl` (position via cache char→point); wire char input drain + special keys; Ctrl+S
   writes XML. Verify: type/delete across runs, round-trip file.
@@ -130,18 +201,46 @@ layout-engine/scale revision (L1/L2/L3, B1/B2): `C:\Users\gmgyt\.claude\plans\le
 - The binary `Serializer` is **not** the note format — notes are XML via `DocumentXml`. See
   `../Patterns/document-xml-persistence.md`.
 - `AuroraTesting` is **empty / not in the solution** — no test home yet. **Decision (user):** manual
-  GUI verification for now; a headless test project is on the TODO (`Work in Progress List.md`,
-  ESSENTIALS). P1 was verified with a throwaway harness (deleted). Don't add a test-framework NuGet
-  until that TODO is taken up with the user.
+  GUI verification for now. P1 was verified with a throwaway harness (deleted). Don't add a
+  test-framework NuGet, and don't propose a test project before editor v1 — see the L1 testing
+  bullet below.
 - Lists/quotes/wikilinks deferred (Simplicity-First) — declared as the editor grows; code/tables
   are now scheduled (B1/B2).
-- The `TODO: deferred Vulkan resource cleanup` markers in `TextControl`
-  (`SyncGlyphs`/`RemoveGlyph`) are a **hard L2 prerequisite** — virtualization churns glyph
-  controls on every scroll and today removed glyphs leak GPU buffers.
-- **L1 testing (user decision):** eyeball for now; when formalised, **no NuGet packages** — a
-  ~40-line reflection runner in `AuroraTesting` (console exe, local `[TestCase]` attribute, non-zero
-  exit on fail — same attribute-reflection idiom as Bootstrapper/XSDGenerator) + synthetic-metrics
-  unit tests (fabricate `Glyph[]` with known advances — no font file, no GPU) plus optional
-  real-font tests via `.agd` deserialization (metrics without the atlas texture) and golden-file
-  dumps of the line table. Enabler: keep `TextMeasurer`'s dependency narrow — a glyph-metrics
-  lookup (char→`Glyph`), never `FontAsset`/`GlyphControl`/GPU — so fakes are trivial.
+- ~~`TODO: deferred Vulkan resource cleanup` in `TextControl` is a hard L2 prerequisite.~~
+  **STALE — resolved, verified 2026-07-31.** The markers no longer exist. `TextControl.DiscardGlyph`
+  clears `parent` then `Destroy()`s (clearing first is deliberate: `Destroy()` would otherwise remove
+  the glyph from `children` and shift the list under the loop editing it). `Entity.Destroy` enqueues
+  the subtree; `EntityRegistry.ProcessDestroys` (once per tick, before `OnTick`) `Unregister`s from
+  every group incl. `"Controls"`, fires `OnDestroy`, and `Pool.Free`s the row, compacted at the next
+  `DataManager.FrameEdge`. **And there is no per-control Vulkan buffer left to leak at all** — `7b5e032`
+  folded `ControlData` into the pooled SSBO, so the pool row *is* the GPU memory. Landed across
+  `af87d99`/`6edf8bb`/`7b5e032`, not as document work.
+- **Char input no longer reaches the document.** The drain is `Periodic/Editor/Decorations.Write` —
+  an `[A_XSDActionDependency("Write", category:"Input")]` bound to the `AnySymbol` keybind — and it
+  casts `UICollisionHandling.activeControl as TextControl`. `activeControl` is set to `hovering` (the
+  glyph), then `GlyphControl.OnContextAdded` **reassigns it to `parent`**, which used to be a
+  `TextInputControl` (a `TextControl`) and after L2 is a `TextRunControl` (not one), so the cast
+  fails. Nothing regressed that worked — the view is read-only — but P3 has to solve routing, and the
+  drain also sits in the **app** while the Engine/Periodic boundary puts char routing in the engine.
+  Note **`ICharacterInput` does not exist** despite CLAUDE.md describing it; P3 is designing that
+  interface, not using it. (CLAUDE.md's `Keys.AnySymbol` claim *is* accurate.)
+- **`fontName` is dead in the view but live in the cache** (found 2026-07-31, partly fixed).
+  `TextRunControl.ResolveFont` now mirrors `FontAssetGlyphMetrics.Resolve`, so the **document** path
+  is correct. The gap below still applies to `TextControl`/`TextInputControl` everywhere else.
+  `TextControl._fontAsset` is pinned to `d["default"]` in the ctor and **nothing reads**
+  `TextInputControl.fontName` — so every run draws in the default font. `TextMeasurer` *does* measure
+  per-`fontName` through `IGlyphMetrics`. Harmless while everything is one font; the moment a second
+  font is used, measured geometry and drawn glyphs disagree and the caret drifts. Whoever adds font
+  selection must resolve the asset from `fontName` in the view at the same time.
+- **Testing is sequenced after editor v1, and the harness is the UI** (user decision, 2026-07-31).
+  Once the text editor's first version exists, a test/profiling platform gets built **on the engine's
+  own UI** — GC/allocation, execution time, general functional checks — dogfooding the UI system while
+  doubling as the profiler. This **supersedes** the earlier plan for a ~40-line reflection console
+  runner in `AuroraTesting`. Until then, L1/L2 verification is eyeball + throwaway harnesses.
+  Still **no NuGet packages** for testing.
+  - Consequence to accept knowingly: L2's success criteria (*"scrolls smoothly, `Controls` count stays
+    viewport-sized, memory flat"*) are measurement questions that land **before** the tool that
+    measures them — so L2 is judged by eye, then re-audited on the platform once it exists.
+  - Enabler that still holds: keep `TextMeasurer`/the cache's dependency narrow — a glyph-metrics
+    lookup (char→`Glyph`), never `FontAsset`/`GlyphControl`/GPU — so the layout layer stays drivable
+    from fabricated metrics whatever the eventual harness is.
