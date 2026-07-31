@@ -3,7 +3,8 @@
                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                 xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../Schemas/UITypeSchema.xsd"
                 LineHeight="1.5"
-                ParagraphFontSize="18">
+                ParagraphFontSize="18"
+                BlockSpacing="8">
 
   <!-- Editor-wide heading scheme. However many levels are listed is how many exist; an application
        overrides the whole file by placing its own copy in its Data/XML/Documents folder, and a note

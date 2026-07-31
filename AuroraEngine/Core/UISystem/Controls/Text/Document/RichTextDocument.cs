@@ -40,6 +40,12 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         [A_XSDElementProperty("ParagraphFontSize", "UI", "Body text size in pixels.")]
         public int paragraphFontSize { get; set; } = 18;
 
+        // Vertical gap between blocks. Lives here rather than on the view because the layout cache
+        // stacks blocks by it too — a number the two disagreed on would put every cached block top
+        // further out of step with the drawn one the further down the document you scrolled.
+        [A_XSDElementProperty("BlockSpacing", "UI", "Vertical gap between blocks in pixels.")]
+        public float blockSpacing { get; set; } = 8f;
+
         // Empty means inherit: a note that declares no styles of its own uses the editor's. Declaring
         // even one replaces the whole set, so a note's heading scheme is read as written rather than
         // merged level-by-level with defaults it cannot see.
@@ -73,7 +79,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             DocumentLayout copy = new DocumentLayout
             {
                 lineHeight = lineHeight,
-                paragraphFontSize = paragraphFontSize
+                paragraphFontSize = paragraphFontSize,
+                blockSpacing = blockSpacing
             };
             foreach (HeadingStyle style in headingStyles)
                 copy.headingStyles.Add(style.Clone());

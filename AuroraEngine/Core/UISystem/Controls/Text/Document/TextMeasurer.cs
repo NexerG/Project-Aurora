@@ -266,8 +266,10 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         }
 
         // An unimported character falls back to a blank of space width, the same way a glyph control
-        // does, so unexpected text measures as a gap instead of throwing.
-        private static float MeasureAdvance(char character, Run run, IGlyphMetrics metrics)
+        // does, so unexpected text measures as a gap instead of throwing. Public because
+        // DocumentLayoutCache re-walks a line's advances when hit-testing: two copies of the pen
+        // formula would let clicks drift out of step with the lines they are being tested against.
+        public static float MeasureAdvance(char character, Run run, IGlyphMetrics metrics)
         {
             Glyph glyph = metrics.Get(run.fontName, character) ?? metrics.Get(run.fontName, ' ');
             return glyph == null ? 0f : glyph.advanceWidth * run.fontSize;

@@ -472,9 +472,33 @@
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
   </xs:complexType>
+  <xs:element name="HeadingStyle" type="types:HeadingStyle" />
+  <xs:complexType name="HeadingStyle">
+    <xs:sequence />
+    <xs:attribute name="Level" type="xs:int" />
+    <xs:attribute name="FontSize" type="xs:int" />
+  </xs:complexType>
+  <xs:element name="DocumentLayout" type="types:DocumentLayout" />
+  <xs:complexType name="DocumentLayout">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="HeadingStyle" type="types:HeadingStyle">
+        <xs:annotation>
+          <xs:documentation>Per-level heading styles; empty inherits the editor's.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="LineHeight" type="xs:float" />
+    <xs:attribute name="ParagraphFontSize" type="xs:int" />
+    <xs:attribute name="BlockSpacing" type="xs:float" />
+  </xs:complexType>
   <xs:element name="Document" type="types:Document" />
   <xs:complexType name="Document">
     <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="1" name="DocumentLayout" type="types:DocumentLayout">
+        <xs:annotation>
+          <xs:documentation>Layout parameters for this note.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
         <xs:element name="Paragraph" type="types:Paragraph" />
         <xs:element name="Heading" type="types:Heading" />
