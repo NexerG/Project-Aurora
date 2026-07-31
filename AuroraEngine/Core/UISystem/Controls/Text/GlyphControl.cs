@@ -7,9 +7,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
 {
     public class GlyphControl : VulkanControl, IContext
     {
-        private const float atlasInkMargin = 0.1f;
+        // Internal, not private: TextMeasurer reproduces this cell geometry without building a
+        // control, and sharing the constants is what stops the two from drifting apart.
+        internal const float atlasInkMargin = 0.1f;
 
-        private const float CellScale = 1f / (1f - 2f * atlasInkMargin);
+        internal const float CellScale = 1f / (1f - 2f * atlasInkMargin);
 
         public char character;
         int index;

@@ -59,14 +59,28 @@ layout-engine/scale revision (L1/L2/L3, B1/B2): `C:\Users\gmgyt\.claude\plans\le
   note at `Periodic/Data/XML/Documents/SampleNote.xml`. Note: `ScrollableControl` clashes with
   `System.Windows.Forms.ScrollableControl` (WinForms on) — alias the engine type when subclassing.
   The StackPanel-of-everything presentation and `TextInputControl`-as-run-renderer are replaced in L2.
-- **L1** — layout engine, pageless: `TextMeasurer` (pen advance = `glyph.advanceWidth * px`,
-  glyph x-offset = `leftSideOffset * px`, quad = `glyphWidth * px`; all three em-normalized in
-  `AuroraFont`; **word-boundary** wrap) + per-block line cache + prefix-summed block tops.
-  The correct advance formula already exists in `ShortTextControl` / `TextEntity`; the current flow
-  controls (`TextInputControl` / `TextBlockControl`) advance by ink **bbox width** and wrap **per
-  character** — a defect to reconcile ONTO the measurer in L2, **not a reference to match**. Verify:
-  measured line breaks match the `advanceWidth + leftSideOffset` placement on `SampleNote.xml`
-  (eyeball for now — see testing note).
+- **L1 — measurer done (2026-07-31), cache not started.**
+  - `TextMeasurer` exists: word-boundary wrap, uniform line boxes, per-run segments. Advance =
+    `glyph.advanceWidth * px`, em-normalized in `AuroraFont`. **Nothing calls it yet** — L1 is
+    deliberately additive so the cache can be built beside what already renders.
+  - A line is **not** one run. `TextLine` owns a `List<LineSegment>` (`runIndex`, `charStart`,
+    `charCount`, `width`) because a bold word mid-paragraph puts three runs on one visual line —
+    the design doc's single-`runIndex` line tuple could not express that.
+  - **Line height is CSS/Obsidian, not ink.** Box = `fontSize * DocumentLayout.lineHeight` (1.5),
+    font ink box centred, leftover split as half-leading, baseline at `halfLeading + ascent`.
+    Per-glyph ink made a line grow when someone typed a "g". Mixed styles take the tallest box.
+  - `IGlyphMetrics` = `Get(fontName, char)` + `GetLineMetrics(fontName)`. Production derives the
+    font box as max ink across the glyph set; `hhea` ascender/descender would be better but
+    `GenerateGlyphAtlas` reads and discards them, so they are not in the `.agd`.
+  - `MeasureBlock(ContentBlock, ...)` is the only control-touching overload; the plain-data one
+    beneath runs headless. Blocks/runs are `VulkanControl`s whose ctor hits the asset registry,
+    entity registry and data pool — anything taking one cannot be tested without booting.
+  - **Stale claim removed:** `TextInputControl` no longer advances by ink bbox width — `b9c6d60`
+    fixed that. It does still wrap **per character**; that is what the measurer replaces.
+  - Verified with fabricated glyphs (no font file, no registry, no GPU): wrap points, mid-word
+    split for an over-wide word, trailing space not wrapping, multi-run segmentation, equal
+    heights for `"AAA"` vs `"ggg"`, empty block matching a full line, multiplier arithmetic.
+  - **Remaining:** per-block line cache + prefix-summed `blockTops[]` + per-block invalidation.
 - **L2** — virtualized view: `DocumentEditorControl` presents only the visible block range ± 1
   viewport from the cache; `TextRunControl` (lightweight read-only run); glyph GPU cleanup +
   `GlyphControl` pooling (hook `UIModule` deferred-deletion). Verify: generated ~100-page note
@@ -87,6 +101,30 @@ layout-engine/scale revision (L1/L2/L3, B1/B2): `C:\Users\gmgyt\.claude\plans\le
   buffer) only if profiling shows visible-glyph control overhead matters; `TextRun` style
   extensions land with the features that need them (`FontSize`, `Underline`, highlight color);
   list/quote/divider blocks.
+
+## Document settings & the style cascade (2026-07-31)
+- `DocumentLayout` is a **class** on `RichTextDocument` (`layout`), persisted as a nested
+  `<DocumentLayout>` element. A class, not a struct, because it owns a `List<HeadingStyle>` —
+  value-copying it would hand a working copy the original's styles to mutate. `Clone()` deep-copies.
+- Holds `lineHeight`, `paragraphFontSize`, `List<HeadingStyle>`; the declared home for content width
+  on resize and the paged/pageless mode when those land.
+- **Heading levels are data.** `HeadingStyle` = (`level`, `fontSize`); however many entries exist is
+  how many levels exist. The old hardcoded 34/28/23/20/18/16 switch on `DocumentEditorControl` is gone.
+- **Two tiers, via the VFS.** `Data/XML/Documents/DocumentStyles.xml` is the editor-wide scheme; an
+  app's copy resolves ahead of the engine's, so an app restyles every note without touching engine
+  data. A note overrides per-document by embedding its own `<DocumentLayout>`.
+- **Empty list = inherit.** Declaring even one style replaces the whole set (no level-by-level merge
+  against defaults the author cannot see). Out-of-range levels clamp to the nearest defined one.
+- **Scalars do not cascade yet** — `lineHeight`/`paragraphFontSize` fall back to code defaults that
+  match the shipped file; inheriting them needs "was this attribute present" tracking the reflection
+  parser lacks.
+- `DocumentEditorControl` and the measurer both call `DocumentLayout.FontSizeFor(block)`, so cached
+  geometry and drawn controls cannot disagree on heading size. `TextRun.fontSize` is unused until
+  per-run sizing lands.
+- **Live-path risk, not GUI-verified:** opening a note now lazily loads `DocumentStyles.xml` through
+  the VFS. Headings at old sizes = cascade resolved; headings at body size = the file did not resolve.
+  The engine mount is `Engine.isDebug`-gated (same as `Bootstrap.xml`), so a release build needs the
+  file in the app's own Data folder.
 
 ## Gotchas
 - The binary `Serializer` is **not** the note format — notes are XML via `DocumentXml`. See

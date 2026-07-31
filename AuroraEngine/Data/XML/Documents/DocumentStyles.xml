@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<DocumentLayout xmlns="http://arctisaurora/AuroraUITypes"
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../Schemas/UITypeSchema.xsd"
+                LineHeight="1.5"
+                ParagraphFontSize="18">
+
+  <!-- Editor-wide heading scheme. However many levels are listed is how many exist; an application
+       overrides the whole file by placing its own copy in its Data/XML/Documents folder, and a note
+       overrides it per-document by embedding a <DocumentLayout> of its own. -->
+  <HeadingStyle Level="1" FontSize="34" />
+  <HeadingStyle Level="2" FontSize="28" />
+  <HeadingStyle Level="3" FontSize="23" />
+  <HeadingStyle Level="4" FontSize="20" />
+  <HeadingStyle Level="5" FontSize="18" />
+  <HeadingStyle Level="6" FontSize="16" />
+
+</DocumentLayout>

@@ -62,6 +62,7 @@ ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Au
 ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\DocumentXml.cs
 ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\Inlines.cs
 ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\RichTextDocument.cs
+ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\TextMeasurer.cs
 ArctisAurora.Core.UISystem.Controls.Text.Editing -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Editing\TextBoxControl.cs
 ArctisAurora.Core.UISystem.Controls.Text.Editing -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Editing\TextInputControl.cs
 ArctisAurora.CustomEntities -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\CustomEntities\Layer.cs

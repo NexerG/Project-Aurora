@@ -547,14 +547,19 @@ namespace ArctisAurora.Core.Registry
             WriteSchema(actionSchema, "actionSchema.xsd");
         }
 
+        // The XML namespace a category's types live in. Shared, because a schema's targetNamespace,
+        // the imports pointing at it and the documents written against it all have to agree on this
+        // one string — a literal copied into a third place is a note that silently stops validating.
+        public static string NamespaceFor(string category) => $"http://arctisaurora/Aurora{category}Types";
+
         private static XmlSchema BuildSchemaBase(string category)
         {
             XmlSchema schema = new XmlSchema
             {
-                TargetNamespace = $"http://arctisaurora/Aurora{category}Types",
+                TargetNamespace = NamespaceFor(category),
                 ElementFormDefault = XmlSchemaForm.Qualified
             };
-            schema.Namespaces.Add("types", $"http://arctisaurora/Aurora{category}Types");
+            schema.Namespaces.Add("types", NamespaceFor(category));
             schema.Namespaces.Add("xs", "http://www.w3.org/2001/XMLSchema");
             schema.Namespaces.Add("actions", "http://arctisaurora/ActionDependencies");
             schema.Includes.Add(actionDependency);
@@ -588,7 +593,7 @@ namespace ArctisAurora.Core.Registry
         {
             foreach (string category in foreignCategories.OrderBy(c => c))
             {
-                string ns = $"http://arctisaurora/Aurora{category}Types";
+                string ns = NamespaceFor(category);
                 schema.Namespaces.Add(category, ns);
                 schema.Includes.Add(new XmlSchemaImport
                 {
@@ -600,6 +605,19 @@ namespace ArctisAurora.Core.Registry
 
         private static string OwningCategoryOf(Type type)
             => categoryMap.TryGetValue(type, out string? category) ? category : "Uncategorized";
+
+        // A member typed as a complex [A_XSDType] — a class or struct that becomes an xs:complexType.
+        // Enums and everything in the primitive map resolve to simple types, which an attribute
+        // accepts; complex ones do not, and have to be written as nested elements instead.
+        private static bool IsComplexMember(Type memberType)
+        {
+            Type resolved = Nullable.GetUnderlyingType(memberType) ?? memberType;
+
+            if (resolved.IsEnum) return false;
+            if (AnyXMLType.typeMap.Any(kvp => kvp.Value == resolved)) return false;
+
+            return typeMap.ContainsKey(resolved);
+        }
 
         private static void GenerateEnumType(Type t, string name, XmlSchema schema)
         {
@@ -655,6 +673,24 @@ namespace ArctisAurora.Core.Registry
                     };
                     listElement.Annotation = annotation;
                     sequence.Items.Add(listElement);
+                }
+                else if (IsComplexMember(memberType))
+                {
+                    // An xs:attribute can only carry a simple type, so a member typed as a complex
+                    // [A_XSDType] has to be a nested element instead — as an attribute it emits a
+                    // schema that will not compile. Optional and single, so a document that leaves
+                    // it out still validates and picks up the type's own defaults.
+                    string typeName = ResolveTypeName(memberType, member.XmlAttribute, currentCategory, foreignCategories);
+
+                    XmlSchemaElement memberElement = new XmlSchemaElement
+                    {
+                        Name = member.XmlAttribute?.Name ?? member.Member.Name,
+                        SchemaTypeName = new XmlQualifiedName(typeName),
+                        MinOccurs = 0,
+                        MaxOccurs = 1
+                    };
+                    memberElement.Annotation = annotation;
+                    sequence.Items.Add(memberElement);
                 }
                 else
                 {

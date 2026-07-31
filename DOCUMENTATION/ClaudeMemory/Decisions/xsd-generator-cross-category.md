@@ -63,11 +63,23 @@ is loaded. Any future harness must `Assembly.LoadFrom` the app dll, matching wha
 (Also: grepping for these attributes must handle the **named-argument** form `category:"Input"`,
 not just the positional `"Name", "Category"` form.)
 
-## Separate bug found while verifying — NOT fixed
-- **A complex `[A_XSDType]` as a scalar member emits an invalid schema.** Scalar members become
+## Separate bug found while verifying — FIXED 2026-07-31
+- **A complex `[A_XSDType]` as a scalar member emitted an invalid schema.** Scalar members became
   `xs:attribute`, which only accepts simple types, so a member typed as a non-enum `[A_XSDType]`
-  produces `... is not declared, or is not a simple type`. Latent — the repo only references enums
-  across categories today. Found via the first probe iteration.
+  produced `... is not declared, or is not a simple type` and took the whole file down with it.
+  Found via the first probe iteration; hit for real the moment `RichTextDocument.layout` needed to
+  persist. `GenerateComplexType` now has a third branch: `IsComplexMember` (not an enum, not in the
+  primitive map, present in `typeMap`) emits a nested `minOccurs=0 maxOccurs=1` element instead.
+- `NamespaceFor(category)` now owns the `http://arctisaurora/Aurora{Category}Types` string, used by
+  `BuildSchemaBase`, `AddForeignImports` and `DocumentXml` — three copies of a literal that has to
+  agree or notes silently stop validating.
+
+## Known gap — the fingerprint does not notice generator changes
+`BuildCategoryFingerprint` hashes the **input** (types, members, categories). A change to how the
+generator *emits* that input leaves the hash identical, so `NeedsRegeneration` skips the file and the
+fix never reaches disk. This bit twice on 2026-07-31 (the cross-category prefixes, then the
+complex-member element). Both times an unrelated input change masked it. **Fix when convenient:** fold
+a generator-version constant into every fingerprint and bump it whenever emission changes.
 
 ## Stale artifacts (mention only)
 - `TextEditorTypeSchema.xsd` is dead — the `"TextEditor"` category is unused, so the generator no

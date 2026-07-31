@@ -20,9 +20,6 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
     [A_XSDType("DocumentEditor", "UI")]
     public class DocumentEditorControl : ScrollableControl
     {
-        // Paragraph body size; headings scale up by level.
-        public int paragraphFontSize = 18;
-
         public RichTextDocument activeDocument { get; private set; }
 
         public DocumentEditorControl()
@@ -85,7 +82,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             if (block is not ContentBlock content)
                 return null;
 
-            int fontSize = block is HeadingBlock heading ? HeadingFontSize(heading.level) : paragraphFontSize;
+            // Same resolver the layout cache measures with, so the controls and the cached geometry
+            // cannot end up sized differently.
+            int fontSize = activeDocument.layout.FontSizeFor(block);
 
             TextBlockControl textBlock = new TextBlockControl
             {
@@ -109,15 +108,5 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 
             return textBlock;
         }
-
-        private int HeadingFontSize(int level) => level switch
-        {
-            1 => 34,
-            2 => 28,
-            3 => 23,
-            4 => 20,
-            5 => 18,
-            _ => 16
-        };
     }
 }
