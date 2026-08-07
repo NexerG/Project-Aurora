@@ -29,6 +29,16 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         public GlyphControl(char character, FontAsset fontAsset, int px)
         {
             BubbleAll();
+            SetCharacter(character, fontAsset, px);
+        }
+
+        // Repoint an existing glyph at a different character instead of replacing the control.
+        // Everything a GlyphControl holds is derived from (character, font, size), so a rewrite is a
+        // handful of field writes and a UV update — no pool row allocated, no deferred free, no tree
+        // reorder. That is what lets a text edit cost the characters that actually changed instead of
+        // every character that happens to sit after the edit.
+        public void SetCharacter(char character, FontAsset fontAsset, int px)
+        {
             this.character = character;
             maskAsset = fontAsset.textureAsset;
 
@@ -51,6 +61,12 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
 
             advance = glyph.advanceWidth * px;
             bearingX = glyph.leftSideOffset * px - cellW * atlasInkMargin;
+
+            // Cleared before the test rather than left to fall through it: on a reused control these
+            // still hold the previous character's metrics, and a glyph with no vertical range would
+            // otherwise sit on the baseline the character before it had.
+            ascent = 0f;
+            descent = 0f;
 
             int range = glyph.yMax - glyph.yMin;
             if (range != 0)
@@ -79,6 +95,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             controlData.uvs.uv3 = new Vector2D<float>(u0, v1);
             controlData.uvs.uv4 = new Vector2D<float>(u1, v0);
             UpdateControlData();
+
+            // The preferred size setters invalidate on their own, but only when the number changes —
+            // and two characters routinely share a cell size while differing in advance, bearing and
+            // UVs. Layout has to re-run whenever the character does, not whenever the box moves.
+            InvalidateLayout();
         }
 
 

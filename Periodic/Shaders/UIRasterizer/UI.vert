@@ -24,17 +24,15 @@ struct ControlData
 {
     vec2[4] UV;
     Style style;
+    uint textureIndex;
 };
 
-// One buffer indexed by instance, not one buffer per control. `scalar` layout is load-bearing:
-// it gives this struct a stride of 44 bytes, matching the Pack=1 C# ControlData exactly. Under
-// std430 the stride would round to 48 and every control past the first would read shifted data.
 layout(set = 0, binding = 2, scalar) readonly buffer ControlDataBuffer {
     ControlData controls[];
 } CD;
 
 layout(location = 0) out vec2 fragUV;
-layout(location = 1) out flat uint fragInstanceID;
+layout(location = 1) out flat uint fragTextureIndex;
 layout(location = 2) out Style fragStyle;
 
 void main() {
@@ -42,7 +40,7 @@ void main() {
     vec4 pos = ubo.proj * ubo.view * vec4(tPos, 1.0f);
 
     gl_Position = pos;
-    fragInstanceID = gl_InstanceIndex;
+    fragTextureIndex = CD.controls[gl_InstanceIndex].textureIndex;
     fragStyle = CD.controls[gl_InstanceIndex].style;
     fragUV = CD.controls[gl_InstanceIndex].UV[gl_VertexIndex];
 }

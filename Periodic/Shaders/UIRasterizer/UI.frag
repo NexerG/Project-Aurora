@@ -8,7 +8,7 @@ struct Style
 };
 
 layout(location = 0) in vec2 fragUV;
-layout(location = 1) in flat uint fragInstanceID;
+layout(location = 1) in flat uint fragTextureIndex;
 layout(location = 2) in Style fragStyle;
 
 layout(location = 0) out vec4 outColor;
@@ -21,7 +21,7 @@ float median(float r, float g, float b) {
 
 void main()
 {
-    vec4 mtsdf = texture(samplers[fragInstanceID], fragUV);
+    vec4 mtsdf = texture(samplers[fragTextureIndex], fragUV);
     float msdfDist = median(mtsdf.r, mtsdf.g, mtsdf.b);
     float trueDist = mtsdf.a;
 
@@ -33,7 +33,7 @@ void main()
     }
 
     float pxRange = 4.0;
-    vec2 atlasSize = vec2(textureSize(samplers[fragInstanceID], 0));
+    vec2 atlasSize = vec2(textureSize(samplers[fragTextureIndex], 0));
     vec2 unitRange = vec2(pxRange) / atlasSize;
     vec2 screenTexSize = vec2(1.0) / fwidth(fragUV);
     float screenPxRange = max(1.0, length(unitRange * screenTexSize));

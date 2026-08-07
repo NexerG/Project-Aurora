@@ -1,7 +1,9 @@
 ﻿using ArctisAurora.Core.Data;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.UISystem.Controls;
+using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using Silk.NET.Core.Native;
@@ -19,14 +21,13 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override ERendererStage RendererStage => ERendererStage.UI;
 
         internal override uint[][] descriptorMaxCounts => new uint[][] {
-            new uint[] { 1, 1, 1 },            // set 0: camera UBO, transforms SSBO, control-data SSBO
-            new uint[] { 50000 }               // set 1: sampler array ×50k
+            new uint[] { 1, 1, 1 },                    // set 0: camera UBO, transforms SSBO, control-data SSBO
+            new uint[] { TextureAsset.MaxTextures }    // set 1: one sampler per distinct texture
         };
 
         internal override uint GetVariableDescriptorCount(int set)
         {
-            // sets are sized to the pool's capacity once, then partially bound as controls fill in
-            return (uint)BuildCapacity;
+            return TextureAsset.MaxTextures;
         }
 
         internal override PhysicalDeviceFeatures features => new()
@@ -100,15 +101,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         private DataPool _controlPool;
         internal DataPool ControlPool => _controlPool ??= DataManager.Get("UIControls");
 
-        // Per swapchain image: the pool capacity the descriptor sets were built against (-1 =
-        // not built) and how many per-control descriptors have already been written. Adds append
-        // the [written, live) tail in place; a capacity change forces a full rebuild of the set.
-        //
-        // The written count is a DENSE high-water mark, sound only while dense indices stay put —
-        // which is what PoolCursor.OrderChanged guards. After a compaction or resequence the append
-        // path would leave descriptors pointing at whoever used to live in those slots.
         private int[] _frameBuiltCapacity;
-        private int[] _frameWrittenControls;
+        private int[] _frameTableVersion;
 
         // This image's position in the control pool's history. One per image, not per module: each
         // image provisions its own sets and advances independently.
@@ -137,8 +131,9 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
             frameResources = new FrameResources[Renderer.swapchainImageCount];
             _frameBuiltCapacity = new int[Renderer.swapchainImageCount];
-            _frameWrittenControls = new int[Renderer.swapchainImageCount];
+            _frameTableVersion = new int[Renderer.swapchainImageCount];
             Array.Fill(_frameBuiltCapacity, -1);
+            Array.Fill(_frameTableVersion, -1);
         }
 
         internal override void UpdateModule(int currentFrame)
@@ -173,27 +168,18 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             // Nothing to bind yet — record an empty (clear-only) command buffer and wait.
             if (live > 0)
             {
-                // Rebuild this frame's descriptor sets when the pool's capacity changed (buffers
-                // moved), when dense indices were permuted or compacted, or when the live count
-                // shrank; otherwise keep them and append the newly added controls.
-                // live > builtCapacity can only mean the set was allocated against a capacity that
-                // has since been outgrown — appending into it would overrun the binding.
-                bool structural = _frameBuiltCapacity[currentFrame] != _buildCapacity
-                                  || cursor.OrderChanged
-                                  || live < _frameWrittenControls[currentFrame]
-                                  || live > _frameBuiltCapacity[currentFrame];
-                if (structural)
+                if (_frameBuiltCapacity[currentFrame] != _buildCapacity)
                 {
                     CreateDescriptorPool(currentFrame, 0);
                     AllocateDescriptorSets(currentFrame);
                     UpdateDescriptorSets(currentFrame, live);
-                    _frameWrittenControls[currentFrame] = live;
                     _frameBuiltCapacity[currentFrame] = _buildCapacity;
+                    _frameTableVersion[currentFrame] = TextureAsset.TableVersion;
                 }
-                else if (live > _frameWrittenControls[currentFrame])
+                else if (_frameTableVersion[currentFrame] != TextureAsset.TableVersion)
                 {
-                    WriteSamplerDescriptors(currentFrame, _frameWrittenControls[currentFrame], live);
-                    _frameWrittenControls[currentFrame] = live;
+                    WriteTextureTable(currentFrame);
+                    _frameTableVersion[currentFrame] = TextureAsset.TableVersion;
                 }
             }
 
@@ -222,7 +208,6 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         {
             // one pool per image, holding the two sets sized to the full pool capacity:
             // camera UBO ×1, transforms + control-data SSBOs ×2, sampler array ×cap
-            int cap = BuildCapacity;
             descriptorPoolSizes =
             [
                 new DescriptorPoolSize()
@@ -238,7 +223,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.CombinedImageSampler,
-                    DescriptorCount = (uint)cap
+                    DescriptorCount = TextureAsset.MaxTextures
                 }
             ];
         }
@@ -277,7 +262,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override void UpdateDescriptorSets(int currentFrame, int entityCount)
         {
             WriteStaticDescriptors(currentFrame);
-            WriteSamplerDescriptors(currentFrame, 0, entityCount);
+            WriteTextureTable(currentFrame);
         }
 
         // The per-frame-constant bindings: camera UBO (set0/b0), the transforms SSBO (set0/b1) and
@@ -342,21 +327,23 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             }
         }
 
-        // Write the sampler array (set1/b0) for the dense control range [from, to).
-        private void WriteSamplerDescriptors(int currentFrame, int from, int to)
+        // Write the texture table (set1/b0), indexed by TextureAsset.textureIndex.
+        private void WriteTextureTable(int currentFrame)
         {
-            int count = to - from;
-            if (count <= 0) return;
+            IReadOnlyList<TextureAsset> table = TextureAsset.Table;
+            if (table.Count == 0) return;
 
-            DescriptorImageInfo[] samplersInfos = new DescriptorImageInfo[count];
-            for (int k = 0; k < count; k++)
+            Sampler sampler = AssetRegistries
+                .GetRegistryByValueType<string, SamplerAsset>(typeof(SamplerAsset))["ControlSampler"].handle;
+
+            DescriptorImageInfo[] samplersInfos = new DescriptorImageInfo[table.Count];
+            for (int k = 0; k < table.Count; k++)
             {
-                VulkanControl control = (VulkanControl)ControlPool.OwnerAt(from + k);
                 samplersInfos[k] = new()
                 {
                     ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
-                    ImageView = control.maskAsset.textureImageView,
-                    Sampler = control.maskSampler
+                    ImageView = table[k].textureImageView,
+                    Sampler = sampler
                 };
             }
             fixed (DescriptorImageInfo* samplerInfosPtr = samplersInfos)
@@ -366,8 +353,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     SType = StructureType.WriteDescriptorSet,
                     DstSet = frameResources[currentFrame].sets[1],
                     DstBinding = 0,
-                    DstArrayElement = (uint)from,
-                    DescriptorCount = (uint)count,
+                    DstArrayElement = 0,
+                    DescriptorCount = (uint)table.Count,
                     DescriptorType = DescriptorType.CombinedImageSampler,
                     PImageInfo = samplerInfosPtr
                 };

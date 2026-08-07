@@ -57,10 +57,96 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
+## 5. Comments In Code
+
+**Rationale lives in the docs. Source files carry names, not explanations.**
+
+- **No "why" in code.** Tradeoffs, rejected alternatives, budgets, consequences, design reasoning -
+  all of it goes to `DOCUMENTATION/ClaudeMemory/*` and `DOCUMENTATION/Engine*`. Never above a method.
+- **Variables: comment the group, never the member.** One short label over a block of related fields.
+- **Methods: one very short descriptor, or nothing.** Not a sentence about context or consequences.
+- **Inside a method: only hard loops and genuinely long methods**, to label sections. A straightforward
+  ~20-line method gets nothing inside it.
+- Don't re-comment code you're editing. If a comment must change, it doesn't get longer.
+
+```csharp
+// WRONG - one per field, and a rationale paragraph over the method
+public float x;          // horizontal position
+public float top;        // top edge
+public float height;     // line height
+
+// Re-measures one block and slides everything below it - the typing path, where a keystroke
+// changes one paragraph and leaves every other block's lines as they were. The shift is a loop
+// rather than a Fenwick tree because a document is a few hundred blocks and the measurement
+// that just ran costs more than the additions do.
+public void InvalidateBlock(int index)
+
+// RIGHT - one label for the group, one short descriptor for the method
+// caret geometry in document space
+public float x;
+public float top;
+public float height;
+
+// Re-measures one block and shifts the tops below it.
+public void InvalidateBlock(int index)
+```
+
+The test: if the comment explains *why*, it belongs in ClaudeMemory, not the file.
+
+## 6. Answering Back
+
+**Terse plus caveats. No recap.**
+
+- Default reply: a line or two of what changed, then genuine caveats as bullets. Nothing else.
+- **Never** restate the plan, walk through code that's already in the diff, explain what the change
+  "unlocks", or append next steps that weren't asked for.
+- Caveats are only things that bite: assumptions made, signatures changed, scope left out, things
+  that will now break. No caveats means no caveats section - don't invent one.
+- **Architecture is terse by default too.** Full reasoning when asked "why", when asked for options,
+  or in plan mode. Don't volunteer the deep dive.
+
+## 7. Mid-Implementation Changes
+
+**Any departure from the agreed plan stops and asks. No exceptions.**
+
+- If implementing reveals the plan doesn't work, stop. State what broke, give the options, wait.
+- This includes small departures: a different data structure, an extra parameter, a changed return
+  type, a new file, renaming something already named, an edge case handled a way not discussed.
+- Never "just make it work" and report it afterwards. A round-trip is cheaper than drift I don't notice.
+- Do finish every part that doesn't depend on the answer before asking, so the round-trip costs one
+  message and not the whole task.
+
+## 8. Git Commits
+
+**Subject plus one-line bullets. Nothing else.**
+
+- Imperative subject, sentence case, no period, ~50-70 chars, no `feat:`/`fix:` prefix.
+- Blank line, then one-line bullets of *what changed* - as many as the commit needs, each fitting a
+  single unwrapped line. A small commit is subject-only.
+- No opening prose paragraph, no `Key changes:` header, no closing paragraph, no metrics or
+  verification block.
+- Bullets say what changed, not why. Rejected alternatives and measurements go to
+  `DOCUMENTATION/ClaudeMemory/Decisions/*`, same as §5.
+- **Never** add a `Co-Authored-By` trailer.
+- One commit per logical slice, not one big drop.
+- **Nothing is left behind.** Anything uncommitted in the tree goes into the next commit, including
+  changes that predate the session or were made by someone else. Never commit a subset of paths and
+  leave the rest dirty - if it is changed and uncommitted, it ships with the next commit.
+
+```
+Virtualize the document view onto the layout cache
+
+- View presents visible line segments from the cache, not a control per block
+- Canvas height is the cache extent, not the sum of its children
+- Materialized unit is the line segment, so TextRunControl does no wrapping
+- SetContentWidth reports rewraps so keyed controls get dropped
+- Text wraps on word boundaries
+```
+
 This project is a C# game engine called Aurora using Silk.NET/Vulkan/GLFW.
 Always check CLAUDE.md and NAMESPACES.md before suggesting new code.
 Current focus is in "DOCUMENTATION/Work in Progress List.md".
-Use deep thinking for architectural problems. Try to explain architectural questions - why they we're made as opposed to another solution.
+Use deep thinking for architectural problems. Explain architectural decisions - why one way and not another - when asked for the reasoning; see §6 for when to volunteer it and §5 for where it gets written down.
 When given to generate code DO NOT copy the whole file. Only write what (or if needs to be added where) needs to be changed and with what new code. When creating new classes write them out in entirety (without includes). Skip includes unless they're from a new nuget package.
 If can use xml - use xml. NO JSON or other similar formats.
 When creating new logic or systems update DOCUMENTATION/ClaudeMemory/* and DOCUMENTATION/Engine*

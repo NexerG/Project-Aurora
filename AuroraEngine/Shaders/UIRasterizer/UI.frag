@@ -8,7 +8,7 @@ struct Style
 };
 
 layout(location = 0) in vec2 fragUV;
-layout(location = 1) in flat uint fragInstanceID;
+layout(location = 1) in flat uint fragTextureIndex;
 layout(location = 2) in Style fragStyle;
 
 layout(location = 0) out vec4 outColor;
@@ -21,7 +21,7 @@ float median(float r, float g, float b) {
 
 void main()
 {
-    vec3 msdf = texture(samplers[fragInstanceID], fragUV).rgb;
+    vec3 msdf = texture(samplers[fragTextureIndex], fragUV).rgb;
     float sd = median(msdf.r, msdf.g, msdf.b) - 0.5f;
     float screenPxRange = fwidth(sd);
     float opacity = clamp(sd / screenPxRange + 0.5f, 0.0f, 1.0f);

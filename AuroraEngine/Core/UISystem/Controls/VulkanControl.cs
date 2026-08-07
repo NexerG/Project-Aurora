@@ -4,7 +4,6 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.EngineWork.Registry;
-using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Collections;
@@ -67,6 +66,7 @@ namespace ArctisAurora.Core.UISystem.Controls
         {
             public QuadUVs uvs;
             public ControlStyle style;
+            public uint textureIndex;
         }
 
         [A_XSDType("ControlColor", "UI")]
@@ -351,8 +351,16 @@ namespace ArctisAurora.Core.UISystem.Controls
         // range, exactly as transform writes end in CommitTransform().
         public ref ControlData controlData => ref Pool.GetRef<ControlData>(dataHandle);
 
-        public Sampler maskSampler;
-        public TextureAsset maskAsset;
+        public TextureAsset maskAsset
+        {
+            get => field;
+            set
+            {
+                field = value;
+                controlData.textureIndex = value?.textureIndex ?? 0;
+                UpdateControlData();
+            }
+        }
 
         public Sampler colorSampler;
         public TextureAsset colorAsset;
@@ -539,7 +547,6 @@ namespace ArctisAurora.Core.UISystem.Controls
 
             maskAsset = AssetRegistries.GetAsset<TextureAsset>("default");
 
-            maskSampler = AssetRegistries.GetRegistryByValueType<string, SamplerAsset>(typeof(SamplerAsset))["ControlSampler"].handle;
             EntityRegistry.AddToGroup("Controls", this);
 
             // Seed the baked matrix from the default transform the base ctor allocated. The old
@@ -552,36 +559,6 @@ namespace ArctisAurora.Core.UISystem.Controls
         public override void OnStart()
         {
             base.OnStart();
-        }
-
-        private void CreateSampler()
-        {
-            Renderer.vk.GetPhysicalDeviceProperties(Renderer.gpu, out PhysicalDeviceProperties _properties);
-            SamplerCreateInfo _createInfo = new SamplerCreateInfo()
-            {
-                SType = StructureType.SamplerCreateInfo,
-                MagFilter = Filter.Nearest,
-                MinFilter = Filter.Nearest,
-                AddressModeU = Silk.NET.Vulkan.SamplerAddressMode.Repeat,
-                AddressModeV = Silk.NET.Vulkan.SamplerAddressMode.Repeat,
-                AddressModeW = Silk.NET.Vulkan.SamplerAddressMode.Repeat,
-                AnisotropyEnable = true,
-                MaxAnisotropy = _properties.Limits.MaxSamplerAnisotropy,
-                BorderColor = BorderColor.IntOpaqueBlack,
-                UnnormalizedCoordinates = false,
-                CompareEnable = false,
-                CompareOp = CompareOp.Always,
-                MipmapMode = Silk.NET.Vulkan.SamplerMipmapMode.Nearest
-            };
-
-            fixed (Sampler* _textureSamplerPtr = &maskSampler)
-            {
-                Result r = Renderer.vk.CreateSampler(Renderer.logicalDevice, ref _createInfo, null, _textureSamplerPtr);
-                if (r != Result.Success)
-                {
-                    throw new Exception("Failed to create a texture sampler with error: " + r);
-                }
-            }
         }
 
         // Publish a ControlData edit. The row already sits in the column the renderer mirrors, so

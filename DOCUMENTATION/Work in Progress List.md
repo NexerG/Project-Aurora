@@ -14,11 +14,20 @@ Phases, dates and standing decisions live in [[Roadmap]]. Items below are groupe
 		- [ ] create language packs?
 	- [ ] editor
 		- [ ] Markdown insertions
-		- [x] L1 — layout engine (pageless): `TextMeasurer` + `DocumentLayoutCache` (per-block line cache, prefix-summed block tops, per-block invalidation, `HitTest`/`CharToPoint`). Built additive — nothing consumes it yet, and no runtime verification until the profiling platform
-		- [x] L2 — virtualized view: `TextRunControl` + `DocumentCanvasControl`, view driven off the cache, materialized per visible line segment ±1 viewport. Measured flat at 57–59 strips over a 400-block/22k-px note scrolled end to end, no leak. Not GUI-verified. Wrapping is now word-boundary, not per-character
-			- [ ] `GlyphControl` pooling — strips are rebuilt at the buffer edge, not recycled. Deferred: no leak and flat memory measured, so it needs the profiler before it's worth the machinery
-			- [ ] load-time glyph explosion — notes still build one `GlyphControl` per character at *load* (blocks/runs are controls), so the total is model + viewport rather than viewport. Waiting on the control frustum culling go-ahead; note culling alone does not fix it
-		- [ ] L3 — page system (paginator over cached lines + page chrome; pageless is the L1 default mode)
+		- [x] L1 — layout engine (pageless): `TextMeasurer` is now the only wrapper for all text, engine-wide. Every text control holds its own `BlockLayout` and answers `OffsetAt`/`CaretAt` for itself; the `DocumentLayoutCache` half is deleted. Geometry verified by caret round-trip on real font metrics — 607/607 exact
+		- [x] ~~L2 — virtualized view~~ **REVERTED 2026-08-07.** One layout path for all text; the document is a plain control tree (`DocumentEditorControl` → `DocumentControl` → `Block` → `TextRun` → glyphs). `TextRunControl`, `DocumentCanvasControl` and `DocumentLayoutCache` deleted; each control holds its own `BlockLayout`. Wrapping stays word-boundary. Save round-trips and reloads. See `ClaudeMemory/Decisions/text-layout-one-measurer.md`
+			- [ ] `runColorHex` reaches no glyph — `TextRunControl.SetSegment` used to apply it, `SyncGlyphs` does not, so a coloured run draws white. Per-letter colour is a standing requirement
+			- [ ] glyph ceiling — every character is a `GlyphControl`, always (~56.7k on the 400-block note, past `UIModule`'s 50,000 cap). Accepted knowingly. Escape hatch that does not change the design: a run holds `text` + its `BlockLayout` with no glyph children and calls `SyncGlyphs()` when visible
+		- [ ] P3 — editing on control-local layout
+			- [x] click → caret: clicks bubble glyph→run→block→`DocumentControl`→editor, position from `TextControl.OffsetAt`, caret placed from `CaretAt`. Round-trip verified exact (607/607 sample)
+			- [x] editability boundary — only `DocumentEditorControl` turns a left-click into a caret, so doc names/toolbars are never editable by accident
+			- [x] redraw-on-write — `GlyphControl.SetCharacter` repoints a glyph instead of replacing it, so `SyncGlyphs` only adds/removes at the tail and adjusts the interior in place. Was one pool alloc + deferred free + O(n) list removal + a DFS permute *per character after the edit*, per keystroke. Engine-wide, not document-only. Compile-verified, not GUI-verified
+			- [x] char input — works. A glyph's parent is a `TextRun : TextInputControl : TextControl` again, so `Decorations.Write`'s cast succeeds; the editor sets `cursorPosition` and calls `BeginEdit()` on click. Drain still lives in the app, not the engine, and `ICharacterInput` still does *not* exist
+			- [ ] `DocumentEditSession` working copy + Ctrl+S writes XML
+			- [ ] special keys — arrows/Home/End/PageUp/PageDown resolved on the block layouts
+		- [ ] P4 — selection (drag incl. auto-scroll) + Ctrl+B/I run split/merge
+		- [ ] right-click rename via `ContextMenuControl` (stub exists — its `Open()` only logs)
+		- [ ] L3 — page system (paginator over measured lines + page chrome; pageless is the L1 default mode)
 		- [ ] code blocks (B1 — monospace, no wrap, view-time syntax coloring)
 		- [ ] custom expressions (maths)
 	- [ ] Project browser
@@ -31,7 +40,11 @@ Phases, dates and standing decisions live in [[Roadmap]]. Items below are groupe
 		- [ ] tables
 	- [ ] cursor change on context
 - [ ] UI
-	- [ ] control frustum culling — engine-wide cull of off-screen controls (user's intended answer to document virtualization; note it cuts *draw* work only — culled controls keep their pool row and their slot in the 50,000-cap descriptor array)
+	- [x] texture table — sampler array is indexed by *texture* (`ControlData.textureIndex`) instead of by instance (`gl_InstanceIndex`), so the descriptor cap is "distinct textures" (256) rather than "controls" (was 50,000). Every glyph in a font shares one slot, and control churn no longer writes a descriptor at all — only a pool capacity change rebuilds. Also cleared the 44-byte `ControlData` stride alignment validation error (now 48). Phase D's "texture set" arriving early. See `DOCUMENTATION/ClaudeMemory/Decisions/glyphs-as-pool-data.md`. **Runs clean with validation on; NOT yet eyeballed**
+		- **Standing decision:** glyphs stay full controls with their own mat4 and tint — per-letter colour, rotation and animation are required. Do not propose making them plain data rows
+		- [ ] clipping — every `Arrange` computes `ClipRect` and its only consumer `VulkanControl.HitTest` has **zero callers**; no scissor, no shader clip. Scrolled document text is not actually cut at the viewport today
+		- [ ] `UI.frag` MSDF-decodes every control, including plain panels sampling the `invisible` mask. A per-control flag or a second pipeline once `textureIndex` exists
+	- [ ] control frustum culling — engine-wide cull of off-screen controls (user's intended answer to document virtualization; note it cuts *draw* work only — culled controls keep their pool row, and their descriptor slot until the texture table lands)
 	- [ ] fix up UI shaders (samplers, transparency)
 	- [ ] checkout `Pretext` by Cheng Lou for UI layout calculations (apparently 500x faster than the current implementation)	
 	- [x] Stack panel

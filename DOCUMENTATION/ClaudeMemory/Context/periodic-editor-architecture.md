@@ -3,32 +3,41 @@
 Remaking `Periodic` (`AuroraPeriodic`) into an Obsidian-style note editor on the engine.
 Full plan: `C:\Users\gmgyt\.claude\plans\time-to-do-some-mighty-gizmo.md`;
 layout-engine/scale revision (L1/L2/L3, B1/B2): `C:\Users\gmgyt\.claude\plans\lets-say-the-idea-synthetic-wreath.md`.
+**LANDED 2026-08-07 (`542e7d7`):** one layout path for all text, document is a plain control tree,
+**L2's virtualization and `DocumentLayoutCache` are gone**. See [[text-layout-one-measurer]] — it is
+the current description of this area. L1/L2/P3 below are kept as history and are marked where they
+no longer describe the code.
 
 ## Confirmed decisions
 - **Note format:** engine **XML** (not markdown, not JSON), via `[A_XSDType]`/`[A_XSDElementProperty]`.
 - **Editing UX:** live-preview WYSIWYG; edits hit a **working copy**; **Ctrl+S** commits + writes XML.
 - **Architecture:** plain-data **document model = source of truth**; control tree is a **view**.
 - **Scope now:** offline desktop only. Online multi-editor / browser are later (model/view split chosen to allow a CRDT layer later).
-- **Layout cache is the single geometry system** (user decision): `TextMeasurer` + `DocumentLayoutCache`
-  measure blocks from font metrics into a per-block line cache; **all** geometry
-  queries — mouse clicks, caret placement, arrows/PageDown/Ctrl-End, selection drag, find-next,
-  `ScrollIntoView`, pagination — resolve on the cache. Control tree only answers the app-shell
-  question "did the click land on the editor at all". Glyph/run/block controls are **not**
-  hit-targets; `TextInputControl.HitTestCursor` / `ResolveOnClick` caret placement are superseded.
-  See `DOCUMENTATION/Engine/Core/Entities/Controls/Text/Document Layout Engine.md`.
-- **View is virtualized; model is always fully loaded.** Controls materialize only for the
-  visible block range ± 1 viewport, recycled via a pool. Read-only runs get a lightweight
-  `TextRunControl` (planned) — `TextInputControl` stops being the run renderer (removes the
-  model/view style-field duplication).
+- ~~**Layout cache is the single geometry system**~~ — **SUPERSEDED 2026-08-07.** `TextMeasurer` is
+  still the only thing that decides line breaks, but there is no cache: each text control holds its
+  own `BlockLayout` and answers geometry for itself (`OffsetAt`/`CaretAt`). The control tree *is*
+  the hit-test again. See [[text-layout-one-measurer]].
+- ~~**View is virtualized; model is always fully loaded.**~~ — **SUPERSEDED 2026-08-07.** No
+  virtualization: every character is a `GlyphControl`, always. `TextRunControl` is deleted and
+  `TextRun : TextInputControl` is the run renderer again.
 - **Pages vs pageless = a layout-engine mode**, never a model concern. Paged mode paginates
-  cached *lines* (not blocks) so paragraphs split across page breaks.
+  *lines* (not blocks) so paragraphs split across page breaks. Those lines now come from each
+  block's own `BlockLayout` rather than from a cache; `DocumentControl` is where page panels go.
 - **Layout engine lands before P3 editing** (user decision): caret/hit-test math is written once
-  against the cache, not against controls and then redone.
+  against measured lines, not against glyph rects and then redone. Held — the math survived the
+  cache's deletion by moving onto `TextControl` intact.
 
 ## Scale rationale
+**Stale as of 2026-08-07** — the cache and the virtualized view it argues for are gone. The
+*numbers* still hold and are why the ceiling is worth watching; see [[text-layout-one-measurer]]
+for the decision to accept them and the escape hatch if they bite.
 - 100 pages ≈ 300k chars; model (strings + runs) < 1 MB — data is never the memory problem.
 - Today each char = one `GlyphControl` = full `VulkanControl` entity + a `ControlData` row in the
-  pooled SSBO + slot in `UIModule`'s 50,000-cap descriptor array. 300k glyphs = 6× over the cap,
+  pooled SSBO. (**Descriptor cost is GONE as of 2026-07-31** — the sampler array used to be indexed by
+  `gl_InstanceIndex`, so every glyph burned one of 50,000 slots writing the same atlas view; it is now
+  a 256-entry table indexed by `ControlData.textureIndex` and every glyph in a font shares one slot.
+  See [[glyphs-as-pool-data]], which also settles that glyphs **stay controls**, because per-letter
+  colour/rotation/animation are required.) The pool row remains: 300k glyphs =
   hundreds of MB, O(300k) Measure/Arrange reflows. (Stale as of `7b5e032`: glyphs no longer own a
   *separate* storage buffer each — `ControlData` lives in the shared pooled SSBO, so the pool row is
   the GPU cost.)
@@ -61,7 +70,10 @@ layout-engine/scale revision (L1/L2/L3, B1/B2): `C:\Users\gmgyt\.claude\plans\le
   note at `Periodic/Data/XML/Documents/SampleNote.xml`. Note: `ScrollableControl` clashes with
   `System.Windows.Forms.ScrollableControl` (WinForms on) — alias the engine type when subclassing.
   The StackPanel-of-everything presentation and `TextInputControl`-as-run-renderer are replaced in L2.
-- **L1 — done (2026-07-31), nothing consumes it yet.**
+- **L1 — done (2026-07-31). `TextMeasurer` survives and is now the only wrapper; the
+  `DocumentLayoutCache` half is deleted (2026-08-07).** `MeasureBlock` now takes a `float lineHeight`
+  and a `firstLineOffset` instead of a `DocumentLayout`; `CaretGeometry` moved here, `DocumentPosition`
+  is gone. Everything below about the cache is history.
   - `TextMeasurer`: word-boundary wrap, uniform line boxes, per-run segments. Advance =
     `glyph.advanceWidth * px`, em-normalized in `AuroraFont`. **Nothing calls it yet** — L1 is
     deliberately additive so the cache can be built beside what already renders.
@@ -101,9 +113,16 @@ layout-engine/scale revision (L1/L2/L3, B1/B2): `C:\Users\gmgyt\.claude\plans\le
   - Structural edits (block added/removed) = full `Rebuild`, no splice. Fine at a few hundred blocks.
   - **The cache is NOT headless-testable** (unlike the measurer): it holds a `RichTextDocument`, whose
     blocks *are* controls, and reaches through them for run text + heading level. Consequence of the
-    P0 "model is the control tree" decision, not a fixable oversight. Compile-verified only;
-    behaviour lands on the in-app profiling platform.
+    P0 "model is the control tree" decision, not a fixable oversight.
+  - **Geometry is now verified in-app** (2026-07-31, at P3): `CharToPoint → HitTest → CharToPoint`
+    over every caret slot returns the identical point — 608/608 on the sample note, 49,984/49,984 on
+    the 400-block stress note. Supersedes the earlier "compile-verified only" note. The cheap way to
+    re-run it is a temporary loop in `SyncVisible`; it needs no input and no eyeballing.
   - **Remaining before it means anything:** nothing calls it — L2 is what makes the view consume it.
+- **L2 — REVERTED 2026-08-07.** Everything in this entry is history: `TextRunControl`,
+  `DocumentCanvasControl`, `SegmentKey`, `SyncVisible`/`Materialize`/`Release` and `IDocumentPlaced`
+  are deleted. Its measurements (57–59 strips flat, no leak, converges in 2 `Arrange` calls) were
+  real and are kept only as evidence about the old design.
 - **L2 — done, view side (2026-07-31). NOT GUI-verified.**
   `TextRunControl` + `DocumentCanvasControl` + a cache-driven materialization diff in
   `DocumentEditorControl`. `TextBlockControl`/`TextInputControl` are no longer used to render a note.
@@ -156,9 +175,38 @@ layout-engine/scale revision (L1/L2/L3, B1/B2): `C:\Users\gmgyt\.claude\plans\le
     `DocumentXml.AttachChild`'s "most-specific accepting list" hack, which exists *only* because
     blocks/runs inherit `Entity.children`; (b) keep the inheritance, stop the `text` setter building
     glyphs.
-- **P3** — editing, rebased onto the cache: `DocumentEditSession` (working copy) + `DocumentCursor`
-  + `CaretControl` (position via cache char→point); wire char input drain + special keys; Ctrl+S
-  writes XML. Verify: type/delete across runs, round-trip file.
+- **P3 — click→caret and char input both working (2026-08-07).** Rebuilt on control-local geometry:
+  `TextControl.OffsetAt`/`CaretAt`, caret placed by `DocumentControl`, `cursorPosition` on
+  `TextControl`. Typing works — the `Decorations.Write` blocker below is resolved. Remaining:
+  `DocumentEditSession` (working copy), Ctrl+S, special keys. See [[text-layout-one-measurer]].
+  The 2026-07-31 entry below is history.
+- **P3 — click→caret done (2026-07-31); editing not started.**
+  - `CaretControl` + `IDocumentPlaced` (the canvas positions anything implementing it from cache
+    coordinates — strips, caret, and L3 page panels later). Caret is a child of the **canvas**, not
+    the editor, so it scrolls with the document for free.
+  - **Editability boundary (user rule, 2026-07-31):** turning a left-click into a caret lives in
+    `DocumentEditorControl.ResolveOnClick` and **nowhere else**. Document names, toolbars and the
+    file tree are separate controls with no such behaviour, so nothing is editable by accident.
+    Renaming those is a right-click concern → `ContextMenuControl` (**exists** as a stub with an
+    `Open()` that only logs; `UICollisionHandling.defaultContextMenu` field already declared).
+  - **How the click gets there:** `UICollisionHandling.FindDeepestValid` returns the **deepest** hit,
+    which inside the document is a `GlyphControl`. It bubbles (`BubbleAll` in its ctor) — so
+    `TextRunControl` and `DocumentCanvasControl` now call `BubbleAll()` too, or the click dies at the
+    strip. The glyph is *not* the hit-test: it only says "the document was clicked", and the caret
+    position comes from `cache.HitTest`, which works for text that was never materialized.
+  - **Coordinate spaces coincide.** `WriteArrangedTransform` writes `finalRect` straight into
+    `transform.position/scale`, and `InputHandler.mousePos` is raw GLFW window pixels — so layout
+    space **is** mouse space. Screen→document = subtract `canvas.arrangedRect` origin (already
+    scroll-shifted). Use `InputHandler.mousePos`, **not** `ResolveOnClick`'s `oldPos`: Engine sets
+    `uiCollisionHandler.lastMousePos` *after* click resolution, so `oldPos` lags by a frame.
+  - A rewrap keeps the cursor valid — block/run/charOffset are independent of where lines break —
+    so the caret is re-resolved via `CharToPoint`, not reset.
+  - **Verified: caret round-trip on real font metrics.** `CharToPoint → HitTest → CharToPoint` over
+    every caret slot: **608/608 exact** on the sample note, **49,984/49,984 exact** on the 400-block
+    stress note. This is the first real check of L1's geometry, which until now was compile-verified
+    only — it exercises midpoint snapping, the wrap-boundary rule and run boundaries.
+  - **Remaining:** `DocumentEditSession` (working copy), char input drain + special keys, Ctrl+S.
+    See the char-routing gotcha below — the existing drain does not reach the document.
 - **P4** — selection (cache-resolved drag incl. auto-scroll) + Ctrl+B/I run split/merge (live)
   + heading/list block ops.
 - **B1** — `CodeBlock` (Language attr, monospace, no wrap, view-time syntax coloring — never
@@ -215,15 +263,54 @@ layout-engine/scale revision (L1/L2/L3, B1/B2): `C:\Users\gmgyt\.claude\plans\le
   `DataManager.FrameEdge`. **And there is no per-control Vulkan buffer left to leak at all** — `7b5e032`
   folded `ControlData` into the pooled SSBO, so the pool row *is* the GPU memory. Landed across
   `af87d99`/`6edf8bb`/`7b5e032`, not as document work.
-- **Char input no longer reaches the document.** The drain is `Periodic/Editor/Decorations.Write` —
-  an `[A_XSDActionDependency("Write", category:"Input")]` bound to the `AnySymbol` keybind — and it
-  casts `UICollisionHandling.activeControl as TextControl`. `activeControl` is set to `hovering` (the
-  glyph), then `GlyphControl.OnContextAdded` **reassigns it to `parent`**, which used to be a
-  `TextInputControl` (a `TextControl`) and after L2 is a `TextRunControl` (not one), so the cast
-  fails. Nothing regressed that worked — the view is read-only — but P3 has to solve routing, and the
-  drain also sits in the **app** while the Engine/Periodic boundary puts char routing in the engine.
-  Note **`ICharacterInput` does not exist** despite CLAUDE.md describing it; P3 is designing that
-  interface, not using it. (CLAUDE.md's `Keys.AnySymbol` claim *is* accurate.)
+- **Glyphs are repointed, not replaced, on a text write** (2026-07-31, engine-wide — not document-only).
+  `GlyphControl.SetCharacter(char, FontAsset, int px)` is the extracted ctor body; the ctor is now
+  `BubbleAll()` + a call to it. `TextControl.SyncGlyphs` calls it on a positional mismatch instead of
+  destroying and constructing a control.
+  - **Why.** `SyncGlyphs` diffs by position (`children[i].character == target[i]`), so inserting one
+    character mismatches *every* position after it. Each replacement was a `pool.Allocate` (possibly a
+    pool grow → full descriptor rebuild), three registry dictionary lookups (`ControlStyle.Default()`,
+    the `"default"` texture, the `"ControlSampler"` sampler), an `EntityRegistry.AddToGroup`, a matrix
+    bake, an O(n) `parent.children.Remove`, a deferred free compacted at `DataManager.FrameEdge`, and
+    one `MarkOrderDirty` → full DFS permute of the UI pool. Typing one character at the head of a
+    500-character paragraph cost all of that ×500, **per keystroke**.
+  - **After.** Everything a `GlyphControl` holds derives from `(character, font, size)`, so a rewrite is
+    field writes plus a UV update. Controls are now only ever **appended to or trimmed from the tail** —
+    the interior is adjusted in place, keeping its pool row, its tree position and its paint order.
+  - **Trap that bit during the change:** `ascent`/`descent` are only assigned inside `if (range != 0)`.
+    On a fresh control the miss is harmless (fields default to 0); on a *reused* one it silently keeps
+    the previous character's baseline. `SetCharacter` clears both before the test. Any field added to
+    `GlyphControl` later must be unconditionally assigned there for the same reason.
+  - `SetCharacter` ends in `InvalidateLayout()` — the `preferredWidth`/`preferredHeight` setters
+    invalidate on their own, but only when the number changes, and two characters routinely share a
+    cell size while differing in advance, bearing and UVs.
+  - **Not covered:** the diff is still positional, so an insert still *visits* every later character
+    (cheaply). Prefix/suffix trimming would make it O(edit) — considered and deliberately not taken.
+    `TextRunControl.SetSegment` still destroys-then-rebuilds, but `Materialize` guards it with
+    `if (!isNew) return;`, so it only ever runs on a control with no children — its destroy loop is
+    dead in practice, and it becomes live only when strip pooling lands.
+  - **Also not covered — `ShortTextControl` is separately broken.** It *hides* `TextControl.text` and
+    `.fontSize` (CS0108 ×2), so `SyncGlyphs` never runs for it at all, and its own setter appends glyphs
+    without discarding the old ones — setting its text twice leaves both strings drawing. Pre-existing,
+    left alone deliberately.
+- **Char input — RESOLVED 2026-08-07.** The cast now succeeds because a glyph's parent is a
+  `TextRun : TextInputControl : TextControl` again. `isEditing` is set by
+  `DocumentEditorControl.ResolveOnClick`, not by the run, which keeps the editability boundary.
+  Still true: the drain lives in the app, and **`ICharacterInput` does not exist**. Original note:
+- **Char input does not reach the document, and two CLAUDE.md claims about it are wrong**
+  (found 2026-07-31). The drain is `Periodic/Editor/Decorations.Write` — an
+  `[A_XSDActionDependency("Write", category:"Input")]` bound to the `AnySymbol` keybind. It casts
+  `UICollisionHandling.activeControl as TextControl`, checks `isEditing`, then `WriteChar`s the
+  queue. Two problems for P3:
+  - `activeControl` is set to `hovering` (the glyph), then `GlyphControl.OnContextAdded` **reassigns
+    it to `parent`** — which used to be a `TextInputControl` (a `TextControl`) and is now a
+    `TextRunControl` (not one). So the cast fails and typing into a note is a silent no-op.
+  - The drain lives in the **app**, but the Engine/Periodic boundary puts char routing in the engine.
+  - **`ICharacterInput` does not exist** — CLAUDE.md describes it as the interface to implement for
+    raw char input. There is no such type anywhere in the solution. Whatever P3 does here is
+    designing it, not using it. (CLAUDE.md's `Keys.AnySymbol` claim *is* accurate.)
+- **`fontName` — RESOLVED 2026-08-07.** It lives on `TextControl` and resolves `_fontAsset`, so
+  every text control measures and draws with the same font. Original note:
 - **`fontName` is dead in the view but live in the cache** (found 2026-07-31, partly fixed).
   `TextRunControl.ResolveFont` now mirrors `FontAssetGlyphMetrics.Resolve`, so the **document** path
   is correct. The gap below still applies to `TextControl`/`TextInputControl` everywhere else.

@@ -19,6 +19,27 @@ namespace ArctisAurora.Core.Registry.Assets
         internal Sampler textureSampler;
         internal Image<Rgba32> image;
 
+        #region ---- bindless texture table ----
+        public const uint MaxTextures = 256;
+
+        private static readonly List<TextureAsset> _table = new List<TextureAsset>();
+        public static IReadOnlyList<TextureAsset> Table => _table;
+
+        public static int TableVersion { get; private set; }
+
+        public uint textureIndex { get; private set; }
+
+        private void RegisterInTable()
+        {
+            if (_table.Count >= MaxTextures)
+                throw new Exception($"Texture table is full ({MaxTextures}). Raise TextureAsset.MaxTextures.");
+
+            textureIndex = (uint)_table.Count;
+            _table.Add(this);
+            TableVersion++;
+        }
+        #endregion
+
         public TextureAsset() { }
         public TextureAsset(string name)
         {
@@ -45,6 +66,7 @@ namespace ArctisAurora.Core.Registry.Assets
 
                 AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image, Format.R8G8B8A8Srgb, ref Renderer.transferQueue, ref Renderer.transferCommandPool);
                 AVulkanBufferHandler.CreateImageView(Renderer.vk, ref Renderer.logicalDevice, ref _textureImage, ref textureImageView, Format.R8G8B8A8Srgb, ImageAspectFlags.ColorBit);
+                RegisterInTable();
 
                 return;
             }
@@ -60,7 +82,8 @@ namespace ArctisAurora.Core.Registry.Assets
                 image = Image.Load<Rgba32>(path);
                 AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image, Format.R8G8B8A8Srgb, ref Renderer.transferQueue, ref Renderer.transferCommandPool);
                 AVulkanBufferHandler.CreateImageView(Renderer.vk, ref Renderer.logicalDevice, ref _textureImage, ref textureImageView, Format.R8G8B8A8Srgb, ImageAspectFlags.ColorBit);
-                
+                RegisterInTable();
+
                 return;
             }
 
@@ -75,6 +98,7 @@ namespace ArctisAurora.Core.Registry.Assets
                 image = Image.Load<Rgba32>(path);
                 AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image, Format.R8G8B8A8Srgb, ref Renderer.transferQueue, ref Renderer.transferCommandPool);
                 AVulkanBufferHandler.CreateImageView(Renderer.vk, ref Renderer.logicalDevice, ref _textureImage, ref textureImageView, Format.R8G8B8A8Srgb, ImageAspectFlags.ColorBit);
+                RegisterInTable();
 
                 return;
             }
