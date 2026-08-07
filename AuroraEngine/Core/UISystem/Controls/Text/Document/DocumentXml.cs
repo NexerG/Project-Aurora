@@ -1,3 +1,4 @@
+using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using System.Collections;
@@ -95,23 +96,17 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 
         private static void AttachChild(object parent, object child)
         {
-            // Blocks and runs are now VulkanControls, so they inherit Entity's generic `children`
-            // (List<Entity>) / `_components` lists alongside the document model's own typed lists
-            // (`blocks`, `inlines`). Pick the most-specific accepting list so a <Run> lands in
-            // `inlines` (element type TextRun) rather than the inherited `children` (element type Entity).
+            // control children go through AddChild, for the parent pointer and tree order
+            if (parent is VulkanControl control && child is Entity entity)
+            {
+                control.AddChild(entity);
+                return;
+            }
+
             FieldInfo list = ChildListFields(parent.GetType())
-                .Where(f => f.FieldType.GetGenericArguments()[0].IsAssignableFrom(child.GetType()))
-                .OrderByDescending(f => InheritanceDepth(f.FieldType.GetGenericArguments()[0]))
-                .FirstOrDefault()
+                .FirstOrDefault(f => f.FieldType.GetGenericArguments()[0].IsAssignableFrom(child.GetType()))
                 ?? throw new Exception($"{parent.GetType().Name} has no child list accepting {child.GetType().Name}.");
             ((IList)list.GetValue(parent)).Add(child);
-        }
-
-        private static int InheritanceDepth(Type type)
-        {
-            int depth = 0;
-            for (Type b = type; b != null; b = b.BaseType) depth++;
-            return depth;
         }
         #endregion
 
@@ -142,9 +137,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 if (value != null) element.Add(WriteElement(value));
             }
 
+            // only XSD-typed children are content; a run's children are glyphs
             foreach (FieldInfo list in ChildListFields(node.GetType()))
                 foreach (object child in (IEnumerable)list.GetValue(node))
-                    element.Add(WriteElement(child));
+                    if (child.GetType().GetCustomAttribute<A_XSDTypeAttribute>(false) != null)
+                        element.Add(WriteElement(child));
 
             return element;
         }
@@ -165,7 +162,12 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>);
 
         private static IEnumerable<MemberInfo> ScalarMembers(Type type) =>
-            AnnotatedMembers(type).Where(m => !IsComplexMember(MemberType(m)) && !IsListMember(MemberType(m)));
+            AnnotatedMembers(type).Where(m => !IsComplexMember(MemberType(m)) && !IsListMember(MemberType(m))
+                                              && !IsControlChrome(m));
+
+        // Members declared on VulkanControl or above; a note stores content, not control chrome.
+        private static bool IsControlChrome(MemberInfo member) =>
+            member.DeclaringType.IsAssignableFrom(typeof(VulkanControl));
 
         private static IEnumerable<MemberInfo> ComplexMembers(Type type) =>
             AnnotatedMembers(type).Where(m => IsComplexMember(MemberType(m)));

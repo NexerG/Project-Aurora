@@ -18,26 +18,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
 
         [A_XSDElementProperty("RunColorHex", "TextEditor")]
         public string runColorHex { get; set; } = "#FFFFFF";
-
-        [A_XSDElementProperty("FontName", "TextEditor")]
-        public string fontName { get; set; } = "default";
         #endregion
 
-        #region ---- wrapping state ----
-        // Set by parent TextBlockControl before Measure — how far into the line we start
-        public float firstLineOffset;
-
-        // Set during Measure — where our last line ends, so parent knows where to place next sibling
-        public float lastLineEndX;
-        public float lastLineHeight;
-        public float minLineHeight = 0f;
-        #endregion
-
-        #region ---- cursor ----
-        public int cursorPosition = 0;
-        #endregion
-
-        public TextInputControl() 
+        public TextInputControl()
         {
         }
 
@@ -178,110 +161,6 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
         public void OnContextRemoved()
         {
             CommitEdit();
-        }
-
-        // One wrapped line's glyphs plus the line's shared baseline metrics.
-        private sealed class GlyphLine
-        {
-            public List<(GlyphControl glyph, float x)> glyphs = new();
-            public float ascent;
-            public float descent;
-        }
-
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
-        {
-            float fullWidth = availableSize.X;
-            float cursorX = firstLineOffset;
-            float lineAscent = 0f;
-            float lineDescent = 0f;
-            float totalHeight = 0f;
-            float maxWidth = 0f;
-            bool firstLine = true;
-
-            for (int i = 0; i < children.Count; i++)
-            {
-                if (children[i] is not GlyphControl glyph) continue;
-
-                glyph.Measure(new Vector2D<float>(float.MaxValue, float.MaxValue));
-
-                // Advance, not ink width: the pen moves by the glyph's advance regardless of how
-                // wide its ink happens to be.
-                if (cursorX + glyph.advance > fullWidth && cursorX > (firstLine ? firstLineOffset : 0))
-                {
-                    // Line break
-                    if (cursorX > maxWidth) maxWidth = cursorX;
-                    totalHeight += MathF.Max(lineAscent + lineDescent, minLineHeight);
-                    cursorX = 0f;
-                    lineAscent = 0f;
-                    lineDescent = 0f;
-                    firstLine = false;
-                }
-
-                cursorX += glyph.advance;
-                if (glyph.ascent > lineAscent) lineAscent = glyph.ascent;
-                if (glyph.descent > lineDescent) lineDescent = glyph.descent;
-            }
-
-            // Last line
-            if (cursorX > maxWidth) maxWidth = cursorX;
-            totalHeight += MathF.Max(lineAscent + lineDescent, minLineHeight);
-            lastLineEndX = cursorX;
-            lastLineHeight = lineAscent + lineDescent;
-
-            float w = preferredWidth > 0 ? MathF.Max(preferredWidth, maxWidth) : maxWidth;
-            float h = preferredHeight > 0 ? MathF.Max(preferredHeight, totalHeight) : totalHeight;
-
-            DesiredSize = new Vector2D<float>(w, h);
-            isMeasureDirty = false;
-            return DesiredSize;
-        }
-
-        public override void Arrange(LayoutRect finalRect)
-        {
-            arrangedRect = finalRect;
-            WriteArrangedTransform(finalRect);
-
-            ClipRect = parent is VulkanControl p
-                ? (clipOutOfBounds ? LayoutRect.Intersect(finalRect, p.ClipRect) : p.ClipRect)
-                : finalRect;
-
-            float fullWidth = finalRect.width;
-
-            List<GlyphLine> lines = new List<GlyphLine>();
-            GlyphLine line = new GlyphLine();
-            float cursorX = firstLineOffset;
-            bool firstLine = true;
-
-            for (int i = 0; i < children.Count; i++)
-            {
-                if (children[i] is not GlyphControl glyph) continue;
-
-                if (cursorX + glyph.advance > fullWidth && cursorX > (firstLine ? firstLineOffset : 0))
-                {
-                    lines.Add(line);
-                    line = new GlyphLine();
-                    cursorX = 0f;
-                    firstLine = false;
-                }
-
-                // Store the PEN position; the ink offset is applied at Arrange time.
-                line.glyphs.Add((glyph, cursorX));
-                if (glyph.ascent > line.ascent) line.ascent = glyph.ascent;
-                if (glyph.descent > line.descent) line.descent = glyph.descent;
-                cursorX += glyph.advance;
-            }
-            lines.Add(line);
-
-            float cursorY = finalRect.y;
-            foreach (GlyphLine l in lines)
-            {
-                float baselineY = cursorY + l.ascent;
-                foreach ((GlyphControl glyph, float x) in l.glyphs)
-                    glyph.Arrange(new LayoutRect(finalRect.x + x + glyph.bearingX, baselineY - glyph.ascent, glyph.DesiredSize.X, glyph.DesiredSize.Y));
-                cursorY += MathF.Max(l.ascent + l.descent, minLineHeight);
-            }
-
-            isArrangeDirty = false;
         }
     }
 }

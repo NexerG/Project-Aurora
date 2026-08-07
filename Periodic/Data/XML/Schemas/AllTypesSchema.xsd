@@ -5,7 +5,6 @@
     <xs:restriction base="xs:string">
       <xs:enumeration value="Panel" />
       <xs:enumeration value="Window" />
-      <xs:enumeration value="ShortText" />
       <xs:enumeration value="TextBlock" />
       <xs:enumeration value="TextBox" />
       <xs:enumeration value="TextInput" />
@@ -100,7 +99,6 @@
     <xs:restriction base="xs:string">
       <xs:enumeration value="Panel" />
       <xs:enumeration value="Window" />
-      <xs:enumeration value="ShortText" />
       <xs:enumeration value="TextBlock" />
       <xs:enumeration value="TextBox" />
       <xs:enumeration value="TextInput" />

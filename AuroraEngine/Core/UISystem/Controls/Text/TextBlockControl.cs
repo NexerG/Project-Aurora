@@ -1,7 +1,6 @@
 ﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.UISystem.Controls.Containers;
-using ArctisAurora.Core.UISystem.Controls.Text.Editing;
 using ArctisAurora.EngineWork.Registry;
 using Silk.NET.Maths;
 
@@ -28,8 +27,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             {
                 if (children[i] is not VulkanControl child) continue;
 
-                // Tell TextInputControls where they start on the line
-                if (child is TextInputControl input)
+                // Tell text controls where they start on the line
+                if (child is TextControl input)
                     input.firstLineOffset = cursorX;
 
                 Vector2D<float> desired = child.Measure(new Vector2D<float>(inner.width, float.MaxValue));
@@ -38,7 +37,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                 float childH = desired.Y + child.margin.totalVertical;
 
                 // For non-wrapping children (buttons etc.), check if they fit
-                if (child is not TextInputControl)
+                if (child is not TextControl)
                 {
                     if (cursorX + childW > inner.width && cursorX > 0)
                     {
@@ -53,9 +52,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                 }
                 else
                 {
-                    // TextInputControl handled its own wrapping.
+                    // The text control handled its own wrapping.
                     // It may span multiple lines. We need its last line position.
-                    TextInputControl inp = (TextInputControl)child;
+                    TextControl inp = (TextControl)child;
 
                     // If it wrapped, the height includes all lines
                     if (childH > lineHeight) lineHeight = childH;
@@ -103,11 +102,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             {
                 if (children[i] is not VulkanControl child) continue;
 
-                if (child is TextInputControl input)
+                if (child is TextControl input)
                 {
                     input.firstLineOffset = cursorX;
 
-                    float cx = inner.x; // TextInput positions its own glyphs using firstLineOffset
+                    float cx = inner.x; // the text control positions its own glyphs using firstLineOffset
                     float cy = cursorY;
                     child.Arrange(new LayoutRect(cx, cy, inner.width, child.DesiredSize.Y));
 

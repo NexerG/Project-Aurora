@@ -1,6 +1,7 @@
 ﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.UISystem.Controls.Containers;
+using ArctisAurora.Core.UISystem.Controls.Text.Document;
 using ArctisAurora.EngineWork.Registry;
 using Silk.NET.Maths;
 using ArctisAurora.Core.Registry.Assets;
@@ -12,6 +13,22 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         internal string newEdit = string.Empty;
         public bool isEditing = false;
         private FontAsset _fontAsset;
+
+        // measurement
+        private static FontAssetGlyphMetrics metrics;
+        private readonly TextMeasurer.Run[] runBuffer = new TextMeasurer.Run[1];
+        protected BlockLayout layout;
+
+        #region ---- line flow ----
+        // set by the parent before Measure; reported back by Measure
+        public float firstLineOffset;
+        public float lastLineEndX;
+        public float lastLineHeight;
+        public float lineHeight = 1.5f;
+
+        // caret offset, in characters
+        public int cursorPosition = 0;
+        #endregion
 
         [A_XSDElementProperty("Text", "UI", "The string to display.")]
         public string text
@@ -34,16 +51,28 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             {
                 if (field == value) return;
                 field = value;
-                //RebuildGlyphs();
-                //SyncGlyphs();
+                RepointGlyphs();
                 InvalidateLayout();
             }
         } = 16;
 
+        [A_XSDElementProperty("FontName", "UI", "Name of the font asset to draw with.")]
+        public string fontName
+        {
+            get => field;
+            set
+            {
+                if (field == value) return;
+                field = value;
+                _fontAsset = ResolveFont(value);
+                RepointGlyphs();
+                InvalidateLayout();
+            }
+        } = "default";
+
         public TextControl()
         {
-            Dictionary<string, FontAsset> d = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset));
-            _fontAsset = d["default"];
+            _fontAsset = ResolveFont(fontName);
             maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");
         }
 
@@ -66,35 +95,29 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         // Drop a glyph out of the tree for good: pool row, Vulkan buffer and registry entries all
         // go at the next frame edge. parent is cleared first because Destroy() would otherwise
         // remove the glyph from `children` itself, shifting the list under the loop editing it.
-        //
-        // Detaching without destroying is what used to happen here, and it leaked twice over: the
-        // glyph kept its UIControls slot forever (so the pool only ever grew, and every growth
-        // forced a full descriptor rebuild) and it stayed unreachable from the control tree, which
-        // is exactly the case UI.DFSOrder cannot produce an order for.
         private static void DiscardGlyph(Entity glyph)
         {
             glyph.parent = null;
             glyph.Destroy();
         }
 
-        // NOTE: dead — every caller is commented out in favour of SyncGlyphs. Kept in sync with it
-        // anyway so uncommenting it does not reintroduce the leak.
-        private void RebuildGlyphs()
+        // Mirrors FontAssetGlyphMetrics.Resolve.
+        private static FontAsset ResolveFont(string name)
         {
-            foreach (Entity glyph in children)
-                DiscardGlyph(glyph);
-            children.Clear();
+            Dictionary<string, FontAsset> fonts =
+                AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset));
 
-            if (_fontAsset == null || string.IsNullOrEmpty(text)) return;
+            return fonts.TryGetValue(name ?? "default", out FontAsset named) ? named : fonts["default"];
+        }
 
-            foreach (char c in text)
-            {
-                GlyphControl glyph = new GlyphControl(c, _fontAsset, fontSize);
-                glyph.parent = this;
-                children.Add(glyph);
-            }
-            MarkTreeOrderDirty();
-            InvalidateLayout();
+        // Rewrites every glyph at the current font and size.
+        private void RepointGlyphs()
+        {
+            if (_fontAsset == null) return;
+
+            foreach (Entity child in children)
+                if (child is GlyphControl glyph)
+                    glyph.SetCharacter(glyph.character, _fontAsset, fontSize);
         }
 
         private void SyncGlyphs()
@@ -125,7 +148,20 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                     if (existing != null && existing.character == target[i])
                         continue; // same char — skip
 
-                    // Different char — replace in place
+                    if (existing != null)
+                    {
+                        // Different char — repoint the control rather than swap it out. The diff is
+                        // positional, so inserting a character mismatches every position after it;
+                        // replacing them meant one pool allocation, one deferred free and an O(n)
+                        // list removal per character, so typing at the head of a long paragraph cost
+                        // the whole tail. Rewriting them costs a field update each, and glyphs are
+                        // only ever appended to or trimmed from the end.
+                        existing.SetCharacter(target[i], _fontAsset, fontSize);
+                        continue;
+                    }
+
+                    // Not a glyph at all — AddChild accepts any VulkanControl, and there is nothing
+                    // to repoint on one, so this case still has to swap.
                     Entity replaced = children[i];
                     GlyphControl replacement = new GlyphControl(target[i], _fontAsset, fontSize);
                     replacement.parent = this;
@@ -156,11 +192,6 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             InvalidateLayout();
         }
 
-        // These three only edit the string — the setter runs SyncGlyphs, which owns glyph creation
-        // and disposal. InsertGlyph used to also build a GlyphControl and parent it here without
-        // ever adding it to `children`; SyncGlyphs then built the real one, so every keystroke
-        // leaked an entire control (pool slot, SSBO and a "Controls" group entry that was still
-        // being drawn) that nothing could reach to destroy.
         internal void InsertGlyph(int index, char c)
         {
             text = text.Insert(index, c.ToString());
@@ -177,31 +208,33 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             text = text.Remove(start, count);
         }
 
-        // Measure: sum glyph widths, take max height
+        // Measures the glyph quads, then wraps into lines via TextMeasurer.
         public override Vector2D<float> Measure(Vector2D<float> availableSize)
         {
-            float totalWidth = 0f;
-            float maxHeight = 0f;
-
             foreach (Entity child in children)
-            {
-                if (child is not VulkanControl vc) continue;
-                Vector2D<float> desired = vc.Measure(new Vector2D<float>(availableSize.X - totalWidth, availableSize.Y));
-                // Glyphs advance by their typographic advance; anything else by its own width.
-                totalWidth += vc is GlyphControl g ? g.advance : desired.X;
-                if (desired.Y > maxHeight) maxHeight = desired.Y;
-            }
+                if (child is VulkanControl vc)
+                    vc.Measure(new Vector2D<float>(float.MaxValue, float.MaxValue));
 
-            // Respect explicit preferred size if set, otherwise size-to-content
-            float w = preferredWidth > 0 ? preferredWidth : totalWidth;
-            float h = preferredHeight > 0 ? preferredHeight : maxHeight;
+            metrics ??= new FontAssetGlyphMetrics();
+
+            float contentWidth = preferredWidth > 0 ? preferredWidth : availableSize.X;
+
+            runBuffer[0] = new TextMeasurer.Run(text ?? string.Empty, fontName, fontSize);
+            layout = TextMeasurer.MeasureBlock(runBuffer, contentWidth, metrics, lineHeight, firstLineOffset);
+
+            TextLine last = layout.lines[layout.lines.Count - 1];
+            lastLineEndX = layout.lines.Count == 1 ? firstLineOffset + last.width : last.width;
+            lastLineHeight = last.height;
+
+            float w = preferredWidth > 0 ? preferredWidth : layout.width;
+            float h = preferredHeight > 0 ? preferredHeight : layout.height;
 
             DesiredSize = new Vector2D<float>(w, h);
             isMeasureDirty = false;
             return DesiredSize;
         }
 
-        // Arrange: place glyphs left-to-right, vertically centered within the row
+        // Places the glyphs on the lines Measure produced.
         public override void Arrange(LayoutRect finalRect)
         {
             // Let base handle own transform + ClipRect
@@ -215,28 +248,112 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             else
                 ClipRect = finalRect;
 
-            // Flow children left-to-right inside padding
+            isArrangeDirty = false;
+            if (layout == null) return;
+
             LayoutRect innerRect = finalRect.Shrink(padding);
-            float cursor = innerRect.x;
 
-            foreach (Entity child in children)
+            for (int l = 0; l < layout.lines.Count; l++)
             {
-                if (child is not VulkanControl vc) continue;
+                TextLine line = layout.lines[l];
 
-                float glyphW = vc.DesiredSize.X;
-                float glyphH = vc.DesiredSize.Y;
+                float baselineY = innerRect.y + line.baseline;
+                float pen = innerRect.x + (l == 0 ? firstLineOffset : 0f);
 
-                // Vertically center each glyph in the row
-                float cy = innerRect.y + (innerRect.height - glyphH) * 0.5f;
+                foreach (LineSegment segment in line.segments)
+                {
+                    for (int k = 0; k < segment.charCount; k++)
+                    {
+                        int index = segment.charStart + k;
+                        if (index >= children.Count) return;
+                        if (children[index] is not GlyphControl glyph) continue;
 
-                // Ink sits at pen + bearing; the pen then moves by the advance.
-                GlyphControl glyph = vc as GlyphControl;
-                vc.Arrange(new LayoutRect(cursor + (glyph?.bearingX ?? 0f), cy, glyphW, glyphH));
-                cursor += glyph?.advance ?? glyphW;
+                        glyph.Arrange(new LayoutRect(pen + glyph.bearingX, baselineY - glyph.ascent,
+                            glyph.DesiredSize.X, glyph.DesiredSize.Y));
+                        pen += glyph.advance;
+                    }
+                }
+            }
+        }
+
+        #region ---- caret geometry ----
+        // Local point to the character slot it belongs to.
+        public int OffsetAt(float localX, float localY)
+        {
+            if (layout == null) return 0;
+
+            int lineIndex = LineAt(localY);
+            TextLine line = layout.lines[lineIndex];
+            TextMeasurer.Run run = new TextMeasurer.Run(text ?? string.Empty, fontName, fontSize);
+            float pen = lineIndex == 0 ? firstLineOffset : 0f;
+
+            foreach (LineSegment segment in line.segments)
+            {
+                for (int i = 0; i < segment.charCount; i++)
+                {
+                    float advance = TextMeasurer.MeasureAdvance(text[segment.charStart + i], run, metrics);
+                    if (localX < pen + advance * 0.5f) return segment.charStart + i;
+                    pen += advance;
+                }
             }
 
-            isArrangeDirty = false;
+            LineSegment lastSegment = line.segments[line.segments.Count - 1];
+            return lastSegment.charStart + lastSegment.charCount;
         }
+
+        // Character slot to a local caret rect.
+        public CaretGeometry CaretAt(int offset)
+        {
+            if (layout == null) return new CaretGeometry(0f, 0f, fontSize * lineHeight, 0f);
+
+            for (int i = 0; i < layout.lines.Count; i++)
+            {
+                TextLine line = layout.lines[i];
+                bool isLastLine = i == layout.lines.Count - 1;
+                float x = i == 0 ? firstLineOffset : 0f;
+
+                for (int s = 0; s < line.segments.Count; s++)
+                {
+                    LineSegment segment = line.segments[s];
+                    int end = segment.charStart + segment.charCount;
+
+                    bool endBelongsHere = isLastLine || s < line.segments.Count - 1;
+                    bool holds = offset >= segment.charStart
+                                 && (offset < end || (endBelongsHere && offset == end));
+
+                    if (!holds)
+                    {
+                        x += segment.width;
+                        continue;
+                    }
+
+                    TextMeasurer.Run run = new TextMeasurer.Run(text ?? string.Empty, fontName, fontSize);
+                    for (int c = segment.charStart; c < offset; c++)
+                        x += TextMeasurer.MeasureAdvance(text[c], run, metrics);
+
+                    return new CaretGeometry(x, line.top, line.height, line.baseline);
+                }
+            }
+
+            TextLine last = layout.lines[layout.lines.Count - 1];
+            return new CaretGeometry(last.width, last.top, last.height, last.baseline);
+        }
+
+        // Rightmost line not past y; clamps at both ends.
+        private int LineAt(float y)
+        {
+            int low = 0;
+            int high = layout.lines.Count - 1;
+
+            while (low < high)
+            {
+                int mid = (low + high + 1) / 2;
+                if (layout.lines[mid].top <= y) low = mid;
+                else high = mid - 1;
+            }
+            return low;
+        }
+        #endregion
 
         public override void AddChild(Entity entity)
         {

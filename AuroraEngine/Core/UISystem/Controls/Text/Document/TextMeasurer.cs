@@ -1,3 +1,4 @@
+using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.EngineWork.Registry;
@@ -62,6 +63,23 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         public float baseline => top + ascent;
     }
 
+    // Where a caret sits, in the space of the control that resolved it.
+    public readonly struct CaretGeometry
+    {
+        public readonly float x;
+        public readonly float top;
+        public readonly float height;
+        public readonly float baseline;
+
+        public CaretGeometry(float x, float top, float height, float baseline)
+        {
+            this.x = x;
+            this.top = top;
+            this.height = height;
+            this.baseline = baseline;
+        }
+    }
+
     public sealed class BlockLayout
     {
         public readonly List<TextLine> lines = new List<TextLine>();
@@ -121,28 +139,31 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         {
             int fontSize = documentLayout.FontSizeFor(block);
 
-            List<Run> runs = new List<Run>(block.inlines.Count);
-            foreach (TextRun inline in block.inlines)
-                runs.Add(new Run(inline.text, inline.fontName, fontSize));
+            List<Run> runs = new List<Run>(block.children.Count);
+            foreach (Entity child in block.children)
+                if (child is TextRun inline)
+                    runs.Add(new Run(inline.text, inline.fontName, fontSize));
 
-            return MeasureBlock(runs, contentWidth, metrics, documentLayout);
+            return MeasureBlock(runs, contentWidth, metrics, documentLayout.lineHeight);
         }
 
-        public static BlockLayout MeasureBlock(IReadOnlyList<Run> runs, float contentWidth, IGlyphMetrics metrics, DocumentLayout documentLayout)
+        // firstLineOffset applies to line 0 only.
+        public static BlockLayout MeasureBlock(IReadOnlyList<Run> runs, float contentWidth, IGlyphMetrics metrics,
+            float lineHeight, float firstLineOffset = 0f)
         {
-            List<PenChar> chars = Flatten(runs, metrics, documentLayout);
+            List<PenChar> chars = Flatten(runs, metrics, lineHeight);
             BlockLayout layout = new BlockLayout();
 
             if (chars.Count == 0)
             {
-                layout.lines.Add(EmptyLine(runs, metrics, documentLayout));
+                layout.lines.Add(EmptyLine(runs, metrics, lineHeight));
                 layout.height = layout.lines[0].height;
                 return layout;
             }
 
             int lineStart = 0;
             int lastBreak = -1;     // last character this line is allowed to end on
-            float penX = 0f;
+            float penX = firstLineOffset;
 
             for (int i = 0; i < chars.Count; i++)
             {
@@ -179,7 +200,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             return layout;
         }
 
-        private static List<PenChar> Flatten(IReadOnlyList<Run> runs, IGlyphMetrics metrics, DocumentLayout documentLayout)
+        private static List<PenChar> Flatten(IReadOnlyList<Run> runs, IGlyphMetrics metrics, float lineHeight)
         {
             List<PenChar> chars = new List<PenChar>();
 
@@ -189,7 +210,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 if (string.IsNullOrEmpty(run.text)) continue;
 
                 // Resolved once per run, not per character — the line box does not vary within a run.
-                (float ascent, float descent) = LineBox(run, metrics, documentLayout);
+                (float ascent, float descent) = LineBox(run, metrics, lineHeight);
 
                 for (int i = 0; i < run.text.Length; i++)
                 {
@@ -205,15 +226,15 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         // multiplier: the box is the font size times the document's multiple, and the font's own
         // ink box is centred in it. The leftover space splits evenly above and below — half-leading —
         // so the baseline lands at a fixed offset for a given style rather than tracking the glyphs.
-        private static (float ascent, float descent) LineBox(Run run, IGlyphMetrics metrics, DocumentLayout documentLayout)
+        private static (float ascent, float descent) LineBox(Run run, IGlyphMetrics metrics, float lineHeight)
         {
             LineMetrics box = metrics.GetLineMetrics(run.fontName);
 
-            float lineHeight = run.fontSize * documentLayout.lineHeight;
-            float halfLeading = (lineHeight - (box.ascent + box.descent) * run.fontSize) * 0.5f;
+            float lineBox = run.fontSize * lineHeight;
+            float halfLeading = (lineBox - (box.ascent + box.descent) * run.fontSize) * 0.5f;
             float ascent = halfLeading + box.ascent * run.fontSize;
 
-            return (ascent, lineHeight - ascent);
+            return (ascent, lineBox - ascent);
         }
 
         // Groups the run of characters into per-run segments and takes the line's box from the
@@ -255,13 +276,13 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 
         // An empty paragraph still occupies a line, or it would be zero tall and drop out of the
         // scroll extent with nowhere for a caret to sit.
-        private static TextLine EmptyLine(IReadOnlyList<Run> runs, IGlyphMetrics metrics, DocumentLayout documentLayout)
+        private static TextLine EmptyLine(IReadOnlyList<Run> runs, IGlyphMetrics metrics, float lineHeight)
         {
             TextLine line = new TextLine();
             line.segments.Add(new LineSegment(0, 0, 0, 0f));
             if (runs.Count == 0) return line;
 
-            (line.ascent, line.descent) = LineBox(runs[0], metrics, documentLayout);
+            (line.ascent, line.descent) = LineBox(runs[0], metrics, lineHeight);
             return line;
         }
 

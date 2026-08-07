@@ -1,3 +1,4 @@
+using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls.Text.Editing;
 
@@ -10,19 +11,47 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
     // elements; this base is the AllowedChildren target the document scans for.
     public abstract class Block : TextBlockControl
     {
+        protected Block()
+        {
+            BubbleAll();
+        }
+
         public abstract Block Clone();
+
+        // Copies the document's line settings down onto the runs.
+        public abstract void ApplyLayout(DocumentLayout layout);
     }
 
-    // A block whose content is a flow of inline runs. Paragraph and Heading share this; the only
-    // difference today is how the view sizes them.
+    // A block whose content is a flow of inline runs, held as its children.
     public abstract class ContentBlock : Block
     {
-        public List<TextRun> inlines = new List<TextRun>();
+        // The index-th run among the children.
+        public TextRun RunAt(int index)
+        {
+            int i = 0;
+            foreach (Entity child in children)
+                if (child is TextRun run && i++ == index) return run;
+
+            return null;
+        }
 
         protected void CloneInlinesInto(ContentBlock copy)
         {
-            foreach (TextRun inline in inlines)
-                copy.inlines.Add(inline.Clone());
+            foreach (Entity child in children)
+                if (child is TextRun inline) copy.AddChild(inline.Clone());
+        }
+
+        public override void ApplyLayout(DocumentLayout layout)
+        {
+            int size = layout.FontSizeFor(this);
+
+            foreach (Entity child in children)
+            {
+                if (child is not TextRun run) continue;
+
+                run.lineHeight = layout.lineHeight;
+                run.fontSize = size;
+            }
         }
     }
 
