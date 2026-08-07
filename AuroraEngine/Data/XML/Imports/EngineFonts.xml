@@ -1,0 +1,11 @@
+﻿<ImportSet xmlns="http://arctisaurora/AuroraAssetRegistryTypes"
+		   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		   xsi:schemaLocation="http://arctisaurora/AuroraAssetRegistryTypes ../Schemas/AssetRegistryTypeSchema.xsd">
+
+	<Charset Name="Latin" Chars=" !&quot;#$%&amp;'()*+,-./0123456789:;&lt;=&gt;?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~ĄČĘĖĮŠŲŪŽąčęėįšųūž"/>
+
+	<FontImport Source="arial.ttf" Charset="Latin" GlyphSize="64"/>
+	<FontImport Source="arialbd.ttf" Charset="Latin" GlyphSize="64"/>
+	<FontImport Source="Electrolize-Regular.ttf" Charset="Latin" GlyphSize="64"/>
+
+</ImportSet>

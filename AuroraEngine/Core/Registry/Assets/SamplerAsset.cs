@@ -53,34 +53,18 @@ namespace ArctisAurora.Core.Registry.Assets
             d.Add(name, this);
         }
 
-        public override void LoadAsset(AbstractAsset asset, string name, string path)
+        // Samplers are not manifest-driven; they load as a set through LoadAll.
+        public override void Load(string name, string source)
         {
-            Dictionary<string, SamplerAsset> dSamplers = AssetRegistries.GetRegistryByValueType<string, SamplerAsset>(typeof(SamplerAsset));
-            string samplerPath = Paths.SamplerDoc(name + ".xml");
-            XElement samplerRoot = XElement.Load(samplerPath);
-            XNamespace sns = samplerRoot.GetDefaultNamespace();
-            foreach (XElement elem in samplerRoot.Elements(sns + "SamplerAsset"))
-            {
-                SamplerAsset sa = new SamplerAsset();
-                sa.name = elem.Attribute("Name").Value;
-                if (elem.Attribute("MagFilter") != null) sa.magFilter = Enum.Parse<SamplerFilter>(elem.Attribute("MagFilter").Value);
-                if (elem.Attribute("MinFilter") != null) sa.minFilter = Enum.Parse<SamplerFilter>(elem.Attribute("MinFilter").Value);
-                if (elem.Attribute("AddressModeU") != null) sa.addressModeU = Enum.Parse<SamplerAddressMode>(elem.Attribute("AddressModeU").Value);
-                if (elem.Attribute("AddressModeV") != null) sa.addressModeV = Enum.Parse<SamplerAddressMode>(elem.Attribute("AddressModeV").Value);
-                if (elem.Attribute("AddressModeW") != null) sa.addressModeW = Enum.Parse<SamplerAddressMode>(elem.Attribute("AddressModeW").Value);
-                if (elem.Attribute("Anisotropy") != null) sa.anisotropyEnable = bool.Parse(elem.Attribute("Anisotropy").Value);
-                if (elem.Attribute("MipmapMode") != null) sa.mipmapMode = Enum.Parse<SamplerMipmapMode>(elem.Attribute("MipmapMode").Value);
-                sa.CreateVulkanSampler();
-                dSamplers.Add(sa.name, sa);
-            }
+            throw new NotImplementedException();
         }
 
-        public override void LoadDefault()
+        public void LoadDefault()
         {
             Console.WriteLine("Failed to load default Sampler asset - Fault NOT IMPLEMENTED");
         }
 
-        public override void LoadAll(string path)
+        public void LoadAll(string path)
         {
             Dictionary<string, SamplerAsset> dSamplers = AssetRegistries.GetRegistryByValueType<string, SamplerAsset>(typeof(SamplerAsset));
 

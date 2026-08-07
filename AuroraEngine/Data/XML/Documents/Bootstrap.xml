@@ -11,6 +11,7 @@
 		<Step Action="Engine.InitWindowing"/>
 		<Step Action="AssetRegistries.InstantiateRegistries"/>
 		<Step Action="AssetRegistries.RegisterSerializableTypes"/>
+		<Step Action="AssetImporter.RunImports"/>
 		<!--pre-renderer-->
 
 		<Step Action="Renderer.InitRenderer"/>
@@ -20,6 +21,7 @@
 		<!--post-renderer-->
 		<Step Action="Context.LoadContexts"/>
 		<Step Action="AssetRegistries.PrepareDefaultAssets"/>
+		<Step Action="AssetRegistries.PreloadAssets"/>
 		<Step Action="AssetRegistries.PrepareAllAssets"/>
 		<!--post-renderer-->
 

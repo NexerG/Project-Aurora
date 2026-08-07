@@ -1,0 +1,14 @@
+﻿<AssetManifest xmlns="http://arctisaurora/AuroraAssetRegistryTypes"
+			   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			   xsi:schemaLocation="http://arctisaurora/AuroraAssetRegistryTypes ../Schemas/AssetRegistryTypeSchema.xsd">
+
+	<Asset Type="AVulkanMesh"  Name="uidefault" Source="Meshes/uiquad.fbx"/>
+
+	<Asset Type="TextureAsset" Name="default"   Source="UIMasks/defaultMask.png"/>
+	<Asset Type="TextureAsset" Name="invisible" Source="UIMasks/invisibleMask.png"/>
+
+	<Asset Type="FontAsset"    Name="default"   Source="Fonts/arial"/>
+	<Asset Type="FontAsset"    Name="arial-b"     Source="Fonts/arialbd"/>
+	<Asset Type="FontAsset"    Name="electrolize" Source="Fonts/Electrolize-Regular"/>
+
+</AssetManifest>

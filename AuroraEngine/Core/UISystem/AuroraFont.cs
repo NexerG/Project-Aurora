@@ -98,9 +98,9 @@ namespace ArctisAurora.Core.UISystem
             }
         }
 
-        internal static void GenerateGlyphAtlas(AuroraFont fontData, string fontName, int perGlyphSize)
+        internal static void GenerateGlyphAtlas(AuroraFont fontData, string fontName, int perGlyphSize, string outputRoot)
         {
-            string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts), fontName);
+            string path = AssetImporter.ResolveSystemFont(fontName);
             AtlasMetaData glyphs = new AtlasMetaData();
             using (BinaryReader reader = new BinaryReader(new FileStream(path, FileMode.Open, FileAccess.Read)))
             {
@@ -206,7 +206,7 @@ namespace ArctisAurora.Core.UISystem
             }
 
             string baseName = fontName.Split('.')[0];
-            string atlasDataPath = Path.Combine(Paths.FONTS, baseName, $"{baseName}.agd"); // aurora glyph data
+            string atlasDataPath = Path.Combine(outputRoot, baseName, $"{baseName}.agd"); // aurora glyph data
             Serializer.SerializeAttributed(glyphs, atlasDataPath);
 
             //here we generate the atlas
@@ -233,19 +233,7 @@ namespace ArctisAurora.Core.UISystem
                 }
             }
 
-            Image<Rgba32> SDF = new Image<Rgba32>(64, 64);
-            Glyph A = glyphs.glyphs[glyphs.chars.IndexOf('A')];
-            for (int i = 0; i < 64; i++)
-            {
-                for (int j = 0; j < 64; j++)
-                {
-                    float value = Math.Clamp(GetClosestDistanceOfChannel(new Vector2D<float>(i / 64f, j / 64f), A, new Vector3D<int>(1, 1, 1)) * 16, -1, 1);
-                    SDF[i, j] = new Rgba32(value, value, value, 1);
-                }
-            }
-            SDF.Save(Path.Combine(Paths.FONTS, baseName, $"SDF_A.png"));
-
-            atlasImage.Save(Path.Combine(Paths.FONTS, baseName, $"{baseName}_atlas.png"));
+            atlasImage.Save(Path.Combine(outputRoot, baseName, $"{baseName}_atlas.png"));
         }
 
         private static ushort GetGlyphIndex(char character, BinaryReader reader, TableEntry cmap)
@@ -831,7 +819,7 @@ namespace ArctisAurora.Core.UISystem
 
         public void Deserialize(string name)
         {
-            string path = Paths.FONTS + $"\\{name}\\{name}.agd";
+            string path = Paths.Font(name, $"{name}.agd");
             using (FileStream fileStream = new FileStream(path, FileMode.Open, FileAccess.Read))
             {
                 BinaryReader reader = new BinaryReader(fileStream, System.Text.Encoding.Unicode);

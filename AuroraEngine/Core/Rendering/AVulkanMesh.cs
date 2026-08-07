@@ -1,4 +1,6 @@
-﻿using ArctisAurora.Core.Registry;
+﻿using ArctisAurora.Core.Filing.Serialization;
+using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using Assimp;
 using Silk.NET.Maths;
@@ -57,7 +59,7 @@ namespace ArctisAurora.EngineWork.Rendering
     }
 
     [A_XSDType("AVulkanMesh", "AssetRegistry")]
-    public class AVulkanMesh
+    public class AVulkanMesh : AbstractAsset
     {
         internal Buffer vertexBuffer;
         internal DeviceMemory _vertexBufferMemory;
@@ -106,6 +108,11 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal Vertex[] _vertices;
         internal uint[] indices;
+
+        public override void Load(string name, string source)
+        {
+            LoadCustomMesh(new MeshImporter().ImportFBX(VirtualFileSystem.ResolveFile(source)));
+        }
 
         internal unsafe void LoadCustomMesh(Scene sc)
         {

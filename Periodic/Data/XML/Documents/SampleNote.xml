@@ -3,11 +3,11 @@
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../Schemas/UITypeSchema.xsd">
   <Heading Level="1">
-    <Run Text="Welcome to Periodic" />
+    <Run Text="Welcome to Periodic" FontName="electrolize" />
   </Heading>
   <Paragraph>
     <Run Text="This note is stored as engine XML and rendered by the document view. " />
-    <Run Text="This run is bold." Bold="true" />
+    <Run Text="This run is bold." Bold="true" FontName="arial-b" />
   </Paragraph>
   <Heading Level="2">
     <Run Text="A second section" />

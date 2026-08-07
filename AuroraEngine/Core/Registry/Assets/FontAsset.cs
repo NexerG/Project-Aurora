@@ -12,11 +12,6 @@ namespace ArctisAurora.Core.Registry.Assets
         public TextureAsset textureAsset;
 
         public FontAsset() { }
-        public FontAsset(string name)
-        {
-            Dictionary<string, FontAsset> d = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset));
-            d.Add(name, this);
-        }
 
         public Glyph GetGlyph(char c)
         {
@@ -30,48 +25,15 @@ namespace ArctisAurora.Core.Registry.Assets
             return null;
         }
 
-        public override void LoadAll(string path)
+        public override void Load(string name, string source)
         {
-            throw new NotImplementedException();
-        }
+            string fontName = source.Substring(source.LastIndexOf('/') + 1);
 
-        public override void LoadAsset(AbstractAsset asset, string name, string path)
-        {
-            Dictionary<string, FontAsset> d = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset));
-            if (d.ContainsKey(name))
-            {
-                asset = d[name];
-                return;
-            }
             atlasMetaData = new AtlasMetaData();
-            atlasMetaData.Deserialize(name);
+            Serializer.DeserializeAttributed(Paths.Font(fontName, fontName + ".agd"), ref atlasMetaData);
 
-            string imagePath = Paths.FONTS + "\\" + name + "\\" + name + "_atlas.png";
-            if (System.IO.File.Exists(imagePath))
-            {
-                textureAsset.LoadAsset(asset, name, path);
-                d[name] = this;
-                return;
-            }
-
-            throw new Exception(name);
-        }
-
-        public override void LoadDefault()
-        {
-            atlasMetaData = new AtlasMetaData();
-            string path = Paths.FONTS + $"\\{"arial"}\\{"arial"}.agd";
-            if(File.Exists(path))
-            {
-                Serializer.DeserializeAttributed(path, ref atlasMetaData);
-            }
-
-            string imagePath = Paths.FONTS + "\\arial\\" + "arial_atlas.png";
-            if (File.Exists(imagePath))
-            {
-                textureAsset = new TextureAsset("uidefault");
-                textureAsset.LoadAsset(this, "arial", imagePath);
-            }
+            textureAsset = new TextureAsset();
+            textureAsset.LoadFile(Paths.Font(fontName, fontName + "_atlas.png"));
         }
 
         /*public FontAsset LoadFont(string name)

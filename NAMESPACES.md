@@ -18,11 +18,13 @@ ArctisAurora.Core.ECS.EngineEntity -> C:\Projects-Repositories\Aurora\Project-Au
 ArctisAurora.Core.ECS.EngineEntity -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\ECS\EngineEntity\LightSourceEntity.cs
 ArctisAurora.Core.Filing -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\FileObject.cs
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\Serialization\AssetImporter.cs
+ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\Serialization\ImportManifest.cs
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\Serialization\MeshImporter.cs
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\Serialization\Paths.cs
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\Serialization\SerializationAttributes.cs
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\Serialization\Serializer.cs
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\Serialization\VirtualFileSystem.cs
+ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\Serialization\XmlReflection.cs
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\Context.cs
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\EntityRegistry.cs
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\XSDGenerator.cs

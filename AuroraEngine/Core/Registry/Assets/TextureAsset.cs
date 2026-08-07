@@ -41,69 +41,22 @@ namespace ArctisAurora.Core.Registry.Assets
         #endregion
 
         public TextureAsset() { }
-        public TextureAsset(string name)
+
+        public override void Load(string name, string source)
         {
-            Dictionary<string, TextureAsset> d = AssetRegistries.GetRegistryByValueType<string, TextureAsset>(typeof(TextureAsset));
-            d.Add(name, this);
+            LoadFile(VirtualFileSystem.ResolveFile(source));
         }
 
-        public override void LoadAll(string path)
+        // Uploads an image and claims a bindless table slot, without taking a registry name.
+        internal void LoadFile(string path)
         {
-            throw new NotImplementedException();
-        }
+            if (!File.Exists(path))
+                throw new Exception("Texture not found: " + path);
 
-        public override void LoadAsset(AbstractAsset asset, string name, string path)
-        {
-            Dictionary<string, TextureAsset> d = AssetRegistries.GetRegistryByValueType<string, TextureAsset>(typeof(TextureAsset));
-            if (d.ContainsKey(name))
-            {
-                asset = d[name];
-                return;
-            }
-            else if (File.Exists(path))
-            { 
-                image = Image.Load<Rgba32>(path);
-
-                AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image, Format.R8G8B8A8Srgb, ref Renderer.transferQueue, ref Renderer.transferCommandPool);
-                AVulkanBufferHandler.CreateImageView(Renderer.vk, ref Renderer.logicalDevice, ref _textureImage, ref textureImageView, Format.R8G8B8A8Srgb, ImageAspectFlags.ColorBit);
-                RegisterInTable();
-
-                return;
-            }
-
-            throw new Exception("Texture not found");
-        }
-
-        public override void LoadDefault()
-        {
-            string path = Paths.UIMASKS + "\\defaultMask.png";
-            if (File.Exists(path))
-            {
-                image = Image.Load<Rgba32>(path);
-                AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image, Format.R8G8B8A8Srgb, ref Renderer.transferQueue, ref Renderer.transferCommandPool);
-                AVulkanBufferHandler.CreateImageView(Renderer.vk, ref Renderer.logicalDevice, ref _textureImage, ref textureImageView, Format.R8G8B8A8Srgb, ImageAspectFlags.ColorBit);
-                RegisterInTable();
-
-                return;
-            }
-
-            throw new Exception("Default texture not found");
-        }
-
-        public void LoadInvisible()
-        {
-            string path = Paths.UIMASKS + "\\invisibleMask.png";
-            if (File.Exists(path))
-            {
-                image = Image.Load<Rgba32>(path);
-                AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image, Format.R8G8B8A8Srgb, ref Renderer.transferQueue, ref Renderer.transferCommandPool);
-                AVulkanBufferHandler.CreateImageView(Renderer.vk, ref Renderer.logicalDevice, ref _textureImage, ref textureImageView, Format.R8G8B8A8Srgb, ImageAspectFlags.ColorBit);
-                RegisterInTable();
-
-                return;
-            }
-
-            throw new Exception("Alphaless texture not found");
+            image = Image.Load<Rgba32>(path);
+            AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image, Format.R8G8B8A8Srgb, ref Renderer.transferQueue, ref Renderer.transferCommandPool);
+            AVulkanBufferHandler.CreateImageView(Renderer.vk, ref Renderer.logicalDevice, ref _textureImage, ref textureImageView, Format.R8G8B8A8Srgb, ImageAspectFlags.ColorBit);
+            RegisterInTable();
         }
     }
 }

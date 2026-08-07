@@ -1,7 +1,7 @@
 ﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.EngineWork.Rendering;
-using Assimp;
+using System.Collections;
 using System.Reflection;
 using System.Xml.Linq;
 using static ArctisAurora.Core.UISystem.Controls.VulkanControl;
@@ -20,6 +20,17 @@ namespace ArctisAurora.EngineWork.Registry
         public AnyXMLType valueType { get; set; }
     }
 
+    [A_XSDType("Asset", "AssetRegistry")]
+    public class AssetManifestEntry
+    {
+        [A_XSDElementProperty("Type", "AssetRegistry")]
+        public string type { get; set; } = string.Empty;
+        [A_XSDElementProperty("Name", "AssetRegistry")]
+        public string name { get; set; } = string.Empty;
+        [A_XSDElementProperty("Source", "AssetRegistry")]
+        public string source { get; set; } = string.Empty;
+    }
+
     [A_XSDType("AssetRegistries", "AssetRegistry")]
     public class AssetRegistries : IXMLParser<AssetRegistries>
     {
@@ -28,6 +39,8 @@ namespace ArctisAurora.EngineWork.Registry
 
         public static Dictionary<Type, object> library = new Dictionary<Type, object>();
         public static Dictionary<string, object> libraryByName = new Dictionary<string, object>();
+
+        private static readonly HashSet<string> reportedMisses = new HashSet<string>();
 
         public static AssetRegistries assetRegistries;
 
@@ -76,8 +89,20 @@ namespace ArctisAurora.EngineWork.Registry
                 {
                     return asset;
                 }
+                RequestLoad(t, name);
+                if (d.TryGetValue("default", out var fallback))
+                {
+                    return fallback;
+                }
             }
             throw new Exception("Asset not found");
+        }
+
+        // Reports a miss once.
+        private static void RequestLoad(Type type, string name)
+        {
+            if (reportedMisses.Add(type.Name + ":" + name))
+                Console.WriteLine($"Asset '{name}' ({type.Name}) is not loaded - falling back to default.");
         }
 
         public static AssetRegistries ParseXML(string xmlName)
@@ -144,38 +169,49 @@ namespace ArctisAurora.EngineWork.Registry
             assetRegistries = ParseXML("Registry.xml");
         }
 
+        // Assets with no file behind them; everything file-backed comes from the manifest.
         [A_XSDActionDependency("AssetRegistries.PrepareDefaultAssets", "Bootstrap")]
         internal static void PrepareDefaultAssets()
         {
             Dictionary<string, AVulkanMesh> dMeshes = GetRegistryByValueType<string, AVulkanMesh>(typeof(AVulkanMesh));
-            AVulkanMesh mesh = AVulkanMesh.LoadDefault();
-            dMeshes.Add("default", mesh);
+            dMeshes.Add("default", AVulkanMesh.LoadDefault());
 
-            AVulkanMesh UIMesh = new AVulkanMesh();
-            MeshImporter importer = new MeshImporter();
-            Scene scene1 = importer.ImportFBX("C:\\Users\\gmgyt\\Desktop\\VienetinisPlaneRetry.fbx");
-            UIMesh.LoadCustomMesh(scene1);
-            dMeshes.Add("uidefault", UIMesh);
-
-            // load default font
-            FontAsset font = new FontAsset("default");
-            font.LoadDefault();
-
-            TextureAsset texture = new TextureAsset("default");
-            texture.LoadDefault();
-
-            TextureAsset invisible = new TextureAsset("invisible");
-            invisible.LoadInvisible();
-
-            // load default style
             Dictionary<string, ControlStyle> dStyles = GetRegistryByValueType<string, ControlStyle>(typeof(ControlStyle));
             ControlStyle style = new ControlStyle();
             style.tint = new Silk.NET.Maths.Vector3D<float>(1, 1, 1);
             dStyles.Add("default", style);
 
-            // load default sampler
             SamplerAsset sampler = new SamplerAsset("default");
             sampler.LoadDefault();
+        }
+
+        [A_XSDActionDependency("AssetRegistries.PreloadAssets", "Bootstrap")]
+        internal static void PreloadAssets()
+        {
+            Dictionary<(string, string), AssetManifestEntry> entries = new Dictionary<(string, string), AssetManifestEntry>();
+            foreach (string file in VirtualFileSystem.EnumerateAll("XML/Assets", "*.xml"))
+            {
+                XElement root = XElement.Load(file);
+                XNamespace ns = root.GetDefaultNamespace();
+                foreach (XElement element in root.Elements(ns + "Asset"))
+                {
+                    AssetManifestEntry entry = new AssetManifestEntry();
+                    XmlReflection.ApplyAttributes(element, entry);
+                    entries.TryAdd((entry.type, entry.name), entry);
+                }
+            }
+
+            foreach (AssetManifestEntry entry in entries.Values)
+            {
+                Type valueType = AnyXMLType.FindType(entry.type)
+                    ?? throw new Exception($"Asset manifest declares unknown type '{entry.type}'.");
+                if (!library.TryGetValue(valueType, out object dict))
+                    throw new Exception($"No registry is declared for asset type '{entry.type}'.");
+
+                AbstractAsset asset = (AbstractAsset)Activator.CreateInstance(valueType);
+                asset.Load(entry.name, entry.source);
+                ((IDictionary)dict).Add(entry.name, asset);
+            }
         }
 
         [A_XSDActionDependency("AssetRegistries.PrepareAllAssets", "Bootstrap")]

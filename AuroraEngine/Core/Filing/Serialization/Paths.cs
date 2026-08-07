@@ -30,6 +30,9 @@ namespace ArctisAurora.Core.Filing.Serialization
         // Resolve a sampler document under Data/XML/Documents/Samplers across all mounts.
         public static string SamplerDoc(string name) => VirtualFileSystem.ResolveFile("XML/Documents/Samplers/" + name);
 
+        // Resolve a cooked font file under Data/Fonts/<name> across all mounts.
+        public static string Font(string name, string file) => VirtualFileSystem.ResolveFile("Fonts/" + name + "/" + file);
+
         private static bool Mount()
         {
             // Primary mount: the running application's own Data folder.

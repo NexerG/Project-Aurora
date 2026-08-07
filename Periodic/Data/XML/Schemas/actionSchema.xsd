@@ -24,6 +24,7 @@
     <xs:restriction base="xs:string">
       <xs:enumeration value="Context.LoadContexts" />
       <xs:enumeration value="EntityRegistry.ParseXML" />
+      <xs:enumeration value="AssetImporter.RunImports" />
       <xs:enumeration value="DataManager.ParseXML" />
       <xs:enumeration value="Engine.SystemSetup" />
       <xs:enumeration value="Engine.InitWindowing" />
@@ -38,6 +39,7 @@
       <xs:enumeration value="AssetRegistries.RegisterSerializableTypes" />
       <xs:enumeration value="AssetRegistries.InstantiateRegistries" />
       <xs:enumeration value="AssetRegistries.PrepareDefaultAssets" />
+      <xs:enumeration value="AssetRegistries.PreloadAssets" />
       <xs:enumeration value="AssetRegistries.PrepareAllAssets" />
     </xs:restriction>
   </xs:simpleType>

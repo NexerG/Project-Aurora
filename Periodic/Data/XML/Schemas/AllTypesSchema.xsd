@@ -43,8 +43,12 @@
       <xs:enumeration value="IParseableTypes" />
       <xs:enumeration value="FontAsset" />
       <xs:enumeration value="TextureAsset" />
+      <xs:enumeration value="Charset" />
+      <xs:enumeration value="FontImport" />
+      <xs:enumeration value="ImportSet" />
       <xs:enumeration value="AVulkanMesh" />
       <xs:enumeration value="AssetEntry" />
+      <xs:enumeration value="Asset" />
       <xs:enumeration value="AssetRegistries" />
       <xs:enumeration value="ControlStyle" />
       <xs:enumeration value="SamplerFilter" />
@@ -153,8 +157,12 @@
       <xs:enumeration value="IParseableTypes" />
       <xs:enumeration value="FontAsset" />
       <xs:enumeration value="TextureAsset" />
+      <xs:enumeration value="Charset" />
+      <xs:enumeration value="FontImport" />
+      <xs:enumeration value="ImportSet" />
       <xs:enumeration value="AVulkanMesh" />
       <xs:enumeration value="AssetEntry" />
+      <xs:enumeration value="Asset" />
       <xs:enumeration value="AssetRegistries" />
       <xs:enumeration value="ControlStyle" />
     </xs:restriction>

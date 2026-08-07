@@ -1,15 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace ArctisAurora.Core.Registry.Assets
 {
     public abstract class AbstractAsset
     {
-        public abstract void LoadAsset(AbstractAsset asset, string name, string path);
-
-        public abstract void LoadDefault();
-
-        public abstract void LoadAll(string path);
+        // Source is a VFS-relative logical path from the asset manifest.
+        public abstract void Load(string name, string source);
     }
 }

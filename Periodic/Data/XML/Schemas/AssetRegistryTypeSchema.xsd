@@ -14,6 +14,34 @@
   <xs:complexType name="TextureAsset">
     <xs:sequence />
   </xs:complexType>
+  <xs:element name="Charset" type="types:Charset" />
+  <xs:complexType name="Charset">
+    <xs:sequence />
+    <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="Chars" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="FontImport" type="types:FontImport" />
+  <xs:complexType name="FontImport">
+    <xs:sequence />
+    <xs:attribute name="Source" type="xs:string" />
+    <xs:attribute name="Charset" type="xs:string" />
+    <xs:attribute name="GlyphSize" type="xs:int" />
+  </xs:complexType>
+  <xs:element name="ImportSet" type="types:ImportSet" />
+  <xs:complexType name="ImportSet">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Charset" type="types:Charset">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="FontImport" type="types:FontImport">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
   <xs:element name="AVulkanMesh" type="types:AVulkanMesh" />
   <xs:complexType name="AVulkanMesh">
     <xs:sequence />
@@ -24,6 +52,13 @@
     <xs:attribute name="Name" type="xs:string" />
     <xs:attribute name="KeyType" type="allTypes:Uncategorized" />
     <xs:attribute name="ValueType" type="allTypes:Uncategorized" />
+  </xs:complexType>
+  <xs:element name="Asset" type="types:Asset" />
+  <xs:complexType name="Asset">
+    <xs:sequence />
+    <xs:attribute name="Type" type="xs:string" />
+    <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="Source" type="xs:string" />
   </xs:complexType>
   <xs:element name="AssetRegistries" type="types:AssetRegistries" />
   <xs:complexType name="AssetRegistries">
