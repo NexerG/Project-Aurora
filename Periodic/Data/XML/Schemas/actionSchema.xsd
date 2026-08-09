@@ -24,6 +24,7 @@
     <xs:restriction base="xs:string">
       <xs:enumeration value="Context.LoadContexts" />
       <xs:enumeration value="EntityRegistry.ParseXML" />
+      <xs:enumeration value="Settings.LoadAll" />
       <xs:enumeration value="AssetImporter.RunImports" />
       <xs:enumeration value="DataManager.ParseXML" />
       <xs:enumeration value="Engine.SystemSetup" />

@@ -27,6 +27,7 @@ ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Projec
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\Serialization\XmlReflection.cs
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\Context.cs
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\EntityRegistry.cs
+ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\SettingsRegistry.cs
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\XSDGenerator.cs
 ArctisAurora.Core.Registry.Assets -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\Assets\AbstractAsset.cs
 ArctisAurora.Core.Registry.Assets -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\Assets\FontAsset.cs

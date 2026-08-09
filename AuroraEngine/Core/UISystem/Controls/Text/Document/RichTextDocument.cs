@@ -1,4 +1,3 @@
-using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text.Document
@@ -43,12 +42,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
     [A_XSDType("DocumentLayout", "UI")]
     public class DocumentLayout
     {
-        // Editor-wide defaults, read from Data/XML/Documents/DocumentStyles.xml. The VFS resolves the
-        // application's copy ahead of the engine's, so an app restyles every note it opens without
-        // touching engine data. Loaded once, on first use.
-        private static DocumentLayout defaults;
-        public static DocumentLayout Defaults =>
-            defaults ??= DocumentXml.LoadLayout(Paths.Doc("DocumentStyles.xml"));
+        // Editor-wide defaults, owned by the settings registry.
+        public static DocumentLayout Defaults => SettingsRegistry.Get<DocumentSettings>().layout;
 
         // Line box height as a multiple of font size, the way CSS line-height works — so a line is
         // as tall as the styles on it, never as tall as the particular letters that landed there.
@@ -105,6 +100,15 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 copy.textStyles.Add(style.Clone());
             return copy;
         }
+    }
+
+    // Editor-wide document defaults as a settings group, so the styles scheme cascades across mounts
+    // and saves the same way every other group does.
+    [A_XSDType("DocumentSettings", "Settings")]
+    public class DocumentSettings : ISettingsGroup
+    {
+        [A_XSDElementProperty("DocumentLayout", "Settings", "Editor-wide layout and text styles.")]
+        public DocumentLayout layout { get; set; } = new DocumentLayout();
     }
 
     // The note document model — the source of truth, and the on-disk format (serialized as engine

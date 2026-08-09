@@ -11,7 +11,8 @@ namespace ArctisAurora.Core.Filing.Serialization
     //   - nested element <-> complex [A_XSDType] member, or an entry in a List<> child field
     public static class XmlReflection
     {
-        public static void ApplyAttributes(XElement element, object node)
+        // tolerant: a value that no longer converts is warned about and left alone, instead of throwing.
+        public static void ApplyAttributes(XElement element, object node, bool tolerant = false)
         {
             foreach (MemberInfo member in ScalarMembers(node.GetType()))
             {
@@ -21,7 +22,17 @@ namespace ArctisAurora.Core.Filing.Serialization
                 if (attribute == null) continue;
 
                 Type memberType = MemberType(member);
-                object value = TypeDescriptor.GetConverter(memberType).ConvertFromInvariantString(attribute.Value);
+                object value;
+                try
+                {
+                    value = TypeDescriptor.GetConverter(memberType).ConvertFromInvariantString(attribute.Value);
+                }
+                catch (Exception) when (tolerant)
+                {
+                    Console.WriteLine($"[XML] '{attribute.Value}' is not a valid {memberType.Name} for "
+                        + $"{meta.Name} on {node.GetType().Name} — keeping {GetMember(member, node)}.");
+                    continue;
+                }
                 SetMember(member, node, value);
             }
         }

@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:types="http://arctisaurora/AuroraSettingsTypes" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:allTypes="http://arctisaurora/AuroraTypes" xmlns:UI="http://arctisaurora/AuroraUITypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraSettingsTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
+  <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
+  <xs:import schemaLocation="UITypeSchema.xsd" namespace="http://arctisaurora/AuroraUITypes" />
+  <xs:element name="DocumentSettings" type="types:DocumentSettings" />
+  <xs:complexType name="DocumentSettings">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="1" name="DocumentLayout" type="UI:DocumentLayout">
+        <xs:annotation>
+          <xs:documentation>Editor-wide layout and text styles.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="SettingsManifest" type="types:SettingsManifest" />
+  <xs:complexType name="SettingsManifest">
+    <xs:sequence>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="DocumentSettings" type="types:DocumentSettings" />
+      </xs:choice>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

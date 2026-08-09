@@ -36,6 +36,8 @@
       <xs:enumeration value="Entry" />
       <xs:enumeration value="EntityRegistries" />
       <xs:enumeration value="Entity" />
+      <xs:enumeration value="DocumentSettings" />
+      <xs:enumeration value="SettingsManifest" />
       <xs:enumeration value="Main" />
       <xs:enumeration value="Physics" />
       <xs:enumeration value="Render" />
@@ -138,6 +140,12 @@
       <xs:enumeration value="Entry" />
       <xs:enumeration value="EntityRegistries" />
       <xs:enumeration value="Entity" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Settings">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="DocumentSettings" />
+      <xs:enumeration value="SettingsManifest" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Systems">

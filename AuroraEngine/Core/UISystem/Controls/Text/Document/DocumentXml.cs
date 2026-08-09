@@ -22,11 +22,6 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             return (RichTextDocument)ParseElement(xml.Root);
         }
 
-        // Editor-wide layout defaults, which are a <DocumentLayout> document in their own right
-        // rather than a special format — the same element a note embeds to override them.
-        public static DocumentLayout LoadLayout(string path) =>
-            (DocumentLayout)ParseElement(XDocument.Load(path).Root);
-
         public static void Save(RichTextDocument document, string path)
         {
             A_XSDTypeAttribute typeMeta = document.GetType().GetCustomAttribute<A_XSDTypeAttribute>(false);

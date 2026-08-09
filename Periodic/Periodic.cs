@@ -12,6 +12,9 @@ namespace AuroraPeriodic
             Engine engine = new Engine();
             XSDGenerator.GenerateXSD();
 
+            SettingsRegistry.SetWriteRoot(Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Periodic", "Settings"));
+
             engine.Init(false);
             InputHandler.SetActiveKeybindGroup("InputMap");
             // prepare level

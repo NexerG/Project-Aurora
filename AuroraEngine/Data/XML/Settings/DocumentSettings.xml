@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<SettingsManifest xmlns="http://arctisaurora/AuroraSettingsTypes"
+                  xmlns:UI="http://arctisaurora/AuroraUITypes"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:schemaLocation="http://arctisaurora/AuroraSettingsTypes ../Schemas/SettingsTypeSchema.xsd">
+
+  <!-- Editor-wide text scheme, keyed by StylingType. However many entries are listed is the whole
+       scheme; a heading past the last one listed takes the last one. An application overrides any
+       attribute by naming it in its own Data/XML/Settings folder, and a note overrides the scheme
+       per-document by embedding a <DocumentLayout> of its own. -->
+  <DocumentSettings>
+    <UI:DocumentLayout LineHeight="1.5" BlockSpacing="8">
+
+      <UI:TextStyle Type="Text" FontSize="18" />
+
+      <UI:TextStyle Type="Heading1" FontSize="34" />
+      <UI:TextStyle Type="Heading2" FontSize="28" />
+      <UI:TextStyle Type="Heading3" FontSize="23" />
+      <UI:TextStyle Type="Heading4" FontSize="20" />
+      <UI:TextStyle Type="Heading5" FontSize="18" />
+      <UI:TextStyle Type="Heading6" FontSize="16" />
+
+      <UI:TextStyle Type="Comment" FontSize="16" />
+      <UI:TextStyle Type="Code" FontSize="16" />
+      <UI:TextStyle Type="Quote" FontSize="18" />
+
+    </UI:DocumentLayout>
+  </DocumentSettings>
+
+</SettingsManifest>
