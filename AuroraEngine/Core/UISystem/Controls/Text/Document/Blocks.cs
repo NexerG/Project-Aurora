@@ -22,9 +22,14 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         public abstract void ApplyLayout(DocumentLayout layout);
     }
 
-    // A block whose content is a flow of inline runs, held as its children.
-    public abstract class ContentBlock : Block
+    // A block whose content is a flow of inline runs, held as its children. Headings are not a
+    // separate class — a block names a styling type and the styles file says what that looks like.
+    [A_XSDType("Block", "UI", allowedChildren: typeof(TextInputControl))]
+    public class ContentBlock : Block
     {
+        [A_XSDElementProperty("StylingType", "UI", "Style this block's text takes from the styles file.")]
+        public TextStyleType stylingType { get; set; } = TextStyleType.Text;
+
         // The index-th run among the children.
         public TextRun RunAt(int index)
         {
@@ -41,42 +46,24 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 if (child is TextRun inline) copy.AddChild(inline.Clone());
         }
 
+        public override Block Clone()
+        {
+            ContentBlock copy = new ContentBlock { stylingType = stylingType };
+            CloneInlinesInto(copy);
+            return copy;
+        }
+
+        // A run's own styling type wins over the block's; Inherit means it has none.
         public override void ApplyLayout(DocumentLayout layout)
         {
-            int size = layout.FontSizeFor(this);
-
             foreach (Entity child in children)
             {
                 if (child is not TextRun run) continue;
 
+                TextStyleType type = run.stylingType == TextStyleType.Inherit ? stylingType : run.stylingType;
                 run.lineHeight = layout.lineHeight;
-                run.fontSize = size;
+                run.fontSize = layout.FontSizeFor(type);
             }
-        }
-    }
-
-    [A_XSDType("Paragraph", "UI", allowedChildren: typeof(TextInputControl))]
-    public class ParagraphBlock : ContentBlock
-    {
-        public override Block Clone()
-        {
-            ParagraphBlock copy = new ParagraphBlock();
-            CloneInlinesInto(copy);
-            return copy;
-        }
-    }
-
-    [A_XSDType("Heading", "UI", allowedChildren: typeof(TextInputControl))]
-    public class HeadingBlock : ContentBlock
-    {
-        [A_XSDElementProperty("Level", "UI", "Heading level 1-6.")]
-        public int level { get; set; } = 1;
-
-        public override Block Clone()
-        {
-            HeadingBlock copy = new HeadingBlock { level = level };
-            CloneInlinesInto(copy);
-            return copy;
         }
     }
 }

@@ -20,10 +20,7 @@ namespace Periodic.Editor
             // drain every char polled this tick — the OS repeat rate can outpace the frame rate
             Queue<char> inputChars = InputHandler.charInputReadQueue;
             while (inputChars.Count > 0)
-            {
                 control.WriteChar(inputChars.Dequeue());
-                Console.WriteLine(control.children.Count);
-            }
         }
 
         [A_XSDActionDependency("ExitApplication", category: "Input")]

@@ -51,8 +51,8 @@ viewport" — was conditional on virtualization. Remove virtualization and it st
   `[A_XSDType]` and made `Save` throw; and blocks/runs inherit every `VulkanControl` scalar, of which
   `Margin`/`Padding` are `Thickness` — no `ToString`, so they serialized as the type name and the
   converter refused them on the next read. A saved note was unloadable. Filters: skip children with
-  no `[A_XSDType]`, and skip members declared on `VulkanControl` or above. `DocumentXml` is note-only
-  (`UI.xml` goes through `VulkanControl.ParseXML`), so the second rule is scoped to the note format.
+  no `[A_XSDType]`, and skip members declared on `VulkanControl` or above. The second was replaced
+  2026-08-07 by skipping any scalar equal to its default — see [[xml-save-skips-defaults]].
 - **`RepointGlyphs` exists because measurement moved.** `Measure` sizes lines from `fontSize` while
   the quads still come from the glyphs, so a glyph built at a stale size now *disagrees with the
   layout* rather than merely looking wrong. XML attribute order is undefined, so `Text` is routinely
@@ -93,19 +93,20 @@ viewport" — was conditional on virtualization. Remove virtualization and it st
   note. (The cache scored 608 because it addressed document positions, where the boundary between
   two runs on a line is one slot; per-run addressing counts each run's own end.)
 - Save -> reload round-trip: 7 blocks out, 7 blocks back, no glyph elements, run order and `Bold`
-  preserved. Not byte-identical to the source — defaults are written explicitly (`Bold="False"`,
-  `FontSize="16"`, a `<DocumentLayout>` the original omitted) because the parser has no "was this
-  attribute present" tracking. Same limitation already recorded against the style cascade.
+  preserved. Not byte-identical to the source — defaults were written explicitly (`Bold="False"`,
+  `FontSize="16"`, a `<DocumentLayout>` the original omitted). Fixed for scalars 2026-08-07 by
+  [[xml-save-skips-defaults]]; the spurious `<DocumentLayout>` remains.
 - Rendered output is pixel-identical to the pre-rework L2 render: same heading sizes, same inline
   bold run, same wrap point, same block spacing.
 - Typing: click into a paragraph, type, characters land at the caret and it advances.
 
 ## Still open
 
-- `runColorHex` reaches no glyph. `TextRunControl.SetSegment` used to push it onto each glyph;
-  `SyncGlyphs` does not. Invisible while everything is `#FFFFFF`, but a coloured run draws white.
-  Per-letter colour is a standing requirement, so this needs wiring.
-- Debug prints now on hot paths: `TextInputControl.BeginEdit` logs on every click,
-  `Decorations.Write` logs `children.Count` on every character.
+- ~~`runColorHex` reaches no glyph.~~ Fixed 2026-08-07. `runColorHex` is deleted; a run carries the
+  ordinary `ColorHex`, and `TextControl` overrides the now-`virtual` `VulkanControl.controlColorHex`
+  to call `RepointGlyphs()` — the same shape as `fontSize`/`fontName`, needed because XML attribute
+  order is undefined and `Text` may be applied first. New glyphs take the run's colour in
+  `SyncGlyphs`. Made possible by [[xml-save-skips-defaults]]: `ColorHex` is declared on
+  `VulkanControl`, so the old chrome filter would have dropped it from every saved note.
 - `Decorations.Write` still lives in the app, not the engine, contrary to the Engine/Periodic
   boundary. Unchanged by this work.

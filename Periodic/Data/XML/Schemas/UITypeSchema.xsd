@@ -3,7 +3,7 @@
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:DockMode types:GridSizeMode types:Scrollable types:ControlColor types:FillMode types:HorizontalAlignment types:VeticalAlignment types:ContentScalingModeEnum types:Orientation" />
+    <xs:union memberTypes="types:TextStyleType types:DockMode types:GridSizeMode types:Scrollable types:ControlColor types:FillMode types:HorizontalAlignment types:VeticalAlignment types:ContentScalingModeEnum types:Orientation" />
   </xs:simpleType>
   <xs:element name="Panel" type="types:Panel" />
   <xs:complexType name="Panel">
@@ -14,8 +14,7 @@
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
         <xs:element name="TextInput" type="types:TextInput" />
-        <xs:element name="Paragraph" type="types:Paragraph" />
-        <xs:element name="Heading" type="types:Heading" />
+        <xs:element name="Block" type="types:Block" />
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
@@ -67,8 +66,7 @@
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
         <xs:element name="TextInput" type="types:TextInput" />
-        <xs:element name="Paragraph" type="types:Paragraph" />
-        <xs:element name="Heading" type="types:Heading" />
+        <xs:element name="Block" type="types:Block" />
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
@@ -122,8 +120,7 @@
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
         <xs:element name="TextInput" type="types:TextInput" />
-        <xs:element name="Paragraph" type="types:Paragraph" />
-        <xs:element name="Heading" type="types:Heading" />
+        <xs:element name="Block" type="types:Block" />
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
@@ -173,12 +170,13 @@
     </xs:sequence>
     <xs:attribute name="Text" type="xs:string" />
     <xs:attribute name="FontSize" type="xs:int" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="StylingType" type="types:TextStyleType" />
     <xs:attribute name="FontName" type="xs:string" />
     <xs:attribute name="Width" type="xs:int" />
     <xs:attribute name="Height" type="xs:int" />
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
-    <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
@@ -215,15 +213,15 @@
     <xs:attribute name="Bold" type="xs:boolean" />
     <xs:attribute name="Italic" type="xs:boolean" />
     <xs:attribute name="Strikethrough" type="xs:boolean" />
-    <xs:attribute name="RunColorHex" type="xs:string" />
     <xs:attribute name="Text" type="xs:string" />
     <xs:attribute name="FontSize" type="xs:int" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="StylingType" type="types:TextStyleType" />
     <xs:attribute name="FontName" type="xs:string" />
     <xs:attribute name="Width" type="xs:int" />
     <xs:attribute name="Height" type="xs:int" />
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
-    <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
@@ -252,54 +250,14 @@
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
   </xs:complexType>
-  <xs:element name="Paragraph" type="types:Paragraph" />
-  <xs:complexType name="Paragraph">
+  <xs:element name="Block" type="types:Block" />
+  <xs:complexType name="Block">
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
         <xs:element name="Run" type="types:Run" />
       </xs:choice>
     </xs:sequence>
-    <xs:attribute name="Width" type="xs:int" />
-    <xs:attribute name="Height" type="xs:int" />
-    <xs:attribute name="Margin" type="xs:string" />
-    <xs:attribute name="Padding" type="xs:string" />
-    <xs:attribute name="ColorHex" type="xs:string" />
-    <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="WidthStar" type="xs:float" />
-    <xs:attribute name="HeightStar" type="xs:float" />
-    <xs:attribute name="MinHeight" type="xs:int" />
-    <xs:attribute name="MinWidth" type="xs:int" />
-    <xs:attribute name="HorizontalPos" type="xs:float" />
-    <xs:attribute name="VerticalPos" type="xs:float" />
-    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
-    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
-    <xs:attribute name="ClipToBounds" type="xs:boolean" />
-    <xs:attribute name="DockMode" type="types:DockMode" />
-    <xs:attribute name="Grid.Column" type="xs:int" />
-    <xs:attribute name="Grid.Row" type="xs:int" />
-    <xs:attribute name="onEnter" type="actions:UI" />
-    <xs:attribute name="onExit" type="actions:UI" />
-    <xs:attribute name="onClick" type="actions:UI" />
-    <xs:attribute name="BubbleClick" type="xs:boolean" />
-    <xs:attribute name="onAltClick" type="actions:UI" />
-    <xs:attribute name="BubbleAltClick" type="xs:boolean" />
-    <xs:attribute name="onRelease" type="actions:UI" />
-    <xs:attribute name="BubbleRelease" type="xs:boolean" />
-    <xs:attribute name="onAltRelease" type="actions:UI" />
-    <xs:attribute name="BubbleAltRelease" type="xs:boolean" />
-    <xs:attribute name="onDragStop" type="actions:UI" />
-    <xs:attribute name="onScrollUp" type="actions:UI" />
-    <xs:attribute name="onScrollDown" type="actions:UI" />
-    <xs:attribute name="BubbleScroll" type="xs:boolean" />
-  </xs:complexType>
-  <xs:element name="Heading" type="types:Heading" />
-  <xs:complexType name="Heading">
-    <xs:sequence>
-      <xs:choice minOccurs="0" maxOccurs="unbounded">
-        <xs:element name="Run" type="types:Run" />
-      </xs:choice>
-    </xs:sequence>
-    <xs:attribute name="Level" type="xs:int" />
+    <xs:attribute name="StylingType" type="types:TextStyleType" />
     <xs:attribute name="Width" type="xs:int" />
     <xs:attribute name="Height" type="xs:int" />
     <xs:attribute name="Margin" type="xs:string" />
@@ -378,15 +336,15 @@
     <xs:attribute name="Bold" type="xs:boolean" />
     <xs:attribute name="Italic" type="xs:boolean" />
     <xs:attribute name="Strikethrough" type="xs:boolean" />
-    <xs:attribute name="RunColorHex" type="xs:string" />
     <xs:attribute name="Text" type="xs:string" />
     <xs:attribute name="FontSize" type="xs:int" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="StylingType" type="types:TextStyleType" />
     <xs:attribute name="FontName" type="xs:string" />
     <xs:attribute name="Width" type="xs:int" />
     <xs:attribute name="Height" type="xs:int" />
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
-    <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
@@ -415,23 +373,37 @@
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
   </xs:complexType>
-  <xs:element name="HeadingStyle" type="types:HeadingStyle" />
-  <xs:complexType name="HeadingStyle">
+  <xs:simpleType name="TextStyleType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Inherit" />
+      <xs:enumeration value="Text" />
+      <xs:enumeration value="Heading1" />
+      <xs:enumeration value="Heading2" />
+      <xs:enumeration value="Heading3" />
+      <xs:enumeration value="Heading4" />
+      <xs:enumeration value="Heading5" />
+      <xs:enumeration value="Heading6" />
+      <xs:enumeration value="Comment" />
+      <xs:enumeration value="Code" />
+      <xs:enumeration value="Quote" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:element name="TextStyle" type="types:TextStyle" />
+  <xs:complexType name="TextStyle">
     <xs:sequence />
-    <xs:attribute name="Level" type="xs:int" />
+    <xs:attribute name="Type" type="types:TextStyleType" />
     <xs:attribute name="FontSize" type="xs:int" />
   </xs:complexType>
   <xs:element name="DocumentLayout" type="types:DocumentLayout" />
   <xs:complexType name="DocumentLayout">
     <xs:sequence>
-      <xs:element minOccurs="0" maxOccurs="unbounded" name="HeadingStyle" type="types:HeadingStyle">
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="TextStyle" type="types:TextStyle">
         <xs:annotation>
-          <xs:documentation>Per-level heading styles; empty inherits the editor's.</xs:documentation>
+          <xs:documentation>Per-type text styles; empty inherits the editor's.</xs:documentation>
         </xs:annotation>
       </xs:element>
     </xs:sequence>
     <xs:attribute name="LineHeight" type="xs:float" />
-    <xs:attribute name="ParagraphFontSize" type="xs:int" />
     <xs:attribute name="BlockSpacing" type="xs:float" />
   </xs:complexType>
   <xs:element name="Document" type="types:Document" />
@@ -443,8 +415,7 @@
         </xs:annotation>
       </xs:element>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
-        <xs:element name="Paragraph" type="types:Paragraph" />
-        <xs:element name="Heading" type="types:Heading" />
+        <xs:element name="Block" type="types:Block" />
       </xs:choice>
     </xs:sequence>
   </xs:complexType>
@@ -457,8 +428,7 @@
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
         <xs:element name="TextInput" type="types:TextInput" />
-        <xs:element name="Paragraph" type="types:Paragraph" />
-        <xs:element name="Heading" type="types:Heading" />
+        <xs:element name="Block" type="types:Block" />
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
@@ -520,8 +490,7 @@
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
         <xs:element name="TextInput" type="types:TextInput" />
-        <xs:element name="Paragraph" type="types:Paragraph" />
-        <xs:element name="Heading" type="types:Heading" />
+        <xs:element name="Block" type="types:Block" />
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
@@ -613,8 +582,7 @@
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
         <xs:element name="TextInput" type="types:TextInput" />
-        <xs:element name="Paragraph" type="types:Paragraph" />
-        <xs:element name="Heading" type="types:Heading" />
+        <xs:element name="Block" type="types:Block" />
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
@@ -673,8 +641,7 @@
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
         <xs:element name="TextInput" type="types:TextInput" />
-        <xs:element name="Paragraph" type="types:Paragraph" />
-        <xs:element name="Heading" type="types:Heading" />
+        <xs:element name="Block" type="types:Block" />
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
@@ -728,8 +695,7 @@
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
         <xs:element name="TextInput" type="types:TextInput" />
-        <xs:element name="Paragraph" type="types:Paragraph" />
-        <xs:element name="Heading" type="types:Heading" />
+        <xs:element name="Block" type="types:Block" />
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />

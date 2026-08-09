@@ -741,12 +741,14 @@ namespace ArctisAurora.Core.Registry
 
         private static List<(MemberInfo Member, A_XSDElementPropertyAttribute? XmlAttribute)> GetAnnotatedMembers(Type type)
         {
+            // GetCustomAttribute<T>(), not GetCustomAttributes(type, inherit) — the latter ignores
+            // `inherit` for properties, so an override loses the base declaration's annotation.
             return type.GetMembers(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
                 .Where(m => (m.MemberType == MemberTypes.Field || m.MemberType == MemberTypes.Property) &&
-                            m.GetCustomAttributes(typeof(A_XSDElementPropertyAttribute), true).Any())
+                            m.GetCustomAttribute<A_XSDElementPropertyAttribute>() != null)
                 .Select(m => (
                     Member: m,
-                    XmlAttribute: (A_XSDElementPropertyAttribute?)m.GetCustomAttributes(typeof(A_XSDElementPropertyAttribute), true).FirstOrDefault()
+                    XmlAttribute: m.GetCustomAttribute<A_XSDElementPropertyAttribute>()
                 )).ToList();
         }
         

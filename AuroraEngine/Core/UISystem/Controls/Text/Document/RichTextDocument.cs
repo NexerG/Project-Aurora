@@ -3,18 +3,37 @@ using ArctisAurora.Core.Registry;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 {
-    // How one heading level is styled. There is no fixed number of levels — however many of these a
-    // layout carries is how many levels exist, so adding a seventh is data, not a code change.
-    [A_XSDType("HeadingStyle", "UI")]
-    public class HeadingStyle
+    // Which style entry a piece of text takes. A run says Inherit and follows its block; a block that
+    // says nothing is body text. Members without an entry in the styles file are legal — a heading
+    // past the end of the scheme falls back to the last heading the scheme does define.
+    [A_XSDType("TextStyleType", "UI")]
+    public enum TextStyleType
     {
-        [A_XSDElementProperty("Level", "UI", "Heading level this style applies to.")]
-        public int level { get; set; } = 1;
+        Inherit,
+        Text,
+        Heading1,
+        Heading2,
+        Heading3,
+        Heading4,
+        Heading5,
+        Heading6,
+        Comment,
+        Code,
+        Quote
+    }
 
-        [A_XSDElementProperty("FontSize", "UI", "Heading text size in pixels.")]
+    // How one styling type is rendered. However many of these a layout carries is the whole scheme,
+    // so adding a level is data, not a code change.
+    [A_XSDType("TextStyle", "UI")]
+    public class TextStyle
+    {
+        [A_XSDElementProperty("Type", "UI", "Styling type this entry applies to.")]
+        public TextStyleType type { get; set; } = TextStyleType.Text;
+
+        [A_XSDElementProperty("FontSize", "UI", "Text size in pixels.")]
         public int fontSize { get; set; } = 18;
 
-        public HeadingStyle Clone() => new HeadingStyle { level = level, fontSize = fontSize };
+        public TextStyle Clone() => new TextStyle { type = type, fontSize = fontSize };
     }
 
     // Layout parameters for one document: line height and text sizing now, the home for content
@@ -37,8 +56,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         [A_XSDElementProperty("LineHeight", "UI", "Line box height as a multiple of the font size.")]
         public float lineHeight { get; set; } = 1.5f;
 
-        [A_XSDElementProperty("ParagraphFontSize", "UI", "Body text size in pixels.")]
-        public int paragraphFontSize { get; set; } = 18;
+        // Used when neither the note nor the editor scheme names a size for the type asked for.
+        private const int fallbackFontSize = 18;
 
         // Vertical gap between blocks. Lives here rather than on the view because the layout cache
         // stacks blocks by it too — a number the two disagreed on would put every cached block top
@@ -49,41 +68,41 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         // Empty means inherit: a note that declares no styles of its own uses the editor's. Declaring
         // even one replaces the whole set, so a note's heading scheme is read as written rather than
         // merged level-by-level with defaults it cannot see.
-        [A_XSDElementProperty("HeadingStyle", "UI", "Per-level heading styles; empty inherits the editor's.")]
-        public List<HeadingStyle> headingStyles = new List<HeadingStyle>();
+        [A_XSDElementProperty("TextStyle", "UI", "Per-type text styles; empty inherits the editor's.")]
+        public List<TextStyle> textStyles = new List<TextStyle>();
 
-        // A block's size is a property of its role, not of the runs inside it — TextRun.fontSize is
-        // unused until per-run sizing lands. Resolved here rather than in the view so the layout
-        // cache and the controls drawn from it cannot disagree about how big a heading is.
-        public int FontSizeFor(Block block)
+        // Resolved here rather than in the view so the measurer and the controls drawn from it cannot
+        // disagree about how big a heading is.
+        public int FontSizeFor(TextStyleType type)
         {
-            if (block is not HeadingBlock heading) return paragraphFontSize;
+            if (type == TextStyleType.Inherit) type = TextStyleType.Text;
 
-            List<HeadingStyle> styles = headingStyles.Count > 0 ? headingStyles : Defaults.headingStyles;
-            if (styles.Count == 0) return paragraphFontSize;
+            List<TextStyle> styles = textStyles.Count > 0 ? textStyles : Defaults.textStyles;
 
-            // Nearest defined level, so a heading deeper than the scheme defines renders as its
-            // smallest heading instead of collapsing to body text.
-            HeadingStyle nearest = styles[0];
-            foreach (HeadingStyle style in styles)
-            {
-                if (style.level == heading.level) return style.fontSize;
-                if (Math.Abs(style.level - heading.level) < Math.Abs(nearest.level - heading.level))
-                    nearest = style;
-            }
-            return nearest.fontSize;
+            foreach (TextStyle style in styles)
+                if (style.type == type) return style.fontSize;
+
+            // A heading deeper than the scheme defines takes the last heading it does define, rather
+            // than collapsing to body text.
+            if (IsHeading(type))
+                for (int i = styles.Count - 1; i >= 0; i--)
+                    if (IsHeading(styles[i].type)) return styles[i].fontSize;
+
+            return fallbackFontSize;
         }
+
+        private static bool IsHeading(TextStyleType type) =>
+            type >= TextStyleType.Heading1 && type <= TextStyleType.Heading6;
 
         public DocumentLayout Clone()
         {
             DocumentLayout copy = new DocumentLayout
             {
                 lineHeight = lineHeight,
-                paragraphFontSize = paragraphFontSize,
                 blockSpacing = blockSpacing
             };
-            foreach (HeadingStyle style in headingStyles)
-                copy.headingStyles.Add(style.Clone());
+            foreach (TextStyle style in textStyles)
+                copy.textStyles.Add(style.Clone());
             return copy;
         }
     }

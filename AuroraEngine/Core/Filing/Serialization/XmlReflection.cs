@@ -1,5 +1,5 @@
+using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.UISystem.Controls;
 using System.ComponentModel;
 using System.Reflection;
 using System.Xml.Linq;
@@ -40,12 +40,25 @@ namespace ArctisAurora.Core.Filing.Serialization
             type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>);
 
         public static IEnumerable<MemberInfo> ScalarMembers(Type type) =>
-            AnnotatedMembers(type).Where(m => !IsComplexMember(MemberType(m)) && !IsListMember(MemberType(m))
-                                              && !IsControlChrome(m));
+            AnnotatedMembers(type).Where(m => !IsComplexMember(MemberType(m)) && !IsListMember(MemberType(m)));
 
-        // Members declared on VulkanControl or above; a note stores content, not control chrome.
-        private static bool IsControlChrome(MemberInfo member) =>
-            member.DeclaringType.IsAssignableFrom(typeof(VulkanControl));
+        private static readonly Dictionary<Type, Dictionary<MemberInfo, object>> defaultCache = new();
+
+        // Every scalar's default, read off a throwaway instance and cached per type.
+        public static Dictionary<MemberInfo, object> Defaults(Type type)
+        {
+            if (defaultCache.TryGetValue(type, out Dictionary<MemberInfo, object> cached))
+                return cached;
+
+            object probe = Activator.CreateInstance(type);
+            Dictionary<MemberInfo, object> defaults = new();
+            foreach (MemberInfo member in ScalarMembers(type))
+                defaults[member] = GetMember(member, probe);
+
+            (probe as Entity)?.Destroy();
+            defaultCache[type] = defaults;
+            return defaults;
+        }
 
         public static IEnumerable<MemberInfo> ComplexMembers(Type type) =>
             AnnotatedMembers(type).Where(m => IsComplexMember(MemberType(m)));

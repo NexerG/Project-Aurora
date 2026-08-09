@@ -3,17 +3,23 @@
                 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                 xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../Schemas/UITypeSchema.xsd"
                 LineHeight="1.5"
-                ParagraphFontSize="18"
                 BlockSpacing="8">
 
-  <!-- Editor-wide heading scheme. However many levels are listed is how many exist; an application
-       overrides the whole file by placing its own copy in its Data/XML/Documents folder, and a note
-       overrides it per-document by embedding a <DocumentLayout> of its own. -->
-  <HeadingStyle Level="1" FontSize="34" />
-  <HeadingStyle Level="2" FontSize="28" />
-  <HeadingStyle Level="3" FontSize="23" />
-  <HeadingStyle Level="4" FontSize="20" />
-  <HeadingStyle Level="5" FontSize="18" />
-  <HeadingStyle Level="6" FontSize="16" />
+  <!-- Editor-wide text scheme, keyed by StylingType. However many entries are listed is the whole
+       scheme; a heading past the last one listed takes the last one. An application overrides the
+       whole file by placing its own copy in its Data/XML/Documents folder, and a note overrides it
+       per-document by embedding a <DocumentLayout> of its own. -->
+  <TextStyle Type="Text" FontSize="18" />
+
+  <TextStyle Type="Heading1" FontSize="34" />
+  <TextStyle Type="Heading2" FontSize="28" />
+  <TextStyle Type="Heading3" FontSize="23" />
+  <TextStyle Type="Heading4" FontSize="20" />
+  <TextStyle Type="Heading5" FontSize="18" />
+  <TextStyle Type="Heading6" FontSize="16" />
+
+  <TextStyle Type="Comment" FontSize="16" />
+  <TextStyle Type="Code" FontSize="16" />
+  <TextStyle Type="Quote" FontSize="18" />
 
 </DocumentLayout>

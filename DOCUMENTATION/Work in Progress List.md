@@ -16,7 +16,7 @@ Phases, dates and standing decisions live in [[Roadmap]]. Items below are groupe
 		- [ ] Markdown insertions
 		- [x] L1 — layout engine (pageless): `TextMeasurer` is now the only wrapper for all text, engine-wide. Every text control holds its own `BlockLayout` and answers `OffsetAt`/`CaretAt` for itself; the `DocumentLayoutCache` half is deleted. Geometry verified by caret round-trip on real font metrics — 607/607 exact
 		- [x] ~~L2 — virtualized view~~ **REVERTED 2026-08-07.** One layout path for all text; the document is a plain control tree (`DocumentEditorControl` → `DocumentControl` → `Block` → `TextRun` → glyphs). `TextRunControl`, `DocumentCanvasControl` and `DocumentLayoutCache` deleted; each control holds its own `BlockLayout`. Wrapping stays word-boundary. Save round-trips and reloads. See `ClaudeMemory/Decisions/text-layout-one-measurer.md`
-			- [ ] `runColorHex` reaches no glyph — `TextRunControl.SetSegment` used to apply it, `SyncGlyphs` does not, so a coloured run draws white. Per-letter colour is a standing requirement
+			- [x] `runColorHex` reaches no glyph — deleted; a run carries the ordinary `ColorHex`, `controlColorHex` is `virtual` and `TextControl` overrides it to repoint the glyphs. Unblocked by making the note writer skip defaults instead of filtering out everything declared on `VulkanControl`. See `ClaudeMemory/Decisions/xml-save-skips-defaults.md`. Verified 25/25 on a harness booting the real engine — save omits every default, `ColorHex` round-trips, glyphs colour in both attribute orders
 			- [ ] glyph ceiling — every character is a `GlyphControl`, always (~56.7k on the 400-block note, past `UIModule`'s 50,000 cap). Accepted knowingly. Escape hatch that does not change the design: a run holds `text` + its `BlockLayout` with no glyph children and calls `SyncGlyphs()` when visible
 		- [ ] P3 — editing on control-local layout
 			- [x] click → caret: clicks bubble glyph→run→block→`DocumentControl`→editor, position from `TextControl.OffsetAt`, caret placed from `CaretAt`. Round-trip verified exact (607/607 sample)
@@ -33,6 +33,7 @@ Phases, dates and standing decisions live in [[Roadmap]]. Items below are groupe
 	- [ ] Project browser
 	- [ ] Claude, chatgpt, other chatbot integrations.
 	- [ ] text upgrade
+		- [x] styling types — a block/run names a `StylingType` (`Text`, `Heading1-6`, `Comment`, `Code`, `Quote`) and `DocumentStyles.xml` sizes it; `HeadingBlock`/`ParagraphBlock` collapsed into one `<Block>`, `HeadingStyle` → `TextStyle`. A run's type overrides its block's; a heading past the scheme takes the last one. See `ClaudeMemory/Decisions/text-styling-types.md`
 		- [ ] simple color
 		- [ ] gradient
 		- [ ] bold/italics

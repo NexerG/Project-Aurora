@@ -58,7 +58,7 @@ for the decision to accept them and the escape hatch if they bite.
 ## Phases (see TODO/plan)
 - **P0 — done.** Document types under `Controls/Text/Document/`: `RichTextDocument` (plain model
   holding `List<Block>`), and the tree is now all `VulkanControl`s — `Block : TextBlockControl`
-  (a `PanelControl` derivative) → `ContentBlock` → `ParagraphBlock`/`HeadingBlock`, and
+  (a `PanelControl` derivative) → `ContentBlock` (the one concrete block, `[A_XSDType("Block")]`), and
   `TextRun : TextInputControl` (no `Inline` base; run reuses the control's style/text). All four
   `[A_XSDType]` types are category **`"UI"`** (moved off the orphan `"TextEditor"` category), so they
   generate into `UITypeSchema.xsd` and a note is authored like `UI.xml`. Caveat: no schema actually
@@ -223,23 +223,21 @@ for the decision to accept them and the escape hatch if they bite.
 
 ## Document settings & the style cascade (2026-07-31)
 - `DocumentLayout` is a **class** on `RichTextDocument` (`layout`), persisted as a nested
-  `<DocumentLayout>` element. A class, not a struct, because it owns a `List<HeadingStyle>` —
+  `<DocumentLayout>` element. A class, not a struct, because it owns a `List<TextStyle>` —
   value-copying it would hand a working copy the original's styles to mutate. `Clone()` deep-copies.
-- Holds `lineHeight`, `paragraphFontSize`, `List<HeadingStyle>`; the declared home for content width
-  on resize and the paged/pageless mode when those land.
-- **Heading levels are data.** `HeadingStyle` = (`level`, `fontSize`); however many entries exist is
-  how many levels exist. The old hardcoded 34/28/23/20/18/16 switch on `DocumentEditorControl` is gone.
+- Holds `lineHeight`, `List<TextStyle>`; the declared home for content width on resize and the
+  paged/pageless mode when those land.
+- **Styling types are data, headings are not a class.** `TextStyleType` = `Inherit, Text,
+  Heading1-6, Comment, Code, Quote`; `TextStyle` = (`type`, `fontSize`). A block names a
+  `StylingType` and the scheme says what it looks like — see [[text-styling-types]].
 - **Two tiers, via the VFS.** `Data/XML/Documents/DocumentStyles.xml` is the editor-wide scheme; an
   app's copy resolves ahead of the engine's, so an app restyles every note without touching engine
   data. A note overrides per-document by embedding its own `<DocumentLayout>`.
-- **Empty list = inherit.** Declaring even one style replaces the whole set (no level-by-level merge
-  against defaults the author cannot see). Out-of-range levels clamp to the nearest defined one.
-- **Scalars do not cascade yet** — `lineHeight`/`paragraphFontSize` fall back to code defaults that
-  match the shipped file; inheriting them needs "was this attribute present" tracking the reflection
-  parser lacks.
-- `DocumentEditorControl` and the measurer both call `DocumentLayout.FontSizeFor(block)`, so cached
-  geometry and drawn controls cannot disagree on heading size. `TextRun.fontSize` is unused until
-  per-run sizing lands.
+- **Empty list = inherit.** Declaring even one style replaces the whole set (no entry-by-entry merge
+  against defaults the author cannot see). A heading past the last one listed takes the last one.
+- `FontSizeFor(TextStyleType)` is the single resolver, so the measurer and the drawn controls cannot
+  disagree on heading size. `ContentBlock.ApplyLayout` resolves per run — a run's own `stylingType`
+  wins over its block's, `Inherit` means it has none — and writes the result into `TextRun.fontSize`.
 - **Live-path risk, not GUI-verified:** opening a note now lazily loads `DocumentStyles.xml` through
   the VFS. Headings at old sizes = cascade resolved; headings at body size = the file did not resolve.
   The engine mount is `Engine.isDebug`-gated (same as `Bootstrap.xml`), so a release build needs the

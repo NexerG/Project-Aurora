@@ -310,7 +310,7 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         #region ---- styling ----
         [A_XSDElementProperty("ColorHex", "UI", "Sets the control color via hex code.")]
-        public string controlColorHex
+        public virtual string controlColorHex
         {
             get => field;
             set

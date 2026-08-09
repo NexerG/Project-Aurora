@@ -15,9 +15,6 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
 
         [A_XSDElementProperty("Strikethrough", "TextEditor")]
         public bool strikethrough { get; set; } = false;
-
-        [A_XSDElementProperty("RunColorHex", "TextEditor")]
-        public string runColorHex { get; set; } = "#FFFFFF";
         #endregion
 
         public TextInputControl()
@@ -28,7 +25,6 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
         public override void BeginEdit()
         {
             isEditing = true;
-            Console.WriteLine("SET EDITING");
         }
 
         public override void CancelEdit()
@@ -101,7 +97,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
                 && italic == other.italic
                 && strikethrough == other.strikethrough
                 && fontSize == other.fontSize
-                && runColorHex == other.runColorHex
+                && controlColorHex == other.controlColorHex
                 && fontName == other.fontName;
         }
 
@@ -112,7 +108,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
             right.bold = bold;
             right.italic = italic;
             right.strikethrough = strikethrough;
-            right.runColorHex = runColorHex;
+            right.controlColorHex = controlColorHex;
             right.fontName = fontName;
             right.fontSize = fontSize;
             right.text = text[charOffset..];

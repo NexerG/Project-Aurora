@@ -137,12 +137,14 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         // is what lets it run against fabricated metrics with no registry and no GPU.
         public static BlockLayout MeasureBlock(ContentBlock block, float contentWidth, IGlyphMetrics metrics, DocumentLayout documentLayout)
         {
-            int fontSize = documentLayout.FontSizeFor(block);
-
             List<Run> runs = new List<Run>(block.children.Count);
             foreach (Entity child in block.children)
                 if (child is TextRun inline)
-                    runs.Add(new Run(inline.text, inline.fontName, fontSize));
+                {
+                    TextStyleType type = inline.stylingType == TextStyleType.Inherit
+                        ? block.stylingType : inline.stylingType;
+                    runs.Add(new Run(inline.text, inline.fontName, documentLayout.FontSizeFor(type)));
+                }
 
             return MeasureBlock(runs, contentWidth, metrics, documentLayout.lineHeight);
         }

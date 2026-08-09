@@ -22,7 +22,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             bold = bold,
             italic = italic,
             strikethrough = strikethrough,
-            runColorHex = runColorHex,
+            controlColorHex = controlColorHex,
             fontName = fontName,
             fontSize = fontSize,
             text = text

@@ -106,11 +106,15 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             XNamespace ns = XSDGenerator.NamespaceFor(typeMeta.Category);
             XElement element = new XElement(ns + typeMeta.Name);
 
+            // Only what differs from a fresh instance, mirroring the reader: absent attribute -> default.
+            Dictionary<MemberInfo, object> defaults = XmlReflection.Defaults(node.GetType());
+
             foreach (MemberInfo member in XmlReflection.ScalarMembers(node.GetType()))
             {
                 A_XSDElementPropertyAttribute meta = member.GetCustomAttribute<A_XSDElementPropertyAttribute>();
                 object value = XmlReflection.GetMember(member, node);
                 if (value == null) continue;
+                if (Equals(value, defaults[member])) continue;
                 element.SetAttributeValue(meta.Name, Convert.ToString(value, CultureInfo.InvariantCulture));
             }
 

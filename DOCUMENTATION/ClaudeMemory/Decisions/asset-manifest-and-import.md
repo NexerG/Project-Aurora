@@ -260,9 +260,9 @@ scoped to fonts.
 
 ## Still open
 
-- **`XmlReflection.ScalarMembers` still filters `IsControlChrome`** — members declared on
-  `VulkanControl` or above. Inert for asset types (none derive from it), but it is a document policy
-  living in a shared helper. Parameterise if a control-shaped manifest ever needs the chrome.
+- ~~**`XmlReflection.ScalarMembers` still filters `IsControlChrome`**~~ — resolved 2026-08-07. The
+  filter is deleted; the writer skips scalars equal to their default instead. See
+  [[xml-save-skips-defaults]].
 
 ## Rejected
 

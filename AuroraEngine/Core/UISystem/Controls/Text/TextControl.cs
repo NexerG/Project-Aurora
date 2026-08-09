@@ -56,6 +56,21 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             }
         } = 16;
 
+        // Repoints the glyphs, the same way fontSize and fontName do.
+        public override string controlColorHex
+        {
+            get => base.controlColorHex;
+            set
+            {
+                base.controlColorHex = value;
+                RepointGlyphs();
+            }
+        }
+
+        // Resolved into fontSize by the owning block's ApplyLayout, not read at draw time.
+        [A_XSDElementProperty("StylingType", "UI", "Style this text takes; Inherit follows the block.")]
+        public TextStyleType stylingType { get; set; } = TextStyleType.Inherit;
+
         [A_XSDElementProperty("FontName", "UI", "Name of the font asset to draw with.")]
         public string fontName
         {
@@ -110,14 +125,17 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             return fonts.TryGetValue(name ?? "default", out FontAsset named) ? named : fonts["default"];
         }
 
-        // Rewrites every glyph at the current font and size.
+        // Rewrites every glyph at the current font, size and colour.
         private void RepointGlyphs()
         {
             if (_fontAsset == null) return;
 
             foreach (Entity child in children)
                 if (child is GlyphControl glyph)
+                {
                     glyph.SetCharacter(glyph.character, _fontAsset, fontSize);
+                    glyph.controlColorHex = controlColorHex;
+                }
         }
 
         private void SyncGlyphs()
@@ -165,6 +183,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                     Entity replaced = children[i];
                     GlyphControl replacement = new GlyphControl(target[i], _fontAsset, fontSize);
                     replacement.parent = this;
+                    replacement.controlColorHex = controlColorHex;
                     children[i] = replacement;   // detached by the overwrite
                     DiscardGlyph(replaced);
                     treeChanged = true;
@@ -174,6 +193,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                     // Append new glyph
                     GlyphControl glyph = new GlyphControl(target[i], _fontAsset, fontSize);
                     glyph.parent = this;
+                    glyph.controlColorHex = controlColorHex;
                     children.Add(glyph);
                     treeChanged = true;
                 }

@@ -51,6 +51,32 @@ mismatch produces XML the schema rejects:
 the attribute bucket and wrote `HeadingStyle="System.Collections.Generic.List\`1[...]"`. Any list
 member would have hit it, not just headings.
 
+## The writer omits defaults (2026-08-07)
+`WriteElement` writes a scalar only when it differs from the same member on a fresh instance of the
+type (`XmlReflection.Defaults`, one cached probe per type). Mirror of the reader, which leaves the
+field initializer alone when an attribute is absent. A hand-authored attribute set to the default
+value does not survive a save — **intended**, the note format is storage, not a document (see the
+standing decision in [[xml-save-skips-defaults]]).
+
+Consequence: **whatever supplies the default at load time is what unstyled content becomes.** A note
+that omitted `FontSize` is not "16px forever", it is "however big body text is now":
+
+```xml
+<Run Text="hello" />       <!-- no size of its own -->
+```
+
+Change the body size in `DocumentStyles.xml` and that run restyles, in every note that never
+overrode it. **This is the point, not a hazard** (user, 2026-08-08) — it is how an editor-wide
+restyle is supposed to work, and it is why styling defaults belong in the styles file rather than in
+C# field initializers. A C# initializer is the fallback when no style file speaks; the style file is
+the knob.
+
+The corollary for code: a run that *did* write `FontSize="20"` is pinned and will not follow the
+scheme. The file cannot distinguish "the author chose 18" from "18 was the default" — that was never
+written, deliberately.
+
+Complex members are still written unconditionally.
+
 **Naming constraint:** `WriteElement` names an element after the **type** it wrote, while the schema
 names it after the **member**. They must match — hence `RichTextDocument.layout` is annotated
 `"DocumentLayout"`. Two members of the same complex type cannot work until the writer stamps the
