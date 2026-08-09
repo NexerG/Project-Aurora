@@ -65,7 +65,7 @@ that omitted `FontSize` is not "16px forever", it is "however big body text is n
 <Run Text="hello" />       <!-- no size of its own -->
 ```
 
-Change the body size in `DocumentStyles.xml` and that run restyles, in every note that never
+Change the body size in `XML/Settings/DocumentSettings.xml` and that run restyles, in every note that never
 overrode it. **This is the point, not a hazard** (user, 2026-08-08) — it is how an editor-wide
 restyle is supposed to work, and it is why styling defaults belong in the styles file rather than in
 C# field initializers. A C# initializer is the fallback when no style file speaks; the style file is

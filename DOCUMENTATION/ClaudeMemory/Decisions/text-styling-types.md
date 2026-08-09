@@ -39,7 +39,8 @@ a line-level role. The separate *class* was the thing worth deleting, not the bl
 
 `FontSizeFor(type)`:
 1. `Inherit` is read as `Text`.
-2. The note's own `textStyles` if non-empty, else the editor's (`DocumentStyles.xml` via the VFS).
+2. The note's own `textStyles` if non-empty, else the editor's (`DocumentSettings` via the settings
+   registry — was `DocumentStyles.xml` via the VFS, see [[settings-registry]]).
 3. Exact `type` match.
 4. If `type` is a heading and no exact match exists, **the last heading entry in the list** — user's
    rule, and a change from the old "nearest defined level".

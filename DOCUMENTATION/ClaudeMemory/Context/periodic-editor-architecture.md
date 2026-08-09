@@ -107,7 +107,7 @@ for the decision to accept them and the escape hatch if they bite.
     end of a **wrapped** line is claimed by the line *below*, so the caret sits before the wrapped
     word instead of off the right edge above. No affinity tracking — not needed until selection
     rendering makes the two visibly distinct.
-  - `DocumentLayout.blockSpacing` (new, default 8, in `DocumentStyles.xml`) replaced the hardcoded
+  - `DocumentLayout.blockSpacing` (new, default 8, in `XML/Settings/DocumentSettings.xml`) replaced the hardcoded
     `Spacing = 8f` on `DocumentEditorControl`'s StackPanel — cache and view stack blocks by the same
     number, same rationale as `FontSizeFor`. Divergence here compounds with scroll depth.
   - Structural edits (block added/removed) = full `Rebuild`, no splice. Fine at a few hundred blocks.
@@ -230,18 +230,18 @@ for the decision to accept them and the escape hatch if they bite.
 - **Styling types are data, headings are not a class.** `TextStyleType` = `Inherit, Text,
   Heading1-6, Comment, Code, Quote`; `TextStyle` = (`type`, `fontSize`). A block names a
   `StylingType` and the scheme says what it looks like — see [[text-styling-types]].
-- **Two tiers, via the VFS.** `Data/XML/Documents/DocumentStyles.xml` is the editor-wide scheme; an
-  app's copy resolves ahead of the engine's, so an app restyles every note without touching engine
-  data. A note overrides per-document by embedding its own `<DocumentLayout>`.
+- **Three tiers, via the settings registry.** `Data/XML/Settings/DocumentSettings.xml` is the
+  editor-wide scheme, cascading engine → app → the host's write root **per attribute**; a note then
+  overrides per-document by embedding its own `<DocumentLayout>`. See [[settings-registry]].
 - **Empty list = inherit.** Declaring even one style replaces the whole set (no entry-by-entry merge
   against defaults the author cannot see). A heading past the last one listed takes the last one.
 - `FontSizeFor(TextStyleType)` is the single resolver, so the measurer and the drawn controls cannot
   disagree on heading size. `ContentBlock.ApplyLayout` resolves per run — a run's own `stylingType`
   wins over its block's, `Inherit` means it has none — and writes the result into `TextRun.fontSize`.
-- **Live-path risk, not GUI-verified:** opening a note now lazily loads `DocumentStyles.xml` through
-  the VFS. Headings at old sizes = cascade resolved; headings at body size = the file did not resolve.
-  The engine mount is `Engine.isDebug`-gated (same as `Bootstrap.xml`), so a release build needs the
-  file in the app's own Data folder.
+- **Live-path risk, not GUI-verified:** the scheme now arrives at the `Settings.LoadAll` bootstrap
+  step, not lazily on first note open. Headings at scheme sizes = cascade resolved; headings at 18
+  = nothing resolved and `fallbackFontSize` won. The engine mount is `Engine.isDebug`-gated (same as
+  `Bootstrap.xml`), so a release build needs the file in the app's own Data folder.
 
 ## Gotchas
 - The binary `Serializer` is **not** the note format — notes are XML via `DocumentXml`. See

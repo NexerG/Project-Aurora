@@ -66,7 +66,10 @@ Phases, dates and standing decisions live in [[Roadmap]]. Items below are groupe
 	- [x] `vk_khr_dynamic_rendering` - removes render pass and framebuffer.
 	- [ ] figure out why the renderer breaks the second monitor
 - [ ] Engine settings/preferences — XSD/XML-driven (GPU device selection, CPU/thread counts, misc engine options)
-	- [ ] Settings (some day) *(graduated from the Registry/Bootstrapper rework item)*
+	- [x] settings system — `ISettingsGroup` + `[A_XSDType(name, "Settings")]`, discovered by reflection, values cascading per attribute over `Data/XML/Settings/*.xml` across mounts and the host's write root, saved back as a diff. `DocumentStyles.xml` folded into it as `DocumentSettings`. See `ClaudeMemory/Decisions/settings-registry.md`
+	- [x] settings versioning — `IMigratableSettings` (`version` + `Migrate(from, XElement)`) rewrites a stale stored element before it is read; unclaimed attributes are carried forward through a save rather than erased; a value that no longer converts warns instead of killing bootstrap
+	- [ ] the engine's own groups — GPU device selection, CPU/thread counts (read during bootstrap, so they need ordering against `Settings.LoadAll`)
+	- [ ] change notification — `OnChanged` action per group, when something needs a live reload
 - [ ] figure out a way to do UITrees (save only tree tops in the registry)
 - [ ] update logging with .NET 11 *(non-essential)*
 
