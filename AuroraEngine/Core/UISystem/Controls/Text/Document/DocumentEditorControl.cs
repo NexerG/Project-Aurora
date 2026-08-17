@@ -6,10 +6,9 @@ using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
 using Silk.NET.Maths;
-// WinForms is enabled in this project; alias the engine types to avoid the
-// System.Windows.Forms.ScrollableControl and .Keys clashes.
+// WinForms is enabled in this project; alias the engine type to avoid the
+// System.Windows.Forms.ScrollableControl clash.
 using ScrollableControl = ArctisAurora.Core.UISystem.Controls.Containers.ScrollableControl;
-using Keys = ArctisAurora.EngineWork.Keys;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 {
@@ -55,6 +54,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 
         public void CollapseSelection() => content?.CollapseSelection();
 
+        public bool DeleteSelection() => content != null && content.DeleteSelection();
+
         public TextControl CaretRun => content?.caretRun;
 
         public void LoadDocument(RichTextDocument document)
@@ -65,7 +66,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 child.Destroy();
             children.Clear();
 
-            content = new DocumentControl { blockSpacing = document.layout.blockSpacing };
+            content = new DocumentControl { blockSpacing = document.layout.blockSpacing, document = document };
             AddChild(content);
 
             foreach (Block block in document.blocks)
@@ -85,7 +86,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 Vector2D<float> mouse = WindowControl.ToDesignSpace(InputHandler.mousePos);
                 LayoutRect inner = run.arrangedRect.Shrink(run.padding);
 
-                content.SetCaret(run, run.OffsetAt(mouse.X - inner.x, mouse.Y - inner.y), ShiftHeld);
+                content.SetCaret(run, run.OffsetAt(mouse.X - inner.x, mouse.Y - inner.y), Extending);
                 StartDrag();
             }
 
@@ -123,8 +124,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             SetScrollOffset(new Vector2D<float>(offset.X, offset.Y + overshoot * autoScrollRate));
         }
 
-        private static bool ShiftHeld =>
-            InputHandler.instance.IsKeyDown(Keys.LeftShift) || InputHandler.instance.IsKeyDown(Keys.RightShift);
+        private static bool Extending => InputHandler.instance.IsModifierDown(InputModifier.Extend);
 
         #region ---- caret movement ----
         public void MoveCaret(CaretMove move, bool extend = false)
@@ -215,6 +215,27 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             if (content.CaretPoint(out float x, out float y, out float height))
                 ScrollIntoView(new LayoutRect(x, y, CaretControl.Width, height));
         }
+        #endregion
+
+        #region ---- editing ----
+        public void Backspace() => DeleteOver(CaretMove.Left);
+
+        public void Delete() => DeleteOver(CaretMove.Right);
+
+        // Without a selection the caret makes one a character wide, so deleting past a run or block
+        // boundary follows the same rules the arrow keys already resolve.
+        private void DeleteOver(CaretMove move)
+        {
+            if (content?.caretRun == null) return;
+
+            if (!content.HasSelection) MoveCaret(move, true);
+            content.DeleteSelection();
+            ScrollToCaret();
+        }
+
+        // No ScrollToCaret: the new block has no arranged rect until the next layout pass, and a
+        // zero rect reads as "above the viewport" and would scroll the note to the top.
+        public void SplitBlock() => content?.SplitBlock();
         #endregion
 
         // Nearest TextControl at or above the hit control.

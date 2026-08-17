@@ -153,14 +153,32 @@ The actions a keybind can name are ordinary `[A_XSDActionDependency]` statics an
 
 | Action | Does |
 |--------|------|
-| `Text.Write` | Drains the whole character queue into the focused `TextControl`. Drains rather than takes one, because the OS repeat rate can outpace the frame rate |
+| `Text.Write` | Drains the whole character queue into the focused `TextControl`, replacing the selection if there is one. Drains rather than takes one, because the OS repeat rate can outpace the frame rate |
+| `Text.Backspace` / `Text.Delete` | The selection, or the character the caret would step over |
+| `Text.NewBlock` | Splits the caret's block in two |
 | `Text.Save` | Writes the focused note back to the file it was loaded from |
 | `Text.CaretLeft` / `Text.CaretRight` | One character, crossing run and block boundaries |
 | `Text.CaretUp` / `Text.CaretDown` | One visual line, keeping the caret's x |
 | `Text.CaretLineStart` / `Text.CaretLineEnd` | The visual line's ends, not the paragraph's |
 | `Text.CaretPageUp` / `Text.CaretPageDown` | One viewport height |
 
-Every one of them starts from `UICollisionHandling.activeControl` — a keybind action is an `Action` with no arguments, so *what* it acts on can only come from engine state, not from the binding. `Text.Write` casts it to a `TextControl` and checks `isEditing`; the caret and save actions walk up from it to the nearest `DocumentEditorControl` and do nothing when there isn't one. The caret moves themselves are resolved on the block layouts and are described in [[Rich Text Document]].
+Every one of them starts from `UICollisionHandling.activeControl` — a keybind action is an `Action` with no arguments, so *what* it acts on can only come from engine state, not from the binding. `Text.Write` casts it to a `TextControl` and checks `isEditing`; the caret, edit and save actions walk up from it to the nearest `DocumentEditorControl` and do nothing when there isn't one. The caret moves and the edits themselves are resolved on the block layouts and are described in [[Rich Text Document]].
+
+A plain `Backspace` bind coexists with the `Ctrl+Backspace` one an application may already have: the modified bind is evaluated in the first pass and consumes the trigger, and the shadowing check then skips the unmodified one. Backspace, Delete and Enter are all bound with `Repeat`, so holding one makes deletions or paragraphs the way holding a letter makes letters. `Enter` also counts as a character key and therefore mirrors to `AnySymbol`, but GLFW's character callback emits nothing for it, so the `Text.Write` that fires alongside finds an empty queue and returns.
+
+### Named modifiers
+A `Keybind` names its modifiers per bind, which works when the modifier belongs to one action. It does not work for something like extend-a-selection, which is a *state* several unrelated paths ask about — the arrow-key actions ask, and so does the click handler, which is not a keybind at all: caret placement comes through the hit-test in `UICollisionHandling`, so there is no action for a `Modifier` element to hang off.
+
+A `NamedModifier` binds a key to a role in the `InputModifier` enum, and engine code asks for the role rather than the key.
+
+```xml
+<NamedModifier Modifier="Extend" Key="LeftShift" />
+<NamedModifier Modifier="Extend" Key="RightShift" />
+```
+
+`InputHandler.IsModifierDown(InputModifier.Extend)` is true while any key declared for the role is down, which is why left and right shift are two declarations rather than a special case — a `Keybind`'s own modifier list is AND-ed and could not express the OR. The role is an enum and not a free string so the query is typed end to end and the schema enumerates what is legal, the same reasoning the [[Settings Registry]] rework used.
+
+Roles are grouped exactly as binds are, one group per file, and `SetActiveGroup` swaps both — a keybind group is a mode, so switching to a game group rebinds `Extend` along with everything else instead of leaving an editor binding live. A role no file declares simply reads as never down: there is no engine-side fallback to shift, because a fallback is the hardcoding this exists to remove.
 
 ### XML Format
 Keybinds are defined in XML files placed in the inputs directory (`Paths.XMLDOCUMENTS_INPUTS`). Each file is one group. The root element is a `KeybindMap` containing `Keybind` elements.

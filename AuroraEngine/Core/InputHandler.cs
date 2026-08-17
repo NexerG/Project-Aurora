@@ -538,8 +538,25 @@ namespace ArctisAurora.EngineWork
         public Keys key { get; set; }
     }
 
+    // A role the engine asks about by name, so code never names the key that fills it.
+    [A_XSDType("InputModifier", "Input")]
+    public enum InputModifier
+    {
+        Extend
+    }
+
+    [A_XSDType("NamedModifier", "Input", description: "Binds a key to a modifier role the engine queries by name")]
+    public class NamedModifier : IKeybindMapChild
+    {
+        [A_XSDElementProperty("Modifier", "Input")]
+        public InputModifier modifier { get; set; }
+
+        [A_XSDElementProperty("Key", "Input")]
+        public Keys key { get; set; }
+    }
+
     [A_XSDType("Keybind", "Input", AllowedChildren = typeof(IKeybindChild), Description = "Maps a trigger key with optional modifiers and conditions to an action")]
-    public class KeybindDefinition
+    public class KeybindDefinition : IKeybindMapChild
     {
         [A_XSDElementProperty("Trigger", "Input")]
         public Keys trigger { get; set; }
@@ -719,6 +736,10 @@ namespace ArctisAurora.EngineWork
         private Dictionary<string, List<KeybindDefinition>> _groups = new Dictionary<string, List<KeybindDefinition>>();
         private List<KeybindDefinition> _activeBinds = new List<KeybindDefinition>();
 
+        // modifier roles, grouped the same way the binds are
+        private Dictionary<string, List<NamedModifier>> _modifierGroups = new Dictionary<string, List<NamedModifier>>();
+        private List<NamedModifier> _activeModifiers = new List<NamedModifier>();
+
         // Default condition when none specified
         private static PressCondition _defaultPress = new PressCondition();
 
@@ -734,6 +755,11 @@ namespace ArctisAurora.EngineWork
                 _activeBinds = binds;
             else
                 _activeBinds = new List<KeybindDefinition>();
+
+            if (_modifierGroups.TryGetValue(group, out List<NamedModifier> modifiers))
+                _activeModifiers = modifiers;
+            else
+                _activeModifiers = new List<NamedModifier>();
         }
 
         public void AddKeybind(string group, KeybindDefinition def)
@@ -747,6 +773,29 @@ namespace ArctisAurora.EngineWork
 
             if (group == _activeGroup)
                 _activeBinds = list;
+        }
+
+        public void AddModifier(string group, NamedModifier modifier)
+        {
+            if (!_modifierGroups.TryGetValue(group, out List<NamedModifier> list))
+            {
+                list = new List<NamedModifier>();
+                _modifierGroups.Add(group, list);
+            }
+            list.Add(modifier);
+
+            if (group == _activeGroup)
+                _activeModifiers = list;
+        }
+
+        // Any one key bound to the role satisfies it, so left and right shift are two declarations.
+        public bool IsDown(InputModifier modifier)
+        {
+            for (int i = 0; i < _activeModifiers.Count; i++)
+                if (_activeModifiers[i].modifier == modifier && _tracker.IsDown(_activeModifiers[i].key))
+                    return true;
+
+            return false;
         }
 
         public void Update(double deltaTime)
@@ -948,8 +997,10 @@ namespace ArctisAurora.EngineWork
 
     public interface IKeybindChild { }
 
+    public interface IKeybindMapChild { }
 
-    [A_XSDType("KeybindMap", "Input", AllowedChildren = typeof(KeybindDefinition), Description = "Root container for keybind definitions")]
+
+    [A_XSDType("KeybindMap", "Input", AllowedChildren = typeof(IKeybindMapChild), Description = "Root container for keybind definitions")]
     public unsafe class InputHandler : IXMLParser<InputHandler>
     {
         public static InputHandler instance { get; set; }
@@ -967,7 +1018,12 @@ namespace ArctisAurora.EngineWork
         [A_XSDElementProperty("Keybind", "Input")]
         public List<KeybindDefinition> keybindDefinitions = new List<KeybindDefinition>();
 
+        [A_XSDElementProperty("NamedModifier", "Input")]
+        public List<NamedModifier> namedModifiers = new List<NamedModifier>();
+
         public bool IsKeyDown(Keys k) => keyTracker.IsDown(k);
+
+        public bool IsModifierDown(InputModifier modifier) => gestureMatcher.IsDown(modifier);
 
         public InputHandler()
         {
@@ -1049,6 +1105,21 @@ namespace ArctisAurora.EngineWork
 
                 foreach (XElement keybindElement in root.Elements())
                 {
+                    if (keybindElement.Name.LocalName == "NamedModifier")
+                    {
+                        NamedModifier named = new NamedModifier();
+                        XAttribute roleAttr = keybindElement.Attribute("Modifier");
+                        XAttribute boundAttr = keybindElement.Attribute("Key");
+
+                        if (roleAttr != null)
+                            named.modifier = (InputModifier)Enum.Parse(typeof(InputModifier), roleAttr.Value);
+                        if (boundAttr != null)
+                            named.key = (Keys)Enum.Parse(typeof(Keys), boundAttr.Value);
+
+                        handler.gestureMatcher.AddModifier(groupName, named);
+                        continue;
+                    }
+
                     KeybindDefinition def = new KeybindDefinition();
 
                     // Trigger key

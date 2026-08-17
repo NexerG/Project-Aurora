@@ -2,6 +2,9 @@
 <KeybindMap xmlns="http://arctisaurora/AuroraInputTypes"
 		  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 		  xsi:schemaLocation="http://arctisaurora/AuroraInputTypes ../../Schemas/InputTypeSchema.xsd" >
+	<NamedModifier Modifier="Extend" Key="LeftShift" />
+	<NamedModifier Modifier="Extend" Key="RightShift" />
+
 	<Keybind Trigger="Backspace" Action="ExitApplication">
 		<Modifier Key="LeftControl" />
 		<Press />
@@ -9,6 +12,18 @@
 
 	<Keybind Trigger="AnySymbol" Action="Text.Write">
 		<Continuous />
+	</Keybind>
+
+	<Keybind Trigger="Backspace" Action="Text.Backspace">
+		<Repeat />
+	</Keybind>
+
+	<Keybind Trigger="Delete" Action="Text.Delete">
+		<Repeat />
+	</Keybind>
+
+	<Keybind Trigger="Enter" Action="Text.NewBlock">
+		<Repeat />
 	</Keybind>
 
 	<Keybind Trigger="S" Action="Text.Save">

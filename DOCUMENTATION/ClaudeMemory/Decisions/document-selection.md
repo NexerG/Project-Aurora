@@ -86,11 +86,15 @@ call, which is a decision for whoever owns that control.
 **Rejected: an editor-local flag polled from `OnTick`.** No engine files touched, but it is a private
 parallel mechanism for a concept the engine already half-had, and it leaves the half unfinished.
 
-### 7. Shift is a boolean through the existing moves, not a second set of actions
+### 7. Extend is a boolean through the existing moves, not a second set of actions
 
 `MoveCaret(move, extend)` and `SetCaret(run, offset, extend)`. `extend` keeps the anchor; without it
-the selection collapses onto the new position. Covers shift+arrows (read in `TextInputActions.Move`)
-and shift+click (read in `ResolveOnClick`) with the code that already existed.
+the selection collapses onto the new position. Covers extend+arrows (read in `TextInputActions.Move`)
+and extend+click (read in `ResolveOnClick`) with the code that already existed.
+
+**Amended 2026-08-17:** it started as a literal `IsKeyDown(LeftShift) || IsKeyDown(RightShift)` in
+both places, which hardcoded editing keys in engine code — the thing the XML keybind system exists to
+avoid. It is now a **named modifier**: see [[named-input-modifiers]].
 
 ### 8. The typing target is the caret's run, not `activeControl` (found by GUI test, 2026-08-17)
 
@@ -157,8 +161,10 @@ Typing was unaffected throughout because character input never goes through the 
 - **GUI, by the user:** left/right caret movement works. Up/down did **not** — fixed, see below.
   Typing selected its own output, and typing intermittently dropped a character — both fixed
   (decisions 8 and 10). A stuck drag froze input — fixed (decision 9).
-- **Still unverified:** the highlight boxes landing on the right characters, the wrapped-line right
-  edge, drag selection itself, auto-scroll, and shift+click / shift+arrows.
+- **GUI, by the user (2026-08-17, second pass):** selection works — highlights, drag and
+  shift+click / shift+arrows all confirmed good.
+- **Still unverified:** drag auto-scroll only, and not because it failed — the sample note is
+  shorter than the viewport, so there is nothing to scroll past.
 
 ### 10. Up and down have to exclude the caret's own line
 
@@ -179,10 +185,10 @@ loses the original column. Standard editors keep one; unbuilt.
 
 - **Clipping.** `ClipRect` is computed every `Arrange` and has no consumer, so nothing is scissored.
   Scrolled text already overflows the viewport; a filled highlight box makes that obvious rather than
-  subtle. This is the next thing to hit, and it is already on the WIP list under UI.
-- **Step 2 — selection-aware editing.** Typing and Backspace over a range. The hard half is not the
-  selection: deleting across blocks has to merge the last block's tail into the first and destroy the
-  ones between, which is block-level structural editing nothing does yet.
+  subtle. It is on the WIP list under UI. ~~This is the next thing to hit~~ — **deferred by the user
+  on 2026-08-17** in favour of the editing binds, so expect the overflow meanwhile.
+- ~~**Step 2 — selection-aware editing.**~~ **DONE 2026-08-17**, along with the Backspace/Delete/Enter
+  binds that were missing entirely. See [[document-structural-editing]].
 - **Step 3 — Ctrl+B/I.** `bold` and `italic` are declared on `TextInputControl` and **nothing reads
   them**; `arial-b` is a separate font asset. So Ctrl+B is a `fontName` swap, and the run split has
   to carry it. `StyleEquals` already compares `fontName`, so the merge side is ready.

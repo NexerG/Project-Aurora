@@ -1,8 +1,6 @@
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls.Text.Document;
 using ArctisAurora.EngineWork;
-// WinForms is enabled in this project; alias the engine enum to avoid the System.Windows.Forms.Keys clash.
-using Keys = ArctisAurora.EngineWork.Keys;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text
 {
@@ -30,6 +28,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             if (input.Count == 0) return;
 
             DocumentEditorControl editor = Editor();
+            editor?.DeleteSelection();
+
             TextControl target = Target(editor);
             if (target == null) return;
 
@@ -52,6 +52,15 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             TextControl control = UICollisionHandling.activeControl as TextControl;
             return control != null && control.isEditing ? control : null;
         }
+
+        [A_XSDActionDependency("Text.Backspace", "Input", "Deletes the selection, or the character before the caret")]
+        public static void Backspace() => Editor()?.Backspace();
+
+        [A_XSDActionDependency("Text.Delete", "Input", "Deletes the selection, or the character after the caret")]
+        public static void Delete() => Editor()?.Delete();
+
+        [A_XSDActionDependency("Text.NewBlock", "Input", "Splits the caret's block in two")]
+        public static void NewBlock() => Editor()?.SplitBlock();
 
         [A_XSDActionDependency("Text.Save", "Input", "Writes the focused note back to the file it was loaded from")]
         public static void Save() => Editor()?.Save();
@@ -80,9 +89,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         [A_XSDActionDependency("Text.CaretPageDown", "Input")]
         public static void CaretPageDown() => Move(CaretMove.PageDown);
 
-        // Shift extends the selection instead of collapsing it onto the new position.
-        private static void Move(CaretMove move) => Editor()?.MoveCaret(move,
-            InputHandler.instance.IsKeyDown(Keys.LeftShift) || InputHandler.instance.IsKeyDown(Keys.RightShift));
+        // The Extend modifier keeps the anchor instead of collapsing it onto the new position.
+        private static void Move(CaretMove move) =>
+            Editor()?.MoveCaret(move, InputHandler.instance.IsModifierDown(InputModifier.Extend));
 
         // Nearest document editor at or above whatever the collision handler last made active.
         private static DocumentEditorControl Editor()

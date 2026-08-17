@@ -25,6 +25,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             controlColorHex = controlColorHex,
             fontName = fontName,
             fontSize = fontSize,
+            stylingType = stylingType,
             text = text
         };
     }

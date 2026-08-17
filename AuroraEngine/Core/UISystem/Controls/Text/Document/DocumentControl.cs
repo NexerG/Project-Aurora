@@ -27,6 +27,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
     {
         public float blockSpacing;
 
+        // the model these blocks came from; the file is written from its block list
+        internal RichTextDocument document;
+
         // caret target
         private CaretControl caret;
         public TextControl caretRun { get; private set; }
@@ -97,7 +100,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             return slot;
         }
 
-        private static int Length(TextControl run) => (run.text ?? string.Empty).Length;
+        private static string TextOf(TextControl run) => run.text ?? string.Empty;
+
+        private static int Length(TextControl run) => TextOf(run).Length;
 
         // Anything that moves the caret without going through SetCaret leaves the anchor behind —
         // WriteChar bumps cursorPosition itself, so typing would otherwise select what it typed.
@@ -131,6 +136,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         {
             arrangedRect = finalRect;
             WriteArrangedTransform(finalRect);
+
 
             ClipRect = parent is VulkanControl parentControl
                 ? (clipOutOfBounds ? LayoutRect.Intersect(finalRect, parentControl.ClipRect) : parentControl.ClipRect)
@@ -278,33 +284,42 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         {
             int used = 0;
 
-            if (caretRun != null && !anchor.Equals(Focus))
+            if (OrderedSelection(out CaretSlot from, out CaretSlot to))
             {
                 List<TextControl> runs = OrderedRuns();
-                int anchorIndex = runs.IndexOf(anchor.run);
-                int caretIndex = runs.IndexOf(caretRun);
+                int first = runs.IndexOf(from.run);
+                int last = runs.IndexOf(to.run);
 
-                if (anchorIndex >= 0 && caretIndex >= 0)
-                {
-                    // a drag can run backwards, so put the two ends in reading order first
-                    bool forward = anchorIndex < caretIndex
-                        || (anchorIndex == caretIndex && anchor.offset <= caretRun.cursorPosition);
-
-                    int firstRun = forward ? anchorIndex : caretIndex;
-                    int firstOffset = forward ? anchor.offset : caretRun.cursorPosition;
-                    int lastRun = forward ? caretIndex : anchorIndex;
-                    int lastOffset = forward ? caretRun.cursorPosition : anchor.offset;
-
-                    for (int i = firstRun; i <= lastRun; i++)
-                        used = HighlightRun(runs[i],
-                            i == firstRun ? firstOffset : 0,
-                            i == lastRun ? lastOffset : Length(runs[i]),
-                            used);
-                }
+                for (int i = first; i <= last; i++)
+                    used = HighlightRun(runs[i],
+                        i == first ? from.offset : 0,
+                        i == last ? to.offset : Length(runs[i]),
+                        used);
             }
 
             for (int i = used; i < highlights.Count; i++)
                 highlights[i].Arrange(new LayoutRect(arrangedRect.x, arrangedRect.y, 0f, 0f));
+        }
+
+        public bool HasSelection => caretRun != null && !anchor.Equals(Focus);
+
+        // The two ends in reading order, since a drag can run backwards.
+        private bool OrderedSelection(out CaretSlot from, out CaretSlot to)
+        {
+            from = to = default;
+            if (!HasSelection) return false;
+
+            List<TextControl> runs = OrderedRuns();
+            int anchorIndex = runs.IndexOf(anchor.run);
+            int caretIndex = runs.IndexOf(caretRun);
+            if (anchorIndex < 0 || caretIndex < 0) return false;
+
+            bool forward = anchorIndex < caretIndex
+                || (anchorIndex == caretIndex && anchor.offset <= caretRun.cursorPosition);
+
+            from = forward ? anchor : Focus;
+            to = forward ? Focus : anchor;
+            return true;
         }
 
         // The x span comes from CaretAt, the same function that places the caret — so the highlight
@@ -353,6 +368,131 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 MarkTreeOrderDirty();
             }
             return highlights[index];
+        }
+        #endregion
+
+        #region ---- editing ----
+        // Removes the selected range; false when nothing was selected.
+        public bool DeleteSelection()
+        {
+            if (!OrderedSelection(out CaretSlot from, out CaretSlot to)) return false;
+
+            DeleteRange(from, to);
+            return true;
+        }
+
+        // The head run keeps its prefix and the caret, the tail run keeps its suffix, and everything
+        // the range crossed whole is destroyed.
+        private void DeleteRange(CaretSlot from, CaretSlot to)
+        {
+            if (from.run == to.run)
+            {
+                from.run.text = TextOf(from.run).Remove(from.offset, to.offset - from.offset);
+                SetCaret(from.run, from.offset);
+                return;
+            }
+
+            List<TextControl> runs = OrderedRuns();
+            int first = runs.IndexOf(from.run);
+            int last = runs.IndexOf(to.run);
+
+            from.run.text = TextOf(from.run)[..from.offset];
+            to.run.text = TextOf(to.run)[to.offset..];
+
+            for (int i = first + 1; i < last; i++)
+                runs[i].Destroy();
+
+            Block head = BlockOf(from.run);
+            Block tail = BlockOf(to.run);
+            if (head != tail) MergeIntoHead(head, tail);
+
+            // the head run holds the caret whether or not it kept anything, so the tail run only
+            // survives while it still has text
+            if (Length(to.run) == 0) to.run.Destroy();
+
+            head.InvalidateLayout();
+            SetCaret(from.run, from.offset);
+        }
+
+        // The tail block's surviving runs move into the head block, and every block the range
+        // crossed goes with the tail.
+        private void MergeIntoHead(Block head, Block tail)
+        {
+            foreach (Entity child in tail.children.ToArray())
+            {
+                if (child is not TextControl run) continue;
+
+                tail.children.Remove(run);
+                head.AddChild(run);
+            }
+
+            List<Block> blocks = Blocks();
+            int end = blocks.IndexOf(tail);
+            for (int i = blocks.IndexOf(head) + 1; i <= end; i++)
+                RemoveBlock(blocks[i]);
+
+            head.ApplyLayout(document.layout);
+        }
+
+        // Splits the caret's block in two, the second carrying everything from the caret on.
+        public void SplitBlock()
+        {
+            DeleteSelection();
+
+            if (caretRun is not TextRun run || BlockOf(run) is not ContentBlock block) return;
+
+            ContentBlock tail = new ContentBlock { stylingType = block.stylingType };
+            TextRun carried = run.Clone();
+            carried.text = TextOf(run)[run.cursorPosition..];
+            run.text = TextOf(run)[..run.cursorPosition];
+            tail.AddChild(carried);
+
+            bool past = false;
+            foreach (Entity child in block.children.ToArray())
+            {
+                if (child == run) { past = true; continue; }
+                if (!past || child is not TextControl following) continue;
+
+                block.children.Remove(following);
+                tail.AddChild(following);
+            }
+
+            // the carried run is worth keeping only while it holds text or is all the block has
+            if (Length(carried) == 0 && tail.children.Count > 1) carried.Destroy();
+
+            InsertBlockAfter(block, tail);
+            tail.ApplyLayout(document.layout);
+            block.InvalidateLayout();
+
+            SetCaret(tail.RunAt(0), 0);
+        }
+
+        // Blocks sit between the highlight boxes at the head of the child list and the caret at its
+        // end, so a new one goes in beside its neighbour rather than at either end.
+        private void InsertBlockAfter(Block after, Block block)
+        {
+            children.Insert(children.IndexOf(after) + 1, block);
+            block.parent = this;
+            MarkTreeOrderDirty();
+            InvalidateLayout();
+
+            document.blocks.Insert(document.blocks.IndexOf(after) + 1, block);
+        }
+
+        // Destroy detaches from the child list itself; the model list is the other place it lives.
+        private void RemoveBlock(Block block)
+        {
+            document.blocks.Remove(block);
+            block.Destroy();
+        }
+
+        private List<Block> Blocks()
+        {
+            List<Block> blocks = new List<Block>();
+            foreach (Entity child in children)
+                if (child is Block block) blocks.Add(block);
+
+            return blocks;
         }
         #endregion
     }
