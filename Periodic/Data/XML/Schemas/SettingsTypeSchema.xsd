@@ -3,6 +3,9 @@
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:import schemaLocation="UITypeSchema.xsd" namespace="http://arctisaurora/AuroraUITypes" />
+  <xs:simpleType name="Settings">
+    <xs:union memberTypes="types:SettingScope types:WindowMode" />
+  </xs:simpleType>
   <xs:element name="DocumentSettings" type="types:DocumentSettings" />
   <xs:complexType name="DocumentSettings">
     <xs:sequence>
@@ -13,12 +16,67 @@
       </xs:element>
     </xs:sequence>
   </xs:complexType>
-  <xs:element name="SettingsManifest" type="types:SettingsManifest" />
-  <xs:complexType name="SettingsManifest">
+  <xs:simpleType name="SettingScope">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="App" />
+      <xs:enumeration value="User" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:element name="UserSettings" type="types:UserSettings" />
+  <xs:complexType name="UserSettings">
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
         <xs:element name="DocumentSettings" type="types:DocumentSettings" />
+        <xs:element name="Graphics" type="types:Graphics" />
       </xs:choice>
     </xs:sequence>
   </xs:complexType>
+  <xs:element name="Device" type="types:Device" />
+  <xs:complexType name="Device">
+    <xs:sequence />
+    <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="Scope" type="types:SettingScope" />
+    <xs:attribute name="OnChanged" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="Monitor" type="types:Monitor" />
+  <xs:complexType name="Monitor">
+    <xs:sequence />
+    <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="Scope" type="types:SettingScope" />
+    <xs:attribute name="OnChanged" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="Window" type="types:Window" />
+  <xs:complexType name="Window">
+    <xs:sequence />
+    <xs:attribute name="Mode" type="types:WindowMode" />
+    <xs:attribute name="Width" type="xs:unsignedInt" />
+    <xs:attribute name="Height" type="xs:unsignedInt" />
+    <xs:attribute name="Scope" type="types:SettingScope" />
+    <xs:attribute name="OnChanged" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="VSync" type="types:VSync" />
+  <xs:complexType name="VSync">
+    <xs:sequence />
+    <xs:attribute name="On" type="xs:boolean" />
+    <xs:attribute name="Scope" type="types:SettingScope" />
+    <xs:attribute name="OnChanged" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="Graphics" type="types:Graphics" />
+  <xs:complexType name="Graphics">
+    <xs:sequence>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="Device" type="types:Device" />
+        <xs:element name="Monitor" type="types:Monitor" />
+        <xs:element name="Window" type="types:Window" />
+        <xs:element name="VSync" type="types:VSync" />
+      </xs:choice>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:simpleType name="WindowMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Windowed" />
+      <xs:enumeration value="Borderless" />
+      <xs:enumeration value="Fullscreen" />
+    </xs:restriction>
+  </xs:simpleType>
 </xs:schema>

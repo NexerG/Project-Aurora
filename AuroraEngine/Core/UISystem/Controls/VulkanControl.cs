@@ -154,8 +154,7 @@ namespace ArctisAurora.Core.UISystem.Controls
             public Vector2D<float> Position => new Vector2D<float>(x, y);
             public Vector2D<float> size => new Vector2D<float>(width, height);
 
-            // Returns a rect inset by the given thickness on all sides.
-            // Width/height are clamped to 0 — the rect cannot invert.
+            // A rect inset on all sides, clamped so it cannot invert.
             public LayoutRect Shrink(Thickness t) => new LayoutRect(
                 x + t.left,
                 y + t.top,
@@ -214,8 +213,6 @@ namespace ArctisAurora.Core.UISystem.Controls
         public bool IsWidthStar => widthStar > 0f;
         public bool IsHeightStar => heightStar > 0f;
 
-        // 0 = auto. Every Measure override already reads it that way; the old default of 72 was a
-        // legal explicit size, so "unset" and "72px" were indistinguishable.
         [A_XSDElementProperty("Width", "UI", "Width in pixels. 0 = auto.")]
         public int preferredWidth
         {
@@ -280,7 +277,6 @@ namespace ArctisAurora.Core.UISystem.Controls
         #endregion
 
         #region ---- positioning ----
-        // postioning
         [A_XSDElementProperty("HorizontalPos", "UI", "\"Sets the position of the current control within it's parent. [0;1]. Works with non-container controls.\"")]
         public float horizontalPosition = 0.5f;
 
@@ -342,13 +338,7 @@ namespace ArctisAurora.Core.UISystem.Controls
         #endregion
 
         #region ---- rendering ----
-        // A ref into the UIControls pool's ControlData column, not a field. The row travels with
-        // the rest of this control's data through compaction and resequence, and the renderer
-        // mirrors the whole column to one SSBO — so there is no per-control Vulkan buffer to
-        // create, rebind on every structural change, or defer the deletion of.
-        //
-        // Writes go straight into the pool; call UpdateControlData() afterwards to widen the dirty
-        // range, exactly as transform writes end in CommitTransform().
+        // A ref into the UIControls pool's ControlData column; every write ends in UpdateControlData().
         public ref ControlData controlData => ref Pool.GetRef<ControlData>(dataHandle);
 
         public TextureAsset maskAsset
@@ -499,11 +489,10 @@ namespace ArctisAurora.Core.UISystem.Controls
         #endregion
 
         #region ---- data pool ----
-        // Controls store their transform (and, later, ControlData) in the "UIControls" pool.
+        // Transform and ControlData both live in the "UIControls" pool.
         protected override string PoolName => "UIControls";
 
-        // Write an arranged rect into the pooled transform, z-biased just above the parent
-        // (painter order: child draws over parent). Shared by every control's Arrange.
+        // Writes an arranged rect into the pooled transform, z-biased just above the parent.
         protected void WriteArrangedTransform(LayoutRect finalRect)
         {
             float z = parent is VulkanControl pc
@@ -518,13 +507,7 @@ namespace ArctisAurora.Core.UISystem.Controls
             CommitTransform();
         }
 
-        // Bake this control's pooled transform into its GpuTransform row and dirty it. EVERY write
-        // to a control's transform must end here, or the matrix the renderer uploads goes stale.
-        //
-        // This used to be MCUI.BakeMatrices on the render thread, re-deriving the whole live range
-        // every dirty pass — move one window, rebuild all 1024. The matrix is a pure per-row
-        // function of the transform, so baking at the write costs one matrix per real change and
-        // leaves the renderer a column it only reads, off a pool Pools.xml says Main owns.
+        // Bakes the pooled transform into its GpuTransform row. Every transform write must end here.
         protected void CommitTransform()
         {
             ref TransformData t = ref transform;
@@ -539,7 +522,6 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         public VulkanControl()
         {
-            // The pool slot may be recycled, so seed every field rather than assuming zeroes.
             controlData = new ControlData();
             controlData.style = ControlStyle.Default();
             controlData.uvs = new QuadUVs();
@@ -549,9 +531,6 @@ namespace ArctisAurora.Core.UISystem.Controls
 
             EntityRegistry.AddToGroup("Controls", this);
 
-            // Seed the baked matrix from the default transform the base ctor allocated. The old
-            // render-side sweep covered rows that reached the GPU before their first Arrange; now
-            // that the bake happens at the write, an unwritten row uploads as a zero matrix.
             CommitTransform();
             InvalidateLayout();
         }
@@ -561,23 +540,14 @@ namespace ArctisAurora.Core.UISystem.Controls
             base.OnStart();
         }
 
-        // Publish a ControlData edit. The row already sits in the column the renderer mirrors, so
-        // this only has to widen the pool's dirty range — no upload, no per-control buffer.
+        // Publishes a ControlData edit by widening the pool's dirty range.
         internal void UpdateControlData() => Pool.MarkContentDirty(dataHandle);
 
-        // A control's pool row is appended at the dense tail, but its place in paint order is
-        // wherever its parent sits in the tree — so any insert other than at the DFS tail leaves
-        // dense order disagreeing with the tree, and the pool has to be resequenced at the frame
-        // edge. Telling the two cases apart is not worth it: this is a flag, not a queue, so N
-        // inserts in one tick still cost exactly one permute.
-        //
-        // Removal deliberately does NOT come through here — CompactOrdered preserves the
-        // survivors' relative order, so a destroy never needs a permute.
+        // Flags the pool for a resequence at the frame edge. Inserts only — removals never need one.
         protected void MarkTreeOrderDirty() => Pool.MarkOrderDirty();
 
         public override void AddChild(Entity entity)
         {
-            //vulkan control only
             if (entity is not VulkanControl control)
                 throw new Exception("Child entity must be a VulkanControl");
             if (children.Count > 0)

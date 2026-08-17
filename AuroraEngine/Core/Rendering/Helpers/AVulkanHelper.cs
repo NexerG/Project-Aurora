@@ -1,4 +1,5 @@
-﻿using ArctisAurora.EngineWork.Rendering.RendererTypes;
+﻿using ArctisAurora.Core.Registry;
+using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 using Windows.Foundation.Metadata;
@@ -122,9 +123,13 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 
         internal static PresentModeKHR GetPresentMode(IReadOnlyList<PresentModeKHR> _presentModes)
         {
+            PresentModeKHR _preferred = SettingsRegistry.Get<GraphicsSettings>().vsync.on
+                ? PresentModeKHR.MailboxKhr
+                : PresentModeKHR.ImmediateKhr;
+
             foreach (var _availablePresentMode in _presentModes)
             {
-                if (_availablePresentMode == PresentModeKHR.MailboxKhr)
+                if (_availablePresentMode == _preferred)
                 {
                     return _availablePresentMode;
                 }

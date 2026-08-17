@@ -4,6 +4,8 @@ using ArctisAurora.Core.UISystem.Controls;
 using System.Collections;
 using System.Xml.Linq;
 
+using ArctisAurora.EngineWork;
+
 namespace ArctisAurora.Core.Registry
 {
     public class EntityGroup
@@ -79,7 +81,11 @@ namespace ArctisAurora.Core.Registry
         public static VulkanControl uiTree
         {
             get => field;
-            set => field = value;
+            set
+            {
+                field = value;
+                (value as WindowControl)?.FitTo(Engine.window.windowSize);
+            }
         }
 
         public EntityRegistry()

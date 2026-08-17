@@ -194,10 +194,13 @@ for the decision to accept them and the escape hatch if they bite.
     `TextRunControl` and `DocumentCanvasControl` now call `BubbleAll()` too, or the click dies at the
     strip. The glyph is *not* the hit-test: it only says "the document was clicked", and the caret
     position comes from `cache.HitTest`, which works for text that was never materialized.
-  - **Coordinate spaces coincide.** `WriteArrangedTransform` writes `finalRect` straight into
-    `transform.position/scale`, and `InputHandler.mousePos` is raw GLFW window pixels — so layout
-    space **is** mouse space. Screen→document = subtract `canvas.arrangedRect` origin (already
-    scroll-shifted). Use `InputHandler.mousePos`, **not** `ResolveOnClick`'s `oldPos`: Engine sets
+  - **Coordinate spaces coincide** *unless the window scales*. `WriteArrangedTransform` writes
+    `finalRect` straight into `transform.position/scale`, and `InputHandler.mousePos` is raw GLFW
+    window pixels. Those are the same units in every mode except `WindowControl.WindowingMode
+    .ScaleUp`, so raw mouse coordinates must go through **`WindowControl.ToDesignSpace`** before
+    they are compared to a rect — `Engine.HandleUI` and `DocumentEditorControl.ResolveOnClick` both
+    do. Screen→document = subtract `canvas.arrangedRect` origin (already scroll-shifted). Use
+    `InputHandler.mousePos`, **not** `ResolveOnClick`'s `oldPos`: Engine sets
     `uiCollisionHandler.lastMousePos` *after* click resolution, so `oldPos` lags by a frame.
   - A rewrap keeps the cursor valid — block/run/charOffset are independent of where lines break —
     so the caret is re-resolved via `CharToPoint`, not reset.

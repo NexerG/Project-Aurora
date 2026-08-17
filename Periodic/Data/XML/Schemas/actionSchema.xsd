@@ -44,7 +44,12 @@
       <xs:enumeration value="AssetRegistries.PrepareAllAssets" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:simpleType name="Settings">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Renderer.RequestSwapchainRebuild" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:simpleType name="Uncategorized">
-    <xs:union memberTypes="actions:Input actions:UI actions:PoolSort actions:Bootstrap" />
+    <xs:union memberTypes="actions:Input actions:UI actions:PoolSort actions:Bootstrap actions:Settings" />
   </xs:simpleType>
 </xsd:schema>

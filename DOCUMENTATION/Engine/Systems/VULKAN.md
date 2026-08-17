@@ -66,10 +66,11 @@ The Vulkan Instance is the driver being called and setup to talk with our progra
 
 `Window Surface`
 We just create the window surface. Aka platform dependent driver that lets us create a window to render images to the screen. Sets the window hints like `is resizeable`, `is decorated (top bar)`, `double buffer (swapchain)`, `RGB bits (per channel)`, `refresh rate`. bunch of other shit.
+Whether it is a plain window, a borderless one filling a monitor, or an exclusive fullscreen one is the `Window` setting's `Mode` in the same `Graphics` group, which monitor that is comes from its `Monitor` setting, and the present mode the swapchain later asks for is its `VSync` one.
 The window also separately has exposed input events like `cursor image`, `window resize`, `cursor position (cursor move)`, `key (on press)`, `scrolling`, `char (last pressed char)`, `mouse button (mouse press)`, `Mouse on window`.
 
 `Physical Device`
-Just logic to ping the Vulkan API instance to tell us how many Vulkan compatible devices are in the machine approachable to the API.
+Just logic to ping the Vulkan API instance to tell us how many Vulkan compatible devices are in the machine approachable to the API. Which one of them we take is the `Graphics` group in [[SETTINGS]] — the `Device` setting's `Name`, matched as a substring of the driver's device name, falling back to the first enumerated device when it is empty or matches nothing.
 
 `Queue Allocator`
 My own setup logic to allocate queues to rendering modules and other bits of the rendering. It has handles queues for stuff like graphics, compute, transfer (buffer and data transfer between CPU and GPU (discrete))

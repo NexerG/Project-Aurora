@@ -132,6 +132,9 @@ Design rationale lives in [[cross-system-change-notification]]; this is the code
   `AllocatePooledTransform` cannot bake (base class; the `Entities` pool has no `GpuTransform`
   column), and the old render-side sweep used to cover freshly allocated rows implicitly — without
   the ctor bake a control reaching the GPU before its first `Arrange` uploads a zero matrix.
+- **The ctor also seeds `controlData` field by field** (`new ControlData()`, `style`, `uvs`) rather
+  than trusting zeroes: the pool slot it just took may be a recycled one, still holding the previous
+  occupant's values. Same class of bug as the zero matrix above, one column over.
 - **INVARIANT: every write to a control's transform must end in `CommitTransform()`.** Convention
   only — nothing enforces it. A site that writes `transform` and skips it leaves a stale matrix
   silently. `Entity.SetPosition/SetScale/SetRotation/SetTransform` mark dirty WITHOUT baking and

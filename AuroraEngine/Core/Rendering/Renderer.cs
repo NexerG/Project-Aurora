@@ -355,6 +355,24 @@ namespace ArctisAurora.EngineWork.Rendering
             PhysicalDevice[] devices = new PhysicalDevice[deviceCount];
             devices = (PhysicalDevice[])vk.GetPhysicalDevices(instance);
             gpu = devices[0];
+
+            string preferred = SettingsRegistry.Get<GraphicsSettings>().device.name;
+            if (string.IsNullOrWhiteSpace(preferred)) return;
+
+            for (int i = 0; i < devices.Length; i++)
+            {
+                if (!DeviceName(devices[i]).Contains(preferred, StringComparison.OrdinalIgnoreCase)) continue;
+                gpu = devices[i];
+                return;
+            }
+            Console.WriteLine($"[Renderer] no device matching '{preferred}' — using {DeviceName(gpu)}.");
+        }
+
+        private string DeviceName(PhysicalDevice device)
+        {
+            PhysicalDeviceProperties properties;
+            vk.GetPhysicalDeviceProperties(device, &properties);
+            return SilkMarshal.PtrToString((nint)properties.DeviceName);
         }
 
         // Asks the GPU what it actually supports before vkCreateDevice does. Without this an unsupported
@@ -531,6 +549,14 @@ namespace ArctisAurora.EngineWork.Rendering
             {
                 AVulkanBufferHandler.CreateImageView(vk, ref logicalDevice, ref swapchainImages[i], ref swapchainImageViews[i], surfaceFormat.Format, ImageAspectFlags.ColorBit);
             }
+        }
+
+        // Raises the flag the render thread already watches, rather than tearing the swapchain down
+        // from whichever thread applied the setting.
+        [A_XSDActionDependency("Renderer.RequestSwapchainRebuild", "Settings")]
+        internal static void RequestSwapchainRebuild()
+        {
+            Engine.window.frameBufferResized = true;
         }
 
         // Rebuilds the swapchain and every window-sized resource after a resize. Pipelines use

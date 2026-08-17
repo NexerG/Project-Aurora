@@ -17,8 +17,8 @@ namespace ArctisAurora.Core.Registry
         void Migrate(int from, XElement stored);
     }
 
-    [A_XSDType("SettingsManifest", "Settings", allowedChildren: typeof(ISettingsGroup))]
-    public class SettingsManifest { }
+    [A_XSDType("UserSettings", "Settings", allowedChildren: typeof(ISettingsGroup))]
+    public class UserSettingsFile { }
 
     // One instance per ISettingsGroup, found by reflection, filled from every Data/XML/Settings
     // manifest across the mounts and then from the application's write root.
@@ -71,14 +71,84 @@ namespace ArctisAurora.Core.Registry
             if (writeRoot != null && Directory.Exists(writeRoot))
                 foreach (string file in Directory.GetFiles(writeRoot, "*.xml").OrderBy(f => f))
                     ApplyFile(file, true);
+
+            // Loading is not a change — the first Apply must not fire everything that has a file.
+            foreach (ISettingsGroup group in groups.Values)
+                if (group is SettingCategory category)
+                    foreach (Setting setting in category.settings)
+                        MarkApplied(setting);
         }
 
-        public static void Save<T>() where T : ISettingsGroup => Save(typeof(T));
-
-        public static void SaveAll()
+        // Fires the OnChanged action of every setting whose value moved since the last Apply. The
+        // batch is the unit: a settings screen edits freely and pays for one rebuild, not five.
+        public static void Apply()
         {
-            foreach (Type type in groups.Keys.ToList())
-                Save(type);
+            List<string> fired = new List<string>();
+
+            foreach (ISettingsGroup group in groups.Values)
+            {
+                if (group is not SettingCategory category) continue;
+
+                foreach (Setting setting in category.settings)
+                {
+                    if (!MarkApplied(setting)) continue;
+                    if (setting.onChanged.Length == 0 || fired.Contains(setting.onChanged)) continue;
+                    fired.Add(setting.onChanged);
+                }
+            }
+
+            foreach (string action in fired)
+            {
+                if (!Actions().TryGetValue(action, out MethodInfo method))
+                {
+                    Console.WriteLine($"[Settings] OnChanged action '{action}' not found — skipping.");
+                    continue;
+                }
+                Console.WriteLine($"[Settings] Running: {action}");
+                method.Invoke(null, null);
+            }
+        }
+
+        // Fires what moved, then writes the user's file — the one call a settings screen makes.
+        public static void Commit()
+        {
+            Apply();
+            SaveAll();
+        }
+
+        // Records what a setting holds now, and reports whether any of it moved since the last Apply.
+        private static bool MarkApplied(Setting setting)
+        {
+            bool moved = false;
+            Dictionary<MemberInfo, object> current = new Dictionary<MemberInfo, object>();
+
+            foreach (MemberInfo member in Setting.ValueMembers(setting.GetType()))
+            {
+                object value = XmlReflection.GetMember(member, setting);
+                current[member] = value;
+                if (!setting.applied.TryGetValue(member, out object previous) || !Equals(value, previous))
+                    moved = true;
+            }
+
+            setting.applied = current;
+            return moved;
+        }
+
+        private static Dictionary<string, MethodInfo> actions;
+
+        private static Dictionary<string, MethodInfo> Actions()
+        {
+            if (actions != null) return actions;
+
+            actions = new Dictionary<string, MethodInfo>();
+            foreach (Type type in AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes()))
+                foreach (MethodInfo method in type.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic))
+                {
+                    A_XSDActionDependencyAttribute attribute = method.GetCustomAttribute<A_XSDActionDependencyAttribute>();
+                    if (attribute != null && attribute.Category == "Settings")
+                        actions[attribute.Name] = method;
+                }
+            return actions;
         }
 
         #region ---- read ----
@@ -97,7 +167,7 @@ namespace ArctisAurora.Core.Registry
                 }
 
                 Migrate(element, group);
-                ApplyInto(element, group, clearedLists);
+                ApplyInto(element, group, clearedLists, fromWriteRoot);
                 if (fromWriteRoot) stored[type] = element;
             }
         }
@@ -115,8 +185,48 @@ namespace ArctisAurora.Core.Registry
             element.SetAttributeValue(versionAttribute, migratable.version);
         }
 
-        private static void ApplyInto(XElement element, object target, HashSet<(object, FieldInfo)> clearedLists)
+        // Settings merge by element name, resolved against the category's own fields rather than the
+        // global type map, so a setting name only has to be unique inside its category.
+        private static void ApplyCategory(XElement element, SettingCategory category, bool fromWriteRoot)
         {
+            foreach (XElement child in element.Elements())
+            {
+                string name = child.Name.LocalName;
+
+                Setting setting = category.Find(name);
+                if (setting == null)
+                {
+                    Console.WriteLine($"[Settings] {category.GetType().Name} declares no setting called '{name}' — skipping.");
+                    continue;
+                }
+
+                if (fromWriteRoot && setting.scope == SettingScope.App)
+                {
+                    Console.WriteLine($"[Settings] '{name}' on {category.GetType().Name} is App-scoped — ignoring the user's value.");
+                    continue;
+                }
+
+                SettingScope scope = setting.scope;
+                string action = setting.onChanged;
+
+                XmlReflection.ApplyAttributes(child, setting, true);
+
+                // Only the code's own declaration and the mounts decide scope and action — a user
+                // file naming a scope would otherwise promote itself out of App.
+                if (!fromWriteRoot) continue;
+                setting.scope = scope;
+                setting.onChanged = action;
+            }
+        }
+
+        private static void ApplyInto(XElement element, object target, HashSet<(object, FieldInfo)> clearedLists, bool fromWriteRoot)
+        {
+            if (target is SettingCategory category)
+            {
+                ApplyCategory(element, category, fromWriteRoot);
+                return;
+            }
+
             XmlReflection.ApplyAttributes(element, target, true);
 
             foreach (XElement child in element.Elements())
@@ -131,7 +241,7 @@ namespace ArctisAurora.Core.Registry
                     object nested = XmlReflection.GetMember(member, target)
                         ?? Activator.CreateInstance(XmlReflection.MemberType(member));
                     XmlReflection.SetMember(member, target, nested);
-                    ApplyInto(child, nested, clearedLists);
+                    ApplyInto(child, nested, clearedLists, fromWriteRoot);
                     continue;
                 }
 
@@ -143,28 +253,38 @@ namespace ArctisAurora.Core.Registry
                 if (clearedLists.Add((target, list))) entries.Clear();
 
                 object entry = Activator.CreateInstance(type);
-                ApplyInto(child, entry, clearedLists);
+                ApplyInto(child, entry, clearedLists, fromWriteRoot);
                 entries.Add(entry);
             }
         }
         #endregion
 
         #region ---- write ----
-        private static void Save(Type type)
+        // One file for every group, so a settings screen dismisses to a single write and the user
+        // has one file to look at. A group with nothing to say is left out of it entirely.
+        public static void SaveAll()
         {
             if (writeRoot == null)
                 throw new Exception("SettingsRegistry.SetWriteRoot has to be called before settings can be saved.");
 
-            A_XSDTypeAttribute meta = type.GetCustomAttribute<A_XSDTypeAttribute>(false);
-            XElement group = WriteDiff(groups[type], baselines[type]);
-
-            if (groups[type] is IMigratableSettings migratable)
-                group.SetAttributeValue(versionAttribute, migratable.version);
-            if (stored.TryGetValue(type, out XElement previous))
-                CarryUnknowns(group, previous, type);
-
             XNamespace ns = XSDGenerator.NamespaceFor("Settings");
-            XElement root = new XElement(ns + "SettingsManifest", group);
+            XElement root = new XElement(ns + "UserSettings");
+
+            foreach (KeyValuePair<Type, ISettingsGroup> entry in groups)
+            {
+                XElement group = WriteDiff(entry.Value, baselines[entry.Key]);
+
+                if (entry.Value is IMigratableSettings migratable)
+                    group.SetAttributeValue(versionAttribute, migratable.version);
+
+                if (stored.TryGetValue(entry.Key, out XElement previous))
+                {
+                    if (entry.Value is SettingCategory category) CarryCategoryUnknowns(group, previous, category);
+                    else CarryUnknowns(group, previous, entry.Key);
+                }
+
+                if (group.HasAttributes || group.HasElements) root.Add(group);
+            }
 
             string schemaFile = Path.Combine(Paths.XMLSCHEMAS, "SettingsTypeSchema.xsd");
             string relative = Path.GetRelativePath(writeRoot, schemaFile).Replace('\\', '/');
@@ -175,7 +295,7 @@ namespace ArctisAurora.Core.Registry
 
             Directory.CreateDirectory(writeRoot);
             new XDocument(new XDeclaration("1.0", "utf-8", null), root)
-                .Save(Path.Combine(writeRoot, meta.Name + ".xml"));
+                .Save(Path.Combine(writeRoot, "UserSettings.xml"));
         }
 
         private static XElement WriteDiff(object node, MemberSnapshot baseline)
@@ -186,8 +306,25 @@ namespace ArctisAurora.Core.Registry
             XNamespace ns = XSDGenerator.NamespaceFor(meta.Category);
             XElement element = new XElement(ns + meta.Name);
 
+            // An App-scoped setting is the build's to decide, so it never reaches the user's file.
+            if (node is SettingCategory category)
+            {
+                foreach (Setting setting in category.settings)
+                {
+                    if (setting.scope == SettingScope.App) continue;
+
+                    baseline.settings.TryGetValue(SettingCategory.NameOf(setting), out MemberSnapshot previous);
+                    XElement child = WriteDiff(setting, previous ?? new MemberSnapshot());
+                    if (child.HasAttributes) element.Add(child);
+                }
+                return element;
+            }
+
             foreach (MemberInfo member in XmlReflection.ScalarMembers(node.GetType()))
             {
+                // Scope and OnChanged are the code's and the mounts', so they are never written back.
+                if (node is Setting && member.DeclaringType == typeof(Setting)) continue;
+
                 object value = XmlReflection.GetMember(member, node);
                 if (value == null) continue;
                 if (baseline.scalars.TryGetValue(member, out object previous) && Equals(value, previous)) continue;
@@ -215,6 +352,25 @@ namespace ArctisAurora.Core.Registry
                     element.Add(WriteDiff(entry, DefaultsOf(entry.GetType())));
             }
             return element;
+        }
+
+        // A stored setting the code no longer declares is copied back whole; one it still declares is
+        // walked for attributes no member claims.
+        private static void CarryCategoryUnknowns(XElement written, XElement previous, SettingCategory category)
+        {
+            foreach (XElement stored in previous.Elements())
+            {
+                XElement writtenChild = written.Elements()
+                    .FirstOrDefault(e => e.Name.LocalName == stored.Name.LocalName);
+                Setting setting = category.Find(stored.Name.LocalName);
+
+                if (setting == null)
+                {
+                    if (writtenChild == null) written.Add(new XElement(stored));
+                    continue;
+                }
+                if (writtenChild != null) CarryUnknowns(writtenChild, stored, setting.GetType());
+            }
         }
 
         // Attributes the stored file carried that no member claims, copied onto the fresh diff so a
@@ -274,11 +430,19 @@ namespace ArctisAurora.Core.Registry
             public Dictionary<MemberInfo, object> scalars = new Dictionary<MemberInfo, object>();
             public Dictionary<MemberInfo, MemberSnapshot> nested = new Dictionary<MemberInfo, MemberSnapshot>();
             public Dictionary<FieldInfo, List<MemberSnapshot>> lists = new Dictionary<FieldInfo, List<MemberSnapshot>>();
+            public Dictionary<string, MemberSnapshot> settings = new Dictionary<string, MemberSnapshot>(StringComparer.OrdinalIgnoreCase);
         }
 
         private static MemberSnapshot Snapshot(object node)
         {
             MemberSnapshot snapshot = new MemberSnapshot();
+
+            if (node is SettingCategory category)
+            {
+                foreach (Setting setting in category.settings)
+                    snapshot.settings[SettingCategory.NameOf(setting)] = Snapshot(setting);
+                return snapshot;
+            }
 
             foreach (MemberInfo member in XmlReflection.ScalarMembers(node.GetType()))
                 snapshot.scalars[member] = XmlReflection.GetMember(member, node);

@@ -3,7 +3,7 @@
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:TextStyleType types:DockMode types:GridSizeMode types:Scrollable types:ControlColor types:FillMode types:HorizontalAlignment types:VeticalAlignment types:ContentScalingModeEnum types:Orientation" />
+    <xs:union memberTypes="types:TextStyleType types:DockMode types:GridSizeMode types:Scrollable types:ControlColor types:FillMode types:HorizontalAlignment types:VeticalAlignment types:WindowingModeEnum types:ContentScalingModeEnum types:Orientation" />
   </xs:simpleType>
   <xs:element name="Panel" type="types:Panel" />
   <xs:complexType name="Panel">
@@ -82,7 +82,7 @@
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="Fill" type="xs:boolean" />
+    <xs:attribute name="WindowingMode" type="types:WindowingModeEnum" />
     <xs:attribute name="ContentScalingMode" type="types:ContentScalingModeEnum" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
@@ -782,6 +782,13 @@
       <xs:enumeration value="Center" />
       <xs:enumeration value="Bottom" />
       <xs:enumeration value="Stretch" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="WindowingModeEnum">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="KeepLocal" />
+      <xs:enumeration value="ScaleUp" />
+      <xs:enumeration value="WindowSize" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="ContentScalingModeEnum">

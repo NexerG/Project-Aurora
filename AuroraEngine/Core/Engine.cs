@@ -4,6 +4,7 @@ using ArctisAurora.Core.Threading;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.UISystem;
+using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Modules;
@@ -30,8 +31,6 @@ namespace ArctisAurora.EngineWork
         static extern int GetCurrentThreadId();
 
         // pre vars
-        uint width = 1280;
-        uint height = 720;
         public static int doubleClickTime = 250;
 
         internal static Engine engineInstance = null;
@@ -119,7 +118,8 @@ namespace ArctisAurora.EngineWork
         [A_XSDActionDependency("Engine.InitWindowing", "Bootstrap")]
         public static void InitWindowing()
         {
-            window = new AGlfwWindow(engineInstance.width, engineInstance.height);
+            GraphicsSettings settings = SettingsRegistry.Get<GraphicsSettings>();
+            window = new AGlfwWindow(settings.window.width, settings.window.height);
             window.CreateWindow();
             window.SetCursorPosCallback(inputHandler.ProcessMouseMove);
             window.SetMouseButtonCallback(inputHandler.ProcessMouseClick);
@@ -171,7 +171,7 @@ namespace ArctisAurora.EngineWork
         {
             if (!uiCollisionHandler.isInWindow) return;
 
-            Vector2D<float> mp = InputHandler.mousePos;
+            Vector2D<float> mp = WindowControl.ToDesignSpace(InputHandler.mousePos);
             uiCollisionHandler.delta = mp - uiCollisionHandler.lastMousePos;
             uiCollisionHandler.SolveHover(mp);
             uiCollisionHandler.SolveDrag(mp);

@@ -3,7 +3,7 @@
 **Date:** 2026-08-09
 **Status:** LANDED (2026-08-09). `SettingsRegistry` loads as the first `Bootstrap.xml` step;
 `DocumentLayout.Defaults` is its first consumer; `DocumentStyles.xml` is gone.
-**Scope:** `ArctisAurora.Core.Registry` (`SettingsRegistry`, `ISettingsGroup`, `SettingsManifest`);
+**Scope:** `ArctisAurora.Core.Registry` (`SettingsRegistry`, `ISettingsGroup`, `UserSettingsFile`);
 `ArctisAurora.Core.UISystem.Controls.Text.Document` (`DocumentSettings`, `DocumentLayout.Defaults`,
 `DocumentXml.LoadLayout` deleted); `AuroraEngine/Data/XML/Settings/`; `Periodic.Main`.
 
@@ -59,17 +59,18 @@ settings UI could not list a group until someone had already overridden it.
 ### 3. A directory of manifests, unioned bottom-up — not `EnumerateAll`
 
 Files live in `Data/XML/Settings/*.xml`, every file in every mount, applied **lowest priority
-first**.
+first**. (Root renamed `SettingsManifest` → `UserSettings` on 2026-08-17; example updated, the
+decision is unchanged.)
 
 ```xml
-<SettingsManifest xmlns="http://arctisaurora/AuroraSettingsTypes"
+<UserSettings xmlns="http://arctisaurora/AuroraSettingsTypes"
                   xmlns:UI="http://arctisaurora/AuroraUITypes">
   <DocumentSettings>
     <UI:DocumentLayout LineHeight="1.5" BlockSpacing="8">
       <UI:TextStyle Type="Heading1" FontSize="34"/>
     </UI:DocumentLayout>
   </DocumentSettings>
-</SettingsManifest>
+</UserSettings>
 ```
 
 `VirtualFileSystem.EnumerateAll` is **deliberately not used**: it dedupes by *file name*, so an app
@@ -106,6 +107,9 @@ The write root is **not** a VFS mount. Mounting it would let a stray file there 
 *assets*, not just settings.
 
 ### 6. Save writes the diff against the merged mounts
+
+(2026-08-17: still true, but the destination is one `UserSettings.xml` holding every group rather than
+one file per group, and `Save<T>` is gone. See [[settings-categories]] decision 6.)
 
 `LoadAll` snapshots every group right after the mounts are applied and before the write root is
 read. `Save` walks the live object against that snapshot and emits only what differs — scalars
@@ -236,19 +240,93 @@ whose v2 stored `Sensitivity` on 0-100:
 Boot verified: `Settings.LoadAll` runs first, no warnings, full bootstrap completes and all three
 threads start. **GUI not verified** — headings rendering at scheme sizes is a manual check.
 
+## The engine's own group — `Graphics` (2026-08-15, reshaped 2026-08-17)
+
+`GraphicsSettings` in `ArctisAurora.EngineWork.Rendering`, `[A_XSDType("Graphics", "Settings")]`. Four
+settings, four consumers, all read once during bootstrap:
+
+| Setting | Members | Consumer | Default |
+|---------|---------|----------|---------|
+| `Device` | `Name` (string) | `Renderer.ChoosePhysicalDevice` | `""` → first enumerated device |
+| `Monitor` | `Name` (string) | `AGlfwWindow.PickMonitor` | `""` → primary monitor |
+| `Window` | `Mode` (`Windowed`/`Borderless`/`Fullscreen`), `Width`, `Height` (uint) | `Engine.InitWindowing`, `AGlfwWindow.CreateWindow`/`CenterOn` | `Windowed`, `1280`, `720` |
+| `VSync` | `On` (bool) | `AVulkanHelper.GetPresentMode` | `true` |
+
+**Reshaped 2026-08-17:** was `RenderSettings` / `[A_XSDType("Rendering")]` with `Name`/`Value` string
+settings; each setting is now its own type carrying its own typed attributes, and `Window` merges what
+used to be `Mode` + `WindowWidth` + `WindowHeight`. Call sites read `.window.width`, `.vsync.on`,
+`.device.name`, `.monitor.name`. See [[settings-categories]].
+
+- **The ordering worry in the Phase B roadmap item was already solved.** `Settings.LoadAll` is step 1
+  of `Bootstrap.xml`; `Engine.InitWindowing` is step 6 and `Renderer.Initialize` step 12, and the
+  `ThreadedSystem`s are constructed after `RunPhase` returns. No sequencing work was needed.
+- **Device identity is a name substring** (user, 2026-08-15), matched `OrdinalIgnoreCase` against
+  `VkPhysicalDeviceProperties.deviceName`. Rejected: `vendorID:deviceID`, exact and rename-proof but
+  meaningless to anyone hand-editing the XML; and an enumeration index, which silently means a
+  different GPU when the driver reorders. A non-matching string **warns and keeps `devices[0]`** —
+  an unplugged eGPU or a laptop's switched GPU must not stop the app booting.
+- **Defaults change no behaviour.** `Vsync=true` asks for `MailboxKhr` and falls back to `FifoKhr`,
+  which is exactly what `GetPresentMode` did unconditionally before. `Vsync=false` asks for
+  `ImmediateKhr`. `Fifo` stays the fallback because it is the only mode the spec guarantees.
+- **Borderless needs no GLFW hint.** The window is created `Decorated=false` in every mode already,
+  so borderless is a plain window at the primary monitor's video mode size and position, and
+  fullscreen is that video mode with the monitor handed to `CreateWindow`.
+- `CreateWindow` now ends with `UpdateWindowSize(ref windowSize)` for **all** modes — the swapchain
+  reads `Engine.window.windowSize` as its `ImageExtent`, and in fullscreen the requested size is not
+  the granted one. Side effect on the windowed path: the extent is now the real framebuffer size
+  rather than the requested 1280x720, which is the correct value on a scaled display.
+- **`PreferredMonitor` is the EDID panel name, resolved through Win32** (user, 2026-08-15, after a
+  name-substring version was built and failed on the machine). `glfwGetMonitorName` returns the
+  *driver* description: on this two-monitor machine (MSI G24C6 + DELL U2414H) both report
+  **"Generic PnP Monitor"**, so GLFW's own name cannot distinguish monitors at all on Windows.
+  Silk.NET does not bind `glfwGetWin32Monitor` — checked, the symbol is absent from
+  `Silk.NET.GLFW.dll` — so there is no direct handle→display mapping either.
+  `DisplayNames.At(x, y)` in `ArctisAurora.EngineWork.Rendering` joins the two sides by
+  **virtual-desktop position**, which is unique per display because Windows forbids two displays
+  sharing an origin: `EnumDisplayDevices` (attached adapters) → `EnumDisplaySettings` (position) →
+  the adapter's monitor child with `EDD_GET_DEVICE_INTERFACE_NAME` → `DisplayMonitor
+  .FromInterfaceIdAsync().DisplayName`. Falls back to the PnP hardware id, then to the GLFW name.
+  - Rejected: **an index** — distinguishes identical panels and is one mechanism, but is meaningless
+    in a file and silently means another monitor once displays are re-plugged. Rejected: **index or
+    name in one field** — two meanings in one attribute. Rejected: **`GetMonitorPos` coordinates as
+    the setting value** — cross-platform and unambiguous, but unreadable and invalidated by dragging
+    displays around.
+  - Cost, accepted: this is the **only Windows-only code in the settings path**, and it is a
+    P/Invoke pair plus a WinRT call. It is confined to `DisplayNames`; a port replaces that file.
+  - `Windowed` ignores it — a plain window is placed by the window manager, and positioning it was
+    not asked for.
+  - The monitor a *fullscreen* window lands on is unrelated to "the renderer breaks the second
+    monitor", still open in the roadmap.
+- ~~**Not built: resolution.**~~ Built 2026-08-15 as `WindowWidth`/`WindowHeight` (User, 1280x720).
+  `Engine.width`/`height` are deleted — `InitWindowing` reads the settings instead, and they are the
+  size `Windowed` opens at and the size `CenterOn` centres. `Borderless`/`Fullscreen` ignore them
+  and take the monitor's video mode, as they always did.
+  - **No `OnChanged`.** A live resize means `glfwSetWindowSize`, and GLFW window calls have to run on
+    the thread that created the window, while `Apply()` runs on whoever called it. Deferring to main
+    needs a mechanism that does not exist yet — the swapchain action dodged this by setting a flag
+    the render thread already polls, and there is no equivalent for the window.
+- **Not built: a threading group** (user, 2026-08-15). The roadmap says "CPU/thread counts", but
+  there is nothing to count — the three systems are fixed subclasses and `jobSystem` is commented
+  out. The knobs that do exist and stay hardcoded are `MainSystem.TargetPeriodMs` (1000/120),
+  `PhysicsSystem.TargetPeriodMs` (32.0) and `BuildLanes(commandCapacity: 1024, arenaBytes: 64KB)`.
+  Revisit when a job system gives the setting a meaning.
+- `SettingsTypeSchema.xsd` regenerates with `Rendering` and a `WindowMode` enumeration. The
+  generator also emits a `<xs:simpleType name="Settings">` union now that the category owns an enum
+  — pre-existing per-category behaviour, first visible here.
+
 ## Still open
 
-- **No change notification.** Nothing re-reads a group after `LoadAll`, and nothing tells a system a
-  value changed. `<Rendering OnChanged="Renderer.RebuildSwapchain">` reuses
-  `[A_XSDActionDependency]` exactly as `Bootstrap.xml` does when something needs it. See
-  [[cross-system-change-notification]].
+- ~~**No change notification.**~~ Built 2026-08-15 for categories only — a `SettingCategory` holds
+  `Setting` objects carrying `Scope` and `OnChanged`, and `SettingsRegistry.Apply()` fires the
+  actions of everything that moved. A plain `ISettingsGroup` like `DocumentSettings` still has no
+  notification. See [[settings-categories]].
 - **No reload.** `LoadAll` is idempotent and safe to call again, but nothing calls it twice and the
   live object identity would survive while its contents changed under any holder.
 - `FontSizeFor` falls back to the `fallbackFontSize` const (18), not to the scheme's `Text` entry —
   so a scheme with `Text` at 11 gives an unlisted `Comment` 18, not 11. Pre-existing;
   [[text-styling-types]]'s prose says "body text", the code says 18.
-- The Phase B engine settings group (GPU device selection, thread counts) is unbuilt — those values
-  are read during bootstrap and need ordering against the load step.
+- ~~The Phase B engine settings group (GPU device selection, thread counts) is unbuilt.~~ Rendering
+  built 2026-08-15, threading deliberately not — see the section above.
 - `SettingsVersion` is not in the generated schema (decision 8). A saved user file validates except
   for that one attribute.
 - A group **renamed or deleted** outright still only warns and skips — the user's whole file for it

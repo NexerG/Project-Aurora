@@ -38,17 +38,19 @@ See [[Virtual File System]] for the mount ordering this rides on, [[Asset Regist
 ## Declaring a group
 
 ```C#
-[A_XSDType("Rendering", "Settings")]
-public class RenderSettings : ISettingsGroup
+[A_XSDType("Difficulty", "Settings")]
+public class DifficultySettings : ISettingsGroup
 {
-    [A_XSDElementProperty("Vsync", "Settings")]
-    public bool vsync { get; set; } = true;
+    [A_XSDElementProperty("Permadeath", "Settings")]
+    public bool permadeath { get; set; } = false;
 }
 
-bool v = SettingsRegistry.Get<RenderSettings>().vsync;
+bool p = SettingsRegistry.Get<DifficultySettings>().permadeath;
 ```
 
-`ISettingsGroup` carries no attribute of its own — it is the `allowedChildren` target the generator scans when it emits `SettingsManifest`, the same role `Block` plays for a document. Every group uses the `Settings` category so that one schema and one namespace cover all of them and a single file can hold groups from unrelated systems.
+`ISettingsGroup` carries no attribute of its own — it is the `allowedChildren` target the generator scans when it emits `UserSettings`, the same role `Block` plays for a document. Every group uses the `Settings` category so that one schema and one namespace cover all of them and a single file can hold groups from unrelated systems.
+
+A group that instead needs per-value scope or change notification is a `SettingCategory`, whose children are `Setting` types rather than typed members — see [[SETTINGS]].
 
 XSD type names are a **flat namespace across every category**: `AnyXMLType.FindType` matches on name alone, so a group named `Document` would collide with `RichTextDocument`'s `[A_XSDType("Document", "UI")]`. Check before naming.
 
@@ -57,14 +59,14 @@ XSD type names are a **flat namespace across every category**: `AnyXMLType.FindT
 Manifests live in `Data/XML/Settings/*.xml`, any number of them, free filenames.
 
 ```xml
-<SettingsManifest xmlns="http://arctisaurora/AuroraSettingsTypes"
-                  xmlns:UI="http://arctisaurora/AuroraUITypes">
+<UserSettings xmlns="http://arctisaurora/AuroraSettingsTypes"
+              xmlns:UI="http://arctisaurora/AuroraUITypes">
   <DocumentSettings>
     <UI:DocumentLayout LineHeight="1.5" BlockSpacing="8">
       <UI:TextStyle Type="Heading1" FontSize="34"/>
     </UI:DocumentLayout>
   </DocumentSettings>
-</SettingsManifest>
+</UserSettings>
 ```
 
 A group whose type lives in another category — `DocumentLayout` is a `UI` type, because notes embed it — carries that category's prefix on its subtree. Groups declared in the `Settings` category need no prefix.
@@ -88,7 +90,9 @@ Periodic uses `%AppData%/Periodic/Settings`.
 
 ## Saving
 
-`LoadAll` snapshots every group at the moment the mounts have all been applied and before the write root is read. `Save<T>()` writes one file per group into the write root, holding **only what differs from that snapshot** — so a user who changed one value pins one value, and keeps receiving engine changes to everything else. A changed list is written whole, its entries still skipping their own type defaults the way [[Document XML]] does.
+`LoadAll` snapshots every group at the moment the mounts have all been applied and before the write root is read. `SaveAll()` writes one `UserSettings.xml` into the write root holding every group, each carrying **only what differs from that snapshot** — so a user who changed one value pins one value, and keeps receiving engine changes to everything else. A group with nothing to say is left out rather than written empty. A changed list is written whole, its entries still skipping their own type defaults the way [[Document XML]] does.
+
+There is no `Save<T>()`: rewriting one group means rewriting the document that holds the others.
 
 ## Settings that change shape between releases
 
@@ -120,7 +124,9 @@ A stored value that no longer converts at all — the enum member that was delet
 | `Groups`                  | static | Every group by type — the enumeration a settings UI walks.                      |
 | `SetWriteRoot(path)`      | static | Folder read last and written to. Host calls it before `Engine.Init`.            |
 | `LoadAll()`               | static | The `Settings.LoadAll` bootstrap step: scan, then cascade, then snapshot.       |
-| `Save<T>()` / `SaveAll()` | static | Write the diff against the snapshot into the write root.                        |
+| `Apply()`                 | static | Fire the `OnChanged` of every setting that moved, each action once.             |
+| `SaveAll()`               | static | Write every group's diff into one `UserSettings.xml` in the write root.         |
+| `Commit()`                | static | `Apply()` then `SaveAll()` — what a settings screen calls when dismissed.       |
 
 ### `IMigratableSettings : ISettingsGroup`
 `int version` · `void Migrate(int from, XElement stored)`. Optional — implemented only by groups whose stored shape can go stale.

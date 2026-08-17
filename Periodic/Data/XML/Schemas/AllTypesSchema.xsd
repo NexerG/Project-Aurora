@@ -30,6 +30,7 @@
       <xs:enumeration value="FillMode" />
       <xs:enumeration value="HorizontalAlignment" />
       <xs:enumeration value="VeticalAlignment" />
+      <xs:enumeration value="WindowingModeEnum" />
       <xs:enumeration value="ContentScalingModeEnum" />
       <xs:enumeration value="Orientation" />
       <xs:enumeration value="VulkanControl" />
@@ -37,7 +38,16 @@
       <xs:enumeration value="EntityRegistries" />
       <xs:enumeration value="Entity" />
       <xs:enumeration value="DocumentSettings" />
-      <xs:enumeration value="SettingsManifest" />
+      <xs:enumeration value="SettingScope" />
+      <xs:enumeration value="Setting" />
+      <xs:enumeration value="SettingCategory" />
+      <xs:enumeration value="UserSettings" />
+      <xs:enumeration value="Device" />
+      <xs:enumeration value="Monitor" />
+      <xs:enumeration value="Window" />
+      <xs:enumeration value="VSync" />
+      <xs:enumeration value="Graphics" />
+      <xs:enumeration value="WindowMode" />
       <xs:enumeration value="Main" />
       <xs:enumeration value="Physics" />
       <xs:enumeration value="Render" />
@@ -130,6 +140,7 @@
       <xs:enumeration value="FillMode" />
       <xs:enumeration value="HorizontalAlignment" />
       <xs:enumeration value="VeticalAlignment" />
+      <xs:enumeration value="WindowingModeEnum" />
       <xs:enumeration value="ContentScalingModeEnum" />
       <xs:enumeration value="Orientation" />
     </xs:restriction>
@@ -145,7 +156,16 @@
   <xs:simpleType name="Settings">
     <xs:restriction base="xs:string">
       <xs:enumeration value="DocumentSettings" />
-      <xs:enumeration value="SettingsManifest" />
+      <xs:enumeration value="SettingScope" />
+      <xs:enumeration value="Setting" />
+      <xs:enumeration value="SettingCategory" />
+      <xs:enumeration value="UserSettings" />
+      <xs:enumeration value="Device" />
+      <xs:enumeration value="Monitor" />
+      <xs:enumeration value="Window" />
+      <xs:enumeration value="VSync" />
+      <xs:enumeration value="Graphics" />
+      <xs:enumeration value="WindowMode" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Systems">

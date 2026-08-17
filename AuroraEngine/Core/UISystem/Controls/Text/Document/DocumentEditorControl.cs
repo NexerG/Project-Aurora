@@ -69,7 +69,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             if (run != null && content != null)
             {
                 // InputHandler.mousePos, not oldPos, which lags the click by a frame
-                Vector2D<float> mouse = InputHandler.mousePos;
+                Vector2D<float> mouse = WindowControl.ToDesignSpace(InputHandler.mousePos);
                 LayoutRect inner = run.arrangedRect.Shrink(run.padding);
 
                 run.cursorPosition = run.OffsetAt(mouse.X - inner.x, mouse.Y - inner.y);
