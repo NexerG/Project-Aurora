@@ -13,6 +13,7 @@ The long-term goal is a Tarkov-style extraction FPS (~2030). The path there is s
 | ECS rework | Happens early (Phase B) so animation/procedural/scene systems are built on the final data-oriented foundation |
 | Animation core | Is the predecessor of the procedural systems — one parameter-evaluation foundation, procedural geometry/SDF ops plug into it |
 | Settings | XSD/XML-driven engine settings/preferences (GPU selection, CPU/threading, misc) land in Phase B |
+| UI rework | The UI splits into **data and visualization** — the parent/child tree becomes pool data (reversing the ECS rework's "the UI tree stays OO"), a control stays one object per element presenting its row, all on the existing `UIControls` pool. Deliberately **after** Periodic's first version and the test/profiling platform, so the profiler exists before the thing it measures is rebuilt. Replaces the reverted L2 document virtualization; see `ClaudeMemory/Decisions/ui-data-control-split.md` |
 
 ## Dependency spine
 

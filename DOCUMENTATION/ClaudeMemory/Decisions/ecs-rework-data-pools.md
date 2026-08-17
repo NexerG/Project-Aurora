@@ -299,7 +299,7 @@ The last per-control GPU resource is gone; both UI columns are now whole-pool mi
 - Conditional per-entity logic → (a) enum/flag field + switch in loop (most entities), (b) membership side-list, e.g. active-animations list (few entities), (c) script-ref escape hatch (rare one-offs).
 - Variable-length data (children etc.) can't live inline in structs → `(start,count)` ranges into shared arrays, or stays in classes.
 - XML/XSD-driven pool composition: XML declares pools from existing C# component structs (`Array.CreateInstance(type, capacity)` gives real contiguous `T[]`); XML never defines struct layouts. Resolve types via `AnyXMLType.FindType`. Systems bind by pool name (shape-queries deferred).
-- Classes stay as proxies where useful (UI `VulkanControl` tree stays OO); proxy properties read/write array slots via handle. Systems never iterate through proxies.
+- Classes stay as proxies where useful; proxy properties read/write array slots via handle. Systems never iterate through proxies. (The proxy half holds — [[ui-data-control-split]] keeps one control object per element. The parenthetical "UI `VulkanControl` tree stays OO" does not; see the locked-decisions note below.)
 
 ## User's current sketch (latest turn)
 - Single manager governs all struct arrays; capacity is a setting.
@@ -321,7 +321,7 @@ The last per-control GPU resource is gone; both UI columns are now whole-pool mi
 - Growth/repack ONLY between frames; systems re-fetch spans at tick start, never cache spans across frames.
 - Handles use indirection table (sparse-set): handle = (stableId, version) → slots table → dense slot. Repack/swap-remove patches table only; handles survive repack. Version bumps only on destroy.
 - GPU data = both: CPU authoring structs (pos/rot/scale) + pack pass baking into pinned GPU buffer for dirty entries.
-- UI hierarchy (parent/children) STAYS in class graph (OO tree) — measured as negligible at UI scale. But ControlData/settings move to arrays; layout system iterates arrays flat ("GO FAST"). Depth-sorted repack can make layout a forward flat loop.
+- ~~UI hierarchy (parent/children) STAYS in class graph (OO tree)~~ — **REVERSED 2026-08-17, see [[ui-data-control-split]]**: the tree becomes pool data too. The rest of the line stands and is what that split is built on — ControlData/settings in arrays, layout iterating flat ("GO FAST"), depth-sorted repack making layout a forward flat loop. Scheduled after Periodic v1 and the profiler; nothing changes before then.
 - Fix separately: isDirty setter cascades subtree on every set — defer to one propagation pass per tick.
 - Destroy: control calls Free → enqueues to destroy queue → manager drains between frames (version bump at drain). Same pattern as existing onDestroyEntities.
 - Attributes for serialization/XSD stay on class proxy properties (getter/setter round-trips through array slot); serializer unchanged; structs stay attribute-free.

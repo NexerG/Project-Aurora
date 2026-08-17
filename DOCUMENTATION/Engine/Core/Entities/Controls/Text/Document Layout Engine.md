@@ -6,14 +6,22 @@ tags:
   - d_Data
 Class:
   - "[[TextMeasurer]]"
-  - "[[DocumentLayoutCache]]"
 Type:
   - Public
 ---
-## Description
-The geometry layer between the [[Rich Text Document]] model and the document view. It measures every block from font metrics alone — no controls, no GPU — into a compact per-block line cache, and every geometry question about the document is answered from that cache. This is the middle of a three-layer split: model (always fully loaded, < 1 MB at 100 pages) → layout cache (~100 KB at 100 pages) → virtualized view (controls exist only for the visible viewport).
+> [!warning] Half of this page describes deleted code (2026-08-07)
+> `DocumentLayoutCache` and the virtualized view built on it were implemented and then **reverted**
+> — the cache, `TextRunControl` and `DocumentCanvasControl` no longer exist. [[TextMeasurer]] survives
+> and is now the only thing in the engine that decides where a line breaks; each text control holds
+> its own `BlockLayout` and answers `OffsetAt` / `CaretAt` for itself, so the control tree is the
+> hit-test again. Everything below headed **Cache shape**, **Virtualization** and the cache rows of
+> the memory budget is kept as the record of an argument that was tested, not as a description of the
+> code. What replaced the *conclusion* is in [[#Status]].
 
-The split exists because view materialization, not data, is the memory problem: each character today is a [[GlyphControl]] — a full [[Vulkan Control]] entity with its own `ControlData` GPU struct, storage buffer and slot in the [[UI Rasterizer Module|UIModule]] 50,000-cap descriptor array. 100 pages ≈ 300k characters would be 6× over that cap and O(300k) per reflow, while the visible viewport is only ~3–6k glyphs. So the cache holds geometry for everything, and controls are disposable presenters placed *from* cache coordinates — the cache and the visuals cannot disagree.
+## Description
+The geometry layer between the [[Rich Text Document]] model and the drawn text. It measures every block from font metrics alone — no controls, no GPU — into lines, and every geometry question about the document is answered from those lines. Where they live is what changed: the plan was one cache per document, and what shipped is one `BlockLayout` per text control.
+
+The cache existed because view materialization looked like the memory problem: each character is a [[GlyphControl]] — a full [[Vulkan Control]] entity with a `ControlData` row and a slot in the [[UI Rasterizer Module|UIModule]] 50,000-cap descriptor array. 100 pages ≈ 300k characters is 6× over that cap and O(300k) per reflow, while the visible viewport is only ~3–6k glyphs. Measuring it is what killed the idea: virtualizing the view removed a second, parallel set of glyphs and left the first one untouched, because parsing a note builds every glyph before any view is consulted. Two geometry systems bought a factor of two against a ceiling made of something else. See [[#Status]].
 
 ## Cache shape
 The layer splits in two: [[TextMeasurer]] is stateless and turns one block's runs into lines, and [[DocumentLayoutCache]] is the stateful half that holds those lines for a whole document and answers every geometry question about it. Per document: `blockTops[]` — the prefix sum of block heights and the gaps between them, so `blockTops[i]` is block `i`'s Y in document space and the final entry is the total scroll extent, which is why it carries one entry more than there are blocks. Per block: its height plus a line table. Line granularity (not block granularity) is deliberate — it is what lets paged mode split a paragraph across a page break and lets hit-testing binary-search inside a block.
@@ -134,6 +142,8 @@ A mode on the engine — the [[Rich Text Document]] model never knows about page
 | Font atlases (MTSDF, per font used, lazy) | ~1–4 MB each |
 
 ## Status
-- **L1 done, unwired.** [[TextMeasurer]] (word-boundary wrap, uniform line boxes, per-run segments), `DocumentLayout` (line height, text sizing, heading style cascade) and [[DocumentLayoutCache]] (`Rebuild`, `InvalidateBlock`, `SetContentWidth`, `Extent`, `HitTest`, `CharToPoint`) all exist. Nothing drives the view off the cache yet — it is deliberately additive, so the geometry can be raised alongside what already renders and compared against it before anything trusts it, which also means nothing can regress from it being wrong. The measurer is verified against fabricated metrics; the cache is compile-verified only, for the reason given under [[#Advance formula & testability]].
-- Structural edits (a block added or removed) go through a full `Rebuild` rather than a splice. Correct, and a few hundred blocks re-measure fast enough that the splice is not worth writing until P3 shows otherwise.
-- L2 (virtualized view + `TextRunControl` + glyph GPU cleanup) precedes the P3 edit session so caret/hit-test math is written once against the cache. Paged mode is L3. Phase order: `DOCUMENTATION/ClaudeMemory/Context/periodic-editor-architecture.md`.
+- **L1 landed and is what runs.** [[TextMeasurer]] (word-boundary wrap, uniform line boxes, per-run segments) is the only wrapper for all text in the engine, and `DocumentLayout` (line height, block spacing, the styling-type scheme) is a settings group. Geometry is verified by caret round-trip on real font metrics — every caret slot in the sample note returns the identical point through `CaretAt → OffsetAt → CaretAt`.
+- **L2 is dropped, not pending.** It was built and reverted on 2026-08-07. `DocumentLayoutCache`, `TextRunControl` and `DocumentCanvasControl` are deleted; there is one layout path for all text and the document is a plain control tree. The measurements it produced were real and are kept above as evidence about that design.
+- **What replaced it is engine-wide, not document-local.** The UI splits into **data and visualization**: the parent/child tree becomes pool data, a control stays one object per element presenting its row, and it all rides the existing `UIControls` pool. Layout and hit-test become flat forward loops in DFS order rather than dispatch down an object graph. It is deliberately **not** a fix for the glyph count — one control per element leaves that where it is, and that ceiling stays accepted with the run-holds-its-text escape hatch as the only lever on it. Nothing view-side reaches it either: a culled control keeps its entity and its pool row.
+- **Sequenced after Periodic and the profiler.** The UI ships as it is, Periodic reaches its first version, the test/profiling platform comes up on that UI, and only then is the engine's UI redone against the split — with the profiler available to say what the numbers are instead of inferring them from control counts. Design, open questions and the tension with [[ecs-rework-data-pools]]'s "the UI tree stays OO": `DOCUMENTATION/ClaudeMemory/Decisions/ui-data-control-split.md`.
+- Paged mode (L3) is unaffected — it paginates measured lines and never needed the cache to be a separate object. Phase order: `DOCUMENTATION/ClaudeMemory/Context/periodic-editor-architecture.md`.
