@@ -399,6 +399,12 @@ namespace ArctisAurora.Core.UISystem.Controls
         public bool bubbleScroll = false;
 
         private DateTime lastClick = DateTime.Now;
+
+        // Decoration drawn inside a control that owns the interaction — a caret, a selection box.
+        // It has to be skipped by the hit-test rather than left to swallow the click, since the
+        // deepest hit wins and a decoration sits over the thing the pointer is actually aiming at.
+        public bool hitTestable = true;
+
         public bool HitTest(Vector2D<float> point) => ClipRect.Contains(point);
         #endregion
 
@@ -591,6 +597,11 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         public void RegisterOnDrag(Action<Vector2D<float>, Vector2D<float>> action) => onDrag += action;
         public virtual void ResolveDrag(Vector2D<float> lastPos, Vector2D<float> delta) => onDrag?.Invoke(lastPos, delta);
+
+        // Claims the drag, so ResolveDrag runs every tick until the button comes up. Opt-in from a
+        // click handler rather than automatic on press — the deepest hit is a glyph, and what wants
+        // the drag is whatever above it knows what dragging means.
+        public void StartDrag() => UICollisionHandling.dragging = this;
 
         public virtual void RegisterDragStop(Action action) => onDragStop += action;
         public virtual void StopDrag() => onDragStop?.Invoke();

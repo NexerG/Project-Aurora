@@ -42,6 +42,9 @@
       <xs:enumeration value="Setting" />
       <xs:enumeration value="SettingCategory" />
       <xs:enumeration value="UserSettings" />
+      <xs:enumeration value="DoubleClick" />
+      <xs:enumeration value="KeyRepeat" />
+      <xs:enumeration value="Input" />
       <xs:enumeration value="Device" />
       <xs:enumeration value="Monitor" />
       <xs:enumeration value="Window" />
@@ -160,6 +163,9 @@
       <xs:enumeration value="Setting" />
       <xs:enumeration value="SettingCategory" />
       <xs:enumeration value="UserSettings" />
+      <xs:enumeration value="DoubleClick" />
+      <xs:enumeration value="KeyRepeat" />
+      <xs:enumeration value="Input" />
       <xs:enumeration value="Device" />
       <xs:enumeration value="Monitor" />
       <xs:enumeration value="Window" />

@@ -221,8 +221,6 @@
   <xs:element name="Repeat" type="types:Repeat" />
   <xs:complexType name="Repeat">
     <xs:sequence />
-    <xs:attribute name="Delay" type="xs:float" />
-    <xs:attribute name="Rate" type="xs:float" />
   </xs:complexType>
   <xs:element name="Toggle" type="types:Toggle" />
   <xs:complexType name="Toggle">

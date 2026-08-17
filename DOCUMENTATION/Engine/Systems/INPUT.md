@@ -10,10 +10,12 @@ System:
 Dependencies:
   - "[[GLFW]]"
   - "[[XSD / Data Layer]]"
+  - "[[SETTINGS]]"
 Implementors:
   - "[[InputHandler]]"
   - "[[KeyStateTracker]]"
   - "[[GestureMatcher]]"
+  - "[[TextInputActions]]"
 ---
 ## System
 The input system is responsible for catching hardware events from the OS (keyboard, mouse, scroll), converting them into engine-native key states, and evaluating gesture-based keybinds every engine tick. It is a passive exposure system — it catches and exposes input state, it does not route events outward to controls or systems. Other systems read from it or have their actions invoked by it.
@@ -57,7 +59,7 @@ The `KeyStateTracker` maintains per-key state for every key the engine has seen.
 - `justPressed` / `justReleased` — per-frame edge flags, reset every tick before processing new events
 - `downTimestamp` / `upTimestamp` — exact time of the last press/release (using `Engine.totalTime`)
 - `holdDuration` — how long the key has been continuously held, incremented by `deltaTime` each tick
-- `tapCount` — how many consecutive presses have happened within the `tapWindow` (0.3s default). Decays to 0 when the window expires
+- `tapCount` — how many consecutive presses have happened within the `tapWindow`. Decays to 0 when the window expires. The window is not a field on the tracker — it is `Input.DoubleClick.Timeout` from [[SETTINGS]], read at the point of use
 - `consumed` — set by the `GestureMatcher` when a keybind fires for this trigger, used to prevent less-specific binds from also firing and to suppress character input
 
 The tracker is purely a state machine. It doesn't know about keybinds. It converts raw `Down`/`Up` events into rich per-key state that conditions and matchers can query.
@@ -82,6 +84,8 @@ A `KeybindDefinition` represents a single input binding. It has:
 
 Mouse and keyboard share the `Keys` enum. Mouse buttons are `MouseLeft`, `MouseRight`, `MouseMiddle`, `MouseButton4`–`MouseButton8`. This means keybinds can freely mix mouse and keyboard — a `Trigger="MouseLeft"` with `Modifier Key="LeftShift"` works exactly like any keyboard combo.
 
+Mouse *gestures* against controls are a separate path and do not go through keybinds at all: `Engine.HandleUI` reads the button states straight off the tracker each tick and hands them to `UICollisionHandling`, which resolves hover, press, release, drag and scroll against the control tree. A control claims the held-button drag by calling `StartDrag()` from its click handler, and `ResolveDrag` then reaches it every tick until the button comes up. It is opt-in from a click rather than automatic on press because the control the mouse actually hits is the deepest one — a glyph, inside a document — and what wants the drag is whatever above it knows what dragging means.
+
 `KeybindDefinition` also contains the GLFW-to-Aurora key mapping via two static methods: `MapKey()` for keyboard and `MouseKey()` for mouse buttons. These are exhaustive switch expressions that translate from `Silk.NET.GLFW.Keys` / `Silk.NET.GLFW.MouseButton` to the engine's `Keys` enum. Unknown keys map to `Keys.unknown`.
 
 ### Conditions
@@ -104,7 +108,7 @@ Current condition types:
 | `MaxHoldTime` | On release, only if held *less* than threshold | `Threshold` (default 0.5s) |
 | `MultiTap` | On Nth consecutive press within tap window | `Count` (default 2) |
 | `Continuous` | Every tick while held | — |
-| `Repeat` | On press, then repeats after delay at rate | `Delay` (default 0.35s), `Rate` (default 0.03s) |
+| `Repeat` | On press, then repeats after the global delay at the global rate | — (global, see below) |
 | `Toggle` | Alternates active/inactive state on each press | — |
 | `HoldContinuous` | Every tick, but only after holding for threshold | `Threshold` (default 0.3s) |
 | `Chord` | Requires another specific key to be held | `Key` |
@@ -112,6 +116,11 @@ Current condition types:
 Conditions are stateful — `Repeat` tracks its accumulator internally, `Hold` tracks whether it has already fired, `Toggle` tracks its on/off state. They get reset when the keybind fires or when evaluation is canceled.
 
 All condition types are tagged with `[A_XSDType]` and their parameters with `[A_XSDElementProperty]`, so they appear in the generated XSD schemas and are fully declarable from XML.
+
+#### Global timings
+Two numbers are deliberately **not** per-condition: the tap window `MultiTap` counts within, and the delay and rate `Repeat` waits and fires at. They come from the `Input` settings category in [[SETTINGS]] — `<DoubleClick Timeout>` and `<KeyRepeat Delay Rate>` — and a keybind has no way to override them. These describe the person at the keyboard rather than the gesture, so a settings screen owns them, and letting a keybind name its own left a settings screen with no answer for what it should do to that keybind. Everything a condition still carries — `Threshold`, `Count`, `Key` — describes what the gesture *is* and stays where it is.
+
+They are read where they are used rather than copied into the tracker and the conditions when the map is parsed, so moving one takes effect on the next tick with nothing to re-seed.
 
 ### GestureMatcher
 The `GestureMatcher` owns the evaluation loop. It holds all keybind definitions organized by named groups and references the `KeyStateTracker` for key state queries.
@@ -139,6 +148,20 @@ The shadowing system prevents `S` from firing when `Ctrl+S` fires in the same fr
 #### Character Input Suppression
 After the evaluation loop, `ShouldSuppressCharInput()` checks whether any modified keybind had its trigger consumed this frame. If so, the character input queue is cleared — this prevents `Ctrl+S` from also producing an `s` character in any listening text control.
 
+### Text editing actions
+The actions a keybind can name are ordinary `[A_XSDActionDependency]` statics and can live anywhere, but the ones that drive text editing live in the engine, in `TextInputActions` — an application declares which keys reach them in its `KeybindMap` and writes no input code of its own. They were briefly the host's, in `Periodic`, and the move is what makes the character drain and caret movement the same code for every application rather than something each one reimplements against `UICollisionHandling`.
+
+| Action | Does |
+|--------|------|
+| `Text.Write` | Drains the whole character queue into the focused `TextControl`. Drains rather than takes one, because the OS repeat rate can outpace the frame rate |
+| `Text.Save` | Writes the focused note back to the file it was loaded from |
+| `Text.CaretLeft` / `Text.CaretRight` | One character, crossing run and block boundaries |
+| `Text.CaretUp` / `Text.CaretDown` | One visual line, keeping the caret's x |
+| `Text.CaretLineStart` / `Text.CaretLineEnd` | The visual line's ends, not the paragraph's |
+| `Text.CaretPageUp` / `Text.CaretPageDown` | One viewport height |
+
+Every one of them starts from `UICollisionHandling.activeControl` — a keybind action is an `Action` with no arguments, so *what* it acts on can only come from engine state, not from the binding. `Text.Write` casts it to a `TextControl` and checks `isEditing`; the caret and save actions walk up from it to the nearest `DocumentEditorControl` and do nothing when there isn't one. The caret moves themselves are resolved on the block layouts and are described in [[Rich Text Document]].
+
 ### XML Format
 Keybinds are defined in XML files placed in the inputs directory (`Paths.XMLDOCUMENTS_INPUTS`). Each file is one group. The root element is a `KeybindMap` containing `Keybind` elements.
 
@@ -155,7 +178,7 @@ Structure:
   </Keybind>
 
   <Keybind Trigger="A" Action="MoveLeft">
-    <Repeat Delay="0.35" Rate="0.03" />
+    <Repeat />
   </Keybind>
 
   <Keybind Trigger="G" Action="GrabMode">

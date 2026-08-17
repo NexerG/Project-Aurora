@@ -297,6 +297,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         }
 
         #region ---- caret geometry ----
+        // Read by the document when it resolves a caret across runs sharing a visual line.
+        internal BlockLayout Layout => layout;
+
         // Local point to the character slot it belongs to.
         public int OffsetAt(float localX, float localY)
         {

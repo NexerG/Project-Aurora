@@ -25,7 +25,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         public static void Save(RichTextDocument document, string path)
         {
             A_XSDTypeAttribute typeMeta = document.GetType().GetCustomAttribute<A_XSDTypeAttribute>(false);
-            XElement root = WriteElement(document);
+            XElement root = WriteElement(document, document.layout);
 
             string dir = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(dir))
@@ -90,7 +90,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         #endregion
 
         #region ---- write ----
-        private static XElement WriteElement(object node)
+        private static XElement WriteElement(object node, DocumentLayout layout)
         {
             A_XSDTypeAttribute typeMeta = node.GetType().GetCustomAttribute<A_XSDTypeAttribute>(false)
                 ?? throw new Exception($"Type {node.GetType().Name} is missing [A_XSDType].");
@@ -110,23 +110,67 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 object value = XmlReflection.GetMember(member, node);
                 if (value == null) continue;
                 if (Equals(value, defaults[member])) continue;
-                element.SetAttributeValue(meta.Name, Convert.ToString(value, CultureInfo.InvariantCulture));
+                if (IsResolved(node, member, defaults, layout)) continue;
+                element.SetAttributeValue(meta.Name, Format(value));
             }
 
             // Before the child lists, matching the order the schema declares them in the sequence.
+            // A member with nothing to say is left out rather than written empty, so a save does not
+            // grow the note by an element that reads back as the default it already had.
             foreach (MemberInfo member in XmlReflection.ComplexMembers(node.GetType()))
             {
                 object value = XmlReflection.GetMember(member, node);
-                if (value != null) element.Add(WriteElement(value));
+                if (value == null) continue;
+
+                XElement child = WriteElement(value, layout);
+                if (child.HasAttributes || child.HasElements) element.Add(child);
             }
 
             // only XSD-typed children are content; a run's children are glyphs
             foreach (FieldInfo list in XmlReflection.ChildListFields(node.GetType()))
                 foreach (object child in (IEnumerable)list.GetValue(node))
                     if (child.GetType().GetCustomAttribute<A_XSDTypeAttribute>(false) != null)
-                        element.Add(WriteElement(child));
+                        element.Add(WriteElement(child, layout));
 
             return element;
+        }
+
+        // xs:boolean has no True — a note carrying one fails its own schema, and Convert.ToString
+        // spells a bool the C# way.
+        private static string Format(object value) =>
+            value is bool flag ? (flag ? "true" : "false") : Convert.ToString(value, CultureInfo.InvariantCulture);
+
+        // Values a setter computed rather than an author writing them. Both would round-trip to the
+        // same picture today and pin the note to it forever after — the run would keep the size the
+        // styles file happened to say on the day it was saved, and the colour the enum happened to
+        // mean.
+        private static bool IsResolved(object node, MemberInfo member, Dictionary<MemberInfo, object> defaults, DocumentLayout layout)
+        {
+            // ApplyLayout writes the styling scheme's size into every run when the note is loaded.
+            if (node is TextRun run && member.Name == nameof(TextControl.fontSize))
+            {
+                TextStyleType type = run.stylingType == TextStyleType.Inherit
+                    ? (run.parent as ContentBlock)?.stylingType ?? TextStyleType.Text
+                    : run.stylingType;
+
+                return run.fontSize == layout.FontSizeFor(type);
+            }
+
+            // ControlColor's setter resolves into ColorHex, so a control that named a colour holds
+            // both. Only skip the hex when the enum is itself being written — a control sitting on
+            // the enum's default value has it omitted, and dropping the hex too would lose the
+            // colour entirely.
+            if (node is VulkanControl control && member.Name == nameof(VulkanControl.controlColorHex))
+            {
+                MemberInfo colour = XmlReflection.ScalarMembers(node.GetType())
+                    .FirstOrDefault(m => m.Name == nameof(VulkanControl.controlColor));
+
+                return colour != null
+                    && !Equals(control.controlColor, defaults[colour])
+                    && control.controlColorHex == VulkanControl.EnumColorToHex(control.controlColor);
+            }
+
+            return false;
         }
         #endregion
     }

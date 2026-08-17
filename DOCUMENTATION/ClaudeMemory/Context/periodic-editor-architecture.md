@@ -20,6 +20,13 @@ no longer describe the code.
 - ~~**View is virtualized; model is always fully loaded.**~~ — **SUPERSEDED 2026-08-07.** No
   virtualization: every character is a `GlyphControl`, always. `TextRunControl` is deleted and
   `TextRun : TextInputControl` is the run renderer again.
+  - **The replacement is engine-wide, not document-local (user, 2026-08-17):** the UI splits into
+    **data and visualization** — the parent/child tree becomes pool data, a control stays one object
+    per element presenting its row, all on the existing `UIControls` pool. Sequenced after Periodic
+    v1 and the profiler; nothing here changes before then. See [[ui-data-control-split]].
+  - **It does not fix the glyph ceiling.** One control per element means the count is unchanged.
+    The ceiling and the split share a cause and are separate problems; the escape hatch below is
+    still the only thing that touches the count.
 - **Pages vs pageless = a layout-engine mode**, never a model concern. Paged mode paginates
   *lines* (not blocks) so paragraphs split across page breaks. Those lines now come from each
   block's own `BlockLayout` rather than from a cache; `DocumentControl` is where page panels go.
@@ -158,14 +165,16 @@ for the decision to accept them and the escape hatch if they bite.
   - **Visible change:** wrapping moved from **per-character** to **word-boundary**.
   - Not done: `GlyphControl` pooling. Strips are destroyed and rebuilt at the buffer edge rather than
     recycled. The sweep shows no leak and flat memory, so this stays a profiling question.
-- **Deferred — load-time glyph explosion (user, 2026-07-31).** Loading a note builds one
-  `GlyphControl` per character before the view is consulted: `DocumentXml.ParseElement`
+- **Deferred — load-time glyph explosion (user, 2026-07-31; answered 2026-08-17).** Loading a note
+  builds one `GlyphControl` per character before the view is consulted: `DocumentXml.ParseElement`
   `Activator.CreateInstance`s each `<Run>` as `TextRun : TextInputControl : TextControl`, and setting
-  the `Text` attribute hits the `text` setter → `SyncGlyphs()`. Accepted as-is for now; the user will
-  give the word and intends **control frustum culling** (engine-wide off-screen cull).
-  - **Culling alone will not fix this.** It stops off-screen controls being *drawn*; the entities,
-    pool rows and descriptor slots all still exist. Raise this before implementing culling as the
-    answer.
+  the `Text` attribute hits the `text` setter → `SyncGlyphs()`.
+  - **Still open, and the UI split does not close it** — that split keeps one control per element,
+    so the count survives it. See [[ui-data-control-split]] "What this does and does not buy".
+  - **Culling will not fix it either**, which is why it stopped being the intended answer. It stops
+    off-screen controls being *drawn*; the entities and pool rows all still exist.
+  - What is left is the escape hatch above (a run with no glyph children until it is visible) or a
+    per-kind visualizer, which was considered and rejected on per-letter capability.
   - Root cause is the P0 model-as-controls decision, which contradicts this file's own Confirmed
     decisions line (*"plain-data document model = source of truth"*). P0's rationale — blocks are
     controls so the engine UI layout lays the document out for free — was **voided by L1**: the cache
@@ -175,6 +184,13 @@ for the decision to accept them and the escape hatch if they bite.
     `DocumentXml.AttachChild`'s "most-specific accepting list" hack, which exists *only* because
     blocks/runs inherit `Entity.children`; (b) keep the inheritance, stop the `text` setter building
     glyphs.
+- **P3 — DONE (2026-08-17).** `DocumentEditSession` + Ctrl+S + arrows/Home/End/PageUp/PageDown all
+  landed, and the whole char/special-key path moved into the engine as `TextInputActions`. Two
+  things the plan said are now decided the other way and are recorded in
+  [[engine-side-text-input]]: the session is **not** a working copy (the model is the control tree,
+  so a clone is a second control tree), and line start/end are the **visual** line's, resolved by
+  scoring every line of every run rather than per run. `Periodic/Editor/Decorations.cs` no longer
+  contains any input code. `ICharacterInput` **still does not exist**.
 - **P3 — click→caret and char input both working (2026-08-07).** Rebuilt on control-local geometry:
   `TextControl.OffsetAt`/`CaretAt`, caret placed by `DocumentControl`, `cursorPosition` on
   `TextControl`. Typing works — the `Decorations.Write` blocker below is resolved. Remaining:
@@ -294,10 +310,11 @@ for the decision to accept them and the escape hatch if they bite.
     `.fontSize` (CS0108 ×2), so `SyncGlyphs` never runs for it at all, and its own setter appends glyphs
     without discarding the old ones — setting its text twice leaves both strings drawing. Pre-existing,
     left alone deliberately.
-- **Char input — RESOLVED 2026-08-07.** The cast now succeeds because a glyph's parent is a
-  `TextRun : TextInputControl : TextControl` again. `isEditing` is set by
-  `DocumentEditorControl.ResolveOnClick`, not by the run, which keeps the editability boundary.
-  Still true: the drain lives in the app, and **`ICharacterInput` does not exist**. Original note:
+- **Char input — RESOLVED 2026-08-07, moved into the engine 2026-08-17.** The cast succeeds because a
+  glyph's parent is a `TextRun : TextInputControl : TextControl` again. `isEditing` is set by
+  `DocumentEditorControl.ResolveOnClick` or by `DocumentControl.SetCaret`, not by the run, which
+  keeps the editability boundary. The drain is now `TextInputActions.Write` in the engine, not
+  `Periodic.Decorations.Write`. Still true: **`ICharacterInput` does not exist**. Original note:
 - **Char input does not reach the document, and two CLAUDE.md claims about it are wrong**
   (found 2026-07-31). The drain is `Periodic/Editor/Decorations.Write` — an
   `[A_XSDActionDependency("Write", category:"Input")]` bound to the `AnySymbol` keybind. It casts

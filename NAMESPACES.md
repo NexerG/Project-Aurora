@@ -27,6 +27,7 @@ ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Projec
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\Serialization\XmlReflection.cs
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\Context.cs
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\EntityRegistry.cs
+ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\SettingCategory.cs
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\SettingsRegistry.cs
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\XSDGenerator.cs
 ArctisAurora.Core.Registry.Assets -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\Assets\AbstractAsset.cs
@@ -59,13 +60,16 @@ ArctisAurora.Core.UISystem.Controls.Interactable -> C:\Projects-Repositories\Aur
 ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\GlyphControl.cs
 ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\TextBlockControl.cs
 ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\TextControl.cs
+ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\TextInputActions.cs
 ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\Blocks.cs
 ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\CaretControl.cs
 ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\DocumentControl.cs
 ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\DocumentEditorControl.cs
+ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\DocumentEditSession.cs
 ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\DocumentXml.cs
 ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\Inlines.cs
 ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\RichTextDocument.cs
+ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\SelectionControl.cs
 ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\TextMeasurer.cs
 ArctisAurora.Core.UISystem.Controls.Text.Editing -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Editing\TextBoxControl.cs
 ArctisAurora.Core.UISystem.Controls.Text.Editing -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Editing\TextInputControl.cs
@@ -80,6 +84,7 @@ ArctisAurora.EngineWork -> C:\Projects-Repositories\Aurora\Project-Aurora\Aurora
 ArctisAurora.EngineWork -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Bootstrapper.cs
 ArctisAurora.EngineWork -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Engine.cs
 ArctisAurora.EngineWork -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\InputHandler.cs
+ArctisAurora.EngineWork -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\InputSettings.cs
 ArctisAurora.EngineWork -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\JobSystem.cs
 ArctisAurora.EngineWork.ComponentBehaviour -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\ECS\EntityComponent.cs
 ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\ECS\RenderingComponents\Vulkan\LightsourceComponent.cs
@@ -89,7 +94,9 @@ ArctisAurora.EngineWork.Registry -> C:\Projects-Repositories\Aurora\Project-Auro
 ArctisAurora.EngineWork.Rendering -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Rendering\AGlfwWindow.cs
 ArctisAurora.EngineWork.Rendering -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Rendering\AuroraCamera.cs
 ArctisAurora.EngineWork.Rendering -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Rendering\AVulkanMesh.cs
+ArctisAurora.EngineWork.Rendering -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Rendering\DisplayNames.cs
 ArctisAurora.EngineWork.Rendering -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Rendering\GraphicsPipeline.cs
+ArctisAurora.EngineWork.Rendering -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Rendering\GraphicsSettings.cs
 ArctisAurora.EngineWork.Rendering -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Rendering\Renderer.cs
 ArctisAurora.EngineWork.Rendering -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Rendering\Swapchain.cs
 ArctisAurora.EngineWork.Rendering -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Rendering\VulkanRenderer.cs

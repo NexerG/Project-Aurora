@@ -12,9 +12,9 @@ Type:
   - Public
 ---
 ## Description
-The note document model for the Periodic (Obsidian-style) editor. It is the source of truth for a note and also its on-disk format, serialized as engine XML (not markdown, not JSON). The control tree is a view synced from this model; editing mutates a working copy of it rather than the controls directly.
+The note document model for the Periodic (Obsidian-style) editor. It is the source of truth for a note and also its on-disk format, serialized as engine XML (not markdown, not JSON).
 
-This is the data half of a model / view / edit-session split: `RichTextDocument` (data) → a document view control (P2) → `DocumentEditSession` (P3 working copy + cursor). The split is deliberate so the later online multi-editor goal can layer a sync model onto the same data without touching the view.
+The model / view split it was designed around **is not what shipped**: blocks and runs are themselves `VulkanControl`s, so the model *is* the control tree and editing mutates it directly. That is the P0 decision — blocks are controls so the engine's UI layout lays a document out for free — and everything downstream follows from it, including why [[#Edit session — `DocumentEditSession`]] is not a working copy and why the whole UI is scheduled to split into data and visualization once Periodic and the profiler are up. The separation the online multi-editor goal wants is therefore still owed, and arrives with that split rather than here.
 
 ## Model shape
 A document is a flat list of blocks; a block of flowing text holds a list of inline runs.
@@ -23,7 +23,7 @@ A document is a flat list of blocks; a block of flowing text holds a list of inl
 - `Block` (abstract, no `[A_XSDType]`) inherits [[TextBlockControl]] (a `PanelControl` derivative that flows runs) → `ContentBlock` (`[A_XSDType("Block")]`), the one concrete block, whose runs are its children. A heading is not a class of its own: a block carries a `StylingType` (`Text`, `Heading1`-`Heading6`, `Comment`, `Code`, `Quote`) and the styles file says how big that is, so adding a level is data rather than a new type. All category `UI`.
 - `TextRun` (`[A_XSDType("Run")]`) → inherits [[TextInputControl]]: `Text`, `Bold`, `Italic`, `Strikethrough`, `FontName`, `FontSize` all come from the control, so the run adds no fields of its own (there is no `Inline` base anymore). Colour is the ordinary `ColorHex` every control has — a run that sets it repoints the colour onto each of its glyph children, since the run itself draws an invisible mask and only the glyphs reach the screen.
 - `Block` carries no `[A_XSDType]` so it is never emitted as an element — it is an `AllowedChildren` target the [[XSDGenerator]] scans for concrete blocks; content blocks use `typeof(TextInputControl)` as their inline `AllowedChildren` (expands to the one `[A_XSDType]` subtype, `Run`).
-- `Clone()` on the document / blocks / inlines is a deep copy — used to make the isolated working copy the editor edits before a save.
+- `Clone()` on the document / blocks / inlines is a deep copy. It was written for the working copy the editor was going to edit before a save; that is not what the edit session does, so its only callers now are `DocumentLayout.Clone` and whatever wants an independent copy of a note.
 
 Planned (not yet in code): `TextRun` gains `FontSize` (0 = inherit block default), `Underline` and a highlight color — mixed fonts/sizes word-by-word are just adjacent runs, with `StyleEquals` merging same-styled neighbours on edit. New blocks arrive via the same free round-trip: `CodeBlock` (Language attribute, monospace, no wrap; syntax coloring is computed at view time and never persisted) and `TableBlock` → `TableRow` → `TableCell` where a cell holds `List<Block>` (nested blocks; MVP fixed/star columns, no merges).
 
@@ -55,23 +55,50 @@ for each `member` of `node` with `[A_XSDElementProperty]`
 add `child` to `list`
 
 #### Save (document, path)
-`root` = [[#Write Element]] (`document`)
+`root` = [[#Write Element]] (`document`, `document` layout)
 create directory of `path`
 write `XDocument` (`root`) to `path`
 
-#### Write Element (node)
+#### Write Element (node, layout)
 `element` = xml element named `node` `[A_XSDType]` name
 for each `member` of `node` with `[A_XSDElementProperty]`
-	set `element` attribute (`member` name) = `member` value (invariant string)
+	if `member` value equals the value on a fresh instance, skip
+	if [[#Is Resolved]] (`node`, `member`, `layout`), skip
+	set `element` attribute (`member` name) = [[#Format]] (`member` value)
+for each complex `member` of `node`
+	`child` = [[#Write Element]] (`member` value, `layout`)
+	if `child` has attributes or elements, add `child` to `element`
 for each `List<>` field on `node`
 	for each `child` in field
-		add [[#Write Element]] (`child`) to `element`
+		add [[#Write Element]] (`child`, `layout`) to `element`
 return `element`
 
-## View — `DocumentEditorControl`
-The read-only view over a document (the "controls as a view" half). It is a [[#^scrollable|ScrollableControl]] whose single child is a vertical [[StackPanel]] of one control per block; each `ContentBlock` becomes a [[TextBlockControl]] that flows one [[INPUT|TextInputControl]] per run (the run renderer). Headings scale font size by level; paragraphs use the body size.
+#### Format (value)
+if `value` is a bool, return "true" or "false"
+return `value` as invariant string
 
-This P2 presentation is **interim**: building every block (and reusing the editable `TextInputControl` as run renderer) does not scale past a few pages, since every character is a full control with its own GPU buffer. It is replaced in L2 by the virtualized view of the [[Document Layout Engine]] — geometry for the whole document lives in a layout cache, controls materialize only for the visible viewport, and read-only runs get a lightweight `TextRunControl`. All hit-testing (including mouse) moves to the cache; controls stop being hit-targets.
+#### Is Resolved (node, member, layout)
+if `node` is a `TextRun` and `member` is `fontSize`
+	`type` = `run` styling type, or the owning block's when it inherits
+	return `run` font size equals `layout` font size for `type`
+if `node` is a `VulkanControl` and `member` is `controlColorHex`
+	return `controlColor` differs from its default and `controlColorHex` equals its hex
+return false
+
+A saved value has to be one somebody wrote. Two mechanisms keep computed values out of a note: the ordinary one is the fresh-instance default (see [[xml-save-skips-defaults]]), and the second is `Is Resolved`, for values a *setter* computed, which no default check can catch because the computed value is not the default one.
+
+There are two. `ApplyLayout` writes the styling scheme's size into every run's `fontSize` the moment a note is loaded — a Heading1 run holds 34 where a fresh run holds 16 — so without the check the first save stamps `FontSize` onto every run and pins the note to whatever the scheme said that day. And `controlColor`'s setter resolves into `controlColorHex`, so a run that named a colour holds both, and saving both pins the note to today's meaning of "gray".
+
+The colour case has a trap the font size case does not: the hex may only be skipped when the *enum* is itself being written. `ControlColor`'s default is `red`, so a control that never named a colour has the enum omitted by the default check — dropping the hex as well would lose an authored `ColorHex` entirely on the next load. A run that deliberately authored the size or the hex the scheme already resolves to loses its explicit attribute, which is the acceptable half of the trade: it reloads to the same value either way, and a second save is byte-identical to the first.
+
+`Format` exists for one reason: `xs:boolean` has no `True`. `Convert.ToString` spells a bool the C# way, so an unfixed save writes `Bold="True"` and the note fails the schema it names in its own `schemaLocation`. It still loads — the reader converts case-insensitively — which is exactly why this went unnoticed until a save was reachable from the UI.
+
+## View — `DocumentEditorControl`
+The editable view over a document. It is a [[#^scrollable|ScrollableControl]] over a `DocumentControl`, which stacks the document's **own** block controls — it builds nothing of its own, since the blocks and runs in the model are already controls. `ApplyLayout` resolves each run's styling type into a font size through the scheme before they are stacked, and the caret is a child of the `DocumentControl` so it scrolls with the text.
+
+This presentation does not scale past a few pages, since every character is a full control. The replacement was going to be L2's virtualized view over a layout cache; that was **built and reverted** on 2026-08-07, because virtualizing the view removed a second parallel set of glyphs and left the first one — parsing a note builds every glyph before any view is consulted, so the model alone is already past the descriptor array's 50,000 slots on a 400-block note. There is now one layout path for all text and the control tree is the hit-test again.
+
+What replaces it is engine-wide rather than document-local: the UI splits into **data and visualization**, most of the UI becoming data and controls becoming the thing that draws it, **after** Periodic's first version and the test/profiling platform are up. See `DOCUMENTATION/ClaudeMemory/Decisions/ui-data-control-split.md` and [[Document Layout Engine#Status]].
 
 - `[A_XSDType("DocumentEditor", "UI")]` so it can be placed in `UI.xml`; a `Source` attribute names an engine-XML note to load (resolved via `Paths.Doc` when relative, used as-is when rooted).
 - `LoadDocument(RichTextDocument)` — entry point used by the vault later; `LoadPath(name)` — load by file.
@@ -93,7 +120,43 @@ for each `run` in `block`
 	`text block` add `run control`
 return `text block`
 
+## Edit session — `DocumentEditSession`
+An open note is `{ document, path }` and a `Save()` that writes the one to the other. It is deliberately **not** a working copy, even though the description above and the original plan both say it is: the L1/L2 rework left the model *being* the control tree, so a second copy would have to be a second control tree — one `GlyphControl` per character, twice — and the note about the glyph ceiling already says that number is being leaned on. A revert is therefore a reload from disk rather than a discarded clone. When per-note undo arrives it will be an edit log over the live tree, not a shadow copy of it.
+
+`DocumentEditorControl.LoadPath` creates the session; `Save()` on the editor forwards to it. `LoadDocument` on its own leaves the editor sessionless and unsavable, which is what a preview of a document that came from nowhere should do.
+
+## Caret movement
+The caret is `(run, cursorPosition)` — the offset lives on the run, and `DocumentControl` remembers which run holds it. Movement splits in two by what the move actually asks:
+
+- **Left / right** walk runs in document order. A run boundary *inside a block* is one caret slot and not two, because the end of one run and the start of the next resolve to the same point — the runs share a visual line through the `firstLineOffset` / `lastLineEndX` handshake. So a step across it lands past the duplicate. A block boundary is two slots, because the runs are on different lines.
+- **Up / down, line start / end, page up / down** are all one primitive: resolve a point. `CaretAtPoint` scores every *line of every run* — not every run — because a visual line spans runs, so the run holding the line's start is routinely not the run the caret is in. A line closer in y always wins and x only breaks ties within a band, which is what makes line start and line end land on the right run rather than on the current one.
+
+Line start and line end are the **visual** line's, not the paragraph's, which is the only reason the point primitive is needed at all. Page up and down move by one viewport height, which is why they live on the editor rather than on `DocumentControl` — the scroll viewport is the editor's.
+
+Every move ends in `ScrollIntoView` on the caret's rect, and a move into a different run repoints `UICollisionHandling.activeControl`. That last part is not cosmetic: `Text.Write` drains characters into whatever the collision handler last made active, so a caret that arrowed into a new run without repointing it would type into the run that was clicked.
+
+## Selection
+A selection is two caret slots — an **anchor** where the press or the shift-extend started, and a **focus** where the caret is now. The focus is not stored separately: `caretRun` and `cursorPosition` already are it, so the only new state is the anchor, and `anchor == focus` is both "nothing is selected" and the plain-caret behaviour that existed before.
+
+Slots are **normalized on write**, which is what makes that equality mean anything. The end of a run and offset 0 of the next run inside one block are the same point on screen — the block hands the next run the x the previous one ended at — so the two would compare as different while sitting on the same pixel, giving a phantom selection at every run boundary. `Normalize` walks a slot forward past any run end that has a following run in the same block, so one point is one pair. Rightward caret movement gets that rule for free; leftward has to do it itself, since normalizing only ever moves forwards.
+
+Ordering the two ends needs reading order, and a run does not know where it sits in the document, so `OrderedRuns` is walked and the ends compared as `(run index, offset)`. This is what lets a drag run backwards.
+
+#### Highlight (run, from, to)
+for each `line` of `run` layout
+	clip [`from`, `to`) against the `line`'s character span, skip if empty
+	`left` = clip starts the line ? the line's own left : `run` [[#Caret At]] (clip start) x
+	`right` = clip ends the line ? the line's left + its width : `run` [[#Caret At]] (clip end) x
+	arrange the next box at (`left`, `line` top) sized (`right` - `left`, `line` height)
+
+One box per **visual line**, not one per selection, since a wrapped range is several rectangles. The x span comes from `CaretAt` — the same function that places the caret — so a highlight cannot drift from the caret drawn inside it. The one place it cannot be used is a wrapped line's final slot, which belongs to the line *below* by the caret-affinity rule, so the line's own width is the right edge there instead.
+
+The boxes are `SelectionControl`s, a `PanelControl` exactly as `CaretControl` is. Two properties of them are load-bearing rather than incidental: they are **reused and arranged to nothing** when unneeded, because creating and destroying them as the mouse moves costs a pool allocation and a full paint-order permute every tick; and they are **inserted at the head of the child list**, because paint order is the tree's DFS order — which is why the caret, added last, draws over the text, and why a highlight added last would cover the letters instead of sitting behind them.
+
+Drag runs on the engine's drag lifecycle: the editor calls `StartDrag()` from its click handler, `ResolveDrag` then arrives every tick until the button comes up, the focus follows the mouse through `CaretAtPoint`, and a mouse past the viewport edge scrolls by the overshoot. Reading `InputHandler.mousePos` rather than the position handed to `ResolveDrag` is the same one-frame-lag workaround the click path carries.
+
 ## Status
 - P0 (model types) and P1 (XML persistence) complete; round-trip verified (in-code build + reload of code-built and hand-authored XML are byte/structurally equal).
-- P2 (read-only `DocumentEditorControl`) implemented; built into `Periodic/Data/XML/Documents/UI.xml` via `<DocumentEditor Source="SampleNote.xml"/>`. Pending manual GUI verification.
-- Lists, quotes, dividers, wiki-links, inline code: not yet — added as the editor grows. Code blocks and tables are scheduled (B1/B2), after the [[Document Layout Engine]] phases (L1/L2) and editing (P3/P4). Revised phase order: `DOCUMENTATION/ClaudeMemory/Context/periodic-editor-architecture.md`.
+- P3 complete: click→caret, character input, arrow / Home / End / PageUp / PageDown navigation, and Ctrl+S through `DocumentEditSession`. Save verified against the sample note — no run gains a `FontSize`. Navigation itself is compile-verified and pending GUI verification.
+- P2 (`DocumentEditorControl`) implemented; built into `Periodic/Data/XML/Documents/UI.xml` via `<DocumentEditor Source="SampleNote.xml"/>`.
+- P4 (selection, Ctrl+B/I run split/merge) is next. Lists, quotes, dividers, wiki-links, inline code: not yet — added as the editor grows. Code blocks and tables are scheduled (B1/B2). L2 is dropped, L3 (paged mode) is unaffected — see [[Document Layout Engine#Status]]. Revised phase order: `DOCUMENTATION/ClaudeMemory/Context/periodic-editor-architecture.md`.

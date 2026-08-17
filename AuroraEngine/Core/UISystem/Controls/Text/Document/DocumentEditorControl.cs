@@ -6,9 +6,10 @@ using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
 using Silk.NET.Maths;
-// WinForms is enabled in this project; alias the engine control to avoid the
-// System.Windows.Forms.ScrollableControl clash.
+// WinForms is enabled in this project; alias the engine types to avoid the
+// System.Windows.Forms.ScrollableControl and .Keys clashes.
 using ScrollableControl = ArctisAurora.Core.UISystem.Controls.Containers.ScrollableControl;
+using Keys = ArctisAurora.EngineWork.Keys;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 {
@@ -17,6 +18,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
     public class DocumentEditorControl : ScrollableControl
     {
         public RichTextDocument activeDocument { get; private set; }
+        public DocumentEditSession session { get; private set; }
+
+        private const float autoScrollRate = 0.25f;
 
         private DocumentControl content;
 
@@ -41,8 +45,17 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         public void LoadPath(string nameOrPath)
         {
             string path = Path.IsPathRooted(nameOrPath) ? nameOrPath : Paths.Doc(nameOrPath);
-            LoadDocument(RichTextDocument.ParseXML(path));
+            RichTextDocument document = RichTextDocument.ParseXML(path);
+
+            session = new DocumentEditSession(document, path);
+            LoadDocument(document);
         }
+
+        public void Save() => session?.Save();
+
+        public void CollapseSelection() => content?.CollapseSelection();
+
+        public TextControl CaretRun => content?.caretRun;
 
         public void LoadDocument(RichTextDocument document)
         {
@@ -62,7 +75,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             }
         }
 
-        // Places the caret and marks the hit run editable.
+        // Places the caret and marks the hit run editable; shift keeps the anchor and extends.
         public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
         {
             TextControl run = RunUnder(UICollisionHandling.hovering);
@@ -72,13 +85,137 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 Vector2D<float> mouse = WindowControl.ToDesignSpace(InputHandler.mousePos);
                 LayoutRect inner = run.arrangedRect.Shrink(run.padding);
 
-                run.cursorPosition = run.OffsetAt(mouse.X - inner.x, mouse.Y - inner.y);
-                run.BeginEdit();
-                content.SetCaret(run);
+                content.SetCaret(run, run.OffsetAt(mouse.X - inner.x, mouse.Y - inner.y), ShiftHeld);
+                StartDrag();
             }
 
             base.ResolveOnClick(oldPos, delta);
         }
+
+        // Held-button drag: the focus follows the mouse, the anchor stays where the press landed.
+        public override void ResolveDrag(Vector2D<float> lastPos, Vector2D<float> delta)
+        {
+            if (content != null)
+            {
+                // InputHandler.mousePos, not lastPos, which lags by a frame
+                Vector2D<float> mouse = WindowControl.ToDesignSpace(InputHandler.mousePos);
+                AutoScroll(mouse);
+
+                if (content.CaretAtPoint(mouse.X, mouse.Y, out TextControl run, out int offset))
+                    content.SetCaret(run, offset, true);
+            }
+
+            base.ResolveDrag(lastPos, delta);
+        }
+
+        // Dragging past the viewport edge scrolls, so a selection can run off-screen. The caret
+        // resolves against the geometry this frame still has and catches up on the next tick.
+        private void AutoScroll(Vector2D<float> mouse)
+        {
+            LayoutRect inner = arrangedRect.Shrink(padding);
+
+            float overshoot = mouse.Y < inner.y ? mouse.Y - inner.y
+                            : mouse.Y > inner.Bottom ? mouse.Y - inner.Bottom
+                            : 0f;
+            if (overshoot == 0f) return;
+
+            Vector2D<float> offset = GetScrollOffset();
+            SetScrollOffset(new Vector2D<float>(offset.X, offset.Y + overshoot * autoScrollRate));
+        }
+
+        private static bool ShiftHeld =>
+            InputHandler.instance.IsKeyDown(Keys.LeftShift) || InputHandler.instance.IsKeyDown(Keys.RightShift);
+
+        #region ---- caret movement ----
+        public void MoveCaret(CaretMove move, bool extend = false)
+        {
+            if (content?.caretRun == null) return;
+
+            if (move == CaretMove.Left) MoveLeft(extend);
+            else if (move == CaretMove.Right) MoveRight(extend);
+            else MoveToPoint(move, extend);
+
+            ScrollToCaret();
+        }
+
+        // A run boundary inside a block is one caret slot, not two: the previous run's end and the
+        // next run's start resolve to the same point, so a step across it lands past the duplicate.
+        // Rightwards that rule is SetCaret's normalization; leftwards it has to be done here,
+        // because normalizing only ever moves a slot forwards.
+        private void MoveLeft(bool extend)
+        {
+            TextControl run = content.caretRun;
+
+            if (run.cursorPosition > 0)
+            {
+                content.SetCaret(run, run.cursorPosition - 1, extend);
+                return;
+            }
+
+            TextControl previous = content.AdjacentRun(run, -1);
+            if (previous == null) return;
+
+            int end = (previous.text ?? string.Empty).Length;
+            bool sharesSlot = DocumentControl.BlockOf(previous) == DocumentControl.BlockOf(run);
+            content.SetCaret(previous, sharesSlot ? end - 1 : end, extend);
+        }
+
+        private void MoveRight(bool extend)
+        {
+            TextControl run = content.caretRun;
+            int length = (run.text ?? string.Empty).Length;
+
+            if (run.cursorPosition >= length)
+            {
+                TextControl following = content.AdjacentRun(run, 1);
+                if (following != null) content.SetCaret(following, 0, extend);
+                return;
+            }
+
+            content.SetCaret(run, run.cursorPosition + 1, extend);
+        }
+
+        // Up/down, line start/end and page moves are all "resolve this point", because a visual line
+        // spans runs — the run holding the line's start is not the one the caret is in.
+        private void MoveToPoint(CaretMove move, bool extend)
+        {
+            if (!content.CaretPoint(out float x, out float y, out float height)) return;
+
+            LayoutRect inner = content.arrangedRect.Shrink(content.padding);
+            float page = arrangedRect.Shrink(padding).height;
+
+            float targetX = move switch
+            {
+                CaretMove.LineStart => inner.x,
+                CaretMove.LineEnd => inner.x + inner.width,
+                _ => x
+            };
+
+            float targetY = move switch
+            {
+                CaretMove.Up => y,
+                CaretMove.Down => y + height,
+                CaretMove.PageUp => y - page,
+                CaretMove.PageDown => y + page,
+                _ => y + height * 0.5f
+            };
+
+            // Up and down have to exclude the line the caret is already on. Probing just outside it
+            // is not enough: blocks are spaced apart, so the current line stays the nearest band to
+            // a point one pixel off it and the caret never crosses a block boundary.
+            float bandMin = move == CaretMove.Down ? y + height : float.NegativeInfinity;
+            float bandMax = move == CaretMove.Up ? y : float.PositiveInfinity;
+
+            if (content.CaretAtPoint(targetX, targetY, out TextControl run, out int offset, bandMin, bandMax))
+                content.SetCaret(run, offset, extend);
+        }
+
+        private void ScrollToCaret()
+        {
+            if (content.CaretPoint(out float x, out float y, out float height))
+                ScrollIntoView(new LayoutRect(x, y, CaretControl.Width, height));
+        }
+        #endregion
 
         // Nearest TextControl at or above the hit control.
         private static TextControl RunUnder(VulkanControl hit)

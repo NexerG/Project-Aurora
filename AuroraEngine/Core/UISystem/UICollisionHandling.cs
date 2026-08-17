@@ -5,6 +5,8 @@ using ArctisAurora.Core.UISystem.Controls;
 using Silk.NET.GLFW;
 using Silk.NET.Maths;
 using ScrollableControl = ArctisAurora.Core.UISystem.Controls.Containers.ScrollableControl;
+using InputHandler = ArctisAurora.EngineWork.InputHandler;
+using Keys = ArctisAurora.EngineWork.Keys;
 
 namespace ArctisAurora.Core.UISystem
 {
@@ -76,6 +78,8 @@ namespace ArctisAurora.Core.UISystem
             VulkanControl dragTarget = dragging;
             if (dragTarget != null)
             {
+                // cleared before the callbacks, so a handler asking whether a drag is live gets no
+                dragging = null;
                 dragTarget.StopDrag();
                 dragTarget.ResolveOnRelease();
             }
@@ -99,8 +103,20 @@ namespace ArctisAurora.Core.UISystem
         
         public void SolveDrag(Vector2D<float> mousePos)
         {
-            if (dragging != null)
-                dragging.ResolveDrag(lastMousePos, delta);
+            if (dragging == null) return;
+
+            // A release nobody saw. HandleUI returns before this whole block while the pointer is
+            // outside the window, so a button that comes up out there never reaches SolveLMBRelease
+            // and justReleased is gone by the next tick — the drag would stay live for good.
+            if (!InputHandler.instance.IsKeyDown(Keys.MouseLeft))
+            {
+                VulkanControl stale = dragging;
+                dragging = null;
+                stale.StopDrag();
+                return;
+            }
+
+            dragging.ResolveDrag(lastMousePos, delta);
         }
 
         public void SolveScroll(Vector2D<float> offset)
@@ -140,6 +156,8 @@ namespace ArctisAurora.Core.UISystem
 
             foreach (VulkanControl child in current.GetAllChildrenEntities())
             {
+                if (!child.hitTestable) continue;
+
                 VulkanControl? deeper = FindDeepestValid(mousePos, child, ref localVerts);
                 if (deeper != null)
                     return deeper;
@@ -154,6 +172,11 @@ namespace ArctisAurora.Core.UISystem
 
         private bool SolvePositions(VulkanControl entity, Vector2D<float> pos, Vector2D<float>[] localVerts)
         {
+            // A collapsed quad passes the edge test for every point on the plane — every cross
+            // product is zero, so "all on the same side" is vacuously true — which turns a control
+            // arranged to nothing into one that swallows the entire hit-test.
+            if (entity.transform.scale.X == 0f || entity.transform.scale.Y == 0f) return false;
+
             localVerts[0] = new Vector2D<float>(-0.5f, -0.5f);
             localVerts[1] = new Vector2D<float>(0.5f, -0.5f);
             localVerts[2] = new Vector2D<float>(0.5f, 0.5f);

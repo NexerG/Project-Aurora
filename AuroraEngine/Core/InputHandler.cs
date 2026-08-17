@@ -59,7 +59,9 @@ namespace ArctisAurora.EngineWork
         private List<RawInputEvent> _readQueue = new List<RawInputEvent>();
         private readonly object _lock = new object();
 
-        public double tapWindow = 0.3;
+        // Global keybind timings, from the Input settings category. A keybind cannot override them.
+        private static double tapWindow => SettingsRegistry.Get<InputSettings>().doubleClick.timeout;
+        private static KeyRepeatSetting keyRepeat => SettingsRegistry.Get<InputSettings>().keyRepeat;
 
         public KeyStateEntry GetState(Keys key)
         {
@@ -400,15 +402,9 @@ namespace ArctisAurora.EngineWork
         // REPEAT — fires on press, then repeats after
         // delay at rate
         // ──────────────────────────────────────────────
-        [A_XSDType("Repeat", "Input", description: "Fires on press then repeats after delay at rate")]
+        [A_XSDType("Repeat", "Input", description: "Fires on press then repeats after the global delay at the global rate")]
         public class RepeatCondition : InputCondition
         {
-            [A_XSDElementProperty("Delay", "Input")]
-            public float delay { get; set; } = 0.35f;
-
-            [A_XSDElementProperty("Rate", "Input")]
-            public float rate { get; set; } = 0.03f;
-
             private double _accumulator;
             private bool _delayPassed;
 
@@ -432,7 +428,7 @@ namespace ArctisAurora.EngineWork
 
                 if (!_delayPassed)
                 {
-                    if (_accumulator >= delay)
+                    if (_accumulator >= keyRepeat.delay)
                     {
                         _delayPassed = true;
                         _accumulator = 0;
@@ -442,7 +438,7 @@ namespace ArctisAurora.EngineWork
                 }
                 else
                 {
-                    if (_accumulator >= rate)
+                    if (_accumulator >= keyRepeat.rate)
                     {
                         _accumulator = 0;
                         return ConditionResult.Triggered;

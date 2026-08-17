@@ -27,7 +27,36 @@
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
         <xs:element name="DocumentSettings" type="types:DocumentSettings" />
+        <xs:element name="Input" type="types:Input" />
         <xs:element name="Graphics" type="types:Graphics" />
+      </xs:choice>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="DoubleClick" type="types:DoubleClick" />
+  <xs:complexType name="DoubleClick">
+    <xs:sequence />
+    <xs:attribute name="Timeout" type="xs:float" />
+    <xs:attribute name="Scope" type="types:SettingScope" />
+    <xs:attribute name="OnChanged" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="KeyRepeat" type="types:KeyRepeat" />
+  <xs:complexType name="KeyRepeat">
+    <xs:sequence />
+    <xs:attribute name="Delay" type="xs:float" />
+    <xs:attribute name="Rate" type="xs:float" />
+    <xs:attribute name="Scope" type="types:SettingScope" />
+    <xs:attribute name="OnChanged" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="Input" type="types:Input" />
+  <xs:complexType name="Input">
+    <xs:sequence>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="DoubleClick" type="types:DoubleClick" />
+        <xs:element name="KeyRepeat" type="types:KeyRepeat" />
+        <xs:element name="Device" type="types:Device" />
+        <xs:element name="Monitor" type="types:Monitor" />
+        <xs:element name="Window" type="types:Window" />
+        <xs:element name="VSync" type="types:VSync" />
       </xs:choice>
     </xs:sequence>
   </xs:complexType>
@@ -65,6 +94,8 @@
   <xs:complexType name="Graphics">
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="DoubleClick" type="types:DoubleClick" />
+        <xs:element name="KeyRepeat" type="types:KeyRepeat" />
         <xs:element name="Device" type="types:Device" />
         <xs:element name="Monitor" type="types:Monitor" />
         <xs:element name="Window" type="types:Window" />

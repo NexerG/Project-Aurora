@@ -2,10 +2,19 @@
 <xsd:schema xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" targetNamespace="http://arctisaurora/ActionDependencies" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <xs:simpleType name="Input">
     <xs:restriction base="xs:string">
-      <xs:enumeration value="Write" />
       <xs:enumeration value="ExitApplication" />
       <xs:enumeration value="DummyHover" />
       <xs:enumeration value="DummyKeyPress" />
+      <xs:enumeration value="Text.Write" />
+      <xs:enumeration value="Text.Save" />
+      <xs:enumeration value="Text.CaretLeft" />
+      <xs:enumeration value="Text.CaretRight" />
+      <xs:enumeration value="Text.CaretUp" />
+      <xs:enumeration value="Text.CaretDown" />
+      <xs:enumeration value="Text.CaretLineStart" />
+      <xs:enumeration value="Text.CaretLineEnd" />
+      <xs:enumeration value="Text.CaretPageUp" />
+      <xs:enumeration value="Text.CaretPageDown" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="UI">

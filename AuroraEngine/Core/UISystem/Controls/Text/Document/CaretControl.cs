@@ -8,6 +8,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         public CaretControl()
         {
             controlColorHex = "#FFFFFF";
+            hitTestable = false;
         }
     }
 }

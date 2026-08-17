@@ -7,8 +7,45 @@
 		<Press />
 	</Keybind>
 
-	<Keybind Trigger="AnySymbol" Action="Write">
+	<Keybind Trigger="AnySymbol" Action="Text.Write">
 		<Continuous />
 	</Keybind>
-	
+
+	<Keybind Trigger="S" Action="Text.Save">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Left" Action="Text.CaretLeft">
+		<Repeat />
+	</Keybind>
+
+	<Keybind Trigger="Right" Action="Text.CaretRight">
+		<Repeat />
+	</Keybind>
+
+	<Keybind Trigger="Up" Action="Text.CaretUp">
+		<Repeat />
+	</Keybind>
+
+	<Keybind Trigger="Down" Action="Text.CaretDown">
+		<Repeat />
+	</Keybind>
+
+	<Keybind Trigger="Home" Action="Text.CaretLineStart">
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="End" Action="Text.CaretLineEnd">
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="PageUp" Action="Text.CaretPageUp">
+		<Repeat />
+	</Keybind>
+
+	<Keybind Trigger="PageDown" Action="Text.CaretPageDown">
+		<Repeat />
+	</Keybind>
+
 </KeybindMap>

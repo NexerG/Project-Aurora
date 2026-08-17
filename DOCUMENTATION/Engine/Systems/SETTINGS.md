@@ -130,9 +130,9 @@ What `Commit` does **not** do is gate the value. The UI is writing to the live `
 
 Scope does not gate a runtime write either: `App` means the *file* cannot carry the value, not that code cannot set it. An App-scoped setting assigned in memory still fires its action and still never reaches the user's file, so a settings screen is what decides not to show it.
 
-## The engine's own group
+## The engine's own groups
 
-`GraphicsSettings`, named `Graphics`, is the one group the engine ships itself, and it exists because values the renderer had hardcoded are the ones a person actually expects to be able to change before anything is drawn. It holds four settings — `Device`, `Monitor`, `Window` and `VSync` — and `Window` is the one that shows why a setting is a type rather than a name: mode, width and height are one decision about how the window is made, and splitting them into three named values only to read them back together was never expressing anything.
+`GraphicsSettings`, named `Graphics`, is the first group the engine ships itself, and it exists because values the renderer had hardcoded are the ones a person actually expects to be able to change before anything is drawn. It holds four settings — `Device`, `Monitor`, `Window` and `VSync` — and `Window` is the one that shows why a setting is a type rather than a name: mode, width and height are one decision about how the window is made, and splitting them into three named values only to read them back together was never expressing anything.
 
 `Device`'s `Name` is matched case-insensitively as a substring of `VkPhysicalDeviceProperties.deviceName`, so `"RTX"` or `"Radeon"` is enough and the string a future settings screen lists is the same string the file holds; an empty value keeps the first device the driver enumerates, and a value matching nothing warns and falls back to that same first device rather than refusing to start. The alternative of a `vendorID:deviceID` pair is exact and survives a driver renaming the card, but it is unreadable to anyone hand-editing the file, and an index into the enumeration silently means a different GPU whenever the driver reorders it.
 
@@ -149,6 +149,10 @@ How the UI then fills whatever window that produced is a separate question, answ
 This is the one Windows-only corner of the settings system, and it is confined to `DisplayNames` — the rest of the group, and everything the registry does, is platform-neutral.
 
 The values are read exactly once, during bootstrap, by `ChoosePhysicalDevice`, `AGlfwWindow.CreateWindow` and `GetPresentMode`. Changing one takes an application restart, because nothing re-reads a group and nothing tells the renderer a value moved.
+
+`InputSettings`, named `Input`, is the second, and it holds the two timings that were hardcoded inside [[INPUT]]: `DoubleClick`'s `Timeout` is the window within which a second press counts as the same tap sequence, and `KeyRepeat`'s `Delay` and `Rate` are how long a held key waits before it starts repeating and how fast it repeats once it has. Both are read live, at the point the value is used, rather than seeded into the tracker and the conditions at parse time — the read is a dictionary lookup on a handful of keys per tick, and seeding would have meant either a change that reaches nothing already parsed or an `OnChanged` action that walks every condition and cannot tell a keybind's deliberate override from the default it is about to clobber.
+
+That is also why these are **global and a keybind cannot override them**: `Repeat` used to carry its own `Delay` and `Rate` attributes and they are gone. A per-keybind repeat rate is a different feature from a person's repeat rate, and the moment both exist there is no answer to what a settings screen is supposed to do to a keybind that named its own. `Hold`, `MaxHoldTime`, `HoldContinuous` and `MultiTap` keep their per-condition thresholds, because those describe what the gesture *is* rather than how fast the machine repeats.
 
 ## Lifecycle / Flow
 
