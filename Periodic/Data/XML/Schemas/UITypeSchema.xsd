@@ -5,12 +5,53 @@
   <xs:simpleType name="UI">
     <xs:union memberTypes="types:TextStyleType types:DockMode types:GridSizeMode types:Scrollable types:ControlColor types:FillMode types:HorizontalAlignment types:VeticalAlignment types:WindowingModeEnum types:ContentScalingModeEnum types:Orientation" />
   </xs:simpleType>
+  <xs:element name="VaultBrowser" type="types:VaultBrowser" />
+  <xs:complexType name="VaultBrowser">
+    <xs:sequence />
+    <xs:attribute name="Width" type="xs:int" />
+    <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="ScrollDirection" type="types:Scrollable" />
+    <xs:attribute name="ScrollSensitivity" type="xs:float" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
+    <xs:attribute name="MinHeight" type="xs:int" />
+    <xs:attribute name="MinWidth" type="xs:int" />
+    <xs:attribute name="HorizontalPos" type="xs:float" />
+    <xs:attribute name="VerticalPos" type="xs:float" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
+    <xs:attribute name="ClipToBounds" type="xs:boolean" />
+    <xs:attribute name="DockMode" type="types:DockMode" />
+    <xs:attribute name="Grid.Column" type="xs:int" />
+    <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="onEnter" type="actions:UI" />
+    <xs:attribute name="onExit" type="actions:UI" />
+    <xs:attribute name="onClick" type="actions:UI" />
+    <xs:attribute name="BubbleClick" type="xs:boolean" />
+    <xs:attribute name="onAltClick" type="actions:UI" />
+    <xs:attribute name="BubbleAltClick" type="xs:boolean" />
+    <xs:attribute name="onRelease" type="actions:UI" />
+    <xs:attribute name="BubbleRelease" type="xs:boolean" />
+    <xs:attribute name="onAltRelease" type="actions:UI" />
+    <xs:attribute name="BubbleAltRelease" type="xs:boolean" />
+    <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
+    <xs:attribute name="BubbleScroll" type="xs:boolean" />
+  </xs:complexType>
   <xs:element name="Panel" type="types:Panel" />
   <xs:complexType name="Panel">
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="1">
+        <xs:element name="VaultBrowser" type="types:VaultBrowser" />
         <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="TitleBar" type="types:TitleBar" />
         <xs:element name="Window" type="types:Window" />
+        <xs:element name="Label" type="types:Label" />
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
         <xs:element name="TextInput" type="types:TextInput" />
@@ -57,12 +98,72 @@
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
   </xs:complexType>
+  <xs:element name="TitleBar" type="types:TitleBar" />
+  <xs:complexType name="TitleBar">
+    <xs:sequence>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="VaultBrowser" type="types:VaultBrowser" />
+        <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="TitleBar" type="types:TitleBar" />
+        <xs:element name="Window" type="types:Window" />
+        <xs:element name="Label" type="types:Label" />
+        <xs:element name="TextBlock" type="types:TextBlock" />
+        <xs:element name="TextBox" type="types:TextBox" />
+        <xs:element name="TextInput" type="types:TextInput" />
+        <xs:element name="Block" type="types:Block" />
+        <xs:element name="DocumentEditor" type="types:DocumentEditor" />
+        <xs:element name="Run" type="types:Run" />
+        <xs:element name="Button" type="types:Button" />
+        <xs:element name="Dock" type="types:Dock" />
+        <xs:element name="GridList" type="types:GridList" />
+        <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+        <xs:element name="StackPanel" type="types:StackPanel" />
+      </xs:choice>
+    </xs:sequence>
+    <xs:attribute name="Width" type="xs:int" />
+    <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="Orientation" type="types:Orientation" />
+    <xs:attribute name="Spacing" type="xs:float" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
+    <xs:attribute name="MinHeight" type="xs:int" />
+    <xs:attribute name="MinWidth" type="xs:int" />
+    <xs:attribute name="HorizontalPos" type="xs:float" />
+    <xs:attribute name="VerticalPos" type="xs:float" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
+    <xs:attribute name="ClipToBounds" type="xs:boolean" />
+    <xs:attribute name="DockMode" type="types:DockMode" />
+    <xs:attribute name="Grid.Column" type="xs:int" />
+    <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="onEnter" type="actions:UI" />
+    <xs:attribute name="onExit" type="actions:UI" />
+    <xs:attribute name="onClick" type="actions:UI" />
+    <xs:attribute name="BubbleClick" type="xs:boolean" />
+    <xs:attribute name="onAltClick" type="actions:UI" />
+    <xs:attribute name="BubbleAltClick" type="xs:boolean" />
+    <xs:attribute name="onRelease" type="actions:UI" />
+    <xs:attribute name="BubbleRelease" type="xs:boolean" />
+    <xs:attribute name="onAltRelease" type="actions:UI" />
+    <xs:attribute name="BubbleAltRelease" type="xs:boolean" />
+    <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
+    <xs:attribute name="BubbleScroll" type="xs:boolean" />
+  </xs:complexType>
   <xs:element name="Window" type="types:Window" />
   <xs:complexType name="Window">
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="1">
+        <xs:element name="VaultBrowser" type="types:VaultBrowser" />
         <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="TitleBar" type="types:TitleBar" />
         <xs:element name="Window" type="types:Window" />
+        <xs:element name="Label" type="types:Label" />
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
         <xs:element name="TextInput" type="types:TextInput" />
@@ -111,12 +212,57 @@
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
   </xs:complexType>
+  <xs:element name="Label" type="types:Label" />
+  <xs:complexType name="Label">
+    <xs:sequence>
+      <xs:choice minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
+    <xs:attribute name="Text" type="xs:string" />
+    <xs:attribute name="FontSize" type="xs:int" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="StylingType" type="types:TextStyleType" />
+    <xs:attribute name="FontName" type="xs:string" />
+    <xs:attribute name="Width" type="xs:int" />
+    <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
+    <xs:attribute name="MinHeight" type="xs:int" />
+    <xs:attribute name="MinWidth" type="xs:int" />
+    <xs:attribute name="HorizontalPos" type="xs:float" />
+    <xs:attribute name="VerticalPos" type="xs:float" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
+    <xs:attribute name="ClipToBounds" type="xs:boolean" />
+    <xs:attribute name="DockMode" type="types:DockMode" />
+    <xs:attribute name="Grid.Column" type="xs:int" />
+    <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="onEnter" type="actions:UI" />
+    <xs:attribute name="onExit" type="actions:UI" />
+    <xs:attribute name="onClick" type="actions:UI" />
+    <xs:attribute name="BubbleClick" type="xs:boolean" />
+    <xs:attribute name="onAltClick" type="actions:UI" />
+    <xs:attribute name="BubbleAltClick" type="xs:boolean" />
+    <xs:attribute name="onRelease" type="actions:UI" />
+    <xs:attribute name="BubbleRelease" type="xs:boolean" />
+    <xs:attribute name="onAltRelease" type="actions:UI" />
+    <xs:attribute name="BubbleAltRelease" type="xs:boolean" />
+    <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
+    <xs:attribute name="BubbleScroll" type="xs:boolean" />
+  </xs:complexType>
   <xs:element name="TextBlock" type="types:TextBlock" />
   <xs:complexType name="TextBlock">
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="VaultBrowser" type="types:VaultBrowser" />
         <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="TitleBar" type="types:TitleBar" />
         <xs:element name="Window" type="types:Window" />
+        <xs:element name="Label" type="types:Label" />
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
         <xs:element name="TextInput" type="types:TextInput" />
@@ -423,8 +569,11 @@
   <xs:complexType name="Button">
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="1">
+        <xs:element name="VaultBrowser" type="types:VaultBrowser" />
         <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="TitleBar" type="types:TitleBar" />
         <xs:element name="Window" type="types:Window" />
+        <xs:element name="Label" type="types:Label" />
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
         <xs:element name="TextInput" type="types:TextInput" />
@@ -485,8 +634,11 @@
   <xs:complexType name="Dock">
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="VaultBrowser" type="types:VaultBrowser" />
         <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="TitleBar" type="types:TitleBar" />
         <xs:element name="Window" type="types:Window" />
+        <xs:element name="Label" type="types:Label" />
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
         <xs:element name="TextInput" type="types:TextInput" />
@@ -577,8 +729,11 @@
         </xs:annotation>
       </xs:element>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="VaultBrowser" type="types:VaultBrowser" />
         <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="TitleBar" type="types:TitleBar" />
         <xs:element name="Window" type="types:Window" />
+        <xs:element name="Label" type="types:Label" />
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
         <xs:element name="TextInput" type="types:TextInput" />
@@ -636,8 +791,11 @@
   <xs:complexType name="ScrollableControl">
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="1">
+        <xs:element name="VaultBrowser" type="types:VaultBrowser" />
         <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="TitleBar" type="types:TitleBar" />
         <xs:element name="Window" type="types:Window" />
+        <xs:element name="Label" type="types:Label" />
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
         <xs:element name="TextInput" type="types:TextInput" />
@@ -690,8 +848,11 @@
   <xs:complexType name="StackPanel">
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="VaultBrowser" type="types:VaultBrowser" />
         <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="TitleBar" type="types:TitleBar" />
         <xs:element name="Window" type="types:Window" />
+        <xs:element name="Label" type="types:Label" />
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
         <xs:element name="TextInput" type="types:TextInput" />

@@ -49,13 +49,11 @@ namespace ArctisAurora.Core.Filing
 
         private void TreeBranch(string path, FileObject fileObject)
         {
+            // The constructor branches a directory itself, so branching the child here as well
+            // added every descendant twice.
             string[] directories = Directory.GetDirectories(path);
             foreach (string directory in directories)
-            {
-                FileObject child = new FileObject(directory);
-                fileObject.children.Add(child);
-                child.TreeBranch(directory, child);
-            }
+                fileObject.children.Add(new FileObject(directory));
 
             string[] files = Directory.GetFiles(path);
             foreach (string file in files)

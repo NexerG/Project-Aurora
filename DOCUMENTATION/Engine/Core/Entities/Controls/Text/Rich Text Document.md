@@ -142,6 +142,8 @@ Slots are **normalized on write**, which is what makes that equality mean anythi
 
 Ordering the two ends needs reading order, and a run does not know where it sits in the document, so `OrderedRuns` is walked and the ends compared as `(run index, offset)`. This is what lets a drag run backwards.
 
+Extending rather than collapsing is a boolean carried through the moves that already existed — `MoveCaret(move, extend)` and `SetCaret(run, offset, extend)` — and the boolean comes from the `Extend` [[INPUT#Named modifiers|named modifier]], not from a key the engine names. Shift is only what `InputMap.xml` happens to bind it to.
+
 #### Highlight (run, from, to)
 for each `line` of `run` layout
 	clip [`from`, `to`) against the `line`'s character span, skip if empty
@@ -155,8 +157,51 @@ The boxes are `SelectionControl`s, a `PanelControl` exactly as `CaretControl` is
 
 Drag runs on the engine's drag lifecycle: the editor calls `StartDrag()` from its click handler, `ResolveDrag` then arrives every tick until the button comes up, the focus follows the mouse through `CaretAtPoint`, and a mouse past the viewport edge scrolls by the overshoot. Reading `InputHandler.mousePos` rather than the position handed to `ResolveDrag` is the same one-frame-lag workaround the click path carries.
 
+## Editing
+There is one deletion primitive — a range between two caret slots — and Backspace, Delete, typing over a selection and Enter's leading collapse all go through it. Backspace and Delete with nothing selected build the range they need by extending the caret one move and deleting the result, so "the character before the caret" is never spelled out a second time: the rules about which side of a run boundary a slot lives on, and about a block boundary being two slots where a run boundary is one, stay in [[#Caret movement]] where they were already written.
+
+The block merge falls out of that rather than being handled. Backspace at the start of a block extends the caret to the previous block's end, which is a range of zero characters spanning two blocks — and a range spanning two blocks collapses into the first by definition. Delete at the end of a block is the same range approached from the other side.
+
+#### Delete Range (from, to)
+if `from` run is `to` run
+	remove [`from` offset, `to` offset) from the run's text
+	place the caret at (`from` run, `from` offset) and return
+`from` run text = its text before `from` offset
+`to` run text = its text from `to` offset
+destroy every run strictly between them in reading order
+if the two runs are in different blocks, [[#Merge Into Head]] (`from` block, `to` block)
+if `to` run is now empty, destroy it
+place the caret at (`from` run, `from` offset)
+
+#### Merge Into Head (head, tail)
+move every surviving run of `tail` into `head`, in order
+destroy every block from the one after `head` through `tail`
+`head` apply layout
+
+An emptied *tail* run is destroyed and an emptied *head* run is not, which looks arbitrary and is not. The caret has to land somewhere and a run carries the style the next typed character takes, so keeping the head run keeps the formatting at the caret the way every editor does; handing the caret to a neighbour would silently change it. The head run surviving is also what guarantees a block never ends up with zero runs, which is the case that would leave `Normalize`, `OrderedRuns` and `RunAt` all answering for nothing. The tail run has no such claim, and leaving it behind grows the saved note by a `<Run />` that reads back as real.
+
+The merged block keeps the **head** block's styling type — deleting from a heading into the paragraph below leaves a heading. `ApplyLayout` re-runs on it afterwards, or the runs that moved across would keep the size the scheme resolved for the block they came from.
+
+#### Split Block
+delete the selection, if any
+`tail` = new content block with the caret block's styling type
+`carried` = clone of the caret's run, holding its text from the caret on
+caret run text = its text before the caret
+`tail` add `carried`, then every run after the caret's run in its block
+if `carried` is empty and other runs moved in, destroy `carried`
+insert `tail` after the caret's block, in both the child list and the model's block list
+`tail` apply layout
+place the caret at (`tail` first run, 0)
+
+Enter's new block takes the old block's styling type rather than resetting to body text: splitting a heading mid-word has to give two headings, and "Enter at the *end* of a heading gives a paragraph" is a second rule keyed on caret position that can be added to `Split Block` later if it is wanted. Unlike every other caret-moving operation, a split does **not** end in `ScrollIntoView` — the new block has no arranged rect until the next layout pass, and a zero rect reads as "above the viewport", so scrolling would throw the note to the top. Pressing Enter on the last visible line therefore leaves the caret just below the viewport until something else scrolls.
+
+Blocks live in two lists at once — `RichTextDocument.blocks`, which is what a save is written from, and the children of the `DocumentControl`, which is what layout and hit-testing walk. They are the same objects, so every structural edit updates both, which is why the control now holds the document. Rebuilding the model's list from the control tree at save time was the alternative and was rejected: it matches the "the model is the control tree" decision more honestly, but leaves the list silently stale all session for any other reader, and the vault browser and undo are both going to be readers. The duplication is the P0 model-as-controls decision showing through once more, and it goes away with the data/visualization split rather than here.
+
 ## Status
 - P0 (model types) and P1 (XML persistence) complete; round-trip verified (in-code build + reload of code-built and hand-authored XML are byte/structurally equal).
 - P3 complete: click→caret, character input, arrow / Home / End / PageUp / PageDown navigation, and Ctrl+S through `DocumentEditSession`. Save verified against the sample note — no run gains a `FontSize`. Navigation itself is compile-verified and pending GUI verification.
 - P2 (`DocumentEditorControl`) implemented; built into `Periodic/Data/XML/Documents/UI.xml` via `<DocumentEditor Source="SampleNote.xml"/>`.
-- P4 (selection, Ctrl+B/I run split/merge) is next. Lists, quotes, dividers, wiki-links, inline code: not yet — added as the editor grows. Code blocks and tables are scheduled (B1/B2). L2 is dropped, L3 (paged mode) is unaffected — see [[Document Layout Engine#Status]]. Revised phase order: `DOCUMENTATION/ClaudeMemory/Context/periodic-editor-architecture.md`.
+- P4 steps 1 and 2 complete: selection renders and is GUI-verified apart from drag auto-scroll, which the sample note is too short to exercise; deletion over a range, Backspace, Delete and Enter are bound and boot-verified but **not** GUI-verified. Step 3, Ctrl+B/I run split/merge, is next — `Bold` and `Italic` are still read by nothing.
+- Undo and select-all do not exist, which deletion is the first feature to make matter: a mis-aimed delete is recoverable only by reloading the note.
+- P5 complete: `Periodic` is a two-pane shell, a `VaultBrowser` listing a vault folder beside the editor, and `LoadPath` has a real caller at last. The vault is a settings path; the browser, being app rather than engine, lives in `Periodic` and is described in `DOCUMENTATION/ClaudeMemory/Decisions/vault-browser-and-shell.md`. Switching notes saves the one being left, since nothing tracks dirtiness and nothing can undo.
+- Lists, quotes, dividers, wiki-links, inline code: not yet — added as the editor grows. Code blocks and tables are scheduled (B1/B2). L2 is dropped, L3 (paged mode) is unaffected — see [[Document Layout Engine#Status]]. Revised phase order: `DOCUMENTATION/ClaudeMemory/Context/periodic-editor-architecture.md`.

@@ -3,9 +3,10 @@
   <xs:simpleType name="Input">
     <xs:restriction base="xs:string">
       <xs:enumeration value="ExitApplication" />
-      <xs:enumeration value="DummyHover" />
-      <xs:enumeration value="DummyKeyPress" />
       <xs:enumeration value="Text.Write" />
+      <xs:enumeration value="Text.Backspace" />
+      <xs:enumeration value="Text.Delete" />
+      <xs:enumeration value="Text.NewBlock" />
       <xs:enumeration value="Text.Save" />
       <xs:enumeration value="Text.CaretLeft" />
       <xs:enumeration value="Text.CaretRight" />
@@ -17,16 +18,17 @@
       <xs:enumeration value="Text.CaretPageDown" />
     </xs:restriction>
   </xs:simpleType>
-  <xs:simpleType name="UI">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="ExitApplication2" />
-      <xs:enumeration value="DestroySelf" />
-      <xs:enumeration value="TestAction" />
-    </xs:restriction>
-  </xs:simpleType>
   <xs:simpleType name="PoolSort">
     <xs:restriction base="xs:string">
       <xs:enumeration value="UI.DFSOrder" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="UI">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="TestAction" />
+      <xs:enumeration value="Window.Minimize" />
+      <xs:enumeration value="Window.MaximizeRestore" />
+      <xs:enumeration value="Window.Close" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Bootstrap">
@@ -59,6 +61,6 @@
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Uncategorized">
-    <xs:union memberTypes="actions:Input actions:UI actions:PoolSort actions:Bootstrap actions:Settings" />
+    <xs:union memberTypes="actions:Input actions:PoolSort actions:UI actions:Bootstrap actions:Settings" />
   </xs:simpleType>
 </xsd:schema>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Document xmlns="http://arctisaurora/AuroraUITypes"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../../XML/Schemas/UITypeSchema.xsd">
+  <Block StylingType="Heading1">
+    <Run Text="Keybinds" />
+  </Block>
+  <Block>
+    <Run Text="A second note, in a subfolder, so the browser has a tree to show and switching between documents has something to switch to." />
+  </Block>
+  <Block StylingType="Heading2">
+    <Run Text="Editing" />
+  </Block>
+  <Block>
+    <Run Text="Backspace and Delete remove the selection, or the character the caret would step over. Enter splits the block at the caret. Ctrl+S writes the note back to its file." />
+  </Block>
+  <Block StylingType="Heading2">
+    <Run Text="Moving" />
+  </Block>
+  <Block>
+    <Run Text="Arrows move by character and by visual line, Home and End go to the ends of the visual line rather than the paragraph, and PageUp and PageDown move by one viewport. Holding the Extend modifier turns any of them into a selection." />
+  </Block>
+</Document>

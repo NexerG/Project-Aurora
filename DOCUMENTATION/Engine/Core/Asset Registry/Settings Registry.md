@@ -54,6 +54,8 @@ A group that instead needs per-value scope or change notification is a `SettingC
 
 XSD type names are a **flat namespace across every category**: `AnyXMLType.FindType` matches on name alone, so a group named `Document` would collide with `RichTextDocument`'s `[A_XSDType("Document", "UI")]`. Check before naming.
 
+Groups are found by reflecting over every loaded assembly, so an **application declares its own** exactly as the engine does and needs no registration step — `Periodic`'s vault folder is a `Vault` setting on a `Periodic` category living in the app project, cascading and saving through the same machinery as `Graphics`.
+
 ## The files
 
 Manifests live in `Data/XML/Settings/*.xml`, any number of them, free filenames.

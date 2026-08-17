@@ -2,6 +2,7 @@
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork;
+using Periodic.Editor.CustomControls;
 
 namespace AuroraPeriodic
 {
@@ -38,6 +39,7 @@ namespace AuroraPeriodic
             //windowControl.controlColorHex = "#1f6331";
 
             EntityRegistry.uiTree = windowControl;
+            VaultBrowserControl.OpenFirstNote();
             //ShortTextControl test = new ShortTextControl();
             //test.transform.position = new Silk.NET.Maths.Vector3D<float>(640, 360, -10);
             //test.text = "somethingBlack";

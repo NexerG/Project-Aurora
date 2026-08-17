@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Document xmlns="http://arctisaurora/AuroraUITypes"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-          xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../Schemas/UITypeSchema.xsd">
+          xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../XML/Schemas/UITypeSchema.xsd">
   <Block StylingType="Heading1">
     <Run Text="Welcome to Periodic" FontName="electrolize" />
   </Block>

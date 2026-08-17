@@ -3,8 +3,27 @@
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:simpleType name="Uncategorized">
     <xs:restriction base="xs:string">
-      <xs:enumeration value="Panel" />
+      <xs:enumeration value="Vault" />
+      <xs:enumeration value="Periodic" />
+      <xs:enumeration value="DocumentSettings" />
+      <xs:enumeration value="SettingScope" />
+      <xs:enumeration value="Setting" />
+      <xs:enumeration value="SettingCategory" />
+      <xs:enumeration value="UserSettings" />
+      <xs:enumeration value="DoubleClick" />
+      <xs:enumeration value="KeyRepeat" />
+      <xs:enumeration value="Input" />
+      <xs:enumeration value="Device" />
+      <xs:enumeration value="Monitor" />
       <xs:enumeration value="Window" />
+      <xs:enumeration value="VSync" />
+      <xs:enumeration value="Graphics" />
+      <xs:enumeration value="WindowMode" />
+      <xs:enumeration value="VaultBrowser" />
+      <xs:enumeration value="Panel" />
+      <xs:enumeration value="TitleBar" />
+      <xs:enumeration value="Window" />
+      <xs:enumeration value="Label" />
       <xs:enumeration value="TextBlock" />
       <xs:enumeration value="TextBox" />
       <xs:enumeration value="TextInput" />
@@ -37,20 +56,6 @@
       <xs:enumeration value="Entry" />
       <xs:enumeration value="EntityRegistries" />
       <xs:enumeration value="Entity" />
-      <xs:enumeration value="DocumentSettings" />
-      <xs:enumeration value="SettingScope" />
-      <xs:enumeration value="Setting" />
-      <xs:enumeration value="SettingCategory" />
-      <xs:enumeration value="UserSettings" />
-      <xs:enumeration value="DoubleClick" />
-      <xs:enumeration value="KeyRepeat" />
-      <xs:enumeration value="Input" />
-      <xs:enumeration value="Device" />
-      <xs:enumeration value="Monitor" />
-      <xs:enumeration value="Window" />
-      <xs:enumeration value="VSync" />
-      <xs:enumeration value="Graphics" />
-      <xs:enumeration value="WindowMode" />
       <xs:enumeration value="Main" />
       <xs:enumeration value="Physics" />
       <xs:enumeration value="Render" />
@@ -80,6 +85,8 @@
       <xs:enumeration value="Phase" />
       <xs:enumeration value="BootstrapSequence" />
       <xs:enumeration value="KeybindModifier" />
+      <xs:enumeration value="InputModifier" />
+      <xs:enumeration value="NamedModifier" />
       <xs:enumeration value="Keybind" />
       <xs:enumeration value="Keys" />
       <xs:enumeration value="KeybindMap" />
@@ -114,10 +121,33 @@
       <xs:enumeration value="Object" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:simpleType name="Settings">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Vault" />
+      <xs:enumeration value="Periodic" />
+      <xs:enumeration value="DocumentSettings" />
+      <xs:enumeration value="SettingScope" />
+      <xs:enumeration value="Setting" />
+      <xs:enumeration value="SettingCategory" />
+      <xs:enumeration value="UserSettings" />
+      <xs:enumeration value="DoubleClick" />
+      <xs:enumeration value="KeyRepeat" />
+      <xs:enumeration value="Input" />
+      <xs:enumeration value="Device" />
+      <xs:enumeration value="Monitor" />
+      <xs:enumeration value="Window" />
+      <xs:enumeration value="VSync" />
+      <xs:enumeration value="Graphics" />
+      <xs:enumeration value="WindowMode" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:simpleType name="UI">
     <xs:restriction base="xs:string">
+      <xs:enumeration value="VaultBrowser" />
       <xs:enumeration value="Panel" />
+      <xs:enumeration value="TitleBar" />
       <xs:enumeration value="Window" />
+      <xs:enumeration value="Label" />
       <xs:enumeration value="TextBlock" />
       <xs:enumeration value="TextBox" />
       <xs:enumeration value="TextInput" />
@@ -154,24 +184,6 @@
       <xs:enumeration value="Entry" />
       <xs:enumeration value="EntityRegistries" />
       <xs:enumeration value="Entity" />
-    </xs:restriction>
-  </xs:simpleType>
-  <xs:simpleType name="Settings">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="DocumentSettings" />
-      <xs:enumeration value="SettingScope" />
-      <xs:enumeration value="Setting" />
-      <xs:enumeration value="SettingCategory" />
-      <xs:enumeration value="UserSettings" />
-      <xs:enumeration value="DoubleClick" />
-      <xs:enumeration value="KeyRepeat" />
-      <xs:enumeration value="Input" />
-      <xs:enumeration value="Device" />
-      <xs:enumeration value="Monitor" />
-      <xs:enumeration value="Window" />
-      <xs:enumeration value="VSync" />
-      <xs:enumeration value="Graphics" />
-      <xs:enumeration value="WindowMode" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Systems">
@@ -229,6 +241,8 @@
   <xs:simpleType name="Input">
     <xs:restriction base="xs:string">
       <xs:enumeration value="KeybindModifier" />
+      <xs:enumeration value="InputModifier" />
+      <xs:enumeration value="NamedModifier" />
       <xs:enumeration value="Keybind" />
       <xs:enumeration value="Keys" />
       <xs:enumeration value="KeybindMap" />

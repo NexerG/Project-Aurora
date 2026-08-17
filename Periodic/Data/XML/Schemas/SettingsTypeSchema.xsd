@@ -6,6 +6,27 @@
   <xs:simpleType name="Settings">
     <xs:union memberTypes="types:SettingScope types:WindowMode" />
   </xs:simpleType>
+  <xs:element name="Vault" type="types:Vault" />
+  <xs:complexType name="Vault">
+    <xs:sequence />
+    <xs:attribute name="Path" type="xs:string" />
+    <xs:attribute name="Scope" type="types:SettingScope" />
+    <xs:attribute name="OnChanged" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="Periodic" type="types:Periodic" />
+  <xs:complexType name="Periodic">
+    <xs:sequence>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="Vault" type="types:Vault" />
+        <xs:element name="DoubleClick" type="types:DoubleClick" />
+        <xs:element name="KeyRepeat" type="types:KeyRepeat" />
+        <xs:element name="Device" type="types:Device" />
+        <xs:element name="Monitor" type="types:Monitor" />
+        <xs:element name="Window" type="types:Window" />
+        <xs:element name="VSync" type="types:VSync" />
+      </xs:choice>
+    </xs:sequence>
+  </xs:complexType>
   <xs:element name="DocumentSettings" type="types:DocumentSettings" />
   <xs:complexType name="DocumentSettings">
     <xs:sequence>
@@ -26,6 +47,7 @@
   <xs:complexType name="UserSettings">
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="Periodic" type="types:Periodic" />
         <xs:element name="DocumentSettings" type="types:DocumentSettings" />
         <xs:element name="Input" type="types:Input" />
         <xs:element name="Graphics" type="types:Graphics" />
@@ -51,6 +73,7 @@
   <xs:complexType name="Input">
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="Vault" type="types:Vault" />
         <xs:element name="DoubleClick" type="types:DoubleClick" />
         <xs:element name="KeyRepeat" type="types:KeyRepeat" />
         <xs:element name="Device" type="types:Device" />
@@ -94,6 +117,7 @@
   <xs:complexType name="Graphics">
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="Vault" type="types:Vault" />
         <xs:element name="DoubleClick" type="types:DoubleClick" />
         <xs:element name="KeyRepeat" type="types:KeyRepeat" />
         <xs:element name="Device" type="types:Device" />

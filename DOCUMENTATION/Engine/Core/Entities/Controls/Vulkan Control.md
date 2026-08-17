@@ -104,6 +104,8 @@ public Sampler colorSampler; public TextureAsset colorAsset;
 ### Events
 `Register*` add handlers; `Resolve*` fire them and, if the matching `bubble*` flag is set, call the parent's resolver. `BubbleAll()` turns bubbling on for everything.
 
+Bubbling is a contract an override can break, and one does: **`TextInputControl.ResolveOnClick` begins an edit and returns without calling base**, so `bubbleClick` is dead on it whatever the XML says and nothing nested inside a `TextInput` can ever be clicked. That is why button captions and list rows use [[Label]] — text that is drawn and never edited, bubbling from its constructor the way `GlyphControl` does, on the principle that decoration must not consume input. An override that does not call base is silently swallowing every event below it.
+
 ### XML
 `ParseXML(name)` loads the doc via `Paths.Doc(name)`, builds a `WindowControl` root, then `RecursiveParse` instantiates child controls by element name (`AnyXMLType.FindType`) and `ResolveAttributes` maps XML attributes onto `[A_XSDElementProperty]` members (actions resolve via `[A_XSDActionDependency]`).
 

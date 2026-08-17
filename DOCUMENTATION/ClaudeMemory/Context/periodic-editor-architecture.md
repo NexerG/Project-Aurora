@@ -61,6 +61,8 @@ for the decision to accept them and the escape hatch if they bite.
 - **Engine** (`AuroraEngine/Core/UISystem/Controls/Text/...`): document model, edit session,
   cursor/selection, caret control, editor view control, char/special-key routing.
 - **Periodic** (app): vault mount, file-tree browse, app-shell `UI.xml`, open/save actions, sample notes.
+- **Held as of P5** — `VaultBrowserControl` and `PeriodicSettings` are Periodic's; the engine gained
+  nothing for the browser except the `FileObject` recursion fix.
 
 ## Phases (see TODO/plan)
 - **P0 — done.** Document types under `Controls/Text/Document/`: `RichTextDocument` (plain model
@@ -226,15 +228,30 @@ for the decision to accept them and the escape hatch if they bite.
     only — it exercises midpoint snapping, the wrap-boundary rule and run boundaries.
   - **Remaining:** `DocumentEditSession` (working copy), char input drain + special keys, Ctrl+S.
     See the char-routing gotcha below — the existing drain does not reach the document.
-- **P4** — selection (cache-resolved drag incl. auto-scroll) + Ctrl+B/I run split/merge (live)
-  + heading/list block ops.
+- **P4 — steps 1 and 2 done (2026-08-17); step 3 (Ctrl+B/I) open.**
+  - Step 1, selection: anchor + the caret as focus, one `SelectionControl` box per visual line,
+    drag / shift+click / shift+arrows. **GUI-verified by the user** except auto-scroll, which has
+    nothing to scroll on the sample note. See [[document-selection]].
+  - Step 2, editing over a range: `Text.Backspace`, `Text.Delete`, `Text.NewBlock` bound in
+    `InputMap.xml`, and typing over a selection replaces it. One primitive, `DeleteRange(from, to)`
+    — Backspace/Delete with no selection make a one-slot one by extending the caret through the
+    existing `MoveLeft`/`MoveRight`, so run/block boundary rules are not written twice. Cross-block
+    delete collapses into the head block; Enter splits a block and the new one keeps the styling
+    type. `DocumentControl` now holds the `RichTextDocument`, because the block list is duplicated
+    between it and the control tree. **Not GUI-verified.** See [[document-structural-editing]].
+  - Step 3, Ctrl+B/I run split/merge, and heading/list block ops: not started.
 - **B1** — `CodeBlock` (Language attr, monospace, no wrap, view-time syntax coloring — never
   persisted): model + layout + view.
 - **B2** — `TableBlock` → `TableRow` → `TableCell` (cell holds `List<Block>`, nested blocks;
   MVP fixed/star columns, no merges): model + layout + view.
 - **L3** — paged mode: paginator assigns cached lines to fixed-height pages (blocks split across
   breaks); view draws page-background panels + gaps.
-- **P5** — vault browser (`FileObject` → tree view) + 2-pane `UI.xml` shell.
+- **P5 — done (2026-08-17).** `VaultBrowserControl` in Periodic + a 2-pane `UI.xml`. The vault is a
+  `<Vault Path="Notes"/>` setting on a `Periodic` category; notes live in `Periodic/Data/Notes`, not
+  in the engine-config `Data/XML/Documents`. Rows are a flat indented list, not a collapsible tree.
+  Controls have no names, so the browser finds the editor with a `Find<T>` walk from
+  `EntityRegistry.uiTree`. Opening happens from `Periodic.Main`, **not** `OnStart` — the engine
+  cannot create entities inside its `OnStart`/`OnTick` foreach loops. See [[vault-browser-and-shell]].
 - **Later/optional** — per-run glyph batching (one control per visible run + instanced glyph
   buffer) only if profiling shows visible-glyph control overhead matters; `TextRun` style
   extensions land with the features that need them (`FontSize`, `Underline`, highlight color);

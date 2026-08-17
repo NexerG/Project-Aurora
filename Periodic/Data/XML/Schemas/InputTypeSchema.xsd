@@ -3,11 +3,22 @@
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:simpleType name="Input">
-    <xs:union memberTypes="types:Keys" />
+    <xs:union memberTypes="types:InputModifier types:Keys" />
   </xs:simpleType>
   <xs:element name="KeybindModifier" type="types:KeybindModifier" />
   <xs:complexType name="KeybindModifier">
     <xs:sequence />
+    <xs:attribute name="Key" type="types:Keys" />
+  </xs:complexType>
+  <xs:simpleType name="InputModifier">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Extend" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:element name="NamedModifier" type="types:NamedModifier" />
+  <xs:complexType name="NamedModifier">
+    <xs:sequence />
+    <xs:attribute name="Modifier" type="types:InputModifier" />
     <xs:attribute name="Key" type="types:Keys" />
   </xs:complexType>
   <xs:element name="Keybind" type="types:Keybind" />
@@ -179,7 +190,15 @@
           <xs:documentation></xs:documentation>
         </xs:annotation>
       </xs:element>
-      <xs:choice minOccurs="0" maxOccurs="unbounded" />
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="NamedModifier" type="types:NamedModifier">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="NamedModifier" type="types:NamedModifier" />
+        <xs:element name="Keybind" type="types:Keybind" />
+      </xs:choice>
     </xs:sequence>
   </xs:complexType>
   <xs:element name="Condition" type="types:Condition" />
