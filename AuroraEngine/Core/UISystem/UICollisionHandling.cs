@@ -155,6 +155,11 @@ namespace ArctisAurora.Core.UISystem
         #region ---- HELPERS ----
         private VulkanControl FindDeepestValid(Vector2D<float> mousePos, VulkanControl current, ref Vector2D<float>[] localVerts)
         {
+            // The clip rect is inherited, so a point outside it rules out the whole subtree — a row
+            // scrolled past the top of its viewport is drawn nowhere and must be clickable nowhere.
+            if (!current.HitTest(mousePos))
+                return null;
+
             if (!SolvePositions(current, mousePos, localVerts))
                 return null;
 

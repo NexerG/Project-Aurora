@@ -10,6 +10,8 @@ struct Style
 layout(location = 0) in vec2 fragUV;
 layout(location = 1) in flat uint fragTextureIndex;
 layout(location = 2) in Style fragStyle;
+layout(location = 3) in vec2 fragPos;
+layout(location = 4) in flat vec4 fragClip;
 
 layout(location = 0) out vec4 outColor;
 
@@ -21,6 +23,10 @@ float median(float r, float g, float b) {
 
 void main()
 {
+    if (fragPos.x < fragClip.x || fragPos.y < fragClip.y ||
+        fragPos.x > fragClip.z || fragPos.y > fragClip.w)
+        discard;
+
     vec3 msdf = texture(samplers[fragTextureIndex], fragUV).rgb;
     float sd = median(msdf.r, msdf.g, msdf.b) - 0.5f;
     float screenPxRange = fwidth(sd);

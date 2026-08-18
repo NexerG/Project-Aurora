@@ -67,6 +67,8 @@ namespace ArctisAurora.Core.UISystem.Controls
             public QuadUVs uvs;
             public ControlStyle style;
             public uint textureIndex;
+            // clip bounds in design space, as (left, top, right, bottom)
+            public Vector4D<float> clip;
         }
 
         [A_XSDType("ControlColor", "UI")]
@@ -422,7 +424,18 @@ namespace ArctisAurora.Core.UISystem.Controls
         #region ---- Layout State ----
         public Vector2D<float> DesiredSize { get; protected set; }
         public LayoutRect arrangedRect { get; protected set; }
-        public LayoutRect ClipRect { get; protected set; }
+
+        // Every assignment mirrors into the pool row the fragment shader discards against.
+        public LayoutRect ClipRect
+        {
+            get => field;
+            protected set
+            {
+                field = value;
+                controlData.clip = new Vector4D<float>(value.x, value.y, value.Right, value.Bottom);
+                UpdateControlData();
+            }
+        }
 
         public bool isMeasureDirty { get => field; internal set => field = value; } = true;
         public bool isArrangeDirty { get => field; internal set => field = value; } = true;
@@ -539,6 +552,7 @@ namespace ArctisAurora.Core.UISystem.Controls
             controlData = new ControlData();
             controlData.style = ControlStyle.Default();
             controlData.uvs = new QuadUVs();
+            ClipRect = LayoutRect.Infinite;
             UpdateControlData();
 
             maskAsset = AssetRegistries.GetAsset<TextureAsset>("default");

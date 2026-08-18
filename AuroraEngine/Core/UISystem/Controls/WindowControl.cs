@@ -110,6 +110,7 @@ namespace ArctisAurora.Core.UISystem.Controls
             arrangedRect = finalRect;
 
             WriteArrangedTransform(finalRect);
+            ClipRect = finalRect;
 
             LayoutRect inner = finalRect.Shrink(padding);
 

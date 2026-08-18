@@ -3,6 +3,7 @@
         xsi:schemaLocation="http://arctisaurora/UI ../Schemas/UITypeSchema.xsd"
         Width="1280" Height="720" WindowingMode="WindowSize" ContentScalingMode="Vertical" ColorHex="#1e1e1e">
 
+	<WindowFrame ColorHex="#1e1e1e">
 	<StackPanel Orientation="Vertical" ColorHex="#1e1e1e">
 
 		<TitleBar Orientation="Horizontal" Height="32" ColorHex="#141414">
@@ -20,8 +21,10 @@
 		</TitleBar>
 
 		<StackPanel Orientation="Horizontal" HeightStar="1" ColorHex="#1e1e1e">
-			<VaultBrowser Width="220" ColorHex="#171717"/>
+			<VaultBrowser Width="220" MinWidth="120" ColorHex="#171717"/>
+			<Splitter Width="5"/>
 			<DocumentEditor WidthStar="1"/>
 		</StackPanel>
 	</StackPanel>
+	</WindowFrame>
 </Window>

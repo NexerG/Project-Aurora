@@ -25,10 +25,11 @@ struct ControlData
     vec2[4] UV;
     Style style;
     uint textureIndex;
+    vec4 clip;
 };
 
 // One buffer indexed by instance, not one buffer per control. `scalar` layout is load-bearing:
-// it gives this struct a stride of 48 bytes, matching the Pack=1 C# ControlData exactly. Any
+// it gives this struct a stride of 64 bytes, matching the Pack=1 C# ControlData exactly. Any
 // mismatch here and every control past the first reads shifted data.
 layout(set = 0, binding = 2, scalar) readonly buffer ControlDataBuffer {
     ControlData controls[];
@@ -37,6 +38,8 @@ layout(set = 0, binding = 2, scalar) readonly buffer ControlDataBuffer {
 layout(location = 0) out vec2 fragUV;
 layout(location = 1) out flat uint fragTextureIndex;
 layout(location = 2) out Style fragStyle;
+layout(location = 3) out vec2 fragPos;
+layout(location = 4) out flat vec4 fragClip;
 
 void main() {
     vec3 tPos = vec3(ts.transforms[gl_InstanceIndex] * vec4(inPosition, 1.0));
@@ -46,4 +49,7 @@ void main() {
     fragTextureIndex = CD.controls[gl_InstanceIndex].textureIndex;
     fragStyle = CD.controls[gl_InstanceIndex].style;
     fragUV = CD.controls[gl_InstanceIndex].UV[gl_VertexIndex];
+    // pre-projection, so it shares a space with the clip rect the layout wrote
+    fragPos = tPos.xy;
+    fragClip = CD.controls[gl_InstanceIndex].clip;
 }

@@ -53,6 +53,7 @@
         <xs:element name="Panel" type="types:Panel" />
         <xs:element name="TitleBar" type="types:TitleBar" />
         <xs:element name="Window" type="types:Window" />
+        <xs:element name="WindowFrame" type="types:WindowFrame" />
         <xs:element name="Label" type="types:Label" />
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
@@ -61,6 +62,7 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
@@ -110,6 +112,7 @@
         <xs:element name="Panel" type="types:Panel" />
         <xs:element name="TitleBar" type="types:TitleBar" />
         <xs:element name="Window" type="types:Window" />
+        <xs:element name="WindowFrame" type="types:WindowFrame" />
         <xs:element name="Label" type="types:Label" />
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
@@ -118,6 +121,7 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
@@ -169,6 +173,7 @@
         <xs:element name="Panel" type="types:Panel" />
         <xs:element name="TitleBar" type="types:TitleBar" />
         <xs:element name="Window" type="types:Window" />
+        <xs:element name="WindowFrame" type="types:WindowFrame" />
         <xs:element name="Label" type="types:Label" />
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
@@ -177,6 +182,7 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
@@ -191,6 +197,65 @@
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="WindowingMode" type="types:WindowingModeEnum" />
     <xs:attribute name="ContentScalingMode" type="types:ContentScalingModeEnum" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
+    <xs:attribute name="MinHeight" type="xs:int" />
+    <xs:attribute name="MinWidth" type="xs:int" />
+    <xs:attribute name="HorizontalPos" type="xs:float" />
+    <xs:attribute name="VerticalPos" type="xs:float" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
+    <xs:attribute name="ClipToBounds" type="xs:boolean" />
+    <xs:attribute name="DockMode" type="types:DockMode" />
+    <xs:attribute name="Grid.Column" type="xs:int" />
+    <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="onEnter" type="actions:UI" />
+    <xs:attribute name="BubbleEnter" type="xs:boolean" />
+    <xs:attribute name="onExit" type="actions:UI" />
+    <xs:attribute name="BubbleExit" type="xs:boolean" />
+    <xs:attribute name="onClick" type="actions:UI" />
+    <xs:attribute name="BubbleClick" type="xs:boolean" />
+    <xs:attribute name="onAltClick" type="actions:UI" />
+    <xs:attribute name="BubbleAltClick" type="xs:boolean" />
+    <xs:attribute name="onRelease" type="actions:UI" />
+    <xs:attribute name="BubbleRelease" type="xs:boolean" />
+    <xs:attribute name="onAltRelease" type="actions:UI" />
+    <xs:attribute name="BubbleAltRelease" type="xs:boolean" />
+    <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
+    <xs:attribute name="BubbleScroll" type="xs:boolean" />
+  </xs:complexType>
+  <xs:element name="WindowFrame" type="types:WindowFrame" />
+  <xs:complexType name="WindowFrame">
+    <xs:sequence>
+      <xs:choice minOccurs="0" maxOccurs="1">
+        <xs:element name="VaultBrowser" type="types:VaultBrowser" />
+        <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="TitleBar" type="types:TitleBar" />
+        <xs:element name="Window" type="types:Window" />
+        <xs:element name="WindowFrame" type="types:WindowFrame" />
+        <xs:element name="Label" type="types:Label" />
+        <xs:element name="TextBlock" type="types:TextBlock" />
+        <xs:element name="TextBox" type="types:TextBox" />
+        <xs:element name="TextInput" type="types:TextInput" />
+        <xs:element name="Block" type="types:Block" />
+        <xs:element name="DocumentEditor" type="types:DocumentEditor" />
+        <xs:element name="Run" type="types:Run" />
+        <xs:element name="Button" type="types:Button" />
+        <xs:element name="Splitter" type="types:Splitter" />
+        <xs:element name="Dock" type="types:Dock" />
+        <xs:element name="GridList" type="types:GridList" />
+        <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+        <xs:element name="StackPanel" type="types:StackPanel" />
+      </xs:choice>
+    </xs:sequence>
+    <xs:attribute name="Width" type="xs:int" />
+    <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
@@ -272,6 +337,7 @@
         <xs:element name="Panel" type="types:Panel" />
         <xs:element name="TitleBar" type="types:TitleBar" />
         <xs:element name="Window" type="types:Window" />
+        <xs:element name="WindowFrame" type="types:WindowFrame" />
         <xs:element name="Label" type="types:Label" />
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
@@ -280,6 +346,7 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
@@ -595,6 +662,7 @@
         <xs:element name="Panel" type="types:Panel" />
         <xs:element name="TitleBar" type="types:TitleBar" />
         <xs:element name="Window" type="types:Window" />
+        <xs:element name="WindowFrame" type="types:WindowFrame" />
         <xs:element name="Label" type="types:Label" />
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
@@ -603,12 +671,53 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="StackPanel" type="types:StackPanel" />
       </xs:choice>
     </xs:sequence>
+    <xs:attribute name="Width" type="xs:int" />
+    <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="HoverColorHex" type="xs:string" />
+    <xs:attribute name="PressColorHex" type="xs:string" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
+    <xs:attribute name="MinHeight" type="xs:int" />
+    <xs:attribute name="MinWidth" type="xs:int" />
+    <xs:attribute name="HorizontalPos" type="xs:float" />
+    <xs:attribute name="VerticalPos" type="xs:float" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
+    <xs:attribute name="ClipToBounds" type="xs:boolean" />
+    <xs:attribute name="DockMode" type="types:DockMode" />
+    <xs:attribute name="Grid.Column" type="xs:int" />
+    <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="onEnter" type="actions:UI" />
+    <xs:attribute name="BubbleEnter" type="xs:boolean" />
+    <xs:attribute name="onExit" type="actions:UI" />
+    <xs:attribute name="BubbleExit" type="xs:boolean" />
+    <xs:attribute name="onClick" type="actions:UI" />
+    <xs:attribute name="BubbleClick" type="xs:boolean" />
+    <xs:attribute name="onAltClick" type="actions:UI" />
+    <xs:attribute name="BubbleAltClick" type="xs:boolean" />
+    <xs:attribute name="onRelease" type="actions:UI" />
+    <xs:attribute name="BubbleRelease" type="xs:boolean" />
+    <xs:attribute name="onAltRelease" type="actions:UI" />
+    <xs:attribute name="BubbleAltRelease" type="xs:boolean" />
+    <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
+    <xs:attribute name="BubbleScroll" type="xs:boolean" />
+  </xs:complexType>
+  <xs:element name="Splitter" type="types:Splitter" />
+  <xs:complexType name="Splitter">
+    <xs:sequence />
     <xs:attribute name="Width" type="xs:int" />
     <xs:attribute name="Height" type="xs:int" />
     <xs:attribute name="Margin" type="xs:string" />
@@ -664,6 +773,7 @@
         <xs:element name="Panel" type="types:Panel" />
         <xs:element name="TitleBar" type="types:TitleBar" />
         <xs:element name="Window" type="types:Window" />
+        <xs:element name="WindowFrame" type="types:WindowFrame" />
         <xs:element name="Label" type="types:Label" />
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
@@ -672,6 +782,7 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
@@ -761,6 +872,7 @@
         <xs:element name="Panel" type="types:Panel" />
         <xs:element name="TitleBar" type="types:TitleBar" />
         <xs:element name="Window" type="types:Window" />
+        <xs:element name="WindowFrame" type="types:WindowFrame" />
         <xs:element name="Label" type="types:Label" />
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
@@ -769,6 +881,7 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
@@ -825,6 +938,7 @@
         <xs:element name="Panel" type="types:Panel" />
         <xs:element name="TitleBar" type="types:TitleBar" />
         <xs:element name="Window" type="types:Window" />
+        <xs:element name="WindowFrame" type="types:WindowFrame" />
         <xs:element name="Label" type="types:Label" />
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
@@ -833,6 +947,7 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
@@ -884,6 +999,7 @@
         <xs:element name="Panel" type="types:Panel" />
         <xs:element name="TitleBar" type="types:TitleBar" />
         <xs:element name="Window" type="types:Window" />
+        <xs:element name="WindowFrame" type="types:WindowFrame" />
         <xs:element name="Label" type="types:Label" />
         <xs:element name="TextBlock" type="types:TextBlock" />
         <xs:element name="TextBox" type="types:TextBox" />
@@ -892,6 +1008,7 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
