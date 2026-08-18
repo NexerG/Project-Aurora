@@ -7,6 +7,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
     [A_XSDType("Label", "UI", typeof(GlyphControl))]
     public class LabelControl : TextControl
     {
+        public override bool canBeActiveContext => false;
+
         public LabelControl()
         {
             BubbleAll();

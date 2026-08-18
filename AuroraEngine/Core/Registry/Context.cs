@@ -16,8 +16,8 @@ namespace ArctisAurora.Core.Registry
 
     public interface IContext
     {
-        public abstract void OnContextAdded();
-        public abstract void OnContextRemoved();
+        public abstract void OnContextAdded(string context);
+        public abstract void OnContextRemoved(string context);
     }
 
     public record ContextEntry(Type valueType, Func<object?> Get, Action<object?> set);

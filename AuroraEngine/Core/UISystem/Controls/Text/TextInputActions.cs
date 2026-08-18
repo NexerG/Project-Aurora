@@ -41,10 +41,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             editor?.CollapseSelection();
         }
 
-        // Inside a document the caret's run is the target, never activeControl on its own: merely
-        // hovering a glyph repoints activeControl to that glyph's run and drops the previous one out
-        // of edit, so the target would follow the mouse instead of the caret and a character typed
-        // with the pointer resting elsewhere would be stranded in the queue.
+        // Inside a document the caret's run is the target; activeControl is the standalone-input
+        // fallback.
         private static TextControl Target(DocumentEditorControl editor)
         {
             if (editor?.CaretRun != null) return editor.CaretRun;

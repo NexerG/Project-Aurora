@@ -46,8 +46,10 @@ ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\Aur
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\UICollisionHandling.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\UILayout.cs
 ArctisAurora.Core.UISystem.Actions -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Actions\UIActions.cs
+ArctisAurora.Core.UISystem.Actions -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Actions\WindowActions.cs
 ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\ContextMenuControl.cs
 ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\PanelControl.cs
+ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\TitleBarControl.cs
 ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\VulkanControl.cs
 ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\WindowControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\AbstractContainerControl.cs
@@ -58,6 +60,7 @@ ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Auror
 ArctisAurora.Core.UISystem.Controls.Interactable -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Interactable\ButtonControl.cs
 ArctisAurora.Core.UISystem.Controls.Interactable -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Interactable\ResizeableControl.cs
 ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\GlyphControl.cs
+ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\LabelControl.cs
 ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\TextBlockControl.cs
 ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\TextControl.cs
 ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\TextInputActions.cs
@@ -123,4 +126,6 @@ AuroraEditor.EditorProgram.Components -> C:\Projects-Repositories\Aurora\Project
 AuroraEditor.EditorProgram.CustomControls -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEditor\EditorProgram\CustomControls\CustomTestControl.cs
 AuroraEditor.EditorProgram.UIFunctions -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEditor\EditorProgram\UIFunctions\Decorations.cs
 AuroraPeriodic -> C:\Projects-Repositories\Aurora\Project-Aurora\Periodic\Periodic.cs
+AuroraPeriodic -> C:\Projects-Repositories\Aurora\Project-Aurora\Periodic\PeriodicSettings.cs
 Periodic.Editor -> C:\Projects-Repositories\Aurora\Project-Aurora\Periodic\Editor\Decorations.cs
+Periodic.Editor.CustomControls -> C:\Projects-Repositories\Aurora\Project-Aurora\Periodic\Editor\CustomControls\VaultBrowserControl.cs

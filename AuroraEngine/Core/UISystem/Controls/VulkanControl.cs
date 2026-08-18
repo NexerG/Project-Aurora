@@ -361,8 +361,13 @@ namespace ArctisAurora.Core.UISystem.Controls
         public event Action<Vector2D<float>> hover;
         [A_XSDElementProperty("onEnter", "UI")]
         public Action onEnter;
+        [A_XSDElementProperty("BubbleEnter", "UI")]
+        public bool bubbleEnter = false;
+
         [A_XSDElementProperty("onExit", "UI")]
         public Action onExit;
+        [A_XSDElementProperty("BubbleExit", "UI")]
+        public bool bubbleExit = false;
 
         [A_XSDElementProperty("onClick", "UI")]
         public Action onClick;
@@ -404,6 +409,9 @@ namespace ArctisAurora.Core.UISystem.Controls
         // It has to be skipped by the hit-test rather than left to swallow the click, since the
         // deepest hit wins and a decoration sits over the thing the pointer is actually aiming at.
         public bool hitTestable = true;
+
+        // False hands the active context to the parent instead.
+        public virtual bool canBeActiveContext => true;
 
         public bool HitTest(Vector2D<float> point) => ClipRect.Contains(point);
         #endregion
@@ -590,10 +598,20 @@ namespace ArctisAurora.Core.UISystem.Controls
         public void ResolveHover(Vector2D<float> pos) => hover?.Invoke(pos);
 
         public void RegisterOnEnter(Action action) => onEnter += action;
-        public virtual void ResolveOnEnter() => onEnter?.Invoke();
+        public virtual void ResolveOnEnter()
+        {
+            onEnter?.Invoke();
+            if (bubbleEnter && parent is VulkanControl parentControl)
+                parentControl.ResolveOnEnter();
+        }
 
         public void RegisterOnExit(Action action) => onExit += action;
-        public virtual void ResolveExit() => onExit?.Invoke();
+        public virtual void ResolveExit()
+        {
+            onExit?.Invoke();
+            if (bubbleExit && parent is VulkanControl parentControl)
+                parentControl.ResolveExit();
+        }
 
         public void RegisterOnDrag(Action<Vector2D<float>, Vector2D<float>> action) => onDrag += action;
         public virtual void ResolveDrag(Vector2D<float> lastPos, Vector2D<float> delta) => onDrag?.Invoke(lastPos, delta);
@@ -601,7 +619,7 @@ namespace ArctisAurora.Core.UISystem.Controls
         // Claims the drag, so ResolveDrag runs every tick until the button comes up. Opt-in from a
         // click handler rather than automatic on press — the deepest hit is a glyph, and what wants
         // the drag is whatever above it knows what dragging means.
-        public void StartDrag() => UICollisionHandling.dragging = this;
+        public void StartDrag() => UICollisionHandling.SetDragging(this);
 
         public virtual void RegisterDragStop(Action action) => onDragStop += action;
         public virtual void StopDrag() => onDragStop?.Invoke();
@@ -679,6 +697,8 @@ namespace ArctisAurora.Core.UISystem.Controls
             bubbleRelease = true;
             bubbleAltRelease = true;
             bubbleScroll = true;
+            bubbleEnter = true;
+            bubbleExit = true;
         }
         #endregion
 

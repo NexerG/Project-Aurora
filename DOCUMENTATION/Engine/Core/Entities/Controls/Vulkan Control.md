@@ -96,6 +96,8 @@ public Sampler colorSampler; public TextureAsset colorAsset;
 ### Events
 `onEnter/onExit`, `onClick/onAltClick`, `onRelease/onAltRelease`, `onDoubleClick`, `onDrag/onDragStop`, `onScrollUp/onScrollDown`, plus `hover`. Each has a `bubble*` flag so an unhandled event walks up to the parent. `HitTest(point)` tests against `ClipRect`.
 
+`hitTestable` (default true) drops a control out of the hit-test entirely, for decorations like a caret or a selection box that would otherwise swallow the click aimed past them. `canBeActiveContext` (virtual, default true) is separate and does not affect hit-testing: a control answering false is still hit, but hands the active context to its parent, so `UICollisionHandling.activeControl` lands on the `Button` rather than the `GlyphControl` actually under the cursor. `GlyphControl` and [[Label]] override it to false. The press stores the resolved control and the release compares against it, which is what makes a press that began elsewhere activate nothing.
+
 ## Methods
 
 ### Layout

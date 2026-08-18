@@ -17,7 +17,7 @@ Two things follow from that, and both are the reason it exists. `TextInputContro
 
 ## Authoring
 ```xml
-<Button Width="46" Height="32" onClick="Window.Close">
+<Button Width="46" Height="32" onRelease="Window.Close">
     <Label Text="X" FontSize="16"/>
 </Button>
 ```

@@ -5,8 +5,10 @@ using Silk.NET.Vulkan;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text
 {
-    public class GlyphControl : VulkanControl, IContext
+    public class GlyphControl : VulkanControl
     {
+        public override bool canBeActiveContext => false;
+
         // Internal, not private: TextMeasurer reproduces this cell geometry without building a
         // control, and sharing the constants is what stops the two from drifting apart.
         internal const float atlasInkMargin = 0.1f;
@@ -108,17 +110,6 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             DesiredSize = new Vector2D<float>(_cellW, _cellH);
             isMeasureDirty = false;
             return DesiredSize;
-        }
-
-        public void OnContextAdded()
-        {
-            (parent as IContext)?.OnContextAdded();
-            UICollisionHandling.activeControl = (VulkanControl)parent;
-        }
-
-        public void OnContextRemoved()
-        {
-            (parent as IContext)?.OnContextRemoved();
         }
     }
 }

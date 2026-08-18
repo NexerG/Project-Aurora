@@ -21,7 +21,7 @@ namespace ArctisAurora.Core.UISystem
 
         [A_ActiveContext("Hovering")]
         public static VulkanControl hovering { get; set; }
-        [A_ActiveContext("Draggin")]
+        [A_ActiveContext("Dragging")]
         public static VulkanControl dragging;
         
         /*[A_ActiveContext("ActiveContainer")]
@@ -44,8 +44,11 @@ namespace ArctisAurora.Core.UISystem
             {
                 if (deepest != hovering)
                 {
+                    (hovering as IContext)?.OnContextRemoved("Hovering");
+                    hovering?.ResolveExit();
                     Context.Set("Hovering", deepest);
-                    (deepest as IContext)?.OnContextAdded();
+                    (deepest as IContext)?.OnContextAdded("Hovering");
+                    deepest.ResolveOnEnter();
                 }
                 deepest.ResolveHover(mousePos);
             }
@@ -54,7 +57,7 @@ namespace ArctisAurora.Core.UISystem
                 deepest = Context.Get<VulkanControl>("Hovering");
                 if (deepest != null)
                 {
-                    (deepest as IContext)?.OnContextRemoved();
+                    (deepest as IContext)?.OnContextRemoved("Hovering");
                     deepest.ResolveExit();
                 }
                 Context.Clear("Hovering");
@@ -64,11 +67,12 @@ namespace ArctisAurora.Core.UISystem
         public void SolveLMBPress(Vector2D<float> mousePos)
         {
             if (hovering == null) return;
-            if (activeControl != hovering)
+            VulkanControl target = ActiveTarget(hovering);
+            if (activeControl != target)
             {
-                (activeControl as IContext)?.OnContextRemoved();
-                activeControl = hovering;
-                (activeControl as IContext)?.OnContextAdded();
+                (activeControl as IContext)?.OnContextRemoved("ActiveControl");
+                activeControl = target;
+                (activeControl as IContext)?.OnContextAdded("ActiveControl");
             }
             hovering?.ResolveOnClick(lastMousePos, delta);
         }
@@ -79,11 +83,11 @@ namespace ArctisAurora.Core.UISystem
             if (dragTarget != null)
             {
                 // cleared before the callbacks, so a handler asking whether a drag is live gets no
-                dragging = null;
+                SetDragging(null);
                 dragTarget.StopDrag();
                 dragTarget.ResolveOnRelease();
             }
-            else
+            else if (ActiveTarget(hovering) == activeControl)
             {
                 hovering?.ResolveOnRelease();
             }
@@ -111,7 +115,7 @@ namespace ArctisAurora.Core.UISystem
             if (!InputHandler.instance.IsKeyDown(Keys.MouseLeft))
             {
                 VulkanControl stale = dragging;
-                dragging = null;
+                SetDragging(null);
                 stale.StopDrag();
                 return;
             }
@@ -163,6 +167,25 @@ namespace ArctisAurora.Core.UISystem
                     return deeper;
             }
             return current;
+        }
+
+        // Assigns the drag context and notifies both sides.
+        public static void SetDragging(VulkanControl control)
+        {
+            if (dragging == control) return;
+
+            VulkanControl previous = dragging;
+            dragging = control;
+            (previous as IContext)?.OnContextRemoved("Dragging");
+            (control as IContext)?.OnContextAdded("Dragging");
+        }
+
+        // Walks up to the first control that can hold the active context.
+        private static VulkanControl ActiveTarget(VulkanControl control)
+        {
+            while (control != null && !control.canBeActiveContext)
+                control = control.parent as VulkanControl;
+            return control;
         }
 
         public void IsInWindow(WindowHandle* handle, bool isInWindow)

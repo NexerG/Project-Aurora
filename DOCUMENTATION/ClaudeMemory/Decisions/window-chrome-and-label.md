@@ -16,8 +16,9 @@ been a native title bar, minimize, maximize or close. The application has to dra
 ### 1. Three engine actions, and the bar itself is XML
 
 `Window.Minimize`, `Window.MaximizeRestore` and `Window.Close` are `[A_XSDActionDependency]` statics
-in the engine; the bar is a horizontal `StackPanel` of `Button`s naming them through `onClick`. No new
-control, no app-side input code — the same shape as `TextInputActions`.
+in the engine; the bar is a horizontal `StackPanel` of `Button`s naming them through `onRelease`
+(`onClick` until 2026-08-18 — see [[button-states-and-hover-bubbling]] decision 5). No new control,
+no app-side input code — the same shape as `TextInputActions`.
 
 `Window.Close` calls `Engine.engineInstance.Stop()` rather than `Environment.Exit(0)`, which is what
 `Periodic.Decorations.ExitApplication` still does. Nothing polls GLFW's `WindowShouldClose`, so the

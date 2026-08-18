@@ -150,13 +150,13 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
             return Math.Min(bestIndex, text.Length);
         }
 
-        public void OnContextAdded()
+        public void OnContextAdded(string context)
         {
         }
 
-        public void OnContextRemoved()
+        public void OnContextRemoved(string context)
         {
-            CommitEdit();
+            if (context == "ActiveControl") CommitEdit();
         }
     }
 }

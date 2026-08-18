@@ -22,6 +22,15 @@ namespace Periodic.Editor.CustomControls
     {
         private const int rowHeight = 22;
         private const float indentPerDepth = 12f;
+        private const float rowSpacing = 2f;
+        private const float rowTextInset = 6f;
+
+        // sidebar palette
+        private const string rowGround = "#171717";
+        private const string rowHover = "#232323";
+        private const string rowPress = "#2D2D2D";
+        private const string folderText = "#8A8A8A";
+        private const string noteText = "#D4D4D4";
 
         private readonly StackPanelControl rows = new StackPanelControl();
         private string firstNote;
@@ -36,6 +45,7 @@ namespace Periodic.Editor.CustomControls
             // covers the whole column.
             rows.maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");
             rows.orientation = StackPanelControl.Orientation.Vertical;
+            rows.Spacing = rowSpacing;
             AddChild(rows);
             Rebuild();
         }
@@ -88,19 +98,27 @@ namespace Periodic.Editor.CustomControls
 
             if (notePath == null)
             {
-                label.margin = new Thickness(0, 0, 0, depth * indentPerDepth);
+                label.controlColorHex = folderText;
+                label.margin = new Thickness(0, 0, 0, depth * indentPerDepth + rowTextInset);
                 label.preferredHeight = rowHeight;
                 return label;
             }
+
+            label.controlColorHex = noteText;
+            label.horizontalPosition = 0f;
 
             ButtonControl row = new ButtonControl
             {
                 preferredHeight = rowHeight,
                 horizontalAlignment = HorizontalAlignment.Stretch,
-                margin = new Thickness(0, 0, 0, depth * indentPerDepth)
+                margin = new Thickness(0, 0, 0, depth * indentPerDepth),
+                padding = new Thickness(0, 0, 0, rowTextInset),
+                controlColorHex = rowGround,
+                hoverColorHex = rowHover,
+                pressColorHex = rowPress
             };
             row.AddChild(label);
-            row.RegisterOnClick(() => Open(notePath));
+            row.RegisterOnRelease(() => Open(notePath));
             return row;
         }
 
