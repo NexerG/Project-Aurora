@@ -192,8 +192,7 @@ loses the original column. Standard editors keep one; unbuilt.
 - **Step 3 — Ctrl+B/I.** `bold` and `italic` are declared on `TextInputControl` and **nothing reads
   them**; `arial-b` is a separate font asset. So Ctrl+B is a `fontName` swap, and the run split has
   to carry it. `StyleEquals` already compares `fontName`, so the merge side is ready.
-- **`WinForms` name clashes keep recurring** — `Keys` needed the same aliasing treatment
-  `ScrollableControl` already had. Third occurrence; the project-level fix is turning WinForms off,
-  which nothing seems to need.
+- ~~**`WinForms` name clashes keep recurring**~~ — **fixed 2026-08-18** by turning WinForms off at the
+  project level, as predicted here. See [[winforms-to-console]].
 
 Related: [[engine-side-text-input]], [[text-layout-one-measurer]], [[periodic-editor-architecture]]

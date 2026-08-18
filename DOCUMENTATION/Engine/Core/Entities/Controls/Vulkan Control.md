@@ -111,6 +111,8 @@ Bubbling is a contract an override can break, and one does: **`TextInputControl.
 ### XML
 `ParseXML(name)` loads the doc via `Paths.Doc(name)`, builds a `WindowControl` root, then `RecursiveParse` instantiates child controls by element name (`AnyXMLType.FindType`) and `ResolveAttributes` maps XML attributes onto `[A_XSDElementProperty]` members (actions resolve via `[A_XSDActionDependency]`).
 
+Scalars convert through `TypeDescriptor`, so a compound value needs a `TypeConverter` or the whole parse dies on it — `Thickness` is the one that has one, and `ThicknessConverter` reads `Padding="8"`, `Padding="8,4"` and `Padding="1,2,3,4"` as the struct's own one-, two- and four-argument constructors, which makes the two-value form `(horizontal, vertical)` and not CSS's `vertical horizontal`.
+
 ## Structs & enums
 `ControlStyle` (tint) Â· `ControlData` (QuadUVs + style) Â· `QuadUVs` Â· `Thickness` (margins/padding) Â· `LayoutRect` (Shrink/Intersect/Contains). Enums: `ControlColor`, `ScalingMode`, `HorizontalAlignment`, `VerticalAlignment`.
 

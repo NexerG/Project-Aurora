@@ -629,7 +629,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             RenderingInfo _renderingInfo = new RenderingInfo()
             {
                 SType = StructureType.RenderingInfo,
-                RenderArea = new Rect2D() { Offset = { X = 0, Y = 0 }, Extent = Engine.window.windowSize },
+                RenderArea = new Rect2D() { Offset = { X = 0, Y = 0 }, Extent = Renderer.swapchainExtent },
                 LayerCount = 1,
                 ColorAttachmentCount = 1,
                 PColorAttachments = &_colorAttachment
@@ -639,8 +639,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             Renderer.vk.CmdBeginRendering(commandBuffers[currentFrame], &_renderingInfo);
             Renderer.vk.CmdBindPipeline(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipeline);
 
-            Viewport _viewport = new Viewport() { X = 0, Y = 0, Width = Engine.window.windowSize.Width, Height = Engine.window.windowSize.Height, MinDepth = 0, MaxDepth = 1 };
-            Rect2D _scissor = new Rect2D() { Offset = { X = 0, Y = 0 }, Extent = Engine.window.windowSize };
+            Viewport _viewport = new Viewport() { X = 0, Y = 0, Width = Renderer.swapchainExtent.Width, Height = Renderer.swapchainExtent.Height, MinDepth = 0, MaxDepth = 1 };
+            Rect2D _scissor = new Rect2D() { Offset = { X = 0, Y = 0 }, Extent = Renderer.swapchainExtent };
             Renderer.vk.CmdSetViewport(commandBuffers[currentFrame], 0, 1, &_viewport);
             Renderer.vk.CmdSetScissor(commandBuffers[currentFrame], 0, 1, &_scissor);
 

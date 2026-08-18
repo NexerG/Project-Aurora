@@ -76,6 +76,7 @@ namespace ArctisAurora.EngineWork.Rendering
         internal static uint swapchainImageCount = 3;
         internal static SwapchainKHR swapchain;
         internal static KhrSwapchain swapchainKHR;
+        internal static Extent2D swapchainExtent;
 
         internal Image[] swapchainImages;
         internal ImageView[] swapchainImageViews;
@@ -497,6 +498,20 @@ namespace ArctisAurora.EngineWork.Rendering
             Marshal.FreeHGlobal(ppEnabledExtensions);
         }
 
+        // The surface reports the extent the images will actually get, and mid-drag it is already a frame
+        // behind or ahead of the window size GLFW hands us. Everything sized to the swapchain reads the
+        // result back off Renderer.swapchainExtent rather than the live window.
+        private Extent2D ChooseSwapchainExtent(ref SurfaceCapabilitiesKHR capabilities)
+        {
+            if (capabilities.CurrentExtent.Width != uint.MaxValue)
+                return capabilities.CurrentExtent;
+
+            Extent2D _window = Engine.window.windowSize;
+            return new Extent2D(
+                Math.Clamp(_window.Width, capabilities.MinImageExtent.Width, capabilities.MaxImageExtent.Width),
+                Math.Clamp(_window.Height, capabilities.MinImageExtent.Height, capabilities.MaxImageExtent.Height));
+        }
+
         private void CreateSwapchain()
         {
             SwapChainSupportDetails _support = GetSupportDetails(ref gpu, ref Engine.window.driverSurface, ref Engine.window.surface);
@@ -505,6 +520,7 @@ namespace ArctisAurora.EngineWork.Rendering
 
             var _queueFamilyIndices = stackalloc[] { (uint)queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit), (uint)queueAllocator.presentFamilyIndex };
             uint _imageCount = _support.Capabilities.MinImageCount + 1;
+            swapchainExtent = ChooseSwapchainExtent(ref _support.Capabilities);
             SwapchainCreateInfoKHR _swapchainCreateInfo = new SwapchainCreateInfoKHR()
             {
                 SType = StructureType.SwapchainCreateInfoKhr,
@@ -513,7 +529,7 @@ namespace ArctisAurora.EngineWork.Rendering
                 MinImageCount = _imageCount,
                 ImageFormat = surfaceFormat.Format,
                 ImageColorSpace = surfaceFormat.ColorSpace,
-                ImageExtent = Engine.window.windowSize,
+                ImageExtent = swapchainExtent,
                 ImageArrayLayers = 1,
                 ImageUsage = ImageUsageFlags.ColorAttachmentBit | ImageUsageFlags.TransferDstBit,
                 ImageSharingMode = SharingMode.Exclusive,
@@ -689,7 +705,7 @@ namespace ArctisAurora.EngineWork.Rendering
             {
                 if (renderingModules[i].isDirty[imageIndex] || renderingModules[i].HasPendingWork((int)imageIndex))
                     renderingModules[i].UpdateModule((int)imageIndex);
-                renderingModules[i].camera.UpdateCameraMatrix(Engine.window.windowSize, imageIndex, (uint)i);
+                renderingModules[i].camera.UpdateCameraMatrix(swapchainExtent, imageIndex, (uint)i);
             }
             if (compositorModule.isDirty[imageIndex])
                 compositorModule.UpdateModule((int)imageIndex);

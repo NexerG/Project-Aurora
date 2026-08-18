@@ -128,7 +128,8 @@ The test: if the comment explains *why*, it belongs in ClaudeMemory, not the fil
 - Bullets say what changed, not why. Rejected alternatives and measurements go to
   `DOCUMENTATION/ClaudeMemory/Decisions/*`, same as §5.
 - **Never** add a `Co-Authored-By` trailer.
-- One commit per logical slice, not one big drop.
+- **One commit unless I ask for more.** Everything in the tree lands as a single commit, however many
+  concerns it spans. Split into slices only when I explicitly ask for multiple commits.
 - **Nothing is left behind.** Anything uncommitted in the tree goes into the next commit, including
   changes that predate the session or were made by someone else. Never commit a subset of paths and
   leave the rest dirty - if it is changed and uncommitted, it ships with the next commit.

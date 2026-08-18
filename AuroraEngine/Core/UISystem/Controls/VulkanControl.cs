@@ -8,6 +8,7 @@ using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Collections;
 using System.ComponentModel;
+using System.Globalization;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Xml.Linq;
@@ -69,6 +70,8 @@ namespace ArctisAurora.Core.UISystem.Controls
             public uint textureIndex;
             // clip bounds in design space, as (left, top, right, bottom)
             public Vector4D<float> clip;
+            // corner radius in design-space pixels, clamped to the half-extent by the shader
+            public float cornerRadius;
         }
 
         [A_XSDType("ControlColor", "UI")]
@@ -95,6 +98,7 @@ namespace ArctisAurora.Core.UISystem.Controls
             Top, Center, Bottom, Stretch
         }
 
+        [TypeConverter(typeof(ThicknessConverter))]
         public struct Thickness
         {
             public float top;
@@ -125,6 +129,31 @@ namespace ArctisAurora.Core.UISystem.Controls
             public float totalVertical => top + bottom;
 
             public static Thickness Zero => new Thickness(0);
+        }
+
+        // "8" | "8,4" | "1,2,3,4", one comma-separated value per Thickness constructor.
+        public class ThicknessConverter : TypeConverter
+        {
+            public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType) =>
+                sourceType == typeof(string) || base.CanConvertFrom(context, sourceType);
+
+            public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
+            {
+                if (value is not string text) return base.ConvertFrom(context, culture, value);
+
+                string[] parts = text.Split(',');
+                float[] sides = new float[parts.Length];
+                for (int i = 0; i < parts.Length; i++)
+                    sides[i] = float.Parse(parts[i].Trim(), culture);
+
+                return parts.Length switch
+                {
+                    1 => new Thickness(sides[0]),
+                    2 => new Thickness(sides[0], sides[1]),
+                    4 => new Thickness(sides[0], sides[1], sides[2], sides[3]),
+                    _ => throw new FormatException($"Thickness \"{text}\" needs 1, 2 or 4 comma-separated values.")
+                };
+            }
         }
 
         public struct LayoutRect
@@ -333,6 +362,18 @@ namespace ArctisAurora.Core.UISystem.Controls
                 UpdateControlData();
                 field = value;
                 controlColorHex = hex;
+            }
+        }
+
+        [A_XSDElementProperty("CornerRadius", "UI", "Rounds the control's corners, in design-space pixels.")]
+        public float cornerRadius
+        {
+            get => field;
+            set
+            {
+                field = value;
+                controlData.cornerRadius = value;
+                UpdateControlData();
             }
         }
         #endregion

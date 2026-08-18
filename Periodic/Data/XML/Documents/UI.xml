@@ -21,7 +21,7 @@
 		</TitleBar>
 
 		<StackPanel Orientation="Horizontal" HeightStar="1" ColorHex="#1e1e1e">
-			<VaultBrowser Width="220" MinWidth="120" ColorHex="#171717"/>
+			<VaultBrowser Width="220" MinWidth="120" ColorHex="#171717" Padding="8"/>
 			<Splitter Width="5"/>
 			<DocumentEditor WidthStar="1"/>
 		</StackPanel>

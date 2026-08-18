@@ -1,6 +1,4 @@
 ﻿_Build -> C:\Projects-Repositories\Aurora\Project-Aurora\_Build\Program.cs
-ArctisAurora -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Frame.cs
-ArctisAurora -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Frame.Designer.cs
 ArctisAurora -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Program.cs
 ArctisAurora.Core -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Game.cs
 ArctisAurora.Core.Data -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\DataManager.cs
@@ -52,6 +50,7 @@ ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-A
 ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\TitleBarControl.cs
 ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\VulkanControl.cs
 ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\WindowControl.cs
+ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\WindowFrameControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\AbstractContainerControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\DockingControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\GridListControl.cs
@@ -59,6 +58,8 @@ ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Auror
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\StackPanelControl.cs
 ArctisAurora.Core.UISystem.Controls.Interactable -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Interactable\ButtonControl.cs
 ArctisAurora.Core.UISystem.Controls.Interactable -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Interactable\ResizeableControl.cs
+ArctisAurora.Core.UISystem.Controls.Interactable -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Interactable\ScrollThumbControl.cs
+ArctisAurora.Core.UISystem.Controls.Interactable -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Interactable\SplitterControl.cs
 ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\GlyphControl.cs
 ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\LabelControl.cs
 ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\TextBlockControl.cs

@@ -219,7 +219,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             for (int i = 0; i < imageceCount; i++)
             {
                 AVulkanBufferHandler.CreateImage(Renderer.vk, ref Renderer.logicalDevice, Renderer.gpu,
-                    Engine.window.windowSize.Width, Engine.window.windowSize.Height,
+                    Renderer.swapchainExtent.Width, Renderer.swapchainExtent.Height,
                     outputFormat,
                     ImageTiling.Optimal,
                     ImageUsageFlags.ColorAttachmentBit | ImageUsageFlags.SampledBit,

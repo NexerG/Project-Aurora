@@ -76,8 +76,8 @@ for the decision to accept them and the escape hatch if they bite.
 - **P2 — done (pending GUI verify), INTERIM.** `DocumentEditorControl` (`[A_XSDType("DocumentEditor")]`,
   Scrollable > StackPanel of block controls, reusing `TextBlockControl` + `TextInputControl` as run
   renderer). Wired into `Periodic` `UI.xml` as `<DocumentEditor Source="SampleNote.xml"/>`; sample
-  note at `Periodic/Data/XML/Documents/SampleNote.xml`. Note: `ScrollableControl` clashes with
-  `System.Windows.Forms.ScrollableControl` (WinForms on) — alias the engine type when subclassing.
+  note at `Periodic/Data/XML/Documents/SampleNote.xml`. The `ScrollableControl` alias that this used
+  to need is gone with WinForms — see [[winforms-to-console]].
   The StackPanel-of-everything presentation and `TextInputControl`-as-run-renderer are replaced in L2.
 - **L1 — done (2026-07-31). `TextMeasurer` survives and is now the only wrapper; the
   `DocumentLayoutCache` half is deleted (2026-08-07).** `MeasureBlock` now takes a `float lineHeight`

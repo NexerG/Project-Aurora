@@ -12,6 +12,9 @@ layout(location = 1) in flat uint fragTextureIndex;
 layout(location = 2) in Style fragStyle;
 layout(location = 3) in vec2 fragPos;
 layout(location = 4) in flat vec4 fragClip;
+layout(location = 5) in vec2 fragLocal;
+layout(location = 6) in flat vec2 fragHalfExtent;
+layout(location = 7) in flat float fragRadius;
 
 layout(location = 0) out vec4 outColor;
 
@@ -19,6 +22,13 @@ layout(set = 1, binding = 0) uniform sampler2D samplers[];
 
 float median(float r, float g, float b) {
     return max(min(r, g), min(max(r, g), b));
+}
+
+// Signed distance to a rounded rectangle, negative inside.
+float sdRoundBox(vec2 p, vec2 b, float r) {
+    r = min(r, min(b.x, b.y));
+    vec2 q = abs(p) - b + r;
+    return min(max(q.x, q.y), 0.0f) + length(max(q, 0.0f)) - r;
 }
 
 void main()
@@ -32,6 +42,9 @@ void main()
     float screenPxRange = fwidth(sd);
     float opacity = clamp(sd / screenPxRange + 0.5f, 0.0f, 1.0f);
     //float opacity = smoothstep(-screenPxRange, screenPxRange, sd);
+
+    float boxDist = -sdRoundBox(fragLocal, fragHalfExtent, fragRadius);
+    opacity *= clamp(boxDist / fwidth(boxDist) + 0.5f, 0.0f, 1.0f);
 
     vec3 color = fragStyle.tint;
     outColor = vec4(color, opacity);

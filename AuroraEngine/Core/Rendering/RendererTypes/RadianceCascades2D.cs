@@ -1,5 +1,4 @@
-﻿using System.Drawing.Imaging;
-using System;
+﻿using System;
 using ArctisAurora.CustomEntities;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Core.Native;

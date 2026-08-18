@@ -58,7 +58,6 @@ namespace ArctisAurora.EngineWork
         static bool isCaughtUp = true;
 
         internal static DateTime initTime;
-        internal Frame SC;
 
         public static TimeSpan deltaTime;
         private static DateTime lastFrameTime = DateTime.Now;

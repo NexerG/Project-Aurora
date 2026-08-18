@@ -6,9 +6,6 @@ using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
 using Silk.NET.Maths;
-// WinForms is enabled in this project; alias the engine type to avoid the
-// System.Windows.Forms.ScrollableControl clash.
-using ScrollableControl = ArctisAurora.Core.UISystem.Controls.Containers.ScrollableControl;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 {

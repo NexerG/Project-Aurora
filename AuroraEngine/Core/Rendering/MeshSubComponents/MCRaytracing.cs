@@ -4,7 +4,6 @@ using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Assimp;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
-using System.Drawing.Drawing2D;
 using System.Runtime.CompilerServices;
 using static ArctisAurora.EngineWork.Rendering.RendererTypes.Pathtracing;
 using static ArctisAurora.EngineWork.Rendering.VulkanRenderer;

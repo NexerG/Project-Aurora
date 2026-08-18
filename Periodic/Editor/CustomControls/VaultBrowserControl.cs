@@ -10,9 +10,6 @@ using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.Core.UISystem.Controls.Text.Document;
 using ArctisAurora.EngineWork.Registry;
 using AuroraPeriodic;
-// WinForms is enabled in this project; alias the engine type to avoid the
-// System.Windows.Forms.ScrollableControl clash.
-using ScrollableControl = ArctisAurora.Core.UISystem.Controls.Containers.ScrollableControl;
 
 namespace Periodic.Editor.CustomControls
 {
@@ -38,8 +35,6 @@ namespace Periodic.Editor.CustomControls
         public VaultBrowserControl()
         {
             scrollDirection = ScrollDirection.Vertical;
-            // Thickness has no TypeConverter, so padding cannot come from the XML attribute.
-            padding = new Thickness(8);
 
             // The viewport paints the sidebar; the panel inside it must not, or the default mask
             // covers the whole column.

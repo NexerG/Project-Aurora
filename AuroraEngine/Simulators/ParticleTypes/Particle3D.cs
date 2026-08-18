@@ -8,7 +8,6 @@ namespace ArctisAurora.ParticleTypes
         public Vector3D<float> PredPoint = new Vector3D<float>();
         public Vector3D<float> velocity = new Vector3D<float>();
         public float radius = 7;
-        public Brush color = new Pen(Color.FromArgb(255, 255, 255, 255)).Brush;
 
         public Particle3D()
         {

@@ -1,13 +1,12 @@
 ﻿using ArctisAurora.Forces;
 using ArctisAurora.ParticleTypes;
 using Silk.NET.Maths;
+using System.Drawing;
 
 namespace ArctisAurora.Simulators.Vulkan
 {
     public class Simulator3D
     {
-        //Frame
-        Frame SC;
         Vector3D<float> simSize;
         //particles and forces
         List<Force> forces = new List<Force>();
@@ -41,35 +40,15 @@ namespace ArctisAurora.Simulators.Vulkan
             UpdateUI();
         }
 
-        public Simulator3D(List<Particle3D> parts, Frame SC)
+        public Simulator3D(List<Particle3D> parts)
         {
             Gravity g = new Gravity(new Vector3D<float>(0f, 0f, 9.8f));
             forces.Add(g);
             this.parts = parts;
-            this.SC = SC;
 
             SpatialLookup = new Entry[parts.Count];
             StartIndices = new int[parts.Count];
             densities = new float[parts.Count];
-
-            CreateOffsets();
-            UpdateSpatialLookup(parts, smoothingRadius);
-            CalcConstForces();
-            UpdateDensities();
-            UpdateUI();
-        }
-
-        public Simulator3D(Frame frame, List<Particle3D> parts, Vector3D<float> simSize)
-        {
-            SC = frame;
-            Gravity g = new Gravity(new Vector3D<float>(0f, 9.8f, 0f));
-            forces.Add(g);
-            this.parts = parts;
-
-            SpatialLookup = new Entry[parts.Count];
-            StartIndices = new int[parts.Count];
-            densities = new float[parts.Count];
-            this.simSize = simSize;
 
             CreateOffsets();
             UpdateSpatialLookup(parts, smoothingRadius);

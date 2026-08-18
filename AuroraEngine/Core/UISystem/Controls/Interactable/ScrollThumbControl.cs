@@ -1,7 +1,5 @@
+using ArctisAurora.Core.UISystem.Controls.Containers;
 using Silk.NET.Maths;
-// WinForms is enabled in this project; alias the engine type to avoid the
-// System.Windows.Forms.ScrollableControl clash.
-using ScrollableControl = ArctisAurora.Core.UISystem.Controls.Containers.ScrollableControl;
 
 namespace ArctisAurora.Core.UISystem.Controls.Interactable
 {

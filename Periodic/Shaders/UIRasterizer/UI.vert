@@ -26,6 +26,7 @@ struct ControlData
     Style style;
     uint textureIndex;
     vec4 clip;
+    float cornerRadius;
 };
 
 layout(set = 0, binding = 2, scalar) readonly buffer ControlDataBuffer {
@@ -37,9 +38,13 @@ layout(location = 1) out flat uint fragTextureIndex;
 layout(location = 2) out Style fragStyle;
 layout(location = 3) out vec2 fragPos;
 layout(location = 4) out flat vec4 fragClip;
+layout(location = 5) out vec2 fragLocal;
+layout(location = 6) out flat vec2 fragHalfExtent;
+layout(location = 7) out flat float fragRadius;
 
 void main() {
-    vec3 tPos = vec3(ts.transforms[gl_InstanceIndex] * vec4(inPosition, 1.0));
+    mat4 model = ts.transforms[gl_InstanceIndex];
+    vec3 tPos = vec3(model * vec4(inPosition, 1.0));
     vec4 pos = ubo.proj * ubo.view * vec4(tPos, 1.0f);
 
     gl_Position = pos;
@@ -49,4 +54,10 @@ void main() {
     // pre-projection, so it shares a space with the clip rect the layout wrote
     fragPos = tPos.xy;
     fragClip = CD.controls[gl_InstanceIndex].clip;
+
+    // the quad is a unit +-0.5 square, so local space is pixels from the control's centre
+    vec2 size = vec2(length(model[0].xyz), length(model[1].xyz));
+    fragLocal = inPosition.xy * size;
+    fragHalfExtent = size * 0.5f;
+    fragRadius = CD.controls[gl_InstanceIndex].cornerRadius;
 }

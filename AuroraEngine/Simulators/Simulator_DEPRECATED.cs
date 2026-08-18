@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -32,8 +33,6 @@ namespace ArctisAurora.Simulators
 
     public class Simulator_DEPRECATED
     {
-        //Frame
-        Frame SC;
         Vector2 simSize;
         //particles and forces
         List<Force> forces = new List<Force>();
@@ -67,12 +66,11 @@ namespace ArctisAurora.Simulators
             UpdateUI();
         }
 
-        public Simulator_DEPRECATED(List<Particle2D> parts, Frame SC)
+        public Simulator_DEPRECATED(List<Particle2D> parts)
         {
             Gravity g = new Gravity(new PointF(0, 9.8f));
             forces.Add(g);
             this.parts = parts;
-            this.SC = SC;
 
             SpatialLookup = new Entry[parts.Count];
             StartIndices = new int[parts.Count];
@@ -85,9 +83,8 @@ namespace ArctisAurora.Simulators
             UpdateUI();
         }
 
-        public Simulator_DEPRECATED(Frame frame, List<Particle2D> parts, Vector2 simSize)
+        public Simulator_DEPRECATED(List<Particle2D> parts, Vector2 simSize)
         {
-            SC = frame;
             Gravity g = new Gravity(new PointF(0, 9.8f));
             forces.Add(g);
             this.parts = parts;
