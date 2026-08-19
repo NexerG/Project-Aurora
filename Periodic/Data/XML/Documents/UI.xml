@@ -23,7 +23,9 @@
 		<StackPanel Orientation="Horizontal" HeightStar="1" ColorHex="#1e1e1e">
 			<VaultBrowser Name="Browser" Width="220" MinWidth="120" ColorHex="#171717" Padding="8"/>
 			<Splitter Width="5"/>
-			<DocumentEditor Name="Editor" WidthStar="1"/>
+			<TabView Name="Tabs" WidthStar="1" ColorHex="#1e1e1e"
+					 TabHeight="28" TabWidth="180"
+					 TabColorHex="#252525" ActiveTabColorHex="#1e1e1e" TabHoverColorHex="#2F2F2F"/>
 		</StackPanel>
 	</StackPanel>
 	</WindowFrame>

@@ -80,7 +80,8 @@ logic in the dock system should still refuse the move before it gets here.
 **A detached subtree keeps rendering.** `UI.DFSOrder` collects roots as live controls with no
 `VulkanControl` parent, so a control removed and *not* re-attached becomes a root: it stays in the
 pool, keeps its slot, and keeps drawing at its last transform. Detaching is therefore **not** a way to
-hide an inactive tab — that still needs its own answer.
+hide an inactive tab — *answered 2026-08-19 by `VulkanControl.Hide()`, a collapsed clip rect walked
+over the subtree; see [[tab-view-control]].*
 
 **An unsized control moved across axes measures to infinity.** The browser has `Width="220"` and no
 height; moved into a vertical stack it was offered `float.MaxValue` on the main axis and

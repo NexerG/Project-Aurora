@@ -568,6 +568,35 @@ namespace ArctisAurora.Core.UISystem.Controls
             }
             UILayout.RegisterDirtyRoot(topDirty);
         }
+
+        // Degenerate rect — contains no point at all.
+        private static readonly LayoutRect hiddenClip = new LayoutRect(0, 0, -1, -1);
+
+        public bool hidden { get; private set; }
+
+        // Takes the subtree out of the draw and the hit-test.
+        public void Hide()
+        {
+            if (hidden) return;
+            hidden = true;
+            CollapseClip(this);
+        }
+
+        // The next Arrange rewrites the subtree's clips.
+        public void Show()
+        {
+            if (!hidden) return;
+            hidden = false;
+            InvalidateLayout();
+        }
+
+        private static void CollapseClip(VulkanControl control)
+        {
+            control.ClipRect = hiddenClip;
+            foreach (Entity child in control.children)
+                if (child is VulkanControl childControl)
+                    CollapseClip(childControl);
+        }
         #endregion
 
         #region ---- Layout API (two-pass) ----
@@ -661,6 +690,14 @@ namespace ArctisAurora.Core.UISystem.Controls
         public override void OnStart()
         {
             base.OnStart();
+        }
+
+        // Runs before the pool row is freed, so the contexts drop this control while it is still
+        // readable.
+        public override void OnDestroy()
+        {
+            UICollisionHandling.Forget(this);
+            base.OnDestroy();
         }
 
         // Publishes a ControlData edit by widening the pool's dirty range.

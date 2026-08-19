@@ -47,6 +47,8 @@
       <xs:enumeration value="Scrollable" />
       <xs:enumeration value="ScrollableControl" />
       <xs:enumeration value="StackPanel" />
+      <xs:enumeration value="TabItem" />
+      <xs:enumeration value="TabView" />
       <xs:enumeration value="ControlColor" />
       <xs:enumeration value="FillMode" />
       <xs:enumeration value="HorizontalAlignment" />
@@ -173,6 +175,8 @@
       <xs:enumeration value="Scrollable" />
       <xs:enumeration value="ScrollableControl" />
       <xs:enumeration value="StackPanel" />
+      <xs:enumeration value="TabItem" />
+      <xs:enumeration value="TabView" />
       <xs:enumeration value="ControlColor" />
       <xs:enumeration value="FillMode" />
       <xs:enumeration value="HorizontalAlignment" />

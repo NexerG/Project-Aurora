@@ -31,7 +31,7 @@ namespace Periodic.Editor.CustomControls
 
         // control names in UI.xml
         private const string browserName = "Browser";
-        private const string editorName = "Editor";
+        private const string tabsName = "Tabs";
 
         private readonly StackPanelControl rows = new StackPanelControl();
         private string firstNote;
@@ -121,14 +121,28 @@ namespace Periodic.Editor.CustomControls
             return row;
         }
 
-        // Commits what is open before leaving it — switching is the only way out of a note and
-        // there is no undo to recover a silent discard with.
+        // Focuses the note's tab, opening one if it is not already open.
         private static void Open(string notePath)
         {
-            DocumentEditorControl editor = EntityRegistry.uiTree.FindByName(editorName) as DocumentEditorControl;
-            if (editor == null) return;
+            TabViewControl tabs = EntityRegistry.uiTree.FindByName(tabsName) as TabViewControl;
+            if (tabs == null) return;
 
-            editor.Save();
+            TabItemControl open = tabs.FindTab(notePath);
+            if (open != null)
+            {
+                tabs.SetActive(open);
+                return;
+            }
+
+            DocumentEditorControl editor = new DocumentEditorControl();
+            TabItemControl tab = new TabItemControl
+            {
+                name = notePath,
+                header = Path.GetFileNameWithoutExtension(notePath)
+            };
+            tab.AddChild(editor);
+            tabs.AddChild(tab);
+            tabs.SetActive(tab);
             editor.LoadPath(notePath);
         }
 

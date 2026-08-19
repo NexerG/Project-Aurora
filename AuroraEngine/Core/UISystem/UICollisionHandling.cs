@@ -174,6 +174,15 @@ namespace ArctisAurora.Core.UISystem
             return current;
         }
 
+        // Drops a destroyed control out of every context holding it. Assigns directly rather than
+        // through SetDragging — the control is going away, so notifying it is the thing to avoid.
+        public static void Forget(VulkanControl control)
+        {
+            if (ReferenceEquals(hovering, control)) hovering = null;
+            if (ReferenceEquals(dragging, control)) dragging = null;
+            if (ReferenceEquals(activeControl, control)) activeControl = null;
+        }
+
         // Assigns the drag context and notifies both sides.
         public static void SetDragging(VulkanControl control)
         {
