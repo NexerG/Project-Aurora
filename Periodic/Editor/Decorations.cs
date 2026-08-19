@@ -1,5 +1,7 @@
 ﻿using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.UISystem.Actions;
+using ArctisAurora.Core.UISystem.Controls;
+using ArctisAurora.EngineWork;
+using ArctisAurora.EngineWork.Rendering;
 
 namespace Periodic.Editor
 {
@@ -9,7 +11,7 @@ namespace Periodic.Editor
         public static void ExitApplication()
         {
             Console.WriteLine("Exiting application...");
-            WindowActions.Close();
+            Engine.CloseWindow(Engine.primary);
         }
     }
 }

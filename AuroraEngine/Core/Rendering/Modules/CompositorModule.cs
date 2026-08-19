@@ -58,14 +58,22 @@ namespace ArctisAurora.Core.Rendering.Modules
 
             CreateSampler();
             CreateDescriptorSetLayout();
-            frameResources = new FrameResources[Renderer.swapchainImageCount];
-            for (int i = 0; i < Renderer.swapchainImageCount; i++)
+            frameResources = new FrameResources[window.imageCount];
+            for (int i = 0; i < window.imageCount; i++)
             {
                 CreateDescriptorPool(i, 0);
                 AllocateDescriptorSets(i);
                 UpdateDescriptorSets(i, 0);
             }
             CreatePipeline();
+        }
+
+        internal override void DestroyGpuResources()
+        {
+            base.DestroyGpuResources();
+
+            if (_sampler.Handle != 0)
+                Renderer.vk.DestroySampler(Renderer.logicalDevice, _sampler, null);
         }
 
         private void CreateSampler()
@@ -169,15 +177,15 @@ namespace ArctisAurora.Core.Rendering.Modules
             {
                 X = 0,
                 Y = 0,
-                Width = Engine.window.windowSize.Width,
-                Height = Engine.window.windowSize.Height,
+                Width = window.swapchainExtent.Width,
+                Height = window.swapchainExtent.Height,
                 MinDepth = 0,
                 MaxDepth = 1
             };
             Rect2D scissor = new Rect2D()
             {
                 Offset = { X = 0, Y = 0 },
-                Extent = Engine.window.windowSize
+                Extent = window.swapchainExtent
             };
             PipelineViewportStateCreateInfo viewportState = new PipelineViewportStateCreateInfo()
             {
@@ -258,7 +266,7 @@ namespace ArctisAurora.Core.Rendering.Modules
 
                 // Replaces the render pass handle. This one presents, so the format is the
                 // swapchain's rather than the modules' offscreen format.
-                Format colorFormat = Renderer.renderer.surfaceFormat.Format;
+                Format colorFormat = window.surfaceFormat.Format;
                 PipelineRenderingCreateInfo renderingCreateInfo = new PipelineRenderingCreateInfo()
                 {
                     SType = StructureType.PipelineRenderingCreateInfo,
@@ -339,11 +347,14 @@ namespace ArctisAurora.Core.Rendering.Modules
             WriteCommandBuffers(currentFrame);
         }
 
+        // The compositor's buffers come from the shared composite pool, not a module pool of its own.
+        internal override CommandPool commandBufferPool => Renderer.compositeCommandPool;
+
         internal override void WriteCommandBuffers(int currentFrame)
         {
             if (commandBuffers == null)
             {
-                commandBuffers = new CommandBuffer[Renderer.swapchainImageCount];
+                commandBuffers = new CommandBuffer[window.imageCount];
                 CommandBufferAllocateInfo allocInfo = new CommandBufferAllocateInfo()
                 {
                     SType = StructureType.CommandBufferAllocateInfo,
@@ -379,7 +390,7 @@ namespace ArctisAurora.Core.Rendering.Modules
             // Was the render pass's InitialLayout=Undefined plus its EXTERNAL->0 dependency. The acquire
             // is already ordered ahead of this by the module submit's imageAvailable wait and the timeline
             // semaphore between the two submits, so this barrier only has to do the layout transition.
-            ImageBarrier(commandBuffers[index], Renderer.renderer.swapchainImages[index],
+            ImageBarrier(commandBuffers[index], window.swapchainImages[index],
                 ImageLayout.Undefined, ImageLayout.ColorAttachmentOptimal,
                 PipelineStageFlags.ColorAttachmentOutputBit, PipelineStageFlags.ColorAttachmentOutputBit,
                 AccessFlags.None, AccessFlags.ColorAttachmentWriteBit);
@@ -387,7 +398,7 @@ namespace ArctisAurora.Core.Rendering.Modules
             RenderingAttachmentInfo colorAttachment = new RenderingAttachmentInfo()
             {
                 SType = StructureType.RenderingAttachmentInfo,
-                ImageView = Renderer.renderer.swapchainImageViews[index],
+                ImageView = window.swapchainImageViews[index],
                 ImageLayout = ImageLayout.ColorAttachmentOptimal,
                 LoadOp = AttachmentLoadOp.Clear,
                 StoreOp = AttachmentStoreOp.Store,
@@ -400,7 +411,7 @@ namespace ArctisAurora.Core.Rendering.Modules
             RenderingInfo renderingInfo = new RenderingInfo()
             {
                 SType = StructureType.RenderingInfo,
-                RenderArea = new Rect2D() { Offset = { X = 0, Y = 0 }, Extent = Renderer.swapchainExtent },
+                RenderArea = new Rect2D() { Offset = { X = 0, Y = 0 }, Extent = window.swapchainExtent },
                 LayerCount = 1,
                 ColorAttachmentCount = 1,
                 PColorAttachments = &colorAttachment
@@ -409,8 +420,8 @@ namespace ArctisAurora.Core.Rendering.Modules
             Renderer.vk.CmdBeginRendering(commandBuffers[index], &renderingInfo);
             Renderer.vk.CmdBindPipeline(commandBuffers[index], PipelineBindPoint.Graphics, pipeline);
 
-            Viewport _viewport = new Viewport() { X = 0, Y = 0, Width = Renderer.swapchainExtent.Width, Height = Renderer.swapchainExtent.Height, MinDepth = 0, MaxDepth = 1 };
-            Rect2D _scissor = new Rect2D() { Offset = { X = 0, Y = 0 }, Extent = Renderer.swapchainExtent };
+            Viewport _viewport = new Viewport() { X = 0, Y = 0, Width = window.swapchainExtent.Width, Height = window.swapchainExtent.Height, MinDepth = 0, MaxDepth = 1 };
+            Rect2D _scissor = new Rect2D() { Offset = { X = 0, Y = 0 }, Extent = window.swapchainExtent };
             Renderer.vk.CmdSetViewport(commandBuffers[index], 0, 1, &_viewport);
             Renderer.vk.CmdSetScissor(commandBuffers[index], 0, 1, &_scissor);
 
@@ -424,7 +435,7 @@ namespace ArctisAurora.Core.Rendering.Modules
 
             // Was the render pass's FinalLayout=PresentSrcKhr. QueuePresent waits on
             // renderFinishedSemaphores, so this only has to hand the image over in the right layout.
-            ImageBarrier(commandBuffers[index], Renderer.renderer.swapchainImages[index],
+            ImageBarrier(commandBuffers[index], window.swapchainImages[index],
                 ImageLayout.ColorAttachmentOptimal, ImageLayout.PresentSrcKhr,
                 PipelineStageFlags.ColorAttachmentOutputBit, PipelineStageFlags.BottomOfPipeBit,
                 AccessFlags.ColorAttachmentWriteBit, AccessFlags.None);

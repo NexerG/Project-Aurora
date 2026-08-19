@@ -147,6 +147,22 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             }
         }
 
+        // UI-only: the pool is shared by every window, so each one draws the dense range its own tree
+        // occupies. The base signature is shared with MCRaster/MCRaytracing, hence an overload.
+        internal void EnqueueDrawCommands(ref ulong[] offset, int loopIndex, int firstInstance, int instanceCount, ref CommandBuffer commandBuffer, ref PipelineLayout pipelineLayout, ref DescriptorSet[] descriptorSets)
+        {
+            if (!render || instanceCount <= 0) return;
+
+            fixed (ulong* offsetsPtr = offset)
+            {
+                Renderer.vk.CmdBindVertexBuffers(commandBuffer, 0, 1, ref mesh.vertexBuffer, offsetsPtr);
+            }
+            Renderer.vk.CmdBindIndexBuffer(commandBuffer, mesh.indexBuffer, 0, IndexType.Uint32);
+            Renderer.vk.CmdBindDescriptorSets(commandBuffer, PipelineBindPoint.Graphics, pipelineLayout, 0, 1, descriptorSets[0], 0, null);
+            Renderer.vk.CmdBindDescriptorSets(commandBuffer, PipelineBindPoint.Graphics, pipelineLayout, 1, 1, descriptorSets[1], 0, null);
+            Renderer.vk.CmdDrawIndexed(commandBuffer, (uint)mesh.indices.Length, (uint)instanceCount, 0, 0, (uint)firstInstance);
+        }
+
         internal override void EnqueueDrawCommands(ref ulong[] offset, int loopIndex, int instanceID, ref CommandBuffer commandBuffer, ref PipelineLayout pipelineLayout, ref DescriptorSet[] descriptorSets)
         {
             if (render)

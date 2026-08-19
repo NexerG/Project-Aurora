@@ -33,6 +33,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
@@ -100,6 +101,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
@@ -169,6 +171,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
@@ -238,6 +241,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
@@ -305,6 +309,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
@@ -355,6 +360,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
@@ -422,6 +428,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
@@ -472,6 +479,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
@@ -525,6 +533,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
@@ -574,6 +583,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
@@ -621,6 +631,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
@@ -672,6 +683,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
@@ -787,6 +799,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
@@ -833,6 +846,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
@@ -911,6 +925,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
@@ -1017,6 +1032,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
@@ -1093,6 +1109,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
@@ -1162,6 +1179,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
@@ -1230,6 +1248,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
@@ -1290,6 +1309,7 @@
     <xs:attribute name="TabColorHex" type="xs:string" />
     <xs:attribute name="ActiveTabColorHex" type="xs:string" />
     <xs:attribute name="TabHoverColorHex" type="xs:string" />
+    <xs:attribute name="TearOffDocument" type="xs:string" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
@@ -1302,6 +1322,7 @@
     <xs:attribute name="DockMode" type="types:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />

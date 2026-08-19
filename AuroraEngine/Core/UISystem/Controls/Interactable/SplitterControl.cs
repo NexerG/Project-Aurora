@@ -1,6 +1,7 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls.Containers;
+using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.GLFW;
 using Silk.NET.Maths;
@@ -24,13 +25,13 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
 
         public override void ResolveOnEnter()
         {
-            AGlfwWindow.ChangeCursor(IsVertical ? CursorShape.VResize : CursorShape.HResize);
+            RenderWindow.Of(this)?.os.ChangeCursor(IsVertical ? CursorShape.VResize : CursorShape.HResize);
             base.ResolveOnEnter();
         }
 
         public override void ResolveExit()
         {
-            AGlfwWindow.ChangeCursor(CursorShape.Arrow);
+            RenderWindow.Of(this)?.os.ChangeCursor(CursorShape.Arrow);
             base.ResolveExit();
         }
 

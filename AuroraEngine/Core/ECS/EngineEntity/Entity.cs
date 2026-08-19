@@ -191,7 +191,7 @@ namespace ArctisAurora.Core.ECS.EngineEntity
             EntComp component;
             if (typeof(EntComp).Name == typeof(MeshComponent).Name)
             {
-                switch (Renderer.renderingModules[0].rendererType)
+                switch (Renderer.PrimaryRendererType)
                 {
                     case ERendererTypes.Rasterizer:
                         component = (EntComp)(object)new MCRaster();

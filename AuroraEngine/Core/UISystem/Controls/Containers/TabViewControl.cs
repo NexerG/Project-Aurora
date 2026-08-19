@@ -4,7 +4,9 @@ using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.UISystem.Controls.Interactable;
 using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.Core.UISystem.Controls.Text.Document;
+using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
+using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.UISystem.Controls.Containers
@@ -28,6 +30,10 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         public string activeTabColorHex = "#1E1E1E";
         [A_XSDElementProperty("TabHoverColorHex", "UI", "Ground of a hovered inactive tab.")]
         public string tabHoverColorHex = "#3A3A3A";
+
+        // tear-off
+        [A_XSDElementProperty("TearOffDocument", "UI", "UI document a tab dragged out of every window opens in.")]
+        public string tearOffDocument = "";
         #endregion
 
         // caption and close button geometry
@@ -38,6 +44,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         private const string closeCaption = "x";
         private const string closeHoverColorHex = "#C42B1E";
         private const string closePressColorHex = "#A82318";
+
+        // torn-off window geometry
+        private const uint tearOffWidth = 900;
+        private const uint tearOffHeight = 640;
+        private static int _tornWindows;
 
         private readonly StackPanelControl strip = new StackPanelControl();
 
@@ -72,8 +83,70 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             if (activeItem == null) SetActive(item);
         }
 
+        // A tab moved to another view takes its strip button's pending release with it, so an item
+        // that is no longer ours is ignored rather than resurrected as the active one.
+        public override void RemoveChild(Entity entity)
+        {
+            bool wasActive = ReferenceEquals(entity, activeItem);
+            base.RemoveChild(entity);
+
+            if (entity is not TabItemControl item) return;
+
+            TabItemControl next = wasActive ? Neighbour(item) : activeItem;
+            if (wasActive) activeItem = null;
+
+            RebuildStrip();
+            if (activeItem == null && next != null) SetActive(next);
+            InvalidateLayout();
+
+            CloseIfEmptied();
+        }
+
+        // Accepts a tab dragged out of any strip, including our own.
+        public override bool ResolveDrop(VulkanControl dropped)
+        {
+            if (dropped is not TabStripButtonControl button || !button.dragging) return false;
+
+            button.accepted = true;
+            if (ReferenceEquals(button.item.parent, this)) return true;
+
+            button.item.SetParent(this);
+            SetActive(button.item);
+            return true;
+        }
+
+        // Moves a tab into a window of its own, built from tearOffDocument and placed at the pointer.
+        internal unsafe void TearOff(TabItemControl item)
+        {
+            if (string.IsNullOrEmpty(tearOffDocument)) return;
+
+            RenderWindow source = RenderWindow.Of(this);
+            AGlfwWindow._glfw.GetWindowPos(source.os.handle, out int wx, out int wy);
+
+            RenderWindow torn = Engine.OpenWindow($"tab-{++_tornWindows}", tearOffWidth, tearOffHeight,
+                wx + (int)source.mousePos.X, wy + (int)source.mousePos.Y);
+            WindowControl root = (WindowControl)ParseXML(tearOffDocument);
+            torn.ui.uiRoot = root;
+
+            TabViewControl view = FirstTabView(root);
+            if (view == null) return;
+
+            item.SetParent(view);
+            view.SetActive(item);
+        }
+
+        private static TabViewControl FirstTabView(VulkanControl control)
+        {
+            if (control is TabViewControl view) return view;
+            foreach (Entity child in control.children)
+                if (child is VulkanControl childControl && FirstTabView(childControl) is TabViewControl found)
+                    return found;
+            return null;
+        }
+
         public void SetActive(TabItemControl item)
         {
+            if (item != null && !children.Contains(item)) return;
             if (ReferenceEquals(activeItem, item)) return;
 
             activeItem?.Hide();
@@ -99,6 +172,20 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             RebuildStrip();
             if (activeItem == null && next != null) SetActive(next);
             InvalidateLayout();
+
+            CloseIfEmptied();
+        }
+
+        // A window that exists to hold tabs has nothing left to be once the last one goes. The main
+        // window stays — closing that is the application closing.
+        private void CloseIfEmptied()
+        {
+            if (activeItem != null) return;
+
+            RenderWindow window = RenderWindow.Of(this);
+            if (window == null || window == Engine.primary) return;
+
+            Engine.CloseWindow(window);
         }
 
         public TabItemControl FindTab(string tabName)
@@ -138,12 +225,14 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         // inside a tab has bare area a press can land on.
         private VulkanControl BuildTab(TabItemControl item)
         {
-            ButtonControl tab = new ButtonControl
+            TabStripButtonControl tab = new TabStripButtonControl
             {
                 preferredWidth = (int)tabWidth,
                 preferredHeight = (int)tabHeight,
                 hoverColorHex = tabHoverColorHex,
-                pressColorHex = tabHoverColorHex
+                pressColorHex = tabHoverColorHex,
+                item = item,
+                owner = this
             };
             tab.RegisterOnRelease(() => SetActive(item));
 

@@ -2,8 +2,11 @@
 using ArctisAurora.Core.Data;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.UISystem.Controls;
+using ArctisAurora.EngineWork;
+using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.GLFW;
 using Silk.NET.Maths;
+using Silk.NET.Vulkan;
 using ScrollableControl = ArctisAurora.Core.UISystem.Controls.Containers.ScrollableControl;
 using InputHandler = ArctisAurora.EngineWork.InputHandler;
 using Keys = ArctisAurora.EngineWork.Keys;
@@ -13,7 +16,6 @@ namespace ArctisAurora.Core.UISystem
     public unsafe class UICollisionHandling
     {
         public static UICollisionHandling instance;
-        public bool isInWindow = true;
         public ContextMenuControl defaultContextMenu;
 
         public Vector2D<float> lastMousePos;
@@ -35,12 +37,16 @@ namespace ArctisAurora.Core.UISystem
             instance = this;
         }
 
-        public void SolveHover(Vector2D<float> mousePos)
+        // The root is the tree of whichever window the pointer is in — one pointer, so the hover,
+        // drag and active contexts below stay global.
+        public void SolveHover(Vector2D<float> mousePos, VulkanControl root)
         {
+            if (root == null) return;
+
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
 
-            VulkanControl deepest = FindDeepestValid(mousePos, EntityRegistry.uiTree, ref localVerts);
-            if (deepest != EntityRegistry.uiTree && deepest != null)
+            VulkanControl deepest = FindDeepestValid(mousePos, root, ref localVerts);
+            if (deepest != root && deepest != null)
             {
                 if (deepest != hovering)
                 {
@@ -84,6 +90,8 @@ namespace ArctisAurora.Core.UISystem
             {
                 // cleared before the callbacks, so a handler asking whether a drag is live gets no
                 SetDragging(null);
+                DragGhost.Hide();
+                OfferDrop(dragTarget);
                 dragTarget.StopDrag();
                 dragTarget.ResolveOnRelease();
             }
@@ -116,6 +124,7 @@ namespace ArctisAurora.Core.UISystem
             {
                 VulkanControl stale = dragging;
                 SetDragging(null);
+                DragGhost.Hide();
                 stale.StopDrag();
                 return;
             }
@@ -194,17 +203,64 @@ namespace ArctisAurora.Core.UISystem
             (control as IContext)?.OnContextAdded("Dragging");
         }
 
+        // Offers the dropped control to whatever is under the pointer, innermost first.
+        //
+        // The target cannot come from `hovering`: the press captured the pointer to the drag's own
+        // window, so no other window is told the pointer is over it and its tree is never hovered.
+        // The drag's window does still report accurate positions, so the target is found by geometry
+        // — screen point, the window whose rect holds it, that window's tree.
+        private static void OfferDrop(VulkanControl dropped)
+        {
+            RenderWindow source = RenderWindow.Of(dropped);
+            if (source == null) return;
+
+            AGlfwWindow._glfw.GetWindowPos(source.os.handle, out int sx, out int sy);
+            Vector2D<float> screen = new Vector2D<float>(sx + source.mousePos.X, sy + source.mousePos.Y);
+
+            RenderWindow target = WindowAt(screen);
+            if (target == null || target.ui.uiRoot == null) return;
+
+            AGlfwWindow._glfw.GetWindowPos(target.os.handle, out int tx, out int ty);
+            Vector2D<float> local = target.ui.ToDesignSpace(new Vector2D<float>(screen.X - tx, screen.Y - ty));
+
+            VulkanControl control = instance.HitTest(local, target.ui.uiRoot);
+            while (control != null)
+            {
+                if (control.ResolveDrop(dropped)) return;
+                control = control.parent as VulkanControl;
+            }
+        }
+
+        // First window whose rect holds the point. Overlapping windows are resolved by map order,
+        // not by what is actually on top — GLFW publishes no z-order.
+        private static RenderWindow WindowAt(Vector2D<float> screen)
+        {
+            foreach (RenderWindow window in Engine.windows.Values)
+            {
+                // the preview sits under the pointer by definition, so it must never be a drop target
+                if (window.closeRequested || window.isGhost) continue;
+
+                AGlfwWindow._glfw.GetWindowPos(window.os.handle, out int x, out int y);
+                Extent2D size = window.os.windowSize;
+                if (screen.X >= x && screen.Y >= y && screen.X < x + size.Width && screen.Y < y + size.Height)
+                    return window;
+            }
+            return null;
+        }
+
+        // The deepest hit-testable control under a point in one tree.
+        public VulkanControl HitTest(Vector2D<float> point, VulkanControl root)
+        {
+            Vector2D<float>[] localVerts = new Vector2D<float>[4];
+            return FindDeepestValid(point, root, ref localVerts);
+        }
+
         // Walks up to the first control that can hold the active context.
         private static VulkanControl ActiveTarget(VulkanControl control)
         {
             while (control != null && !control.canBeActiveContext)
                 control = control.parent as VulkanControl;
             return control;
-        }
-
-        public void IsInWindow(WindowHandle* handle, bool isInWindow)
-        {
-            this.isInWindow = isInWindow;
         }
 
         private bool SolvePositions(VulkanControl entity, Vector2D<float> pos, Vector2D<float>[] localVerts)

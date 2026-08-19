@@ -339,6 +339,9 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         [A_XSDElementProperty("Grid.Row", "UI", "If present in a grid sets the control's grid row.")]
         public int gridRow = 0;
+
+        [A_XSDElementProperty("DraggingOpacity", "UI", "Opacity of this control's drag preview. Negative uses the UI setting.")]
+        public float draggingOpacity = -1f;
         #endregion
 
         #region ---- styling ----
@@ -779,6 +782,9 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         public virtual void RegisterDragStop(Action action) => onDragStop += action;
         public virtual void StopDrag() => onDragStop?.Invoke();
+
+        // A drag was released over this control. False means "not mine" and the offer walks up.
+        public virtual bool ResolveDrop(VulkanControl dropped) => false;
 
         public void RegisterOnClick(Action action) => onClick += action;
         public virtual void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)

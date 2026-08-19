@@ -107,14 +107,13 @@ namespace ArctisAurora.Core.UISystem.Controls
             MarkTreeOrderDirty();
         }
 
-        // Only on a change, because ChangeCursor allocates a GLFW cursor it never frees and the
-        // hover callback runs every tick.
+        // Only on a change — the hover callback runs every tick and the shape rarely differs.
         private void Hover(Vector2D<float> pos)
         {
             CursorShape shape = ShapeFor(EdgesAt(pos));
             if (shape == shown) return;
 
-            AGlfwWindow.ChangeCursor(shape);
+            RenderWindow.Of(this)?.os.ChangeCursor(shape);
             shown = shape;
         }
 
@@ -122,7 +121,7 @@ namespace ArctisAurora.Core.UISystem.Controls
         {
             if (shown == CursorShape.Arrow) return;
 
-            AGlfwWindow.ChangeCursor(CursorShape.Arrow);
+            RenderWindow.Of(this)?.os.ChangeCursor(CursorShape.Arrow);
             shown = CursorShape.Arrow;
         }
 
@@ -131,8 +130,9 @@ namespace ArctisAurora.Core.UISystem.Controls
             (left, right, top, bottom) = EdgesAt(Pointer());
             if (!(left || right || top || bottom)) return;
 
-            AGlfwWindow._glfw.GetWindowPos(AGlfwWindow.windowHandle, out grabX, out grabY);
-            AGlfwWindow._glfw.GetWindowSize(AGlfwWindow.windowHandle, out grabW, out grabH);
+            WindowHandle* handle = RenderWindow.Of(this).os.handle;
+            AGlfwWindow._glfw.GetWindowPos(handle, out grabX, out grabY);
+            AGlfwWindow._glfw.GetWindowSize(handle, out grabW, out grabH);
             grab = ScreenPos();
             grip.StartDrag();
         }
@@ -163,18 +163,24 @@ namespace ArctisAurora.Core.UISystem.Controls
             }
             else if (bottom) h = Math.Max(minHeight, grabH + dy);
 
-            AGlfwWindow._glfw.GetWindowPos(AGlfwWindow.windowHandle, out int curX, out int curY);
+            WindowHandle* handle = RenderWindow.Of(this).os.handle;
+            AGlfwWindow._glfw.GetWindowPos(handle, out int curX, out int curY);
             if (x != curX || y != curY)
-                AGlfwWindow._glfw.SetWindowPos(AGlfwWindow.windowHandle, x, y);
-            AGlfwWindow._glfw.SetWindowSize(AGlfwWindow.windowHandle, w, h);
+                AGlfwWindow._glfw.SetWindowPos(handle, x, y);
+            AGlfwWindow._glfw.SetWindowSize(handle, w, h);
         }
 
-        private static Vector2D<float> Pointer() => WindowControl.ToDesignSpace(InputHandler.mousePos);
-
-        private static Vector2D<float> ScreenPos()
+        private Vector2D<float> Pointer()
         {
-            AGlfwWindow._glfw.GetWindowPos(AGlfwWindow.windowHandle, out int wx, out int wy);
-            return new Vector2D<float>(wx + InputHandler.mousePos.X, wy + InputHandler.mousePos.Y);
+            RenderWindow window = RenderWindow.Of(this);
+            return window.ui.ToDesignSpace(window.mousePos);
+        }
+
+        private Vector2D<float> ScreenPos()
+        {
+            RenderWindow window = RenderWindow.Of(this);
+            AGlfwWindow._glfw.GetWindowPos(window.os.handle, out int wx, out int wy);
+            return new Vector2D<float>(wx + window.mousePos.X, wy + window.mousePos.Y);
         }
 
         private (bool, bool, bool, bool) EdgesAt(Vector2D<float> pos)
@@ -193,7 +199,15 @@ namespace ArctisAurora.Core.UISystem.Controls
             return CursorShape.Arrow;
         }
 
-        private static bool IsMaximized =>
-            AGlfwWindow._glfw.GetWindowAttrib(AGlfwWindow.windowHandle, WindowAttributeGetter.Maximized);
+        // Read during Arrange, which can run before the tree is attached to a window.
+        private bool IsMaximized
+        {
+            get
+            {
+                RenderWindow window = RenderWindow.Of(this);
+                return window != null
+                    && AGlfwWindow._glfw.GetWindowAttrib(window.os.handle, WindowAttributeGetter.Maximized);
+            }
+        }
     }
 }

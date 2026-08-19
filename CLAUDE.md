@@ -168,6 +168,28 @@ Virtualize the document view onto the layout cache
 - Text wraps on word boundaries
 ```
 
+## 10. Cheaper Agents For Easier Work
+
+**Hand off the mechanical. Keep the judgment. Verify everything that comes back.**
+
+Standing permission to spin work out to a cheaper subagent - no need to ask me each time.
+
+- **Goes out:** work where the decision is already made and only the typing is left. Applying an
+  agreed pattern across N call sites, mass renames, gathering "which files mention X", reading a
+  file set to answer one specific question, transcribing a table.
+- **Stays with you:** everything in §1 and §2 - design, forks, the plan itself. Vulkan, threading and
+  layout correctness. Anything that could turn into a departure (§8), because a subagent cannot
+  notice it is departing from a plan it was never shown.
+- **The brief must stand alone.** Paths, exact old and new text, and the boundary of what it may
+  touch. If you find yourself writing "use your judgment", it does not qualify.
+- **Their report is not evidence.** Read the diff, build it, and answer for it as if you wrote it.
+  Never repeat a subagent's claim to me as a verified result.
+- Splitting is for saving cost on bulk, not for skipping the thinking. One agent per mechanical
+  sweep, not one per file.
+
+The test: could you write the instruction precisely enough that a wrong result would be obvious on
+sight? Then send it. Otherwise do it yourself.
+
 This project is a C# game engine called Aurora using Silk.NET/Vulkan/GLFW.
 Always check CLAUDE.md and NAMESPACES.md before suggesting new code.
 Current focus is in "DOCUMENTATION/Work in Progress List.md".

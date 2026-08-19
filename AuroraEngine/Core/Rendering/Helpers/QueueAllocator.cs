@@ -54,7 +54,7 @@ namespace ArctisAurora.Core.Rendering.Helpers
 
             for (int i = 0; i < properties.Length; i++)
             {
-                Engine.window.driverSurface.GetPhysicalDeviceSurfaceSupport(gpu, (uint)i, Engine.window.surface, out Bool32 supported);
+                Engine.primary.os.driverSurface.GetPhysicalDeviceSurfaceSupport(gpu, (uint)i, Engine.primary.os.surface, out Bool32 supported);
                 if (supported)
                 {
                     presentFamilyIndex = i;

@@ -78,16 +78,6 @@ namespace ArctisAurora.Core.Registry
         public static List<EntityRegistryEntry> entries { get; set; }
         private static Dictionary<string, EntityGroup> _groups = new Dictionary<string, EntityGroup>();
         
-        public static VulkanControl uiTree
-        {
-            get => field;
-            set
-            {
-                field = value;
-                (value as WindowControl)?.FitTo(Engine.window.windowSize);
-            }
-        }
-
         public EntityRegistry()
         {
             if (manager == null)

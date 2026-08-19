@@ -33,11 +33,14 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal Pipeline pipeline;
         internal PipelineLayout pipelineLayout;
 
+        // the window this module renders into — everything sized to the swapchain reads it from here
+        internal RenderWindow window;
+
         // commands
         public Queue graphicsQueue;
         public CommandPool moduleCommandPool;
         internal CommandBuffer[] commandBuffers;
-        public bool[] isDirty = { true, true, true };
+        public bool[] isDirty;
         public Semaphore[] moduleFinishedSemaphores;
 
         // descriptors
@@ -67,6 +70,32 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal abstract IReadOnlyList<Entity> renderEntities { get; set; }
 
         internal abstract void PrepareObjects();
+
+        // Joins the module to its window and sizes everything indexed by swapchain image. Called
+        // once the window's swapchain exists, since the driver decides how many images that is.
+        internal void BindWindow(RenderWindow window)
+        {
+            this.window = window;
+            RebindImageCount(window);
+        }
+
+        // The pool this module's command buffers come from, so they can be freed when the per-image
+        // arrays are resized.
+        internal virtual CommandPool commandBufferPool => moduleCommandPool;
+
+        // Re-sizes the per-image arrays after the swapchain handed back a different image count.
+        internal virtual void RebindImageCount(RenderWindow window)
+        {
+            isDirty = new bool[window.imageCount];
+            Array.Fill(isDirty, true);
+
+            if (commandBuffers != null)
+            {
+                fixed (CommandBuffer* buffersPtr = commandBuffers)
+                    Renderer.vk.FreeCommandBuffers(Renderer.logicalDevice, commandBufferPool, (uint)commandBuffers.Length, buffersPtr);
+                commandBuffers = null;
+            }
+        }
 
         internal virtual void RegisterVulkanQueue(QueueAllocator allocator, Vk vk, ref Device device)
         {
@@ -211,7 +240,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal virtual void CreateOutputImages()
         {
-            uint imageceCount = Renderer.swapchainImageCount;
+            uint imageceCount = window.imageCount;
             outputImages = new Image[imageceCount];
             outputImageViews = new ImageView[imageceCount];
             imageDeviceMemory = new DeviceMemory[imageceCount];
@@ -219,7 +248,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             for (int i = 0; i < imageceCount; i++)
             {
                 AVulkanBufferHandler.CreateImage(Renderer.vk, ref Renderer.logicalDevice, Renderer.gpu,
-                    Renderer.swapchainExtent.Width, Renderer.swapchainExtent.Height,
+                    window.swapchainExtent.Width, window.swapchainExtent.Height,
                     outputFormat,
                     ImageTiling.Optimal,
                     ImageUsageFlags.ColorAttachmentBit | ImageUsageFlags.SampledBit,
@@ -227,6 +256,39 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     ref outputImages[i], ref imageDeviceMemory[i]);
                 AVulkanBufferHandler.CreateImageView(Renderer.vk, ref Renderer.logicalDevice, ref outputImages[i], ref outputImageViews[i], outputFormat, ImageAspectFlags.ColorBit);
             }
+        }
+
+        // Everything this module owns on the device. Called when its window closes, after
+        // DeviceWaitIdle. Shared assets are not touched here — they outlive any one window.
+        internal virtual void DestroyGpuResources()
+        {
+            DestroySizeDependentResources();
+
+            if (commandBuffers != null)
+            {
+                fixed (CommandBuffer* buffersPtr = commandBuffers)
+                    Renderer.vk.FreeCommandBuffers(Renderer.logicalDevice, commandBufferPool, (uint)commandBuffers.Length, buffersPtr);
+                commandBuffers = null;
+            }
+
+            if (frameResources != null)
+                for (int i = 0; i < frameResources.Length; i++)
+                    if (frameResources[i] != null && frameResources[i].pool.Handle != 0)
+                        Renderer.vk.DestroyDescriptorPool(Renderer.logicalDevice, frameResources[i].pool, null);
+
+            if (descriptorSetLayouts != null)
+                for (int i = 0; i < descriptorSetLayouts.Length; i++)
+                    if (descriptorSetLayouts[i].Handle != 0)
+                        Renderer.vk.DestroyDescriptorSetLayout(Renderer.logicalDevice, descriptorSetLayouts[i], null);
+
+            if (pipeline.Handle != 0)
+                Renderer.vk.DestroyPipeline(Renderer.logicalDevice, pipeline, null);
+            if (pipelineLayout.Handle != 0)
+                Renderer.vk.DestroyPipelineLayout(Renderer.logicalDevice, pipelineLayout, null);
+            if (moduleCommandPool.Handle != 0)
+                Renderer.vk.DestroyCommandPool(Renderer.logicalDevice, moduleCommandPool, null);
+
+            camera?.Destroy();
         }
 
         // Destroys everything sized to the window/swapchain (the output images). Called on resize before

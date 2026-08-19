@@ -1,7 +1,7 @@
 ﻿<Window xmlns="http://arctisaurora/AuroraUITypes"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://arctisaurora/UI ../Schemas/UITypeSchema.xsd"
-        Width="1280" Height="720" WindowingMode="WindowSize" ContentScalingMode="Vertical" ColorHex="#1e1e1e">
+        Width="900" Height="640" WindowingMode="WindowSize" ContentScalingMode="Vertical" ColorHex="#1e1e1e">
 
 	<WindowFrame ColorHex="#1e1e1e">
 	<StackPanel Orientation="Vertical" ColorHex="#1e1e1e">
@@ -20,14 +20,10 @@
 			</Button>
 		</TitleBar>
 
-		<StackPanel Orientation="Horizontal" HeightStar="1" ColorHex="#1e1e1e">
-			<VaultBrowser Name="Browser" Width="220" MinWidth="120" ColorHex="#171717" Padding="8"/>
-			<Splitter Width="5"/>
-			<TabView Name="Tabs" WidthStar="1" ColorHex="#1e1e1e"
-					 TabHeight="28" TabWidth="180"
-					 TabColorHex="#252525" ActiveTabColorHex="#1e1e1e" TabHoverColorHex="#2F2F2F"
-					 TearOffDocument="TabWindow.xml"/>
-		</StackPanel>
+		<TabView Name="Tabs" HeightStar="1" ColorHex="#1e1e1e"
+				 TabHeight="28" TabWidth="180"
+				 TabColorHex="#252525" ActiveTabColorHex="#1e1e1e" TabHoverColorHex="#2F2F2F"
+				 TearOffDocument="TabWindow.xml"/>
 	</StackPanel>
 	</WindowFrame>
 </Window>

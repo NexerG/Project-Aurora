@@ -74,14 +74,11 @@ namespace ArctisAurora.Core.UISystem.Controls
         }
 
         // Window pixels to the units the tree is laid out in — identity unless the content scales.
-        public static Vector2D<float> ToDesignSpace(Vector2D<float> windowPoint)
+        public Vector2D<float> ToDesignSpace(Vector2D<float> windowPoint, Extent2D window)
         {
-            if (EntityRegistry.uiTree is not WindowControl root) return windowPoint;
-
-            Extent2D window = Engine.window.windowSize;
             if (window.Width == 0 || window.Height == 0) return windowPoint;
 
-            Vector2D<float> box = root.ViewportSize(window);
+            Vector2D<float> box = ViewportSize(window);
             return new Vector2D<float>(windowPoint.X * box.X / window.Width,
                                        windowPoint.Y * box.Y / window.Height);
         }

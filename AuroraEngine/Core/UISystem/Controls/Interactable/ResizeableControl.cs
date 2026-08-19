@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.Core.UISystem.Controls;
+using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.GLFW;
 using Silk.NET.Maths;
@@ -28,12 +29,12 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
 
         private void Hover(Vector2D<float> pos)
         {
-            AGlfwWindow.ChangeCursor(GetCursor(pos));
+            RenderWindow.Of(this)?.os.ChangeCursor(GetCursor(pos));
         }
 
         private void OnExit()
         {
-            AGlfwWindow.ChangeCursor(CursorShape.Arrow);
+            RenderWindow.Of(this)?.os.ChangeCursor(CursorShape.Arrow);
         }
 
         private void OnRelease()

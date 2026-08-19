@@ -2,11 +2,13 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
+using ArctisAurora.Core.UISystem;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using Silk.NET.Core.Native;
+using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
 using static ArctisAurora.Core.UISystem.Controls.VulkanControl;
@@ -89,6 +91,31 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal static MCUI meshComponent;
         internal override IReadOnlyList<Entity> renderEntities { get => field; set { field = value; } }
 
+        private WindowControl _uiRoot;
+
+        // The tree this module draws, and its slice of the UIControls pool in dense order. The pool
+        // is shared by every window, so the range is published by UILayout.RefreshWindowRanges.
+        public WindowControl uiRoot
+        {
+            get => _uiRoot;
+            set
+            {
+                _uiRoot = value;
+                UILayout.InvalidateWindowRanges();
+                value?.FitTo(window.os.windowSize);
+            }
+        }
+        internal int firstInstance;
+        internal int instanceCount;
+
+        // Set on a ghost window's module: the control whose subtree this draws instead of a tree of
+        // its own. The camera frames it and the range is that subtree's, not a slice of the pool.
+        internal VulkanControl rangeRoot;
+
+        // Window pixels to the units this module's tree is laid out in.
+        public Vector2D<float> ToDesignSpace(Vector2D<float> windowPoint) =>
+            _uiRoot == null ? windowPoint : _uiRoot.ToDesignSpace(windowPoint, window.os.windowSize);
+
         internal struct DeferredResources
         {
             internal Silk.NET.Vulkan.Buffer buffer;
@@ -113,7 +140,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         private PoolCursor Cursor(int frame)
         {
-            _cursors ??= new PoolCursor[Renderer.swapchainImageCount];
+            _cursors ??= new PoolCursor[window.imageCount];
             return _cursors[frame] ??= new PoolCursor(ControlPool);
         }
 
@@ -123,17 +150,52 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         private int BuildCapacity => _buildCapacity < 0 ? ControlPool.Capacity : _buildCapacity;
 
 
+        // The module is constructed before its window has a swapchain, so everything indexed by
+        // swapchain image is sized in RebindImageCount instead of here.
         public UIModule()
         {
-            deferredDeletions = new List<DeferredResources>[Renderer.swapchainImageCount];
-            for (int i = 0; i < Renderer.swapchainImageCount; i++)
+        }
+
+        internal override void RebindImageCount(RenderWindow window)
+        {
+            base.RebindImageCount(window);
+
+            deferredDeletions = new List<DeferredResources>[window.imageCount];
+            for (int i = 0; i < window.imageCount; i++)
                 deferredDeletions[i] = new List<DeferredResources>();
 
-            frameResources = new FrameResources[Renderer.swapchainImageCount];
-            _frameBuiltCapacity = new int[Renderer.swapchainImageCount];
-            _frameTableVersion = new int[Renderer.swapchainImageCount];
+            frameResources = new FrameResources[window.imageCount];
+            _frameBuiltCapacity = new int[window.imageCount];
+            _frameTableVersion = new int[window.imageCount];
             Array.Fill(_frameBuiltCapacity, -1);
             Array.Fill(_frameTableVersion, -1);
+
+            _cursors = null;
+        }
+
+        // The static meshComponent is deliberately untouched — its sampler and both SSBO mirrors are
+        // shared by every window and outlive any one of them.
+        internal override void DestroyGpuResources()
+        {
+            if (deferredDeletions != null)
+            {
+                for (int i = 0; i < deferredDeletions.Length; i++)
+                {
+                    foreach (DeferredResources d in deferredDeletions[i])
+                    {
+                        if (d.buffer.Handle != 0)
+                        {
+                            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, d.buffer, null);
+                            Renderer.vk.FreeMemory(Renderer.logicalDevice, d.memory, null);
+                        }
+                        if (d.pool.Handle != 0)
+                            Renderer.vk.DestroyDescriptorPool(Renderer.logicalDevice, d.pool, null);
+                    }
+                    deferredDeletions[i].Clear();
+                }
+            }
+
+            base.DestroyGpuResources();
         }
 
         internal override void UpdateModule(int currentFrame)
@@ -190,7 +252,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         {
             Renderer.renderer.CreateCommandPool((uint)Renderer.queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit), out moduleCommandPool, CommandPoolCreateFlags.ResetCommandBufferBit);
             RegisterVulkanQueue(Renderer.queueAllocator, Renderer.vk, ref Renderer.logicalDevice);
-            meshComponent = new MCUI();
+            meshComponent ??= new MCUI();
             PrepareCamera();
 
             EntityGroup controls = EntityRegistry.GetGroup("Controls");
@@ -418,15 +480,15 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 {
                     X = 0,
                     Y = 0,
-                    Width = Engine.window.windowSize.Width,
-                    Height = Engine.window.windowSize.Height,
+                    Width = window.swapchainExtent.Width,
+                    Height = window.swapchainExtent.Height,
                     MinDepth = 0,
                     MaxDepth = 1
                 };
                 Rect2D scissor = new Rect2D()
                 {
                     Offset = { X = 0, Y = 0 },
-                    Extent = Engine.window.windowSize
+                    Extent = window.swapchainExtent
                 };
                 PipelineViewportStateCreateInfo viewportState = new PipelineViewportStateCreateInfo()
                 {
@@ -558,14 +620,14 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal override void PrepareCamera()
         {
-            camera = new AuroraCamera();
+            camera = new AuroraCamera(this);
         }
 
         internal override void WriteCommandBuffers(int currentFrame)
         {
             if (commandBuffers == null)
             {
-                commandBuffers = new CommandBuffer[Renderer.swapchainImageCount];
+                commandBuffers = new CommandBuffer[window.imageCount];
 
                 CommandBufferAllocateInfo _allocInfo = new CommandBufferAllocateInfo()
                 {
@@ -629,7 +691,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             RenderingInfo _renderingInfo = new RenderingInfo()
             {
                 SType = StructureType.RenderingInfo,
-                RenderArea = new Rect2D() { Offset = { X = 0, Y = 0 }, Extent = Renderer.swapchainExtent },
+                RenderArea = new Rect2D() { Offset = { X = 0, Y = 0 }, Extent = window.swapchainExtent },
                 LayerCount = 1,
                 ColorAttachmentCount = 1,
                 PColorAttachments = &_colorAttachment
@@ -639,8 +701,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             Renderer.vk.CmdBeginRendering(commandBuffers[currentFrame], &_renderingInfo);
             Renderer.vk.CmdBindPipeline(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipeline);
 
-            Viewport _viewport = new Viewport() { X = 0, Y = 0, Width = Renderer.swapchainExtent.Width, Height = Renderer.swapchainExtent.Height, MinDepth = 0, MaxDepth = 1 };
-            Rect2D _scissor = new Rect2D() { Offset = { X = 0, Y = 0 }, Extent = Renderer.swapchainExtent };
+            Viewport _viewport = new Viewport() { X = 0, Y = 0, Width = window.swapchainExtent.Width, Height = window.swapchainExtent.Height, MinDepth = 0, MaxDepth = 1 };
+            Rect2D _scissor = new Rect2D() { Offset = { X = 0, Y = 0 }, Extent = window.swapchainExtent };
             Renderer.vk.CmdSetViewport(commandBuffers[currentFrame], 0, 1, &_viewport);
             Renderer.vk.CmdSetScissor(commandBuffers[currentFrame], 0, 1, &_scissor);
 
@@ -649,7 +711,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             if (meshComponent.render == true)
             {
                 DescriptorSet[] frameSets = frameResources[currentFrame].sets;
-                meshComponent.EnqueueDrawCommands(ref _offset, currentFrame, 0, ref commandBuffers[currentFrame], ref pipelineLayout, ref frameSets);
+                meshComponent.EnqueueDrawCommands(ref _offset, currentFrame, firstInstance, instanceCount, ref commandBuffers[currentFrame], ref pipelineLayout, ref frameSets);
             }
             Renderer.vk.CmdEndRendering(commandBuffers[currentFrame]);
 

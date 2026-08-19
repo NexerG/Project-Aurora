@@ -8,6 +8,7 @@ using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.Core.UISystem.Controls.Interactable;
 using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.Core.UISystem.Controls.Text.Document;
+using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
 using AuroraPeriodic;
 
@@ -54,7 +55,7 @@ namespace Periodic.Editor.CustomControls
         // drains its queue with a foreach and building a document creates entities.
         public static void OpenFirstNote()
         {
-            VaultBrowserControl browser = EntityRegistry.uiTree.FindByName(browserName) as VaultBrowserControl;
+            VaultBrowserControl browser = Engine.primary.ui.uiRoot.FindByName(browserName) as VaultBrowserControl;
             if (browser?.firstNote != null) Open(browser.firstNote);
         }
 
@@ -124,7 +125,7 @@ namespace Periodic.Editor.CustomControls
         // Focuses the note's tab, opening one if it is not already open.
         private static void Open(string notePath)
         {
-            TabViewControl tabs = EntityRegistry.uiTree.FindByName(tabsName) as TabViewControl;
+            TabViewControl tabs = Engine.primary.ui.uiRoot.FindByName(tabsName) as TabViewControl;
             if (tabs == null) return;
 
             TabItemControl open = tabs.FindTab(notePath);

@@ -8,6 +8,7 @@ using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Modules;
+using Silk.NET.GLFW;
 using Silk.NET.Maths;
 using System.Runtime.InteropServices;
 
@@ -34,7 +35,17 @@ namespace ArctisAurora.EngineWork
         public static int doubleClickTime = 250;
 
         internal static Engine engineInstance = null;
-        internal static AGlfwWindow window;
+
+        // Every open OS window, by name. Copy-on-write: a mutation builds a whole new dictionary and
+        // publishes it, so the render thread reads the reference once and walks a map nobody will
+        // touch again. The window the application boots into is "main" and is never removed —
+        // closing it closes the application.
+        private static Dictionary<string, RenderWindow> _windows = new Dictionary<string, RenderWindow>();
+        public static Dictionary<string, RenderWindow> windows => Volatile.Read(ref _windows);
+        public static RenderWindow primary;
+
+        public const string mainWindow = "main";
+
         internal static Renderer renderer;
         internal static InputHandler inputHandler;
         internal static UICollisionHandling uiCollisionHandler;
@@ -118,14 +129,97 @@ namespace ArctisAurora.EngineWork
         public static void InitWindowing()
         {
             GraphicsSettings settings = SettingsRegistry.Get<GraphicsSettings>();
-            window = new AGlfwWindow(settings.window.width, settings.window.height);
-            window.CreateWindow();
-            window.SetCursorPosCallback(inputHandler.ProcessMouseMove);
-            window.SetMouseButtonCallback(inputHandler.ProcessMouseClick);
-            window.SetKeyCallback(inputHandler.ProcessKeyboard);
-            window.SetCharCallback(inputHandler.ProcessCharInput);
-            window.SetMouseOnWindowCallback(UICollisionHandling.instance.IsInWindow);
-            window.SetScrollCallback(inputHandler.ProcessScrollWheel);
+            RenderWindow window = new RenderWindow(settings.window.width, settings.window.height);
+            primary = window;
+            Publish(mainWindow, window);
+
+            window.os.CreateWindow();
+            WireInput(window);
+            window.os.SeedIsInWindow();
+            window.gpuReady = true;   // the bootstrap steps build the primary's resources in stages
+        }
+
+        // A window opened after bootstrap. Only the OS window is made here — the render thread owns
+        // Vulkan, so it builds the GPU side at the top of its next tick and Draw skips until then.
+        public static RenderWindow OpenWindow(string name, uint width, uint height, int x, int y)
+        {
+            RenderWindow window = new RenderWindow(width, height);
+            window.os.CreateWindow(name, x, y);
+            WireInput(window);
+
+            Publish(name, window);
+            return window;
+        }
+
+        // No input callbacks — a preview window is looked at, never clicked.
+        public static RenderWindow OpenGhostWindow(string name, uint width, uint height)
+        {
+            RenderWindow window = new RenderWindow(width, height) { isGhost = true };
+            window.os.CreateGhostWindow();
+
+            Publish(name, window);
+            return window;
+        }
+
+        // Marks a window for teardown. The render thread frees its Vulkan objects, then MainTick
+        // destroys the OS window and drops it from the map.
+        public static void CloseWindow(RenderWindow window)
+        {
+            if (window == primary)
+            {
+                engineInstance?.Stop();
+                return;
+            }
+
+            window.ui.uiRoot?.Destroy();
+            window.ui.uiRoot = null;
+            window.closeRequested = true;
+        }
+
+        private static void Publish(string name, RenderWindow window)
+        {
+            Dictionary<string, RenderWindow> next = new Dictionary<string, RenderWindow>(_windows);
+            next[name] = window;
+            Volatile.Write(ref _windows, next);
+        }
+
+        private static void Unpublish(string name)
+        {
+            Dictionary<string, RenderWindow> next = new Dictionary<string, RenderWindow>(_windows);
+            next.Remove(name);
+            Volatile.Write(ref _windows, next);
+        }
+
+        // Destroys the OS window of anything the render thread has finished freeing.
+        private static void ReapClosedWindows()
+        {
+            Dictionary<string, RenderWindow> snapshot = windows;
+            foreach (KeyValuePair<string, RenderWindow> entry in snapshot)
+            {
+                if (!entry.Value.closeRequested || !entry.Value.gpuDestroyed) continue;
+
+                Unpublish(entry.Key);
+                entry.Value.os.DestroyWindow();
+            }
+        }
+
+        // The window a GLFW callback fired for.
+        public static RenderWindow WindowFor(WindowHandle* handle)
+        {
+            foreach (RenderWindow window in windows.Values)
+                if (window.os.handle == handle)
+                    return window;
+            return null;
+        }
+
+        private static void WireInput(RenderWindow window)
+        {
+            window.os.SetCursorPosCallback(inputHandler.ProcessMouseMove);
+            window.os.SetMouseButtonCallback(inputHandler.ProcessMouseClick);
+            window.os.SetKeyCallback(inputHandler.ProcessKeyboard);
+            window.os.SetCharCallback(inputHandler.ProcessCharInput);
+            window.os.SetMouseOnWindowCallback(window.MouseCrossedBorder);
+            window.os.SetScrollCallback(inputHandler.ProcessScrollWheel);
         }
 
         [A_XSDActionDependency("Renderer.InitRenderer", "Bootstrap")]
@@ -137,11 +231,7 @@ namespace ArctisAurora.EngineWork
         [A_XSDActionDependency("Renderer.PreInitialize", "Bootstrap")]
         public static void SetupModules()
         {
-            RenderingModule[] modules = new RenderingModule[]
-            {
-                new UIModule(),
-            };
-            renderer.PreInitialize(modules);
+            renderer.PreInitialize();
         }
         #endregion
 
@@ -154,8 +244,12 @@ namespace ArctisAurora.EngineWork
         internal void MainTick()
         {
             AGlfwWindow._glfw.PollEvents();
+            ReapClosedWindows();
             InputHandler.instance.ActivateKeybinds();
-            HandleUI();
+
+            foreach (RenderWindow window in windows.Values)
+                HandleUI(window);
+            DragGhost.Follow();
 
             // here should go entity updates &/or interpolation
             Interpolate();
@@ -164,16 +258,26 @@ namespace ArctisAurora.EngineWork
             // MOVES pool memory, and the render thread is no longer parked while it runs — the
             // address-stable storage rework is what makes this safe.
             DataManager.FrameEdge();
+
+            // Dense indices have settled, so each window module can be told the range it draws.
+            UILayout.RefreshWindowRanges();
         }
 
-        private void HandleUI()
+        private void HandleUI(RenderWindow window)
         {
-            if (!uiCollisionHandler.isInWindow) return;
+            if (window.closeRequested) return;
 
-            Vector2D<float> mp = WindowControl.ToDesignSpace(InputHandler.mousePos);
+            // A pressed button captures the pointer to the window it went down in, which keeps
+            // reporting positions far outside itself and stops every other window hearing anything.
+            // So the drag's own window drives the whole gesture, wherever the pointer has gone.
+            bool ownsDrag = UICollisionHandling.dragging != null
+                && ReferenceEquals(RenderWindow.Of(UICollisionHandling.dragging), window);
+            if (!window.isInWindow && !ownsDrag) return;
+
+            Vector2D<float> mp = window.ui.ToDesignSpace(window.mousePos);
             uiCollisionHandler.delta = mp - uiCollisionHandler.lastMousePos;
-            uiCollisionHandler.SolveHover(mp);
-            uiCollisionHandler.SolveDrag(mp);
+            if (window.isInWindow)
+                uiCollisionHandler.SolveHover(mp, window.ui.uiRoot);
 
             KeyStateEntry lmb = inputHandler.keyTracker.GetState(Keys.MouseLeft);
             KeyStateEntry rmb = inputHandler.keyTracker.GetState(Keys.MouseRight);
@@ -194,8 +298,13 @@ namespace ArctisAurora.EngineWork
                     uiCollisionHandler.SolveRMBRelease(mp);
             }
 
-            if (InputHandler.scrollDelta.X != 0 || InputHandler.scrollDelta.Y != 0)
-                uiCollisionHandler.SolveScroll(InputHandler.scrollDelta);
+            // After the release, not before it: the button is already up in the key tracker by the
+            // time this tick runs, so a drag solved first would take its own stale-release path and
+            // the release would never see a live drag.
+            uiCollisionHandler.SolveDrag(mp);
+
+            if (window.scrollDelta.X != 0 || window.scrollDelta.Y != 0)
+                uiCollisionHandler.SolveScroll(window.scrollDelta);
 
             uiCollisionHandler.lastMousePos = mp;
         }

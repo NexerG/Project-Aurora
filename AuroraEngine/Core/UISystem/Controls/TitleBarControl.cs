@@ -2,6 +2,7 @@ using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
+using Silk.NET.GLFW;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.UISystem.Controls
@@ -15,7 +16,7 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
         {
-            grab = InputHandler.mousePos;
+            grab = RenderWindow.Of(this).mousePos;
             StartDrag();
             base.ResolveOnClick(oldPos, delta);
         }
@@ -25,10 +26,12 @@ namespace ArctisAurora.Core.UISystem.Controls
         // than running away. Raw window pixels, not design space — the window moves in screen units.
         public override void ResolveDrag(Vector2D<float> lastPos, Vector2D<float> delta)
         {
-            AGlfwWindow._glfw.GetWindowPos(AGlfwWindow.windowHandle, out int x, out int y);
-            AGlfwWindow._glfw.SetWindowPos(AGlfwWindow.windowHandle,
-                x + (int)(InputHandler.mousePos.X - grab.X),
-                y + (int)(InputHandler.mousePos.Y - grab.Y));
+            RenderWindow window = RenderWindow.Of(this);
+            WindowHandle* handle = window.os.handle;
+            AGlfwWindow._glfw.GetWindowPos(handle, out int x, out int y);
+            AGlfwWindow._glfw.SetWindowPos(handle,
+                x + (int)(window.mousePos.X - grab.X),
+                y + (int)(window.mousePos.Y - grab.Y));
 
             base.ResolveDrag(lastPos, delta);
         }

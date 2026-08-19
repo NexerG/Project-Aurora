@@ -25,7 +25,6 @@ namespace ArctisAurora.EngineWork.Rendering
         internal static Instance instance;
         internal static PhysicalDevice gpu;
         internal static Device logicalDevice;
-        internal SurfaceFormatKHR surfaceFormat;
 
         // commands
         internal static Queue presentQueue;                     // present surface queue
@@ -37,15 +36,9 @@ namespace ArctisAurora.EngineWork.Rendering
         internal CommandBuffer[] transferCommandBuffers;
         internal static CommandPool transferCommandPool;
 
-        internal static Semaphore[] imageAvailableSemaphores;   // are display images ready?
-        internal static Semaphore[] renderFinishedSemaphores;   // are images for displays ready?
-        internal static Semaphore timelineSemaphore;            // timeline semaphore for synchronizing frames across modules and compositor
-        internal static ulong frameCounter = 0;                 
-        // timeline semaphore value is (frameCounter - MAX_FRAMES_IN_FLIGHT) * 2 + 2, modules signal at +1, compositor signals at + 2
-
-        // compositor
-        internal static CompositorModule compositorModule;
-        internal static Semaphore[] modulesFinishedSemaphores;
+        // Frame sync, the swapchain and the modules all live on RenderWindow — one set per OS window.
+        // The timeline semaphore value is (frameCounter - MAX_FRAMES_IN_FLIGHT) * 2 + 2; modules
+        // signal at +1, the compositor at +2.
 
         // features
         private readonly string[] extensions = new string[]
@@ -73,18 +66,10 @@ namespace ArctisAurora.EngineWork.Rendering
 
 
         // rendering
-        internal static uint swapchainImageCount = 3;
-        internal static SwapchainKHR swapchain;
-        internal static KhrSwapchain swapchainKHR;
-        internal static Extent2D swapchainExtent;
-
-        internal Image[] swapchainImages;
-        internal ImageView[] swapchainImageViews;
-
         internal const int MAX_FRAMES_IN_FLIGHT = 2;
-        internal static int currentFrame = 0;
 
-        internal static RenderingModule[] renderingModules;
+        // What kind of renderer is running, for the code that only asks the question globally.
+        internal static ERendererTypes PrimaryRendererType => Engine.primary.modules[0].rendererType;
 
         // debug
         private bool isDebugEnabled = true;
@@ -97,20 +82,31 @@ namespace ArctisAurora.EngineWork.Rendering
             renderer = this;
         }
 
-        // setup prerequisites
-        internal void PreInitialize(RenderingModule[] modules)
+        // Setup prerequisites: the feature set the logical device has to be created with, collected
+        // from the modules the windows built for themselves.
+        internal void PreInitialize()
         {
-            renderingModules = modules;
+            features12.TimelineSemaphore = true;
+            features13.DynamicRendering = true;
+
+            RenderingModule[] modules = Engine.primary.modules;
+            for (int i = 0; i < modules.Length; i++)
+            {
+                CopyStructTrues(ref features, modules[i].features);
+                CopyStructTrues(ref features12, modules[i].features12);
+            }
         }
 
         // initializes the window and driver
         [A_XSDActionDependency("Renderer.Initialize", "Bootstrap")]
         internal static void Initialize()
         {
+            RenderWindow window = Engine.primary;
+
             // driver
             renderer.CreateVulkanInstance();
             renderer.SetupDebugMessenger();
-            Engine.window.CreateSurface();
+            window.os.CreateSurface();
             renderer.ChoosePhysicalDevice();
 
             queueAllocator = new QueueAllocator(vk, ref gpu);
@@ -120,7 +116,10 @@ namespace ArctisAurora.EngineWork.Rendering
             presentQueue = queueAllocator.AllocatePresentQueue(vk, logicalDevice);
             transferQueue = queueAllocator.AllocateQueue(vk, logicalDevice, QueueFlags.TransferBit);
 
-            renderer.CreateSwapchain();
+            renderer.CreateSwapchain(window);
+            for (int i = 0; i < window.modules.Length; i++)
+                window.modules[i].BindWindow(window);
+
             renderer.CreateCommandPool((uint)queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit), out compositeCommandPool, CommandPoolCreateFlags.ResetCommandBufferBit);
             renderer.CreateCommandPool((uint)queueAllocator.GetFamilyIndex(QueueFlags.TransferBit), out transferCommandPool, CommandPoolCreateFlags.TransientBit);
         }
@@ -138,39 +137,47 @@ namespace ArctisAurora.EngineWork.Rendering
         [A_XSDActionDependency("Renderer.SetupObjects", "Bootstrap")]
         internal static void SetupObjects()
         {
-            for (int i = 0; i < renderingModules.Length; i++)
+            RenderingModule[] modules = Engine.primary.modules;
+            for (int i = 0; i < modules.Length; i++)
             {
-                renderingModules[i].PrepareObjects();
+                modules[i].PrepareObjects();
             }
         }
 
         [A_XSDActionDependency("Renderer.SetupPipelines", "Bootstrap")]
         internal static void SetupPipelines()
         {
-            for (int i = 0; i < renderingModules.Length; i++)
+            RenderWindow window = Engine.primary;
+            for (int i = 0; i < window.modules.Length; i++)
             {
-                renderingModules[i].CreateOutputImages();
-                renderingModules[i].CreatePipeline();
+                window.modules[i].CreateOutputImages();
+                window.modules[i].CreatePipeline();
             }
-            compositorModule = new CompositorModule();
-            compositorModule.Init(renderingModules, renderer.swapchainImageViews);
+            window.compositor = new CompositorModule();
+            window.compositor.BindWindow(window);
+            window.compositor.Init(window.modules, window.swapchainImageViews);
         }
 
+        // Dead — no caller; the live path is Draw() -> UpdateModule -> WriteCommandBuffers.
         internal void CreateCommandBuffers()
         {
-            for (int modulesIndex = 0; modulesIndex < renderingModules.Length; modulesIndex++)
+            RenderWindow window = Engine.primary;
+            for (int modulesIndex = 0; modulesIndex < window.modules.Length; modulesIndex++)
             {
-                renderingModules[modulesIndex].WriteCommandBuffers(currentFrame);
+                window.modules[modulesIndex].WriteCommandBuffers(window.currentFrame);
             }
         }
 
         [A_XSDActionDependency("Renderer.CreateSyncObjects", "Bootstrap")]
-        internal static void CreateSyncObjects()
+        internal static void CreateSyncObjects() => CreateSyncObjects(Engine.primary);
+
+        internal static void CreateSyncObjects(RenderWindow window)
         {
-            imageAvailableSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
-            renderFinishedSemaphores = new Semaphore[swapchainImageCount];
-            frameCounter = MAX_FRAMES_IN_FLIGHT;
-            timelineSemaphore = new Semaphore();
+            window.imageAvailableSemaphores = new Semaphore[MAX_FRAMES_IN_FLIGHT];
+            window.renderFinishedSemaphores = new Semaphore[window.imageCount];
+            window.modulesFinishedSemaphores = new Semaphore[window.imageCount];
+            window.frameCounter = MAX_FRAMES_IN_FLIGHT;
+            window.timelineSemaphore = new Semaphore();
 
             SemaphoreCreateInfo _semaphoreCreateInfo = new SemaphoreCreateInfo()
             {
@@ -179,24 +186,23 @@ namespace ArctisAurora.EngineWork.Rendering
 
             for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
             {
-                if (vk.CreateSemaphore(logicalDevice, ref _semaphoreCreateInfo, null, out imageAvailableSemaphores[i]) != Result.Success)
+                if (vk.CreateSemaphore(logicalDevice, ref _semaphoreCreateInfo, null, out window.imageAvailableSemaphores[i]) != Result.Success)
                 {
                     throw new Exception("Failed to create 'Image Available Semaphore' at index " + i);
                 }
             }
 
-            for (int i = 0; i < swapchainImageCount; i++)
+            for (int i = 0; i < window.imageCount; i++)
             {
-                if (vk.CreateSemaphore(logicalDevice, ref _semaphoreCreateInfo, null, out renderFinishedSemaphores[i]) != Result.Success)
+                if (vk.CreateSemaphore(logicalDevice, ref _semaphoreCreateInfo, null, out window.renderFinishedSemaphores[i]) != Result.Success)
                 {
                     throw new Exception("Failed to create 'Render Finished Semaphore' at index " + i);
                 }
             }
 
-            modulesFinishedSemaphores = new Semaphore[swapchainImageCount];
-            for (int i = 0; i < swapchainImageCount; i++)
+            for (int i = 0; i < window.imageCount; i++)
             {
-                if (vk.CreateSemaphore(logicalDevice, ref _semaphoreCreateInfo, null, out modulesFinishedSemaphores[i]) != Result.Success)
+                if (vk.CreateSemaphore(logicalDevice, ref _semaphoreCreateInfo, null, out window.modulesFinishedSemaphores[i]) != Result.Success)
                     throw new Exception("Failed to create 'Modules Finished Semaphore' at index " + i);
             }
 
@@ -212,7 +218,7 @@ namespace ArctisAurora.EngineWork.Rendering
                 PNext = &timelineCI
             };
 
-            if (vk.CreateSemaphore(logicalDevice, ref semCI, null, out timelineSemaphore) != Result.Success)
+            if (vk.CreateSemaphore(logicalDevice, ref semCI, null, out window.timelineSemaphore) != Result.Success)
                 throw new Exception("Failed to create frame timeline semaphore");
         }
 
@@ -397,14 +403,6 @@ namespace ArctisAurora.EngineWork.Rendering
 
         private void CreateLogicalDevice()
         {
-            features12.TimelineSemaphore = true;
-            features13.DynamicRendering = true;
-            for (int i = 0; i < renderingModules.Length; i++)
-            {
-                CopyStructTrues(ref features, renderingModules[i].features);
-                CopyStructTrues(ref features12, renderingModules[i].features12);
-            }
-
             VerifyRequiredFeatures();
 
             PhysicalDeviceVulkan13Features f13 = features13;
@@ -500,36 +498,36 @@ namespace ArctisAurora.EngineWork.Rendering
 
         // The surface reports the extent the images will actually get, and mid-drag it is already a frame
         // behind or ahead of the window size GLFW hands us. Everything sized to the swapchain reads the
-        // result back off Renderer.swapchainExtent rather than the live window.
-        private Extent2D ChooseSwapchainExtent(ref SurfaceCapabilitiesKHR capabilities)
+        // result back off the window's swapchainExtent rather than the live window.
+        private Extent2D ChooseSwapchainExtent(ref SurfaceCapabilitiesKHR capabilities, RenderWindow window)
         {
             if (capabilities.CurrentExtent.Width != uint.MaxValue)
                 return capabilities.CurrentExtent;
 
-            Extent2D _window = Engine.window.windowSize;
+            Extent2D _window = window.os.windowSize;
             return new Extent2D(
                 Math.Clamp(_window.Width, capabilities.MinImageExtent.Width, capabilities.MaxImageExtent.Width),
                 Math.Clamp(_window.Height, capabilities.MinImageExtent.Height, capabilities.MaxImageExtent.Height));
         }
 
-        private void CreateSwapchain()
+        internal void CreateSwapchain(RenderWindow window)
         {
-            SwapChainSupportDetails _support = GetSupportDetails(ref gpu, ref Engine.window.driverSurface, ref Engine.window.surface);
-            surfaceFormat = GetSwapchainSurfaceFormat(_support.Formats);
+            SwapChainSupportDetails _support = GetSupportDetails(ref gpu, ref window.os.driverSurface, ref window.os.surface);
+            window.surfaceFormat = GetSwapchainSurfaceFormat(_support.Formats);
             PresentModeKHR _presentMode = GetPresentMode(_support.PresentModes);
 
             var _queueFamilyIndices = stackalloc[] { (uint)queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit), (uint)queueAllocator.presentFamilyIndex };
             uint _imageCount = _support.Capabilities.MinImageCount + 1;
-            swapchainExtent = ChooseSwapchainExtent(ref _support.Capabilities);
+            window.swapchainExtent = ChooseSwapchainExtent(ref _support.Capabilities, window);
             SwapchainCreateInfoKHR _swapchainCreateInfo = new SwapchainCreateInfoKHR()
             {
                 SType = StructureType.SwapchainCreateInfoKhr,
-                Surface = Engine.window.surface,
+                Surface = window.os.surface,
 
                 MinImageCount = _imageCount,
-                ImageFormat = surfaceFormat.Format,
-                ImageColorSpace = surfaceFormat.ColorSpace,
-                ImageExtent = swapchainExtent,
+                ImageFormat = window.surfaceFormat.Format,
+                ImageColorSpace = window.surfaceFormat.ColorSpace,
+                ImageExtent = window.swapchainExtent,
                 ImageArrayLayers = 1,
                 ImageUsage = ImageUsageFlags.ColorAttachmentBit | ImageUsageFlags.TransferDstBit,
                 ImageSharingMode = SharingMode.Exclusive,
@@ -542,28 +540,31 @@ namespace ArctisAurora.EngineWork.Rendering
                 PQueueFamilyIndices = _queueFamilyIndices,
             };
 
-            if (!vk.TryGetDeviceExtension(instance, logicalDevice, out swapchainKHR))
+            if (!vk.TryGetDeviceExtension(instance, logicalDevice, out window.swapchainKHR))
             {
                 throw new Exception("VK_KHR_swapchain extension not found on the device");
             }
 
-            Result r = swapchainKHR!.CreateSwapchain(logicalDevice, ref _swapchainCreateInfo, null, out swapchain);
+            Result r = window.swapchainKHR!.CreateSwapchain(logicalDevice, ref _swapchainCreateInfo, null, out window.swapchain);
             if (r != Result.Success)
             {
                 throw new Exception("Failed to create swapchain " + r);
             }
+            // The driver decides how many images it hands back, so this is read rather than assumed —
+            // every per-image array in the window and its modules is sized off it.
             uint _swapchainImageCount = 0;
-            swapchainKHR.GetSwapchainImages(logicalDevice, swapchain, &_swapchainImageCount, null);
-            swapchainImages = new Image[_swapchainImageCount];
-            fixed (Image* _imagePtr = swapchainImages)
+            window.swapchainKHR.GetSwapchainImages(logicalDevice, window.swapchain, &_swapchainImageCount, null);
+            window.swapchainImages = new Image[_swapchainImageCount];
+            fixed (Image* _imagePtr = window.swapchainImages)
             {
-                swapchainKHR.GetSwapchainImages(logicalDevice, swapchain, &_swapchainImageCount, _imagePtr);
+                window.swapchainKHR.GetSwapchainImages(logicalDevice, window.swapchain, &_swapchainImageCount, _imagePtr);
             }
+            window.imageCount = _swapchainImageCount;
 
-            swapchainImageViews = new ImageView[_swapchainImageCount];
-            for (int i = 0; i < swapchainImages.Length; i++)
+            window.swapchainImageViews = new ImageView[_swapchainImageCount];
+            for (int i = 0; i < window.swapchainImages.Length; i++)
             {
-                AVulkanBufferHandler.CreateImageView(vk, ref logicalDevice, ref swapchainImages[i], ref swapchainImageViews[i], surfaceFormat.Format, ImageAspectFlags.ColorBit);
+                AVulkanBufferHandler.CreateImageView(vk, ref logicalDevice, ref window.swapchainImages[i], ref window.swapchainImageViews[i], window.surfaceFormat.Format, ImageAspectFlags.ColorBit);
             }
         }
 
@@ -572,48 +573,79 @@ namespace ArctisAurora.EngineWork.Rendering
         [A_XSDActionDependency("Renderer.RequestSwapchainRebuild", "Settings")]
         internal static void RequestSwapchainRebuild()
         {
-            Engine.window.frameBufferResized = true;
+            foreach (RenderWindow window in Engine.windows.Values)
+                window.os.frameBufferResized = true;
         }
 
         // Rebuilds the swapchain and every window-sized resource after a resize. Pipelines use
         // dynamic viewport/scissor (see modules), so they are NOT recreated here.
-        internal void RecreateSwapchain()
+        //
+        // The window size is whatever the main thread's resize callback last published — GLFW
+        // documents its window queries as main-thread only, and this runs on the render thread.
+        internal void RecreateSwapchain(RenderWindow window)
         {
             // wait until the GPU is idle before tearing down resources still in use
             vk.DeviceWaitIdle(logicalDevice);
 
-            // refresh the framebuffer size (in pixels); bail if minimized
-            Engine.window.UpdateWindowSize(ref Engine.window.windowSize);
-            if (Engine.window.windowSize.Width == 0 || Engine.window.windowSize.Height == 0)
+            // bail if minimized
+            if (window.os.windowSize.Width == 0 || window.os.windowSize.Height == 0)
                 return;
 
             // tear down size-dependent resources (the module output images)
-            for (int i = 0; i < renderingModules.Length; i++)
-                renderingModules[i].DestroySizeDependentResources();
-            compositorModule.DestroySizeDependentResources();
+            for (int i = 0; i < window.modules.Length; i++)
+                window.modules[i].DestroySizeDependentResources();
+            window.compositor.DestroySizeDependentResources();
 
             // tear down the swapchain image views and the swapchain itself
-            for (int i = 0; i < swapchainImageViews.Length; i++)
-                vk.DestroyImageView(logicalDevice, swapchainImageViews[i], null);
-            swapchainKHR.DestroySwapchain(logicalDevice, swapchain, null);
+            for (int i = 0; i < window.swapchainImageViews.Length; i++)
+                vk.DestroyImageView(logicalDevice, window.swapchainImageViews[i], null);
+            window.swapchainKHR.DestroySwapchain(logicalDevice, window.swapchain, null);
 
-            // recreate the swapchain at the new size (CreateSwapchain reads window size)
-            CreateSwapchain();
+            // recreate the swapchain at the new size
+            uint previousImageCount = window.imageCount;
+            CreateSwapchain(window);
+
+            // A present-mode change can hand back a different number of images, and every per-image
+            // array in the window and its modules was sized to the old count.
+            if (window.imageCount != previousImageCount)
+                ResizePerImageResources(window);
 
             // recreate per-module output images at the new size
-            for (int i = 0; i < renderingModules.Length; i++)
-                renderingModules[i].CreateOutputImages();
+            for (int i = 0; i < window.modules.Length; i++)
+                window.modules[i].CreateOutputImages();
 
             // the compositor's descriptors sample the freshly created module output views — rewrite them
-            for (int f = 0; f < (int)swapchainImageCount; f++)
-                compositorModule.UpdateDescriptorSets(f, 0);
+            for (int f = 0; f < (int)window.imageCount; f++)
+                window.compositor.UpdateDescriptorSets(f, 0);
 
             // force command buffers to be re-recorded at the new size on every image
-            for (int i = 0; i < renderingModules.Length; i++)
-                for (int d = 0; d < renderingModules[i].isDirty.Length; d++)
-                    renderingModules[i].isDirty[d] = true;
-            for (int d = 0; d < compositorModule.isDirty.Length; d++)
-                compositorModule.isDirty[d] = true;
+            for (int i = 0; i < window.modules.Length; i++)
+                for (int d = 0; d < window.modules[i].isDirty.Length; d++)
+                    window.modules[i].isDirty[d] = true;
+            for (int d = 0; d < window.compositor.isDirty.Length; d++)
+                window.compositor.isDirty[d] = true;
+        }
+
+        // Re-sizes everything indexed by swapchain image after the image count itself changed.
+        private void ResizePerImageResources(RenderWindow window)
+        {
+            DestroySyncObjects(window);
+            CreateSyncObjects(window);
+
+            for (int i = 0; i < window.modules.Length; i++)
+                window.modules[i].RebindImageCount(window);
+            window.compositor.RebindImageCount(window);
+        }
+
+        internal static void DestroySyncObjects(RenderWindow window)
+        {
+            for (int i = 0; i < window.imageAvailableSemaphores.Length; i++)
+                vk.DestroySemaphore(logicalDevice, window.imageAvailableSemaphores[i], null);
+            for (int i = 0; i < window.renderFinishedSemaphores.Length; i++)
+                vk.DestroySemaphore(logicalDevice, window.renderFinishedSemaphores[i], null);
+            for (int i = 0; i < window.modulesFinishedSemaphores.Length; i++)
+                vk.DestroySemaphore(logicalDevice, window.modulesFinishedSemaphores[i], null);
+            vk.DestroySemaphore(logicalDevice, window.timelineSemaphore, null);
         }
 
         public void CreateCommandPool(uint qfIndex, out CommandPool pool, CommandPoolCreateFlags flags)
@@ -632,49 +664,56 @@ namespace ArctisAurora.EngineWork.Rendering
 
         private void AllocateDescriptorSets()
         {
-            for(int i = 0; i < renderingModules.Length; i++)
+            RenderWindow window = Engine.primary;
+            for(int i = 0; i < window.modules.Length; i++)
             {
-                renderingModules[i].AllocateDescriptorSets(currentFrame);
+                window.modules[i].AllocateDescriptorSets(window.currentFrame);
             }
         }
 
         internal void UpdateGlobalDescriptorSet()
         {
-            for(int i=0; i < renderingModules.Length; i++)
+            RenderWindow window = Engine.primary;
+            for(int i=0; i < window.modules.Length; i++)
             {
-                renderingModules[i].UpdateDescriptorSets(currentFrame, 0);
+                window.modules[i].UpdateDescriptorSets(window.currentFrame, 0);
             }
         }
 
         internal void UpdateModules()
         {
-            for (int i = 0; i < renderingModules.Length; i++)
+            foreach (RenderWindow window in Engine.windows.Values)
             {
-                if (renderingModules[i].RendererStage == ERendererStage.UI)
+                if (!window.gpuReady || window.closeRequested) continue;
+
+                RenderingModule[] modules = window.modules;
+                for (int i = 0; i < modules.Length; i++)
                 {
-                    renderingModules[i].isDirty[0] = true;
-                    renderingModules[i].isDirty[1] = true;
-                    renderingModules[i].isDirty[2] = true;
+                    if (modules[i].RendererStage != ERendererStage.UI) continue;
+
+                    for (int d = 0; d < modules[i].isDirty.Length; d++)
+                        modules[i].isDirty[d] = true;
                 }
             }
         }
 
         private void CreateDescriptorSetLayouts()
         {
-            for(int i=0; i< renderingModules.Length; i++)
+            RenderingModule[] modules = Engine.primary.modules;
+            for(int i=0; i< modules.Length; i++)
             {
-                renderingModules[i].CreateDescriptorSetLayout();
+                modules[i].CreateDescriptorSetLayout();
             }
         }
 
-        internal void Draw()
+        internal void Draw(RenderWindow window)
         {
             // skip rendering while minimized (0-area framebuffer) — also avoids recreating at 0x0
-            if (Engine.window.windowSize.Width == 0 || Engine.window.windowSize.Height == 0)
+            if (window.os.windowSize.Width == 0 || window.os.windowSize.Height == 0)
                 return;
 
-            ulong waitValue = (frameCounter - MAX_FRAMES_IN_FLIGHT) * 2 + 2;
-            fixed(Semaphore* timelineSemaphorePtr = &timelineSemaphore)
+            ulong waitValue = (window.frameCounter - MAX_FRAMES_IN_FLIGHT) * 2 + 2;
+            fixed(Semaphore* timelineSemaphorePtr = &window.timelineSemaphore)
             {
                 SemaphoreWaitInfo waitInfo = new SemaphoreWaitInfo()
                 {
@@ -687,12 +726,12 @@ namespace ArctisAurora.EngineWork.Rendering
             }
             // get next image
             uint imageIndex = 0;
-            Result r = swapchainKHR.AcquireNextImage(logicalDevice, swapchain, ulong.MaxValue, imageAvailableSemaphores[currentFrame], default, ref imageIndex);
+            Result r = window.swapchainKHR.AcquireNextImage(logicalDevice, window.swapchain, ulong.MaxValue, window.imageAvailableSemaphores[window.currentFrame], default, ref imageIndex);
 
             // update renderer if needed before draw
             if (r == Result.ErrorOutOfDateKhr)
             {
-                RecreateSwapchain();
+                RecreateSwapchain(window);
                 return;
             }
             else if (r != Result.Success && r != Result.SuboptimalKhr)
@@ -701,14 +740,14 @@ namespace ArctisAurora.EngineWork.Rendering
             }
 
             // update modules if needed
-            for (int i = 0; i < renderingModules.Length; i++)
+            for (int i = 0; i < window.modules.Length; i++)
             {
-                if (renderingModules[i].isDirty[imageIndex] || renderingModules[i].HasPendingWork((int)imageIndex))
-                    renderingModules[i].UpdateModule((int)imageIndex);
-                renderingModules[i].camera.UpdateCameraMatrix(swapchainExtent, imageIndex, (uint)i);
+                if (window.modules[i].isDirty[imageIndex] || window.modules[i].HasPendingWork((int)imageIndex))
+                    window.modules[i].UpdateModule((int)imageIndex);
+                window.modules[i].camera.UpdateCameraMatrix(window.swapchainExtent, imageIndex);
             }
-            if (compositorModule.isDirty[imageIndex])
-                compositorModule.UpdateModule((int)imageIndex);
+            if (window.compositor.isDirty[imageIndex])
+                window.compositor.UpdateModule((int)imageIndex);
 
             // submit command buffer
             SubmitInfo _submitInfo = new SubmitInfo()
@@ -716,13 +755,13 @@ namespace ArctisAurora.EngineWork.Rendering
                 SType = StructureType.SubmitInfo
             };
 
-            CommandBuffer[] moduleCBs = new CommandBuffer[renderingModules.Length];
-            for (int i = 0; i < renderingModules.Length; i++)
-                moduleCBs[i] = renderingModules[i].commandBuffers[imageIndex];
+            CommandBuffer[] moduleCBs = new CommandBuffer[window.modules.Length];
+            for (int i = 0; i < window.modules.Length; i++)
+                moduleCBs[i] = window.modules[i].commandBuffers[imageIndex];
 
-            var semaphoreImageAvailable = stackalloc[] { imageAvailableSemaphores[currentFrame] };
+            var semaphoreImageAvailable = stackalloc[] { window.imageAvailableSemaphores[window.currentFrame] };
             var semaphoreStage = stackalloc[] { PipelineStageFlags.ColorAttachmentOutputBit };
-            var semaphoreSignalModulesFinished = stackalloc[] { timelineSemaphore };
+            var semaphoreSignalModulesFinished = stackalloc[] { window.timelineSemaphore };
             ulong waitValueModulesFinished = waitValue + 2;
             ulong signalValueModulesFinished = waitValue + 3;
 
@@ -743,7 +782,7 @@ namespace ArctisAurora.EngineWork.Rendering
                     WaitSemaphoreCount = 1,
                     PWaitSemaphores = semaphoreImageAvailable,
                     PWaitDstStageMask = semaphoreStage,
-                    CommandBufferCount = (uint)renderingModules.Length,
+                    CommandBufferCount = (uint)window.modules.Length,
                     PCommandBuffers = moduleCBsPtr,
                     SignalSemaphoreCount = 1,
                     PSignalSemaphores = semaphoreSignalModulesFinished,
@@ -755,10 +794,10 @@ namespace ArctisAurora.EngineWork.Rendering
             }
 
             // compositor submit and wait
-            CommandBuffer compositorCB = compositorModule.commandBuffers[imageIndex];
-            var waitSemaphoreModulesFinished = stackalloc[] { timelineSemaphore };
+            CommandBuffer compositorCB = window.compositor.commandBuffers[imageIndex];
+            var waitSemaphoreModulesFinished = stackalloc[] { window.timelineSemaphore };
             var waitStageCompositor = stackalloc[] { PipelineStageFlags.FragmentShaderBit };
-            var signalSemaphoreRenderFinished = stackalloc[] { renderFinishedSemaphores[imageIndex], timelineSemaphore };
+            var signalSemaphoreRenderFinished = stackalloc[] { window.renderFinishedSemaphores[imageIndex], window.timelineSemaphore };
 
             ulong* signalValsCompositor = stackalloc ulong[2];
             signalValsCompositor[0] = 0;                    // binary — ignored
@@ -789,8 +828,8 @@ namespace ArctisAurora.EngineWork.Rendering
 
 
             // present
-            var _swapChains = stackalloc[] { swapchain };
-            var waitSemaphorePresent = stackalloc[] { renderFinishedSemaphores[imageIndex] };
+            var _swapChains = stackalloc[] { window.swapchain };
+            var waitSemaphorePresent = stackalloc[] { window.renderFinishedSemaphores[imageIndex] };
             PresentInfoKHR _presentInfo = new PresentInfoKHR()
             {
                 SType = StructureType.PresentInfoKhr,
@@ -800,19 +839,19 @@ namespace ArctisAurora.EngineWork.Rendering
                 PSwapchains = _swapChains,
                 PImageIndices = &imageIndex
             };
-            r = swapchainKHR.QueuePresent(presentQueue, ref _presentInfo);
-            if (r == Result.ErrorOutOfDateKhr || r == Result.SuboptimalKhr || Engine.window.frameBufferResized)
+            r = window.swapchainKHR.QueuePresent(presentQueue, ref _presentInfo);
+            if (r == Result.ErrorOutOfDateKhr || r == Result.SuboptimalKhr || window.os.frameBufferResized)
             {
-                Engine.window.frameBufferResized = false;
-                RecreateSwapchain();
+                window.os.frameBufferResized = false;
+                RecreateSwapchain(window);
             }
             else if (r != Result.Success)
             {
                 throw new Exception("Failed to present swap chain image");
             }
 
-            currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-            frameCounter++;
+            window.currentFrame = (window.currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+            window.frameCounter++;
         }
 
         // EXTRAS ------------------------------

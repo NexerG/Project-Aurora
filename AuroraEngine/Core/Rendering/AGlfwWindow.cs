@@ -1,5 +1,4 @@
 ﻿using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.UISystem.Controls;
 using Silk.NET.Core.Native;
 using Silk.NET.GLFW;
 using Silk.NET.Vulkan;
@@ -14,17 +13,24 @@ namespace ArctisAurora.EngineWork.Rendering
     {
         //GLFW window variables
         internal static Glfw _glfw;
-        internal static WindowHandle* windowHandle;
+        internal WindowHandle* handle;
         internal SurfaceKHR surface;
         internal KhrSurface driverSurface;
         internal bool frameBufferResized = false;
         internal Extent2D windowSize;
-        internal static Cursor* cursor;
 
-        internal AGlfwWindow(uint width, uint height)
+        // One cursor per shape for the whole process — GLFW creates cursors against the library and
+        // only applies them per window, and the hover paths ask for a shape far more often than the
+        // shape changes.
+        private static readonly Dictionary<CursorShape, IntPtr> cursors = new Dictionary<CursorShape, IntPtr>();
+
+        internal readonly RenderWindow owner;
+
+        internal AGlfwWindow(uint width, uint height, RenderWindow owner)
         {
             _glfw = Glfw.GetApi();
             windowSize = new Extent2D(width, height);
+            this.owner = owner;
         }
 
         internal void CreateWindow()
@@ -32,13 +38,15 @@ namespace ArctisAurora.EngineWork.Rendering
             if (!_glfw.Init())
                 throw new Exception("Failed to initialize GLFW");
 
+            // hints are sticky until reset, and the ghost window sets several this one must not keep
+            _glfw.DefaultWindowHints();
             _glfw.WindowHint(WindowHintClientApi.ClientApi, ClientApi.NoApi);
             _glfw.WindowHint(WindowHintBool.Resizable, true);
             _glfw.WindowHint(WindowHintBool.Decorated, false);
             _glfw.WindowHint(WindowHintBool.DoubleBuffer, true);
-            windowHandle = CreateForMode(SettingsRegistry.Get<GraphicsSettings>());
+            handle = CreateForMode(SettingsRegistry.Get<GraphicsSettings>());
 
-            if (windowHandle == null)
+            if (handle == null)
             {
                 _glfw.Terminate();
                 throw new Exception("Failed to create window");
@@ -46,6 +54,58 @@ namespace ArctisAurora.EngineWork.Rendering
 
             UpdateWindowSize(ref windowSize);
             SetResizeCallback(WindwoResizeCallback);
+        }
+
+        // A window opened after boot: plain windowed at the size it was constructed with, wherever it
+        // is asked to go, rather than on the GraphicsSettings monitor in the GraphicsSettings mode.
+        internal void CreateWindow(string title, int x, int y)
+        {
+            _glfw.DefaultWindowHints();
+            _glfw.WindowHint(WindowHintClientApi.ClientApi, ClientApi.NoApi);
+            _glfw.WindowHint(WindowHintBool.Resizable, true);
+            _glfw.WindowHint(WindowHintBool.Decorated, false);
+            _glfw.WindowHint(WindowHintBool.DoubleBuffer, true);
+            handle = _glfw.CreateWindow((int)windowSize.Width, (int)windowSize.Height, title, null, null);
+
+            if (handle == null)
+                throw new Exception("Failed to create window");
+
+            _glfw.SetWindowPos(handle, x, y);
+            UpdateWindowSize(ref windowSize);
+            SetResizeCallback(WindwoResizeCallback);
+            SeedIsInWindow();
+        }
+
+        // Floats above everything, never takes focus and starts hidden — it exists only to show what
+        // is being dragged. Not resizable, so it needs no resize callback.
+        internal void CreateGhostWindow()
+        {
+            _glfw.DefaultWindowHints();
+            _glfw.WindowHint(WindowHintClientApi.ClientApi, ClientApi.NoApi);
+            _glfw.WindowHint(WindowHintBool.Resizable, false);
+            _glfw.WindowHint(WindowHintBool.Decorated, false);
+            _glfw.WindowHint(WindowHintBool.DoubleBuffer, true);
+            _glfw.WindowHint(WindowHintBool.Floating, true);
+            _glfw.WindowHint(WindowHintBool.FocusOnShow, false);
+            _glfw.WindowHint(WindowHintBool.Visible, false);
+            handle = _glfw.CreateWindow((int)windowSize.Width, (int)windowSize.Height, "", null, null);
+
+            if (handle == null)
+                throw new Exception("Failed to create the drag preview window");
+
+            UpdateWindowSize(ref windowSize);
+        }
+
+        internal void SetOpacity(float opacity) => _glfw.SetWindowOpacity(handle, opacity);
+
+        internal void Show() => _glfw.ShowWindow(handle);
+
+        internal void Hide() => _glfw.HideWindow(handle);
+
+        internal void DestroyWindow()
+        {
+            _glfw.DestroyWindow(handle);
+            handle = null;
         }
 
         // Borderless is a plain window at the monitor's size and position — the window is created
@@ -106,45 +166,61 @@ namespace ArctisAurora.EngineWork.Rendering
             return DisplayNames.At(x, y) ?? _glfw.GetMonitorName(monitor);
         }
 
-        internal static void ChangeCursor(CursorShape shape)
+        internal void SetPosition(int x, int y)
         {
-            cursor = Glfw.GetApi().CreateStandardCursor(shape);
-            _glfw.SetCursor(windowHandle, cursor);
+            _glfw.SetWindowPos(handle, x, y);
+        }
+
+        // The cursor-enter callback only fires on a crossing, so a window created under the pointer
+        // would never learn it has it.
+        internal void SeedIsInWindow()
+        {
+            owner.isInWindow = _glfw.GetWindowAttrib(handle, WindowAttributeGetter.Hovered);
+        }
+
+        internal void ChangeCursor(CursorShape shape)
+        {
+            if (!cursors.TryGetValue(shape, out IntPtr cursor))
+            {
+                cursor = (IntPtr)_glfw.CreateStandardCursor(shape);
+                cursors[shape] = cursor;
+            }
+            _glfw.SetCursor(handle, (Cursor*)cursor);
         }
 
         internal void SetResizeCallback(WindowSizeCallback callback)
         {
-            _glfw.SetWindowSizeCallback(windowHandle, callback);
+            _glfw.SetWindowSizeCallback(handle, callback);
         }
 
         internal void SetCursorPosCallback(CursorPosCallback callback)
         {
-            _glfw.SetCursorPosCallback(windowHandle, callback);
+            _glfw.SetCursorPosCallback(handle, callback);
         }
 
         internal void SetKeyCallback(KeyCallback callback)
         {
-            _glfw.SetKeyCallback(windowHandle, callback);
+            _glfw.SetKeyCallback(handle, callback);
         }
 
         internal void SetScrollCallback(ScrollCallback callback)
         {
-            _glfw.SetScrollCallback(windowHandle, callback);
+            _glfw.SetScrollCallback(handle, callback);
         }
 
         internal void SetCharCallback(CharCallback callback)
         {
-            _glfw.SetCharCallback(windowHandle, callback);
+            _glfw.SetCharCallback(handle, callback);
         }
 
         internal void SetMouseButtonCallback(MouseButtonCallback callback)
         {
-            _glfw.SetMouseButtonCallback(windowHandle, callback);
+            _glfw.SetMouseButtonCallback(handle, callback);
         }
 
         internal void SetMouseOnWindowCallback(CursorEnterCallback callback)
         {
-            _glfw.SetCursorEnterCallback(windowHandle, callback);
+            _glfw.SetCursorEnterCallback(handle, callback);
         }
 
         internal void CreateSurface()
@@ -154,14 +230,14 @@ namespace ArctisAurora.EngineWork.Rendering
                 throw new NotSupportedException("KHR_surface extension not found.");
             }
             VkNonDispatchableHandle _surfaceHandle;
-            _glfw.CreateWindowSurface(Renderer.instance.ToHandle(), windowHandle, null, &_surfaceHandle);
+            _glfw.CreateWindowSurface(Renderer.instance.ToHandle(), handle, null, &_surfaceHandle);
             surface = _surfaceHandle.ToSurface();
         }
 
         internal void UpdateWindowSize(ref Extent2D _extent)
         {
             int _width, _height;
-            _glfw.GetFramebufferSize(windowHandle, out _width, out _height);
+            _glfw.GetFramebufferSize(handle, out _width, out _height);
             _extent.Width = (uint)_width;
             _extent.Height = (uint)_height;
         }
@@ -171,10 +247,10 @@ namespace ArctisAurora.EngineWork.Rendering
             frameBufferResized = true;
             // width/height here are in screen coordinates; Vulkan needs framebuffer (pixel)
             // size, so query it directly. On minimize this reports 0x0, which Draw() guards on.
-            _glfw.GetFramebufferSize(windowHandle, out int fbWidth, out int fbHeight);
+            _glfw.GetFramebufferSize(handle, out int fbWidth, out int fbHeight);
             windowSize = new Extent2D((uint)fbWidth, (uint)fbHeight);
 
-            (EntityRegistry.uiTree as WindowControl)?.FitTo(windowSize);
+            owner.ui.uiRoot?.FitTo(windowSize);
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Filing.Serialization;
+using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.GLFW;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
@@ -1011,9 +1012,6 @@ namespace ArctisAurora.EngineWork
         public static char lastCharInput = '\0';
         public static Queue<char> charInputWriteQueue = new Queue<char>();
         public static Queue<char> charInputReadQueue = new Queue<char>();
-        public static Vector2D<float> mousePos = new Vector2D<float>(0, 0);
-        public static Vector2D<float> scrollDelta = new Vector2D<float>(0, 0);
-        private static Vector2D<float> scrollDeltaWrite = new Vector2D<float>(0, 0);
 
         [A_XSDElementProperty("Keybind", "Input")]
         public List<KeybindDefinition> keybindDefinitions = new List<KeybindDefinition>();
@@ -1043,8 +1041,11 @@ namespace ArctisAurora.EngineWork
 
         internal void ProcessMouseMove(WindowHandle* window, double xPos, double yPos)
         {
-            mousePos.X = (float)xPos;
-            mousePos.Y = (float)yPos;
+            RenderWindow target = Engine.WindowFor(window);
+            if (target == null) return;
+
+            target.mousePos.X = (float)xPos;
+            target.mousePos.Y = (float)yPos;
         }
 
         internal void ProcessMouseClick(WindowHandle* window, MouseButton button, InputAction action, KeyModifiers mods)
@@ -1068,8 +1069,11 @@ namespace ArctisAurora.EngineWork
 
         internal void ProcessScrollWheel(WindowHandle* window, double offsetX, double offsetY)
         {
-            scrollDeltaWrite.X += (float)offsetX;
-            scrollDeltaWrite.Y += (float)offsetY;
+            RenderWindow target = Engine.WindowFor(window);
+            if (target == null) return;
+
+            target.scrollDeltaWrite.X += (float)offsetX;
+            target.scrollDeltaWrite.Y += (float)offsetY;
         }
         #endregion
 
@@ -1079,8 +1083,11 @@ namespace ArctisAurora.EngineWork
             {
                 (charInputWriteQueue, charInputReadQueue) = (charInputReadQueue, charInputWriteQueue);
             }
-            scrollDelta = scrollDeltaWrite;
-            scrollDeltaWrite = new Vector2D<float>(0, 0);
+            foreach (RenderWindow window in Engine.windows.Values)
+            {
+                window.scrollDelta = window.scrollDeltaWrite;
+                window.scrollDeltaWrite = new Vector2D<float>(0, 0);
+            }
 
             // Update key states from raw GLFW events
             keyTracker.Update(Engine.totalTime, Engine.deltaTime.TotalSeconds);

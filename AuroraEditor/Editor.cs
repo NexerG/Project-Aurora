@@ -38,7 +38,7 @@ namespace AuroraEditor
 
             // prepare level
             WindowControl windowControl = (WindowControl)VulkanControl.ParseXML("UI.xml");
-            EntityRegistry.uiTree = windowControl;
+            Engine.primary.ui.uiRoot = windowControl;
 
             /*ShortTextControl test = new ShortTextControl();
             EntityManager.uiTree = test;

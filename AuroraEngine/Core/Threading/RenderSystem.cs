@@ -1,5 +1,6 @@
 using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
+using ArctisAurora.EngineWork.Rendering;
 
 namespace ArctisAurora.Core.Threading
 {
@@ -17,9 +18,36 @@ namespace ArctisAurora.Core.Threading
                 Thread.Sleep(10);
         }
 
+        // Every Vulkan object a window owns is created and destroyed here, because this is the thread
+        // that uses them. Main only ever makes and unmakes the OS window and flags this side.
         protected override void Tick()
         {
-            Engine.renderer.Draw();
+            foreach (RenderWindow window in Engine.windows.Values)
+            {
+                if (window.closeRequested)
+                {
+                    if (window.gpuDestroyed) continue;
+
+                    // closed before it was ever built — there is nothing to free, but main still
+                    // needs the go-ahead to destroy the OS window
+                    if (window.gpuReady)
+                    {
+                        Renderer.vk.DeviceWaitIdle(Renderer.logicalDevice);
+                        window.DestroyGpuResources();
+                    }
+                    window.gpuDestroyed = true;
+                    continue;
+                }
+
+                if (!window.gpuReady)
+                {
+                    window.CreateGpuResources();
+                    window.gpuReady = true;
+                    continue;
+                }
+
+                Engine.renderer.Draw(window);
+            }
         }
     }
 }

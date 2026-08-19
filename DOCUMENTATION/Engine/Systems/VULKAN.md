@@ -18,11 +18,16 @@ The renderer is responsible for both drawing images from engine objects and disp
 The general way the system works is the CPU creates a window, hooks it up to the GPU API and then does the rendering math to get the picture on the screen in a hierarchy like this:
 Renderer
 	Queue allocator
-	Rendering modules
-	window
+	Render window
+		Swapchain
+		Frame synchronisation
+		Rendering modules
+		Compositor
 
 ### Renderer
 The renderer is responsible for the whole system. It's the engine of rendering (as per the name suggests - rendering engine). It gets the GPU, creates a way to talk to the GPU. Creates the window, it attaches it to the GPU interface. Reads the modules and assigns them queues (if possible) to optimize rendering resources. Do note that Vulkan Rendering is a very setting heavy API. It needs to know all the little details about the rendering system you're creating to squeeze out t he most performance possible disregarding per GPU kernels.
+The renderer itself only holds what there is one of per process - the driver instance, the physical and logical device, the queue allocator, the queues and the command pools - because everything sized to a window has to exist once per window for the engine to ever open a second one. That per window state is a `RenderWindow`: its GLFW window, its swapchain, its frame synchronisation, its rendering modules and compositor, and the UI tree drawn into it. `Draw` and the swapchain rebuild both take the window they are acting on, and the engine keeps the list of open ones with the first being the one the application booted into.
+How many images the swapchain hands back is read from the driver rather than assumed, and every array indexed by swapchain image sizes off that count - the semaphores, each module's dirty flags and command buffers, its render targets, and the camera's uniform buffers.
 
 The Renderer's sequence goes as follows:
 - Prerequisites

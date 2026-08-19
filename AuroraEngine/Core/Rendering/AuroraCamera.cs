@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.EngineWork.Rendering.Helpers;
+using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
@@ -33,26 +34,36 @@ namespace ArctisAurora.EngineWork.Rendering
         private bool _firstMove = true;
         private double _lastX, _lastY;
 
-        internal AuroraCamera()
+        // the module this camera belongs to — it names the projection and the window
+        private readonly RenderingModule _owner;
+
+        internal AuroraCamera(RenderingModule owner) : this(owner, owner.window.imageCount) { }
+
+        // The dead renderer types (Rasterizer, Pathtracing, RadianceCascades2D, UIRenderer) build a
+        // camera with no module behind it; three images is what they always assumed.
+        internal AuroraCamera() : this(null, 3) { }
+
+        private AuroraCamera(RenderingModule owner, uint imageCount)
         {
+            _owner = owner;
             foreach (Keys key in Enum.GetValues(typeof(Keys)))
             {
                 _keyStates[key] = false;
             }
 
             ulong bufferSize = (ulong)Unsafe.SizeOf<UBO>();
-            _cameraBuffer = new Buffer[Renderer.swapchainImageCount];
-            _camBmemory = new DeviceMemory[Renderer.swapchainImageCount];
-            for (int i = 0; i < Renderer.swapchainImageCount; i++)
+            _cameraBuffer = new Buffer[imageCount];
+            _camBmemory = new DeviceMemory[imageCount];
+            for (int i = 0; i < imageCount; i++)
             {
                 AVulkanBufferHandler.CreateBuffer(bufferSize, ref _cameraBuffer[i], ref _camBmemory[i], BufferUsageFlags.UniformBufferBit | BufferUsageFlags.TransferDstBit, MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit);
             }
         }
 
-        internal void UpdateCameraMatrix(Extent2D _extent, uint currentImage, uint cameraIndex)
+        internal void UpdateCameraMatrix(Extent2D _extent, uint currentImage)
         {
 
-            switch (Renderer.renderingModules[cameraIndex].rendererType)
+            switch (_owner.rendererType)
             {
                 case ERendererTypes.Rasterizer:
                     _front.X = MathF.Cos(Scalar.DegreesToRadians(_rotation.X)) * MathF.Cos(Scalar.DegreesToRadians(_rotation.Y));
@@ -79,12 +90,27 @@ namespace ArctisAurora.EngineWork.Rendering
                     break;
 
                 case ERendererTypes.UITemp:
-                    Vector2D<float> box = EntityRegistry.uiTree is WindowControl window
-                        ? window.ViewportSize(_extent)
-                        : new Vector2D<float>(_extent.Width, _extent.Height);
+                    UIModule ui = (UIModule)_owner;
+                    Vector2D<float> box;
+                    Vector2D<float> origin = Vector2D<float>.Zero;
+
+                    if (ui.rangeRoot != null)
+                    {
+                        // a drag preview: the same box translated onto the control it is showing
+                        box = new Vector2D<float>(_extent.Width, _extent.Height);
+                        origin = new Vector2D<float>(ui.rangeRoot.arrangedRect.x, ui.rangeRoot.arrangedRect.y);
+                    }
+                    else
+                    {
+                        WindowControl root = ui.uiRoot;
+                        box = root != null
+                            ? root.ViewportSize(_extent)
+                            : new Vector2D<float>(_extent.Width, _extent.Height);
+                    }
 
                     _view = Matrix4X4.CreateLookAt(Vector3D<float>.Zero, _front, _localUp);
-                    _projection = Matrix4X4.CreateOrthographicOffCenter(0, box.X, 0, box.Y, 0.01f, 512f);
+                    _projection = Matrix4X4.CreateOrthographicOffCenter(origin.X, origin.X + box.X,
+                        origin.Y, origin.Y + box.Y, 0.01f, 512f);
                     break;
                 default:
                     break;
@@ -102,9 +128,18 @@ namespace ArctisAurora.EngineWork.Rendering
             AVulkanBufferHandler.UpdateBuffer(ref _ubo, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref _cameraBuffer[currentImage], ref _camBmemory[currentImage], BufferUsageFlags.None);
         }
 
+        internal unsafe void Destroy()
+        {
+            for (int i = 0; i < _cameraBuffer.Length; i++)
+            {
+                Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _cameraBuffer[i], null);
+                Renderer.vk.FreeMemory(Renderer.logicalDevice, _camBmemory[i], null);
+            }
+        }
+
         internal void ProcessMouseMovements(double xPos, double yPos, bool _constrainPitch = true)
         {
-            if (Renderer.renderingModules[0].rendererType == ERendererTypes.UITemp)
+            if (_owner.rendererType == ERendererTypes.UITemp)
             {
                 return;
             }
