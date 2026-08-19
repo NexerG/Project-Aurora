@@ -48,14 +48,15 @@ namespace ArctisAurora.Core.Registry.Assets
         }
 
         // Uploads an image and claims a bindless table slot, without taking a registry name.
-        internal void LoadFile(string path)
+        // Non-colour images (distance fields) must pass a UNORM format.
+        internal void LoadFile(string path, Format format = Format.R8G8B8A8Srgb)
         {
             if (!File.Exists(path))
                 throw new Exception("Texture not found: " + path);
 
             image = Image.Load<Rgba32>(path);
-            AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image, Format.R8G8B8A8Srgb, ref Renderer.transferQueue, ref Renderer.transferCommandPool);
-            AVulkanBufferHandler.CreateImageView(Renderer.vk, ref Renderer.logicalDevice, ref _textureImage, ref textureImageView, Format.R8G8B8A8Srgb, ImageAspectFlags.ColorBit);
+            AVulkanBufferHandler.CreateTextureBuffer(ref _textureImage, ref _textureBufferMemory, ref image, format, ref Renderer.transferQueue, ref Renderer.transferCommandPool);
+            AVulkanBufferHandler.CreateImageView(Renderer.vk, ref Renderer.logicalDevice, ref _textureImage, ref textureImageView, format, ImageAspectFlags.ColorBit);
             RegisterInTable();
         }
     }

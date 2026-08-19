@@ -15,6 +15,10 @@ layout(location = 4) in flat vec4 fragClip;
 layout(location = 5) in vec2 fragLocal;
 layout(location = 6) in flat vec2 fragHalfExtent;
 layout(location = 7) in flat float fragRadius;
+layout(location = 8) in flat vec3 fragEdgeColor;
+layout(location = 9) in flat float fragEdgeThickness;
+layout(location = 10) in flat vec3 fragOutlineColor;
+layout(location = 11) in flat float fragOutlineWidth;
 
 layout(location = 0) out vec4 outColor;
 
@@ -40,12 +44,32 @@ void main()
     vec3 msdf = texture(samplers[fragTextureIndex], fragUV).rgb;
     float sd = median(msdf.r, msdf.g, msdf.b) - 0.5f;
     float screenPxRange = fwidth(sd);
-    float opacity = clamp(sd / screenPxRange + 0.5f, 0.0f, 1.0f);
+    float screenPxDist = sd / screenPxRange;
+    float fillAlpha = clamp(screenPxDist + 0.5f, 0.0f, 1.0f);
     //float opacity = smoothstep(-screenPxRange, screenPxRange, sd);
 
-    float boxDist = -sdRoundBox(fragLocal, fragHalfExtent, fragRadius);
-    opacity *= clamp(boxDist / fwidth(boxDist) + 0.5f, 0.0f, 1.0f);
-
     vec3 color = fragStyle.tint;
+    float opacity = fillAlpha;
+
+    // outline — a second threshold that far outside the shape, the fill composited over it
+    if (fragOutlineWidth > 0.0f)
+    {
+        opacity = clamp(screenPxDist + fragOutlineWidth + 0.5f, 0.0f, 1.0f);
+        color = mix(fragOutlineColor, color, fillAlpha);
+    }
+
+    float boxDist = -sdRoundBox(fragLocal, fragHalfExtent, fragRadius);
+    float boxAA = fwidth(boxDist);
+    float inside = clamp(boxDist / boxAA + 0.5f, 0.0f, 1.0f);
+    opacity *= inside;
+
+    // edge — the outermost band of the silhouette, carrying its own coverage past the mask
+    if (fragEdgeThickness > 0.0f)
+    {
+        float band = inside - clamp((boxDist - fragEdgeThickness) / boxAA + 0.5f, 0.0f, 1.0f);
+        color = mix(color, fragEdgeColor, band);
+        opacity = max(opacity, band);
+    }
+
     outColor = vec4(color, opacity);
 }

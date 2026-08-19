@@ -11,7 +11,31 @@ Before implementing:
 - If a simpler approach exists, say so. Push back when warranted.
 - If something is unclear, stop. Name what's confusing. Ask.
 
-## 2. Simplicity First
+## 2. Plan, Then Wait
+
+**Analyze, write the plan, stop. Don't start until I say go.**
+
+Every change to the repo runs four steps, in order:
+
+1. **Analyze** - read the code that's actually involved. No plan built on a guess about what a file
+   contains.
+2. **Write the plan** - files touched and what changes in each, anything *new* (file, type, signature,
+   dependency), what's deliberately left out, and the verification per step (§5's format). Forks go
+   here as forks, not as a choice already made (§1).
+3. **Ask. Then stop.** The plan is the whole turn. Not a plan followed by the diff in the same breath.
+4. **Go, or don't.** Approved: build exactly that. Rejected: stop and re-plan - never build a rejected
+   plan in reduced form.
+
+A small change gets a small plan - one line is fine. It doesn't get to skip the gate.
+
+Reading, searching, building and answering questions aren't changes. Writing to a file is.
+
+The plan I approve is the "agreed plan" §8 protects: once you're coding, departing from it stops and
+asks again.
+
+The test: about to write to a file, and you can't point at the message where I said go? You've broken this.
+
+## 3. Simplicity First
 
 **Minimum code that solves the problem. Nothing speculative.**
 
@@ -23,7 +47,7 @@ Before implementing:
 
 Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 
-## 3. Surgical Changes
+## 4. Surgical Changes
 
 **Touch only what you must. Clean up only your own mess.**
 
@@ -39,7 +63,7 @@ When your changes create orphans:
 
 The test: Every changed line should trace directly to the user's request.
 
-## 4. Goal-Driven Execution
+## 5. Goal-Driven Execution
 
 **Define success criteria. Loop until verified.**
 
@@ -57,7 +81,7 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
-## 5. Comments In Code
+## 6. Comments In Code
 
 **Rationale lives in the docs. Source files carry names, not explanations.**
 
@@ -93,7 +117,7 @@ public void InvalidateBlock(int index)
 
 The test: if the comment explains *why*, it belongs in ClaudeMemory, not the file.
 
-## 6. Answering Back
+## 7. Answering Back
 
 **Terse plus caveats. No recap.**
 
@@ -105,7 +129,7 @@ The test: if the comment explains *why*, it belongs in ClaudeMemory, not the fil
 - **Architecture is terse by default too.** Full reasoning when asked "why", when asked for options,
   or in plan mode. Don't volunteer the deep dive.
 
-## 7. Mid-Implementation Changes
+## 8. Mid-Implementation Changes
 
 **Any departure from the agreed plan stops and asks. No exceptions.**
 
@@ -116,7 +140,7 @@ The test: if the comment explains *why*, it belongs in ClaudeMemory, not the fil
 - Do finish every part that doesn't depend on the answer before asking, so the round-trip costs one
   message and not the whole task.
 
-## 8. Git Commits
+## 9. Git Commits
 
 **Subject plus one-line bullets. Nothing else.**
 
@@ -126,7 +150,7 @@ The test: if the comment explains *why*, it belongs in ClaudeMemory, not the fil
 - No opening prose paragraph, no `Key changes:` header, no closing paragraph, no metrics or
   verification block.
 - Bullets say what changed, not why. Rejected alternatives and measurements go to
-  `DOCUMENTATION/ClaudeMemory/Decisions/*`, same as §5.
+  `DOCUMENTATION/ClaudeMemory/Decisions/*`, same as §6.
 - **Never** add a `Co-Authored-By` trailer.
 - **One commit unless I ask for more.** Everything in the tree lands as a single commit, however many
   concerns it spans. Split into slices only when I explicitly ask for multiple commits.
@@ -147,7 +171,7 @@ Virtualize the document view onto the layout cache
 This project is a C# game engine called Aurora using Silk.NET/Vulkan/GLFW.
 Always check CLAUDE.md and NAMESPACES.md before suggesting new code.
 Current focus is in "DOCUMENTATION/Work in Progress List.md".
-Use deep thinking for architectural problems. Explain architectural decisions - why one way and not another - when asked for the reasoning; see §6 for when to volunteer it and §5 for where it gets written down.
+Use deep thinking for architectural problems. Explain architectural decisions - why one way and not another - when asked for the reasoning; see §7 for when to volunteer it and §6 for where it gets written down.
 When given to generate code DO NOT copy the whole file. Only write what (or if needs to be added where) needs to be changed and with what new code. When creating new classes write them out in entirety (without includes). Skip includes unless they're from a new nuget package.
 If can use xml - use xml. NO JSON or other similar formats.
 When creating new logic or systems update DOCUMENTATION/ClaudeMemory/* and DOCUMENTATION/Engine*

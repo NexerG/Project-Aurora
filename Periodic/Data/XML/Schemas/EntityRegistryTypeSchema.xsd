@@ -21,5 +21,6 @@
   <xs:element name="Entity" type="types:Entity" />
   <xs:complexType name="Entity">
     <xs:sequence />
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
 </xs:schema>

@@ -27,6 +27,10 @@ struct ControlData
     uint textureIndex;
     vec4 clip;
     float cornerRadius;
+    vec3 edgeColor;
+    float edgeThickness;
+    vec3 outlineColor;
+    float outlineWidth;
 };
 
 layout(set = 0, binding = 2, scalar) readonly buffer ControlDataBuffer {
@@ -41,6 +45,10 @@ layout(location = 4) out flat vec4 fragClip;
 layout(location = 5) out vec2 fragLocal;
 layout(location = 6) out flat vec2 fragHalfExtent;
 layout(location = 7) out flat float fragRadius;
+layout(location = 8) out flat vec3 fragEdgeColor;
+layout(location = 9) out flat float fragEdgeThickness;
+layout(location = 10) out flat vec3 fragOutlineColor;
+layout(location = 11) out flat float fragOutlineWidth;
 
 void main() {
     mat4 model = ts.transforms[gl_InstanceIndex];
@@ -60,4 +68,8 @@ void main() {
     fragLocal = inPosition.xy * size;
     fragHalfExtent = size * 0.5f;
     fragRadius = CD.controls[gl_InstanceIndex].cornerRadius;
+    fragEdgeColor = CD.controls[gl_InstanceIndex].edgeColor;
+    fragEdgeThickness = CD.controls[gl_InstanceIndex].edgeThickness;
+    fragOutlineColor = CD.controls[gl_InstanceIndex].outlineColor;
+    fragOutlineWidth = CD.controls[gl_InstanceIndex].outlineWidth;
 }

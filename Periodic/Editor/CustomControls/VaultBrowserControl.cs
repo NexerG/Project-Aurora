@@ -29,6 +29,10 @@ namespace Periodic.Editor.CustomControls
         private const string folderText = "#8A8A8A";
         private const string noteText = "#D4D4D4";
 
+        // control names in UI.xml
+        private const string browserName = "Browser";
+        private const string editorName = "Editor";
+
         private readonly StackPanelControl rows = new StackPanelControl();
         private string firstNote;
 
@@ -50,7 +54,7 @@ namespace Periodic.Editor.CustomControls
         // drains its queue with a foreach and building a document creates entities.
         public static void OpenFirstNote()
         {
-            VaultBrowserControl browser = Find<VaultBrowserControl>(EntityRegistry.uiTree);
+            VaultBrowserControl browser = EntityRegistry.uiTree.FindByName(browserName) as VaultBrowserControl;
             if (browser?.firstNote != null) Open(browser.firstNote);
         }
 
@@ -121,23 +125,11 @@ namespace Periodic.Editor.CustomControls
         // there is no undo to recover a silent discard with.
         private static void Open(string notePath)
         {
-            DocumentEditorControl editor = Find<DocumentEditorControl>(EntityRegistry.uiTree);
+            DocumentEditorControl editor = EntityRegistry.uiTree.FindByName(editorName) as DocumentEditorControl;
             if (editor == null) return;
 
             editor.Save();
             editor.LoadPath(notePath);
-        }
-
-        // No control naming exists, so siblings find each other by walking the tree.
-        private static T Find<T>(VulkanControl control) where T : VulkanControl
-        {
-            if (control is T match) return match;
-
-            foreach (Entity child in control.children)
-                if (child is VulkanControl candidate && Find<T>(candidate) is T found)
-                    return found;
-
-            return null;
         }
 
         private static string VaultRoot()

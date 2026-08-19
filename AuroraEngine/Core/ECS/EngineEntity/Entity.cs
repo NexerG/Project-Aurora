@@ -17,6 +17,7 @@ namespace ArctisAurora.Core.ECS.EngineEntity
         [@Serializable]
         bool enabled = true;
         [@Serializable]
+        [A_XSDElementProperty("Name", "EntityRegistry", "Identifier for FindByName lookups. Not required to be unique.")]
         public string name = "entity";
 
         [@Serializable]
@@ -249,6 +250,34 @@ namespace ArctisAurora.Core.ECS.EngineEntity
             entity.parent = this;
         }
 
+        public virtual void RemoveChild(Entity entity)
+        {
+            if (!children.Remove(entity)) return;
+            entity.parent = null;
+        }
+
+        // Moves a live subtree to another parent, attaching through that parent's own AddChild.
+        public void SetParent(Entity newParent)
+        {
+            if (newParent == parent) return;
+            if (newParent == this || IsAncestorOf(newParent))
+                throw new Exception("Cannot parent an entity to itself or to its own descendant");
+
+            parent?.RemoveChild(this);
+            newParent.AddChild(this);
+        }
+
+        private bool IsAncestorOf(Entity entity)
+        {
+            Entity current = entity.parent;
+            while (current != null)
+            {
+                if (current == this) return true;
+                current = current.parent;
+            }
+            return false;
+        }
+
         public virtual Ent CreateChildEntity<Ent>() where Ent : Entity, new()
         {
             Ent entity = new Ent();
@@ -264,6 +293,19 @@ namespace ArctisAurora.Core.ECS.EngineEntity
                 {
                     return ent;
                 }
+            }
+            return null;
+        }
+
+        // First entity in this subtree, itself included, carrying the name.
+        public virtual Entity FindByName(string querryName)
+        {
+            if (name == querryName) return this;
+
+            foreach (Entity ent in children)
+            {
+                Entity found = ent.FindByName(querryName);
+                if (found != null) return found;
             }
             return null;
         }

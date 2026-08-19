@@ -15,6 +15,10 @@
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
     <xs:attribute name="ScrollDirection" type="types:Scrollable" />
     <xs:attribute name="ScrollSensitivity" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
@@ -45,6 +49,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="Panel" type="types:Panel" />
   <xs:complexType name="Panel">
@@ -77,6 +82,10 @@
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
@@ -105,6 +114,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="TitleBar" type="types:TitleBar" />
   <xs:complexType name="TitleBar">
@@ -137,6 +147,10 @@
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
     <xs:attribute name="Orientation" type="types:Orientation" />
     <xs:attribute name="Spacing" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
@@ -167,6 +181,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="Window" type="types:Window" />
   <xs:complexType name="Window">
@@ -199,6 +214,10 @@
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
     <xs:attribute name="WindowingMode" type="types:WindowingModeEnum" />
     <xs:attribute name="ContentScalingMode" type="types:ContentScalingModeEnum" />
     <xs:attribute name="WidthStar" type="xs:float" />
@@ -229,6 +248,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="WindowFrame" type="types:WindowFrame" />
   <xs:complexType name="WindowFrame">
@@ -261,6 +281,10 @@
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
@@ -289,6 +313,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="Label" type="types:Label" />
   <xs:complexType name="Label">
@@ -306,6 +331,10 @@
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
@@ -334,6 +363,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="TextBlock" type="types:TextBlock" />
   <xs:complexType name="TextBlock">
@@ -366,6 +396,10 @@
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
@@ -394,6 +428,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="TextBox" type="types:TextBox" />
   <xs:complexType name="TextBox">
@@ -411,6 +446,10 @@
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
@@ -439,6 +478,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="TextInput" type="types:TextInput" />
   <xs:complexType name="TextInput">
@@ -459,6 +499,10 @@
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
@@ -487,6 +531,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="Block" type="types:Block" />
   <xs:complexType name="Block">
@@ -503,6 +548,10 @@
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
@@ -531,6 +580,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="DocumentEditor" type="types:DocumentEditor" />
   <xs:complexType name="DocumentEditor">
@@ -543,6 +593,10 @@
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
     <xs:attribute name="ScrollDirection" type="types:Scrollable" />
     <xs:attribute name="ScrollSensitivity" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
@@ -573,6 +627,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="Run" type="types:Run" />
   <xs:complexType name="Run">
@@ -591,6 +646,10 @@
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
@@ -619,6 +678,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:simpleType name="TextStyleType">
     <xs:restriction base="xs:string">
@@ -697,6 +757,10 @@
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
     <xs:attribute name="HoverColorHex" type="xs:string" />
     <xs:attribute name="PressColorHex" type="xs:string" />
     <xs:attribute name="WidthStar" type="xs:float" />
@@ -727,6 +791,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="Splitter" type="types:Splitter" />
   <xs:complexType name="Splitter">
@@ -738,6 +803,10 @@
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
     <xs:attribute name="HoverColorHex" type="xs:string" />
     <xs:attribute name="PressColorHex" type="xs:string" />
     <xs:attribute name="WidthStar" type="xs:float" />
@@ -768,6 +837,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:simpleType name="DockMode">
     <xs:restriction base="xs:string">
@@ -810,6 +880,10 @@
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
     <xs:attribute name="LastChildFill" type="xs:boolean" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
@@ -839,6 +913,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:simpleType name="GridSizeMode">
     <xs:restriction base="xs:string">
@@ -910,6 +985,10 @@
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
@@ -938,6 +1017,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:simpleType name="Scrollable">
     <xs:restriction base="xs:string">
@@ -977,6 +1057,10 @@
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
     <xs:attribute name="ScrollDirection" type="types:Scrollable" />
     <xs:attribute name="ScrollSensitivity" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
@@ -1007,6 +1091,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="StackPanel" type="types:StackPanel" />
   <xs:complexType name="StackPanel">
@@ -1039,6 +1124,10 @@
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
     <xs:attribute name="Orientation" type="types:Orientation" />
     <xs:attribute name="Spacing" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
@@ -1069,6 +1158,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:simpleType name="ControlColor">
     <xs:restriction base="xs:string">

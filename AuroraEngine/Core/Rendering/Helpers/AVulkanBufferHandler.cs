@@ -48,7 +48,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
         internal static void CreateTextureBuffer(ref Silk.NET.Vulkan.Image _textureImage, ref DeviceMemory _textureBufferMemory, ref Image<Rgba32> image, Format imageFormat, ref Queue queue, ref CommandPool cPool)
         {
             using var _image = image;
-            ulong _imageSize = (ulong)(_image.Width * _image.Height * _image.PixelType.BitsPerPixel);
+            ulong _imageSize = (ulong)(_image.Width * _image.Height * _image.PixelType.BitsPerPixel / 8);
 
             Buffer _stagingBuffer = default;
             DeviceMemory _stagingBufferMemory = default;

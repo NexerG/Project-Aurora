@@ -27,10 +27,14 @@ struct ControlData
     uint textureIndex;
     vec4 clip;
     float cornerRadius;
+    vec3 edgeColor;
+    float edgeThickness;
+    vec3 outlineColor;
+    float outlineWidth;
 };
 
 // One buffer indexed by instance, not one buffer per control. `scalar` layout is load-bearing:
-// it gives this struct a stride of 68 bytes, matching the Pack=1 C# ControlData exactly. Any
+// it gives this struct a stride of 100 bytes, matching the Pack=1 C# ControlData exactly. Any
 // mismatch here and every control past the first reads shifted data.
 layout(set = 0, binding = 2, scalar) readonly buffer ControlDataBuffer {
     ControlData controls[];
@@ -44,6 +48,10 @@ layout(location = 4) out flat vec4 fragClip;
 layout(location = 5) out vec2 fragLocal;
 layout(location = 6) out flat vec2 fragHalfExtent;
 layout(location = 7) out flat float fragRadius;
+layout(location = 8) out flat vec3 fragEdgeColor;
+layout(location = 9) out flat float fragEdgeThickness;
+layout(location = 10) out flat vec3 fragOutlineColor;
+layout(location = 11) out flat float fragOutlineWidth;
 
 void main() {
     mat4 model = ts.transforms[gl_InstanceIndex];
@@ -63,4 +71,8 @@ void main() {
     fragLocal = inPosition.xy * size;
     fragHalfExtent = size * 0.5f;
     fragRadius = CD.controls[gl_InstanceIndex].cornerRadius;
+    fragEdgeColor = CD.controls[gl_InstanceIndex].edgeColor;
+    fragEdgeThickness = CD.controls[gl_InstanceIndex].edgeThickness;
+    fragOutlineColor = CD.controls[gl_InstanceIndex].outlineColor;
+    fragOutlineWidth = CD.controls[gl_InstanceIndex].outlineWidth;
 }

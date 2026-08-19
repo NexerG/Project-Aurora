@@ -2,6 +2,7 @@
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem;
 using ArctisAurora.EngineWork.Registry;
+using Silk.NET.Vulkan;
 
 namespace ArctisAurora.Core.Registry.Assets
 {
@@ -33,7 +34,7 @@ namespace ArctisAurora.Core.Registry.Assets
             Serializer.DeserializeAttributed(Paths.Font(fontName, fontName + ".agd"), ref atlasMetaData);
 
             textureAsset = new TextureAsset();
-            textureAsset.LoadFile(Paths.Font(fontName, fontName + "_atlas.png"));
+            textureAsset.LoadFile(Paths.Font(fontName, fontName + "_atlas.png"), Format.R8G8B8A8Unorm);
         }
 
         /*public FontAsset LoadFont(string name)

@@ -72,6 +72,12 @@ namespace ArctisAurora.Core.UISystem.Controls
             public Vector4D<float> clip;
             // corner radius in design-space pixels, clamped to the half-extent by the shader
             public float cornerRadius;
+            // border band along the rounded silhouette, thickness in design-space pixels
+            public Vector3D<float> edgeColor;
+            public float edgeThickness;
+            // stroke around the mask's own shape, width in screen pixels
+            public Vector3D<float> outlineColor;
+            public float outlineWidth;
         }
 
         [A_XSDType("ControlColor", "UI")]
@@ -376,6 +382,54 @@ namespace ArctisAurora.Core.UISystem.Controls
                 UpdateControlData();
             }
         }
+
+        [A_XSDElementProperty("EdgeColorHex", "UI", "Sets the control's border color via hex code. Needs EdgeThickness to show.")]
+        public string edgeColorHex
+        {
+            get => field;
+            set
+            {
+                field = value;
+                controlData.edgeColor = HexToRGB(value);
+                UpdateControlData();
+            }
+        } = "#000000";
+
+        [A_XSDElementProperty("EdgeThickness", "UI", "Border width in design-space pixels, drawn inward from the control's edge. Zero draws none.")]
+        public float edgeThickness
+        {
+            get => field;
+            set
+            {
+                field = value;
+                controlData.edgeThickness = value;
+                UpdateControlData();
+            }
+        }
+
+        [A_XSDElementProperty("OutlineColorHex", "UI", "Sets the outline color of the control's mask shape via hex code. Needs OutlineWidth to show.")]
+        public string outlineColorHex
+        {
+            get => field;
+            set
+            {
+                field = value;
+                controlData.outlineColor = HexToRGB(value);
+                UpdateControlData();
+            }
+        } = "#000000";
+
+        [A_XSDElementProperty("OutlineWidth", "UI", "Outline width in screen pixels, stroked outward from the mask's shape. Zero draws none.")]
+        public float outlineWidth
+        {
+            get => field;
+            set
+            {
+                field = value;
+                controlData.outlineWidth = value;
+                UpdateControlData();
+            }
+        }
         #endregion
 
         #endregion
@@ -626,6 +680,16 @@ namespace ArctisAurora.Core.UISystem.Controls
             MarkTreeOrderDirty();
             InvalidateLayout();
         }
+
+        public override void RemoveChild(Entity entity)
+        {
+            base.RemoveChild(entity);
+            MarkTreeOrderDirty();
+            InvalidateLayout();
+        }
+
+        // A control's children are always controls.
+        public override VulkanControl FindByName(string querryName) => (VulkanControl)base.FindByName(querryName);
 
         #region size_setters
         public virtual void SetSize(Vector2D<float> size)

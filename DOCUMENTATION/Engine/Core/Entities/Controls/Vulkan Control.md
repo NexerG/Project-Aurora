@@ -82,8 +82,17 @@ Setting `width`/`height`/`preferred*`/`margin`/`padding` calls `InvalidateLayout
 ```C#
 [A_XSDElementProperty("ColorHex","UI")]      public string controlColorHex = "#FFFFFF";
 [A_XSDElementProperty("ControlColor","UI")]  public ControlColor controlColor;  // named palette
+[A_XSDElementProperty("CornerRadius","UI")]  public float cornerRadius;
+[A_XSDElementProperty("EdgeColorHex","UI")]  public string edgeColorHex = "#000000";
+[A_XSDElementProperty("EdgeThickness","UI")] public float edgeThickness;
+[A_XSDElementProperty("OutlineColorHex","UI")] public string outlineColorHex = "#000000";
+[A_XSDElementProperty("OutlineWidth","UI")]  public float outlineWidth;
 ```
-Both setters update `controlData.style.tint` and call `UpdateControlData()`.
+Every setter writes its `controlData` field and calls `UpdateControlData()`.
+
+There are two separate strokes because there are two distance fields to stroke: `EdgeThickness` is a band of the rounded-box silhouette the corner radius already produces, so it is a border on the control's own rectangle and is measured in design-space pixels, while `OutlineWidth` is a second threshold on the mask's MSDF distance, so it traces the shape inside the quad — the letter, not the letter's box — and is measured in screen pixels because that is the space the MSDF distance is resolved in. A control carrying both gets a box border and an outlined glyph, and the edge is composited last so it wins where they overlap.
+
+The edge contributes its own coverage rather than multiplying into the mask's, so a container masked `invisible` still shows its border; the outline multiplies as the fill does, since an outline with no shape to trace is nothing. Both are off at zero, which is the default and is a real branch in the shader — a zero-width stroke evaluated as a stroke would tint the antialiased boundary pixel by half.
 
 ### Rendering
 ```C#
@@ -114,7 +123,7 @@ Bubbling is a contract an override can break, and one does: **`TextInputControl.
 Scalars convert through `TypeDescriptor`, so a compound value needs a `TypeConverter` or the whole parse dies on it — `Thickness` is the one that has one, and `ThicknessConverter` reads `Padding="8"`, `Padding="8,4"` and `Padding="1,2,3,4"` as the struct's own one-, two- and four-argument constructors, which makes the two-value form `(horizontal, vertical)` and not CSS's `vertical horizontal`.
 
 ## Structs & enums
-`ControlStyle` (tint) Â· `ControlData` (QuadUVs + style) Â· `QuadUVs` Â· `Thickness` (margins/padding) Â· `LayoutRect` (Shrink/Intersect/Contains). Enums: `ControlColor`, `ScalingMode`, `HorizontalAlignment`, `VerticalAlignment`.
+`ControlStyle` (tint) Â· `ControlData` (QuadUVs + style + clip + corner/edge/outline, 100 bytes) Â· `QuadUVs` Â· `Thickness` (margins/padding) Â· `LayoutRect` (Shrink/Intersect/Contains). Enums: `ControlColor`, `ScalingMode`, `HorizontalAlignment`, `VerticalAlignment`.
 
 ## Helpers
 ```C#
