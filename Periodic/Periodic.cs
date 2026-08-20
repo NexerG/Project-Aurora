@@ -41,7 +41,8 @@ namespace AuroraPeriodic
             //windowControl.controlColorHex = "#1f6331";
 
             Engine.primary.ui.uiRoot = windowControl;
-            VaultBrowserControl.OpenFirstNote();
+            // UI.xml seeds both panes, so this would add a second tab for a note already open.
+            //VaultBrowserControl.OpenFirstNote();
             //ShortTextControl test = new ShortTextControl();
             //test.transform.position = new Silk.NET.Maths.Vector3D<float>(640, 360, -10);
             //test.text = "somethingBlack";

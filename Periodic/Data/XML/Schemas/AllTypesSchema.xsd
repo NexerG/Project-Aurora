@@ -22,6 +22,9 @@
       <xs:enumeration value="Graphics" />
       <xs:enumeration value="WindowMode" />
       <xs:enumeration value="VaultBrowser" />
+      <xs:enumeration value="MenuItem" />
+      <xs:enumeration value="ContextMenu" />
+      <xs:enumeration value="ContextMenus" />
       <xs:enumeration value="Panel" />
       <xs:enumeration value="TitleBar" />
       <xs:enumeration value="Window" />
@@ -48,6 +51,7 @@
       <xs:enumeration value="GridList" />
       <xs:enumeration value="Scrollable" />
       <xs:enumeration value="ScrollableControl" />
+      <xs:enumeration value="SplitView" />
       <xs:enumeration value="StackPanel" />
       <xs:enumeration value="TabItem" />
       <xs:enumeration value="TabView" />
@@ -152,6 +156,9 @@
   <xs:simpleType name="UI">
     <xs:restriction base="xs:string">
       <xs:enumeration value="VaultBrowser" />
+      <xs:enumeration value="MenuItem" />
+      <xs:enumeration value="ContextMenu" />
+      <xs:enumeration value="ContextMenus" />
       <xs:enumeration value="Panel" />
       <xs:enumeration value="TitleBar" />
       <xs:enumeration value="Window" />
@@ -178,6 +185,7 @@
       <xs:enumeration value="GridList" />
       <xs:enumeration value="Scrollable" />
       <xs:enumeration value="ScrollableControl" />
+      <xs:enumeration value="SplitView" />
       <xs:enumeration value="StackPanel" />
       <xs:enumeration value="TabItem" />
       <xs:enumeration value="TabView" />

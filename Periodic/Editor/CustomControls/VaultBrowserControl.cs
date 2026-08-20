@@ -3,6 +3,7 @@ using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
+using ArctisAurora.Core.UISystem;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.Core.UISystem.Controls.Interactable;
@@ -10,6 +11,7 @@ using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.Core.UISystem.Controls.Text.Document;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
+using ArctisAurora.EngineWork.Rendering;
 using AuroraPeriodic;
 
 namespace Periodic.Editor.CustomControls
@@ -122,10 +124,21 @@ namespace Periodic.Editor.CustomControls
             return row;
         }
 
+        // The split pane last clicked in, so a note opens where the work is. Only this window counts —
+        // the browser has no business opening notes in one that was torn off.
+        private static TabViewControl FocusedTabs()
+        {
+            VulkanControl control = UICollisionHandling.activeControl;
+            while (control != null && control is not TabViewControl)
+                control = control.parent as VulkanControl;
+
+            return control is TabViewControl view && RenderWindow.Of(view) == Engine.primary ? view : null;
+        }
+
         // Focuses the note's tab, opening one if it is not already open.
         private static void Open(string notePath)
         {
-            TabViewControl tabs = Engine.primary.ui.uiRoot.FindByName(tabsName) as TabViewControl;
+            TabViewControl tabs = FocusedTabs() ?? Engine.primary.ui.uiRoot.FindByName(tabsName) as TabViewControl;
             if (tabs == null) return;
 
             TabItemControl open = tabs.FindTab(notePath);

@@ -96,8 +96,8 @@ namespace ArctisAurora.EngineWork.Rendering
 
                     if (ui.rangeRoot != null)
                     {
-                        // a drag preview: the same box translated onto the control it is showing
-                        box = new Vector2D<float>(_extent.Width, _extent.Height);
+                        // a drag preview: the control's own box, so it fills the window at any extent
+                        box = ui.rangeRoot.arrangedRect.size;
                         origin = new Vector2D<float>(ui.rangeRoot.arrangedRect.x, ui.rangeRoot.arrangedRect.y);
                     }
                     else

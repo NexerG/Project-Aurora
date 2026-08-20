@@ -63,4 +63,17 @@
 		<Repeat />
 	</Keybind>
 
+	<!-- the two-modifier bind is declared first: IsShadowed only suppresses the looser bind once the
+	     stricter one has already fired this pass -->
+	<Keybind Trigger="Backslash" Action="View.SplitDown">
+		<Modifier Key="LeftControl" />
+		<Modifier Key="LeftShift" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Backslash" Action="View.SplitRight">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
 </KeybindMap>

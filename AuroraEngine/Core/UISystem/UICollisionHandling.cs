@@ -16,7 +16,6 @@ namespace ArctisAurora.Core.UISystem
     public unsafe class UICollisionHandling
     {
         public static UICollisionHandling instance;
-        public ContextMenuControl defaultContextMenu;
 
         public Vector2D<float> lastMousePos;
         public Vector2D<float> delta;
@@ -25,6 +24,8 @@ namespace ArctisAurora.Core.UISystem
         public static VulkanControl hovering { get; set; }
         [A_ActiveContext("Dragging")]
         public static VulkanControl dragging;
+        // the control currently showing where the drag would land
+        private static VulkanControl hinted;
         
         /*[A_ActiveContext("ActiveContainer")]
         public static VulkanControl activeContainer;*/
@@ -91,6 +92,7 @@ namespace ArctisAurora.Core.UISystem
                 // cleared before the callbacks, so a handler asking whether a drag is live gets no
                 SetDragging(null);
                 DragGhost.Hide();
+                ClearDropHint();
                 OfferDrop(dragTarget);
                 dragTarget.StopDrag();
                 dragTarget.ResolveOnRelease();
@@ -105,6 +107,7 @@ namespace ArctisAurora.Core.UISystem
         {
             if (hovering == null) return;
             hovering?.ResolveOnAltClick();
+            hovering.OpenContextMenu();
         }
 
         public void SolveRMBRelease(Vector2D<float> mousePos)
@@ -125,11 +128,13 @@ namespace ArctisAurora.Core.UISystem
                 VulkanControl stale = dragging;
                 SetDragging(null);
                 DragGhost.Hide();
+                ClearDropHint();
                 stale.StopDrag();
                 return;
             }
 
             dragging.ResolveDrag(lastMousePos, delta);
+            UpdateDropHint(dragging);
         }
 
         public void SolveScroll(Vector2D<float> offset)
@@ -189,6 +194,7 @@ namespace ArctisAurora.Core.UISystem
         {
             if (ReferenceEquals(hovering, control)) hovering = null;
             if (ReferenceEquals(dragging, control)) dragging = null;
+            if (ReferenceEquals(hinted, control)) hinted = null;
             if (ReferenceEquals(activeControl, control)) activeControl = null;
         }
 
@@ -203,32 +209,66 @@ namespace ArctisAurora.Core.UISystem
             (control as IContext)?.OnContextAdded("Dragging");
         }
 
-        // Offers the dropped control to whatever is under the pointer, innermost first.
+        // The control under the pointer mid-drag, and the point in its window's design space.
         //
         // The target cannot come from `hovering`: the press captured the pointer to the drag's own
         // window, so no other window is told the pointer is over it and its tree is never hovered.
         // The drag's window does still report accurate positions, so the target is found by geometry
         // — screen point, the window whose rect holds it, that window's tree.
-        private static void OfferDrop(VulkanControl dropped)
+        private static VulkanControl HitFor(VulkanControl dropped, out Vector2D<float> local)
         {
+            local = Vector2D<float>.Zero;
+
             RenderWindow source = RenderWindow.Of(dropped);
-            if (source == null) return;
+            if (source == null) return null;
 
             AGlfwWindow._glfw.GetWindowPos(source.os.handle, out int sx, out int sy);
             Vector2D<float> screen = new Vector2D<float>(sx + source.mousePos.X, sy + source.mousePos.Y);
 
             RenderWindow target = WindowAt(screen);
-            if (target == null || target.ui.uiRoot == null) return;
+            if (target == null || target.ui.uiRoot == null) return null;
 
             AGlfwWindow._glfw.GetWindowPos(target.os.handle, out int tx, out int ty);
-            Vector2D<float> local = target.ui.ToDesignSpace(new Vector2D<float>(screen.X - tx, screen.Y - ty));
+            local = target.ui.ToDesignSpace(new Vector2D<float>(screen.X - tx, screen.Y - ty));
 
-            VulkanControl control = instance.HitTest(local, target.ui.uiRoot);
+            return instance.HitTest(local, target.ui.uiRoot);
+        }
+
+        // Offers the dropped control to whatever is under the pointer, innermost first.
+        private static void OfferDrop(VulkanControl dropped)
+        {
+            VulkanControl control = HitFor(dropped, out Vector2D<float> local);
             while (control != null)
             {
-                if (control.ResolveDrop(dropped)) return;
+                if (control.ResolveDrop(dropped, local)) return;
                 control = control.parent as VulkanControl;
             }
+        }
+
+        // Asks the same walk to show where the drop would land, once per tick the drag runs.
+        private static void UpdateDropHint(VulkanControl dropped)
+        {
+            VulkanControl control = HitFor(dropped, out Vector2D<float> local);
+            VulkanControl next = null;
+
+            while (control != null)
+            {
+                if (control.ResolveDropHint(dropped, local))
+                {
+                    next = control;
+                    break;
+                }
+                control = control.parent as VulkanControl;
+            }
+
+            if (!ReferenceEquals(hinted, next)) hinted?.ClearDropHint();
+            hinted = next;
+        }
+
+        private static void ClearDropHint()
+        {
+            hinted?.ClearDropHint();
+            hinted = null;
         }
 
         // First window whose rect holds the point. Overlapping windows are resolved by map order,

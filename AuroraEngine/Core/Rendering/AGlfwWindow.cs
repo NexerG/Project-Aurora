@@ -96,6 +96,27 @@ namespace ArctisAurora.EngineWork.Rendering
             UpdateWindowSize(ref windowSize);
         }
 
+        // Floats over its parent and takes focus, so a dismissal has something to leave. Starts
+        // hidden like the ghost, so the first open is filled and placed before it is ever seen.
+        internal void CreateMenuWindow()
+        {
+            _glfw.DefaultWindowHints();
+            _glfw.WindowHint(WindowHintClientApi.ClientApi, ClientApi.NoApi);
+            _glfw.WindowHint(WindowHintBool.Resizable, false);
+            _glfw.WindowHint(WindowHintBool.Decorated, false);
+            _glfw.WindowHint(WindowHintBool.DoubleBuffer, true);
+            _glfw.WindowHint(WindowHintBool.Floating, true);
+            _glfw.WindowHint(WindowHintBool.Visible, false);
+            handle = _glfw.CreateWindow((int)windowSize.Width, (int)windowSize.Height, "", null, null);
+
+            if (handle == null)
+                throw new Exception("Failed to create the context menu window");
+
+            UpdateWindowSize(ref windowSize);
+        }
+
+        internal void Focus() => _glfw.FocusWindow(handle);
+
         internal void SetOpacity(float opacity) => _glfw.SetWindowOpacity(handle, opacity);
 
         internal void Show() => _glfw.ShowWindow(handle);
@@ -169,6 +190,14 @@ namespace ArctisAurora.EngineWork.Rendering
         internal void SetPosition(int x, int y)
         {
             _glfw.SetWindowPos(handle, x, y);
+        }
+
+        // Publishes the new size itself, for windows with no resize callback to do it.
+        internal void Resize(uint width, uint height)
+        {
+            _glfw.SetWindowSize(handle, (int)width, (int)height);
+            UpdateWindowSize(ref windowSize);
+            frameBufferResized = true;
         }
 
         // The cursor-enter callback only fires on a crossing, so a window created under the pointer

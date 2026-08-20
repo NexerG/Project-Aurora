@@ -29,9 +29,17 @@ namespace ArctisAurora.Core.UISystem.Controls
         [A_XSDElementProperty("ContentScalingMode", "UI")]
         public ScalingMode contentScalingMode = ScalingMode.Vertical;
 
+        // Every control sits 0.001 nearer the camera than its parent and a root keeps whatever z it
+        // is given, so the root starts far enough back that a deep tree still clears the near plane.
+        private const float rootDepth = -10f;
+
         public WindowControl()
         {
             maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");
+
+            ref TransformData t = ref transform;
+            t.position = new Vector3D<float>(t.position.X, t.position.Y, rootDepth);
+            CommitTransform();
         }
 
         // The box the tree is laid out and projected in. Window pixels unless the content scales,

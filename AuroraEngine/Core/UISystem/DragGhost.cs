@@ -2,6 +2,8 @@ using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
+using Silk.NET.Maths;
+using Silk.NET.Vulkan;
 
 namespace ArctisAurora.Core.UISystem
 {
@@ -24,8 +26,12 @@ namespace ArctisAurora.Core.UISystem
             _source = RenderWindow.Of(control);
             if (_source == null) return;
 
+            Extent2D size = PreviewSize(control);
+
             if (_window == null)
-                _window = Engine.OpenGhostWindow(windowName, setting.width, setting.height);
+                _window = Engine.OpenGhostWindow(windowName, size.Width, size.Height);
+            else
+                _window.os.Resize(size.Width, size.Height);
 
             _window.ui.rangeRoot = control;
             UILayout.InvalidateWindowRanges();
@@ -43,6 +49,17 @@ namespace ArctisAurora.Core.UISystem
             _window.ui.rangeRoot = null;
             _source = null;
             UILayout.InvalidateWindowRanges();
+        }
+
+        // The control at the size it is drawn on screen.
+        private static Extent2D PreviewSize(VulkanControl control)
+        {
+            Extent2D window = _source.os.windowSize;
+            Vector2D<float> viewport = _source.ui.uiRoot.ViewportSize(window);
+
+            return new Extent2D(
+                (uint)(control.arrangedRect.width * window.Width / viewport.X),
+                (uint)(control.arrangedRect.height * window.Height / viewport.Y));
         }
 
         // Centres the preview on the pointer. The drag's own window has the capture, so its reported

@@ -151,6 +151,18 @@ namespace ArctisAurora.EngineWork
             return window;
         }
 
+        // A menu is clicked, so unlike the preview it wires input and is an ordinary window to every
+        // walk that skips ghosts.
+        public static RenderWindow OpenMenuWindow(string name, uint width, uint height)
+        {
+            RenderWindow window = new RenderWindow(width, height);
+            window.os.CreateMenuWindow();
+            WireInput(window);
+
+            Publish(name, window);
+            return window;
+        }
+
         // No input callbacks — a preview window is looked at, never clicked.
         public static RenderWindow OpenGhostWindow(string name, uint width, uint height)
         {
@@ -250,6 +262,7 @@ namespace ArctisAurora.EngineWork
             foreach (RenderWindow window in windows.Values)
                 HandleUI(window);
             DragGhost.Follow();
+            ContextMenuWindow.Tick();
 
             // here should go entity updates &/or interpolation
             Interpolate();

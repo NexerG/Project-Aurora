@@ -50,9 +50,26 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         private const uint tearOffHeight = 640;
         private static int _tornWindows;
 
+        // share of a side inside which a dropped tab splits instead of moving in
+        private const float edgeBand = 0.25f;
+
         private readonly StackPanelControl strip = new StackPanelControl();
 
+        // drop hint — the wash and the edge it is showing, null when nothing is being dragged over us
+        private HintControl hint;
+        private SplitViewControl.SplitEdge? hintEdge;
+
         public TabItemControl activeItem { get; private set; }
+
+        public int ItemCount
+        {
+            get
+            {
+                int count = 0;
+                foreach (TabItemControl _ in Items) count++;
+                return count;
+            }
+        }
 
         public TabViewControl()
         {
@@ -102,17 +119,110 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             CloseIfEmptied();
         }
 
-        // Accepts a tab dragged out of any strip, including our own.
-        public override bool ResolveDrop(VulkanControl dropped)
+        // What a drop at this point would do — an edge to split on, or null to take the tab in.
+        // The button comes back out so a caller can tell "no edge" from "not a tab drag at all".
+        private SplitViewControl.SplitEdge? PendingEdge(VulkanControl dropped, Vector2D<float> point, out TabStripButtonControl button)
         {
-            if (dropped is not TabStripButtonControl button || !button.dragging) return false;
+            button = dropped as TabStripButtonControl;
+            if (button == null || !button.dragging) { button = null; return null; }
+
+            // splitting off our own only tab would empty us and collapse the split straight back
+            bool ownOnly = ReferenceEquals(button.item.parent, this) && ItemCount < 2;
+            return ownOnly ? null : EdgeAt(point);
+        }
+
+        // Accepts a tab dragged out of any strip, including our own. A drop in the outer band of a
+        // side splits this view instead of taking the tab in.
+        public override bool ResolveDrop(VulkanControl dropped, Vector2D<float> point)
+        {
+            SplitViewControl.SplitEdge? edge = PendingEdge(dropped, point, out TabStripButtonControl button);
+            if (button == null) return false;
 
             button.accepted = true;
+
+            if (edge != null)
+            {
+                TabViewControl pane = SplitViewControl.Split(this, edge.Value);
+                if (pane != null)
+                {
+                    button.item.SetParent(pane);
+                    pane.SetActive(button.item);
+                    return true;
+                }
+            }
+
             if (ReferenceEquals(button.item.parent, this)) return true;
 
             button.item.SetParent(this);
             SetActive(button.item);
             return true;
+        }
+
+        // Claims the hint for any live tab drag over us, whether or not it is over an edge — the
+        // middle is a drop we take too, it just splits nothing and so washes nothing.
+        public override bool ResolveDropHint(VulkanControl dropped, Vector2D<float> point)
+        {
+            SplitViewControl.SplitEdge? edge = PendingEdge(dropped, point, out TabStripButtonControl button);
+            if (button == null) return false;
+
+            SetHint(edge);
+            return true;
+        }
+
+        public override void ClearDropHint() => SetHint(null);
+
+        // The wash is built on the first hint this view ever shows and kept after that. It has to be
+        // the last child every time it is raised, because dense order is DFS and tabs are appended.
+        private void SetHint(SplitViewControl.SplitEdge? edge)
+        {
+            if (hintEdge == edge) return;
+            hintEdge = edge;
+
+            if (edge != null)
+            {
+                if (hint == null)
+                {
+                    hint = new HintControl { hitTestable = false };
+                    base.AddChild(hint);
+                }
+                children.Remove(hint);
+                children.Add(hint);
+                MarkTreeOrderDirty();
+            }
+
+            InvalidateLayout();
+        }
+
+        // The half the new pane would take, and nothing at all when there is no edge.
+        private LayoutRect HintRect(LayoutRect inner) => hintEdge switch
+        {
+            SplitViewControl.SplitEdge.Left => new LayoutRect(inner.x, inner.y, inner.width * 0.5f, inner.height),
+            SplitViewControl.SplitEdge.Right => new LayoutRect(inner.x + inner.width * 0.5f, inner.y, inner.width * 0.5f, inner.height),
+            SplitViewControl.SplitEdge.Top => new LayoutRect(inner.x, inner.y, inner.width, inner.height * 0.5f),
+            SplitViewControl.SplitEdge.Bottom => new LayoutRect(inner.x, inner.y + inner.height * 0.5f, inner.width, inner.height * 0.5f),
+            _ => new LayoutRect(inner.x, inner.y, 0, 0)
+        };
+
+        // The outer band of a side, nearest side winning. Null in the middle and anywhere over the
+        // strip, where a drop means "put the tab here".
+        private SplitViewControl.SplitEdge? EdgeAt(Vector2D<float> point)
+        {
+            LayoutRect rect = arrangedRect;
+            if (rect.width <= 0f || rect.height <= 0f) return null;
+            if (point.Y < rect.y + tabHeight) return null;
+
+            float left = (point.X - rect.x) / rect.width;
+            float top = (point.Y - rect.y) / rect.height;
+            float right = 1f - left;
+            float bottom = 1f - top;
+
+            float nearest = MathF.Min(MathF.Min(left, right), MathF.Min(top, bottom));
+            if (nearest > edgeBand) return null;
+
+            if (nearest == left) return SplitViewControl.SplitEdge.Left;
+            if (nearest == right) return SplitViewControl.SplitEdge.Right;
+            if (nearest == top) return SplitViewControl.SplitEdge.Top;
+            return SplitViewControl.SplitEdge.Bottom;
         }
 
         // Moves a tab into a window of its own, built from tearOffDocument and placed at the pointer.
@@ -176,11 +286,18 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             CloseIfEmptied();
         }
 
-        // A window that exists to hold tabs has nothing left to be once the last one goes. The main
-        // window stays — closing that is the application closing.
+        // A pane that empties hands its split back to its neighbour. A window that exists to hold tabs
+        // has nothing left to be once the last one goes. The main window stays — closing that is the
+        // application closing.
         private void CloseIfEmptied()
         {
             if (activeItem != null) return;
+
+            if (parent is SplitViewControl split)
+            {
+                SplitViewControl.Collapse(split, this);
+                return;
+            }
 
             RenderWindow window = RenderWindow.Of(this);
             if (window == null || window == Engine.primary) return;
@@ -318,6 +435,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
             strip.Measure(new Vector2D<float>(innerW, tabHeight));
             activeItem?.Measure(new Vector2D<float>(innerW, MathF.Max(0, innerH - tabHeight)));
+            hint?.Measure(new Vector2D<float>(innerW, innerH));
 
             DesiredSize = new Vector2D<float>(w, h);
             isMeasureDirty = false;
@@ -340,6 +458,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
             activeItem?.Arrange(new LayoutRect(inner.x, inner.y + tabHeight, inner.width,
                 MathF.Max(0, inner.height - tabHeight)));
+
+            hint?.Arrange(HintRect(inner));
 
             isArrangeDirty = false;
         }

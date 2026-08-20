@@ -67,6 +67,11 @@ namespace ArctisAurora.EngineWork.Rendering
             {
                 ui,
             };
+
+            // A module knows its window from birth. BindWindow only runs when the render thread
+            // builds the GPU side, and a tree can be assigned to a window before that happens.
+            for (int i = 0; i < modules.Length; i++)
+                modules[i].window = this;
         }
 
         // The window a control is drawn into — its root is some window's uiRoot. Null for a subtree

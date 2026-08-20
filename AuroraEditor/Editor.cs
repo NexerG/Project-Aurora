@@ -88,7 +88,6 @@ namespace AuroraEditor
             //dock.Dock(control3, DockMode.top);
             //dock.Dock(control4, DockMode.right);
             //dock.Dock(control5, DockMode.fill);
-            //uiCollisionHandler.defaultContextMenu = new ContextMenuControl();
 
             engine.Run();   
         }

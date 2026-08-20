@@ -1,7 +1,7 @@
 ﻿<Window xmlns="http://arctisaurora/AuroraUITypes"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://arctisaurora/UI ../Schemas/UITypeSchema.xsd"
-        Width="1280" Height="720" WindowingMode="WindowSize" ContentScalingMode="Vertical" ColorHex="#1e1e1e">
+        Width="1280" Height="720" WindowingMode="WindowSize" ContentScalingMode="Vertical" ColorHex="#1e1e1e" ContextMenu="window">
 
 	<WindowFrame ColorHex="#1e1e1e">
 	<StackPanel Orientation="Vertical" ColorHex="#1e1e1e">
@@ -12,7 +12,7 @@
 			<Button Width="46" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A" onRelease="Window.Minimize">
 				<Label Text="-" FontSize="16" ColorHex="#CCCCCC"/>
 			</Button>
-			<Button Width="46" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A" onRelease="Window.MaximizeRestore">
+			<Button Width="46" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A" onRelease="Window.MaximizeRestore" CornerRadius="10,0,0,10" EdgeThickness="2" EdgeColorHex="#C42B1E">
 				<Label Text="[]" FontSize="16" ColorHex="#CCCCCC"/>
 			</Button>
 			<Button Width="46" Height="32" ColorHex="#141414" HoverColorHex="#C42B1E" PressColorHex="#A82318" onRelease="Window.Close">
@@ -23,10 +23,25 @@
 		<StackPanel Orientation="Horizontal" HeightStar="1" ColorHex="#1e1e1e">
 			<VaultBrowser Name="Browser" Width="220" MinWidth="120" ColorHex="#171717" Padding="8"/>
 			<Splitter Width="5"/>
-			<TabView Name="Tabs" WidthStar="1" ColorHex="#1e1e1e"
-					 TabHeight="28" TabWidth="180"
-					 TabColorHex="#252525" ActiveTabColorHex="#1e1e1e" TabHoverColorHex="#2F2F2F"
-					 TearOffDocument="TabWindow.xml"/>
+			<SplitView Orientation="Horizontal" WidthStar="1">
+				<TabView Name="Tabs" Width="525" MinWidth="120" ColorHex="#1e1e1e" ContextMenu="view"
+						 TabHeight="28" TabWidth="180"
+						 TabColorHex="#252525" ActiveTabColorHex="#1e1e1e" TabHoverColorHex="#2F2F2F"
+						 TearOffDocument="TabWindow.xml">
+					<TabItem Header="SampleNote">
+						<DocumentEditor Source="../../Notes/SampleNote.xml"/>
+					</TabItem>
+				</TabView>
+				<Splitter Width="5"/>
+				<TabView Name="TabsRight" WidthStar="1" MinWidth="120" ColorHex="#1e1e1e" ContextMenu="view"
+						 TabHeight="28" TabWidth="180"
+						 TabColorHex="#252525" ActiveTabColorHex="#1e1e1e" TabHoverColorHex="#2F2F2F"
+						 TearOffDocument="TabWindow.xml">
+					<TabItem Header="Keybinds">
+						<DocumentEditor Source="../../Notes/Reference/Keybinds.xml"/>
+					</TabItem>
+				</TabView>
+			</SplitView>
 		</StackPanel>
 	</StackPanel>
 	</WindowFrame>

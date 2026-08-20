@@ -26,14 +26,15 @@ namespace ArctisAurora.Core.UISystem.Controls
         [StructLayout(LayoutKind.Sequential, Pack = 1), A_XSDType("ControlStyle", "AssetRegistry")]
         public struct ControlStyle
         {
-            public Vector3D<float> tint;
+            // rgb tint, a opacity
+            public Vector4D<float> tint;
             //public Sampler image;
             //public Sampler mask;
 
             public static ControlStyle Default()
             {
                 Dictionary<string, ControlStyle> dStyles = AssetRegistries.GetRegistryByValueType<string, ControlStyle>(typeof(ControlStyle));
-                return dStyles.GetValueOrDefault("default");
+                return dStyles.GetValueOrDefault("default", new ControlStyle { tint = new Vector4D<float>(1, 1, 1, 1) });
             }
         }
 
@@ -70,8 +71,8 @@ namespace ArctisAurora.Core.UISystem.Controls
             public uint textureIndex;
             // clip bounds in design space, as (left, top, right, bottom)
             public Vector4D<float> clip;
-            // corner radius in design-space pixels, clamped to the half-extent by the shader
-            public float cornerRadius;
+            // corner radii in design-space pixels, as (topLeft, topRight, bottomLeft, bottomRight)
+            public Vector4D<float> cornerRadius;
             // border band along the rounded silhouette, thickness in design-space pixels
             public Vector3D<float> edgeColor;
             public float edgeThickness;
@@ -158,6 +159,63 @@ namespace ArctisAurora.Core.UISystem.Controls
                     2 => new Thickness(sides[0], sides[1]),
                     4 => new Thickness(sides[0], sides[1], sides[2], sides[3]),
                     _ => throw new FormatException($"Thickness \"{text}\" needs 1, 2 or 4 comma-separated values.")
+                };
+            }
+        }
+
+        [TypeConverter(typeof(CornerRadiiConverter))]
+        public struct CornerRadii
+        {
+            public float topLeft;
+            public float topRight;
+            public float bottomLeft;
+            public float bottomRight;
+
+            public CornerRadii(float uniform)
+            {
+                topLeft = topRight = bottomLeft = bottomRight = uniform;
+            }
+
+            public CornerRadii(float top, float bottom)
+            {
+                topLeft = topRight = top;
+                bottomLeft = bottomRight = bottom;
+            }
+
+            public CornerRadii(float topLeft, float topRight, float bottomLeft, float bottomRight)
+            {
+                this.topLeft = topLeft;
+                this.topRight = topRight;
+                this.bottomLeft = bottomLeft;
+                this.bottomRight = bottomRight;
+            }
+
+            public Vector4D<float> AsVector() => new Vector4D<float>(topLeft, topRight, bottomLeft, bottomRight);
+
+            public static CornerRadii Zero => new CornerRadii(0);
+        }
+
+        // "8" | "8,4" | "1,2,3,4", one comma-separated value per CornerRadii constructor.
+        public class CornerRadiiConverter : TypeConverter
+        {
+            public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType) =>
+                sourceType == typeof(string) || base.CanConvertFrom(context, sourceType);
+
+            public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
+            {
+                if (value is not string text) return base.ConvertFrom(context, culture, value);
+
+                string[] parts = text.Split(',');
+                float[] corners = new float[parts.Length];
+                for (int i = 0; i < parts.Length; i++)
+                    corners[i] = float.Parse(parts[i].Trim(), culture);
+
+                return parts.Length switch
+                {
+                    1 => new CornerRadii(corners[0]),
+                    2 => new CornerRadii(corners[0], corners[1]),
+                    4 => new CornerRadii(corners[0], corners[1], corners[2], corners[3]),
+                    _ => throw new FormatException($"CornerRadii \"{text}\" needs 1, 2 or 4 comma-separated values.")
                 };
             }
         }
@@ -353,11 +411,23 @@ namespace ArctisAurora.Core.UISystem.Controls
             {
                 field = value;
                 Vector3D<float> rgb = HexToRGB(value);
-                controlData.style.tint = rgb;
+                controlData.style.tint = new Vector4D<float>(rgb, controlData.style.tint.W);
                 //isDirty = true;
                 UpdateControlData();
             }
         } = "#FFFFFF";
+
+        [A_XSDElementProperty("Alpha", "UI", "Opacity of the control, 0 to 1. Multiplies the coverage its mask already carries.")]
+        public float alpha
+        {
+            get => field;
+            set
+            {
+                field = value;
+                controlData.style.tint.W = value;
+                UpdateControlData();
+            }
+        } = 1f;
 
         [A_XSDElementProperty("ControlColor", "UI", "Sets the color of the control.")]
         public ControlColor controlColor
@@ -367,21 +437,21 @@ namespace ArctisAurora.Core.UISystem.Controls
             {
                 string hex = EnumColorToHex(value);
                 Vector3D<float> rgb = HexToRGB(hex);
-                controlData.style.tint = rgb;
+                controlData.style.tint = new Vector4D<float>(rgb, controlData.style.tint.W);
                 UpdateControlData();
                 field = value;
                 controlColorHex = hex;
             }
         }
 
-        [A_XSDElementProperty("CornerRadius", "UI", "Rounds the control's corners, in design-space pixels.")]
-        public float cornerRadius
+        [A_XSDElementProperty("CornerRadius", "UI", "Rounds the control's corners, in design-space pixels. \"8\", \"top,bottom\" or \"topLeft,topRight,bottomLeft,bottomRight\".")]
+        public CornerRadii cornerRadius
         {
             get => field;
             set
             {
                 field = value;
-                controlData.cornerRadius = value;
+                controlData.cornerRadius = value.AsVector();
                 UpdateControlData();
             }
         }
@@ -517,7 +587,8 @@ namespace ArctisAurora.Core.UISystem.Controls
         #endregion
 
         // EXTRAS
-        public ContextMenuControl contextMenu;
+        [A_XSDElementProperty("ContextMenu", "UI", "Menus in ContextMenus.xml this control offers on right click, comma separated.")]
+        public string contextMenus = "";
 
         #region ---- Layout State ----
         public Vector2D<float> DesiredSize { get; protected set; }
@@ -783,8 +854,27 @@ namespace ArctisAurora.Core.UISystem.Controls
         public virtual void RegisterDragStop(Action action) => onDragStop += action;
         public virtual void StopDrag() => onDragStop?.Invoke();
 
-        // A drag was released over this control. False means "not mine" and the offer walks up.
-        public virtual bool ResolveDrop(VulkanControl dropped) => false;
+        // A drag was released over this control at a point in design space. False means "not mine"
+        // and the offer walks up.
+        public virtual bool ResolveDrop(VulkanControl dropped, Vector2D<float> point) => false;
+
+        // The same offer while the button is still down, so the target can show where it would land.
+        // Answered by whoever would take the drop, and walked up the same way.
+        public virtual bool ResolveDropHint(VulkanControl dropped, Vector2D<float> point) => false;
+
+        public virtual void ClearDropHint() { }
+
+        // Entries this control adds to its own menu, on top of whatever ContextMenu names. Add-only
+        // — conditional entries belong here, static ones in the XML.
+        public virtual void BuildContextMenu(ContextMenuBuilder menu) { }
+
+        // Opens this control's menu, or hands the right click up when it has nothing to offer. The
+        // walk is unconditional: bubbleAltClick gates the callback, not who owns the menu.
+        public virtual void OpenContextMenu()
+        {
+            if (ContextMenuWindow.Open(this)) return;
+            (parent as VulkanControl)?.OpenContextMenu();
+        }
 
         public void RegisterOnClick(Action action) => onClick += action;
         public virtual void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
@@ -923,11 +1013,10 @@ namespace ArctisAurora.Core.UISystem.Controls
             WindowControl window = new WindowControl();
             ResolveAttributes(root, window);
 
-            Vector3D<float> pos = new Vector3D<float>(window.preferredWidth / 2f, window.preferredHeight / 2f, -10.0f);
             window.arrangedRect = new LayoutRect(0, 0, window.preferredWidth, window.preferredHeight);
             UILayout.RegisterDirtyRoot(window);
             ref TransformData wt = ref window.transform;
-            wt.position = pos;
+            wt.position = new Vector3D<float>(window.preferredWidth / 2f, window.preferredHeight / 2f, wt.position.Z);
             wt.scale = new Vector3D<float>(window.preferredWidth, window.preferredHeight, 1);
             window.CommitTransform();
             RecursiveParse(root, window);

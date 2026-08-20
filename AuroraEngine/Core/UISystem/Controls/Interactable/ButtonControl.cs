@@ -61,7 +61,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
                        : hovered ? hoverColorHex ?? controlColorHex
                        : controlColorHex;
 
-            controlData.style.tint = HexToRGB(hex);
+            controlData.style.tint = new Vector4D<float>(HexToRGB(hex), controlData.style.tint.W);
             UpdateControlData();
         }
     }

@@ -4,7 +4,7 @@
 
 struct Style
 {
-    vec3 tint;
+    vec4 tint;
 };
 
 layout(location = 0) in vec2 fragUV;
@@ -14,7 +14,7 @@ layout(location = 3) in vec2 fragPos;
 layout(location = 4) in flat vec4 fragClip;
 layout(location = 5) in vec2 fragLocal;
 layout(location = 6) in flat vec2 fragHalfExtent;
-layout(location = 7) in flat float fragRadius;
+layout(location = 7) in flat vec4 fragRadius;
 layout(location = 8) in flat vec3 fragEdgeColor;
 layout(location = 9) in flat float fragEdgeThickness;
 layout(location = 10) in flat vec3 fragOutlineColor;
@@ -28,11 +28,12 @@ float median(float r, float g, float b) {
     return max(min(r, g), min(max(r, g), b));
 }
 
-// Signed distance to a rounded rectangle, negative inside.
-float sdRoundBox(vec2 p, vec2 b, float r) {
-    r = min(r, min(b.x, b.y));
-    vec2 q = abs(p) - b + r;
-    return min(max(q.x, q.y), 0.0f) + length(max(q, 0.0f)) - r;
+// Signed distance to a rounded rectangle, negative inside. r is (topLeft, topRight, bottomLeft, bottomRight).
+float sdRoundBox(vec2 p, vec2 b, vec4 r) {
+    vec2 side = (p.y > 0.0f) ? r.zw : r.xy;
+    float rad = min((p.x > 0.0f) ? side.y : side.x, min(b.x, b.y));
+    vec2 q = abs(p) - b + rad;
+    return min(max(q.x, q.y), 0.0f) + length(max(q, 0.0f)) - rad;
 }
 
 void main()
@@ -41,14 +42,27 @@ void main()
         fragPos.x > fragClip.z || fragPos.y > fragClip.w)
         discard;
 
-    vec3 msdf = texture(samplers[fragTextureIndex], fragUV).rgb;
-    float sd = median(msdf.r, msdf.g, msdf.b) - 0.5f;
-    float screenPxRange = fwidth(sd);
-    float screenPxDist = sd / screenPxRange;
-    float fillAlpha = clamp(screenPxDist + 0.5f, 0.0f, 1.0f);
-    //float opacity = smoothstep(-screenPxRange, screenPxRange, sd);
+    vec4 mtsdf = texture(samplers[fragTextureIndex], fragUV);
+    float msdfDist = median(mtsdf.r, mtsdf.g, mtsdf.b);
+    float trueDist = mtsdf.a;
 
-    vec3 color = fragStyle.tint;
+    float sd = msdfDist;
+    float trueSD = trueDist;
+    if (abs((sd - 0.5f) - (trueSD - 0.5f)) > 0.1f)
+    {
+        sd = trueSD;
+    }
+
+    float pxRange = 4.0f;
+    vec2 atlasSize = vec2(textureSize(samplers[fragTextureIndex], 0));
+    vec2 unitRange = vec2(pxRange) / atlasSize;
+    vec2 screenTexSize = vec2(1.0f) / fwidth(fragUV);
+    float screenPxRange = max(1.0f, length(unitRange * screenTexSize));
+
+    float screenPxDist = screenPxRange * (sd - 0.5f);
+    float fillAlpha = clamp(screenPxDist + 0.5f, 0.0f, 1.0f);
+
+    vec3 color = fragStyle.tint.rgb;
     float opacity = fillAlpha;
 
     // outline — a second threshold that far outside the shape, the fill composited over it
@@ -71,5 +85,5 @@ void main()
         opacity = max(opacity, band);
     }
 
-    outColor = vec4(color, opacity);
+    outColor = vec4(color, opacity * fragStyle.tint.a);
 }

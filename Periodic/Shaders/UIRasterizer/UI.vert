@@ -17,7 +17,7 @@ layout(set = 0, binding = 1) readonly buffer Transform{
 
 struct Style
 {
-    vec3 tint;
+    vec4 tint;
 };
 
 struct ControlData
@@ -26,7 +26,7 @@ struct ControlData
     Style style;
     uint textureIndex;
     vec4 clip;
-    float cornerRadius;
+    vec4 cornerRadius;
     vec3 edgeColor;
     float edgeThickness;
     vec3 outlineColor;
@@ -44,7 +44,7 @@ layout(location = 3) out vec2 fragPos;
 layout(location = 4) out flat vec4 fragClip;
 layout(location = 5) out vec2 fragLocal;
 layout(location = 6) out flat vec2 fragHalfExtent;
-layout(location = 7) out flat float fragRadius;
+layout(location = 7) out flat vec4 fragRadius;
 layout(location = 8) out flat vec3 fragEdgeColor;
 layout(location = 9) out flat float fragEdgeThickness;
 layout(location = 10) out flat vec3 fragOutlineColor;
@@ -63,9 +63,9 @@ void main() {
     fragPos = tPos.xy;
     fragClip = CD.controls[gl_InstanceIndex].clip;
 
-    // the quad is a unit +-0.5 square, so local space is pixels from the control's centre
+    // pixels from the control's centre in design space, where +y is down and corners are named
     vec2 size = vec2(length(model[0].xyz), length(model[1].xyz));
-    fragLocal = inPosition.xy * size;
+    fragLocal = tPos.xy - model[3].xy;
     fragHalfExtent = size * 0.5f;
     fragRadius = CD.controls[gl_InstanceIndex].cornerRadius;
     fragEdgeColor = CD.controls[gl_InstanceIndex].edgeColor;

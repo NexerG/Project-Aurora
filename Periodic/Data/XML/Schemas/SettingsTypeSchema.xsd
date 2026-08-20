@@ -31,8 +31,6 @@
   <xs:element name="DragGhost" type="types:DragGhost" />
   <xs:complexType name="DragGhost">
     <xs:sequence />
-    <xs:attribute name="Width" type="xs:unsignedInt" />
-    <xs:attribute name="Height" type="xs:unsignedInt" />
     <xs:attribute name="Opacity" type="xs:float" />
     <xs:attribute name="Scope" type="types:SettingScope" />
     <xs:attribute name="OnChanged" type="xs:string" />

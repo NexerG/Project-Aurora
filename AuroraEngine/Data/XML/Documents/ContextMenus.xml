@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContextMenus xmlns="http://arctisaurora/AuroraUITypes"
+			  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			  xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../Schemas/UITypeSchema.xsd" >
+
+	<ContextMenu Name="view">
+		<MenuItem Caption="Split right" Action="View.SplitRight"/>
+		<MenuItem Caption="Split down" Action="View.SplitDown"/>
+	</ContextMenu>
+
+	<ContextMenu Name="window">
+		<MenuItem Caption="Minimize" Action="Window.Minimize"/>
+		<MenuItem Caption="Maximize" Action="Window.MaximizeRestore"/>
+		<MenuItem Caption="Close" Action="Window.Close"/>
+	</ContextMenu>
+
+</ContextMenus>

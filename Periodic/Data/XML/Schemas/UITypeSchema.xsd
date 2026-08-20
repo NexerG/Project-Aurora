@@ -13,8 +13,9 @@
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -50,7 +51,33 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="MenuItem" type="types:MenuItem" />
+  <xs:complexType name="MenuItem">
+    <xs:sequence />
+    <xs:attribute name="Caption" type="xs:string" />
+    <xs:attribute name="Action" type="xs:string" />
+    <xs:attribute name="EnabledWhen" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="ContextMenu" type="types:ContextMenu" />
+  <xs:complexType name="ContextMenu">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="MenuItem" type="types:MenuItem">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:choice minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
+    <xs:attribute name="Name" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="ContextMenus" type="types:ContextMenus" />
+  <xs:complexType name="ContextMenus">
+    <xs:sequence>
+      <xs:choice minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
   </xs:complexType>
   <xs:element name="Panel" type="types:Panel" />
   <xs:complexType name="Panel">
@@ -73,6 +100,7 @@
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+        <xs:element name="SplitView" type="types:SplitView" />
         <xs:element name="StackPanel" type="types:StackPanel" />
         <xs:element name="TabItem" type="types:TabItem" />
         <xs:element name="TabView" type="types:TabView" />
@@ -83,8 +111,9 @@
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -118,6 +147,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="TitleBar" type="types:TitleBar" />
@@ -141,6 +171,7 @@
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+        <xs:element name="SplitView" type="types:SplitView" />
         <xs:element name="StackPanel" type="types:StackPanel" />
         <xs:element name="TabItem" type="types:TabItem" />
         <xs:element name="TabView" type="types:TabView" />
@@ -151,8 +182,9 @@
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -188,6 +220,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="Window" type="types:Window" />
@@ -211,6 +244,7 @@
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+        <xs:element name="SplitView" type="types:SplitView" />
         <xs:element name="StackPanel" type="types:StackPanel" />
         <xs:element name="TabItem" type="types:TabItem" />
         <xs:element name="TabView" type="types:TabView" />
@@ -221,8 +255,9 @@
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -258,6 +293,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="WindowFrame" type="types:WindowFrame" />
@@ -281,6 +317,7 @@
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+        <xs:element name="SplitView" type="types:SplitView" />
         <xs:element name="StackPanel" type="types:StackPanel" />
         <xs:element name="TabItem" type="types:TabItem" />
         <xs:element name="TabView" type="types:TabView" />
@@ -291,8 +328,9 @@
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -326,6 +364,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="Label" type="types:Label" />
@@ -342,8 +381,9 @@
     <xs:attribute name="Height" type="xs:int" />
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -377,6 +417,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="TextBlock" type="types:TextBlock" />
@@ -400,6 +441,7 @@
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+        <xs:element name="SplitView" type="types:SplitView" />
         <xs:element name="StackPanel" type="types:StackPanel" />
         <xs:element name="TabItem" type="types:TabItem" />
         <xs:element name="TabView" type="types:TabView" />
@@ -410,8 +452,9 @@
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -445,6 +488,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="TextBox" type="types:TextBox" />
@@ -461,8 +505,9 @@
     <xs:attribute name="Height" type="xs:int" />
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -496,6 +541,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="TextInput" type="types:TextInput" />
@@ -515,8 +561,9 @@
     <xs:attribute name="Height" type="xs:int" />
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -550,6 +597,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="Block" type="types:Block" />
@@ -565,8 +613,9 @@
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -600,6 +649,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="DocumentEditor" type="types:DocumentEditor" />
@@ -611,8 +661,9 @@
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -648,6 +699,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="Run" type="types:Run" />
@@ -665,8 +717,9 @@
     <xs:attribute name="Height" type="xs:int" />
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -700,6 +753,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:simpleType name="TextStyleType">
@@ -769,6 +823,7 @@
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+        <xs:element name="SplitView" type="types:SplitView" />
         <xs:element name="StackPanel" type="types:StackPanel" />
         <xs:element name="TabItem" type="types:TabItem" />
         <xs:element name="TabView" type="types:TabView" />
@@ -779,8 +834,9 @@
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -816,6 +872,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="Splitter" type="types:Splitter" />
@@ -826,8 +883,9 @@
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -863,6 +921,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:simpleType name="DockMode">
@@ -896,6 +955,7 @@
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+        <xs:element name="SplitView" type="types:SplitView" />
         <xs:element name="StackPanel" type="types:StackPanel" />
         <xs:element name="TabItem" type="types:TabItem" />
         <xs:element name="TabView" type="types:TabView" />
@@ -906,8 +966,9 @@
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -942,6 +1003,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:simpleType name="GridSizeMode">
@@ -1004,6 +1066,7 @@
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+        <xs:element name="SplitView" type="types:SplitView" />
         <xs:element name="StackPanel" type="types:StackPanel" />
         <xs:element name="TabItem" type="types:TabItem" />
         <xs:element name="TabView" type="types:TabView" />
@@ -1014,8 +1077,9 @@
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -1049,6 +1113,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:simpleType name="Scrollable">
@@ -1079,6 +1144,7 @@
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+        <xs:element name="SplitView" type="types:SplitView" />
         <xs:element name="StackPanel" type="types:StackPanel" />
         <xs:element name="TabItem" type="types:TabItem" />
         <xs:element name="TabView" type="types:TabView" />
@@ -1089,8 +1155,9 @@
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -1126,10 +1193,11 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
-  <xs:element name="StackPanel" type="types:StackPanel" />
-  <xs:complexType name="StackPanel">
+  <xs:element name="SplitView" type="types:SplitView" />
+  <xs:complexType name="SplitView">
     <xs:sequence>
       <xs:choice minOccurs="0" maxOccurs="unbounded">
         <xs:element name="VaultBrowser" type="types:VaultBrowser" />
@@ -1149,6 +1217,7 @@
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+        <xs:element name="SplitView" type="types:SplitView" />
         <xs:element name="StackPanel" type="types:StackPanel" />
         <xs:element name="TabItem" type="types:TabItem" />
         <xs:element name="TabView" type="types:TabView" />
@@ -1159,8 +1228,9 @@
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -1196,6 +1266,80 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
+    <xs:attribute name="Name" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="StackPanel" type="types:StackPanel" />
+  <xs:complexType name="StackPanel">
+    <xs:sequence>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="VaultBrowser" type="types:VaultBrowser" />
+        <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="TitleBar" type="types:TitleBar" />
+        <xs:element name="Window" type="types:Window" />
+        <xs:element name="WindowFrame" type="types:WindowFrame" />
+        <xs:element name="Label" type="types:Label" />
+        <xs:element name="TextBlock" type="types:TextBlock" />
+        <xs:element name="TextBox" type="types:TextBox" />
+        <xs:element name="TextInput" type="types:TextInput" />
+        <xs:element name="Block" type="types:Block" />
+        <xs:element name="DocumentEditor" type="types:DocumentEditor" />
+        <xs:element name="Run" type="types:Run" />
+        <xs:element name="Button" type="types:Button" />
+        <xs:element name="Splitter" type="types:Splitter" />
+        <xs:element name="Dock" type="types:Dock" />
+        <xs:element name="GridList" type="types:GridList" />
+        <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+        <xs:element name="SplitView" type="types:SplitView" />
+        <xs:element name="StackPanel" type="types:StackPanel" />
+        <xs:element name="TabItem" type="types:TabItem" />
+        <xs:element name="TabView" type="types:TabView" />
+      </xs:choice>
+    </xs:sequence>
+    <xs:attribute name="Width" type="xs:int" />
+    <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
+    <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Orientation" type="types:Orientation" />
+    <xs:attribute name="Spacing" type="xs:float" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
+    <xs:attribute name="MinHeight" type="xs:int" />
+    <xs:attribute name="MinWidth" type="xs:int" />
+    <xs:attribute name="HorizontalPos" type="xs:float" />
+    <xs:attribute name="VerticalPos" type="xs:float" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
+    <xs:attribute name="ClipToBounds" type="xs:boolean" />
+    <xs:attribute name="DockMode" type="types:DockMode" />
+    <xs:attribute name="Grid.Column" type="xs:int" />
+    <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
+    <xs:attribute name="onEnter" type="actions:UI" />
+    <xs:attribute name="BubbleEnter" type="xs:boolean" />
+    <xs:attribute name="onExit" type="actions:UI" />
+    <xs:attribute name="BubbleExit" type="xs:boolean" />
+    <xs:attribute name="onClick" type="actions:UI" />
+    <xs:attribute name="BubbleClick" type="xs:boolean" />
+    <xs:attribute name="onAltClick" type="actions:UI" />
+    <xs:attribute name="BubbleAltClick" type="xs:boolean" />
+    <xs:attribute name="onRelease" type="actions:UI" />
+    <xs:attribute name="BubbleRelease" type="xs:boolean" />
+    <xs:attribute name="onAltRelease" type="actions:UI" />
+    <xs:attribute name="BubbleAltRelease" type="xs:boolean" />
+    <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
+    <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="TabItem" type="types:TabItem" />
@@ -1219,6 +1363,7 @@
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+        <xs:element name="SplitView" type="types:SplitView" />
         <xs:element name="StackPanel" type="types:StackPanel" />
         <xs:element name="TabItem" type="types:TabItem" />
         <xs:element name="TabView" type="types:TabView" />
@@ -1229,8 +1374,9 @@
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -1265,6 +1411,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="TabView" type="types:TabView" />
@@ -1288,6 +1435,7 @@
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+        <xs:element name="SplitView" type="types:SplitView" />
         <xs:element name="StackPanel" type="types:StackPanel" />
         <xs:element name="TabItem" type="types:TabItem" />
         <xs:element name="TabView" type="types:TabView" />
@@ -1298,8 +1446,9 @@
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
-    <xs:attribute name="CornerRadius" type="xs:float" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
@@ -1339,6 +1488,7 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:simpleType name="ControlColor">
