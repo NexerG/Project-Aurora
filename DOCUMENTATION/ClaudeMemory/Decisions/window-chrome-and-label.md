@@ -105,6 +105,29 @@ list.
   `SolveLMBPress` firing, and the bubble chain printing `GlyphControl → parent=TextInputControl` and
   then stopping — which is what identified the override.
 
+## Rounded corners are DWM's, not a `CornerRadius` (2026-08-21)
+
+`AGlfwWindow.RoundCorners()` sets `DWMWA_WINDOW_CORNER_PREFERENCE` (33) to `DWMWCP_ROUND` (2) on the
+HWND, taken from `new GlfwNativeWindow(_glfw, handle).Win32!.Value.Hwnd`. Called from all four
+creation paths, so the primary window, torn-off windows, the drag ghost and the menu/prompt windows
+all round.
+
+**Rejected: a `CornerRadius` on the root `WindowControl`.** The shader discards outside the rounded
+rect, so the corner pixels would fall through to the swapchain clear colour — an opaque `0.05` grey
+notch, not a rounded window. The framebuffer is not transparent (`GLFW_TRANSPARENT_FRAMEBUFFER` is
+never hinted) and making it so is a much larger change. DWM clips at composition instead, which needs
+nothing from the renderer.
+
+First `dwmapi` P/Invoke in the codebase; `user32` was already in `DisplayNames`. Windows-only, which
+the `net10.0-windows10.0.22621.0` target already is. Windows squares off a maximized window itself,
+so no special case is needed for that.
+
+Cost: the corner ~8px are clipped away, so `WindowFrameControl`'s diagonal corner resize grips lose
+their outermost pixels. The edge bands either side of each corner still hit.
+
+Also gone the same day: the `EdgeThickness="2" EdgeColorHex="#C42B1E"` left on `UI.xml`'s maximize
+button from testing the edge feature.
+
 ## Still open
 
 - **No resizing.** `ResizeableControl` is still dead and the window is undecorated, so there are no

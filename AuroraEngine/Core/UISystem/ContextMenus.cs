@@ -74,7 +74,9 @@ namespace ArctisAurora.Core.UISystem
 
         public void Add(string caption, Action invoke, bool enabled = true)
         {
-            entries.Add(new ContextEntry(caption, invoke, enabled, pendingSeparator));
+            // captured, so an action taking no argument can still find what the menu was opened on
+            VulkanControl target = owner;
+            entries.Add(new ContextEntry(caption, () => ContextMenus.InvokeFor(target, invoke), enabled, pendingSeparator));
             pendingSeparator = false;
         }
 
@@ -94,7 +96,20 @@ namespace ArctisAurora.Core.UISystem
         private static readonly Dictionary<string, ContextMenuDefinition> menus =
             new Dictionary<string, ContextMenuDefinition>(StringComparer.OrdinalIgnoreCase);
 
+        // The control the running entry's menu was opened on. Null unless an entry is mid-invoke.
+        public static VulkanControl invoker { get; private set; }
+
         public static ContextMenuDefinition Get(string name) => string.IsNullOrEmpty(name) ? null : menus.GetValueOrDefault(name);
+
+        // Runs an entry with its owner published.
+        internal static void InvokeFor(VulkanControl target, Action invoke)
+        {
+            if (invoke == null) return;
+
+            invoker = target;
+            try { invoke(); }
+            finally { invoker = null; }
+        }
 
         // Everything one control offers: each menu it names, in order and divided, then whatever it
         // adds in code. An unknown name contributes nothing.

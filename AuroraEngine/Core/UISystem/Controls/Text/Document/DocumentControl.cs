@@ -238,6 +238,25 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             return true;
         }
 
+        // A point that landed on no run at all. Below every block there is no line worth resolving
+        // against, so the document's end stands in; anywhere else the nearest slot does.
+        internal bool CaretOffText(float x, float y, out TextControl run, out int offset)
+        {
+            List<Block> blocks = Blocks();
+            if (blocks.Count > 0 && y > blocks[^1].arrangedRect.Bottom)
+            {
+                List<TextControl> runs = OrderedRuns();
+                if (runs.Count > 0)
+                {
+                    run = runs[^1];
+                    offset = Length(run);
+                    return true;
+                }
+            }
+
+            return CaretAtPoint(x, y, out run, out offset);
+        }
+
         // Reading order. A run has no idea where it sits in the document, so ordering two caret
         // slots means looking both runs up in here and comparing (index, offset).
         internal List<TextControl> OrderedRuns()

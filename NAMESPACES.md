@@ -41,6 +41,7 @@ ArctisAurora.Core.Threading -> C:\Projects-Repositories\Aurora\Project-Aurora\Au
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISettings.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\AuroraFont.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Bezier.cs
+ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\ConfirmWindow.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\ContextMenus.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\ContextMenuWindow.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\DragGhost.cs
@@ -62,6 +63,7 @@ ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-A
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\AbstractContainerControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\DockingControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\FileBrowserControl.cs
+ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\FileRowControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\FileTreeControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\GridListControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\ScrollableControl.cs

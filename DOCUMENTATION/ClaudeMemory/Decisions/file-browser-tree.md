@@ -133,7 +133,9 @@ either way — and press/release still match, since both resolve to the same pan
 
 - Rows are still rebuilt wholesale, and nothing calls `Refresh()` — a note added on disk while the
   app runs appears only after a toggle.
-- No new-note, rename or delete; no selection highlight; `FileObject.icon` is still set by nothing.
+- New-note, duplicate and delete landed on the right click (2026-08-20) — a row is a `FileRowControl`
+  carrying its `FileObject`, and `BuildRowMenu` is the hook. **Rename still does not exist**; nor does
+  a selection highlight, and `FileObject.icon` is still set by nothing. See [[context-menu-invoker]].
 - `ResolveOnDoubleClick` remains dead engine-wide — no dispatch site exists. The editor's folder
   view needs one before it can be built.
 - The editor's `FolderViewControl`, and whatever project root it would list, are not written.

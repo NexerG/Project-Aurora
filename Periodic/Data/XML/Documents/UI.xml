@@ -12,7 +12,7 @@
 			<Button Width="46" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A" onRelease="Window.Minimize">
 				<Label Text="-" FontSize="16" ColorHex="#CCCCCC"/>
 			</Button>
-			<Button Width="46" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A" onRelease="Window.MaximizeRestore" CornerRadius="10,0,0,10" EdgeThickness="2" EdgeColorHex="#C42B1E">
+			<Button Width="46" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A" onRelease="Window.MaximizeRestore" CornerRadius="10,0,0,10">
 				<Label Text="[]" FontSize="16" ColorHex="#CCCCCC"/>
 			</Button>
 			<Button Width="46" Height="32" ColorHex="#141414" HoverColorHex="#C42B1E" PressColorHex="#A82318" onRelease="Window.Close">

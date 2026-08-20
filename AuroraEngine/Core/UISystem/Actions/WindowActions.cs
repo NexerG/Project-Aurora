@@ -13,9 +13,10 @@ namespace ArctisAurora.Core.UISystem.Actions
     // out of ordinary controls and its buttons name these.
     public static unsafe class WindowActions
     {
-        // These are bound from XML as zero-argument delegates, so the window comes from the button
-        // that fired them — which is whatever the pointer is on at release.
-        private static RenderWindow Acting() => RenderWindow.Of(UICollisionHandling.hovering);
+        // These are bound from XML as zero-argument delegates, so the window comes from the control
+        // that fired them: the menu's owner when one is open, otherwise whatever the pointer is on.
+        private static RenderWindow Acting() =>
+            RenderWindow.Of(ContextMenus.invoker ?? UICollisionHandling.hovering);
 
         [A_XSDActionDependency("Window.Minimize", "UI", "Iconifies the window")]
         public static void Minimize()

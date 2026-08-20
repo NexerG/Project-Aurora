@@ -32,6 +32,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             }
         }
 
+        // Opens a folder without rebuilding, so a caller that is about to rebuild anyway does it once.
+        protected void Expand(string path) => expanded.Add(path);
+
         private void Toggle(string path)
         {
             if (!expanded.Remove(path)) expanded.Add(path);

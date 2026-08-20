@@ -125,14 +125,24 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
         {
             TextControl run = RunUnder(UICollisionHandling.hovering);
-            if (run != null && content != null)
+            if (content != null)
             {
                 // the live pointer, not oldPos, which lags the click by a frame
                 Vector2D<float> mouse = PointerInWindow();
-                LayoutRect inner = run.arrangedRect.Shrink(run.padding);
 
-                content.SetCaret(run, run.OffsetAt(mouse.X - inner.x, mouse.Y - inner.y), Extending);
-                StartDrag();
+                if (run != null)
+                {
+                    LayoutRect inner = run.arrangedRect.Shrink(run.padding);
+
+                    content.SetCaret(run, run.OffsetAt(mouse.X - inner.x, mouse.Y - inner.y), Extending);
+                    StartDrag();
+                }
+                // a click past the text hits no run, so the geometry answers instead of the hit-test
+                else if (content.CaretOffText(mouse.X, mouse.Y, out TextControl off, out int offset))
+                {
+                    content.SetCaret(off, offset, Extending);
+                    StartDrag();
+                }
             }
 
             base.ResolveOnClick(oldPos, delta);
@@ -147,7 +157,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 Vector2D<float> mouse = PointerInWindow();
                 AutoScroll(mouse);
 
-                if (content.CaretAtPoint(mouse.X, mouse.Y, out TextControl run, out int offset))
+                if (content.CaretOffText(mouse.X, mouse.Y, out TextControl run, out int offset))
                     content.SetCaret(run, offset, true);
             }
 

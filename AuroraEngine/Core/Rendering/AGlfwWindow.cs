@@ -1,6 +1,7 @@
 ﻿using ArctisAurora.Core.Registry;
 using Silk.NET.Core.Native;
 using Silk.NET.GLFW;
+using System.Runtime.InteropServices;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 using static Silk.NET.GLFW.GlfwCallbacks;
@@ -52,6 +53,7 @@ namespace ArctisAurora.EngineWork.Rendering
                 throw new Exception("Failed to create window");
             }
 
+            RoundCorners();
             UpdateWindowSize(ref windowSize);
             SetResizeCallback(WindwoResizeCallback);
         }
@@ -70,6 +72,7 @@ namespace ArctisAurora.EngineWork.Rendering
             if (handle == null)
                 throw new Exception("Failed to create window");
 
+            RoundCorners();
             _glfw.SetWindowPos(handle, x, y);
             UpdateWindowSize(ref windowSize);
             SetResizeCallback(WindwoResizeCallback);
@@ -93,6 +96,7 @@ namespace ArctisAurora.EngineWork.Rendering
             if (handle == null)
                 throw new Exception("Failed to create the drag preview window");
 
+            RoundCorners();
             UpdateWindowSize(ref windowSize);
         }
 
@@ -112,8 +116,25 @@ namespace ArctisAurora.EngineWork.Rendering
             if (handle == null)
                 throw new Exception("Failed to create the context menu window");
 
+            RoundCorners();
             UpdateWindowSize(ref windowSize);
         }
+
+        // DWM rounds and clips the window at composition, so an undecorated window opts in the same
+        // way a decorated one does and the swapchain is untouched.
+        private void RoundCorners()
+        {
+            int preference = roundedCorners;
+            IntPtr window = new GlfwNativeWindow(_glfw, handle).Win32!.Value.Hwnd;
+            DwmSetWindowAttribute(window, cornerPreference, ref preference, sizeof(int));
+        }
+
+        // DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND
+        private const int cornerPreference = 33;
+        private const int roundedCorners = 2;
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 
         internal void Focus() => _glfw.FocusWindow(handle);
 

@@ -8,6 +8,8 @@ using ArctisAurora.Core.UISystem.Controls.Text.Document;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using AuroraPeriodic;
+using Microsoft.VisualBasic.FileIO;
+using System.Xml.Linq;
 
 namespace Periodic.Editor.CustomControls
 {
@@ -42,6 +44,87 @@ namespace Periodic.Editor.CustomControls
                 : Path.GetFileNameWithoutExtension(file.path);
 
         protected override void Activate(FileObject file) => Open(file.path);
+
+        // The list's own ground, which stands for the vault root.
+        public override void BuildContextMenu(ContextMenuBuilder menu) => menu.Add("New note", () => NewNote(RootPath));
+
+        protected override void BuildRowMenu(FileObject file, ContextMenuBuilder menu)
+        {
+            if (file.type == FileObject.FileType.Directory)
+            {
+                menu.Add("New note", () => NewNote(file.path));
+                return;
+            }
+
+            menu.Add("New note", () => NewNote(file.parent.path));
+            menu.Add("Duplicate note", () => DuplicateNote(file));
+            menu.Add("Delete note", () => DeleteNote(file));
+        }
+
+        #region ---- note operations ----
+        private void NewNote(string folder) =>
+            NoteNameWindow.Ask(RenderWindow.Of(this), "Untitled", name => CreateNote(folder, name), null, null);
+
+        // A note needs a block holding a run before it can be typed into — the editor places its
+        // caret on a run and builds neither.
+        private void CreateNote(string folder, string name)
+        {
+            string path = FreePath(folder, name);
+
+            RichTextDocument document = new RichTextDocument { name = Path.GetFileNameWithoutExtension(path) };
+            ContentBlock block = new ContentBlock();
+            block.AddChild(new TextRun { text = string.Empty });
+            document.blocks.Add(block);
+            document.Save(path);
+            block.Destroy();
+
+            Expand(folder);
+            Rebuild();
+            Open(path);
+        }
+
+        private void DuplicateNote(FileObject file)
+        {
+            string path = FreePath(file.parent.path, Path.GetFileNameWithoutExtension(file.path) + " copy");
+
+            File.Copy(file.path, path);
+            WriteName(path, Path.GetFileNameWithoutExtension(path));
+
+            Rebuild();
+            Open(path);
+        }
+
+        private void DeleteNote(FileObject file) =>
+            ConfirmWindow.Ask(RenderWindow.Of(this), $"Delete \"{DisplayName(file)}\"?", () => Delete(file.path), null);
+
+        // The tab goes first and goes unwritten, or closing it would put the note back on disk.
+        private void Delete(string path)
+        {
+            TabItemControl open = TabViewControl.FindOpenDocument(path, out TabViewControl owner);
+            if (open != null) owner.DiscardTab(open);
+
+            FileSystem.DeleteFile(path, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+            Rebuild();
+        }
+
+        // "Name", then "Name 2", "Name 3" — a name already taken is never written over.
+        private static string FreePath(string folder, string baseName)
+        {
+            string path = Path.Combine(folder, baseName + ".xml");
+            for (int i = 2; File.Exists(path); i++)
+                path = Path.Combine(folder, $"{baseName} {i}.xml");
+
+            return path;
+        }
+
+        // Copying a note copies the name written inside it, which is what a tab captions itself with.
+        private static void WriteName(string path, string name)
+        {
+            XDocument xml = XDocument.Load(path);
+            xml.Root!.SetAttributeValue("Name", name);
+            xml.Save(path);
+        }
+        #endregion
 
         // Called from app startup once the whole tree exists — the rows are built while the XML is
         // still parsing, before the editor is, and OnStart cannot do it because Engine.Interpolate

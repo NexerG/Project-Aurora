@@ -8,10 +8,12 @@ namespace ArctisAurora.Core.UISystem.Actions
     // same operation under a name XML can bind.
     public static class ViewActions
     {
-        // Bound from XML as zero-argument delegates, so the view is wherever focus last landed.
+        // Bound from XML as zero-argument delegates, so the view is the menu's owner when one is
+        // open, and otherwise wherever focus last landed.
         private static TabViewControl Acting()
         {
-            VulkanControl control = UICollisionHandling.activeControl ?? UICollisionHandling.hovering;
+            VulkanControl control = ContextMenus.invoker
+                ?? UICollisionHandling.activeControl ?? UICollisionHandling.hovering;
             while (control != null && control is not TabViewControl)
                 control = control.parent as VulkanControl;
             return control as TabViewControl;

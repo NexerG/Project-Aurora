@@ -2,7 +2,6 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
-using ArctisAurora.Core.UISystem.Controls.Interactable;
 using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.EngineWork.Registry;
 
@@ -65,6 +64,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
         protected virtual string DisplayName(FileObject file) => file.name;
 
+        // Entries one row offers on right click. Add-only, the same contract as BuildContextMenu.
+        protected internal virtual void BuildRowMenu(FileObject file, ContextMenuBuilder menu) { }
+
         public FileBrowserControl()
         {
             scrollDirection = ScrollDirection.Vertical;
@@ -122,8 +124,10 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             content.AddChild(gutter);
             content.AddChild(name);
 
-            ButtonControl row = new ButtonControl
+            FileRowControl row = new FileRowControl
             {
+                file = file,
+                browser = this,
                 preferredHeight = rowHeight,
                 horizontalAlignment = HorizontalAlignment.Stretch,
                 margin = new Thickness(0, 0, 0, depth * indent),

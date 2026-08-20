@@ -285,6 +285,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             FinishClose(item);
         }
 
+        // Closes a tab without writing it, for a note that is no longer on disk.
+        public void DiscardTab(TabItemControl item) => FinishClose(item);
+
         private void FinishClose(TabItemControl item)
         {
             if (item == null || !children.Contains(item)) return;
