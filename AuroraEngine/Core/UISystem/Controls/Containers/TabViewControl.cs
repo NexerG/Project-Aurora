@@ -267,13 +267,27 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             InvalidateLayout();
         }
 
-        // Saves the page, then tears the whole subtree down — the strip button with it.
+        // Saves the page, then tears the whole subtree down — the strip button with it. An edited
+        // note that has never been named asks for one first, and the teardown waits for the answer;
+        // abandoning the naming abandons the close.
         public void CloseTab(TabItemControl item)
         {
             if (item == null || !children.Contains(item)) return;
 
-            if (item.children.Count > 0 && item.children[0] is DocumentEditorControl editor)
-                editor.Save();
+            DocumentEditorControl editor = EditorOf(item);
+            if (editor != null && editor.needsNaming)
+            {
+                editor.SaveNamed(() => FinishClose(item), () => FinishClose(item));
+                return;
+            }
+
+            editor?.Save();
+            FinishClose(item);
+        }
+
+        private void FinishClose(TabItemControl item)
+        {
+            if (item == null || !children.Contains(item)) return;
 
             TabItemControl next = Neighbour(item);
             if (ReferenceEquals(item, activeItem)) activeItem = null;
@@ -305,12 +319,45 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             Engine.CloseWindow(window);
         }
 
-        public TabItemControl FindTab(string tabName)
+        // The tab showing this note, in whichever window it is open. Identity is the file the editor
+        // loaded, not the tab's caption — a tab seeded from a UI document carries no name to match
+        // on, so matching by name reopened notes that were already on screen.
+        public static TabItemControl FindOpenDocument(string path, out TabViewControl owner)
         {
-            foreach (TabItemControl item in Items)
-                if (item.name == tabName) return item;
+            string target = Path.GetFullPath(path);
+
+            foreach (RenderWindow window in Engine.windows.Values)
+            {
+                if (window.ui.uiRoot == null) continue;
+
+                foreach (TabViewControl view in TabViews(window.ui.uiRoot))
+                    foreach (TabItemControl item in view.Items)
+                    {
+                        string open = EditorOf(item)?.session?.path;
+                        if (open != null && string.Equals(open, target, StringComparison.OrdinalIgnoreCase))
+                        {
+                            owner = view;
+                            return item;
+                        }
+                    }
+            }
+
+            owner = null;
             return null;
         }
+
+        private static IEnumerable<TabViewControl> TabViews(VulkanControl control)
+        {
+            if (control is TabViewControl view) yield return view;
+
+            foreach (Entity child in control.children)
+                if (child is VulkanControl childControl)
+                    foreach (TabViewControl found in TabViews(childControl))
+                        yield return found;
+        }
+
+        public static DocumentEditorControl EditorOf(TabItemControl item) =>
+            item.children.Count > 0 ? item.children[0] as DocumentEditorControl : null;
 
         // The tab after this one, or the one before it if it is last.
         private TabItemControl Neighbour(TabItemControl item)

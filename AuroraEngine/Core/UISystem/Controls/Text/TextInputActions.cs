@@ -1,5 +1,6 @@
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls.Text.Document;
+using ArctisAurora.Core.UISystem.Controls.Text.Editing;
 using ArctisAurora.EngineWork;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text
@@ -28,7 +29,17 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             if (input.Count == 0) return;
 
             DocumentEditorControl editor = Editor();
-            editor?.DeleteSelection();
+            if (editor == null)
+            {
+                TextBoxControl box = Box();
+                if (box == null) return;
+
+                while (input.Count > 0)
+                    box.WriteChar(input.Dequeue());
+                return;
+            }
+
+            editor.DeleteSelection();
 
             TextControl target = Target(editor);
             if (target == null) return;
@@ -39,6 +50,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             // WriteChar advances cursorPosition on the run itself, so the anchor is left behind and
             // typing would select what it just typed.
             editor?.CollapseSelection();
+            editor?.MarkDirty();
         }
 
         // Inside a document the caret's run is the target; activeControl is the standalone-input
@@ -52,16 +64,37 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         }
 
         [A_XSDActionDependency("Text.Backspace", "Input", "Deletes the selection, or the character before the caret")]
-        public static void Backspace() => Editor()?.Backspace();
+        public static void Backspace()
+        {
+            DocumentEditorControl editor = Editor();
+            if (editor != null) { editor.Backspace(); return; }
+
+            Box()?.Backspace();
+        }
 
         [A_XSDActionDependency("Text.Delete", "Input", "Deletes the selection, or the character after the caret")]
-        public static void Delete() => Editor()?.Delete();
+        public static void Delete()
+        {
+            DocumentEditorControl editor = Editor();
+            if (editor != null) { editor.Delete(); return; }
 
-        [A_XSDActionDependency("Text.NewBlock", "Input", "Splits the caret's block in two")]
-        public static void NewBlock() => Editor()?.SplitBlock();
+            Box()?.Delete();
+        }
+
+        [A_XSDActionDependency("Text.NewBlock", "Input", "Splits the caret's block in two, or commits a standalone field")]
+        public static void NewBlock()
+        {
+            DocumentEditorControl editor = Editor();
+            if (editor != null) { editor.SplitBlock(); return; }
+
+            Box()?.Commit();
+        }
+
+        [A_XSDActionDependency("Text.Cancel", "Input", "Abandons the edit in a standalone field and restores what it held")]
+        public static void Cancel() => Box()?.Cancel();
 
         [A_XSDActionDependency("Text.Save", "Input", "Writes the focused note back to the file it was loaded from")]
-        public static void Save() => Editor()?.Save();
+        public static void Save() => Editor()?.SaveNamed();
 
         [A_XSDActionDependency("Text.CaretLeft", "Input")]
         public static void CaretLeft() => Move(CaretMove.Left);
@@ -88,8 +121,29 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         public static void CaretPageDown() => Move(CaretMove.PageDown);
 
         // The Extend modifier keeps the anchor instead of collapsing it onto the new position.
-        private static void Move(CaretMove move) =>
-            Editor()?.MoveCaret(move, InputHandler.instance.IsModifierDown(InputModifier.Extend));
+        private static void Move(CaretMove move)
+        {
+            DocumentEditorControl editor = Editor();
+            if (editor != null)
+            {
+                editor.MoveCaret(move, InputHandler.instance.IsModifierDown(InputModifier.Extend));
+                return;
+            }
+
+            Box()?.MoveCaret(move, InputHandler.instance.IsModifierDown(InputModifier.Extend));
+        }
+
+        // Nearest standalone field at or above whatever the collision handler last made active. The
+        // document path is checked first everywhere, so a field inside a note could not shadow it.
+        private static TextBoxControl Box()
+        {
+            for (VulkanControl control = UICollisionHandling.activeControl;
+                 control != null;
+                 control = control.parent as VulkanControl)
+                if (control is TextBoxControl box) return box.isEditing ? box : null;
+
+            return null;
+        }
 
         // Nearest document editor at or above whatever the collision handler last made active.
         private static DocumentEditorControl Editor()

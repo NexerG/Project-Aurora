@@ -1,56 +1,47 @@
-using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.UISystem;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.Core.UISystem.Controls.Containers;
-using ArctisAurora.Core.UISystem.Controls.Interactable;
-using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.Core.UISystem.Controls.Text.Document;
 using ArctisAurora.EngineWork;
-using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
 using AuroraPeriodic;
 
 namespace Periodic.Editor.CustomControls
 {
-    // Lists the vault's notes and opens the clicked one in the document editor.
+    // Lists the vault as an openable tree and opens the clicked note in the document editor.
     [A_XSDType("VaultBrowser", "UI")]
-    public class VaultBrowserControl : ScrollableControl
+    public class VaultBrowserControl : FileTreeControl
     {
-        private const int rowHeight = 22;
-        private const float indentPerDepth = 12f;
-        private const float rowSpacing = 2f;
-        private const float rowTextInset = 6f;
-
-        // sidebar palette
-        private const string rowGround = "#171717";
-        private const string rowHover = "#232323";
-        private const string rowPress = "#2D2D2D";
-        private const string folderText = "#8A8A8A";
-        private const string noteText = "#D4D4D4";
-
         // control names in UI.xml
         private const string browserName = "Browser";
         private const string tabsName = "Tabs";
 
-        private readonly StackPanelControl rows = new StackPanelControl();
-        private string firstNote;
-
         public VaultBrowserControl()
         {
-            scrollDirection = ScrollDirection.Vertical;
-
-            // The viewport paints the sidebar; the panel inside it must not, or the default mask
-            // covers the whole column.
-            rows.maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");
-            rows.orientation = StackPanelControl.Orientation.Vertical;
-            rows.Spacing = rowSpacing;
-            AddChild(rows);
             Rebuild();
         }
+
+        protected override string RootPath
+        {
+            get
+            {
+                string path = SettingsRegistry.Get<PeriodicSettings>().vault.path;
+                return Path.IsPathRooted(path) ? path : VirtualFileSystem.ResolveDir(path);
+            }
+        }
+
+        protected override bool Accepts(FileObject file) =>
+            file.path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase);
+
+        protected override string DisplayName(FileObject file) =>
+            file.type == FileObject.FileType.Directory
+                ? file.name
+                : Path.GetFileNameWithoutExtension(file.path);
+
+        protected override void Activate(FileObject file) => Open(file.path);
 
         // Called from app startup once the whole tree exists — the rows are built while the XML is
         // still parsing, before the editor is, and OnStart cannot do it because Engine.Interpolate
@@ -58,70 +49,28 @@ namespace Periodic.Editor.CustomControls
         public static void OpenFirstNote()
         {
             VaultBrowserControl browser = Engine.primary.ui.uiRoot.FindByName(browserName) as VaultBrowserControl;
-            if (browser?.firstNote != null) Open(browser.firstNote);
+            string note = browser?.FirstNote(browser.root);
+            if (note != null) Open(note);
         }
 
-        // Re-reads the vault folder and replaces every row.
-        public void Rebuild()
+        // Walks the model rather than the rows — a collapsed folder contributes no row but its
+        // notes still count for tree order.
+        private string FirstNote(FileObject folder)
         {
-            foreach (Entity row in rows.children.ToArray())
-                row.Destroy();
+            if (folder == null) return null;
 
-            firstNote = null;
-
-            string root = VaultRoot();
-            if (!Directory.Exists(root)) return;
-
-            AddEntries(new FileObject(root), 0);
-        }
-
-        private void AddEntries(FileObject folder, int depth)
-        {
-            foreach (FileObject child in folder.children)
+            foreach (FileObject child in folder.Children)
             {
                 if (child.type == FileObject.FileType.Directory)
                 {
-                    rows.AddChild(Row(Path.GetFileName(child.path), depth, null));
-                    AddEntries(child, depth + 1);
+                    string found = FirstNote(child);
+                    if (found != null) return found;
                     continue;
                 }
 
-                if (!child.path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase)) continue;
-
-                firstNote ??= child.path;
-                rows.AddChild(Row(Path.GetFileNameWithoutExtension(child.path), depth, child.path));
+                if (Accepts(child)) return child.path;
             }
-        }
-
-        // A folder is a label; a note is a button that opens it.
-        private VulkanControl Row(string name, int depth, string notePath)
-        {
-            LabelControl label = new LabelControl { text = name, fontSize = 14 };
-
-            if (notePath == null)
-            {
-                label.controlColorHex = folderText;
-                label.margin = new Thickness(0, 0, 0, depth * indentPerDepth + rowTextInset);
-                label.preferredHeight = rowHeight;
-                return label;
-            }
-
-            label.controlColorHex = noteText;
-            label.horizontalPosition = 0f;
-
-            ButtonControl row = new ButtonControl
-            {
-                preferredHeight = rowHeight,
-                horizontalAlignment = HorizontalAlignment.Stretch,
-                margin = new Thickness(0, 0, 0, depth * indentPerDepth),
-                padding = new Thickness(0, 0, 0, rowTextInset),
-                controlColorHex = rowGround,
-                hoverColorHex = rowHover,
-                pressColorHex = rowPress
-            };
-            row.AddChild(label);
-            row.RegisterOnRelease(() => Open(notePath));
-            return row;
+            return null;
         }
 
         // The split pane last clicked in, so a note opens where the work is. Only this window counts —
@@ -135,35 +84,32 @@ namespace Periodic.Editor.CustomControls
             return control is TabViewControl view && RenderWindow.Of(view) == Engine.primary ? view : null;
         }
 
-        // Focuses the note's tab, opening one if it is not already open.
+        // Focuses the note wherever it is already open, and only opens a tab when it is not.
         private static void Open(string notePath)
         {
-            TabViewControl tabs = FocusedTabs() ?? Engine.primary.ui.uiRoot.FindByName(tabsName) as TabViewControl;
-            if (tabs == null) return;
-
-            TabItemControl open = tabs.FindTab(notePath);
-            if (open != null)
+            TabItemControl already = TabViewControl.FindOpenDocument(notePath, out TabViewControl owner);
+            if (already != null)
             {
-                tabs.SetActive(open);
+                owner.SetActive(already);
+                RenderWindow.Of(owner)?.Focus();
                 return;
             }
 
+            TabViewControl tabs = FocusedTabs() ?? Engine.primary.ui.uiRoot.FindByName(tabsName) as TabViewControl;
+            if (tabs == null) return;
+
+            // Loaded before the tab is built, so the caption can come from the note's own name.
             DocumentEditorControl editor = new DocumentEditorControl();
+            editor.LoadPath(notePath);
+
             TabItemControl tab = new TabItemControl
             {
                 name = notePath,
-                header = Path.GetFileNameWithoutExtension(notePath)
+                header = editor.session?.document?.name ?? Path.GetFileNameWithoutExtension(notePath)
             };
             tab.AddChild(editor);
             tabs.AddChild(tab);
             tabs.SetActive(tab);
-            editor.LoadPath(notePath);
-        }
-
-        private static string VaultRoot()
-        {
-            string path = SettingsRegistry.Get<PeriodicSettings>().vault.path;
-            return Path.IsPathRooted(path) ? path : VirtualFileSystem.ResolveDir(path);
         }
     }
 }

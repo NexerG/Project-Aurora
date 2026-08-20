@@ -20,6 +20,17 @@
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
     <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="RowHeight" type="xs:int" />
+    <xs:attribute name="Indent" type="xs:float" />
+    <xs:attribute name="RowSpacing" type="xs:float" />
+    <xs:attribute name="RowInset" type="xs:float" />
+    <xs:attribute name="GutterWidth" type="xs:int" />
+    <xs:attribute name="RowFontSize" type="xs:int" />
+    <xs:attribute name="RowColorHex" type="xs:string" />
+    <xs:attribute name="RowHoverColorHex" type="xs:string" />
+    <xs:attribute name="RowPressColorHex" type="xs:string" />
+    <xs:attribute name="FolderColorHex" type="xs:string" />
+    <xs:attribute name="FileColorHex" type="xs:string" />
     <xs:attribute name="ScrollDirection" type="types:Scrollable" />
     <xs:attribute name="ScrollSensitivity" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
@@ -493,18 +504,15 @@
   </xs:complexType>
   <xs:element name="TextBox" type="types:TextBox" />
   <xs:complexType name="TextBox">
-    <xs:sequence>
-      <xs:choice minOccurs="0" maxOccurs="unbounded" />
-    </xs:sequence>
+    <xs:sequence />
     <xs:attribute name="Text" type="xs:string" />
     <xs:attribute name="FontSize" type="xs:int" />
-    <xs:attribute name="ColorHex" type="xs:string" />
-    <xs:attribute name="StylingType" type="types:TextStyleType" />
-    <xs:attribute name="FontName" type="xs:string" />
+    <xs:attribute name="TextColorHex" type="xs:string" />
     <xs:attribute name="Width" type="xs:int" />
     <xs:attribute name="Height" type="xs:int" />
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="ControlColor" type="types:ControlColor" />
     <xs:attribute name="CornerRadius" type="xs:string" />
@@ -801,6 +809,7 @@
         <xs:element name="Block" type="types:Block" />
       </xs:choice>
     </xs:sequence>
+    <xs:attribute name="Name" type="xs:string" />
   </xs:complexType>
   <xs:element name="Button" type="types:Button" />
   <xs:complexType name="Button">

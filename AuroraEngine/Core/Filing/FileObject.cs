@@ -26,41 +26,52 @@ namespace ArctisAurora.Core.Filing
         required public FileType type;
         required public string path;
 
-        public List<FileObject> children;
+        // place in the tree
+        public string name;
+        public FileObject parent;
+
+        private static readonly List<FileObject> noChildren = new List<FileObject>();
+        private List<FileObject> children;
+
+        // Listed on first access, so a folder nobody opened is never read from disk.
+        public List<FileObject> Children
+        {
+            get
+            {
+                if (type == FileType.File) return noChildren;
+                if (children == null) Load();
+                return children;
+            }
+        }
 
         [SetsRequiredMembers]
         public FileObject(string path)
         {
-            //this.type = type;
             this.path = path;
+            name = Path.GetFileName(path);
 
             FileAttributes attributes = File.GetAttributes(path);
-            if ((attributes & FileAttributes.Directory) == FileAttributes.Directory)
-            {
-                this.type = FileType.Directory;
-                children = new List<FileObject>();
-                TreeBranch(path, this);
-            }
-            else
-            {
-                this.type = FileType.File;
-            }
+            type = (attributes & FileAttributes.Directory) == FileAttributes.Directory
+                ? FileType.Directory
+                : FileType.File;
         }
 
-        private void TreeBranch(string path, FileObject fileObject)
+        // Drops the listing so the next access re-reads the folder.
+        public void Refresh() => children = null;
+
+        private void Load()
         {
-            // The constructor branches a directory itself, so branching the child here as well
-            // added every descendant twice.
+            children = new List<FileObject>();
+
             string[] directories = Directory.GetDirectories(path);
+            Array.Sort(directories, StringComparer.OrdinalIgnoreCase);
             foreach (string directory in directories)
-                fileObject.children.Add(new FileObject(directory));
+                children.Add(new FileObject(directory) { parent = this });
 
             string[] files = Directory.GetFiles(path);
+            Array.Sort(files, StringComparer.OrdinalIgnoreCase);
             foreach (string file in files)
-            {
-                FileObject child = new FileObject(file);
-                fileObject.children.Add(child);
-            }
+                children.Add(new FileObject(file) { parent = this });
         }
     }
 }

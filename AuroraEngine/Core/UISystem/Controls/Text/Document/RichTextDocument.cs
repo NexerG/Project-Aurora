@@ -119,6 +119,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
     {
         public List<Block> blocks = new List<Block>();
 
+        // Absent until the note is named. Nothing derives it from the file, so a note that has never
+        // been named reads as unnamed however many times it is saved.
+        [A_XSDElementProperty("Name", "UI", "Display name of the note. Absent means the file name stands in.")]
+        public string name;
+
         // Named after its type, because DocumentXml names a nested member element after the type it
         // wrote — two members of the same complex type would need the writer to carry the member
         // name instead.
@@ -135,6 +140,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         public RichTextDocument Clone()
         {
             RichTextDocument copy = new RichTextDocument();
+            copy.name = name;
             copy.layout = layout.Clone();
             foreach (Block block in blocks)
                 copy.blocks.Add(block.Clone());

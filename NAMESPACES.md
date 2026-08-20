@@ -45,6 +45,7 @@ ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\Aur
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\ContextMenuWindow.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\DragGhost.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Glyph.cs
+ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\NoteNameWindow.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\UICollisionHandling.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\UILayout.cs
 ArctisAurora.Core.UISystem.Actions -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Actions\UIActions.cs
@@ -60,6 +61,8 @@ ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-A
 ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\WindowFrameControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\AbstractContainerControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\DockingControl.cs
+ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\FileBrowserControl.cs
+ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\FileTreeControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\GridListControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\ScrollableControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\SplitViewControl.cs

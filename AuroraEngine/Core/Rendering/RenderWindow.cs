@@ -74,6 +74,16 @@ namespace ArctisAurora.EngineWork.Rendering
                 modules[i].window = this;
         }
 
+        // Brings the window forward. Restored first when iconified — focusing a minimized window
+        // leaves it minimized, so a host raising one has no way to see it.
+        public void Focus()
+        {
+            if (AGlfwWindow._glfw.GetWindowAttrib(os.handle, WindowAttributeGetter.Iconified))
+                AGlfwWindow._glfw.RestoreWindow(os.handle);
+
+            os.Focus();
+        }
+
         // The window a control is drawn into — its root is some window's uiRoot. Null for a subtree
         // detached from every window.
         public static RenderWindow Of(VulkanControl control)

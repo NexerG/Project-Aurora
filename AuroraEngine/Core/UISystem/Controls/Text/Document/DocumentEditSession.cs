@@ -8,12 +8,22 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         public RichTextDocument document { get; }
         public string path { get; }
 
+        // Edited since the last write. Read by the close paths, which must not prompt over a note
+        // that was only ever looked at.
+        public bool isDirty { get; private set; }
+
         public DocumentEditSession(RichTextDocument document, string path)
         {
             this.document = document;
             this.path = path;
         }
 
-        public void Save() => document.Save(path);
+        public void MarkDirty() => isDirty = true;
+
+        public void Save()
+        {
+            document.Save(path);
+            isDirty = false;
+        }
     }
 }

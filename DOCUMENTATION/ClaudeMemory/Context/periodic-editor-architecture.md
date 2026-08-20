@@ -61,8 +61,12 @@ for the decision to accept them and the escape hatch if they bite.
 - **Engine** (`AuroraEngine/Core/UISystem/Controls/Text/...`): document model, edit session,
   cursor/selection, caret control, editor view control, char/special-key routing.
 - **Periodic** (app): vault mount, file-tree browse, app-shell `UI.xml`, open/save actions, sample notes.
-- **Held as of P5** — `VaultBrowserControl` and `PeriodicSettings` are Periodic's; the engine gained
-  nothing for the browser except the `FileObject` recursion fix.
+- ~~**Held as of P5** — `VaultBrowserControl` and `PeriodicSettings` are Periodic's; the engine gained
+  nothing for the browser except the `FileObject` recursion fix.~~ — **REVERSED 2026-08-20 (user).**
+  The browser's row-building and tree behaviour are engine controls (`FileBrowserControl`,
+  `FileTreeControl`); `VaultBrowserControl` is the Periodic leaf supplying the vault root, the
+  `.xml` filter and the tab-opening action, and `PeriodicSettings` is still Periodic's. Taken so the
+  editor's folder-descending browser is a sibling leaf instead of a fork. See [[file-browser-tree]].
 
 ## Phases (see TODO/plan)
 - **P0 — done.** Document types under `Controls/Text/Document/`: `RichTextDocument` (plain model

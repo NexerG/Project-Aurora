@@ -229,6 +229,10 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         }
 
         // Measures the glyph quads, then wraps into lines via TextMeasurer.
+        // Width the text wraps at. A single-line control overrides this so its text never wraps,
+        // while its own width still comes from preferredWidth.
+        protected virtual float WrapWidth(float available) => preferredWidth > 0 ? preferredWidth : available;
+
         public override Vector2D<float> Measure(Vector2D<float> availableSize)
         {
             foreach (Entity child in children)
@@ -237,7 +241,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
 
             metrics ??= new FontAssetGlyphMetrics();
 
-            float contentWidth = preferredWidth > 0 ? preferredWidth : availableSize.X;
+            float contentWidth = WrapWidth(availableSize.X);
 
             runBuffer[0] = new TextMeasurer.Run(text ?? string.Empty, fontName, fontSize);
             layout = TextMeasurer.MeasureBlock(runBuffer, contentWidth, metrics, lineHeight, firstLineOffset);

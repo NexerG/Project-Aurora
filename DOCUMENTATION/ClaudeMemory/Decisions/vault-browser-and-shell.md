@@ -59,11 +59,16 @@ passes, so it is a no-op on disk.
 **Consequence to accept:** clicking a note *commits* whatever is in the current one. There is no
 "discard changes".
 
-### 5. Rows are a flat indented list, not a collapsible tree
+### 5. ~~Rows are a flat indented list, not a collapsible tree~~ — **REVERSED 2026-08-20**
 
 Folders are labels, notes are buttons, depth is left margin. No expand/collapse, no icons, no
 selection highlight. `FileObject.Icon` exists and is never set by anything. A tree widget is worth
 building when there are enough folders for collapsing to matter.
+
+**Superseded:** folders are buttons carrying a `>`/`v` gutter and toggle open, the row-building
+moved into the engine as `FileBrowserControl` + `FileTreeControl`, and `FileObject` lists a folder
+lazily instead of walking the whole subtree in its constructor. See [[file-browser-tree]] — it is
+the current description of this area. Decisions 1, 2, 4 and 6 below still hold.
 
 Files are filtered to `*.xml`. The first note in tree order is the one opened at startup, and
 `FileObject` lists directories before files, so a note inside a subfolder wins over one at the root.
@@ -119,8 +124,9 @@ level was added twice. Fixed, because the browser is the first caller.
   can no longer resolve an editor. Known and recorded in [[document-selection]] decision 8; the
   sidebar is the first thing that makes it easy to hit. The answer is real focus, not a patch here.
 - No new-note, rename or delete. Rename is the `ContextMenuControl` item already on the WIP list.
-- The browser never refreshes — `Rebuild()` exists and nothing calls it after construction, so a
-  note added on disk while the app runs does not appear.
+- ~~The browser never refreshes~~ — partly closed 2026-08-20: toggling a folder calls `Rebuild()`,
+  which re-reads the root, so a note added on disk appears after any toggle. Nothing watches the
+  folder, so it still does not appear on its own.
 
 Related: [[settings-registry]], [[settings-categories]], [[document-structural-editing]],
 [[periodic-editor-architecture]]

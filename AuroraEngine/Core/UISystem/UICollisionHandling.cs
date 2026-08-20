@@ -74,14 +74,20 @@ namespace ArctisAurora.Core.UISystem
         public void SolveLMBPress(Vector2D<float> mousePos)
         {
             if (hovering == null) return;
-            VulkanControl target = ActiveTarget(hovering);
-            if (activeControl != target)
-            {
-                (activeControl as IContext)?.OnContextRemoved("ActiveControl");
-                activeControl = target;
-                (activeControl as IContext)?.OnContextAdded("ActiveControl");
-            }
+            SetActiveControl(ActiveTarget(hovering));
             hovering?.ResolveOnClick(lastMousePos, delta);
+        }
+
+        // Also called without a click behind it, by a prompt that has to hold the active context
+        // before the pointer ever reaches it — otherwise its keystrokes go to whatever was clicked
+        // last.
+        public static void SetActiveControl(VulkanControl control)
+        {
+            if (ReferenceEquals(activeControl, control)) return;
+
+            (activeControl as IContext)?.OnContextRemoved("ActiveControl");
+            activeControl = control;
+            (activeControl as IContext)?.OnContextAdded("ActiveControl");
         }
 
         public void SolveLMBRelease(Vector2D<float> mousePos)

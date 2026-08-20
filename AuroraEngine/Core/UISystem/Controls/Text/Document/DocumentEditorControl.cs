@@ -39,9 +39,12 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             }
         }
 
+        // Normalized, because the session's path is what identifies an open note: a Source authored
+        // relative to the documents folder resolves through Path.Combine, which leaves the ".."
+        // segments in, and would not string-match the same file reached from a folder listing.
         public void LoadPath(string nameOrPath)
         {
-            string path = Path.IsPathRooted(nameOrPath) ? nameOrPath : Paths.Doc(nameOrPath);
+            string path = Path.GetFullPath(Path.IsPathRooted(nameOrPath) ? nameOrPath : Paths.Doc(nameOrPath));
             RichTextDocument document = RichTextDocument.ParseXML(path);
 
             session = new DocumentEditSession(document, path);
@@ -50,9 +53,47 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 
         public void Save() => session?.Save();
 
+        // An edited note that has never been named. Nothing derives a name from the file, so this
+        // stays true until someone answers the prompt.
+        public bool needsNaming => session != null && session.isDirty && session.document.name == null;
+
+        // Writes the note, asking for a name first when it has never been named. onSaved runs once it
+        // is on disk, onDiscarded if the note was left unwritten on purpose, onCancelled if the
+        // answer was abandoned. Passing no onDiscarded leaves the prompt without that button.
+        public void SaveNamed(Action onSaved = null, Action onDiscarded = null, Action onCancelled = null)
+        {
+            if (session == null) { onSaved?.Invoke(); return; }
+
+            if (!needsNaming)
+            {
+                session.Save();
+                onSaved?.Invoke();
+                return;
+            }
+
+            NoteNameWindow.Ask(RenderWindow.Of(this), Path.GetFileNameWithoutExtension(session.path),
+                name =>
+                {
+                    session.document.name = name;
+                    session.Save();
+                    onSaved?.Invoke();
+                },
+                onDiscarded,
+                onCancelled);
+        }
+
+        // Every path that changes the document ends here, so the close paths can tell an edited note
+        // from one that was only opened.
+        public void MarkDirty() => session?.MarkDirty();
+
         public void CollapseSelection() => content?.CollapseSelection();
 
-        public bool DeleteSelection() => content != null && content.DeleteSelection();
+        public bool DeleteSelection()
+        {
+            if (content == null || !content.DeleteSelection()) return false;
+            MarkDirty();
+            return true;
+        }
 
         public TextControl CaretRun => content?.caretRun;
 
@@ -233,13 +274,18 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             if (content?.caretRun == null) return;
 
             if (!content.HasSelection) MoveCaret(move, true);
-            content.DeleteSelection();
+            if (content.DeleteSelection()) MarkDirty();
             ScrollToCaret();
         }
 
         // No ScrollToCaret: the new block has no arranged rect until the next layout pass, and a
         // zero rect reads as "above the viewport" and would scroll the note to the top.
-        public void SplitBlock() => content?.SplitBlock();
+        public void SplitBlock()
+        {
+            if (content == null) return;
+            content.SplitBlock();
+            MarkDirty();
+        }
         #endregion
 
         // Nearest TextControl at or above the hit control.

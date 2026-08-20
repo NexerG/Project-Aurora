@@ -26,6 +26,10 @@
 		<Repeat />
 	</Keybind>
 
+	<Keybind Trigger="Escape" Action="Text.Cancel">
+		<Press />
+	</Keybind>
+
 	<Keybind Trigger="S" Action="Text.Save">
 		<Modifier Key="LeftControl" />
 		<Press />
