@@ -88,10 +88,10 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override int variableSetCount => 2;
 
 
-        internal static MCUI meshComponent;
+        internal static MCUI meshComponent = null!;
         internal override IReadOnlyList<Entity> renderEntities { get => field; set { field = value; } }
 
-        private WindowControl _uiRoot;
+        private WindowControl _uiRoot = null!;
 
         // The tree this module draws, and its slice of the UIControls pool in dense order. The pool
         // is shared by every window, so the range is published by UILayout.RefreshWindowRanges.
@@ -110,7 +110,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         // Set on a ghost window's module: the control whose subtree this draws instead of a tree of
         // its own. The camera frames it and the range is that subtree's, not a slice of the pool.
-        internal VulkanControl rangeRoot;
+        internal VulkanControl? rangeRoot;
 
         // Window pixels to the units this module's tree is laid out in.
         public Vector2D<float> ToDesignSpace(Vector2D<float> windowPoint) =>
@@ -122,21 +122,21 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             internal DeviceMemory memory;
             internal DescriptorPool pool;
         }
-        internal List<DeferredResources>[] deferredDeletions;
+        internal List<DeferredResources>[] deferredDeletions = null!;
 
         // UIControls data pool — transforms live here; the renderer mirrors it to the GPU.
-        private DataPool _controlPool;
+        private DataPool? _controlPool;
         internal DataPool ControlPool => _controlPool ??= DataManager.Get("UIControls");
 
-        private int[] _frameBuiltCapacity;
-        private int[] _frameTableVersion;
+        private int[] _frameBuiltCapacity = null!;
+        private int[] _frameTableVersion = null!;
 
         // This image's position in the control pool's history. One per image, not per module: each
         // image provisions its own sets and advances independently.
         //
         // Lazy because pools are parsed in the same bootstrap phase that constructs this module and
         // intra-phase order is undefined, so the pool may not exist yet at construction.
-        private PoolCursor[] _cursors;
+        private PoolCursor[] _cursors = null!;
 
         private PoolCursor Cursor(int frame)
         {

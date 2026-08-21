@@ -78,4 +78,91 @@ splitter: `LayoutRect.Contains` is inclusive on both edges and `FindDeepestValid
 matching child in declaration order, which is the pane. A drag test aimed at the pane's right edge
 looks like a dead splitter. Aim at the middle of the grip.
 
-Related: [[ui-clipping]], [[vault-browser-and-shell]], [[button-states-and-hover-bubbling]]
+---
+
+# Amendment — a pinned split measured its star pane at float.MaxValue (2026-08-21)
+
+**Status:** LANDED. Builds clean, boots. **Not GUI-verified.**
+**Scope:** `ArctisAurora.Core.UISystem.Controls.Containers` (`SplitViewControl`).
+
+## The defect
+
+Splitting a pane made the new split cover the whole window and squeezed its neighbour to nothing —
+but **only when the source pane had a fixed size**. Splitting the star pane was always fine (user,
+2026-08-21: "only happens when done on the tab views left of the most right one"). Both `Split right`
+and `Split down`.
+
+`StackPanelControl.Measure` offers a **non-star** child `float.MaxValue` on the main axis, and
+`SplitViewControl` inherits that Measure. `Split` copies the source's sizing onto the new split, so
+splitting `Tabs` (`Width="525"`) produced a split with `preferredWidth = 525` — non-star — which then
+measured itself against `MaxValue`:
+
+```
+inner.width  = MaxValue
+remaining    = MaxValue - 265        (the fixed pane plus the grip)
+starUnit     = MaxValue
+fresh pane   -> DesiredSize.X = MaxValue
+w            = MaxValue
+```
+
+The trailing `if (preferredWidth > 0) w = MathF.Max(w, preferredWidth)` is a **floor, not an
+override**, so `Max(MaxValue, 525)` stayed `MaxValue`. The outer stack then arranged the split at
+`DesiredSize.X`, and because `clipOutOfBounds` is false on these containers nothing clipped it back —
+it painted across the window and left `starPool = 0` for everything after it.
+
+Splitting `TabsRight` (`WidthStar="1"`) was fine because the new split inherited the star, and star
+children are measured in pass 2 against a real finite `starUnit` and arranged at `widthStar *
+starUnit`, never at `DesiredSize`.
+
+`Split down` hit the same thing one axis over: `SizePane` zeroes *both* `preferredWidth` and
+`preferredHeight` and then sets only the main one, so after a vertical split the panes carry no width
+and the cross-axis offer of `MaxValue` propagated instead.
+
+Pre-existing, and reachable from the drag-to-edge path too — not something the tab menu introduced.
+It just became easy to hit once a menu entry could split a named pane.
+
+## Decision — a stack measures its children against its own box, not the offer
+
+Fixed in `StackPanelControl.Measure` for every stack, at the user's call (2026-08-21), after first
+landing as a `SplitViewControl`-only override. The override was removed; this replaces it.
+
+```
+Measure(availableSize)
+    boxWidth  = preferredWidth  > 0 ? preferredWidth  : availableSize.X
+    boxHeight = preferredHeight > 0 ? preferredHeight : availableSize.Y
+    inner = (boxWidth, boxHeight) shrunk by padding
+    ... passes 1 and 2 unchanged, against inner ...
+```
+
+A pinned axis is the box the children divide, not a floor under whatever the parent happened to
+offer. This recurses correctly: the left pane of a split carries a fixed main size, so splitting it
+again produces another pinned split that resolves the same way.
+
+The trailing `if (preferredWidth > 0) w = MathF.Max(w, preferredWidth)` was **left as a floor**. Once
+`inner` is right it is a no-op for the pinned case, and turning it into an override would separately
+change what happens when children genuinely exceed a pinned size — a different question, and not
+this defect.
+
+### Why fixing it for everyone was safe
+
+`StackPanelControl` carries the title bars, every browser row, the tab strip, the tab captions, the
+prompt columns and the menu column. Enumerated before the change, each is one of:
+
+- **no pinned size** — root stacks, `rows`, `content`, `strip`, the tab `row`, both prompt columns,
+  `ContextMenuControl.column`. `boxWidth`/`boxHeight` fall through to the offer. Unchanged by
+  construction.
+- **pinned cross axis only, children carrying explicit sizes on it** — `TitleBar Height="32"`, the
+  `buttons` rows at `preferredHeight = 30`. The cross offer tightens from `float.MaxValue` to the real
+  height, but every child pins that axis itself, so `maxCross` lands on the same number.
+- **pinned main axis with a star child** — only the splits built by `Split`. The broken case.
+
+So the change is inert everywhere except where it fixes something. It does **not** address the
+separate pass-1 cross-measurement defect (a star child probed at main-axis `0`); constraining the
+cross offer can only reduce over-measurement there, never worsen it.
+
+**Rejected: give both panes stars.** `SplitterControl` resizes by writing the *fixed* pane's size and
+letting the star pane absorb the rest — the arrangement this whole note is about. Two stars would
+have nothing to write.
+
+Related: [[ui-clipping]], [[vault-browser-and-shell]], [[button-states-and-hover-bubbling]],
+[[tab-view-control]]

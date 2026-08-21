@@ -54,7 +54,7 @@ namespace ArctisAurora.Core.UISystem
 
         // ---- per-window instance ranges ----
 
-        private static DataPool _controlPool;
+        private static DataPool? _controlPool;
         private static ulong _rangesStructural = ulong.MaxValue;
         private static ulong _rangesOrder = ulong.MaxValue;
         private static bool _rangesDirty = true;

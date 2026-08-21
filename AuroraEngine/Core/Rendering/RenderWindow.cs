@@ -20,24 +20,24 @@ namespace ArctisAurora.EngineWork.Rendering
 
         // swapchain
         internal SwapchainKHR swapchain;
-        internal KhrSwapchain swapchainKHR;
+        internal KhrSwapchain swapchainKHR = null!;
         internal Extent2D swapchainExtent;
         internal SurfaceFormatKHR surfaceFormat;
-        internal Image[] swapchainImages;
-        internal ImageView[] swapchainImageViews;
+        internal Image[] swapchainImages = null!;
+        internal ImageView[] swapchainImageViews = null!;
         internal uint imageCount;
 
         // frame sync
-        internal Semaphore[] imageAvailableSemaphores;
-        internal Semaphore[] renderFinishedSemaphores;
-        internal Semaphore[] modulesFinishedSemaphores;
+        internal Semaphore[] imageAvailableSemaphores = null!;
+        internal Semaphore[] renderFinishedSemaphores = null!;
+        internal Semaphore[] modulesFinishedSemaphores = null!;
         internal Semaphore timelineSemaphore;
         internal ulong frameCounter;
         internal int currentFrame;
 
         // rendering
         internal RenderingModule[] modules;
-        internal CompositorModule compositor;
+        internal CompositorModule compositor = null!;
 
         // the module holding this window's UI tree — the window itself owns no controls
         public UIModule ui;

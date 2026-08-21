@@ -49,6 +49,8 @@ ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\Aur
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\NoteNameWindow.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\UICollisionHandling.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\UILayout.cs
+ArctisAurora.Core.UISystem.Actions -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Actions\NoteActions.cs
+ArctisAurora.Core.UISystem.Actions -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Actions\TabActions.cs
 ArctisAurora.Core.UISystem.Actions -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Actions\UIActions.cs
 ArctisAurora.Core.UISystem.Actions -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Actions\ViewActions.cs
 ArctisAurora.Core.UISystem.Actions -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Actions\WindowActions.cs
@@ -76,6 +78,7 @@ ArctisAurora.Core.UISystem.Controls.Interactable -> C:\Projects-Repositories\Aur
 ArctisAurora.Core.UISystem.Controls.Interactable -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Interactable\ResizeableControl.cs
 ArctisAurora.Core.UISystem.Controls.Interactable -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Interactable\ScrollThumbControl.cs
 ArctisAurora.Core.UISystem.Controls.Interactable -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Interactable\SplitterControl.cs
+ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\EditableLabelControl.cs
 ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\GlyphControl.cs
 ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\LabelControl.cs
 ArctisAurora.Core.UISystem.Controls.Text -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\TextBlockControl.cs
@@ -106,6 +109,7 @@ ArctisAurora.EngineWork -> C:\Projects-Repositories\Aurora\Project-Aurora\Aurora
 ArctisAurora.EngineWork -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\InputHandler.cs
 ArctisAurora.EngineWork -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\InputSettings.cs
 ArctisAurora.EngineWork -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\JobSystem.cs
+ArctisAurora.EngineWork -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Shutdown.cs
 ArctisAurora.EngineWork.ComponentBehaviour -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\ECS\EntityComponent.cs
 ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\ECS\RenderingComponents\Vulkan\LightsourceComponent.cs
 ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\ECS\RenderingComponents\Vulkan\MeshComponent.cs

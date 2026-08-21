@@ -17,7 +17,7 @@ namespace ArctisAurora.Core.Registry.Assets
         internal ImageView textureImageView;
         internal DeviceMemory _textureBufferMemory;
         internal Sampler textureSampler;
-        internal Image<Rgba32> image;
+        internal Image<Rgba32> image = null!;
 
         #region ---- bindless texture table ----
         public const uint MaxTextures = 256;

@@ -29,15 +29,15 @@ namespace ArctisAurora.Core.UISystem
         private const string buttonHoverHex = "#4A4A4A";
         private const string buttonPressHex = "#2A2A2A";
 
-        private static RenderWindow _window;
-        private static RenderWindow _source;
-        private static VulkanControl _restoreActive;
-        private static TextBoxControl _field;
-        private static ButtonControl _discard;
+        private static RenderWindow _window = null!;
+        private static RenderWindow? _source;
+        private static VulkanControl? _restoreActive;
+        private static TextBoxControl _field = null!;
+        private static ButtonControl _discard = null!;
 
-        private static Action<string> _onConfirm;
-        private static Action _onDiscard;
-        private static Action _onCancel;
+        private static Action<string>? _onConfirm;
+        private static Action? _onDiscard;
+        private static Action? _onCancel;
 
         public static bool isOpen { get; private set; }
 
@@ -84,21 +84,21 @@ namespace ArctisAurora.Core.UISystem
             string name = _field.text?.Trim();
             if (string.IsNullOrEmpty(name)) return;
 
-            Action<string> confirm = _onConfirm;
+            Action<string>? confirm = _onConfirm;
             Hide();
             confirm?.Invoke(name);
         }
 
         private static void Discard()
         {
-            Action discard = _onDiscard;
+            Action? discard = _onDiscard;
             Hide();
             discard?.Invoke();
         }
 
         private static void Cancel()
         {
-            Action cancel = _onCancel;
+            Action? cancel = _onCancel;
             Hide();
             cancel?.Invoke();
         }

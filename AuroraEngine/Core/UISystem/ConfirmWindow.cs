@@ -25,12 +25,12 @@ namespace ArctisAurora.Core.UISystem
         private const string buttonHoverHex = "#4A4A4A";
         private const string buttonPressHex = "#2A2A2A";
 
-        private static RenderWindow _window;
-        private static RenderWindow _source;
-        private static LabelControl _message;
+        private static RenderWindow _window = null!;
+        private static RenderWindow? _source;
+        private static LabelControl _message = null!;
 
-        private static Action _onConfirm;
-        private static Action _onCancel;
+        private static Action? _onConfirm;
+        private static Action? _onCancel;
 
         public static bool isOpen { get; private set; }
 
@@ -59,14 +59,14 @@ namespace ArctisAurora.Core.UISystem
 
         private static void Confirm()
         {
-            Action confirm = _onConfirm;
+            Action? confirm = _onConfirm;
             Hide();
             confirm?.Invoke();
         }
 
         private static void Cancel()
         {
-            Action cancel = _onCancel;
+            Action? cancel = _onCancel;
             Hide();
             cancel?.Invoke();
         }

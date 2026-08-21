@@ -563,7 +563,7 @@ namespace ArctisAurora.EngineWork
         public Keys trigger { get; set; }
 
         [A_XSDElementProperty("Action", "Input")]
-        public Action action { get; set; }
+        public Action? action { get; set; }
 
         [A_XSDElementProperty("Modifier", "Input")]
         public List<KeybindModifier> modifiers = new List<KeybindModifier>();
@@ -1004,7 +1004,7 @@ namespace ArctisAurora.EngineWork
     [A_XSDType("KeybindMap", "Input", AllowedChildren = typeof(IKeybindMapChild), Description = "Root container for keybind definitions")]
     public unsafe class InputHandler : IXMLParser<InputHandler>
     {
-        public static InputHandler instance { get; set; }
+        public static InputHandler instance { get; set; } = null!;
 
         public KeyStateTracker keyTracker = new KeyStateTracker();
         public GestureMatcher gestureMatcher;
@@ -1257,12 +1257,14 @@ namespace ArctisAurora.EngineWork
         }
 
         [A_XSDActionDependency("InputHandler.LoadInputs", "Bootstrap")]
-        public static void LoadInputs()
+        public static bool LoadInputs()
         {
             instance = ParseXML("InputMap.xml");
             Engine.inputHandler = instance;
             // Activate the default group (or first available)
             instance.gestureMatcher.SetActiveGroup("default");
+
+            return true;
         }
     }
 }

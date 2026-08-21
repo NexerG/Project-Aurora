@@ -17,7 +17,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
 
         public char character;
         int index;
-        Glyph glyph;
+        Glyph? glyph;
 
         public float ascent;
         public float descent;

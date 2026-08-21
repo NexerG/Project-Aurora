@@ -16,7 +16,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
     internal class FrameResources
     {
         internal DescriptorPool pool;
-        internal DescriptorSet[] sets;  // one per set layout
+        internal DescriptorSet[] sets = null!;  // one per set layout
     }
 
     public unsafe abstract class RenderingModule
@@ -34,14 +34,14 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal PipelineLayout pipelineLayout;
 
         // the window this module renders into — everything sized to the swapchain reads it from here
-        internal RenderWindow window;
+        internal RenderWindow window = null!;
 
         // commands
         public Queue graphicsQueue;
         public CommandPool moduleCommandPool;
-        internal CommandBuffer[] commandBuffers;
-        public bool[] isDirty;
-        public Semaphore[] moduleFinishedSemaphores;
+        internal CommandBuffer[] commandBuffers = null!;
+        public bool[] isDirty = null!;
+        public Semaphore[] moduleFinishedSemaphores = null!;
 
         // descriptors
         internal abstract List<List<DescriptorType>> descriptorTypes { get; }
@@ -50,23 +50,23 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal abstract int variableSetCount { get; }
 
 
-        internal DescriptorSetLayout[] descriptorSetLayouts;
-        internal DescriptorPoolSize[] descriptorPoolSizes;
-        internal FrameResources[] frameResources;  // one per MAX_FRAMES_IN_FLIGHT
+        internal DescriptorSetLayout[] descriptorSetLayouts = null!;
+        internal DescriptorPoolSize[] descriptorPoolSizes = null!;
+        internal FrameResources[] frameResources = null!;  // one per MAX_FRAMES_IN_FLIGHT
         internal abstract uint[][] descriptorMaxCounts { get; }
 
         // rendered result
         // Dynamic rendering makes the pipeline name its attachment format up front, and it has to
         // agree with the images below — hence one constant instead of a literal per use site.
         internal const Format outputFormat = Format.R8G8B8A8Unorm;
-        public Image[] outputImages;
-        public ImageView[] outputImageViews;
-        public DeviceMemory[] imageDeviceMemory;
-        public Semaphore[] renderFinishedSemaphores;
+        public Image[] outputImages = null!;
+        public ImageView[] outputImageViews = null!;
+        public DeviceMemory[] imageDeviceMemory = null!;
+        public Semaphore[] renderFinishedSemaphores = null!;
         public int compositorOrder = 0;
 
         // quick access
-        internal AuroraCamera camera;
+        internal AuroraCamera camera = null!;
         internal abstract IReadOnlyList<Entity> renderEntities { get; set; }
 
         internal abstract void PrepareObjects();

@@ -38,11 +38,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
         // Quick-access references populated during Arrange.
         // Not used for layout logic — children list + dockMode is the source of truth.
-        public VulkanControl top;
-        public VulkanControl bottom;
-        public VulkanControl left;
-        public VulkanControl right;
-        public VulkanControl center;
+        public VulkanControl? top;
+        public VulkanControl? bottom;
+        public VulkanControl? left;
+        public VulkanControl? right;
+        public VulkanControl? center;
 
         public DockingControl()
         {

@@ -1,6 +1,10 @@
 ﻿using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
 
+// Legacy renderer, kept as a working reference until the migration. Deprecation warnings inside the
+// cluster are noise; the ones left in live code are the migration list.
+#pragma warning disable CS0618
+
 namespace ArctisAurora.EngineWork.Rendering
 {
     internal unsafe class GraphicsPipeline

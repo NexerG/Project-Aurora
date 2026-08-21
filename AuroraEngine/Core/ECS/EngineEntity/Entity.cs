@@ -54,7 +54,7 @@ namespace ArctisAurora.Core.ECS.EngineEntity
         // Which pool this entity's transform lives in. Overridden by subclasses (e.g. controls
         // use "UIControls"). Resolved during construction, so it must not touch derived fields.
         protected virtual string PoolName => "Entities";
-        private DataPool _pool;
+        private DataPool _pool = null!;
         internal DataHandle dataHandle;
         public DataPool Pool => _pool;
         // This entity's pooled transform (position/rotation/scale) — a ref into the dense array.

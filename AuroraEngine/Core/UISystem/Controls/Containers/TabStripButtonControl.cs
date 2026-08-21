@@ -10,8 +10,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
     {
         private const float tearThreshold = 12f;
 
-        internal TabItemControl item;
-        internal TabViewControl owner;
+        internal TabItemControl item = null!;
+        internal TabViewControl owner = null!;
 
         // False until the pointer has travelled far enough that this is a drag and not a sloppy
         // click, so a drop is refused and no window is torn off.

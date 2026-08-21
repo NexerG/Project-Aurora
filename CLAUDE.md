@@ -243,7 +243,8 @@ This paragraph will describe of the known issues with the engine that at some po
 Engine's ECS is currently object based and not data (struct (or even record)) based system
 Vulkan renderer currently renders only UI (rendering modules not yet ready)
 Hardcoded absolute paths in default asset preparation
-undefined bootstrap execution order
+bootstrap steps all report success unconditionally — the bool return is wired, the per-step failure
+detection is not
 unfinished or unsafe threading
 
 ## Projects
@@ -315,23 +316,38 @@ ECS design is still being settled — avoid refactoring the entity/component mod
 - **Do not** add new input processing outside `InputHandler` — all input flows through here
 
 #### Bootstrapper — Key Facts
-- `Bootstrapper.Bootstrap(stage)` reflects over all loaded assemblies and invokes every
-  `public static` method tagged with `[A_BootstrapStage(stage)]` for the given stage
-- `[A_BootstrapStage]` is `AllowMultiple = true` — one method can register for multiple
-  stages (e.g. `AssetRegistries.Bootstrap` runs at both `PreGPUAPI` and `PostGPUAPI`)
-- `IBootstrap` interface marks a class as having a `Bootstrap(BootstrapStage? stage)`
-  method — but the bootstrapper doesn't use the interface directly, it finds methods
-  purely by attribute, so the interface is a convention signal only
-- Current stages: `PreGPUAPI`, `PostGPUAPI`; two physics stages exist but are
-  marked `NOTIMPLEMENTED`
-- Execution order within a stage is **undefined** — reflection order, not declaration order
+The XML rework has **landed**. There is no `BootstrapStage` enum and no `[A_BootstrapStage]`
+attribute any more; both were replaced by declared phases in `Bootstrap.xml`.
+- `Bootstrapper.Load(Paths.BOOTSTRAP)` reflects over all loaded assemblies once, collecting every
+  static method tagged `[A_XSDActionDependency(name, "Bootstrap")]` into a name → method map
+- `Bootstrap.xml` declares `<Phase Name="…">` elements holding ordered `<Step Action="…"/>`
+  entries; the action string is the attribute's name, and `Bootstrapper.RunPhase(name)` invokes
+  them **in the order the XML lists them**
+- **Execution order is data, not reflection order** — to change what runs when, edit
+  `Bootstrap.xml`; there is exactly one phase today, `"Bootstrap"`
+- A step whose action name resolves to nothing is logged and skipped, not fatal
+- Every bootstrap step returns `bool`. **A step returning `false` halts its phase** — nothing after
+  it runs and `RunPhase` returns false. Steps that cannot meaningfully fail return `true`
+- Comments in `Bootstrap.xml` mark the pre-renderer / post-renderer boundaries, which is what the
+  old `PreGPUAPI` / `PostGPUAPI` stages encoded
 
-#### Bootstrapper — Planned Rework
-- Goal: bootstrap order and configuration driven by XSD/XML, not hardcoded stage enums
-- Methods to be bootstrapped will still be marked by an attribute
-- Sequencing and dependencies will be declared in XML and executed via reflection
-- **Do not** suggest adding new `BootstrapStage` enum values — the enum is being replaced
-- **Do not** assume current stage ordering is intentional — it is a temporary design
+#### Shutdown — Key Facts
+The bootstrap sequence run backwards, and deliberately the same shape — `Shutdown.cs`,
+`Shutdown.xml`, `[A_XSDActionDependency(name, "Shutdown")]`, `Shutdown.RunPhase(name)`, `bool`
+returns that halt a phase.
+- **Two phases, and the difference matters.** `Request` may refuse: it is where anything that asks
+  the user something lives. `Commit` is past the point of no return and runs against a tree that is
+  still live, before any teardown
+- **A step that must ask the user returns `false` and re-enters.** It opens its prompt, returns
+  false to halt the attempt, and the prompt's callbacks call `Shutdown.Resume()`, which re-runs the
+  sequence — one question per attempt, in order. Cancelling simply never resumes, which is what
+  leaves the application running. `Shutdown.Request()` starts a *fresh* attempt and clears what a
+  previous one remembered
+- A `Commit` step returning false is logged and skips the rest of its phase, but the application
+  still exits — otherwise one broken handler makes it unquittable
+- `Window.Close` on `Engine.primary` calls `Shutdown.Request()`; any other window settles its own
+  notes through `NoteActions.SettleWindow` and closes alone
+- **Do not** put a prompt in a `Commit` step — nothing there can suspend or refuse
 
 #### Rendering — Key Facts
 The full Vulkan pipeline is working and rendering UI:
@@ -349,7 +365,7 @@ The full Vulkan pipeline is working and rendering UI:
 - Type resolution uses `AnyXMLType.typeMap` with fallback to `AnyXMLType.FindType()`
   for engine-specific types
 - Retrieval API: `GetAsset<T>(name)`, `GetRegistryByValueType<K,V>()`,
-  `GetRegistryByName<K,V>()`, `GetRegistryByKeyType<K,V>()`
+  `GetRegistryByName<K,V>()`
 - Bootstrap is **two-stage**: `PreGPUAPI` parses XML + registers serializable types;
   `PostGPUAPI` loads default assets (meshes, fonts, textures, styles)
 - Assets derive from abstract `Asset` with `LoadAsset()` and `LoadDefault()`

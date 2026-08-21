@@ -6,7 +6,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
     public class DocumentEditSession
     {
         public RichTextDocument document { get; }
-        public string path { get; }
+        public string path { get; private set; }
 
         // Edited since the last write. Read by the close paths, which must not prompt over a note
         // that was only ever looked at.
@@ -19,6 +19,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         }
 
         public void MarkDirty() => isDirty = true;
+
+        // Follows the file after it is renamed on disk, so the next save writes where the note is now.
+        public void Repath(string newPath) => path = newPath;
 
         public void Save()
         {

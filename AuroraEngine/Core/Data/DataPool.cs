@@ -127,7 +127,7 @@ namespace ArctisAurora.Core.Data
 
         // Supplies the desired dense order (as stableIds) when the pool is resequenced.
         // Resolved from the pool's SortAction, or set directly (tests / systems).
-        public Func<DataPool, IReadOnlyList<int>> SortProvider { get; set; }
+        public Func<DataPool, IReadOnlyList<int>>? SortProvider { get; set; }
 
         public DataPool(ushort id, string name, string ownerName, int capacity, bool ordered, PoolGrowthType growthMode, int growthValue, IEnumerable<Type> componentTypes)
         {
@@ -472,7 +472,7 @@ namespace ArctisAurora.Core.Data
         // is a control that does not list it as a child.
         private bool Resequence()
         {
-            IReadOnlyList<int> order = SortProvider(this);
+            IReadOnlyList<int> order = SortProvider!(this);
             if (order.Count != _count)
             {
                 Console.WriteLine($"[DataPool] '{Name}' resequence order count {order.Count} != live count {_count} — skipping.");

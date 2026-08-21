@@ -8,9 +8,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
     {
         // state tints; an unset one falls back to the state below it
         [A_XSDElementProperty("HoverColorHex", "UI", "Control color while the pointer is over the button.")]
-        public string hoverColorHex;
+        public string? hoverColorHex;
         [A_XSDElementProperty("PressColorHex", "UI", "Control color while the button is held.")]
-        public string pressColorHex;
+        public string? pressColorHex;
 
         private bool hovered;
         private bool pressed;

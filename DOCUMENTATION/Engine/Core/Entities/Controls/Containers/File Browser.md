@@ -40,6 +40,8 @@ A scrolling list of rows over a [[File Object]] tree, split in two so one model 
 | `DisplayName(file)` | virtual | Name a row shows. Defaults to `file.name`, extension intact. |
 | `Rebuild()` | public | Destroys every row, re-reads the root, calls `PopulateRows()`. |
 | `AddRow(file, depth, expander, activate)` | protected | Builds one row and appends it. |
+| `BeginRename(file)` | protected | Turns that entry's row name into a field, in place. |
+| `Rename(file, newName)` | virtual | What a committed rename does. Nothing by default. |
 
 ## Fields & Properties
 
@@ -71,18 +73,30 @@ Rebuild()
 ```
 
 ### AddRow
-One row is a `Button` over a horizontal `StackPanel` holding two labels: a fixed-width gutter carrying the expander caption, then the name. A file passes an empty caption and keeps the gutter, so its name starts on the same x as the folder names around it. Depth becomes the button's left margin.
+One row is a `Button` over a horizontal `StackPanel` holding a fixed-width gutter label carrying the expander caption, then the name as an [[Editable Label]]. A file passes an empty caption and keeps the gutter, so its name starts on the same x as the folder names around it. Depth becomes the button's left margin. The row keeps a reference to its name control alongside the entry it was built for, which is what `BeginRename` reaches for.
 
 The content panel calls `BubbleAll()`. Without it the row is inert — a `StackPanel` bubbles nothing by default, so hover and release walk glyph → label → panel and stop before reaching the button.
 
 ```
 AddRow(file, depth, expander, activate)
     gutter = Label(expander) with preferredWidth = gutterWidth
-    name   = Label(DisplayName(file)) tinted folder or file
+    name   = EditableLabel(DisplayName(file)) tinted folder or file
     content = horizontal StackPanel, invisible mask, BubbleAll()
     row = Button, height = rowHeight, margin.left = depth * indent
+    row.label = name
     row.onRelease = activate
 ```
+
+### BeginRename and Rename
+The pair a host implements renaming with. `BeginRename` finds the row built for an entry and opens the in-place edit on it; `Rename` is what the commit calls, and does nothing unless a leaf overrides it — a browser that cannot rename says so by never offering the entry.
+
+```
+BeginRename(file)
+    row = the FileRowControl whose file is this one
+    row.label.BeginEdit(name => Rename(file, name))
+```
+
+The menu entry belongs to the leaf, in `BuildRowMenu`, because only the leaf knows whether the thing under the pointer is renameable. `VaultBrowserControl` offers it on notes and not on folders — a folder rename would invalidate the path of every tab open beneath it.
 
 ### PopulateRows (FileTreeControl)
 Walks the model, emitting a row per directory and per accepted file, and recursing only into directories whose full path is in `expanded`. Toggling flips the path in that set and rebuilds; because the set holds paths rather than nodes, the tree survives a rebuild that replaces every node.
@@ -110,5 +124,6 @@ Note that a value authored here reaches the control after its constructor has ru
 
 ## Related
 - [[File Object]] — the path tree the rows are built from
+- [[Editable Label]] — a row's name, and the in-place rename gesture
 - [[Scrollable]] — the viewport and scrollbar the rows sit in
 - [[Vulkan Control]] — base control, `BubbleAll()`, margin and alignment

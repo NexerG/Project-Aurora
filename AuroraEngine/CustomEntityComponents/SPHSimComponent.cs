@@ -5,6 +5,9 @@ using ArctisAurora.ParticleTypes;
 using ArctisAurora.Simulators.Vulkan;
 using Silk.NET.Maths;
 
+// Legacy renderer, kept as a working reference until the migration.
+#pragma warning disable CS0618
+
 namespace ArctisAurora.CustomEntityComponents
 {
     internal class SPHSimComponent : EntityComponent

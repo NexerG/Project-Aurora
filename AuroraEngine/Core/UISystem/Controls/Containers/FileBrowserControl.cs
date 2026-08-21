@@ -46,12 +46,15 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
         [A_XSDElementProperty("FileColorHex", "UI", "Text color of a file row.")]
         public string fileColorHex = "#D4D4D4";
+
+        [A_XSDElementProperty("RowFieldColorHex", "UI", "Ground of a row's name while it is being renamed.")]
+        public string rowFieldColorHex = "#2D2D2D";
         #endregion
 
         private readonly StackPanelControl rows = new StackPanelControl();
 
         // Vault, project folder or whatever else the derivative lists.
-        protected FileObject root;
+        protected FileObject? root;
 
         protected abstract string RootPath { get; }
 
@@ -66,6 +69,21 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
         // Entries one row offers on right click. Add-only, the same contract as BuildContextMenu.
         protected internal virtual void BuildRowMenu(FileObject file, ContextMenuBuilder menu) { }
+
+        // What a committed rename does. Nothing by default — a browser that cannot rename says so by
+        // not offering the entry.
+        protected virtual void Rename(FileObject file, string newName) { }
+
+        // Turns one entry's name into a field, in place.
+        protected void BeginRename(FileObject file)
+        {
+            foreach (Entity child in rows.children)
+                if (child is FileRowControl row && ReferenceEquals(row.file, file))
+                {
+                    row.label.BeginEdit(name => Rename(file, name));
+                    return;
+                }
+        }
 
         public FileBrowserControl()
         {
@@ -105,11 +123,12 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                 controlColorHex = folderColorHex
             };
 
-            LabelControl name = new LabelControl
+            EditableLabelControl name = new EditableLabelControl
             {
                 text = DisplayName(file),
                 fontSize = rowFontSize,
-                controlColorHex = file.type == FileObject.FileType.Directory ? folderColorHex : fileColorHex
+                textColorHex = file.type == FileObject.FileType.Directory ? folderColorHex : fileColorHex,
+                fieldColorHex = rowFieldColorHex
             };
 
             // Sits between the button and its text, so it has to pass everything through — a
@@ -128,6 +147,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             {
                 file = file,
                 browser = this,
+                label = name,
                 preferredHeight = rowHeight,
                 horizontalAlignment = HorizontalAlignment.Stretch,
                 margin = new Thickness(0, 0, 0, depth * indent),

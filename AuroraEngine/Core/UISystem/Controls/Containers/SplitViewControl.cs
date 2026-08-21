@@ -117,6 +117,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             activeTabColorHex = source.activeTabColorHex,
             tabHoverColorHex = source.tabHoverColorHex,
             tearOffDocument = source.tearOffDocument,
+            tabContextMenu = source.tabContextMenu,
+            contextMenus = source.contextMenus,
             controlColorHex = source.controlColorHex
         };
 

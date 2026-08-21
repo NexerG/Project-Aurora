@@ -13,6 +13,9 @@ using System.Runtime.CompilerServices;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using ArctisAurora.Core.ECS.EngineEntity;
 
+// Legacy renderer, kept as a working reference until the migration.
+#pragma warning disable CS0618
+
 namespace ArctisAurora.EngineWork.Rendering.RendererTypes
 {
     internal unsafe class Pathtracing : VulkanRenderer

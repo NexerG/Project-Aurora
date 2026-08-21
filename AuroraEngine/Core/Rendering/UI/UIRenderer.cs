@@ -6,6 +6,10 @@ using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 
+// Legacy renderer, kept as a working reference until the migration. Superseded by UIModule — see the
+// dead-renderer note in AuroraCamera.
+#pragma warning disable CS0618
+
 namespace ArctisAurora.EngineWork.Rendering.UI
 {
     internal unsafe class UIRenderer : VulkanRenderer

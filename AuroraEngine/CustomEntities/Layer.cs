@@ -10,6 +10,9 @@ using Image = Silk.NET.Vulkan.Image;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 using ArctisAurora.Core.ECS.EngineEntity;
 
+// Legacy renderer, kept as a working reference until the migration.
+#pragma warning disable CS0618
+
 namespace ArctisAurora.CustomEntities
 {
     internal unsafe class Layer : Entity

@@ -19,9 +19,9 @@ namespace ArctisAurora.Core.UISystem
         private const uint seedWidth = 160;
         private const uint seedHeight = 120;
 
-        private static RenderWindow _window;
-        private static RenderWindow _source;
-        private static ContextMenuControl _menu;
+        private static RenderWindow _window = null!;
+        private static RenderWindow? _source;
+        private static ContextMenuControl _menu = null!;
 
         public static bool isOpen { get; private set; }
 

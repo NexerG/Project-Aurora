@@ -31,7 +31,7 @@ namespace ArctisAurora.Core.UISystem.Controls
         private readonly StackPanelControl column = new StackPanelControl();
 
         // Raised before an entry fires, so whatever is showing the menu can take it down first.
-        internal Action onEntryInvoked;
+        internal Action? onEntryInvoked;
 
         public ContextMenuControl()
         {

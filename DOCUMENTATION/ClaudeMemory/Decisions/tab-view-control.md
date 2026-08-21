@@ -205,5 +205,77 @@ choice — a schema forbidding all children — rather than one permitting only 
 therefore `typeof(IXMLChild_UI)` like every other container, and "TabItem only" is enforced by the
 throw in `AddChild` alone. Tried and reverted, 2026-08-19.
 
+---
+
+# Amendment — the tab menu, and the split that acted on the wrong tab (2026-08-21)
+
+**Status:** LANDED. Builds clean, boots, `ContextMenus.LoadMenus` binds every entry. **Not
+GUI-verified.**
+**Scope:** `ArctisAurora.Core.UISystem.Actions` (`TabActions`, `ViewActions`),
+`ArctisAurora.Core.UISystem.Controls.Containers` (`TabViewControl`, `SplitViewControl`),
+`AuroraEngine/Data/XML/Documents/ContextMenus.xml`.
+
+## The defect
+
+Right-clicking a tab and choosing `Split right`/`Split down` moved **the view's active tab, not the
+one under the pointer** (user, 2026-08-21).
+
+`TabStripButtonControl` offered no menu entries, so `VulkanControl.OpenContextMenu` walked past it —
+button → strip → `TabViewControl`, which is what names `ContextMenu="view"` in `UI.xml`. The menu's
+owner, and therefore `ContextMenus.invoker`, was the *view*. `ViewActions.Split` had nothing to act on
+but `source.activeItem`, so right-clicking tab C while A was showing split A off and left C where it
+was.
+
+The keybinds (`Ctrl+\`) were always correct in this respect: with no pointer involved, the active tab
+*is* the intended one.
+
+## Decisions
+
+### 1. The strip button owns a menu, which makes it the invoker
+
+`TabViewControl.BuildTab` sets `contextMenus` on each strip button from a new `TabContextMenu`
+property (default `"tab"`), so `Compose` yields entries on the button and `OpenContextMenu` stops
+there. The button already carried `item` and `owner` for the drop path; every entry reads them.
+
+A property rather than a hardcoded name because the strip button is built in code and never authored,
+so a host has no other way to name its own menu — the same shape as `TearOffDocument`. An unknown
+name contributes nothing, so a host that defines no `tab` menu simply gets none.
+
+`SplitViewControl.NewPane` now copies `tabContextMenu` **and** `contextMenus` from the source, or the
+pane created by a split had no menus at all — pre-existing for `contextMenus`, and it would have been
+a new hole for the tab menu.
+
+### 2. One split operation, two callers
+
+`TabViewControl.SplitOff(item, edge)` holds the move; `ViewActions` passes `activeItem` and
+`TabActions` passes the clicked tab. The `ownOnly` guard — refuse only when the item is ours *and* we
+hold fewer than two — matches what `PendingEdge` applies to a drop, so splitting off a pane's only
+tab still cannot empty it.
+
+`ResolveDrop` was deliberately **not** rewritten onto `SplitOff`: it needs the fall-through when
+`Split` returns null, and it is the one path here that is GUI-confirmed. The three duplicated lines
+are cheaper than touching it.
+
+### 3. Entries are XML with `EnabledWhen`, not code
+
+All six live in `ContextMenus.xml` bound to `[A_XSDActionDependency]` statics taking a
+`VulkanControl` — the form `ContextMenus.BindAction` already resolves to `Action<VulkanControl>`.
+`Close others`, `Close to the right`, both splits and `Move to new window` grey out through
+`Tab.HasSiblings` / `Tab.HasRight` / `Tab.CanTearOff` rather than being conditionally added, so
+nothing needs the code hook.
+
+No separators: `ContextMenuBuilder.BeginMenu` is internal and divides *between* named menus, so a
+single menu cannot group itself. Not worth widening the API for.
+
+## Known consequences
+
+- **`Close others` / `Close to the right` stop at the first unnamed edited note.** Each goes through
+  `CloseTab`, which prompts for a name, and `NoteNameWindow.Ask` refuses while another prompt is open
+  — it returns without invoking any callback, so those tabs simply stay open. Nothing is lost and the
+  gesture can be repeated; a chained close would fix it properly.
+- Right-clicking a tab no longer reaches the `view` menu. Right-clicking the page below the strip
+  still does, and that one still acts on the active tab, which is correct there.
+
 Related: [[entity-reparenting-and-names]], [[vault-browser-and-shell]], [[ui-clipping]],
-[[button-states-and-hover-bubbling]], [[splitter-and-pane-sizing]], [[ui-data-control-split]]
+[[button-states-and-hover-bubbling]], [[splitter-and-pane-sizing]], [[ui-data-control-split]],
+[[context-menu-invoker]]

@@ -112,6 +112,9 @@
       <xs:enumeration value="Toggle" />
       <xs:enumeration value="HoldContinuous" />
       <xs:enumeration value="Chord" />
+      <xs:enumeration value="Step" />
+      <xs:enumeration value="Phase" />
+      <xs:enumeration value="ShutdownSequence" />
       <xs:enumeration value="ControlData" />
       <xs:enumeration value="xs:string" />
       <xs:enumeration value="xs:int" />
@@ -278,6 +281,13 @@
       <xs:enumeration value="Toggle" />
       <xs:enumeration value="HoldContinuous" />
       <xs:enumeration value="Chord" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Shutdown">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Step" />
+      <xs:enumeration value="Phase" />
+      <xs:enumeration value="ShutdownSequence" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Pools">

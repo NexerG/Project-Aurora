@@ -50,6 +50,10 @@ public float Spacing = 0f;
 ### Measure (2-pass)
 Pass 1 measures non-star children (and accumulates star weights); pass 2 distributes the remaining main-axis space to star children by weight. Cross-axis size is the max child cross size. `Spacing` is added between children.
 
+The box the two passes divide comes from the panel's own `Width`/`Height` when either is set, and only falls back to what the parent offered when it is not. That matters because a stack hands a *non-star* child `float.MaxValue` on the main axis: a panel that took the offer literally would compute `remaining = MaxValue - fixedChildren` and hand its star child the whole float range, reporting a desired size no parent could clip back. A pinned axis is the box to share out, not a floor under the offer — see [[Split View]], where a fixed-width pane splitting itself was exactly this.
+
+`Width`/`Height` still act as a *floor* on the reported desired size at the end, so children that genuinely exceed a pinned size push the panel wider rather than being cut off.
+
 ### Arrange
 Recomputes the star allocation against the final size, then walks a cursor along the main axis placing each child, applying margins and cross-axis alignment (`Stretch`/`Left`/`Center`/`Right`, etc.).
 

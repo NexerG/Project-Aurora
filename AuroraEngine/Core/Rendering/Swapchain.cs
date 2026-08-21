@@ -1,4 +1,7 @@
-﻿using ArctisAurora.Core.Rendering.Helpers;
+﻿// Legacy renderer, kept as a working reference until the migration.
+#pragma warning disable CS0618
+
+using ArctisAurora.Core.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Silk.NET.Vulkan;

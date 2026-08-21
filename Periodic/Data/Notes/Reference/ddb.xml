@@ -1,0 +1,6 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Document Name="ddb" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../../XML/Schemas/UITypeSchema.xsd" xmlns="http://arctisaurora/AuroraUITypes">
+  <Block>
+    <Run Text="asd" />
+  </Block>
+</Document>

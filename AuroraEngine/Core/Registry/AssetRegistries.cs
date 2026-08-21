@@ -15,9 +15,9 @@ namespace ArctisAurora.EngineWork.Registry
         [A_XSDElementProperty("Name", "AssetRegistry")]
         public string name { get; set; } = string.Empty;
         [A_XSDElementProperty("KeyType", "AssetRegistry")]
-        public AnyXMLType keyType { get; set; }
+        public AnyXMLType keyType { get; set; } = null!;
         [A_XSDElementProperty("ValueType", "AssetRegistry")]
-        public AnyXMLType valueType { get; set; }
+        public AnyXMLType valueType { get; set; } = null!;
     }
 
     [A_XSDType("Asset", "AssetRegistry")]
@@ -35,14 +35,14 @@ namespace ArctisAurora.EngineWork.Registry
     public class AssetRegistries : IXMLParser<AssetRegistries>
     {
         [A_XSDElementProperty("Dictionary", "AssetRegistry")]
-        public static List<AssetRegistryEntry> registries { get; set; }
+        public static List<AssetRegistryEntry> registries { get; set; } = null!;
 
         public static Dictionary<Type, object> library = new Dictionary<Type, object>();
         public static Dictionary<string, object> libraryByName = new Dictionary<string, object>();
 
         private static readonly HashSet<string> reportedMisses = new HashSet<string>();
 
-        public static AssetRegistries assetRegistries;
+        public static AssetRegistries assetRegistries = null!;
 
         public AssetRegistries()
         {
@@ -58,25 +58,19 @@ namespace ArctisAurora.EngineWork.Registry
             libraryByName.Add(name, dict);
         }
 
-        public static Dictionary<key, type> GetRegistryByValueType<key, type>(Type t)
+        public static Dictionary<TKey, TValue> GetRegistryByValueType<TKey, TValue>(Type t)
         {
             if (library.TryGetValue(t, out var dict))
             {
-                return (Dictionary<key, type>)dict;
+                return (Dictionary<TKey, TValue>)dict;
             }
             return null;
         }
 
-        public static Dictionary<key, type> GetRegistryByKeyType<key, type>(Type t)
-        {
-            var match = library.FirstOrDefault(kvp => kvp.Value.GetType().GetGenericArguments()[0] == t);
-            return match as Dictionary<key, type>;
-        }
-
-        public static Dictionary<key, type> GetRegistryByName<key, type>(string name)
+        public static Dictionary<TKey, TValue> GetRegistryByName<TKey, TValue>(string name)
         {
             libraryByName.TryGetValue(name, out var dict);
-            return (Dictionary<key, type>)dict;
+            return (Dictionary<TKey, TValue>)dict;
         }
 
         public static T GetAsset<T>(string name)
@@ -146,7 +140,7 @@ namespace ArctisAurora.EngineWork.Registry
         }
         
         [A_XSDActionDependency("AssetRegistries.RegisterSerializableTypes", "Bootstrap")]
-        internal static void RegisterSerializableTypes()
+        internal static bool RegisterSerializableTypes()
         {
             var asm = AppDomain.CurrentDomain.GetAssemblies();
             var types = asm.SelectMany(a => a.GetTypes()).Where(t => t.GetCustomAttribute<@Serializable>() != null).ToList();
@@ -161,17 +155,20 @@ namespace ArctisAurora.EngineWork.Registry
                     serializableTypes.Add((uint)attr.ID, t);
                 }
             }
+
+            return true;
         }
 
         [A_XSDActionDependency("AssetRegistries.InstantiateRegistries", "Bootstrap")]
-        internal static void InstantiateRegistries()
+        internal static bool InstantiateRegistries()
         {
             assetRegistries = ParseXML("Registry.xml");
+            return true;
         }
 
         // Assets with no file behind them; everything file-backed comes from the manifest.
         [A_XSDActionDependency("AssetRegistries.PrepareDefaultAssets", "Bootstrap")]
-        internal static void PrepareDefaultAssets()
+        internal static bool PrepareDefaultAssets()
         {
             Dictionary<string, AVulkanMesh> dMeshes = GetRegistryByValueType<string, AVulkanMesh>(typeof(AVulkanMesh));
             dMeshes.Add("default", AVulkanMesh.LoadDefault());
@@ -183,10 +180,12 @@ namespace ArctisAurora.EngineWork.Registry
 
             SamplerAsset sampler = new SamplerAsset("default");
             sampler.LoadDefault();
+
+            return true;
         }
 
         [A_XSDActionDependency("AssetRegistries.PreloadAssets", "Bootstrap")]
-        internal static void PreloadAssets()
+        internal static bool PreloadAssets()
         {
             Dictionary<(string, string), AssetManifestEntry> entries = new Dictionary<(string, string), AssetManifestEntry>();
             foreach (string file in VirtualFileSystem.EnumerateAll("XML/Assets", "*.xml"))
@@ -212,14 +211,18 @@ namespace ArctisAurora.EngineWork.Registry
                 asset.Load(entry.name, entry.source);
                 ((IDictionary)dict).Add(entry.name, asset);
             }
+
+            return true;
         }
 
         [A_XSDActionDependency("AssetRegistries.PrepareAllAssets", "Bootstrap")]
-        internal static void PrepareAllAssets()
+        internal static bool PrepareAllAssets()
         {
             // samplers
             SamplerAsset sampler = new SamplerAsset();
             sampler.LoadAll(Paths.XMLDOCUMENTS_SAMPLERS);
+
+            return true;
         }
     }
 }

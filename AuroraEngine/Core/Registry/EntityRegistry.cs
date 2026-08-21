@@ -12,8 +12,8 @@ namespace ArctisAurora.Core.Registry
     {
         public string name;
         public Type elementType;
-        internal object _list;
-        public Action onChanged;
+        internal object _list = null!;
+        public Action? onChanged;
 
         public int count => ((IList)_list).Count;
 
@@ -66,16 +66,16 @@ namespace ArctisAurora.Core.Registry
         public string name { get; set; } = string.Empty;
 
         [A_XSDElementProperty("EntityType", "EntityRegistry")]
-        public AnyXMLType entryType { get; set; }
+        public AnyXMLType entryType { get; set; } = null!;
     }
 
     [A_XSDType("EntityRegistries", "EntityRegistry")]
     public class EntityRegistry : IXMLParser<EntityRegistry>
     {
-        public static EntityRegistry manager;
+        public static EntityRegistry manager = null!;
 
         [A_XSDElementProperty("List", "EntityRegistry")]
-        public static List<EntityRegistryEntry> entries { get; set; }
+        public static List<EntityRegistryEntry> entries { get; set; } = null!;
         private static Dictionary<string, EntityGroup> _groups = new Dictionary<string, EntityGroup>();
         
         public EntityRegistry()
@@ -198,9 +198,10 @@ namespace ArctisAurora.Core.Registry
         }
 
         [A_XSDActionDependency("EntityRegistry.ParseXML", "Bootstrap")]
-        public static void PrepareRegistry()
+        public static bool PrepareRegistry()
         {
             ParseXML("EntityRegistry.xml");
+            return true;
         }
     }
 }

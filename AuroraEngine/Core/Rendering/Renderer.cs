@@ -18,8 +18,8 @@ namespace ArctisAurora.EngineWork.Rendering
 {
     internal unsafe class Renderer
     {
-        internal static Renderer renderer;
-        internal static QueueAllocator queueAllocator;
+        internal static Renderer renderer = null!;
+        internal static QueueAllocator queueAllocator = null!;
         // driver
         internal static Vk vk = Vk.GetApi();
         internal static Instance instance;
@@ -33,7 +33,7 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal static readonly object transferCommandLock = new object();
         internal static Queue transferQueue;                    // for buffer transfers
-        internal CommandBuffer[] transferCommandBuffers;
+        internal CommandBuffer[] transferCommandBuffers = null!;
         internal static CommandPool transferCommandPool;
 
         // Frame sync, the swapchain and the modules all live on RenderWindow — one set per OS window.
@@ -73,7 +73,7 @@ namespace ArctisAurora.EngineWork.Rendering
 
         // debug
         private bool isDebugEnabled = true;
-        private ExtDebugUtils _debugUtils;
+        private ExtDebugUtils _debugUtils = null!;
         private DebugUtilsMessengerEXT _debugMessenger;
 
         
@@ -99,7 +99,7 @@ namespace ArctisAurora.EngineWork.Rendering
 
         // initializes the window and driver
         [A_XSDActionDependency("Renderer.Initialize", "Bootstrap")]
-        internal static void Initialize()
+        internal static bool Initialize()
         {
             RenderWindow window = Engine.primary;
 
@@ -122,30 +122,34 @@ namespace ArctisAurora.EngineWork.Rendering
 
             renderer.CreateCommandPool((uint)queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit), out compositeCommandPool, CommandPoolCreateFlags.ResetCommandBufferBit);
             renderer.CreateCommandPool((uint)queueAllocator.GetFamilyIndex(QueueFlags.TransferBit), out transferCommandPool, CommandPoolCreateFlags.TransientBit);
+
+            return true;
         }
 
         // initializes the rendering modules
         [A_XSDActionDependency("Renderer.PrepareDescriptors", "Bootstrap")]
-        internal static void PrepareDescriptors()
+        internal static bool PrepareDescriptors()
         {
             renderer.CreateDescriptorSetLayouts();
             //CreateDescriptorPool();
             //AllocateDescriptorSets();
             //UpdateGlobalDescriptorSet();
+            return true;
         }
 
         [A_XSDActionDependency("Renderer.SetupObjects", "Bootstrap")]
-        internal static void SetupObjects()
+        internal static bool SetupObjects()
         {
             RenderingModule[] modules = Engine.primary.modules;
             for (int i = 0; i < modules.Length; i++)
             {
                 modules[i].PrepareObjects();
             }
+            return true;
         }
 
         [A_XSDActionDependency("Renderer.SetupPipelines", "Bootstrap")]
-        internal static void SetupPipelines()
+        internal static bool SetupPipelines()
         {
             RenderWindow window = Engine.primary;
             for (int i = 0; i < window.modules.Length; i++)
@@ -156,6 +160,8 @@ namespace ArctisAurora.EngineWork.Rendering
             window.compositor = new CompositorModule();
             window.compositor.BindWindow(window);
             window.compositor.Init(window.modules, window.swapchainImageViews);
+
+            return true;
         }
 
         // Dead — no caller; the live path is Draw() -> UpdateModule -> WriteCommandBuffers.
@@ -169,7 +175,11 @@ namespace ArctisAurora.EngineWork.Rendering
         }
 
         [A_XSDActionDependency("Renderer.CreateSyncObjects", "Bootstrap")]
-        internal static void CreateSyncObjects() => CreateSyncObjects(Engine.primary);
+        internal static bool CreateSyncObjects()
+        {
+            CreateSyncObjects(Engine.primary);
+            return true;
+        }
 
         internal static void CreateSyncObjects(RenderWindow window)
         {

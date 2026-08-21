@@ -49,8 +49,24 @@
       <xs:enumeration value="UI.DFSOrder" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:simpleType name="Shutdown">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Notes.SettleUnnamed" />
+      <xs:enumeration value="Notes.SaveEdited" />
+      <xs:enumeration value="Settings.SaveAll" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:simpleType name="UI">
     <xs:restriction base="xs:string">
+      <xs:enumeration value="Tab.Close" />
+      <xs:enumeration value="Tab.CloseOthers" />
+      <xs:enumeration value="Tab.CloseRight" />
+      <xs:enumeration value="Tab.SplitRight" />
+      <xs:enumeration value="Tab.SplitDown" />
+      <xs:enumeration value="Tab.MoveToNewWindow" />
+      <xs:enumeration value="Tab.HasSiblings" />
+      <xs:enumeration value="Tab.HasRight" />
+      <xs:enumeration value="Tab.CanTearOff" />
       <xs:enumeration value="TestAction" />
       <xs:enumeration value="View.SplitRight" />
       <xs:enumeration value="View.SplitDown" />
@@ -65,6 +81,6 @@
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Uncategorized">
-    <xs:union memberTypes="actions:Input actions:Bootstrap actions:PoolSort actions:UI actions:Settings" />
+    <xs:union memberTypes="actions:Input actions:Bootstrap actions:PoolSort actions:Shutdown actions:UI actions:Settings" />
   </xs:simpleType>
 </xsd:schema>

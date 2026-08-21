@@ -25,7 +25,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
         internal FontAsset fontAsset;
 
         // glyph data
-        internal Glyph glyph;
+        internal Glyph glyph = null!;
 
         // Two persistent GPU mirrors sized to the UIControls pool's capacity, patched in place:
         // the baked matrices (GpuTransform column) and the per-control data (ControlData column).

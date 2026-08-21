@@ -15,7 +15,7 @@ namespace ArctisAurora.Core.Data
     public class PoolComponent
     {
         [A_XSDElementProperty("Type", "DataPools")]
-        public AnyXMLType type { get; set; }
+        public AnyXMLType type { get; set; } = null!;
     }
 
     [A_XSDType("Pool", "DataPools")]

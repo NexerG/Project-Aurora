@@ -9,7 +9,7 @@ namespace ArctisAurora.EngineWork
 {
     public class Job
     {
-        public Action Work;
+        public Action Work = null!;
     }
 
     internal class JobSystem

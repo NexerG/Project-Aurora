@@ -14,12 +14,12 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
     [A_XSDType("DocumentEditor", "UI")]
     public class DocumentEditorControl : ScrollableControl
     {
-        public RichTextDocument activeDocument { get; private set; }
-        public DocumentEditSession session { get; private set; }
+        public RichTextDocument activeDocument { get; private set; } = null!;
+        public DocumentEditSession? session { get; private set; }
 
         private const float autoScrollRate = 0.25f;
 
-        private DocumentControl content;
+        private DocumentControl? content;
 
         public DocumentEditorControl()
         {

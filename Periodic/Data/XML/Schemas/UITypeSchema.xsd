@@ -31,6 +31,7 @@
     <xs:attribute name="RowPressColorHex" type="xs:string" />
     <xs:attribute name="FolderColorHex" type="xs:string" />
     <xs:attribute name="FileColorHex" type="xs:string" />
+    <xs:attribute name="RowFieldColorHex" type="xs:string" />
     <xs:attribute name="ScrollDirection" type="types:Scrollable" />
     <xs:attribute name="ScrollSensitivity" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
@@ -1468,6 +1469,7 @@
     <xs:attribute name="ActiveTabColorHex" type="xs:string" />
     <xs:attribute name="TabHoverColorHex" type="xs:string" />
     <xs:attribute name="TearOffDocument" type="xs:string" />
+    <xs:attribute name="TabContextMenu" type="xs:string" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />

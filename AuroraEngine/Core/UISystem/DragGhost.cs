@@ -16,8 +16,8 @@ namespace ArctisAurora.Core.UISystem
     {
         private const string windowName = "drag-ghost";
 
-        private static RenderWindow _window;
-        private static RenderWindow _source;
+        private static RenderWindow _window = null!;
+        private static RenderWindow? _source;
 
         public static void Show(VulkanControl control)
         {

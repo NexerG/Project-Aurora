@@ -1,5 +1,6 @@
 using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.UISystem.Controls.Interactable;
+using ArctisAurora.Core.UISystem.Controls.Text;
 
 namespace ArctisAurora.Core.UISystem.Controls.Containers
 {
@@ -7,8 +8,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
     // that a right click arrived and not which of its rows it landed on.
     public class FileRowControl : ButtonControl
     {
-        internal FileObject file;
-        internal FileBrowserControl browser;
+        internal FileObject file = null!;
+        internal FileBrowserControl browser = null!;
+        internal EditableLabelControl label = null!;
 
         public override void BuildContextMenu(ContextMenuBuilder menu) => browser?.BuildRowMenu(file, menu);
     }

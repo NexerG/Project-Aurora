@@ -4,7 +4,7 @@ namespace ArctisAurora.Core.Filing.Serialization
 {
     internal class MeshImporter
     {
-        public static MeshImporter Instance;
+        public static MeshImporter Instance = null!;
 
         public MeshImporter() 
         {

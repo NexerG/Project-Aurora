@@ -57,6 +57,7 @@ namespace Periodic.Editor.CustomControls
             }
 
             menu.Add("New note", () => NewNote(file.parent.path));
+            menu.Add("Rename note", () => BeginRename(file));
             menu.Add("Duplicate note", () => DuplicateNote(file));
             menu.Add("Delete note", () => DeleteNote(file));
         }
@@ -92,6 +93,29 @@ namespace Periodic.Editor.CustomControls
 
             Rebuild();
             Open(path);
+        }
+
+        // The name lives in three places: the file, the Name inside it, and every editor already
+        // holding the note open.
+        protected override void Rename(FileObject file, string newName)
+        {
+            string name = newName?.Trim();
+            if (string.IsNullOrEmpty(name) || name == Path.GetFileNameWithoutExtension(file.path)) return;
+
+            string target = FreePath(file.parent.path, name);
+            File.Move(file.path, target);
+            WriteName(target, name);
+
+            foreach ((TabItemControl item, TabViewControl view) in TabViewControl.FindOpenDocuments(file.path))
+            {
+                DocumentEditorControl editor = TabViewControl.EditorOf(item);
+                editor.session.Repath(target);
+                editor.session.document.name = name;
+                item.name = target;
+                view.Retitle(item, name);
+            }
+
+            Rebuild();
         }
 
         private void DeleteNote(FileObject file) =>

@@ -12,9 +12,9 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
     public unsafe class MeshComponent : EntityComponent
     {
         internal bool render = true;
-        internal AVulkanMesh mesh;
+        internal AVulkanMesh mesh = null!;
         //descriptor set
-        internal DescriptorSet[] _descriptorSets;
+        internal DescriptorSet[] _descriptorSets = null!;
         internal BufferUsageFlags _aditionalUsageFlags = BufferUsageFlags.None;
 
         internal Buffer transformsBuffer;

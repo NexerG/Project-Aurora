@@ -46,7 +46,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         private const float barInset = 2f;
         private const float minThumbLength = 24f;
 
-        private ScrollThumbControl thumb;
+        private ScrollThumbControl thumb = null!;
 
         /// <summary>
         /// Width reserved down the right edge for the scrollbar. Always reserved when the axis can

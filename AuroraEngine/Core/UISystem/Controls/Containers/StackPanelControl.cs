@@ -31,7 +31,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
         public override Vector2D<float> Measure(Vector2D<float> availableSize)
         {
-            LayoutRect inner = new LayoutRect(0, 0, availableSize.X, availableSize.Y)
+            // A pinned axis is the box the children divide, not the offer that came in.
+            float boxWidth = preferredWidth > 0 ? preferredWidth : availableSize.X;
+            float boxHeight = preferredHeight > 0 ? preferredHeight : availableSize.Y;
+
+            LayoutRect inner = new LayoutRect(0, 0, boxWidth, boxHeight)
                 .Shrink(padding);
 
             float totalMain = 0f;

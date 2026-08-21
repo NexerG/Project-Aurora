@@ -16,6 +16,7 @@ Parent Class:
 Interfaces:
 Used by:
   - "[[Note Name Window]]"
+  - "[[Editable Label]]"
 Type:
   - Public
 Attributes:
@@ -43,6 +44,7 @@ Declarable as `<TextBox>`, though it is built in code today by the note-naming p
 | `MoveCaret(move, extend)` | public | One line, so vertical and page moves collapse onto its ends. |
 | `Commit()` / `Cancel()` | public | Raises `onCommit` with the text, or restores the last committed value and raises `onCancel`. |
 | `onCommit` / `onCancel` | field | Callbacks the host supplies. |
+| `onBlur` | field | Raised when the active context lands outside the box. Unset means a blur does nothing. |
 
 ## Fields & Properties
 
@@ -77,7 +79,19 @@ Arrange(finalRect)
 ```
 
 ### The inner line
-A private `TextInputControl` subclass with two overrides. `WrapWidth` returns `float.MaxValue` so the text never wraps at the box's own width — that hook exists on [[TextControl]] precisely for this. `ResolveOnClick` begins the edit and then hands the click to its parent explicitly, because `TextInputControl.ResolveOnClick` swallows clicks and calling `base` would swallow this one too; `TextRun` does the same thing inside a document.
+A private `TextInputControl` subclass with three overrides. `WrapWidth` returns `float.MaxValue` so the text never wraps at the box's own width — that hook exists on [[TextControl]] precisely for this. `ResolveOnClick` begins the edit and then hands the click to its parent explicitly, because `TextInputControl.ResolveOnClick` swallows clicks and calling `base` would swallow this one too; `TextRun` does the same thing inside a document. `OnContextRemoved` extends the base — which commits the line's own edit — by telling the box it may have lost focus.
+
+### Losing focus
+Either the box or its inner line can be the control the collision handler makes active, depending on whether the pointer landed on the text or on the box's padding, so both raise the same check. It walks up from whatever now holds the active context and stays quiet if it finds the box on that chain — a pointer moving between the two halves of one field is not a blur. Anything else raises `onBlur`.
+
+```
+LoseFocus()
+    for control = activeControl, up through parents
+        if control is this box -> return
+    onBlur()
+```
+
+This reads `activeControl` as the *incoming* control, which works because `UICollisionHandling.SetActiveControl` assigns before it raises `OnContextRemoved`, the same order `SetDragging` uses.
 
 ## Input
 

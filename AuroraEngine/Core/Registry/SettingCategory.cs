@@ -33,7 +33,7 @@ namespace ArctisAurora.Core.Registry
     [A_XSDType("SettingCategory", "Settings", AllowedChildren = typeof(Setting), IsAbstract = true)]
     public abstract class SettingCategory : ISettingsGroup
     {
-        private List<Setting> declared;
+        private List<Setting> declared = null!;
 
         // Collected on first use, so the derived class's field initializers have already run.
         public List<Setting> settings

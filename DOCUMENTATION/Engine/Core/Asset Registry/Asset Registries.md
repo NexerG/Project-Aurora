@@ -34,7 +34,6 @@ A **type-indexed library of typed dictionaries** â€” the single place to fe
 | Member | Kind | Summary |
 | --- | --- | --- |
 | `GetRegistryByValueType<K,V>(Type t)` | static | The dictionary whose value type is `t`. |
-| `GetRegistryByKeyType<K,V>(Type t)` | static | The dictionary whose key type is `t`. |
 | `GetRegistryByName<K,V>(string name)` | static | The dictionary registered under `name`. |
 | `GetAsset<T>(string name)` | static | One asset of type `T` by name (throws if missing). |
 | `AddLibraryEntry(string name, object dict, Type t)` | static | Register a dictionary under both lookups (no-op if `t` already present). |
@@ -52,7 +51,7 @@ public static Dictionary<string, object> libraryByName = new();   // name â†�
 ## Methods
 
 ### Lookup
-`GetRegistryByValueType` / `GetRegistryByKeyType` / `GetRegistryByName` return the underlying typed dictionary; `GetAsset<T>(name)` is the convenience accessor for a single named asset.
+`GetRegistryByValueType` / `GetRegistryByName` return the underlying typed dictionary; `GetAsset<T>(name)` is the convenience accessor for a single named asset. There is no lookup by key type: `library` is indexed by value type, and a key type identifies nothing on its own — seven of the eight registries are keyed by string.
 
 ### Building (bootstrap)
 - `InstantiateRegistries` â†’ `ParseXML("Registry.xml")` creates an empty `Dictionary<K,V>` per `<Dictionary>` element and registers it under both lookups.

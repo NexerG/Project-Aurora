@@ -8,6 +8,9 @@ using System.Runtime.CompilerServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 
+// Legacy renderer, kept as a working reference until the migration.
+#pragma warning disable CS0618
+
 namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 {
     internal unsafe class MCRaster : MeshComponent

@@ -8,6 +8,15 @@
 		<MenuItem Caption="Split down" Action="View.SplitDown"/>
 	</ContextMenu>
 
+	<ContextMenu Name="tab">
+		<MenuItem Caption="Close" Action="Tab.Close"/>
+		<MenuItem Caption="Close others" Action="Tab.CloseOthers" EnabledWhen="Tab.HasSiblings"/>
+		<MenuItem Caption="Close to the right" Action="Tab.CloseRight" EnabledWhen="Tab.HasRight"/>
+		<MenuItem Caption="Split right" Action="Tab.SplitRight" EnabledWhen="Tab.HasSiblings"/>
+		<MenuItem Caption="Split down" Action="Tab.SplitDown" EnabledWhen="Tab.HasSiblings"/>
+		<MenuItem Caption="Move to new window" Action="Tab.MoveToNewWindow" EnabledWhen="Tab.CanTearOff"/>
+	</ContextMenu>
+
 	<ContextMenu Name="window">
 		<MenuItem Caption="Minimize" Action="Window.Minimize"/>
 		<MenuItem Caption="Maximize" Action="Window.MaximizeRestore"/>

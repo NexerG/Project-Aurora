@@ -34,6 +34,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         // tear-off
         [A_XSDElementProperty("TearOffDocument", "UI", "UI document a tab dragged out of every window opens in.")]
         public string tearOffDocument = "";
+
+        [A_XSDElementProperty("TabContextMenu", "UI", "Menu in ContextMenus.xml a tab in the strip offers on right click.")]
+        public string tabContextMenu = "tab";
         #endregion
 
         // caption and close button geometry
@@ -56,10 +59,10 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         private readonly StackPanelControl strip = new StackPanelControl();
 
         // drop hint — the wash and the edge it is showing, null when nothing is being dragged over us
-        private HintControl hint;
+        private HintControl? hint;
         private SplitViewControl.SplitEdge? hintEdge;
 
-        public TabItemControl activeItem { get; private set; }
+        public TabItemControl? activeItem { get; private set; }
 
         public int ItemCount
         {
@@ -79,7 +82,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             base.AddChild(strip);
         }
 
-        private IEnumerable<TabItemControl> Items
+        public IEnumerable<TabItemControl> Items
         {
             get
             {
@@ -288,6 +291,37 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         // Closes a tab without writing it, for a note that is no longer on disk.
         public void DiscardTab(TabItemControl item) => FinishClose(item);
 
+        // Snapshotted, because closing detaches the tab from children as it goes.
+        public void CloseOthers(TabItemControl keep)
+        {
+            foreach (TabItemControl item in Items.ToArray())
+                if (!ReferenceEquals(item, keep)) CloseTab(item);
+        }
+
+        public void CloseToTheRight(TabItemControl from)
+        {
+            bool passed = false;
+            foreach (TabItemControl item in Items.ToArray())
+            {
+                if (ReferenceEquals(item, from)) { passed = true; continue; }
+                if (passed) CloseTab(item);
+            }
+        }
+
+        // Moves one named tab into a new pane beside this view. Splitting off our own only tab would
+        // empty us and collapse the split straight back, which is the same guard a drop applies.
+        public void SplitOff(TabItemControl item, SplitViewControl.SplitEdge edge)
+        {
+            if (item == null) return;
+            if (ReferenceEquals(item.parent, this) && ItemCount < 2) return;
+
+            TabViewControl pane = SplitViewControl.Split(this, edge);
+            if (pane == null) return;
+
+            item.SetParent(pane);
+            pane.SetActive(item);
+        }
+
         private void FinishClose(TabItemControl item)
         {
             if (item == null || !children.Contains(item)) return;
@@ -327,6 +361,20 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         // on, so matching by name reopened notes that were already on screen.
         public static TabItemControl FindOpenDocument(string path, out TabViewControl owner)
         {
+            foreach ((TabItemControl item, TabViewControl view) in FindOpenDocuments(path))
+            {
+                owner = view;
+                return item;
+            }
+
+            owner = null;
+            return null;
+        }
+
+        // Every tab showing this note. The tree is the register of what is open, so a rename that
+        // walks it cannot be told about a view that has since been closed.
+        public static IEnumerable<(TabItemControl item, TabViewControl view)> FindOpenDocuments(string path)
+        {
             string target = Path.GetFullPath(path);
 
             foreach (RenderWindow window in Engine.windows.Values)
@@ -338,15 +386,18 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                     {
                         string open = EditorOf(item)?.session?.path;
                         if (open != null && string.Equals(open, target, StringComparison.OrdinalIgnoreCase))
-                        {
-                            owner = view;
-                            return item;
-                        }
+                            yield return (item, view);
                     }
             }
+        }
 
-            owner = null;
-            return null;
+        // Recaptions one tab; the strip is drawn from the headers, so it is rebuilt with it.
+        public void Retitle(TabItemControl item, string header)
+        {
+            if (item == null || !children.Contains(item)) return;
+
+            item.header = header;
+            RebuildStrip();
         }
 
         private static IEnumerable<TabViewControl> TabViews(VulkanControl control)
@@ -398,6 +449,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                 preferredHeight = (int)tabHeight,
                 hoverColorHex = tabHoverColorHex,
                 pressColorHex = tabHoverColorHex,
+                contextMenus = tabContextMenu,
                 item = item,
                 owner = this
             };

@@ -23,9 +23,10 @@ namespace ArctisAurora.Core.Data
         public static bool TryGet(string name, out DataPool pool) => _byName.TryGetValue(name, out pool);
 
         [A_XSDActionDependency("DataManager.ParseXML", "Bootstrap")]
-        public static void ParseXML()
+        public static bool ParseXML()
         {
             LoadManifest("Pools.xml");
+            return true;
         }
 
         private static void LoadManifest(string xmlName)

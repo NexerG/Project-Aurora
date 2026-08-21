@@ -523,53 +523,53 @@ namespace ArctisAurora.Core.UISystem.Controls
         }
 
         public Sampler colorSampler;
-        public TextureAsset colorAsset;
+        public TextureAsset colorAsset = null!;
         #endregion
 
         #region ---- EVENTS ----
         //fuck do i do with this yet to figure out. tbh idk if this is even a problem
-        public event Action<Vector2D<float>> hover;
+        public event Action<Vector2D<float>>? hover;
         [A_XSDElementProperty("onEnter", "UI")]
-        public Action onEnter;
+        public Action? onEnter;
         [A_XSDElementProperty("BubbleEnter", "UI")]
         public bool bubbleEnter = false;
 
         [A_XSDElementProperty("onExit", "UI")]
-        public Action onExit;
+        public Action? onExit;
         [A_XSDElementProperty("BubbleExit", "UI")]
         public bool bubbleExit = false;
 
         [A_XSDElementProperty("onClick", "UI")]
-        public Action onClick;
+        public Action? onClick;
         [A_XSDElementProperty("BubbleClick", "UI")]
         public bool bubbleClick = false;
 
         [A_XSDElementProperty("onAltClick", "UI")]
-        public Action onAltClick;
+        public Action? onAltClick;
         [A_XSDElementProperty("BubbleAltClick", "UI")]
         public bool bubbleAltClick = false;
 
-        public Action onDoubleClick;
+        public Action? onDoubleClick;
         public bool bubbleDoubleClick = false;
 
         [A_XSDElementProperty("onRelease", "UI")]
-        public Action onRelease;
+        public Action? onRelease;
         [A_XSDElementProperty("BubbleRelease", "UI")]
         public bool bubbleRelease = false;
 
         [A_XSDElementProperty("onAltRelease", "UI")]
-        public Action onAltRelease;
+        public Action? onAltRelease;
         [A_XSDElementProperty("BubbleAltRelease", "UI")]
         public bool bubbleAltRelease = false;
 
-        public Action<Vector2D<float>, Vector2D<float>> onDrag;
+        public Action<Vector2D<float>, Vector2D<float>>? onDrag;
         [A_XSDElementProperty("onDragStop", "UI")]
-        public Action onDragStop;
+        public Action? onDragStop;
 
         [A_XSDElementProperty("onScrollUp", "UI")]
-        public Action onScrollUp;
+        public Action? onScrollUp;
         [A_XSDElementProperty("onScrollDown", "UI")]
-        public Action onScrollDown;
+        public Action? onScrollDown;
         [A_XSDElementProperty("BubbleScroll", "UI")]
         public bool bubbleScroll = false;
 

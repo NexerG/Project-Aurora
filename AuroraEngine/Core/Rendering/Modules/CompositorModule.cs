@@ -42,7 +42,7 @@ namespace ArctisAurora.Core.Rendering.Modules
         };
         internal override int variableSetCount => 1;
 
-        private RenderingModule[] _sourceModules;
+        private RenderingModule[] _sourceModules = null!;
         private Sampler _sampler;
         private int _moduleCount;
 

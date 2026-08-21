@@ -28,11 +28,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         public float blockSpacing;
 
         // the model these blocks came from; the file is written from its block list
-        internal RichTextDocument document;
+        internal RichTextDocument document = null!;
 
         // caret target
-        private CaretControl caret;
-        public TextControl caretRun { get; private set; }
+        private CaretControl? caret;
+        public TextControl? caretRun { get; private set; }
 
         // Selection runs anchor -> caret. The caret IS the focus end, so only the anchor is stored;
         // anchor == caret means nothing is selected, which is the plain-caret case.

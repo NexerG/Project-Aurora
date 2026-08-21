@@ -28,10 +28,10 @@ namespace ArctisAurora.Core.Filing
 
         // place in the tree
         public string name;
-        public FileObject parent;
+        public FileObject? parent;
 
         private static readonly List<FileObject> noChildren = new List<FileObject>();
-        private List<FileObject> children;
+        private List<FileObject>? children;
 
         // Listed on first access, so a folder nobody opened is never read from disk.
         public List<FileObject> Children

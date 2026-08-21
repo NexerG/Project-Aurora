@@ -8,7 +8,7 @@ namespace ArctisAurora.EngineWork
     public class BootstrapStep
     {
         [A_XSDElementProperty("Action", "Bootstrap")]
-        public Action action { get; set; }
+        public Action? action { get; set; }
     }
 
     [A_XSDType("Phase", "Bootstrap")]
@@ -62,12 +62,13 @@ namespace ArctisAurora.EngineWork
             }
         }
 
-        public static void RunPhase(string phaseName)
+        // A step that reports failure halts its phase — nothing after it runs.
+        public static bool RunPhase(string phaseName)
         {
             if (!_phases.TryGetValue(phaseName, out List<string> steps))
             {
                 Console.WriteLine($"[Bootstrap] Phase '{phaseName}' not found.");
-                return;
+                return false;
             }
             foreach (string stepName in steps)
             {
@@ -77,8 +78,13 @@ namespace ArctisAurora.EngineWork
                     continue;
                 }
                 Console.WriteLine($"[Bootstrap] Running: {stepName}");
-                method.Invoke(null, null);
+                if (method.Invoke(null, null) is false)
+                {
+                    Console.WriteLine($"[Bootstrap] Step '{stepName}' reported failure — phase '{phaseName}' halted.");
+                    return false;
+                }
             }
+            return true;
         }
     }
 }

@@ -48,7 +48,7 @@ namespace ArctisAurora.Core.Registry
         
         //[A_BootstrapStage(BootstrapStage.PostGPUAPI)]
         [A_XSDActionDependency("Context.LoadContexts", "Bootstrap")]
-        internal static void LoadContexts()
+        internal static bool LoadContexts()
         {
             var generalAsm = AppDomain.CurrentDomain.GetAssemblies();
             var members = generalAsm.SelectMany(a => a.GetTypes())
@@ -77,6 +77,8 @@ namespace ArctisAurora.Core.Registry
                     );
                 }
             }
+
+            return true;
         }
 
         public object GetContextByName(string name)

@@ -1,4 +1,7 @@
-﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
+﻿// Legacy renderer, kept as a working reference until the migration.
+#pragma warning disable CS0618
+
+using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Assimp;

@@ -42,26 +42,26 @@ namespace ArctisAurora.EngineWork
         // closing it closes the application.
         private static Dictionary<string, RenderWindow> _windows = new Dictionary<string, RenderWindow>();
         public static Dictionary<string, RenderWindow> windows => Volatile.Read(ref _windows);
-        public static RenderWindow primary;
+        public static RenderWindow primary = null!;
 
         public const string mainWindow = "main";
 
-        internal static Renderer renderer;
-        internal static InputHandler inputHandler;
-        internal static UICollisionHandling uiCollisionHandler;
+        internal static Renderer renderer = null!;
+        internal static InputHandler inputHandler = null!;
+        internal static UICollisionHandling uiCollisionHandler = null!;
         //internal static JobSystem jobSystem;
         internal static AssetRegistries assetRegistry = new AssetRegistries();
-        internal static EntityRegistry entityManager;
+        internal static EntityRegistry entityManager = null!;
 
         // quick access
-        internal static List<Entity> entities;
-        internal static List<Entity> entitiesOnDestroy;
+        internal static List<Entity> entities = null!;
+        internal static List<Entity> entitiesOnDestroy = null!;
 
         // threading — main, physics and render each run free at their own rate and never wait on
         // one another. Each owns its loop, its pacing and its epoch; see ThreadedSystem.
-        internal static MainSystem mainSystem;
-        internal static PhysicsSystem physicsSystem;
-        internal static RenderSystem renderSystem;
+        internal static MainSystem mainSystem = null!;
+        internal static PhysicsSystem physicsSystem = null!;
+        internal static RenderSystem renderSystem = null!;
 
         public bool running => mainSystem != null && mainSystem.Running;
 
@@ -94,6 +94,7 @@ namespace ArctisAurora.EngineWork
 
             Bootstrapper.Load(Paths.BOOTSTRAP);
             Bootstrapper.RunPhase("Bootstrap");
+            Shutdown.Load(Paths.SHUTDOWN);
 
             mainSystem = new MainSystem();
             physicsSystem = new PhysicsSystem();
@@ -116,15 +117,16 @@ namespace ArctisAurora.EngineWork
 
         #region ---- BOOTSTRAPPING ----
         [A_XSDActionDependency("Engine.SystemSetup", "Bootstrap")]
-        public static void SetupSystems()
+        public static bool SetupSystems()
         {
             entityManager = EntityRegistry.manager;
             entities = EntityRegistry.GetGroup("Entities").As<Entity>();
             uiCollisionHandler = new UICollisionHandling();
+            return true;
         }
 
         [A_XSDActionDependency("Engine.InitWindowing", "Bootstrap")]
-        public static void InitWindowing()
+        public static bool InitWindowing()
         {
             GraphicsSettings settings = SettingsRegistry.Get<GraphicsSettings>();
             RenderWindow window = new RenderWindow(settings.window.width, settings.window.height);
@@ -135,6 +137,7 @@ namespace ArctisAurora.EngineWork
             WireInput(window);
             window.os.SeedIsInWindow();
             window.gpuReady = true;   // the bootstrap steps build the primary's resources in stages
+            return true;
         }
 
         // A window opened after bootstrap. Only the OS window is made here — the render thread owns
@@ -233,15 +236,17 @@ namespace ArctisAurora.EngineWork
         }
 
         [A_XSDActionDependency("Renderer.InitRenderer", "Bootstrap")]
-        public static void InitiateRenderer()
+        public static bool InitiateRenderer()
         {
             renderer = new Renderer();
+            return true;
         }
 
         [A_XSDActionDependency("Renderer.PreInitialize", "Bootstrap")]
-        public static void SetupModules()
+        public static bool SetupModules()
         {
             renderer.PreInitialize();
+            return true;
         }
         #endregion
 

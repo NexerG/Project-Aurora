@@ -9,8 +9,8 @@ namespace ArctisAurora.Core.Registry.Assets
     [A_XSDType("FontAsset", "AssetRegistry")]
     public class FontAsset : AbstractAsset
     {
-        public AtlasMetaData atlasMetaData;
-        public TextureAsset textureAsset;
+        public AtlasMetaData atlasMetaData = null!;
+        public TextureAsset textureAsset = null!;
 
         public FontAsset() { }
 

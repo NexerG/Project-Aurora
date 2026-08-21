@@ -1,4 +1,8 @@
-﻿using ArctisAurora.EngineWork.ComponentBehaviour;
+﻿// Legacy renderer, kept as a working reference until the migration. Deprecation warnings inside the
+// cluster are noise; the ones left in live code are the migration list.
+#pragma warning disable CS0618
+
+using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.RendererTypes;

@@ -38,7 +38,7 @@ namespace ArctisAurora.Core.UISystem
         [@Serializable]
         public FontMeta fontMeta;
         [@Serializable]
-        public TableEntry[] tableEntries;
+        public TableEntry[] tableEntries = null!;
 
         [@Serializable]
         public TextData textData;
@@ -813,9 +813,9 @@ namespace ArctisAurora.Core.UISystem
         [@Serializable]
         public int glyphCount;
         [@Serializable]
-        public char[] chars;
+        public char[] chars = null!;
         [@Serializable]
-        public Glyph[] glyphs;
+        public Glyph[] glyphs = null!;
 
         public void Deserialize(string name)
         {

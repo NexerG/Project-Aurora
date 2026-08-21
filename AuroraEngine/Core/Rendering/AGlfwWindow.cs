@@ -13,10 +13,10 @@ namespace ArctisAurora.EngineWork.Rendering
     internal unsafe class AGlfwWindow
     {
         //GLFW window variables
-        internal static Glfw _glfw;
+        internal static Glfw _glfw = null!;
         internal WindowHandle* handle;
         internal SurfaceKHR surface;
-        internal KhrSurface driverSurface;
+        internal KhrSurface driverSurface = null!;
         internal bool frameBufferResized = false;
         internal Extent2D windowSize;
 

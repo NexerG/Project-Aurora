@@ -15,7 +15,7 @@ namespace ArctisAurora.Core.UISystem
 {
     public unsafe class UICollisionHandling
     {
-        public static UICollisionHandling instance;
+        public static UICollisionHandling instance = null!;
 
         public Vector2D<float> lastMousePos;
         public Vector2D<float> delta;
@@ -25,7 +25,7 @@ namespace ArctisAurora.Core.UISystem
         [A_ActiveContext("Dragging")]
         public static VulkanControl dragging;
         // the control currently showing where the drag would land
-        private static VulkanControl hinted;
+        private static VulkanControl? hinted;
         
         /*[A_ActiveContext("ActiveContainer")]
         public static VulkanControl activeContainer;*/
@@ -85,9 +85,10 @@ namespace ArctisAurora.Core.UISystem
         {
             if (ReferenceEquals(activeControl, control)) return;
 
-            (activeControl as IContext)?.OnContextRemoved("ActiveControl");
+            VulkanControl previous = activeControl;
             activeControl = control;
-            (activeControl as IContext)?.OnContextAdded("ActiveControl");
+            (previous as IContext)?.OnContextRemoved("ActiveControl");
+            (control as IContext)?.OnContextAdded("ActiveControl");
         }
 
         public void SolveLMBRelease(Vector2D<float> mousePos)

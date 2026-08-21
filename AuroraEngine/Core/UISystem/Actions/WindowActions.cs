@@ -40,61 +40,21 @@ namespace ArctisAurora.Core.UISystem.Actions
                 AGlfwWindow._glfw.MaximizeWindow(handle);
         }
 
+        // The main window closing is the application closing, so it goes through the shutdown
+        // sequence; any other window settles its own notes and goes on its own.
         [A_XSDActionDependency("Window.Close", "UI", "Closes the window, or ends the application when it is the main one")]
         public static void Close()
         {
             RenderWindow window = Acting();
             if (window == null) return;
 
-            CloseWhenNamed(window, new HashSet<DocumentEditorControl>());
-        }
-
-        // Settles every edited note in the window before it goes. One prompt at a time: each answer
-        // re-checks the window, so the notes are named in the order they are found and cancelling any
-        // of them leaves the window open. A note the user chose not to save is remembered, or the
-        // walk would find it again and never get past it.
-        private static void CloseWhenNamed(RenderWindow window, HashSet<DocumentEditorControl> discarded)
-        {
-            DocumentEditorControl unnamed = FirstUnnamed(window.ui.uiRoot, discarded);
-            if (unnamed != null)
+            if (window == Engine.primary)
             {
-                unnamed.SaveNamed(
-                    () => CloseWhenNamed(window, discarded),
-                    () => { discarded.Add(unnamed); CloseWhenNamed(window, discarded); });
+                Shutdown.Request();
                 return;
             }
 
-            // A named note is never asked about, so this is the only thing that writes it — the
-            // window closing used to drop its edits without a word.
-            SaveNamedNotes(window.ui.uiRoot, discarded);
-            Engine.CloseWindow(window);
-        }
-
-        private static DocumentEditorControl FirstUnnamed(VulkanControl control, HashSet<DocumentEditorControl> discarded)
-        {
-            if (control == null) return null;
-            if (control is DocumentEditorControl editor && editor.needsNaming && !discarded.Contains(editor))
-                return editor;
-
-            foreach (Entity child in control.children)
-                if (child is VulkanControl childControl && FirstUnnamed(childControl, discarded) is DocumentEditorControl found)
-                    return found;
-
-            return null;
-        }
-
-        // Only what was actually edited. A first save of a hand-authored note does not reproduce its
-        // bytes, so writing untouched ones would rewrite every open file on every close.
-        private static void SaveNamedNotes(VulkanControl control, HashSet<DocumentEditorControl> discarded)
-        {
-            if (control == null) return;
-            if (control is DocumentEditorControl editor && !discarded.Contains(editor)
-                && editor.session != null && editor.session.isDirty)
-                editor.Save();
-
-            foreach (Entity child in control.children)
-                if (child is VulkanControl childControl)
-                    SaveNamedNotes(childControl, discarded);
+            NoteActions.SettleWindow(window, () => Engine.CloseWindow(window));
         }
     }
 }

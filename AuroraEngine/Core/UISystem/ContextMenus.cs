@@ -18,9 +18,9 @@ namespace ArctisAurora.Core.UISystem
         public string enabledWhen = "";
 
         // bound at load, so a bad name fails the boot rather than the right-click
-        internal Action invoke;
-        internal Action<VulkanControl> invokeOnTarget;
-        internal Func<VulkanControl, bool> isEnabled;
+        internal Action? invoke;
+        internal Action<VulkanControl>? invokeOnTarget;
+        internal Func<VulkanControl, bool>? isEnabled;
     }
 
     [A_XSDType("ContextMenu", "UI", AllowedChildren = typeof(ContextMenuItemDefinition))]
@@ -72,7 +72,7 @@ namespace ArctisAurora.Core.UISystem
         // A new named menu starts, so its first entry carries the divider.
         internal void BeginMenu() => pendingSeparator = entries.Count > 0;
 
-        public void Add(string caption, Action invoke, bool enabled = true)
+        public void Add(string caption, Action? invoke, bool enabled = true)
         {
             // captured, so an action taking no argument can still find what the menu was opened on
             VulkanControl target = owner;
@@ -84,7 +84,8 @@ namespace ArctisAurora.Core.UISystem
         internal void Add(ContextMenuItemDefinition item)
         {
             VulkanControl target = owner;
-            Action invoke = item.invokeOnTarget != null ? () => item.invokeOnTarget(target) : item.invoke;
+            Action<VulkanControl>? onTarget = item.invokeOnTarget;
+            Action? invoke = onTarget != null ? () => onTarget(target) : item.invoke;
             Add(item.caption, invoke, item.isEnabled == null || item.isEnabled(target));
         }
     }
@@ -97,12 +98,12 @@ namespace ArctisAurora.Core.UISystem
             new Dictionary<string, ContextMenuDefinition>(StringComparer.OrdinalIgnoreCase);
 
         // The control the running entry's menu was opened on. Null unless an entry is mid-invoke.
-        public static VulkanControl invoker { get; private set; }
+        public static VulkanControl? invoker { get; private set; }
 
         public static ContextMenuDefinition Get(string name) => string.IsNullOrEmpty(name) ? null : menus.GetValueOrDefault(name);
 
         // Runs an entry with its owner published.
-        internal static void InvokeFor(VulkanControl target, Action invoke)
+        internal static void InvokeFor(VulkanControl target, Action? invoke)
         {
             if (invoke == null) return;
 
@@ -134,7 +135,7 @@ namespace ArctisAurora.Core.UISystem
         }
 
         [A_XSDActionDependency("ContextMenus.LoadMenus", "Bootstrap")]
-        public static void LoadMenus()
+        public static bool LoadMenus()
         {
             menus.Clear();
             XElement root = XElement.Load(Paths.Doc("ContextMenus.xml"));
@@ -148,6 +149,8 @@ namespace ArctisAurora.Core.UISystem
 
                 menus[menu.name] = menu;
             }
+
+            return true;
         }
 
         private static ContextMenuItemDefinition ParseItem(XElement element)

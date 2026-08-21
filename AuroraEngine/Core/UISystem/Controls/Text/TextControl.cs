@@ -15,9 +15,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         private FontAsset _fontAsset;
 
         // measurement
-        private static FontAssetGlyphMetrics metrics;
+        private static FontAssetGlyphMetrics metrics = null!;
         private readonly TextMeasurer.Run[] runBuffer = new TextMeasurer.Run[1];
-        protected BlockLayout layout;
+        protected BlockLayout layout = null!;
 
         #region ---- line flow ----
         // set by the parent before Measure; reported back by Measure
@@ -91,20 +91,15 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");
         }
 
+        // Size before text: the text setter is what builds the glyphs, and it builds them at
+        // whatever size is already standing.
         public TextControl(string text, FontAsset fontAsset, int fontSize = 16)
         {
             _fontAsset = fontAsset;
-            fontSize = fontSize;
-            text = text;
-            //RebuildGlyphs();
-            foreach (char c in text)
-            {
-                GlyphControl glyph = new GlyphControl(c, _fontAsset, fontSize);
-                glyph.parent = this;
-                children.Add(glyph);
-            }
-            InvalidateLayout();
             maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");
+
+            this.fontSize = fontSize;
+            this.text = text;
         }
 
         // Drop a glyph out of the tree for good: pool row, Vulkan buffer and registry entries all

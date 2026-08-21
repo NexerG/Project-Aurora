@@ -33,7 +33,7 @@ namespace ArctisAurora.Core.Registry
         private static readonly Dictionary<Type, MemberSnapshot> defaultSnapshots = new Dictionary<Type, MemberSnapshot>();
         private static readonly Dictionary<Type, XElement> stored = new Dictionary<Type, XElement>();
 
-        private static string writeRoot;
+        private static string? writeRoot;
 
         public static IReadOnlyDictionary<Type, ISettingsGroup> Groups => groups;
 
@@ -48,7 +48,7 @@ namespace ArctisAurora.Core.Registry
         }
 
         [A_XSDActionDependency("Settings.LoadAll", "Bootstrap")]
-        public static void LoadAll()
+        public static bool LoadAll()
         {
             groups.Clear();
             baselines.Clear();
@@ -77,6 +77,8 @@ namespace ArctisAurora.Core.Registry
                 if (group is SettingCategory category)
                     foreach (Setting setting in category.settings)
                         MarkApplied(setting);
+
+            return true;
         }
 
         // Fires the OnChanged action of every setting whose value moved since the last Apply. The
@@ -134,7 +136,7 @@ namespace ArctisAurora.Core.Registry
             return moved;
         }
 
-        private static Dictionary<string, MethodInfo> actions;
+        private static Dictionary<string, MethodInfo> actions = null!;
 
         private static Dictionary<string, MethodInfo> Actions()
         {
@@ -262,10 +264,14 @@ namespace ArctisAurora.Core.Registry
         #region ---- write ----
         // One file for every group, so a settings screen dismisses to a single write and the user
         // has one file to look at. A group with nothing to say is left out of it entirely.
-        public static void SaveAll()
+        [A_XSDActionDependency("Settings.SaveAll", "Shutdown", "Writes every settings group that differs from its baseline")]
+        public static bool SaveAll()
         {
             if (writeRoot == null)
-                throw new Exception("SettingsRegistry.SetWriteRoot has to be called before settings can be saved.");
+            {
+                Console.WriteLine("[Settings] No write root — settings not saved.");
+                return false;
+            }
 
             XNamespace ns = XSDGenerator.NamespaceFor("Settings");
             XElement root = new XElement(ns + "UserSettings");
@@ -296,6 +302,8 @@ namespace ArctisAurora.Core.Registry
             Directory.CreateDirectory(writeRoot);
             new XDocument(new XDeclaration("1.0", "utf-8", null), root)
                 .Save(Path.Combine(writeRoot, "UserSettings.xml"));
+
+            return true;
         }
 
         private static XElement WriteDiff(object node, MemberSnapshot baseline)

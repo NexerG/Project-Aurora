@@ -14,9 +14,9 @@ namespace ArctisAurora.Core.Filing.Serialization
         private const int importerVersion = 1;
 
         [A_XSDActionDependency("AssetImporter.RunImports", "Bootstrap")]
-        public static void RunImports()
+        public static bool RunImports()
         {
-            if (!Engine.isDebug) return;
+            if (!Engine.isDebug) return true;
 
             List<ImportSet> sets = new List<ImportSet>();
             foreach (string file in VirtualFileSystem.EnumerateAll("XML/Imports", "*.xml"))
@@ -30,6 +30,8 @@ namespace ArctisAurora.Core.Filing.Serialization
             foreach (ImportSet set in sets)
                 foreach (FontImport font in set.fonts)
                     ImportFontIfStale(font, charsets);
+
+            return true;
         }
 
         private static ImportSet ParseImportSet(string path)

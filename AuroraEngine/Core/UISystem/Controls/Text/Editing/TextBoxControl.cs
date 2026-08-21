@@ -13,7 +13,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
     // SyncGlyphs trims everything past the last character, so a caret parented to the text would be
     // discarded by the next keystroke. Same split as DocumentControl and its runs.
     [A_XSDType("TextBox", "UI")]
-    public class TextBoxControl : AbstractContainerControl
+    public class TextBoxControl : AbstractContainerControl, IContext
     {
         // The text itself. One line, and it hands its clicks to the box, which owns the caret.
         private class FieldLine : TextInputControl
@@ -25,10 +25,17 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
                 BeginEdit();
                 (parent as VulkanControl)?.ResolveOnClick(oldPos, delta);
             }
+
+            public override void OnContextRemoved(string context)
+            {
+                base.OnContextRemoved(context);
+                if (context == "ActiveControl") (parent as TextBoxControl)?.LoseFocus();
+            }
         }
 
-        public Action<string> onCommit;
-        public Action onCancel;
+        public Action<string>? onCommit;
+        public Action? onCancel;
+        public Action? onBlur;
 
         // selection first: children draw in order, so it lands behind the text
         private readonly SelectionControl selection = new SelectionControl();
@@ -147,6 +154,25 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
             anchor = line.cursorPosition = committed.Length;
             onCancel?.Invoke();
             InvalidateLayout();
+        }
+
+        public void OnContextAdded(string context) { }
+
+        public void OnContextRemoved(string context)
+        {
+            if (context == "ActiveControl") LoseFocus();
+        }
+
+        // Raised only when the context went somewhere outside the box — the pointer moving between
+        // the text and the box's own padding hands it over between two parts of the same field.
+        private void LoseFocus()
+        {
+            for (VulkanControl control = UICollisionHandling.activeControl;
+                 control != null;
+                 control = control.parent as VulkanControl)
+                if (ReferenceEquals(control, this)) return;
+
+            onBlur?.Invoke();
         }
 
         private bool DeleteSelection()

@@ -106,8 +106,8 @@ namespace ArctisAurora.EngineWork.Rendering
             AVulkanBufferHandler.CreateBuffer(ref indices, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref indexBuffer, ref _indexBufferMemory, AVulkanBufferHandler.indexBufferFlags);
         }
 
-        internal Vertex[] _vertices;
-        internal uint[] indices;
+        internal Vertex[] _vertices = null!;
+        internal uint[] indices = null!;
 
         public override void Load(string name, string source)
         {
