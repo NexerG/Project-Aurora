@@ -123,7 +123,7 @@ namespace ArctisAurora.Core.ECS.EngineEntity
         {
             AllocatePooledTransform();
             EntityRegistry.AddToGroup("Entities", this);
-            EntityRegistry.AddToGroup("EntitiesOnStart", this);
+            EntityRegistry.EnqueueStart(this);
         }
 
         public Entity(string name)
@@ -131,14 +131,64 @@ namespace ArctisAurora.Core.ECS.EngineEntity
             this.name = name;
             AllocatePooledTransform();
             EntityRegistry.AddToGroup("Entities", this);
-            EntityRegistry.AddToGroup("EntitiesOnStart", this);
+            EntityRegistry.EnqueueStart(this);
         }
+
+        #region ---- lifecycle ----
+        // driven by EntityRegistry's queues, never by the mutation that caused them
+        [NonSerializable]
+        private bool _started = false;
+        [NonSerializable]
+        private bool _notifiedEnabled = false;
+        [NonSerializable]
+        private bool _enableQueued = false;
+
+        internal bool tickable => _notifiedEnabled && !_destroyed;
+
+        // Runs the queued OnStart once, then queues the entity's first enable notification.
+        internal void BeginLife()
+        {
+            if (_started || _destroyed) return;
+
+            _started = true;
+            OnStart();
+            QueueEnableChange();
+        }
+
+        // Fires OnEnable/OnDisable only when the flag actually moved since the last notification.
+        internal void ApplyEnableChange()
+        {
+            _enableQueued = false;
+            if (_destroyed || !_started || enabled == _notifiedEnabled) return;
+
+            _notifiedEnabled = enabled;
+            if (_notifiedEnabled) OnEnable();
+            else OnDisable();
+        }
+
+        private void QueueEnableChange()
+        {
+            if (_enableQueued) return;
+
+            _enableQueued = true;
+            EntityRegistry.EnqueueEnableChange(this);
+        }
+
+        // One start per component, whether it is attached before or after the entity's own OnStart.
+        private static void StartComponent(EntityComponent component)
+        {
+            if (component.started) return;
+
+            component.started = true;
+            component.OnStart();
+        }
+        #endregion
 
         public virtual void OnStart()
         {
             foreach (EntityComponent c in _components)
             {
-                c.OnStart();
+                StartComponent(c);
             }
         }
 
@@ -171,19 +221,16 @@ namespace ArctisAurora.Core.ECS.EngineEntity
             foreach(EntityComponent c in _components)
             {
                 c.OnDestroy();
-                _components.Remove(c);
             }
+            _components.Clear();
         }
 
         internal void IsEnabled(bool state)
         {
-            if(enabled != state)
-            {
-                enabled = state;
-                if(enabled)
-                    OnEnable();
-                else OnDisable();
-            }
+            if (enabled == state) return;
+
+            enabled = state;
+            QueueEnableChange();
         }
 
         public EntComp CreateComponent<EntComp>() where EntComp : EntityComponent, new()
@@ -228,7 +275,7 @@ namespace ArctisAurora.Core.ECS.EngineEntity
             {
                 _components.Add(component);
                 component.parent = this;
-                component.OnStart();
+                StartComponent(component);
                 return component;
             }
             else return null;

@@ -114,27 +114,44 @@ namespace ArctisAurora.Core.Registry
             }
         }
 
-        // Deferred destroy queue: Entity.Destroy() enqueues here; ProcessDestroys drains it once
-        // per tick (before OnTick) so the live group lists are never mutated mid-iteration.
-        private static readonly List<Entity> _toDestroy = new List<Entity>();
+        // Deferred lifecycle queues, all drained by popping from Engine.Interpolate: the entity
+        // constructor enqueues a start, Destroy() pushes the subtree, IsEnabled queues a transition.
+        // Popping is what lets a callback create or destroy an entity — the new work lands in the
+        // same drain instead of mutating a list someone is enumerating.
+        private static readonly Queue<Entity> _toStart = new Queue<Entity>();
+        private static readonly Stack<Entity> _toDestroy = new Stack<Entity>();
+        private static readonly Queue<Entity> _enableChanges = new Queue<Entity>();
 
-        public static void EnqueueDestroy(Entity entity) => _toDestroy.Add(entity);
+        public static void EnqueueStart(Entity entity) => _toStart.Enqueue(entity);
+        public static void EnqueueDestroy(Entity entity) => _toDestroy.Push(entity);
+        public static void EnqueueEnableChange(Entity entity) => _enableChanges.Enqueue(entity);
 
-        // Unregister + free every queued entity. Group removal fires the groups' onChanged (e.g.
-        // "Controls" -> the UI module marks itself dirty). Pool.Free is deferred inside the pool,
-        // so the freed slots are actually compacted at the next DataManager.FrameEdge().
+        // Creation order, so a parent starts before the children it built.
+        public static void ProcessStarts()
+        {
+            while (_toStart.Count > 0)
+                _toStart.Dequeue().BeginLife();
+        }
+
+        // Unregister + free every queued entity, leaves first. Group removal fires the groups'
+        // onChanged (e.g. "Controls" -> the UI module marks itself dirty). Pool.Free is deferred
+        // inside the pool, so the freed slots are actually compacted at the next FrameEdge().
         public static void ProcessDestroys()
         {
-            if (_toDestroy.Count == 0) return;
-
-            Entity[] batch = _toDestroy.ToArray();
-            _toDestroy.Clear();
-            foreach (Entity entity in batch)
+            while (_toDestroy.Count > 0)
             {
+                Entity entity = _toDestroy.Pop();
                 Unregister(entity);
                 entity.OnDestroy();
                 entity.Pool.Free(entity.dataHandle);
             }
+        }
+
+        // Fires the OnEnable/OnDisable pair away from the code that flipped the flag.
+        public static void ProcessEnableChanges()
+        {
+            while (_enableChanges.Count > 0)
+                _enableChanges.Dequeue().ApplyEnableChange();
         }
 
         public static void AddToGroup(string groupName, object item)

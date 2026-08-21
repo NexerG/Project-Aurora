@@ -13,6 +13,8 @@ namespace ArctisAurora.EngineWork.ComponentBehaviour
     {
         [NonSerializable]
         public Entity parent;
+        [NonSerializable]
+        internal bool started;
 
         public virtual void OnStart() //runs on creation of the component in the world
         {

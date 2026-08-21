@@ -55,7 +55,6 @@ namespace ArctisAurora.EngineWork
 
         // quick access
         internal static List<Entity> entities;
-        internal static List<Entity> entitiesOnStart;
         internal static List<Entity> entitiesOnDestroy;
 
         // threading — main, physics and render each run free at their own rate and never wait on
@@ -121,7 +120,6 @@ namespace ArctisAurora.EngineWork
         {
             entityManager = EntityRegistry.manager;
             entities = EntityRegistry.GetGroup("Entities").As<Entity>();
-            entitiesOnStart = EntityRegistry.GetGroup("EntitiesOnStart").As<Entity>();
             uiCollisionHandler = new UICollisionHandling();
         }
 
@@ -331,20 +329,11 @@ namespace ArctisAurora.EngineWork
                 // switch active buffers
             }
 
-            // do interpolation
-            if (entitiesOnStart.Count > 0)
-            {
-                foreach (Entity entity in entitiesOnStart)
-                {
-                    entity.OnStart();
-                }
-                entitiesOnStart.Clear();
-            }
-
-            // drain queued destroys before ticking: removed entities won't be ticked, the live
-            // lists aren't mutated mid-iteration, and their pool slots free now so the FrameEdge
-            // later this tick compacts them.
+            // The tick's one lifecycle phase, in order: start, tear down, then notify enable
+            // changes, so a callback fired here can create or destroy entities of its own.
+            EntityRegistry.ProcessStarts();
             EntityRegistry.ProcessDestroys();
+            EntityRegistry.ProcessEnableChanges();
 
             /*if (EntityRegistry.onDestroyEntities.Count > 0)
             {
@@ -355,8 +344,13 @@ namespace ArctisAurora.EngineWork
                 EntityRegistry.ClearOnDestroy();
             }*/
 
-            foreach (Entity entity in entities)
+            // Count is captured up front so an entity created in OnTick waits for the next tick,
+            // and the guard covers one destroyed later in this same loop.
+            for (int i = 0, count = entities.Count; i < count; i++)
             {
+                Entity entity = entities[i];
+                if (!entity.tickable) continue;
+
                 entity.OnTick();
             }
             
