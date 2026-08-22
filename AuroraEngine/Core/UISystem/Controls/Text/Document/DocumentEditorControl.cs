@@ -1,4 +1,5 @@
 using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
@@ -20,6 +21,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         private const float autoScrollRate = 0.25f;
 
         private DocumentControl? content;
+
+        // honoured at the end of Arrange, once every run has this frame's rect
+        private bool scrollToCaretPending;
 
         public DocumentEditorControl()
         {
@@ -86,6 +90,24 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         // from one that was only opened.
         public void MarkDirty() => session?.MarkDirty();
 
+        // One user action's worth of edits. A note with no session has no history, and the default
+        // scope discards what is pushed into it.
+        public EditScope BeginStep(string label) => session != null ? session.undo.Begin(label) : default;
+
+        public void Undo()
+        {
+            if (session == null || !session.undo.Undo()) return;
+            MarkDirty();
+            RequestScrollToCaret();
+        }
+
+        public void Redo()
+        {
+            if (session == null || !session.undo.Redo()) return;
+            MarkDirty();
+            RequestScrollToCaret();
+        }
+
         public void CollapseSelection() => content?.CollapseSelection();
 
         public bool DeleteSelection()
@@ -106,6 +128,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             children.Clear();
 
             content = new DocumentControl { blockSpacing = document.layout.blockSpacing, document = document };
+            content.undo = session?.undo;
             AddChild(content);
 
             foreach (Block block in document.blocks)
@@ -113,6 +136,33 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 block.ApplyLayout(document.layout);
                 content.AddChild(block);
             }
+        }
+
+        // The scroll every editing path asks for happens here, because this is the first moment the
+        // caret's run has a rect for the layout it now lives in.
+        //
+        // Both branches after ScrollIntoView are load-bearing, and this method must never exit with
+        // isArrangeDirty set. InvalidateArrange walks up until it meets a control already marked
+        // dirty and registers nothing when it does — and from in here every ancestor is still
+        // mid-Arrange — so a flag left set makes the editor permanently dirty, and every later
+        // invalidate from it or any run below it registers nothing and is silently dropped.
+        //
+        // Re-arranging costs a pass over the document, so it is paid only when the offset moved;
+        // ScrollIntoView invalidates whether or not it scrolled, hence the reset on the other side.
+        public override void Arrange(LayoutRect finalRect)
+        {
+            base.Arrange(finalRect);
+
+            if (!scrollToCaretPending || content == null) return;
+            scrollToCaretPending = false;
+
+            if (!content.CaretPoint(out float x, out float y, out float height)) return;
+
+            Vector2D<float> before = GetScrollOffset();
+            ScrollIntoView(new LayoutRect(x, y, CaretControl.Width, height));
+
+            if (GetScrollOffset() != before) base.Arrange(finalRect);
+            else isArrangeDirty = false;
         }
 
         private Vector2D<float> PointerInWindow()
@@ -190,7 +240,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             else if (move == CaretMove.Right) MoveRight(extend);
             else MoveToPoint(move, extend);
 
-            ScrollToCaret();
+            RequestScrollToCaret();
         }
 
         // A run boundary inside a block is one caret slot, not two: the previous run's end and the
@@ -265,10 +315,14 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 content.SetCaret(run, offset, extend);
         }
 
-        private void ScrollToCaret()
+        // Deferred to the next Arrange, never done here: a block created this tick has no arranged
+        // rect yet, and ScrollIntoView reads a zero rect as "above the viewport" and jumps to the
+        // top of the note. Typing has the weaker form of it — a character that wraps moves the
+        // caret onto a visual line the current layout does not hold.
+        private void RequestScrollToCaret()
         {
-            if (content.CaretPoint(out float x, out float y, out float height))
-                ScrollIntoView(new LayoutRect(x, y, CaretControl.Width, height));
+            scrollToCaretPending = true;
+            InvalidateArrange();
         }
         #endregion
 
@@ -283,18 +337,31 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         {
             if (content?.caretRun == null) return;
 
-            if (!content.HasSelection) MoveCaret(move, true);
-            if (content.DeleteSelection()) MarkDirty();
-            ScrollToCaret();
+            using (BeginStep(move == CaretMove.Left ? "Backspace" : "Delete"))
+            {
+                if (!content.HasSelection) MoveCaret(move, true);
+                if (content.DeleteSelection()) MarkDirty();
+            }
+
+            RequestScrollToCaret();
         }
 
-        // No ScrollToCaret: the new block has no arranged rect until the next layout pass, and a
-        // zero rect reads as "above the viewport" and would scroll the note to the top.
         public void SplitBlock()
         {
             if (content == null) return;
-            content.SplitBlock();
+
+            using (BeginStep("New paragraph"))
+                content.SplitBlock();
+
             MarkDirty();
+            RequestScrollToCaret();
+        }
+
+        // One character, recorded against the run it lands in.
+        public void TypeChar(TextControl run, char c)
+        {
+            content?.TypeChar(run, c);
+            RequestScrollToCaret();
         }
         #endregion
 

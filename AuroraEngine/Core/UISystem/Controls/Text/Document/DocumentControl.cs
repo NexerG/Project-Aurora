@@ -1,6 +1,8 @@
 using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.UISystem.Controls.Containers;
+using ArctisAurora.Core.UISystem.Controls.Text.Document.Edits;
 using ArctisAurora.EngineWork.Registry;
 using Silk.NET.Maths;
 
@@ -29,6 +31,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 
         // the model these blocks came from; the file is written from its block list
         internal RichTextDocument document = null!;
+
+        // the open note's history, assigned by the editor; null until a session exists
+        internal UndoStack? undo;
 
         // caret target
         private CaretControl? caret;
@@ -406,7 +411,12 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         {
             if (from.run == to.run)
             {
+                DocumentAddress cut = AddressOf(from.run, from.offset);
+                string removed = TextOf(from.run).Substring(from.offset, to.offset - from.offset);
+
                 from.run.text = TextOf(from.run).Remove(from.offset, to.offset - from.offset);
+                undo?.Push(new RunTextEdit(this, cut, removed, false));
+
                 SetCaret(from.run, from.offset);
                 return;
             }
@@ -414,6 +424,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             List<TextControl> runs = OrderedRuns();
             int first = runs.IndexOf(from.run);
             int last = runs.IndexOf(to.run);
+
+            // captured before anything is destroyed, and before the addresses shift
+            DocumentAddress fromAddress = AddressOf(from.run, from.offset);
+            DocumentAddress toAddress = AddressOf(to.run, to.offset);
+            DocumentFragment fragment = CaptureFragment(from, to, runs, first, last);
 
             from.run.text = TextOf(from.run)[..from.offset];
             to.run.text = TextOf(to.run)[to.offset..];
@@ -427,10 +442,43 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 
             // the head run holds the caret whether or not it kept anything, so the tail run only
             // survives while it still has text
-            if (Length(to.run) == 0) to.run.Destroy();
+            fragment.tailRunDestroyed = Length(to.run) == 0;
+            if (fragment.tailRunDestroyed) to.run.Destroy();
 
             head.InvalidateLayout();
+            undo?.Push(new DeleteRangeEdit(this, fromAddress, toAddress, fragment));
+
             SetCaret(from.run, from.offset);
+        }
+
+        // Everything the range covers, as data: the head run's cut suffix, then whole runs, then
+        // the tail run's cut prefix, split into one snapshot per block the range touched.
+        private DocumentFragment CaptureFragment(CaretSlot from, CaretSlot to, List<TextControl> runs,
+            int first, int last)
+        {
+            DocumentFragment fragment = new DocumentFragment();
+
+            Block owner = null;
+            BlockSnapshot current = null;
+
+            for (int i = first; i <= last; i++)
+            {
+                Block block = BlockOf(runs[i]);
+                if (current == null || block != owner)
+                {
+                    owner = block;
+                    current = new BlockSnapshot { stylingType = StylingOf(block) };
+                    fragment.blocks.Add(current);
+                }
+
+                string text = i == first ? TextOf(runs[i])[from.offset..]
+                            : i == last ? TextOf(runs[i])[..to.offset]
+                            : TextOf(runs[i]);
+
+                current.runs.Add(RunSnapshot.Of(runs[i], text));
+            }
+
+            return fragment;
         }
 
         // The tail block's surviving runs move into the head block, and every block the range
@@ -458,12 +506,20 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         {
             DeleteSelection();
 
-            if (caretRun is not TextRun run || BlockOf(run) is not ContentBlock block) return;
+            if (caretRun == null) return;
+            SplitBlockAt(AddressOf(caretRun, caretRun.cursorPosition));
+        }
+
+        // The split itself, addressed rather than read off the caret, so redo can replay it.
+        internal void SplitBlockAt(DocumentAddress at)
+        {
+            if (!Resolve(at, out TextControl target, out int offset)) return;
+            if (target is not TextRun run || BlockOf(run) is not ContentBlock block) return;
 
             ContentBlock tail = new ContentBlock { stylingType = block.stylingType };
             TextRun carried = run.Clone();
-            carried.text = TextOf(run)[run.cursorPosition..];
-            run.text = TextOf(run)[..run.cursorPosition];
+            carried.text = TextOf(run)[offset..];
+            run.text = TextOf(run)[..offset];
             tail.AddChild(carried);
 
             bool past = false;
@@ -477,13 +533,26 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             }
 
             // the carried run is worth keeping only while it holds text or is all the block has
-            if (Length(carried) == 0 && tail.children.Count > 1) carried.Destroy();
+            bool carriedDropped = Length(carried) == 0 && tail.children.Count > 1;
+            if (carriedDropped) carried.Destroy();
 
             InsertBlockAfter(block, tail);
             tail.ApplyLayout(document.layout);
             block.InvalidateLayout();
 
+            undo?.Push(new SplitEdit(this, at, carriedDropped));
+
             SetCaret(tail.RunAt(0), 0);
+        }
+
+        // Records the insert before the write, because the address is read off the caret the write
+        // is about to advance.
+        internal void TypeChar(TextControl run, char c)
+        {
+            if (run == null) return;
+
+            undo?.Push(new RunTextEdit(this, AddressOf(run, run.cursorPosition), c.ToString(), true));
+            run.WriteChar(c);
         }
 
         // Blocks sit between the highlight boxes at the head of the child list and the caret at its
@@ -512,6 +581,238 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 if (child is Block block) blocks.Add(block);
 
             return blocks;
+        }
+        #endregion
+
+        #region ---- addressing ----
+        internal DocumentAddress AddressOf(TextControl run, int offset)
+        {
+            Block owner = BlockOf(run);
+            return new DocumentAddress(Blocks().IndexOf(owner), IndexOfRun(owner, run), offset);
+        }
+
+        internal bool Resolve(DocumentAddress address, out TextControl run, out int offset)
+        {
+            run = null;
+            offset = address.offset;
+
+            List<Block> blocks = Blocks();
+            if (address.block < 0 || address.block >= blocks.Count) return false;
+
+            run = RunIn(blocks[address.block], address.run);
+            if (run == null) return false;
+
+            offset = Math.Clamp(address.offset, 0, Length(run));
+            return true;
+        }
+
+        private void CaretTo(DocumentAddress address)
+        {
+            if (Resolve(address, out TextControl run, out int offset))
+                SetCaret(run, offset);
+        }
+
+        private static int IndexOfRun(Block block, TextControl run)
+        {
+            if (block == null) return -1;
+
+            int index = 0;
+            foreach (Entity child in block.children)
+            {
+                if (child == run) return index;
+                if (child is TextControl) index++;
+            }
+            return -1;
+        }
+
+        private static TextControl RunIn(Block block, int index)
+        {
+            int i = 0;
+            foreach (Entity child in block.children)
+                if (child is TextControl run && i++ == index) return run;
+
+            return null;
+        }
+
+        private static List<TextControl> RunsFrom(Block block, int index)
+        {
+            List<TextControl> runs = new List<TextControl>();
+
+            int i = 0;
+            foreach (Entity child in block.children)
+                if (child is TextControl run && i++ >= index) runs.Add(run);
+
+            return runs;
+        }
+
+        private static TextStyleType StylingOf(Block block) =>
+            block is ContentBlock content ? content.stylingType : TextStyleType.Text;
+        #endregion
+
+        #region ---- undo primitives ----
+        internal void InsertRunText(DocumentAddress at, string insert)
+        {
+            if (!Resolve(at, out TextControl run, out int offset)) return;
+
+            run.text = TextOf(run).Insert(offset, insert);
+            SetCaret(run, offset + insert.Length);
+        }
+
+        internal void RemoveRunText(DocumentAddress at, int count)
+        {
+            if (!Resolve(at, out TextControl run, out int offset)) return;
+            if (offset + count > Length(run)) return;
+
+            run.text = TextOf(run).Remove(offset, count);
+            SetCaret(run, offset);
+        }
+
+        // Redo for a range delete: the document is back in its pre-delete state, so the recorded
+        // addresses resolve again and the forward primitive can simply run a second time.
+        internal void DeleteBetween(DocumentAddress from, DocumentAddress to)
+        {
+            if (!Resolve(from, out TextControl fromRun, out int fromOffset)) return;
+            if (!Resolve(to, out TextControl toRun, out int toOffset)) return;
+
+            DeleteRange(new CaretSlot(fromRun, fromOffset), new CaretSlot(toRun, toOffset));
+        }
+
+        // The inverse of a range delete. The head run takes its cut text back, whole runs are
+        // rebuilt after it, and when the range crossed blocks the survivors that were merged into
+        // the head block move back out into a rebuilt tail block.
+        internal void InsertFragment(DocumentAddress at, DocumentFragment fragment)
+        {
+            if (fragment.blocks.Count == 0) return;
+            if (!Resolve(at, out TextControl headRun, out int offset)) return;
+
+            Block headBlock = BlockOf(headRun);
+            if (headBlock == null) return;
+
+            BlockSnapshot first = fragment.blocks[0];
+            bool spansBlocks = fragment.blocks.Count > 1;
+
+            headRun.text = TextOf(headRun).Insert(offset, first.runs[0].text);
+
+            int index = IndexOfRun(headBlock, headRun) + 1;
+            int headEnd = spansBlocks ? first.runs.Count : first.runs.Count - 1;
+            for (int i = 1; i < headEnd; i++)
+                InsertRun(headBlock, index++, first.runs[i].Build());
+
+            if (!spansBlocks)
+            {
+                RestoreTailRun(headBlock, index, first.runs[^1], fragment.tailRunDestroyed);
+                headBlock.ApplyLayout(document.layout);
+                headBlock.InvalidateLayout();
+                CaretTo(at);
+                return;
+            }
+
+            List<Block> rebuilt = new List<Block>();
+            for (int b = 1; b < fragment.blocks.Count - 1; b++)
+                rebuilt.Add(BuildBlock(fragment.blocks[b]));
+
+            BlockSnapshot tailSnapshot = fragment.blocks[^1];
+            ContentBlock tailBlock = new ContentBlock { stylingType = tailSnapshot.stylingType };
+            for (int i = 0; i < tailSnapshot.runs.Count - 1; i++)
+                tailBlock.AddChild(tailSnapshot.runs[i].Build());
+
+            // everything after the insertion point in the head block was moved there by the merge
+            List<TextControl> survivors = RunsFrom(headBlock, index);
+            RunSnapshot tailRun = tailSnapshot.runs[^1];
+
+            if (!fragment.tailRunDestroyed && survivors.Count > 0)
+                survivors[0].text = tailRun.text + TextOf(survivors[0]);
+            else
+                tailBlock.AddChild(tailRun.Build());
+
+            foreach (TextControl run in survivors)
+            {
+                headBlock.children.Remove(run);
+                tailBlock.AddChild(run);
+            }
+
+            Block previous = headBlock;
+            foreach (Block block in rebuilt)
+            {
+                InsertBlockAfter(previous, block);
+                block.ApplyLayout(document.layout);
+                previous = block;
+            }
+
+            InsertBlockAfter(previous, tailBlock);
+            tailBlock.ApplyLayout(document.layout);
+
+            headBlock.ApplyLayout(document.layout);
+            headBlock.InvalidateLayout();
+            CaretTo(at);
+        }
+
+        // The inverse of a split. joinFirstRun is false when the split dropped its clone, in which
+        // case the next block's first run is one that moved and has to stay whole.
+        internal void JoinBlockWithNext(DocumentAddress at, bool joinFirstRun)
+        {
+            List<Block> blocks = Blocks();
+            if (at.block < 0 || at.block + 1 >= blocks.Count) return;
+
+            Block head = blocks[at.block];
+            Block tail = blocks[at.block + 1];
+            TextControl target = RunIn(head, at.run);
+
+            foreach (Entity child in tail.children.ToArray())
+            {
+                if (child is not TextControl run) continue;
+
+                if (joinFirstRun && target != null)
+                {
+                    target.text = TextOf(target) + TextOf(run);
+                    run.Destroy();
+                    joinFirstRun = false;
+                    continue;
+                }
+
+                tail.children.Remove(run);
+                head.AddChild(run);
+            }
+
+            RemoveBlock(tail);
+            head.ApplyLayout(document.layout);
+            head.InvalidateLayout();
+            CaretTo(at);
+        }
+
+        private static ContentBlock BuildBlock(BlockSnapshot snapshot)
+        {
+            ContentBlock block = new ContentBlock { stylingType = snapshot.stylingType };
+            foreach (RunSnapshot run in snapshot.runs)
+                block.AddChild(run.Build());
+
+            return block;
+        }
+
+        // The tail run survived the delete unless the fragment says otherwise, in which case it is
+        // still sitting where its cut prefix belongs.
+        private void RestoreTailRun(Block block, int index, RunSnapshot tail, bool destroyed)
+        {
+            TextControl run = destroyed ? null : RunIn(block, index);
+
+            if (run == null) InsertRun(block, index, tail.Build());
+            else run.text = tail.text + TextOf(run);
+        }
+
+        // Blocks hold only runs, so the run index is the child index; the pool is shared, so
+        // marking order dirty from here is the same call InsertBlockAfter makes.
+        private void InsertRun(Block block, int index, TextRun run)
+        {
+            int slot = block.children.Count;
+
+            int i = 0;
+            for (int c = 0; c < block.children.Count; c++)
+                if (block.children[c] is TextControl && i++ == index) { slot = c; break; }
+
+            block.children.Insert(slot, run);
+            run.parent = block;
+            MarkTreeOrderDirty();
+            block.InvalidateLayout();
         }
         #endregion
     }

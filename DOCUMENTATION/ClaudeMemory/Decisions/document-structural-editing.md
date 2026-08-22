@@ -95,15 +95,16 @@ target afterwards — the caret's run changes when the range crossed runs. The e
 `CollapseSelection()` at the end stays: `WriteChar` advances `cursorPosition` directly, so without it
 typing selects what it just typed.
 
-### 7. Enter does not scroll to the caret
+### 7. ~~Enter does not scroll to the caret~~ — SUPERSEDED 2026-08-23
 
-Every caret move ends in `ScrollIntoView`. A split cannot: the new block has no `arrangedRect` until
-the next layout pass, and `ScrollIntoView` reads a zero rect as "above the viewport" and scrolls the
-note to the top. So `SplitBlock` skips it.
+Every caret move ends in `ScrollIntoView`. A split could not: the new block has no `arrangedRect`
+until the next layout pass, and `ScrollIntoView` reads a zero rect as "above the viewport" and
+scrolls the note to the top. So `SplitBlock` skipped it, leaving the caret below the viewport after
+Enter on the last visible line.
 
-**Consequence, accepted:** pressing Enter on the last visible line leaves the caret just below the
-viewport until something else scrolls. The fix is a scroll-on-next-Arrange flag, which needs an
-`Arrange` override on `DocumentEditorControl` that does not otherwise exist.
+**Built 2026-08-23** as the scroll-on-next-Arrange flag predicted here. Every path now *requests* a
+scroll and `DocumentEditorControl.Arrange` performs it, so Enter, typing, undo and redo all follow
+the caret. See [[document-caret-scrolling]].
 
 ### 8. `TextRun.Clone()` was dropping `stylingType`
 
@@ -129,8 +130,10 @@ it makes paragraphs the way holding a letter makes letters.
 
 ## Still open
 
-- **Undo does not exist**, and deletion is the first thing that makes that hurt — a mis-aimed
-  Ctrl+A-less drag delete is unrecoverable except by reloading the note and losing the session.
+- ~~**Undo does not exist**~~ — **built 2026-08-22**, and `DeleteRange`/`SplitBlock` are where it
+  records. Decisions 2 and 4's conditionals (the head run survives empty, the carried run is dropped)
+  are recorded as bits rather than re-derived by the inverse, so changing either rule here does not
+  strand records made under the old one. See [[document-undo]].
 - **No `Ctrl+A`.** There is no select-all action, so a whole-note delete means dragging.
 - **Empty runs can still accumulate** through the head-run rule in decision 2: delete a run's whole
   contents without crossing into another run and the empty head run stays for the rest of the

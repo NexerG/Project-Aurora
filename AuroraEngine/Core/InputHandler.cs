@@ -448,10 +448,12 @@ namespace ArctisAurora.EngineWork
                 }
             }
 
+            // Not _delayPassed: EvaluateConditions resets after every fire, and a fire is not the
+            // end of the hold — clearing it makes every repeat serve the initial delay again. The
+            // press and release branches above own the hold's real boundaries.
             public override void Reset()
             {
                 _accumulator = 0;
-                _delayPassed = false;
             }
         }
 

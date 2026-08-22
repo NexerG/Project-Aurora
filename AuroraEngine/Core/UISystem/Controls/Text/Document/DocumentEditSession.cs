@@ -1,3 +1,5 @@
+using ArctisAurora.Core.Editing;
+
 namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 {
     // One open note: the document the editor is showing and the file it came from. There is no
@@ -7,6 +9,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
     {
         public RichTextDocument document { get; }
         public string path { get; private set; }
+
+        // History is per open note, so undo in one tab cannot reach the note in another.
+        public UndoStack undo { get; } = new UndoStack();
 
         // Edited since the last write. Read by the close paths, which must not prompt over a note
         // that was only ever looked at.

@@ -39,18 +39,23 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                 return;
             }
 
-            editor.DeleteSelection();
-
-            TextControl target = Target(editor);
-            if (target == null) return;
-
+            // one step per character, so one press is one undo however many the queue held
             while (input.Count > 0)
-                target.WriteChar(input.Dequeue());
+                using (editor.BeginStep("Typing"))
+                {
+                    editor.DeleteSelection();
 
-            // WriteChar advances cursorPosition on the run itself, so the anchor is left behind and
-            // typing would select what it just typed.
-            editor?.CollapseSelection();
-            editor?.MarkDirty();
+                    TextControl target = Target(editor);
+                    if (target == null) return;
+
+                    editor.TypeChar(target, input.Dequeue());
+
+                    // WriteChar advances cursorPosition on the run itself, so the anchor is left
+                    // behind — and the next iteration's DeleteSelection would eat what was typed.
+                    editor.CollapseSelection();
+                }
+
+            editor.MarkDirty();
         }
 
         // Inside a document the caret's run is the target; activeControl is the standalone-input
@@ -89,6 +94,12 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
 
             Box()?.Commit();
         }
+
+        [A_XSDActionDependency("Text.Undo", "Input", "Reverses the last edit made to the focused note")]
+        public static void Undo() => Editor()?.Undo();
+
+        [A_XSDActionDependency("Text.Redo", "Input", "Reapplies the last edit undone in the focused note")]
+        public static void Redo() => Editor()?.Redo();
 
         [A_XSDActionDependency("Text.Cancel", "Input", "Abandons the edit in a standalone field and restores what it held")]
         public static void Cancel() => Box()?.Cancel();

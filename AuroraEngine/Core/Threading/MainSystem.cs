@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
 
@@ -14,11 +15,21 @@ namespace ArctisAurora.Core.Threading
     {
         protected override double TargetPeriodMs => 1000.0 / 120.0;
 
+        private long _lastTick;
+
         protected override void Tick()
         {
-            // deltaTime describes the tick that just finished, which is what it meant before the
-            // loop moved here — consumers read it during a tick and get the previous one's length.
-            Engine.deltaTime = TimeSpan.FromMilliseconds(LastTickMs);
+            // Tick to tick, and deliberately not LastTickMs: that is sampled before the pacing
+            // sleep, so it measures the work a tick did rather than the time that passed — at 120Hz
+            // with a cheap tick it runs an order of magnitude short. Key repeat, hold durations and
+            // the tap window all count real seconds.
+            long now = Stopwatch.GetTimestamp();
+
+            Engine.deltaTime = _lastTick == 0
+                ? TimeSpan.Zero
+                : TimeSpan.FromSeconds((now - _lastTick) / (double)Stopwatch.Frequency);
+            _lastTick = now;
+
             Engine.totalTime += Engine.deltaTime.TotalSeconds;
 
             Engine.engineInstance.MainTick();

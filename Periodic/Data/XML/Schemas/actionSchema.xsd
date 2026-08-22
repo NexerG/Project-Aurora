@@ -7,6 +7,8 @@
       <xs:enumeration value="Text.Backspace" />
       <xs:enumeration value="Text.Delete" />
       <xs:enumeration value="Text.NewBlock" />
+      <xs:enumeration value="Text.Undo" />
+      <xs:enumeration value="Text.Redo" />
       <xs:enumeration value="Text.Cancel" />
       <xs:enumeration value="Text.Save" />
       <xs:enumeration value="Text.CaretLeft" />

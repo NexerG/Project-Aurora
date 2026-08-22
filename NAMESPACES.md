@@ -24,6 +24,9 @@ ArctisAurora.Core.Diagnostics.Sinks -> C:\Projects-Repositories\Aurora\Project-A
 ArctisAurora.Core.Diagnostics.Sinks -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Diagnostics\Sinks\FlightRecorder.cs
 ArctisAurora.Core.ECS.EngineEntity -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\ECS\EngineEntity\Entity.cs
 ArctisAurora.Core.ECS.EngineEntity -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\ECS\EngineEntity\LightSourceEntity.cs
+ArctisAurora.Core.Editing -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Editing\EditStep.cs
+ArctisAurora.Core.Editing -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Editing\IEditRecord.cs
+ArctisAurora.Core.Editing -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Editing\UndoStack.cs
 ArctisAurora.Core.Filing -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\FileObject.cs
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\Serialization\AssetImporter.cs
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\Serialization\ImportManifest.cs
@@ -107,6 +110,12 @@ ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Au
 ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\RichTextDocument.cs
 ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\SelectionControl.cs
 ArctisAurora.Core.UISystem.Controls.Text.Document -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\TextMeasurer.cs
+ArctisAurora.Core.UISystem.Controls.Text.Document.Edits -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\Edits\BlockSnapshot.cs
+ArctisAurora.Core.UISystem.Controls.Text.Document.Edits -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\Edits\DeleteRangeEdit.cs
+ArctisAurora.Core.UISystem.Controls.Text.Document.Edits -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\Edits\DocumentAddress.cs
+ArctisAurora.Core.UISystem.Controls.Text.Document.Edits -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\Edits\DocumentFragment.cs
+ArctisAurora.Core.UISystem.Controls.Text.Document.Edits -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\Edits\RunTextEdit.cs
+ArctisAurora.Core.UISystem.Controls.Text.Document.Edits -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Document\Edits\SplitEdit.cs
 ArctisAurora.Core.UISystem.Controls.Text.Editing -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Editing\TextBoxControl.cs
 ArctisAurora.Core.UISystem.Controls.Text.Editing -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Text\Editing\TextInputControl.cs
 ArctisAurora.CustomEntities -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\CustomEntities\Layer.cs

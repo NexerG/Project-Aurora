@@ -35,6 +35,16 @@
 		<Press />
 	</Keybind>
 
+	<Keybind Trigger="Z" Action="Text.Undo">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Y" Action="Text.Redo">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
 	<Keybind Trigger="Left" Action="Text.CaretLeft">
 		<Repeat />
 	</Keybind>

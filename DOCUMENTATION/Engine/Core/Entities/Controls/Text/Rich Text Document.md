@@ -134,7 +134,25 @@ The caret is `(run, cursorPosition)` — the offset lives on the run, and `Docum
 
 Line start and line end are the **visual** line's, not the paragraph's, which is the only reason the point primitive is needed at all. Page up and down move by one viewport height, which is why they live on the editor rather than on `DocumentControl` — the scroll viewport is the editor's.
 
-Every move ends in `ScrollIntoView` on the caret's rect, and a move into a different run repoints `UICollisionHandling.activeControl`. That last part is not cosmetic: `Text.Write` drains characters into whatever the collision handler last made active, so a caret that arrowed into a new run without repointing it would type into the run that was clicked.
+Every move *requests* a scroll to the caret rather than performing one, and a move into a different run repoints `UICollisionHandling.activeControl`. That last part is not cosmetic: `Text.Write` drains characters into whatever the collision handler last made active, so a caret that arrowed into a new run without repointing it would type into the run that was clicked.
+
+## Scrolling to the caret
+Every path that moves the caret — arrows, Backspace and Delete, Enter, typing, undo and redo — sets a flag and invalidates arrange. The scroll itself happens at the end of `DocumentEditorControl.Arrange`, which is the first moment the caret's run holds a rect for the layout it now lives in. Doing it at the call site cannot work: a block created this tick has no arranged rect at all, and `ScrollIntoView` reads a zero rect as "above the viewport" and throws the note to the top, which is why Enter shipped without a scroll for a week.
+
+The rule the override lives under is that it must never exit with `isArrangeDirty` still set. `InvalidateArrange` walks up the tree and registers nothing the moment it meets a control already marked dirty — the control it started on included — and from inside `Arrange` every ancestor still is, since a container clears its own flag only after its children return. Leave the flag set and the editor is dirty forever: every later invalidate from it or from any run beneath it is silently dropped, so the wheel moves the offset with nothing redrawing and the arrow keys move the caret's offset with the caret never being repositioned.
+
+```
+Arrange(finalRect):
+    base.Arrange(finalRect)
+    if no scroll was requested: return
+    clear the request
+    if the caret has no point: return
+    remember the offset, ScrollIntoView the caret's rect
+    if the offset moved: base.Arrange(finalRect) again
+    otherwise:           clear isArrangeDirty, which ScrollIntoView set for nothing
+```
+
+`ScrollIntoView` invalidates whether or not it actually scrolled, which is what the second branch is for; it does nothing to the offset when the target is already inside the viewport, so the extra pass is paid only on frames where the view genuinely moves. Clicks and drags are left out of all this — a click lands where the user is already looking, and a drag has its own overshoot scroll.
 
 ## Selection
 A selection is two caret slots — an **anchor** where the press or the shift-extend started, and a **focus** where the caret is now. The focus is not stored separately: `caretRun` and `cursorPosition` already are it, so the only new state is the anchor, and `anchor == focus` is both "nothing is selected" and the plain-caret behaviour that existed before.
@@ -194,7 +212,7 @@ insert `tail` after the caret's block, in both the child list and the model's bl
 `tail` apply layout
 place the caret at (`tail` first run, 0)
 
-Enter's new block takes the old block's styling type rather than resetting to body text: splitting a heading mid-word has to give two headings, and "Enter at the *end* of a heading gives a paragraph" is a second rule keyed on caret position that can be added to `Split Block` later if it is wanted. Unlike every other caret-moving operation, a split does **not** end in `ScrollIntoView` — the new block has no arranged rect until the next layout pass, and a zero rect reads as "above the viewport", so scrolling would throw the note to the top. Pressing Enter on the last visible line therefore leaves the caret just below the viewport until something else scrolls.
+Enter's new block takes the old block's styling type rather than resetting to body text: splitting a heading mid-word has to give two headings, and "Enter at the *end* of a heading gives a paragraph" is a second rule keyed on caret position that can be added to `Split Block` later if it is wanted. A split used to be the one caret-moving operation that could not scroll, because the new block has no arranged rect until the next layout pass and a zero rect reads as "above the viewport", which threw the note to the top. That is why the scroll is now deferred rather than immediate — see [[#Scrolling to the caret]].
 
 Blocks live in two lists at once — `RichTextDocument.blocks`, which is what a save is written from, and the children of the `DocumentControl`, which is what layout and hit-testing walk. They are the same objects, so every structural edit updates both, which is why the control now holds the document. Rebuilding the model's list from the control tree at save time was the alternative and was rejected: it matches the "the model is the control tree" decision more honestly, but leaves the list silently stale all session for any other reader, and the vault browser and undo are both going to be readers. The duplication is the P0 model-as-controls decision showing through once more, and it goes away with the data/visualization split rather than here.
 

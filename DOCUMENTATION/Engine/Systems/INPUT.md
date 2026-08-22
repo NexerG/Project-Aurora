@@ -113,7 +113,9 @@ Current condition types:
 | `HoldContinuous` | Every tick, but only after holding for threshold | `Threshold` (default 0.3s) |
 | `Chord` | Requires another specific key to be held | `Key` |
 
-Conditions are stateful — `Repeat` tracks its accumulator internally, `Hold` tracks whether it has already fired, `Toggle` tracks its on/off state. They get reset when the keybind fires or when evaluation is canceled.
+Conditions are stateful — `Repeat` tracks its accumulator internally, `Hold` tracks whether it has already fired, `Toggle` tracks its on/off state. They get reset when the keybind fires or when evaluation is canceled, and `Repeat` is the one that does not fully comply: a fire is not the end of a hold, so it keeps the flag saying the initial delay is already served and clears only its accumulator. Resetting that flag on every fire would make each repeat wait the *delay* rather than the *rate*, and the press and release branches of its own evaluation already own the hold's real boundaries.
+
+The `deltaTime` all of this counts in is wall time between main-thread ticks, measured tick-start to tick-start in `MainSystem`. It is deliberately **not** `ThreadedSystem.LastTickMs`, which is sampled before the pacing sleep and therefore measures the work a tick did rather than the time that passed — at the main thread's 120Hz target with a cheap tick, an order of magnitude short, which is enough to push the repeat delay out past five real seconds.
 
 All condition types are tagged with `[A_XSDType]` and their parameters with `[A_XSDElementProperty]`, so they appear in the generated XSD schemas and are fully declarable from XML.
 
