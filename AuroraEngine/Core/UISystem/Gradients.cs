@@ -81,6 +81,8 @@ namespace ArctisAurora.Core.UISystem
     // copied into every row that uses it.
     public static class Gradients
     {
+        private static readonly Diagnostics.LogChannel Log = Diagnostics.LogChannel.For("UI");
+
         public const int MaxStops = 8;
 
         // Slot 0 is reserved and never named, so a zeroed ControlData row is gradient-free.
@@ -109,7 +111,7 @@ namespace ArctisAurora.Core.UISystem
             // Hosts with no gradients of their own ship no file at all.
             if (!VirtualFileSystem.TryResolveFile("XML/Documents/Gradients.xml", out string path))
             {
-                Console.WriteLine("No Gradients.xml found - no gradients loaded.");
+                Log.Debug($"no Gradients.xml found — no gradients loaded.");
                 return true;
             }
 

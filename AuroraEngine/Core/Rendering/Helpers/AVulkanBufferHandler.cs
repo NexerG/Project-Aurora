@@ -21,6 +21,8 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 
     internal static unsafe class AVulkanBufferHandler
     {
+        private static readonly Core.Diagnostics.LogChannel Log = Core.Diagnostics.LogChannel.For("Renderer");
+
         internal static void CreateTextureBuffer(ref Silk.NET.Vulkan.Image _textureImage, ref DeviceMemory _textureBufferMemory, string pathToImage, Format imageFormat, ref Queue queue, ref CommandPool cPool)
         {
             using var _image = Image.Load<Rgba32>(pathToImage);
@@ -460,10 +462,11 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
                     PCommandBuffers = &_localCommandBuffer
                 };
                 
-                if (Renderer.vk.QueueSubmit(queue, 1, ref _subInfo, default) != Result.Success
-                    || Renderer.vk.QueueWaitIdle(queue) != Result.Success)
+                Result submitted = Renderer.vk.QueueSubmit(queue, 1, ref _subInfo, default);
+                Result waited = submitted == Result.Success ? Renderer.vk.QueueWaitIdle(queue) : submitted;
+                if (submitted != Result.Success || waited != Result.Success)
                 {
-                    Console.WriteLine("Exception thrown");
+                    Log.Error($"'copy buffer' submit failed — submit {submitted}, wait {waited}");
                     throw new Exception("failed to submit 'copy buffer' commands");
                 }
                 Renderer.vk.FreeCommandBuffers(Renderer.logicalDevice, commandPool, 1, ref _localCommandBuffer);
@@ -550,10 +553,11 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
                     CommandBufferCount = 1,
                     PCommandBuffers = _cptr,
                 };
-                if (Renderer.vk!.QueueSubmit(queue, 1, ref submitInfo, default) != Result.Success
-                    || Renderer.vk!.QueueWaitIdle(queue) != Result.Success)
+                Result submitted = Renderer.vk!.QueueSubmit(queue, 1, ref submitInfo, default);
+                Result waited = submitted == Result.Success ? Renderer.vk!.QueueWaitIdle(queue) : submitted;
+                if (submitted != Result.Success || waited != Result.Success)
                 {
-                    Console.WriteLine("Exception thrown");
+                    Log.Error($"single time commands submit failed — submit {submitted}, wait {waited}");
                     throw new Exception("failed to submit single time commands");
                 }
 

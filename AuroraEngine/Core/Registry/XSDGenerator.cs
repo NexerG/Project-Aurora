@@ -125,6 +125,8 @@ namespace ArctisAurora.Core.Registry
 
     public static class XSDGenerator
     {
+        private static readonly Diagnostics.LogChannel Log = Diagnostics.LogChannel.For("XSD");
+
         #region ---- QUICK ACCESS ----
         // dictionaries
         public static readonly Dictionary<Type, string> typeMap = BuildTypeMap();
@@ -327,7 +329,7 @@ namespace ArctisAurora.Core.Registry
                 string fp = BuildCategoryFingerprint(category.Key, category.Value, generalAsm);
                 if (!NeedsRegeneration(fileName, fp))
                 {
-                    Console.WriteLine($"[XSD] Skipping {fileName} — unchanged");
+                    Log.Debug($"skipping {fileName} — unchanged");
                     continue;
                 }
 
@@ -389,7 +391,7 @@ namespace ArctisAurora.Core.Registry
             string fp = BuildAllTypesFingerprint(generalAsm);
             if (!NeedsRegeneration(fileName, fp))
             {
-                Console.WriteLine($"[XSD] Skipping {fileName} — unchanged");
+                Log.Debug($"skipping {fileName} — unchanged");
                 return;
             }
 
@@ -454,7 +456,7 @@ namespace ArctisAurora.Core.Registry
             string fp = BuildActionFingerprint(generalAsm);
             if (!NeedsRegeneration(fileName, fp))
             {
-                Console.WriteLine($"[XSD] Skipping {fileName} — unchanged");
+                Log.Debug($"skipping {fileName} — unchanged");
                 return;
             }
 
@@ -778,7 +780,7 @@ namespace ArctisAurora.Core.Registry
             string path = Path.Combine(Paths.XMLSCHEMAS, fileName);
             using var writer = XmlWriter.Create(path, settings);
             schema.Write(writer);
-            Console.WriteLine($"{fileName} XSD updated");
+            Log.Info($"{fileName} updated");
         }
 
         #region MapBuilders

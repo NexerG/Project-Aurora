@@ -1,4 +1,6 @@
-﻿using ArctisAurora.Core.Registry;
+﻿using ArctisAurora.Core.Diagnostics;
+using ArctisAurora.Core.Registry;
+using System.Diagnostics;
 using System.Reflection;
 using System.Xml.Linq;
 
@@ -24,6 +26,11 @@ namespace ArctisAurora.EngineWork
     [A_XSDType("BootstrapSequence", "Bootstrap")]
     internal static class Bootstrapper
     {
+        private static readonly LogChannel Log = LogChannel.For("Bootstrap");
+
+        // A step below this is not worth a line of its own.
+        private const double slowStepMs = 5.0;
+
         [A_XSDElementProperty("Phase", "Bootstrap")]
         public static List<BootstrapPhase> phases { get; set; } = new();
 
@@ -67,24 +74,42 @@ namespace ArctisAurora.EngineWork
         {
             if (!_phases.TryGetValue(phaseName, out List<string> steps))
             {
-                Console.WriteLine($"[Bootstrap] Phase '{phaseName}' not found.");
+                Log.Error($"phase '{phaseName}' not found.");
                 return false;
             }
+
+            long phaseStart = Stopwatch.GetTimestamp();
+            int ran = 0;
+
             foreach (string stepName in steps)
             {
                 if (!_actions.TryGetValue(stepName, out MethodInfo method))
                 {
-                    Console.WriteLine($"[Bootstrap] Action '{stepName}' not found — skipping.");
+                    Log.Warn($"action '{stepName}' not found — skipping.");
                     continue;
                 }
-                Console.WriteLine($"[Bootstrap] Running: {stepName}");
-                if (method.Invoke(null, null) is false)
+
+                // Printed before the call, so a boot that wedges names the step it wedged in.
+                Log.Info($"running: {stepName}");
+
+                long stepStart = Stopwatch.GetTimestamp();
+                bool failed = method.Invoke(null, null) is false;
+                double ms = ElapsedMs(stepStart);
+                ran++;
+
+                if (ms >= slowStepMs) Log.Info($"{stepName} — {ms:F0}ms");
+
+                if (failed)
                 {
-                    Console.WriteLine($"[Bootstrap] Step '{stepName}' reported failure — phase '{phaseName}' halted.");
+                    Log.Error($"step '{stepName}' reported failure — phase '{phaseName}' halted.");
                     return false;
                 }
             }
+
+            Log.Info($"phase '{phaseName}' — {ElapsedMs(phaseStart):F0}ms, {ran} steps");
             return true;
         }
+
+        private static double ElapsedMs(long since) => (Stopwatch.GetTimestamp() - since) * 1000.0 / Stopwatch.Frequency;
     }
 }

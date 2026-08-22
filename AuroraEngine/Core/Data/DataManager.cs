@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Threading;
 using ArctisAurora.Core.Filing.Serialization;
@@ -13,6 +14,8 @@ namespace ArctisAurora.Core.Data
     // structural changes across every pool between frames.
     public static class DataManager
     {
+        private static readonly LogChannel Log = LogChannel.For("Data");
+
         private static readonly List<DataPool> _pools = new();
         private static readonly Dictionary<string, DataPool> _byName = new();
 
@@ -114,13 +117,13 @@ namespace ArctisAurora.Core.Data
                         }
                         catch
                         {
-                            Console.WriteLine($"[DataManager] Sort action '{actionName}' has an incompatible signature.");
+                            Log.Warn($"sort action '{actionName}' has an incompatible signature.");
                             return null;
                         }
                     }
                 }
             }
-            Console.WriteLine($"[DataManager] Sort action '{actionName}' not found — pool will keep insertion order.");
+            Log.Warn($"sort action '{actionName}' not found — pool will keep insertion order.");
             return null;
         }
     }

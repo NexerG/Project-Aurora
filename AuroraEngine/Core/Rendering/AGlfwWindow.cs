@@ -12,6 +12,8 @@ namespace ArctisAurora.EngineWork.Rendering
 {
     internal unsafe class AGlfwWindow
     {
+        private static readonly Core.Diagnostics.LogChannel Log = Core.Diagnostics.LogChannel.For("Renderer");
+
         //GLFW window variables
         internal static Glfw _glfw = null!;
         internal WindowHandle* handle;
@@ -196,7 +198,7 @@ namespace ArctisAurora.EngineWork.Rendering
                 return monitors[i];
             }
 
-            Console.WriteLine($"[Renderer] no monitor matching '{preferred}' — using {MonitorName(primary)}.");
+            Log.Warn($"no monitor matching '{preferred}' — using {MonitorName(primary)}.");
             return primary;
         }
 

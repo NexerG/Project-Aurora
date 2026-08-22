@@ -4,10 +4,12 @@ namespace ArctisAurora.Core.UISystem.Actions
 {
     public class UIActions
     {
+        private static readonly Diagnostics.LogChannel Log = Diagnostics.LogChannel.For("UI");
+
         [A_XSDActionDependency("TestAction", "UI")]
         public static void TestAction()
         {
-            Console.WriteLine("TestAction executed!");
+            Log.Debug($"TestAction executed");
         }
     }
 }

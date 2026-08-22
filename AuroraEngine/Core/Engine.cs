@@ -16,6 +16,8 @@ namespace ArctisAurora.EngineWork
 {
     public unsafe class Engine
     {
+        private static readonly Core.Diagnostics.LogChannel Log = Core.Diagnostics.LogChannel.For("Engine");
+
         public static bool isDebug
         {
             get
@@ -74,7 +76,7 @@ namespace ArctisAurora.EngineWork
         public Engine()
         {
             engineInstance = this;
-            Console.WriteLine($"Starting main Thread at ID: {GetCurrentThreadId()}");
+            Log.Info($"starting main thread at OS id {GetCurrentThreadId()}");
         }
 
         public void Init(bool startImmediately)

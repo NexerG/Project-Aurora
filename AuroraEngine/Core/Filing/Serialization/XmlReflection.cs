@@ -11,6 +11,8 @@ namespace ArctisAurora.Core.Filing.Serialization
     //   - nested element <-> complex [A_XSDType] member, or an entry in a List<> child field
     public static class XmlReflection
     {
+        private static readonly Diagnostics.LogChannel Log = Diagnostics.LogChannel.For("XML");
+
         // tolerant: a value that no longer converts is warned about and left alone, instead of throwing.
         public static void ApplyAttributes(XElement element, object node, bool tolerant = false)
         {
@@ -29,7 +31,7 @@ namespace ArctisAurora.Core.Filing.Serialization
                 }
                 catch (Exception) when (tolerant)
                 {
-                    Console.WriteLine($"[XML] '{attribute.Value}' is not a valid {memberType.Name} for "
+                    Log.Warn($"'{attribute.Value}' is not a valid {memberType.Name} for "
                         + $"{meta.Name} on {node.GetType().Name} — keeping {GetMember(member, node)}.");
                     continue;
                 }

@@ -1,4 +1,5 @@
-﻿using ArctisAurora.Core.Registry;
+﻿using ArctisAurora.Core.Diagnostics;
+using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Rendering.Helpers;
 using ArctisAurora.Core.Rendering.Modules;
 using ArctisAurora.EngineWork.Rendering.Helpers;
@@ -34,6 +35,9 @@ namespace ArctisAurora.EngineWork.Rendering
 
     internal unsafe class Renderer
     {
+        private static readonly LogChannel Log = LogChannel.For("Renderer");
+        private static readonly LogChannel Validation = LogChannel.For("Vulkan");
+
         internal static Renderer renderer = null!;
         internal static QueueAllocator queueAllocator = null!;
         // driver
@@ -423,9 +427,10 @@ namespace ArctisAurora.EngineWork.Rendering
             // Create Vulkan instance
             fixed (Instance* instancePtr = &instance)
             {
-                if (vk.CreateInstance(&createInfo, null, instancePtr) != Result.Success)
+                Result created = vk.CreateInstance(&createInfo, null, instancePtr);
+                if (created != Result.Success)
                 {
-                    Console.WriteLine("Failed to create Vulkan instance.");
+                    Log.Error($"failed to create the Vulkan instance — {created}");
                 }
             }
 
@@ -443,8 +448,9 @@ namespace ArctisAurora.EngineWork.Rendering
 
             string msg = Marshal.PtrToStringAnsi((nint)pCallbackData->PMessage);
             string stack = new System.Diagnostics.StackTrace(true).ToString();
-            Console.WriteLine($"[Vulkan {messageSeverity}] {msg}");
-            Console.WriteLine(stack);
+
+            LogLevel level = messageSeverity >= DebugUtilsMessageSeverityFlagsEXT.ErrorBitExt ? LogLevel.Error : LogLevel.Warn;
+            LogSpool.WriteText(Validation, level, "", 0, $"{messageTypes} — {msg}\r\n{stack}");
             return Vk.False;
         }
 
@@ -514,7 +520,7 @@ namespace ArctisAurora.EngineWork.Rendering
                 gpu = devices[i];
                 return;
             }
-            Console.WriteLine($"[Renderer] no device matching '{preferred}' — using {DeviceName(gpu)}.");
+            Log.Warn($"no device matching '{preferred}' — using {DeviceName(gpu)}.");
         }
 
         private string DeviceName(PhysicalDevice device)
@@ -715,6 +721,8 @@ namespace ArctisAurora.EngineWork.Rendering
         [A_XSDActionDependency("Renderer.RequestSwapchainRebuild", "Settings")]
         internal static void RequestSwapchainRebuild()
         {
+            Log.Info($"swapchain rebuild requested by a setting across {Engine.windows.Count} window(s)");
+
             foreach (RenderWindow window in Engine.windows.Values)
                 window.os.frameBufferResized = true;
         }
@@ -873,6 +881,7 @@ namespace ArctisAurora.EngineWork.Rendering
             // update renderer if needed before draw
             if (r == Result.ErrorOutOfDateKhr)
             {
+                Log.Info($"rebuilding swapchain — acquire returned out-of-date");
                 RecreateSwapchain(window);
                 return;
             }
@@ -888,11 +897,17 @@ namespace ArctisAurora.EngineWork.Rendering
             for (int i = 0; i < window.modules.Length; i++)
             {
                 if (window.modules[i].isDirty[imageIndex] || window.modules[i].HasPendingWork((int)imageIndex))
+                {
+                    Log.Every(1000).Hot($"module {i} re-recording image {imageIndex} — dirty {window.modules[i].isDirty[imageIndex]}, pending {window.modules[i].HasPendingWork((int)imageIndex)}");
                     window.modules[i].UpdateModule((int)imageIndex);
+                }
                 window.modules[i].UpdateFrameData((int)imageIndex);
             }
             if (window.compositor.isDirty[imageIndex])
+            {
+                Log.Every(1000).Hot($"compositor re-recording image {imageIndex}");
                 window.compositor.UpdateModule((int)imageIndex);
+            }
 
             // submit command buffer
             SubmitInfo _submitInfo = new SubmitInfo()
@@ -987,6 +1002,7 @@ namespace ArctisAurora.EngineWork.Rendering
             r = window.swapchainKHR.QueuePresent(presentQueue, ref _presentInfo);
             if (r == Result.ErrorOutOfDateKhr || r == Result.SuboptimalKhr || window.os.frameBufferResized)
             {
+                Log.Info($"rebuilding swapchain — {(window.os.frameBufferResized ? "resize or request" : $"present returned {r}")}");
                 window.os.frameBufferResized = false;
                 RecreateSwapchain(window);
             }

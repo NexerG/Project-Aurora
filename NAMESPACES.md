@@ -12,6 +12,16 @@ ArctisAurora.Core.Data.Commands -> C:\Projects-Repositories\Aurora\Project-Auror
 ArctisAurora.Core.Data.Commands -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\Commands\CommandArena.cs
 ArctisAurora.Core.Data.Commands -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\Commands\CommandLane.cs
 ArctisAurora.Core.Data.Commands -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Data\Commands\SystemCommand.cs
+ArctisAurora.Core.Diagnostics -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Diagnostics\LogChannel.cs
+ArctisAurora.Core.Diagnostics -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Diagnostics\LoggingSettings.cs
+ArctisAurora.Core.Diagnostics -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Diagnostics\LogHandlers.cs
+ArctisAurora.Core.Diagnostics -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Diagnostics\LogLane.cs
+ArctisAurora.Core.Diagnostics -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Diagnostics\LogLevel.cs
+ArctisAurora.Core.Diagnostics -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Diagnostics\LogSpool.cs
+ArctisAurora.Core.Diagnostics -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Diagnostics\LogWriter.cs
+ArctisAurora.Core.Diagnostics.Sinks -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Diagnostics\Sinks\ConsoleSink.cs
+ArctisAurora.Core.Diagnostics.Sinks -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Diagnostics\Sinks\FileSink.cs
+ArctisAurora.Core.Diagnostics.Sinks -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Diagnostics\Sinks\FlightRecorder.cs
 ArctisAurora.Core.ECS.EngineEntity -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\ECS\EngineEntity\Entity.cs
 ArctisAurora.Core.ECS.EngineEntity -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\ECS\EngineEntity\LightSourceEntity.cs
 ArctisAurora.Core.Filing -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\FileObject.cs

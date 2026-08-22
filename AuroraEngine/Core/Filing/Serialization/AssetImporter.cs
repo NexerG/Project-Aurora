@@ -10,6 +10,8 @@ namespace ArctisAurora.Core.Filing.Serialization
 {
     public unsafe static class AssetImporter
     {
+        private static readonly Diagnostics.LogChannel Log = Diagnostics.LogChannel.For("Assets");
+
         // Bump to invalidate every stamp and force a re-bake.
         private const int importerVersion = 1;
 
@@ -73,12 +75,12 @@ namespace ArctisAurora.Core.Filing.Serialization
             string sourcePath = ResolveSystemFont(font.source);
             if (sourcePath == null)
             {
-                Console.WriteLine($"Font import '{font.source}': no such font installed, skipped.");
+                Log.Warn($"font import '{font.source}': no such font installed, skipped.");
                 return;
             }
             if (!charsets.TryGetValue(font.charset, out string chars))
             {
-                Console.WriteLine($"Font import '{font.source}': unknown charset '{font.charset}', skipped.");
+                Log.Warn($"font import '{font.source}': unknown charset '{font.charset}', skipped.");
                 return;
             }
 
@@ -94,7 +96,7 @@ namespace ArctisAurora.Core.Filing.Serialization
 
             if (IsUpToDate(baseName, wanted)) return;
 
-            Console.WriteLine($"Font import '{font.source}': baking {chars.Length} glyphs at {font.glyphSize}px...");
+            Log.Info($"font import '{font.source}': baking {chars.Length} glyphs at {font.glyphSize}px...");
             ClearStamp(baseName);
             ImportFont(chars, font.source, font.glyphSize, Paths.FONTS);
             WriteStamp(baseName, wanted);

@@ -5,6 +5,8 @@ namespace ArctisAurora.EngineWork.Rendering
 {
     internal static class DisplayNames
     {
+        private static readonly Core.Diagnostics.LogChannel Log = Core.Diagnostics.LogChannel.For("Renderer");
+
         private const int ENUM_CURRENT_SETTINGS = -1;
         private const uint EDD_GET_DEVICE_INTERFACE_NAME = 0x00000001;
         private const uint DISPLAY_DEVICE_ATTACHED_TO_DESKTOP = 0x00000001;
@@ -93,7 +95,7 @@ namespace ArctisAurora.EngineWork.Rendering
             }
             catch (Exception e)
             {
-                Console.WriteLine($"[Renderer] could not read the panel name for {adapterName} — {e.Message}");
+                Log.Warn($"could not read the panel name for {adapterName} — {e.Message}");
             }
 
             string[] parts = monitor.deviceId.Split('#');

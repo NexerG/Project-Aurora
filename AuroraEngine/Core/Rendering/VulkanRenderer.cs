@@ -25,6 +25,8 @@ namespace ArctisAurora.EngineWork.Rendering
     [Obsolete("this class is in the deprecation phase", false)]
     internal unsafe class VulkanRenderer
     {
+        private static readonly Core.Diagnostics.LogChannel Log = Core.Diagnostics.LogChannel.For("Vulkan");
+
         internal static VulkanRenderer _rendererInstance = null;
         internal static ERendererTypes _rendererType;
         internal int _width = 1280;
@@ -166,9 +168,10 @@ namespace ArctisAurora.EngineWork.Rendering
             // Create Vulkan instance
             fixed (Instance* instancePtr = &_instance)
             {
-                if (_vulkan.CreateInstance(&createInfo, null, instancePtr) != Result.Success)
+                Result created = _vulkan.CreateInstance(&createInfo, null, instancePtr);
+                if (created != Result.Success)
                 {
-                    Console.WriteLine("Failed to create Vulkan instance.");
+                    Log.Error($"failed to create the Vulkan instance — {created}");
                 }
             }
 
@@ -210,7 +213,7 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal uint DebugCallback(DebugUtilsMessageSeverityFlagsEXT messageSeverity, DebugUtilsMessageTypeFlagsEXT messageTypes, DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
         {
-            Console.WriteLine($"validation layer:" + Marshal.PtrToStringAnsi((nint)pCallbackData->PMessage));
+            Log.Warn($"{Marshal.PtrToStringAnsi((nint)pCallbackData->PMessage)}");
             return Vk.False;
         }
 

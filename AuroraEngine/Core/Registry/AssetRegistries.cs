@@ -34,6 +34,8 @@ namespace ArctisAurora.EngineWork.Registry
     [A_XSDType("AssetRegistries", "AssetRegistry")]
     public class AssetRegistries : IXMLParser<AssetRegistries>
     {
+        private static readonly Core.Diagnostics.LogChannel Log = Core.Diagnostics.LogChannel.For("Assets");
+
         [A_XSDElementProperty("Dictionary", "AssetRegistry")]
         public static List<AssetRegistryEntry> registries { get; set; } = null!;
 
@@ -96,7 +98,7 @@ namespace ArctisAurora.EngineWork.Registry
         private static void RequestLoad(Type type, string name)
         {
             if (reportedMisses.Add(type.Name + ":" + name))
-                Console.WriteLine($"Asset '{name}' ({type.Name}) is not loaded - falling back to default.");
+                Log.Warn($"asset '{name}' ({type.Name}) is not loaded — falling back to default.");
         }
 
         public static AssetRegistries ParseXML(string xmlName)

@@ -1,28 +1,30 @@
-﻿using ArctisAurora.Core.Registry;
+﻿using ArctisAurora.Core.Diagnostics;
+using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
 
 namespace AuroraEditor.EditorProgram.UIFunctions
 {
     public class Decorations
     {
+        private static readonly LogChannel Log = LogChannel.For("UI");
 
         [A_XSDActionDependency("ExitApplication", category: "Input")]
         public static void ExitApplication()
         {
-            Console.WriteLine("Exiting application...");
+            Log.Info($"exiting application");
             Environment.Exit(0);
         }
 
         [A_XSDActionDependency("DummyHover", category:"Input")]
         public static void DummyHover()
         {
-            Console.WriteLine("Hovering over button");
+            Log.Debug($"hovering over button");
         }
 
         [A_XSDActionDependency("DummyKeyPress", category:"Input")]
         public static void DummyKeyPress()
         {
-            Console.WriteLine($"Last character input was: {InputHandler.lastCharInput}");
+            Log.Debug($"last character input was '{InputHandler.lastCharInput}'");
         }
     }
 }

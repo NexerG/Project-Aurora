@@ -12,6 +12,11 @@
       <xs:enumeration value="Setting" />
       <xs:enumeration value="SettingCategory" />
       <xs:enumeration value="UserSettings" />
+      <xs:enumeration value="LogConsole" />
+      <xs:enumeration value="LogFile" />
+      <xs:enumeration value="LogRecorder" />
+      <xs:enumeration value="Logging" />
+      <xs:enumeration value="LogLevel" />
       <xs:enumeration value="DoubleClick" />
       <xs:enumeration value="KeyRepeat" />
       <xs:enumeration value="Input" />
@@ -152,6 +157,11 @@
       <xs:enumeration value="Setting" />
       <xs:enumeration value="SettingCategory" />
       <xs:enumeration value="UserSettings" />
+      <xs:enumeration value="LogConsole" />
+      <xs:enumeration value="LogFile" />
+      <xs:enumeration value="LogRecorder" />
+      <xs:enumeration value="Logging" />
+      <xs:enumeration value="LogLevel" />
       <xs:enumeration value="DoubleClick" />
       <xs:enumeration value="KeyRepeat" />
       <xs:enumeration value="Input" />

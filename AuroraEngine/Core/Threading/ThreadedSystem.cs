@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Reflection;
 using ArctisAurora.Core.Data;
 using ArctisAurora.Core.Data.Commands;
+using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Registry;
 
 namespace ArctisAurora.Core.Threading
@@ -17,6 +18,8 @@ namespace ArctisAurora.Core.Threading
     // across ticks — the old AutoResetEvent handshake used to provide that for free.
     public abstract class ThreadedSystem
     {
+        private static readonly LogChannel Log = LogChannel.For("Threading");
+
         [ThreadStatic] private static ThreadedSystem? _current;
 
         // Which system is running on the calling thread, or null on a thread that is not one of
@@ -146,27 +149,40 @@ namespace ArctisAurora.Core.Threading
         private void Loop()
         {
             _current = this;
-            Console.WriteLine($"Starting {Name} system on managed thread {Environment.CurrentManagedThreadId}");
-            OnStart();
+            Log.Info($"starting {Name} on managed thread {Environment.CurrentManagedThreadId}");
 
-            while (_running)
+            try
             {
-                long tickStart = Stopwatch.GetTimestamp();
+                OnStart();
 
-                Volatile.Read(ref _epoch);
+                while (_running)
+                {
+                    long tickStart = Stopwatch.GetTimestamp();
 
-                Drain();
-                Tick();
-                Publish();
+                    Volatile.Read(ref _epoch);
 
-                Volatile.Write(ref _epoch, _epoch + 1);
-                Volatile.Write(ref _lastTickMs, ElapsedMs(tickStart));
+                    Drain();
+                    Tick();
+                    Publish();
 
-                Pace(tickStart);
+                    Volatile.Write(ref _epoch, _epoch + 1);
+                    Volatile.Write(ref _lastTickMs, ElapsedMs(tickStart));
+
+                    Pace(tickStart);
+                }
+
+                OnStop();
             }
-
-            OnStop();
-            _current = null;
+            catch (Exception exception)
+            {
+                Log.Exception(LogLevel.Fatal, exception, $"{Name} died on tick {Epoch}");
+                LogSpool.DumpRecorder();
+                throw;
+            }
+            finally
+            {
+                _current = null;
+            }
         }
 
         protected abstract void Tick();

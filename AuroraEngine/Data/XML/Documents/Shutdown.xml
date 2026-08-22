@@ -13,6 +13,7 @@
 	<Phase Name="Commit">
 		<Step Action="Notes.SaveEdited"/>
 		<Step Action="Settings.SaveAll"/>
+		<Step Action="Logging.Flush"/>
 	</Phase>
 
 </ShutdownSequence>

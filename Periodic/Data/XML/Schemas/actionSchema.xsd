@@ -28,6 +28,7 @@
       <xs:enumeration value="EntityRegistry.ParseXML" />
       <xs:enumeration value="Settings.LoadAll" />
       <xs:enumeration value="AssetImporter.RunImports" />
+      <xs:enumeration value="Logging.Configure" />
       <xs:enumeration value="DataManager.ParseXML" />
       <xs:enumeration value="Engine.SystemSetup" />
       <xs:enumeration value="Engine.InitWindowing" />
@@ -56,6 +57,7 @@
       <xs:enumeration value="Notes.SettleUnnamed" />
       <xs:enumeration value="Notes.SaveEdited" />
       <xs:enumeration value="Settings.SaveAll" />
+      <xs:enumeration value="Logging.Flush" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="UI">

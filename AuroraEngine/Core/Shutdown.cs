@@ -1,5 +1,7 @@
+using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Actions;
+using System.Diagnostics;
 using System.Reflection;
 using System.Xml.Linq;
 
@@ -28,6 +30,10 @@ namespace ArctisAurora.EngineWork
     [A_XSDType("ShutdownSequence", "Shutdown")]
     internal static class Shutdown
     {
+        private static readonly LogChannel Log = LogChannel.For("Shutdown");
+
+        private const double slowStepMs = 5.0;
+
         [A_XSDElementProperty("Phase", "Shutdown")]
         public static List<ShutdownPhase> phases { get; set; } = new();
 
@@ -106,24 +112,41 @@ namespace ArctisAurora.EngineWork
         {
             if (!_phases.TryGetValue(phaseName, out List<string> steps))
             {
-                Console.WriteLine($"[Shutdown] Phase '{phaseName}' not found.");
+                Log.Error($"phase '{phaseName}' not found.");
                 return false;
             }
+
+            long phaseStart = Stopwatch.GetTimestamp();
+            int ran = 0;
+
             foreach (string stepName in steps)
             {
                 if (!_actions.TryGetValue(stepName, out MethodInfo method))
                 {
-                    Console.WriteLine($"[Shutdown] Action '{stepName}' not found — skipping.");
+                    Log.Warn($"action '{stepName}' not found — skipping.");
                     continue;
                 }
-                Console.WriteLine($"[Shutdown] Running: {stepName}");
-                if (method.Invoke(null, null) is false)
+
+                Log.Info($"running: {stepName}");
+
+                long stepStart = Stopwatch.GetTimestamp();
+                bool failed = method.Invoke(null, null) is false;
+                double ms = ElapsedMs(stepStart);
+                ran++;
+
+                if (ms >= slowStepMs) Log.Info($"{stepName} — {ms:F0}ms");
+
+                if (failed)
                 {
-                    Console.WriteLine($"[Shutdown] Step '{stepName}' reported failure — phase '{phaseName}' halted.");
+                    Log.Error($"step '{stepName}' reported failure — phase '{phaseName}' halted.");
                     return false;
                 }
             }
+
+            Log.Info($"phase '{phaseName}' — {ElapsedMs(phaseStart):F0}ms, {ran} steps");
             return true;
         }
+
+        private static double ElapsedMs(long since) => (Stopwatch.GetTimestamp() - since) * 1000.0 / Stopwatch.Frequency;
     }
 }

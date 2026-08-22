@@ -1004,6 +1004,8 @@ namespace ArctisAurora.EngineWork
     [A_XSDType("KeybindMap", "Input", AllowedChildren = typeof(IKeybindMapChild), Description = "Root container for keybind definitions")]
     public unsafe class InputHandler : IXMLParser<InputHandler>
     {
+        private static readonly Core.Diagnostics.LogChannel Log = Core.Diagnostics.LogChannel.For("Input");
+
         public static InputHandler instance { get; set; } = null!;
 
         public KeyStateTracker keyTracker = new KeyStateTracker();
@@ -1201,7 +1203,7 @@ namespace ArctisAurora.EngineWork
 
             if (condition == null)
             {
-                Console.WriteLine($"Unknown condition type: {typeName}");
+                Log.Warn($"unknown condition type '{typeName}'");
                 return null;
             }
 

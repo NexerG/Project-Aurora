@@ -4,6 +4,8 @@ namespace ArctisAurora.Core.Filing.Serialization
 {
     internal class MeshImporter
     {
+        private static readonly Diagnostics.LogChannel Log = Diagnostics.LogChannel.For("Assets");
+
         public static MeshImporter Instance = null!;
 
         public MeshImporter() 
@@ -19,7 +21,7 @@ namespace ArctisAurora.Core.Filing.Serialization
             {
                 return scene;
             }
-            else Console.WriteLine("Failed to load FBX file");
+            else Log.Error($"failed to load FBX file '{filePath}'");
             return null;
         }
     }

@@ -1,9 +1,13 @@
+using ArctisAurora.Core.Diagnostics;
+
 namespace ArctisAurora.Core.Data.Commands
 {
     // Turns one drained command back into a write on the owning pool. Runs on the owner's thread
     // only, which is what makes writing the column in place safe.
     public static class CommandApplier
     {
+        private static readonly LogChannel Log = LogChannel.For("Data");
+
         public static void Apply(in SystemCommand cmd, CommandArena arena)
         {
             DataPool pool = DataManager.Get(cmd.PoolId);
@@ -30,7 +34,7 @@ namespace ArctisAurora.Core.Data.Commands
 
             if (cmd.Count < 1 || dense + cmd.Count > pool.Count)
             {
-                Console.WriteLine($"[CommandApplier] {cmd.Op} from system {cmd.Producer} on pool '{pool.Name}' spans dense [{dense},{dense + cmd.Count - 1}] but the pool holds {pool.Count} — dropped.");
+                Log.Warn($"{cmd.Op} from system {cmd.Producer} on pool '{pool.Name}' spans dense [{dense},{dense + cmd.Count - 1}] but the pool holds {pool.Count} — dropped.");
                 return;
             }
 

@@ -18,6 +18,8 @@ namespace ArctisAurora.Core.Registry.Assets
     [A_XSDType("SamplerAsset", "Rendering")]
     public unsafe class SamplerAsset : AbstractAsset
     {
+        private static readonly Diagnostics.LogChannel Log = Diagnostics.LogChannel.For("Assets");
+
         [A_XSDElementProperty("Name", "Rendering")]
         public string name { get; set; } = "default";
 
@@ -61,7 +63,7 @@ namespace ArctisAurora.Core.Registry.Assets
 
         public void LoadDefault()
         {
-            Console.WriteLine("Failed to load default Sampler asset - Fault NOT IMPLEMENTED");
+            Log.Error($"failed to load the default sampler asset — fault handling NOT IMPLEMENTED");
         }
 
         public void LoadAll(string path)

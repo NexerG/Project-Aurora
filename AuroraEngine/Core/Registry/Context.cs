@@ -30,6 +30,7 @@ namespace ArctisAurora.Core.Registry
     [A_XSDType("ActiveContext", "Context")]
     public sealed class Context
     {
+        private static readonly Diagnostics.LogChannel Log = Diagnostics.LogChannel.For("Context");
 
         public static readonly Dictionary<string, object> activeContexts =
             AssetRegistries.GetRegistryByName<string, object>("ActiveContexts");
@@ -145,7 +146,7 @@ namespace ArctisAurora.Core.Registry
                     Type? valueType = AnyXMLType.FindType(definition.type);
                     if (valueType == null)
                     {
-                        Console.WriteLine($"[Context] '{definition.name}' names unknown type '{definition.type}' — skipping.");
+                        Log.Warn($"'{definition.name}' names unknown type '{definition.type}' — skipping.");
                         continue;
                     }
 

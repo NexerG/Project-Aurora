@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Threading;
 
 namespace ArctisAurora.Core.Data
@@ -17,6 +18,8 @@ namespace ArctisAurora.Core.Data
     // it only runs from Allocate (control-lifecycle code, never mid-span-iteration).
     public sealed class DataPool
     {
+        private static readonly LogChannel Log = LogChannel.For("Data");
+
         public ushort Id { get; }
         public string Name { get; }
         public bool Ordered { get; }
@@ -475,7 +478,7 @@ namespace ArctisAurora.Core.Data
             IReadOnlyList<int> order = SortProvider!(this);
             if (order.Count != _count)
             {
-                Console.WriteLine($"[DataPool] '{Name}' resequence order count {order.Count} != live count {_count} — skipping.");
+                Log.Warn($"'{Name}' resequence order count {order.Count} != live count {_count} — skipping.");
                 return false;
             }
 

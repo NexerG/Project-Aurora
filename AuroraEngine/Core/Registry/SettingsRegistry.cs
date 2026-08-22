@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Filing.Serialization;
 using System.Collections;
 using System.Globalization;
@@ -24,6 +25,8 @@ namespace ArctisAurora.Core.Registry
     // manifest across the mounts and then from the application's write root.
     public static class SettingsRegistry
     {
+        private static readonly LogChannel Log = LogChannel.For("Settings");
+
         private const string settingsDir = "XML/Settings";
         private const string versionAttribute = "SettingsVersion";
 
@@ -39,6 +42,8 @@ namespace ArctisAurora.Core.Registry
 
         // Folder the application's own settings are read from last and written to.
         public static void SetWriteRoot(string path) => writeRoot = path;
+
+        public static string? WriteRoot => writeRoot;
 
         public static T Get<T>() where T : ISettingsGroup
         {
@@ -103,10 +108,10 @@ namespace ArctisAurora.Core.Registry
             {
                 if (!Actions().TryGetValue(action, out MethodInfo method))
                 {
-                    Console.WriteLine($"[Settings] OnChanged action '{action}' not found — skipping.");
+                    Log.Warn($"OnChanged action '{action}' not found — skipping.");
                     continue;
                 }
-                Console.WriteLine($"[Settings] Running: {action}");
+                Log.Info($"running: {action}");
                 method.Invoke(null, null);
             }
         }
@@ -164,7 +169,7 @@ namespace ArctisAurora.Core.Registry
                 Type type = AnyXMLType.FindType(element.Name.LocalName);
                 if (type == null || !groups.TryGetValue(type, out ISettingsGroup group))
                 {
-                    Console.WriteLine($"[Settings] '{element.Name.LocalName}' in {Path.GetFileName(path)} is not a settings group — skipping.");
+                    Log.Warn($"'{element.Name.LocalName}' in {Path.GetFileName(path)} is not a settings group — skipping.");
                     continue;
                 }
 
@@ -182,7 +187,7 @@ namespace ArctisAurora.Core.Registry
             XAttribute stamp = element.Attribute(versionAttribute);
             if (stamp == null || !int.TryParse(stamp.Value, out int from) || from >= migratable.version) return;
 
-            Console.WriteLine($"[Settings] migrating {group.GetType().Name} from version {from} to {migratable.version}.");
+            Log.Info($"migrating {group.GetType().Name} from version {from} to {migratable.version}.");
             migratable.Migrate(from, element);
             element.SetAttributeValue(versionAttribute, migratable.version);
         }
@@ -198,13 +203,13 @@ namespace ArctisAurora.Core.Registry
                 Setting setting = category.Find(name);
                 if (setting == null)
                 {
-                    Console.WriteLine($"[Settings] {category.GetType().Name} declares no setting called '{name}' — skipping.");
+                    Log.Warn($"{category.GetType().Name} declares no setting called '{name}' — skipping.");
                     continue;
                 }
 
                 if (fromWriteRoot && setting.scope == SettingScope.App)
                 {
-                    Console.WriteLine($"[Settings] '{name}' on {category.GetType().Name} is App-scoped — ignoring the user's value.");
+                    Log.Warn($"'{name}' on {category.GetType().Name} is App-scoped — ignoring the user's value.");
                     continue;
                 }
 
@@ -269,7 +274,7 @@ namespace ArctisAurora.Core.Registry
         {
             if (writeRoot == null)
             {
-                Console.WriteLine("[Settings] No write root — settings not saved.");
+                Log.Warn($"no write root — settings not saved.");
                 return false;
             }
 

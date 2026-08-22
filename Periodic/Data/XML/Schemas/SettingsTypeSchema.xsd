@@ -4,7 +4,7 @@
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:import schemaLocation="UITypeSchema.xsd" namespace="http://arctisaurora/AuroraUITypes" />
   <xs:simpleType name="Settings">
-    <xs:union memberTypes="types:SettingScope types:WindowMode" />
+    <xs:union memberTypes="types:SettingScope types:LogLevel types:WindowMode" />
   </xs:simpleType>
   <xs:element name="Vault" type="types:Vault" />
   <xs:complexType name="Vault">
@@ -19,6 +19,9 @@
       <xs:choice minOccurs="0" maxOccurs="unbounded">
         <xs:element name="Vault" type="types:Vault" />
         <xs:element name="DragGhost" type="types:DragGhost" />
+        <xs:element name="LogConsole" type="types:LogConsole" />
+        <xs:element name="LogFile" type="types:LogFile" />
+        <xs:element name="LogRecorder" type="types:LogRecorder" />
         <xs:element name="DoubleClick" type="types:DoubleClick" />
         <xs:element name="KeyRepeat" type="types:KeyRepeat" />
         <xs:element name="Device" type="types:Device" />
@@ -41,6 +44,9 @@
       <xs:choice minOccurs="0" maxOccurs="unbounded">
         <xs:element name="Vault" type="types:Vault" />
         <xs:element name="DragGhost" type="types:DragGhost" />
+        <xs:element name="LogConsole" type="types:LogConsole" />
+        <xs:element name="LogFile" type="types:LogFile" />
+        <xs:element name="LogRecorder" type="types:LogRecorder" />
         <xs:element name="DoubleClick" type="types:DoubleClick" />
         <xs:element name="KeyRepeat" type="types:KeyRepeat" />
         <xs:element name="Device" type="types:Device" />
@@ -73,11 +79,71 @@
         <xs:element name="Periodic" type="types:Periodic" />
         <xs:element name="UI" type="types:UI" />
         <xs:element name="DocumentSettings" type="types:DocumentSettings" />
+        <xs:element name="Logging" type="types:Logging" />
         <xs:element name="Input" type="types:Input" />
         <xs:element name="Graphics" type="types:Graphics" />
       </xs:choice>
     </xs:sequence>
   </xs:complexType>
+  <xs:element name="LogConsole" type="types:LogConsole" />
+  <xs:complexType name="LogConsole">
+    <xs:sequence />
+    <xs:attribute name="MinLevel" type="types:LogLevel" />
+    <xs:attribute name="Scope" type="types:SettingScope" />
+    <xs:attribute name="OnChanged" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="LogFile" type="types:LogFile" />
+  <xs:complexType name="LogFile">
+    <xs:sequence />
+    <xs:attribute name="MinLevel" type="types:LogLevel" />
+    <xs:attribute name="Directory" type="xs:string" />
+    <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="BufferKB" type="xs:int" />
+    <xs:attribute name="FlushMs" type="xs:int" />
+    <xs:attribute name="MaxFileMB" type="xs:int" />
+    <xs:attribute name="Keep" type="xs:int" />
+    <xs:attribute name="Scope" type="types:SettingScope" />
+    <xs:attribute name="OnChanged" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="LogRecorder" type="types:LogRecorder" />
+  <xs:complexType name="LogRecorder">
+    <xs:sequence />
+    <xs:attribute name="Enabled" type="xs:boolean" />
+    <xs:attribute name="MinLevel" type="types:LogLevel" />
+    <xs:attribute name="CapacityKB" type="xs:int" />
+    <xs:attribute name="Scope" type="types:SettingScope" />
+    <xs:attribute name="OnChanged" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="Logging" type="types:Logging" />
+  <xs:complexType name="Logging">
+    <xs:sequence>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="Vault" type="types:Vault" />
+        <xs:element name="DragGhost" type="types:DragGhost" />
+        <xs:element name="LogConsole" type="types:LogConsole" />
+        <xs:element name="LogFile" type="types:LogFile" />
+        <xs:element name="LogRecorder" type="types:LogRecorder" />
+        <xs:element name="DoubleClick" type="types:DoubleClick" />
+        <xs:element name="KeyRepeat" type="types:KeyRepeat" />
+        <xs:element name="Device" type="types:Device" />
+        <xs:element name="Monitor" type="types:Monitor" />
+        <xs:element name="Window" type="types:Window" />
+        <xs:element name="VSync" type="types:VSync" />
+      </xs:choice>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:simpleType name="LogLevel">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Hot" />
+      <xs:enumeration value="Trace" />
+      <xs:enumeration value="Debug" />
+      <xs:enumeration value="Info" />
+      <xs:enumeration value="Warn" />
+      <xs:enumeration value="Error" />
+      <xs:enumeration value="Fatal" />
+      <xs:enumeration value="Off" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:element name="DoubleClick" type="types:DoubleClick" />
   <xs:complexType name="DoubleClick">
     <xs:sequence />
@@ -99,6 +165,9 @@
       <xs:choice minOccurs="0" maxOccurs="unbounded">
         <xs:element name="Vault" type="types:Vault" />
         <xs:element name="DragGhost" type="types:DragGhost" />
+        <xs:element name="LogConsole" type="types:LogConsole" />
+        <xs:element name="LogFile" type="types:LogFile" />
+        <xs:element name="LogRecorder" type="types:LogRecorder" />
         <xs:element name="DoubleClick" type="types:DoubleClick" />
         <xs:element name="KeyRepeat" type="types:KeyRepeat" />
         <xs:element name="Device" type="types:Device" />
@@ -144,6 +213,9 @@
       <xs:choice minOccurs="0" maxOccurs="unbounded">
         <xs:element name="Vault" type="types:Vault" />
         <xs:element name="DragGhost" type="types:DragGhost" />
+        <xs:element name="LogConsole" type="types:LogConsole" />
+        <xs:element name="LogFile" type="types:LogFile" />
+        <xs:element name="LogRecorder" type="types:LogRecorder" />
         <xs:element name="DoubleClick" type="types:DoubleClick" />
         <xs:element name="KeyRepeat" type="types:KeyRepeat" />
         <xs:element name="Device" type="types:Device" />

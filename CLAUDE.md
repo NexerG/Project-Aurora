@@ -265,6 +265,7 @@ ECS design is still being settled — avoid refactoring the entity/component mod
 | Asset Registry | ✅ Stable | Dual lookup: GUID handles + path/string |
 | ECS | ✅ Stable | Architecture TBD — do not assume archetype or sparse-set |
 | XSD / Data Layer | ✅ Stable | XSD schema generation for serialized data |
+| Logging | ✅ Stable | Per-thread lanes, one drain thread, console + file + crash recorder |
 | Filing | 🔧 In progress | File I/O utilities |
 | Threading | 🔧 In progress | Basic threading, design not finalised |
 
@@ -330,6 +331,34 @@ attribute any more; both were replaced by declared phases in `Bootstrap.xml`.
   it runs and `RunPhase` returns false. Steps that cannot meaningfully fail return `true`
 - Comments in `Bootstrap.xml` mark the pre-renderer / post-renderer boundaries, which is what the
   old `PreGPUAPI` / `PostGPUAPI` stages encoded
+
+#### Logging — Key Facts
+`ArctisAurora.Core.Diagnostics`. A log call is a memory write and nothing else.
+- **A channel per subsystem, held as a static readonly field** — `static readonly LogChannel Log =
+  LogChannel.For("Renderer");` then `Log.Warn($"…")`. Never `Console.WriteLine` — there are none left
+- **Levels:** `Hot Trace Debug Info Warn Error Fatal Off`. **Only `Hot` is `[Conditional("DEBUG")]`**
+  and is gone from Release entirely; the rest stay runtime-gated so a shipped build can be asked for
+  verbose output. `Warn` and above also print `@File.cs:line`
+- **A disabled level costs a field load and a predicted branch.** The `[InterpolatedStringHandler]`
+  constructor's `out bool` makes the compiler emit none of the `AppendFormatted` calls, so the
+  interpolation holes are never evaluated. There is one handler type per level because
+  `[InterpolatedStringHandlerArgument("")]` only carries the receiver
+- **`Log.Every(ms)` / `Log.Once()`** gate on the call site, keyed by `[CallerFilePath]` +
+  `[CallerLineNumber]`. Use them for anything inside the frame loop
+- **Do NOT log per frame.** `LastTickMs` and `GpuEngineStats` already exist and go to the shaders —
+  that is telemetry, not logging
+- **One SPSC lane per thread**, a copy of `CommandLane`/`CommandArena`. `Core.Diagnostics` must
+  **never** reference `Core.Data.Commands` — `CommandApplier`, `DataPool` and `DataManager` all log
+- **The drain is a plain background thread, not a `ThreadedSystem`** — it owns no pools. Do not
+  convert it
+- **Self-starting**, because `XSDGenerator` logs before `Engine.Init`. `Logging.Configure` is step 2
+  of `Bootstrap.xml` and replays what boot logged before it; `Logging.Flush` is the last `Commit`
+  step of `Shutdown.xml`
+- **File spills on watermark, `FlushMs`, or any `Error`**, and rotates at `MaxFileMB`. Config is
+  `LoggingSettings` (`<Logging>`), so it cascades and can be overridden per user
+- The channel floor is the **minimum across all sinks**, not the console's — the flight recorder
+  captures below what anything prints
+- See `ClaudeMemory/Decisions/engine-logging.md` and `Engine/Systems/LOGGING.md`
 
 #### Shutdown — Key Facts
 The bootstrap sequence run backwards, and deliberately the same shape — `Shutdown.cs`,
