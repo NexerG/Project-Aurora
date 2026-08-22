@@ -6,4 +6,17 @@
   <xs:complexType name="ActiveContext">
     <xs:sequence />
   </xs:complexType>
+  <xs:element name="Context" type="types:Context" />
+  <xs:complexType name="Context">
+    <xs:sequence />
+    <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="Type" type="xs:string" />
+    <xs:attribute name="From" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="Contexts" type="types:Contexts" />
+  <xs:complexType name="Contexts">
+    <xs:sequence>
+      <xs:choice minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
+  </xs:complexType>
 </xs:schema>

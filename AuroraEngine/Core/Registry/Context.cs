@@ -1,6 +1,9 @@
-﻿using ArctisAurora.EngineWork;
+﻿using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Filing.Serialization;
+using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
 using System.Reflection;
+using System.Xml.Linq;
 
 namespace ArctisAurora.Core.Registry
 {
@@ -22,12 +25,18 @@ namespace ArctisAurora.Core.Registry
 
     public record ContextEntry(Type valueType, Func<object?> Get, Action<object?> set);
 
+    public record Derivation(string name, Type type);
+
     [A_XSDType("ActiveContext", "Context")]
     public sealed class Context
     {
 
         public static readonly Dictionary<string, object> activeContexts =
             AssetRegistries.GetRegistryByName<string, object>("ActiveContexts");
+
+        // declared contexts computed from another, keyed by the one they follow
+        private static readonly Dictionary<string, List<Derivation>> derived =
+            new Dictionary<string, List<Derivation>>();
 
         public static void Register(string name, Type valueType, Func<object?> get, Action<object?> set) =>
             activeContexts[name] = new ContextEntry(valueType, get, set);
@@ -40,10 +49,45 @@ namespace ArctisAurora.Core.Registry
             if (activeContexts.TryGetValue(name, out var entry))
             {
                 (entry as ContextEntry).set(value);
+                Derive(name, value);
             }
         }
 
         public static void Clear(string name) => Set(name, null);
+
+        // Drops a value out of every context holding it, without deriving from the loss.
+        public static void Forget(object value)
+        {
+            foreach (object entry in activeContexts.Values)
+                if (entry is ContextEntry context && ReferenceEquals(context.Get(), value))
+                    context.set(null);
+        }
+
+        // Recomputes the contexts derived from this one.
+        private static void Derive(string source, object? value)
+        {
+            if (!derived.TryGetValue(source, out List<Derivation> list)) return;
+
+            foreach (Derivation derivation in list)
+            {
+                object? found = Ancestor(value, derivation.type);
+                if (found != null && !ReferenceEquals(Value(derivation.name), found))
+                    Set(derivation.name, found);
+            }
+        }
+
+        // Nearest ancestor assignable to the type, the value itself included.
+        private static object? Ancestor(object? value, Type type)
+        {
+            Entity? entity = value as Entity;
+            while (entity != null && !type.IsInstanceOfType(entity))
+                entity = entity.parent;
+
+            return entity;
+        }
+
+        private static object? Value(string name) =>
+            activeContexts.TryGetValue(name, out var entry) ? (entry as ContextEntry)?.Get() : null;
 
         
         //[A_BootstrapStage(BootstrapStage.PostGPUAPI)]
@@ -75,6 +119,45 @@ namespace ArctisAurora.Core.Registry
                         () => field.GetValue(null),
                         v => field.SetValue(null, v)
                     );
+                }
+            }
+
+            return true;
+        }
+
+        // Contexts authored in Contexts/*.xml, one file per contributor across every mount, holding
+        // their own value rather than binding to a static.
+        [A_XSDActionDependency("Context.LoadDeclared", "Bootstrap")]
+        internal static bool LoadDeclared()
+        {
+            foreach (string file in VirtualFileSystem.EnumerateAll("XML/Documents/Contexts", "*.xml"))
+            {
+                XElement root = XElement.Load(file);
+                foreach (XElement element in root.Elements())
+                {
+                    ContextDefinition definition = new ContextDefinition
+                    {
+                        name = element.Attribute("Name")?.Value ?? "",
+                        type = element.Attribute("Type")?.Value ?? "",
+                        from = element.Attribute("From")?.Value ?? ""
+                    };
+
+                    Type? valueType = AnyXMLType.FindType(definition.type);
+                    if (valueType == null)
+                    {
+                        Console.WriteLine($"[Context] '{definition.name}' names unknown type '{definition.type}' — skipping.");
+                        continue;
+                    }
+
+                    object? slot = null;
+                    Register(definition.name, valueType, () => slot, v => slot = v);
+
+                    if (string.IsNullOrEmpty(definition.from)) continue;
+
+                    if (!derived.TryGetValue(definition.from, out List<Derivation> list))
+                        derived[definition.from] = list = new List<Derivation>();
+
+                    list.Add(new Derivation(definition.name, valueType));
                 }
             }
 

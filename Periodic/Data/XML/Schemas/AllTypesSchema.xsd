@@ -75,6 +75,8 @@
       <xs:enumeration value="Physics" />
       <xs:enumeration value="Render" />
       <xs:enumeration value="ActiveContext" />
+      <xs:enumeration value="Context" />
+      <xs:enumeration value="Contexts" />
       <xs:enumeration value="IParseableTypes" />
       <xs:enumeration value="FontAsset" />
       <xs:enumeration value="TextureAsset" />
@@ -229,6 +231,8 @@
   <xs:simpleType name="Context">
     <xs:restriction base="xs:string">
       <xs:enumeration value="ActiveContext" />
+      <xs:enumeration value="Context" />
+      <xs:enumeration value="Contexts" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="AssetRegistry">

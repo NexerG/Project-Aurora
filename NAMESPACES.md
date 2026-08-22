@@ -24,6 +24,7 @@ ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Projec
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\Serialization\VirtualFileSystem.cs
 ArctisAurora.Core.Filing.Serialization -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Filing\Serialization\XmlReflection.cs
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\Context.cs
+ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\ContextDefinition.cs
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\EntityRegistry.cs
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\SettingCategory.cs
 ArctisAurora.Core.Registry -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\Registry\SettingsRegistry.cs

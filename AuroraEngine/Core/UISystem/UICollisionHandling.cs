@@ -103,7 +103,7 @@ namespace ArctisAurora.Core.UISystem
             if (ReferenceEquals(activeControl, control)) return;
 
             VulkanControl previous = activeControl;
-            activeControl = control;
+            Context.Set("ActiveControl", control);
             (previous as IContext)?.OnContextRemoved("ActiveControl");
             (control as IContext)?.OnContextAdded("ActiveControl");
         }
@@ -231,6 +231,7 @@ namespace ArctisAurora.Core.UISystem
             if (ReferenceEquals(hinted, control)) hinted = null;
             if (ReferenceEquals(activeControl, control)) activeControl = null;
             if (ReferenceEquals(lastPressTarget, control)) lastPressTarget = null;
+            Context.Forget(control);
         }
 
         // Assigns the drag context and notifies both sides.

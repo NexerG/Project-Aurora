@@ -24,6 +24,7 @@
       <xs:enumeration value="ContextMenus.LoadMenus" />
       <xs:enumeration value="Gradients.LoadGradients" />
       <xs:enumeration value="Context.LoadContexts" />
+      <xs:enumeration value="Context.LoadDeclared" />
       <xs:enumeration value="EntityRegistry.ParseXML" />
       <xs:enumeration value="Settings.LoadAll" />
       <xs:enumeration value="AssetImporter.RunImports" />

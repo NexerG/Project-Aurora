@@ -2,7 +2,6 @@ using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem;
-using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.Core.UISystem.Controls.Text.Document;
 using ArctisAurora.EngineWork;
@@ -20,6 +19,9 @@ namespace Periodic.Editor.CustomControls
         // control names in UI.xml
         private const string browserName = "Browser";
         private const string tabsName = "Tabs";
+
+        // context declared in Contexts/Periodic.xml
+        private const string tabsContext = "ActiveTabViewer";
 
         public VaultBrowserControl()
         {
@@ -186,11 +188,8 @@ namespace Periodic.Editor.CustomControls
         // the browser has no business opening notes in one that was torn off.
         private static TabViewControl FocusedTabs()
         {
-            VulkanControl control = UICollisionHandling.activeControl;
-            while (control != null && control is not TabViewControl)
-                control = control.parent as VulkanControl;
-
-            return control is TabViewControl view && RenderWindow.Of(view) == Engine.primary ? view : null;
+            TabViewControl view = Context.Get<TabViewControl>(tabsContext);
+            return view != null && RenderWindow.Of(view) == Engine.primary ? view : null;
         }
 
         // Focuses the note wherever it is already open, and only opens a tab when it is not.

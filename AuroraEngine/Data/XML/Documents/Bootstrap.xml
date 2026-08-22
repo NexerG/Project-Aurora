@@ -23,6 +23,7 @@
 
 		<!--post-renderer-->
 		<Step Action="Context.LoadContexts"/>
+		<Step Action="Context.LoadDeclared"/>
 		<Step Action="AssetRegistries.PrepareDefaultAssets"/>
 		<Step Action="AssetRegistries.PreloadAssets"/>
 		<Step Action="AssetRegistries.PrepareAllAssets"/>
