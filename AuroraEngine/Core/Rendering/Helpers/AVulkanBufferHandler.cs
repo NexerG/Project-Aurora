@@ -271,10 +271,16 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
         internal static BufferUsageFlags vertexBufferFlags = BufferUsageFlags.VertexBufferBit;
         internal static BufferUsageFlags indexBufferFlags =  BufferUsageFlags.IndexBufferBit;
         internal static BufferUsageFlags raytracingBufferFlags = BufferUsageFlags.AccelerationStructureBuildInputReadOnlyBitKhr;
+        internal static BufferUsageFlags storageBufferFlags = BufferUsageFlags.StorageBufferBit;
         private static BufferUsageFlags defaultBufferFlags = BufferUsageFlags.TransferDstBit;
 
         private static BufferUsageFlags defaultStagingBufferFlags = BufferUsageFlags.TransferSrcBit;
-        private static MemoryPropertyFlags defaultStagingMemoryFlags = MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCachedBit;
+        private static MemoryPropertyFlags defaultStagingMemoryFlags = MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit;
+
+        // memory prefabs by write frequency: uploaded once, or rewritten every frame
+        private static MemoryPropertyFlags staticDeviceMemoryFlags = MemoryPropertyFlags.DeviceLocalBit;
+        private static MemoryPropertyFlags streamingMemoryFlags = MemoryPropertyFlags.DeviceLocalBit | MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit;
+        private static MemoryPropertyFlags streamingMemoryFlagsFallback = MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit;
 
 
         internal static void CreateBuffer<T>(ref T[] data, ref Queue queue, ref CommandPool cPool, ref Buffer buffer, ref DeviceMemory memory, BufferUsageFlags usageFlags) where T : unmanaged
@@ -290,7 +296,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             data.AsSpan().CopyTo(new Span<T>(_dataPtr, data.Length));
             Renderer.vk.UnmapMemory(Renderer.logicalDevice, _stagingBufferMemory);
 
-            CreateBuffer(bufferSize, ref buffer, ref memory, defaultBufferFlags | usageFlags, defaultStagingMemoryFlags);
+            CreateBuffer(bufferSize, ref buffer, ref memory, defaultBufferFlags | usageFlags, staticDeviceMemoryFlags);
 
             CopyBuffer(ref _stagingBuffer, ref buffer, bufferSize, ref queue, ref cPool);
             Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
@@ -310,7 +316,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             new Span<T>(_dataPtr, 1)[0] = data;
             Renderer.vk.UnmapMemory(Renderer.logicalDevice, _stagingBufferMemory);
 
-            CreateBuffer(bufferSize, ref buffer, ref memory, defaultBufferFlags | usageFlags, defaultStagingMemoryFlags);
+            CreateBuffer(bufferSize, ref buffer, ref memory, defaultBufferFlags | usageFlags, staticDeviceMemoryFlags);
 
             CopyBuffer(ref _stagingBuffer, ref buffer, bufferSize, ref queue, ref cPool);
             Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
@@ -353,37 +359,29 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
         }
 
-        // Overwrite a sub-range of an existing buffer without reallocating it. Uploads
-        // `count` elements from data[srcStart..] into buffer starting at element `dstStart`.
-        // Used to patch pooled GPU mirrors (transforms) in place instead of recreating them.
-        internal static void UpdateBufferRange<T>(T[] data, int srcStart, int dstStart, int count, ref Queue queue, ref CommandPool cPool, ref Buffer buffer) where T : unmanaged
+        // Persistently mapped buffer for data rewritten every frame.
+        internal static void CreateMappedBuffer(ulong size, ref Buffer buffer, ref DeviceMemory memory, out nint mapped, BufferUsageFlags usageFlags)
+        {
+            CreateBuffer(size, ref buffer, ref memory, usageFlags, streamingMemoryFlags, streamingMemoryFlagsFallback);
+
+            void* _ptr;
+            Renderer.vk.MapMemory(Renderer.logicalDevice, memory, 0, size, 0, &_ptr);
+            mapped = (nint)_ptr;
+        }
+
+        // Copies elements [start, start + count) into the same slots of a mapped buffer. Forward writes only:
+        // the target may be write-combined, where reading back costs orders of magnitude.
+        internal static void WriteMappedRange<T>(nint mapped, T[] data, int start, int count) where T : unmanaged
         {
             if (count <= 0) return;
-            ulong regionSize = (ulong)(sizeof(T) * count);
-            ulong dstOffset = (ulong)(sizeof(T) * dstStart);
-
-            Buffer _stagingBuffer = default;
-            DeviceMemory _stagingBufferMemory = default;
-            CreateBuffer(regionSize, ref _stagingBuffer, ref _stagingBufferMemory, defaultStagingBufferFlags, defaultStagingMemoryFlags);
-
-            void* _dataPtr;
-            Renderer.vk.MapMemory(Renderer.logicalDevice, _stagingBufferMemory, 0, regionSize, 0, &_dataPtr);
-            data.AsSpan(srcStart, count).CopyTo(new Span<T>(_dataPtr, count));
-            Renderer.vk.UnmapMemory(Renderer.logicalDevice, _stagingBufferMemory);
-
-            lock (Renderer.transferCommandLock)
-            {
-                CommandBuffer _commandBuffer = BeginSingleTimeCommands(ref cPool);
-                BufferCopy _copyRegion = new BufferCopy() { SrcOffset = 0, DstOffset = dstOffset, Size = regionSize };
-                Renderer.vk.CmdCopyBuffer(_commandBuffer, _stagingBuffer, buffer, 1, ref _copyRegion);
-                EndSingleTimeCommands(ref _commandBuffer, ref queue, ref cPool);
-            }
-
-            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
-            Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
+            Span<T> _dst = new Span<T>((void*)(mapped + (nint)(start * sizeof(T))), count);
+            data.AsSpan(start, count).CopyTo(_dst);
         }
 
         internal static void CreateBuffer(ulong _size, ref Buffer _buffer, ref DeviceMemory _bufferMemory, BufferUsageFlags _usage, MemoryPropertyFlags _properties)
+            => CreateBuffer(_size, ref _buffer, ref _bufferMemory, _usage, _properties, _properties);
+
+        internal static void CreateBuffer(ulong _size, ref Buffer _buffer, ref DeviceMemory _bufferMemory, BufferUsageFlags _usage, MemoryPropertyFlags _preferred, MemoryPropertyFlags _required)
         {
             BufferCreateInfo _bufferCreateInfo = new BufferCreateInfo()
             {
@@ -412,7 +410,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             {
                 SType = StructureType.MemoryAllocateInfo,
                 AllocationSize = _memReqs.Size,
-                MemoryTypeIndex = FindMemoryType(_memReqs.MemoryTypeBits, _properties),
+                MemoryTypeIndex = FindMemoryType(_memReqs.MemoryTypeBits, _preferred, _required),
                 PNext = &allocateFlagsInfo
             };
 
@@ -462,17 +460,29 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
                     PCommandBuffers = &_localCommandBuffer
                 };
                 
-                Renderer.vk.QueueWaitIdle(queue);
-                Result rQueue, rWait;
-                rQueue = Renderer.vk.QueueSubmit(queue, 1, ref _subInfo, default);
-                rWait = Renderer.vk.QueueWaitIdle(queue);
-                if (rQueue != Result.Success && rWait != Result.Success)
+                if (Renderer.vk.QueueSubmit(queue, 1, ref _subInfo, default) != Result.Success
+                    || Renderer.vk.QueueWaitIdle(queue) != Result.Success)
                 {
                     Console.WriteLine("Exception thrown");
                     throw new Exception("failed to submit 'copy buffer' commands");
                 }
                 Renderer.vk.FreeCommandBuffers(Renderer.logicalDevice, commandPool, 1, ref _localCommandBuffer);
             }
+        }
+
+        internal static uint FindMemoryType(uint _typeFilter, MemoryPropertyFlags _preferred, MemoryPropertyFlags _required)
+        {
+            PhysicalDeviceMemoryProperties _memProperties;
+            Renderer.vk.GetPhysicalDeviceMemoryProperties(Renderer.gpu, out _memProperties);
+
+            for (int i = 0; i < _memProperties.MemoryTypeCount; i++)
+            {
+                if ((_typeFilter & 1 << i) != 0 && (_memProperties.MemoryTypes[i].PropertyFlags & _preferred) == _preferred)
+                {
+                    return (uint)i;
+                }
+            }
+            return FindMemoryType(_typeFilter, _required);
         }
 
         internal static uint FindMemoryType(uint _typeFilter, MemoryPropertyFlags _properties)
@@ -540,11 +550,8 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
                     CommandBufferCount = 1,
                     PCommandBuffers = _cptr,
                 };
-                Result rRueue, rQueueWait, rDeviceWait;
-                rRueue = Renderer.vk!.QueueSubmit(queue, 1, ref submitInfo, default);
-                rQueueWait = Renderer.vk!.QueueWaitIdle(queue);
-                rDeviceWait = Renderer.vk!.DeviceWaitIdle(Renderer.logicalDevice);
-                if (rRueue != Result.Success && rRueue != Result.Success && rRueue != Result.Success)
+                if (Renderer.vk!.QueueSubmit(queue, 1, ref submitInfo, default) != Result.Success
+                    || Renderer.vk!.QueueWaitIdle(queue) != Result.Success)
                 {
                     Console.WriteLine("Exception thrown");
                     throw new Exception("failed to submit single time commands");

@@ -177,13 +177,8 @@ namespace ArctisAurora.EngineWork.Rendering
 
             for (int i = 0; i < MAX_SWAPCHAIN_IMAGES; i++)
             {
-                AVulkanBufferHandler.CreateBuffer(size, ref engineStatsBuffers[i], ref engineStatsMemory[i],
-                    BufferUsageFlags.UniformBufferBit,
-                    MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit);
-
-                void* mapped;
-                vk.MapMemory(logicalDevice, engineStatsMemory[i], 0, size, 0, &mapped);
-                engineStatsPtrs[i] = (nint)mapped;
+                AVulkanBufferHandler.CreateMappedBuffer(size, ref engineStatsBuffers[i], ref engineStatsMemory[i],
+                    out engineStatsPtrs[i], BufferUsageFlags.UniformBufferBit);
             }
 
             DescriptorSetLayoutBinding binding = new DescriptorSetLayoutBinding()

@@ -5,7 +5,6 @@ using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Assimp;
-using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using SixLabors.ImageSharp.PixelFormats;
 using ArctisAurora.Core.Registry;
@@ -19,7 +18,6 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
     {
         internal Sampler textureSampler;
         internal SixLabors.ImageSharp.Image<Rgba32> image;
-        internal List<VulkanControl> controls;
 
         // font asset
         internal FontAsset fontAsset;
@@ -27,13 +25,18 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
         // glyph data
         internal Glyph glyph = null!;
 
-        // Two persistent GPU mirrors sized to the UIControls pool's capacity, patched in place:
-        // the baked matrices (GpuTransform column) and the per-control data (ControlData column).
-        // Both ride along through compaction/resequence because they are pool columns, so these
-        // buffers only ever need the same dense range copied across. They are (re)created solely
-        // when the pool grows; ordinary edits sub-upload the dirty range.
-        internal Silk.NET.Vulkan.Buffer controlDataBuffer;
-        private DeviceMemory _controlDataBufferMemory;
+        // Two persistent GPU mirrors sized to the UIControls pool's capacity, one set per swapchain
+        // image, patched in place: the baked matrices (GpuTransform column) and the per-control data
+        // (ControlData column). Both ride along through compaction/resequence because they are pool
+        // columns, so these buffers only ever need the same dense range copied across. They are
+        // (re)created solely when the pool grows; ordinary edits write the dirty range straight
+        // through the mapped pointer.
+        internal Silk.NET.Vulkan.Buffer[] transformsBuffers = null!;
+        private DeviceMemory[] _transformsBufferMemories = null!;
+        private nint[] _transformsMapped = null!;
+        internal Silk.NET.Vulkan.Buffer[] controlDataBuffers = null!;
+        private DeviceMemory[] _controlDataBufferMemories = null!;
+        private nint[] _controlDataMapped = null!;
         private int _transformCapacity = -1;
 
         // The gradient table, shared by every window and written once — definitions are authored in
@@ -49,8 +52,6 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             mesh = dMeshes.GetValueOrDefault("uidefault");
             fontAsset = dFonts.GetValueOrDefault("default");
             image = fontAsset.textureAsset.image;
-
-            controls = EntityRegistry.GetGroup("Controls").As<VulkanControl>();
 
             CreateSampler();
             CreateGradientTable();
@@ -90,21 +91,28 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 
             if (_transformCapacity != pool.Capacity)
             {
-                // pool grew (or first build): resize both persistent mirrors to match. Rare, so a
+                // pool grew (or first build): resize every image's mirrors to match. Rare, so a
                 // full idle+recreate is fine and avoids in-flight aliasing of the old buffers.
                 Renderer.vk.DeviceWaitIdle(Renderer.logicalDevice);
-                if (transformsBuffer.Handle != 0)
+                DestroyMirrors();
+
+                int images = (int)module.window.imageCount;
+                transformsBuffers = new Silk.NET.Vulkan.Buffer[images];
+                _transformsBufferMemories = new DeviceMemory[images];
+                _transformsMapped = new nint[images];
+                controlDataBuffers = new Silk.NET.Vulkan.Buffer[images];
+                _controlDataBufferMemories = new DeviceMemory[images];
+                _controlDataMapped = new nint[images];
+
+                ulong transformSize = (ulong)(sizeof(GpuTransform) * gpu.Length);
+                ulong controlSize = (ulong)(sizeof(ControlData) * cd.Length);
+                for (int i = 0; i < images; i++)
                 {
-                    Renderer.vk.DestroyBuffer(Renderer.logicalDevice, transformsBuffer, null);
-                    Renderer.vk.FreeMemory(Renderer.logicalDevice, _transformsBufferMemory, null);
+                    AVulkanBufferHandler.CreateMappedBuffer(transformSize, ref transformsBuffers[i], ref _transformsBufferMemories[i], out _transformsMapped[i], AVulkanBufferHandler.storageBufferFlags);
+                    AVulkanBufferHandler.CreateMappedBuffer(controlSize, ref controlDataBuffers[i], ref _controlDataBufferMemories[i], out _controlDataMapped[i], AVulkanBufferHandler.storageBufferFlags);
+                    AVulkanBufferHandler.WriteMappedRange(_transformsMapped[i], gpu, 0, gpu.Length);
+                    AVulkanBufferHandler.WriteMappedRange(_controlDataMapped[i], cd, 0, cd.Length);
                 }
-                if (controlDataBuffer.Handle != 0)
-                {
-                    Renderer.vk.DestroyBuffer(Renderer.logicalDevice, controlDataBuffer, null);
-                    Renderer.vk.FreeMemory(Renderer.logicalDevice, _controlDataBufferMemory, null);
-                }
-                AVulkanBufferHandler.CreateBuffer(ref gpu, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
-                AVulkanBufferHandler.CreateBuffer(ref cd, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref controlDataBuffer, ref _controlDataBufferMemory, BufferUsageFlags.StorageBufferBit);
                 _transformCapacity = pool.Capacity;
                 return;   // the fresh buffers already carry the whole columns
             }
@@ -116,33 +124,24 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 
             // One dirty range covers every column, so both mirrors copy the same slice.
             int count = dirtyMax - dirtyMin + 1;
-            AVulkanBufferHandler.UpdateBufferRange(gpu, dirtyMin, dirtyMin, count, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer);
-            AVulkanBufferHandler.UpdateBufferRange(cd, dirtyMin, dirtyMin, count, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref controlDataBuffer);
+            AVulkanBufferHandler.WriteMappedRange(_transformsMapped[currentFrame], gpu, dirtyMin, count);
+            AVulkanBufferHandler.WriteMappedRange(_controlDataMapped[currentFrame], cd, dirtyMin, count);
         }
 
-        internal override void SingletonMatrix()
+        private void DestroyMirrors()
         {
-            base.SingletonMatrix();
+            if (transformsBuffers == null) return;
 
-            Matrix4X4<float>[] _mats = transformMatrices.ToArray();
-            AVulkanBufferHandler.CreateBuffer(ref _mats, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
-        }
-
-        internal override void UpdateMatrices()
-        {
-            transformMatrices = new List<Matrix4X4<float>>();
-            for (int i = 0; i < instances; i++)
+            for (int i = 0; i < transformsBuffers.Length; i++)
             {
-                Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0, 0, 0);
-                Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-                _transform *= Matrix4X4.CreateScale(controls[i].transform.scale);
-                //_transform *= Matrix4X4.CreateFromQuaternion(q);
-                _transform *= Matrix4X4.CreateTranslation(controls[i].transform.position);
+                Renderer.vk.UnmapMemory(Renderer.logicalDevice, _transformsBufferMemories[i]);
+                Renderer.vk.DestroyBuffer(Renderer.logicalDevice, transformsBuffers[i], null);
+                Renderer.vk.FreeMemory(Renderer.logicalDevice, _transformsBufferMemories[i], null);
 
-                transformMatrices.Add(_transform);
+                Renderer.vk.UnmapMemory(Renderer.logicalDevice, _controlDataBufferMemories[i]);
+                Renderer.vk.DestroyBuffer(Renderer.logicalDevice, controlDataBuffers[i], null);
+                Renderer.vk.FreeMemory(Renderer.logicalDevice, _controlDataBufferMemories[i], null);
             }
-            Matrix4X4<float>[] _mats = transformMatrices.ToArray();
-            AVulkanBufferHandler.UpdateBuffer(ref _mats, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
         }
 
         internal override void EnqueueDrawCommands(ref ulong[] offset, int loopIndex, int instanceID, ref CommandBuffer commandBuffer, ref PipelineLayout pipelineLayout, ref DescriptorSet[][] descriptorSets)

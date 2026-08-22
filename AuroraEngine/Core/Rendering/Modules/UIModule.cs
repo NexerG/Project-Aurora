@@ -340,19 +340,19 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         {
             DescriptorBufferInfo cameraInfo = new DescriptorBufferInfo()
             {
-                Buffer = camera._cameraBuffer[0],
+                Buffer = camera._cameraBuffer[currentFrame],
                 Offset = 0,
                 Range = (ulong)Unsafe.SizeOf<UBO>()
             };
             DescriptorBufferInfo transformInfo = new DescriptorBufferInfo()
             {
-                Buffer = meshComponent.transformsBuffer,
+                Buffer = meshComponent.transformsBuffers[currentFrame],
                 Offset = 0,
                 Range = (ulong)(sizeof(float) * 16 * BuildCapacity)
             };
             DescriptorBufferInfo controlDataInfo = new DescriptorBufferInfo()
             {
-                Buffer = meshComponent.controlDataBuffer,
+                Buffer = meshComponent.controlDataBuffers[currentFrame],
                 Offset = 0,
                 Range = (ulong)(Unsafe.SizeOf<ControlData>() * BuildCapacity)
             };

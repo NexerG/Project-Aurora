@@ -359,6 +359,16 @@ The full Vulkan pipeline is working and rendering UI:
 - **Per-frame buffer writes have two owners:** `Renderer.Draw` writes the global ones after the
   timeline wait, then calls each module's `UpdateFrameData(imageIndex)` for its own. Do NOT put
   module-specific buffer updates back into `Draw`
+- **Buffer memory is chosen by write frequency, not by buffer type.** Rewritten every frame →
+  `AVulkanBufferHandler.CreateMappedBuffer`, which prefers `DEVICE_LOCAL|HOST_VISIBLE|HOST_COHERENT`
+  and falls back to plain host-visible, with **one buffer per swapchain image**. Uploaded once →
+  `CreateBuffer<T>`, which stages into `DEVICE_LOCAL`. Textures always stage — optimally-tiled images
+  cannot live in host-visible memory on any platform. Nothing branches on ReBAR; the memory-type
+  query is what absorbs PC/Android/Apple differences
+- **Never read back through a mapped pointer** — the target may be write-combined, where one read
+  costs orders of magnitude. Whole-struct `Unsafe.Write` and `WriteMappedRange` are forward-only and
+  safe; `ptr->field = x`, `+=` or a read-to-compare are not.
+  See `ClaudeMemory/Decisions/mapped-streaming-buffers.md`
 - Module command buffers are recorded **only when dirty**, so anything that must change per frame has
   to change through memory a stable descriptor already points at — not through a re-record
 - Shaders live in **three physical copies** (`AuroraEngine/`, `Periodic/`, `AuroraEditor/Shaders/`).
