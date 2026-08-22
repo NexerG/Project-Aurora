@@ -40,7 +40,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         #endregion
 
         // caption and close button geometry
-        private const int captionSize = 14;
+        protected const int captionSize = 14;
         private const float captionInset = 8f;
         private const int closeWidth = 20;
         private const int closeCaptionSize = 12;
@@ -322,6 +322,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             pane.SetActive(item);
         }
 
+        // A view of this kind, for a split to fill.
+        protected internal virtual TabViewControl NewOfSameKind() => new TabViewControl();
+
         private void FinishClose(TabItemControl item)
         {
             if (item == null || !children.Contains(item)) return;
@@ -472,18 +475,22 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                 maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible")
             };
             wrapper.BubbleAll();
-            wrapper.AddChild(new LabelControl
-            {
-                text = item.header,
-                fontSize = captionSize,
-                horizontalPosition = 0f
-            });
+            wrapper.AddChild(BuildCaption(item, tab));
 
             row.AddChild(wrapper);
             row.AddChild(BuildCloseButton(item));
             tab.AddChild(row);
             return tab;
         }
+
+        // The caption for one tab, with the strip button a derivative may bind gestures on.
+        protected virtual VulkanControl BuildCaption(TabItemControl item, TabStripButtonControl tab) =>
+            new LabelControl
+            {
+                text = item.header,
+                fontSize = captionSize,
+                horizontalPosition = 0f
+            };
 
         // Enter and exit bubble so the tab keeps its hover tint; release does not, so closing never
         // also activates.

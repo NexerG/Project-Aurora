@@ -32,6 +32,13 @@ namespace ArctisAurora.Core.UISystem
         [A_ActiveContext("ActiveControl")]
         public static VulkanControl activeControl;
 
+        // what the previous press resolved to, and whether this one landed on it again
+        private static VulkanControl lastPressTarget;
+        private static bool sameTargetTap;
+
+        // a press that only took a menu down, so the release it pairs with is not a click either
+        private static bool pressSwallowed;
+
 
         public UICollisionHandling()
         {
@@ -43,6 +50,9 @@ namespace ArctisAurora.Core.UISystem
         public void SolveHover(Vector2D<float> mousePos, VulkanControl root)
         {
             if (root == null) return;
+
+            // An open menu takes the whole pointer — nothing under it answers while it is up.
+            root = ContextMenus.OpenIn(root) ?? root;
 
             Vector2D<float>[] localVerts = new Vector2D<float>[4];
 
@@ -71,10 +81,17 @@ namespace ArctisAurora.Core.UISystem
             }
         }
 
-        public void SolveLMBPress(Vector2D<float> mousePos)
+        public void SolveLMBPress(Vector2D<float> mousePos, VulkanControl root)
         {
+            pressSwallowed = ContextMenus.DismissedBy(root, mousePos);
+            if (pressSwallowed) return;
             if (hovering == null) return;
-            SetActiveControl(ActiveTarget(hovering));
+
+            VulkanControl target = ActiveTarget(hovering);
+            sameTargetTap = ReferenceEquals(target, lastPressTarget);
+            lastPressTarget = target;
+
+            SetActiveControl(target);
             hovering?.ResolveOnClick(lastMousePos, delta);
         }
 
@@ -91,8 +108,14 @@ namespace ArctisAurora.Core.UISystem
             (control as IContext)?.OnContextAdded("ActiveControl");
         }
 
-        public void SolveLMBRelease(Vector2D<float> mousePos)
+        public void SolveLMBRelease(Vector2D<float> mousePos, int tapCount)
         {
+            if (pressSwallowed)
+            {
+                pressSwallowed = false;
+                return;
+            }
+
             VulkanControl dragTarget = dragging;
             if (dragTarget != null)
             {
@@ -108,10 +131,14 @@ namespace ArctisAurora.Core.UISystem
             {
                 hovering?.ResolveOnRelease();
             }
+
+            if (tapCount == 2 && sameTargetTap && ActiveTarget(hovering) == activeControl)
+                hovering?.ResolveOnDoubleClick();
         }
 
-        public void SolveRMBPress(Vector2D<float> mousePos)
+        public void SolveRMBPress(Vector2D<float> mousePos, VulkanControl root)
         {
+            if (ContextMenus.DismissedBy(root, mousePos)) return;
             if (hovering == null) return;
             hovering?.ResolveOnAltClick();
             hovering.OpenContextMenu();
@@ -203,6 +230,7 @@ namespace ArctisAurora.Core.UISystem
             if (ReferenceEquals(dragging, control)) dragging = null;
             if (ReferenceEquals(hinted, control)) hinted = null;
             if (ReferenceEquals(activeControl, control)) activeControl = null;
+            if (ReferenceEquals(lastPressTarget, control)) lastPressTarget = null;
         }
 
         // Assigns the drag context and notifies both sides.

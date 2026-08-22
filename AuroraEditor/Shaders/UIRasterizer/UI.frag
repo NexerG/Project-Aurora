@@ -7,6 +7,25 @@ struct Style
     vec4 tint;
 };
 
+struct GradientStop
+{
+    vec4 color;
+    float pos;
+};
+
+struct Gradient
+{
+    vec2 direction;
+    vec2 center;
+    uint kind;
+    uint stopCount;
+    GradientStop stops[8];
+};
+
+layout(set = 0, binding = 3, scalar) readonly buffer GradientBuffer {
+    Gradient gradients[];
+} GB;
+
 layout(location = 0) in vec2 fragUV;
 layout(location = 1) in flat uint fragTextureIndex;
 layout(location = 2) in Style fragStyle;
@@ -19,6 +38,8 @@ layout(location = 8) in flat vec3 fragEdgeColor;
 layout(location = 9) in flat float fragEdgeThickness;
 layout(location = 10) in flat vec3 fragOutlineColor;
 layout(location = 11) in flat float fragOutlineWidth;
+layout(location = 12) in flat uint fragGradientIndex;
+layout(location = 13) in flat vec4 fragGradientRect;
 
 layout(location = 0) out vec4 outColor;
 
@@ -26,6 +47,37 @@ layout(set = 1, binding = 0) uniform sampler2D samplers[];
 
 float median(float r, float g, float b) {
     return max(min(r, g), min(max(r, g), b));
+}
+
+// Ramps a gradient across rect, in the same design space as p. Linear spans the rect corner to
+// corner along its direction; radial is an ellipse reaching the farthest corner.
+vec4 sampleGradient(uint index, vec2 p, vec4 rect)
+{
+    Gradient g = GB.gradients[index];
+    vec2 extent = max((rect.zw - rect.xy) * 0.5f, vec2(1e-5f));
+    vec2 local = p - (rect.xy + rect.zw) * 0.5f;
+
+    float t;
+    if (g.kind == 0u)
+    {
+        float span = abs(g.direction.x) * extent.x + abs(g.direction.y) * extent.y;
+        t = (dot(local, g.direction) + span) / (2.0f * span);
+    }
+    else
+    {
+        vec2 offset = (g.center * 2.0f - 1.0f) * extent;
+        t = length((local - offset) / (extent + abs(offset)));
+    }
+    t = clamp(t, 0.0f, 1.0f);
+
+    vec4 color = g.stops[0].color;
+    for (uint i = 1u; i < g.stopCount; ++i)
+    {
+        float from = g.stops[i - 1u].pos;
+        float to = g.stops[i].pos;
+        color = mix(color, g.stops[i].color, clamp((t - from) / max(to - from, 1e-5f), 0.0f, 1.0f));
+    }
+    return color;
 }
 
 // Signed distance to a rounded rectangle, negative inside. r is (topLeft, topRight, bottomLeft, bottomRight).
@@ -64,6 +116,15 @@ void main()
 
     vec3 color = fragStyle.tint.rgb;
     float opacity = fillAlpha;
+    float gradientAlpha = 1.0f;
+
+    // gradient — replaces the flat tint as the fill, so the outline still composites under it
+    if (fragGradientIndex > 0u)
+    {
+        vec4 ramp = sampleGradient(fragGradientIndex, fragPos, fragGradientRect);
+        color = ramp.rgb;
+        gradientAlpha = ramp.a;
+    }
 
     // outline — a second threshold that far outside the shape, the fill composited over it
     if (fragOutlineWidth > 0.0f)
@@ -71,6 +132,9 @@ void main()
         opacity = clamp(screenPxDist + fragOutlineWidth + 0.5f, 0.0f, 1.0f);
         color = mix(fragOutlineColor, color, fillAlpha);
     }
+
+    // after the outline, which assigns opacity outright rather than multiplying into it
+    opacity *= gradientAlpha;
 
     float boxDist = -sdRoundBox(fragLocal, fragHalfExtent, fragRadius);
     float boxAA = fwidth(boxDist);

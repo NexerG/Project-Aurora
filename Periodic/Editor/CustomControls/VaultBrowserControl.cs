@@ -95,18 +95,20 @@ namespace Periodic.Editor.CustomControls
             Open(path);
         }
 
+        protected override void Rename(FileObject file, string newName) => RenameNote(file.path, newName);
+
         // The name lives in three places: the file, the Name inside it, and every editor already
-        // holding the note open.
-        protected override void Rename(FileObject file, string newName)
+        // holding the note open. Static, because a tab renames through here too and has no row.
+        private static void RenameNote(string path, string newName)
         {
             string name = newName?.Trim();
-            if (string.IsNullOrEmpty(name) || name == Path.GetFileNameWithoutExtension(file.path)) return;
+            if (string.IsNullOrEmpty(name) || name == Path.GetFileNameWithoutExtension(path)) return;
 
-            string target = FreePath(file.parent.path, name);
-            File.Move(file.path, target);
+            string target = FreePath(Path.GetDirectoryName(path)!, name);
+            File.Move(path, target);
             WriteName(target, name);
 
-            foreach ((TabItemControl item, TabViewControl view) in TabViewControl.FindOpenDocuments(file.path))
+            foreach ((TabItemControl item, TabViewControl view) in TabViewControl.FindOpenDocuments(path))
             {
                 DocumentEditorControl editor = TabViewControl.EditorOf(item);
                 editor.session.Repath(target);
@@ -115,7 +117,7 @@ namespace Periodic.Editor.CustomControls
                 view.Retitle(item, name);
             }
 
-            Rebuild();
+            (Engine.primary.ui.uiRoot.FindByName(browserName) as VaultBrowserControl)?.Rebuild();
         }
 
         private void DeleteNote(FileObject file) =>
@@ -212,7 +214,8 @@ namespace Periodic.Editor.CustomControls
             TabItemControl tab = new TabItemControl
             {
                 name = notePath,
-                header = editor.session?.document?.name ?? Path.GetFileNameWithoutExtension(notePath)
+                header = editor.session?.document?.name ?? Path.GetFileNameWithoutExtension(notePath),
+                onRename = name => RenameNote(editor.session.path, name)
             };
             tab.AddChild(editor);
             tabs.AddChild(tab);

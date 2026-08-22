@@ -11,6 +11,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         [A_XSDElementProperty("Header", "UI", "Caption shown on the tab strip.")]
         public string header = "Tab";
 
+        // What a committed caption edit does. Null on a tab nobody can rename.
+        public Action<string>? onRename;
+
         public TabItemControl()
         {
             maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");

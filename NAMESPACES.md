@@ -43,9 +43,9 @@ ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\Aur
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Bezier.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\ConfirmWindow.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\ContextMenus.cs
-ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\ContextMenuWindow.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\DragGhost.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Glyph.cs
+ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Gradients.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\NoteNameWindow.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\UICollisionHandling.cs
 ArctisAurora.Core.UISystem -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\UILayout.cs
@@ -61,9 +61,11 @@ ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-A
 ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\TitleBarControl.cs
 ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\VulkanControl.cs
 ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\WindowControl.cs
+ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\WindowedContextMenuControl.cs
 ArctisAurora.Core.UISystem.Controls -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\WindowFrameControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\AbstractContainerControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\DockingControl.cs
+ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\EditableTabsControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\FileBrowserControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\FileRowControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> C:\Projects-Repositories\Aurora\Project-Aurora\AuroraEngine\Core\UISystem\Controls\Containers\FileTreeControl.cs

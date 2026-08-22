@@ -2,6 +2,9 @@
 
 **Date:** 2026-08-20
 **Status:** LANDED. Builds clean and boots; **nothing here is GUI-verified.**
+**Host superseded 2026-08-22** — `ContextMenuWindow` is gone and a menu now hosts itself, in the
+window it was opened from or in one of its own. Everything below about `invoker`, the row menu and
+the entries themselves stands. See [[context-menu-hosting]].
 **Scope:** `ArctisAurora.Core.UISystem` (`ContextMenus`, `ConfirmWindow`, `NoteNameWindow`),
 `ArctisAurora.Core.UISystem.Actions` (`WindowActions`, `ViewActions`),
 `ArctisAurora.Core.UISystem.Controls.Containers` (`FileBrowserControl`, `FileRowControl`,

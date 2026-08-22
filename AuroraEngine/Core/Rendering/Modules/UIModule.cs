@@ -23,7 +23,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override ERendererStage RendererStage => ERendererStage.UI;
 
         internal override uint[][] descriptorMaxCounts => new uint[][] {
-            new uint[] { 1, 1, 1 },                    // set 0: camera UBO, transforms SSBO, control-data SSBO
+            new uint[] { 1, 1, 1, 1 },                 // set 0: camera UBO, transforms SSBO, control-data SSBO, gradient SSBO
             new uint[] { TextureAsset.MaxTextures }    // set 1: one sampler per distinct texture
         };
 
@@ -60,7 +60,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         {
             new List<DescriptorType> {
                 DescriptorType.UniformBuffer, DescriptorType.StorageBuffer,
-                DescriptorType.StorageBuffer
+                DescriptorType.StorageBuffer, DescriptorType.StorageBuffer
             },
             new List<DescriptorType> {
                 DescriptorType.CombinedImageSampler
@@ -70,7 +70,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         {
             new List<ShaderStageFlags>{
                 ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit,
-                ShaderStageFlags.VertexBit
+                ShaderStageFlags.VertexBit, ShaderStageFlags.FragmentBit
             },
             new List<ShaderStageFlags>{
                 ShaderStageFlags.FragmentBit
@@ -79,7 +79,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override DescriptorBindingFlags[][] descriptorBindingFlags => [
             [
                 DescriptorBindingFlags.None, DescriptorBindingFlags.None,
-                DescriptorBindingFlags.None
+                DescriptorBindingFlags.None, DescriptorBindingFlags.None
             ],
             [
                 DescriptorBindingFlags.VariableDescriptorCountBit | DescriptorBindingFlags.PartiallyBoundBit
@@ -280,7 +280,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.StorageBuffer,
-                    DescriptorCount = 2
+                    DescriptorCount = 3
                 },
                 new DescriptorPoolSize()
                 {
@@ -327,9 +327,10 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             WriteTextureTable(currentFrame);
         }
 
-        // The per-frame-constant bindings: camera UBO (set0/b0), the transforms SSBO (set0/b1) and
-        // the control-data SSBO (set0/b2). All three are single descriptors pointing at whole-pool
-        // mirrors, so they only need rewriting when the set is rebuilt (i.e. those buffers moved).
+        // The per-frame-constant bindings: camera UBO (set0/b0), the transforms SSBO (set0/b1), the
+        // control-data SSBO (set0/b2) and the gradient table (set0/b3). All four are single
+        // descriptors pointing at whole-table mirrors, so they only need rewriting when the set is
+        // rebuilt (i.e. those buffers moved).
         private void WriteStaticDescriptors(int currentFrame)
         {
             DescriptorBufferInfo cameraInfo = new DescriptorBufferInfo()
@@ -349,6 +350,12 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 Buffer = meshComponent.controlDataBuffer,
                 Offset = 0,
                 Range = (ulong)(Unsafe.SizeOf<ControlData>() * BuildCapacity)
+            };
+            DescriptorBufferInfo gradientInfo = new DescriptorBufferInfo()
+            {
+                Buffer = meshComponent.gradientBuffer,
+                Offset = 0,
+                Range = (ulong)(Unsafe.SizeOf<GpuGradient>() * Gradients.Count)
             };
             var writeDescriptorSets = new WriteDescriptorSet[]
             {
@@ -381,6 +388,16 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     DstArrayElement = 0,
                     DescriptorType = DescriptorType.StorageBuffer,
                     PBufferInfo = &controlDataInfo
+                },
+                new WriteDescriptorSet
+                {
+                    SType = StructureType.WriteDescriptorSet,
+                    DstSet = frameResources[currentFrame].sets[0],
+                    DstBinding = 3,
+                    DescriptorCount = 1,
+                    DstArrayElement = 0,
+                    DescriptorType = DescriptorType.StorageBuffer,
+                    PBufferInfo = &gradientInfo
                 }
             };
             fixed (WriteDescriptorSet* descPtr = writeDescriptorSets)

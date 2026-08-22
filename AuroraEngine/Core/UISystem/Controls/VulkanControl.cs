@@ -79,6 +79,10 @@ namespace ArctisAurora.Core.UISystem.Controls
             // stroke around the mask's own shape, width in screen pixels
             public Vector3D<float> outlineColor;
             public float outlineWidth;
+            // row in the gradient table, 0 for none
+            public uint gradientIndex;
+            // rect the gradient ramps across, in design space, as (left, top, right, bottom)
+            public Vector4D<float> gradientRect;
         }
 
         [A_XSDType("ControlColor", "UI")]
@@ -503,6 +507,18 @@ namespace ArctisAurora.Core.UISystem.Controls
                 UpdateControlData();
             }
         }
+
+        [A_XSDElementProperty("Gradient", "UI", "Name of a gradient in Gradients.xml, ramped across this control's rect in place of its colour.")]
+        public virtual string gradient
+        {
+            get => field;
+            set
+            {
+                field = value;
+                controlData.gradientIndex = Gradients.IndexOf(value);
+                UpdateControlData();
+            }
+        } = "";
         #endregion
 
         #endregion
@@ -592,7 +608,26 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         #region ---- Layout State ----
         public Vector2D<float> DesiredSize { get; protected set; }
-        public LayoutRect arrangedRect { get; protected set; }
+
+        // Every assignment mirrors into the pool row the gradient ramps across, so no Arrange
+        // override has to know about gradients.
+        public LayoutRect arrangedRect
+        {
+            get => field;
+            protected set
+            {
+                field = value;
+                SetGradientSpace(value);
+            }
+        }
+
+        // The rect a gradient ramps across, when it is not this control's own — a run hands its
+        // glyphs its own rect so the ramp spans the text instead of restarting per letter.
+        internal void SetGradientSpace(LayoutRect rect)
+        {
+            controlData.gradientRect = new Vector4D<float>(rect.x, rect.y, rect.Right, rect.Bottom);
+            UpdateControlData();
+        }
 
         // Every assignment mirrors into the pool row the fragment shader discards against.
         public LayoutRect ClipRect
@@ -872,7 +907,7 @@ namespace ArctisAurora.Core.UISystem.Controls
         // walk is unconditional: bubbleAltClick gates the callback, not who owns the menu.
         public virtual void OpenContextMenu()
         {
-            if (ContextMenuWindow.Open(this)) return;
+            if (ContextMenus.Open(this)) return;
             (parent as VulkanControl)?.OpenContextMenu();
         }
 

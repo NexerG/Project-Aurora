@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Document xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../XML/Schemas/UITypeSchema.xsd" xmlns="http://arctisaurora/AuroraUITypes">
   <Block StylingType="Heading1">
-    <Run Text="Welcome to Periodic" FontName="electrolize" />
+    <Run Text="Welcome to Periodic" FontName="electrolize" Gradient="accent" />
   </Block>
   <Block>
     <Run Text="This note is stored as engine XML and rendered by the document view. " ControlColor="gray" />

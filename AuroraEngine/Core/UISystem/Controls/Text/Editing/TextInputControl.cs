@@ -98,6 +98,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
                 && strikethrough == other.strikethrough
                 && fontSize == other.fontSize
                 && controlColorHex == other.controlColorHex
+                && gradient == other.gradient
                 && fontName == other.fontName;
         }
 
@@ -109,6 +110,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
             right.italic = italic;
             right.strikethrough = strikethrough;
             right.controlColorHex = controlColorHex;
+            right.gradient = gradient;
             right.fontName = fontName;
             right.fontSize = fontSize;
             right.text = text[charOffset..];

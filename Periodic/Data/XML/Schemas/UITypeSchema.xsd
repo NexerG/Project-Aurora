@@ -3,7 +3,7 @@
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:TextStyleType types:DockMode types:GridSizeMode types:Scrollable types:ControlColor types:FillMode types:HorizontalAlignment types:VeticalAlignment types:WindowingModeEnum types:ContentScalingModeEnum types:Orientation" />
+    <xs:union memberTypes="types:GradientKind types:TextStyleType types:DockMode types:GridSizeMode types:Scrollable types:ControlColor types:FillMode types:HorizontalAlignment types:VeticalAlignment types:WindowingModeEnum types:ContentScalingModeEnum types:Orientation" />
   </xs:simpleType>
   <xs:element name="VaultBrowser" type="types:VaultBrowser" />
   <xs:complexType name="VaultBrowser">
@@ -20,6 +20,7 @@
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
     <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="RowHeight" type="xs:int" />
     <xs:attribute name="Indent" type="xs:float" />
     <xs:attribute name="RowSpacing" type="xs:float" />
@@ -91,6 +92,41 @@
       <xs:choice minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
   </xs:complexType>
+  <xs:simpleType name="GradientKind">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Linear" />
+      <xs:enumeration value="Radial" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:element name="Stop" type="types:Stop" />
+  <xs:complexType name="Stop">
+    <xs:sequence />
+    <xs:attribute name="Color" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
+    <xs:attribute name="Pos" type="xs:float" />
+  </xs:complexType>
+  <xs:element name="Gradient" type="types:Gradient" />
+  <xs:complexType name="Gradient">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Stop" type="types:Stop">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:choice minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
+    <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="Kind" type="types:GradientKind" />
+    <xs:attribute name="Angle" type="xs:float" />
+    <xs:attribute name="CenterX" type="xs:float" />
+    <xs:attribute name="CenterY" type="xs:float" />
+  </xs:complexType>
+  <xs:element name="Gradients" type="types:Gradients" />
+  <xs:complexType name="Gradients">
+    <xs:sequence>
+      <xs:choice minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
+  </xs:complexType>
   <xs:element name="Panel" type="types:Panel" />
   <xs:complexType name="Panel">
     <xs:sequence>
@@ -110,6 +146,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
+        <xs:element name="EditableTabs" type="types:EditableTabs" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="SplitView" type="types:SplitView" />
@@ -130,6 +167,7 @@
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
     <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
@@ -181,6 +219,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
+        <xs:element name="EditableTabs" type="types:EditableTabs" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="SplitView" type="types:SplitView" />
@@ -201,6 +240,7 @@
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
     <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="Orientation" type="types:Orientation" />
     <xs:attribute name="Spacing" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
@@ -254,6 +294,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
+        <xs:element name="EditableTabs" type="types:EditableTabs" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="SplitView" type="types:SplitView" />
@@ -274,6 +315,7 @@
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
     <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="WindowingMode" type="types:WindowingModeEnum" />
     <xs:attribute name="ContentScalingMode" type="types:ContentScalingModeEnum" />
     <xs:attribute name="WidthStar" type="xs:float" />
@@ -327,6 +369,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
+        <xs:element name="EditableTabs" type="types:EditableTabs" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="SplitView" type="types:SplitView" />
@@ -347,6 +390,7 @@
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
     <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
@@ -387,6 +431,7 @@
     <xs:attribute name="Text" type="xs:string" />
     <xs:attribute name="FontSize" type="xs:int" />
     <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="StylingType" type="types:TextStyleType" />
     <xs:attribute name="FontName" type="xs:string" />
     <xs:attribute name="Width" type="xs:int" />
@@ -451,6 +496,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
+        <xs:element name="EditableTabs" type="types:EditableTabs" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="SplitView" type="types:SplitView" />
@@ -471,6 +517,7 @@
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
     <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
@@ -521,6 +568,7 @@
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
     <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
@@ -564,6 +612,7 @@
     <xs:attribute name="Text" type="xs:string" />
     <xs:attribute name="FontSize" type="xs:int" />
     <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="StylingType" type="types:TextStyleType" />
     <xs:attribute name="FontName" type="xs:string" />
     <xs:attribute name="Width" type="xs:int" />
@@ -629,6 +678,7 @@
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
     <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
@@ -677,6 +727,7 @@
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
     <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="ScrollDirection" type="types:Scrollable" />
     <xs:attribute name="ScrollSensitivity" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
@@ -720,6 +771,7 @@
     <xs:attribute name="Text" type="xs:string" />
     <xs:attribute name="FontSize" type="xs:int" />
     <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="StylingType" type="types:TextStyleType" />
     <xs:attribute name="FontName" type="xs:string" />
     <xs:attribute name="Width" type="xs:int" />
@@ -831,6 +883,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
+        <xs:element name="EditableTabs" type="types:EditableTabs" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="SplitView" type="types:SplitView" />
@@ -851,6 +904,7 @@
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
     <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="HoverColorHex" type="xs:string" />
     <xs:attribute name="PressColorHex" type="xs:string" />
     <xs:attribute name="WidthStar" type="xs:float" />
@@ -900,6 +954,7 @@
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
     <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="HoverColorHex" type="xs:string" />
     <xs:attribute name="PressColorHex" type="xs:string" />
     <xs:attribute name="WidthStar" type="xs:float" />
@@ -963,6 +1018,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
+        <xs:element name="EditableTabs" type="types:EditableTabs" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="SplitView" type="types:SplitView" />
@@ -983,7 +1039,88 @@
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
     <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="LastChildFill" type="xs:boolean" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
+    <xs:attribute name="MinHeight" type="xs:int" />
+    <xs:attribute name="MinWidth" type="xs:int" />
+    <xs:attribute name="HorizontalPos" type="xs:float" />
+    <xs:attribute name="VerticalPos" type="xs:float" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
+    <xs:attribute name="ClipToBounds" type="xs:boolean" />
+    <xs:attribute name="DockMode" type="types:DockMode" />
+    <xs:attribute name="Grid.Column" type="xs:int" />
+    <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
+    <xs:attribute name="onEnter" type="actions:UI" />
+    <xs:attribute name="BubbleEnter" type="xs:boolean" />
+    <xs:attribute name="onExit" type="actions:UI" />
+    <xs:attribute name="BubbleExit" type="xs:boolean" />
+    <xs:attribute name="onClick" type="actions:UI" />
+    <xs:attribute name="BubbleClick" type="xs:boolean" />
+    <xs:attribute name="onAltClick" type="actions:UI" />
+    <xs:attribute name="BubbleAltClick" type="xs:boolean" />
+    <xs:attribute name="onRelease" type="actions:UI" />
+    <xs:attribute name="BubbleRelease" type="xs:boolean" />
+    <xs:attribute name="onAltRelease" type="actions:UI" />
+    <xs:attribute name="BubbleAltRelease" type="xs:boolean" />
+    <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
+    <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
+    <xs:attribute name="Name" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="EditableTabs" type="types:EditableTabs" />
+  <xs:complexType name="EditableTabs">
+    <xs:sequence>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="VaultBrowser" type="types:VaultBrowser" />
+        <xs:element name="Panel" type="types:Panel" />
+        <xs:element name="TitleBar" type="types:TitleBar" />
+        <xs:element name="Window" type="types:Window" />
+        <xs:element name="WindowFrame" type="types:WindowFrame" />
+        <xs:element name="Label" type="types:Label" />
+        <xs:element name="TextBlock" type="types:TextBlock" />
+        <xs:element name="TextBox" type="types:TextBox" />
+        <xs:element name="TextInput" type="types:TextInput" />
+        <xs:element name="Block" type="types:Block" />
+        <xs:element name="DocumentEditor" type="types:DocumentEditor" />
+        <xs:element name="Run" type="types:Run" />
+        <xs:element name="Button" type="types:Button" />
+        <xs:element name="Splitter" type="types:Splitter" />
+        <xs:element name="Dock" type="types:Dock" />
+        <xs:element name="EditableTabs" type="types:EditableTabs" />
+        <xs:element name="GridList" type="types:GridList" />
+        <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+        <xs:element name="SplitView" type="types:SplitView" />
+        <xs:element name="StackPanel" type="types:StackPanel" />
+        <xs:element name="TabItem" type="types:TabItem" />
+        <xs:element name="TabView" type="types:TabView" />
+      </xs:choice>
+    </xs:sequence>
+    <xs:attribute name="Width" type="xs:int" />
+    <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
+    <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
+    <xs:attribute name="TabHeight" type="xs:float" />
+    <xs:attribute name="TabWidth" type="xs:float" />
+    <xs:attribute name="TabColorHex" type="xs:string" />
+    <xs:attribute name="ActiveTabColorHex" type="xs:string" />
+    <xs:attribute name="TabHoverColorHex" type="xs:string" />
+    <xs:attribute name="TearOffDocument" type="xs:string" />
+    <xs:attribute name="TabContextMenu" type="xs:string" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
@@ -1074,6 +1211,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
+        <xs:element name="EditableTabs" type="types:EditableTabs" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="SplitView" type="types:SplitView" />
@@ -1094,6 +1232,7 @@
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
     <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
@@ -1152,6 +1291,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
+        <xs:element name="EditableTabs" type="types:EditableTabs" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="SplitView" type="types:SplitView" />
@@ -1172,6 +1312,7 @@
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
     <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="ScrollDirection" type="types:Scrollable" />
     <xs:attribute name="ScrollSensitivity" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
@@ -1225,6 +1366,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
+        <xs:element name="EditableTabs" type="types:EditableTabs" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="SplitView" type="types:SplitView" />
@@ -1245,6 +1387,7 @@
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
     <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="Orientation" type="types:Orientation" />
     <xs:attribute name="Spacing" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
@@ -1298,6 +1441,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
+        <xs:element name="EditableTabs" type="types:EditableTabs" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="SplitView" type="types:SplitView" />
@@ -1318,6 +1462,7 @@
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
     <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="Orientation" type="types:Orientation" />
     <xs:attribute name="Spacing" type="xs:float" />
     <xs:attribute name="WidthStar" type="xs:float" />
@@ -1371,6 +1516,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
+        <xs:element name="EditableTabs" type="types:EditableTabs" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="SplitView" type="types:SplitView" />
@@ -1391,6 +1537,7 @@
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
     <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="Header" type="xs:string" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
@@ -1443,6 +1590,7 @@
         <xs:element name="Button" type="types:Button" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
+        <xs:element name="EditableTabs" type="types:EditableTabs" />
         <xs:element name="GridList" type="types:GridList" />
         <xs:element name="ScrollableControl" type="types:ScrollableControl" />
         <xs:element name="SplitView" type="types:SplitView" />
@@ -1463,6 +1611,7 @@
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="OutlineColorHex" type="xs:string" />
     <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="TabHeight" type="xs:float" />
     <xs:attribute name="TabWidth" type="xs:float" />
     <xs:attribute name="TabColorHex" type="xs:string" />

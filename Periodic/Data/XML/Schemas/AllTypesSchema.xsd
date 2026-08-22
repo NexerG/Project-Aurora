@@ -25,6 +25,10 @@
       <xs:enumeration value="MenuItem" />
       <xs:enumeration value="ContextMenu" />
       <xs:enumeration value="ContextMenus" />
+      <xs:enumeration value="GradientKind" />
+      <xs:enumeration value="Stop" />
+      <xs:enumeration value="Gradient" />
+      <xs:enumeration value="Gradients" />
       <xs:enumeration value="Panel" />
       <xs:enumeration value="TitleBar" />
       <xs:enumeration value="Window" />
@@ -44,6 +48,7 @@
       <xs:enumeration value="Splitter" />
       <xs:enumeration value="DockMode" />
       <xs:enumeration value="Dock" />
+      <xs:enumeration value="EditableTabs" />
       <xs:enumeration value="GridSizeMode" />
       <xs:enumeration value="RowDefinition" />
       <xs:enumeration value="ColumnDefinition" />
@@ -162,6 +167,10 @@
       <xs:enumeration value="MenuItem" />
       <xs:enumeration value="ContextMenu" />
       <xs:enumeration value="ContextMenus" />
+      <xs:enumeration value="GradientKind" />
+      <xs:enumeration value="Stop" />
+      <xs:enumeration value="Gradient" />
+      <xs:enumeration value="Gradients" />
       <xs:enumeration value="Panel" />
       <xs:enumeration value="TitleBar" />
       <xs:enumeration value="Window" />
@@ -181,6 +190,7 @@
       <xs:enumeration value="Splitter" />
       <xs:enumeration value="DockMode" />
       <xs:enumeration value="Dock" />
+      <xs:enumeration value="EditableTabs" />
       <xs:enumeration value="GridSizeMode" />
       <xs:enumeration value="RowDefinition" />
       <xs:enumeration value="ColumnDefinition" />

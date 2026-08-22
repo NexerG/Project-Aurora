@@ -20,10 +20,10 @@
 			</Button>
 		</TitleBar>
 
-		<TabView Name="Tabs" HeightStar="1" ColorHex="#1e1e1e"
-				 TabHeight="28" TabWidth="180"
-				 TabColorHex="#252525" ActiveTabColorHex="#1e1e1e" TabHoverColorHex="#2F2F2F"
-				 TearOffDocument="TabWindow.xml"/>
+		<EditableTabs Name="Tabs" HeightStar="1" ColorHex="#1e1e1e"
+					  TabHeight="28" TabWidth="180"
+					  TabColorHex="#252525" ActiveTabColorHex="#1e1e1e" TabHoverColorHex="#2F2F2F"
+					  TearOffDocument="TabWindow.xml"/>
 	</StackPanel>
 	</WindowFrame>
 </Window>

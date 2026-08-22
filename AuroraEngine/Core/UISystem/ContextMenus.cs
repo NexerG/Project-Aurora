@@ -100,6 +100,47 @@ namespace ArctisAurora.Core.UISystem
         // The control the running entry's menu was opened on. Null unless an entry is mid-invoke.
         public static VulkanControl? invoker { get; private set; }
 
+        // The one live menu — one pointer, so one open at a time. Kept between opens, because a
+        // windowed one owns a window that must not be rebuilt per right click.
+        private static ContextMenuControl? live;
+
+        // What a right click builds. Menus open in the window they came from unless a host swaps this
+        // for a windowed one at startup.
+        public static Func<ContextMenuControl> menuFactory = () => new ContextMenuControl();
+
+        public static bool Open(VulkanControl owner)
+        {
+            live ??= menuFactory();
+            return live.Open(owner);
+        }
+
+        public static void Tick() => live?.Tick();
+
+        // The menu the hit-test runs against in place of this tree's root. An open menu is the
+        // top-most thing drawn, and the walk takes the first child that hits rather than the last, so
+        // it would otherwise be the one thing under the pointer that cannot be reached.
+        internal static ContextMenuControl? OpenIn(VulkanControl root)
+        {
+            if (live == null || !live.isOpen) return null;
+
+            VulkanControl top = live;
+            while (top.parent is VulkanControl parent) top = parent;
+
+            return ReferenceEquals(top, root) ? live : null;
+        }
+
+        // A press outside an open menu takes it down and goes no further — it dismisses, it does not
+        // also reach whatever it landed on. Asked of the tree the press landed in, because the point
+        // and the menu's rect are only in the same space when the menu hangs in that tree.
+        internal static bool DismissedBy(VulkanControl root, Vector2D<float> point)
+        {
+            ContextMenuControl? menu = OpenIn(root);
+            if (menu == null || menu.arrangedRect.Contains(point)) return false;
+
+            menu.Close();
+            return true;
+        }
+
         public static ContextMenuDefinition Get(string name) => string.IsNullOrEmpty(name) ? null : menus.GetValueOrDefault(name);
 
         // Runs an entry with its owner published.

@@ -36,6 +36,11 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
         private DeviceMemory _controlDataBufferMemory;
         private int _transformCapacity = -1;
 
+        // The gradient table, shared by every window and written once — definitions are authored in
+        // XML and parsed at bootstrap, so nothing edits them after this.
+        internal Silk.NET.Vulkan.Buffer gradientBuffer;
+        private DeviceMemory _gradientBufferMemory;
+
         internal MCUI()
         {
             render = false;
@@ -48,6 +53,14 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             controls = EntityRegistry.GetGroup("Controls").As<VulkanControl>();
 
             CreateSampler();
+            CreateGradientTable();
+        }
+
+        // Slot 0 is always present, so the buffer is never zero-sized even with no gradients authored.
+        private void CreateGradientTable()
+        {
+            GpuGradient[] gradients = Gradients.Table;
+            AVulkanBufferHandler.CreateBuffer(ref gradients, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref gradientBuffer, ref _gradientBufferMemory, BufferUsageFlags.StorageBufferBit);
         }
 
         public override void OnStart()

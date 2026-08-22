@@ -12,7 +12,7 @@ using Silk.NET.Vulkan;
 namespace ArctisAurora.Core.UISystem
 {
     // Asks for a note's name. One window per process, built on the first ask and hidden between them,
-    // the same shape as ContextMenuWindow — a swapchain per prompt would put the build cost inside
+    // the same shape as WindowedContextMenuControl — a swapchain per prompt would put the build cost inside
     // the gesture.
     public static class NoteNameWindow
     {

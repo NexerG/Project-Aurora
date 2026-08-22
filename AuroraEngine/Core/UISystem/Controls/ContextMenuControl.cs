@@ -4,14 +4,18 @@ using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.EngineWork.Registry;
+using ArctisAurora.EngineWork.Rendering;
+using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.UISystem.Controls
 {
     // An open context menu: a translucent ground over a column of entries. The column is rebuilt on
     // every open, because the entries are composed per right click and never repeat.
     //
-    // Nothing here is sized. The entries measure to their widest caption and the menu to them, which
-    // is what the window it opens in is then sized to.
+    // It hosts itself. This one floats in the window the right click came from; the windowed subclass
+    // puts the same column in a window of its own.
+    //
+    // Nothing here is sized. The entries measure to their widest caption and the menu to them.
     public class ContextMenuControl : HintControl
     {
         // entry metrics
@@ -30,8 +34,7 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         private readonly StackPanelControl column = new StackPanelControl();
 
-        // Raised before an entry fires, so whatever is showing the menu can take it down first.
-        internal Action? onEntryInvoked;
+        public bool isOpen { get; private set; }
 
         public ContextMenuControl()
         {
@@ -42,6 +45,57 @@ namespace ArctisAurora.Core.UISystem.Controls
             column.orientation = StackPanelControl.Orientation.Vertical;
             column.maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");
             AddChild(column);
+        }
+
+        // False means this control offered nothing, which is what tells the walk to keep going up.
+        public bool Open(VulkanControl owner)
+        {
+            // right-clicking the menu itself is not a request for another one, and there is nothing
+            // above it worth walking to either
+            if (Owns(owner)) return true;
+
+            List<ContextEntry> entries = ContextMenus.Compose(owner);
+            if (entries.Count == 0) return false;
+
+            RenderWindow source = RenderWindow.Of(owner);
+            if (source == null) return false;
+
+            if (isOpen) Detach();
+
+            Fill(entries);
+            Measure(new Vector2D<float>(float.MaxValue, float.MaxValue));
+            Attach(source, source.ui.ToDesignSpace(source.mousePos));
+
+            isOpen = true;
+            return true;
+        }
+
+        public void Close()
+        {
+            if (!isOpen) return;
+
+            Detach();
+            isOpen = false;
+        }
+
+        // Dismissal is the host's business, and a menu living in the window it was opened from has
+        // nothing to watch — the press that lands outside it takes it down.
+        public virtual void Tick() { }
+
+        protected virtual void Attach(RenderWindow source, Vector2D<float> point) =>
+            source.ui.uiRoot.AddOverlay(this, point);
+
+        protected virtual void Detach() => (parent as WindowControl)?.RemoveOverlay();
+
+        // Whether a control is this menu or sits inside it.
+        private bool Owns(VulkanControl control)
+        {
+            while (control != null)
+            {
+                if (ReferenceEquals(control, this)) return true;
+                control = control.parent as VulkanControl;
+            }
+            return false;
         }
 
         public void Fill(IReadOnlyList<ContextEntry> entries)
@@ -75,7 +129,7 @@ namespace ArctisAurora.Core.UISystem.Controls
             if (entry.enabled)
                 item.RegisterOnRelease(() =>
                 {
-                    onEntryInvoked?.Invoke();
+                    Close();
                     entry.invoke?.Invoke();
                 });
 

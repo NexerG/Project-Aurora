@@ -67,6 +67,17 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             }
         }
 
+        public override string gradient
+        {
+            get => base.gradient;
+            set
+            {
+                base.gradient = value;
+                RepointGlyphs();
+                InvalidateArrange();
+            }
+        }
+
         // Resolved into fontSize by the owning block's ApplyLayout, not read at draw time.
         [A_XSDElementProperty("StylingType", "UI", "Style this text takes; Inherit follows the block.")]
         public TextStyleType stylingType { get; set; } = TextStyleType.Inherit;
@@ -130,6 +141,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                 {
                     glyph.SetCharacter(glyph.character, _fontAsset, fontSize);
                     glyph.controlColorHex = controlColorHex;
+                    glyph.gradient = gradient;
                 }
         }
 
@@ -179,6 +191,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                     GlyphControl replacement = new GlyphControl(target[i], _fontAsset, fontSize);
                     replacement.parent = this;
                     replacement.controlColorHex = controlColorHex;
+                    replacement.gradient = gradient;
                     children[i] = replacement;   // detached by the overwrite
                     DiscardGlyph(replaced);
                     treeChanged = true;
@@ -189,6 +202,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                     GlyphControl glyph = new GlyphControl(target[i], _fontAsset, fontSize);
                     glyph.parent = this;
                     glyph.controlColorHex = controlColorHex;
+                    glyph.gradient = gradient;
                     children.Add(glyph);
                     treeChanged = true;
                 }
@@ -271,6 +285,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             if (layout == null) return;
 
             LayoutRect innerRect = finalRect.Shrink(padding);
+            bool spansGlyphs = controlData.gradientIndex > 0;
 
             for (int l = 0; l < layout.lines.Count; l++)
             {
@@ -289,6 +304,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
 
                         glyph.Arrange(new LayoutRect(pen + glyph.bearingX, baselineY - glyph.ascent,
                             glyph.DesiredSize.X, glyph.DesiredSize.Y));
+                        if (spansGlyphs) glyph.SetGradientSpace(finalRect);
                         pen += glyph.advance;
                     }
                 }

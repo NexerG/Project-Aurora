@@ -31,6 +31,8 @@ struct ControlData
     float edgeThickness;
     vec3 outlineColor;
     float outlineWidth;
+    uint gradientIndex;
+    vec4 gradientRect;
 };
 
 layout(set = 0, binding = 2, scalar) readonly buffer ControlDataBuffer {
@@ -49,6 +51,8 @@ layout(location = 8) out flat vec3 fragEdgeColor;
 layout(location = 9) out flat float fragEdgeThickness;
 layout(location = 10) out flat vec3 fragOutlineColor;
 layout(location = 11) out flat float fragOutlineWidth;
+layout(location = 12) out flat uint fragGradientIndex;
+layout(location = 13) out flat vec4 fragGradientRect;
 
 void main() {
     mat4 model = ts.transforms[gl_InstanceIndex];
@@ -72,4 +76,8 @@ void main() {
     fragEdgeThickness = CD.controls[gl_InstanceIndex].edgeThickness;
     fragOutlineColor = CD.controls[gl_InstanceIndex].outlineColor;
     fragOutlineWidth = CD.controls[gl_InstanceIndex].outlineWidth;
+
+    // shares a space with fragPos, so a run can hand its glyphs a rect wider than their own cells
+    fragGradientIndex = CD.controls[gl_InstanceIndex].gradientIndex;
+    fragGradientRect = CD.controls[gl_InstanceIndex].gradientRect;
 }

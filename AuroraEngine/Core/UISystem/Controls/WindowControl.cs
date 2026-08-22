@@ -33,6 +33,10 @@ namespace ArctisAurora.Core.UISystem.Controls
         // is given, so the root starts far enough back that a deep tree still clears the near plane.
         private const float rootDepth = -10f;
 
+        // a control floated at a point rather than aligned into the window
+        private VulkanControl overlay;
+        private Vector2D<float> overlayOrigin;
+
         public WindowControl()
         {
             maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");
@@ -91,6 +95,28 @@ namespace ArctisAurora.Core.UISystem.Controls
                                        windowPoint.Y * box.Y / window.Height);
         }
 
+        // Floats a control over the tree at a point. Appended past the single-child guard and last,
+        // because dense order is DFS and the last child is what draws over everything.
+        public void AddOverlay(VulkanControl control, Vector2D<float> origin)
+        {
+            RemoveOverlay();
+
+            overlay = control;
+            overlayOrigin = origin;
+            control.parent = this;
+            children.Add(control);
+            MarkTreeOrderDirty();
+            InvalidateLayout();
+        }
+
+        public void RemoveOverlay()
+        {
+            if (overlay == null) return;
+
+            RemoveChild(overlay);
+            overlay = null;
+        }
+
         // The root measures at the box it was fitted to. The XML Width/Height are the design size
         // that ViewportSize reads, not a cap the tree inherits.
         public override Vector2D<float> Measure(Vector2D<float> availableSize)
@@ -123,6 +149,12 @@ namespace ArctisAurora.Core.UISystem.Controls
             {
                 if (e is not VulkanControl child) continue;
 
+                if (ReferenceEquals(child, overlay))
+                {
+                    child.Arrange(OverlayRect(inner));
+                    continue;
+                }
+
                 // Compute child size respecting alignment
                 float childW = child.horizontalAlignment == HorizontalAlignment.Stretch
                     ? inner.width
@@ -153,6 +185,20 @@ namespace ArctisAurora.Core.UISystem.Controls
             }
 
             isArrangeDirty = false;
+        }
+
+        // The overlay at its measured size, flipped back over the origin when it would run off the
+        // right or bottom edge and clamped when it still does not fit.
+        private LayoutRect OverlayRect(LayoutRect inner)
+        {
+            float w = MathF.Min(overlay.DesiredSize.X, inner.width);
+            float h = MathF.Min(overlay.DesiredSize.Y, inner.height);
+
+            float x = overlayOrigin.X + w > inner.Right ? overlayOrigin.X - w : overlayOrigin.X;
+            float y = overlayOrigin.Y + h > inner.Bottom ? overlayOrigin.Y - h : overlayOrigin.Y;
+
+            return new LayoutRect(Math.Clamp(x, inner.x, inner.Right - w),
+                                  Math.Clamp(y, inner.y, inner.Bottom - h), w, h);
         }
     }
 }

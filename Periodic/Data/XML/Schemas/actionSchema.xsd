@@ -22,6 +22,7 @@
   <xs:simpleType name="Bootstrap">
     <xs:restriction base="xs:string">
       <xs:enumeration value="ContextMenus.LoadMenus" />
+      <xs:enumeration value="Gradients.LoadGradients" />
       <xs:enumeration value="Context.LoadContexts" />
       <xs:enumeration value="EntityRegistry.ParseXML" />
       <xs:enumeration value="Settings.LoadAll" />

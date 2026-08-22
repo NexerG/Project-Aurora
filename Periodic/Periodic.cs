@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.UISystem;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
@@ -20,6 +21,7 @@ namespace AuroraPeriodic
 
             engine.Init(false);
             InputHandler.SetActiveKeybindGroup("InputMap");
+            ContextMenus.menuFactory = () => new WindowedContextMenuControl();
             // prepare level
 
             // One-shot atlas bake — this is the set currently in Data/Fonts/arial.

@@ -31,9 +31,6 @@ namespace ArctisAurora.EngineWork
         [DllImport("kernel32.dll")]
         static extern int GetCurrentThreadId();
 
-        // pre vars
-        public static int doubleClickTime = 250;
-
         internal static Engine engineInstance = null;
 
         // Every open OS window, by name. Copy-on-write: a mutation builds a whole new dictionary and
@@ -265,7 +262,7 @@ namespace ArctisAurora.EngineWork
             foreach (RenderWindow window in windows.Values)
                 HandleUI(window);
             DragGhost.Follow();
-            ContextMenuWindow.Tick();
+            ContextMenus.Tick();
 
             // here should go entity updates &/or interpolation
             Interpolate();
@@ -301,15 +298,15 @@ namespace ArctisAurora.EngineWork
             if (lmb != null)
             {
                 if (lmb.justPressed)
-                    uiCollisionHandler.SolveLMBPress(mp);
+                    uiCollisionHandler.SolveLMBPress(mp, window.ui.uiRoot);
                 if (lmb.justReleased)
-                    uiCollisionHandler.SolveLMBRelease(mp);
+                    uiCollisionHandler.SolveLMBRelease(mp, lmb.tapCount);
             }
 
             if (rmb != null)
             {
                 if (rmb.justPressed)
-                    uiCollisionHandler.SolveRMBPress(mp);
+                    uiCollisionHandler.SolveRMBPress(mp, window.ui.uiRoot);
                 if (rmb.justReleased)
                     uiCollisionHandler.SolveRMBRelease(mp);
             }

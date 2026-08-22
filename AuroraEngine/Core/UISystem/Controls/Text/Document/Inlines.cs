@@ -23,6 +23,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             italic = italic,
             strikethrough = strikethrough,
             controlColorHex = controlColorHex,
+            gradient = gradient,
             fontName = fontName,
             fontSize = fontSize,
             stylingType = stylingType,

@@ -107,20 +107,24 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             host.InvalidateLayout();
         }
 
-        // The new pane is the source's chrome with none of its contents.
-        private static TabViewControl NewPane(TabViewControl source) => new TabViewControl
+        // The new pane is the source's kind and chrome with none of its contents.
+        private static TabViewControl NewPane(TabViewControl source)
         {
-            name = source.name,
-            tabHeight = source.tabHeight,
-            tabWidth = source.tabWidth,
-            tabColorHex = source.tabColorHex,
-            activeTabColorHex = source.activeTabColorHex,
-            tabHoverColorHex = source.tabHoverColorHex,
-            tearOffDocument = source.tearOffDocument,
-            tabContextMenu = source.tabContextMenu,
-            contextMenus = source.contextMenus,
-            controlColorHex = source.controlColorHex
-        };
+            TabViewControl pane = source.NewOfSameKind();
+
+            pane.name = source.name;
+            pane.tabHeight = source.tabHeight;
+            pane.tabWidth = source.tabWidth;
+            pane.tabColorHex = source.tabColorHex;
+            pane.activeTabColorHex = source.activeTabColorHex;
+            pane.tabHoverColorHex = source.tabHoverColorHex;
+            pane.tearOffDocument = source.tearOffDocument;
+            pane.tabContextMenu = source.tabContextMenu;
+            pane.contextMenus = source.contextMenus;
+            pane.controlColorHex = source.controlColorHex;
+
+            return pane;
+        }
 
         // Only the main axis is pinned; the cross axis stretches, and a thickness on it would leave
         // the grip a five pixel square.

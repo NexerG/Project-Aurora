@@ -87,8 +87,11 @@ Setting `width`/`height`/`preferred*`/`margin`/`padding` calls `InvalidateLayout
 [A_XSDElementProperty("EdgeThickness","UI")] public float edgeThickness;
 [A_XSDElementProperty("OutlineColorHex","UI")] public string outlineColorHex = "#000000";
 [A_XSDElementProperty("OutlineWidth","UI")]  public float outlineWidth;
+[A_XSDElementProperty("Gradient","UI")]      public virtual string gradient = "";
 ```
 Every setter writes its `controlData` field and calls `UpdateControlData()`.
+
+`Gradient` names a ramp in `Gradients.xml` and paints it in place of `ColorHex` — see [[Gradients]]. It is a row number in a shared table rather than stops carried here, so a definition used by many controls exists once. The ramp measures across `arrangedRect`, which the setter mirrors into `controlData` so no `Arrange` override has to know gradients exist, and which a text control overwrites on its glyphs so a ramp spans a run instead of restarting per letter.
 
 There are two separate strokes because there are two distance fields to stroke: `EdgeThickness` is a band of the rounded-box silhouette the corner radius already produces, so it is a border on the control's own rectangle and is measured in design-space pixels, while `OutlineWidth` is a second threshold on the mask's MSDF distance, so it traces the shape inside the quad — the letter, not the letter's box — and is measured in screen pixels because that is the space the MSDF distance is resolved in. A control carrying both gets a box border and an outlined glyph, and the edge is composited last so it wins where they overlap.
 
@@ -106,6 +109,8 @@ public Sampler colorSampler; public TextureAsset colorAsset;
 `onEnter/onExit`, `onClick/onAltClick`, `onRelease/onAltRelease`, `onDoubleClick`, `onDrag/onDragStop`, `onScrollUp/onScrollDown`, plus `hover`. Each has a `bubble*` flag so an unhandled event walks up to the parent. `HitTest(point)` tests against `ClipRect`.
 
 `hitTestable` (default true) drops a control out of the hit-test entirely, for decorations like a caret or a selection box that would otherwise swallow the click aimed past them. `canBeActiveContext` (virtual, default true) is separate and does not affect hit-testing: a control answering false is still hit, but hands the active context to its parent, so `UICollisionHandling.activeControl` lands on the `Button` rather than the `GlyphControl` actually under the cursor. `GlyphControl` and [[Label]] override it to false. The press stores the resolved control and the release compares against it, which is what makes a press that began elsewhere activate nothing.
+
+`onDoubleClick` fires from that same release, when the key tracker's `tapCount` reads exactly two and both presses resolved to the same control. Both tests are needed: the count belongs to the mouse button rather than to anything on screen, so on its own two quick clicks across two neighbouring tabs read as one double click on the second, and `>= 2` would fire again on the third tap of a triple. It resolves on the control under the pointer and bubbles from there, so the deepest hit being a [[Glyph]] two levels beneath the button it belongs to costs the handler nothing.
 
 ## Methods
 
