@@ -248,6 +248,11 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             WriteCommandBuffers(currentFrame);
         }
 
+        internal override void UpdateFrameData(int imageIndex)
+        {
+            camera.UpdateCameraMatrix(window.swapchainExtent, (uint)imageIndex);
+        }
+
         internal override void PrepareObjects()
         {
             Renderer.renderer.CreateCommandPool((uint)Renderer.queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit), out moduleCommandPool, CommandPoolCreateFlags.ResetCommandBufferBit);
@@ -473,10 +478,11 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             VertexInputBindingDescription bindingDesc = Vertex.GetBindingDescription();
             VertexInputAttributeDescription[] attribDesc = Vertex.GetVertexInputAttributeDescriptions();
 
-
+            // set 0 is the renderer's global set; this module's own sets follow it
+            DescriptorSetLayout[] setLayouts = [Renderer.globalSetLayout, .. descriptorSetLayouts];
 
             fixed (VertexInputAttributeDescription* attribDescPtr = attribDesc)
-            fixed (DescriptorSetLayout* descriptorSetLayoutsPtr = descriptorSetLayouts)
+            fixed (DescriptorSetLayout* descriptorSetLayoutsPtr = setLayouts)
             {
                 PipelineVertexInputStateCreateInfo vertexInputInfo = new PipelineVertexInputStateCreateInfo
                 {
@@ -571,7 +577,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 PipelineLayoutCreateInfo pipelineLayoutInfo = new PipelineLayoutCreateInfo()
                 {
                     SType = StructureType.PipelineLayoutCreateInfo,
-                    SetLayoutCount = (uint)variableSetCount,
+                    SetLayoutCount = (uint)setLayouts.Length,
                     PushConstantRangeCount = 0,
                     PSetLayouts = descriptorSetLayoutsPtr
                 };
@@ -717,6 +723,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             //player view
             Renderer.vk.CmdBeginRendering(commandBuffers[currentFrame], &_renderingInfo);
             Renderer.vk.CmdBindPipeline(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipeline);
+            Renderer.vk.CmdBindDescriptorSets(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipelineLayout, 0, 1, Renderer.globalSets[currentFrame], 0, null);
 
             Viewport _viewport = new Viewport() { X = 0, Y = 0, Width = window.swapchainExtent.Width, Height = window.swapchainExtent.Height, MinDepth = 0, MaxDepth = 1 };
             Rect2D _scissor = new Rect2D() { Offset = { X = 0, Y = 0 }, Extent = window.swapchainExtent };

@@ -287,12 +287,16 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             LayoutRect innerRect = finalRect.Shrink(padding);
             bool spansGlyphs = controlData.gradientIndex > 0;
 
+            // text position inside an authored box
+            float slackX = preferredWidth > 0 ? MathF.Max(0f, innerRect.width - layout.width) * horizontalPosition : 0f;
+            float slackY = preferredHeight > 0 ? MathF.Max(0f, innerRect.height - layout.height) * verticalPosition : 0f;
+
             for (int l = 0; l < layout.lines.Count; l++)
             {
                 TextLine line = layout.lines[l];
 
-                float baselineY = innerRect.y + line.baseline;
-                float pen = innerRect.x + (l == 0 ? firstLineOffset : 0f);
+                float baselineY = innerRect.y + slackY + line.baseline;
+                float pen = innerRect.x + slackX + (l == 0 ? firstLineOffset : 0f);
 
                 foreach (LineSegment segment in line.segments)
                 {

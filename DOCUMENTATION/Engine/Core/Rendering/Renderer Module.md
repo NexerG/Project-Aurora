@@ -45,6 +45,7 @@ Modules use **dynamic rendering** (Vulkan 1.3 core), so there is no `VkRenderPas
 | `CreateOutputImages()` | virtual | Allocate the offscreen colour targets (`outputFormat`, `SampledBit`). |
 | `ImageBarrier(...)` | static | The layout transition a render pass used to imply. Called either side of `CmdBeginRendering`/`CmdEndRendering`. |
 | `UpdateModule(frame)` | abstract | Per-frame rebuild (descriptors, instance buffers) when dirty. |
+| `UpdateFrameData(imageIndex)` | virtual | The module's own per-frame buffers, written every frame whether or not it is dirty. The renderer writes the global set (see [[VULKAN]] â†’ Global Frame Data) and leaves these here. |
 | `WriteCommandBuffers(frame)` | abstract | Record the draw commands. |
 | `DestroySizeDependentResources()` | virtual | Tear down output images on window resize (see [[VULKAN]] â†’ swapchain recreation). |
 
@@ -73,7 +74,7 @@ internal FrameResources[] frameResources;       // descriptor pool + sets, one p
 %% Grouped by responsibility; access shown inline. %%
 
 ### Lifecycle (driven by the renderer)
-The renderer calls these in order during bootstrap: `PrepareObjects` â†’ `CreateOutputImages` â†’ `CreatePipeline`. Each frame, if the module's `isDirty[image]` is set or `HasPendingWork(image)` reports work the module found by polling, the renderer calls `UpdateModule`, which re-records via `WriteCommandBuffers`.
+The renderer calls these in order during bootstrap: `PrepareObjects` â†’ `CreateOutputImages` â†’ `CreatePipeline`. Each frame, if the module's `isDirty[image]` is set or `HasPendingWork(image)` reports work the module found by polling, the renderer calls `UpdateModule`, which re-records via `WriteCommandBuffers`. `UpdateFrameData` runs every frame regardless, after the renderer has published its own global buffers for that image.
 
 ### Descriptors
 `CreateDescriptorSetLayout` (virtual) builds the layouts from the declarative `descriptorTypes` / `shaderStages` / `descriptorBindingFlags` arrays; `AllocateDescriptorSets` handles the variable-count last binding (bindless arrays). Concrete modules fill them in `UpdateDescriptorSets`.

@@ -9,13 +9,29 @@ using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.EXT;
 using Silk.NET.Vulkan.Extensions.KHR;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using static ArctisAurora.EngineWork.Rendering.Helpers.AVulkanHelper;
+using Buffer = Silk.NET.Vulkan.Buffer;
 using Image = Silk.NET.Vulkan.Image;
 using Semaphore = Silk.NET.Vulkan.Semaphore;
 
 namespace ArctisAurora.EngineWork.Rendering
 {
+    // What the renderer publishes to every shader once a frame, in the global set.
+    [StructLayout(LayoutKind.Sequential)]
+    public struct GpuEngineStats
+    {
+        // wall time of each system's last completed tick, milliseconds
+        public float mainTickMs;
+        public float physicsTickMs;
+        public float renderTickMs;
+        // seconds since boot, whole and wrapped
+        public float totalTime;
+        public float wrappedTime;
+        public uint frameIndex;
+    }
+
     internal unsafe class Renderer
     {
         internal static Renderer renderer = null!;
@@ -67,6 +83,18 @@ namespace ArctisAurora.EngineWork.Rendering
 
         // rendering
         internal const int MAX_FRAMES_IN_FLIGHT = 2;
+
+        // Global frame data — one buffer per swapchain image, mapped for the life of the process and
+        // bound at set 0. Everything a module owns starts at set 1. The count is a ceiling, not any
+        // one window's image count: these outlive every window and are never rebuilt.
+        internal const int MAX_SWAPCHAIN_IMAGES = 8;
+        private const double timeWrapSeconds = 1024.0;
+        internal static DescriptorSetLayout globalSetLayout;
+        internal static DescriptorSet[] globalSets = null!;
+        private static DescriptorPool globalDescriptorPool;
+        private static Buffer[] engineStatsBuffers = null!;
+        private static DeviceMemory[] engineStatsMemory = null!;
+        private static nint[] engineStatsPtrs = null!;
 
         // What kind of renderer is running, for the code that only asks the question globally.
         internal static ERendererTypes PrimaryRendererType => Engine.primary.modules[0].rendererType;
@@ -130,11 +158,120 @@ namespace ArctisAurora.EngineWork.Rendering
         [A_XSDActionDependency("Renderer.PrepareDescriptors", "Bootstrap")]
         internal static bool PrepareDescriptors()
         {
+            renderer.CreateGlobalResources();
             renderer.CreateDescriptorSetLayouts();
             //CreateDescriptorPool();
             //AllocateDescriptorSets();
             //UpdateGlobalDescriptorSet();
             return true;
+        }
+
+        // The set every module binds at 0, and the buffers behind it. Built once and never touched
+        // again, so a module's recorded command buffer can bind its image's set and keep it.
+        private void CreateGlobalResources()
+        {
+            ulong size = (ulong)Unsafe.SizeOf<GpuEngineStats>();
+            engineStatsBuffers = new Buffer[MAX_SWAPCHAIN_IMAGES];
+            engineStatsMemory = new DeviceMemory[MAX_SWAPCHAIN_IMAGES];
+            engineStatsPtrs = new nint[MAX_SWAPCHAIN_IMAGES];
+
+            for (int i = 0; i < MAX_SWAPCHAIN_IMAGES; i++)
+            {
+                AVulkanBufferHandler.CreateBuffer(size, ref engineStatsBuffers[i], ref engineStatsMemory[i],
+                    BufferUsageFlags.UniformBufferBit,
+                    MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit);
+
+                void* mapped;
+                vk.MapMemory(logicalDevice, engineStatsMemory[i], 0, size, 0, &mapped);
+                engineStatsPtrs[i] = (nint)mapped;
+            }
+
+            DescriptorSetLayoutBinding binding = new DescriptorSetLayoutBinding()
+            {
+                Binding = 0,
+                DescriptorCount = 1,
+                DescriptorType = DescriptorType.UniformBuffer,
+                StageFlags = ShaderStageFlags.All
+            };
+            DescriptorSetLayoutCreateInfo layoutInfo = new DescriptorSetLayoutCreateInfo()
+            {
+                SType = StructureType.DescriptorSetLayoutCreateInfo,
+                BindingCount = 1,
+                PBindings = &binding
+            };
+            if (vk.CreateDescriptorSetLayout(logicalDevice, ref layoutInfo, null, out globalSetLayout) != Result.Success)
+                throw new Exception("Failed to create the global descriptor set layout");
+
+            DescriptorPoolSize poolSize = new DescriptorPoolSize()
+            {
+                Type = DescriptorType.UniformBuffer,
+                DescriptorCount = MAX_SWAPCHAIN_IMAGES
+            };
+            DescriptorPoolCreateInfo poolInfo = new DescriptorPoolCreateInfo()
+            {
+                SType = StructureType.DescriptorPoolCreateInfo,
+                PoolSizeCount = 1,
+                PPoolSizes = &poolSize,
+                MaxSets = MAX_SWAPCHAIN_IMAGES
+            };
+            if (vk.CreateDescriptorPool(logicalDevice, ref poolInfo, null, out globalDescriptorPool) != Result.Success)
+                throw new Exception("Failed to create the global descriptor pool");
+
+            DescriptorSetLayout[] layouts = new DescriptorSetLayout[MAX_SWAPCHAIN_IMAGES];
+            Array.Fill(layouts, globalSetLayout);
+            globalSets = new DescriptorSet[MAX_SWAPCHAIN_IMAGES];
+
+            fixed (DescriptorSetLayout* layoutsPtr = layouts)
+            fixed (DescriptorSet* setsPtr = globalSets)
+            {
+                DescriptorSetAllocateInfo allocInfo = new DescriptorSetAllocateInfo()
+                {
+                    SType = StructureType.DescriptorSetAllocateInfo,
+                    DescriptorPool = globalDescriptorPool,
+                    DescriptorSetCount = MAX_SWAPCHAIN_IMAGES,
+                    PSetLayouts = layoutsPtr
+                };
+                Result r = vk.AllocateDescriptorSets(logicalDevice, ref allocInfo, setsPtr);
+                if (r != Result.Success)
+                    throw new Exception("Failed to allocate the global descriptor sets with error " + r);
+            }
+
+            for (int i = 0; i < MAX_SWAPCHAIN_IMAGES; i++)
+            {
+                DescriptorBufferInfo bufferInfo = new DescriptorBufferInfo()
+                {
+                    Buffer = engineStatsBuffers[i],
+                    Offset = 0,
+                    Range = size
+                };
+                WriteDescriptorSet write = new WriteDescriptorSet()
+                {
+                    SType = StructureType.WriteDescriptorSet,
+                    DstSet = globalSets[i],
+                    DstBinding = 0,
+                    DstArrayElement = 0,
+                    DescriptorCount = 1,
+                    DescriptorType = DescriptorType.UniformBuffer,
+                    PBufferInfo = &bufferInfo
+                };
+                vk.UpdateDescriptorSets(logicalDevice, 1, &write, 0, null);
+            }
+        }
+
+        // The frame's engine-wide data, written per swapchain image before the frame is submitted.
+        internal static void UpdateGlobalBuffers(RenderWindow window, uint imageIndex)
+        {
+            double total = Volatile.Read(ref Engine.totalTime);
+            GpuEngineStats stats = new GpuEngineStats()
+            {
+                mainTickMs = (float)Engine.mainSystem.LastTickMs,
+                physicsTickMs = (float)Engine.physicsSystem.LastTickMs,
+                renderTickMs = (float)Engine.renderSystem.LastTickMs,
+                totalTime = (float)total,
+                wrappedTime = (float)(total % timeWrapSeconds),
+                frameIndex = (uint)window.frameCounter
+            };
+            Unsafe.Write((void*)engineStatsPtrs[imageIndex], stats);
         }
 
         [A_XSDActionDependency("Renderer.SetupObjects", "Bootstrap")]
@@ -749,12 +886,15 @@ namespace ArctisAurora.EngineWork.Rendering
                 throw new Exception("Failed to acquire swapchain image");
             }
 
+            // the renderer's own buffers first, then each module's
+            UpdateGlobalBuffers(window, imageIndex);
+
             // update modules if needed
             for (int i = 0; i < window.modules.Length; i++)
             {
                 if (window.modules[i].isDirty[imageIndex] || window.modules[i].HasPendingWork((int)imageIndex))
                     window.modules[i].UpdateModule((int)imageIndex);
-                window.modules[i].camera.UpdateCameraMatrix(window.swapchainExtent, imageIndex);
+                window.modules[i].UpdateFrameData((int)imageIndex);
             }
             if (window.compositor.isDirty[imageIndex])
                 window.compositor.UpdateModule((int)imageIndex);

@@ -6,12 +6,22 @@ layout(location = 0) in vec3 inPosition;   // Vertex position
 layout(location = 1) in vec3 inNormals;    // Vertex Normal
 layout(location = 2) in vec2 inUV;         // Texture coordinates
 
-layout(set = 0, binding = 0) uniform UBO {
+// set 0 belongs to the renderer and is the same in every pipeline; the module's own sets follow it
+layout(set = 0, binding = 0) uniform EngineStats {
+    float mainTickMs;
+    float physicsTickMs;
+    float renderTickMs;
+    float totalTime;
+    float wrappedTime;
+    uint frameIndex;
+} engine;
+
+layout(set = 1, binding = 0) uniform UBO {
     mat4 view;
     mat4 proj;
 } ubo;
 
-layout(set = 0, binding = 1) readonly buffer Transform{
+layout(set = 1, binding = 1) readonly buffer Transform{
     mat4 transforms[];
 }ts;
 
@@ -38,7 +48,7 @@ struct ControlData
 // One buffer indexed by instance, not one buffer per control. `scalar` layout is load-bearing:
 // it gives this struct a stride of 136 bytes, matching the Pack=1 C# ControlData exactly. Any
 // mismatch here and every control past the first reads shifted data.
-layout(set = 0, binding = 2, scalar) readonly buffer ControlDataBuffer {
+layout(set = 1, binding = 2, scalar) readonly buffer ControlDataBuffer {
     ControlData controls[];
 } CD;
 

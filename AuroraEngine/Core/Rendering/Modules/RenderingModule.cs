@@ -104,6 +104,10 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal abstract void UpdateModule(int currentFrame);
 
+        // The module's own per-frame buffers, written every frame whether or not it is dirty. The
+        // renderer writes the global set and leaves these here.
+        internal virtual void UpdateFrameData(int imageIndex) { }
+
         // Work this module found for itself by polling, as opposed to being told. isDirty stays for
         // invalidation from outside the module (swapchain rebuild, window resize); this covers what
         // the module can see, so producers no longer have to flag the renderer after changing data.

@@ -22,7 +22,17 @@ struct Gradient
     GradientStop stops[8];
 };
 
-layout(set = 0, binding = 3, scalar) readonly buffer GradientBuffer {
+// set 0 belongs to the renderer and is the same in every pipeline; the module's own sets follow it
+layout(set = 0, binding = 0) uniform EngineStats {
+    float mainTickMs;
+    float physicsTickMs;
+    float renderTickMs;
+    float totalTime;
+    float wrappedTime;
+    uint frameIndex;
+} engine;
+
+layout(set = 1, binding = 3, scalar) readonly buffer GradientBuffer {
     Gradient gradients[];
 } GB;
 
@@ -43,7 +53,7 @@ layout(location = 13) in flat vec4 fragGradientRect;
 
 layout(location = 0) out vec4 outColor;
 
-layout(set = 1, binding = 0) uniform sampler2D samplers[];
+layout(set = 2, binding = 0) uniform sampler2D samplers[];
 
 float median(float r, float g, float b) {
     return max(min(r, g), min(max(r, g), b));

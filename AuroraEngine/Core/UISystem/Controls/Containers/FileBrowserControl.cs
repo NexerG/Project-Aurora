@@ -120,6 +120,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                 text = expander,
                 fontSize = rowFontSize,
                 preferredWidth = gutterWidth,
+                horizontalPosition = 0f,
                 controlColorHex = folderColorHex
             };
 

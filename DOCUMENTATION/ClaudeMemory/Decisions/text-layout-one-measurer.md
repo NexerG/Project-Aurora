@@ -100,6 +100,35 @@ viewport" — was conditional on virtualization. Remove virtualization and it st
   bold run, same wrap point, same block spacing.
 - Typing: click into a paragraph, type, characters land at the caret and it advances.
 
+## Text sits inside an authored box by `HorizontalPos`/`VerticalPos` (2026-08-22)
+
+`Arrange` penned every glyph from the top-left of the control's own rect, so a `Label` given a
+`Width`/`Height` bigger than its text drew it in the corner. The title bar's `Periodic` was the
+visible case — a 21px line flush against the top-left of a 120x32 box, while `-`, `[]` and `X` looked
+right only because they are content-sized inside a `Button`, and `VulkanControl.Arrange` already
+centres a single child by `horizontalPosition`/`verticalPosition`.
+
+`TextControl.Arrange` now measures the slack between the inner rect and the `BlockLayout` and offsets
+the pen and the baseline by it, weighted by those same two fields. No new property: `HorizontalPos`
+and `VerticalPos` are declared on `VulkanControl`, default to `0.5`, and already mean "where in the
+slot", so the title centres with no change to `UI.xml` or `TabWindow.xml`.
+
+- **Gated on `preferredWidth`/`preferredHeight`, not on the arranged rect.** Every caret-bearing text
+  control is content-sized and gets handed a *wider* rect by its owner — `TextBoxControl` arranges
+  its `FieldLine` at `max(inner.width, DesiredSize.X)`, `TextBlockControl` its runs at `inner.width`
+  — and both then place the caret at `textRect.x + CaretAt(...).x`. Offsetting against the arranged
+  rect would desync the caret from the glyphs everywhere. Slack from an authored box is zero for all
+  of them.
+- **Negative slack clamps to zero.** `ConfirmWindow` and `NoteNameWindow` set `preferredHeight = 20`
+  on 15px prompt labels, whose line box is 22.5 — the text overflows the box, and half-centring the
+  overflow would move two dialogs for no reason.
+- **`FileBrowserControl`'s gutter label is pinned to `horizontalPosition = 0f`.** It is the only
+  other text control in the tree carrying an authored width (`preferredWidth = 12`), and the default
+  0.5 would have nudged every expander arrow into the middle of its column.
+- Centring is of the **line box**, not the ink: a string with no descenders reads a pixel or so high,
+  the same as CSS. `Periodic` measures ink at x 35..85, y 10..21 in its 120x32 box — centre (60,
+  15.5) against (59.5, 15.5).
+
 ## Still open
 
 - ~~`runColorHex` reaches no glyph.~~ Fixed 2026-08-07. `runColorHex` is deleted; a run carries the

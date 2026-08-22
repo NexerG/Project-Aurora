@@ -90,6 +90,11 @@ The swapchain simply put is a few images that the Renderer targets it's final im
 `Command Pool`
 Command pool is just an interface for the CPU to allocate commands to the GPU. A middle man between command buffers and the `Physical Device`. Now note that these pools are per queue since they are not thread safe. One Command Pool - One type of Queue.
 
+`Global Frame Data`
+The renderer publishes what the whole engine knows about a frame - each system's last tick time, seconds since boot whole and wrapped, and the frame index - into a `GpuEngineStats` uniform buffer that every module's shaders can read at **set 0**. Everything a module owns starts at set 1, so set 0 means the same thing in every pipeline that binds it. The buffer is host visible and mapped once for the life of the process, so publishing a frame's numbers is a struct store rather than a staging buffer and a queue submit.
+There is one buffer per swapchain image and one descriptor set pointing at each, because a module records its command buffers only when it goes dirty rather than every frame - whatever set a record binds is the set that image keeps using. Per image means the descriptor never has to be rewritten, and `AcquireNextImage` will not hand back an image that is still in flight, so the slot being written is not the slot being read.
+The write happens inside `Draw`, after the wait for the retired frame and before any module work: the renderer updates what it owns, then each module updates what it owns through `UpdateFrameData`. The camera matrix is the module's, and it moved out of `Draw` for exactly that reason.
+
 ### Modules
 Modules in my Vulkan renderer are sub renderers meant to do some sort of graphics work. Tbh it can be purely compute as well. Their job is to contain a mini-renderer's required things like it's own queue, shaders, pipelines - all that is meant for one renderer. Whilst the [[#Renderer]] is a broader CPU-GPU communicator. This can do raytracing, raster (game and UI) work, compute (probably even AI training, just did soft research. Vulkan is a general purpose API, using CUDA would mean using per GPU tuned kernels...). Do no that the parts of modules are not exclusive to modules. The Renderer itself can have them as I use them to combine all the modules results in a final pass before displaying to the window.
 

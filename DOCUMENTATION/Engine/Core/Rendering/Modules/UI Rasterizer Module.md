@@ -38,14 +38,16 @@ The concrete [[Renderer Module]] that draws the UI control tree. It renders ever
 | `UpdateModule(frame)` | override | Refreshes the pooled transform mirror, then either appends the newly added controls' descriptors (normal case) or rebuilds the frame's descriptor pool/sets (only when the pool's capacity changed); queues stale resources for deferred deletion. |
 | `CreatePipeline()` | override | `UIRasterizer/UI.vert+frag`, alpha blending, **dynamic viewport/scissor**. |
 | `CreatePipeline()` | override | Declares a single colour attachment of `outputFormat` in `PipelineRenderingCreateInfo`; no render pass handle. |
-| `WriteCommandBuffers(frame)` | override | Binds the pipeline, sets viewport/scissor, issues the instanced indexed draw. |
+| `WriteCommandBuffers(frame)` | override | Binds the pipeline, binds the renderer's global set at 0, sets viewport/scissor, issues the instanced indexed draw. |
+| `UpdateFrameData(imageIndex)` | override | Updates this module's camera matrix. Runs every frame, dirty or not. |
 
 ## Fields & Properties
 
 ```C#
-// set 0: camera UBO (0), transforms SSBO (1), per-control data SSBO array (2, variable)
-// set 1: mask/texture sampler array (0, variable)
-internal override int variableSetCount => 2;
+// set 0: the renderer's global frame data — not this module's, see [[VULKAN]]
+// set 1: camera UBO (0), transforms SSBO (1), per-control data SSBO (2), gradient SSBO (3)
+// set 2: mask/texture sampler array (0, variable)
+internal override int variableSetCount => 2;   // this module's own sets; the pipeline layout has 3
 
 internal static MCUI meshComponent;                 // the quad mesh + instancing
 internal override IReadOnlyList<Entity> renderEntities { get; set; }  // the Controls group

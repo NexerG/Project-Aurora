@@ -353,6 +353,17 @@ returns that halt a phase.
 The full Vulkan pipeline is working and rendering UI:
 - Instance, device, swapchain, render passes, pipelines, shader loading — all present
 - **Current pain point:** CPU-side widget logic — positioning, parenting, children, scaling
+- **Set 0 is the renderer's, not a module's.** `Renderer` owns a global descriptor set holding
+  `GpuEngineStats` (per-system tick times, total/wrapped time, frame index), one host-visible mapped
+  buffer per swapchain image, built in `Renderer.PrepareDescriptors`. A module's own sets start at 1
+- **Per-frame buffer writes have two owners:** `Renderer.Draw` writes the global ones after the
+  timeline wait, then calls each module's `UpdateFrameData(imageIndex)` for its own. Do NOT put
+  module-specific buffer updates back into `Draw`
+- Module command buffers are recorded **only when dirty**, so anything that must change per frame has
+  to change through memory a stable descriptor already points at — not through a re-record
+- Shaders live in **three physical copies** (`AuroraEngine/`, `Periodic/`, `AuroraEditor/Shaders/`).
+  Edit the `AuroraEngine` copy, compile with `glslc --target-env=vulkan1.3`, copy the `.spv` to all
+  three — the UI `.spv` are SPIR-V 1.6 and must stay byte-identical across projects
 - Do NOT redesign the Vulkan pipeline; focus help on the scene/widget graph layer above it
 
 #### Asset Registry — Key Facts
