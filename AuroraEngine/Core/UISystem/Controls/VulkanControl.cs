@@ -565,8 +565,9 @@ namespace ArctisAurora.Core.UISystem.Controls
         [A_XSDElementProperty("BubbleAltClick", "UI")]
         public bool bubbleAltClick = false;
 
-        public Action? onDoubleClick;
-        public bool bubbleDoubleClick = false;
+        // carries the tap count, so one handler answers double, triple and beyond
+        public Action<int>? onMultiClick;
+        public bool bubbleMultiClick = false;
 
         [A_XSDElementProperty("onRelease", "UI")]
         public Action? onRelease;
@@ -921,12 +922,14 @@ namespace ArctisAurora.Core.UISystem.Controls
             }
         }
 
-        public void RegisterOnDoubleClick(Action action) => onDoubleClick += action;
-        public virtual void ResolveOnDoubleClick()
+        public void RegisterOnMultiClick(int count, Action action) =>
+            onMultiClick += taps => { if (taps == count) action(); };
+
+        public virtual void ResolveOnMultiClick(int count)
         {
-            onDoubleClick?.Invoke();
-            if (bubbleDoubleClick && parent is VulkanControl parentControl)
-                parentControl.ResolveOnDoubleClick();
+            onMultiClick?.Invoke(count);
+            if (bubbleMultiClick && parent is VulkanControl parentControl)
+                parentControl.ResolveOnMultiClick(count);
         }
 
         public void RegisterOnRelease(Action action) => onRelease += action;
@@ -980,7 +983,7 @@ namespace ArctisAurora.Core.UISystem.Controls
         {
             bubbleClick = true;
             bubbleAltClick = true;
-            bubbleDoubleClick = true;
+            bubbleMultiClick = true;
             bubbleRelease = true;
             bubbleAltRelease = true;
             bubbleScroll = true;
@@ -1046,7 +1049,15 @@ namespace ArctisAurora.Core.UISystem.Controls
             XDocument doc = XDocument.Load(path);
             XElement root = doc.Root;
             WindowControl window = new WindowControl();
-            ResolveAttributes(root, window);
+
+            (MethodInfo method, A_XSDActionDependencyAttribute attr)[] tagged = AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(a => a.GetTypes())
+                .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly))
+                .Select(m => (method: m, attr: m.GetCustomAttribute<A_XSDActionDependencyAttribute>()))
+                .Where(x => x.attr != null)
+                .ToArray();
+
+            ResolveAttributes(root, window, tagged);
 
             window.arrangedRect = new LayoutRect(0, 0, window.preferredWidth, window.preferredHeight);
             UILayout.RegisterDirtyRoot(window);
@@ -1054,18 +1065,18 @@ namespace ArctisAurora.Core.UISystem.Controls
             wt.position = new Vector3D<float>(window.preferredWidth / 2f, window.preferredHeight / 2f, wt.position.Z);
             wt.scale = new Vector3D<float>(window.preferredWidth, window.preferredHeight, 1);
             window.CommitTransform();
-            RecursiveParse(root, window);
+            RecursiveParse(root, window, tagged);
 
             return window;
         }
 
-        private static void RecursiveParse(XElement root, VulkanControl topControl)
+        private static void RecursiveParse(XElement root, VulkanControl topControl, (MethodInfo method, A_XSDActionDependencyAttribute attr)[] tagged)
         {
             foreach (var element in root.Elements())
             {
                 Type type = AnyXMLType.FindType(element.Name.LocalName);
                 var control = Activator.CreateInstance(type);
-                ResolveAttributes(element, control);
+                ResolveAttributes(element, control, tagged);
                 if (!typeof(VulkanControl).IsAssignableFrom(type))
                 {
                     FieldInfo field = topControl.GetType()
@@ -1079,11 +1090,11 @@ namespace ArctisAurora.Core.UISystem.Controls
                     continue;
                 }
                 topControl.AddChild((VulkanControl)control);
-                RecursiveParse(element, (VulkanControl)control);
+                RecursiveParse(element, (VulkanControl)control, tagged);
             }
         }
 
-        private static void ResolveAttributes(XElement root, object topControl)
+        private static void ResolveAttributes(XElement root, object topControl, (MethodInfo method, A_XSDActionDependencyAttribute attr)[] tagged)
         {
             foreach (XAttribute attr in root.Attributes())
             {
@@ -1102,14 +1113,9 @@ namespace ArctisAurora.Core.UISystem.Controls
                     Type memberType = prop.MemberType == MemberTypes.Field ? ((FieldInfo)prop).FieldType : ((PropertyInfo)prop).PropertyType;
                     if (memberType == typeof(Action))
                     {
-                        MethodInfo? methodInfo = AppDomain.CurrentDomain.GetAssemblies()
-                        .SelectMany(a => a.GetTypes())
-                        .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
-                        .FirstOrDefault(m =>
-                        {
-                            A_XSDActionDependencyAttribute actionDep = m.GetCustomAttribute<A_XSDActionDependencyAttribute>();
-                            return actionDep != null && string.Equals(actionDep.Name, attr.Value, StringComparison.OrdinalIgnoreCase);
-                        });
+                        MethodInfo? methodInfo = tagged
+                            .FirstOrDefault(x => string.Equals(x.attr.Name, attr.Value, StringComparison.OrdinalIgnoreCase))
+                            .method;
 
                         if (methodInfo == null)
                             throw new Exception($"Action method '{attr.Value}' not found in A_XSDActionDependency.");

@@ -10,12 +10,31 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
     [A_XSDType("Run", "UI")]
     public class TextRun : TextInputControl
     {
+        public TextRun()
+        {
+            bubbleMultiClick = true;
+        }
+
         // Bubbles instead of beginning its own edit; the editor places the caret.
         public override void ResolveOnClick(Silk.NET.Maths.Vector2D<float> oldPos, Silk.NET.Maths.Vector2D<float> delta)
         {
             if (parent is VulkanControl parentControl)
                 parentControl.ResolveOnClick(oldPos, delta);
         }
+
+        public override void OnContextAdded(string context)
+        {
+            base.OnContextAdded(context);
+            if (context == "ActiveControl") Owner?.RegainFocus();
+        }
+
+        public override void OnContextRemoved(string context)
+        {
+            base.OnContextRemoved(context);
+            if (context == "ActiveControl") Owner?.LoseFocus();
+        }
+
+        private DocumentControl? Owner => DocumentControl.BlockOf(this)?.parent as DocumentControl;
 
         public TextRun Clone() => new TextRun
         {

@@ -181,12 +181,19 @@ namespace ArctisAurora.Core.UISystem
             menus.Clear();
             XElement root = XElement.Load(Paths.Doc("ContextMenus.xml"));
 
+            (MethodInfo method, A_XSDActionDependencyAttribute attr)[] tagged = AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(a => a.GetTypes())
+                .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly))
+                .Select(m => (method: m, attr: m.GetCustomAttribute<A_XSDActionDependencyAttribute>()))
+                .Where(x => x.attr != null)
+                .ToArray();
+
             foreach (XElement element in root.Elements())
             {
                 ContextMenuDefinition menu = new ContextMenuDefinition { name = element.Attribute("Name")?.Value ?? "" };
 
                 foreach (XElement itemElement in element.Elements())
-                    menu.items.Add(ParseItem(itemElement));
+                    menu.items.Add(ParseItem(itemElement, tagged));
 
                 menus[menu.name] = menu;
             }
@@ -194,7 +201,7 @@ namespace ArctisAurora.Core.UISystem
             return true;
         }
 
-        private static ContextMenuItemDefinition ParseItem(XElement element)
+        private static ContextMenuItemDefinition ParseItem(XElement element, (MethodInfo method, A_XSDActionDependencyAttribute attr)[] tagged)
         {
             ContextMenuItemDefinition item = new ContextMenuItemDefinition
             {
@@ -203,17 +210,17 @@ namespace ArctisAurora.Core.UISystem
                 enabledWhen = element.Attribute("EnabledWhen")?.Value ?? ""
             };
 
-            BindAction(item);
-            BindPredicate(item);
+            BindAction(item, tagged);
+            BindPredicate(item, tagged);
             return item;
         }
 
         // An entry's action takes nothing, or the control that was right-clicked.
-        private static void BindAction(ContextMenuItemDefinition item)
+        private static void BindAction(ContextMenuItemDefinition item, (MethodInfo method, A_XSDActionDependencyAttribute attr)[] tagged)
         {
             if (string.IsNullOrEmpty(item.action)) return;
 
-            MethodInfo method = FindAction(item.action);
+            MethodInfo method = FindAction(item.action, tagged);
             if (TakesTarget(method))
                 item.invokeOnTarget = (Action<VulkanControl>)Delegate.CreateDelegate(typeof(Action<VulkanControl>), method);
             else
@@ -221,11 +228,11 @@ namespace ArctisAurora.Core.UISystem
         }
 
         // The predicate form of the same lookup — bool return, evaluated once each time a menu opens.
-        private static void BindPredicate(ContextMenuItemDefinition item)
+        private static void BindPredicate(ContextMenuItemDefinition item, (MethodInfo method, A_XSDActionDependencyAttribute attr)[] tagged)
         {
             if (string.IsNullOrEmpty(item.enabledWhen)) return;
 
-            MethodInfo method = FindAction(item.enabledWhen);
+            MethodInfo method = FindAction(item.enabledWhen, tagged);
             if (method.ReturnType != typeof(bool))
                 throw new Exception($"EnabledWhen '{item.enabledWhen}' must return bool.");
 
@@ -245,16 +252,11 @@ namespace ArctisAurora.Core.UISystem
             return parameters.Length == 1 && parameters[0].ParameterType == typeof(VulkanControl);
         }
 
-        private static MethodInfo FindAction(string name)
+        private static MethodInfo FindAction(string name, (MethodInfo method, A_XSDActionDependencyAttribute attr)[] tagged)
         {
-            MethodInfo method = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(a => a.GetTypes())
-                .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
-                .FirstOrDefault(m =>
-                {
-                    A_XSDActionDependencyAttribute dependency = m.GetCustomAttribute<A_XSDActionDependencyAttribute>();
-                    return dependency != null && string.Equals(dependency.Name, name, StringComparison.OrdinalIgnoreCase);
-                });
+            MethodInfo method = tagged
+                .FirstOrDefault(x => string.Equals(x.attr.Name, name, StringComparison.OrdinalIgnoreCase))
+                .method;
 
             if (method == null)
                 throw new Exception($"Action method '{name}' not found in A_XSDActionDependency.");

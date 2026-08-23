@@ -20,7 +20,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                 fieldColorHex = captionFieldColorHex
             };
 
-            tab.RegisterOnDoubleClick(() => BeginRename(item, caption));
+            tab.RegisterOnMultiClick(2, () => BeginRename(item, caption));
             return caption;
         }
 

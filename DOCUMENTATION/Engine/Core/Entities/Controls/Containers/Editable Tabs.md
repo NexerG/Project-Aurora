@@ -36,7 +36,7 @@ Declared as `<EditableTabs>` and interchangeable with `<TabView>` at every attri
 
 | Member | Kind | Summary |
 | --- | --- | --- |
-| `BuildCaption(item, tab)` | override | Returns an [[Editable Label]] and binds the double click to the whole tab. |
+| `BuildCaption(item, tab)` | override | Returns an [[Editable Label]] and binds the two-click gesture to the whole tab. |
 | `NewOfSameKind()` | override | Returns another `EditableTabsControl`, so a split keeps renaming. |
 
 ## Methods
@@ -47,7 +47,7 @@ The base builds the strip button first and passes it in, so the gesture can be b
 ```
 BuildCaption(item, tab)
     caption = EditableLabel { item.header, captionSize, left-aligned, field colour }
-    tab.RegisterOnDoubleClick(-> BeginRename(item, caption))
+    tab.RegisterOnMultiClick(2, -> BeginRename(item, caption))
     return caption
 ```
 
@@ -69,7 +69,7 @@ Tearing off is not the same problem: a torn window is built from `TearOffDocumen
 
 ## Input
 
-None declared. The double click arrives through [[Vulkan Control]]'s release dispatch, and everything inside the field — typing, the caret, Enter, Escape, commit on blur — is [[Editable Label]]'s and [[Text Box]]'s.
+None declared. The gesture arrives through [[Vulkan Control]]'s release dispatch, which reports the tap count and is filtered to two at registration, so a third click on a tab does nothing rather than reopening the field. Everything inside the field — typing, the caret, Enter, Escape, commit on blur — is [[Editable Label]]'s and [[Text Box]]'s.
 
 ## Known holes
 
@@ -80,4 +80,4 @@ The field is sized from its text by [[Editable Label]], not from the space it is
 ## Related
 - [[Tab View]] — the strip, the page, and the routing the tab structure is forced into
 - [[Editable Label]] — the caption, and how an edit begins and ends
-- [[Vulkan Control]] — where a double click is dispatched from and what guards it
+- [[Vulkan Control]] — where a multi-click is dispatched from, what guards it, and how a count is filtered

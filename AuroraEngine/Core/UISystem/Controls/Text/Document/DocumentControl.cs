@@ -73,6 +73,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 caret = new CaretControl();
                 AddChild(caret);
             }
+            caret.Focus();
 
             InvalidateArrange();
         }
@@ -112,6 +113,23 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         // Anything that moves the caret without going through SetCaret leaves the anchor behind —
         // WriteChar bumps cursorPosition itself, so typing would otherwise select what it typed.
         public void CollapseSelection() => anchor = Focus;
+
+        // Raised by a run handing the active context away; the caret survives anything still inside
+        // the editor.
+        internal void LoseFocus()
+        {
+            if (caret == null) return;
+
+            VulkanControl scope = parent as VulkanControl ?? this;
+            for (VulkanControl control = UICollisionHandling.activeControl;
+                 control != null;
+                 control = control.parent as VulkanControl)
+                if (ReferenceEquals(control, scope)) return;
+
+            caret.Blur();
+        }
+
+        internal void RegainFocus() => caret?.Focus();
 
         public override Vector2D<float> Measure(Vector2D<float> availableSize)
         {
@@ -301,6 +319,82 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         #endregion
 
         #region ---- selection ----
+        private enum CharClass { Space, Word, Symbol }
+
+        private static CharClass ClassOf(char c) =>
+            char.IsWhiteSpace(c) ? CharClass.Space
+            : char.IsLetterOrDigit(c) || c == '_' ? CharClass.Word
+            : CharClass.Symbol;
+
+        // The run of one character class around the caret, crossing runs inside the block.
+        public void SelectWord()
+        {
+            if (caretRun == null) return;
+
+            CaretSlot focus = Normalize(Focus);
+            CaretSlot ahead = focus, behind = focus;
+
+            CharClass? right = StepForward(ref ahead, out char after) ? ClassOf(after) : null;
+            CharClass? left = StepBack(ref behind, out char before) ? ClassOf(before) : null;
+
+            // either edge of a word takes the word, not the space beside it
+            CharClass? picked = right == CharClass.Word || left == CharClass.Word
+                ? CharClass.Word : right ?? left;
+            if (picked == null) return;
+
+            CharClass target = picked.Value;
+
+            CaretSlot start = focus;
+            while (true)
+            {
+                CaretSlot step = start;
+                if (!StepBack(ref step, out char c) || ClassOf(c) != target) break;
+                start = step;
+            }
+
+            CaretSlot end = focus;
+            while (true)
+            {
+                CaretSlot step = end;
+                if (!StepForward(ref step, out char c) || ClassOf(c) != target) break;
+                end = step;
+            }
+
+            anchor = Normalize(start);
+            SetCaret(end.run, end.offset, true);
+        }
+
+        // One character each way, stepping over run boundaries but never out of the block.
+        private bool StepForward(ref CaretSlot slot, out char c)
+        {
+            CaretSlot at = slot;
+            while (at.offset >= Length(at.run))
+            {
+                TextControl next = AdjacentRun(at.run, 1);
+                if (next == null || BlockOf(next) != BlockOf(at.run)) { c = '\0'; return false; }
+                at = new CaretSlot(next, 0);
+            }
+
+            c = TextOf(at.run)[at.offset];
+            slot = new CaretSlot(at.run, at.offset + 1);
+            return true;
+        }
+
+        private bool StepBack(ref CaretSlot slot, out char c)
+        {
+            CaretSlot at = slot;
+            while (at.offset == 0)
+            {
+                TextControl previous = AdjacentRun(at.run, -1);
+                if (previous == null || BlockOf(previous) != BlockOf(at.run)) { c = '\0'; return false; }
+                at = new CaretSlot(previous, Length(previous));
+            }
+
+            c = TextOf(at.run)[at.offset - 1];
+            slot = new CaretSlot(at.run, at.offset - 1);
+            return true;
+        }
+
         // Boxes for the range anchor -> caret, one per visual line it covers. Everything unused is
         // arranged to nothing rather than destroyed — a drag would otherwise create and free
         // controls every tick, each one a pool allocation and a full paint-order permute.
@@ -553,6 +647,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 
             undo?.Push(new RunTextEdit(this, AddressOf(run, run.cursorPosition), c.ToString(), true));
             run.WriteChar(c);
+            caret?.Focus();
         }
 
         // Blocks sit between the highlight boxes at the head of the child list and the caret at its

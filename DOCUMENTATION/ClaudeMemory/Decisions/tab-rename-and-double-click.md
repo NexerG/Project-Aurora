@@ -17,6 +17,13 @@ restores, clicking away commits.
 `VulkanControl.ResolveOnDoubleClick` and `bubbleDoubleClick` had existed with **zero callers** since
 they were written; this is the first thing to dispatch either.
 
+> **Superseded 2026-08-23 in one respect.** There is no double-click event any more: the dispatch is
+> `ResolveOnMultiClick(int count)` and fires on every tap from the second on, with the count filtered
+> at registration — `tab.RegisterOnMultiClick(2, …)`. Behaviour here is unchanged, and everything
+> below about the release, the same-target guard and the renaming strip still holds. Decision 1's
+> "`>= 2` would fire again on the third tap" no longer argues for `== 2` at the dispatch; it argues
+> for the filter. See [[n-click-dispatch]].
+
 ## Decisions
 
 ### 1. The dispatch fires on the release, and only when it lands where the press did

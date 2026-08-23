@@ -1108,6 +1108,13 @@ namespace ArctisAurora.EngineWork
         {
             InputHandler handler = new InputHandler();
 
+            (MethodInfo method, A_XSDActionDependencyAttribute attr)[] tagged = AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(a => a.GetTypes())
+                .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly))
+                .Select(m => (method: m, attr: m.GetCustomAttribute<A_XSDActionDependencyAttribute>()))
+                .Where(x => x.attr != null)
+                .ToArray();
+
             foreach (string path in VirtualFileSystem.EnumerateAll("XML/Documents/Inputs", "*.xml"))
             {
                 XElement root = XElement.Load(path);
@@ -1142,14 +1149,9 @@ namespace ArctisAurora.EngineWork
                     XAttribute actionAttr = keybindElement.Attribute("Action");
                     if (actionAttr != null)
                     {
-                        MethodInfo methodInfo = AppDomain.CurrentDomain.GetAssemblies()
-                            .SelectMany(a => a.GetTypes())
-                            .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
-                            .FirstOrDefault(m =>
-                            {
-                                A_XSDActionDependencyAttribute actionDep = m.GetCustomAttribute<A_XSDActionDependencyAttribute>();
-                                return actionDep != null && string.Equals(actionDep.Name, actionAttr.Value, StringComparison.OrdinalIgnoreCase);
-                            });
+                        MethodInfo methodInfo = tagged
+                            .FirstOrDefault(x => string.Equals(x.attr.Name, actionAttr.Value, StringComparison.OrdinalIgnoreCase))
+                            .method;
 
                         if (methodInfo == null)
                             throw new Exception($"Action method '{actionAttr.Value}' not found in A_XSDActionDependency.");

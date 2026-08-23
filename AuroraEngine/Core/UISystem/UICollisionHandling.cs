@@ -132,8 +132,8 @@ namespace ArctisAurora.Core.UISystem
                 hovering?.ResolveOnRelease();
             }
 
-            if (tapCount == 2 && sameTargetTap && ActiveTarget(hovering) == activeControl)
-                hovering?.ResolveOnDoubleClick();
+            if (tapCount >= 2 && sameTargetTap && ActiveTarget(hovering) == activeControl)
+                hovering?.ResolveOnMultiClick(tapCount);
         }
 
         public void SolveRMBPress(Vector2D<float> mousePos, VulkanControl root)

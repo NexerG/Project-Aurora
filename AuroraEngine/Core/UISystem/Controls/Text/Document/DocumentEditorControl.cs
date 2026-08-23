@@ -198,6 +198,22 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             base.ResolveOnClick(oldPos, delta);
         }
 
+        // Two clicks take the word, three the visual line.
+        public override void ResolveOnMultiClick(int count)
+        {
+            if (content != null)
+            {
+                if (count == 2) content.SelectWord();
+                else if (count == 3)
+                {
+                    MoveCaret(CaretMove.LineStart);
+                    MoveCaret(CaretMove.LineEnd, true);
+                }
+            }
+
+            base.ResolveOnMultiClick(count);
+        }
+
         // Held-button drag: the focus follows the mouse, the anchor stays where the press landed.
         public override void ResolveDrag(Vector2D<float> lastPos, Vector2D<float> delta)
         {

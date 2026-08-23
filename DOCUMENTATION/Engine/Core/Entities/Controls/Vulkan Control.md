@@ -41,7 +41,7 @@ A plain `VulkanControl` holds **one** child; use a container ([[StackPanel]], Gr
 | `InvalidateLayout()` / `InvalidateArrange()` | public | Mark dirty up to the top root and register it with `UILayout`. |
 | `SetSize` / `SetWidth` / `SetHeight` | virtual | Convenience sizing. |
 | `AddChild(Entity)` | override | Adds a single child (throws on a 2nd, or non-control). |
-| `Register*` / `Resolve*` (Enter/Exit/Click/DoubleClick/Release/AltClick/AltRelease/Drag/Hover/Scroll) | public | Subscribe to / fire input events. |
+| `Register*` / `Resolve*` (Enter/Exit/Click/MultiClick/Release/AltClick/AltRelease/Drag/Hover/Scroll) | public | Subscribe to / fire input events. |
 | `BubbleAll()` | public | Enable event bubbling for every event. |
 | `UpdateControlData()` | internal | Push `controlData` (color/UVs) to the GPU. |
 | `ParseXML(name)` | static | Build a control tree from a UI XML document. |
@@ -106,11 +106,13 @@ public Sampler colorSampler; public TextureAsset colorAsset;
 ```
 
 ### Events
-`onEnter/onExit`, `onClick/onAltClick`, `onRelease/onAltRelease`, `onDoubleClick`, `onDrag/onDragStop`, `onScrollUp/onScrollDown`, plus `hover`. Each has a `bubble*` flag so an unhandled event walks up to the parent. `HitTest(point)` tests against `ClipRect`.
+`onEnter/onExit`, `onClick/onAltClick`, `onRelease/onAltRelease`, `onMultiClick`, `onDrag/onDragStop`, `onScrollUp/onScrollDown`, plus `hover`. Each has a `bubble*` flag so an unhandled event walks up to the parent. `HitTest(point)` tests against `ClipRect`.
 
 `hitTestable` (default true) drops a control out of the hit-test entirely, for decorations like a caret or a selection box that would otherwise swallow the click aimed past them. `canBeActiveContext` (virtual, default true) is separate and does not affect hit-testing: a control answering false is still hit, but hands the active context to its parent, so `UICollisionHandling.activeControl` lands on the `Button` rather than the `GlyphControl` actually under the cursor. `GlyphControl` and [[Label]] override it to false. The press stores the resolved control and the release compares against it, which is what makes a press that began elsewhere activate nothing.
 
-`onDoubleClick` fires from that same release, when the key tracker's `tapCount` reads exactly two and both presses resolved to the same control. Both tests are needed: the count belongs to the mouse button rather than to anything on screen, so on its own two quick clicks across two neighbouring tabs read as one double click on the second, and `>= 2` would fire again on the third tap of a triple. It resolves on the control under the pointer and bubbles from there, so the deepest hit being a [[Glyph]] two levels beneath the button it belongs to costs the handler nothing.
+`onMultiClick` fires from that same release, on every tap from the second on, and **carries the count** — `Action<int>` rather than a plain `Action`, so one dispatch answers the double click, the triple and anything past it. There is no double-click event; a handler that wants exactly one count registers with `RegisterOnMultiClick(2, action)`, which wraps the delegate in that test. The count belongs to the mouse button and knows nothing about what is on screen, so the release also requires that both presses resolved to the same control — without it, two quick clicks across two neighbouring tabs read as one double click on the second. It resolves on the control under the pointer and bubbles from there, so the deepest hit being a [[Glyph]] two levels beneath the button it belongs to costs the handler nothing.
+
+Filtering at registration rather than at dispatch is what lets counts mean different things on different controls without any of them agreeing first: a tab renames on two and ignores three, while the document under it selects a word on two and a line on three.
 
 ## Methods
 

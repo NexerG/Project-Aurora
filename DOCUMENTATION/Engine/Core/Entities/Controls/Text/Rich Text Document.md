@@ -154,6 +154,17 @@ Arrange(finalRect):
 
 `ScrollIntoView` invalidates whether or not it actually scrolled, which is what the second branch is for; it does nothing to the offset when the target is already inside the viewport, so the extra pass is paid only on frames where the view genuinely moves. Clicks and drags are left out of all this — a click lands where the user is already looking, and a drag has its own overshoot scroll.
 
+## Caret blink and focus
+The caret blinks itself. `CaretControl` overrides `OnTick` — every control is an `Entity`, so the engine already calls it, on the main thread, which is also the pool's owner thread — accumulates `Engine.deltaTime` into a phase and reads it modulo the cycle, so a long tick cannot slide the wave off the clock. The alpha is `1` or `0` at 0.53s each way and is written only when it actually flips, which is twice a second for an idle caret. It is the first control in the engine to animate on the tick, and it deliberately does not introduce a tween system. `TextBoxControl` shares the class, so the rename field and the note-name prompt blink too.
+
+The phase restarts from solid on every caret placement, because a caret that vanishes mid-keystroke reads as input lag. Two call sites cover every path: `SetCaret`, which every click, arrow, delete, undo and block split funnels through, and `TypeChar`, which typing reaches instead — `WriteChar` bumps `cursorPosition` on its own and never touches `SetCaret`.
+
+Focus is **pushed**, not polled. `TextRun` forwards `OnContextAdded` / `OnContextRemoved` for `ActiveControl` to `DocumentControl.RegainFocus` / `LoseFocus`, the same way `FieldLine` raises `TextBoxControl.onBlur`. The run is always the control that hears it, because `SetCaret` repoints `UICollisionHandling.activeControl` at the caret's run on every call — a click past the text makes the block active for one instant and `SetCaret` overwrites it a moment later. That same direct write is why arrowing between runs raises nothing at all: it bypasses `Context.Set`, so no context is lost and the caret cannot blink out mid-move.
+
+`LoseFocus` walks up from the **new** active control — `SetActiveControl` assigns the field before raising the removal — and keeps the caret if it meets the `DocumentEditorControl`. The scope is the editor and not the `DocumentControl`, because `ScrollableControl` parents its thumb beside the content rather than inside it, so scoping to the content would make dragging the scrollbar take the caret with it. Hiding is `alpha = 0` rather than the collapsed rect `TextBoxControl` uses, which keeps the whole mechanism inside `CaretControl` and runs no arrange pass when focus moves.
+
+An unfocused editor still shows its selection, and the app losing OS focus does nothing — no GLFW focus callback is registered anywhere yet.
+
 ## Selection
 A selection is two caret slots — an **anchor** where the press or the shift-extend started, and a **focus** where the caret is now. The focus is not stored separately: `caretRun` and `cursorPosition` already are it, so the only new state is the anchor, and `anchor == focus` is both "nothing is selected" and the plain-caret behaviour that existed before.
 
@@ -162,6 +173,26 @@ Slots are **normalized on write**, which is what makes that equality mean anythi
 Ordering the two ends needs reading order, and a run does not know where it sits in the document, so `OrderedRuns` is walked and the ends compared as `(run index, offset)`. This is what lets a drag run backwards.
 
 Extending rather than collapsing is a boolean carried through the moves that already existed — `MoveCaret(move, extend)` and `SetCaret(run, offset, extend)` — and the boolean comes from the `Extend` [[INPUT#Named modifiers|named modifier]], not from a key the engine names. Shift is only what `InputMap.xml` happens to bind it to.
+
+### Word and line
+Clicking the same spot twice selects the word, three times the visual line. Both arrive as [[Vulkan Control]]'s multi-click, which reports the tap count from the release, so neither needs a gesture of its own — the editor switches on the count and everything below it is selection code that already existed.
+
+A word is the maximal run of one **character class** around the caret, where a class is whitespace, word (letters, digits and `_`) or symbol. Three classes rather than two, so clicking punctuation selects the punctuation and not the identifier beside it. The walk crosses runs inside the block through `AdjacentRun`, because a bolded half-word is two runs and one word; it stops at the block edge, since a paragraph boundary is a boundary in every other operation too.
+
+Which class is taken matters at the edges. `OffsetAt` returns the nearest slot, so clicking the right half of a word's last letter puts the caret *after* the word, where the character ahead is a space — taking the character ahead on its own would select the space and never the word that was clicked. So the rule is that **either side being a word wins**, and only when neither is does the character ahead decide.
+
+The line needs no geometry at all: it is `MoveCaret(LineStart)` followed by `MoveCaret(LineEnd, extend)`, which is Home and then Shift+End. Those already resolve the *visual* line rather than the paragraph, so a wrapped block selects the row that was clicked and not all of it.
+
+#### Select Word
+```
+`focus` = normalized caret slot
+`right` = class of the character after `focus`, or none
+`left` = class of the character before `focus`, or none
+`target` = either is a word ? word : `right` ?? `left`; nothing on both sides returns
+walk `start` back from `focus` while the character behind it is `target`
+walk `end` forward from `focus` while the character ahead of it is `target`
+anchor = normalized `start`, then place the caret at `end` extending
+```
 
 #### Highlight (run, from, to)
 for each `line` of `run` layout

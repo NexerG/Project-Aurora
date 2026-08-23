@@ -94,6 +94,9 @@ namespace ArctisAurora.Core.Registry
             return map;
         }
 
+        // [A_XSDType] name -> type, in assembly load order so the first declaration of a name wins
+        private static Dictionary<string, Type>? xsdTypes;
+
         public static Type? FindType(string typeName)
         {
             var type = Type.GetType(typeName);
@@ -102,24 +105,21 @@ namespace ArctisAurora.Core.Registry
                 return type;
             }
 
-            foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
+            if (xsdTypes == null)
             {
-                var types = assembly.GetTypes()
-                    .Where(t => t.GetCustomAttributes(typeof(A_XSDTypeAttribute), false).Any())
-                    .Select(t => new
-                    {
-                        Type = t,
-                        Attribute = (A_XSDTypeAttribute)t.GetCustomAttributes(typeof(A_XSDTypeAttribute), false).First()
-                    }).ToList();
-
-                type = types.FirstOrDefault(t => t.Attribute.Name == typeName)?.Type;
-
-                if (type != null)
+                xsdTypes = new Dictionary<string, Type>();
+                foreach (Type t in AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes()))
                 {
-                    return type;
+                    object[] attributes = t.GetCustomAttributes(typeof(A_XSDTypeAttribute), false);
+                    if (attributes.Length == 0) continue;
+
+                    string name = ((A_XSDTypeAttribute)attributes[0]).Name;
+                    if (!xsdTypes.ContainsKey(name))
+                        xsdTypes.Add(name, t);
                 }
             }
-            return null;
+
+            return xsdTypes.TryGetValue(typeName, out Type? found) ? found : null;
         }
     }
 
@@ -209,7 +209,7 @@ namespace ArctisAurora.Core.Registry
 
         #region ---- XSD FINGERPRINT ----
         private static string BuildCategoryFingerprint(string category,
-            List<(Type Type, A_XSDTypeAttribute Attribute)> categoryTypes, Assembly[] generalAsm)
+            List<(Type Type, A_XSDTypeAttribute Attribute)> categoryTypes, Type[] allTypes)
         {
             var sb = new System.Text.StringBuilder();
             sb.Append($"category:{category}|");
@@ -233,8 +233,8 @@ namespace ArctisAurora.Core.Registry
                     }
                     if (t.Attribute.AllowedChildren != null)
                     {
-                        var children = generalAsm.SelectMany(a => a.GetTypes()
-                            .Where(ty => t.Attribute.AllowedChildren.IsAssignableFrom(ty) && ty != t.Attribute.AllowedChildren))
+                        var children = allTypes
+                            .Where(ty => t.Attribute.AllowedChildren.IsAssignableFrom(ty) && ty != t.Attribute.AllowedChildren)
                             .Select(c => c.GetCustomAttribute<A_XSDTypeAttribute>(false))
                             .Where(a => a != null && a.Name != "" && !a.IsAbstract)
                             .Select(a => $"{a.Category}:{a.Name}").OrderBy(n => n);
@@ -260,10 +260,10 @@ namespace ArctisAurora.Core.Registry
             return Nullable.GetUnderlyingType(referenced) ?? referenced;
         }
 
-        private static string BuildAllTypesFingerprint(Assembly[] generalAsm)
+        private static string BuildAllTypesFingerprint(Type[] allTypes)
         {
             var sb = new System.Text.StringBuilder();
-            var types = generalAsm.SelectMany(a => a.GetTypes())
+            var types = allTypes
                 .Where(t => t.GetCustomAttributes(typeof(A_XSDTypeAttribute), false).Any())
                 .Select(t => t.GetCustomAttribute<A_XSDTypeAttribute>()?.Name ?? t.Name)
                 .OrderBy(n => n);
@@ -272,14 +272,14 @@ namespace ArctisAurora.Core.Registry
             return sb.ToString();
         }
 
-        private static string BuildActionFingerprint(Assembly[] generalAsm)
+        private static string BuildActionFingerprint(Type[] allTypes)
         {
             var sb = new System.Text.StringBuilder();
-            var allMethods = generalAsm.SelectMany(a => a.GetTypes()
+            var allMethods = allTypes
                 .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance))
                 .Select(m => m.GetCustomAttributes(typeof(A_XSDActionDependencyAttribute), true)
                     .FirstOrDefault() as A_XSDActionDependencyAttribute)
-                .Where(attr => attr != null))
+                .Where(attr => attr != null)
                 .OrderBy(a => a.Category).ThenBy(a => a.Name);
             foreach (var a in allMethods) sb.Append($"a:{a.Category}:{a.Name}|");
             return sb.ToString();
@@ -289,32 +289,32 @@ namespace ArctisAurora.Core.Registry
 
         public static void GenerateXSD()
         {
-            var generalAsm = AppDomain.CurrentDomain.GetAssemblies();
+            Type[] allTypes = AppDomain.CurrentDomain.GetAssemblies().SelectMany(a => a.GetTypes()).ToArray();
             LoadHashes();
-            GenerateDependencyXSD(generalAsm);
+            GenerateDependencyXSD(allTypes);
             SaveHashes();
         }
 
-        private static void GenerateDependencyXSD(Assembly[] generalAsm)
+        private static void GenerateDependencyXSD(Type[] allTypes)
         {
-            GenerateTypeXSD(generalAsm);
-            GenerateActionXSD(generalAsm);
+            GenerateTypeXSD(allTypes);
+            GenerateActionXSD(allTypes);
         }
 
-        private static void GenerateTypeXSD(Assembly[] generalAsm)
+        private static void GenerateTypeXSD(Type[] allTypes)
         {
-            GenerateTypesPerCategory(generalAsm);
-            GenerateAllTypesXSD(generalAsm);
+            GenerateTypesPerCategory(allTypes);
+            GenerateAllTypesXSD(allTypes);
         }
 
-        private static void GenerateTypesPerCategory(Assembly[] generalAsm)
+        private static void GenerateTypesPerCategory(Type[] allTypes)
         {
-            var types = generalAsm.SelectMany(asm => asm.GetTypes()
+            var types = allTypes
                 .Where(t => t.GetCustomAttributes(typeof(A_XSDTypeAttribute), false).Any())
                 .Select(t => (
                     Type: t,
                     Attribute: (A_XSDTypeAttribute)t.GetCustomAttributes(typeof(A_XSDTypeAttribute), true).First()
-                )))
+                ))
                 .Where(x => x.Attribute != null).ToList();
 
             var categorizedTypes = types.Where(x => x.Attribute.Category != "Uncategorized")
@@ -326,7 +326,7 @@ namespace ArctisAurora.Core.Registry
                 if (category.Key == "Uncategorized") continue;
 
                 string fileName = $"{category.Key}TypeSchema.xsd";
-                string fp = BuildCategoryFingerprint(category.Key, category.Value, generalAsm);
+                string fp = BuildCategoryFingerprint(category.Key, category.Value, allTypes);
                 if (!NeedsRegeneration(fileName, fp))
                 {
                     Log.Debug($"skipping {fileName} — unchanged");
@@ -373,7 +373,7 @@ namespace ArctisAurora.Core.Registry
                         typeSchema.Items.Add(schemaElement);
 
                         if(category.Key != "Uncategorized")
-                            GenerateComplexType(t.Type, t.Attribute, typeSchema, generalAsm, category.Key, foreignCategories);
+                            GenerateComplexType(t.Type, t.Attribute, typeSchema, allTypes, category.Key, foreignCategories);
 
                     }
                 }
@@ -385,10 +385,10 @@ namespace ArctisAurora.Core.Registry
             }
         }
 
-        private static void GenerateAllTypesXSD(Assembly[] generalAsm)
+        private static void GenerateAllTypesXSD(Type[] allTypes)
         {
             string fileName = "AllTypesSchema.xsd";
-            string fp = BuildAllTypesFingerprint(generalAsm);
+            string fp = BuildAllTypesFingerprint(allTypes);
             if (!NeedsRegeneration(fileName, fp))
             {
                 Log.Debug($"skipping {fileName} — unchanged");
@@ -409,7 +409,7 @@ namespace ArctisAurora.Core.Registry
             allTypesType.Content = allTypesRestriction;
             allTypeSchema.Items.Add(allTypesType);
 
-            var types = generalAsm.SelectMany(a => a.GetTypes())
+            var types = allTypes
                 .Where(t => t.GetCustomAttributes(typeof(A_XSDTypeAttribute), false).Any()).ToList();
 
             var categorizedTypes = types.Where(x => !string.IsNullOrEmpty(x.GetCustomAttribute<A_XSDTypeAttribute>()?.Category))
@@ -450,10 +450,10 @@ namespace ArctisAurora.Core.Registry
             WriteSchema(allTypeSchema, "AllTypesSchema.xsd");
         }
 
-        private static void GenerateActionXSD(Assembly[] generalAsm)
+        private static void GenerateActionXSD(Type[] allTypes)
         {
             string fileName = "actionSchema.xsd";
-            string fp = BuildActionFingerprint(generalAsm);
+            string fp = BuildActionFingerprint(allTypes);
             if (!NeedsRegeneration(fileName, fp))
             {
                 Log.Debug($"skipping {fileName} — unchanged");
@@ -462,7 +462,7 @@ namespace ArctisAurora.Core.Registry
 
 
 
-            var allMethods = generalAsm.SelectMany(a => a.GetTypes()
+            var allMethods = allTypes
                 .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance)
                 .Select(m => new
                 {
@@ -471,7 +471,7 @@ namespace ArctisAurora.Core.Registry
                     Attribute = m.GetCustomAttributes(typeof(A_XSDActionDependencyAttribute), true)
                                     .FirstOrDefault() as A_XSDActionDependencyAttribute
                 })
-                .Where(x => x.Attribute != null))).ToList();
+                .Where(x => x.Attribute != null)).ToList();
 
             var globalMethods = allMethods.Where(x => x.Attribute.Category == "Uncategorized").ToList();
 
@@ -639,7 +639,7 @@ namespace ArctisAurora.Core.Registry
             });
         }
 
-        private static void GenerateComplexType(Type t, A_XSDTypeAttribute attribute, XmlSchema schema, Assembly[] generalAsm, string currentCategory, HashSet<string> foreignCategories)
+        private static void GenerateComplexType(Type t, A_XSDTypeAttribute attribute, XmlSchema schema, Type[] allTypes, string currentCategory, HashSet<string> foreignCategories)
         {
             XmlSchemaComplexType complexType = new XmlSchemaComplexType()
             {
@@ -716,9 +716,9 @@ namespace ArctisAurora.Core.Registry
                     MaxOccursString = attribute.MaxChildren == -1 ? "unbounded" : attribute.MaxChildren.ToString()
                 };
 
-                var children = generalAsm.SelectMany(a => a.GetTypes()
+                var children = allTypes
                     .Where(ty => attribute.AllowedChildren.IsAssignableFrom(ty)
-                        && ty != attribute.AllowedChildren)).ToList();
+                        && ty != attribute.AllowedChildren).ToList();
                 foreach (var child in children)
                 {
                     A_XSDTypeAttribute childAttr = child.GetCustomAttribute<A_XSDTypeAttribute>(false);
