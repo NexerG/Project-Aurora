@@ -104,14 +104,16 @@ namespace ArctisAurora.EngineWork.Rendering
 
         // Floats over its parent and takes focus, so a dismissal has something to leave. Starts
         // hidden like the ghost, so the first open is filled and placed before it is ever seen.
-        internal void CreateMenuWindow()
+        // withChrome is for one that draws its own minimise/maximise/close: it has to be resizable
+        // and must not float, or those buttons have nothing to act on.
+        internal void CreateMenuWindow(bool withChrome = false)
         {
             _glfw.DefaultWindowHints();
             _glfw.WindowHint(WindowHintClientApi.ClientApi, ClientApi.NoApi);
-            _glfw.WindowHint(WindowHintBool.Resizable, false);
+            _glfw.WindowHint(WindowHintBool.Resizable, withChrome);
             _glfw.WindowHint(WindowHintBool.Decorated, false);
             _glfw.WindowHint(WindowHintBool.DoubleBuffer, true);
-            _glfw.WindowHint(WindowHintBool.Floating, true);
+            _glfw.WindowHint(WindowHintBool.Floating, !withChrome);
             _glfw.WindowHint(WindowHintBool.Visible, false);
             handle = _glfw.CreateWindow((int)windowSize.Width, (int)windowSize.Height, "", null, null);
 

@@ -600,6 +600,9 @@ namespace ArctisAurora.Core.UISystem.Controls
         // False hands the active context to the parent instead.
         public virtual bool canBeActiveContext => true;
 
+        // False leaves the active control where it was when this one is pressed.
+        public virtual bool takesActiveControl => true;
+
         public bool HitTest(Vector2D<float> point) => ClipRect.Contains(point);
         #endregion
 

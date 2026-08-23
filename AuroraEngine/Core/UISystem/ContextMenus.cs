@@ -94,6 +94,8 @@ namespace ArctisAurora.Core.UISystem
     // concatenates them, so an entry declared once is reachable from every control under it.
     public static class ContextMenus
     {
+        private const string menuFile = "XML/Documents/ContextMenus.xml";
+
         private static readonly Dictionary<string, ContextMenuDefinition> menus =
             new Dictionary<string, ContextMenuDefinition>(StringComparer.OrdinalIgnoreCase);
 
@@ -113,6 +115,16 @@ namespace ArctisAurora.Core.UISystem
             live ??= menuFactory();
             return live.Open(owner);
         }
+
+        // A list the caller built, shown at a point it chose. Used by controls that drop their own
+        // options rather than a named menu.
+        public static bool OpenList(VulkanControl owner, IReadOnlyList<ContextEntry> entries, Vector2D<float> point)
+        {
+            live ??= menuFactory();
+            return live.OpenWith(owner, entries, point);
+        }
+
+        public static void CloseLive() => live?.Close();
 
         public static void Tick() => live?.Tick();
 
@@ -179,7 +191,6 @@ namespace ArctisAurora.Core.UISystem
         public static bool LoadMenus()
         {
             menus.Clear();
-            XElement root = XElement.Load(Paths.Doc("ContextMenus.xml"));
 
             (MethodInfo method, A_XSDActionDependencyAttribute attr)[] tagged = AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(a => a.GetTypes())
@@ -188,14 +199,22 @@ namespace ArctisAurora.Core.UISystem
                 .Where(x => x.attr != null)
                 .ToArray();
 
-            foreach (XElement element in root.Elements())
+            // engine first, application last, so an application adds menus without losing the
+            // engine's and overrides one by declaring the same name
+            IReadOnlyList<IDataMount> mounts = VirtualFileSystem.Mounts;
+            for (int i = mounts.Count - 1; i >= 0; i--)
             {
-                ContextMenuDefinition menu = new ContextMenuDefinition { name = element.Attribute("Name")?.Value ?? "" };
+                if (!mounts[i].FileExists(menuFile)) continue;
 
-                foreach (XElement itemElement in element.Elements())
-                    menu.items.Add(ParseItem(itemElement, tagged));
+                foreach (XElement element in XElement.Load(mounts[i].GetFullPath(menuFile)).Elements())
+                {
+                    ContextMenuDefinition menu = new ContextMenuDefinition { name = element.Attribute("Name")?.Value ?? "" };
 
-                menus[menu.name] = menu;
+                    foreach (XElement itemElement in element.Elements())
+                        menu.items.Add(ParseItem(itemElement, tagged));
+
+                    menus[menu.name] = menu;
+                }
             }
 
             return true;

@@ -17,6 +17,8 @@
       <xs:enumeration value="LogRecorder" />
       <xs:enumeration value="Logging" />
       <xs:enumeration value="LogLevel" />
+      <xs:enumeration value="Bind" />
+      <xs:enumeration value="InputBindings" />
       <xs:enumeration value="DoubleClick" />
       <xs:enumeration value="KeyRepeat" />
       <xs:enumeration value="Input" />
@@ -50,6 +52,10 @@
       <xs:enumeration value="DocumentLayout" />
       <xs:enumeration value="Document" />
       <xs:enumeration value="Button" />
+      <xs:enumeration value="CheckBox" />
+      <xs:enumeration value="Dropdown" />
+      <xs:enumeration value="KeyCapture" />
+      <xs:enumeration value="MenuButton" />
       <xs:enumeration value="Splitter" />
       <xs:enumeration value="DockMode" />
       <xs:enumeration value="Dock" />
@@ -109,6 +115,7 @@
       <xs:enumeration value="KeybindModifier" />
       <xs:enumeration value="InputModifier" />
       <xs:enumeration value="NamedModifier" />
+      <xs:enumeration value="KeybindAccess" />
       <xs:enumeration value="Keybind" />
       <xs:enumeration value="Keys" />
       <xs:enumeration value="KeybindMap" />
@@ -162,6 +169,8 @@
       <xs:enumeration value="LogRecorder" />
       <xs:enumeration value="Logging" />
       <xs:enumeration value="LogLevel" />
+      <xs:enumeration value="Bind" />
+      <xs:enumeration value="InputBindings" />
       <xs:enumeration value="DoubleClick" />
       <xs:enumeration value="KeyRepeat" />
       <xs:enumeration value="Input" />
@@ -199,6 +208,10 @@
       <xs:enumeration value="DocumentLayout" />
       <xs:enumeration value="Document" />
       <xs:enumeration value="Button" />
+      <xs:enumeration value="CheckBox" />
+      <xs:enumeration value="Dropdown" />
+      <xs:enumeration value="KeyCapture" />
+      <xs:enumeration value="MenuButton" />
       <xs:enumeration value="Splitter" />
       <xs:enumeration value="DockMode" />
       <xs:enumeration value="Dock" />
@@ -290,6 +303,7 @@
       <xs:enumeration value="KeybindModifier" />
       <xs:enumeration value="InputModifier" />
       <xs:enumeration value="NamedModifier" />
+      <xs:enumeration value="KeybindAccess" />
       <xs:enumeration value="Keybind" />
       <xs:enumeration value="Keys" />
       <xs:enumeration value="KeybindMap" />

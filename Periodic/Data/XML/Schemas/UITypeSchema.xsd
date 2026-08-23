@@ -144,6 +144,10 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="CheckBox" type="types:CheckBox" />
+        <xs:element name="Dropdown" type="types:Dropdown" />
+        <xs:element name="KeyCapture" type="types:KeyCapture" />
+        <xs:element name="MenuButton" type="types:MenuButton" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="EditableTabs" type="types:EditableTabs" />
@@ -217,6 +221,10 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="CheckBox" type="types:CheckBox" />
+        <xs:element name="Dropdown" type="types:Dropdown" />
+        <xs:element name="KeyCapture" type="types:KeyCapture" />
+        <xs:element name="MenuButton" type="types:MenuButton" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="EditableTabs" type="types:EditableTabs" />
@@ -292,6 +300,10 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="CheckBox" type="types:CheckBox" />
+        <xs:element name="Dropdown" type="types:Dropdown" />
+        <xs:element name="KeyCapture" type="types:KeyCapture" />
+        <xs:element name="MenuButton" type="types:MenuButton" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="EditableTabs" type="types:EditableTabs" />
@@ -367,6 +379,10 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="CheckBox" type="types:CheckBox" />
+        <xs:element name="Dropdown" type="types:Dropdown" />
+        <xs:element name="KeyCapture" type="types:KeyCapture" />
+        <xs:element name="MenuButton" type="types:MenuButton" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="EditableTabs" type="types:EditableTabs" />
@@ -494,6 +510,10 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="CheckBox" type="types:CheckBox" />
+        <xs:element name="Dropdown" type="types:Dropdown" />
+        <xs:element name="KeyCapture" type="types:KeyCapture" />
+        <xs:element name="MenuButton" type="types:MenuButton" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="EditableTabs" type="types:EditableTabs" />
@@ -881,6 +901,10 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="CheckBox" type="types:CheckBox" />
+        <xs:element name="Dropdown" type="types:Dropdown" />
+        <xs:element name="KeyCapture" type="types:KeyCapture" />
+        <xs:element name="MenuButton" type="types:MenuButton" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="EditableTabs" type="types:EditableTabs" />
@@ -892,6 +916,207 @@
         <xs:element name="TabView" type="types:TabView" />
       </xs:choice>
     </xs:sequence>
+    <xs:attribute name="Width" type="xs:int" />
+    <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
+    <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
+    <xs:attribute name="HoverColorHex" type="xs:string" />
+    <xs:attribute name="PressColorHex" type="xs:string" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
+    <xs:attribute name="MinHeight" type="xs:int" />
+    <xs:attribute name="MinWidth" type="xs:int" />
+    <xs:attribute name="HorizontalPos" type="xs:float" />
+    <xs:attribute name="VerticalPos" type="xs:float" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
+    <xs:attribute name="ClipToBounds" type="xs:boolean" />
+    <xs:attribute name="DockMode" type="types:DockMode" />
+    <xs:attribute name="Grid.Column" type="xs:int" />
+    <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
+    <xs:attribute name="onEnter" type="actions:UI" />
+    <xs:attribute name="BubbleEnter" type="xs:boolean" />
+    <xs:attribute name="onExit" type="actions:UI" />
+    <xs:attribute name="BubbleExit" type="xs:boolean" />
+    <xs:attribute name="onClick" type="actions:UI" />
+    <xs:attribute name="BubbleClick" type="xs:boolean" />
+    <xs:attribute name="onAltClick" type="actions:UI" />
+    <xs:attribute name="BubbleAltClick" type="xs:boolean" />
+    <xs:attribute name="onRelease" type="actions:UI" />
+    <xs:attribute name="BubbleRelease" type="xs:boolean" />
+    <xs:attribute name="onAltRelease" type="actions:UI" />
+    <xs:attribute name="BubbleAltRelease" type="xs:boolean" />
+    <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
+    <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
+    <xs:attribute name="Name" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="CheckBox" type="types:CheckBox" />
+  <xs:complexType name="CheckBox">
+    <xs:sequence />
+    <xs:attribute name="Width" type="xs:int" />
+    <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
+    <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
+    <xs:attribute name="HoverColorHex" type="xs:string" />
+    <xs:attribute name="PressColorHex" type="xs:string" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
+    <xs:attribute name="MinHeight" type="xs:int" />
+    <xs:attribute name="MinWidth" type="xs:int" />
+    <xs:attribute name="HorizontalPos" type="xs:float" />
+    <xs:attribute name="VerticalPos" type="xs:float" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
+    <xs:attribute name="ClipToBounds" type="xs:boolean" />
+    <xs:attribute name="DockMode" type="types:DockMode" />
+    <xs:attribute name="Grid.Column" type="xs:int" />
+    <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
+    <xs:attribute name="onEnter" type="actions:UI" />
+    <xs:attribute name="BubbleEnter" type="xs:boolean" />
+    <xs:attribute name="onExit" type="actions:UI" />
+    <xs:attribute name="BubbleExit" type="xs:boolean" />
+    <xs:attribute name="onClick" type="actions:UI" />
+    <xs:attribute name="BubbleClick" type="xs:boolean" />
+    <xs:attribute name="onAltClick" type="actions:UI" />
+    <xs:attribute name="BubbleAltClick" type="xs:boolean" />
+    <xs:attribute name="onRelease" type="actions:UI" />
+    <xs:attribute name="BubbleRelease" type="xs:boolean" />
+    <xs:attribute name="onAltRelease" type="actions:UI" />
+    <xs:attribute name="BubbleAltRelease" type="xs:boolean" />
+    <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
+    <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
+    <xs:attribute name="Name" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="Dropdown" type="types:Dropdown" />
+  <xs:complexType name="Dropdown">
+    <xs:sequence />
+    <xs:attribute name="Width" type="xs:int" />
+    <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
+    <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
+    <xs:attribute name="HoverColorHex" type="xs:string" />
+    <xs:attribute name="PressColorHex" type="xs:string" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
+    <xs:attribute name="MinHeight" type="xs:int" />
+    <xs:attribute name="MinWidth" type="xs:int" />
+    <xs:attribute name="HorizontalPos" type="xs:float" />
+    <xs:attribute name="VerticalPos" type="xs:float" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
+    <xs:attribute name="ClipToBounds" type="xs:boolean" />
+    <xs:attribute name="DockMode" type="types:DockMode" />
+    <xs:attribute name="Grid.Column" type="xs:int" />
+    <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
+    <xs:attribute name="onEnter" type="actions:UI" />
+    <xs:attribute name="BubbleEnter" type="xs:boolean" />
+    <xs:attribute name="onExit" type="actions:UI" />
+    <xs:attribute name="BubbleExit" type="xs:boolean" />
+    <xs:attribute name="onClick" type="actions:UI" />
+    <xs:attribute name="BubbleClick" type="xs:boolean" />
+    <xs:attribute name="onAltClick" type="actions:UI" />
+    <xs:attribute name="BubbleAltClick" type="xs:boolean" />
+    <xs:attribute name="onRelease" type="actions:UI" />
+    <xs:attribute name="BubbleRelease" type="xs:boolean" />
+    <xs:attribute name="onAltRelease" type="actions:UI" />
+    <xs:attribute name="BubbleAltRelease" type="xs:boolean" />
+    <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
+    <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
+    <xs:attribute name="Name" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="KeyCapture" type="types:KeyCapture" />
+  <xs:complexType name="KeyCapture">
+    <xs:sequence />
+    <xs:attribute name="Width" type="xs:int" />
+    <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
+    <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
+    <xs:attribute name="HoverColorHex" type="xs:string" />
+    <xs:attribute name="PressColorHex" type="xs:string" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
+    <xs:attribute name="MinHeight" type="xs:int" />
+    <xs:attribute name="MinWidth" type="xs:int" />
+    <xs:attribute name="HorizontalPos" type="xs:float" />
+    <xs:attribute name="VerticalPos" type="xs:float" />
+    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
+    <xs:attribute name="ClipToBounds" type="xs:boolean" />
+    <xs:attribute name="DockMode" type="types:DockMode" />
+    <xs:attribute name="Grid.Column" type="xs:int" />
+    <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
+    <xs:attribute name="onEnter" type="actions:UI" />
+    <xs:attribute name="BubbleEnter" type="xs:boolean" />
+    <xs:attribute name="onExit" type="actions:UI" />
+    <xs:attribute name="BubbleExit" type="xs:boolean" />
+    <xs:attribute name="onClick" type="actions:UI" />
+    <xs:attribute name="BubbleClick" type="xs:boolean" />
+    <xs:attribute name="onAltClick" type="actions:UI" />
+    <xs:attribute name="BubbleAltClick" type="xs:boolean" />
+    <xs:attribute name="onRelease" type="actions:UI" />
+    <xs:attribute name="BubbleRelease" type="xs:boolean" />
+    <xs:attribute name="onAltRelease" type="actions:UI" />
+    <xs:attribute name="BubbleAltRelease" type="xs:boolean" />
+    <xs:attribute name="onDragStop" type="actions:UI" />
+    <xs:attribute name="onScrollUp" type="actions:UI" />
+    <xs:attribute name="onScrollDown" type="actions:UI" />
+    <xs:attribute name="BubbleScroll" type="xs:boolean" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
+    <xs:attribute name="Name" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="MenuButton" type="types:MenuButton" />
+  <xs:complexType name="MenuButton">
+    <xs:sequence />
+    <xs:attribute name="Caption" type="xs:string" />
     <xs:attribute name="Width" type="xs:int" />
     <xs:attribute name="Height" type="xs:int" />
     <xs:attribute name="Margin" type="xs:string" />
@@ -1016,6 +1241,10 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="CheckBox" type="types:CheckBox" />
+        <xs:element name="Dropdown" type="types:Dropdown" />
+        <xs:element name="KeyCapture" type="types:KeyCapture" />
+        <xs:element name="MenuButton" type="types:MenuButton" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="EditableTabs" type="types:EditableTabs" />
@@ -1090,6 +1319,10 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="CheckBox" type="types:CheckBox" />
+        <xs:element name="Dropdown" type="types:Dropdown" />
+        <xs:element name="KeyCapture" type="types:KeyCapture" />
+        <xs:element name="MenuButton" type="types:MenuButton" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="EditableTabs" type="types:EditableTabs" />
@@ -1209,6 +1442,10 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="CheckBox" type="types:CheckBox" />
+        <xs:element name="Dropdown" type="types:Dropdown" />
+        <xs:element name="KeyCapture" type="types:KeyCapture" />
+        <xs:element name="MenuButton" type="types:MenuButton" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="EditableTabs" type="types:EditableTabs" />
@@ -1289,6 +1526,10 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="CheckBox" type="types:CheckBox" />
+        <xs:element name="Dropdown" type="types:Dropdown" />
+        <xs:element name="KeyCapture" type="types:KeyCapture" />
+        <xs:element name="MenuButton" type="types:MenuButton" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="EditableTabs" type="types:EditableTabs" />
@@ -1364,6 +1605,10 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="CheckBox" type="types:CheckBox" />
+        <xs:element name="Dropdown" type="types:Dropdown" />
+        <xs:element name="KeyCapture" type="types:KeyCapture" />
+        <xs:element name="MenuButton" type="types:MenuButton" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="EditableTabs" type="types:EditableTabs" />
@@ -1439,6 +1684,10 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="CheckBox" type="types:CheckBox" />
+        <xs:element name="Dropdown" type="types:Dropdown" />
+        <xs:element name="KeyCapture" type="types:KeyCapture" />
+        <xs:element name="MenuButton" type="types:MenuButton" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="EditableTabs" type="types:EditableTabs" />
@@ -1514,6 +1763,10 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="CheckBox" type="types:CheckBox" />
+        <xs:element name="Dropdown" type="types:Dropdown" />
+        <xs:element name="KeyCapture" type="types:KeyCapture" />
+        <xs:element name="MenuButton" type="types:MenuButton" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="EditableTabs" type="types:EditableTabs" />
@@ -1588,6 +1841,10 @@
         <xs:element name="DocumentEditor" type="types:DocumentEditor" />
         <xs:element name="Run" type="types:Run" />
         <xs:element name="Button" type="types:Button" />
+        <xs:element name="CheckBox" type="types:CheckBox" />
+        <xs:element name="Dropdown" type="types:Dropdown" />
+        <xs:element name="KeyCapture" type="types:KeyCapture" />
+        <xs:element name="MenuButton" type="types:MenuButton" />
         <xs:element name="Splitter" type="types:Splitter" />
         <xs:element name="Dock" type="types:Dock" />
         <xs:element name="EditableTabs" type="types:EditableTabs" />

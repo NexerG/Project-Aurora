@@ -60,11 +60,23 @@ namespace ArctisAurora.Core.UISystem.Controls
             RenderWindow source = RenderWindow.Of(owner);
             if (source == null) return false;
 
+            return OpenWith(owner, entries, source.ui.ToDesignSpace(source.mousePos));
+        }
+
+        // Shows a list this control did not compose, at a point the caller chose — what a dropdown
+        // needs, and the reason a windowed menu's escape from the parent's clip rect is reusable.
+        public bool OpenWith(VulkanControl owner, IReadOnlyList<ContextEntry> entries, Vector2D<float> point)
+        {
+            if (entries.Count == 0) return false;
+
+            RenderWindow source = RenderWindow.Of(owner);
+            if (source == null) return false;
+
             if (isOpen) Detach();
 
             Fill(entries);
             Measure(new Vector2D<float>(float.MaxValue, float.MaxValue));
-            Attach(source, source.ui.ToDesignSpace(source.mousePos));
+            Attach(source, point);
 
             isOpen = true;
             return true;

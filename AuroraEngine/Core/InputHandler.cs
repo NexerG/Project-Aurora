@@ -156,6 +156,30 @@ namespace ArctisAurora.EngineWork
             }
         }
 
+        // The first non-modifier key that went down this tick, for a rebind listening for one.
+        public Keys? FirstPressed()
+        {
+            foreach (KeyStateEntry entry in _states.Values)
+                if (entry.justPressed && entry.key != Keys.AnySymbol && !IsModifier(entry.key))
+                    return entry.key;
+            return null;
+        }
+
+        public List<Keys> HeldModifiers()
+        {
+            List<Keys> held = new List<Keys>();
+            foreach (KeyStateEntry entry in _states.Values)
+                if (entry.isDown && IsModifier(entry.key))
+                    held.Add(entry.key);
+            return held;
+        }
+
+        public static bool IsModifier(Keys key) =>
+            key == Keys.LeftControl || key == Keys.RightControl ||
+            key == Keys.LeftShift || key == Keys.RightShift ||
+            key == Keys.LeftAlt || key == Keys.RightAlt ||
+            key == Keys.LeftSuper || key == Keys.RightSuper;
+
         private void MirrorToAnySymbol(double timestamp)
         {
             KeyStateEntry any = GetOrCreate(Keys.AnySymbol);
@@ -558,6 +582,12 @@ namespace ArctisAurora.EngineWork
         public Keys key { get; set; }
     }
 
+    [A_XSDType("KeybindAccess", "Input", description: "Whether a bind may be rebound at runtime")]
+    public enum KeybindAccess
+    {
+        Open, Locked
+    }
+
     [A_XSDType("Keybind", "Input", AllowedChildren = typeof(IKeybindChild), Description = "Maps a trigger key with optional modifiers and conditions to an action")]
     public class KeybindDefinition : IKeybindMapChild
     {
@@ -566,6 +596,12 @@ namespace ArctisAurora.EngineWork
 
         [A_XSDElementProperty("Action", "Input")]
         public Action? action { get; set; }
+
+        [A_XSDElementProperty("Access", "Input")]
+        public KeybindAccess access { get; set; } = KeybindAccess.Open;
+
+        // what Action named, kept so a rebind can find the bind the delegate came from
+        public string actionName = "";
 
         [A_XSDElementProperty("Modifier", "Input")]
         public List<KeybindModifier> modifiers = new List<KeybindModifier>();
@@ -734,6 +770,8 @@ namespace ArctisAurora.EngineWork
 
     public class GestureMatcher
     {
+        private static readonly Core.Diagnostics.LogChannel Log = Core.Diagnostics.LogChannel.For("Input");
+
         private KeyStateTracker _tracker;
         private string _activeGroup = "default";
         private Dictionary<string, List<KeybindDefinition>> _groups = new Dictionary<string, List<KeybindDefinition>>();
@@ -776,6 +814,35 @@ namespace ArctisAurora.EngineWork
 
             if (group == _activeGroup)
                 _activeBinds = list;
+        }
+
+        public IReadOnlyList<KeybindDefinition> ActiveBinds => _activeBinds;
+
+        // Moves an action's bind onto another trigger, in whatever group holds it — a stored override
+        // is applied before the host has chosen its group. A Locked bind is the build's, so it refuses.
+        public bool Rebind(string actionName, Keys trigger, List<KeybindModifier> modifiers)
+        {
+            bool moved = false;
+
+            foreach (List<KeybindDefinition> binds in _groups.Values)
+                for (int i = 0; i < binds.Count; i++)
+                {
+                    KeybindDefinition def = binds[i];
+                    if (!string.Equals(def.actionName, actionName, StringComparison.OrdinalIgnoreCase)) continue;
+
+                    if (def.access == KeybindAccess.Locked)
+                    {
+                        Log.Warn($"'{actionName}' is locked — not rebinding.");
+                        return false;
+                    }
+
+                    def.trigger = trigger;
+                    def.modifiers = modifiers;
+                    moved = true;
+                }
+
+            if (!moved) Log.Warn($"no bind for '{actionName}' — not rebinding.");
+            return moved;
         }
 
         public void AddModifier(string group, NamedModifier modifier)
@@ -1023,6 +1090,15 @@ namespace ArctisAurora.EngineWork
         [A_XSDElementProperty("NamedModifier", "Input")]
         public List<NamedModifier> namedModifiers = new List<NamedModifier>();
 
+        // what the next key press goes to instead of the keybinds
+        private static Action<Keys, List<Keys>>? _capture;
+
+        public static bool isCapturing => _capture != null;
+
+        public static void Capture(Action<Keys, List<Keys>> onCaptured) => _capture = onCaptured;
+
+        public static void CancelCapture() => _capture = null;
+
         public bool IsKeyDown(Keys k) => keyTracker.IsDown(k);
 
         public bool IsModifierDown(InputModifier modifier) => gestureMatcher.IsDown(modifier);
@@ -1096,6 +1172,20 @@ namespace ArctisAurora.EngineWork
             // Update key states from raw GLFW events
             keyTracker.Update(Engine.totalTime, Engine.deltaTime.TotalSeconds);
 
+            // A pending capture eats the tick, so the key being bound never fires what it is bound to.
+            if (_capture != null)
+            {
+                Keys? pressed = keyTracker.FirstPressed();
+                if (pressed != null)
+                {
+                    Action<Keys, List<Keys>> capture = _capture;
+                    _capture = null;
+                    capture(pressed.Value, keyTracker.HeldModifiers());
+                }
+                charInputReadQueue.Clear();
+                return;
+            }
+
             // Evaluate all gesture keybinds
             gestureMatcher.Update(Engine.deltaTime.TotalSeconds);
 
@@ -1157,7 +1247,12 @@ namespace ArctisAurora.EngineWork
                             throw new Exception($"Action method '{actionAttr.Value}' not found in A_XSDActionDependency.");
 
                         def.action = (Action)Delegate.CreateDelegate(typeof(Action), methodInfo);
+                        def.actionName = actionAttr.Value;
                     }
+
+                    XAttribute accessAttr = keybindElement.Attribute("Access");
+                    if (accessAttr != null)
+                        def.access = (KeybindAccess)Enum.Parse(typeof(KeybindAccess), accessAttr.Value);
 
                     // Child elements: Modifiers and Conditions
                     foreach (XElement child in keybindElement.Elements())
@@ -1267,6 +1362,10 @@ namespace ArctisAurora.EngineWork
         {
             instance = ParseXML("InputMap.xml");
             Engine.inputHandler = instance;
+
+            foreach (KeybindOverride bind in SettingsRegistry.Get<InputBindings>().binds)
+                instance.gestureMatcher.Rebind(bind.action, bind.trigger, InputBindings.ParseModifiers(bind.modifiers));
+
             // Activate the default group (or first available)
             instance.gestureMatcher.SetActiveGroup("default");
 

@@ -3,7 +3,7 @@
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:simpleType name="Input">
-    <xs:union memberTypes="types:InputModifier types:Keys" />
+    <xs:union memberTypes="types:InputModifier types:KeybindAccess types:Keys" />
   </xs:simpleType>
   <xs:element name="KeybindModifier" type="types:KeybindModifier" />
   <xs:complexType name="KeybindModifier">
@@ -21,6 +21,12 @@
     <xs:attribute name="Modifier" type="types:InputModifier" />
     <xs:attribute name="Key" type="types:Keys" />
   </xs:complexType>
+  <xs:simpleType name="KeybindAccess">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Open" />
+      <xs:enumeration value="Locked" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:element name="Keybind" type="types:Keybind" />
   <xs:complexType name="Keybind">
     <xs:sequence>
@@ -47,6 +53,7 @@
     </xs:sequence>
     <xs:attribute name="Trigger" type="types:Keys" />
     <xs:attribute name="Action" type="actions:Input" />
+    <xs:attribute name="Access" type="types:KeybindAccess" />
   </xs:complexType>
   <xs:simpleType name="Keys">
     <xs:restriction base="xs:string">

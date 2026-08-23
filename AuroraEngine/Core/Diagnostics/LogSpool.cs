@@ -300,8 +300,8 @@ namespace ArctisAurora.Core.Diagnostics
                     if (next < 0) break;
 
                     ref readonly LogRecord record = ref lanes[next].At(pos[next]);
-                    int length = Compose(record, lanes[next].TextOf(record));
-                    Publish(record.level, _line.AsSpan(0, length));
+                    int length = Compose(record, lanes[next].TextOf(record), out int originStart, out int originEnd);
+                    Publish(record.level, _line.AsSpan(0, length), originStart, originEnd);
                     if (record.level >= LogLevel.Error) urgent = true;
                     pos[next]++;
                 }
@@ -347,9 +347,9 @@ namespace ArctisAurora.Core.Diagnostics
             Spill();
         }
 
-        private static void Publish(LogLevel level, ReadOnlySpan<byte> line)
+        private static void Publish(LogLevel level, ReadOnlySpan<byte> line, int originStart, int originEnd)
         {
-            if (level >= _consoleMin) _console.Write(level, line);
+            if (level >= _consoleMin) _console.Write(level, line, originStart, originEnd);
 
             if (!_applied)
             {
@@ -389,12 +389,12 @@ namespace ArctisAurora.Core.Diagnostics
         {
             DateTime now = DateTime.Now;
             Publish(LogLevel.Warn, Encoding.UTF8.GetBytes(
-                $"{now:HH:mm:ss.fff} WARN  spool [Log] {text}\r\n"));
+                $"{now:HH:mm:ss.fff} WARN  spool [Log] {text}\r\n"), 19, 24);
         }
 
         // ---- formatting ----
 
-        private static int Compose(in LogRecord record, ReadOnlySpan<byte> text)
+        private static int Compose(in LogRecord record, ReadOnlySpan<byte> text, out int originStart, out int originEnd)
         {
             int need = text.Length + 256 + record.channel.Name.Length + record.file.Length;
             if (_line.Length < need) _line = new byte[RoundUpPow2(need)];
@@ -409,7 +409,10 @@ namespace ArctisAurora.Core.Diagnostics
             pos += Put(dest.Slice(pos), " ");
             pos += Put(dest.Slice(pos), Tag(record.level));
             pos += Put(dest.Slice(pos), " ");
+            originStart = pos;
             pos += PutOrigin(dest.Slice(pos), record);
+            originEnd = pos;
+
             pos += Put(dest.Slice(pos), " [");
             pos += Put(dest.Slice(pos), record.channel.Name);
             pos += Put(dest.Slice(pos), "] ");

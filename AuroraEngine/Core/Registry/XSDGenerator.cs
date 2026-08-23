@@ -22,6 +22,22 @@ namespace ArctisAurora.Core.Registry
         }
     }
 
+    // Restricts a member to a sibling enum listing the variants this build permits. The member keeps
+    // its own type; only the schema and the parse target change, so the two cannot disagree.
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
+    public sealed class A_XSDDomainAttribute : Attribute
+    {
+        public Type Domain { get; }
+
+        public A_XSDDomainAttribute(Type domain)
+        {
+            Domain = domain;
+        }
+
+        public static Type? DomainOf(MemberInfo member) =>
+            member.GetCustomAttribute<A_XSDDomainAttribute>()?.Domain;
+    }
+
     [AttributeUsage(AttributeTargets.Enum | AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Interface)]
     public class A_XSDTypeAttribute : Attribute
     {
@@ -621,6 +637,31 @@ namespace ArctisAurora.Core.Registry
             return typeMap.ContainsKey(resolved);
         }
 
+        // The type a restricted member's attribute is emitted and parsed as. A domain naming a variant
+        // the member's own enum lacks is a rename that desynced the two, so it is refused whole.
+        private static Type DomainFor(MemberInfo member, Type memberType)
+        {
+            Type? domain = A_XSDDomainAttribute.DomainOf(member);
+            if (domain == null) return memberType;
+
+            if (!domain.IsEnum || !memberType.IsEnum)
+            {
+                Log.Error($"{member.DeclaringType?.Name}.{member.Name} restricts to {domain.Name}, "
+                    + $"but a domain and its member must both be enums — ignoring it.");
+                return memberType;
+            }
+
+            foreach (string variant in Enum.GetNames(domain))
+            {
+                if (Enum.IsDefined(memberType, variant)) continue;
+
+                Log.Error($"{domain.Name}.{variant} does not exist on {memberType.Name}, so "
+                    + $"{member.DeclaringType?.Name}.{member.Name} cannot be restricted by it — ignoring it.");
+                return memberType;
+            }
+            return domain;
+        }
+
         private static void GenerateEnumType(Type t, string name, XmlSchema schema)
         {
             XmlSchemaSimpleTypeRestriction restriction = new()
@@ -696,7 +737,7 @@ namespace ArctisAurora.Core.Registry
                 }
                 else
                 {
-                    string typeName = ResolveTypeName(memberType, member.XmlAttribute, currentCategory, foreignCategories);
+                    string typeName = ResolveTypeName(DomainFor(member.Member, memberType), member.XmlAttribute, currentCategory, foreignCategories);
 
                     XmlQualifiedName qualifiedName = new XmlQualifiedName(typeName);
                     XmlSchemaAttribute schemaAttribute = new XmlSchemaAttribute

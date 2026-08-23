@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.UISystem;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
@@ -15,6 +16,12 @@ namespace Periodic.Editor
         {
             Log.Info($"exiting application");
             Engine.CloseWindow(Engine.primary);
+        }
+
+        [A_XSDActionDependency("Settings.Open", "UI", "Opens the settings screen")]
+        public static void OpenSettings()
+        {
+            SettingsWindow.Open(Engine.primary);
         }
     }
 }

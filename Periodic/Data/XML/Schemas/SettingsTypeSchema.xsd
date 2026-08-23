@@ -1,7 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<xs:schema xmlns:types="http://arctisaurora/AuroraSettingsTypes" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:allTypes="http://arctisaurora/AuroraTypes" xmlns:UI="http://arctisaurora/AuroraUITypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraSettingsTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<xs:schema xmlns:types="http://arctisaurora/AuroraSettingsTypes" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:allTypes="http://arctisaurora/AuroraTypes" xmlns:Input="http://arctisaurora/AuroraInputTypes" xmlns:UI="http://arctisaurora/AuroraUITypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraSettingsTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
+  <xs:import schemaLocation="InputTypeSchema.xsd" namespace="http://arctisaurora/AuroraInputTypes" />
   <xs:import schemaLocation="UITypeSchema.xsd" namespace="http://arctisaurora/AuroraUITypes" />
   <xs:simpleType name="Settings">
     <xs:union memberTypes="types:SettingScope types:LogLevel types:WindowMode" />
@@ -80,6 +81,7 @@
         <xs:element name="UI" type="types:UI" />
         <xs:element name="DocumentSettings" type="types:DocumentSettings" />
         <xs:element name="Logging" type="types:Logging" />
+        <xs:element name="InputBindings" type="types:InputBindings" />
         <xs:element name="Input" type="types:Input" />
         <xs:element name="Graphics" type="types:Graphics" />
       </xs:choice>
@@ -144,6 +146,24 @@
       <xs:enumeration value="Off" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:element name="Bind" type="types:Bind" />
+  <xs:complexType name="Bind">
+    <xs:sequence />
+    <xs:attribute name="Action" type="xs:string" />
+    <xs:attribute name="Trigger" type="Input:Keys" />
+    <xs:attribute name="Modifiers" type="xs:string" />
+  </xs:complexType>
+  <xs:element name="InputBindings" type="types:InputBindings" />
+  <xs:complexType name="InputBindings">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Bind" type="types:Bind">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:choice minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
+  </xs:complexType>
   <xs:element name="DoubleClick" type="types:DoubleClick" />
   <xs:complexType name="DoubleClick">
     <xs:sequence />

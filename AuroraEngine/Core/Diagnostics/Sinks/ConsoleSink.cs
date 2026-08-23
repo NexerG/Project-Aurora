@@ -20,12 +20,16 @@ namespace ArctisAurora.Core.Diagnostics.Sinks
         {
             Ansi("[90m"),          // Hot
             Ansi("[90m"),          // Trace
-            Ansi("[36m"),          // Debug
+            Ansi("[34m"),          // Debug
             Array.Empty<byte>(),   // Info
             Ansi("[33m"),          // Warn
             Ansi("[31m"),          // Error
             Ansi("[1;31m"),        // Fatal
         };
+
+        // field colours, laid over the level colour
+        private static readonly byte[] originColour = Ansi("[95m");
+        private static readonly byte[] durationColour = Ansi("[36m");
 
         private readonly Stream _out;
         private readonly bool _colour;
@@ -39,14 +43,62 @@ namespace ArctisAurora.Core.Diagnostics.Sinks
             try { Console.OutputEncoding = Encoding.UTF8; } catch { }
         }
 
-        public void Write(LogLevel level, ReadOnlySpan<byte> line)
+        public void Write(LogLevel level, ReadOnlySpan<byte> line, int originStart, int originEnd)
         {
-            byte[] colour = _colour && (int)level < colours.Length ? colours[(int)level] : Array.Empty<byte>();
+            if (!_colour)
+            {
+                _out.Write(line);
+                return;
+            }
 
+            byte[] colour = (int)level < colours.Length ? colours[(int)level] : Array.Empty<byte>();
             if (colour.Length != 0) _out.Write(colour);
-            _out.Write(line);
-            if (colour.Length != 0) _out.Write(reset);
+
+            if (originEnd > originStart && originEnd <= line.Length)
+            {
+                _out.Write(line.Slice(0, originStart));
+                Segment(line.Slice(originStart, originEnd - originStart), originColour, colour);
+                WriteDurations(line.Slice(originEnd), colour);
+            }
+            else WriteDurations(line, colour);
+
+            _out.Write(reset);
         }
+
+        private void Segment(ReadOnlySpan<byte> span, byte[] colour, byte[] restore)
+        {
+            _out.Write(colour);
+            _out.Write(span);
+            _out.Write(reset);
+            if (restore.Length != 0) _out.Write(restore);
+        }
+
+        // A digit run ending in "ms", coloured as one token.
+        private void WriteDurations(ReadOnlySpan<byte> span, byte[] restore)
+        {
+            int at = 0;
+
+            for (int i = 1; i + 1 < span.Length; i++)
+            {
+                if (span[i] != (byte)'m' || span[i + 1] != (byte)'s') continue;
+
+                int start = i;
+                while (start > at && IsNumeric(span[start - 1])) start--;
+                while (start < i && !IsDigit(span[start])) start++;
+                if (start == i || !IsDigit(span[i - 1])) continue;
+
+                _out.Write(span.Slice(at, start - at));
+                Segment(span.Slice(start, i + 2 - start), durationColour, restore);
+                at = i + 2;
+                i++;
+            }
+
+            _out.Write(span.Slice(at));
+        }
+
+        private static bool IsDigit(byte value) => value >= (byte)'0' && value <= (byte)'9';
+
+        private static bool IsNumeric(byte value) => IsDigit(value) || value == (byte)'.' || value == (byte)',';
 
         public void Flush() => _out.Flush();
 

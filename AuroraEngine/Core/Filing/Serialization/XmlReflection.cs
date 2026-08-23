@@ -24,14 +24,17 @@ namespace ArctisAurora.Core.Filing.Serialization
                 if (attribute == null) continue;
 
                 Type memberType = MemberType(member);
+                Type? domain = A_XSDDomainAttribute.DomainOf(member);
+                Type parseType = domain ?? memberType;
                 object value;
                 try
                 {
-                    value = TypeDescriptor.GetConverter(memberType).ConvertFromInvariantString(attribute.Value);
+                    value = TypeDescriptor.GetConverter(parseType).ConvertFromInvariantString(attribute.Value);
+                    if (domain != null) value = Enum.Parse(memberType, Enum.GetName(domain, value));
                 }
                 catch (Exception) when (tolerant)
                 {
-                    Log.Warn($"'{attribute.Value}' is not a valid {memberType.Name} for "
+                    Log.Warn($"'{attribute.Value}' is not a valid {parseType.Name} for "
                         + $"{meta.Name} on {node.GetType().Name} — keeping {GetMember(member, node)}.");
                     continue;
                 }

@@ -153,10 +153,10 @@ namespace ArctisAurora.EngineWork
 
         // A menu is clicked, so unlike the preview it wires input and is an ordinary window to every
         // walk that skips ghosts.
-        public static RenderWindow OpenMenuWindow(string name, uint width, uint height)
+        public static RenderWindow OpenMenuWindow(string name, uint width, uint height, bool withChrome = false)
         {
             RenderWindow window = new RenderWindow(width, height);
-            window.os.CreateMenuWindow();
+            window.os.CreateMenuWindow(withChrome);
             WireInput(window);
 
             Publish(name, window);

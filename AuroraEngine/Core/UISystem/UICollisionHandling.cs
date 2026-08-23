@@ -91,7 +91,7 @@ namespace ArctisAurora.Core.UISystem
             sameTargetTap = ReferenceEquals(target, lastPressTarget);
             lastPressTarget = target;
 
-            SetActiveControl(target);
+            if (target?.takesActiveControl != false) SetActiveControl(target);
             hovering?.ResolveOnClick(lastMousePos, delta);
         }
 
