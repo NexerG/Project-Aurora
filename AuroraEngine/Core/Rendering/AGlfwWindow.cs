@@ -142,6 +142,20 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal void Focus() => _glfw.FocusWindow(handle);
 
+        // Raises without activating.
+        internal void Raise()
+        {
+            IntPtr window = new GlfwNativeWindow(_glfw, handle).Win32!.Value.Hwnd;
+            SetWindowPos(window, hwndTop, 0, 0, 0, 0, raiseFlags);
+        }
+
+        // HWND_TOP, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE
+        private static readonly IntPtr hwndTop = IntPtr.Zero;
+        private const uint raiseFlags = 0x0001 | 0x0002 | 0x0010;
+
+        [DllImport("user32.dll")]
+        private static extern bool SetWindowPos(IntPtr hwnd, IntPtr insertAfter, int x, int y, int cx, int cy, uint flags);
+
         internal void SetOpacity(float opacity) => _glfw.SetWindowOpacity(handle, opacity);
 
         internal void Show() => _glfw.ShowWindow(handle);
@@ -275,6 +289,11 @@ namespace ArctisAurora.EngineWork.Rendering
         internal void SetMouseOnWindowCallback(CursorEnterCallback callback)
         {
             _glfw.SetCursorEnterCallback(handle, callback);
+        }
+
+        internal void SetWindowFocusCallback(WindowFocusCallback callback)
+        {
+            _glfw.SetWindowFocusCallback(handle, callback);
         }
 
         internal void CreateSurface()

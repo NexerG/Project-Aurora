@@ -58,6 +58,7 @@ namespace ArctisAurora.Core.UISystem
             }
 
             RenderWindow window = Engine.OpenMenuWindow(windowName, windowWidth, windowHeight, true);
+            window.isActivable = true;
 
             WindowControl root = (WindowControl)VulkanControl.ParseXML(document);
             window.ui.uiRoot = root;

@@ -190,6 +190,20 @@ Standing permission to spin work out to a cheaper subagent - no need to ask me e
 The test: could you write the instruction precisely enough that a wrong result would be obvious on
 sight? Then send it. Otherwise do it yourself.
 
+## 11. Editing Files
+
+**Edit files with the editing tools. Never through a shell script.**
+
+- A file in the repo changes through Read / Edit / Write. Not `sed -i`, not a perl one-liner, not a
+  heredoc that rewrites a file, not a script that patches text.
+- Shell keeps what it is for: building, `git`, searching, running things. `cat`/`grep` to *look* at a
+  file is fine; `>` or `>>` onto a tracked file is not.
+- Scratch files outside the repo are not files we are editing - a temp script there is still shell's.
+- The reason is not the result. A scripted edit is invisible in the tool log, mangles CRLF and the
+  BOM on this repo's files, and half-applies when one pattern misses.
+
+The test: is a tracked file about to change? Then an edit tool is what changes it.
+
 This project is a C# game engine called Aurora using Silk.NET/Vulkan/GLFW.
 Always check CLAUDE.md and NAMESPACES.md before suggesting new code.
 Current focus is in "DOCUMENTATION/Work in Progress List.md".

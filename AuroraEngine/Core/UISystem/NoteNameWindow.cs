@@ -127,6 +127,7 @@ namespace ArctisAurora.Core.UISystem
             if (_window != null) return;
 
             _window = Engine.OpenMenuWindow(windowName, windowWidth, windowHeight);
+            _window.isActivable = true;
 
             WindowControl root = new WindowControl();
             root.AddChild(Content());

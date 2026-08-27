@@ -76,7 +76,7 @@
       <xs:enumeration value="HorizontalAlignment" />
       <xs:enumeration value="VeticalAlignment" />
       <xs:enumeration value="WindowingModeEnum" />
-      <xs:enumeration value="ContentScalingModeEnum" />
+      <xs:enumeration value="ScalingAxisEnum" />
       <xs:enumeration value="Orientation" />
       <xs:enumeration value="VulkanControl" />
       <xs:enumeration value="Entry" />
@@ -232,7 +232,7 @@
       <xs:enumeration value="HorizontalAlignment" />
       <xs:enumeration value="VeticalAlignment" />
       <xs:enumeration value="WindowingModeEnum" />
-      <xs:enumeration value="ContentScalingModeEnum" />
+      <xs:enumeration value="ScalingAxisEnum" />
       <xs:enumeration value="Orientation" />
     </xs:restriction>
   </xs:simpleType>

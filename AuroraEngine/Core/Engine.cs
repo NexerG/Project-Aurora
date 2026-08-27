@@ -129,6 +129,7 @@ namespace ArctisAurora.EngineWork
         {
             GraphicsSettings settings = SettingsRegistry.Get<GraphicsSettings>();
             RenderWindow window = new RenderWindow(settings.window.width, settings.window.height);
+            window.isActivable = true;
             primary = window;
             Publish(mainWindow, window);
 
@@ -143,7 +144,7 @@ namespace ArctisAurora.EngineWork
         // Vulkan, so it builds the GPU side at the top of its next tick and Draw skips until then.
         public static RenderWindow OpenWindow(string name, uint width, uint height, int x, int y)
         {
-            RenderWindow window = new RenderWindow(width, height);
+            RenderWindow window = new RenderWindow(width, height) { isActivable = true };
             window.os.CreateWindow(name, x, y);
             WireInput(window);
 
@@ -210,6 +211,7 @@ namespace ArctisAurora.EngineWork
             {
                 if (!entry.Value.closeRequested || !entry.Value.gpuDestroyed) continue;
 
+                Context.Forget(entry.Value);
                 Unpublish(entry.Key);
                 entry.Value.os.DestroyWindow();
             }
@@ -232,6 +234,7 @@ namespace ArctisAurora.EngineWork
             window.os.SetCharCallback(inputHandler.ProcessCharInput);
             window.os.SetMouseOnWindowCallback(window.MouseCrossedBorder);
             window.os.SetScrollCallback(inputHandler.ProcessScrollWheel);
+            window.os.SetWindowFocusCallback(window.FocusChanged);
         }
 
         [A_XSDActionDependency("Renderer.InitRenderer", "Bootstrap")]
@@ -259,6 +262,7 @@ namespace ArctisAurora.EngineWork
         {
             AGlfwWindow._glfw.PollEvents();
             ReapClosedWindows();
+            UICollisionHandling.ApplyPendingFocus();
             InputHandler.instance.ActivateKeybinds();
 
             foreach (RenderWindow window in windows.Values)

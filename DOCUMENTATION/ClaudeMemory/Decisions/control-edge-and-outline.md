@@ -30,7 +30,7 @@ stage does not have. `fwidth(boxDist)` looks like that scale but is not — `sdR
 gradient, so `fwidth` of it swings between 1.0 axis-aligned and 1.414 on a diagonal, a 40% error.
 Carrying a real scale factor means another varying and a vertex-side derivation. Moot today:
 Periodic's `Window` is `WindowingMode="WindowSize"`, where design px *are* screen px. Revisit if a
-host ships `ScaleUp`.
+host ships `Autoscaling="true"`.
 
 ### 2. The edge carries its own coverage; the outline does not
 

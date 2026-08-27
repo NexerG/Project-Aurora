@@ -149,8 +149,8 @@ glyphs and `SyncGlyphs` pushes the gradient into each new one.
 - **A gradient cannot span more than one run.** A heading of two runs gets two ramps. The generic fix
   is a `GradientSpace="Self|Inherit"` on `VulkanControl` letting the `arrangedRect` setter take the
   parent's rect — about five lines, deliberately not built without a use for it.
-- **Angle is design-space**, so a host on `WindowingMode="ScaleUp"` gets a gradient that scales with
-  the design box. Correct, but untested — Periodic is `WindowSize`.
+- **Angle is design-space**, so a host on `Autoscaling="true"` gets a gradient that scales with
+  the design box. Correct, but untested — Periodic does not autoscale.
 
 Related: [[glyphs-as-pool-data]], [[ui-clipping]], [[control-edge-and-outline]],
 [[text-styling-types]], [[ui-data-control-split]]

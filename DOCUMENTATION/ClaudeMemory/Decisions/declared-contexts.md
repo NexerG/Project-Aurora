@@ -96,9 +96,13 @@ cascade runs off a teardown.
 so nothing derives unless the assignment goes through the funnel.
 
 This closes half of the funnel defect the WIP list has carried since 2026-08-19. It does **not** close
-the other half: `Set` still does not fire the `IContext` callbacks, `SetActiveControl` keeps its own
-add/remove pair around the call, and `SetDragging` is untouched. Nothing needs notifying about
-`ActiveTabViewer`, so unifying the callbacks stayed out of this pass.
+the other half: `Set` still does not fire the `IContext` callbacks, and `SetActiveControl` keeps its own
+add/remove pair around the call. Nothing needs notifying about `ActiveTabViewer`, so unifying the
+callbacks stayed out of this pass.
+
+`SetDragging` was untouched here and followed on 2026-08-27, alongside `hinted` and `pressTarget`
+becoming the `Hinted` and `PressTarget` contexts. Every setter funnels now; `Set` still does not
+notify, so the add/remove pair is copy-pasted at five sites rather than three.
 
 **The cost:** `Set` silently no-ops on an unregistered name, so if `Context.LoadContexts` ever failed
 to run, the active control would stop being assigned at all rather than throwing. Bootstrap ordering
@@ -132,13 +136,14 @@ cycle settle instead of crash.
   A derived context can only ever hold the type it walked for, but a plain declared one set from code
   can hold anything.
 - **Derivation only fires from `Set`.** `UICollisionHandling.Forget` and `SolveHover`'s direct writes
-  do not derive. Only `ActiveControl` currently has a follower, and it is the one path that funnels.
-- **`Context.Forget` walks every entry on every control destroy.** Four entries, a `ReferenceEquals`
+  do not derive. `Dragging`, `Hinted` and `PressTarget` funnel as of 2026-08-27, but `ActiveControl`
+  is still the only context with a follower.
+- **`Context.Forget` walks every entry on every control destroy.** Six entries, a `ReferenceEquals`
   each, and the reflected setter only fires on a hit — but it is on the teardown path that closing a
   note runs tens of thousands of times.
-- **The three original lines in `UICollisionHandling.Forget` are now redundant** with
-  `Context.Forget` for `hovering`/`dragging`/`activeControl`. Left alone deliberately; `hinted` and
-  `lastPressTarget` are not contexts and must stay either way.
+- **All five lines in `UICollisionHandling.Forget` are now redundant** with `Context.Forget` —
+  `hinted` and `pressTarget` became contexts on 2026-08-27, so the two that had to stay no longer do.
+  Left alone deliberately.
 - **A torn-off window is still not remembered separately.** `FocusedTabs` filters the derived value to
   `Engine.primary`, so after clicking in a torn-off window the first browser click falls back to the
   left pane rather than to the last *primary* pane.

@@ -25,6 +25,7 @@ namespace ArctisAurora.Core.UISystem
         [A_ActiveContext("Dragging")]
         public static VulkanControl dragging;
         // the control currently showing where the drag would land
+        [A_ActiveContext("Hinted")]
         private static VulkanControl? hinted;
         
         /*[A_ActiveContext("ActiveContainer")]
@@ -33,11 +34,20 @@ namespace ArctisAurora.Core.UISystem
         public static VulkanControl activeControl;
 
         // what the previous press resolved to, and whether this one landed on it again
-        private static VulkanControl lastPressTarget;
+        [A_ActiveContext("PressTarget")]
+        private static VulkanControl pressTarget;
         private static bool sameTargetTap;
 
         // a press that only took a menu down, so the release it pairs with is not a click either
         private static bool pressSwallowed;
+
+        // the window input belongs to, and what the focus callback has yet to publish
+        [A_ActiveContext("ActiveGLFWWindow")]
+        public static RenderWindow activeGlfwWindow;
+        internal static RenderWindow pendingActiveGlfwWindow;
+
+        // the window last raised under a drag, so a raise costs one call per crossing
+        private static RenderWindow raised;
 
 
         public UICollisionHandling()
@@ -88,8 +98,14 @@ namespace ArctisAurora.Core.UISystem
             if (hovering == null) return;
 
             VulkanControl target = ActiveTarget(hovering);
-            sameTargetTap = ReferenceEquals(target, lastPressTarget);
-            lastPressTarget = target;
+            VulkanControl previous = pressTarget;
+            sameTargetTap = ReferenceEquals(target, previous);
+            if (!sameTargetTap)
+            {
+                Context.Set("PressTarget", target);
+                (previous as IContext)?.OnContextRemoved("PressTarget");
+                (target as IContext)?.OnContextAdded("PressTarget");
+            }
 
             if (target?.takesActiveControl != false) SetActiveControl(target);
             hovering?.ResolveOnClick(lastMousePos, delta);
@@ -106,6 +122,21 @@ namespace ArctisAurora.Core.UISystem
             Context.Set("ActiveControl", control);
             (previous as IContext)?.OnContextRemoved("ActiveControl");
             (control as IContext)?.OnContextAdded("ActiveControl");
+        }
+
+        // Publishes what the focus callback recorded.
+        public static void ApplyPendingFocus()
+        {
+            if (pendingActiveGlfwWindow == null) return;
+
+            SetActiveGlfwWindow(pendingActiveGlfwWindow);
+            pendingActiveGlfwWindow = null;
+        }
+
+        public static void SetActiveGlfwWindow(RenderWindow window)
+        {
+            if (ReferenceEquals(activeGlfwWindow, window)) return;
+            Context.Set("ActiveGLFWWindow", window);
         }
 
         public void SolveLMBRelease(Vector2D<float> mousePos, int tapCount)
@@ -230,7 +261,7 @@ namespace ArctisAurora.Core.UISystem
             if (ReferenceEquals(dragging, control)) dragging = null;
             if (ReferenceEquals(hinted, control)) hinted = null;
             if (ReferenceEquals(activeControl, control)) activeControl = null;
-            if (ReferenceEquals(lastPressTarget, control)) lastPressTarget = null;
+            if (ReferenceEquals(pressTarget, control)) pressTarget = null;
             Context.Forget(control);
         }
 
@@ -240,7 +271,7 @@ namespace ArctisAurora.Core.UISystem
             if (dragging == control) return;
 
             VulkanControl previous = dragging;
-            dragging = control;
+            Context.Set("Dragging", control);
             (previous as IContext)?.OnContextRemoved("Dragging");
             (control as IContext)?.OnContextAdded("Dragging");
         }
@@ -251,9 +282,10 @@ namespace ArctisAurora.Core.UISystem
         // window, so no other window is told the pointer is over it and its tree is never hovered.
         // The drag's window does still report accurate positions, so the target is found by geometry
         // — screen point, the window whose rect holds it, that window's tree.
-        private static VulkanControl HitFor(VulkanControl dropped, out Vector2D<float> local)
+        private static VulkanControl HitFor(VulkanControl dropped, out Vector2D<float> local, out RenderWindow target)
         {
             local = Vector2D<float>.Zero;
+            target = null;
 
             RenderWindow source = RenderWindow.Of(dropped);
             if (source == null) return null;
@@ -261,7 +293,7 @@ namespace ArctisAurora.Core.UISystem
             AGlfwWindow._glfw.GetWindowPos(source.os.handle, out int sx, out int sy);
             Vector2D<float> screen = new Vector2D<float>(sx + source.mousePos.X, sy + source.mousePos.Y);
 
-            RenderWindow target = WindowAt(screen);
+            target = WindowAt(screen);
             if (target == null || target.ui.uiRoot == null) return null;
 
             AGlfwWindow._glfw.GetWindowPos(target.os.handle, out int tx, out int ty);
@@ -273,7 +305,7 @@ namespace ArctisAurora.Core.UISystem
         // Offers the dropped control to whatever is under the pointer, innermost first.
         private static void OfferDrop(VulkanControl dropped)
         {
-            VulkanControl control = HitFor(dropped, out Vector2D<float> local);
+            VulkanControl control = HitFor(dropped, out Vector2D<float> local, out _);
             while (control != null)
             {
                 if (control.ResolveDrop(dropped, local)) return;
@@ -284,7 +316,8 @@ namespace ArctisAurora.Core.UISystem
         // Asks the same walk to show where the drop would land, once per tick the drag runs.
         private static void UpdateDropHint(VulkanControl dropped)
         {
-            VulkanControl control = HitFor(dropped, out Vector2D<float> local);
+            VulkanControl control = HitFor(dropped, out Vector2D<float> local, out RenderWindow window);
+            RaiseHovered(window);
             VulkanControl next = null;
 
             while (control != null)
@@ -297,20 +330,40 @@ namespace ArctisAurora.Core.UISystem
                 control = control.parent as VulkanControl;
             }
 
-            if (!ReferenceEquals(hinted, next)) hinted?.ClearDropHint();
-            hinted = next;
+            if (ReferenceEquals(hinted, next)) return;
+
+            VulkanControl? previous = hinted;
+            previous?.ClearDropHint();
+            Context.Set("Hinted", next);
+            (previous as IContext)?.OnContextRemoved("Hinted");
+            (next as IContext)?.OnContextAdded("Hinted");
+        }
+
+        // Brings the window the drag is over forward, and makes it the active one.
+        private static void RaiseHovered(RenderWindow window)
+        {
+            if (window == null || ReferenceEquals(raised, window)) return;
+
+            raised = window;
+            window.os.Raise();
+            if (window.isActivable) SetActiveGlfwWindow(window);
         }
 
         private static void ClearDropHint()
         {
-            hinted?.ClearDropHint();
-            hinted = null;
+            raised = null;
+            VulkanControl? previous = hinted;
+            previous?.ClearDropHint();
+            Context.Clear("Hinted");
+            (previous as IContext)?.OnContextRemoved("Hinted");
         }
 
-        // First window whose rect holds the point. Overlapping windows are resolved by map order,
-        // not by what is actually on top — GLFW publishes no z-order.
+        // Window whose rect holds the point, the active one preferred. GLFW publishes no z-order,
+        // so the rest of an overlap is resolved by map order.
         private static RenderWindow WindowAt(Vector2D<float> screen)
         {
+            RenderWindow first = null;
+
             foreach (RenderWindow window in Engine.windows.Values)
             {
                 // the preview sits under the pointer by definition, so it must never be a drop target
@@ -318,10 +371,13 @@ namespace ArctisAurora.Core.UISystem
 
                 AGlfwWindow._glfw.GetWindowPos(window.os.handle, out int x, out int y);
                 Extent2D size = window.os.windowSize;
-                if (screen.X >= x && screen.Y >= y && screen.X < x + size.Width && screen.Y < y + size.Height)
-                    return window;
+                if (screen.X < x || screen.Y < y || screen.X >= x + size.Width || screen.Y >= y + size.Height)
+                    continue;
+
+                if (ReferenceEquals(window, activeGlfwWindow)) return window;
+                first ??= window;
             }
-            return null;
+            return first;
         }
 
         // The deepest hit-testable control under a point in one tree.

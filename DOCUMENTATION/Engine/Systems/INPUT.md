@@ -53,6 +53,13 @@ Both the raw key event queue and the character input queue are double-buffered. 
 
 The scroll wheel uses a simpler pattern — accumulate into `scrollDeltaWrite`, copy to `scrollDelta` at tick start, zero the write buffer. No lock needed because the write is a float accumulation and the read only happens after the swap.
 
+#### Window Focus
+GLFW's window focus callback is wired per window in `Engine.WireInput` and lands in `RenderWindow.FocusChanged`, which records the window in `UICollisionHandling.pendingActiveGlfwWindow` and does nothing else. `Engine.MainTick` publishes it into the `ActiveGLFWWindow` context after the window reap and before the UI loop, so no control callback ever runs inside `glfwPollEvents` — the same defer-to-the-tick pattern as the input queues above.
+
+The context is a **latch**: it moves on focus gained and ignores focus lost, because alt-tabbing to another application reports lost focus on every window and would otherwise clear it. A window only enters the context if `RenderWindow.isActivable` is set — `Engine.InitWindowing` and `Engine.OpenWindow` set it, so the primary window and torn-off tab windows qualify, while context menus and confirmation prompts opened through `OpenMenuWindow` deliberately do not and leave the context on the window they act on. The drag preview window is excluded outright, since `OpenGhostWindow` wires no callbacks at all.
+
+Focus does not move `activeControl`. The two are independent: a menu window taking OS focus must not take the active control with it.
+
 ### KeyStateTracker
 The `KeyStateTracker` maintains per-key state for every key the engine has seen. It stores a `Dictionary<Keys, KeyStateEntry>` where each entry tracks:
 - `isDown` — whether the key is currently held

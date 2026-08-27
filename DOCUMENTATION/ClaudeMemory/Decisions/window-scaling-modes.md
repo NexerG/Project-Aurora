@@ -2,6 +2,9 @@
 
 **Date:** 2026-08-15
 **Status:** LANDED (2026-08-15). All three modes verified by screenshot at 1920x1080 borderless.
+**Amended 2026-08-27** — `ScaleUp` is now the `Autoscaling` bool and `ContentScalingMode` is
+`ScalingAxis`, with two exclusive axes added. See the amendment section at the end; the sections
+below describe the original spelling.
 **Scope:** `ArctisAurora.Core.UISystem.Controls` (`WindowControl`), `ArctisAurora.EngineWork.Rendering`
 (`AuroraCamera.UpdateCameraMatrix`, `AGlfwWindow.WindwoResizeCallback`), `ArctisAurora.Core.Registry`
 (`EntityRegistry.uiTree`), `Engine.HandleUI`, `DocumentEditorControl.ResolveOnClick`,
@@ -102,9 +105,68 @@ resize path is a different entry point into the same `FitTo`.
 
 - Nothing re-fits when the *mode* changes at runtime; it is read wherever it is read, per frame for
   the projection and per resize for the layout, so a live toggle would need a `FitTo` call.
-- `ScaleUp` reads the root's mode and design size from the render thread while main may be writing
-  them in `FitTo`. Two floats and an enum, torn only during a resize, consistent by the next frame —
-  in line with the lock-free free-running systems, but it is unsynchronised.
+- Autoscaling reads the root's flags and design size from the render thread while main may be writing
+  them in `FitTo`. Two floats, a bool and an enum, torn only during a resize, consistent by the next
+  frame — in line with the lock-free free-running systems, but it is unsynchronised.
 - Clipping still does not exist, so a control larger than the box is not cut at the edge.
+
+## Amendment 2026-08-27 — the toggle is a bool again, and the axis names the driver
+
+**Status:** LANDED and **GUI-verified 2026-08-27**, all five axes measured against prediction.
+
+Periodic booted at a 1400x600 framebuffer with the design box temporarily set to 640x360, and two
+controls of known design size were measured off the screenshots — the title bar (`Height="32"`) and
+the vault sidebar (`Width="220"`). Ten of ten land on the predicted pixel:
+
+| `ScalingAxis` | x scale | y scale | sidebar 220 → | title 32 → |
+|---------------|---------|---------|---------------|------------|
+| off | 1.0 | 1.0 | 220 | 32 |
+| `Vertical` | 1.667 | 1.667 | 367 | 53 |
+| `Horizontal` | 2.1875 | 2.1875 | 481 | 70 |
+| `HorizontalExclusive` | 2.1875 | 1.0 | 481 | 32 |
+| `VerticalExclusive` | 1.0 | 1.667 | 220 | 53 |
+
+`Horizontal` producing **2.1875 on both axes** while the window's own vertical ratio was 1.667 is the
+requirement itself: the surplus height became design-space room, not extra scale. The exclusive pair
+visibly distorts glyphs, as its arithmetic says it must.
+
+This also closes the original note's "not verified: a live resize" — the window was resized *after*
+boot, so the `WindwoResizeCallback` → `FitTo` path is what every measurement above went through.
+
+Same one-formula design; only the spelling of the switch and two new boxes.
+
+- `WindowingMode` loses `ScaleUp` and is now `KeepLocal` / `WindowSize` — it answers only "does the
+  root re-fit when the window resizes".
+- `Autoscaling` (bool, default `false`) answers "does the content scale", which is what `ScaleUp`
+  used to. `ScalingAxis` (was `ContentScalingMode`) loses `None`, because `Autoscaling="false"` is
+  that answer. Reversing decision 1's "`fillWindow` was the same question as a bool": the bool is
+  the right shape *here* because scaling is orthogonal to re-fitting, where filling was not.
+- `KeepLocal` wins over `Autoscaling` — the gate is `!autoscaling || windowingMode == KeepLocal`,
+  since a tree that never re-fits has nothing to scale into.
+
+**The axis names the axis that produces the scale factor, not the axis that moves.** `Horizontal`
+scales *both* axes by the horizontal ratio; the surplus on the other axis becomes design-space room
+rather than stretch. The `Exclusive` pair is the only anisotropic-partial case: one axis scales, the
+other stays 1:1 window pixels (user, 2026-08-27 — asked for, with the caveat that one-axis scaling
+may not be worth keeping; two enum values and two lines, so cheap to drop).
+
+Design 1280x720 in a 1920x1800 window:
+
+| `ScalingAxis` | Box | x scale | y scale |
+|---------------|-----|---------|---------|
+| `Horizontal` | 1280 x 1200 | 1.5 | 1.5 |
+| `Vertical` | 768 x 720 | 2.5 | 2.5 |
+| `Both` | 1280 x 720 | 1.5 | 2.5 |
+| `HorizontalExclusive` | 1280 x 1800 | 1.5 | 1.0 |
+| `VerticalExclusive` | 1920 x 720 | 1.0 | 2.5 |
+
+- **Scaling *down* is deliberate** (user, 2026-08-27). A window narrower than the design size gets a
+  factor below 1 rather than clamping at 1:1 — clipping does not exist, so a clamp would put the
+  overflow outside the ortho box with no scrollbar and no clip edge to find it by.
+- The two non-exclusive boxes divide with **integer** operands (`preferredWidth` is `int`,
+  `Extent2D.Width` is `uint`), so the design box truncates sub-pixel. Pre-existing and latent until
+  now, since nothing had ever turned scaling on. The exclusive pair does no division.
+- Still nothing re-fits when `Autoscaling` is flipped **at runtime** — the root does not hold the
+  window extent, so a live toggle needs a `FitTo` from `UIModule`. XML-authored only for now.
 
 Related: [[settings-registry]], [[text-layout-one-measurer]], [[periodic-editor-architecture]]

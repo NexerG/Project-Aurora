@@ -16,18 +16,21 @@ namespace ArctisAurora.Core.UISystem.Controls
         [A_XSDType("WindowingModeEnum", "UI")]
         public enum WindowingMode
         {
-            KeepLocal, ScaleUp, WindowSize
+            KeepLocal, WindowSize
         }
-        [A_XSDElementProperty("WindowingMode", "UI")]
+        [A_XSDElementProperty("WindowingMode", "UI", "Whether the tree re-fits when the window resizes. KeepLocal stays the authored size.")]
         public WindowingMode windowingMode = WindowingMode.WindowSize;
 
-        [A_XSDType("ContentScalingModeEnum", "UI")]
-        public enum ScalingMode
+        [A_XSDType("ScalingAxisEnum", "UI")]
+        public enum ScalingAxis
         {
-            Vertical, Horizontal, Both, None
+            Vertical, Horizontal, HorizontalExclusive, VerticalExclusive, Both
         }
-        [A_XSDElementProperty("ContentScalingMode", "UI")]
-        public ScalingMode contentScalingMode = ScalingMode.Vertical;
+        [A_XSDElementProperty("Autoscaling", "UI", "Scales children with the window instead of laying them out at window pixels.")]
+        public bool autoscaling = false;
+
+        [A_XSDElementProperty("ScalingAxis", "UI", "Which axis drives the scale factor while Autoscaling is on.")]
+        public ScalingAxis scalingAxis = ScalingAxis.Vertical;
 
         // Every control sits 0.001 nearer the camera than its parent and a root keeps whatever z it
         // is given, so the root starts far enough back that a deep tree still clears the near plane.
@@ -50,17 +53,22 @@ namespace ArctisAurora.Core.UISystem.Controls
         // in which case it is the window divided by the scale the chosen axis implies.
         public Vector2D<float> ViewportSize(Extent2D window)
         {
-            if (windowingMode != WindowingMode.ScaleUp || preferredWidth <= 0 || preferredHeight <= 0)
+            if (!autoscaling || windowingMode == WindowingMode.KeepLocal
+                || preferredWidth <= 0 || preferredHeight <= 0)
                 return new Vector2D<float>(window.Width, window.Height);
 
-            switch (contentScalingMode)
+            switch (scalingAxis)
             {
-                case ScalingMode.Both:
+                case ScalingAxis.Both:
                     return new Vector2D<float>(preferredWidth, preferredHeight);
-                case ScalingMode.Vertical:
+                case ScalingAxis.Vertical:
                     return new Vector2D<float>(window.Width * preferredHeight / window.Height, preferredHeight);
-                case ScalingMode.Horizontal:
+                case ScalingAxis.Horizontal:
                     return new Vector2D<float>(preferredWidth, window.Height * preferredWidth / window.Width);
+                case ScalingAxis.HorizontalExclusive:
+                    return new Vector2D<float>(preferredWidth, window.Height);
+                case ScalingAxis.VerticalExclusive:
+                    return new Vector2D<float>(window.Width, preferredHeight);
                 default:
                     return new Vector2D<float>(window.Width, window.Height);
             }

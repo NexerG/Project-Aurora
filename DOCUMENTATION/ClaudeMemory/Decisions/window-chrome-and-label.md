@@ -56,7 +56,7 @@ Moving the window carries the pointer with it, so the drift returns to zero — 
 than running away, and no screen-space cursor query is needed at all.
 
 Raw `InputHandler.mousePos`, **not** the design-space coordinates `ResolveDrag` is handed: the window
-moves in screen pixels, and the two only coincide outside `WindowingMode.ScaleUp`.
+moves in screen pixels, and the two only coincide while `WindowControl.autoscaling` is off.
 
 Buttons need no exclusion. `bubbleClick` defaults to false, so a click on a `Button` stops there and
 never reaches the bar; the `Label` and the star-width spacer bubble on purpose so the title text and

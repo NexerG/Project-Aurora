@@ -218,8 +218,8 @@ for the decision to accept them and the escape hatch if they bite.
     position comes from `cache.HitTest`, which works for text that was never materialized.
   - **Coordinate spaces coincide** *unless the window scales*. `WriteArrangedTransform` writes
     `finalRect` straight into `transform.position/scale`, and `InputHandler.mousePos` is raw GLFW
-    window pixels. Those are the same units in every mode except `WindowControl.WindowingMode
-    .ScaleUp`, so raw mouse coordinates must go through **`WindowControl.ToDesignSpace`** before
+    window pixels. Those are the same units unless `WindowControl.autoscaling` is on,
+    so raw mouse coordinates must go through **`WindowControl.ToDesignSpace`** before
     they are compared to a rect — `Engine.HandleUI` and `DocumentEditorControl.ResolveOnClick` both
     do. Screen→document = subtract `canvas.arrangedRect` origin (already scroll-shifted). Use
     `InputHandler.mousePos`, **not** `ResolveOnClick`'s `oldPos`: Engine sets

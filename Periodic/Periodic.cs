@@ -1,11 +1,7 @@
-﻿using ArctisAurora.Core.Filing.Serialization;
-using ArctisAurora.Core.Registry;
+﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork;
-using ArctisAurora.EngineWork.Rendering;
-using Periodic.Editor.CustomControls;
-using Silk.NET.Maths;
 
 namespace AuroraPeriodic
 {

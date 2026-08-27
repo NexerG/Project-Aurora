@@ -1,4 +1,5 @@
 using ArctisAurora.Core.Rendering.Modules;
+using ArctisAurora.Core.UISystem;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Core;
@@ -45,6 +46,9 @@ namespace ArctisAurora.EngineWork.Rendering
         // A preview of a control being dragged: it holds no tree of its own, draws a second view of
         // a control that lives in another window, and is skipped by everything that walks trees.
         public bool isGhost;
+
+        // whether taking focus makes this the active window
+        public bool isActivable;
 
         // lifecycle handshake — main creates and destroys the OS window, the render thread owns every
         // Vulkan object, so each side flags the other rather than reaching across
@@ -147,5 +151,11 @@ namespace ArctisAurora.EngineWork.Rendering
         }
 
         internal void MouseCrossedBorder(WindowHandle* handle, bool entered) => isInWindow = entered;
+
+        // Recorded, not published — the tick applies it outside PollEvents.
+        internal void FocusChanged(WindowHandle* handle, bool focused)
+        {
+            if (focused && isActivable) UICollisionHandling.pendingActiveGlfwWindow = this;
+        }
     }
 }

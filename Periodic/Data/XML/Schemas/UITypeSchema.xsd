@@ -3,7 +3,7 @@
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:GradientKind types:TextStyleType types:DockMode types:GridSizeMode types:Scrollable types:ControlColor types:FillMode types:HorizontalAlignment types:VeticalAlignment types:WindowingModeEnum types:ContentScalingModeEnum types:Orientation" />
+    <xs:union memberTypes="types:GradientKind types:TextStyleType types:DockMode types:GridSizeMode types:Scrollable types:ControlColor types:FillMode types:HorizontalAlignment types:VeticalAlignment types:WindowingModeEnum types:ScalingAxisEnum types:Orientation" />
   </xs:simpleType>
   <xs:element name="VaultBrowser" type="types:VaultBrowser" />
   <xs:complexType name="VaultBrowser">
@@ -329,7 +329,8 @@
     <xs:attribute name="OutlineWidth" type="xs:float" />
     <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="WindowingMode" type="types:WindowingModeEnum" />
-    <xs:attribute name="ContentScalingMode" type="types:ContentScalingModeEnum" />
+    <xs:attribute name="Autoscaling" type="xs:boolean" />
+    <xs:attribute name="ScalingAxis" type="types:ScalingAxisEnum" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
@@ -1955,16 +1956,16 @@
   <xs:simpleType name="WindowingModeEnum">
     <xs:restriction base="xs:string">
       <xs:enumeration value="KeepLocal" />
-      <xs:enumeration value="ScaleUp" />
       <xs:enumeration value="WindowSize" />
     </xs:restriction>
   </xs:simpleType>
-  <xs:simpleType name="ContentScalingModeEnum">
+  <xs:simpleType name="ScalingAxisEnum">
     <xs:restriction base="xs:string">
       <xs:enumeration value="Vertical" />
       <xs:enumeration value="Horizontal" />
+      <xs:enumeration value="HorizontalExclusive" />
+      <xs:enumeration value="VerticalExclusive" />
       <xs:enumeration value="Both" />
-      <xs:enumeration value="None" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Orientation">
