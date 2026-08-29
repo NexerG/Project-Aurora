@@ -24,7 +24,7 @@ namespace ArctisAurora.Core.Data
         public string Name { get; }
         public bool Ordered { get; }
 
-        // Owning system, named in Pools.xml. OwnerSystemId is filled in once the systems exist
+        // Owning system, named in Pools.pools.xml. OwnerSystemId is filled in once the systems exist
         // (DataManager.ResolveOwners) — pools are parsed at bootstrap, before Engine constructs
         // them, so the name is the only thing available at parse time. Zero means unresolved.
         public string OwnerName { get; }
@@ -151,7 +151,7 @@ namespace ArctisAurora.Core.Data
 
             _publishedSlotVersion = new int[capacity];
 
-            // Column ids come from Pools.xml declaration order, like pool ids from parse order.
+            // Column ids come from Pools.pools.xml declaration order, like pool ids from parse order.
             // Nothing in C# declares the mapping — reorder the <Component> elements and every
             // in-flight command's ColumnId means something else.
             List<IPoolColumn> columnOrder = new();
@@ -166,7 +166,7 @@ namespace ArctisAurora.Core.Data
             _columnsByIndex = columnOrder.ToArray();
         }
 
-        // Single-writer enforcement. Pools.xml names one owning system per pool; everything else
+        // Single-writer enforcement. Pools.pools.xml names one owning system per pool; everything else
         // has to go through that system's command lane. Nothing enforced that until now — GetSpan
         // is public, hands out a mutable Span, to any thread — so the rule lived entirely in
         // comments and was already being broken.
@@ -184,7 +184,7 @@ namespace ArctisAurora.Core.Data
             if (current == null || OwnerSystemId == 0) return;
             if (current.SystemId == OwnerSystemId) return;
 
-            throw new Exception($"[DataPool] '{Name}' is owned by '{OwnerName}' but {op} was called from system '{current.Name}'. Send a command to the owner instead, or change the System attribute in Pools.xml.");
+            throw new Exception($"[DataPool] '{Name}' is owned by '{OwnerName}' but {op} was called from system '{current.Name}'. Send a command to the owner instead, or change the System attribute in Pools.pools.xml.");
         }
 
         public bool HasComponent(Type t) => _columns.ContainsKey(t);

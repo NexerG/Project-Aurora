@@ -100,8 +100,55 @@ contract and the file carried nothing Periodic-specific. Declaring it in `Engine
 the engine already does for `default`, `invisible` and the fonts, and the manifest's app-first union keeps the
 override free.
 
+## Amendment 2026-08-30 — a folder-scan design was built in parallel and dropped, and the root element names its own type
+
+The same feature was built twice, on two machines, and only found out on the merge. The other build —
+`UIDocuments`, a static `XElement` cache preloaded at bootstrap from `Data/XML/Documents/UI/*.ui.xml` — is
+dropped. This registry design is kept, and one piece of the other was ported onto it.
+
+**Scope, added:** `ArctisAurora.Core.UISystem.Controls` (`VulkanControl.Parse`), deleted
+`ArctisAurora.Core.UISystem.UIDocuments`, `Bootstrap.bootstrap.xml`
+
+### What changed
+
+- `ParseXML(document)` no longer builds the root itself. It resolves the asset, loads the file, and hands the
+  root element to a new private `Parse(XElement)`.
+- `Parse` resolves the root through `AnyXMLType.FindType` like every other element, and the window scaffolding
+  (`arrangedRect` seeding, the centred transform, `RegisterDirtyRoot`) sits behind an `is WindowControl` check.
+  A document rooted at anything else parses to a plain control that can only be grafted into a live tree.
+- `UIDocuments`, its `UIDocuments.LoadDocuments` bootstrap step and its vault page are deleted.
+- The documents themselves keep the other build's file naming — `Documents/UI/[name].ui.xml` per
+  [[xml-type-suffix]] — and the manifests' `Source=` point at them. The registry `Name=` is still what call
+  sites ask for, so `"main"`, `"settings"` and `"tab-window"` are unchanged.
+
+### Why these choices
+
+**The registry design was kept because three commits already sit on it** — `UIModule.SetUI`,
+`UIActions.Invoking`, the engine's default settings shell and the editor's `Alt.xml` swap. The folder-scan
+build also still had the editor's `Settings.Open` throwing, which the 2026-08-29 amendment above had already
+fixed here.
+
+**The root naming its own type was kept because it is orthogonal to where the file comes from.** It is the one
+capability the dropped build had that this one did not, and it is what "UIs that hook onto each other" needs:
+a document rooted at `<Panel>` is a fragment. It is free, because `XSDGenerator` already emits a global
+`xs:element` for every non-abstract `[A_XSDType]` — `<Panel>` at the top of a file already validated, and only
+the loader refused.
+
+**Rejected with the folder-scan build: a `<Fragment>` root.** Its one advantage is a multi-root fragment. Its
+cost is that a `FragmentControl` is a real `Entity` — pooled transform, two `EntityRegistry` group
+memberships, a queued `OnStart`, a deferred `Destroy` — and forgetting to destroy it leaves a live orphan
+root, which `UILayout.DFSOrder` sweeps up and silently gives an instance range. Single top-level control per
+document was taken instead. If multi-root is ever wanted, the cheaper form is a parse-time-only container
+element that is never instantiated, not a control.
+
+**Dropped with it: the bootstrap preload and the `XElement` cache.** `Load` still resolves only, per the
+original decision above, so a document is re-read and re-parsed per open. Caching the *element* — as opposed
+to the tree, which both builds rejected for the same reason — is compatible with this design and was left as a
+follow-on rather than folded into a merge (user, 2026-08-30).
+
 ## Known gaps
 
+- **The `<Panel>`-rooted path is correct by inspection only.** Nothing authors a fragment yet.
 - **A self-assignment destroys the live tree.** `uiRoot = uiRoot` would `Destroy()` the tree it is about to
   keep. No call site does it and `SetUI` structurally cannot, so no guard was added — but the setter is public.
 - **A swap target cannot be authored in XML** — it is a compiled action per document. Fine at one or two per
@@ -118,5 +165,5 @@ override free.
 - Release builds copy no `Data` XML at all, so the new manifests are Debug-only like every other document.
   Pre-existing.
 
-Related: [[asset-manifest-and-import]], [[render-window-owns-the-swapchain]], [[entity-lifecycle-queues]],
-[[settings-categories]]
+Related: [[xml-type-suffix]], [[asset-manifest-and-import]], [[render-window-owns-the-swapchain]],
+[[entity-lifecycle-queues]], [[settings-categories]]

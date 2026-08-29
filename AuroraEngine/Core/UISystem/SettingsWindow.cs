@@ -18,7 +18,7 @@ using System.Reflection;
 namespace ArctisAurora.Core.UISystem
 {
     // Every settings group the registry knows, plus the active keybinds, as one screen. The shell is
-    // Settings.xml — frame, title bar and star sizing come from there; only the rows are reflected,
+    // Settings.ui.xml — frame, title bar and star sizing come from there; only the rows are reflected,
     // because a new setting has to appear without anyone authoring it. Built per open and closed by
     // its own title bar, the same as a torn-off tab window.
     public static class SettingsWindow

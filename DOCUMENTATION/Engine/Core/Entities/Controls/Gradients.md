@@ -23,11 +23,11 @@ VerifiedAgainst: 2026-08-22
 ---
 ## Description
 
-Named colour ramps authored in `Gradients.xml` and painted procedurally by the fragment shader. There is no gradient texture anywhere — a control stores a row number and the shader evaluates the ramp for the pixel it is shading.
+Named colour ramps authored in `Gradients.gradients.xml` and painted procedurally by the fragment shader. There is no gradient texture anywhere — a control stores a row number and the shader evaluates the ramp for the pixel it is shading.
 
 The table is the point. A definition is written once and every control naming it shares the same row, so restyling a gradient used by forty controls is one edit to one file rather than forty attributes. Row 0 is reserved and cannot be named, which is what lets a control that never mentions a gradient carry index 0 and cost nothing.
 
-The file is optional. A host with no gradients of its own ships no `Gradients.xml` and boots normally with an empty table; `Paths` resolves it across mounts like any other document, so an application overrides the engine's by placing its own.
+The file is optional. A host with no gradients of its own ships no `Gradients.gradients.xml` and boots normally with an empty table; `Paths` resolves it across mounts like any other document, so an application overrides the engine's by placing its own.
 
 A name that no gradient answers to throws at load rather than falling back to a default, on the same reasoning as a context menu action — a typo in a theme file should stop the boot, not quietly paint the wrong thing three screens later.
 
@@ -87,7 +87,7 @@ A gradient does not cross runs. A heading built from two runs gets two ramps.
 ```
 LoadGradients:
 	empty the table back to its reserved row and forget every name
-	if no mount answers with a Gradients.xml
+	if no mount answers with a Gradients.gradients.xml
 		say so and carry on with nothing loaded
 	for each gradient element
 		read it, remember its name against the row it is about to take

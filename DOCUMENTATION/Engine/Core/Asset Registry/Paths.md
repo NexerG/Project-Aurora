@@ -38,9 +38,10 @@ Mounts (set in `Mount()`, called from the first static field initializer):
 | Member | Kind | Summary |
 | --- | --- | --- |
 | `DATA`, `XML`, `XMLSCHEMAS`, `XMLDOCUMENTS`, `XMLDOCUMENTS_INPUTS`, `XMLDOCUMENTS_SAMPLERS`, `FONTS`, `UIMASKS`, `BUILD_UI`, `SCENES` | static readonly | Resolved paths to `Data` sub-folders (primary mount). |
-| `BOOTSTRAP` | static readonly | `Doc("Bootstrap.xml")` â€” resolved across mounts. |
+| `BOOTSTRAP` | static readonly | `Doc("Bootstrap.bootstrap.xml")` â€” resolved across mounts. |
 | `Doc(name)` | static | Resolve `XML/Documents/{name}` across all mounts (app first, engine fallback). |
 | `SamplerDoc(name)` | static | Resolve `XML/Documents/Samplers/{name}` across all mounts. |
+| `DocName(path)` | static | The name half of a `[name].[type].xml` file — everything before the first dot. |
 
 ## Fields & Properties
 
@@ -55,13 +56,16 @@ public static readonly string XMLSCHEMAS             = GetPath("Data\\XML\\Schem
 public static readonly string FONTS                  = GetPath("Data\\Fonts");
 public static readonly string UIMASKS                = GetPath("Data\\UIMasks");
 public static readonly string SCENES                 = GetPath("Data\\Scenes");
-public static readonly string BOOTSTRAP              = Doc("Bootstrap.xml");
+public static readonly string BOOTSTRAP              = Doc("Bootstrap.bootstrap.xml");
 ```
 
 ## Methods
 
 ### `Doc` / `SamplerDoc` *(public)*
 Thin wrappers over `VirtualFileSystem.ResolveFile(...)` for documents under `XML/Documents` (and its `Samplers` sub-folder). Use these instead of `XMLDOCUMENTS + "\\" + name` so engine-default documents resolve from the engine mount when an app doesn't ship its own copy.
+
+### `DocName` *(public)*
+Every data file under `Data/XML` is named `[name].[type].xml`, where the type half says which loader owns it. `DocName` hands back the name half, and it cuts at the **first** dot rather than the last — which is what `Path.GetFileNameWithoutExtension` would do, and it would return `InputMap.inputs` where the caller wanted `InputMap`. The rule that falls out is that a name half may not contain a dot. Used wherever the file name is an identity and not just a location, which today is the keybind group in [[INPUT]] and nothing else — a [[UI Document]] is keyed by the name its manifest gives it, not by its file name.
 
 ### `Mount` *(private)*
 Mounts the app `Data` (primary) and, in Debug, the engine project's `Data` (fallback). Skipped if the engine folder doesn't exist or equals the primary.

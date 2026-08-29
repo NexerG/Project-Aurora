@@ -200,7 +200,7 @@ namespace ArctisAurora.Core.Registry
         [A_XSDActionDependency("EntityRegistry.ParseXML", "Bootstrap")]
         public static bool PrepareRegistry()
         {
-            ParseXML("EntityRegistry.xml");
+            ParseXML("EntityRegistry.entities.xml");
             return true;
         }
     }

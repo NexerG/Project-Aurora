@@ -90,11 +90,11 @@ namespace ArctisAurora.Core.UISystem
         }
     }
 
-    // Named menus authored in ContextMenus.xml. A control names one and the walk up the tree
+    // Named menus authored in ContextMenus.menus.xml. A control names one and the walk up the tree
     // concatenates them, so an entry declared once is reachable from every control under it.
     public static class ContextMenus
     {
-        private const string menuFile = "XML/Documents/ContextMenus.xml";
+        private const string menuFile = "XML/Documents/ContextMenus.menus.xml";
 
         private static readonly Dictionary<string, ContextMenuDefinition> menus =
             new Dictionary<string, ContextMenuDefinition>(StringComparer.OrdinalIgnoreCase);

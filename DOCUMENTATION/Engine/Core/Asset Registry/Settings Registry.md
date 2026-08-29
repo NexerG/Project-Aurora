@@ -58,7 +58,7 @@ Groups are found by reflecting over every loaded assembly, so an **application d
 
 ## The files
 
-Manifests live in `Data/XML/Settings/*.xml`, any number of them, free filenames.
+Manifests live in `Data/XML/Settings/*.settings.xml`, any number of them, the name half free. The write root is read the same way, so a file there without the `.settings` suffix is not seen at all.
 
 ```xml
 <UserSettings xmlns="http://arctisaurora/AuroraSettingsTypes"
@@ -77,7 +77,7 @@ A group whose type lives in another category — `DocumentLayout` is a `UI` type
 
 Applied lowest priority first, so a higher tier overrides only the attributes it names:
 
-1. every mount's `Data/XML/Settings/*.xml`, walked from the **lowest**-priority mount up (engine, then application), files within a mount in name order
+1. every mount's `Data/XML/Settings/*.settings.xml`, walked from the **lowest**-priority mount up (engine, then application), files within a mount in name order
 2. the application's **write root**, read last
 
 `EnumerateAll` is not used here: it de-duplicates by file *name*, so an application naming its file the same as the engine's would hide the engine's whole set instead of overriding the values it names. The registry walks `VirtualFileSystem.Mounts` in reverse directly.
@@ -92,7 +92,7 @@ Periodic uses `%AppData%/Periodic/Settings`.
 
 ## Saving
 
-`LoadAll` snapshots every group at the moment the mounts have all been applied and before the write root is read. `SaveAll()` writes one `UserSettings.xml` into the write root holding every group, each carrying **only what differs from that snapshot** — so a user who changed one value pins one value, and keeps receiving engine changes to everything else. A group with nothing to say is left out rather than written empty. A changed list is written whole, its entries still skipping their own type defaults the way [[Document XML]] does.
+`LoadAll` snapshots every group at the moment the mounts have all been applied and before the write root is read. `SaveAll()` writes one `UserSettings.settings.xml` into the write root holding every group, each carrying **only what differs from that snapshot** — so a user who changed one value pins one value, and keeps receiving engine changes to everything else. A group with nothing to say is left out rather than written empty. A changed list is written whole, its entries still skipping their own type defaults the way [[Document XML]] does.
 
 There is no `Save<T>()`: rewriting one group means rewriting the document that holds the others.
 
@@ -127,7 +127,7 @@ A stored value that no longer converts at all — the enum member that was delet
 | `SetWriteRoot(path)`      | static | Folder read last and written to. Host calls it before `Engine.Init`.            |
 | `LoadAll()`               | static | The `Settings.LoadAll` bootstrap step: scan, then cascade, then snapshot.       |
 | `Apply()`                 | static | Fire the `OnChanged` of every setting that moved, each action once.             |
-| `SaveAll()`               | static | Write every group's diff into one `UserSettings.xml` in the write root.         |
+| `SaveAll()`               | static | Write every group's diff into one `UserSettings.settings.xml` in the write root.         |
 | `Commit()`                | static | `Apply()` then `SaveAll()` — what a settings screen calls when dismissed.       |
 
 ### `IMigratableSettings : ISettingsGroup`
@@ -141,10 +141,10 @@ clear the groups
 for every ISettingsGroup implementer carrying [A_XSDType] in any loaded assembly
     construct one and store it by type
 for every mount, lowest priority first
-    for every XML/Settings/*.xml in name order
+    for every XML/Settings/*.settings.xml in name order
         apply it
 snapshot every group          // the baseline a save diffs against
-for every *.xml in the write root
+for every *.settings.xml in the write root
     apply it, and keep the element for the save to read back
 ```
 

@@ -38,7 +38,7 @@ graph TD
   Gen --> Schema["SettingsTypeSchema.xsd"]
   Schema -. validates .-> Files
   Scan --> Groups["one live instance per group"]
-  Files["Data/XML/Settings/*.xml — every mount, lowest first"] --> Groups
+  Files["Data/XML/Settings/*.settings.xml — every mount, lowest first"] --> Groups
   Root["the host's write root — read last"] --> Groups
   Groups --> Read["engine and game code, through Get"]
   Groups --> Save["Save — the diff, back to the write root"]
@@ -158,7 +158,7 @@ That is also why these are **global and a keybind cannot override them**: `Repea
 
 1. `Settings.LoadAll` is the **first** step of the `Bootstrap` phase in [[Bootstrapper]], so every later step and everything at runtime can read a group without checking whether it is ready.
 2. The scan constructs one instance per `ISettingsGroup` implementer across all loaded assemblies. Everything below this point is override.
-3. Every mount's `Data/XML/Settings/*.xml` is applied, **lowest-priority mount first** — engine, then application — files within a mount in name order.
+3. Every mount's `Data/XML/Settings/*.settings.xml` is applied, **lowest-priority mount first** — engine, then application — files within a mount in name order.
 4. Every group is snapshotted. This is the baseline a save later diffs against, and taking it here is what makes "only what the user changed" mean the user and not the application.
 5. The host's write root is applied last, and each group's stored element is kept for the save to read back.
 
@@ -172,9 +172,9 @@ A `List<>` member is the exception: the first file in a tier that declares any e
 
 ## Saving
 
-`SaveAll` writes one `UserSettings.xml` into the write root holding every group, each carrying only what differs from the step-4 snapshot, so a user who changed one value pins one value and keeps receiving engine changes to everything else. A group with nothing to say is left out of the file entirely rather than written empty. A changed list is written whole, its entries still skipping their own type defaults. The write root is **not** a mount — mounting it would let a stray file there shadow engine *assets* and not just settings.
+`SaveAll` writes one `UserSettings.settings.xml` into the write root holding every group, each carrying only what differs from the step-4 snapshot, so a user who changed one value pins one value and keeps receiving engine changes to everything else. A group with nothing to say is left out of the file entirely rather than written empty. A changed list is written whole, its entries still skipping their own type defaults. The write root is **not** a mount — mounting it would let a stray file there shadow engine *assets* and not just settings.
 
-Saving is all-or-nothing because the file is: there is no `Save<T>`, since rewriting one group means rewriting the document that holds the others. Reading is not — the write root is still read as *every* `*.xml` in it, so a file left over from an earlier layout is still applied rather than orphaned. Nothing prunes it.
+Saving is all-or-nothing because the file is: there is no `Save<T>`, since rewriting one group means rewriting the document that holds the others. Reading is not — the write root is still read as *every* `*.settings.xml` in it, so a file left over from an earlier layout is still applied rather than orphaned. Nothing prunes it. A file there that predates the `[name].[type].xml` convention is the exception: it no longer matches the pattern, so it is silently ignored rather than orphaned-but-applied.
 
 ## Versioning and migration
 
@@ -200,7 +200,7 @@ What is still not covered is a group **renamed or deleted outright**. The regist
 
 ## Data / XML formats
 
-`Data/XML/Settings/*.xml`, any number of files, free filenames, unioned across mounts:
+`Data/XML/Settings/*.settings.xml`, any number of files, the name half free, unioned across mounts:
 
 ```xml
 <UserSettings xmlns="http://arctisaurora/AuroraSettingsTypes"

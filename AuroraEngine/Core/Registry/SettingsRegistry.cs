@@ -67,14 +67,14 @@ namespace ArctisAurora.Core.Registry
 
             IReadOnlyList<IDataMount> mounts = VirtualFileSystem.Mounts;
             for (int i = mounts.Count - 1; i >= 0; i--)
-                foreach (string file in mounts[i].Enumerate(settingsDir, "*.xml").OrderBy(f => f))
+                foreach (string file in mounts[i].Enumerate(settingsDir, "*.settings.xml").OrderBy(f => f))
                     ApplyFile(file, false);
 
             foreach (KeyValuePair<Type, ISettingsGroup> group in groups)
                 baselines[group.Key] = Snapshot(group.Value);
 
             if (writeRoot != null && Directory.Exists(writeRoot))
-                foreach (string file in Directory.GetFiles(writeRoot, "*.xml").OrderBy(f => f))
+                foreach (string file in Directory.GetFiles(writeRoot, "*.settings.xml").OrderBy(f => f))
                     ApplyFile(file, true);
 
             // Loading is not a change — the first Apply must not fire everything that has a file.
@@ -306,7 +306,7 @@ namespace ArctisAurora.Core.Registry
 
             Directory.CreateDirectory(writeRoot);
             new XDocument(new XDeclaration("1.0", "utf-8", null), root)
-                .Save(Path.Combine(writeRoot, "UserSettings.xml"));
+                .Save(Path.Combine(writeRoot, "UserSettings.settings.xml"));
 
             return true;
         }

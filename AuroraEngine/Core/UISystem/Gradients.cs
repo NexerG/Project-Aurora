@@ -76,7 +76,7 @@ namespace ArctisAurora.Core.UISystem
         public GradientStops stops;
     }
 
-    // Named gradients authored in Gradients.xml, uploaded once as a table the fragment shader
+    // Named gradients authored in Gradients.gradients.xml, uploaded once as a table the fragment shader
     // indexes. A control names one and stores the index, so a definition is shared rather than
     // copied into every row that uses it.
     public static class Gradients
@@ -99,7 +99,7 @@ namespace ArctisAurora.Core.UISystem
         {
             if (string.IsNullOrEmpty(name)) return 0;
             if (indices.TryGetValue(name, out uint index)) return index;
-            throw new Exception($"Gradient '{name}' is not defined in Gradients.xml.");
+            throw new Exception($"Gradient '{name}' is not defined in Gradients.gradients.xml.");
         }
 
         [A_XSDActionDependency("Gradients.LoadGradients", "Bootstrap")]
@@ -109,9 +109,9 @@ namespace ArctisAurora.Core.UISystem
             indices.Clear();
 
             // Hosts with no gradients of their own ship no file at all.
-            if (!VirtualFileSystem.TryResolveFile("XML/Documents/Gradients.xml", out string path))
+            if (!VirtualFileSystem.TryResolveFile("XML/Documents/Gradients.gradients.xml", out string path))
             {
-                Log.Debug($"no Gradients.xml found — no gradients loaded.");
+                Log.Debug($"no Gradients.gradients.xml found — no gradients loaded.");
                 return true;
             }
 

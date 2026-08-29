@@ -41,8 +41,11 @@ Set `Status:` in every doc's frontmatter. Drives the **Needs attention** view in
 - `Stale` — known to be behind the code (do not trust without checking)
 - `Deprecated` — documents a superseded/`[Obsolete]` type (e.g. [[Vulkan Renderer]])
 
+## Data file names
+Every XML file under `Data/XML` is named `[name].[type].xml`. The name half is the identity a loader keys on and may not contain a dot; the type half says which loader owns the file, so a loader enumerating a folder asks for `*.ui.xml` or `*.settings.xml` and passes over everything else. The types in use are `bootstrap`, `shutdown`, `pools`, `registry`, `entities`, `menus`, `gradients`, `contexts`, `inputs`, `sampler`, `ui`, `assets`, `imports`, `settings`, and `import` for a font's bake stamp. `Paths.DocName` is what recovers the name half — see [[Paths]] and [[Virtual File System]].
+
 ## Bootstrap step names
-The `A_XSDActionDependency(name, "Bootstrap")` actions sequenced by `Bootstrap.xml` (see [[Bootstrapper]]):
+The `A_XSDActionDependency(name, "Bootstrap")` actions sequenced by `Bootstrap.bootstrap.xml` (see [[Bootstrapper]]):
 
 `EntityRegistry.ParseXML` → `InputHandler.LoadInputs` → `Engine.SystemSetup` → `Engine.InitWindowing` → `AssetRegistries.InstantiateRegistries` → `AssetRegistries.RegisterSerializableTypes` → `Renderer.InitRenderer` → `Renderer.PreInitialize` → `Renderer.Initialize` → `Context.LoadContexts` → `AssetRegistries.PrepareDefaultAssets` → `AssetRegistries.PrepareAllAssets` → `Renderer.SetupObjects` → `Renderer.PrepareDescriptors` → `Renderer.SetupPipelines` → `Renderer.CreateSyncObjects`
 

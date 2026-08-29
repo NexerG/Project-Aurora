@@ -27,7 +27,7 @@ VerifiedAgainst: 2026-05-30
 ---
 ## Description
 
-A **type-indexed library of typed dictionaries** â€” the single place to fetch any loaded asset (mesh, font, texture, sampler, style, action, â€¦). Each registry is a `Dictionary<TKey, TValue>` stored in two parallel lookups: `library` keyed by the **value Type**, and `libraryByName` keyed by a **string name**. The set of registries is declared in `Registry.xml` and built at bootstrap; assets are then loaded into them. Resolved through [[Paths]] / [[Virtual File System]], so the engine's default `Registry.xml` is used unless an app overrides it.
+A **type-indexed library of typed dictionaries** â€” the single place to fetch any loaded asset (mesh, font, texture, sampler, style, action, â€¦). Each registry is a `Dictionary<TKey, TValue>` stored in two parallel lookups: `library` keyed by the **value Type**, and `libraryByName` keyed by a **string name**. The set of registries is declared in `Registry.registry.xml` and built at bootstrap; assets are then loaded into them. Resolved through [[Paths]] / [[Virtual File System]], so the engine's default `Registry.registry.xml` is used unless an app overrides it.
 
 ## API summary
 
@@ -37,7 +37,7 @@ A **type-indexed library of typed dictionaries** â€” the single place to fe
 | `GetRegistryByName<K,V>(string name)` | static | The dictionary registered under `name`. |
 | `GetAsset<T>(string name)` | static | One asset of type `T` by name (throws if missing). |
 | `AddLibraryEntry(string name, object dict, Type t)` | static | Register a dictionary under both lookups (no-op if `t` already present). |
-| `ParseXML(string xmlName)` | static | Build registries from `Registry.xml`. |
+| `ParseXML(string xmlName)` | static | Build registries from `Registry.registry.xml`. |
 
 **Bootstrap steps** (`[A_XSDActionDependency(..., "Bootstrap")]`): `InstantiateRegistries` â†’ `RegisterSerializableTypes` â†’ `PrepareDefaultAssets` â†’ `PrepareAllAssets`.
 
@@ -54,7 +54,7 @@ public static Dictionary<string, object> libraryByName = new();   // name â†�
 `GetRegistryByValueType` / `GetRegistryByName` return the underlying typed dictionary; `GetAsset<T>(name)` is the convenience accessor for a single named asset. There is no lookup by key type: `library` is indexed by value type, and a key type identifies nothing on its own — seven of the eight registries are keyed by string.
 
 ### Building (bootstrap)
-- `InstantiateRegistries` â†’ `ParseXML("Registry.xml")` creates an empty `Dictionary<K,V>` per `<Dictionary>` element and registers it under both lookups.
+- `InstantiateRegistries` â†’ `ParseXML("Registry.registry.xml")` creates an empty `Dictionary<K,V>` per `<Dictionary>` element and registers it under both lookups.
 - `RegisterSerializableTypes` scans all assemblies for `[Serializable]` types and stores them in the `IDMap` registry keyed by a hashed ID (used by the [[Serializer]]).
 - `PrepareDefaultAssets` loads engine defaults: default mesh, the `uidefault` quad mesh, default font, default + invisible textures, a default `ControlStyle`, and the default sampler.
 - `PrepareAllAssets` loads every sampler via `SamplerAsset.LoadAll` (unioned across mounts).
@@ -78,4 +78,4 @@ public static Dictionary<string, object> libraryByName = new();   // name â†�
 - [[XML-XSD]] â€” type resolution + parsing
 - [[Asset]] â€” the base type loaded into these registries
 - [[UI Document]] â€” UI XML documents as named assets
-- [[Paths]] Â· [[Virtual File System]] â€” where `Registry.xml` is resolved
+- [[Paths]] Â· [[Virtual File System]] â€” where `Registry.registry.xml` is resolved

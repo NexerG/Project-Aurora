@@ -507,7 +507,7 @@ namespace ArctisAurora.Core.UISystem.Controls
             }
         }
 
-        [A_XSDElementProperty("Gradient", "UI", "Name of a gradient in Gradients.xml, ramped across this control's rect in place of its colour.")]
+        [A_XSDElementProperty("Gradient", "UI", "Name of a gradient in Gradients.gradients.xml, ramped across this control's rect in place of its colour.")]
         public virtual string gradient
         {
             get => field;
@@ -606,7 +606,7 @@ namespace ArctisAurora.Core.UISystem.Controls
         #endregion
 
         // EXTRAS
-        [A_XSDElementProperty("ContextMenu", "UI", "Menus in ContextMenus.xml this control offers on right click, comma separated.")]
+        [A_XSDElementProperty("ContextMenu", "UI", "Menus in ContextMenus.menus.xml this control offers on right click, comma separated.")]
         public string contextMenus = "";
 
         #region ---- Layout State ----
@@ -1060,23 +1060,27 @@ namespace ArctisAurora.Core.UISystem.Controls
         public static VulkanControl ParseXML(string document)
         {
             UIDocumentAsset asset = AssetRegistries.GetAsset<UIDocumentAsset>(document);
-            XDocument doc = XDocument.Load(asset.path);
-            XElement root = doc.Root;
-            WindowControl window = new WindowControl();
+            return Parse(XDocument.Load(asset.path).Root);
+        }
 
-            (MethodInfo method, A_XSDActionDependencyAttribute attr)[] tagged = TaggedActions;
+        // Builds a tree from a document's root element, which names its own type.
+        private static VulkanControl Parse(XElement root)
+        {
+            VulkanControl control = (VulkanControl)Activator.CreateInstance(AnyXMLType.FindType(root.Name.LocalName));
+            ResolveAttributes(root, control, TaggedActions);
 
-            ResolveAttributes(root, window, tagged);
+            if (control is WindowControl window)
+            {
+                window.arrangedRect = new LayoutRect(0, 0, window.preferredWidth, window.preferredHeight);
+                UILayout.RegisterDirtyRoot(window);
+                ref TransformData wt = ref window.transform;
+                wt.position = new Vector3D<float>(window.preferredWidth / 2f, window.preferredHeight / 2f, wt.position.Z);
+                wt.scale = new Vector3D<float>(window.preferredWidth, window.preferredHeight, 1);
+                window.CommitTransform();
+            }
 
-            window.arrangedRect = new LayoutRect(0, 0, window.preferredWidth, window.preferredHeight);
-            UILayout.RegisterDirtyRoot(window);
-            ref TransformData wt = ref window.transform;
-            wt.position = new Vector3D<float>(window.preferredWidth / 2f, window.preferredHeight / 2f, wt.position.Z);
-            wt.scale = new Vector3D<float>(window.preferredWidth, window.preferredHeight, 1);
-            window.CommitTransform();
-            RecursiveParse(root, window, tagged);
-
-            return window;
+            RecursiveParse(root, control, TaggedActions);
+            return control;
         }
 
         private static void RecursiveParse(XElement root, VulkanControl topControl, (MethodInfo method, A_XSDActionDependencyAttribute attr)[] tagged)

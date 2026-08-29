@@ -65,7 +65,7 @@ BeginRename(item, caption)
 ### NewOfSameKind
 A split copies the source pane's chrome onto a new view, and the construction was a hardcoded `new TabViewControl`. Splitting an editable strip would then have produced a plain one — renaming gone from the new pane, with nothing logged and nothing thrown. The virtual makes the kind part of what a split carries.
 
-Tearing off is not the same problem: a torn window is built from `TearOffDocument`, so the XML names the kind. `TabWindow.xml` names `<EditableTabs>` for that reason.
+Tearing off is not the same problem: a torn window is built from `TearOffDocument`, so the XML names the kind. `TabWindow.ui.xml` names `<EditableTabs>` for that reason. The attribute carries the name the manifest gives the document — `TearOffDocument="tab-window"` — not its file name; see [[UI Document]].
 
 ## Input
 

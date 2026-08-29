@@ -3,7 +3,7 @@ namespace ArctisAurora.Core.Filing.Serialization
     // A mountable source of engine/application data. Today the only backend is DirectoryMount
     // (a folder on disk). A PakMount (Valve-style archive) can be added later with no call-site
     // changes, because every lookup goes through VirtualFileSystem rather than touching the disk
-    // directly. Logical paths are forward-slash, relative to a Data root (e.g. "XML/Documents/UI.xml").
+    // directly. Logical paths are forward-slash, relative to a Data root (e.g. "XML/Documents/UI/UI.ui.xml").
     public interface IDataMount
     {
         bool FileExists(string relativePath);

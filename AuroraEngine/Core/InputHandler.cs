@@ -1205,11 +1205,11 @@ namespace ArctisAurora.EngineWork
                 .Where(x => x.attr != null)
                 .ToArray();
 
-            foreach (string path in VirtualFileSystem.EnumerateAll("XML/Documents/Inputs", "*.xml"))
+            foreach (string path in VirtualFileSystem.EnumerateAll("XML/Documents/Inputs", "*.inputs.xml"))
             {
                 XElement root = XElement.Load(path);
                 XNamespace ns = root.GetDefaultNamespace();
-                string groupName = Path.GetFileNameWithoutExtension(path);
+                string groupName = Paths.DocName(path);
 
                 foreach (XElement keybindElement in root.Elements())
                 {
@@ -1360,7 +1360,7 @@ namespace ArctisAurora.EngineWork
         [A_XSDActionDependency("InputHandler.LoadInputs", "Bootstrap")]
         public static bool LoadInputs()
         {
-            instance = ParseXML("InputMap.xml");
+            instance = ParseXML("InputMap.inputs.xml");
             Engine.inputHandler = instance;
 
             foreach (KeybindOverride bind in SettingsRegistry.Get<InputBindings>().binds)

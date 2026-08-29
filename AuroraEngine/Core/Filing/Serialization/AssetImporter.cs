@@ -21,7 +21,7 @@ namespace ArctisAurora.Core.Filing.Serialization
             if (!Engine.isDebug) return true;
 
             List<ImportSet> sets = new List<ImportSet>();
-            foreach (string file in VirtualFileSystem.EnumerateAll("XML/Imports", "*.xml"))
+            foreach (string file in VirtualFileSystem.EnumerateAll("XML/Imports", "*.imports.xml"))
                 sets.Add(ParseImportSet(file));
 
             Dictionary<string, string> charsets = new Dictionary<string, string>();

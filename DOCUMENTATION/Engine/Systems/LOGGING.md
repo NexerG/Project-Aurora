@@ -106,8 +106,8 @@ DrainOnce():
 ## Lifecycle / Flow
 1. The first `LogChannel.For` starts the spool thread. This happens before [[Bootstrapper]] runs, because `XSDGenerator` logs and it runs before `Engine.Init`.
 2. Until configuration lands, the console prints at a fixed `Info` default and every line is also held in memory.
-3. `Logging.Configure` is the second step of `Bootstrap.xml`, immediately after `Settings.LoadAll`. It reads [[SETTINGS]], opens the file sink, allocates the recorder, and replays everything held so far at its real level — so nothing from early boot is missing from the file.
-4. `Logging.Flush` is the last `Commit` step of `Shutdown.xml`. It stops the spool, drains what is left and closes the file.
+3. `Logging.Configure` is the second step of `Bootstrap.bootstrap.xml`, immediately after `Settings.LoadAll`. It reads [[SETTINGS]], opens the file sink, allocates the recorder, and replays everything held so far at its real level — so nothing from early boot is missing from the file.
+4. `Logging.Flush` is the last `Commit` step of `Shutdown.shutdown.xml`. It stops the spool, drains what is left and closes the file.
 
 ## Data / XML formats
 

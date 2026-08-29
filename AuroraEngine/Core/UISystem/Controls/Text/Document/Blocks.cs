@@ -7,7 +7,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
     // Block-level content: the top-level structural units of a document (a line/paragraph, a heading,
     // later lists/quotes/code). A block is a control — a TextBlockControl (a PanelControl derivative
     // that flows inline runs) — so the whole document is one VulkanControl tree, laid out by the same
-    // engine UI layout as UI.xml. Abstract, no [A_XSDType], so only concrete blocks are emitted as XML
+    // engine UI layout as UI.ui.xml. Abstract, no [A_XSDType], so only concrete blocks are emitted as XML
     // elements; this base is the AllowedChildren target the document scans for.
     public abstract class Block : TextBlockControl
     {

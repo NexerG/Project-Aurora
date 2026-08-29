@@ -126,12 +126,12 @@ namespace ArctisAurora.Core.Registry
             return true;
         }
 
-        // Contexts authored in Contexts/*.xml, one file per contributor across every mount, holding
-        // their own value rather than binding to a static.
+        // Contexts authored in Contexts/*.contexts.xml, one file per contributor across every mount,
+        // holding their own value rather than binding to a static.
         [A_XSDActionDependency("Context.LoadDeclared", "Bootstrap")]
         internal static bool LoadDeclared()
         {
-            foreach (string file in VirtualFileSystem.EnumerateAll("XML/Documents/Contexts", "*.xml"))
+            foreach (string file in VirtualFileSystem.EnumerateAll("XML/Documents/Contexts", "*.contexts.xml"))
             {
                 XElement root = XElement.Load(file);
                 foreach (XElement element in root.Elements())

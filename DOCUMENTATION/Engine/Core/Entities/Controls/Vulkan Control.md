@@ -45,6 +45,8 @@ A plain `VulkanControl` holds **one** child; use a container ([[StackPanel]], Gr
 | `BubbleAll()` | public | Enable event bubbling for every event. |
 | `UpdateControlData()` | internal | Push `controlData` (color/UVs) to the GPU. |
 | `ParseXML(document)` | static | Build a control tree from a [[UI Document]] named in the `uiDocuments` registry. |
+| `Parse(root)` | private | Build a control tree from a document's root element, which names its own type. |
+| `TaggedActions` | private | Every `[A_XSDActionDependency]` in the process, scanned once. |
 | `EnumColorToHex` / `HexToRGB` | static | Color helpers. |
 
 ## Fields & Properties
@@ -91,7 +93,7 @@ Setting `width`/`height`/`preferred*`/`margin`/`padding` calls `InvalidateLayout
 ```
 Every setter writes its `controlData` field and calls `UpdateControlData()`.
 
-`Gradient` names a ramp in `Gradients.xml` and paints it in place of `ColorHex` — see [[Gradients]]. It is a row number in a shared table rather than stops carried here, so a definition used by many controls exists once. The ramp measures across `arrangedRect`, which the setter mirrors into `controlData` so no `Arrange` override has to know gradients exist, and which a text control overwrites on its glyphs so a ramp spans a run instead of restarting per letter.
+`Gradient` names a ramp in `Gradients.gradients.xml` and paints it in place of `ColorHex` — see [[Gradients]]. It is a row number in a shared table rather than stops carried here, so a definition used by many controls exists once. The ramp measures across `arrangedRect`, which the setter mirrors into `controlData` so no `Arrange` override has to know gradients exist, and which a text control overwrites on its glyphs so a ramp spans a run instead of restarting per letter.
 
 There are two separate strokes because there are two distance fields to stroke: `EdgeThickness` is a band of the rounded-box silhouette the corner radius already produces, so it is a border on the control's own rectangle and is measured in design-space pixels, while `OutlineWidth` is a second threshold on the mask's MSDF distance, so it traces the shape inside the quad — the letter, not the letter's box — and is measured in screen pixels because that is the space the MSDF distance is resolved in. A control carrying both gets a box border and an outlined glyph, and the edge is composited last so it wins where they overlap.
 
@@ -125,7 +127,7 @@ Filtering at registration rather than at dispatch is what lets counts mean diffe
 Bubbling is a contract an override can break, and one does: **`TextInputControl.ResolveOnClick` begins an edit and returns without calling base**, so `bubbleClick` is dead on it whatever the XML says and nothing nested inside a `TextInput` can ever be clicked. That is why button captions and list rows use [[Label]] — text that is drawn and never edited, bubbling from its constructor the way `GlyphControl` does, on the principle that decoration must not consume input. An override that does not call base is silently swallowing every event below it.
 
 ### XML
-`ParseXML(document)` takes a registry name rather than a filename: it fetches the [[UI Document]] declared under that name, loads the file at its resolved path, builds a `WindowControl` root, then `RecursiveParse` instantiates child controls by element name (`AnyXMLType.FindType`) and `ResolveAttributes` maps XML attributes onto `[A_XSDElementProperty]` members (actions resolve via `[A_XSDActionDependency]`). The scan that collects every `[A_XSDActionDependency]` in the process is done once and shared by every load, not rebuilt per call.
+`ParseXML(document)` takes a registry name rather than a filename: it fetches the [[UI Document]] declared under that name, loads the file at its resolved path, and hands the root element to `Parse(root)`. The root names its own type through `AnyXMLType.FindType` exactly like every other element, so a document is a window only when it is rooted at `<Window>` — anything else parses to a plain control with none of the window scaffolding (`arrangedRect` seeding, the centred transform, `RegisterDirtyRoot`) and can only be grafted into a tree that already exists. `RecursiveParse` then instantiates children by element name and `ResolveAttributes` maps XML attributes onto `[A_XSDElementProperty]` members; actions resolve via `[A_XSDActionDependency]` against `TaggedActions`, scanned once per process rather than once per parse.
 
 Scalars convert through `TypeDescriptor`, so a compound value needs a `TypeConverter` or the whole parse dies on it — `Thickness` is the one that has one, and `ThicknessConverter` reads `Padding="8"`, `Padding="8,4"` and `Padding="1,2,3,4"` as the struct's own one-, two- and four-argument constructors, which makes the two-value form `(horizontal, vertical)` and not CSS's `vertical horizontal`.
 

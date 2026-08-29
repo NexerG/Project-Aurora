@@ -38,7 +38,7 @@ A **declared** context is written in XML and has no member at all. `LoadDeclared
 
 ## Authoring
 
-Declared contexts live in `Data/XML/Documents/Contexts/*.xml`. Every mount contributes its own file and none overrides another, so the engine and each application can declare contexts side by side — unlike [[Gradients]] or [[Context Menu]], where the first mount holding the file wins outright.
+Declared contexts live in `Data/XML/Documents/Contexts/*.contexts.xml`, one file per contributor. Every mount contributes its own file and none overrides another, so the engine and each application can declare contexts side by side — unlike [[Gradients]] or [[Context Menu]], where the first mount holding the file wins outright.
 
 ```xml
 <Contexts>
@@ -77,7 +77,7 @@ A name nothing registered is a silent no-op on `Set` and a null on `Get`, so a m
 | `Clear(name)` | method | `Set` with null. |
 | `Forget(value)` | method | Drops a value out of every context holding it, without deriving. |
 | `LoadContexts()` | action | Bootstrap step. Registers every `[A_ActiveContext]` member. |
-| `LoadDeclared()` | action | Bootstrap step. Registers every context authored in `Contexts/*.xml`. |
+| `LoadDeclared()` | action | Bootstrap step. Registers every context authored in `Contexts/*.contexts.xml`. |
 
 ## Pseudocode
 

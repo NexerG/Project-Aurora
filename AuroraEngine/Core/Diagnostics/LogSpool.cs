@@ -173,7 +173,7 @@ namespace ArctisAurora.Core.Diagnostics
             LogChannel.SetFloor(effective);
 
             // Applied on the spool thread, which owns the sinks and the holding pen; this one waits
-            // so the steps after it in Bootstrap.xml are already writing to a live file.
+            // so the steps after it in Bootstrap.bootstrap.xml are already writing to a live file.
             _configAck.Reset();
             _request = config;
             _wake.Set();

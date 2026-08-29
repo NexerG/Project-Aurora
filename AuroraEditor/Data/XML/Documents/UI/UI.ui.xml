@@ -1,6 +1,6 @@
 ﻿<Window xmlns="http://arctisaurora/AuroraUITypes"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://arctisaurora/UI ../Schemas/UITypeSchema.xsd"
+        xsi:schemaLocation="http://arctisaurora/UI ../../Schemas/UITypeSchema.xsd"
         Width="1280" Height="720" WindowingMode="WindowSize" Autoscaling="false" ScalingAxis="Vertical" ColorHex="#1f6331">
 
 	<StackPanel ColorHex="#121212" Orientation="Vertical">

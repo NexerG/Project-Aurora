@@ -20,13 +20,13 @@ VerifiedAgainst: 2026-05-30
 ---
 ## Overview
 
-The bootstrapper decides **what order the engine starts up in** â€” and nothing else. It does not contain startup logic itself; each step is an engine method living in its own system (registry, input, renderer, â€¦). The sequence is declared in `Bootstrap.xml`, so reordering or inserting a startup step is an XML edit, not a code change. This replaces the old hardcoded `A_BootstrapStage` enum approach.
+The bootstrapper decides **what order the engine starts up in** â€” and nothing else. It does not contain startup logic itself; each step is an engine method living in its own system (registry, input, renderer, â€¦). The sequence is declared in `Bootstrap.bootstrap.xml`, so reordering or inserting a startup step is an XML edit, not a code change. This replaces the old hardcoded `A_BootstrapStage` enum approach.
 
 ## Architecture
 
 ```mermaid
 graph TD
-  XML[Bootstrap.xml] -->|Phase / Step| Steps[ordered step names]
+  XML[Bootstrap.bootstrap.xml] -->|Phase / Step| Steps[ordered step names]
   Reflect[scan assemblies for A_XSDActionDependency category=Bootstrap] --> Map[name â†’ MethodInfo]
   Steps --> Run[RunPhase: invoke each step in XML order]
   Map --> Run
@@ -35,12 +35,12 @@ graph TD
 ### Step resolution
 `Bootstrapper.Load(xmlPath)` does two things:
 1. Reflects over every loaded assembly and collects each method tagged `[A_XSDActionDependency(name, "Bootstrap")]` into a `name â†’ MethodInfo` map.
-2. Parses `Bootstrap.xml` into `phase name â†’ ordered list of step (action) names`.
+2. Parses `Bootstrap.bootstrap.xml` into `phase name â†’ ordered list of step (action) names`.
 
 `RunPhase("Bootstrap")` then walks the step list in declared order, looks each name up in the map, and invokes it. An unknown step name is logged and skipped (non-fatal).
 
 ## Lifecycle / Flow
-1. `Engine.Init()` calls `Bootstrapper.Load(Paths.BOOTSTRAP)` â€” `Paths.BOOTSTRAP` resolves `Bootstrap.xml` through the [[XML-XSD]] / VFS layer (engine default unless an app overrides it).
+1. `Engine.Init()` calls `Bootstrapper.Load(Paths.BOOTSTRAP)` â€” `Paths.BOOTSTRAP` resolves `Bootstrap.bootstrap.xml` through the [[XML-XSD]] / VFS layer (engine default unless an app overrides it).
 2. `Bootstrapper.RunPhase("Bootstrap")` invokes the steps.
 
 The default step order is listed in [[Attributes & Conventions#Bootstrap step names]].

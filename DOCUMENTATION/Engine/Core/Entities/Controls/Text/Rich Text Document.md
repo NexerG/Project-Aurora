@@ -19,7 +19,7 @@ The model / view split it was designed around **is not what shipped**: blocks an
 ## Model shape
 A document is a flat list of blocks; a block of flowing text holds a list of inline runs.
 
-- `RichTextDocument` — `List<Block> blocks`. `[A_XSDType("Document")]`, category `UI`. The whole tree is now `VulkanControl`s, so a document is a control tree laid out like `UI.xml`.
+- `RichTextDocument` — `List<Block> blocks`. `[A_XSDType("Document")]`, category `UI`. The whole tree is now `VulkanControl`s, so a document is a control tree laid out like `UI.ui.xml`.
 - `RichTextDocument.Name` — the note's own name, and the only identity it has that survives the file being renamed. It is authored or absent and is **never derived**: a note's first heading is not its name, and nothing writes the file name into it, so an unnamed note stays detectably unnamed however many times it is saved. Display falls back to the file name at the point of use — a browser row shows the file, a tab caption shows the name. An edited note that has never been named is prompted for one on Ctrl+S and on window close; see `ClaudeMemory/Decisions/note-naming-and-text-field.md`.
 - `Block` (abstract, no `[A_XSDType]`) inherits [[TextBlockControl]] (a `PanelControl` derivative that flows runs) → `ContentBlock` (`[A_XSDType("Block")]`), the one concrete block, whose runs are its children. A heading is not a class of its own: a block carries a `StylingType` (`Text`, `Heading1`-`Heading6`, `Comment`, `Code`, `Quote`) and the styles file says how big that is, so adding a level is data rather than a new type. All category `UI`.
 - `TextRun` (`[A_XSDType("Run")]`) → inherits [[TextInputControl]]: `Text`, `Bold`, `Italic`, `Strikethrough`, `FontName`, `FontSize` all come from the control, so the run adds no fields of its own (there is no `Inline` base anymore). Colour is the ordinary `ColorHex` every control has — a run that sets it repoints the colour onto each of its glyph children, since the run itself draws an invisible mask and only the glyphs reach the screen.
@@ -101,7 +101,7 @@ This presentation does not scale past a few pages, since every character is a fu
 
 What replaces it is engine-wide rather than document-local: the UI splits into **data and visualization**, most of the UI becoming data and controls becoming the thing that draws it, **after** Periodic's first version and the test/profiling platform are up. See `DOCUMENTATION/ClaudeMemory/Decisions/ui-data-control-split.md` and [[Document Layout Engine#Status]].
 
-- `[A_XSDType("DocumentEditor", "UI")]` so it can be placed in `UI.xml`; a `Source` attribute names an engine-XML note to load (resolved via `Paths.Doc` when relative, used as-is when rooted).
+- `[A_XSDType("DocumentEditor", "UI")]` so it can be placed in `UI.ui.xml`; a `Source` attribute names an engine-XML note to load (resolved via `Paths.Doc` when relative, used as-is when rooted).
 - `LoadDocument(RichTextDocument)` — entry point used by the vault later; `LoadPath(name)` — load by file.
 - The control tree lives in the engine's `Controls` render group. **Rebuild-on-edit (P3+) must remove stale run/glyph controls from that group** — the deferred-cleanup TODO already noted in [[INPUT|TextControl]]; build-once (P2) is unaffected.
 
@@ -172,7 +172,7 @@ Slots are **normalized on write**, which is what makes that equality mean anythi
 
 Ordering the two ends needs reading order, and a run does not know where it sits in the document, so `OrderedRuns` is walked and the ends compared as `(run index, offset)`. This is what lets a drag run backwards.
 
-Extending rather than collapsing is a boolean carried through the moves that already existed — `MoveCaret(move, extend)` and `SetCaret(run, offset, extend)` — and the boolean comes from the `Extend` [[INPUT#Named modifiers|named modifier]], not from a key the engine names. Shift is only what `InputMap.xml` happens to bind it to.
+Extending rather than collapsing is a boolean carried through the moves that already existed — `MoveCaret(move, extend)` and `SetCaret(run, offset, extend)` — and the boolean comes from the `Extend` [[INPUT#Named modifiers|named modifier]], not from a key the engine names. Shift is only what `InputMap.inputs.xml` happens to bind it to.
 
 ### Word and line
 Clicking the same spot twice selects the word, three times the visual line. Both arrive as [[Vulkan Control]]'s multi-click, which reports the tap count from the release, so neither needs a gesture of its own — the editor switches on the count and everything below it is selection code that already existed.
@@ -250,7 +250,7 @@ Blocks live in two lists at once — `RichTextDocument.blocks`, which is what a 
 ## Status
 - P0 (model types) and P1 (XML persistence) complete; round-trip verified (in-code build + reload of code-built and hand-authored XML are byte/structurally equal).
 - P3 complete: click→caret, character input, arrow / Home / End / PageUp / PageDown navigation, and Ctrl+S through `DocumentEditSession`. Save verified against the sample note — no run gains a `FontSize`. Navigation itself is compile-verified and pending GUI verification.
-- P2 (`DocumentEditorControl`) implemented; built into `Periodic/Data/XML/Documents/UI.xml` via `<DocumentEditor Source="SampleNote.xml"/>`.
+- P2 (`DocumentEditorControl`) implemented; built into `Periodic/Data/XML/Documents/UI/UI.ui.xml` via `<DocumentEditor Source="SampleNote.xml"/>`.
 - P4 steps 1 and 2 complete: selection renders and is GUI-verified apart from drag auto-scroll, which the sample note is too short to exercise; deletion over a range, Backspace, Delete and Enter are bound and boot-verified but **not** GUI-verified. Step 3, Ctrl+B/I run split/merge, is next — `Bold` and `Italic` are still read by nothing.
 - Undo and select-all do not exist, which deletion is the first feature to make matter: a mis-aimed delete is recoverable only by reloading the note.
 - P5 complete: `Periodic` is a two-pane shell, a `VaultBrowser` listing a vault folder beside the editor, and `LoadPath` has a real caller at last. The vault is a settings path; the browser, being app rather than engine, lives in `Periodic` and is described in `DOCUMENTATION/ClaudeMemory/Decisions/vault-browser-and-shell.md`. Switching notes saves the one being left, since nothing tracks dirtiness and nothing can undo.

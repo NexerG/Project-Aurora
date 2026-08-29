@@ -38,7 +38,7 @@ The `InputHandler` exposes three separate input streams, each handled by its own
 
 Mouse position and scroll are handled separately. `ProcessMouseMove()` writes directly to a static `mousePos` field. `ProcessScrollWheel()` accumulates into `scrollDeltaWrite` which gets swapped into `scrollDelta` once per tick.
 
-Bootstrap happens via `[A_XSDActionDependency("InputHandler.LoadInputs", "Bootstrap")]`. This calls `ParseXML` which loads all `*.xml` files from the inputs directory, constructs keybind definitions, and hands them to the `GestureMatcher`. After parsing, the default keybind group is activated.
+Bootstrap happens via `[A_XSDActionDependency("InputHandler.LoadInputs", "Bootstrap")]`. This calls `ParseXML` which loads all `*.inputs.xml` files from the inputs directory, constructs keybind definitions, and hands them to the `GestureMatcher`. After parsing, the default keybind group is activated.
 
 #### Per-Tick Flow
 Every engine tick, `ActivateKeybinds()` runs on the main thread. The sequence is:
@@ -135,7 +135,7 @@ They are read where they are used rather than copied into the tracker and the co
 The `GestureMatcher` owns the evaluation loop. It holds all keybind definitions organized by named groups and references the `KeyStateTracker` for key state queries.
 
 #### Groups
-Keybind definitions are organized into groups. Each XML file in the inputs directory becomes a group named after the file (e.g. `default.xml` → group `"default"`). Only one group is active at a time. Swap with `SetActiveGroup(string)` — this is how you switch keybind contexts for different game modes or editor states. When a group is set, the matcher's `_activeBinds` list is pointed at that group's keybind list directly.
+Keybind definitions are organized into groups. Each XML file in the inputs directory becomes a group named after the file's name half (e.g. `default.inputs.xml` → group `"default"`), read through `Paths.DocName` — see [[Paths]] on why that is not `Path.GetFileNameWithoutExtension`. Only one group is active at a time. Swap with `SetActiveGroup(string)` — this is how you switch keybind contexts for different game modes or editor states. When a group is set, the matcher's `_activeBinds` list is pointed at that group's keybind list directly.
 
 #### Evaluation Loop
 `Update(deltaTime)` runs once per tick after `KeyStateTracker.Update()`:
@@ -190,7 +190,7 @@ A `NamedModifier` binds a key to a role in the `InputModifier` enum, and engine 
 Roles are grouped exactly as binds are, one group per file, and `SetActiveGroup` swaps both — a keybind group is a mode, so switching to a game group rebinds `Extend` along with everything else instead of leaving an editor binding live. A role no file declares simply reads as never down: there is no engine-side fallback to shift, because a fallback is the hardcoding this exists to remove.
 
 ### XML Format
-Keybinds are defined in XML files placed in the inputs directory (`Paths.XMLDOCUMENTS_INPUTS`). Each file is one group. The root element is a `KeybindMap` containing `Keybind` elements.
+Keybinds are defined in `*.inputs.xml` files placed in the inputs directory (`Paths.XMLDOCUMENTS_INPUTS`). Each file is one group. The root element is a `KeybindMap` containing `Keybind` elements.
 
 Structure:
 ```xml

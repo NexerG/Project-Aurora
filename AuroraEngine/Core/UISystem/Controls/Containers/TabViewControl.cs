@@ -35,7 +35,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         [A_XSDElementProperty("TearOffDocument", "UI", "UI document a tab dragged out of every window opens in.")]
         public string tearOffDocument = "";
 
-        [A_XSDElementProperty("TabContextMenu", "UI", "Menu in ContextMenus.xml a tab in the strip offers on right click.")]
+        [A_XSDElementProperty("TabContextMenu", "UI", "Menu in ContextMenus.menus.xml a tab in the strip offers on right click.")]
         public string tabContextMenu = "tab";
         #endregion
 

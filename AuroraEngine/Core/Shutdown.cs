@@ -24,7 +24,7 @@ namespace ArctisAurora.EngineWork
         public List<ShutdownStep> steps { get; set; } = new();
     }
 
-    // The bootstrap sequence run backwards: phases of ordered steps, declared in Shutdown.xml and
+    // The bootstrap sequence run backwards: phases of ordered steps, declared in Shutdown.shutdown.xml and
     // resolved to methods by name. Two phases, because they answer different questions — Request may
     // refuse and is where anything that asks the user lives, Commit is past the point of no return.
     [A_XSDType("ShutdownSequence", "Shutdown")]

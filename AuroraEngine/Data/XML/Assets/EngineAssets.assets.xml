@@ -13,6 +13,6 @@
 
 	<Asset Type="IconSetAsset" Name="default"   Source="Icons/default"/>
 
-	<Asset Type="UIDocumentAsset" Name="settings" Source="XML/Documents/Settings.xml"/>
+	<Asset Type="UIDocumentAsset" Name="settings" Source="XML/Documents/UI/Settings.ui.xml"/>
 
 </AssetManifest>

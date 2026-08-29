@@ -3,7 +3,7 @@ using ArctisAurora.Core.Registry;
 namespace ArctisAurora.Core.Data
 {
     // Schema-carrier types: they exist so XSDGenerator emits PoolsTypeSchema.xsd and
-    // Pools.xml is authorable/validated. Parsing is manual in DataManager.
+    // Pools.pools.xml is authorable/validated. Parsing is manual in DataManager.
     // PoolGrowthType lives in its own category, NOT "Pools": an enum in the "Pools" category
     // would emit a category simple type named "Pools" that collides with the "Pools" manifest
     // complex type. This one enum is used both as the schema type and at runtime by DataPool.

@@ -16,11 +16,11 @@ namespace Periodic.Editor.CustomControls
     [A_XSDType("VaultBrowser", "UI")]
     public class VaultBrowserControl : FileTreeControl
     {
-        // control names in UI.xml
+        // control names in UI.ui.xml
         private const string browserName = "Browser";
         private const string tabsName = "Tabs";
 
-        // context declared in Contexts/Periodic.xml
+        // context declared in Contexts/Periodic.contexts.xml
         private const string tabsContext = "ActiveTabViewer";
 
         public VaultBrowserControl()

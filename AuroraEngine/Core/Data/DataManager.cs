@@ -9,7 +9,7 @@ namespace ArctisAurora.Core.Data
 {
     public readonly record struct DataHandle(ushort PoolId, int StableId, int Version);
 
-    // Static owner of all data pools. Pools are declared in Pools.xml and composed from
+    // Static owner of all data pools. Pools are declared in Pools.pools.xml and composed from
     // C#-defined component structs at bootstrap. Lookup by name or by id; FrameEdge drains
     // structural changes across every pool between frames.
     public static class DataManager
@@ -28,7 +28,7 @@ namespace ArctisAurora.Core.Data
         [A_XSDActionDependency("DataManager.ParseXML", "Bootstrap")]
         public static bool ParseXML()
         {
-            LoadManifest("Pools.xml");
+            LoadManifest("Pools.pools.xml");
             return true;
         }
 
@@ -74,7 +74,7 @@ namespace ArctisAurora.Core.Data
             _byName[pool.Name] = pool;
         }
 
-        // Bind each pool to the system named by its Pools.xml System attribute. Runs after Engine
+        // Bind each pool to the system named by its Pools.pools.xml System attribute. Runs after Engine
         // constructs the systems, since pools are parsed during bootstrap and the systems do not
         // exist yet at that point. Fails loudly: a pool naming a system that was never created is
         // a pool nobody may legally write, which is a silent data race waiting to happen.
@@ -84,7 +84,7 @@ namespace ArctisAurora.Core.Data
             {
                 DataPool pool = _pools[i];
                 if (string.IsNullOrEmpty(pool.OwnerName))
-                    throw new Exception($"[DataManager] Pool '{pool.Name}' has no System attribute in Pools.xml — every pool needs exactly one owning system.");
+                    throw new Exception($"[DataManager] Pool '{pool.Name}' has no System attribute in Pools.pools.xml — every pool needs exactly one owning system.");
 
                 ThreadedSystem owner = ThreadedSystem.Find(pool.OwnerName) ?? throw new Exception($"[DataManager] Pool '{pool.Name}' names system '{pool.OwnerName}', which does not exist.");
                 pool.SetOwnerSystemId(owner.SystemId);

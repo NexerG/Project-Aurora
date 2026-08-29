@@ -31,7 +31,7 @@ namespace ArctisAurora.Core.Threading
 
         public static IReadOnlyList<ThreadedSystem> All => _all;
 
-        // Join key for Pools.xml — a pool's System attribute names one of these.
+        // Join key for Pools.pools.xml — a pool's System attribute names one of these.
         public static ThreadedSystem? Find(string name)
         {
             for (int i = 0; i < _all.Count; i++)
@@ -114,11 +114,11 @@ namespace ArctisAurora.Core.Threading
         // paced by present/vsync, and sleeping on top of that would just drop frames.
         protected virtual double TargetPeriodMs => 0;
 
-        // The name comes off the subclass's own [A_XSDType], which is also what Pools.xml's System
+        // The name comes off the subclass's own [A_XSDType], which is also what Pools.pools.xml's System
         // attribute refers to — so a system's name is written once, in one place.
         protected ThreadedSystem()
         {
-            A_XSDTypeAttribute attr = GetType().GetCustomAttribute<A_XSDTypeAttribute>() ?? throw new Exception($"[ThreadedSystem] {GetType().Name} needs an [A_XSDType] naming it, so Pools.xml can assign pools to it.");
+            A_XSDTypeAttribute attr = GetType().GetCustomAttribute<A_XSDTypeAttribute>() ?? throw new Exception($"[ThreadedSystem] {GetType().Name} needs an [A_XSDType] naming it, so Pools.pools.xml can assign pools to it.");
 
             Name = attr.Name;
             SystemId = (byte)(_all.Count + 1);

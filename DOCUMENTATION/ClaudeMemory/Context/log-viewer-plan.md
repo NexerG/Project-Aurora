@@ -67,7 +67,7 @@ Settled. Do not re-litigate without asking.
   each `GlyphControl`; `glyphs-as-pool-data.md` keeps per-glyph tint deliberately, because per-letter
   colour is a required Periodic feature. Colouring a level tag costs nothing new.
 
-- **Fonts are baked from a declared manifest** — `AuroraEngine/Data/XML/Imports/EngineFonts.xml`.
+- **Fonts are baked from a declared manifest** — `AuroraEngine/Data/XML/Imports/EngineFonts.imports.xml`.
   Adding one is a single `<FontImport>` line; `AssetImporter.RunImports` bakes anything stale at boot,
   Debug only. **Asset name = filename minus extension** (`arial`, `arialbd`, `Electrolize-Regular`).
 
@@ -83,7 +83,7 @@ Settled. Do not re-litigate without asking.
   precedent for a per-frame UI hook.
 
 - **A custom Periodic control is:** subclass a container, add `[A_XSDType("Name", "UI")]`, declare it
-  in `Periodic/Data/XML/Documents/UI.xml`. `VaultBrowserControl` is the worked example.
+  in `Periodic/Data/XML/Documents/UI/UI.ui.xml`. `VaultBrowserControl` is the worked example.
 
 - **Dark mode:** a container without the `invisible` mask asset paints opaque and becomes an
   accidental white background. `DocumentControl` does
@@ -93,7 +93,7 @@ Settled. Do not re-litigate without asking.
 
 ### 1. Monospace font
 
-`AuroraEngine/Data/XML/Imports/EngineFonts.xml`, one line — engine-wide so the Editor gets it too:
+`AuroraEngine/Data/XML/Imports/EngineFonts.imports.xml`, one line — engine-wide so the Editor gets it too:
 
 ```xml
 <FontImport Source="consola.ttf" Charset="Latin" GlyphSize="64"/>
@@ -162,7 +162,7 @@ stops auto-follow; a forced crash shows the stack indented under its Fatal row.
 
 ### 6. Periodic wiring
 
-`Periodic/Data/XML/Documents/UI.xml` — `<TabItem Header="Log"><LogView .../></TabItem>` in the
+`Periodic/Data/XML/Documents/UI/UI.ui.xml` — `<TabItem Header="Log"><LogView .../></TabItem>` in the
 right-hand `EditableTabs`. Plus a `Log.OpenFile` action for the file feed.
 
 → verify: the tab renders, tears off into its own window like the others, survives a rebuild.
