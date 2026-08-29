@@ -68,8 +68,8 @@ namespace ArctisAurora.Core.Registry
     {
         public string Name { get; set; }
         public string Description { get; } = string.Empty;
-        public string Category { get; set; } = "Uncategorized";
-        public A_XSDActionDependencyAttribute(string name, string? category = "Uncategorized", string? description = "")
+        public string Category { get; set; } = "Any";
+        public A_XSDActionDependencyAttribute(string name, string? category = "Any", string? description = "")
         {
             Name = name;
             Description = description;
@@ -142,6 +142,10 @@ namespace ArctisAurora.Core.Registry
     public static class XSDGenerator
     {
         private static readonly Diagnostics.LogChannel Log = Diagnostics.LogChannel.For("XSD");
+
+        // The action category every other one folds in, so an action declared here is callable from
+        // any document that takes an action.
+        private const string AnyActions = "Any";
 
         #region ---- QUICK ACCESS ----
         // dictionaries
@@ -246,9 +250,15 @@ namespace ArctisAurora.Core.Registry
                     HashSet<string> probe = new HashSet<string>();
                     sb.Append($"agref:{AttributeGroupRefFor(t.Type, category, probe) ?? "-"}|");
 
+                    List<A_XSDTypeAttribute> childTypes = t.Attribute.AllowedChildren == null
+                        ? new List<A_XSDTypeAttribute>()
+                        : ChildTypesOf(t.Attribute.AllowedChildren, allTypes);
+                    HashSet<string> childNames = childTypes.Select(a => a.Name).ToHashSet();
+
                     var emitted = SplitChain(t.Type).Own
                         .Where(m => IsAttributeMember(MemberTypeOf(m.Member)))
-                        .Concat(GetAnnotatedMembers(t.Type).Where(m => !IsAttributeMember(MemberTypeOf(m.Member))));
+                        .Concat(GetAnnotatedMembers(t.Type).Where(m => !IsAttributeMember(MemberTypeOf(m.Member))
+                            && !childNames.Contains(m.XmlAttribute?.Name ?? m.Member.Name)));
                     foreach (var member in emitted.OrderBy(m => m.XmlAttribute?.Name))
                     {
                         Type memberType = MemberTypeOf(member.Member);
@@ -256,13 +266,8 @@ namespace ArctisAurora.Core.Registry
                     }
                     if (t.Attribute.AllowedChildren != null)
                     {
-                        var children = allTypes
-                            .Where(ty => t.Attribute.AllowedChildren.IsAssignableFrom(ty) && ty != t.Attribute.AllowedChildren)
-                            .Select(c => c.GetCustomAttribute<A_XSDTypeAttribute>(false))
-                            .Where(a => a != null && a.Name != "" && !a.IsAbstract)
-                            .Select(a => $"{a.Category}:{a.Name}").OrderBy(n => n);
                         sb.Append($"group:{t.Attribute.AllowedChildren.Name}:{t.Attribute.MinChildren}:{t.Attribute.MaxChildren}|");
-                        foreach (string cn in children)
+                        foreach (string cn in childTypes.Select(a => $"{a.Category}:{a.Name}").OrderBy(n => n))
                             sb.Append($"child:{cn}|");
                     }
                 }
@@ -521,9 +526,9 @@ namespace ArctisAurora.Core.Registry
                 })
                 .Where(x => x.Attribute != null)).ToList();
 
-            var globalMethods = allMethods.Where(x => x.Attribute.Category == "Uncategorized").ToList();
+            var anyMethods = allMethods.Where(x => x.Attribute.Category == AnyActions).ToList();
 
-            var categorizedMethods = allMethods.Where(x => x.Attribute.Category != "Uncategorized")
+            var categorizedMethods = allMethods.Where(x => x.Attribute.Category != AnyActions)
                 .GroupBy(x => x.Attribute.Category)
                 .ToDictionary(g => g.Key, g => g.ToList());
 
@@ -536,65 +541,60 @@ namespace ArctisAurora.Core.Registry
             actionSchema.Namespaces.Add("actions", "http://arctisaurora/ActionDependencies");
             actionSchema.Namespaces.Add("xsd", "http://www.w3.org/2001/XMLSchema");
 
+            // Emitted only when something declares it — an empty enumeration restricts nothing, and
+            // every category unions this in.
+            if (anyMethods.Count != 0)
+            {
+                actionSchema.Items.Add(new XmlSchemaSimpleType
+                {
+                    Name = AnyActions,
+                    Content = ActionEnumeration(anyMethods.Select(m => m.Attribute.Name))
+                });
+            }
+
             foreach(var category in categorizedMethods)
             {
+                XmlSchemaSimpleTypeRestriction categoryActions =
+                    ActionEnumeration(category.Value.Select(m => m.Attribute.Name));
+
                 XmlSchemaSimpleType actionType = new XmlSchemaSimpleType
                 {
                     Name = category.Key
                 };
-                var categoryActions = new XmlSchemaSimpleTypeRestriction
-                {
-                    BaseTypeName = new XmlQualifiedName("xs:string")
-                };
 
-                foreach(var method in category.Value)
+                if (anyMethods.Count == 0)
                 {
-                    XmlSchemaEnumerationFacet methodElement = new XmlSchemaEnumerationFacet
-                    {
-                        Value = method.Attribute.Name
-                    };
-                    categoryActions.Facets.Add(methodElement);
+                    actionType.Content = categoryActions;
                 }
-                actionType.Content = categoryActions;
+                else
+                {
+                    XmlSchemaSimpleTypeUnion withAny = new XmlSchemaSimpleTypeUnion
+                    {
+                        MemberTypes = new[]
+                        {
+                            new XmlQualifiedName(AnyActions, "http://arctisaurora/ActionDependencies")
+                        }
+                    };
+                    withAny.BaseTypes.Add(new XmlSchemaSimpleType { Content = categoryActions });
+                    actionType.Content = withAny;
+                }
                 actionSchema.Items.Add(actionType);
             }
-
-            foreach(var globalMethod in globalMethods)
-            {
-                XmlSchemaSimpleType actionType = new XmlSchemaSimpleType
-                {
-                    Name = globalMethod.Attribute.Name
-                };
-                var categoryActions = new XmlSchemaSimpleTypeRestriction
-                {
-                    BaseTypeName = new XmlQualifiedName("xs:string")
-                };
-                XmlSchemaEnumerationFacet methodElement = new XmlSchemaEnumerationFacet
-                {
-                    Value = globalMethod.Attribute.Name
-                };
-                categoryActions.Facets.Add(methodElement);
-                actionType.Content = categoryActions;
-                actionSchema.Items.Add(actionType);
-            }
-
-            XmlSchemaSimpleType uncategorizedActions = new XmlSchemaSimpleType()
-            {
-                Name = "Uncategorized"
-            };
-            XmlSchemaSimpleTypeUnion allActionsUnion = new XmlSchemaSimpleTypeUnion()
-            {
-                MemberTypes = categorizedMethods.Keys
-                    .Select(k => new XmlQualifiedName(k, "http://arctisaurora/ActionDependencies"))
-                    .Union(globalMethods
-                    .Select(m => new XmlQualifiedName(m.Attribute.Name, "http://arctisaurora/ActionDependencies")))
-                    .ToArray()
-            };
-            uncategorizedActions.Content = allActionsUnion;
-            actionSchema.Items.Add(uncategorizedActions);
 
             // Write schema to file
             WriteSchema(actionSchema, "actionSchema.xsd");
+        }
+
+        private static XmlSchemaSimpleTypeRestriction ActionEnumeration(IEnumerable<string> names)
+        {
+            XmlSchemaSimpleTypeRestriction restriction = new XmlSchemaSimpleTypeRestriction
+            {
+                BaseTypeName = new XmlQualifiedName("xs:string")
+            };
+            foreach (string name in names)
+                restriction.Facets.Add(new XmlSchemaEnumerationFacet { Value = name });
+
+            return restriction;
         }
 
         // The XML namespace a category's types live in. Shared, because a schema's targetNamespace,
@@ -720,12 +720,20 @@ namespace ArctisAurora.Core.Registry
             };
             XmlSchemaSequence sequence = new XmlSchemaSequence();
 
+            // element names the child group already offers
+            HashSet<string> childNames = attribute.AllowedChildren == null
+                ? new HashSet<string>()
+                : ChildTypesOf(attribute.AllowedChildren, allTypes).Select(a => a.Name).ToHashSet();
+
             foreach (var member in GetAnnotatedMembers(t))
             {
                 Type memberType = MemberTypeOf(member.Member);
 
                 // Scalars are declared once in the type's attribute group and referenced below.
                 if (IsAttributeMember(memberType)) continue;
+
+                // Declaring the same element twice in one content model is what XSD rejects.
+                if (childNames.Contains(member.XmlAttribute?.Name ?? member.Member.Name)) continue;
 
                 var annotation = new XmlSchemaAnnotation();
                 var documentation = new XmlSchemaDocumentation();
@@ -796,6 +804,23 @@ namespace ArctisAurora.Core.Registry
             schema.Items.Add(complexType);
         }
 
+        // Everything an AllowedChildren base admits, the base itself included when it is authorable.
+        private static List<A_XSDTypeAttribute> ChildTypesOf(Type childBase, Type[] allTypes)
+        {
+            List<A_XSDTypeAttribute> children = new List<A_XSDTypeAttribute>();
+            foreach (Type ty in allTypes.Where(ty => childBase.IsAssignableFrom(ty)))
+            {
+                A_XSDTypeAttribute? childAttr = ty.GetCustomAttribute<A_XSDTypeAttribute>(false);
+                // No [A_XSDType] name, or an abstract base (e.g. VulkanControl) → never a valid child.
+                if (childAttr == null || childAttr.Name == string.Empty || childAttr.IsAbstract)
+                {
+                    continue;
+                }
+                children.Add(childAttr);
+            }
+            return children;
+        }
+
         // One group per AllowedChildren base, so a new control costs a line here instead of a line in
         // every container that accepts one. It lives in the schema that references it, which keeps it
         // resolvable without an import.
@@ -805,16 +830,8 @@ namespace ArctisAurora.Core.Registry
             if (childGroups.TryGetValue(childBase, out string? existing)) return existing;
 
             XmlSchemaChoice childChoice = new XmlSchemaChoice();
-            var children = allTypes
-                .Where(ty => childBase.IsAssignableFrom(ty) && ty != childBase).ToList();
-            foreach (var child in children)
+            foreach (A_XSDTypeAttribute childAttr in ChildTypesOf(childBase, allTypes))
             {
-                A_XSDTypeAttribute childAttr = child.GetCustomAttribute<A_XSDTypeAttribute>(false);
-                // No [A_XSDType] name, or an abstract base (e.g. VulkanControl) → never a valid child.
-                if (childAttr == null || childAttr.Name == string.Empty || childAttr.IsAbstract)
-                {
-                    continue;
-                }
                 XmlSchemaElement childElement = new XmlSchemaElement
                 {
                     Name = childAttr.Name,

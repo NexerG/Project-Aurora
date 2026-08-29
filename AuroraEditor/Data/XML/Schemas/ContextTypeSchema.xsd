@@ -17,7 +17,14 @@
     <xs:attributeGroup ref="types:Context.Attributes" />
   </xs:complexType>
   <xs:element name="Contexts" type="types:Contexts" />
+  <xs:group name="ContextDefinition.Children">
+    <xs:choice>
+      <xs:element name="Context" type="types:Context" />
+    </xs:choice>
+  </xs:group>
   <xs:complexType name="Contexts">
-    <xs:sequence />
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:ContextDefinition.Children" />
+    </xs:sequence>
   </xs:complexType>
 </xs:schema>

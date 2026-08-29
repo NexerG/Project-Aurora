@@ -40,19 +40,27 @@
     <xs:attribute name="Name" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="ContextMenu" type="types:ContextMenu" />
+  <xs:group name="ContextMenuItemDefinition.Children">
+    <xs:choice>
+      <xs:element name="MenuItem" type="types:MenuItem" />
+    </xs:choice>
+  </xs:group>
   <xs:complexType name="ContextMenu">
     <xs:sequence>
-      <xs:element minOccurs="0" maxOccurs="unbounded" name="MenuItem" type="types:MenuItem">
-        <xs:annotation>
-          <xs:documentation></xs:documentation>
-        </xs:annotation>
-      </xs:element>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:ContextMenuItemDefinition.Children" />
     </xs:sequence>
     <xs:attributeGroup ref="types:ContextMenu.Attributes" />
   </xs:complexType>
   <xs:element name="ContextMenus" type="types:ContextMenus" />
+  <xs:group name="ContextMenuDefinition.Children">
+    <xs:choice>
+      <xs:element name="ContextMenu" type="types:ContextMenu" />
+    </xs:choice>
+  </xs:group>
   <xs:complexType name="ContextMenus">
-    <xs:sequence />
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:ContextMenuDefinition.Children" />
+    </xs:sequence>
   </xs:complexType>
   <xs:simpleType name="GradientKind">
     <xs:restriction base="xs:string">
@@ -78,19 +86,27 @@
     <xs:attribute name="CenterY" type="xs:float" />
   </xs:attributeGroup>
   <xs:element name="Gradient" type="types:Gradient" />
+  <xs:group name="GradientStopDefinition.Children">
+    <xs:choice>
+      <xs:element name="Stop" type="types:Stop" />
+    </xs:choice>
+  </xs:group>
   <xs:complexType name="Gradient">
     <xs:sequence>
-      <xs:element minOccurs="0" maxOccurs="unbounded" name="Stop" type="types:Stop">
-        <xs:annotation>
-          <xs:documentation></xs:documentation>
-        </xs:annotation>
-      </xs:element>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:GradientStopDefinition.Children" />
     </xs:sequence>
     <xs:attributeGroup ref="types:Gradient.Attributes" />
   </xs:complexType>
   <xs:element name="Gradients" type="types:Gradients" />
+  <xs:group name="GradientDefinition.Children">
+    <xs:choice>
+      <xs:element name="Gradient" type="types:Gradient" />
+    </xs:choice>
+  </xs:group>
   <xs:complexType name="Gradients">
-    <xs:sequence />
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:GradientDefinition.Children" />
+    </xs:sequence>
   </xs:complexType>
   <xs:element name="Panel" type="types:Panel" />
   <xs:group name="IXMLChild_UI.Children">
@@ -208,6 +224,7 @@
   <xs:element name="Block" type="types:Block" />
   <xs:group name="TextInputControl.Children">
     <xs:choice>
+      <xs:element name="TextInput" type="types:TextInput" />
       <xs:element name="Run" type="types:Run" />
     </xs:choice>
   </xs:group>

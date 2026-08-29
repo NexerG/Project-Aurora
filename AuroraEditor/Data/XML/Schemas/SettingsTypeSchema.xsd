@@ -137,13 +137,14 @@
     <xs:attributeGroup ref="types:Bind.Attributes" />
   </xs:complexType>
   <xs:element name="InputBindings" type="types:InputBindings" />
+  <xs:group name="KeybindOverride.Children">
+    <xs:choice>
+      <xs:element name="Bind" type="types:Bind" />
+    </xs:choice>
+  </xs:group>
   <xs:complexType name="InputBindings">
     <xs:sequence>
-      <xs:element minOccurs="0" maxOccurs="unbounded" name="Bind" type="types:Bind">
-        <xs:annotation>
-          <xs:documentation></xs:documentation>
-        </xs:annotation>
-      </xs:element>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:KeybindOverride.Children" />
     </xs:sequence>
   </xs:complexType>
   <xs:attributeGroup name="DoubleClick.Attributes">

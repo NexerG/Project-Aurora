@@ -19,10 +19,10 @@ namespace ArctisAurora.Core.UISystem.Actions
             return control as TabViewControl;
         }
 
-        [A_XSDActionDependency("View.SplitRight", "UI", "Moves the focused view's active tab into a new pane beside it")]
+        [A_XSDActionDependency("View.SplitRight", "Any", "Moves the focused view's active tab into a new pane beside it")]
         public static void SplitRight() => Split(SplitViewControl.SplitEdge.Right);
 
-        [A_XSDActionDependency("View.SplitDown", "UI", "Moves the focused view's active tab into a new pane below it")]
+        [A_XSDActionDependency("View.SplitDown", "Any", "Moves the focused view's active tab into a new pane below it")]
         public static void SplitDown() => Split(SplitViewControl.SplitEdge.Bottom);
 
         // The view's own menu and the keybinds have no tab under the pointer, so they act on the

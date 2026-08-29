@@ -210,16 +210,6 @@
   </xs:group>
   <xs:complexType name="KeybindMap">
     <xs:sequence>
-      <xs:element minOccurs="0" maxOccurs="unbounded" name="Keybind" type="types:Keybind">
-        <xs:annotation>
-          <xs:documentation></xs:documentation>
-        </xs:annotation>
-      </xs:element>
-      <xs:element minOccurs="0" maxOccurs="unbounded" name="NamedModifier" type="types:NamedModifier">
-        <xs:annotation>
-          <xs:documentation></xs:documentation>
-        </xs:annotation>
-      </xs:element>
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:IKeybindMapChild.Children" />
     </xs:sequence>
   </xs:complexType>
