@@ -64,38 +64,38 @@ float median(float r, float g, float b) {
 vec4 sampleGradient(uint index, vec2 p, vec4 rect)
 {
     Gradient g = GB.gradients[index];
-    vec2 extent = max((rect.zw - rect.xy) * 0.5, vec2(1e-5));
-    vec2 local = p - (rect.xy + rect.zw) * 0.5;
+    vec2 extent = max((rect.zw - rect.xy) * 0.5f, vec2(1e-5f));
+    vec2 local = p - (rect.xy + rect.zw) * 0.5f;
 
     float t;
     if (g.kind == 0u)
     {
         float span = abs(g.direction.x) * extent.x + abs(g.direction.y) * extent.y;
-        t = (dot(local, g.direction) + span) / (2.0 * span);
+        t = (dot(local, g.direction) + span) / (2.0f * span);
     }
     else
     {
-        vec2 offset = (g.center * 2.0 - 1.0) * extent;
+        vec2 offset = (g.center * 2.0f - 1.0f) * extent;
         t = length((local - offset) / (extent + abs(offset)));
     }
-    t = clamp(t, 0.0, 1.0);
+    t = clamp(t, 0.0f, 1.0f);
 
     vec4 color = g.stops[0].color;
     for (uint i = 1u; i < g.stopCount; ++i)
     {
         float from = g.stops[i - 1u].pos;
         float to = g.stops[i].pos;
-        color = mix(color, g.stops[i].color, clamp((t - from) / max(to - from, 1e-5), 0.0, 1.0));
+        color = mix(color, g.stops[i].color, clamp((t - from) / max(to - from, 1e-5f), 0.0f, 1.0f));
     }
     return color;
 }
 
 // Signed distance to a rounded rectangle, negative inside. r is (topLeft, topRight, bottomLeft, bottomRight).
 float sdRoundBox(vec2 p, vec2 b, vec4 r) {
-    vec2 side = (p.y > 0.0) ? r.zw : r.xy;
-    float rad = min((p.x > 0.0) ? side.y : side.x, min(b.x, b.y));
+    vec2 side = (p.y > 0.0f) ? r.zw : r.xy;
+    float rad = min((p.x > 0.0f) ? side.y : side.x, min(b.x, b.y));
     vec2 q = abs(p) - b + rad;
-    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0)) - rad;
+    return min(max(q.x, q.y), 0.0f) + length(max(q, 0.0f)) - rad;
 }
 
 void main()
@@ -110,23 +110,26 @@ void main()
 
     float sd = msdfDist;
     float trueSD = trueDist;
-    if(abs((sd - 0.5f) - (trueSD - 0.5f)) > 0.1f)
+    if (abs((sd - 0.5f) - (trueSD - 0.5f)) > 0.1f)
     {
         sd = trueSD;
     }
 
-    float pxRange = 4.0;
+    // Must match MTSDFGen.PxRange. Cells are normalized per glyph against max(w, h), so the range
+    // holds on the long axis only and the larger of the two components is the one to scale by.
+    float pxRange = 4.0f;
     vec2 atlasSize = vec2(textureSize(samplers[fragTextureIndex], 0));
     vec2 unitRange = vec2(pxRange) / atlasSize;
-    vec2 screenTexSize = vec2(1.0) / fwidth(fragUV);
-    float screenPxRange = max(1.0, length(unitRange * screenTexSize));
+    vec2 screenTexSize = vec2(1.0f) / fwidth(fragUV);
+    vec2 rangeInPx = unitRange * screenTexSize;
+    float screenPxRange = max(1.0f, max(rangeInPx.x, rangeInPx.y));
 
-    float screenPxDist = screenPxRange * (sd - 0.5);
-    float fillAlpha = clamp(screenPxDist + 0.5, 0.0, 1.0);
+    float screenPxDist = screenPxRange * (sd - 0.5f);
+    float fillAlpha = clamp(screenPxDist + 0.5f, 0.0f, 1.0f);
 
     vec3 color = fragStyle.tint.rgb;
     float opacity = fillAlpha;
-    float gradientAlpha = 1.0;
+    float gradientAlpha = 1.0f;
 
     // gradient — replaces the flat tint as the fill, so the outline still composites under it
     if (fragGradientIndex > 0u)
@@ -137,9 +140,9 @@ void main()
     }
 
     // outline — a second threshold that far outside the shape, the fill composited over it
-    if (fragOutlineWidth > 0.0)
+    if (fragOutlineWidth > 0.0f)
     {
-        opacity = clamp(screenPxDist + fragOutlineWidth + 0.5, 0.0, 1.0);
+        opacity = clamp(screenPxDist + fragOutlineWidth + 0.5f, 0.0f, 1.0f);
         color = mix(fragOutlineColor, color, fillAlpha);
     }
 
@@ -148,13 +151,13 @@ void main()
 
     float boxDist = -sdRoundBox(fragLocal, fragHalfExtent, fragRadius);
     float boxAA = fwidth(boxDist);
-    float inside = clamp(boxDist / boxAA + 0.5, 0.0, 1.0);
+    float inside = clamp(boxDist / boxAA + 0.5f, 0.0f, 1.0f);
     opacity *= inside;
 
     // edge — the outermost band of the silhouette, carrying its own coverage past the mask
-    if (fragEdgeThickness > 0.0)
+    if (fragEdgeThickness > 0.0f)
     {
-        float band = inside - clamp((boxDist - fragEdgeThickness) / boxAA + 0.5, 0.0, 1.0);
+        float band = inside - clamp((boxDist - fragEdgeThickness) / boxAA + 0.5f, 0.0f, 1.0f);
         color = mix(color, fragEdgeColor, band);
         opacity = max(opacity, band);
     }

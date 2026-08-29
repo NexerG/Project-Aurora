@@ -45,6 +45,9 @@ struct ControlData
     vec4 gradientRect;
 };
 
+// One buffer indexed by instance, not one buffer per control. `scalar` layout is load-bearing:
+// it gives this struct a stride of 136 bytes, matching the Pack=1 C# ControlData exactly. Any
+// mismatch here and every control past the first reads shifted data.
 layout(set = 1, binding = 2, scalar) readonly buffer ControlDataBuffer {
     ControlData controls[];
 } CD;

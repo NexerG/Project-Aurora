@@ -11,6 +11,7 @@ namespace ArctisAurora.Core.Filing.Serialization
         public static readonly string DATA = GetPath("Data");
         public static readonly string BUILD_UI = GetPath("Data\\XML");
         public static readonly string FONTS = GetPath("Data\\Fonts");
+        public static readonly string ICONS = GetPath("Data\\Icons");
         public static readonly string UIMASKS = GetPath("Data\\UIMasks");
         public static readonly string XML = GetPath("Data\\XML");
         public static readonly string XMLSCHEMAS = GetPath("Data\\XML\\Schemas");
@@ -33,6 +34,9 @@ namespace ArctisAurora.Core.Filing.Serialization
 
         // Resolve a cooked font file under Data/Fonts/<name> across all mounts.
         public static string Font(string name, string file) => VirtualFileSystem.ResolveFile("Fonts/" + name + "/" + file);
+
+        // Resolve a cooked icon set file under Data/Icons/<name> across all mounts.
+        public static string Icon(string name, string file) => VirtualFileSystem.ResolveFile("Icons/" + name + "/" + file);
 
         private static bool Mount()
         {

@@ -115,11 +115,14 @@ void main()
         sd = trueSD;
     }
 
+    // Must match MTSDFGen.PxRange. Cells are normalized per glyph against max(w, h), so the range
+    // holds on the long axis only and the larger of the two components is the one to scale by.
     float pxRange = 4.0f;
     vec2 atlasSize = vec2(textureSize(samplers[fragTextureIndex], 0));
     vec2 unitRange = vec2(pxRange) / atlasSize;
     vec2 screenTexSize = vec2(1.0f) / fwidth(fragUV);
-    float screenPxRange = max(1.0f, length(unitRange * screenTexSize));
+    vec2 rangeInPx = unitRange * screenTexSize;
+    float screenPxRange = max(1.0f, max(rangeInPx.x, rangeInPx.y));
 
     float screenPxDist = screenPxRange * (sd - 0.5f);
     float fillAlpha = clamp(screenPxDist + 0.5f, 0.0f, 1.0f);

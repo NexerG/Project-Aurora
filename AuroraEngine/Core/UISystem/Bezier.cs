@@ -6,9 +6,11 @@ namespace ArctisAurora.Core.UISystem
     [@NonSerializable]
     public class Edge
     {
-        public Vector2D<float> p0;     // start anchor
-        public Vector2D<float> control; // control point
-        public Vector2D<float> p1;     // end anchor
+        // cubic control polygon, start anchor to end anchor
+        public Vector2D<float> p0;
+        public Vector2D<float> c0;
+        public Vector2D<float> c1;
+        public Vector2D<float> p1;
         public Vector3D<int> color;
     }
 
@@ -21,6 +23,9 @@ namespace ArctisAurora.Core.UISystem
             public Vector2D<float> pos = new Vector2D<float>(1, 1);
             public bool isAnchor;
             public bool isFill;
+            // set on both controls of a cubic segment, so BuildEdges does not read the pair as
+            // TrueType's implied on-curve midpoint
+            public bool isCubicControl;
 
             public Point() { }
 

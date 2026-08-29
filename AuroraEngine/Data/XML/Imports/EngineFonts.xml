@@ -8,4 +8,6 @@
 	<FontImport Source="arialbd.ttf" Charset="Latin" GlyphSize="64"/>
 	<FontImport Source="Electrolize-Regular.ttf" Charset="Latin" GlyphSize="64"/>
 
+	<IconImport Source="Icons/default/svg" Name="default" IconSize="64"/>
+
 </ImportSet>

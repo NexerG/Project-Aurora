@@ -10,6 +10,10 @@
   <xs:complexType name="FontAsset">
     <xs:sequence />
   </xs:complexType>
+  <xs:element name="IconSetAsset" type="types:IconSetAsset" />
+  <xs:complexType name="IconSetAsset">
+    <xs:sequence />
+  </xs:complexType>
   <xs:element name="TextureAsset" type="types:TextureAsset" />
   <xs:complexType name="TextureAsset">
     <xs:sequence />
@@ -37,6 +41,16 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:FontImport.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="IconImport.Attributes">
+    <xs:attribute name="Source" type="xs:string" />
+    <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="IconSize" type="xs:int" />
+  </xs:attributeGroup>
+  <xs:element name="IconImport" type="types:IconImport" />
+  <xs:complexType name="IconImport">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:IconImport.Attributes" />
+  </xs:complexType>
   <xs:element name="ImportSet" type="types:ImportSet" />
   <xs:complexType name="ImportSet">
     <xs:sequence>
@@ -46,6 +60,11 @@
         </xs:annotation>
       </xs:element>
       <xs:element minOccurs="0" maxOccurs="unbounded" name="FontImport" type="types:FontImport">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="IconImport" type="types:IconImport">
         <xs:annotation>
           <xs:documentation></xs:documentation>
         </xs:annotation>

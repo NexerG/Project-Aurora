@@ -41,6 +41,7 @@
       <xs:enumeration value="Stop" />
       <xs:enumeration value="Gradient" />
       <xs:enumeration value="Gradients" />
+      <xs:enumeration value="Icon" />
       <xs:enumeration value="Panel" />
       <xs:enumeration value="TitleBar" />
       <xs:enumeration value="Window" />
@@ -111,10 +112,12 @@
     <xs:restriction base="xs:string">
       <xs:enumeration value="IParseableTypes" />
       <xs:enumeration value="FontAsset" />
+      <xs:enumeration value="IconSetAsset" />
       <xs:enumeration value="TextureAsset" />
       <xs:enumeration value="UIDocumentAsset" />
       <xs:enumeration value="Charset" />
       <xs:enumeration value="FontImport" />
+      <xs:enumeration value="IconImport" />
       <xs:enumeration value="ImportSet" />
       <xs:enumeration value="AVulkanMesh" />
       <xs:enumeration value="AssetEntry" />

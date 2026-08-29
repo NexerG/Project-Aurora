@@ -47,7 +47,7 @@ namespace ArctisAurora.Core.UISystem
                     Bezier.Point current = pts[i];
                     Bezier.Point next = pts[(i + 1) % count];
                     expanded.Add(current);
-                    if (!current.isAnchor && !next.isAnchor)
+                    if (!current.isAnchor && !next.isAnchor && !current.isCubicControl)
                         expanded.Add(new Bezier.Point((current.pos + next.pos) * 0.5f, true));
                 }
 
@@ -60,18 +60,33 @@ namespace ArctisAurora.Core.UISystem
                     Bezier.Point next = expanded[(i + 1) % total];
                     Edge e = new Edge();
                     e.p0 = current.pos;
+
+                    // Already cubic: both controls are given, so nothing is elevated.
+                    if (next.isCubicControl)
+                    {
+                        e.c0 = next.pos;
+                        e.c1 = expanded[(i + 2) % total].pos;
+                        e.p1 = expanded[(i + 3) % total].pos;
+                        edges.Add(e);
+                        continue;
+                    }
+
+                    Vector2D<float> control;
                     if (next.isAnchor)
                     {
                         // Straight run: a quadratic whose control sits on the line is the line.
-                        e.control = (current.pos + next.pos) * 0.5f;
+                        control = (current.pos + next.pos) * 0.5f;
                         e.p1 = next.pos;
                     }
                     else
                     {
                         // No two control points are adjacent after expansion, so this is on-curve.
-                        e.control = next.pos;
+                        control = next.pos;
                         e.p1 = expanded[(i + 2) % total].pos;
                     }
+                    // TrueType is quadratic, the generator is cubic; degree elevation is exact.
+                    e.c0 = e.p0 + (control - e.p0) * (2f / 3f);
+                    e.c1 = e.p1 + (control - e.p1) * (2f / 3f);
                     edges.Add(e);
                 }
                 edgeContours.Add(edges);

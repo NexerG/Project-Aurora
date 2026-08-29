@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.Core.Filing.Serialization;
+using ArctisAurora.Core.Generators;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem;
 using ArctisAurora.EngineWork.Registry;
@@ -9,6 +10,8 @@ namespace ArctisAurora.Core.Registry.Assets
     [A_XSDType("FontAsset", "AssetRegistry")]
     public class FontAsset : AbstractAsset
     {
+        private static readonly Core.Diagnostics.LogChannel Log = Core.Diagnostics.LogChannel.For("Assets");
+
         public AtlasMetaData atlasMetaData = null!;
         public TextureAsset textureAsset = null!;
 
@@ -32,6 +35,9 @@ namespace ArctisAurora.Core.Registry.Assets
 
             atlasMetaData = new AtlasMetaData();
             Serializer.DeserializeAttributed(Paths.Font(fontName, fontName + ".agd"), ref atlasMetaData);
+
+            if (atlasMetaData.pxRange != MTSDFGen.PxRange)
+                Log.Error($"font '{fontName}' was baked at pxRange {atlasMetaData.pxRange}, the shader expects {MTSDFGen.PxRange} — re-import it.");
 
             textureAsset = new TextureAsset();
             textureAsset.LoadFile(Paths.Font(fontName, fontName + "_atlas.png"), Format.R8G8B8A8Unorm);

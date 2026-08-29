@@ -11,6 +11,8 @@
 	<Asset Type="FontAsset"    Name="arial-b"     Source="Fonts/arialbd"/>
 	<Asset Type="FontAsset"    Name="electrolize" Source="Fonts/Electrolize-Regular"/>
 
+	<Asset Type="IconSetAsset" Name="default"   Source="Icons/default"/>
+
 	<Asset Type="UIDocumentAsset" Name="settings" Source="XML/Documents/Settings.xml"/>
 
 </AssetManifest>

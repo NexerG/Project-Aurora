@@ -13,7 +13,7 @@ namespace ArctisAurora.Core.Filing.Serialization
         private static readonly Diagnostics.LogChannel Log = Diagnostics.LogChannel.For("Assets");
 
         // Bump to invalidate every stamp and force a re-bake.
-        private const int importerVersion = 1;
+        private const int importerVersion = 2;
 
         [A_XSDActionDependency("AssetImporter.RunImports", "Bootstrap")]
         public static bool RunImports()
@@ -32,6 +32,10 @@ namespace ArctisAurora.Core.Filing.Serialization
             foreach (ImportSet set in sets)
                 foreach (FontImport font in set.fonts)
                     ImportFontIfStale(font, charsets);
+
+            foreach (ImportSet set in sets)
+                foreach (IconImport icons in set.icons)
+                    ImportIconsIfStale(icons);
 
             return true;
         }
@@ -53,6 +57,12 @@ namespace ArctisAurora.Core.Filing.Serialization
                 FontImport font = new FontImport();
                 XmlReflection.ApplyAttributes(element, font);
                 set.fonts.Add(font);
+            }
+            foreach (XElement element in root.Elements(ns + "IconImport"))
+            {
+                IconImport icons = new IconImport();
+                XmlReflection.ApplyAttributes(element, icons);
+                set.icons.Add(icons);
             }
             return set;
         }
@@ -94,54 +104,99 @@ namespace ArctisAurora.Core.Filing.Serialization
                 importerVersion = importerVersion
             };
 
-            if (IsUpToDate(baseName, wanted)) return;
+            XElement found = ReadStamp(Paths.Font, baseName, baseName + ".agd", baseName + "_atlas.png");
+            if (found != null && wanted.Matches(new FontImportStamp()
+            {
+                source = (string)found.Attribute("Source") ?? string.Empty,
+                sourceHash = (string)found.Attribute("SourceHash") ?? string.Empty,
+                charset = (string)found.Attribute("Charset") ?? string.Empty,
+                glyphSize = (int?)found.Attribute("GlyphSize") ?? 0,
+                importerVersion = (int?)found.Attribute("ImporterVersion") ?? 0
+            })) return;
 
             Log.Info($"font import '{font.source}': baking {chars.Length} glyphs at {font.glyphSize}px...");
-            ClearStamp(baseName);
+            ClearStamp(Paths.FONTS, baseName);
             ImportFont(chars, font.source, font.glyphSize, Paths.FONTS);
-            WriteStamp(baseName, wanted);
+            WriteStamp(Paths.FONTS, baseName, new XElement("FontImportStamp",
+                new XAttribute("Source", wanted.source),
+                new XAttribute("SourceHash", wanted.sourceHash),
+                new XAttribute("Charset", wanted.charset),
+                new XAttribute("GlyphSize", wanted.glyphSize),
+                new XAttribute("ImporterVersion", wanted.importerVersion)));
+        }
+
+        private static void ImportIconsIfStale(IconImport icons)
+        {
+            string[] files = VirtualFileSystem.EnumerateAll(icons.source, "*.svg")
+                .OrderBy(Path.GetFileName, StringComparer.Ordinal).ToArray();
+            if (files.Length == 0)
+            {
+                Log.Warn($"icon import '{icons.name}': no .svg under '{icons.source}', skipped.");
+                return;
+            }
+
+            IconImportStamp wanted = new IconImportStamp()
+            {
+                source = icons.source,
+                sourceHash = HashFiles(files),
+                iconSize = icons.iconSize,
+                importerVersion = importerVersion
+            };
+
+            XElement found = ReadStamp(Paths.Icon, icons.name, icons.name + ".aid", icons.name + "_atlas.png");
+            if (found != null && wanted.Matches(new IconImportStamp()
+            {
+                source = (string)found.Attribute("Source") ?? string.Empty,
+                sourceHash = (string)found.Attribute("SourceHash") ?? string.Empty,
+                iconSize = (int?)found.Attribute("IconSize") ?? 0,
+                importerVersion = (int?)found.Attribute("ImporterVersion") ?? 0
+            })) return;
+
+            Log.Info($"icon import '{icons.name}': baking {files.Length} icons at {icons.iconSize}px...");
+            ClearStamp(Paths.ICONS, icons.name);
+            IconSet.GenerateIconAtlas(icons.name, files, icons.iconSize, Paths.ICONS);
+            WriteStamp(Paths.ICONS, icons.name, new XElement("IconImportStamp",
+                new XAttribute("Source", wanted.source),
+                new XAttribute("SourceHash", wanted.sourceHash),
+                new XAttribute("IconSize", wanted.iconSize),
+                new XAttribute("ImporterVersion", wanted.importerVersion)));
+        }
+
+        // Names and contents both, so renaming an icon invalidates the bake the same as editing one.
+        private static string HashFiles(string[] files)
+        {
+            using MemoryStream digest = new MemoryStream();
+            foreach (string file in files)
+            {
+                byte[] name = System.Text.Encoding.UTF8.GetBytes(Path.GetFileName(file));
+                digest.Write(name, 0, name.Length);
+                digest.Write(SHA256.HashData(File.ReadAllBytes(file)));
+            }
+            return Convert.ToHexString(SHA256.HashData(digest.ToArray()));
         }
 
         // Drops the stamp ahead of a bake.
-        private static void ClearStamp(string baseName)
+        private static void ClearStamp(string root, string name)
         {
-            string path = Path.Combine(Paths.FONTS, baseName, baseName + ".import.xml");
+            string path = Path.Combine(root, name, name + ".import.xml");
             if (File.Exists(path)) File.Delete(path);
         }
 
         // A stamp only counts when the files it describes are actually present.
-        private static bool IsUpToDate(string baseName, FontImportStamp wanted)
+        private static XElement ReadStamp(Func<string, string, string> resolve, string name, params string[] outputs)
         {
-            if (!File.Exists(Paths.Font(baseName, baseName + ".agd"))) return false;
-            if (!File.Exists(Paths.Font(baseName, baseName + "_atlas.png"))) return false;
+            foreach (string output in outputs)
+                if (!File.Exists(resolve(name, output))) return null;
 
-            string stampPath = Paths.Font(baseName, baseName + ".import.xml");
-            if (!File.Exists(stampPath)) return false;
-
-            XElement root = XElement.Load(stampPath);
-            FontImportStamp found = new FontImportStamp()
-            {
-                source = (string)root.Attribute("Source") ?? string.Empty,
-                sourceHash = (string)root.Attribute("SourceHash") ?? string.Empty,
-                charset = (string)root.Attribute("Charset") ?? string.Empty,
-                glyphSize = (int?)root.Attribute("GlyphSize") ?? 0,
-                importerVersion = (int?)root.Attribute("ImporterVersion") ?? 0
-            };
-            return found.Matches(wanted);
+            string stampPath = resolve(name, name + ".import.xml");
+            return File.Exists(stampPath) ? XElement.Load(stampPath) : null;
         }
 
-        private static void WriteStamp(string baseName, FontImportStamp stamp)
+        private static void WriteStamp(string root, string name, XElement stamp)
         {
-            string dir = Path.Combine(Paths.FONTS, baseName);
+            string dir = Path.Combine(root, name);
             Directory.CreateDirectory(dir);
-
-            new XElement("FontImportStamp",
-                new XAttribute("Source", stamp.source),
-                new XAttribute("SourceHash", stamp.sourceHash),
-                new XAttribute("Charset", stamp.charset),
-                new XAttribute("GlyphSize", stamp.glyphSize),
-                new XAttribute("ImporterVersion", stamp.importerVersion))
-                .Save(Path.Combine(dir, baseName + ".import.xml"));
+            stamp.Save(Path.Combine(dir, name + ".import.xml"));
         }
 
         public static void ImportFont(string characters, string fontName, int glyphSize, string outputRoot)

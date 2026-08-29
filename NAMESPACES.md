@@ -34,8 +34,10 @@ ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/Paths.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/SerializationAttributes.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/Serializer.cs
+ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/SvgPath.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/VirtualFileSystem.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/XmlReflection.cs
+ArctisAurora.Core.Generators -> AuroraEngine/Core/Generators/MTSDFGen.cs
 ArctisAurora.Core.Registry -> AuroraEngine/Core/Registry/Context.cs
 ArctisAurora.Core.Registry -> AuroraEngine/Core/Registry/ContextDefinition.cs
 ArctisAurora.Core.Registry -> AuroraEngine/Core/Registry/EntityRegistry.cs
@@ -44,6 +46,7 @@ ArctisAurora.Core.Registry -> AuroraEngine/Core/Registry/SettingsRegistry.cs
 ArctisAurora.Core.Registry -> AuroraEngine/Core/Registry/XSDGenerator.cs
 ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/AbstractAsset.cs
 ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/FontAsset.cs
+ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/IconSetAsset.cs
 ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/SamplerAsset.cs
 ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/TextureAsset.cs
 ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/UIDocumentAsset.cs
@@ -61,6 +64,7 @@ ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/ContextMenus.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/DragGhost.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/Glyph.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/Gradients.cs
+ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/IconSet.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/NoteNameWindow.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/SettingsWindow.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/UICollisionHandling.cs
@@ -73,6 +77,7 @@ ArctisAurora.Core.UISystem.Actions -> AuroraEngine/Core/UISystem/Actions/WindowA
 ArctisAurora.Core.UISystem.Controls -> AuroraEngine/Core/UISystem/Controls/ContextMenuControl.cs
 ArctisAurora.Core.UISystem.Controls -> AuroraEngine/Core/UISystem/Controls/ContextMenuItemControl.cs
 ArctisAurora.Core.UISystem.Controls -> AuroraEngine/Core/UISystem/Controls/HintControl.cs
+ArctisAurora.Core.UISystem.Controls -> AuroraEngine/Core/UISystem/Controls/IconControl.cs
 ArctisAurora.Core.UISystem.Controls -> AuroraEngine/Core/UISystem/Controls/PanelControl.cs
 ArctisAurora.Core.UISystem.Controls -> AuroraEngine/Core/UISystem/Controls/TitleBarControl.cs
 ArctisAurora.Core.UISystem.Controls -> AuroraEngine/Core/UISystem/Controls/VulkanControl.cs

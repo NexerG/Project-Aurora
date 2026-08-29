@@ -108,10 +108,21 @@
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:GradientDefinition.Children" />
     </xs:sequence>
   </xs:complexType>
+  <xs:attributeGroup name="Icon.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+    <xs:attribute name="Set" type="xs:string" />
+    <xs:attribute name="Icon" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="Icon" type="types:Icon" />
+  <xs:complexType name="Icon">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Icon.Attributes" />
+  </xs:complexType>
   <xs:element name="Panel" type="types:Panel" />
   <xs:group name="IXMLChild_UI.Children">
     <xs:choice>
       <xs:element name="VaultBrowser" type="types:VaultBrowser" />
+      <xs:element name="Icon" type="types:Icon" />
       <xs:element name="Panel" type="types:Panel" />
       <xs:element name="TitleBar" type="types:TitleBar" />
       <xs:element name="Window" type="types:Window" />

@@ -25,6 +25,20 @@ namespace ArctisAurora.Core.Filing.Serialization
         public int glyphSize { get; set; } = 64;
     }
 
+    [A_XSDType("IconImport", "AssetRegistry")]
+    public class IconImport
+    {
+        // folder of .svg files, relative to a Data root
+        [A_XSDElementProperty("Source", "AssetRegistry")]
+        public string source { get; set; } = string.Empty;
+
+        [A_XSDElementProperty("Name", "AssetRegistry")]
+        public string name { get; set; } = string.Empty;
+
+        [A_XSDElementProperty("IconSize", "AssetRegistry")]
+        public int iconSize { get; set; } = 64;
+    }
+
     [A_XSDType("ImportSet", "AssetRegistry")]
     public class ImportSet
     {
@@ -33,6 +47,9 @@ namespace ArctisAurora.Core.Filing.Serialization
 
         [A_XSDElementProperty("FontImport", "AssetRegistry")]
         public List<FontImport> fonts { get; set; } = new List<FontImport>();
+
+        [A_XSDElementProperty("IconImport", "AssetRegistry")]
+        public List<IconImport> icons { get; set; } = new List<IconImport>();
     }
 
     // Written beside a font's cooked output; a bake is skipped when it still matches the declaration.
@@ -49,6 +66,21 @@ namespace ArctisAurora.Core.Filing.Serialization
             && sourceHash == other.sourceHash
             && charset == other.charset
             && glyphSize == other.glyphSize
+            && importerVersion == other.importerVersion;
+    }
+
+    // Same contract for an icon set; sourceHash covers every .svg in the folder, names included.
+    public class IconImportStamp
+    {
+        public string source = string.Empty;
+        public string sourceHash = string.Empty;
+        public int iconSize;
+        public int importerVersion;
+
+        public bool Matches(IconImportStamp other) =>
+            source == other.source
+            && sourceHash == other.sourceHash
+            && iconSize == other.iconSize
             && importerVersion == other.importerVersion;
     }
 }
