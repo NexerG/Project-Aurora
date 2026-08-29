@@ -95,16 +95,21 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         // The tree this module draws, and its slice of the UIControls pool in dense order. The pool
         // is shared by every window, so the range is published by UILayout.RefreshWindowRanges.
+        // Assigning tears the outgoing tree down — the subtree is enqueued and drained by Interpolate.
         public WindowControl uiRoot
         {
             get => _uiRoot;
             set
             {
+                _uiRoot?.Destroy();
                 _uiRoot = value;
                 UILayout.InvalidateWindowRanges();
                 value?.FitTo(window.os.windowSize);
             }
         }
+
+        // Swaps this window's tree for another document in the uiDocuments registry.
+        public void SetUI(string document) => uiRoot = (WindowControl)VulkanControl.ParseXML(document);
         internal int firstInstance;
         internal int instanceCount;
 

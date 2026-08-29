@@ -1,7 +1,6 @@
 ﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Data;
 using ArctisAurora.Core.ECS.EngineEntity;
-using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.EngineWork.Registry;
 using Silk.NET.Maths;
@@ -1046,19 +1045,26 @@ namespace ArctisAurora.Core.UISystem.Controls
         }
 
         #region ---- XML ----
-        public static VulkanControl ParseXML(string xmlName)
-        {
-            string path = Paths.Doc(xmlName);
-            XDocument doc = XDocument.Load(path);
-            XElement root = doc.Root;
-            WindowControl window = new WindowControl();
+        private static (MethodInfo method, A_XSDActionDependencyAttribute attr)[] _taggedActions = null!;
 
-            (MethodInfo method, A_XSDActionDependencyAttribute attr)[] tagged = AppDomain.CurrentDomain.GetAssemblies()
+        // Every [A_XSDActionDependency] in the process, scanned once and shared by every load.
+        private static (MethodInfo method, A_XSDActionDependencyAttribute attr)[] TaggedActions =>
+            _taggedActions ??= AppDomain.CurrentDomain.GetAssemblies()
                 .SelectMany(a => a.GetTypes())
                 .SelectMany(t => t.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.DeclaredOnly))
                 .Select(m => (method: m, attr: m.GetCustomAttribute<A_XSDActionDependencyAttribute>()))
                 .Where(x => x.attr != null)
                 .ToArray();
+
+        // Builds a tree from a document named in the uiDocuments registry.
+        public static VulkanControl ParseXML(string document)
+        {
+            UIDocumentAsset asset = AssetRegistries.GetAsset<UIDocumentAsset>(document);
+            XDocument doc = XDocument.Load(asset.path);
+            XElement root = doc.Root;
+            WindowControl window = new WindowControl();
+
+            (MethodInfo method, A_XSDActionDependencyAttribute attr)[] tagged = TaggedActions;
 
             ResolveAttributes(root, window, tagged);
 

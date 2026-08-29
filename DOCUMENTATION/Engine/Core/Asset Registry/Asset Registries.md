@@ -69,6 +69,7 @@ public static Dictionary<string, object> libraryByName = new();   // name â†�
   <Dictionary Name="meshes" KeyType="xs:string" ValueType="AVulkanMesh"/>
   <Dictionary Name="fonts" KeyType="xs:string" ValueType="FontAsset"/>
   <Dictionary Name="Samplers" KeyType="xs:string" ValueType="SamplerAsset"/>
+  <Dictionary Name="uiDocuments" KeyType="xs:string" ValueType="UIDocumentAsset"/>
   <!-- â€¦ -->
 </AssetRegistries>
 ```
@@ -76,4 +77,5 @@ public static Dictionary<string, object> libraryByName = new();   // name â†�
 ## Related
 - [[XML-XSD]] â€” type resolution + parsing
 - [[Asset]] â€” the base type loaded into these registries
+- [[UI Document]] â€” UI XML documents as named assets
 - [[Paths]] Â· [[Virtual File System]] â€” where `Registry.xml` is resolved

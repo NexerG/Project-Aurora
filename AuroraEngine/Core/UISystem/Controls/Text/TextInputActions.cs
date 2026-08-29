@@ -95,6 +95,15 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             Box()?.Commit();
         }
 
+        [A_XSDActionDependency("Text.SelectAll", "Input", "Selects the whole of the focused note or field")]
+        public static void SelectAll()
+        {
+            DocumentEditorControl editor = Editor();
+            if (editor != null) { editor.SelectAll(); return; }
+
+            Box()?.SelectAll();
+        }
+
         [A_XSDActionDependency("Text.Undo", "Input", "Reverses the last edit made to the focused note")]
         public static void Undo() => Editor()?.Undo();
 

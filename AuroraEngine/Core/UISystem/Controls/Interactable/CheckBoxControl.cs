@@ -38,6 +38,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
             cornerRadius = new CornerRadii(3);
 
             AddChild(mark);
+            mark.BubbleAll();
             mark.Hide();
         }
 

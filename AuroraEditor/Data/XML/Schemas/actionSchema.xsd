@@ -5,17 +5,59 @@
       <xs:enumeration value="ExitApplication" />
       <xs:enumeration value="DummyHover" />
       <xs:enumeration value="DummyKeyPress" />
+      <xs:enumeration value="Text.Write" />
+      <xs:enumeration value="Text.Backspace" />
+      <xs:enumeration value="Text.Delete" />
+      <xs:enumeration value="Text.NewBlock" />
+      <xs:enumeration value="Text.SelectAll" />
+      <xs:enumeration value="Text.Undo" />
+      <xs:enumeration value="Text.Redo" />
+      <xs:enumeration value="Text.Cancel" />
+      <xs:enumeration value="Text.Save" />
+      <xs:enumeration value="Text.CaretLeft" />
+      <xs:enumeration value="Text.CaretRight" />
+      <xs:enumeration value="Text.CaretUp" />
+      <xs:enumeration value="Text.CaretDown" />
+      <xs:enumeration value="Text.CaretLineStart" />
+      <xs:enumeration value="Text.CaretLineEnd" />
+      <xs:enumeration value="Text.CaretPageUp" />
+      <xs:enumeration value="Text.CaretPageDown" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="UI">
     <xs:restriction base="xs:string">
+      <xs:enumeration value="UI.ShowAlt" />
+      <xs:enumeration value="UI.ShowMain" />
+      <xs:enumeration value="Settings.Open" />
+      <xs:enumeration value="Settings.Save" />
+      <xs:enumeration value="Tab.Close" />
+      <xs:enumeration value="Tab.CloseOthers" />
+      <xs:enumeration value="Tab.CloseRight" />
+      <xs:enumeration value="Tab.SplitRight" />
+      <xs:enumeration value="Tab.SplitDown" />
+      <xs:enumeration value="Tab.MoveToNewWindow" />
+      <xs:enumeration value="Tab.HasSiblings" />
+      <xs:enumeration value="Tab.HasRight" />
+      <xs:enumeration value="Tab.CanTearOff" />
       <xs:enumeration value="TestAction" />
+      <xs:enumeration value="View.SplitRight" />
+      <xs:enumeration value="View.SplitDown" />
+      <xs:enumeration value="Window.Minimize" />
+      <xs:enumeration value="Window.MaximizeRestore" />
+      <xs:enumeration value="Window.Close" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Bootstrap">
     <xs:restriction base="xs:string">
+      <xs:enumeration value="ContextMenus.LoadMenus" />
+      <xs:enumeration value="Gradients.LoadGradients" />
       <xs:enumeration value="Context.LoadContexts" />
+      <xs:enumeration value="Context.LoadDeclared" />
       <xs:enumeration value="EntityRegistry.ParseXML" />
+      <xs:enumeration value="Settings.LoadAll" />
+      <xs:enumeration value="AssetImporter.RunImports" />
+      <xs:enumeration value="Logging.Configure" />
+      <xs:enumeration value="DataManager.ParseXML" />
       <xs:enumeration value="Engine.SystemSetup" />
       <xs:enumeration value="Engine.InitWindowing" />
       <xs:enumeration value="Renderer.InitRenderer" />
@@ -29,10 +71,29 @@
       <xs:enumeration value="AssetRegistries.RegisterSerializableTypes" />
       <xs:enumeration value="AssetRegistries.InstantiateRegistries" />
       <xs:enumeration value="AssetRegistries.PrepareDefaultAssets" />
+      <xs:enumeration value="AssetRegistries.PreloadAssets" />
       <xs:enumeration value="AssetRegistries.PrepareAllAssets" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:simpleType name="PoolSort">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="UI.DFSOrder" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Shutdown">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Notes.SettleUnnamed" />
+      <xs:enumeration value="Notes.SaveEdited" />
+      <xs:enumeration value="Settings.SaveAll" />
+      <xs:enumeration value="Logging.Flush" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Settings">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Renderer.RequestSwapchainRebuild" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:simpleType name="Uncategorized">
-    <xs:union memberTypes="actions:Input actions:UI actions:Bootstrap" />
+    <xs:union memberTypes="actions:Input actions:UI actions:Bootstrap actions:PoolSort actions:Shutdown actions:Settings" />
   </xs:simpleType>
 </xsd:schema>

@@ -44,7 +44,7 @@ A plain `VulkanControl` holds **one** child; use a container ([[StackPanel]], Gr
 | `Register*` / `Resolve*` (Enter/Exit/Click/MultiClick/Release/AltClick/AltRelease/Drag/Hover/Scroll) | public | Subscribe to / fire input events. |
 | `BubbleAll()` | public | Enable event bubbling for every event. |
 | `UpdateControlData()` | internal | Push `controlData` (color/UVs) to the GPU. |
-| `ParseXML(name)` | static | Build a control tree from a UI XML document. |
+| `ParseXML(document)` | static | Build a control tree from a [[UI Document]] named in the `uiDocuments` registry. |
 | `EnumColorToHex` / `HexToRGB` | static | Color helpers. |
 
 ## Fields & Properties
@@ -125,7 +125,7 @@ Filtering at registration rather than at dispatch is what lets counts mean diffe
 Bubbling is a contract an override can break, and one does: **`TextInputControl.ResolveOnClick` begins an edit and returns without calling base**, so `bubbleClick` is dead on it whatever the XML says and nothing nested inside a `TextInput` can ever be clicked. That is why button captions and list rows use [[Label]] — text that is drawn and never edited, bubbling from its constructor the way `GlyphControl` does, on the principle that decoration must not consume input. An override that does not call base is silently swallowing every event below it.
 
 ### XML
-`ParseXML(name)` loads the doc via `Paths.Doc(name)`, builds a `WindowControl` root, then `RecursiveParse` instantiates child controls by element name (`AnyXMLType.FindType`) and `ResolveAttributes` maps XML attributes onto `[A_XSDElementProperty]` members (actions resolve via `[A_XSDActionDependency]`).
+`ParseXML(document)` takes a registry name rather than a filename: it fetches the [[UI Document]] declared under that name, loads the file at its resolved path, builds a `WindowControl` root, then `RecursiveParse` instantiates child controls by element name (`AnyXMLType.FindType`) and `ResolveAttributes` maps XML attributes onto `[A_XSDElementProperty]` members (actions resolve via `[A_XSDActionDependency]`). The scan that collects every `[A_XSDActionDependency]` in the process is done once and shared by every load, not rebuilt per call.
 
 Scalars convert through `TypeDescriptor`, so a compound value needs a `TypeConverter` or the whole parse dies on it — `Thickness` is the one that has one, and `ThicknessConverter` reads `Padding="8"`, `Padding="8,4"` and `Padding="1,2,3,4"` as the struct's own one-, two- and four-argument constructors, which makes the two-value form `(horizontal, vertical)` and not CSS's `vertical horizontal`.
 

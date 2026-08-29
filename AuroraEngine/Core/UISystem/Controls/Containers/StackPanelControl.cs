@@ -200,10 +200,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                         _ => inner.x + child.margin.left,
                     };
 
+                    // clamped to what is left of the panel: an unsized child measures the whole offer
                     float childH = isStar
                         ? child.heightStar * starUnit - child.margin.totalVertical
                         : child.DesiredSize.Y;
-                    childH = MathF.Max(0, childH);
+                    childH = Math.Clamp(childH, 0, MathF.Max(0, inner.Bottom - cursor - child.margin.totalVertical));
 
                     float childY = cursor + child.margin.top;
                     child.Arrange(new LayoutRect(childX, childY, childW, childH));
@@ -226,7 +227,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                     float childW = isStar
                         ? child.widthStar * starUnit - child.margin.totalHorizontal
                         : child.DesiredSize.X;
-                    childW = MathF.Max(0, childW);
+                    childW = Math.Clamp(childW, 0, MathF.Max(0, inner.Right - cursor - child.margin.totalHorizontal));
 
                     float childX = cursor + child.margin.left;
                     child.Arrange(new LayoutRect(childX, childY, childW, childH));

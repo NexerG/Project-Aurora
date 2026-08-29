@@ -57,6 +57,24 @@ The box the two passes divide comes from the panel's own `Width`/`Height` when e
 ### Arrange
 Recomputes the star allocation against the final size, then walks a cursor along the main axis placing each child, applying margins and cross-axis alignment (`Stretch`/`Left`/`Center`/`Right`, etc.).
 
+```
+Arrange(finalRect)
+	inner = finalRect shrunk by padding
+	recompute starUnit against the final size
+	cursor = inner's start on the main axis
+	for each child control
+		cursor += Spacing unless this is the first child
+		cross size = the full cross axis when the child is auto or Stretch, otherwise its desired cross size clamped to the axis
+		main size = the child's star share when it is starred, otherwise its desired main size
+		main size = clamp(main size, 0, inner's end on the main axis - cursor - the child's main-axis margin)
+		child.Arrange(rect at cursor, of that size)
+		cursor += main size + the child's main-axis margin
+```
+
+A child never runs past the end of the panel's own box, and the clamp on the line above is what guarantees it. It matters because `Measure` hands a non-star child `float.MaxValue` on the main axis and [[Vulkan Control]] gives a control with no `Width`/`Height` whatever it was offered: without the clamp, one unsized child reports `float.MaxValue` as its desired size, that number becomes both its quad and the cursor, and the result is a single child covering the whole panel in its own colour with every later sibling arranged off-screen.
+
+The clamp does nothing inside a scroll viewport, which is the case it could plausibly have broken. Scrollable arranges its content at the larger of the content's desired size and the viewport, so a stack inside one is already given a box as tall as its own content, and there is nothing left over to clamp against.
+
 ## XML
 ```xml
 <StackPanel Orientation="Vertical" Spacing="8">

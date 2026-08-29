@@ -3,14 +3,59 @@
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:simpleType name="Input">
-    <xs:union memberTypes="types:Keys" />
+    <xs:union memberTypes="types:InputModifier types:KeybindAccess types:Keys" />
   </xs:simpleType>
+  <xs:attributeGroup name="KeybindModifier.Attributes">
+    <xs:attribute name="Key" type="types:Keys" />
+  </xs:attributeGroup>
   <xs:element name="KeybindModifier" type="types:KeybindModifier" />
   <xs:complexType name="KeybindModifier">
     <xs:sequence />
-    <xs:attribute name="Key" type="types:Keys" />
+    <xs:attributeGroup ref="types:KeybindModifier.Attributes" />
   </xs:complexType>
+  <xs:simpleType name="InputModifier">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Extend" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="NamedModifier.Attributes">
+    <xs:attribute name="Modifier" type="types:InputModifier" />
+    <xs:attribute name="Key" type="types:Keys" />
+  </xs:attributeGroup>
+  <xs:element name="NamedModifier" type="types:NamedModifier" />
+  <xs:complexType name="NamedModifier">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NamedModifier.Attributes" />
+  </xs:complexType>
+  <xs:simpleType name="KeybindAccess">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Open" />
+      <xs:enumeration value="Locked" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="Keybind.Attributes">
+    <xs:attribute name="Trigger" type="types:Keys" />
+    <xs:attribute name="Action" type="actions:Input" />
+    <xs:attribute name="Access" type="types:KeybindAccess" />
+  </xs:attributeGroup>
   <xs:element name="Keybind" type="types:Keybind" />
+  <xs:group name="IKeybindChild.Children">
+    <xs:choice>
+      <xs:element name="KeybindModifier" type="types:KeybindModifier" />
+      <xs:element name="Condition" type="types:Condition" />
+      <xs:element name="Press" type="types:Press" />
+      <xs:element name="Release" type="types:Release" />
+      <xs:element name="Hold" type="types:Hold" />
+      <xs:element name="HoldRelease" type="types:HoldRelease" />
+      <xs:element name="MaxHoldTime" type="types:MaxHoldTime" />
+      <xs:element name="MultiTap" type="types:MultiTap" />
+      <xs:element name="Continuous" type="types:Continuous" />
+      <xs:element name="Repeat" type="types:Repeat" />
+      <xs:element name="Toggle" type="types:Toggle" />
+      <xs:element name="HoldContinuous" type="types:HoldContinuous" />
+      <xs:element name="Chord" type="types:Chord" />
+    </xs:choice>
+  </xs:group>
   <xs:complexType name="Keybind">
     <xs:sequence>
       <xs:element minOccurs="0" maxOccurs="unbounded" name="Modifier" type="types:KeybindModifier">
@@ -18,24 +63,9 @@
           <xs:documentation></xs:documentation>
         </xs:annotation>
       </xs:element>
-      <xs:choice minOccurs="0" maxOccurs="unbounded">
-        <xs:element name="KeybindModifier" type="types:KeybindModifier" />
-        <xs:element name="Condition" type="types:Condition" />
-        <xs:element name="Press" type="types:Press" />
-        <xs:element name="Release" type="types:Release" />
-        <xs:element name="Hold" type="types:Hold" />
-        <xs:element name="HoldRelease" type="types:HoldRelease" />
-        <xs:element name="MaxHoldTime" type="types:MaxHoldTime" />
-        <xs:element name="MultiTap" type="types:MultiTap" />
-        <xs:element name="Continuous" type="types:Continuous" />
-        <xs:element name="Repeat" type="types:Repeat" />
-        <xs:element name="Toggle" type="types:Toggle" />
-        <xs:element name="HoldContinuous" type="types:HoldContinuous" />
-        <xs:element name="Chord" type="types:Chord" />
-      </xs:choice>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:IKeybindChild.Children" />
     </xs:sequence>
-    <xs:attribute name="Trigger" type="types:Keys" />
-    <xs:attribute name="Action" type="actions:Input" />
+    <xs:attributeGroup ref="types:Keybind.Attributes" />
   </xs:complexType>
   <xs:simpleType name="Keys">
     <xs:restriction base="xs:string">
@@ -172,6 +202,12 @@
     </xs:restriction>
   </xs:simpleType>
   <xs:element name="KeybindMap" type="types:KeybindMap" />
+  <xs:group name="IKeybindMapChild.Children">
+    <xs:choice>
+      <xs:element name="NamedModifier" type="types:NamedModifier" />
+      <xs:element name="Keybind" type="types:Keybind" />
+    </xs:choice>
+  </xs:group>
   <xs:complexType name="KeybindMap">
     <xs:sequence>
       <xs:element minOccurs="0" maxOccurs="unbounded" name="Keybind" type="types:Keybind">
@@ -179,7 +215,12 @@
           <xs:documentation></xs:documentation>
         </xs:annotation>
       </xs:element>
-      <xs:choice minOccurs="0" maxOccurs="unbounded" />
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="NamedModifier" type="types:NamedModifier">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:IKeybindMapChild.Children" />
     </xs:sequence>
   </xs:complexType>
   <xs:element name="Condition" type="types:Condition" />
@@ -194,25 +235,37 @@
   <xs:complexType name="Release">
     <xs:sequence />
   </xs:complexType>
+  <xs:attributeGroup name="Hold.Attributes">
+    <xs:attribute name="Threshold" type="xs:float" />
+  </xs:attributeGroup>
   <xs:element name="Hold" type="types:Hold" />
   <xs:complexType name="Hold">
     <xs:sequence />
-    <xs:attribute name="Threshold" type="xs:float" />
+    <xs:attributeGroup ref="types:Hold.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="HoldRelease.Attributes">
+    <xs:attribute name="Threshold" type="xs:float" />
+  </xs:attributeGroup>
   <xs:element name="HoldRelease" type="types:HoldRelease" />
   <xs:complexType name="HoldRelease">
     <xs:sequence />
-    <xs:attribute name="Threshold" type="xs:float" />
+    <xs:attributeGroup ref="types:HoldRelease.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="MaxHoldTime.Attributes">
+    <xs:attribute name="Threshold" type="xs:float" />
+  </xs:attributeGroup>
   <xs:element name="MaxHoldTime" type="types:MaxHoldTime" />
   <xs:complexType name="MaxHoldTime">
     <xs:sequence />
-    <xs:attribute name="Threshold" type="xs:float" />
+    <xs:attributeGroup ref="types:MaxHoldTime.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="MultiTap.Attributes">
+    <xs:attribute name="Count" type="xs:int" />
+  </xs:attributeGroup>
   <xs:element name="MultiTap" type="types:MultiTap" />
   <xs:complexType name="MultiTap">
     <xs:sequence />
-    <xs:attribute name="Count" type="xs:int" />
+    <xs:attributeGroup ref="types:MultiTap.Attributes" />
   </xs:complexType>
   <xs:element name="Continuous" type="types:Continuous" />
   <xs:complexType name="Continuous">
@@ -221,21 +274,25 @@
   <xs:element name="Repeat" type="types:Repeat" />
   <xs:complexType name="Repeat">
     <xs:sequence />
-    <xs:attribute name="Delay" type="xs:float" />
-    <xs:attribute name="Rate" type="xs:float" />
   </xs:complexType>
   <xs:element name="Toggle" type="types:Toggle" />
   <xs:complexType name="Toggle">
     <xs:sequence />
   </xs:complexType>
+  <xs:attributeGroup name="HoldContinuous.Attributes">
+    <xs:attribute name="Threshold" type="xs:float" />
+  </xs:attributeGroup>
   <xs:element name="HoldContinuous" type="types:HoldContinuous" />
   <xs:complexType name="HoldContinuous">
     <xs:sequence />
-    <xs:attribute name="Threshold" type="xs:float" />
+    <xs:attributeGroup ref="types:HoldContinuous.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="Chord.Attributes">
+    <xs:attribute name="Key" type="types:Keys" />
+  </xs:attributeGroup>
   <xs:element name="Chord" type="types:Chord" />
   <xs:complexType name="Chord">
     <xs:sequence />
-    <xs:attribute name="Key" type="types:Keys" />
+    <xs:attributeGroup ref="types:Chord.Attributes" />
   </xs:complexType>
 </xs:schema>

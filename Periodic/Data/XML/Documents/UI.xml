@@ -38,7 +38,7 @@
 				<EditableTabs Name="Tabs" Width="525" MinWidth="120" ColorHex="#1e1e1e" ContextMenu="view"
 							  TabHeight="28" TabWidth="180"
 							  TabColorHex="#252525" ActiveTabColorHex="#1e1e1e" TabHoverColorHex="#2F2F2F"
-							  TearOffDocument="TabWindow.xml">
+							  TearOffDocument="tab-window">
 					<TabItem Header="SampleNote">
 						<DocumentEditor Source="../../Notes/SampleNote.xml"/>
 					</TabItem>
@@ -47,7 +47,7 @@
 				<EditableTabs Name="TabsRight" WidthStar="1" MinWidth="120" ColorHex="#1e1e1e" ContextMenu="view"
 							  TabHeight="28" TabWidth="180"
 							  TabColorHex="#252525" ActiveTabColorHex="#1e1e1e" TabHoverColorHex="#2F2F2F"
-							  TearOffDocument="TabWindow.xml">
+							  TearOffDocument="tab-window">
 					<TabItem Header="Keybinds">
 						<DocumentEditor Source="../../Notes/Reference/Keybinds.xml"/>
 					</TabItem>

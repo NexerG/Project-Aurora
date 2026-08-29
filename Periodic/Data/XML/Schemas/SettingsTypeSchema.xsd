@@ -7,54 +7,50 @@
   <xs:simpleType name="Settings">
     <xs:union memberTypes="types:SettingScope types:LogLevel types:WindowMode" />
   </xs:simpleType>
+  <xs:attributeGroup name="Vault.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Path" type="xs:string" />
+  </xs:attributeGroup>
   <xs:element name="Vault" type="types:Vault" />
   <xs:complexType name="Vault">
     <xs:sequence />
-    <xs:attribute name="Path" type="xs:string" />
-    <xs:attribute name="Scope" type="types:SettingScope" />
-    <xs:attribute name="OnChanged" type="xs:string" />
+    <xs:attributeGroup ref="types:Vault.Attributes" />
   </xs:complexType>
   <xs:element name="Periodic" type="types:Periodic" />
+  <xs:group name="Setting.Children">
+    <xs:choice>
+      <xs:element name="Vault" type="types:Vault" />
+      <xs:element name="DragGhost" type="types:DragGhost" />
+      <xs:element name="LogConsole" type="types:LogConsole" />
+      <xs:element name="LogFile" type="types:LogFile" />
+      <xs:element name="LogRecorder" type="types:LogRecorder" />
+      <xs:element name="DoubleClick" type="types:DoubleClick" />
+      <xs:element name="KeyRepeat" type="types:KeyRepeat" />
+      <xs:element name="Device" type="types:Device" />
+      <xs:element name="Monitor" type="types:Monitor" />
+      <xs:element name="Window" type="types:Window" />
+      <xs:element name="VSync" type="types:VSync" />
+      <xs:element name="Validation" type="types:Validation" />
+    </xs:choice>
+  </xs:group>
   <xs:complexType name="Periodic">
     <xs:sequence>
-      <xs:choice minOccurs="0" maxOccurs="unbounded">
-        <xs:element name="Vault" type="types:Vault" />
-        <xs:element name="DragGhost" type="types:DragGhost" />
-        <xs:element name="LogConsole" type="types:LogConsole" />
-        <xs:element name="LogFile" type="types:LogFile" />
-        <xs:element name="LogRecorder" type="types:LogRecorder" />
-        <xs:element name="DoubleClick" type="types:DoubleClick" />
-        <xs:element name="KeyRepeat" type="types:KeyRepeat" />
-        <xs:element name="Device" type="types:Device" />
-        <xs:element name="Monitor" type="types:Monitor" />
-        <xs:element name="Window" type="types:Window" />
-        <xs:element name="VSync" type="types:VSync" />
-      </xs:choice>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
     </xs:sequence>
   </xs:complexType>
+  <xs:attributeGroup name="DragGhost.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Opacity" type="xs:float" />
+  </xs:attributeGroup>
   <xs:element name="DragGhost" type="types:DragGhost" />
   <xs:complexType name="DragGhost">
     <xs:sequence />
-    <xs:attribute name="Opacity" type="xs:float" />
-    <xs:attribute name="Scope" type="types:SettingScope" />
-    <xs:attribute name="OnChanged" type="xs:string" />
+    <xs:attributeGroup ref="types:DragGhost.Attributes" />
   </xs:complexType>
   <xs:element name="UI" type="types:UI" />
   <xs:complexType name="UI">
     <xs:sequence>
-      <xs:choice minOccurs="0" maxOccurs="unbounded">
-        <xs:element name="Vault" type="types:Vault" />
-        <xs:element name="DragGhost" type="types:DragGhost" />
-        <xs:element name="LogConsole" type="types:LogConsole" />
-        <xs:element name="LogFile" type="types:LogFile" />
-        <xs:element name="LogRecorder" type="types:LogRecorder" />
-        <xs:element name="DoubleClick" type="types:DoubleClick" />
-        <xs:element name="KeyRepeat" type="types:KeyRepeat" />
-        <xs:element name="Device" type="types:Device" />
-        <xs:element name="Monitor" type="types:Monitor" />
-        <xs:element name="Window" type="types:Window" />
-        <xs:element name="VSync" type="types:VSync" />
-      </xs:choice>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
     </xs:sequence>
   </xs:complexType>
   <xs:element name="DocumentSettings" type="types:DocumentSettings" />
@@ -73,30 +69,38 @@
       <xs:enumeration value="User" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:attributeGroup name="Setting.Attributes">
+    <xs:attribute name="Scope" type="types:SettingScope" />
+    <xs:attribute name="OnChanged" type="xs:string" />
+  </xs:attributeGroup>
   <xs:element name="UserSettings" type="types:UserSettings" />
+  <xs:group name="ISettingsGroup.Children">
+    <xs:choice>
+      <xs:element name="Periodic" type="types:Periodic" />
+      <xs:element name="UI" type="types:UI" />
+      <xs:element name="DocumentSettings" type="types:DocumentSettings" />
+      <xs:element name="Logging" type="types:Logging" />
+      <xs:element name="InputBindings" type="types:InputBindings" />
+      <xs:element name="Input" type="types:Input" />
+      <xs:element name="Graphics" type="types:Graphics" />
+    </xs:choice>
+  </xs:group>
   <xs:complexType name="UserSettings">
     <xs:sequence>
-      <xs:choice minOccurs="0" maxOccurs="unbounded">
-        <xs:element name="Periodic" type="types:Periodic" />
-        <xs:element name="UI" type="types:UI" />
-        <xs:element name="DocumentSettings" type="types:DocumentSettings" />
-        <xs:element name="Logging" type="types:Logging" />
-        <xs:element name="InputBindings" type="types:InputBindings" />
-        <xs:element name="Input" type="types:Input" />
-        <xs:element name="Graphics" type="types:Graphics" />
-      </xs:choice>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:ISettingsGroup.Children" />
     </xs:sequence>
   </xs:complexType>
+  <xs:attributeGroup name="LogConsole.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="MinLevel" type="types:LogLevel" />
+  </xs:attributeGroup>
   <xs:element name="LogConsole" type="types:LogConsole" />
   <xs:complexType name="LogConsole">
     <xs:sequence />
-    <xs:attribute name="MinLevel" type="types:LogLevel" />
-    <xs:attribute name="Scope" type="types:SettingScope" />
-    <xs:attribute name="OnChanged" type="xs:string" />
+    <xs:attributeGroup ref="types:LogConsole.Attributes" />
   </xs:complexType>
-  <xs:element name="LogFile" type="types:LogFile" />
-  <xs:complexType name="LogFile">
-    <xs:sequence />
+  <xs:attributeGroup name="LogFile.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
     <xs:attribute name="MinLevel" type="types:LogLevel" />
     <xs:attribute name="Directory" type="xs:string" />
     <xs:attribute name="Name" type="xs:string" />
@@ -104,34 +108,27 @@
     <xs:attribute name="FlushMs" type="xs:int" />
     <xs:attribute name="MaxFileMB" type="xs:int" />
     <xs:attribute name="Keep" type="xs:int" />
-    <xs:attribute name="Scope" type="types:SettingScope" />
-    <xs:attribute name="OnChanged" type="xs:string" />
-  </xs:complexType>
-  <xs:element name="LogRecorder" type="types:LogRecorder" />
-  <xs:complexType name="LogRecorder">
+  </xs:attributeGroup>
+  <xs:element name="LogFile" type="types:LogFile" />
+  <xs:complexType name="LogFile">
     <xs:sequence />
+    <xs:attributeGroup ref="types:LogFile.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="LogRecorder.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
     <xs:attribute name="Enabled" type="xs:boolean" />
     <xs:attribute name="MinLevel" type="types:LogLevel" />
     <xs:attribute name="CapacityKB" type="xs:int" />
-    <xs:attribute name="Scope" type="types:SettingScope" />
-    <xs:attribute name="OnChanged" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="LogRecorder" type="types:LogRecorder" />
+  <xs:complexType name="LogRecorder">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:LogRecorder.Attributes" />
   </xs:complexType>
   <xs:element name="Logging" type="types:Logging" />
   <xs:complexType name="Logging">
     <xs:sequence>
-      <xs:choice minOccurs="0" maxOccurs="unbounded">
-        <xs:element name="Vault" type="types:Vault" />
-        <xs:element name="DragGhost" type="types:DragGhost" />
-        <xs:element name="LogConsole" type="types:LogConsole" />
-        <xs:element name="LogFile" type="types:LogFile" />
-        <xs:element name="LogRecorder" type="types:LogRecorder" />
-        <xs:element name="DoubleClick" type="types:DoubleClick" />
-        <xs:element name="KeyRepeat" type="types:KeyRepeat" />
-        <xs:element name="Device" type="types:Device" />
-        <xs:element name="Monitor" type="types:Monitor" />
-        <xs:element name="Window" type="types:Window" />
-        <xs:element name="VSync" type="types:VSync" />
-      </xs:choice>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
     </xs:sequence>
   </xs:complexType>
   <xs:simpleType name="LogLevel">
@@ -146,12 +143,15 @@
       <xs:enumeration value="Off" />
     </xs:restriction>
   </xs:simpleType>
-  <xs:element name="Bind" type="types:Bind" />
-  <xs:complexType name="Bind">
-    <xs:sequence />
+  <xs:attributeGroup name="Bind.Attributes">
     <xs:attribute name="Action" type="xs:string" />
     <xs:attribute name="Trigger" type="Input:Keys" />
     <xs:attribute name="Modifiers" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="Bind" type="types:Bind" />
+  <xs:complexType name="Bind">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Bind.Attributes" />
   </xs:complexType>
   <xs:element name="InputBindings" type="types:InputBindings" />
   <xs:complexType name="InputBindings">
@@ -161,88 +161,88 @@
           <xs:documentation></xs:documentation>
         </xs:annotation>
       </xs:element>
-      <xs:choice minOccurs="0" maxOccurs="unbounded" />
     </xs:sequence>
   </xs:complexType>
+  <xs:attributeGroup name="DoubleClick.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Timeout" type="xs:float" />
+  </xs:attributeGroup>
   <xs:element name="DoubleClick" type="types:DoubleClick" />
   <xs:complexType name="DoubleClick">
     <xs:sequence />
-    <xs:attribute name="Timeout" type="xs:float" />
-    <xs:attribute name="Scope" type="types:SettingScope" />
-    <xs:attribute name="OnChanged" type="xs:string" />
+    <xs:attributeGroup ref="types:DoubleClick.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="KeyRepeat.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Delay" type="xs:float" />
+    <xs:attribute name="Rate" type="xs:float" />
+  </xs:attributeGroup>
   <xs:element name="KeyRepeat" type="types:KeyRepeat" />
   <xs:complexType name="KeyRepeat">
     <xs:sequence />
-    <xs:attribute name="Delay" type="xs:float" />
-    <xs:attribute name="Rate" type="xs:float" />
-    <xs:attribute name="Scope" type="types:SettingScope" />
-    <xs:attribute name="OnChanged" type="xs:string" />
+    <xs:attributeGroup ref="types:KeyRepeat.Attributes" />
   </xs:complexType>
   <xs:element name="Input" type="types:Input" />
   <xs:complexType name="Input">
     <xs:sequence>
-      <xs:choice minOccurs="0" maxOccurs="unbounded">
-        <xs:element name="Vault" type="types:Vault" />
-        <xs:element name="DragGhost" type="types:DragGhost" />
-        <xs:element name="LogConsole" type="types:LogConsole" />
-        <xs:element name="LogFile" type="types:LogFile" />
-        <xs:element name="LogRecorder" type="types:LogRecorder" />
-        <xs:element name="DoubleClick" type="types:DoubleClick" />
-        <xs:element name="KeyRepeat" type="types:KeyRepeat" />
-        <xs:element name="Device" type="types:Device" />
-        <xs:element name="Monitor" type="types:Monitor" />
-        <xs:element name="Window" type="types:Window" />
-        <xs:element name="VSync" type="types:VSync" />
-      </xs:choice>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
     </xs:sequence>
   </xs:complexType>
+  <xs:attributeGroup name="Device.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Name" type="xs:string" />
+  </xs:attributeGroup>
   <xs:element name="Device" type="types:Device" />
   <xs:complexType name="Device">
     <xs:sequence />
-    <xs:attribute name="Name" type="xs:string" />
-    <xs:attribute name="Scope" type="types:SettingScope" />
-    <xs:attribute name="OnChanged" type="xs:string" />
+    <xs:attributeGroup ref="types:Device.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="Monitor.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Name" type="xs:string" />
+  </xs:attributeGroup>
   <xs:element name="Monitor" type="types:Monitor" />
   <xs:complexType name="Monitor">
     <xs:sequence />
-    <xs:attribute name="Name" type="xs:string" />
-    <xs:attribute name="Scope" type="types:SettingScope" />
-    <xs:attribute name="OnChanged" type="xs:string" />
+    <xs:attributeGroup ref="types:Monitor.Attributes" />
   </xs:complexType>
-  <xs:element name="Window" type="types:Window" />
-  <xs:complexType name="Window">
-    <xs:sequence />
+  <xs:attributeGroup name="Window.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
     <xs:attribute name="Mode" type="types:WindowMode" />
     <xs:attribute name="Width" type="xs:unsignedInt" />
     <xs:attribute name="Height" type="xs:unsignedInt" />
-    <xs:attribute name="Scope" type="types:SettingScope" />
-    <xs:attribute name="OnChanged" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="Window" type="types:Window" />
+  <xs:complexType name="Window">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Window.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="VSync.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="On" type="xs:boolean" />
+  </xs:attributeGroup>
   <xs:element name="VSync" type="types:VSync" />
   <xs:complexType name="VSync">
     <xs:sequence />
-    <xs:attribute name="On" type="xs:boolean" />
-    <xs:attribute name="Scope" type="types:SettingScope" />
-    <xs:attribute name="OnChanged" type="xs:string" />
+    <xs:attributeGroup ref="types:VSync.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="Validation.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Enabled" type="xs:boolean" />
+    <xs:attribute name="Synchronization" type="xs:boolean" />
+    <xs:attribute name="BestPractices" type="xs:boolean" />
+    <xs:attribute name="GpuAssisted" type="xs:boolean" />
+    <xs:attribute name="MinLevel" type="types:LogLevel" />
+  </xs:attributeGroup>
+  <xs:element name="Validation" type="types:Validation" />
+  <xs:complexType name="Validation">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Validation.Attributes" />
   </xs:complexType>
   <xs:element name="Graphics" type="types:Graphics" />
   <xs:complexType name="Graphics">
     <xs:sequence>
-      <xs:choice minOccurs="0" maxOccurs="unbounded">
-        <xs:element name="Vault" type="types:Vault" />
-        <xs:element name="DragGhost" type="types:DragGhost" />
-        <xs:element name="LogConsole" type="types:LogConsole" />
-        <xs:element name="LogFile" type="types:LogFile" />
-        <xs:element name="LogRecorder" type="types:LogRecorder" />
-        <xs:element name="DoubleClick" type="types:DoubleClick" />
-        <xs:element name="KeyRepeat" type="types:KeyRepeat" />
-        <xs:element name="Device" type="types:Device" />
-        <xs:element name="Monitor" type="types:Monitor" />
-        <xs:element name="Window" type="types:Window" />
-        <xs:element name="VSync" type="types:VSync" />
-      </xs:choice>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
     </xs:sequence>
   </xs:complexType>
   <xs:simpleType name="WindowMode">

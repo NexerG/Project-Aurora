@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.UISystem.Actions;
 using ArctisAurora.EngineWork;
 
 namespace AuroraEditor.EditorProgram.UIFunctions
@@ -26,5 +27,13 @@ namespace AuroraEditor.EditorProgram.UIFunctions
         {
             Log.Debug($"last character input was '{InputHandler.lastCharInput}'");
         }
+
+        // A swap target is a named action rather than an argument, so each document a host can show
+        // gets one of these.
+        [A_XSDActionDependency("UI.ShowAlt", "UI", "Swaps the invoking window to the alternate layout")]
+        public static void ShowAlt() => UIActions.Invoking().ui.SetUI("alt");
+
+        [A_XSDActionDependency("UI.ShowMain", "UI", "Swaps the invoking window back to the main layout")]
+        public static void ShowMain() => UIActions.Invoking().ui.SetUI("main");
     }
 }

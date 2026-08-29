@@ -1,30 +1,40 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<xs:schema xmlns:types="http://arctisaurora/AuroraEntityRegistryTypes" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:allTypes="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraEntityRegistryTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<xs:schema xmlns:types="http://arctisaurora/AuroraEntityRegistryTypes" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:allTypes="http://arctisaurora/AuroraTypes" xmlns:UI="http://arctisaurora/AuroraUITypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraEntityRegistryTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
-  <xs:element name="VulkanControl" type="types:VulkanControl" />
-  <xs:complexType name="VulkanControl">
-    <xs:sequence />
+  <xs:import schemaLocation="UITypeSchema.xsd" namespace="http://arctisaurora/AuroraUITypes" />
+  <xs:attributeGroup name="VulkanControl.Attributes">
+    <xs:attributeGroup ref="types:Entity.Attributes" />
     <xs:attribute name="Width" type="xs:int" />
     <xs:attribute name="Height" type="xs:int" />
     <xs:attribute name="Margin" type="xs:string" />
     <xs:attribute name="Padding" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
-    <xs:attribute name="ControlColor" type="types:ControlColor" />
+    <xs:attribute name="Alpha" type="xs:float" />
+    <xs:attribute name="ControlColor" type="UI:ControlColor" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="OutlineColorHex" type="xs:string" />
+    <xs:attribute name="OutlineWidth" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
     <xs:attribute name="WidthStar" type="xs:float" />
     <xs:attribute name="HeightStar" type="xs:float" />
     <xs:attribute name="MinHeight" type="xs:int" />
     <xs:attribute name="MinWidth" type="xs:int" />
     <xs:attribute name="HorizontalPos" type="xs:float" />
     <xs:attribute name="VerticalPos" type="xs:float" />
-    <xs:attribute name="HorizontalAlignment" type="types:HorizontalAlignment" />
-    <xs:attribute name="VerticalAlignment" type="types:VeticalAlignment" />
+    <xs:attribute name="HorizontalAlignment" type="UI:HorizontalAlignment" />
+    <xs:attribute name="VerticalAlignment" type="UI:VeticalAlignment" />
     <xs:attribute name="ClipToBounds" type="xs:boolean" />
-    <xs:attribute name="DockMode" type="types:DockMode" />
+    <xs:attribute name="DockMode" type="UI:DockMode" />
     <xs:attribute name="Grid.Column" type="xs:int" />
     <xs:attribute name="Grid.Row" type="xs:int" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
     <xs:attribute name="onEnter" type="actions:UI" />
+    <xs:attribute name="BubbleEnter" type="xs:boolean" />
     <xs:attribute name="onExit" type="actions:UI" />
+    <xs:attribute name="BubbleExit" type="xs:boolean" />
     <xs:attribute name="onClick" type="actions:UI" />
     <xs:attribute name="BubbleClick" type="xs:boolean" />
     <xs:attribute name="onAltClick" type="actions:UI" />
@@ -37,12 +47,16 @@
     <xs:attribute name="onScrollUp" type="actions:UI" />
     <xs:attribute name="onScrollDown" type="actions:UI" />
     <xs:attribute name="BubbleScroll" type="xs:boolean" />
-  </xs:complexType>
+    <xs:attribute name="ContextMenu" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:attributeGroup name="Entry.Attributes">
+    <xs:attribute name="ListName" type="xs:string" />
+    <xs:attribute name="EntityType" type="allTypes:Uncategorized" />
+  </xs:attributeGroup>
   <xs:element name="Entry" type="types:Entry" />
   <xs:complexType name="Entry">
     <xs:sequence />
-    <xs:attribute name="ListName" type="xs:string" />
-    <xs:attribute name="EntityType" type="allTypes:Uncategorized" />
+    <xs:attributeGroup ref="types:Entry.Attributes" />
   </xs:complexType>
   <xs:element name="EntityRegistries" type="types:EntityRegistries" />
   <xs:complexType name="EntityRegistries">
@@ -54,8 +68,12 @@
       </xs:element>
     </xs:sequence>
   </xs:complexType>
+  <xs:attributeGroup name="Entity.Attributes">
+    <xs:attribute name="Name" type="xs:string" />
+  </xs:attributeGroup>
   <xs:element name="Entity" type="types:Entity" />
   <xs:complexType name="Entity">
     <xs:sequence />
+    <xs:attributeGroup ref="types:Entity.Attributes" />
   </xs:complexType>
 </xs:schema>

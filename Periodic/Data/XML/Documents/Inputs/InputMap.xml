@@ -45,6 +45,11 @@
 		<Press />
 	</Keybind>
 
+	<Keybind Trigger="A" Action="Text.SelectAll">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
 	<Keybind Trigger="Left" Action="Text.CaretLeft">
 		<Repeat />
 	</Keybind>

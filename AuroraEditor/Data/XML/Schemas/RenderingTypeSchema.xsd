@@ -25,9 +25,7 @@
       <xs:enumeration value="Linear" />
     </xs:restriction>
   </xs:simpleType>
-  <xs:element name="SamplerAsset" type="types:SamplerAsset" />
-  <xs:complexType name="SamplerAsset">
-    <xs:sequence />
+  <xs:attributeGroup name="SamplerAsset.Attributes">
     <xs:attribute name="Name" type="xs:string" />
     <xs:attribute name="MagFilter" type="types:SamplerFilter" />
     <xs:attribute name="MinFilter" type="types:SamplerFilter" />
@@ -36,5 +34,10 @@
     <xs:attribute name="AddressModeW" type="types:SamplerAddressMode" />
     <xs:attribute name="Anisotropy" type="xs:boolean" />
     <xs:attribute name="MipmapMode" type="types:SamplerMipmapMode" />
+  </xs:attributeGroup>
+  <xs:element name="SamplerAsset" type="types:SamplerAsset" />
+  <xs:complexType name="SamplerAsset">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:SamplerAsset.Attributes" />
   </xs:complexType>
 </xs:schema>

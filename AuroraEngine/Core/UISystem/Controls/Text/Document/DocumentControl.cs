@@ -395,6 +395,17 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             return true;
         }
 
+        // The first run's start to the last run's end, whatever the caret was doing.
+        public void SelectAll()
+        {
+            List<TextControl> runs = OrderedRuns();
+            if (runs.Count == 0) return;
+
+            TextControl last = runs[^1];
+            anchor = Normalize(new CaretSlot(runs[0], 0));
+            SetCaret(last, Length(last), true);
+        }
+
         // Boxes for the range anchor -> caret, one per visual line it covers. Everything unused is
         // arranged to nothing rather than destroyed — a drag would otherwise create and free
         // controls every tick, each one a pool allocation and a full paint-order permute.

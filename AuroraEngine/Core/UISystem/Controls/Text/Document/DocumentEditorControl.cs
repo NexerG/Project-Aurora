@@ -110,6 +110,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 
         public void CollapseSelection() => content?.CollapseSelection();
 
+        public void SelectAll() => content?.SelectAll();
+
         public bool DeleteSelection()
         {
             if (content == null || !content.DeleteSelection()) return false;

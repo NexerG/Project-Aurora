@@ -181,6 +181,26 @@ form, which is what they want — a page move should land on whatever line is ne
 No desired-x memory: up/down carry the caret's current x, so moving through a short line and back
 loses the original column. Standard editors keep one; unbuilt.
 
+### 12. Select-all is one method on the document, and the action picks editor or field (2026-08-29)
+
+`DocumentControl.SelectAll()` takes `OrderedRuns()`, sets `anchor` to `Normalize(first, 0)` and calls
+`SetCaret(last, Length(last), extend: true)`. It introduces no new primitive: the anchor write and the
+extending `SetCaret` are exactly what `SelectWord` does, so the ordering rule in decision 3 and the
+highlight geometry in decision 4 carry over untouched.
+
+`TextInputActions.SelectAll` has the editor-then-box shape every other text action has.
+`TextBoxControl.SelectAll()` already existed — `Focus()` calls it when a field opens — so the field half
+is one call. Bound `Ctrl+A` in Periodic's `InputMap.xml`.
+
+**No scroll-to-caret.** `MoveCaret` requests one and `SelectWord` does not; select-all belongs with the
+second group, since jumping the view to the document end is not what selecting everything should do.
+
+**GUI-verified**, and it is the first thing to exercise a whole-document range end to end: Ctrl+A
+highlighted every block from the first character to the last, typing one character replaced the entire
+note, and a single Ctrl+Z restored it exactly — bold run and block structure included. That is the
+cross-block `DeleteRange` → `InsertFragment` path [[document-undo]] flags as the one to distrust, and it
+held.
+
 ## Still open
 
 - **Clipping.** `ClipRect` is computed every `Arrange` and has no consumer, so nothing is scissored.

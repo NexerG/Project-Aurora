@@ -278,9 +278,14 @@ The last per-control GPU resource is gone; both UI columns are now whole-pool mi
 - **`Entity.SetPosition/SetScale/SetRotation/SetTransform` still bypass `CommitTransform`** — they
   mark dirty without baking, which on a control leaves a stale matrix. Still zero callers
   repo-wide (see fifth slice); the trap is unchanged.
-- **`Entity.OnDestroy()` has a pre-existing modify-during-iteration bug** (`foreach _components`
-  + `Remove`). Latent: controls carry no components so the loop body never runs. Left as-is.
-  `VulkanControl.OnDestroy` now overrides it and calls `base` first.
+- ~~**`Entity.OnDestroy()` has a pre-existing modify-during-iteration bug** (`foreach _components`
+  + `Remove`).~~ FIXED. `OnDestroy` was fixed by the lifecycle-queue pass (2026-08-21) — the
+  `_components.Clear()` moved out of the loop. `RemoveComponent<T>` kept the same shape until
+  2026-08-29 and is now an index loop; it never actually threw, because its `break` meant
+  `MoveNext` was never called again, and it has no callers. `RemoveComponent` now returns the
+  component it removed rather than always `null` — it still runs **no teardown** on it
+  (`OnDestroy` uncalled, `parent` left dangling), which is the real remaining hole.
+  `VulkanControl.OnDestroy` overrides `OnDestroy` and calls `base` first.
 - **The `ColorHex` tint does not render** — `Periodic`'s window declares `ColorHex="#1f6331"` but
   draws as #0D0D0D. PRE-EXISTING, confirmed identical before and after the eighth slice by pixel
   diff, so it is not a pooling bug. Most likely the fragment shader runs MSDF median/opacity math

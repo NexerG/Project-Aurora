@@ -1,0 +1,9 @@
+﻿<AssetManifest xmlns="http://arctisaurora/AuroraAssetRegistryTypes"
+			   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			   xsi:schemaLocation="http://arctisaurora/AuroraAssetRegistryTypes ../Schemas/AssetRegistryTypeSchema.xsd">
+
+	<Asset Type="UIDocumentAsset" Name="main"       Source="XML/Documents/UI.xml"/>
+	<Asset Type="UIDocumentAsset" Name="tab-window" Source="XML/Documents/TabWindow.xml"/>
+	<Asset Type="UIDocumentAsset" Name="settings"   Source="XML/Documents/Settings.xml"/>
+
+</AssetManifest>

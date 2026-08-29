@@ -28,7 +28,7 @@ namespace AuroraPeriodic
             //    "ĄČĘĖĮŠŲŪŽąčęėįšųūž",
             //    "arial.ttf");
 
-            WindowControl windowControl = (WindowControl)VulkanControl.ParseXML("UI.xml");
+            WindowControl windowControl = (WindowControl)VulkanControl.ParseXML("main");
             //PanelControl windowControl = new PanelControl();
             //windowControl.width = 1280;
             //windowControl.height = 720;

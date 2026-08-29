@@ -9,5 +9,6 @@
 	<Dictionary Name="uiActions" KeyType="xs:string" ValueType="Action"/>
 	<Dictionary Name="ActiveContexts" KeyType="xs:string" ValueType="Object"/>
 	<Dictionary Name="Samplers" KeyType="xs:string" ValueType="SamplerAsset"/>
+	<Dictionary Name="uiDocuments" KeyType="xs:string" ValueType="UIDocumentAsset"/>
 
 </AssetRegistries>

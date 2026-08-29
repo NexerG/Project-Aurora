@@ -2,6 +2,7 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
+using ArctisAurora.Core.UISystem.Actions;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.Core.UISystem.Controls.Interactable;
@@ -25,7 +26,7 @@ namespace ArctisAurora.Core.UISystem
         private static readonly Diagnostics.LogChannel Log = Diagnostics.LogChannel.For("Settings");
 
         private const string windowName = "settings";
-        private const string document = "Settings.xml";
+        private const string document = "settings";
         private const uint windowWidth = 720;
         private const uint windowHeight = 480;
         private const string keybindsCategory = "Keybinds";
@@ -87,6 +88,9 @@ namespace ArctisAurora.Core.UISystem
             window.os.Focus();
             window.os.SeedIsInWindow();
         }
+
+        [A_XSDActionDependency("Settings.Open", "UI", "Opens the settings screen over the window that asked")]
+        public static void Open() => Open(UIActions.Invoking());
 
         // Saving is what applies — the rows already hold the new values, so this is where OnChanged
         // fires and the user's file is written.

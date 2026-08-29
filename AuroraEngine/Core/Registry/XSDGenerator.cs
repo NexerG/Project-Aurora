@@ -229,10 +229,11 @@ namespace ArctisAurora.Core.Registry
         {
             var sb = new System.Text.StringBuilder();
             sb.Append($"category:{category}|");
+            // Abstract types are no longer skipped — they emit no element, but they do own the
+            // attribute group their descendants point at.
             foreach (var t in categoryTypes.OrderBy(x => x.Attribute.Name))
             {
-                if (t.Attribute.IsAbstract) continue;   // mirror emission: abstract types produce no schema output
-                sb.Append($"type:{t.Attribute.Name}:{t.Type.FullName}|");
+                sb.Append($"type:{t.Attribute.Name}:{t.Type.FullName}:{t.Attribute.IsAbstract}|");
                 if (t.Type.IsEnum)
                 {
                     foreach (string name in Enum.GetNames(t.Type).OrderBy(n => n))
@@ -240,11 +241,17 @@ namespace ArctisAurora.Core.Registry
                 }
                 else
                 {
-                    foreach (var member in GetAnnotatedMembers(t.Type).OrderBy(m => m.XmlAttribute?.Name))
+                    // Only what this file emits: the type's own declarations and the ref it points at.
+                    // A member added to a base rewrites the base's file, and this one is left alone.
+                    HashSet<string> probe = new HashSet<string>();
+                    sb.Append($"agref:{AttributeGroupRefFor(t.Type, category, probe) ?? "-"}|");
+
+                    var emitted = SplitChain(t.Type).Own
+                        .Where(m => IsAttributeMember(MemberTypeOf(m.Member)))
+                        .Concat(GetAnnotatedMembers(t.Type).Where(m => !IsAttributeMember(MemberTypeOf(m.Member))));
+                    foreach (var member in emitted.OrderBy(m => m.XmlAttribute?.Name))
                     {
-                        Type memberType = member.Member.MemberType == MemberTypes.Field
-                            ? ((FieldInfo)member.Member).FieldType
-                            : ((PropertyInfo)member.Member).PropertyType;
+                        Type memberType = MemberTypeOf(member.Member);
                         sb.Append($"m:{member.XmlAttribute?.Name}:{memberType.FullName}:{member.XmlAttribute?.Category}:{OwningCategoryOf(ReferencedTypeOf(memberType))}|");
                     }
                     if (t.Attribute.AllowedChildren != null)
@@ -254,6 +261,7 @@ namespace ArctisAurora.Core.Registry
                             .Select(c => c.GetCustomAttribute<A_XSDTypeAttribute>(false))
                             .Where(a => a != null && a.Name != "" && !a.IsAbstract)
                             .Select(a => $"{a.Category}:{a.Name}").OrderBy(n => n);
+                        sb.Append($"group:{t.Attribute.AllowedChildren.Name}:{t.Attribute.MinChildren}:{t.Attribute.MaxChildren}|");
                         foreach (string cn in children)
                             sb.Append($"child:{cn}|");
                     }
@@ -285,6 +293,13 @@ namespace ArctisAurora.Core.Registry
                 .OrderBy(n => n);
             foreach (string n in types) sb.Append($"t:{n}|");
             foreach (string k in AnyXMLType.typeMap.Keys.OrderBy(k => k)) sb.Append($"p:{k}|");
+
+            // The global list unions the category types rather than restating their names, so the
+            // set of categories is part of what the file says.
+            var categories = allTypes
+                .Select(t => t.GetCustomAttribute<A_XSDTypeAttribute>(false)?.Category)
+                .Where(c => !string.IsNullOrEmpty(c)).Distinct().OrderBy(c => c);
+            foreach (string c in categories) sb.Append($"c:{c}|");
             return sb.ToString();
         }
 
@@ -370,8 +385,16 @@ namespace ArctisAurora.Core.Registry
                     typeSimpleCategory.Content = categoryUnion;
                     typeSchema.Items.Add(typeSimpleCategory);
                 }
+                // AllowedChildren base -> the group holding its implementors, one per file.
+                Dictionary<Type, string?> childGroups = new Dictionary<Type, string?>();
+
                 foreach (var t in category.Value)
                 {
+                    // An abstract base is never authored, but it still owns the attribute group its
+                    // descendants point at, so it is emitted before the skip.
+                    if (!t.Type.IsEnum)
+                        GenerateAttributeGroup(t.Type, typeSchema, category.Key, foreignCategories);
+
                     // Abstract (base) types are registered but never authored — no element, no complexType.
                     if (t.Attribute.IsAbstract) continue;
 
@@ -389,7 +412,7 @@ namespace ArctisAurora.Core.Registry
                         typeSchema.Items.Add(schemaElement);
 
                         if(category.Key != "Uncategorized")
-                            GenerateComplexType(t.Type, t.Attribute, typeSchema, allTypes, category.Key, foreignCategories);
+                            GenerateComplexType(t.Type, t.Attribute, typeSchema, allTypes, category.Key, foreignCategories, childGroups);
 
                     }
                 }
@@ -414,16 +437,12 @@ namespace ArctisAurora.Core.Registry
 
             XmlSchema allTypeSchema = BuildSchemaBase("");
 
-            XmlSchemaSimpleType allTypesType = new XmlSchemaSimpleType
-            {
-                Name = "Uncategorized"
-            };
-            XmlSchemaSimpleTypeRestriction allTypesRestriction = new XmlSchemaSimpleTypeRestriction
+            // Names belonging to no category, plus the primitives. Every other name is already
+            // spelled out by its own category type, which the global list unions rather than repeats.
+            XmlSchemaSimpleTypeRestriction looseNames = new XmlSchemaSimpleTypeRestriction
             {
                 BaseTypeName = new XmlQualifiedName("xs:string")
             };
-            allTypesType.Content = allTypesRestriction;
-            allTypeSchema.Items.Add(allTypesType);
 
             var types = allTypes
                 .Where(t => t.GetCustomAttributes(typeof(A_XSDTypeAttribute), false).Any()).ToList();
@@ -446,7 +465,8 @@ namespace ArctisAurora.Core.Registry
                         Value = t.GetCustomAttribute<A_XSDTypeAttribute>()?.Name ?? t.Name
                     };
                     categoryRestriction.Facets.Add(typeElement);
-                    allTypesRestriction.Facets.Add(typeElement);
+                    if (category.Key == "Uncategorized")
+                        looseNames.Facets.Add(typeElement);
                 }
                 if (category.Key == "Uncategorized")
                     continue;
@@ -460,8 +480,20 @@ namespace ArctisAurora.Core.Registry
             foreach (var key in AnyXMLType.typeMap.Keys)
             {
                 XmlSchemaEnumerationFacet typeElement = new XmlSchemaEnumerationFacet { Value = key };
-                allTypesRestriction.Facets.Add(typeElement);
+                looseNames.Facets.Add(typeElement);
             }
+
+            XmlSchemaSimpleTypeUnion allTypesUnion = new XmlSchemaSimpleTypeUnion
+            {
+                MemberTypes = categorizedTypes.Keys.Where(k => k != "Uncategorized")
+                    .Select(k => new XmlQualifiedName("types:" + k)).ToArray()
+            };
+            allTypesUnion.BaseTypes.Add(new XmlSchemaSimpleType { Content = looseNames });
+            allTypeSchema.Items.Add(new XmlSchemaSimpleType
+            {
+                Name = "Uncategorized",
+                Content = allTypesUnion
+            });
 
             WriteSchema(allTypeSchema, "AllTypesSchema.xsd");
         }
@@ -680,7 +712,7 @@ namespace ArctisAurora.Core.Registry
             });
         }
 
-        private static void GenerateComplexType(Type t, A_XSDTypeAttribute attribute, XmlSchema schema, Type[] allTypes, string currentCategory, HashSet<string> foreignCategories)
+        private static void GenerateComplexType(Type t, A_XSDTypeAttribute attribute, XmlSchema schema, Type[] allTypes, string currentCategory, HashSet<string> foreignCategories, Dictionary<Type, string?> childGroups)
         {
             XmlSchemaComplexType complexType = new XmlSchemaComplexType()
             {
@@ -690,9 +722,10 @@ namespace ArctisAurora.Core.Registry
 
             foreach (var member in GetAnnotatedMembers(t))
             {
-                Type memberType = member.Member.MemberType == MemberTypes.Field
-                    ? ((FieldInfo)member.Member).FieldType
-                    : ((PropertyInfo)member.Member).PropertyType;
+                Type memberType = MemberTypeOf(member.Member);
+
+                // Scalars are declared once in the type's attribute group and referenced below.
+                if (IsAttributeMember(memberType)) continue;
 
                 var annotation = new XmlSchemaAnnotation();
                 var documentation = new XmlSchemaDocumentation();
@@ -735,51 +768,164 @@ namespace ArctisAurora.Core.Registry
                     memberElement.Annotation = annotation;
                     sequence.Items.Add(memberElement);
                 }
-                else
-                {
-                    string typeName = ResolveTypeName(DomainFor(member.Member, memberType), member.XmlAttribute, currentCategory, foreignCategories);
-
-                    XmlQualifiedName qualifiedName = new XmlQualifiedName(typeName);
-                    XmlSchemaAttribute schemaAttribute = new XmlSchemaAttribute
-                    {
-                        Name = member.XmlAttribute?.Name ?? member.Member.Name,
-                        SchemaTypeName = qualifiedName
-                    };
-                    complexType.Attributes.Add(schemaAttribute);
-                }
             }
 
             if (attribute.AllowedChildren != null)
             {
-                XmlSchemaChoice childChoice = new XmlSchemaChoice
-                {
-                    MinOccurs = attribute.MinChildren,
-                    MaxOccursString = attribute.MaxChildren == -1 ? "unbounded" : attribute.MaxChildren.ToString()
-                };
+                string? groupName = EnsureChildGroup(attribute.AllowedChildren, schema, allTypes,
+                    currentCategory, foreignCategories, childGroups);
 
-                var children = allTypes
-                    .Where(ty => attribute.AllowedChildren.IsAssignableFrom(ty)
-                        && ty != attribute.AllowedChildren).ToList();
-                foreach (var child in children)
+                // A null name means nothing implements the base, so the type takes no children and
+                // the particle is left off rather than emitted empty.
+                if (groupName != null)
                 {
-                    A_XSDTypeAttribute childAttr = child.GetCustomAttribute<A_XSDTypeAttribute>(false);
-                    // No [A_XSDType] name, or an abstract base (e.g. VulkanControl) → never a valid child.
-                    if (childAttr == null || childAttr.Name == string.Empty || childAttr.IsAbstract)
+                    sequence.Items.Add(new XmlSchemaGroupRef
                     {
-                        continue;
-                    }
-                    XmlSchemaElement childElement = new XmlSchemaElement
-                    {
-                        Name = childAttr.Name,
-                        SchemaTypeName = new XmlQualifiedName(Qualify(childAttr.Category, childAttr.Name, currentCategory, foreignCategories))
-                    };
-                    childChoice.Items.Add(childElement);
+                        RefName = new XmlQualifiedName($"types:{groupName}"),
+                        MinOccurs = attribute.MinChildren,
+                        MaxOccursString = attribute.MaxChildren == -1 ? "unbounded" : attribute.MaxChildren.ToString()
+                    });
                 }
-                sequence.Items.Add(childChoice);
             }
+
+            string? attributeGroup = AttributeGroupRefFor(t, currentCategory, foreignCategories);
+            if (attributeGroup != null)
+                complexType.Attributes.Add(new XmlSchemaAttributeGroupRef { RefName = new XmlQualifiedName(attributeGroup) });
 
             complexType.Particle = sequence;
             schema.Items.Add(complexType);
+        }
+
+        // One group per AllowedChildren base, so a new control costs a line here instead of a line in
+        // every container that accepts one. It lives in the schema that references it, which keeps it
+        // resolvable without an import.
+        private static string? EnsureChildGroup(Type childBase, XmlSchema schema, Type[] allTypes,
+            string currentCategory, HashSet<string> foreignCategories, Dictionary<Type, string?> childGroups)
+        {
+            if (childGroups.TryGetValue(childBase, out string? existing)) return existing;
+
+            XmlSchemaChoice childChoice = new XmlSchemaChoice();
+            var children = allTypes
+                .Where(ty => childBase.IsAssignableFrom(ty) && ty != childBase).ToList();
+            foreach (var child in children)
+            {
+                A_XSDTypeAttribute childAttr = child.GetCustomAttribute<A_XSDTypeAttribute>(false);
+                // No [A_XSDType] name, or an abstract base (e.g. VulkanControl) → never a valid child.
+                if (childAttr == null || childAttr.Name == string.Empty || childAttr.IsAbstract)
+                {
+                    continue;
+                }
+                XmlSchemaElement childElement = new XmlSchemaElement
+                {
+                    Name = childAttr.Name,
+                    SchemaTypeName = new XmlQualifiedName(Qualify(childAttr.Category, childAttr.Name, currentCategory, foreignCategories))
+                };
+                childChoice.Items.Add(childElement);
+            }
+
+            string? groupName = childChoice.Items.Count == 0 ? null : $"{childBase.Name}.Children";
+            childGroups[childBase] = groupName;
+            if (groupName != null)
+                schema.Items.Add(new XmlSchemaGroup { Name = groupName, Particle = childChoice });
+
+            return groupName;
+        }
+
+        // A type's own attributes, plus a ref to the group its base owns. Restating an inherited
+        // member in every descendant is what made one addition to a base a change in 25 places.
+        private static void GenerateAttributeGroup(Type type, XmlSchema schema, string currentCategory, HashSet<string> foreignCategories)
+        {
+            (var own, Type? baseOwner) = SplitChain(type);
+            var scalars = own.Where(m => IsAttributeMember(MemberTypeOf(m.Member))).ToList();
+            if (scalars.Count == 0) return;
+
+            XmlSchemaAttributeGroup group = new XmlSchemaAttributeGroup
+            {
+                Name = $"{type.GetCustomAttribute<A_XSDTypeAttribute>(false)!.Name}.Attributes"
+            };
+
+            string? baseRef = baseOwner == null ? null : AttributeGroupRefFor(baseOwner, currentCategory, foreignCategories);
+            if (baseRef != null)
+                group.Attributes.Add(new XmlSchemaAttributeGroupRef { RefName = new XmlQualifiedName(baseRef) });
+
+            foreach (var member in scalars)
+            {
+                string typeName = ResolveTypeName(DomainFor(member.Member, MemberTypeOf(member.Member)),
+                    member.XmlAttribute, currentCategory, foreignCategories);
+
+                group.Attributes.Add(new XmlSchemaAttribute
+                {
+                    Name = member.XmlAttribute?.Name ?? member.Member.Name,
+                    SchemaTypeName = new XmlQualifiedName(typeName)
+                });
+            }
+            schema.Items.Add(group);
+        }
+
+        // The group a type points at: its own when it declares a scalar, otherwise its base's, walking
+        // up until one exists. Nothing to point at means the type carries no attributes at all.
+        private static string? AttributeGroupRefFor(Type type, string currentCategory, HashSet<string> foreignCategories)
+        {
+            Type? owner = type;
+            while (owner != null)
+            {
+                (var own, Type? next) = SplitChain(owner);
+                if (own.Any(m => IsAttributeMember(MemberTypeOf(m.Member))))
+                {
+                    A_XSDTypeAttribute attr = owner.GetCustomAttribute<A_XSDTypeAttribute>(false)!;
+                    return Qualify(attr.Category, $"{attr.Name}.Attributes", currentCategory, foreignCategories);
+                }
+                owner = next;
+            }
+            return null;
+        }
+
+        // What a type contributes to its own group: its declarations, plus those of any ancestor with
+        // no schema to live in, and the nearest ancestor that does own one.
+        private static (List<(MemberInfo Member, A_XSDElementPropertyAttribute? XmlAttribute)> Own, Type? Base) SplitChain(Type type)
+        {
+            var own = GetDeclaredMembers(type);
+            Type? examined = type.BaseType;
+            while (examined != null && examined != typeof(object))
+            {
+                A_XSDTypeAttribute? attr = examined.GetCustomAttribute<A_XSDTypeAttribute>(false);
+                if (attr != null && attr.Category != "Uncategorized") return (own, examined);
+
+                own.AddRange(GetDeclaredMembers(examined));
+                examined = examined.BaseType;
+            }
+            return (own, null);
+        }
+
+        private static List<(MemberInfo Member, A_XSDElementPropertyAttribute? XmlAttribute)> GetDeclaredMembers(Type type)
+        {
+            return GetAnnotatedMembers(type).Where(m => IsDeclaredOn(m.Member, type)).ToList();
+        }
+
+        // An override restates what the base already contributes, so it belongs to the base's group —
+        // counting it on both makes the chain declare one attribute twice, which XSD rejects.
+        private static bool IsDeclaredOn(MemberInfo member, Type type)
+        {
+            if (member.DeclaringType != type) return false;
+            if (member is not PropertyInfo property) return true;
+
+            MethodInfo? accessor = property.GetMethod ?? property.SetMethod;
+            return accessor == null || accessor.GetBaseDefinition().DeclaringType == type;
+        }
+
+        private static Type MemberTypeOf(MemberInfo member) => member.MemberType == MemberTypes.Field
+            ? ((FieldInfo)member).FieldType
+            : ((PropertyInfo)member).PropertyType;
+
+        // A scalar, which becomes an xs:attribute. Collections and complex [A_XSDType] members are
+        // nested elements instead, so they stay on the type's own sequence.
+        private static bool IsAttributeMember(Type memberType)
+        {
+            if (memberType.IsGenericType
+                && typeof(IEnumerable<>).MakeGenericType(memberType.GetGenericArguments()).IsAssignableFrom(memberType))
+                return false;
+
+            return !IsComplexMember(memberType);
         }
 
         private static List<(MemberInfo Member, A_XSDElementPropertyAttribute? XmlAttribute)> GetAnnotatedMembers(Type type)

@@ -104,7 +104,7 @@ namespace ArctisAurora.EngineWork.Rendering
         internal static ERendererTypes PrimaryRendererType => Engine.primary.modules[0].rendererType;
 
         // debug
-        private bool isDebugEnabled = true;
+        private static VulkanValidationSetting validationSetting = null!;
         private ExtDebugUtils _debugUtils = null!;
         private DebugUtilsMessengerEXT _debugMessenger;
 
@@ -383,12 +383,16 @@ namespace ArctisAurora.EngineWork.Rendering
                 ApiVersion = Vk.Version13
             };
 
+            validationSetting = SettingsRegistry.Get<GraphicsSettings>().validation;
+
             uint glfwExtensionCount;
             byte** glfwExtensions = AGlfwWindow._glfw.GetRequiredInstanceExtensions(out glfwExtensionCount);
             var localExtensions = SilkMarshal.PtrToStringArray((nint)glfwExtensions, (int)glfwExtensionCount);
-            if (isDebugEnabled)
+            if (validationSetting.enabled)
             {
-                localExtensions = localExtensions.Append(ExtDebugUtils.ExtensionName).ToArray();
+                localExtensions = localExtensions
+                    .Append(ExtDebugUtils.ExtensionName)
+                    .Append("VK_EXT_validation_features").ToArray();
             }
             // Create Vulkan instance info
             IntPtr enabledExtensionNames = SilkMarshal.StringArrayToPtr(localExtensions);
@@ -401,10 +405,29 @@ namespace ArctisAurora.EngineWork.Rendering
             };
 
             IntPtr enabledLayerNames = SilkMarshal.StringArrayToPtr(validationLayers);
-            if (isDebugEnabled)
+            if (validationSetting.enabled)
             {
                 createInfo.EnabledLayerCount = (uint)validationLayers.Length;
                 createInfo.PpEnabledLayerNames = (byte**)enabledLayerNames;
+
+                ValidationFeatureEnableEXT* enabledFeatures = stackalloc ValidationFeatureEnableEXT[4];
+                uint featureCount = 0;
+                if (validationSetting.synchronization)
+                    enabledFeatures[featureCount++] = ValidationFeatureEnableEXT.SynchronizationValidationExt;
+                if (validationSetting.bestPractices)
+                    enabledFeatures[featureCount++] = ValidationFeatureEnableEXT.BestPracticesExt;
+                if (validationSetting.gpuAssisted)
+                {
+                    enabledFeatures[featureCount++] = ValidationFeatureEnableEXT.GpuAssistedExt;
+                    enabledFeatures[featureCount++] = ValidationFeatureEnableEXT.GpuAssistedReserveBindingSlotExt;
+                }
+                ValidationFeaturesEXT validationFeatures = new ValidationFeaturesEXT
+                {
+                    SType = StructureType.ValidationFeaturesExt,
+                    EnabledValidationFeatureCount = featureCount,
+                    PEnabledValidationFeatures = enabledFeatures
+                };
+
                 DebugUtilsMessengerCreateInfoEXT debugCreateInfo = new();
                 debugCreateInfo.MessageSeverity =
                     DebugUtilsMessageSeverityFlagsEXT.VerboseBitExt
@@ -416,6 +439,7 @@ namespace ArctisAurora.EngineWork.Rendering
                     | DebugUtilsMessageTypeFlagsEXT.PerformanceBitExt;
 
                 PopulateDebugMessengerCreateInfo(ref debugCreateInfo);
+                debugCreateInfo.PNext = featureCount > 0 ? &validationFeatures : null;
                 createInfo.PNext = &debugCreateInfo;
             }
             else
@@ -443,20 +467,24 @@ namespace ArctisAurora.EngineWork.Rendering
 
         private uint DebugCallback(DebugUtilsMessageSeverityFlagsEXT messageSeverity, DebugUtilsMessageTypeFlagsEXT messageTypes, DebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
         {
-            if (messageSeverity < DebugUtilsMessageSeverityFlagsEXT.WarningBitExt)
+            LogLevel level =
+                messageSeverity >= DebugUtilsMessageSeverityFlagsEXT.ErrorBitExt ? LogLevel.Error :
+                messageSeverity >= DebugUtilsMessageSeverityFlagsEXT.WarningBitExt ? LogLevel.Warn :
+                messageSeverity >= DebugUtilsMessageSeverityFlagsEXT.InfoBitExt ? LogLevel.Debug : LogLevel.Hot;
+
+            if (level < validationSetting.minLevel)
                 return Vk.False;
 
             string msg = Marshal.PtrToStringAnsi((nint)pCallbackData->PMessage);
-            string stack = new System.Diagnostics.StackTrace(true).ToString();
+            string stack = level >= LogLevel.Warn ? "\r\n" + new System.Diagnostics.StackTrace(true) : "";
 
-            LogLevel level = messageSeverity >= DebugUtilsMessageSeverityFlagsEXT.ErrorBitExt ? LogLevel.Error : LogLevel.Warn;
-            LogSpool.WriteText(Validation, level, "", 0, $"{messageTypes} — {msg}\r\n{stack}");
+            LogSpool.WriteText(Validation, level, "", 0, $"{messageTypes} — {msg}{stack}");
             return Vk.False;
         }
 
         private void SetupDebugMessenger()
         {
-            if (!isDebugEnabled) return;
+            if (!validationSetting.enabled) return;
 
             if (!vk.TryGetInstanceExtension(instance, out _debugUtils)) return;
 
@@ -490,6 +518,7 @@ namespace ArctisAurora.EngineWork.Rendering
         {
             createInfo.SType = StructureType.DebugUtilsMessengerCreateInfoExt;
             createInfo.MessageSeverity = DebugUtilsMessageSeverityFlagsEXT.VerboseBitExt |
+                                         DebugUtilsMessageSeverityFlagsEXT.InfoBitExt |
                                          DebugUtilsMessageSeverityFlagsEXT.WarningBitExt |
                                          DebugUtilsMessageSeverityFlagsEXT.ErrorBitExt;
             createInfo.MessageType = DebugUtilsMessageTypeFlagsEXT.GeneralBitExt |
@@ -565,10 +594,6 @@ namespace ArctisAurora.EngineWork.Rendering
                 PNext = &f12
             };
 
-            nint[] validationLayersPtrs = validationLayers.Select(layer => Marshal.StringToHGlobalAnsi(layer)).ToArray();
-            nint ppValidationLayers = Marshal.UnsafeAddrOfPinnedArrayElement(validationLayers.Select(Marshal.StringToHGlobalAnsi).ToArray(), 0);
-            Marshal.Copy(validationLayersPtrs, 0, ppValidationLayers, validationLayersPtrs.Length);
-
             uint extensionCount = 0;
             vk.EnumerateDeviceExtensionProperties(gpu, (byte*)null, &extensionCount, null);
             ExtensionProperties[] availableExtensions = new ExtensionProperties[extensionCount];
@@ -618,9 +643,6 @@ namespace ArctisAurora.EngineWork.Rendering
                 EnabledExtensionCount = (uint)enabledExtensions.Length,
                 PpEnabledExtensionNames = (byte**)ppEnabledExtensions,
 
-                EnabledLayerCount = (uint)validationLayers.Length,
-                PpEnabledLayerNames = (byte**)ppValidationLayers,
-
                 PEnabledFeatures = null,
 
                 PNext = &physicalDeviceFeatures2
@@ -633,10 +655,6 @@ namespace ArctisAurora.EngineWork.Rendering
 
 
             // cleanup unmanaged memory
-            foreach (var ptr in validationLayersPtrs)
-            {
-                Marshal.FreeHGlobal(ptr);
-            }
             foreach(var ptr in enabledExtensions)
             {
                 Marshal.FreeHGlobal(ptr);

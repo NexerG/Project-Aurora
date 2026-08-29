@@ -377,13 +377,12 @@ namespace ArctisAurora.Core.ECS.EngineEntity
 
         public EntComp RemoveComponent<EntComp>() where EntComp : EntityComponent
         {
-            foreach (EntityComponent ec in _components)
+            for (int i = 0; i < _components.Count; i++)
             {
-                if(ec is EntComp)
-                {
-                    _components.Remove(ec);
-                    break;
-                }
+                if (_components[i] is not EntComp match) continue;
+
+                _components.RemoveAt(i);
+                return match;
             }
             return null;
         }
