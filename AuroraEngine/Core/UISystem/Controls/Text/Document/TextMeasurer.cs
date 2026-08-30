@@ -295,7 +295,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         public static float MeasureAdvance(char character, Run run, IGlyphMetrics metrics)
         {
             Glyph glyph = metrics.Get(run.fontName, character) ?? metrics.Get(run.fontName, ' ');
-            return glyph == null ? 0f : glyph.advanceWidth * run.fontSize;
+            return glyph == null ? 0f : glyph.regular.advanceWidth * run.fontSize;
         }
     }
 
@@ -324,14 +324,14 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 
             foreach (Glyph glyph in Resolve(fontName).atlasMetaData.glyphs)
             {
-                int range = glyph.yMax - glyph.yMin;
+                int range = glyph.regular.yMax - glyph.regular.yMin;
                 if (range == 0) continue;
 
                 // Mirrors GlyphControl: the quad is the padded atlas cell rather than the ink box,
                 // and the baseline sits inside that cell at the glyph's yMax fraction.
-                float cellHeight = glyph.glyphHeight * GlyphControl.CellScale;
+                float cellHeight = glyph.regular.glyphHeight * GlyphControl.CellScale;
                 float glyphAscent = (GlyphControl.atlasInkMargin
-                    + (1f - 2f * GlyphControl.atlasInkMargin) * glyph.yMax / range) * cellHeight;
+                    + (1f - 2f * GlyphControl.atlasInkMargin) * glyph.regular.yMax / range) * cellHeight;
 
                 if (glyphAscent > ascent) ascent = glyphAscent;
                 if (cellHeight - glyphAscent > descent) descent = cellHeight - glyphAscent;

@@ -28,6 +28,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         public DocumentEditorControl()
         {
             scrollDirection = ScrollDirection.Vertical;
+            overscroll = 0.5f;
             maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");
         }
 

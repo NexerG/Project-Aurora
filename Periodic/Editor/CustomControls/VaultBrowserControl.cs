@@ -1,5 +1,5 @@
+using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing;
-using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem;
 using ArctisAurora.Core.UISystem.Controls.Containers;
@@ -28,14 +28,8 @@ namespace Periodic.Editor.CustomControls
             Rebuild();
         }
 
-        protected override string RootPath
-        {
-            get
-            {
-                string path = SettingsRegistry.Get<PeriodicSettings>().vault.path;
-                return Path.IsPathRooted(path) ? path : VirtualFileSystem.ResolveDir(path);
-            }
-        }
+        protected override string RootPath =>
+            KnownVaults.Resolve(SettingsRegistry.Get<PeriodicSettings>().vault.path);
 
         protected override bool Accepts(FileObject file) =>
             file.path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase);
@@ -65,6 +59,13 @@ namespace Periodic.Editor.CustomControls
         }
 
         #region ---- note operations ----
+        [A_XSDActionDependency("Notes.New", "UI", "Creates a note at the vault root and opens it")]
+        public static void New()
+        {
+            VaultBrowserControl browser = Engine.primary.ui.uiRoot.FindByName(browserName) as VaultBrowserControl;
+            browser?.NewNote(browser.RootPath);
+        }
+
         private void NewNote(string folder) =>
             NoteNameWindow.Ask(RenderWindow.Of(this), "Untitled", name => CreateNote(folder, name), null, null);
 
@@ -192,6 +193,19 @@ namespace Periodic.Editor.CustomControls
             return view != null && RenderWindow.Of(view) == Engine.primary ? view : null;
         }
 
+        // The first pane in the window, whatever it is named.
+        private static TabViewControl FirstTabView(Entity node)
+        {
+            if (node == null) return null;
+            if (node is TabViewControl view) return view;
+
+            foreach (Entity child in node.children)
+                if (FirstTabView(child) is TabViewControl found)
+                    return found;
+
+            return null;
+        }
+
         // Focuses the note wherever it is already open, and only opens a tab when it is not.
         private static void Open(string notePath)
         {
@@ -203,7 +217,9 @@ namespace Periodic.Editor.CustomControls
                 return;
             }
 
-            TabViewControl tabs = FocusedTabs() ?? Engine.primary.ui.uiRoot.FindByName(tabsName) as TabViewControl;
+            TabViewControl tabs = FocusedTabs()
+                ?? Engine.primary.ui.uiRoot.FindByName(tabsName) as TabViewControl
+                ?? FirstTabView(Engine.primary.ui.uiRoot);
             if (tabs == null) return;
 
             // Loaded before the tab is built, so the caption can come from the note's own name.

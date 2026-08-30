@@ -38,6 +38,25 @@
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
     </xs:sequence>
   </xs:complexType>
+  <xs:attributeGroup name="KnownVault.Attributes">
+    <xs:attribute name="Path" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="KnownVault" type="types:KnownVault" />
+  <xs:complexType name="KnownVault">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:KnownVault.Attributes" />
+  </xs:complexType>
+  <xs:element name="Vaults" type="types:Vaults" />
+  <xs:group name="KnownVault.Children">
+    <xs:choice>
+      <xs:element name="KnownVault" type="types:KnownVault" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="Vaults">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:KnownVault.Children" />
+    </xs:sequence>
+  </xs:complexType>
   <xs:attributeGroup name="DragGhost.Attributes">
     <xs:attributeGroup ref="types:Setting.Attributes" />
     <xs:attribute name="Opacity" type="xs:float" />
@@ -77,6 +96,7 @@
   <xs:group name="ISettingsGroup.Children">
     <xs:choice>
       <xs:element name="Periodic" type="types:Periodic" />
+      <xs:element name="Vaults" type="types:Vaults" />
       <xs:element name="UI" type="types:UI" />
       <xs:element name="DocumentSettings" type="types:DocumentSettings" />
       <xs:element name="Logging" type="types:Logging" />

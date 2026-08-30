@@ -45,6 +45,10 @@ namespace ArctisAurora.EngineWork
 
         public const string mainWindow = "main";
 
+        // work handed back to the main thread
+        private static readonly System.Collections.Concurrent.ConcurrentQueue<Action> _posted =
+            new System.Collections.Concurrent.ConcurrentQueue<Action>();
+
         internal static Renderer renderer = null!;
         internal static InputHandler inputHandler = null!;
         internal static UICollisionHandling uiCollisionHandler = null!;
@@ -203,6 +207,14 @@ namespace ArctisAurora.EngineWork
             Volatile.Write(ref _windows, next);
         }
 
+        // Queues work for the next main tick, from any thread.
+        public static void Post(Action work) => _posted.Enqueue(work);
+
+        private static void DrainPosted()
+        {
+            while (_posted.TryDequeue(out Action work)) work();
+        }
+
         // Destroys the OS window of anything the render thread has finished freeing.
         private static void ReapClosedWindows()
         {
@@ -262,6 +274,7 @@ namespace ArctisAurora.EngineWork
         {
             AGlfwWindow._glfw.PollEvents();
             ReapClosedWindows();
+            DrainPosted();
             UICollisionHandling.ApplyPendingFocus();
             InputHandler.instance.ActivateKeybinds();
 

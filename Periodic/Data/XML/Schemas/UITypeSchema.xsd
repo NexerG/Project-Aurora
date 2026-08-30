@@ -453,6 +453,7 @@
     <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
     <xs:attribute name="ScrollDirection" type="types:Scrollable" />
     <xs:attribute name="ScrollSensitivity" type="xs:float" />
+    <xs:attribute name="Overscroll" type="xs:float" />
   </xs:attributeGroup>
   <xs:element name="ScrollableControl" type="types:ScrollableControl" />
   <xs:complexType name="ScrollableControl">

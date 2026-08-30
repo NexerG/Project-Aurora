@@ -32,6 +32,32 @@
       </xs:simpleType>
     </xs:union>
   </xs:simpleType>
+  <xs:simpleType name="UI">
+    <xs:union memberTypes="actions:Any">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="Vaults.Open" />
+          <xs:enumeration value="Vaults.Add" />
+          <xs:enumeration value="Notes.New" />
+          <xs:enumeration value="Settings.Open" />
+          <xs:enumeration value="Settings.Save" />
+          <xs:enumeration value="Tab.Close" />
+          <xs:enumeration value="Tab.CloseOthers" />
+          <xs:enumeration value="Tab.CloseRight" />
+          <xs:enumeration value="Tab.SplitRight" />
+          <xs:enumeration value="Tab.SplitDown" />
+          <xs:enumeration value="Tab.MoveToNewWindow" />
+          <xs:enumeration value="Tab.HasSiblings" />
+          <xs:enumeration value="Tab.HasRight" />
+          <xs:enumeration value="Tab.CanTearOff" />
+          <xs:enumeration value="TestAction" />
+          <xs:enumeration value="Window.Minimize" />
+          <xs:enumeration value="Window.MaximizeRestore" />
+          <xs:enumeration value="Window.Close" />
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
   <xs:simpleType name="Bootstrap">
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>
@@ -60,29 +86,6 @@
           <xs:enumeration value="AssetRegistries.PrepareDefaultAssets" />
           <xs:enumeration value="AssetRegistries.PreloadAssets" />
           <xs:enumeration value="AssetRegistries.PrepareAllAssets" />
-        </xs:restriction>
-      </xs:simpleType>
-    </xs:union>
-  </xs:simpleType>
-  <xs:simpleType name="UI">
-    <xs:union memberTypes="actions:Any">
-      <xs:simpleType>
-        <xs:restriction base="xs:string">
-          <xs:enumeration value="Settings.Open" />
-          <xs:enumeration value="Settings.Save" />
-          <xs:enumeration value="Tab.Close" />
-          <xs:enumeration value="Tab.CloseOthers" />
-          <xs:enumeration value="Tab.CloseRight" />
-          <xs:enumeration value="Tab.SplitRight" />
-          <xs:enumeration value="Tab.SplitDown" />
-          <xs:enumeration value="Tab.MoveToNewWindow" />
-          <xs:enumeration value="Tab.HasSiblings" />
-          <xs:enumeration value="Tab.HasRight" />
-          <xs:enumeration value="Tab.CanTearOff" />
-          <xs:enumeration value="TestAction" />
-          <xs:enumeration value="Window.Minimize" />
-          <xs:enumeration value="Window.MaximizeRestore" />
-          <xs:enumeration value="Window.Close" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>

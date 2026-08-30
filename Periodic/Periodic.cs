@@ -17,6 +17,12 @@ namespace AuroraPeriodic
 
             engine.Init(false);
             InputHandler.SetActiveKeybindGroup("InputMap");
+
+            // The vault booted into is one that has been opened, so the browser lists it.
+            KnownVaults known = SettingsRegistry.Get<KnownVaults>();
+            known.Prune();
+            known.Remember(SettingsRegistry.Get<PeriodicSettings>().vault.path);
+
             ContextMenus.menuFactory = () => new WindowedContextMenuControl();
             // prepare level
 

@@ -70,9 +70,9 @@ namespace ArctisAurora.Core.Generators
         // Rasterizes one shape into a square cell of the atlas.
         public static void GenerateCell(Glyph glyph, Image<Rgba32> image, int startX, int startY, int cellSize, float pxRange)
         {
-            float scale = MathF.Max(glyph.xMax - glyph.xMin, glyph.yMax - glyph.yMin);
-            float normW = (glyph.xMax - glyph.xMin) / scale;
-            float normH = (glyph.yMax - glyph.yMin) / scale;
+            float scale = MathF.Max(glyph.regular.xMax - glyph.regular.xMin, glyph.regular.yMax - glyph.regular.yMin);
+            float normW = (glyph.regular.xMax - glyph.regular.xMin) / scale;
+            float normH = (glyph.regular.yMax - glyph.regular.yMin) / scale;
 
             int pad = 1;
             int innerSize = cellSize - pad * 2;

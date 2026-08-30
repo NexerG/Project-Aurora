@@ -5,6 +5,8 @@
     <xs:restriction base="xs:string">
       <xs:enumeration value="Vault" />
       <xs:enumeration value="Periodic" />
+      <xs:enumeration value="KnownVault" />
+      <xs:enumeration value="Vaults" />
       <xs:enumeration value="DragGhost" />
       <xs:enumeration value="UI" />
       <xs:enumeration value="DocumentSettings" />

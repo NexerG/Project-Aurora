@@ -33,6 +33,8 @@
   </xs:complexType>
   <xs:attributeGroup name="FontImport.Attributes">
     <xs:attribute name="Source" type="xs:string" />
+    <xs:attribute name="Bold" type="xs:string" />
+    <xs:attribute name="Italic" type="xs:string" />
     <xs:attribute name="Charset" type="xs:string" />
     <xs:attribute name="GlyphSize" type="xs:int" />
   </xs:attributeGroup>

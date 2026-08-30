@@ -145,6 +145,21 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                 }
         }
 
+        // Re-cuts every glyph at another face of the same family.
+        public void TransmuteText(FontStyle style)
+        {
+            if (_fontAsset == null) return;
+
+            foreach (Entity child in children)
+                if (child is GlyphControl glyph)
+                {
+                    glyph.style = style;
+                    glyph.SetCharacter(glyph.character, _fontAsset, fontSize);
+                }
+
+            InvalidateLayout();
+        }
+
         private void SyncGlyphs()
         {
             if (_fontAsset == null)

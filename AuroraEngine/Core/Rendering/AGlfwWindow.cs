@@ -140,6 +140,9 @@ namespace ArctisAurora.EngineWork.Rendering
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
 
+        // The OS window behind the GLFW one, for the Win32 calls that need an owner.
+        internal IntPtr Hwnd => new GlfwNativeWindow(_glfw, handle).Win32!.Value.Hwnd;
+
         internal void Focus() => _glfw.FocusWindow(handle);
 
         // Raises without activating.

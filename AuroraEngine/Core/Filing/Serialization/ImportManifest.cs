@@ -18,6 +18,13 @@ namespace ArctisAurora.Core.Filing.Serialization
         [A_XSDElementProperty("Source", "AssetRegistry")]
         public string source { get; set; } = string.Empty;
 
+        // taken as named, unchecked; left empty the importer probes the usual suffixes
+        [A_XSDElementProperty("Bold", "AssetRegistry")]
+        public string bold { get; set; } = string.Empty;
+
+        [A_XSDElementProperty("Italic", "AssetRegistry")]
+        public string italic { get; set; } = string.Empty;
+
         [A_XSDElementProperty("Charset", "AssetRegistry")]
         public string charset { get; set; } = string.Empty;
 
@@ -57,6 +64,8 @@ namespace ArctisAurora.Core.Filing.Serialization
     {
         public string source = string.Empty;
         public string sourceHash = string.Empty;
+        public string boldSource = string.Empty;
+        public string italicSource = string.Empty;
         public string charset = string.Empty;
         public int glyphSize;
         public int importerVersion;
@@ -64,6 +73,8 @@ namespace ArctisAurora.Core.Filing.Serialization
         public bool Matches(FontImportStamp other) =>
             source == other.source
             && sourceHash == other.sourceHash
+            && boldSource == other.boldSource
+            && italicSource == other.italicSource
             && charset == other.charset
             && glyphSize == other.glyphSize
             && importerVersion == other.importerVersion;

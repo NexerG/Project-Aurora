@@ -59,10 +59,15 @@ caller. Wheel scrolling on those axes is unaffected.
 
 ### 5. Thumb length is the viewport/content ratio, floored
 
-`length = viewport² / content`, clamped to at least 24px and at most the track, and its position is
-`travel * scrollOffset / maxScroll`. The floor is what keeps a very long document's thumb grabbable.
-`ThumbTravel` is published because the thumb's drag needs the same number to map pointer travel onto
-scroll range.
+`length = viewport² / (viewport + maxScroll)`, clamped to at least 24px and at most the track, and
+its position is `travel * scrollOffset / maxScroll`. The floor is what keeps a very long document's
+thumb grabbable. `ThumbTravel` is published because the thumb's drag needs the same number to map
+pointer travel onto scroll range.
+
+The denominator was `content` until 2026-08-30. It is the same number whenever the scrollable extent
+is the content — `viewport + (content - viewport)` — and stops being the same once
+[[scroll-overscroll]] adds travel the content does not account for. Reading it off `maxScroll` keeps
+the thumb the one part of the scrollbar that never needs to know why the range is what it is.
 
 ## Verified
 
@@ -81,4 +86,4 @@ scroll range.
 - No track behind the thumb, no arrows, no click-in-track paging. The thumb is the whole scrollbar.
 
 Related: [[ui-clipping]], [[splitter-and-pane-sizing]], [[ui-data-control-split]],
-[[vault-browser-and-shell]], [[document-selection]]
+[[vault-browser-and-shell]], [[document-selection]], [[scroll-overscroll]]

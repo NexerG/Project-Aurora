@@ -99,10 +99,60 @@ namespace ArctisAurora.Core.UISystem
             }
         }
 
-        internal static void GenerateGlyphAtlas(AuroraFont fontData, string fontName, int perGlyphSize, string outputRoot)
+        // Faces arrive in block order — regular, then bold if present, then italic if present.
+        internal static void GenerateGlyphAtlas(AuroraFont[] faces, string[] facePaths, bool hasBold, bool hasItalic,
+            string baseName, int perGlyphSize, string outputRoot)
         {
-            string path = AssetImporter.ResolveSystemFont(fontName);
+            // One array per face. Contours live here and never reach the .agd.
+            Glyph[][] faceGlyphs = new Glyph[faces.Length][];
+            for (int f = 0; f < faces.Length; f++)
+                faceGlyphs[f] = ReadFaceGlyphs(faces[f], facePaths[f]);
+
             AtlasMetaData glyphs = new AtlasMetaData();
+            glyphs.glyphCount = faces[0].textData.characterCount;
+            glyphs.chars = faces[0].textData.characters;
+            glyphs.glyphs = faceGlyphs[0];
+            glyphs.hasBold = hasBold;
+            glyphs.hasItalic = hasItalic;
+            glyphs.pxRange = MTSDFGen.PxRange;
+
+            // Every face measures its own advances and ink boxes; fold them onto the regular glyph
+            // that carries all three sets.
+            for (int f = 1; f < faces.Length; f++)
+            {
+                bool isBold = hasBold && f == 1;
+                for (int i = 0; i < glyphs.glyphCount; i++)
+                {
+                    if (isBold) glyphs.glyphs[i].bold = faceGlyphs[f][i].regular;
+                    else glyphs.glyphs[i].italic = faceGlyphs[f][i].regular;
+                }
+            }
+
+            string atlasDataPath = Path.Combine(outputRoot, baseName, $"{baseName}.agd"); // aurora glyph data
+            Serializer.SerializeAttributed(glyphs, atlasDataPath);
+
+            // One cell per (character, face), laid out as consecutive per-face blocks.
+            int cellCount = glyphs.glyphCount * faces.Length;
+            int glyphsPerAxis = (int)Math.Ceiling(MathF.Sqrt(cellCount));
+            Image<Rgba32> atlasImage = new Image<Rgba32>(perGlyphSize * glyphsPerAxis, perGlyphSize * glyphsPerAxis);
+            for (int cell = 0; cell < cellCount; cell++)
+            {
+                Glyph g = faceGlyphs[cell / glyphs.glyphCount][cell % glyphs.glyphCount];
+                if (g == null)
+                    continue;
+
+                int x = cell % glyphsPerAxis * perGlyphSize;
+                int y = cell / glyphsPerAxis * perGlyphSize;
+                MTSDFGen.GenerateCell(g, atlasImage, x, y, perGlyphSize, MTSDFGen.PxRange);
+            }
+
+            atlasImage.Save(Path.Combine(outputRoot, baseName, $"{baseName}_atlas.png"));
+        }
+
+        // Reads one face's outlines and metrics into its own glyph array.
+        private static Glyph[] ReadFaceGlyphs(AuroraFont fontData, string path)
+        {
+            Glyph[] faceGlyphs;
             using (BinaryReader reader = new BinaryReader(new FileStream(path, FileMode.Open, FileAccess.Read)))
             {
                 TableEntry maxp = fontData.tableEntries.First(t => t.name == "maxp");
@@ -132,15 +182,13 @@ namespace ArctisAurora.Core.UISystem
                 TableEntry cmap = fontData.tableEntries.First(t => t.name == "cmap"); // for index
                 TableEntry glyf = fontData.tableEntries.First(t => t.name == "glyf"); // for glyph outlines
 
-                glyphs.glyphCount = fontData.textData.characterCount;
-                glyphs.chars = fontData.textData.characters;
-                glyphs.glyphs = new Glyph[fontData.textData.characterCount];
+                faceGlyphs = new Glyph[fontData.textData.characterCount];
                 for (int i = 0; i < fontData.textData.characterCount; i++)
                 {
                     char character = fontData.textData.characters[i];
                     ushort glyphIndex = GetGlyphIndex(character, reader, cmap);
                     Glyph glyph = GetGlyphOutline(glyphIndex, glyphOffsets, glyf, reader, unitsPerEm);
-                    glyphs.glyphs[i] = glyph;
+                    faceGlyphs[i] = glyph;
                 }
 
                 //loading distances between glyphs
@@ -188,53 +236,24 @@ namespace ArctisAurora.Core.UISystem
                 short descender = AssetImporter.ReadInt16BE(reader);
                 float lineHeight = 0.1f;
 
-                for (int i = 0; i < glyphs.glyphCount; i++)
+                for (int i = 0; i < faceGlyphs.Length; i++)
                 {
                     char character = fontData.textData.characters[i];
                     ushort glyphIndex = GetGlyphIndex(character, reader, cmap);
-                    glyphs.glyphs[i].advanceWidth = (float)advanceWidth[glyphIndex] / unitsPerEm;
-                    glyphs.glyphs[i].leftSideOffset = (float)lsb[glyphIndex] / unitsPerEm;
-                    if(glyphs.glyphs[i].yMin < 0)
+                    faceGlyphs[i].regular.advanceWidth = (float)advanceWidth[glyphIndex] / unitsPerEm;
+                    faceGlyphs[i].regular.leftSideOffset = (float)lsb[glyphIndex] / unitsPerEm;
+                    if(faceGlyphs[i].regular.yMin < 0)
                     {
-                        glyphs.glyphs[i].tsb = -(glyphs.glyphs[i].yMin) / unitsPerEm;
+                        faceGlyphs[i].regular.tsb = -(faceGlyphs[i].regular.yMin) / unitsPerEm;
                     }
-                    if (glyphs.glyphs[i].glyphHeight == 1)
-                        glyphs.glyphs[i].glyphHeight = lineHeight;
+                    if (faceGlyphs[i].regular.glyphHeight == 1)
+                        faceGlyphs[i].regular.glyphHeight = lineHeight;
 
-                    if (glyphs.glyphs[i].glyphWidth == 1)
-                        glyphs.glyphs[i].glyphWidth = glyphs.glyphs[i].advanceWidth;
+                    if (faceGlyphs[i].regular.glyphWidth == 1)
+                        faceGlyphs[i].regular.glyphWidth = faceGlyphs[i].regular.advanceWidth;
                 }
             }
-
-            string baseName = fontName.Split('.')[0];
-            string atlasDataPath = Path.Combine(outputRoot, baseName, $"{baseName}.agd"); // aurora glyph data
-            glyphs.pxRange = MTSDFGen.PxRange;
-            Serializer.SerializeAttributed(glyphs, atlasDataPath);
-
-            //here we generate the atlas
-            int glyphsPerAxis = (int)Math.Ceiling(MathF.Sqrt(fontData.textData.characterCount));
-            Image<Rgba32> atlasImage = new Image<Rgba32>(perGlyphSize * glyphsPerAxis, perGlyphSize * glyphsPerAxis);
-            for (int i = 0; i < glyphsPerAxis; i++)
-            {
-                for (int j = 0; j < glyphsPerAxis; j++)
-                {
-                    int index = i * glyphsPerAxis + j;
-                    if (index >= fontData.textData.characterCount)
-                        break;
-                    Glyph g = glyphs.glyphs[index];
-                    if (g == null)
-                        continue;
-                    // Calculate position in the atlas
-                    int x = j * perGlyphSize;
-                    int y = i * perGlyphSize;
-                    // Create a new image for the glyph
-                    // Generate MTSDF for the glyph
-                    MTSDFGen.GenerateCell(g, atlasImage, x, y, perGlyphSize, MTSDFGen.PxRange);
-                    // Copy the glyph image to the atlas
-                }
-            }
-
-            atlasImage.Save(Path.Combine(outputRoot, baseName, $"{baseName}_atlas.png"));
+            return faceGlyphs;
         }
 
         private static ushort GetGlyphIndex(char character, BinaryReader reader, TableEntry cmap)
@@ -321,7 +340,7 @@ namespace ArctisAurora.Core.UISystem
                     reader.BaseStream.Position = savedPos;
                 }
             }
-            throw new Exception($"Glyph for '{character}' not found!");
+            return 0;   // .notdef — a face that lacks a character must not fail the family's bake
         }
 
         // TrueType stores accented characters as COMPOSITE glyphs: numContours < 0, and the entry
@@ -529,6 +548,46 @@ namespace ArctisAurora.Core.UISystem
         [@Serializable]
         public float pxRange;
 
+        // which faces the family bake actually found
+        [@Serializable]
+        public bool hasBold;
+        [@Serializable]
+        public bool hasItalic;
+
+        public int styleCount => 1 + (hasBold ? 1 : 0) + (hasItalic ? 1 : 0);
+
+        public int cellCount => glyphCount * styleCount;
+
+        // A style the family has no face for draws as regular rather than as nothing.
+        public FontStyle Effective(FontStyle style) => style switch
+        {
+            FontStyle.Bold when hasBold => FontStyle.Bold,
+            FontStyle.Italic when hasItalic => FontStyle.Italic,
+            _ => FontStyle.Regular
+        };
+
+        public int StyleBlock(FontStyle style) => style switch
+        {
+            FontStyle.Bold when hasBold => 1,
+            FontStyle.Italic when hasItalic => hasBold ? 2 : 1,
+            _ => 0
+        };
+
+        public int CellIndex(int charIndex, FontStyle style) => StyleBlock(style) * glyphCount + charIndex;
+
+        private static GlyphMetrics ReadMetrics(BinaryReader reader) => new GlyphMetrics()
+        {
+            xMin = reader.ReadInt16(),
+            yMin = reader.ReadInt16(),
+            xMax = reader.ReadInt16(),
+            yMax = reader.ReadInt16(),
+            glyphWidth = reader.ReadSingle(),
+            glyphHeight = reader.ReadSingle(),
+            advanceWidth = reader.ReadSingle(),
+            leftSideOffset = reader.ReadSingle(),
+            tsb = reader.ReadSingle()
+        };
+
         public void Deserialize(string name)
         {
             string path = Paths.Font(name, $"{name}.agd");
@@ -558,18 +617,14 @@ namespace ArctisAurora.Core.UISystem
                 for (int i = 0; i < glyphCount; i++)
                 {
                     glyphs[i] = new Glyph();
-                    glyphs[i].xMin = (short)reader.ReadInt16();
-                    glyphs[i].yMin = (short)reader.ReadInt16();
-                    glyphs[i].xMax = (short)reader.ReadInt16();
-                    glyphs[i].yMax = (short)reader.ReadInt16();
-
-                    glyphs[i].glyphWidth = reader.ReadSingle();
-                    glyphs[i].glyphHeight = reader.ReadSingle();
-
-                    glyphs[i].advanceWidth = reader.ReadSingle();
-                    glyphs[i].leftSideOffset = reader.ReadSingle();
-                    glyphs[i].tsb = reader.ReadSingle();
+                    glyphs[i].regular = ReadMetrics(reader);
+                    glyphs[i].bold = ReadMetrics(reader);
+                    glyphs[i].italic = ReadMetrics(reader);
                 }
+
+                pxRange = reader.ReadSingle();
+                hasBold = reader.ReadBoolean();
+                hasItalic = reader.ReadBoolean();
             }
         }
 

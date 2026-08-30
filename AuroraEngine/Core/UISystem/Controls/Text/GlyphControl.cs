@@ -16,6 +16,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         internal const float CellScale = 1f / (1f - 2f * atlasInkMargin);
 
         public char character;
+        public FontStyle style = FontStyle.Regular;
         int index;
         Glyph? glyph;
 
@@ -55,14 +56,18 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                 if (glyph == null) { glyph = new Glyph(); index = 0; }
             }
 
-            _cellW = glyph.glyphWidth * px * CellScale;
-            _cellH = glyph.glyphHeight * px * CellScale;
+            // A style the family has no face for collapses to regular, in the metrics and the cell alike.
+            FontStyle effective = fontAsset.atlasMetaData.Effective(style);
+            GlyphMetrics metrics = glyph.Metrics(effective);
+
+            _cellW = metrics.glyphWidth * px * CellScale;
+            _cellH = metrics.glyphHeight * px * CellScale;
             float cellW = _cellW;
             preferredWidth = (int)_cellW;
             preferredHeight = (int)_cellH;
 
-            advance = glyph.advanceWidth * px;
-            bearingX = glyph.leftSideOffset * px - cellW * atlasInkMargin;
+            advance = metrics.advanceWidth * px;
+            bearingX = metrics.leftSideOffset * px - cellW * atlasInkMargin;
 
             // Cleared before the test rather than left to fall through it: on a reused control these
             // still hold the previous character's metrics, and a glyph with no vertical range would
@@ -70,20 +75,21 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             ascent = 0f;
             descent = 0f;
 
-            int range = glyph.yMax - glyph.yMin;
+            int range = metrics.yMax - metrics.yMin;
             if (range != 0)
             {
                 // baselineFromTop is a fraction OF THE CELL, so it must scale the cell height.
-                float baselineFromTop = atlasInkMargin + (1f - 2f * atlasInkMargin) * glyph.yMax / range;
+                float baselineFromTop = atlasInkMargin + (1f - 2f * atlasInkMargin) * metrics.yMax / range;
                 ascent = baselineFromTop * _cellH;
                 descent = _cellH - ascent;
             }
 
-            float k = MathF.Ceiling(MathF.Sqrt(fontAsset.atlasMetaData.glyphCount));
+            int cell = fontAsset.atlasMetaData.CellIndex(index, effective);
+            float k = MathF.Ceiling(MathF.Sqrt(fontAsset.atlasMetaData.cellCount));
             float glyphAtlasSize = 1f / k;
-            float xOffset = index % k * glyphAtlasSize;
+            float xOffset = cell % k * glyphAtlasSize;
 
-            float yOffset = MathF.Floor(index / k) * glyphAtlasSize;
+            float yOffset = MathF.Floor(cell / k) * glyphAtlasSize;
 
             float texelPad = 1f / fontAsset.textureAsset.image.Width;
 

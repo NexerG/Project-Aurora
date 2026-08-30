@@ -5,5 +5,6 @@
 	<Asset Type="UIDocumentAsset" Name="main"       Source="XML/Documents/UI/UI.ui.xml"/>
 	<Asset Type="UIDocumentAsset" Name="tab-window" Source="XML/Documents/UI/TabWindow.ui.xml"/>
 	<Asset Type="UIDocumentAsset" Name="settings"   Source="XML/Documents/UI/Settings.ui.xml"/>
+	<Asset Type="UIDocumentAsset" Name="vaults"     Source="XML/Documents/UI/Vaults.ui.xml"/>
 
 </AssetManifest>

@@ -3,12 +3,35 @@ using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.UISystem
 {
+    public enum FontStyle
+    {
+        Regular,
+        Bold,
+        Italic
+    }
+
+    // One face's measurements for one character.
+    [@Serializable]
+    public struct GlyphMetrics
+    {
+        // ink box, font units
+        public short xMin, yMin, xMax, yMax;
+
+        // cell and horizontal metrics, in em
+        public float glyphWidth;
+        public float glyphHeight;
+        public float advanceWidth;
+        public float leftSideOffset;
+        public float tsb;
+    }
+
     [@Serializable]
     public class Glyph
     {
-        public short xMin, yMin, xMax, yMax;
-        public float glyphWidth = 1;
-        public float glyphHeight = 1;
+        // one set per face of the family
+        public GlyphMetrics regular;
+        public GlyphMetrics bold;
+        public GlyphMetrics italic;
 
         [@NonSerializable]
         public List<List<Edge>> edgeContours = new List<List<Edge>>();
@@ -16,14 +39,18 @@ namespace ArctisAurora.Core.UISystem
         [NonSerializable]
         public List<Bezier> contours = new List<Bezier>();
 
-        public float advanceWidth;
-        public float leftSideOffset;
-        public float tsb = 0;
-
         public Glyph()
         {
-
+            regular.glyphWidth = 1;
+            regular.glyphHeight = 1;
         }
+
+        public GlyphMetrics Metrics(FontStyle style) => style switch
+        {
+            FontStyle.Bold => bold,
+            FontStyle.Italic => italic,
+            _ => regular
+        };
 
         public void BuildEdges()
         {
@@ -95,13 +122,13 @@ namespace ArctisAurora.Core.UISystem
 
         public void SetParams(short xMin, short xMax, short yMin, short yMax, float unitsPerEm)
         {
-            this.xMin = xMin;
-            this.xMax = xMax;
-            this.yMin = yMin;
-            this.yMax = yMax;
+            regular.xMin = xMin;
+            regular.xMax = xMax;
+            regular.yMin = yMin;
+            regular.yMax = yMax;
 
-            glyphWidth = (xMax - xMin) / unitsPerEm;
-            glyphHeight = (yMax - yMin) / unitsPerEm;
+            regular.glyphWidth = (xMax - xMin) / unitsPerEm;
+            regular.glyphHeight = (yMax - yMin) / unitsPerEm;
         }
     }
 }

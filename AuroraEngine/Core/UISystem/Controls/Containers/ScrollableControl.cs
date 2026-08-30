@@ -20,6 +20,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         [A_XSDElementProperty("ScrollSensitivity", "UI", "Pixels per scroll wheel tick.")]
         public float scrollSensitivity = 30f;
 
+        [A_XSDElementProperty("Overscroll", "UI", "Extra scroll past the end, as a fraction of viewport height.")]
+        public float overscroll = 0f;
+
         // ---- Scroll state ----
 
         /// <summary>
@@ -74,12 +77,18 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         }
 
         /// <summary>
-        /// How far the content can scroll on each axis. Zero if content fits.
+        /// How far the content can scroll on each axis, overscroll included. Zero if content fits.
         /// </summary>
-        public Vector2D<float> MaxScrollOffset => new Vector2D<float>(
-            MathF.Max(0, contentSize.X - viewportSize.X),
-            MathF.Max(0, contentSize.Y - viewportSize.Y)
-        );
+        public Vector2D<float> MaxScrollOffset
+        {
+            get
+            {
+                float overflowY = MathF.Max(0, contentSize.Y - viewportSize.Y);
+                return new Vector2D<float>(
+                    MathF.Max(0, contentSize.X - viewportSize.X),
+                    overflowY > 0 ? overflowY + viewportSize.Y * overscroll : 0);
+            }
+        }
 
         public ScrollableControl()
         {
@@ -191,7 +200,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                 return;
             }
 
-            float length = MathF.Max(minThumbLength, innerRect.height * innerRect.height / contentSize.Y);
+            float length = MathF.Max(minThumbLength, innerRect.height * innerRect.height / (innerRect.height + maxScroll));
             length = MathF.Min(length, innerRect.height);
             ThumbTravel = innerRect.height - length;
 

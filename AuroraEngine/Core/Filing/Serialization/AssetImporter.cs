@@ -13,7 +13,7 @@ namespace ArctisAurora.Core.Filing.Serialization
         private static readonly Diagnostics.LogChannel Log = Diagnostics.LogChannel.For("Assets");
 
         // Bump to invalidate every stamp and force a re-bake.
-        private const int importerVersion = 2;
+        private const int importerVersion = 3;
 
         [A_XSDActionDependency("AssetImporter.RunImports", "Bootstrap")]
         public static bool RunImports()
@@ -80,6 +80,33 @@ namespace ArctisAurora.Core.Filing.Serialization
             return null;
         }
 
+        // Suffixes tried when a face is not declared, in preference order.
+        private static readonly string[] boldSuffixes = { "bd", "b", "-Bold", "Bold" };
+        private static readonly string[] italicSuffixes = { "i", "-Italic", "Italic" };
+
+        // A declared face is taken as named and never second-guessed; an undeclared one is probed.
+        private static string ResolveFace(FontImport font, string declared, string[] suffixes)
+        {
+            if (!string.IsNullOrEmpty(declared))
+            {
+                string path = ResolveSystemFont(declared);
+                if (path == null) Log.Warn($"font import '{font.source}': declared face '{declared}' is not installed, skipped.");
+                return path;
+            }
+
+            string stem = Path.GetFileNameWithoutExtension(font.source);
+            string extension = Path.GetExtension(font.source);
+            if (stem.EndsWith("-Regular", StringComparison.OrdinalIgnoreCase)) stem = stem[..^8];
+            else if (stem.EndsWith("Regular", StringComparison.OrdinalIgnoreCase)) stem = stem[..^7];
+
+            foreach (string suffix in suffixes)
+            {
+                string path = ResolveSystemFont(stem + suffix + extension);
+                if (path != null) return path;
+            }
+            return null;
+        }
+
         private static void ImportFontIfStale(FontImport font, Dictionary<string, string> charsets)
         {
             string sourcePath = ResolveSystemFont(font.source);
@@ -94,11 +121,16 @@ namespace ArctisAurora.Core.Filing.Serialization
                 return;
             }
 
+            string boldPath = ResolveFace(font, font.bold, boldSuffixes);
+            string italicPath = ResolveFace(font, font.italic, italicSuffixes);
+
             string baseName = Path.GetFileNameWithoutExtension(font.source);
             FontImportStamp wanted = new FontImportStamp()
             {
                 source = font.source,
-                sourceHash = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(sourcePath))),
+                sourceHash = HashFiles(new[] { sourcePath, boldPath, italicPath }.Where(p => p != null).ToArray()),
+                boldSource = boldPath == null ? string.Empty : Path.GetFileName(boldPath),
+                italicSource = italicPath == null ? string.Empty : Path.GetFileName(italicPath),
                 charset = chars,
                 glyphSize = font.glyphSize,
                 importerVersion = importerVersion
@@ -109,17 +141,22 @@ namespace ArctisAurora.Core.Filing.Serialization
             {
                 source = (string)found.Attribute("Source") ?? string.Empty,
                 sourceHash = (string)found.Attribute("SourceHash") ?? string.Empty,
+                boldSource = (string)found.Attribute("BoldSource") ?? string.Empty,
+                italicSource = (string)found.Attribute("ItalicSource") ?? string.Empty,
                 charset = (string)found.Attribute("Charset") ?? string.Empty,
                 glyphSize = (int?)found.Attribute("GlyphSize") ?? 0,
                 importerVersion = (int?)found.Attribute("ImporterVersion") ?? 0
             })) return;
 
-            Log.Info($"font import '{font.source}': baking {chars.Length} glyphs at {font.glyphSize}px...");
+            int faceCount = 1 + (boldPath == null ? 0 : 1) + (italicPath == null ? 0 : 1);
+            Log.Info($"font import '{font.source}': baking {chars.Length} glyphs at {font.glyphSize}px across {faceCount} face(s)...");
             ClearStamp(Paths.FONTS, baseName);
-            ImportFont(chars, font.source, font.glyphSize, Paths.FONTS);
+            ImportFont(chars, baseName, sourcePath, boldPath, italicPath, font.glyphSize, Paths.FONTS);
             WriteStamp(Paths.FONTS, baseName, new XElement("FontImportStamp",
                 new XAttribute("Source", wanted.source),
                 new XAttribute("SourceHash", wanted.sourceHash),
+                new XAttribute("BoldSource", wanted.boldSource),
+                new XAttribute("ItalicSource", wanted.italicSource),
                 new XAttribute("Charset", wanted.charset),
                 new XAttribute("GlyphSize", wanted.glyphSize),
                 new XAttribute("ImporterVersion", wanted.importerVersion)));
@@ -199,9 +236,28 @@ namespace ArctisAurora.Core.Filing.Serialization
             stamp.Save(Path.Combine(dir, name + ".import.xml"));
         }
 
-        public static void ImportFont(string characters, string fontName, int glyphSize, string outputRoot)
+        public static void ImportFont(string characters, string baseName, string regularPath, string boldPath,
+            string italicPath, int glyphSize, string outputRoot)
         {
-            var fs = new FileStream(ResolveSystemFont(fontName), FileMode.Open, FileAccess.Read);
+            Directory.CreateDirectory(Path.Combine(outputRoot, baseName));
+
+            List<AuroraFont> faces = new List<AuroraFont>();
+            List<string> facePaths = new List<string>();
+            foreach (string facePath in new[] { regularPath, boldPath, italicPath })
+            {
+                if (facePath == null) continue;
+                faces.Add(ReadFace(characters, facePath, baseName, outputRoot));
+                facePaths.Add(facePath);
+            }
+
+            AuroraFont.GenerateGlyphAtlas(faces.ToArray(), facePaths.ToArray(), boldPath != null, italicPath != null,
+                baseName, glyphSize, outputRoot);
+        }
+
+        // Reads one face's table directory and round-trips it through its own .afm.
+        private static AuroraFont ReadFace(string characters, string facePath, string baseName, string outputRoot)
+        {
+            var fs = new FileStream(facePath, FileMode.Open, FileAccess.Read);
             var reader = new BinaryReader(fs);
 
             AuroraFont font = new AuroraFont();
@@ -236,9 +292,7 @@ namespace ArctisAurora.Core.Filing.Serialization
             //reader.BaseStream.Position = font.tableEntries.First(t => t.name == "head").offset + 50;
             //font.headTableInfo.indexToLocFormat = ReadUInt16BE(reader); // 0 = uint16, 1 = uint32
 
-            string baseName = fontName.Split('.')[0];
-            Directory.CreateDirectory(Path.Combine(outputRoot, baseName));
-            string path = Path.Combine(outputRoot, baseName, baseName + ".afm");
+            string path = Path.Combine(outputRoot, baseName, Path.GetFileNameWithoutExtension(facePath) + ".afm");
 
             Serializer.SerializeAttributed(font, path);
             reader.Dispose();
@@ -249,7 +303,7 @@ namespace ArctisAurora.Core.Filing.Serialization
             AuroraFont f = new AuroraFont();
             Serializer.DeserializeAttributed(path, ref f);
             //f.Deserialize(path);
-            AuroraFont.GenerateGlyphAtlas(f, fontName, glyphSize, outputRoot);
+            return f;
         }
 
         internal static short ReadInt16BE(BinaryReader reader) =>
