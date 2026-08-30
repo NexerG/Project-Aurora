@@ -53,7 +53,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             return copy;
         }
 
-        // A run's own styling type wins over the block's; Inherit means it has none.
+        // A run's own styling type wins over the block's; Inherit means it has none. A run carrying an
+        // authored size keeps it — the scheme only fills in sizes nobody chose.
         public override void ApplyLayout(DocumentLayout layout)
         {
             foreach (Entity child in children)
@@ -62,7 +63,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 
                 TextStyleType type = run.stylingType == TextStyleType.Inherit ? stylingType : run.stylingType;
                 run.lineHeight = layout.lineHeight;
-                run.fontSize = layout.FontSizeFor(type);
+                if (!run.fontSizeAuthored) run.fontSize = layout.FontSizeFor(type);
             }
         }
     }

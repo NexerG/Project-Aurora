@@ -5,7 +5,7 @@
   </Block>
   <Block>
     <Run Text="This note is stored as engine XML and rendered by the document view. " ControlColor="gray" />
-    <Run Bold="true" Text="This run is bold." FontName="arial-b" />
+    <Run Bold="true" Text="This run is bold." />
   </Block>
   <Block StylingType="Heading2">
     <Run Text="A second section" />

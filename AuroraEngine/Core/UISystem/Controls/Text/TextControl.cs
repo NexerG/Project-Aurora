@@ -131,33 +131,23 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             return fonts.TryGetValue(name ?? "default", out FontAsset named) ? named : fonts["default"];
         }
 
-        // Rewrites every glyph at the current font, size and colour.
-        private void RepointGlyphs()
+        // Which face of the family this control's glyphs are cut at, and what the measurer takes its
+        // advances from.
+        protected virtual FontStyle glyphStyle => FontStyle.Regular;
+
+        // Rewrites every glyph at the current font, face, size and colour.
+        protected void RepointGlyphs()
         {
             if (_fontAsset == null) return;
 
             foreach (Entity child in children)
                 if (child is GlyphControl glyph)
                 {
+                    glyph.style = glyphStyle;
                     glyph.SetCharacter(glyph.character, _fontAsset, fontSize);
                     glyph.controlColorHex = controlColorHex;
                     glyph.gradient = gradient;
                 }
-        }
-
-        // Re-cuts every glyph at another face of the same family.
-        public void TransmuteText(FontStyle style)
-        {
-            if (_fontAsset == null) return;
-
-            foreach (Entity child in children)
-                if (child is GlyphControl glyph)
-                {
-                    glyph.style = style;
-                    glyph.SetCharacter(glyph.character, _fontAsset, fontSize);
-                }
-
-            InvalidateLayout();
         }
 
         private void SyncGlyphs()
@@ -196,6 +186,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                         // list removal per character, so typing at the head of a long paragraph cost
                         // the whole tail. Rewriting them costs a field update each, and glyphs are
                         // only ever appended to or trimmed from the end.
+                        existing.style = glyphStyle;
                         existing.SetCharacter(target[i], _fontAsset, fontSize);
                         continue;
                     }
@@ -203,7 +194,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                     // Not a glyph at all — AddChild accepts any VulkanControl, and there is nothing
                     // to repoint on one, so this case still has to swap.
                     Entity replaced = children[i];
-                    GlyphControl replacement = new GlyphControl(target[i], _fontAsset, fontSize);
+                    GlyphControl replacement = new GlyphControl(target[i], _fontAsset, fontSize, glyphStyle);
                     replacement.parent = this;
                     replacement.controlColorHex = controlColorHex;
                     replacement.gradient = gradient;
@@ -214,7 +205,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                 else
                 {
                     // Append new glyph
-                    GlyphControl glyph = new GlyphControl(target[i], _fontAsset, fontSize);
+                    GlyphControl glyph = new GlyphControl(target[i], _fontAsset, fontSize, glyphStyle);
                     glyph.parent = this;
                     glyph.controlColorHex = controlColorHex;
                     glyph.gradient = gradient;
@@ -267,7 +258,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
 
             float contentWidth = WrapWidth(availableSize.X);
 
-            runBuffer[0] = new TextMeasurer.Run(text ?? string.Empty, fontName, fontSize);
+            runBuffer[0] = new TextMeasurer.Run(text ?? string.Empty, fontName, fontSize, glyphStyle);
             layout = TextMeasurer.MeasureBlock(runBuffer, contentWidth, metrics, lineHeight, firstLineOffset);
 
             TextLine last = layout.lines[layout.lines.Count - 1];
@@ -341,7 +332,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
 
             int lineIndex = LineAt(localY);
             TextLine line = layout.lines[lineIndex];
-            TextMeasurer.Run run = new TextMeasurer.Run(text ?? string.Empty, fontName, fontSize);
+            TextMeasurer.Run run = new TextMeasurer.Run(text ?? string.Empty, fontName, fontSize, glyphStyle);
             float pen = lineIndex == 0 ? firstLineOffset : 0f;
 
             foreach (LineSegment segment in line.segments)
@@ -384,7 +375,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                         continue;
                     }
 
-                    TextMeasurer.Run run = new TextMeasurer.Run(text ?? string.Empty, fontName, fontSize);
+                    TextMeasurer.Run run = new TextMeasurer.Run(text ?? string.Empty, fontName, fontSize, glyphStyle);
                     for (int c = segment.charStart; c < offset; c++)
                         x += TextMeasurer.MeasureAdvance(text[c], run, metrics);
 

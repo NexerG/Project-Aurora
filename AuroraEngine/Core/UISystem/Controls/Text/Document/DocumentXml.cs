@@ -146,9 +146,13 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         // mean.
         private static bool IsResolved(object node, MemberInfo member, Dictionary<MemberInfo, object> defaults, DocumentLayout layout)
         {
-            // ApplyLayout writes the styling scheme's size into every run when the note is loaded.
+            // ApplyLayout writes the styling scheme's size into every run when the note is loaded —
+            // unless the run named one itself, which has to survive even when it agrees with the
+            // scheme today.
             if (node is TextRun run && member.Name == nameof(TextControl.fontSize))
             {
+                if (run.fontSizeAuthored) return false;
+
                 TextStyleType type = run.stylingType == TextStyleType.Inherit
                     ? (run.parent as ContentBlock)?.stylingType ?? TextStyleType.Text
                     : run.stylingType;

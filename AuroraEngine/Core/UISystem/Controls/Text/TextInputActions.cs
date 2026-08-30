@@ -28,7 +28,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             Queue<char> input = InputHandler.charInputReadQueue;
             if (input.Count == 0) return;
 
-            DocumentEditorControl editor = Editor();
+            DocumentEditorControl editor = FocusedEditor();
             if (editor == null)
             {
                 TextBoxControl box = Box();
@@ -71,7 +71,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         [A_XSDActionDependency("Text.Backspace", "Input", "Deletes the selection, or the character before the caret")]
         public static void Backspace()
         {
-            DocumentEditorControl editor = Editor();
+            DocumentEditorControl editor = FocusedEditor();
             if (editor != null) { editor.Backspace(); return; }
 
             Box()?.Backspace();
@@ -80,7 +80,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         [A_XSDActionDependency("Text.Delete", "Input", "Deletes the selection, or the character after the caret")]
         public static void Delete()
         {
-            DocumentEditorControl editor = Editor();
+            DocumentEditorControl editor = FocusedEditor();
             if (editor != null) { editor.Delete(); return; }
 
             Box()?.Delete();
@@ -89,7 +89,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         [A_XSDActionDependency("Text.NewBlock", "Input", "Splits the caret's block in two, or commits a standalone field")]
         public static void NewBlock()
         {
-            DocumentEditorControl editor = Editor();
+            DocumentEditorControl editor = FocusedEditor();
             if (editor != null) { editor.SplitBlock(); return; }
 
             Box()?.Commit();
@@ -98,23 +98,41 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         [A_XSDActionDependency("Text.SelectAll", "Input", "Selects the whole of the focused note or field")]
         public static void SelectAll()
         {
-            DocumentEditorControl editor = Editor();
+            DocumentEditorControl editor = FocusedEditor();
             if (editor != null) { editor.SelectAll(); return; }
 
             Box()?.SelectAll();
         }
 
+        [A_XSDActionDependency("Text.Bold", "Input", "Toggles bold over the selection in the focused note")]
+        public static void Bold() => Toggle(run => new StyleDelta(bold: !run.bold));
+
+        [A_XSDActionDependency("Text.Italic", "Input", "Toggles italic over the selection in the focused note")]
+        public static void Italic() => Toggle(run => new StyleDelta(italic: !run.italic));
+
+        // The state comes off the run the selection starts in, so a toggle is what that run is not.
+        private static void Toggle(Func<TextRun, StyleDelta> delta)
+        {
+            DocumentEditorControl editor = FocusedEditor();
+            if (editor == null) return;
+
+            TextRun? source = editor.StyleSource;
+            if (source == null) return;
+
+            editor.ApplyStyle(delta(source));
+        }
+
         [A_XSDActionDependency("Text.Undo", "Input", "Reverses the last edit made to the focused note")]
-        public static void Undo() => Editor()?.Undo();
+        public static void Undo() => FocusedEditor()?.Undo();
 
         [A_XSDActionDependency("Text.Redo", "Input", "Reapplies the last edit undone in the focused note")]
-        public static void Redo() => Editor()?.Redo();
+        public static void Redo() => FocusedEditor()?.Redo();
 
         [A_XSDActionDependency("Text.Cancel", "Input", "Abandons the edit in a standalone field and restores what it held")]
         public static void Cancel() => Box()?.Cancel();
 
         [A_XSDActionDependency("Text.Save", "Input", "Writes the focused note back to the file it was loaded from")]
-        public static void Save() => Editor()?.SaveNamed();
+        public static void Save() => FocusedEditor()?.SaveNamed();
 
         [A_XSDActionDependency("Text.CaretLeft", "Input")]
         public static void CaretLeft() => Move(CaretMove.Left);
@@ -143,7 +161,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         // The Extend modifier keeps the anchor instead of collapsing it onto the new position.
         private static void Move(CaretMove move)
         {
-            DocumentEditorControl editor = Editor();
+            DocumentEditorControl editor = FocusedEditor();
             if (editor != null)
             {
                 editor.MoveCaret(move, InputHandler.instance.IsModifierDown(InputModifier.Extend));
@@ -166,7 +184,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         }
 
         // Nearest document editor at or above whatever the collision handler last made active.
-        private static DocumentEditorControl Editor()
+        // Internal because the format bar resolves its target the same way — its buttons leave the
+        // active control alone, so the caret's run is still what this walk starts from.
+        internal static DocumentEditorControl FocusedEditor()
         {
             for (VulkanControl control = UICollisionHandling.activeControl;
                  control != null;

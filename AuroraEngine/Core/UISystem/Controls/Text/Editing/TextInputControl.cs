@@ -8,13 +8,38 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
     {
         #region ---- style ----
         [A_XSDElementProperty("Bold", "TextEditor")]
-        public bool bold { get; set; } = false;
+        public bool bold
+        {
+            get => field;
+            set
+            {
+                if (field == value) return;
+                field = value;
+                RepointGlyphs();
+                InvalidateLayout();
+            }
+        } = false;
 
         [A_XSDElementProperty("Italic", "TextEditor")]
-        public bool italic { get; set; } = false;
+        public bool italic
+        {
+            get => field;
+            set
+            {
+                if (field == value) return;
+                field = value;
+                RepointGlyphs();
+                InvalidateLayout();
+            }
+        } = false;
 
         [A_XSDElementProperty("Strikethrough", "TextEditor")]
         public bool strikethrough { get; set; } = false;
+
+        // Bold wins over italic: the importer bakes at most three faces per family, so there is no
+        // bold-italic cell to point at.
+        protected override FontStyle glyphStyle =>
+            bold ? FontStyle.Bold : italic ? FontStyle.Italic : FontStyle.Regular;
         #endregion
 
         public TextInputControl()

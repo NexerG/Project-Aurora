@@ -10,6 +10,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
     [A_XSDType("Run", "UI")]
     public class TextRun : TextInputControl
     {
+        // A size chosen for this run rather than resolved from the styling scheme. ApplyLayout leaves
+        // those alone, which is the whole difference between the px field and a heading.
+        [A_XSDElementProperty("FontSizeAuthored", "UI", "The run's FontSize was chosen, not taken from the styling scheme.")]
+        public bool fontSizeAuthored { get; set; } = false;
+
         public TextRun()
         {
             bubbleMultiClick = true;
@@ -45,8 +50,21 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             gradient = gradient,
             fontName = fontName,
             fontSize = fontSize,
+            fontSizeAuthored = fontSizeAuthored,
             stylingType = stylingType,
             text = text
         };
+
+        // Keeps [0..offset) and returns a run of the same style holding the rest. Hides
+        // TextInputControl.SplitAt, which is older dead code returning the wrong type for a document.
+        public new TextRun SplitAt(int offset)
+        {
+            string whole = text ?? string.Empty;
+
+            TextRun right = Clone();
+            right.text = whole[offset..];
+            text = whole[..offset];
+            return right;
+        }
     }
 }

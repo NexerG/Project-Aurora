@@ -14,6 +14,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document.Edits
         public string gradient;
         public string fontName;
         public int fontSize;
+        public bool fontSizeAuthored;
         public TextStyleType stylingType;
 
         public static RunSnapshot Of(TextControl run, string text)
@@ -23,6 +24,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document.Edits
             return new RunSnapshot
             {
                 text = text,
+                fontSizeAuthored = (run as TextRun)?.fontSizeAuthored ?? false,
                 bold = input?.bold ?? false,
                 italic = input?.italic ?? false,
                 strikethrough = input?.strikethrough ?? false,
@@ -43,6 +45,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document.Edits
             gradient = gradient,
             fontName = fontName,
             fontSize = fontSize,
+            fontSizeAuthored = fontSizeAuthored,
             stylingType = stylingType,
             text = text
         };

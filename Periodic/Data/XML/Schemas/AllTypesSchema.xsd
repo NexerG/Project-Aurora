@@ -54,6 +54,7 @@
       <xs:enumeration value="TextInput" />
       <xs:enumeration value="Block" />
       <xs:enumeration value="DocumentEditor" />
+      <xs:enumeration value="DocumentToolbar" />
       <xs:enumeration value="Run" />
       <xs:enumeration value="TextStyleType" />
       <xs:enumeration value="TextStyle" />

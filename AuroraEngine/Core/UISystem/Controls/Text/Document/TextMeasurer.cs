@@ -27,6 +27,10 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
     {
         Glyph Get(string fontName, char character);
         LineMetrics GetLineMetrics(string fontName);
+
+        // The face a family actually has for a style, so the measurer picks the same metrics set
+        // GlyphControl cut the quad from.
+        FontStyle Effective(string fontName, FontStyle style);
     }
 
     // One run's contribution to a line. A line carries a list of these rather than a single run
@@ -100,12 +104,14 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             public readonly string text;
             public readonly string fontName;
             public readonly int fontSize;
+            public readonly FontStyle style;
 
-            public Run(string text, string fontName, int fontSize)
+            public Run(string text, string fontName, int fontSize, FontStyle style = FontStyle.Regular)
             {
                 this.text = text;
                 this.fontName = fontName;
                 this.fontSize = fontSize;
+                this.style = style;
             }
         }
 
@@ -143,7 +149,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 {
                     TextStyleType type = inline.stylingType == TextStyleType.Inherit
                         ? block.stylingType : inline.stylingType;
-                    runs.Add(new Run(inline.text, inline.fontName, documentLayout.FontSizeFor(type)));
+                    FontStyle style = inline.bold ? FontStyle.Bold
+                        : inline.italic ? FontStyle.Italic : FontStyle.Regular;
+                    runs.Add(new Run(inline.text, inline.fontName, documentLayout.FontSizeFor(type), style));
                 }
 
             return MeasureBlock(runs, contentWidth, metrics, documentLayout.lineHeight);
@@ -295,7 +303,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         public static float MeasureAdvance(char character, Run run, IGlyphMetrics metrics)
         {
             Glyph glyph = metrics.Get(run.fontName, character) ?? metrics.Get(run.fontName, ' ');
-            return glyph == null ? 0f : glyph.regular.advanceWidth * run.fontSize;
+            if (glyph == null) return 0f;
+
+            return glyph.Metrics(metrics.Effective(run.fontName, run.style)).advanceWidth * run.fontSize;
         }
     }
 
@@ -309,6 +319,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         private readonly Dictionary<string, LineMetrics> lineBoxes = new Dictionary<string, LineMetrics>();
 
         public Glyph Get(string fontName, char character) => Resolve(fontName).atlasMetaData.GetGlyph(character);
+
+        public FontStyle Effective(string fontName, FontStyle style) =>
+            Resolve(fontName).atlasMetaData.Effective(style);
 
         // The tallest ascent and deepest descent any glyph in the font reaches, so every line is the
         // same height and none of them clip. The font's own hhea ascender/descender would be the

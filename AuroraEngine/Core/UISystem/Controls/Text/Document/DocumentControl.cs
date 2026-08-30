@@ -23,6 +23,41 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         public bool Equals(CaretSlot other) => run == other.run && offset == other.offset;
     }
 
+    // A style change as data, so an edit record can carry one and redo can replay it. A member left
+    // null is one the change does not speak to — which is what lets bold over a multicoloured
+    // selection keep every colour in it.
+    public readonly struct StyleDelta
+    {
+        public readonly bool? bold;
+        public readonly bool? italic;
+        public readonly bool? strikethrough;
+        public readonly string? colorHex;
+        public readonly int? fontSize;
+
+        public StyleDelta(bool? bold = null, bool? italic = null, bool? strikethrough = null,
+            string? colorHex = null, int? fontSize = null)
+        {
+            this.bold = bold;
+            this.italic = italic;
+            this.strikethrough = strikethrough;
+            this.colorHex = colorHex;
+            this.fontSize = fontSize;
+        }
+
+        public void Apply(TextRun run)
+        {
+            if (bold.HasValue) run.bold = bold.Value;
+            if (italic.HasValue) run.italic = italic.Value;
+            if (strikethrough.HasValue) run.strikethrough = strikethrough.Value;
+            if (colorHex != null) run.controlColorHex = colorHex;
+            if (fontSize.HasValue)
+            {
+                run.fontSizeAuthored = true;
+                run.fontSize = fontSize.Value;
+            }
+        }
+    }
+
     // The document's content area: blocks stacked top to bottom, plus the caret and the selection
     // placed over them.
     public class DocumentControl : AbstractContainerControl
@@ -130,6 +165,16 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         }
 
         internal void RegainFocus() => caret?.Focus();
+
+        // Takes the active context back from a control outside the note. The run stopped editing when
+        // it lost it, so the context alone is not enough to put the caret back to work.
+        internal void FocusCaret()
+        {
+            if (caretRun == null) return;
+
+            UICollisionHandling.SetActiveControl(caretRun);
+            SetCaret(caretRun);
+        }
 
         public override Vector2D<float> Measure(Vector2D<float> availableSize)
         {
@@ -687,6 +732,273 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 if (child is Block block) blocks.Add(block);
 
             return blocks;
+        }
+        #endregion
+
+        #region ---- styling ----
+        // The run a toggle reads its current state from, and the one a toolbar reflects. The
+        // selection's start rather than the caret's own run: the focus end normalizes forward, so a
+        // range ending on a run boundary sits in the run after the one it covers.
+        public TextRun? StyleSource =>
+            (OrderedSelection(out CaretSlot from, out _) ? from.run : caretRun) as TextRun;
+
+        public TextStyleType CaretBlockStyling =>
+            BlockOf(caretRun) is ContentBlock block ? block.stylingType : TextStyleType.Text;
+
+        // Restyles the selected range; false when nothing was selected.
+        public bool ApplyStyle(StyleDelta delta) =>
+            SelectedRange(out DocumentAddress from, out DocumentAddress to) && ApplyStyleTo(from, to, delta);
+
+        // The selection as addresses, so a control that has to take the active context can act on the
+        // range it was pointed at rather than on whatever is selected by the time it commits.
+        public bool SelectedRange(out DocumentAddress from, out DocumentAddress to)
+        {
+            from = to = default;
+            if (!OrderedSelection(out CaretSlot start, out CaretSlot end)) return false;
+
+            from = AddressOf(start.run, start.offset);
+            to = AddressOf(end.run, end.offset);
+            return true;
+        }
+
+        // Restyles an addressed range; false when an end names a block the document does not have.
+        public bool ApplyStyleTo(DocumentAddress from, DocumentAddress to, StyleDelta delta)
+        {
+            int count = Blocks().Count;
+            if (from.block < 0 || to.block < 0 || from.block >= count || to.block >= count) return false;
+
+            List<BlockSnapshot> before = SnapshotBlocks(from.block, to.block);
+
+            ApplyStyleBetween(from, to, delta);
+            undo?.Push(new StyleRangeEdit(this, from.block, before, from, to, delta));
+            return true;
+        }
+
+        // Cuts the range's ends out of the runs holding them, applies the delta to every run
+        // between, then folds back together whatever the change made identical. Addressed rather
+        // than read off the selection, so redo can replay it against the partition undo restored.
+        internal void ApplyStyleBetween(DocumentAddress from, DocumentAddress to, StyleDelta delta)
+        {
+            if (!Resolve(from, out TextControl fromRun, out int fromOffset)) return;
+            if (!Resolve(to, out TextControl toRun, out int toOffset)) return;
+
+            List<Block> blocks = Blocks();
+            int first = blocks.IndexOf(BlockOf(fromRun));
+            int last = blocks.IndexOf(BlockOf(toRun));
+            if (first < 0 || last < 0 || last < first) return;
+
+            // Character offsets within a block survive the re-partition below; run indices do not,
+            // because a split renumbers every run after it and a merge renumbers them back.
+            int fromChar = BlockOffsetOf(fromRun, fromOffset);
+            int toChar = BlockOffsetOf(toRun, toOffset);
+
+            for (int b = first; b <= last; b++)
+                StyleSpan(blocks[b],
+                    b == first ? fromChar : 0,
+                    b == last ? toChar : BlockLength(blocks[b]),
+                    delta);
+
+            // both ends point at runs the re-partition may have retired
+            if (ResolveBlockOffset(blocks[first], fromChar, out TextControl anchorRun, out int anchorOffset))
+                anchor = Normalize(new CaretSlot(anchorRun, anchorOffset));
+
+            if (ResolveBlockOffset(blocks[last], toChar, out TextControl focusRun, out int focusOffset))
+                SetCaret(focusRun, focusOffset, true);
+        }
+
+        // ApplyLayout runs between the split and the delta: a run the split just cloned carries no
+        // line height, and the scheme's font size would otherwise overwrite one the delta set.
+        private void StyleSpan(Block block, int start, int end, StyleDelta delta)
+        {
+            if (end <= start) return;
+
+            // end first — splitting at start would move the run end lands in
+            SplitRunAt(block, end);
+            SplitRunAt(block, start);
+            block.ApplyLayout(document.layout);
+
+            int at = 0;
+            foreach (Entity child in block.children.ToArray())
+            {
+                if (child is not TextRun run) continue;
+
+                int length = Length(run);
+                if (at >= start && at + length <= end) delta.Apply(run);
+                at += length;
+            }
+
+            MergeRuns(block);
+            block.InvalidateLayout();
+        }
+
+        // Splits whichever run holds the offset so a boundary falls exactly there; an offset already
+        // on one splits nothing, which is what keeps a repeated toggle from shredding a block.
+        private void SplitRunAt(Block block, int charOffset)
+        {
+            int at = 0;
+            int index = 0;
+
+            foreach (Entity child in block.children)
+            {
+                if (child is not TextRun run) continue;
+
+                int length = Length(run);
+                if (charOffset > at && charOffset < at + length)
+                {
+                    InsertRun(block, index + 1, run.SplitAt(charOffset - at));
+                    return;
+                }
+                at += length;
+                index++;
+            }
+        }
+
+        // Folds neighbours the change made identical back into one, so a document does not
+        // accumulate a run boundary per edit. Styling type is compared here rather than in
+        // StyleEquals, which does not look at it.
+        private static void MergeRuns(Block block)
+        {
+            TextRun previous = null;
+
+            foreach (Entity child in block.children.ToArray())
+            {
+                if (child is not TextRun run) { previous = null; continue; }
+
+                if (previous != null && previous.stylingType == run.stylingType && previous.StyleEquals(run))
+                {
+                    previous.text = TextOf(previous) + TextOf(run);
+                    run.Destroy();
+                    continue;
+                }
+                previous = run;
+            }
+        }
+
+        // The styling type of every block the range touches; with nothing selected, the caret's own.
+        public bool SetBlockStyling(TextStyleType type)
+        {
+            if (caretRun == null) return false;
+
+            List<Block> blocks = Blocks();
+            int first, last;
+
+            if (OrderedSelection(out CaretSlot from, out CaretSlot to))
+            {
+                first = blocks.IndexOf(BlockOf(from.run));
+                last = blocks.IndexOf(BlockOf(to.run));
+            }
+            else first = last = blocks.IndexOf(BlockOf(caretRun));
+
+            if (first < 0 || last < 0) return false;
+
+            List<BlockSnapshot> before = SnapshotBlocks(first, last);
+            SetBlockStylingBetween(first, last, type);
+            undo?.Push(new StyleRangeEdit(this, first, before, type));
+            return true;
+        }
+
+        internal void SetBlockStylingBetween(int first, int last, TextStyleType type)
+        {
+            List<Block> blocks = Blocks();
+
+            for (int b = first; b <= last && b < blocks.Count; b++)
+            {
+                if (blocks[b] is not ContentBlock block) continue;
+
+                block.stylingType = type;
+                block.ApplyLayout(document.layout);
+                block.InvalidateLayout();
+            }
+        }
+
+        // The run partition of a span of blocks, as data. A style change leaves the text alone, so
+        // the partition plus the styles on it is the whole inverse.
+        internal List<BlockSnapshot> SnapshotBlocks(int first, int last)
+        {
+            List<Block> blocks = Blocks();
+            List<BlockSnapshot> snapshots = new List<BlockSnapshot>();
+
+            for (int b = first; b <= last && b < blocks.Count; b++)
+            {
+                BlockSnapshot snapshot = new BlockSnapshot { stylingType = StylingOf(blocks[b]) };
+                foreach (Entity child in blocks[b].children)
+                    if (child is TextControl run) snapshot.runs.Add(RunSnapshot.Of(run, TextOf(run)));
+
+                snapshots.Add(snapshot);
+            }
+            return snapshots;
+        }
+
+        // Undo for both styling primitives. The blocks themselves survive — neither adds or removes
+        // one — so only their runs are rebuilt.
+        internal void RestoreBlocks(int firstBlock, List<BlockSnapshot> before)
+        {
+            List<Block> blocks = Blocks();
+
+            for (int i = 0; i < before.Count; i++)
+            {
+                int index = firstBlock + i;
+                if (index >= blocks.Count) break;
+
+                Block block = blocks[index];
+                foreach (Entity child in block.children.ToArray())
+                    if (child is TextControl run) run.Destroy();
+
+                if (block is ContentBlock content) content.stylingType = before[i].stylingType;
+                foreach (RunSnapshot run in before[i].runs)
+                    block.AddChild(run.Build());
+
+                block.ApplyLayout(document.layout);
+                block.InvalidateLayout();
+            }
+
+            CaretTo(new DocumentAddress(firstBlock, 0, 0));
+        }
+
+        // A caret position counted from the start of its block.
+        private static int BlockOffsetOf(TextControl run, int offset)
+        {
+            Block block = BlockOf(run);
+            if (block == null) return offset;
+
+            int at = 0;
+            foreach (Entity child in block.children)
+            {
+                if (child is not TextControl text) continue;
+                if (ReferenceEquals(text, run)) return at + offset;
+                at += Length(text);
+            }
+            return at;
+        }
+
+        private static bool ResolveBlockOffset(Block block, int charOffset, out TextControl run, out int offset)
+        {
+            run = null;
+            offset = 0;
+
+            int at = 0;
+            foreach (Entity child in block.children)
+            {
+                if (child is not TextControl text) continue;
+
+                run = text;
+                if (charOffset <= at + Length(text)) { offset = charOffset - at; return true; }
+                at += Length(text);
+            }
+
+            if (run == null) return false;
+
+            offset = Length(run);
+            return true;
+        }
+
+        private static int BlockLength(Block block)
+        {
+            int length = 0;
+            foreach (Entity child in block.children)
+                if (child is TextControl run) length += Length(run);
+
+            return length;
         }
         #endregion
 

@@ -133,6 +133,7 @@
       <xs:element name="TextInput" type="types:TextInput" />
       <xs:element name="Block" type="types:Block" />
       <xs:element name="DocumentEditor" type="types:DocumentEditor" />
+      <xs:element name="DocumentToolbar" type="types:DocumentToolbar" />
       <xs:element name="Run" type="types:Run" />
       <xs:element name="Button" type="types:Button" />
       <xs:element name="CheckBox" type="types:CheckBox" />
@@ -254,10 +255,19 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:DocumentEditor.Attributes" />
   </xs:complexType>
+  <xs:element name="DocumentToolbar" type="types:DocumentToolbar" />
+  <xs:complexType name="DocumentToolbar">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:StackPanel.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="Run.Attributes">
+    <xs:attributeGroup ref="types:TextInput.Attributes" />
+    <xs:attribute name="FontSizeAuthored" type="xs:boolean" />
+  </xs:attributeGroup>
   <xs:element name="Run" type="types:Run" />
   <xs:complexType name="Run">
     <xs:sequence />
-    <xs:attributeGroup ref="types:TextInput.Attributes" />
+    <xs:attributeGroup ref="types:Run.Attributes" />
   </xs:complexType>
   <xs:simpleType name="TextStyleType">
     <xs:restriction base="xs:string">

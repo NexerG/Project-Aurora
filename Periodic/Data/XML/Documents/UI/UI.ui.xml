@@ -23,6 +23,8 @@
 			</Button>
 		</TitleBar>
 
+		<DocumentToolbar Height="30" HorizontalAlignment="Stretch" ColorHex="#1e1e1e"/>
+
 		<StackPanel Orientation="Horizontal" HeightStar="1" ColorHex="#1e1e1e">
 			<StackPanel Orientation="Vertical" Width="220" MinWidth="120" ColorHex="#171717">
 				<VaultBrowser Name="Browser" HeightStar="1" ColorHex="#171717" Padding="8"/>

@@ -4,6 +4,7 @@ using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.UISystem.Controls.Containers;
+using ArctisAurora.Core.UISystem.Controls.Text.Document.Edits;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
@@ -121,6 +122,46 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         }
 
         public TextControl CaretRun => content?.caretRun;
+
+        // What a toggle reads its current state from, and what a toolbar reflects.
+        public TextRun? StyleSource => content?.StyleSource;
+
+        public TextStyleType CaretBlockStyling => content?.CaretBlockStyling ?? TextStyleType.Text;
+
+        public void ApplyStyle(StyleDelta delta)
+        {
+            if (content == null) return;
+
+            using (BeginStep("Formatting"))
+                if (content.ApplyStyle(delta)) MarkDirty();
+        }
+
+        // For a control that must take the active context before it can be used: it captures the
+        // range on the way in and hands it back here, rather than asking what is selected once the
+        // note no longer holds the caret.
+        public bool SelectedRange(out DocumentAddress from, out DocumentAddress to)
+        {
+            from = to = default;
+            return content != null && content.SelectedRange(out from, out to);
+        }
+
+        public void ApplyStyleTo(DocumentAddress from, DocumentAddress to, StyleDelta delta)
+        {
+            if (content == null) return;
+
+            using (BeginStep("Formatting"))
+                if (content.ApplyStyleTo(from, to, delta)) MarkDirty();
+        }
+
+        public void FocusCaret() => content?.FocusCaret();
+
+        public void SetBlockStyling(TextStyleType type)
+        {
+            if (content == null) return;
+
+            using (BeginStep("Paragraph style"))
+                if (content.SetBlockStyling(type)) MarkDirty();
+        }
 
         public void LoadDocument(RichTextDocument document)
         {

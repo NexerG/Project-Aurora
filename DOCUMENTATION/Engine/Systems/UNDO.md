@@ -79,6 +79,7 @@ Indices survive a reversal by construction. A delete leaves the head run on the 
 | `RunTextEdit` | typing, and any delete inside one run | splice the text back in, or back out | the mirror splice |
 | `DeleteRangeEdit` | a delete crossing a run or block boundary | `InsertFragment(from, fragment)` | `DeleteRange(from, to)` |
 | `SplitEdit` | Enter | `JoinBlockWithNext` | `SplitBlockAt(at)` |
+| `StyleRangeEdit` | Ctrl+B/I, and every pick on the format bar | `RestoreBlocks(firstBlock, before)` | `ApplyStyleBetween(from, to, delta)`, or `SetBlockStylingBetween` |
 
 ### Fragments
 

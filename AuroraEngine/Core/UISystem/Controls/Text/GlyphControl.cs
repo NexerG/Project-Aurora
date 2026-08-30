@@ -29,9 +29,10 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         private float _cellW;
         private float _cellH;
 
-        public GlyphControl(char character, FontAsset fontAsset, int px)
+        public GlyphControl(char character, FontAsset fontAsset, int px, FontStyle style = FontStyle.Regular)
         {
             BubbleAll();
+            this.style = style;
             SetCharacter(character, fontAsset, px);
         }
 

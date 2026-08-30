@@ -28,6 +28,7 @@ ArctisAurora.Core.Editing -> AuroraEngine/Core/Editing/EditStep.cs
 ArctisAurora.Core.Editing -> AuroraEngine/Core/Editing/IEditRecord.cs
 ArctisAurora.Core.Editing -> AuroraEngine/Core/Editing/UndoStack.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FileObject.cs
+ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FolderPicker.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/AssetImporter.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/ImportManifest.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/MeshImporter.cs
@@ -65,6 +66,7 @@ ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/DragGhost.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/Glyph.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/Gradients.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/IconSet.cs
+ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/MenuScreen.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/NoteNameWindow.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/SettingsWindow.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/UICollisionHandling.cs
@@ -116,6 +118,7 @@ ArctisAurora.Core.UISystem.Controls.Text.Document -> AuroraEngine/Core/UISystem/
 ArctisAurora.Core.UISystem.Controls.Text.Document -> AuroraEngine/Core/UISystem/Controls/Text/Document/DocumentControl.cs
 ArctisAurora.Core.UISystem.Controls.Text.Document -> AuroraEngine/Core/UISystem/Controls/Text/Document/DocumentEditorControl.cs
 ArctisAurora.Core.UISystem.Controls.Text.Document -> AuroraEngine/Core/UISystem/Controls/Text/Document/DocumentEditSession.cs
+ArctisAurora.Core.UISystem.Controls.Text.Document -> AuroraEngine/Core/UISystem/Controls/Text/Document/DocumentToolbarControl.cs
 ArctisAurora.Core.UISystem.Controls.Text.Document -> AuroraEngine/Core/UISystem/Controls/Text/Document/DocumentXml.cs
 ArctisAurora.Core.UISystem.Controls.Text.Document -> AuroraEngine/Core/UISystem/Controls/Text/Document/Inlines.cs
 ArctisAurora.Core.UISystem.Controls.Text.Document -> AuroraEngine/Core/UISystem/Controls/Text/Document/RichTextDocument.cs
@@ -127,6 +130,7 @@ ArctisAurora.Core.UISystem.Controls.Text.Document.Edits -> AuroraEngine/Core/UIS
 ArctisAurora.Core.UISystem.Controls.Text.Document.Edits -> AuroraEngine/Core/UISystem/Controls/Text/Document/Edits/DocumentFragment.cs
 ArctisAurora.Core.UISystem.Controls.Text.Document.Edits -> AuroraEngine/Core/UISystem/Controls/Text/Document/Edits/RunTextEdit.cs
 ArctisAurora.Core.UISystem.Controls.Text.Document.Edits -> AuroraEngine/Core/UISystem/Controls/Text/Document/Edits/SplitEdit.cs
+ArctisAurora.Core.UISystem.Controls.Text.Document.Edits -> AuroraEngine/Core/UISystem/Controls/Text/Document/Edits/StyleRangeEdit.cs
 ArctisAurora.Core.UISystem.Controls.Text.Editing -> AuroraEngine/Core/UISystem/Controls/Text/Editing/TextBoxControl.cs
 ArctisAurora.Core.UISystem.Controls.Text.Editing -> AuroraEngine/Core/UISystem/Controls/Text/Editing/TextInputControl.cs
 ArctisAurora.CustomEntities -> AuroraEngine/CustomEntities/Layer.cs
@@ -184,4 +188,5 @@ AuroraEditor.EditorProgram.UIFunctions -> AuroraEditor/EditorProgram/UIFunctions
 AuroraPeriodic -> Periodic/Periodic.cs
 AuroraPeriodic -> Periodic/PeriodicSettings.cs
 Periodic.Editor -> Periodic/Editor/Decorations.cs
+Periodic.Editor -> Periodic/Editor/VaultsWindow.cs
 Periodic.Editor.CustomControls -> Periodic/Editor/CustomControls/VaultBrowserControl.cs

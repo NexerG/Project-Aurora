@@ -16,6 +16,8 @@
           <xs:enumeration value="Text.Delete" />
           <xs:enumeration value="Text.NewBlock" />
           <xs:enumeration value="Text.SelectAll" />
+          <xs:enumeration value="Text.Bold" />
+          <xs:enumeration value="Text.Italic" />
           <xs:enumeration value="Text.Undo" />
           <xs:enumeration value="Text.Redo" />
           <xs:enumeration value="Text.Cancel" />
