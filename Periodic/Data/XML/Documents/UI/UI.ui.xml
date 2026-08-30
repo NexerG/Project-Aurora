@@ -15,8 +15,8 @@
 			<Button Width="46" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A" onRelease="Window.Minimize">
 				<Icon Set="default" Icon="minimize" Width="14" Height="14" ColorHex="#CCCCCC"/>
 			</Button>
-			<Button Width="46" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A" onRelease="Window.MaximizeRestore" CornerRadius="10,0,0,10">
-				<Icon Set="default" Icon="maximize" Width="14" Height="14" ColorHex="#CCCCCC"/>
+			<Button Width="46" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A" onRelease="Window.MaximizeRestore">
+				<Icon Set="default" Icon="maximize" Width="18" Height="18" ColorHex="#CCCCCC"/>
 			</Button>
 			<Button Width="46" Height="32" ColorHex="#141414" HoverColorHex="#C42B1E" PressColorHex="#A82318" onRelease="Window.Close">
 				<Icon Set="default" Icon="close" Width="14" Height="14" ColorHex="#CCCCCC"/>
