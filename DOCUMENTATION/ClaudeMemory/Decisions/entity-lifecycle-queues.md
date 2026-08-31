@@ -13,7 +13,7 @@ frames" now describes start and enable/disable too.
 So constructing an entity anywhere inside `OnStart` or `OnTick` — directly, or via anything that
 builds a control or a document view — bumped the list version and threw
 `InvalidOperationException` on the next `MoveNext`, inside the main tick, uncaught. Loading a note
-from `OnStart` was enough; `Periodic.Main` opens the first note instead as the workaround.
+from `OnStart` was enough; `Thorium.Main` opens the first note instead as the workaround.
 
 Four more defects sat in the same code:
 - A destroyed entity still got one `OnTick`. `ProcessDestroys` runs *before* the tick loop, so
@@ -106,13 +106,13 @@ loop needs revisiting.
 
 ## Verified
 
-Builds clean. Periodic boots, renders and stays responsive. A temporary counter in the tick loop
+Builds clean. Thorium boots, renders and stays responsive. A temporary counter in the tick loop
 reported `1266/1266` tickable on tick 0 and `1273/1273` on ticks 1-2 — proving `ProcessStarts` and
 `ProcessEnableChanges` both land before the loop, so an entity is started, notified enabled and
 ticked in the tick it was created, with no latency. That probe mattered because **nothing in
-Periodic overrides `OnTick`**: a gate stuck closed would have produced no visible symptom at all.
+Thorium overrides `OnTick`**: a gate stuck closed would have produced no visible symptom at all.
 
-**The destroy drain is NOT exercised at runtime.** A Periodic boot destroys nothing, and text
+**The destroy drain is NOT exercised at runtime.** A Thorium boot destroys nothing, and text
 deletion is still unreachable ([[ecs-rework-data-pools]], seventh slice), so leaves-first `Stack`
 teardown is correct by inspection only. The old `DestroySelf` scene trick is the way to exercise it.
 

@@ -3,8 +3,8 @@
 **Date:** 2026-08-30
 **Status:** LANDED. Builds clean; boots all 24 steps; probed at runtime (list, prune, rows, persistence).
 **NOT GUI-verified** — nothing was clicked. No row click, no picker, no vault switch end to end.
-**Scope:** `Periodic` (`PeriodicSettings`, `VaultsWindow`, `Vaults.ui.xml`, `UI.ui.xml`,
-`ContextMenus.menus.xml`, `PeriodicAssets.assets.xml`, `Periodic.Main`), `ArctisAurora.Core`
+**Scope:** `Thorium` (`ThoriumSettings`, `VaultsWindow`, `Vaults.ui.xml`, `UI.ui.xml`,
+`ContextMenus.menus.xml`, `ThoriumAssets.assets.xml`, `Thorium.Main`), `ArctisAurora.Core`
 (`Engine.Post`, `MenuScreen`, `FolderPicker`, `AGlfwWindow.Hwnd`).
 
 Extends [[vault-browser-and-shell]], which made *one* vault a setting. This makes the set of them data.
@@ -17,13 +17,13 @@ Extends [[vault-browser-and-shell]], which made *one* vault a setting. This make
 `InputBindings` shape, and it is forced: a `SettingCategory`'s children are one `Setting` each and
 `SettingsRegistry.WriteDiff` walks them as *attributes*. A category structurally cannot hold a list.
 The non-category path already walks `ChildListFields`, so the list persists to
-`%APPDATA%\Periodic\Settings\UserSettings.settings.xml` for free and stays out of the settings
+`%APPDATA%\Thorium\Settings\UserSettings.settings.xml` for free and stays out of the settings
 screen's category list — `SettingsWindow.Categories()` yields only `SettingCategory`.
 
 The entry type is `KnownVault`, not `Vault`, because `AnyXMLType.FindType` resolves the *type's*
 `[A_XSDType]` name globally and `VaultSetting` already owns `Vault`.
 
-**Two things track a vault, deliberately:** `PeriodicSettings.vault.path` is the one you are in,
+**Two things track a vault, deliberately:** `ThoriumSettings.vault.path` is the one you are in,
 `KnownVaults.vaults` is the set you have been in. Collapsing them into "the list, plus an index"
 was rejected — the active vault has to keep working when the list is empty, and it is what every
 existing reader already asks for.
@@ -101,7 +101,7 @@ blocker under the engine. The replacement is on the WIP list: an in-engine file 
 `WindowControl` for the caller to fill, or `null` when the screen was already up and was raised
 instead.
 
-**Rejected: making `os` public and enabling `AllowUnsafeBlocks` in `Periodic`** (user, 2026-08-30) —
+**Rejected: making `os` public and enabling `AllowUnsafeBlocks` in `Thorium`** (user, 2026-08-30) —
 it publishes the whole GLFW wrapper to widen one seam and puts OS-window handling in an app project.
 
 `SettingsWindow` still has its own copy of the sequence and was deliberately left alone (§4);
@@ -109,7 +109,7 @@ collapsing it onto `MenuScreen` is a separate change.
 
 ### 8. The entry is in both menus
 
-`Vaults` is listed under `periodic` *and* `file` (user, 2026-08-30). The menu system has no submenus —
+`Vaults` is listed under `thorium` *and* `file` (user, 2026-08-30). The menu system has no submenus —
 `ContextMenuItemDefinition` does not nest — and building nesting for one entry was rejected.
 
 ## Verified

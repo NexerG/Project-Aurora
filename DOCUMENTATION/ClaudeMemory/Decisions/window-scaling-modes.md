@@ -8,7 +8,7 @@ below describe the original spelling.
 **Scope:** `ArctisAurora.Core.UISystem.Controls` (`WindowControl`), `ArctisAurora.EngineWork.Rendering`
 (`AuroraCamera.UpdateCameraMatrix`, `AGlfwWindow.WindwoResizeCallback`), `ArctisAurora.Core.Registry`
 (`EntityRegistry.uiTree`), `Engine.HandleUI`, `DocumentEditorControl.ResolveOnClick`,
-`Periodic`/`AuroraEditor` `UI.xml`.
+`Thorium`/`AuroraEditor` `UI.xml`.
 
 ## The bug
 
@@ -79,7 +79,7 @@ inherits. `KeepLocal` still defers to the base, since its whole meaning is that 
 `InputHandler.mousePos` is raw window pixels. In `ScaleUp` those stop being layout units, so
 `WindowControl.ToDesignSpace` scales them and both call sites — `Engine.HandleUI` and
 `DocumentEditorControl.ResolveOnClick` — go through it. It is the identity in the other two modes,
-so nothing changes unless the content actually scales. See [[periodic-editor-architecture]].
+so nothing changes unless the content actually scales. See [[thorium-editor-architecture]].
 
 ### 5. Where the fit is triggered
 
@@ -91,7 +91,7 @@ so nothing changes unless the content actually scales. See [[periodic-editor-arc
 
 ## Verified
 
-Screenshots at 1920x1080 borderless, `Periodic` with `SampleNote.xml`:
+Screenshots at 1920x1080 borderless, `Thorium` with `SampleNote.xml`:
 
 - `WindowSize` — the long paragraph occupies one full-width line instead of wrapping at 1280.
 - `KeepLocal` — identical to the pre-change build, wrapping at 1280.
@@ -114,7 +114,7 @@ resize path is a different entry point into the same `FitTo`.
 
 **Status:** LANDED and **GUI-verified 2026-08-27**, all five axes measured against prediction.
 
-Periodic booted at a 1400x600 framebuffer with the design box temporarily set to 640x360, and two
+Thorium booted at a 1400x600 framebuffer with the design box temporarily set to 640x360, and two
 controls of known design size were measured off the screenshots — the title bar (`Height="32"`) and
 the vault sidebar (`Width="220"`). Ten of ten land on the predicted pixel:
 
@@ -169,4 +169,4 @@ Design 1280x720 in a 1920x1800 window:
 - Still nothing re-fits when `Autoscaling` is flipped **at runtime** — the root does not hold the
   window extent, so a live toggle needs a `FitTo` from `UIModule`. XML-authored only for now.
 
-Related: [[settings-registry]], [[text-layout-one-measurer]], [[periodic-editor-architecture]]
+Related: [[settings-registry]], [[text-layout-one-measurer]], [[thorium-editor-architecture]]

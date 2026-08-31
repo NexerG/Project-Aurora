@@ -51,12 +51,12 @@ setting the CWD before `Paths` static-initializes, run `GenerateXSD()`, then com
   referencing an enum + an allowed child from `"ProbeB"`. Without the fix:
   `AuroraProbeATypes:ProbeBeta is not declared` + `AuroraProbeATypes:ProbeChild is not declared`.
   With it: correct `ProbeB:` prefixes, `<xs:import>` of `ProbeBTypeSchema.xsd`, compiles clean.
-- Final run with `Periodic.dll` loaded: **14/14 schemas compile standalone**, probes included.
+- Final run with `Thorium.dll` loaded: **14/14 schemas compile standalone**, probes included.
 
 ## Harness gotcha — generator output depends on which assemblies are loaded
 A run with only `AuroraEngine` loaded reports `actions:Input is not declared` and
 `InputTypeSchema.xsd` failing to compile. **This is a harness artifact, not a bug.** The
-`"Input"`-category actions live in the app projects — `Periodic/Editor/Decorations.cs`
+`"Input"`-category actions live in the app projects — `Thorium/Editor/Decorations.cs`
 (`Write`, `ExitApplication`) and `AuroraEditor/EditorProgram/UIFunctions/Decorations.cs`
 (`ExitApplication`) — so `actionSchema.xsd` only declares the `Input` category when an app assembly
 is loaded. Any future harness must `Assembly.LoadFrom` the app dll, matching what boot actually has.
@@ -89,7 +89,7 @@ a generator-version constant into every fingerprint and bump it whenever emissio
 - Committed schemas under `*/Data/XML/Schemas/` are a **2026-07-17** snapshot; they regenerate only
   by running an app. The fingerprint change means the next boot rewrites all of them.
 
-## Related state (see [[periodic-editor-architecture]], [[document-xml-persistence]])
+## Related state (see [[thorium-editor-architecture]], [[document-xml-persistence]])
 - Document types (`Run`/`Paragraph`/`Heading`/`Document`) live in category `"UI"`.
 - `A_XSDTypeAttribute.IsAbstract` now exists and is what keeps `VulkanControl` registered with
   EntityRegistry while excluding it from elements and allowed-children — see

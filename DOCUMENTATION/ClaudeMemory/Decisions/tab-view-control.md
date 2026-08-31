@@ -4,7 +4,7 @@
 **Status:** LANDED. Builds clean; boots and parses. **NOT GUI-verified.**
 **Scope:** `ArctisAurora.Core.UISystem.Controls` (`VulkanControl`),
 `ArctisAurora.Core.UISystem.Controls.Containers` (`TabViewControl`, `TabItemControl`),
-`Periodic` (`VaultBrowserControl`, `UI.xml`).
+`Thorium` (`VaultBrowserControl`, `UI.xml`).
 
 The tab well [[entity-reparenting-and-names]] was groundwork for, and the thing multi-windowing is
 sequenced behind — tearing a tab off into its own OS window needs a tab to tear off first.
@@ -103,7 +103,7 @@ tree.
 one editor, `LoadPath` over the top of it, no undo. With tabs the note stays live in its own tab, so
 the reason is gone. Saving moved to close.
 
-**Consequence to accept:** Periodic has no dirty tracking and no autosave, so a crash with several tabs
+**Consequence to accept:** Thorium has no dirty tracking and no autosave, so a crash with several tabs
 open now loses more than it did before.
 
 ### 7. `TextInputActions` needed no changes

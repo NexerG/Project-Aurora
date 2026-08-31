@@ -9,7 +9,7 @@ facts that were expensive to establish, and enough per-slice detail to build fro
 
 ## Goal and scope
 
-Tear a Periodic tab off into its own OS window, and move it between windows.
+Tear a Thorium tab off into its own OS window, and move it between windows.
 
 **In-window split panes are deliberately out of scope** (user, 2026-08-19). They were offered as a
 cheaper alternative that needs no renderer work — `StackPanel` + `SplitterControl` + star sizing
@@ -37,7 +37,7 @@ These are settled. Do not re-litigate them without asking.
 ## Facts that were expensive to establish
 
 - **`gl_InstanceIndex` includes `firstInstance`.** Per-window instance ranges need **no shader change**.
-  Confirmed against `UI.vert` in all three copies (`AuroraEngine`, `Periodic`, `AuroraEditor`).
+  Confirmed against `UI.vert` in all three copies (`AuroraEngine`, `Thorium`, `AuroraEditor`).
 - **`MCUI.EnqueueDrawCommands` already takes an `instanceID` and passes it as `firstInstance`** — it was
   handed `0`. Both overloads live on `MeshComponent` and are shared with `MCRaster` / `MCRaytracing`,
   which is why slice 1 added a UI-only overload rather than changing the base signature.
@@ -54,7 +54,7 @@ These are settled. Do not re-litigate them without asking.
 - **GLFW window queries are main-thread only.** Slice 0 removed the render-thread
   `glfwGetFramebufferSize` from `RecreateSwapchain`; keep every GLFW call on main and every Vulkan call
   on render.
-- **No `InternalsVisibleTo` anywhere.** Anything Periodic or AuroraEditor touches must be `public` —
+- **No `InternalsVisibleTo` anywhere.** Anything Thorium or AuroraEditor touches must be `public` —
   that is why `RenderWindow`, `Engine.windows` and `Engine.primary` are.
 
 ## Slices
@@ -107,12 +107,12 @@ steps: zero validation output, process alive, renders unchanged.
   second window would otherwise replace it, leaking its sampler and both SSBO mirrors and resetting
   `_transformCapacity`. This is the only static in `UIModule`/`CompositorModule` — everything else on
   both is per-instance, and the compositor's `Init` creates its own descriptor set layout.
-- `Periodic.Main` — temporary second window with a `WindowControl` + green `PanelControl`.
+- `Thorium.Main` — temporary second window with a `WindowControl` + green `PanelControl`.
 
 **A hand-built `WindowControl` is invisible until its Z is set.** `ParseXML` is the only writer of the
 window root's `-10f` Z, and `FitTo` preserves whatever Z it finds, so `new WindowControl()` sits at
 Z=0 — inside the ortho near plane of `0.01f` — and the whole tree clips away. Window B rendered as a
-bare clear colour until `Periodic.Main` set it, which reads exactly like a broken instance range and
+bare clear colour until `Thorium.Main` set it, which reads exactly like a broken instance range and
 is not. Slice 5 builds its windows from template XML, so it will not hit this.
 
 **Verified:** both windows render, **each showing only its own controls** — A the note, B its green
@@ -174,7 +174,7 @@ resizes split across the two windows: zero validation output, no stderr.
 
 **Not slice 3, found here:** `VaultBrowserControl` opens notes through
 `Engine.primary.ui.uiRoot.FindByName(...)`, so clicking a note in **B's** sidebar opens it in **A**.
-That is Periodic app code, not engine chrome, and it is what the entity-registry group of top-level
+That is Thorium app code, not engine chrome, and it is what the entity-registry group of top-level
 controls is for; slice 5 is where tabs get a window of their own anyway.
 
 ### Slice 4 — runtime create / destroy (LANDED, GUI-verified)
@@ -332,7 +332,7 @@ handles 654→652, never more than one preview window.
   on Windows in practice; a new surface should be checked, not assumed.
 - **Keyboard focus vs `activeControl`.** Clicking window B moves `activeControl` into B's tree, but
   focusing A's title bar without clicking content leaves it on B. Minor; not solved.
-- **The UI data/control split** (`../Decisions/ui-data-control-split.md`) is sequenced after Periodic
+- **The UI data/control split** (`../Decisions/ui-data-control-split.md`) is sequenced after Thorium
   v1 and will have to honour a multi-rooted tree.
 
 ## Verification recipes that work

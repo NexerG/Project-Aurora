@@ -1,7 +1,7 @@
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 
-namespace AuroraPeriodic
+namespace Thorium
 {
     [A_XSDType("Vault", "Settings")]
     public class VaultSetting : Setting
@@ -10,8 +10,8 @@ namespace AuroraPeriodic
         public string path { get; set; } = "Notes";
     }
 
-    [A_XSDType("Periodic", "Settings", AllowedChildren = typeof(Setting))]
-    public class PeriodicSettings : SettingCategory
+    [A_XSDType("Thorium", "Settings", AllowedChildren = typeof(Setting))]
+    public class ThoriumSettings : SettingCategory
     {
         public readonly VaultSetting vault = new VaultSetting();
     }

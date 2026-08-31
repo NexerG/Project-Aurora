@@ -4,7 +4,7 @@
 **Status:** LANDED. All three buttons **verified by synthetic clicks**: minimize iconifies the window,
 maximize fills the screen and the document reflows, close exits the process with no stderr.
 **Scope:** `ArctisAurora.Core.UISystem.Actions` (`WindowActions`), `...Controls.Text`
-(`LabelControl`), `Periodic` (`UI.xml`, `VaultBrowserControl`).
+(`LabelControl`), `Thorium` (`UI.xml`, `VaultBrowserControl`).
 
 ## Context
 
@@ -21,7 +21,7 @@ in the engine; the bar is a horizontal `StackPanel` of `Button`s naming them thr
 no app-side input code — the same shape as `TextInputActions`.
 
 `Window.Close` calls `Engine.engineInstance.Stop()` rather than `Environment.Exit(0)`, which is what
-`Periodic.Decorations.ExitApplication` still does. Nothing polls GLFW's `WindowShouldClose`, so the
+`Thorium.Decorations.ExitApplication` still does. Nothing polls GLFW's `WindowShouldClose`, so the
 close flag is not an option. `Stop()` was the risk — it stops three threads synchronised by
 `AutoResetEvent` pairs and could have deadlocked instead of exiting; it was tested by clicking, and
 the process exits.
@@ -70,7 +70,7 @@ the window and was misleading; dragging works when a person does it.
 
 ### 4. Shutdown has one implementation
 
-`Periodic.Decorations.ExitApplication` (Ctrl+Backspace) delegated to `Environment.Exit(0)` and now
+`Thorium.Decorations.ExitApplication` (Ctrl+Backspace) delegated to `Environment.Exit(0)` and now
 calls `WindowActions.Close()`, so the keybind and the title bar's X go through the same
 `Engine.Stop()`. Verified by sending Ctrl+Backspace: the log line prints and the process exits.
 

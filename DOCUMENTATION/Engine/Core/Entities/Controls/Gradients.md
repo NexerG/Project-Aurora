@@ -13,7 +13,7 @@ Class:
 Parent Class:
 Interfaces:
 Used by:
-  - "[[Periodic]]"
+  - "[[Thorium]]"
 Type:
   - Public
 Attributes:
@@ -51,7 +51,7 @@ Any control names one through `Gradient`, and it ramps in place of that control'
 
 ```xml
 <TitleBar Height="32" ColorHex="#141414" Gradient="titlebar"/>
-<Run Text="Welcome to Periodic" Gradient="accent"/>
+<Run Text="Welcome to Thorium" Gradient="accent"/>
 ```
 
 `Angle` is degrees, `0` running left to right and `90` top to bottom, since +y is down. The ramp spans the control corner to corner for whatever angle it names, so a diagonal does not skew on a wide control. `Kind="Radial"` ignores `Angle` and ramps outward from `CenterX`/`CenterY` as an ellipse fitted to the control's farthest corner.

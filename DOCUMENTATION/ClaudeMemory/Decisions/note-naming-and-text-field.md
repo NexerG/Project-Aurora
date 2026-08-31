@@ -5,14 +5,14 @@
 **Scope:** `ArctisAurora.Core.UISystem` (`NoteNameWindow`, `UICollisionHandling`, `WindowActions`,
 `TabViewControl`, `TextControl`, `TextInputActions`, `TextBoxControl`, `DocumentEditorControl`,
 `DocumentEditSession`, `RichTextDocument`), `ArctisAurora.EngineWork.Rendering` (`RenderWindow`),
-`Periodic` (`VaultBrowserControl`, `InputMap.xml`).
+`Thorium` (`VaultBrowserControl`, `InputMap.xml`).
 
 ## Decisions
 
 ### 1. `RichTextDocument.name` is authored or absent — never derived
 
 `<Document Name="Release checklist">`. A heading is not a name (`SampleNote.xml` opens with "Welcome
-to Periodic") and a file name is not one either, since the file can be renamed underneath the note.
+to Thorium") and a file name is not one either, since the file can be renamed underneath the note.
 
 **This reverses the same day's call that the loader should stamp the file name into `name` on first
 save.** With a prompt in the picture that decision is unimplementable: if `Load` filled the field,
@@ -87,7 +87,7 @@ had a fallback. Each now checks the document editor first and falls through to `
 `TextBoxControl` above `activeControl` — so a host declares no input code for a field either.
 
 `Text.NewBlock` (Enter) commits a field when there is no document, and a new `Text.Cancel` action is
-bound to Escape in Periodic's `InputMap.xml`. Vertical and page moves collapse onto the field's ends,
+bound to Escape in Thorium's `InputMap.xml`. Vertical and page moves collapse onto the field's ends,
 since it is one line.
 
 ### 6. The prompt takes the active context as it opens

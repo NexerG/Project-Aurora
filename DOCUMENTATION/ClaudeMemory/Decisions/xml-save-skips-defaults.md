@@ -5,7 +5,7 @@ Landed 2026-08-07. Replaces the `IsControlChrome` filter in `XmlReflection.Scala
 ## Standing decision (user, 2026-08-08)
 
 **A value equal to its default is not written, and that is the intended behaviour — not a wart.** An
-author who typed `Level="1"` will not find it in the file after a save. Periodic is an editor; the
+author who typed `Level="1"` will not find it in the file after a save. Thorium is an editor; the
 note XML is its storage format, not a hand-authored document, and anyone reading the raw file is on
 their own. Do not propose "was this attribute present" tracking, formatting preservation, or an
 `explicit`/`isSet` flag to round-trip redundant attributes.
@@ -77,8 +77,8 @@ destroy. One probe per distinct type per process, cached.
 ## Verified
 
 25/25 on a throwaway console harness that boots the real engine (`Engine.Init(false)` — full
-bootstrap, GLFW window, Vulkan device, renderer, both worker threads) with cwd set to Periodic's
-output so the VFS resolves Periodic's `Data`. Nothing calls `RichTextDocument.Save` in the app yet —
+bootstrap, GLFW window, Vulkan device, renderer, both worker threads) with cwd set to Thorium's
+output so the VFS resolves Thorium's `Data`. Nothing calls `RichTextDocument.Save` in the app yet —
 Ctrl+S is the unchecked P3 item — so the harness is the only save trigger that exists.
 
 - `SampleNote.xml` -> save -> reload: block count, run count, run text, `Bold` and heading levels all

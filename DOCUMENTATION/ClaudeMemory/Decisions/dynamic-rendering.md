@@ -52,7 +52,7 @@ Polaris on Windows / GCN 1.0 on RADV (2012), Intel Skylake (2015).
 `Renderer.VerifyRequiredFeatures()` checks it before `vkCreateDevice` so the failure is legible.
 
 ## Verified
-Builds clean; `Periodic.exe` runs the full loop with validation layers on and produces **zero**
+Builds clean; `Thorium.exe` runs the full loop with validation layers on and produces **zero**
 layout/barrier/rendering validation errors. Untested: window resize (`RecreateSwapchain`) and
 multi-monitor, which were not exercised.
 

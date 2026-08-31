@@ -7,7 +7,7 @@
 	<StackPanel Orientation="Vertical" ColorHex="#1e1e1e">
 
 		<TitleBar Orientation="Horizontal" Height="32" ColorHex="#141414" Gradient="titlebar">
-			<MenuButton Caption="Periodic" ContextMenu="periodic" Width="72" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A"/>
+			<MenuButton Caption="Thorium" ContextMenu="thorium" Width="72" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A"/>
 			<MenuButton Caption="File" ContextMenu="file" Width="48" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A"/>
 			<MenuButton Caption="Edit" ContextMenu="edit" Width="48" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A"/>
 			<MenuButton Caption="View" ContextMenu="view" Width="48" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A"/>

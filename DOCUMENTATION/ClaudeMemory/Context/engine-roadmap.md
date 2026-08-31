@@ -7,7 +7,7 @@ End goal: Tarkov-style extraction FPS (~2030); side projects sequenced to force 
 
 | Phase | When | Focus | Key outputs |
 |-------|------|-------|-------------|
-| A | now → ~Jul 2026 | Periodic MVP + hygiene | Periodic P3–P5; UI-hosted test/profiling platform (**after** editor v1); input handle states (game/ui); mouse → `InputHandler` |
+| A | now → ~Jul 2026 | Thorium MVP + hygiene | Thorium P3–P5; UI-hosted test/profiling platform (**after** editor v1); input handle states (game/ui); mouse → `InputHandler` |
 | B | ~Jul–Sep 2026 | Foundations | ECS rework (object → data-oriented structs, snapshot-friendly); `VK_KHR_dynamic_rendering`; XSD/XML engine settings (GPU/CPU/misc) |
 | C | ~Sep–Dec 2026 | Animation + AuroraMotion | Animation/evaluation core; procedural geometry/SDF op chains (XML); XML scene format; offscreen render + readback; ffmpeg video export (H.264/VP9/AV1); simple audio (play + mux); timeline UI; `AuroraMotion` host project |
 | D | 2027 | Editor + renderer maturity | AuroraEditor shell (hierarchy/inspector/asset browser); bindless descriptors, BDA, lazy renderer, culling, LODs; Bootstrapper/Registry rework done |
@@ -27,5 +27,5 @@ text editor v1 → UI test/profiling platform → ECS rework + dynamic rendering
 - Animation property binding via stable IDs: entity GUID + component type + member name (reuses `[A_XSDElementProperty]` reflection).
 
 ## Cross-references
-- Periodic editor status/phases: `periodic-editor-architecture.md` (P0–P2 done, P3–P5 = roadmap Phase A).
+- Thorium editor status/phases: `thorium-editor-architecture.md` (P0–P2 done, P3–P5 = roadmap Phase A).
 - Note persistence pattern: `../Patterns/document-xml-persistence.md`.

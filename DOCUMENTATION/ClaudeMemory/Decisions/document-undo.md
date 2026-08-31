@@ -2,13 +2,13 @@
 
 **Date:** 2026-08-22
 **Status:** LANDED. Solution builds clean (0 errors, no warnings from the new or changed files);
-`Periodic` boots to all three threads with `Text.Undo` and `Text.Redo` resolving at
+`Thorium` boots to all three threads with `Text.Undo` and `Text.Redo` resolving at
 `InputHandler.LoadInputs`, which throws on a name it cannot bind. **Not GUI-verified** — no undo has
 been pressed.
 **Scope:** new `ArctisAurora.Core.Editing`, new
 `ArctisAurora.Core.UISystem.Controls.Text.Document.Edits`, plus `DocumentControl`,
 `DocumentEditorControl`, `DocumentEditSession`, `TextInputActions`, and
-`Periodic/Data/XML/Documents/Inputs/InputMap.xml`.
+`Thorium/Data/XML/Documents/Inputs/InputMap.xml`.
 
 ## What was there before
 
@@ -126,7 +126,7 @@ a second.
 ## Verified
 
 - Builds clean; the 476 warnings are pre-existing and none are in the new or changed files.
-- `Periodic` boots through all 24 bootstrap steps to all three threads. `InputHandler.LoadInputs`
+- `Thorium` boots through all 24 bootstrap steps to all three threads. `InputHandler.LoadInputs`
   throws on an action name it cannot resolve, so `Text.Undo` and `Text.Redo` binding is a real check.
 - `XSDGenerator` regenerated `actionSchema.xsd` with both new action names.
 - **Not GUI-verified:** every behaviour. Nothing has been undone by hand.

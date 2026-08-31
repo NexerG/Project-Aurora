@@ -15,7 +15,7 @@ Parent Class:
   - "[[Tab View]]"
 Interfaces:
 Used by:
-  - "[[Periodic]]"
+  - "[[Thorium]]"
 Type:
   - Public
 Attributes:
@@ -28,7 +28,7 @@ VerifiedAgainst: 2026-08-21
 
 A [[Tab View]] whose captions rename in place on a double click. Everything else about it — the strip, the page, closing, tearing off, dropping — is the base's, unchanged.
 
-It knows nothing about what a caption names. The gesture opens an [[Editable Label]] seeded with the tab's header and hands whatever is committed to `TabItemControl.onRename`, which is where a host puts the meaning: in [[Periodic]] that is a note on disk, and a tab authored in a UI document leaves it null and does not open a field at all. That null is the whole permission model — a strip that cannot rename says so by leaving the callback unset, not by being a different control.
+It knows nothing about what a caption names. The gesture opens an [[Editable Label]] seeded with the tab's header and hands whatever is committed to `TabItemControl.onRename`, which is where a host puts the meaning: in [[Thorium]] that is a note on disk, and a tab authored in a UI document leaves it null and does not open a field at all. That null is the whole permission model — a strip that cannot rename says so by leaving the callback unset, not by being a different control.
 
 Declared as `<EditableTabs>` and interchangeable with `<TabView>` at every attribute, since it adds none of its own.
 

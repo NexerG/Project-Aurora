@@ -1,7 +1,7 @@
 # Decision — a data XML file names its kind: `[name].[type].xml`
 
 **Date:** 2026-08-28
-**Status:** LANDED. Builds clean, Periodic boots all 24 steps, every loader verified to have found
+**Status:** LANDED. Builds clean, Thorium boots all 24 steps, every loader verified to have found
 its files. **NOT GUI-verified.**
 **Scope:** all 24 files under `*/Data/XML/**`, and the 14 loaders that resolve or enumerate them.
 
@@ -37,11 +37,11 @@ dot**. The **type** half names the loader that owns the file. Enumerating loader
 | `entities` | `EntityRegistry` | `EntityRegistry` |
 | `menus` | `ContextMenus` ×2 | `ContextMenus` |
 | `gradients` | `Gradients` | `Gradients` |
-| `contexts` | `Periodic` | `Context` |
+| `contexts` | `Thorium` | `Context` |
 | `inputs` | `InputMap` ×2 | `InputHandler` |
 | `sampler` | `ControlSampler` | `SamplerAsset` |
 | `ui` | `UI` ×2, `Settings` ×2, `TabWindow`, `Alt` | declared in a manifest, loaded by `UIDocumentAsset` |
-| `assets` | `EngineAssets`, `EditorAssets`, `PeriodicAssets` | `AssetRegistries.PreloadAssets` |
+| `assets` | `EngineAssets`, `EditorAssets`, `ThoriumAssets` | `AssetRegistries.PreloadAssets` |
 | `imports` | `EngineFonts` | `AssetImporter` |
 | `settings` | `DocumentSettings`, `Graphics`, and the written `UserSettings` | `SettingsRegistry` |
 | `import` | font stamps, pre-existing | `AssetImporter` |
@@ -76,14 +76,14 @@ reasoning above survives only for `InputHandler`, which is `DocName`'s one remai
 
 `Bootstrap.bootstrap.xml`, `Pools.pools.xml`, `Gradients.gradients.xml`, `UI.ui.xml` read badly —
 for a singleton document the name *is* the type. The fix is renaming the name half to whoever ships
-it (`Engine.bootstrap.xml`, `Periodic.gradients.xml`), which would also compose across mounts. Left
+it (`Engine.bootstrap.xml`, `Thorium.gradients.xml`), which would also compose across mounts. Left
 for later deliberately: a convention change plus a rename pass makes every diff two changes and a
 typo indistinguishable from a bug.
 
 ## Constraints found while building
 
 - **`Path.GetFileNameWithoutExtension` stops being the name.** It yields `InputMap.inputs`, which
-  would have renamed the keybind group and broken `Periodic.Main`'s
+  would have renamed the keybind group and broken `Thorium.Main`'s
   `SetActiveKeybindGroup("InputMap")`. New `Paths.DocName(path)` cuts at the **first** dot — which
   is what makes "a name half may not contain a dot" a rule rather than a style note.
 - **`Paths.Doc` stays single-argument.** A two-arg `Doc(name, type)` was considered and dropped:
@@ -98,13 +98,13 @@ typo indistinguishable from a bug.
 
 ## What is verified
 
-A temporary probe in `Periodic.Main` (reverted) confirmed the four loaders that fail *silently* on a
+A temporary probe in `Thorium.Main` (reverted) confirmed the four loaders that fail *silently* on a
 pattern miss actually found their files:
 
 | Probe | Result | Proves |
 |---|---|---|
 | keybind groups | `[InputMap:19]` | `*.inputs.xml` matched **and** `DocName` strips both extensions |
-| menus | `view=True periodic=True` | `*.menus.xml` on both mounts |
+| menus | `view=True thorium=True` | `*.menus.xml` on both mounts |
 | contexts | `7`, `ActiveTabViewer=True` | `*.contexts.xml` |
 | vsync scope | `App` | `*.settings.xml` — only `Graphics.settings.xml` sets it |
 
@@ -116,12 +116,12 @@ have thrown `FileNotFoundException` out of `XElement.Load`.
 
 ## Open
 
-- **`Data/Notes/*.xml` was left alone.** Periodic's vault is user data, not `Data/XML/**`. A
+- **`Data/Notes/*.xml` was left alone.** Thorium's vault is user data, not `Data/XML/**`. A
   `.note.xml` vault would touch `VaultBrowserControl`'s filter, create, rename and duplicate paths
   plus every `Source=` attribute. Its own call, and arguably right — it is what Obsidian's `.md` is.
 - **`Schemas/SchemaManifest.xml` was left alone.** `.xsd` already carries its type and
   `SchemaManifest.manifest.xml` is worse than what is there.
-- **An existing `%AppData%\Periodic\Settings\UserSettings.xml`** would now be ignored, silently
+- **An existing `%AppData%\Thorium\Settings\UserSettings.xml`** would now be ignored, silently
   reverting saved settings. No such file exists on the dev machine — the write root has never been
   created — so nothing was migrated.
 - **Stale file names in prose were swept** — 21 code comments across 12 files, every current-state
@@ -129,7 +129,7 @@ have thrown `FileNotFoundException` out of `XElement.Load`.
   `Context/log-viewer-plan.md` (whose instructions are for work not yet done, so its paths have to
   resolve). Deliberately **not** rewritten: the dated records under `ClaudeMemory/Decisions/*`, and
   the completed-progress entries in `Context/multi-windowing-plan.md` and
-  `Context/periodic-editor-architecture.md` — all were accurate when written.
+  `Context/thorium-editor-architecture.md` — all were accurate when written.
 - **The convention now has a home** — `Engine/Attributes & Conventions.md` carries the rule and the
   type list; `Paths.md` documents `DocName`; `Virtual File System.md` explains why the kind folders
   outlived the naming convention that was meant to replace them.

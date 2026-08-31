@@ -32,8 +32,8 @@ rectangle that is already known on the CPU.
 `vec2[4]` 32, `Style` 12 at 32, `uint` 4 at 44, `vec4 clip` 16 at 48. Any drift and every control
 past the first reads shifted data.
 
-The three `UI.vert`/`UI.frag` copies (`AuroraEngine`, `AuroraEditor`, `Periodic`) had **already
-drifted** before this change — Periodic's fragment shader is MTSDF, the other two are the older
+The three `UI.vert`/`UI.frag` copies (`AuroraEngine`, `AuroraEditor`, `Thorium`) had **already
+drifted** before this change — Thorium's fragment shader is MTSDF, the other two are the older
 MSDF. The clip was applied to each separately and the drift was deliberately left alone; merging it
 is a rendering decision, not a clipping one. All three were recompiled with `glslc`.
 

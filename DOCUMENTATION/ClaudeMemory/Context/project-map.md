@@ -7,7 +7,7 @@ folders/projects as follows (source of truth for namespaces: `NAMESPACES.md` at 
 | -------------- | ------------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
 | `Engine`       | `AuroraEngine`      | `ArctisAurora`, `ArctisAurora.Core.*`, `ArctisAurora.EngineWork.*` | The engine lives in `AuroraEngine/` (folder renamed from `ParticleSimulator` 2026-07). Project file `AuroraEngine.csproj`; assembly + root namespace pinned to `ArctisAurora`. Engine core under `AuroraEngine/Core`. |
 | `Editor`       | `AuroraEditor`      | `AuroraEditor.*`                                                   | Visual editor; consumer of the Engine.                                                                                       |
-| `TextEditor`   | `Periodic`          | `AuroraPeriodic`, `Periodic.*`                                     | **Inferred** (name ↔ Obsidian "periodic-notes"; unconfirmed). A host app whose `Main` boots `Engine` and loads UI from XML.  |
+| `TextEditor`   | `Thorium`           | `Thorium`, `Thorium.Editor.*`                                      | A host app whose `Main` boots `Engine` and loads UI from XML. Folder, project and namespaces renamed from `Periodic`/`AuroraPeriodic` (2026-08-31). |
 | `Hackathon`    | —                   | —                                                                  | No such folder exists in the repo.                                                                                           |
 
 Additional top-level items not in the table:

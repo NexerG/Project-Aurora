@@ -4,7 +4,7 @@
 **Status:** LANDED. Boot-verified. **NOT GUI-verified** — no pane click has been walked.
 **Scope:** `ArctisAurora.Core.Registry` (`Context`, new `ContextDefinition`/`ContextMap`),
 `ArctisAurora.Core.UISystem` (`UICollisionHandling`), `Bootstrap.xml`,
-`Periodic/Data/XML/Documents/Contexts/Periodic.xml`, `Periodic.Editor.CustomControls`
+`Thorium/Data/XML/Documents/Contexts/Thorium.xml`, `Thorium.Editor.CustomControls`
 (`VaultBrowserControl`).
 
 ## The problem this solves
@@ -41,7 +41,7 @@ field, no branch on "bound or declared" at read time — `Get<T>` cannot tell th
 
 `VirtualFileSystem.EnumerateAll("XML/Documents/Contexts", "*.xml")` — the `Inputs/` pattern.
 
-`Gradients.xml` and `ContextMenus.xml` use `TryResolveFile`, which is *first mount wins*: Periodic
+`Gradients.xml` and `ContextMenus.xml` use `TryResolveFile`, which is *first mount wins*: Thorium
 shipping a `Gradients.xml` means the engine's would be invisible. That is correct for a theme, where
 the app wants to replace what the engine offers. It is wrong for contexts, where the user's ask was
 explicitly that "systems and apps can add custom contexts" — an app declaring one must not silence
@@ -49,7 +49,7 @@ the engine's. `EnumerateAll` unions across mounts and only dedupes on *file name
 contributor composes.
 
 The engine ships no `Contexts/` folder today. It declares nothing that needs one; the scan means it
-can gain one later without touching Periodic's.
+can gain one later without touching Thorium's.
 
 ### 3. `From` derives a context as the nearest ancestor
 
@@ -69,7 +69,7 @@ mechanism is not UI-only.
 **Alternatives rejected:**
 
 - *A plain named slot the app sets itself.* Nothing would ever set it — there is no focus-change hook
-  in Periodic, and adding one is the C# wiring the XML was supposed to replace. `From` is what makes
+  in Thorium, and adding one is the C# wiring the XML was supposed to replace. `From` is what makes
   a declared context self-filling.
 - *A `TabViewControl activeTabs` static in `UICollisionHandling`.* Six lines and it works, but it is
   engine focus code naming one container type, and it is not what the user asked for.

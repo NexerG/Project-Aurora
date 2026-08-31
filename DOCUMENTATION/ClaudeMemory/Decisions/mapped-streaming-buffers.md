@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-22
 **Status:** LANDED and GPU-verified — run by the user 2026-08-22, UI renders correctly. Engine and
-Periodic build clean, 0 errors, warning count unchanged at 450.
+Thorium build clean, 0 errors, warning count unchanged at 450.
 **Scope:** `ArctisAurora.EngineWork.Rendering.Helpers` (`AVulkanBufferHandler`),
 `ArctisAurora.EngineWork.Rendering` (`Renderer`, `AuroraCamera`),
 `ArctisAurora.EngineWork.Rendering.MeshSubComponents` (`MCUI`),

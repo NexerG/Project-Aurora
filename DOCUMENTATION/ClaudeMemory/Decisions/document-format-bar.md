@@ -9,7 +9,7 @@
 `ArctisAurora.Core.UISystem.Controls.Text.Document` (`TextMeasurer`, `Inlines`, `Blocks`,
 `DocumentControl`, `DocumentEditorControl`, `DocumentToolbarControl`, `DocumentXml`),
 `.Document.Edits` (`StyleRangeEdit`, `BlockSnapshot`),
-`Periodic` (`UI.ui.xml`, `TabWindow.ui.xml`, `InputMap.inputs.xml`, `SampleNote.xml`).
+`Thorium` (`UI.ui.xml`, `TabWindow.ui.xml`, `InputMap.inputs.xml`, `SampleNote.xml`).
 
 ## What the bake left unfinished
 
@@ -178,7 +178,7 @@ outright and does not implement arcs. Winding was checked by rendering the file 
 baking, not after.
 
 Adding them changes the folder hash, so the icon set re-bakes on the next boot of every project.
-Periodic's baked output is **tracked** (`Periodic/Data/Icons/default/*`) and was regenerated;
+Thorium's baked output is **tracked** (`Thorium/Data/Icons/default/*`) and was regenerated;
 `AuroraEngine/Data/Icons/default/*` and the editor's copy are stale until those apps run — the same
 three-physical-copies shape the shaders have.
 

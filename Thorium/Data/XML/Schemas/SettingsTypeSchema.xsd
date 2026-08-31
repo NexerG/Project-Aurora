@@ -16,7 +16,7 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:Vault.Attributes" />
   </xs:complexType>
-  <xs:element name="Periodic" type="types:Periodic" />
+  <xs:element name="Thorium" type="types:Thorium" />
   <xs:group name="Setting.Children">
     <xs:choice>
       <xs:element name="Vault" type="types:Vault" />
@@ -33,7 +33,7 @@
       <xs:element name="Validation" type="types:Validation" />
     </xs:choice>
   </xs:group>
-  <xs:complexType name="Periodic">
+  <xs:complexType name="Thorium">
     <xs:sequence>
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
     </xs:sequence>
@@ -95,7 +95,7 @@
   <xs:element name="UserSettings" type="types:UserSettings" />
   <xs:group name="ISettingsGroup.Children">
     <xs:choice>
-      <xs:element name="Periodic" type="types:Periodic" />
+      <xs:element name="Thorium" type="types:Thorium" />
       <xs:element name="Vaults" type="types:Vaults" />
       <xs:element name="UI" type="types:UI" />
       <xs:element name="DocumentSettings" type="types:DocumentSettings" />

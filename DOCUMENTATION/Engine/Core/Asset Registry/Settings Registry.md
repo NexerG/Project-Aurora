@@ -54,7 +54,7 @@ A group that instead needs per-value scope or change notification is a `SettingC
 
 XSD type names are a **flat namespace across every category**: `AnyXMLType.FindType` matches on name alone, so a group named `Document` would collide with `RichTextDocument`'s `[A_XSDType("Document", "UI")]`. Check before naming.
 
-Groups are found by reflecting over every loaded assembly, so an **application declares its own** exactly as the engine does and needs no registration step — `Periodic`'s vault folder is a `Vault` setting on a `Periodic` category living in the app project, cascading and saving through the same machinery as `Graphics`.
+Groups are found by reflecting over every loaded assembly, so an **application declares its own** exactly as the engine does and needs no registration step — `Thorium`'s vault folder is a `Vault` setting on a `Thorium` category living in the app project, cascading and saving through the same machinery as `Graphics`.
 
 ## The files
 
@@ -88,7 +88,7 @@ Merging is **per attribute** for scalars, and recursive into a nested complex me
 
 `SettingsRegistry.SetWriteRoot(path)`, called by the host before `Engine.Init`, names the folder that user settings are read from last and written to. It is deliberately **not** a mount — mounting it would let a stray file there shadow engine assets and not just settings. `Save` throws if it was never set; reads work fine without one.
 
-Periodic uses `%AppData%/Periodic/Settings`.
+Thorium uses `%AppData%/Thorium/Settings`.
 
 ## Saving
 

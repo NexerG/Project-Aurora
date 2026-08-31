@@ -3,7 +3,7 @@
               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
               xsi:schemaLocation="http://arctisaurora/AuroraSettingsTypes ../Schemas/SettingsTypeSchema.xsd">
 
-  <!-- Periodic's build decisions about the engine's Graphics category. Values are deliberately
+  <!-- Thorium's build decisions about the engine's Graphics category. Values are deliberately
        absent: a setting named here stops tracking the engine's own default, so only scope is
        declared and everything else stays as GraphicsSettings declares it.
 

@@ -4,7 +4,7 @@
 **Status:** LANDED. **GUI-verified by the user** — hover and press tints, row spacing, the
 left-aligned note names, and activation on release with press/release pairing all work on screen.
 **Scope:** `ArctisAurora.Core.UISystem` (`UICollisionHandling`), `...Controls` (`VulkanControl`),
-`...Controls.Interactable` (`ButtonControl`), `Periodic` (`UI.xml`, `VaultBrowserControl`).
+`...Controls.Interactable` (`ButtonControl`), `Thorium` (`UI.xml`, `VaultBrowserControl`).
 
 ## Context
 

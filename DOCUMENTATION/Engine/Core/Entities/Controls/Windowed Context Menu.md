@@ -15,7 +15,7 @@ Parent Class:
   - "[[Context Menu]]"
 Interfaces:
 Used by:
-  - "[[Periodic]]"
+  - "[[Thorium]]"
 Type:
   - Public
 Attributes:
@@ -29,7 +29,7 @@ A [[Context Menu]] in a window of its own, which is what lets it spill past the 
 
 One per process. The window is built on the first open and hidden between them, because a swapchain per open would put the build cost inside the gesture; the same reasoning [[Note Name Window]] and the drag preview are built on. Unlike the preview it owns a tree and is clicked, so its window is an ordinary one to everything else in the engine: it wires input, it hit-tests, and its entries are ordinary buttons.
 
-A host chooses it by setting `ContextMenus.menuFactory` once at startup. [[Periodic]] does, in `Main`.
+A host chooses it by setting `ContextMenus.menuFactory` once at startup. [[Thorium]] does, in `Main`.
 
 ## API summary
 

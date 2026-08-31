@@ -4,8 +4,8 @@
 **Scope:** `ArctisAurora.Core.Registry.Assets` (new `UIDocumentAsset`),
 `ArctisAurora.Core.UISystem.Controls` (`VulkanControl.ParseXML`),
 `ArctisAurora.EngineWork.Rendering.Modules` (`UIModule`),
-`ArctisAurora.Core.UISystem` (`SettingsWindow`), `AuroraPeriodic.Periodic`, `AuroraEditor.Editor`,
-`Registry.xml`, new `Periodic/Data/XML/Assets/PeriodicAssets.xml` and
+`ArctisAurora.Core.UISystem` (`SettingsWindow`), `Thorium.Thorium`, `AuroraEditor.Editor`,
+`Registry.xml`, new `Thorium/Data/XML/Assets/ThoriumAssets.xml` and
 `AuroraEditor/Data/XML/Assets/EditorAssets.xml`
 
 ## What changed
@@ -15,14 +15,14 @@
   tree per window, so parsing stays at the use site.
 - `Registry.xml` declares `<Dictionary Name="uiDocuments" KeyType="xs:string" ValueType="UIDocumentAsset"/>`.
 - Documents are declared in the ordinary asset manifest, so they load in `AssetRegistries.PreloadAssets`
-  alongside fonts and textures. Periodic declares `main`, `tab-window`, `settings`; the editor declares `main`.
+  alongside fonts and textures. Thorium declares `main`, `tab-window`, `settings`; the editor declares `main`.
 - `VulkanControl.ParseXML(document)` takes a **registry name**, not a filename — `GetAsset<UIDocumentAsset>`
   then `XDocument.Load(asset.path)`. `Paths.Doc` is gone from this path.
 - The assembly-wide `[A_XSDActionDependency]` reflection scan was rebuilt on **every** `ParseXML` call. It is
   now a `??=` static, `TaggedActions`. Measured: one scan across a boot plus two full UI swaps.
 - `UIModule.uiRoot`'s setter calls `_uiRoot?.Destroy()` before assigning, and `UIModule.SetUI(document)` is
   the swap verb.
-- Call sites carry names now: `Periodic`/`Editor` → `"main"`, `SettingsWindow.document` → `"settings"`,
+- Call sites carry names now: `Thorium`/`Editor` → `"main"`, `SettingsWindow.document` → `"settings"`,
   and `TearOffDocument` in `UI.xml` (×2) and `TabWindow.xml` → `"tab-window"`.
 
 ## Why these choices
@@ -33,7 +33,7 @@ declaring the same name — the same override story fonts and textures already h
 would have duplicated `PreloadAssets` and got its own override rules wrong.
 
 **The engine names a role; the application binds it to a file.**
-`SettingsWindow` is engine code that hardcoded `"Settings.xml"`, and `Settings.xml` exists only in Periodic —
+`SettingsWindow` is engine code that hardcoded `"Settings.xml"`, and `Settings.xml` exists only in Thorium —
 so the editor's settings screen threw `FileNotFoundException` from a path that was never there. Naming
 `"settings"` makes that a registry miss the app is responsible for declaring. (Still broken in the editor —
 see gaps.)
@@ -64,16 +64,16 @@ remembering as the shape of every "swap from off-thread" bug.
 
 **Scope, added:** `ArctisAurora.Core.UISystem.Actions` (`UIActions.Invoking`),
 `ArctisAurora.Core.UISystem` (`SettingsWindow.Open()`), `AuroraEditor.EditorProgram.UIFunctions.Decorations`,
-`Periodic.Editor.Decorations`, `EngineAssets.xml`, new `AuroraEngine/Data/XML/Documents/Settings.xml`,
+`Thorium.Editor.Decorations`, `EngineAssets.xml`, new `AuroraEngine/Data/XML/Documents/Settings.xml`,
 new `AuroraEditor/Data/XML/Documents/Alt.xml`
 
 ### What changed
 
 - The engine declares `<Asset Type="UIDocumentAsset" Name="settings" .../>` in `EngineAssets.xml` against its
-  own `Settings.xml`, a copy of the shell Periodic already had. The app-first union means Periodic's identical
+  own `Settings.xml`, a copy of the shell Thorium already had. The app-first union means Thorium's identical
   declaration still wins; the editor, which declares none, now gets the engine's.
 - `SettingsWindow` gained a zero-argument `Open()` tagged `Settings.Open`, resolving its source window through
-  the new helper. `Periodic.Editor.Decorations.OpenSettings`, which hardcoded `Engine.primary`, is deleted.
+  the new helper. `Thorium.Editor.Decorations.OpenSettings`, which hardcoded `Engine.primary`, is deleted.
 - New `UIActions.Invoking()` → `ContextMenus.invoker ?? UICollisionHandling.activeControl ??
   UICollisionHandling.hovering`, through `RenderWindow.Of`, falling back to `Engine.primary`.
 - The editor's `Decorations` gained `UI.ShowAlt` and `UI.ShowMain`, each one line of
@@ -96,7 +96,7 @@ straight back. Same walk `ViewActions.Acting` already does, stopped at the windo
 
 **The engine ships the settings shell as a default asset, rather than each host copying it.**
 `SettingsWindow` requires two named panels, `Categories` and `Rows`, so the shell is really the engine's
-contract and the file carried nothing Periodic-specific. Declaring it in `EngineAssets.xml` is the same thing
+contract and the file carried nothing Thorium-specific. Declaring it in `EngineAssets.xml` is the same thing
 the engine already does for `default`, `invisible` and the fonts, and the manifest's app-first union keeps the
 override free.
 
@@ -153,8 +153,8 @@ follow-on rather than folded into a merge (user, 2026-08-30).
   keep. No call site does it and `SetUI` structurally cannot, so no guard was added — but the setter is public.
 - **A swap target cannot be authored in XML** — it is a compiled action per document. Fine at one or two per
   host; the inline-argument form above is what to build if a host ever wants swaps authored per button.
-- **Periodic's `Settings.xml` is now a byte-identical duplicate** of the engine's, kept rather than deleted. It
-  shadows the engine copy, so Periodic never exercises the fallback.
+- **Thorium's `Settings.xml` is now a byte-identical duplicate** of the engine's, kept rather than deleted. It
+  shadows the engine copy, so Thorium never exercises the fallback.
 - **`GetAsset<T>`'s miss path warns "falling back to default" and then throws**, because `uiDocuments` has no
   `"default"` entry. Pre-existing behaviour of the shared accessor; the warning names the missing document, so
   the log is still legible.

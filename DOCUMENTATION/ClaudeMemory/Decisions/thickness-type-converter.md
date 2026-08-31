@@ -1,10 +1,10 @@
 # Decision — `Thickness` parses from XML by mirroring its own constructors, not CSS
 
 **Date:** 2026-08-18
-**Status:** LANDED. Verified 12/12 on a probe against the real `TypeDescriptor` path; Periodic boots
+**Status:** LANDED. Verified 12/12 on a probe against the real `TypeDescriptor` path; Thorium boots
 with `Padding="8"` authored in `UI.xml`.
 **Scope:** `ArctisAurora.Core.UISystem.Controls` (`VulkanControl.Thickness`,
-`VulkanControl.ThicknessConverter`), `Periodic.Editor.CustomControls` (`VaultBrowserControl`).
+`VulkanControl.ThicknessConverter`), `Thorium.Editor.CustomControls` (`VaultBrowserControl`).
 
 ## Decisions
 
@@ -77,7 +77,7 @@ meaning, and the arities are whatever the C# constructors already are.** `Layout
 - Probe against `TypeDescriptor.GetConverter(typeof(Thickness))` — **12/12**: uniform, 2-value,
   4-value, whitespace around commas, fractional values, equality with `new Thickness(8, 4)`, and
   rejection of 3 values, 5 values, `""` and `"a,b"`.
-- Periodic boots to `Starting Main system` with `Padding="8"` on `<VaultBrowser>` and **empty
+- Thorium boots to `Starting Main system` with `Padding="8"` on `<VaultBrowser>` and **empty
   stderr** — the parse that previously died now completes.
 - `VaultBrowserControl`'s `padding = new Thickness(8)` and its workaround comment are gone; the
   sidebar inset is authored. Not yet eyeballed — the value is asserted, the pixels are not.

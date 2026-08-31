@@ -6,7 +6,7 @@
 `TextInputControl`), `ArctisAurora.Core.UISystem` (`UICollisionHandling`),
 `ArctisAurora.Core.UISystem.Controls.Containers` (`FileBrowserControl`, `FileRowControl`,
 `TabViewControl`), `ArctisAurora.Core.UISystem.Controls.Text.Document` (`DocumentEditSession`),
-`Periodic` (`VaultBrowserControl`).
+`Thorium` (`VaultBrowserControl`).
 
 ## What shipped
 

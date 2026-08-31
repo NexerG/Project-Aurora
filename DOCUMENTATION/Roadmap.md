@@ -1,6 +1,6 @@
 # Aurora Roadmap
 
-The long-term goal is a Tarkov-style extraction FPS (~2030). The path there is sequenced so each side project forces general engine capabilities the game needs anyway: **Periodic** (Obsidian-style note app, in flight now) matures text/UI/input, **AuroraMotion** (motion-graphics editor, ~end of 2026, replacing the Blender geometry-nodes workflow for video production) forces animation, scenes, offscreen rendering and video export, and the editor/physics/audio work after that builds directly toward the game.
+The long-term goal is a Tarkov-style extraction FPS (~2030). The path there is sequenced so each side project forces general engine capabilities the game needs anyway: **Thorium** (Obsidian-style note app, in flight now) matures text/UI/input, **AuroraMotion** (motion-graphics editor, ~end of 2026, replacing the Blender geometry-nodes workflow for video production) forces animation, scenes, offscreen rendering and video export, and the editor/physics/audio work after that builds directly toward the game.
 
 ## Standing decisions
 
@@ -13,17 +13,17 @@ The long-term goal is a Tarkov-style extraction FPS (~2030). The path there is s
 | ECS rework | Happens early (Phase B) so animation/procedural/scene systems are built on the final data-oriented foundation |
 | Animation core | Is the predecessor of the procedural systems — one parameter-evaluation foundation, procedural geometry/SDF ops plug into it |
 | Settings | XSD/XML-driven engine settings/preferences (GPU selection, CPU/threading, misc) land in Phase B |
-| UI rework | The UI splits into **data and visualization** — the parent/child tree becomes pool data (reversing the ECS rework's "the UI tree stays OO"), a control stays one object per element presenting its row, all on the existing `UIControls` pool. Deliberately **after** Periodic's first version and the test/profiling platform, so the profiler exists before the thing it measures is rebuilt. Replaces the reverted L2 document virtualization; see `ClaudeMemory/Decisions/ui-data-control-split.md` |
+| UI rework | The UI splits into **data and visualization** — the parent/child tree becomes pool data (reversing the ECS rework's "the UI tree stays OO"), a control stays one object per element presenting its row, all on the existing `UIControls` pool. Deliberately **after** Thorium's first version and the test/profiling platform, so the profiler exists before the thing it measures is rebuilt. Replaces the reverted L2 document virtualization; see `ClaudeMemory/Decisions/ui-data-control-split.md` |
 
 ## Dependency spine
 
 Headless tests → data-oriented ECS + dynamic rendering + settings → animation/evaluation core → procedural ops + XML scenes + video export → editor tooling + renderer maturity → AVBD physics + audio engine → game systems → netcode.
 
-## Phase A — now → ~Jul 2026: Periodic MVP + engine hygiene
+## Phase A — now → ~Jul 2026: Thorium MVP + engine hygiene
 
 Forces text-editing maturity, input routing, file I/O and testability — reused by every later tool and by the game UI (the game is UI-heavy).
 
-- Finish Periodic L1–L2 then P3–P5: document layout engine + virtualized view (cache-based geometry, 100-page scale) first, then edit session + caret + char input, selection + run styles, vault browser.
+- Finish Thorium L1–L2 then P3–P5: document layout engine + virtualized view (cache-based geometry, 100-page scale) first, then edit session + caret + char input, selection + run styles, vault browser.
 - Headless test project: wire `AuroraTesting` into the solution so engine logic is testable without booting GPU/window; unblocks regression-safe rework in Phase B and everything after.
 - UI input handle states (game/ui contexts) and mouse input moved fully into `InputHandler`.
 
@@ -46,11 +46,11 @@ Forces animation/timeline and scene serialization (game needs both) plus offscre
 5. Video export: pipe raw frames to an external `ffmpeg.exe` subprocess via stdin; codec targets H.264/mp4, VP9, AV1 (a codec is an ffmpeg argument preset, not engine code).
 6. Simple audio layer: load + play audio files and mux audio tracks into exports via ffmpeg; no mixing/spatialization engine yet.
 7. Timeline UI: timeline/dopesheet control built from existing containers; forces the Window Splitter item.
-8. New host project `AuroraMotion` (same pattern as `Periodic`: thin app over the engine).
+8. New host project `AuroraMotion` (same pattern as `Thorium`: thin app over the engine).
 
 ## Phase D — 2027: Editor shell + renderer maturity
 
-- AuroraEditor becomes real: scene hierarchy panel, reflection-driven inspector (off XSD attributes), asset browser — shared infrastructure with Periodic's vault browser and Motion's timeline panels.
+- AuroraEditor becomes real: scene hierarchy panel, reflection-driven inspector (off XSD attributes), asset browser — shared infrastructure with Thorium's vault browser and Motion's timeline panels.
 - Renderer upgrades, now sequenced: bindless descriptor sets (global/texture/sampler/per-object), BDA vertex buffers, lazy renderer, game+UI render blending, mesh component on the new system, GPU occlusion culling, LODs.
 - Bootstrapper/Registry XML-driven rework completed (execution ordering finally defined).
 

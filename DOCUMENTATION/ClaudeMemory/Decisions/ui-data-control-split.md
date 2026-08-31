@@ -1,7 +1,7 @@
 # Decision — the UI splits into data and visualization; L2 virtualization is dropped
 
 **Date:** 2026-08-17
-**Status:** PLANNED, not started. **Sequenced after Periodic and the test/profiling platform** —
+**Status:** PLANNED, not started. **Sequenced after Thorium and the test/profiling platform** —
 the UI ships as it is first, then the engine is redone against this.
 **Supersedes:** the L2 "virtualized view over a `DocumentLayoutCache`" plan, which was built
 (`34567d1`) and reverted (`542e7d7`, 2026-08-07). The cache, `TextRunControl` and
@@ -81,7 +81,7 @@ other two are unsolved and are the first thing to design when this starts.
 the whole UI snapshottable and serializable as columns; per-type behaviour expressed as data.
 
 **Does not: it does not lower the control count.** One object per element means 56.7k glyphs stay
-56.7k objects and 56.7k rows. The glyph ceiling recorded in [[periodic-editor-architecture]] is made
+56.7k objects and 56.7k rows. The glyph ceiling recorded in [[thorium-editor-architecture]] is made
 of exactly those, so **this split is not its fix** — the only thing that touches the count is the
 escape hatch already written down there (a run holds `text` + its `BlockLayout` with no glyph
 children and calls `SyncGlyphs()` when visible), or a per-kind visualizer, which was considered and
@@ -92,8 +92,8 @@ ceiling and this split are two separate problems that share a cause.
 
 ## Sequencing (user, 2026-08-17)
 
-1. **Finish the UI as it is.** No redesign work lands while Periodic's editor is being built on it.
-2. **Periodic reaches its first version**, and the test/profiling platform — the one built *on* the
+1. **Finish the UI as it is.** No redesign work lands while Thorium's editor is being built on it.
+2. **Thorium reaches its first version**, and the test/profiling platform — the one built *on* the
    UI, per Phase A — comes up with it.
 3. **Then redo the engine's UI against this split**, with the profiler available to say what the
    numbers actually are rather than inferring them from control counts.
@@ -115,4 +115,4 @@ the profiler's own foundation underneath it.
   [[#What this does and does not buy]]. Nothing in this split addresses it.
 
 Related: [[ecs-rework-data-pools]], [[text-layout-one-measurer]], [[glyphs-as-pool-data]],
-[[periodic-editor-architecture]]
+[[thorium-editor-architecture]]

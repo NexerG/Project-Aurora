@@ -171,7 +171,7 @@ What this buys immediately: the hardcoded `C:\Users\gmgyt\Desktop\VienetinisPlan
 
 Fonts bypassed the VFS entirely: every read built a path off `Paths.FONTS` directly, while samplers
 resolved through mounts. Consequence — an app could not add or override a font in its own `Data/`,
-and `arial` is duplicated byte-for-byte across `AuroraEngine/`, `Periodic/` and `AuroraEditor/`
+and `arial` is duplicated byte-for-byte across `AuroraEngine/`, `Thorium/` and `AuroraEditor/`
 `Data/Fonts/`.
 
 `Paths.Font(name, file)` now resolves `Fonts/<name>/<file>` across mounts, mirroring
@@ -183,7 +183,7 @@ and `arial` is duplicated byte-for-byte across `AuroraEngine/`, `Periodic/` and 
 `Data/`. Engine defaults stay pre-cooked and committed, so an app importing a font never dirties
 `AuroraEngine/Data`.
 
-`Periodic/Data/Fonts/arial` and `AuroraEditor/Data/Fonts/arial` were deleted (they were byte
+`Thorium/Data/Fonts/arial` and `AuroraEditor/Data/Fonts/arial` were deleted (they were byte
 identical to the engine's), along with their now-dangling `<Content Include>` entries. Both apps
 were already debug-only — neither copies its own `Data/XML` to output — so nothing regressed.
 

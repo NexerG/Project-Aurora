@@ -158,7 +158,7 @@ The shadowing system prevents `S` from firing when `Ctrl+S` fires in the same fr
 After the evaluation loop, `ShouldSuppressCharInput()` checks whether any modified keybind had its trigger consumed this frame. If so, the character input queue is cleared — this prevents `Ctrl+S` from also producing an `s` character in any listening text control.
 
 ### Text editing actions
-The actions a keybind can name are ordinary `[A_XSDActionDependency]` statics and can live anywhere, but the ones that drive text editing live in the engine, in `TextInputActions` — an application declares which keys reach them in its `KeybindMap` and writes no input code of its own. They were briefly the host's, in `Periodic`, and the move is what makes the character drain and caret movement the same code for every application rather than something each one reimplements against `UICollisionHandling`.
+The actions a keybind can name are ordinary `[A_XSDActionDependency]` statics and can live anywhere, but the ones that drive text editing live in the engine, in `TextInputActions` — an application declares which keys reach them in its `KeybindMap` and writes no input code of its own. They were briefly the host's, in `Thorium`, and the move is what makes the character drain and caret movement the same code for every application rather than something each one reimplements against `UICollisionHandling`.
 
 | Action | Does |
 |--------|------|

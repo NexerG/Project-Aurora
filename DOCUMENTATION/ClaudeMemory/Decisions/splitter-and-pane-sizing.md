@@ -3,7 +3,7 @@
 **Date:** 2026-08-18
 **Status:** LANDED. **GUI-verified** — dragged both directions, repeatedly, with the clamp holding.
 **Scope:** `ArctisAurora.Core.UISystem.Controls.Interactable` (`SplitterControl`),
-`Periodic/Data/XML/Documents/UI.xml`.
+`Thorium/Data/XML/Documents/UI.xml`.
 
 ## Decisions
 

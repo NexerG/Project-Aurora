@@ -1,4 +1,4 @@
-# Log viewer in Periodic — agreed plan, not started
+# Log viewer in Thorium — agreed plan, not started
 
 **Agreed:** 2026-08-22. **Nothing built.** Deferred deliberately; the logger it reads from landed the
 same day.
@@ -10,7 +10,7 @@ that were expensive to establish, and enough per-slice detail to build from with
 
 ## Goal and scope
 
-Show engine log output inside Periodic, coloured by level, with columns that line up.
+Show engine log output inside Thorium, coloured by level, with columns that line up.
 
 **Two surfaces, one control** (user, 2026-08-22 — "both"). The live panel and the file viewer are the
 same `LogViewControl` with two feeds. Do not build two controls.
@@ -29,7 +29,7 @@ Settled. Do not re-litigate without asking.
 | **Cap at ~500 entries, drop the oldest** (user, 2026-08-22) | Stays clear of the glyph ceiling below. The cap *is* the mitigation — there is no virtualization to fall back on |
 | **File feed is tail-only** | A direct consequence of the cap. Opening a 16 MB log shows its end, which is what you want after a crash, and is what a recorder dump already is. Paging further back is out |
 | **One control, two feeds** | The record shape is identical; only the source differs |
-| **`LogViewControl` lives in the engine**, not Periodic | `Core/UISystem/Controls/Containers/`, so the Editor can use it later. Periodic only declares it in XML |
+| **`LogViewControl` lives in the engine**, not Thorium | `Core/UISystem/Controls/Containers/`, so the Editor can use it later. Thorium only declares it in XML |
 | **Indent means continuation lines only** | A stack trace indents under its header. Free, and covers the crash case |
 | **No scope-based nesting in this pass** | Real phase→step folding needs the *logger* to emit depth (`Log.Scope`), which changes the record shape. Its own decision — inferring nesting in the viewer from the `running: X` text is guesswork that breaks on a reworded message |
 | **`MemorySink` is a new structure, not a reuse of `FlightRecorder`** | The recorder stores formatted bytes and drops the level, so nothing downstream can colour by it |
@@ -39,9 +39,9 @@ Settled. Do not re-litigate without asking.
 
 - **There is no virtualization, and one ClaudeMemory note says otherwise.**
   `Decisions/glyphs-as-pool-data.md` (2026-07-31) says "the document virtualizes to viewport ± 1".
-  **That is stale.** `Context/periodic-editor-architecture.md` supersedes it on 2026-08-07: *"No
+  **That is stale.** `Context/thorium-editor-architecture.md` supersedes it on 2026-08-07: *"No
   virtualization: every character is a `GlyphControl`, always."* Verify against
-  `periodic-editor-architecture.md`, not the July note.
+  `thorium-editor-architecture.md`, not the July note.
 
 - **The 50,000-descriptor cap is NOT the blocker any more.** It was, when the sampler array was
   indexed by `gl_InstanceIndex`. Since 2026-07-31 it is a 256-entry texture table indexed by
@@ -53,19 +53,19 @@ Settled. Do not re-litigate without asking.
   | Log size | Glyph entities | Verdict |
   |---|---|---|
   | 60-line boot | ~6,000 | fine, a page of a note |
-  | 500 lines (the cap) | ~50,000 | ≈ a 17-page note. Should be fine; largest tree Periodic will build |
+  | 500 lines (the cap) | ~50,000 | ≈ a 17-page note. Should be fine; largest tree Thorium will build |
   | 5,000 lines | ~500,000 | hundreds of MB, O(n) Measure/Arrange |
   | a 16 MB `engine.log` | millions | not happening |
 
 - **The escape hatch, if the cap proves too tight**, is already designed in
   `Decisions/text-layout-one-measurer.md:36` — `TextMeasurer` works from the string and font metrics
   alone, so a run can hold `text` + a measured `BlockLayout` with **no** glyph children and call
-  `SyncGlyphs()` when it scrolls into view. That is the engine change sequenced after Periodic v1 and
+  `SyncGlyphs()` when it scrolls into view. That is the engine change sequenced after Thorium v1 and
   the profiler. **The capped panel does not need rewriting when it lands.**
 
 - **Per-glyph colour already works and is load-bearing.** `TextControl.controlColorHex` propagates to
   each `GlyphControl`; `glyphs-as-pool-data.md` keeps per-glyph tint deliberately, because per-letter
-  colour is a required Periodic feature. Colouring a level tag costs nothing new.
+  colour is a required Thorium feature. Colouring a level tag costs nothing new.
 
 - **Fonts are baked from a declared manifest** — `AuroraEngine/Data/XML/Imports/EngineFonts.imports.xml`.
   Adding one is a single `<FontImport>` line; `AssetImporter.RunImports` bakes anything stale at boot,
@@ -82,8 +82,8 @@ Settled. Do not re-litigate without asking.
   `Engine.Interpolate()` inside `MainTick`. A control can poll there. `ContextMenus.Tick()` is the
   precedent for a per-frame UI hook.
 
-- **A custom Periodic control is:** subclass a container, add `[A_XSDType("Name", "UI")]`, declare it
-  in `Periodic/Data/XML/Documents/UI/UI.ui.xml`. `VaultBrowserControl` is the worked example.
+- **A custom Thorium control is:** subclass a container, add `[A_XSDType("Name", "UI")]`, declare it
+  in `Thorium/Data/XML/Documents/UI/UI.ui.xml`. `VaultBrowserControl` is the worked example.
 
 - **Dark mode:** a container without the `invisible` mask asset paints opaque and becomes an
   accidental white background. `DocumentControl` does
@@ -157,12 +157,12 @@ New `Core/UISystem/Controls/Containers/LogViewControl.cs`, `[A_XSDType("LogView"
 - continuation lines indent under their header
 - the `invisible` mask, per dark mode above
 
-→ verify: boot Periodic, the panel matches the console; the sampler `ERROR` row is red; scrolling up
+→ verify: boot Thorium, the panel matches the console; the sampler `ERROR` row is red; scrolling up
 stops auto-follow; a forced crash shows the stack indented under its Fatal row.
 
-### 6. Periodic wiring
+### 6. Thorium wiring
 
-`Periodic/Data/XML/Documents/UI/UI.ui.xml` — `<TabItem Header="Log"><LogView .../></TabItem>` in the
+`Thorium/Data/XML/Documents/UI/UI.ui.xml` — `<TabItem Header="Log"><LogView .../></TabItem>` in the
 right-hand `EditableTabs`. Plus a `Log.OpenFile` action for the file feed.
 
 → verify: the tab renders, tears off into its own window like the others, survives a rebuild.
@@ -173,7 +173,7 @@ right-hand `EditableTabs`. Plus a `Log.OpenFile` action for the file feed.
   not make the 100-page note work.
 - **Scope-based nesting / folding.** Needs `Log.Scope` on the logger first.
 - **Level and channel filter widgets, and search.** The data supports all three; no UI.
-- **Editor wiring.** The control lives in the engine so it can, but Periodic is the only host here.
+- **Editor wiring.** The control lives in the engine so it can, but Thorium is the only host here.
 
 ## Open questions
 
@@ -181,5 +181,5 @@ right-hand `EditableTabs`. Plus a `Log.OpenFile` action for the file feed.
   across the full width is the conventional place for a console. Not decided.
 - Whether `Log.OpenFile` gets a file picker or just opens the current `engine.log`.
 
-Related: [[engine-logging]], [[periodic-editor-architecture]], [[text-layout-one-measurer]],
+Related: [[engine-logging]], [[thorium-editor-architecture]], [[text-layout-one-measurer]],
 [[glyphs-as-pool-data]], [[ui-data-control-split]], [[vault-browser-and-shell]]

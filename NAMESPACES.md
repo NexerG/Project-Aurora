@@ -185,8 +185,8 @@ AuroraEditor -> AuroraEditor/Editor.cs
 AuroraEditor.EditorProgram.Components -> AuroraEditor/EditorProgram/Components/AsmTestComp.cs
 AuroraEditor.EditorProgram.CustomControls -> AuroraEditor/EditorProgram/CustomControls/CustomTestControl.cs
 AuroraEditor.EditorProgram.UIFunctions -> AuroraEditor/EditorProgram/UIFunctions/Decorations.cs
-AuroraPeriodic -> Periodic/Periodic.cs
-AuroraPeriodic -> Periodic/PeriodicSettings.cs
-Periodic.Editor -> Periodic/Editor/Decorations.cs
-Periodic.Editor -> Periodic/Editor/VaultsWindow.cs
-Periodic.Editor.CustomControls -> Periodic/Editor/CustomControls/VaultBrowserControl.cs
+Thorium -> Thorium/Thorium.cs
+Thorium -> Thorium/ThoriumSettings.cs
+Thorium.Editor -> Thorium/Editor/Decorations.cs
+Thorium.Editor -> Thorium/Editor/VaultsWindow.cs
+Thorium.Editor.CustomControls -> Thorium/Editor/CustomControls/VaultBrowserControl.cs

@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-23
 **Status:** LANDED. Builds clean (0 errors; the warnings in `DocumentEditorControl` are pre-existing
-and none are on the new lines) and `Periodic` boots to all three threads. **Not GUI-verified.**
+and none are on the new lines) and `Thorium` boots to all three threads. **Not GUI-verified.**
 **Scope:** `DocumentEditorControl` only.
 
 ## What was wrong
@@ -85,7 +85,7 @@ and a drag has its own `AutoScroll`.
 ## Verified
 
 - Builds clean; no warning falls on a new or changed line.
-- `Periodic` boots through all 24 bootstrap steps to all three threads.
+- `Thorium` boots through all 24 bootstrap steps to all three threads.
 - **Not GUI-verified:** Enter on the last visible line, typing below the fold with the view scrolled
   up, and Ctrl+Z on an off-screen edit.
 

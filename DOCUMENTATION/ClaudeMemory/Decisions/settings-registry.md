@@ -5,11 +5,11 @@
 `DocumentLayout.Defaults` is its first consumer; `DocumentStyles.xml` is gone.
 **Scope:** `ArctisAurora.Core.Registry` (`SettingsRegistry`, `ISettingsGroup`, `UserSettingsFile`);
 `ArctisAurora.Core.UISystem.Controls.Text.Document` (`DocumentSettings`, `DocumentLayout.Defaults`,
-`DocumentXml.LoadLayout` deleted); `AuroraEngine/Data/XML/Settings/`; `Periodic.Main`.
+`DocumentXml.LoadLayout` deleted); `AuroraEngine/Data/XML/Settings/`; `Thorium.Main`.
 
 ## What was there before
 
-Periodic's styling was the whole "settings system" and it registered nowhere:
+Thorium's styling was the whole "settings system" and it registered nowhere:
 
 | Piece | Where | State |
 |-------|-------|-------|
@@ -95,13 +95,13 @@ skipped: it needs a declared key attribute and nothing wants it yet.
 ### 5. The application owns the write root (user, 2026-08-09)
 
 `SettingsRegistry.SetWriteRoot(path)` before `Engine.Init`. That folder is read **last** (above
-every mount) and is the only thing `Save` writes to. Periodic uses
-`%AppData%/Periodic/Settings`; `Save` throws if the root was never set.
+every mount) and is the only thing `Save` writes to. Thorium uses
+`%AppData%/Thorium/Settings`; `Save` throws if the root was never set.
 
 Chosen over "writes target the primary mount" ([[asset-manifest-and-import]] decision 7, which
 still governs *asset import*): a shipped game writing settings next to the exe is per-machine, not
 per-user, and lands in Program Files. Chosen over a fixed `%AppData%/<app>` because the engine does
-not know what a host wants — Periodic may eventually want its settings inside the vault.
+not know what a host wants — Thorium may eventually want its settings inside the vault.
 
 The write root is **not** a VFS mount. Mounting it would let a stray file there shadow engine
 *assets*, not just settings.
@@ -209,7 +209,7 @@ loading was not in scope.
 
 ## Verified
 
-36/36 on a throwaway console harness (deleted), cwd set to Periodic's output so `Paths` mounts
+36/36 on a throwaway console harness (deleted), cwd set to Thorium's output so `Paths` mounts
 exactly as the app does, with a scratch tier `MountFirst`ed above it.
 
 - Engine tier alone: `lineHeight` 1.5, `blockSpacing` 8, 10 styles, `Text`/`Inherit` → 18,

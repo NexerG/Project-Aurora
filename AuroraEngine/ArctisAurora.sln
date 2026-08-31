@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ArctisAurora", "AuroraEngin
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AuroraEditor", "..\AuroraEditor\AuroraEditor.csproj", "{99BFD4C0-1923-4945-94E2-EB110921F264}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Periodic", "..\Periodic\Periodic.csproj", "{DB5273F4-750C-46DA-B7CD-0BE1A6DF0885}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Thorium", "..\Thorium\Thorium.csproj", "{DB5273F4-750C-46DA-B7CD-0BE1A6DF0885}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "_Build", "..\_Build\_Build.csproj", "{E13AEB0C-8B30-47A2-AD2E-D6EA6499A06A}"
 EndProject

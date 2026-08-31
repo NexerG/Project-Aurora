@@ -8,9 +8,9 @@ three sizes, maximize/restore, edge drag, close.
 `ArctisAurora.EngineWork` (`Engine`), `ArctisAurora.Core.Threading` (`RenderSystem`),
 `ArctisAurora.Core.Registry` (`EntityRegistry`), `ArctisAurora.Core.UISystem` (`UICollisionHandling`,
 `WindowControl`, `WindowFrameControl`, `TitleBarControl`, `WindowActions`, `SplitterControl`,
-`ResizeableControl`), `Periodic`, `AuroraEditor`.
+`ResizeableControl`), `Thorium`, `AuroraEditor`.
 
-Groundwork for tearing a Periodic tab off into its own OS window. Nothing user-visible changes: this
+Groundwork for tearing a Thorium tab off into its own OS window. Nothing user-visible changes: this
 slice only moves the per-window state off statics so a second window becomes possible.
 
 ## Decisions
@@ -89,12 +89,12 @@ onto `RenderWindow` and is written by the window's own cursor-enter callback, so
 
 It was the single global root, and keeping it as an alias would leave a landmine: a second window's
 tree would not be reachable through the property everything already reads. Four app-side call sites
-moved to the window's root (`Periodic.Main`, `VaultBrowserControl` ×2, `AuroraEditor.Editor`) and
+moved to the window's root (`Thorium.Main`, `VaultBrowserControl` ×2, `AuroraEditor.Editor`) and
 five engine ones went to the window they belong to. Slice 1 re-pointed all nine at `window.ui.uiRoot`.
 
 The `uiRoot` setter calls `FitTo(os.windowSize)`, which is what the old property's setter did.
 `RenderWindow`, `RenderWindow.ui`, `UIModule.uiRoot` and `Engine.windows`/`primary` are **public**
-because there is no `InternalsVisibleTo` and Periodic is a separate assembly — `uiTree` was public
+because there is no `InternalsVisibleTo` and Thorium is a separate assembly — `uiTree` was public
 for the same reason.
 
 `WindowControl.ToDesignSpace` went from `public static` to an instance method taking the window
@@ -165,7 +165,7 @@ proof is that at most one cursor per shape is now created.
 
 ## Verified
 
-- Builds clean, 0 errors, both `Periodic` and `AuroraEditor`.
+- Builds clean, 0 errors, both `Thorium` and `AuroraEditor`.
 - Boots: all four asset stages, all three threads, **no stderr**, and the shell screenshots identically
   to before — title bar, chrome, sidebar, tab strip with its close x, and the note laid out.
 - **800 one-pixel `MoveWindow` resize steps** (shrink then grow, both axes): zero validation output,

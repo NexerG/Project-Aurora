@@ -12,24 +12,24 @@
 G and B on sample and **not** to A. The atlas stores distances, not colours, so the three MSDF
 channels were being non-linearly warped on every fetch while the true-distance channel was not.
 
-Measured on `Periodic/Data/Fonts/arial/arial_atlas.png` (704x704), read through the same
+Measured on `Thorium/Data/Fonts/arial/arial_atlas.png` (704x704), read through the same
 `Image.Load<Rgba32>` path the engine uses, so these are the bytes that reach the GPU:
 
 | | sRGB-decoded (before) | UNORM (after) |
 |---|---|---|
 | max abs(median(RGB) - A) | 0.287 | 0.000 |
-| Periodic's `> 0.1` fallback fires, whole atlas | 53.7% | 0.0% |
+| Thorium's `> 0.1` fallback fires, whole atlas | 53.7% | 0.0% |
 | ...within the rasterized edge band | **100.0%** (100,540 px) | 0.0% |
 
 `sd` crossed 0.5 at a stored value of **0.7354** instead of 0.5000 — glyph edges sat **0.94 px
-inside** where they belong, per side, at the `pxRange = 4.0` the Periodic shader hardcodes.
+inside** where they belong, per side, at the `pxRange = 4.0` the Thorium shader hardcodes.
 
 ## Why nobody saw it
 
 `median(R,G,B) == A` **bit-for-bit at all 495,616 pixels** of this atlas. The smallest representable
 difference is 1/255; the measured maximum is zero.
 
-So Periodic's `abs((sd - 0.5) - (trueSD - 0.5)) > 0.1` fallback fired on 100% of edge pixels and
+So Thorium's `abs((sd - 0.5) - (trueSD - 0.5)) > 0.1` fallback fired on 100% of edge pixels and
 switched to the one channel sRGB does not touch — whose value is identical to what an uncorrupted
 median would have returned. **The bug perfectly masked itself in the only project that runs.**
 
@@ -49,7 +49,7 @@ untouched.
 ### 2. The shaders were left alone
 
 With UNORM the fallback simply stops firing and the shader reads the median instead of alpha. Since
-those are the same bits, Periodic's output is unchanged and the engine/editor paths become correct.
+those are the same bits, Thorium's output is unchanged and the engine/editor paths become correct.
 Deleting the now-inert fallback was **not** done — it is the correct guard for a real MTSDF whose
 alpha is an independent true distance, which is what the atlas *should* eventually carry.
 
@@ -68,7 +68,7 @@ waste rather than a defect.
   never fire on merit. That is a generator-side question, outside this repo.
 - Consequence for [[control-edge-and-outline]]: `OutlineWidth` strokes the median, and a genuine
   true-SDF alpha would give rounder joins at acute corners than the median's mitred extensions.
-- `pxRange = 4.0` is hardcoded in the Periodic fragment shader and stated nowhere else —
+- `pxRange = 4.0` is hardcoded in the Thorium fragment shader and stated nowhere else —
   `AtlasMetaData` carries only `glyphCount`, `chars` and `glyphs`. A font generated at a different
   range would render wrong with no diagnostic.
 

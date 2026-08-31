@@ -230,7 +230,7 @@ rebuild — landed in slice 6 as `PoolCursor.OrderChanged`.
   not a growing leak, but it meant "destroyed" did not imply "collectable". Only `_owners` needs
   this; the component columns are unmanaged, so their slack is just numbers nobody reads. Nothing
   reads `OwnerAt` above `Count`, so clearing the slack cannot be observed by a consumer.
-- **Verified by running Periodic** (no automated tests — see auto-memory). Boot: one resequence of
+- **Verified by running Thorium** (no automated tests — see auto-memory). Boot: one resequence of
   5 rows, then quiet (flag clears, nothing re-dirties per frame). Click + type: 6 → 7 → 8 rows, one
   resequence per keystroke, glyph children 3 → 8, no mismatch warning. Destroy (temporary scene
   with `onClick="DestroySelf"`, source restored after): `CompactOrdered` ran ("1 dead of 2") and the
@@ -250,7 +250,7 @@ The last per-control GPU resource is gone; both UI columns are now whole-pool mi
   same recreate-on-growth / patch-the-dirty-range lifecycle as the transforms mirror. One dirty
   range covers every column, so both mirrors copy the same slice.
 - **Shader: `set 0, binding 2` went from an array-of-buffers to ONE buffer of structs**
-  (`UI.vert`, recompiled to `.spv` for all three projects — engine, Periodic, editor — since each
+  (`UI.vert`, recompiled to `.spv` for all three projects — engine, Thorium, editor — since each
   loads from its own `Shaders/` folder). `VD[gl_InstanceIndex]` → `CD.controls[gl_InstanceIndex]`.
   Binding 2 lost `VariableDescriptorCountBit | PartiallyBoundBit` and is now written once in
   `WriteStaticDescriptors`; `WriteControlDataDescriptors` is gone. Descriptor pool storage-buffer
@@ -273,7 +273,7 @@ The last per-control GPU resource is gone; both UI columns are now whole-pool mi
   MUST call `MarkTreeOrderDirty` — nothing enforces it.
 - **Text deletion is unreachable, so the glyph-removal path is only verified via `DestroySelf`.**
   `TextInputControl.Backspace()/DeleteAt()` have no callers and plain Backspace is unbound in
-  `Periodic`'s `InputMap.xml` (Ctrl+Backspace → `ExitApplication`). `SyncGlyphs`' shrink branch is
+  `Thorium`'s `InputMap.xml` (Ctrl+Backspace → `ExitApplication`). `SyncGlyphs`' shrink branch is
   therefore correct-by-inspection but not exercised in the running app yet.
 - **`Entity.SetPosition/SetScale/SetRotation/SetTransform` still bypass `CommitTransform`** — they
   mark dirty without baking, which on a control leaves a stale matrix. Still zero callers
@@ -286,7 +286,7 @@ The last per-control GPU resource is gone; both UI columns are now whole-pool mi
   component it removed rather than always `null` — it still runs **no teardown** on it
   (`OnDestroy` uncalled, `parent` left dangling), which is the real remaining hole.
   `VulkanControl.OnDestroy` overrides `OnDestroy` and calls `base` first.
-- **The `ColorHex` tint does not render** — `Periodic`'s window declares `ColorHex="#1f6331"` but
+- **The `ColorHex` tint does not render** — `Thorium`'s window declares `ColorHex="#1f6331"` but
   draws as #0D0D0D. PRE-EXISTING, confirmed identical before and after the eighth slice by pixel
   diff, so it is not a pooling bug. Most likely the fragment shader runs MSDF median/opacity math
   on every control, not just glyphs, so a plain control's mask collapses its alpha. Belongs to the
@@ -326,7 +326,7 @@ The last per-control GPU resource is gone; both UI columns are now whole-pool mi
 - Growth/repack ONLY between frames; systems re-fetch spans at tick start, never cache spans across frames.
 - Handles use indirection table (sparse-set): handle = (stableId, version) → slots table → dense slot. Repack/swap-remove patches table only; handles survive repack. Version bumps only on destroy.
 - GPU data = both: CPU authoring structs (pos/rot/scale) + pack pass baking into pinned GPU buffer for dirty entries.
-- ~~UI hierarchy (parent/children) STAYS in class graph (OO tree)~~ — **REVERSED 2026-08-17, see [[ui-data-control-split]]**: the tree becomes pool data too. The rest of the line stands and is what that split is built on — ControlData/settings in arrays, layout iterating flat ("GO FAST"), depth-sorted repack making layout a forward flat loop. Scheduled after Periodic v1 and the profiler; nothing changes before then.
+- ~~UI hierarchy (parent/children) STAYS in class graph (OO tree)~~ — **REVERSED 2026-08-17, see [[ui-data-control-split]]**: the tree becomes pool data too. The rest of the line stands and is what that split is built on — ControlData/settings in arrays, layout iterating flat ("GO FAST"), depth-sorted repack making layout a forward flat loop. Scheduled after Thorium v1 and the profiler; nothing changes before then.
 - Fix separately: isDirty setter cascades subtree on every set — defer to one propagation pass per tick.
 - Destroy: control calls Free → enqueues to destroy queue → manager drains between frames (version bump at drain). Same pattern as existing onDestroyEntities.
 - Attributes for serialization/XSD stay on class proxy properties (getter/setter round-trips through array slot); serializer unchanged; structs stay attribute-free.

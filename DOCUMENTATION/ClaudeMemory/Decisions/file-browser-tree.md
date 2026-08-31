@@ -5,7 +5,7 @@
 screenshot with synthetic clicks**; the model probed directly out of `ArctisAurora.dll`.
 **Scope:** `ArctisAurora.Core.Filing` (`FileObject`),
 `ArctisAurora.Core.UISystem.Controls.Containers` (`FileBrowserControl`, `FileTreeControl`),
-`Periodic` (`VaultBrowserControl`).
+`Thorium` (`VaultBrowserControl`).
 
 ## Decisions
 
@@ -34,12 +34,12 @@ is the browser's, not the filesystem's.
   fills in: `RootPath`, `PopulateRows`, `Activate`, and optionally `Accepts`/`DisplayName`.
 - `FileTreeControl` (abstract) — the openable tree: an `expanded` set of full paths, recursion only
   into open folders, and the `>`/`v` toggle.
-- `VaultBrowserControl` (Periodic, concrete) — vault root off `PeriodicSettings`, `.xml` filter,
+- `VaultBrowserControl` (Thorium, concrete) — vault root off `ThoriumSettings`, `.xml` filter,
   extension-stripped names, and the existing tab-opening `Open`.
 
-**This reverses the boundary held since P5** ("`VaultBrowserControl` is Periodic's; the engine gained
+**This reverses the boundary held since P5** ("`VaultBrowserControl` is Thorium's; the engine gained
 nothing for the browser") — user's call, 2026-08-20, taken so the editor's folder view is a sibling
-leaf rather than a fork of Periodic's row-building code. The cost, accepted knowingly: the base has
+leaf rather than a fork of Thorium's row-building code. The cost, accepted knowingly: the base has
 exactly **one** leaf until that view is built.
 
 The split is base-vs-tree rather than one class with a mode because the two presentations share only
@@ -83,7 +83,7 @@ document from a click handler.
 
 Ten `[A_XSDElementProperty]` fields — row height, indent, spacing, inset, gutter width, font size,
 and the five colours — following `TabViewControl`'s `TabColorHex`/`ActiveTabColorHex`. They cannot
-stay `const` in the browser: `#171717` is Periodic's sidebar ground, and this is engine code now.
+stay `const` in the browser: `#171717` is Thorium's sidebar ground, and this is engine code now.
 
 Defaults are exactly the constants they replaced, so `UI.xml` needed no edit and the look the user
 signed off on is unchanged.
@@ -140,6 +140,6 @@ either way — and press/release still match, since both resolve to the same pan
   view needs one before it can be built.
 - The editor's `FolderViewControl`, and whatever project root it would list, are not written.
 
-Related: [[vault-browser-and-shell]], [[periodic-editor-architecture]],
+Related: [[vault-browser-and-shell]], [[thorium-editor-architecture]],
 [[button-states-and-hover-bubbling]], [[tab-view-control]], [[synthetic-input-false-defect]],
 [[verify-what-the-user-sees]]

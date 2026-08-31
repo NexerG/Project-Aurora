@@ -5,7 +5,7 @@
 **Scope:** `ArctisAurora.EngineWork` (`InputSettings`, `KeyStateTracker`, `RepeatCondition`),
 `ArctisAurora.Core.UISystem.Controls.Text` (`TextInputActions`, `TextControl.Layout`),
 `...Text.Document` (`DocumentControl`, `DocumentEditorControl`, `DocumentEditSession`, `DocumentXml`),
-`Periodic/Editor/Decorations.cs`, `Periodic/Data/XML/Documents/Inputs/InputMap.xml`.
+`Thorium/Editor/Decorations.cs`, `Thorium/Data/XML/Documents/Inputs/InputMap.xml`.
 
 ## The ask
 
@@ -43,7 +43,7 @@ duplicates `DoubleClick.Timeout`. Left in place; flagged, not deleted.
 
 ### 2. Text actions live in the engine, not the host
 
-`TextInputActions` holds `Text.Write` (moved verbatim out of `Periodic.Decorations.Write`),
+`TextInputActions` holds `Text.Write` (moved verbatim out of `Thorium.Decorations.Write`),
 `Text.Save` and eight `Text.Caret*` actions. The keybind XML stays the authority over which key
 reaches which action, so a host still declares its own map — it just no longer writes the code behind
 it.
@@ -132,7 +132,7 @@ scope.
 
 ## Verified
 
-Running `Periodic`, throwaway harness in `Periodic.Main`, since removed:
+Running `Thorium`, throwaway harness in `Thorium.Main`, since removed:
 
 - Full bootstrap, no stderr, all three threads start. `InputHandler.LoadInputs` **throws** on an
   unresolved action name, so a clean boot proves all ten `Text.*` actions resolve.

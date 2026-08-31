@@ -4,7 +4,7 @@
 **Status:** LANDED. Builds clean and boots; **not GUI-verified.**
 **Scope:** `ArctisAurora.Core.UISystem` (`UICollisionHandling`), `ArctisAurora.EngineWork` (`Engine`),
 `ArctisAurora.Core.UISystem.Controls.Containers` (`TabViewControl`, `TabItemControl`,
-`SplitViewControl`, `EditableTabsControl`), `Periodic` (`VaultBrowserControl`, `UI.xml`,
+`SplitViewControl`, `EditableTabsControl`), `Thorium` (`VaultBrowserControl`, `UI.xml`,
 `TabWindow.xml`).
 
 ## What shipped
@@ -87,7 +87,7 @@ trace.
 Tear-off is not affected the same way: it builds its window from `tearOffDocument`, so the XML decides
 the kind. `TabWindow.xml` names `<EditableTabs>` for that reason.
 
-### 6. The rename itself stays in Periodic, reached through `TabItemControl.onRename`
+### 6. The rename itself stays in Thorium, reached through `TabItemControl.onRename`
 
 The engine control edits a caption and hands the string on. `Action<string>? onRename` on the tab is
 what knows the string means a note: `VaultBrowserControl.Open` sets it, and a tab seeded by `UI.xml`

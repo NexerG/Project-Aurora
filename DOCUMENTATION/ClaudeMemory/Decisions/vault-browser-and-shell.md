@@ -3,14 +3,14 @@
 **Date:** 2026-08-17
 **Status:** LANDED (P5). Builds; verified at runtime that the vault resolves, the rows build and the
 first note loads. **Not GUI-verified** — nothing was eyeballed or clicked.
-**Scope:** `Periodic` (`PeriodicSettings`, `VaultBrowserControl`, `Periodic.Main`, `UI.xml`,
+**Scope:** `Thorium` (`ThoriumSettings`, `VaultBrowserControl`, `Thorium.Main`, `UI.xml`,
 `Data/Notes/*`), `ArctisAurora.Core.Filing` (`FileObject`).
 
 ## Decisions
 
 ### 1. The vault is a `User`-scoped setting, defaulting to a folder in the app's Data
 
-`<Vault Path="Notes"/>` on a `Periodic` settings category. A relative path resolves through
+`<Vault Path="Notes"/>` on a `Thorium` settings category. A relative path resolves through
 `VirtualFileSystem.ResolveDir`, an absolute one is used as it is — the same rule
 `DocumentEditorControl.LoadPath` already applies to `Source`.
 
@@ -40,7 +40,7 @@ lookup** — that is a naming system for the whole UI, designed off one call sit
 `entitiesOnStart` with a `foreach`, and loading a document creates one entity per glyph, so the list
 mutates mid-enumeration. `OnTick` has the identical shape over `entities`.
 
-So `Periodic.Main` calls `VaultBrowserControl.OpenFirstNote()` immediately after assigning
+So `Thorium.Main` calls `VaultBrowserControl.OpenFirstNote()` immediately after assigning
 `EntityRegistry.uiTree` — outside any iteration, and late enough that the whole tree exists. This is
 app startup policy anyway, next to `SetActiveKeybindGroup` and `SetWriteRoot`.
 
@@ -76,7 +76,7 @@ Files are filtered to `*.xml`. The first note in tree order is the one opened at
 ### 6. The shell is dark by default, and a container that does not say otherwise paints white
 
 Window and editor ground `#1e1e1e`, sidebar `#171717`, against the engine's default `#FFFFFF` text.
-Dark is the standing default for Periodic (user, 2026-08-17), not a theme toggle — there is no theme
+Dark is the standing default for Thorium (user, 2026-08-17), not a theme toggle — there is no theme
 system and none is planned yet.
 
 It was found the hard way. The first shell rendered a **blank white window with no note in it**, and
@@ -102,7 +102,7 @@ level was added twice. Fixed, because the browser is the first caller.
 ## Verified
 
 - Builds clean; boots to all three threads, no stderr.
-- A temporary probe confirmed: vault resolved to `Periodic\Data\Notes` off the setting, the browser
+- A temporary probe confirmed: vault resolved to `Thorium\Data\Notes` off the setting, the browser
   was found in the tree, **3 rows** (one folder label + two notes — proof the `FileObject` fix
   holds, or there would have been five), and the editor loaded the first note with **6 blocks**.
   Probe removed.
@@ -129,4 +129,4 @@ level was added twice. Fixed, because the browser is the first caller.
   folder, so it still does not appear on its own.
 
 Related: [[settings-registry]], [[settings-categories]], [[document-structural-editing]],
-[[periodic-editor-architecture]]
+[[thorium-editor-architecture]]

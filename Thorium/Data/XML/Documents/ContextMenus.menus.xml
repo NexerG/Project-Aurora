@@ -3,7 +3,7 @@
 			  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 			  xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../Schemas/UITypeSchema.xsd" >
 
-	<ContextMenu Name="periodic">
+	<ContextMenu Name="thorium">
 		<MenuItem Caption="New note" Action="Notes.New"/>
 		<MenuItem Caption="Vaults" Action="Vaults.Open"/>
 		<MenuItem Caption="Settings" Action="Settings.Open"/>

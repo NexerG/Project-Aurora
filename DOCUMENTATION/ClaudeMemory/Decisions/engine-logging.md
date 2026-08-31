@@ -1,8 +1,8 @@
 # Decision — logging is per-thread SPSC lanes drained by one background thread
 
 **Date:** 2026-08-22
-**Status:** LANDED. Solution builds clean; Periodic boots, writes
-`%AppData%/Periodic/Logs/engine.log`, rotates, and dumps the recorder on a crash — all verified by
+**Status:** LANDED. Solution builds clean; Thorium boots, writes
+`%AppData%/Thorium/Logs/engine.log`, rotates, and dumps the recorder on a crash — all verified by
 running it. **`Logging.Flush` is not GUI-verified** (the shutdown sequence needs a real window close;
 same gap as [[shutdown-sequence]]). Swapchain-rebuild lines are not verified either — they need a
 resize.
@@ -114,7 +114,7 @@ to be formatted — the sinks filter afterwards. `LogSpool.Configure` computes
 
 ### 10. Self-starting, configured later, replayed retroactively
 
-`XSDGenerator.GenerateXSD()` runs before `Engine.Init()` in `Periodic.Main` and logs, so the logger
+`XSDGenerator.GenerateXSD()` runs before `Engine.Init()` in `Thorium.Main` and logs, so the logger
 cannot be a bootstrap step. `LogChannel.For` starts the spool.
 
 `Logging.Configure` is step 2 of `Bootstrap.xml`, right after `Settings.LoadAll`. Before it: the

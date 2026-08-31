@@ -8,7 +8,7 @@ the entries themselves stands. See [[context-menu-hosting]].
 **Scope:** `ArctisAurora.Core.UISystem` (`ContextMenus`, `ConfirmWindow`, `NoteNameWindow`),
 `ArctisAurora.Core.UISystem.Actions` (`WindowActions`, `ViewActions`),
 `ArctisAurora.Core.UISystem.Controls.Containers` (`FileBrowserControl`, `FileRowControl`,
-`FileTreeControl`, `TabViewControl`), `Periodic` (`VaultBrowserControl`).
+`FileTreeControl`, `TabViewControl`), `Thorium` (`VaultBrowserControl`).
 
 ## The defect
 
@@ -117,7 +117,7 @@ placement is a separate decision.
 ## Verified
 
 - `dotnet build AuroraEngine/ArctisAurora.sln` — 0 errors. Warning count unchanged from baseline.
-- **Boot**: `Periodic.exe` runs past `Renderer.Initialize` and is still alive when killed at 15s, no
+- **Boot**: `Thorium.exe` runs past `Renderer.Initialize` and is still alive when killed at 15s, no
   exception on stderr. `ContextMenus.LoadMenus` and `InputHandler.LoadInputs` both still resolve
   every action name they bind — that is what a broken action signature would have thrown at.
 - The XSD generator reports every schema unchanged, confirming no new authorable type was introduced.

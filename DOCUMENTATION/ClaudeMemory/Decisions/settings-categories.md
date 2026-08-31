@@ -6,7 +6,7 @@ plain `ISettingsGroup`.
 **Scope:** `ArctisAurora.Core.Registry` (`Setting`, `SettingScope`, `SettingCategory`,
 `UserSettingsFile`, `SettingsRegistry.Apply/SaveAll/ApplyCategory/CarryCategoryUnknowns`),
 `ArctisAurora.EngineWork.Rendering` (`GraphicsSettings` + its four setting types),
-`Periodic/Data/XML/Settings/Graphics.xml`, `AuroraEngine/Data/XML/Settings/DocumentSettings.xml`.
+`Thorium/Data/XML/Settings/Graphics.xml`, `AuroraEngine/Data/XML/Settings/DocumentSettings.xml`.
 
 ## The ask (2026-08-17)
 
@@ -76,7 +76,7 @@ list, which four other readers use unchanged. `WriteDiff` skips any scalar whose
 
 **Rejected: scope declared on the setting type** (`public override SettingScope scope => App`). It is
 static and therefore generator-visible, which is the only thing that could support decision 4's
-rejected option — but it kills Periodic's per-host retune, which is in active use
+rejected option — but it kills Thorium's per-host retune, which is in active use
 (`<VSync Scope="App"/>` in `Graphics.xml`), and would make `VSync` App-scoped for every host or none.
 
 ### 4. "The user must not meddle" is enforced at load, not by the schema (user, 2026-08-17)
@@ -117,9 +117,9 @@ remember, where forgetting `SaveAll` gives a change that works until the next la
 
 Order is Apply-then-Save so a missing write root fails *after* the actions ran: the app is in the
 state the user asked for and only persistence failed. Both halves stay public — `Commit` inherits
-`SaveAll`'s throw, so a host that never calls `SetWriteRoot` (AuroraEditor does not; only Periodic
+`SaveAll`'s throw, so a host that never calls `SetWriteRoot` (AuroraEditor does not; only Thorium
 does) calls `Apply` directly instead. **Rejected: `Commit` skipping the save when no write root is
-set** — that silently turns a missing `SetWriteRoot` in Periodic into settings that never persist.
+set** — that silently turns a missing `SetWriteRoot` in Thorium into settings that never persist.
 
 **What `Commit` does not do is gate the value.** The UI writes the live `Setting`, so the value is in
 effect when the widget moves; only the action waits. Consequences, accepted: no Cancel, and a reader
@@ -156,14 +156,14 @@ Concrete categories still re-declare `AllowedChildren = typeof(Setting)` themsel
 
 ## Verified
 
-Running `Periodic` (engine manifest + Periodic's `Graphics.xml` + a seeded write root), harness in
-`Periodic.Main`, since removed:
+Running `Thorium` (engine manifest + Thorium's `Graphics.xml` + a seeded write root), harness in
+`Thorium.Main`, since removed:
 
 - Regenerated `SettingsTypeSchema.xsd`: `Graphics` offers `Device`/`Monitor`/`Window`/`VSync`;
   `Window` has `Mode` as `types:WindowMode`, `Width`/`Height` as `xs:unsignedInt`; `VSync.On` is
   `xs:boolean`. Every setting carries `Scope` (`types:SettingScope`) and `OnChanged`.
 - Field collection: `settings.Count == 4`, in declaration order.
-- Write root `<VSync On="false"/>` against Periodic's `<VSync Scope="App"/>` → warns, ignored,
+- Write root `<VSync On="false"/>` against Thorium's `<VSync Scope="App"/>` → warns, ignored,
   `vsync.on` stays `True`. `<Window Width="1600" Height="900"/>` and `<Device Name="rtx"/>` are
   User-scoped and applied. `onChanged` survives from the code declaration.
 - `<LongGone Keep="me"/>` warns as undeclared at load and is **carried forward whole** by the save.

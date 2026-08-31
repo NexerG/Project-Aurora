@@ -4,7 +4,7 @@ using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 
-namespace Periodic.Editor
+namespace Thorium.Editor
 {
     public class Decorations
     {

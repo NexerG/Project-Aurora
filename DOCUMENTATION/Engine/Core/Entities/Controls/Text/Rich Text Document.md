@@ -12,9 +12,9 @@ Type:
   - Public
 ---
 ## Description
-The note document model for the Periodic (Obsidian-style) editor. It is the source of truth for a note and also its on-disk format, serialized as engine XML (not markdown, not JSON).
+The note document model for the Thorium (Obsidian-style) editor. It is the source of truth for a note and also its on-disk format, serialized as engine XML (not markdown, not JSON).
 
-The model / view split it was designed around **is not what shipped**: blocks and runs are themselves `VulkanControl`s, so the model *is* the control tree and editing mutates it directly. That is the P0 decision — blocks are controls so the engine's UI layout lays a document out for free — and everything downstream follows from it, including why [[#Edit session — `DocumentEditSession`]] is not a working copy and why the whole UI is scheduled to split into data and visualization once Periodic and the profiler are up. The separation the online multi-editor goal wants is therefore still owed, and arrives with that split rather than here.
+The model / view split it was designed around **is not what shipped**: blocks and runs are themselves `VulkanControl`s, so the model *is* the control tree and editing mutates it directly. That is the P0 decision — blocks are controls so the engine's UI layout lays a document out for free — and everything downstream follows from it, including why [[#Edit session — `DocumentEditSession`]] is not a working copy and why the whole UI is scheduled to split into data and visualization once Thorium and the profiler are up. The separation the online multi-editor goal wants is therefore still owed, and arrives with that split rather than here.
 
 ## Model shape
 A document is a flat list of blocks; a block of flowing text holds a list of inline runs.
@@ -99,7 +99,7 @@ The editable view over a document. It is a [[#^scrollable|ScrollableControl]] ov
 
 This presentation does not scale past a few pages, since every character is a full control. The replacement was going to be L2's virtualized view over a layout cache; that was **built and reverted** on 2026-08-07, because virtualizing the view removed a second parallel set of glyphs and left the first one — parsing a note builds every glyph before any view is consulted, so the model alone is already past the descriptor array's 50,000 slots on a 400-block note. There is now one layout path for all text and the control tree is the hit-test again.
 
-What replaces it is engine-wide rather than document-local: the UI splits into **data and visualization**, most of the UI becoming data and controls becoming the thing that draws it, **after** Periodic's first version and the test/profiling platform are up. See `DOCUMENTATION/ClaudeMemory/Decisions/ui-data-control-split.md` and [[Document Layout Engine#Status]].
+What replaces it is engine-wide rather than document-local: the UI splits into **data and visualization**, most of the UI becoming data and controls becoming the thing that draws it, **after** Thorium's first version and the test/profiling platform are up. See `DOCUMENTATION/ClaudeMemory/Decisions/ui-data-control-split.md` and [[Document Layout Engine#Status]].
 
 - `[A_XSDType("DocumentEditor", "UI")]` so it can be placed in `UI.ui.xml`; a `Source` attribute names an engine-XML note to load (resolved via `Paths.Doc` when relative, used as-is when rooted).
 - `LoadDocument(RichTextDocument)` — entry point used by the vault later; `LoadPath(name)` — load by file.
@@ -250,8 +250,8 @@ Blocks live in two lists at once — `RichTextDocument.blocks`, which is what a 
 ## Status
 - P0 (model types) and P1 (XML persistence) complete; round-trip verified (in-code build + reload of code-built and hand-authored XML are byte/structurally equal).
 - P3 complete: click→caret, character input, arrow / Home / End / PageUp / PageDown navigation, and Ctrl+S through `DocumentEditSession`. Save verified against the sample note — no run gains a `FontSize`. Navigation itself is compile-verified and pending GUI verification.
-- P2 (`DocumentEditorControl`) implemented; built into `Periodic/Data/XML/Documents/UI/UI.ui.xml` via `<DocumentEditor Source="SampleNote.xml"/>`.
+- P2 (`DocumentEditorControl`) implemented; built into `Thorium/Data/XML/Documents/UI/UI.ui.xml` via `<DocumentEditor Source="SampleNote.xml"/>`.
 - P4 steps 1 and 2 complete: selection renders and is GUI-verified apart from drag auto-scroll, which the sample note is too short to exercise; deletion over a range, Backspace, Delete and Enter are bound and boot-verified but **not** GUI-verified. Step 3, Ctrl+B/I run split/merge, is next — `Bold` and `Italic` are still read by nothing.
 - Undo and select-all do not exist, which deletion is the first feature to make matter: a mis-aimed delete is recoverable only by reloading the note.
-- P5 complete: `Periodic` is a two-pane shell, a `VaultBrowser` listing a vault folder beside the editor, and `LoadPath` has a real caller at last. The vault is a settings path; the browser, being app rather than engine, lives in `Periodic` and is described in `DOCUMENTATION/ClaudeMemory/Decisions/vault-browser-and-shell.md`. Switching notes saves the one being left, since nothing tracks dirtiness and nothing can undo.
-- Lists, quotes, dividers, wiki-links, inline code: not yet — added as the editor grows. Code blocks and tables are scheduled (B1/B2). L2 is dropped, L3 (paged mode) is unaffected — see [[Document Layout Engine#Status]]. Revised phase order: `DOCUMENTATION/ClaudeMemory/Context/periodic-editor-architecture.md`.
+- P5 complete: `Thorium` is a two-pane shell, a `VaultBrowser` listing a vault folder beside the editor, and `LoadPath` has a real caller at last. The vault is a settings path; the browser, being app rather than engine, lives in `Thorium` and is described in `DOCUMENTATION/ClaudeMemory/Decisions/vault-browser-and-shell.md`. Switching notes saves the one being left, since nothing tracks dirtiness and nothing can undo.
+- Lists, quotes, dividers, wiki-links, inline code: not yet — added as the editor grows. Code blocks and tables are scheduled (B1/B2). L2 is dropped, L3 (paged mode) is unaffected — see [[Document Layout Engine#Status]]. Revised phase order: `DOCUMENTATION/ClaudeMemory/Context/thorium-editor-architecture.md`.

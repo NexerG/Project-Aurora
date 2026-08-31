@@ -44,7 +44,7 @@ The mesh record carries counts and *file* position. The suballocator hands out
 
 **The exception, considered and not taken:** if the whole world fits in VRAM and never streams,
 absolute GPU offsets *can* be baked and loading becomes a single memcpy of the entire blob. Legitimate,
-and arguably right for Periodic and the Editor, which stream nothing. Rejected anyway — baking
+and arguably right for Thorium and the Editor, which stream nothing. Rejected anyway — baking
 relative offsets and assigning at load is roughly fifty lines more and does not paint us in.
 
 ### 2. One interface over both sources

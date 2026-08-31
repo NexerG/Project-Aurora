@@ -29,7 +29,7 @@ in design px is exact. The MSDF distance resolves in screen pixels (`screenPxRan
 stage does not have. `fwidth(boxDist)` looks like that scale but is not — `sdRoundBox` has unit
 gradient, so `fwidth` of it swings between 1.0 axis-aligned and 1.414 on a diagonal, a 40% error.
 Carrying a real scale factor means another varying and a vertex-side derivation. Moot today:
-Periodic's `Window` is `WindowingMode="WindowSize"`, where design px *are* screen px. Revisit if a
+Thorium's `Window` is `WindowingMode="WindowSize"`, where design px *are* screen px. Revisit if a
 host ships `Autoscaling="true"`.
 
 ### 2. The edge carries its own coverage; the outline does not
@@ -96,7 +96,7 @@ setter is four lines and `EnumColorToHex` already exists.
 - `spirv-dis` member offsets and `ArrayStride` match the C# layout exactly.
 - All six shaders compile with `glslc --target-env=vulkan1.3`, unoptimized to match the artifacts
   already in the repo (an `-O` build is ~40% smaller and would have been a silent flag change).
-- `dotnet build Periodic` — 0 errors, warning count unchanged.
+- `dotnet build Thorium` — 0 errors, warning count unchanged.
 - **Not** GUI-verified: no control authors an edge or an outline, so the render is unchanged by
   construction. `<Panel EdgeThickness="2" EdgeColorHex="#3A3A3A" CornerRadius="6"/>` is the
   one-liner that proves it.

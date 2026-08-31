@@ -6,11 +6,10 @@ using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.Core.UISystem.Controls.Text.Document;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
-using AuroraPeriodic;
 using Microsoft.VisualBasic.FileIO;
 using System.Xml.Linq;
 
-namespace Periodic.Editor.CustomControls
+namespace Thorium.Editor.CustomControls
 {
     // Lists the vault as an openable tree and opens the clicked note in the document editor.
     [A_XSDType("VaultBrowser", "UI")]
@@ -20,7 +19,7 @@ namespace Periodic.Editor.CustomControls
         private const string browserName = "Browser";
         private const string tabsName = "Tabs";
 
-        // context declared in Contexts/Periodic.contexts.xml
+        // context declared in Contexts/Thorium.contexts.xml
         private const string tabsContext = "ActiveTabViewer";
 
         public VaultBrowserControl()
@@ -29,7 +28,7 @@ namespace Periodic.Editor.CustomControls
         }
 
         protected override string RootPath =>
-            KnownVaults.Resolve(SettingsRegistry.Get<PeriodicSettings>().vault.path);
+            KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
 
         protected override bool Accepts(FileObject file) =>
             file.path.EndsWith(".xml", StringComparison.OrdinalIgnoreCase);

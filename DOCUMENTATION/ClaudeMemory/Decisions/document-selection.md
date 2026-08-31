@@ -156,7 +156,7 @@ Typing was unaffected throughout because character input never goes through the 
 
 ## Verified
 
-- Builds; `Periodic` boots to all three threads with no stderr, with selection state and the drag
+- Builds; `Thorium` boots to all three threads with no stderr, with selection state and the drag
   lifecycle live.
 - **GUI, by the user:** left/right caret movement works. Up/down did **not** — fixed, see below.
   Typing selected its own output, and typing intermittently dropped a character — both fixed
@@ -190,7 +190,7 @@ highlight geometry in decision 4 carry over untouched.
 
 `TextInputActions.SelectAll` has the editor-then-box shape every other text action has.
 `TextBoxControl.SelectAll()` already existed — `Focus()` calls it when a field opens — so the field half
-is one call. Bound `Ctrl+A` in Periodic's `InputMap.xml`.
+is one call. Bound `Ctrl+A` in Thorium's `InputMap.xml`.
 
 **No scroll-to-caret.** `MoveCaret` requests one and `SelectWord` does not; select-all belongs with the
 second group, since jumping the view to the document end is not what selecting everything should do.
@@ -215,4 +215,4 @@ held.
 - ~~**`WinForms` name clashes keep recurring**~~ — **fixed 2026-08-18** by turning WinForms off at the
   project level, as predicted here. See [[winforms-to-console]].
 
-Related: [[engine-side-text-input]], [[text-layout-one-measurer]], [[periodic-editor-architecture]]
+Related: [[engine-side-text-input]], [[text-layout-one-measurer]], [[thorium-editor-architecture]]

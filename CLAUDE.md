@@ -172,7 +172,10 @@ Virtualize the document view onto the layout cache
 
 **Hand off the mechanical. Keep the judgment. Verify everything that comes back.**
 
-Standing permission to spin work out to a cheaper subagent - no need to ask me each time.
+**The plan names the handoff.** §2's plan says which parts go to a cheaper subagent and which you keep;
+approving the plan is the permission to spawn, so don't ask again at the point of spawning. Work that
+never reached a plan - a mechanical sweep discovered mid-task - still goes out under standing
+permission, no need to ask me each time.
 
 - **Goes out:** work where the decision is already made and only the typing is left. Applying an
   agreed pattern across N call sites, mass renames, gathering "which files mention X", reading a
@@ -220,7 +223,7 @@ Abstract names below map to real top-level folders. Source of truth for code loc
 |------|-------------|-------------------|---------|--------|
 | `Engine` | `AuroraEngine` | `ArctisAurora.*` (`Core`, `EngineWork`) | Core game engine — lives in `AuroraEngine/` under `Core/`; no separate Engine project. Folder renamed from `ParticleSimulator` (2026-07); assembly/root namespace still `ArctisAurora`. | Active |
 | `Editor` | `AuroraEditor` | `AuroraEditor.*` | Visual editor; consumer of the Engine | Early stage |
-| `TextEditor` | `Periodic` | `AuroraPeriodic`, `Periodic.*` | Obsidian/Notion-style note app; host that boots the Engine (mapping inferred, unconfirmed) | Planning |
+| `TextEditor` | `Thorium` | `Thorium`, `Thorium.Editor.*` | Obsidian/Notion-style note app; host that boots the Engine. Folder/namespaces renamed from `Periodic` (2026-08) | Planning |
 | — | `AuroraTesting` | — | Test project | — |
 | — | `_Build` | `_Build` | Tooling; `GenerateNamespaces.cmd` regenerates `NAMESPACES.md` | — |
 
@@ -414,7 +417,7 @@ The full Vulkan pipeline is working and rendering UI:
   See `ClaudeMemory/Decisions/mapped-streaming-buffers.md`
 - Module command buffers are recorded **only when dirty**, so anything that must change per frame has
   to change through memory a stable descriptor already points at — not through a re-record
-- Shaders live in **three physical copies** (`AuroraEngine/`, `Periodic/`, `AuroraEditor/Shaders/`).
+- Shaders live in **three physical copies** (`AuroraEngine/`, `Thorium/`, `AuroraEditor/Shaders/`).
   Edit the `AuroraEngine` copy, compile with `glslc --target-env=vulkan1.3`, copy the `.spv` to all
   three — the UI `.spv` are SPIR-V 1.6 and must stay byte-identical across projects
 - Do NOT redesign the Vulkan pipeline; focus help on the scene/widget graph layer above it

@@ -7,7 +7,7 @@
 
 ## The standing decision first: a glyph is a control, and stays one
 
-**User decision, 2026-07-31.** Periodic is Obsidian/Google-Docs/Word class, not a notepad. Individual
+**User decision, 2026-07-31.** Thorium is Obsidian/Google-Docs/Word class, not a notepad. Individual
 letters must be able to carry their own colour, their own rotation, and their own animation. Per-letter
 animation is explicitly wanted.
 
@@ -112,7 +112,7 @@ Rejected with the 24-byte-row design above, recorded so it is not re-proposed:
 - **Shaders** — `ControlData` gained `uint textureIndex`; `fragInstanceID` became `fragTextureIndex`
   (same location, same `flat uint`, so no varying was added), fed from
   `CD.controls[gl_InstanceIndex].textureIndex`. Applied to all **three** copies — `AuroraEngine/`,
-  `AuroraEditor/` and `Periodic/` each carry their own, and **Periodic's frag is the MTSDF one**, which
+  `AuroraEditor/` and `Thorium/` each carry their own, and **Thorium's frag is the MTSDF one**, which
   reads `samplers[...]` twice (`texture` and `textureSize`). Recompiled with
   `glslc --target-env=vulkan1.3`.
 
@@ -125,7 +125,7 @@ unconsumed generation looks pending forever — its result just no longer forces
 ## Verified
 
 - Builds clean, 0 errors, no new warnings.
-- `Periodic.exe` runs the full bootstrap and starts all three threads with **validation layers on**
+- `Thorium.exe` runs the full bootstrap and starts all three threads with **validation layers on**
   (`Renderer.isDebugEnabled = true`) and produces **zero** validation output.
 - The pre-existing `vkCreateShaderModule` spirv-val error — *`ControlDataBuffer` member 0 array stride
   44 not 16-aligned*, recorded in [[dynamic-rendering]] — **no longer appears**. 48 is 16-aligned.
@@ -139,4 +139,4 @@ assignment to a *parameter*, which does nothing — and returns with `this` neve
 Before, that control sampled a null view; now it also reports `textureIndex = 0` and samples whatever
 registered first. Slightly less bad, still wrong. Not touched.
 
-Related: [[ecs-rework-data-pools]], [[dynamic-rendering]], [[periodic-editor-architecture]]
+Related: [[ecs-rework-data-pools]], [[dynamic-rendering]], [[thorium-editor-architecture]]

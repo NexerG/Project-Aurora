@@ -1,6 +1,6 @@
-# Periodic editor — architecture & status
+# Thorium editor — architecture & status
 
-Remaking `Periodic` (`AuroraPeriodic`) into an Obsidian-style note editor on the engine.
+Remaking `Thorium` (`Thorium`) into an Obsidian-style note editor on the engine.
 Full plan: `C:\Users\gmgyt\.claude\plans\time-to-do-some-mighty-gizmo.md`;
 layout-engine/scale revision (L1/L2/L3, B1/B2): `C:\Users\gmgyt\.claude\plans\lets-say-the-idea-synthetic-wreath.md`.
 **LANDED 2026-08-07 (`542e7d7`):** one layout path for all text, document is a plain control tree,
@@ -22,7 +22,7 @@ no longer describe the code.
   `TextRun : TextInputControl` is the run renderer again.
   - **The replacement is engine-wide, not document-local (user, 2026-08-17):** the UI splits into
     **data and visualization** — the parent/child tree becomes pool data, a control stays one object
-    per element presenting its row, all on the existing `UIControls` pool. Sequenced after Periodic
+    per element presenting its row, all on the existing `UIControls` pool. Sequenced after Thorium
     v1 and the profiler; nothing here changes before then. See [[ui-data-control-split]].
   - **It does not fix the glyph ceiling.** One control per element means the count is unchanged.
     The ceiling and the split share a cause and are separate problems; the escape hatch below is
@@ -57,15 +57,15 @@ for the decision to accept them and the escape hatch if they bite.
   stays a later optional optimization for visible runs); control-tree hit-testing inside the
   document (covers only the materialized viewport; two geometry systems).
 
-## Engine vs Periodic boundary
+## Engine vs Thorium boundary
 - **Engine** (`AuroraEngine/Core/UISystem/Controls/Text/...`): document model, edit session,
   cursor/selection, caret control, editor view control, char/special-key routing.
-- **Periodic** (app): vault mount, file-tree browse, app-shell `UI.xml`, open/save actions, sample notes.
-- ~~**Held as of P5** — `VaultBrowserControl` and `PeriodicSettings` are Periodic's; the engine gained
+- **Thorium** (app): vault mount, file-tree browse, app-shell `UI.xml`, open/save actions, sample notes.
+- ~~**Held as of P5** — `VaultBrowserControl` and `ThoriumSettings` are Thorium's; the engine gained
   nothing for the browser except the `FileObject` recursion fix.~~ — **REVERSED 2026-08-20 (user).**
   The browser's row-building and tree behaviour are engine controls (`FileBrowserControl`,
-  `FileTreeControl`); `VaultBrowserControl` is the Periodic leaf supplying the vault root, the
-  `.xml` filter and the tab-opening action, and `PeriodicSettings` is still Periodic's. Taken so the
+  `FileTreeControl`); `VaultBrowserControl` is the Thorium leaf supplying the vault root, the
+  `.xml` filter and the tab-opening action, and `ThoriumSettings` is still Thorium's. Taken so the
   editor's folder-descending browser is a sibling leaf instead of a fork. See [[file-browser-tree]].
 
 ## Phases (see TODO/plan)
@@ -79,8 +79,8 @@ for the decision to accept them and the escape hatch if they bite.
 - **P1 — done.** `DocumentXml` load/save + `RichTextDocument : IXMLParser`. Round-trip verified.
 - **P2 — done (pending GUI verify), INTERIM.** `DocumentEditorControl` (`[A_XSDType("DocumentEditor")]`,
   Scrollable > StackPanel of block controls, reusing `TextBlockControl` + `TextInputControl` as run
-  renderer). Wired into `Periodic` `UI.xml` as `<DocumentEditor Source="SampleNote.xml"/>`; sample
-  note at `Periodic/Data/XML/Documents/SampleNote.xml`. The `ScrollableControl` alias that this used
+  renderer). Wired into `Thorium` `UI.xml` as `<DocumentEditor Source="SampleNote.xml"/>`; sample
+  note at `Thorium/Data/XML/Documents/SampleNote.xml`. The `ScrollableControl` alias that this used
   to need is gone with WinForms — see [[winforms-to-console]].
   The StackPanel-of-everything presentation and `TextInputControl`-as-run-renderer are replaced in L2.
 - **L1 — done (2026-07-31). `TextMeasurer` survives and is now the only wrapper; the
@@ -195,7 +195,7 @@ for the decision to accept them and the escape hatch if they bite.
   things the plan said are now decided the other way and are recorded in
   [[engine-side-text-input]]: the session is **not** a working copy (the model is the control tree,
   so a clone is a second control tree), and line start/end are the **visual** line's, resolved by
-  scoring every line of every run rather than per run. `Periodic/Editor/Decorations.cs` no longer
+  scoring every line of every run rather than per run. `Thorium/Editor/Decorations.cs` no longer
   contains any input code. `ICharacterInput` **still does not exist**.
 - **P3 — click→caret and char input both working (2026-08-07).** Rebuilt on control-local geometry:
   `TextControl.OffsetAt`/`CaretAt`, caret placed by `DocumentControl`, `cursorPosition` on
@@ -250,11 +250,11 @@ for the decision to accept them and the escape hatch if they bite.
   MVP fixed/star columns, no merges): model + layout + view.
 - **L3** — paged mode: paginator assigns cached lines to fixed-height pages (blocks split across
   breaks); view draws page-background panels + gaps.
-- **P5 — done (2026-08-17).** `VaultBrowserControl` in Periodic + a 2-pane `UI.xml`. The vault is a
-  `<Vault Path="Notes"/>` setting on a `Periodic` category; notes live in `Periodic/Data/Notes`, not
+- **P5 — done (2026-08-17).** `VaultBrowserControl` in Thorium + a 2-pane `UI.xml`. The vault is a
+  `<Vault Path="Notes"/>` setting on a `Thorium` category; notes live in `Thorium/Data/Notes`, not
   in the engine-config `Data/XML/Documents`. Rows are a flat indented list, not a collapsible tree.
   Controls have no names, so the browser finds the editor with a `Find<T>` walk from
-  `EntityRegistry.uiTree`. Opening happens from `Periodic.Main`, **not** `OnStart` — the engine
+  `EntityRegistry.uiTree`. Opening happens from `Thorium.Main`, **not** `OnStart` — the engine
   cannot create entities inside its `OnStart`/`OnTick` foreach loops. See [[vault-browser-and-shell]].
 - **Later/optional** — per-run glyph batching (one control per visible run + instanced glyph
   buffer) only if profiling shows visible-glyph control overhead matters; `TextRun` style
@@ -335,16 +335,16 @@ for the decision to accept them and the escape hatch if they bite.
   glyph's parent is a `TextRun : TextInputControl : TextControl` again. `isEditing` is set by
   `DocumentEditorControl.ResolveOnClick` or by `DocumentControl.SetCaret`, not by the run, which
   keeps the editability boundary. The drain is now `TextInputActions.Write` in the engine, not
-  `Periodic.Decorations.Write`. Still true: **`ICharacterInput` does not exist**. Original note:
+  `Thorium.Decorations.Write`. Still true: **`ICharacterInput` does not exist**. Original note:
 - **Char input does not reach the document, and two CLAUDE.md claims about it are wrong**
-  (found 2026-07-31). The drain is `Periodic/Editor/Decorations.Write` — an
+  (found 2026-07-31). The drain is `Thorium/Editor/Decorations.Write` — an
   `[A_XSDActionDependency("Write", category:"Input")]` bound to the `AnySymbol` keybind. It casts
   `UICollisionHandling.activeControl as TextControl`, checks `isEditing`, then `WriteChar`s the
   queue. Two problems for P3:
   - `activeControl` is set to `hovering` (the glyph), then `GlyphControl.OnContextAdded` **reassigns
     it to `parent`** — which used to be a `TextInputControl` (a `TextControl`) and is now a
     `TextRunControl` (not one). So the cast fails and typing into a note is a silent no-op.
-  - The drain lives in the **app**, but the Engine/Periodic boundary puts char routing in the engine.
+  - The drain lives in the **app**, but the Engine/Thorium boundary puts char routing in the engine.
   - **`ICharacterInput` does not exist** — CLAUDE.md describes it as the interface to implement for
     raw char input. There is no such type anywhere in the solution. Whatever P3 does here is
     designing it, not using it. (CLAUDE.md's `Keys.AnySymbol` claim *is* accurate.)

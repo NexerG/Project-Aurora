@@ -5,7 +5,7 @@
 (temporary probe in `AddModifier`, removed).
 **Scope:** `ArctisAurora.EngineWork` (`InputModifier`, `NamedModifier`, `IKeybindMapChild`,
 `InputHandler`, `GestureMatcher`), `...Controls.Text` (`TextInputActions`),
-`...Controls.Text.Document` (`DocumentEditorControl`), `Periodic/…/Inputs/InputMap.xml`.
+`...Controls.Text.Document` (`DocumentEditorControl`), `Thorium/…/Inputs/InputMap.xml`.
 
 ## Context
 
@@ -80,7 +80,7 @@ makes it discoverable.
 ## Verified
 
 - Builds clean.
-- `Periodic` boots to all three threads, no stderr.
+- `Thorium` boots to all three threads, no stderr.
 - A temporary `Console.WriteLine` in `AddModifier` confirmed both declarations parse into the
   `InputMap` group as `Extend = LeftShift` / `Extend = RightShift`. Probe removed. This mattered
   because a clean boot alone would **not** have caught the branch failing (see decision 4).

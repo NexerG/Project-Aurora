@@ -4,7 +4,7 @@
 **Status:** LANDED. Builds clean; **nothing here is GUI-verified.**
 **Scope:** `ArctisAurora.Core.UISystem` (`ContextMenus`, `UICollisionHandling`),
 `ArctisAurora.Core.UISystem.Controls` (`ContextMenuControl`, `WindowedContextMenuControl`,
-`WindowControl`, `VulkanControl`), `ArctisAurora.EngineWork` (`Engine`), `Periodic`.
+`WindowControl`, `VulkanControl`), `ArctisAurora.EngineWork` (`Engine`), `Thorium`.
 
 ## What moved
 
@@ -87,16 +87,16 @@ design space and `arrangedRect` is in the menu's, and for a windowed menu those 
 a real click on a same-tick move. Scoping it to the tree makes the comparison meaningful by
 construction. `SolveLMBPress`/`SolveRMBPress` gained the `root` parameter `SolveHover` already took.
 
-### 6. Periodic stays windowed, through one line in `Main`
+### 6. Thorium stays windowed, through one line in `Main`
 
 `ContextMenus.menuFactory = () => new WindowedContextMenuControl();`. Menus that spill past the
 window edge are the point of it for a desktop note app.
 
 **Rejected: a bootstrap step or an XML attribute.** `Bootstrap.xml` is shared by every host, so a
-Periodic-only step would be a name that resolves to nothing in the editor; and an authored attribute
+Thorium-only step would be a name that resolves to nothing in the editor; and an authored attribute
 buys per-menu choice nobody asked for, at the cost of a schema regen.
 
-The consequence, and it is the whole risk in this change: **Periodic is the only runnable host, so
+The consequence, and it is the whole risk in this change: **Thorium is the only runnable host, so
 the in-window base ships exercised by nothing** until that line is commented out.
 
 ### 7. `Close()` before `entry.invoke()` is load-bearing now
@@ -114,7 +114,7 @@ destroyed control.
   `ContextMenuItemControl`, and derivative tracking still comes off `VulkanControl`'s own
   registration — not the trap in [[vulkancontrol-needs-xsdtype]].
 - **Not verified — none of it is GUI-verified.** Not the in-window menu appearing, not the edge flip,
-  not the press dismissal, not that Periodic's windowed menus still behave as they did.
+  not the press dismissal, not that Thorium's windowed menus still behave as they did.
 
 ## Still open
 

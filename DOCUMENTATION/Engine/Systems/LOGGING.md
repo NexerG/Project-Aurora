@@ -120,7 +120,7 @@ DrainOnce():
 </Logging>
 ```
 
-`Directory` is relative to the folder holding the application's settings, so Periodic writes to `%AppData%/Periodic/Logs`; an absolute path is taken as given, and an application that never set a write root falls back to a `Logs` folder beside the executable.
+`Directory` is relative to the folder holding the application's settings, so Thorium writes to `%AppData%/Thorium/Logs`; an absolute path is taken as given, and an application that never set a write root falls back to a `Logs` folder beside the executable.
 
 The level a channel gates on is the **lowest** of the three, not the console's, because the recorder captures below what anything prints and those lines still have to be formatted.
 

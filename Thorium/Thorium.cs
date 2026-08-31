@@ -3,9 +3,9 @@ using ArctisAurora.Core.UISystem;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork;
 
-namespace AuroraPeriodic
+namespace Thorium
 {
-    internal class Periodic
+    internal class Thorium
     {
         static void Main(string[] args)
         {
@@ -13,7 +13,7 @@ namespace AuroraPeriodic
             XSDGenerator.GenerateXSD();
 
             SettingsRegistry.SetWriteRoot(Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Periodic", "Settings"));
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Thorium", "Settings"));
 
             engine.Init(false);
             InputHandler.SetActiveKeybindGroup("InputMap");
@@ -21,7 +21,7 @@ namespace AuroraPeriodic
             // The vault booted into is one that has been opened, so the browser lists it.
             KnownVaults known = SettingsRegistry.Get<KnownVaults>();
             known.Prune();
-            known.Remember(SettingsRegistry.Get<PeriodicSettings>().vault.path);
+            known.Remember(SettingsRegistry.Get<ThoriumSettings>().vault.path);
 
             ContextMenus.menuFactory = () => new WindowedContextMenuControl();
             // prepare level

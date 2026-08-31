@@ -1,11 +1,11 @@
 # Decision — deletion is one range operation, and Enter is its inverse
 
 **Date:** 2026-08-17
-**Status:** LANDED (P4 step 2). Builds; `Periodic` boots to all three threads with no stderr and all
+**Status:** LANDED (P4 step 2). Builds; `Thorium` boots to all three threads with no stderr and all
 three new actions resolve. **Not GUI-verified.**
 **Scope:** `ArctisAurora.Core.UISystem.Controls.Text.Document` (`DocumentControl`,
 `DocumentEditorControl`, `TextRun`), `...Controls.Text` (`TextInputActions`),
-`Periodic/Data/XML/Documents/Inputs/InputMap.xml`.
+`Thorium/Data/XML/Documents/Inputs/InputMap.xml`.
 
 ## Context
 
@@ -123,7 +123,7 @@ it makes paragraphs the way holding a letter makes letters.
 ## Verified
 
 - Builds clean (0 errors; the 583 warnings are pre-existing).
-- `Periodic` boots through `InputHandler.LoadInputs` to all three threads with no stderr. That step
+- `Thorium` boots through `InputHandler.LoadInputs` to all three threads with no stderr. That step
   **throws** on an action name it cannot resolve, so it is a real check that `Text.Backspace`,
   `Text.Delete` and `Text.NewBlock` bound.
 - **Not GUI-verified:** every behaviour above. Nothing here was exercised by hand.
@@ -147,4 +147,4 @@ it makes paragraphs the way holding a letter makes letters.
   than mid-run style granularity.
 
 Related: [[document-selection]], [[engine-side-text-input]], [[text-layout-one-measurer]],
-[[periodic-editor-architecture]]
+[[thorium-editor-architecture]]

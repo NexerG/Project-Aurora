@@ -11,10 +11,9 @@ using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
-using AuroraPeriodic;
-using Periodic.Editor.CustomControls;
+using Thorium.Editor.CustomControls;
 
-namespace Periodic.Editor
+namespace Thorium.Editor
 {
     // Every vault that has been opened, as one screen. The shell is Vaults.ui.xml; only the rows are
     // built here, because the list is data. Built per open and closed by its own title bar, the same
@@ -71,7 +70,7 @@ namespace Periodic.Editor
         }
 
         #region ---- rows ----
-        private static string Current() => KnownVaults.Resolve(SettingsRegistry.Get<PeriodicSettings>().vault.path);
+        private static string Current() => KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
 
         // Pruning happens here rather than on a timer — the list is only ever looked at from this
         // screen, and a vault that was moved should not be offered once it is on screen.
@@ -143,7 +142,7 @@ namespace Periodic.Editor
         {
             if (!KnownVaults.SamePath(path, Current()))
             {
-                SettingsRegistry.Get<PeriodicSettings>().vault.path = path;
+                SettingsRegistry.Get<ThoriumSettings>().vault.path = path;
                 SettingsRegistry.Commit();
 
                 CloseTabs();

@@ -3,7 +3,7 @@
 **Date:** 2026-08-18
 **Status:** LANDED. All four projects build clean; `ArctisAurora.exe` starts and exits 0.
 **Scope:** `AuroraEngine.csproj`, `ArctisAurora` (`Program`, `Engine`, `Simulators.*`, `Forces.*`,
-`ParticleTypes.*`), `ArctisAurora.Core.UISystem.Controls.*`, `Periodic.Editor.CustomControls`.
+`ParticleTypes.*`), `ArctisAurora.Core.UISystem.Controls.*`, `Thorium.Editor.CustomControls`.
 
 ## Decisions
 
@@ -12,12 +12,12 @@
 `AuroraEngine` shipped `<UseWindowsForms>true</UseWindowsForms>` and a `Main` that ran
 `Application.Run(new Frame())`. `Frame` was the 2D SPH particle-simulator control panel — brush
 size, emissiveness, layer index — wired to `RadianceCascades2D` and `Layer`. Its `Frame_Load` was
-entirely commented out, so it never initialised the engine; the real hosts (`Periodic`, `AuroraEditor`)
+entirely commented out, so it never initialised the engine; the real hosts (`Thorium`, `AuroraEditor`)
 have their own `Main` and boot `Engine` themselves. Running the engine assembly popped a leftover
 control panel over nothing.
 
 The cost was not the dead form. `UseWindowsForms` adds implicit `using System.Windows.Forms;`, and
-because the framework reference is transitive it reached `Periodic` and `AuroraEditor` too. That
+because the framework reference is transitive it reached `Thorium` and `AuroraEditor` too. That
 produced a recurring tax: `ScrollableControl` had to be aliased in four files and `Keys` in one, and
 `document-selection.md` had already recorded the clash as a third occurrence with "turn WinForms off"
 as the standing fix. That fix is what this is.
@@ -74,4 +74,4 @@ dead code.
 - `UICollisionHandling`'s `ScrollableControl` alias — now unnecessary but never carried a WinForms
   comment, and it is the only thing importing the type into that file.
 
-Related: [[document-selection]], [[periodic-editor-architecture]], [[scrollbar-thumb]]
+Related: [[document-selection]], [[thorium-editor-architecture]], [[scrollbar-thumb]]

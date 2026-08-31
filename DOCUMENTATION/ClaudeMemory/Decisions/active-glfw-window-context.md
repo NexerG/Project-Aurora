@@ -1,7 +1,7 @@
 # Decision — the active window is a GLFW focus latch, and a drag raises what it hovers
 
 **Date:** 2026-08-27
-**Status:** LANDED. `ArctisAurora.sln` (ArctisAurora, Periodic, AuroraEditor, _Build) builds clean —
+**Status:** LANDED. `ArctisAurora.sln` (ArctisAurora, Thorium, AuroraEditor, _Build) builds clean —
 0 errors, no warning in any touched file. **NOTHING here is GUI-verified** — no drag, no alt-tab, no
 raise has been walked.
 **Scope:** `ArctisAurora.EngineWork.Rendering` (`AGlfwWindow`, `RenderWindow`),

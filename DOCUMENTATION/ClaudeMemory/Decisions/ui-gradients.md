@@ -1,7 +1,7 @@
 # Decision — gradients are a shared table, not per-control data
 
 **Date:** 2026-08-22
-**Status:** LANDED. **GUI-verified** — both kinds screenshotted and pixel-sampled in Periodic.
+**Status:** LANDED. **GUI-verified** — both kinds screenshotted and pixel-sampled in Thorium.
 **Scope:** `ArctisAurora.Core.UISystem` (`Gradients`), `ArctisAurora.Core.UISystem.Controls`
 (`VulkanControl`, `TextControl`, `TextInputControl`, `TextRun`),
 `ArctisAurora.EngineWork.Rendering` (`MCUI`, `UIModule`),
@@ -128,10 +128,10 @@ glyphs and `SyncGlyphs` pushes the gradient into each new one.
   lays out as a plain 160-byte run with no padding.
 - All six shaders compile with `glslc --target-env=vulkan1.3`, unoptimized to match the artifacts
   already committed. All three copies agree on stride 136.
-- `dotnet build Periodic` — 0 errors, no warning in any touched file.
+- `dotnet build Thorium` — 0 errors, no warning in any touched file.
 - Boots clean with validation layers on: `Gradients.LoadGradients` runs, all 25 bootstrap steps pass,
   no validation message from the new set0/b3 binding.
-- **GUI-verified.** Linear across a run: the `Heading1` "Welcome to Periodic" ramps `#386699` →
+- **GUI-verified.** Linear across a run: the `Heading1` "Welcome to Thorium" ramps `#386699` →
   `#4268A4` → `#6660B7` left to right *across the whole run*, not per glyph. Linear on a container:
   the title bar ramps `#1E1E1E` → `#141414` top to bottom where it is exposed (the middle is flat
   because the spacer `<Panel>` paints over it). Radial: peaks `#2A4663` at centre and falls off on
@@ -150,7 +150,7 @@ glyphs and `SyncGlyphs` pushes the gradient into each new one.
   is a `GradientSpace="Self|Inherit"` on `VulkanControl` letting the `arrangedRect` setter take the
   parent's rect — about five lines, deliberately not built without a use for it.
 - **Angle is design-space**, so a host on `Autoscaling="true"` gets a gradient that scales with
-  the design box. Correct, but untested — Periodic does not autoscale.
+  the design box. Correct, but untested — Thorium does not autoscale.
 
 Related: [[glyphs-as-pool-data]], [[ui-clipping]], [[control-edge-and-outline]],
 [[text-styling-types]], [[ui-data-control-split]]

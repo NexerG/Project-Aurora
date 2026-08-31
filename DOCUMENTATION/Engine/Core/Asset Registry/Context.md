@@ -16,7 +16,7 @@ Parent Class:
 Interfaces:
   - "[[IContext]]"
 Used by:
-  - "[[Periodic]]"
+  - "[[Thorium]]"
 Type:
   - Public
 Attributes:
@@ -54,7 +54,7 @@ Declared contexts live in `Data/XML/Documents/Contexts/*.contexts.xml`, one file
 
 The point is what happens when the walk finds nothing — the derived context keeps what it had. That stickiness is the whole reason the mechanism exists rather than each caller walking the tree itself, because the interesting cases are exactly the ones where focus has moved somewhere unrelated.
 
-Periodic uses it for the pane a note opens into. Clicking a row in the vault browser makes that row the active control, and the browser lives outside every pane, so a walk from the active control finds no `TabView` at all — while `ActiveTabViewer` still holds the pane the user was last typing in, which is where the note should go.
+Thorium uses it for the pane a note opens into. Clicking a row in the vault browser makes that row the active control, and the browser lives outside every pane, so a walk from the active control finds no `TabView` at all — while `ActiveTabViewer` still holds the pane the user was last typing in, which is where the note should go.
 
 A context that names no `From` is a plain slot; whoever declared it sets it.
 
