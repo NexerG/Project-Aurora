@@ -1,0 +1,23 @@
+﻿<SplitView xmlns="http://arctisaurora/AuroraUITypes"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://arctisaurora/UI ../../Schemas/UITypeSchema.xsd"
+           Orientation="Horizontal" HeightStar="1">
+
+	<EditableTabs Name="Tabs" Width="525" MinWidth="120" ColorHex="#1e1e1e" ContextMenu="view"
+				  TabHeight="28" TabWidth="180"
+				  TabColorHex="#252525" ActiveTabColorHex="#1e1e1e" TabHoverColorHex="#2F2F2F"
+				  TearOffDocument="tab-window">
+		<TabItem Header="SampleNote">
+			<DocumentEditor Source="../../Notes/SampleNote.xml"/>
+		</TabItem>
+	</EditableTabs>
+	<Splitter Width="5"/>
+	<EditableTabs Name="TabsRight" WidthStar="1" MinWidth="120" ColorHex="#1e1e1e" ContextMenu="view"
+				  TabHeight="28" TabWidth="180"
+				  TabColorHex="#252525" ActiveTabColorHex="#1e1e1e" TabHoverColorHex="#2F2F2F"
+				  TearOffDocument="tab-window">
+		<TabItem Header="Keybinds">
+			<DocumentEditor Source="../../Notes/Reference/Keybinds.xml"/>
+		</TabItem>
+	</EditableTabs>
+</SplitView>

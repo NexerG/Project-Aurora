@@ -142,7 +142,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             // Reflecting the remembered editor rather than the live one is what keeps the bar
             // showing the note while the px field holds the focus.
             DocumentEditorControl? editor = live ?? remembered;
-            TextRun? source = editor?.StyleSource;
+            CaretStyle? source = editor?.StyleSource;
 
             Reflect(boldInk, source?.bold == true, ref shownBold);
             Reflect(italicInk, source?.italic == true, ref shownItalic);
@@ -154,7 +154,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 stylingCaption.text = CaptionFor(styling);
             }
 
-            string color = source?.controlColorHex ?? idleInkHex;
+            string color = source?.colorHex ?? idleInkHex;
             if (shownColor != color)
             {
                 shownColor = color;
@@ -179,8 +179,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             pxRanged = pxTarget != null && pxTarget.SelectedRange(out pxFrom, out pxTo);
         }
 
-        // Enter. A size out of range or unparseable leaves the range alone; either way the note gets
-        // the caret back.
+        // Enter. A size out of range or unparseable changes nothing; either way the note gets the
+        // caret back.
         private void ApplyPx(string value)
         {
             DocumentEditorControl? target = pxTarget;
@@ -189,8 +189,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             DocumentAddress to = pxTo;
             EndPx();
 
-            if (target != null && ranged && int.TryParse(value, out int px) && px >= minPx && px <= maxPx)
-                target.ApplyStyleTo(from, to, new StyleDelta(fontSize: px));
+            if (target != null && int.TryParse(value, out int px) && px >= minPx && px <= maxPx)
+            {
+                if (ranged) target.ApplyStyleTo(from, to, new StyleDelta(fontSize: px));
+                else target.ArmStyle(new StyleDelta(fontSize: px));
+            }
 
             target?.FocusCaret();
         }
@@ -254,8 +257,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             foreach ((string caption, string hex) in colorOptions)
             {
                 string picked = hex;
-                entries.Add(new ContextEntry(caption,
-                    () => editor.ApplyStyle(new StyleDelta(colorHex: picked)), true, false));
+                entries.Add(new ContextEntry(caption, () =>
+                {
+                    editor.ApplyStyle(new StyleDelta(colorHex: picked));
+                    editor.FocusCaret();
+                }, true, false));
             }
 
             Drop(owner, entries);

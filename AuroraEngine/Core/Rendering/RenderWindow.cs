@@ -43,6 +43,10 @@ namespace ArctisAurora.EngineWork.Rendering
         // the module holding this window's UI tree — the window itself owns no controls
         public UIModule ui;
 
+        // UI document this window's tree was built from. Null on a window that holds no session —
+        // menus, the drag preview — which is what tells a session capture what to record.
+        public string uiDocument;
+
         // A preview of a control being dragged: it holds no tree of its own, draws a second view of
         // a control that lives in another window, and is skipped by everything that walks trees.
         public bool isGhost;

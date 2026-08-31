@@ -221,7 +221,15 @@ namespace Thorium.Editor.CustomControls
                 ?? FirstTabView(Engine.primary.ui.uiRoot);
             if (tabs == null) return;
 
-            // Loaded before the tab is built, so the caption can come from the note's own name.
+            TabItemControl tab = BuildTab(notePath);
+            tabs.AddChild(tab);
+            tabs.SetActive(tab);
+        }
+
+        // One tab holding one note, for whichever view is going to take it. Loaded before the tab is
+        // built, so the caption can come from the note's own name.
+        internal static TabItemControl BuildTab(string notePath)
+        {
             DocumentEditorControl editor = new DocumentEditorControl();
             editor.LoadPath(notePath);
 
@@ -232,8 +240,7 @@ namespace Thorium.Editor.CustomControls
                 onRename = name => RenameNote(editor.session.path, name)
             };
             tab.AddChild(editor);
-            tabs.AddChild(tab);
-            tabs.SetActive(tab);
+            return tab;
         }
     }
 }

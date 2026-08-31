@@ -88,6 +88,10 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             int slot = host.children.IndexOf(split);
             leaving.Destroy();
 
+            // the split leaves the host before the survivor arrives, so a single-child host is never
+            // asked to hold both at once
+            host.RemoveChild(split);
+
             if (survivor != null)
             {
                 survivor.widthStar = split.widthStar;

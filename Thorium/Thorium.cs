@@ -1,7 +1,9 @@
 ﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem;
 using ArctisAurora.Core.UISystem.Controls;
+using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.EngineWork;
+using Thorium.Editor.CustomControls;
 
 namespace Thorium
 {
@@ -22,6 +24,10 @@ namespace Thorium
             KnownVaults known = SettingsRegistry.Get<KnownVaults>();
             known.Prune();
             known.Remember(SettingsRegistry.Get<ThoriumSettings>().vault.path);
+
+            // A layout belongs to the vault it was arranged in.
+            SessionLayout.scope = KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
+            SessionLayout.tabFactory = VaultBrowserControl.BuildTab;
 
             ContextMenus.menuFactory = () => new WindowedContextMenuControl();
             // prepare level
@@ -44,7 +50,9 @@ namespace Thorium
             //windowControl.fillWindow = true;
             //windowControl.controlColorHex = "#1f6331";
 
+            Engine.primary.uiDocument = "main";
             Engine.primary.ui.uiRoot = windowControl;
+            SessionLayout.Restore();
             // UI.ui.xml seeds both panes, so this would add a second tab for a note already open.
             //VaultBrowserControl.OpenFirstNote();
             //ShortTextControl test = new ShortTextControl();

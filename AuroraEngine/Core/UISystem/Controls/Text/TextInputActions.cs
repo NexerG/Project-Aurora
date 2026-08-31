@@ -104,22 +104,22 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             Box()?.SelectAll();
         }
 
-        [A_XSDActionDependency("Text.Bold", "Input", "Toggles bold over the selection in the focused note")]
-        public static void Bold() => Toggle(run => new StyleDelta(bold: !run.bold));
+        [A_XSDActionDependency("Text.Bold", "Input", "Toggles bold over the selection, or for what is typed next")]
+        public static void Bold() => Toggle(style => new StyleDelta(bold: !style.bold));
 
-        [A_XSDActionDependency("Text.Italic", "Input", "Toggles italic over the selection in the focused note")]
-        public static void Italic() => Toggle(run => new StyleDelta(italic: !run.italic));
+        [A_XSDActionDependency("Text.Italic", "Input", "Toggles italic over the selection, or for what is typed next")]
+        public static void Italic() => Toggle(style => new StyleDelta(italic: !style.italic));
 
-        // The state comes off the run the selection starts in, so a toggle is what that run is not.
-        private static void Toggle(Func<TextRun, StyleDelta> delta)
+        // The state comes off the caret's style, so a toggle is what that is not.
+        private static void Toggle(Func<CaretStyle, StyleDelta> delta)
         {
             DocumentEditorControl editor = FocusedEditor();
             if (editor == null) return;
 
-            TextRun? source = editor.StyleSource;
+            CaretStyle? source = editor.StyleSource;
             if (source == null) return;
 
-            editor.ApplyStyle(delta(source));
+            editor.ApplyStyle(delta(source.Value));
         }
 
         [A_XSDActionDependency("Text.Undo", "Input", "Reverses the last edit made to the focused note")]

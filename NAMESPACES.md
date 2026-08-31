@@ -68,6 +68,7 @@ ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/Gradients.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/IconSet.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/MenuScreen.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/NoteNameWindow.cs
+ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/SessionLayout.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/SettingsWindow.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/UICollisionHandling.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/UILayout.cs
@@ -99,6 +100,7 @@ ArctisAurora.Core.UISystem.Controls.Containers -> AuroraEngine/Core/UISystem/Con
 ArctisAurora.Core.UISystem.Controls.Containers -> AuroraEngine/Core/UISystem/Controls/Containers/TabItemControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> AuroraEngine/Core/UISystem/Controls/Containers/TabStripButtonControl.cs
 ArctisAurora.Core.UISystem.Controls.Containers -> AuroraEngine/Core/UISystem/Controls/Containers/TabViewControl.cs
+ArctisAurora.Core.UISystem.Controls.Containers -> AuroraEngine/Core/UISystem/Controls/Containers/WorkspaceControl.cs
 ArctisAurora.Core.UISystem.Controls.Interactable -> AuroraEngine/Core/UISystem/Controls/Interactable/ButtonControl.cs
 ArctisAurora.Core.UISystem.Controls.Interactable -> AuroraEngine/Core/UISystem/Controls/Interactable/CheckBoxControl.cs
 ArctisAurora.Core.UISystem.Controls.Interactable -> AuroraEngine/Core/UISystem/Controls/Interactable/DropdownControl.cs

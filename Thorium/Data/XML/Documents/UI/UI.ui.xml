@@ -23,8 +23,6 @@
 			</Button>
 		</TitleBar>
 
-		<DocumentToolbar Height="30" HorizontalAlignment="Stretch" ColorHex="#1e1e1e"/>
-
 		<StackPanel Orientation="Horizontal" HeightStar="1" ColorHex="#1e1e1e">
 			<StackPanel Orientation="Vertical" Width="220" MinWidth="120" ColorHex="#171717">
 				<VaultBrowser Name="Browser" HeightStar="1" ColorHex="#171717" Padding="8"/>
@@ -33,25 +31,10 @@
 				</Button>
 			</StackPanel>
 			<Splitter Width="5"/>
-			<SplitView Orientation="Horizontal" WidthStar="1">
-				<EditableTabs Name="Tabs" Width="525" MinWidth="120" ColorHex="#1e1e1e" ContextMenu="view"
-							  TabHeight="28" TabWidth="180"
-							  TabColorHex="#252525" ActiveTabColorHex="#1e1e1e" TabHoverColorHex="#2F2F2F"
-							  TearOffDocument="tab-window">
-					<TabItem Header="SampleNote">
-						<DocumentEditor Source="../../Notes/SampleNote.xml"/>
-					</TabItem>
-				</EditableTabs>
-				<Splitter Width="5"/>
-				<EditableTabs Name="TabsRight" WidthStar="1" MinWidth="120" ColorHex="#1e1e1e" ContextMenu="view"
-							  TabHeight="28" TabWidth="180"
-							  TabColorHex="#252525" ActiveTabColorHex="#1e1e1e" TabHoverColorHex="#2F2F2F"
-							  TearOffDocument="tab-window">
-					<TabItem Header="Keybinds">
-						<DocumentEditor Source="../../Notes/Reference/Keybinds.xml"/>
-					</TabItem>
-				</EditableTabs>
-			</SplitView>
+			<StackPanel Orientation="Vertical" WidthStar="1" ColorHex="#1e1e1e">
+				<DocumentToolbar Height="30" HorizontalAlignment="Stretch" ColorHex="#1e1e1e"/>
+				<Workspace Name="Workspace" HeightStar="1" Default="workspace" Pane="tab-pane"/>
+			</StackPanel>
 		</StackPanel>
 	</StackPanel>
 	</WindowFrame>

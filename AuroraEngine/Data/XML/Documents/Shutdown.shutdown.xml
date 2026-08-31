@@ -12,6 +12,7 @@
 	     anything is torn down. -->
 	<Phase Name="Commit">
 		<Step Action="Notes.SaveEdited"/>
+		<Step Action="Session.Capture"/>
 		<Step Action="Settings.SaveAll"/>
 		<Step Action="Logging.Flush"/>
 	</Phase>

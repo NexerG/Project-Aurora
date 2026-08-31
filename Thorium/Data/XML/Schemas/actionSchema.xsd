@@ -92,23 +92,24 @@
       </xs:simpleType>
     </xs:union>
   </xs:simpleType>
+  <xs:simpleType name="Shutdown">
+    <xs:union memberTypes="actions:Any">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="Session.Capture" />
+          <xs:enumeration value="Notes.SettleUnnamed" />
+          <xs:enumeration value="Notes.SaveEdited" />
+          <xs:enumeration value="Settings.SaveAll" />
+          <xs:enumeration value="Logging.Flush" />
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
   <xs:simpleType name="PoolSort">
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>
         <xs:restriction base="xs:string">
           <xs:enumeration value="UI.DFSOrder" />
-        </xs:restriction>
-      </xs:simpleType>
-    </xs:union>
-  </xs:simpleType>
-  <xs:simpleType name="Shutdown">
-    <xs:union memberTypes="actions:Any">
-      <xs:simpleType>
-        <xs:restriction base="xs:string">
-          <xs:enumeration value="Notes.SettleUnnamed" />
-          <xs:enumeration value="Notes.SaveEdited" />
-          <xs:enumeration value="Settings.SaveAll" />
-          <xs:enumeration value="Logging.Flush" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>

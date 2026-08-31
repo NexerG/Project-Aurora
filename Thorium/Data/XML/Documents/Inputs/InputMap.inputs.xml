@@ -26,6 +26,10 @@
 		<Repeat />
 	</Keybind>
 
+	<Keybind Trigger="NumpadEnter" Action="Text.NewBlock">
+		<Repeat />
+	</Keybind>
+
 	<Keybind Trigger="Escape" Action="Text.Cancel">
 		<Press />
 	</Keybind>

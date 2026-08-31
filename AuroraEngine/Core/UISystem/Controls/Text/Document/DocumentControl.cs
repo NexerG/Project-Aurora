@@ -56,6 +56,39 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 run.fontSize = fontSize.Value;
             }
         }
+
+        // This delta with another laid over it; the newer one wins wherever it speaks.
+        public StyleDelta With(StyleDelta over) => new StyleDelta(
+            over.bold ?? bold, over.italic ?? italic, over.strikethrough ?? strikethrough,
+            over.colorHex ?? colorHex, over.fontSize ?? fontSize);
+
+        // Whether applying this would move anything on the run.
+        public bool Changes(TextRun run) =>
+            (bold.HasValue && bold != run.bold)
+            || (italic.HasValue && italic != run.italic)
+            || (strikethrough.HasValue && strikethrough != run.strikethrough)
+            || (colorHex != null && colorHex != run.controlColorHex)
+            || (fontSize.HasValue && fontSize != run.fontSize);
+    }
+
+    // The style the next character will take: the run the caret sits in, with an armed change laid
+    // over it. Resolved, so nothing that reads it has to know whether a change is armed.
+    public readonly struct CaretStyle
+    {
+        public readonly bool bold;
+        public readonly bool italic;
+        public readonly bool strikethrough;
+        public readonly string colorHex;
+        public readonly int fontSize;
+
+        public CaretStyle(TextRun run, StyleDelta armed)
+        {
+            bold = armed.bold ?? run.bold;
+            italic = armed.italic ?? run.italic;
+            strikethrough = armed.strikethrough ?? run.strikethrough;
+            colorHex = armed.colorHex ?? run.controlColorHex;
+            fontSize = armed.fontSize ?? run.fontSize;
+        }
     }
 
     // The document's content area: blocks stacked top to bottom, plus the caret and the selection
@@ -73,6 +106,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         // caret target
         private CaretControl? caret;
         public TextControl? caretRun { get; private set; }
+
+        // a style chosen with nothing selected, spent on the next character typed
+        private StyleDelta pending;
 
         // Selection runs anchor -> caret. The caret IS the focus end, so only the anchor is stored;
         // anchor == caret means nothing is selected, which is the plain-caret case.
@@ -118,6 +154,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         public void SetCaret(TextControl run, int offset, bool extend = false)
         {
             if (run == null) return;
+
+            pending = default;
 
             CaretSlot slot = Normalize(new CaretSlot(run, Math.Clamp(offset, 0, Length(run))));
             slot.run.cursorPosition = slot.offset;
@@ -696,14 +734,24 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         }
 
         // Records the insert before the write, because the address is read off the caret the write
-        // is about to advance.
+        // is about to advance. An armed style is spent here: the character is written into the run
+        // the caret is in and then restyled, so the partition and both records are the ones a
+        // selection restyle already makes.
         internal void TypeChar(TextControl run, char c)
         {
             if (run == null) return;
 
-            undo?.Push(new RunTextEdit(this, AddressOf(run, run.cursorPosition), c.ToString(), true));
+            DocumentAddress at = AddressOf(run, run.cursorPosition);
+            StyleDelta armed = pending;
+
+            undo?.Push(new RunTextEdit(this, at, c.ToString(), true));
             run.WriteChar(c);
             caret?.Focus();
+
+            if (run is TextRun target && armed.Changes(target))
+                ApplyStyleTo(at, new DocumentAddress(at.block, at.run, at.offset + 1), armed);
+
+            pending = default;
         }
 
         // Blocks sit between the highlight boxes at the head of the child list and the caret at its
@@ -736,18 +784,38 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         #endregion
 
         #region ---- styling ----
-        // The run a toggle reads its current state from, and the one a toolbar reflects. The
-        // selection's start rather than the caret's own run: the focus end normalizes forward, so a
-        // range ending on a run boundary sits in the run after the one it covers.
-        public TextRun? StyleSource =>
-            (OrderedSelection(out CaretSlot from, out _) ? from.run : caretRun) as TextRun;
+        // What a toggle reads its current state from, and what a toolbar reflects. The selection's
+        // start rather than the caret's own run: the focus end normalizes forward, so a range ending
+        // on a run boundary sits in the run after the one it covers.
+        public CaretStyle? StyleSource =>
+            (OrderedSelection(out CaretSlot from, out _) ? from.run : caretRun) is TextRun run
+                ? new CaretStyle(run, pending)
+                : null;
 
         public TextStyleType CaretBlockStyling =>
             BlockOf(caretRun) is ContentBlock block ? block.stylingType : TextStyleType.Text;
 
-        // Restyles the selected range; false when nothing was selected.
-        public bool ApplyStyle(StyleDelta delta) =>
-            SelectedRange(out DocumentAddress from, out DocumentAddress to) && ApplyStyleTo(from, to, delta);
+        // Restyles the selected range; with nothing selected the style is armed for the next
+        // character instead. False either way when nothing was written.
+        public bool ApplyStyle(StyleDelta delta)
+        {
+            if (SelectedRange(out DocumentAddress from, out DocumentAddress to))
+                return ApplyStyleTo(from, to, delta);
+
+            ArmStyle(delta);
+            return false;
+        }
+
+        // Holds a style for the next character typed. Merged into what is already armed, so bold
+        // then italic types both; dropped once it agrees with the run the caret is in, which is what
+        // makes a second toggle disarm rather than pin the run's own style onto it.
+        public void ArmStyle(StyleDelta delta)
+        {
+            if (caretRun is not TextRun run) return;
+
+            pending = pending.With(delta);
+            if (!pending.Changes(run)) pending = default;
+        }
 
         // The selection as addresses, so a control that has to take the active context can act on the
         // range it was pointed at rather than on whatever is selected by the time it commits.

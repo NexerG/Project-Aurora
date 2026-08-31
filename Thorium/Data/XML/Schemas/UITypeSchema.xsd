@@ -149,6 +149,7 @@
       <xs:element name="StackPanel" type="types:StackPanel" />
       <xs:element name="TabItem" type="types:TabItem" />
       <xs:element name="TabView" type="types:TabView" />
+      <xs:element name="Workspace" type="types:Workspace" />
     </xs:choice>
   </xs:group>
   <xs:complexType name="Panel">
@@ -518,6 +519,18 @@
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:IXMLChild_UI.Children" />
     </xs:sequence>
     <xs:attributeGroup ref="types:TabView.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="Workspace.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+    <xs:attribute name="Default" type="xs:string" />
+    <xs:attribute name="Pane" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="Workspace" type="types:Workspace" />
+  <xs:complexType name="Workspace">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="1" ref="types:IXMLChild_UI.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:Workspace.Attributes" />
   </xs:complexType>
   <xs:simpleType name="ControlColor">
     <xs:restriction base="xs:string">

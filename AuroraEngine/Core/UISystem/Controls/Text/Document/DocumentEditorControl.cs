@@ -124,7 +124,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         public TextControl CaretRun => content?.caretRun;
 
         // What a toggle reads its current state from, and what a toolbar reflects.
-        public TextRun? StyleSource => content?.StyleSource;
+        public CaretStyle? StyleSource => content?.StyleSource;
 
         public TextStyleType CaretBlockStyling => content?.CaretBlockStyling ?? TextStyleType.Text;
 
@@ -135,6 +135,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             using (BeginStep("Formatting"))
                 if (content.ApplyStyle(delta)) MarkDirty();
         }
+
+        // Nothing is written, so there is no step and no dirty note until the next character.
+        public void ArmStyle(StyleDelta delta) => content?.ArmStyle(delta);
 
         // For a control that must take the active context before it can be used: it captures the
         // range on the way in and hands it back here, rather than asking what is selected once the

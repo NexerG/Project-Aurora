@@ -1,0 +1,7 @@
+﻿<EditableTabs xmlns="http://arctisaurora/AuroraUITypes"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="http://arctisaurora/UI ../../Schemas/UITypeSchema.xsd"
+              Name="Tabs" HeightStar="1" ColorHex="#1e1e1e"
+              TabHeight="28" TabWidth="180"
+              TabColorHex="#252525" ActiveTabColorHex="#1e1e1e" TabHoverColorHex="#2F2F2F"
+              TearOffDocument="tab-window"/>

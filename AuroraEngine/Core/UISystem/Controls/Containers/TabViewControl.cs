@@ -238,8 +238,10 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
             RenderWindow torn = Engine.OpenWindow($"tab-{++_tornWindows}", tearOffWidth, tearOffHeight,
                 wx + (int)source.mousePos.X, wy + (int)source.mousePos.Y);
+            torn.uiDocument = tearOffDocument;
             WindowControl root = (WindowControl)ParseXML(tearOffDocument);
             torn.ui.uiRoot = root;
+            WorkspaceControl.In(root)?.LoadDefault();
 
             TabViewControl view = FirstTabView(root);
             if (view == null) return;

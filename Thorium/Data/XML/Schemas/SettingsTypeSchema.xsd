@@ -72,6 +72,79 @@
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
     </xs:sequence>
   </xs:complexType>
+  <xs:attributeGroup name="SessionTab.Attributes">
+    <xs:attribute name="Path" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="SessionTab" type="types:SessionTab" />
+  <xs:complexType name="SessionTab">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:SessionTab.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="SessionPane.Attributes">
+    <xs:attribute name="Orientation" type="UI:Orientation" />
+    <xs:attribute name="Size" type="xs:int" />
+    <xs:attribute name="Active" type="xs:int" />
+  </xs:attributeGroup>
+  <xs:element name="SessionPane" type="types:SessionPane" />
+  <xs:group name="ISessionChild.Children">
+    <xs:choice>
+      <xs:element name="SessionTab" type="types:SessionTab" />
+      <xs:element name="SessionPane" type="types:SessionPane" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="SessionPane">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:ISessionChild.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:SessionPane.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="SessionWindow.Attributes">
+    <xs:attribute name="Document" type="xs:string" />
+    <xs:attribute name="Primary" type="xs:boolean" />
+    <xs:attribute name="X" type="xs:int" />
+    <xs:attribute name="Y" type="xs:int" />
+    <xs:attribute name="Width" type="xs:int" />
+    <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Maximized" type="xs:boolean" />
+  </xs:attributeGroup>
+  <xs:element name="SessionWindow" type="types:SessionWindow" />
+  <xs:group name="SessionPane.Children">
+    <xs:choice>
+      <xs:element name="SessionPane" type="types:SessionPane" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="SessionWindow">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:SessionPane.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:SessionWindow.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="SessionScope.Attributes">
+    <xs:attribute name="Key" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="SessionScope" type="types:SessionScope" />
+  <xs:group name="SessionWindow.Children">
+    <xs:choice>
+      <xs:element name="SessionWindow" type="types:SessionWindow" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="SessionScope">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:SessionWindow.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:SessionScope.Attributes" />
+  </xs:complexType>
+  <xs:element name="Session" type="types:Session" />
+  <xs:group name="SessionScope.Children">
+    <xs:choice>
+      <xs:element name="SessionScope" type="types:SessionScope" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="Session">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:SessionScope.Children" />
+    </xs:sequence>
+  </xs:complexType>
   <xs:element name="DocumentSettings" type="types:DocumentSettings" />
   <xs:complexType name="DocumentSettings">
     <xs:sequence>
@@ -98,6 +171,7 @@
       <xs:element name="Thorium" type="types:Thorium" />
       <xs:element name="Vaults" type="types:Vaults" />
       <xs:element name="UI" type="types:UI" />
+      <xs:element name="Session" type="types:Session" />
       <xs:element name="DocumentSettings" type="types:DocumentSettings" />
       <xs:element name="Logging" type="types:Logging" />
       <xs:element name="InputBindings" type="types:InputBindings" />

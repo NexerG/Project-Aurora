@@ -3,7 +3,9 @@
 			   xsi:schemaLocation="http://arctisaurora/AuroraAssetRegistryTypes ../Schemas/AssetRegistryTypeSchema.xsd">
 
 	<Asset Type="UIDocumentAsset" Name="main"       Source="XML/Documents/UI/UI.ui.xml"/>
+	<Asset Type="UIDocumentAsset" Name="workspace"  Source="XML/Documents/UI/Workspace.ui.xml"/>
 	<Asset Type="UIDocumentAsset" Name="tab-window" Source="XML/Documents/UI/TabWindow.ui.xml"/>
+	<Asset Type="UIDocumentAsset" Name="tab-pane"   Source="XML/Documents/UI/TabPane.ui.xml"/>
 	<Asset Type="UIDocumentAsset" Name="settings"   Source="XML/Documents/UI/Settings.ui.xml"/>
 	<Asset Type="UIDocumentAsset" Name="vaults"     Source="XML/Documents/UI/Vaults.ui.xml"/>
 

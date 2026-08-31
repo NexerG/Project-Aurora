@@ -234,6 +234,94 @@ namespace ArctisAurora.EngineWork.Rendering
             _glfw.SetWindowPos(handle, x, y);
         }
 
+        internal void Maximize() => _glfw.MaximizeWindow(handle);
+
+        // Where the window would sit if it were restored, and whether it currently is not. GLFW
+        // reports the maximized rect while maximized, so the rect worth saving comes from the OS.
+        internal (int x, int y, int width, int height, bool maximized) GetPlacement()
+        {
+            if (!_glfw.GetWindowAttrib(handle, WindowAttributeGetter.Maximized))
+            {
+                _glfw.GetWindowPos(handle, out int px, out int py);
+                _glfw.GetWindowSize(handle, out int pw, out int ph);
+                return (px, py, pw, ph, false);
+            }
+
+            WindowPlacement placement = new WindowPlacement();
+            placement.length = (uint)Marshal.SizeOf<WindowPlacement>();
+            GetWindowPlacement(Hwnd, ref placement);
+
+            // rcNormalPosition is in workspace coordinates, which differ from screen coordinates by
+            // the work area's origin — non-zero only for a taskbar docked top or left.
+            MonitorInfo info = new MonitorInfo();
+            info.size = (uint)Marshal.SizeOf<MonitorInfo>();
+            GetMonitorInfo(MonitorFromWindow(Hwnd, monitorNearest), ref info);
+
+            int ox = info.work.left - info.monitor.left;
+            int oy = info.work.top - info.monitor.top;
+
+            return (placement.normal.left + ox, placement.normal.top + oy,
+                    placement.normal.right - placement.normal.left,
+                    placement.normal.bottom - placement.normal.top, true);
+        }
+
+        // Whether a saved rect still lands on a screen that exists.
+        internal static bool RectOnAnyMonitor(int x, int y, int width, int height)
+        {
+            Monitor** monitors = _glfw.GetMonitors(out int count);
+            for (int i = 0; i < count; i++)
+            {
+                _glfw.GetMonitorWorkarea(monitors[i], out int mx, out int my, out int mw, out int mh);
+                if (x < mx + mw && x + width > mx && y < my + mh && y + height > my)
+                    return true;
+            }
+            return false;
+        }
+
+        // Where a window of this size sits centred on the primary monitor, for one whose saved
+        // position no longer lands anywhere.
+        internal static (int x, int y) CenterOnPrimary(int width, int height)
+        {
+            _glfw.GetMonitorWorkarea(_glfw.GetPrimaryMonitor(), out int mx, out int my, out int mw, out int mh);
+            return (mx + (mw - width) / 2, my + (mh - height) / 2);
+        }
+
+        #region ---- win32 placement ----
+        [StructLayout(LayoutKind.Sequential)]
+        private struct Rect { public int left, top, right, bottom; }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct WindowPlacement
+        {
+            public uint length;
+            public uint flags;
+            public uint showCmd;
+            public System.Drawing.Point minPosition;
+            public System.Drawing.Point maxPosition;
+            public Rect normal;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MonitorInfo
+        {
+            public uint size;
+            public Rect monitor;
+            public Rect work;
+            public uint flags;
+        }
+
+        private const uint monitorNearest = 2;
+
+        [DllImport("user32.dll")]
+        private static extern bool GetWindowPlacement(IntPtr hwnd, ref WindowPlacement placement);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint flags);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
+        #endregion
+
         // Publishes the new size itself, for windows with no resize callback to do it.
         internal void Resize(uint width, uint height)
         {

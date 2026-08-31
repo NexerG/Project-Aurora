@@ -116,9 +116,10 @@ panel to seat a bar beside it would break tab close, find and tear-off.
 State is reflected in `OnTick`, gated on a cached last-written value. `controlColorHex`'s setter has
 no equality guard and would otherwise write the pool every frame for every icon.
 
-`StyleSource` is the run the selection **starts** in, not `caretRun`. The focus end normalizes
+`StyleSource` reads the run the selection **starts** in, not `caretRun`. The focus end normalizes
 forward, so a range ending on a run boundary sits in the run *after* the one it covers, and a toggle
-read from there would report the wrong state.
+read from there would report the wrong state. It answers a resolved `CaretStyle` rather than the run
+itself since [[armed-style-at-the-caret]], so the bar lights up on an arm nothing has spent yet.
 
 ## The px field — the one control that does take the caret
 
@@ -137,8 +138,9 @@ would grow a field none of them use, and the press already reaches the box throu
 `OrderedSelection` at the moment it is called, which for the field is the moment it commits. Nothing
 clears a document's selection when it loses the active control today — `LoseFocus` only blurs the
 caret — so reading it late *happens* to work, and that is exactly the kind of load-bearing accident
-worth removing. `ApplyStyle` is now `SelectedRange(...) && ApplyStyleTo(...)`, and the field holds the
-addresses across its own edit.
+worth removing. `ApplyStyle` became `SelectedRange(...)` then `ApplyStyleTo(...)` — with an
+`ArmStyle` fallback since [[armed-style-at-the-caret]] — and the field holds the addresses across
+its own edit.
 
 **A blur is not a cancel.** The previous shape wired `onBlur` to the same handler as Escape, which
 called `SetActiveControl(caretRun)` — and `LoseFocus` fires from inside `SetActiveControl`'s
@@ -155,10 +157,13 @@ stopped editing when it lost the context (`TextInputControl.OnContextRemoved` ca
 `SetActiveControl` alone early-outs whenever `ApplyStyleBetween` has already raw-assigned
 `activeControl` to the post-restyle focus run.
 
-**A collapsed caret changes nothing** (user, 2026-08-31). Applying to the caret's run or block
+~~**A collapsed caret changes nothing** (user, 2026-08-31). Applying to the caret's run or block
 restyles text nobody selected, and "the size applies to what I type next" is a pending-style feature
-that does not exist. Non-numeric input is rejected at commit rather than filtered at the keystroke —
-filtering would mean making `TextBoxControl.WriteChar` virtual for one caller.
+that does not exist.~~ **REVERTED 2026-08-31** — the pending-style feature is what the user wanted;
+a collapsed caret now arms the size for the next character. See [[armed-style-at-the-caret]].
+
+Non-numeric input is rejected at commit rather than filtered at the keystroke — filtering would mean
+making `TextBoxControl.WriteChar` virtual for one caller.
 
 ### What makes a size stick
 
