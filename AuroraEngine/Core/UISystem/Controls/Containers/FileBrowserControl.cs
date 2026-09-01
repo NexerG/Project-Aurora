@@ -31,24 +31,24 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         [A_XSDElementProperty("RowFontSize", "UI", "Font size of a row's text in pixels.")]
         public int rowFontSize = 14;
 
-        // row palette
+        // row palette — a derivative populates in its constructor, so these repaint what is already there
         [A_XSDElementProperty("RowColorHex", "UI", "Ground of a row at rest.")]
-        public string rowColorHex = "#171717";
+        public string rowColorHex { get => field; set { field = value; RestyleRows(); } } = "#171717";
 
         [A_XSDElementProperty("RowHoverColorHex", "UI", "Ground of a hovered row.")]
-        public string rowHoverColorHex = "#232323";
+        public string rowHoverColorHex { get => field; set { field = value; RestyleRows(); } } = "#232323";
 
         [A_XSDElementProperty("RowPressColorHex", "UI", "Ground of a held row.")]
-        public string rowPressColorHex = "#2D2D2D";
+        public string rowPressColorHex { get => field; set { field = value; RestyleRows(); } } = "#2D2D2D";
 
         [A_XSDElementProperty("FolderColorHex", "UI", "Text color of a folder row.")]
-        public string folderColorHex = "#8A8A8A";
+        public string folderColorHex { get => field; set { field = value; RestyleRows(); } } = "#8A8A8A";
 
         [A_XSDElementProperty("FileColorHex", "UI", "Text color of a file row.")]
-        public string fileColorHex = "#D4D4D4";
+        public string fileColorHex { get => field; set { field = value; RestyleRows(); } } = "#D4D4D4";
 
         [A_XSDElementProperty("RowFieldColorHex", "UI", "Ground of a row's name while it is being renamed.")]
-        public string rowFieldColorHex = "#2D2D2D";
+        public string rowFieldColorHex { get => field; set { field = value; RestyleRows(); } } = "#2D2D2D";
         #endregion
 
         private readonly StackPanelControl rows = new StackPanelControl();
@@ -161,6 +161,29 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             row.RegisterOnRelease(activate);
 
             rows.AddChild(row);
+        }
+
+        // Repaints rows the constructor already built, because the host's attributes arrive after it.
+        private void RestyleRows()
+        {
+            if (rows == null) return;
+
+            foreach (var child in rows.children)
+            {
+                if (child is not FileRowControl row) continue;
+
+                row.controlColorHex = rowColorHex;
+                row.hoverColorHex = rowHoverColorHex;
+                row.pressColorHex = rowPressColorHex;
+
+                string ink = row.file.type == FileObject.FileType.Directory ? folderColorHex : fileColorHex;
+                row.label.textColorHex = ink;
+                row.label.fieldColorHex = rowFieldColorHex;
+
+                if (row.children.Count > 0 && row.children[0] is VulkanControl content
+                    && content.children.Count > 0 && content.children[0] is LabelControl gutter)
+                    gutter.controlColorHex = folderColorHex;
+            }
         }
     }
 }

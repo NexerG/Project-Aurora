@@ -30,6 +30,16 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         public string activeTabColorHex = "#1E1E1E";
         [A_XSDElementProperty("TabHoverColorHex", "UI", "Ground of a hovered inactive tab.")]
         public string tabHoverColorHex = "#3A3A3A";
+        [A_XSDElementProperty("TabInkColorHex", "UI", "Color of a tab's caption and close mark.")]
+        public string tabInkColorHex = "#FFFFFF";
+
+        // carried onto the splitter of any pane split off this one, and onto that pane in turn
+        [A_XSDElementProperty("GripColorHex", "UI", "Ground of the splitter between panes.")]
+        public string gripColorHex = "#2A2A2A";
+        [A_XSDElementProperty("GripHoverColorHex", "UI", "Ground of a hovered pane splitter.")]
+        public string gripHoverColorHex = "#3D3D3D";
+        [A_XSDElementProperty("GripPressColorHex", "UI", "Ground of a held pane splitter.")]
+        public string gripPressColorHex = "#4A4A4A";
 
         // tear-off
         [A_XSDElementProperty("TearOffDocument", "UI", "UI document a tab dragged out of every window opens in.")]
@@ -489,6 +499,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         protected virtual VulkanControl BuildCaption(TabItemControl item, TabStripButtonControl tab) =>
             new LabelControl
             {
+                controlColorHex = tabInkColorHex,
                 text = item.header,
                 fontSize = captionSize,
                 horizontalPosition = 0f
@@ -507,7 +518,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                 bubbleEnter = true,
                 bubbleExit = true
             };
-            close.AddChild(new LabelControl { text = closeCaption, fontSize = closeCaptionSize });
+            close.AddChild(new LabelControl { controlColorHex = tabInkColorHex, text = closeCaption, fontSize = closeCaptionSize });
             close.RegisterOnRelease(() => CloseTab(item));
             return close;
         }

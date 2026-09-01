@@ -19,6 +19,20 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         public RichTextDocument activeDocument { get; private set; } = null!;
         public DocumentEditSession? session { get; private set; }
 
+        [A_XSDElementProperty("CaretColorHex", "UI", "Color of the insertion caret.")]
+        public string caretColorHex
+        {
+            get => field;
+            set { field = value; if (content != null) content.caretColorHex = value; }
+        } = "#FFFFFF";
+
+        [A_XSDElementProperty("SelectionColorHex", "UI", "Ground of the selection highlight behind the text.")]
+        public string selectionColorHex
+        {
+            get => field;
+            set { field = value; if (content != null) content.selectionColorHex = value; }
+        } = "#264F78";
+
         private const float autoScrollRate = 0.25f;
 
         private DocumentControl? content;
@@ -174,7 +188,13 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 child.Destroy();
             children.Clear();
 
-            content = new DocumentControl { blockSpacing = document.layout.blockSpacing, document = document };
+            content = new DocumentControl
+            {
+                blockSpacing = document.layout.blockSpacing,
+                document = document,
+                caretColorHex = caretColorHex,
+                selectionColorHex = selectionColorHex
+            };
             content.undo = session?.undo;
             AddChild(content);
 

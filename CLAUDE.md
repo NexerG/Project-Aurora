@@ -26,6 +26,14 @@ Every change to the repo runs four steps, in order:
 4. **Go, or don't.** Approved: build exactly that. Rejected: stop and re-plan - never build a rejected
    plan in reduced form.
 
+**Analyze against a budget.** Start at `ClaudeMemory/Context/where-things-live.md` and
+`ClaudeMemory/Decisions/INDEX.md` - concept, then the types that own it, then the note that settles it.
+Then `grep -n` the symbol and read the window around the hit. A change confined to one file and a
+handful of lines is analyzed once the index, the grep and that window agree. Read a file end to end
+when you're changing control flow, changing a type's shape, or working somewhere the indexes don't
+name. "No plan built on a guess" means don't guess about the lines you're changing - it is not a
+licence to read 1,200 lines to change 3.
+
 A small change gets a small plan - one line is fine. It doesn't get to skip the gate.
 
 Reading, searching, building and answering questions aren't changes. Writing to a file is.

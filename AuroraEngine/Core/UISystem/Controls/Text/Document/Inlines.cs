@@ -17,6 +17,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 
         public TextRun()
         {
+            controlColorHex = "#2C2B26";
             bubbleMultiClick = true;
         }
 

@@ -97,6 +97,10 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
     {
         public float blockSpacing;
 
+        // caret and highlight paint, assigned by the editor before either is built
+        public string caretColorHex = "#FFFFFF";
+        public string selectionColorHex = "#264F78";
+
         // the model these blocks came from; the file is written from its block list
         internal RichTextDocument document = null!;
 
@@ -141,7 +145,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 
             if (caret == null)
             {
-                caret = new CaretControl();
+                caret = new CaretControl { controlColorHex = caretColorHex };
                 AddChild(caret);
             }
             caret.Focus();
@@ -573,7 +577,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         {
             while (highlights.Count <= index)
             {
-                SelectionControl box = new SelectionControl();
+                SelectionControl box = new SelectionControl { controlColorHex = selectionColorHex };
                 box.parent = this;
                 children.Insert(highlights.Count, box);
                 highlights.Add(box);

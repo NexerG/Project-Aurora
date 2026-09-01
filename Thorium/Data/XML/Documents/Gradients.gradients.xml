@@ -4,13 +4,13 @@
 		   xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../Schemas/UITypeSchema.xsd" >
 
 	<Gradient Name="titlebar" Angle="90">
-		<Stop Color="#1F1F1F" Pos="0"/>
-		<Stop Color="#141414" Pos="1"/>
+		<Stop Color="#F0EFEA" Pos="0"/>
+		<Stop Color="#EBEAE5" Pos="1"/>
 	</Gradient>
 
 	<Gradient Name="accent" Angle="0">
-		<Stop Color="#3A6EA5" Pos="0"/>
-		<Stop Color="#8A5CD1" Pos="1"/>
+		<Stop Color="#3A3833" Pos="0"/>
+		<Stop Color="#23221E" Pos="1"/>
 	</Gradient>
 
 	<Gradient Name="glow" Kind="Radial" CenterX="0.5" CenterY="0.5">

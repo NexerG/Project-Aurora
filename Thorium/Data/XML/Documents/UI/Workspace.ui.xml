@@ -3,21 +3,25 @@
            xsi:schemaLocation="http://arctisaurora/UI ../../Schemas/UITypeSchema.xsd"
            Orientation="Horizontal" HeightStar="1">
 
-	<EditableTabs Name="Tabs" Width="525" MinWidth="120" ColorHex="#1e1e1e" ContextMenu="view"
+	<EditableTabs Name="Tabs" Width="525" MinWidth="120" ColorHex="#FBFAF8" ContextMenu="view"
 				  TabHeight="28" TabWidth="180"
-				  TabColorHex="#252525" ActiveTabColorHex="#1e1e1e" TabHoverColorHex="#2F2F2F"
+				  TabColorHex="#F0EFEA" ActiveTabColorHex="#FBFAF8" TabHoverColorHex="#E8E6E0" TabInkColorHex="#34322D"
+				  GripColorHex="#E6E4DE" GripHoverColorHex="#DCDAD3" GripPressColorHex="#D0CEC6"
 				  TearOffDocument="tab-window">
 		<TabItem Header="SampleNote">
-			<DocumentEditor Source="../../Notes/SampleNote.xml"/>
+			<DocumentEditor Source="../../Notes/SampleNote.xml" CaretColorHex="#23221E" SelectionColorHex="#D7D5CD"
+							ThumbColorHex="#D7D5CD" ThumbHoverColorHex="#C9C6BC" ThumbPressColorHex="#BAB7AC"/>
 		</TabItem>
 	</EditableTabs>
-	<Splitter Width="5"/>
-	<EditableTabs Name="TabsRight" WidthStar="1" MinWidth="120" ColorHex="#1e1e1e" ContextMenu="view"
+	<Splitter Width="5" ColorHex="#E6E4DE" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"/>
+	<EditableTabs Name="TabsRight" WidthStar="1" MinWidth="120" ColorHex="#FBFAF8" ContextMenu="view"
 				  TabHeight="28" TabWidth="180"
-				  TabColorHex="#252525" ActiveTabColorHex="#1e1e1e" TabHoverColorHex="#2F2F2F"
+				  TabColorHex="#F0EFEA" ActiveTabColorHex="#FBFAF8" TabHoverColorHex="#E8E6E0" TabInkColorHex="#34322D"
+				  GripColorHex="#E6E4DE" GripHoverColorHex="#DCDAD3" GripPressColorHex="#D0CEC6"
 				  TearOffDocument="tab-window">
 		<TabItem Header="Keybinds">
-			<DocumentEditor Source="../../Notes/Reference/Keybinds.xml"/>
+			<DocumentEditor Source="../../Notes/Reference/Keybinds.xml" CaretColorHex="#23221E" SelectionColorHex="#D7D5CD"
+							ThumbColorHex="#D7D5CD" ThumbHoverColorHex="#C9C6BC" ThumbPressColorHex="#BAB7AC"/>
 		</TabItem>
 	</EditableTabs>
 </SplitView>

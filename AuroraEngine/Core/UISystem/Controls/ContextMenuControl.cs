@@ -24,13 +24,13 @@ namespace ArctisAurora.Core.UISystem.Controls
         private const float captionInset = 10f;
         private const float separatorInset = 3f;
 
-        // entry palette
-        private const string groundColorHex = "#1E1E1E";
-        private const string captionColorHex = "#E6E6E6";
-        private const string disabledCaptionColorHex = "#6E6E6E";
-        private const string itemHoverColorHex = "#3A3A3A";
-        private const string itemPressColorHex = "#4A4A4A";
-        private const string separatorColorHex = "#3A3A3A";
+        // entry palette, assigned by the host's menu factory before the menu is filled
+        public string groundColorHex { get => field; set { field = value; controlColorHex = value; } } = "#1E1E1E";
+        public string captionColorHex = "#E6E6E6";
+        public string disabledCaptionColorHex = "#6E6E6E";
+        public string itemHoverColorHex = "#3A3A3A";
+        public string itemPressColorHex = "#4A4A4A";
+        public string separatorColorHex = "#3A3A3A";
 
         private readonly StackPanelControl column = new StackPanelControl();
 

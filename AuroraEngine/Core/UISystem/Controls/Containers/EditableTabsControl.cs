@@ -14,6 +14,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         {
             EditableLabelControl caption = new EditableLabelControl
             {
+                textColorHex = tabInkColorHex,
                 text = item.header,
                 fontSize = captionSize,
                 horizontalPosition = 0f,

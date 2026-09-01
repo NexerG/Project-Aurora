@@ -51,6 +51,16 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
         private ScrollThumbControl thumb = null!;
 
+        // thumb palette
+        [A_XSDElementProperty("ThumbColorHex", "UI", "Ground of the scroll thumb at rest.")]
+        public string thumbColorHex { get => field; set { field = value; if (thumb != null) thumb.controlColorHex = value; } } = "#3A3A3A";
+
+        [A_XSDElementProperty("ThumbHoverColorHex", "UI", "Ground of a hovered scroll thumb.")]
+        public string thumbHoverColorHex { get => field; set { field = value; if (thumb != null) thumb.hoverColorHex = value; } } = "#4E4E4E";
+
+        [A_XSDElementProperty("ThumbPressColorHex", "UI", "Ground of a held scroll thumb.")]
+        public string thumbPressColorHex { get => field; set { field = value; if (thumb != null) thumb.pressColorHex = value; } } = "#5E5E5E";
+
         /// <summary>
         /// Width reserved down the right edge for the scrollbar. Always reserved when the axis can
         /// scroll, so that showing a thumb never re-wraps the content that decides whether it shows.
@@ -218,7 +228,13 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         {
             if (thumb != null && children.Contains(thumb)) return;
 
-            thumb = new ScrollThumbControl(this) { parent = this };
+            thumb = new ScrollThumbControl(this)
+            {
+                parent = this,
+                controlColorHex = thumbColorHex,
+                hoverColorHex = thumbHoverColorHex,
+                pressColorHex = thumbPressColorHex
+            };
             children.Insert(0, thumb);
             MarkTreeOrderDirty();
         }

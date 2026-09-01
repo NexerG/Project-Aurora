@@ -1,38 +1,44 @@
 ﻿<Window xmlns="http://arctisaurora/AuroraUITypes"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:schemaLocation="http://arctisaurora/UI ../../Schemas/UITypeSchema.xsd"
-        Width="1280" Height="720" WindowingMode="WindowSize" Autoscaling="false" ScalingAxis="Vertical" ColorHex="#1e1e1e" ContextMenu="window">
+        Width="1280" Height="720" WindowingMode="WindowSize" Autoscaling="false" ScalingAxis="Vertical" ColorHex="#FBFAF8" ContextMenu="window">
 
-	<WindowFrame ColorHex="#1e1e1e">
-	<StackPanel Orientation="Vertical" ColorHex="#1e1e1e">
+	<WindowFrame ColorHex="#FBFAF8">
+	<StackPanel Orientation="Vertical" ColorHex="#FBFAF8">
 
-		<TitleBar Orientation="Horizontal" Height="32" ColorHex="#141414" Gradient="titlebar">
-			<MenuButton Caption="Thorium" ContextMenu="thorium" Width="72" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A"/>
-			<MenuButton Caption="File" ContextMenu="file" Width="48" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A"/>
-			<MenuButton Caption="Edit" ContextMenu="edit" Width="48" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A"/>
-			<MenuButton Caption="View" ContextMenu="view" Width="48" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A"/>
-			<Panel WidthStar="1" Height="32" ColorHex="#141414" BubbleClick="true"/>
-			<Button Width="46" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A" onRelease="Window.Minimize">
-				<Icon Set="default" Icon="minimize" Width="14" Height="14" ColorHex="#CCCCCC"/>
+		<TitleBar Orientation="Horizontal" Height="32" ColorHex="#EBEAE5" Gradient="titlebar">
+			<MenuButton Caption="Thorium" ContextMenu="thorium" Width="72" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD"/>
+			<MenuButton Caption="File" ContextMenu="file" Width="48" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD"/>
+			<MenuButton Caption="Edit" ContextMenu="edit" Width="48" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD"/>
+			<MenuButton Caption="View" ContextMenu="view" Width="48" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD"/>
+			<Panel WidthStar="1" Height="32" ColorHex="#EBEAE5" BubbleClick="true"/>
+			<Button Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD" onRelease="Window.Minimize">
+				<Icon Set="default" Icon="minimize" Width="14" Height="14" ColorHex="#5F5D56"/>
 			</Button>
-			<Button Width="46" Height="32" ColorHex="#141414" HoverColorHex="#2A2A2A" PressColorHex="#3A3A3A" onRelease="Window.MaximizeRestore">
-				<Icon Set="default" Icon="maximize" Width="18" Height="18" ColorHex="#CCCCCC"/>
+			<Button Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD" onRelease="Window.MaximizeRestore">
+				<Icon Set="default" Icon="maximize" Width="18" Height="18" ColorHex="#5F5D56"/>
 			</Button>
-			<Button Width="46" Height="32" ColorHex="#141414" HoverColorHex="#C42B1E" PressColorHex="#A82318" onRelease="Window.Close">
-				<Icon Set="default" Icon="close" Width="14" Height="14" ColorHex="#CCCCCC"/>
+			<Button Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#C42B1E" PressColorHex="#A82318" onRelease="Window.Close">
+				<Icon Set="default" Icon="close" Width="14" Height="14" ColorHex="#5F5D56"/>
 			</Button>
 		</TitleBar>
 
-		<StackPanel Orientation="Horizontal" HeightStar="1" ColorHex="#1e1e1e">
-			<StackPanel Orientation="Vertical" Width="220" MinWidth="120" ColorHex="#171717">
-				<VaultBrowser Name="Browser" HeightStar="1" ColorHex="#171717" Padding="8"/>
-				<Button Height="28" HorizontalAlignment="Stretch" ColorHex="#171717" HoverColorHex="#232323" PressColorHex="#2D2D2D" onRelease="Settings.Open">
-					<Label Text="Settings" FontSize="13" ColorHex="#9D9D9D"/>
+		<StackPanel Orientation="Horizontal" HeightStar="1" ColorHex="#FBFAF8">
+			<StackPanel Orientation="Vertical" Width="220" MinWidth="120" ColorHex="#F2F1ED">
+				<VaultBrowser Name="Browser" HeightStar="1" ColorHex="#F2F1ED" Padding="8"
+							  RowColorHex="#F2F1ED" RowHoverColorHex="#EAE8E2" RowPressColorHex="#E3E1D9"
+							  FolderColorHex="#918F87" FileColorHex="#34322D" RowFieldColorHex="#EAE8E2"
+							  ThumbColorHex="#D7D5CD" ThumbHoverColorHex="#C9C6BC" ThumbPressColorHex="#BAB7AC"/>
+				<Button Height="28" HorizontalAlignment="Stretch" ColorHex="#F2F1ED" HoverColorHex="#EAE8E2" PressColorHex="#E3E1D9" onRelease="Settings.Open">
+					<Label ColorHex="#5F5D56" Text="Settings" FontSize="13"/>
 				</Button>
 			</StackPanel>
-			<Splitter Width="5"/>
-			<StackPanel Orientation="Vertical" WidthStar="1" ColorHex="#1e1e1e">
-				<DocumentToolbar Height="30" HorizontalAlignment="Stretch" ColorHex="#1e1e1e"/>
+			<Splitter Width="5" ColorHex="#E6E4DE" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"/>
+			<StackPanel Orientation="Vertical" WidthStar="1" ColorHex="#FBFAF8">
+				<DocumentToolbar Height="30" HorizontalAlignment="Stretch" ColorHex="#FBFAF8"
+								 HoverColorHex="#F0EFEA" PressColorHex="#EAE8E2"
+								 IdleInkColorHex="#6F6D66" ActiveInkColorHex="#3A3833"
+								 SeparatorColorHex="#DCDAD3" FieldColorHex="#EAE8E2"/>
 				<Workspace Name="Workspace" HeightStar="1" Default="workspace" Pane="tab-pane"/>
 			</StackPanel>
 		</StackPanel>

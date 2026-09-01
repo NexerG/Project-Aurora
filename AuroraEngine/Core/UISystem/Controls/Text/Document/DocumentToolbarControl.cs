@@ -18,12 +18,24 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
     {
         // palette
         private const string barColorHex = "#1e1e1e";
-        private const string hoverHex = "#2A2A2A";
-        private const string pressHex = "#3A3A3A";
-        private const string idleInkHex = "#9D9D9D";
-        private const string activeInkHex = "#6C9BE0";
-        private const string separatorHex = "#2F2F2F";
-        private const string fieldHex = "#252525";
+
+        [A_XSDElementProperty("HoverColorHex", "UI", "Ground of a bar button while hovered.")]
+        public string hoverHex { get => field; set { field = value; ApplyPalette(); } } = "#2A2A2A";
+
+        [A_XSDElementProperty("PressColorHex", "UI", "Ground of a bar button while held.")]
+        public string pressHex { get => field; set { field = value; ApplyPalette(); } } = "#3A3A3A";
+
+        [A_XSDElementProperty("IdleInkColorHex", "UI", "Color of a bar glyph that is not lit.")]
+        public string idleInkHex { get => field; set { field = value; ApplyPalette(); } } = "#9D9D9D";
+
+        [A_XSDElementProperty("ActiveInkColorHex", "UI", "Color of a bar glyph the caret's run carries.")]
+        public string activeInkHex { get => field; set { field = value; ApplyPalette(); } } = "#6C9BE0";
+
+        [A_XSDElementProperty("SeparatorColorHex", "UI", "Color of the rules between bar groups.")]
+        public string separatorHex { get => field; set { field = value; ApplyPalette(); } } = "#2F2F2F";
+
+        [A_XSDElementProperty("FieldColorHex", "UI", "Ground of the px field.")]
+        public string fieldHex { get => field; set { field = value; ApplyPalette(); } } = "#252525";
 
         // metrics
         private const int barHeight = 30;
@@ -221,7 +233,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         }
         #endregion
 
-        private static void Reflect(IconControl ink, bool on, ref bool? shown)
+        private void Reflect(IconControl ink, bool on, ref bool? shown)
         {
             if (shown == on) return;
 
@@ -281,13 +293,13 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         #endregion
 
         #region ---- parts ----
-        private static ToolButton NewButton(int width, Action<ToolButton> onPress)
+        private ToolButton NewButton(int width, Action<ToolButton> onPress)
         {
             ToolButton button = new ToolButton
             {
                 preferredWidth = width,
                 preferredHeight = barHeight,
-                controlColorHex = barColorHex,
+                controlColorHex = controlColorHex,
                 hoverColorHex = hoverHex,
                 pressColorHex = pressHex
             };
@@ -295,7 +307,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             return button;
         }
 
-        private static ToolButton IconButton(IconControl ink, Action<ToolButton> onPress)
+        private ToolButton IconButton(IconControl ink, Action<ToolButton> onPress)
         {
             ToolButton button = NewButton(iconButtonWidth, onPress);
             button.AddChild(ink);
@@ -305,7 +317,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         // A caption plus its chevron is two controls, and a button takes one — so they travel in a
         // row of their own. The row is masked out: a StackPanel paints, unlike the text containers,
         // and an opaque one here would sit over the button's hover tint.
-        private static ToolButton CaptionButton(LabelControl caption, int width, Action<ToolButton> onPress)
+        private ToolButton CaptionButton(LabelControl caption, int width, Action<ToolButton> onPress)
         {
             StackPanelControl row = new StackPanelControl
             {
@@ -330,7 +342,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             text = text
         };
 
-        private static IconControl Ink(string icon) => new IconControl
+        private IconControl Ink(string icon) => new IconControl
         {
             setName = "default",
             iconName = icon,
@@ -339,12 +351,52 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             controlColorHex = idleInkHex
         };
 
-        private static PanelControl Separator() => new PanelControl
+        private PanelControl Separator() => new PanelControl
         {
             preferredWidth = 1,
             preferredHeight = barHeight,
             controlColorHex = separatorHex
         };
+
+        // Repaints what the constructor already built, because the host's attributes arrive after it.
+        private void ApplyPalette()
+        {
+            foreach (var child in children)
+            {
+                switch (child)
+                {
+                    case PxBox box:
+                        box.controlColorHex = fieldHex;
+                        box.textColorHex = idleInkHex;
+                        break;
+                    case ToolButton button:
+                        button.controlColorHex = controlColorHex;
+                        button.hoverColorHex = hoverHex;
+                        button.pressColorHex = pressHex;
+                        InkTree(button);
+                        break;
+                    case PanelControl separator:
+                        separator.controlColorHex = separatorHex;
+                        break;
+                }
+            }
+
+            // The lit ones repaint from OnTick, which only writes when its cache moved.
+            shownBold = null;
+            shownItalic = null;
+            shownColor = null;
+        }
+
+        private void InkTree(VulkanControl control)
+        {
+            foreach (var child in control.children)
+            {
+                if (child is not VulkanControl visual) continue;
+
+                if (visual is IconControl or LabelControl) visual.controlColorHex = idleInkHex;
+                InkTree(visual);
+            }
+        }
         #endregion
 
         // The one control in the bar that does take the active control, because it cannot be typed

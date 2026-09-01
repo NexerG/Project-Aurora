@@ -29,7 +29,15 @@ namespace Thorium
             SessionLayout.scope = KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
             SessionLayout.tabFactory = VaultBrowserControl.BuildTab;
 
-            ContextMenus.menuFactory = () => new WindowedContextMenuControl();
+            ContextMenus.menuFactory = () => new WindowedContextMenuControl
+            {
+                groundColorHex = "#F0EFEA",
+                captionColorHex = "#2C2B26",
+                disabledCaptionColorHex = "#918F87",
+                itemHoverColorHex = "#E3E1D9",
+                itemPressColorHex = "#D7D5CD",
+                separatorColorHex = "#DCDAD3"
+            };
             // prepare level
 
             // One-shot atlas bake — this is the set currently in Data/Fonts/arial.

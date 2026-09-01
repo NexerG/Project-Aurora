@@ -1113,7 +1113,10 @@ namespace ArctisAurora.Core.UISystem.Controls
             {
                 var prop = topControl.GetType().GetMembers(BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase).FirstOrDefault(m =>
                 {
-                    var a = m.GetCustomAttributes(typeof(A_XSDElementPropertyAttribute), true).FirstOrDefault() as A_XSDElementPropertyAttribute;
+                    // Attribute.GetCustomAttribute, not MemberInfo's — the latter ignores `inherit`
+                    // on a property, so an override like TextControl.controlColorHex reads as
+                    // unannotated and its attribute is dropped without a word.
+                    var a = Attribute.GetCustomAttribute(m, typeof(A_XSDElementPropertyAttribute), true) as A_XSDElementPropertyAttribute;
                     if (a != null)
                     {
                         return string.Equals(a.Name, attr.Name.LocalName, StringComparison.OrdinalIgnoreCase);

@@ -34,12 +34,12 @@ namespace Thorium.Editor
         private const int pathHeight = 14;
 
         // palette, matching the app chrome
-        private const string rowHex = "#2A2A2A";
-        private const string rowHoverHex = "#343434";
-        private const string rowPressHex = "#232323";
-        private const string nameHex = "#EAEAEA";
-        private const string currentHex = "#8AB4F8";
-        private const string pathHex = "#8A8A8A";
+        private const string rowHex = "#E3E1D9";
+        private const string rowHoverHex = "#DCDAD3";
+        private const string rowPressHex = "#EAE8E2";
+        private const string nameHex = "#23221E";
+        private const string currentHex = "#3A3833";
+        private const string pathHex = "#918F87";
 
         private static StackPanelControl _rows = null!;
 

@@ -56,7 +56,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             // the source leaves the host before the split arrives, so a single-child host is never
             // asked to hold both at once
             first.SetParent(split);
-            split.AddChild(NewGrip(vertical));
+            split.AddChild(NewGrip(vertical, source));
             second.SetParent(split);
             split.SetParent(host);
 
@@ -126,15 +126,27 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             pane.tabContextMenu = source.tabContextMenu;
             pane.contextMenus = source.contextMenus;
             pane.controlColorHex = source.controlColorHex;
+            pane.tabColorHex = source.tabColorHex;
+            pane.activeTabColorHex = source.activeTabColorHex;
+            pane.tabHoverColorHex = source.tabHoverColorHex;
+            pane.tabInkColorHex = source.tabInkColorHex;
+            pane.gripColorHex = source.gripColorHex;
+            pane.gripHoverColorHex = source.gripHoverColorHex;
+            pane.gripPressColorHex = source.gripPressColorHex;
 
             return pane;
         }
 
         // Only the main axis is pinned; the cross axis stretches, and a thickness on it would leave
         // the grip a five pixel square.
-        private static SplitterControl NewGrip(bool vertical)
+        private static SplitterControl NewGrip(bool vertical, TabViewControl source)
         {
-            SplitterControl grip = new SplitterControl();
+            SplitterControl grip = new SplitterControl
+            {
+                controlColorHex = source.gripColorHex,
+                hoverColorHex = source.gripHoverColorHex,
+                pressColorHex = source.gripPressColorHex
+            };
             if (vertical) grip.preferredHeight = gripThickness;
             else grip.preferredWidth = gripThickness;
             return grip;
