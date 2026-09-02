@@ -3,12 +3,13 @@ using System.Xml;
 
 namespace ArctisAurora.Core.Diagnostics
 {
-    // one timed span of a captured frame, in ticks from the frame's start
+    // one timed span of a captured frame, in ticks from the frame's start plus its own bytes
     public struct CapturedSpan
     {
         public int name;
         public long begin;
         public long end;
+        public long bytes;
         public int depth;
     }
 
@@ -26,6 +27,7 @@ namespace ArctisAurora.Core.Diagnostics
         public long index;
         public long start;
         public long duration;
+        public long bytes;
         public int firstSpan;
         public int spanCount;
         public int firstCounter;
@@ -53,6 +55,14 @@ namespace ArctisAurora.Core.Diagnostics
         public double Ms(long ticks) => frequency > 0 ? ticks * 1000.0 / frequency : 0;
 
         public string NameOf(int index) => index >= 0 && index < names.Count ? names[index] : "?";
+
+        public static string Bytes(long bytes)
+        {
+            if (bytes < 1024) return $"{bytes}B";
+            if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1}KB";
+            if (bytes < 1024L * 1024 * 1024) return $"{bytes / (1024.0 * 1024.0):F2}MB";
+            return $"{bytes / (1024.0 * 1024.0 * 1024.0):F2}GB";
+        }
     }
 
     // A session folder as it looks on disk, before anything is parsed.
@@ -180,6 +190,7 @@ namespace ArctisAurora.Core.Diagnostics
                                 index = Long(reader, "I"),
                                 start = Long(reader, "T"),
                                 duration = Long(reader, "D"),
+                                bytes = Long(reader, "A"),
                                 firstSpan = thread.spans.Count,
                                 firstCounter = thread.counters.Count,
                             };
@@ -199,6 +210,7 @@ namespace ArctisAurora.Core.Diagnostics
                                 name = Int(reader, "N"),
                                 begin = Long(reader, "B"),
                                 end = Long(reader, "E"),
+                                bytes = Long(reader, "A"),
                                 depth = depth,
                             });
                             if (!reader.IsEmptyElement) open[depth++] = thread.spans.Count - 1;

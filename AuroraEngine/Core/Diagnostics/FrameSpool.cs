@@ -6,12 +6,13 @@ using ArctisAurora.Core.Registry;
 
 namespace ArctisAurora.Core.Diagnostics
 {
-    // one timed span inside a captured frame, in ticks from the frame's start
+    // one timed span inside a captured frame, in ticks from the frame's start plus its own bytes
     internal struct SpanRecord
     {
         public string name;
         public long begin;
         public long end;
+        public long bytes;
         public int depth;
     }
 
@@ -29,6 +30,7 @@ namespace ArctisAurora.Core.Diagnostics
         public long index;
         public long start;
         public long duration;
+        public long bytes;
         public int firstSpan;
         public int spanCount;
         public int firstCounter;
@@ -66,7 +68,7 @@ namespace ArctisAurora.Core.Diagnostics
             last = false;
         }
 
-        public int AddSpan(string name, long begin, int depth)
+        public int AddSpan(string name, long begin, int depth, long bytes)
         {
             if (spanCount == spans.Length) Array.Resize(ref spans, spans.Length * 2);
 
@@ -74,11 +76,18 @@ namespace ArctisAurora.Core.Diagnostics
             span.name = name;
             span.begin = begin;
             span.end = -1;
+            span.bytes = bytes;
             span.depth = depth;
             return spanCount++;
         }
 
-        public void CloseSpan(int index, long end) => spans[index].end = end;
+        // Bytes are stamped at open and patched to the span's own total here.
+        public void CloseSpan(int index, long end, long bytes)
+        {
+            ref SpanRecord span = ref spans[index];
+            span.end = end;
+            span.bytes = bytes - span.bytes;
+        }
 
         public void AddCounter(int span, string name, long value)
         {
@@ -331,6 +340,7 @@ namespace ArctisAurora.Core.Diagnostics
             Attribute(writer, "I", frame.index);
             Attribute(writer, "T", frame.start);
             Attribute(writer, "D", frame.duration);
+            Attribute(writer, "A", frame.bytes);
 
             int open = 0;
             for (int i = 0; i < frame.spanCount; i++)
@@ -348,6 +358,7 @@ namespace ArctisAurora.Core.Diagnostics
                 Attribute(writer, "N", writer.names[span.name]);
                 Attribute(writer, "B", span.begin);
                 Attribute(writer, "E", span.end < 0 ? frame.duration : span.end);
+                if (span.end >= 0 && span.bytes != 0) Attribute(writer, "A", span.bytes);
                 WriteCounters(writer, batch, ref frame, index);
                 open = span.depth + 1;
             }

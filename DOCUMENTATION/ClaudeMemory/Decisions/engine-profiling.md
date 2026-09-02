@@ -185,6 +185,55 @@ drawn for free. Physics gets instrumented at no extra cost.
 diff, but then `D` is just the root zone repeated and the parked/unattributed gaps — the reason to
 look at a frame file at all — disappear.
 
+## 12. Allocation is a second axis on the zone, and "collected" is not there (user, 2026-09-03)
+
+**Date:** 2026-09-03
+**Scope:** `Profiling`, `FrameSpool`, `FrameCaptureReader`; `Carbon`'s `ZoneTableControl` and
+`SpanChartControl`.
+
+`GC.GetAllocatedBytesForCurrentThread()` is a thread-local read that allocates nothing, so it is
+sampled at exactly the gates the clock already uses: at a zone edge under `outermost || capturing`,
+and unconditionally at a frame edge. A zone carries `totalBytes` beside `totalTicks`, a span carries
+its own bytes beside `B`/`E`, and a frame carries the thread's whole tick.
+
+**Both levels, not one** (user, 2026-09-03). Frame-level alone says which *thread* makes garbage and
+then you bisect by hand; the per-zone number is what makes it actionable. It cost one extra
+thread-local read per zone edge, next to a `Stopwatch.GetTimestamp()` that costs ~4× more.
+
+**Allocation obeys the same two rules time does**, deliberately: the aggregate follows §3's
+outermost-only rule, the stream records every instance per §8, and both are **inclusive** — a
+parent's bytes contain its children's. Verified exactly: `Outer` 300,048 = 100,000 + 200,000 + two
+24-byte array headers, with `Inner` 200,024 nested inside it.
+
+### Bytes collected are out (user, 2026-09-03)
+
+Asked for as "allocated and collected", cut to allocated on the same day. The reason it is not a
+matching pair: **the runtime does not expose bytes freed.** What was offered and not taken —
+
+- **Collection counts** — `GC.CollectionCount(0/1/2)` deltas per frame. Exact, ~6 cheap FCalls.
+- **Bytes reclaimed, derived** — `(heapBegin − heapEnd) + processAllocatedDuringFrame` from
+  `GC.GetTotalMemory(false)` and `GC.GetTotalAllocatedBytes(false)`, written only on a frame where a
+  collection actually ran. Approximate, and **process-wide**, so all three threads would report the
+  same collections from their own frame windows — it does not sum across threads the way `A` does.
+- **`GC.GetTotalPauseDuration()`** — one call, and the number that explains a frame spike.
+
+**Rejected outright: `GC.GetGCMemoryInfo()`**, which is the only API giving real per-collection
+detail. It **allocates** — a profiler that allocates to measure allocation corrupts its own
+measurement.
+
+### Consequences to hold on to
+
+- **The frame window is `Frame.Begin`→`Frame.End`**, which is what excludes `Report()`'s own string
+  interpolation — the report runs *after* `Frame.End`, so switching it on does not inflate `A`.
+- **Warm-up lands on the frame, not on a zone.** Frame 0 carries the profiler's own one-time table
+  growth: 304 bytes for the report tables, ~292 KB more when a capture's three batches are built in
+  `Frame.Begin`. Zones read identically in frame 0 and frame 5. Steady state is exact — 100 frames of
+  a 100,000-byte allocation measured 10,002,400 twice running.
+- **Per-thread means per-thread.** Work a zone hands to a pool thread does not appear in its bytes.
+- `<F A>` is always written; `<Z A>` only when non-zero **and** the span closed, so a zone that
+  allocates nothing stays a self-closing `<Z N B E />`. A capture file written before this reads
+  back as zero rather than failing.
+
 ## Left standing
 
 - **GPU is out entirely** (user, 2026-09-02). Frame times can be read back from a `VkQueryPool`, and
@@ -198,8 +247,8 @@ look at a frame file at all — disappear.
 - **Recursion is verified in a harness, not in the engine.** No shipped zone re-enters — the six in
   `MainTick` and the two in `RenderSystem.Tick` are all flat.
 - **The first report period is skipped**, since the first `Report()` only anchors `periodStart`.
-- **GC/allocation counters are not here.** The roadmap item names them; different mechanism
-  (`GC.GetAllocatedBytesForCurrentThread`), deliberately not bolted on.
+- ~~**GC/allocation counters are not here.**~~ **Allocation landed 2026-09-03** — see §12. Bytes
+  *collected* are still out, deliberately.
 - **A typo in a name silently creates a second entry** and strands the first. This is the real cost of
   string keys over a resolved handle; the §4 check makes it a first-frame failure.
 - **No `.xsd` for the frame format**, and no `xsi:schemaLocation` in the header. **Still none after
@@ -257,5 +306,19 @@ moved to the writer, now dense per file), and two captures in the same second wr
 folder (now uniquified). The starved run also confirms the §9 hole — 7 of 3200 ticks are neither
 written nor counted, being drops still pending when the capture ended.
 
+**Allocation, third harness (2026-09-03), same arrangement.** Six captured frames of
+`Outer(100KB) > Inner(200KB)` plus `Empty` and 50KB loose in the frame, read back through
+`FrameCaptureReader`; then 2×100 uncaptured frames read out of the report tables by reflection:
+
+| Case | Result |
+|---|---|
+| span, leaf | `Inner` exactly 200,024 — the array plus its 24-byte header |
+| span, inclusive | `Outer` exactly 300,048, containing `Inner` |
+| frame | exactly 350,072 = loose + outer + inner + 3 headers |
+| a zone that allocates nothing | `<Z N="2" B="44444" E="44447" />` — no `A` written at all |
+| `zone.totalBytes` over a period | exactly 10,002,400 for `Outer` ×100 |
+| period frame bytes, first run | 10,002,704 — 304 over, the table growth in frame 0 |
+| period frame bytes, second run | exactly 10,002,400, so the overage is one-time |
+
 Related: [[engine-logging]], [[ui-data-control-split]], [[gpu-global-frame-data]],
-[[ecs-rework-data-pools]]
+[[ecs-rework-data-pools]], [[carbon-frame-viewer]]

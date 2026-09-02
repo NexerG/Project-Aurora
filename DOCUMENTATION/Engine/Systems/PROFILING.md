@@ -15,7 +15,7 @@ Implementors:
   - "[[PROFILING]]"
 Namespace: ArctisAurora.Core.Diagnostics
 SourceFiles: AuroraEngine/Core/Diagnostics/Profiling.cs, AuroraEngine/Core/Diagnostics/FrameSpool.cs, AuroraEngine/Core/Diagnostics/ProfilingSettings.cs
-VerifiedAgainst: 2026-09-02
+VerifiedAgainst: 2026-09-03
 ---
 ## Overview
 
@@ -123,22 +123,31 @@ One file per thread, `Profiling/<yyyyMMdd-HHmmss>/<thread>.frames.xml`.
 <FrameCapture Thread="Main" Frequency="10000000" Started="…" Mode="Burst" Requested="300">
   <Names><N I="0" V="MainTick"/><N I="1" V="HandleUI"/><N I="2" V="Measure"/></Names>
   <Batch Seq="0" Dropped="0">
-    <F I="10412" T="8823410992341" D="91004">
-      <Z N="0" B="0" E="83120">
-        <Z N="1" B="4903" E="12142"><C N="2" V="412"/></Z>
+    <F I="10412" T="8823410992341" D="91004" A="350072">
+      <Z N="0" B="0" E="83120" A="300048">
+        <Z N="1" B="4903" E="12142" A="200024"><C N="2" V="412"/></Z>
       </Z>
     </F>
   </Batch>
 </FrameCapture>
 ```
 
-`F` is a frame — `I` its index (the system's epoch), `T` the `Stopwatch` stamp it started on, `D` how long it took. `Z` is a span and `C` a counter, `B` and `E` are ticks measured from the frame's own `T`, and `N` is an index into `Names`. Everything is a raw tick count with `Frequency` at the top, because formatting a millisecond figure costs more than the span being measured; the reader divides.
+`F` is a frame — `I` its index (the system's epoch), `T` the `Stopwatch` stamp it started on, `D` how long it took, `A` how many bytes it allocated. `Z` is a span and `C` a counter, `B` and `E` are ticks measured from the frame's own `T`, `A` is the span's own bytes, and `N` is an index into `Names`. Everything is a raw tick or byte count with `Frequency` at the top, because formatting a millisecond figure costs more than the span being measured; the reader divides.
 
 Three consequences worth holding on to. The nesting of the elements is the nesting of the zones, so the file **is** the flame chart and nothing has to be reconstructed. `T` is process-wide, so two threads' files stack on one timeline without a correlation id — the render thread's wait sits directly under whatever main was doing. And the gap between `D` and the root span's `E` is time the thread spent parked, which draws itself.
 
 A file whose process died has no closing `</FrameCapture>`. That is deliberate — the last partial batch of a crashed run is worthless, so a reader is expected to tolerate the truncation. A clean exit closes it through `Profiling.Flush`, the shutdown step before `Logging.Flush`.
 
-One shape in the file catches readers out: a `Z` with no children and no counters is written self-closing, as `<Z N="3" B="84947" E="94958" />`, so nothing can wait for a closing tag that will not come.
+One shape in the file catches readers out: a `Z` with no children and no counters is written self-closing, as `<Z N="3" B="84947" E="94958" />`, so nothing can wait for a closing tag that will not come. `A` is omitted from a span that allocated nothing, and from one the frame edge cut off before it closed; a file written before allocation was recorded reads back as zero rather than failing.
+
+### Allocation
+Every span and every frame also carries how many bytes the thread allocated inside it, sampled with `GC.GetAllocatedBytesForCurrentThread()` — a thread-local read that allocates nothing itself, taken at the same gates as the clock.
+
+Bytes behave exactly like time. They are **inclusive**, so a parent's number contains its children's; the aggregate follows the same outermost-only rule as a recursive zone's duration, and the capture stream records every instance. Per-thread means per-thread: work a zone hands off to a pool thread is not in its bytes.
+
+Two things are worth knowing before reading a number. The first frame of a thread carries the profiler's own table growth — a few hundred bytes for the report, a few hundred KB more if a capture is starting, since that is where the batches are built. And the measured window is `Frame.Begin` to `Frame.End`, which is why turning the one-second report on does not inflate the figures: the report's own string building happens after the frame has closed.
+
+**Bytes collected are not recorded.** The runtime does not expose bytes freed, and the one API that gives real per-collection detail, `GC.GetGCMemoryInfo()`, allocates — a profiler that allocates to measure allocation corrupts its own measurement. Collection counts and a derived reclaimed figure are described in `ClaudeMemory/Decisions/engine-profiling.md` §12 and were deliberately not built.
 
 ### Reading it back
 `FrameCaptureReader` is the other half of `FrameSpool`, in the same namespace, and is `WriteFrame` run backwards — element nesting is the span depth, so the flat arrays come back the way the recording thread built them. `Enumerate(root)` lists session folders without parsing anything, `LoadSession(dir)` reads every thread file in one, and `LoadFile(path)` reads one. Truncation is expected rather than exceptional: what was read is kept, `truncated` is set, and the frame the writer died inside is dropped because nothing references its spans.
@@ -147,13 +156,14 @@ The viewer that draws these files is **Carbon**, a fourth application on the eng
 
 ### Reading the output
 ```
-Main 1002ms — MainTick 8.31ms x120 (min 7.902 max 9.421)
-Main 1002ms — HandleUI 5.10ms x120 (min 4.880 max 6.114) — Window 120
-Render 1001ms — Draw 6.02ms x144 (min 3.910 max 9.008)
+Main 1002ms — allocated 12.41MB
+Main 1002ms — MainTick 8.31ms x120 (min 7.902 max 9.421) 11.90MB
+Main 1002ms — HandleUI 5.10ms x120 (min 4.880 max 6.114) 3.21MB — Window 120
+Render 1001ms — Draw 6.02ms x144 (min 3.910 max 9.008) 84.2KB
 ```
-The leading time is the period the line covers, then the zone's accumulated time, its entry count, and the shortest and longest completed span. Counters for that zone follow the dash.
+The first line is the whole thread over the period, including whatever ran outside any zone. Then per zone: the period the line covers, the zone's accumulated time, its entry count, the shortest and longest completed span, and its bytes. Counters for that zone follow the dash.
 
 ### Not here yet
-GPU timings are out. When frame times are read back from a `VkQueryPool` they will land on the same tables through a submit that carries its own start and end stamps, which is part of why the API is `Start`/`End` rather than a `using` scope — a GPU span closes frames after the code that opened it has returned. GC and allocation counters are also out; they are a different mechanism and belong with the test platform.
+GPU timings are out. When frame times are read back from a `VkQueryPool` they will land on the same tables through a submit that carries its own start and end stamps, which is part of why the API is `Start`/`End` rather than a `using` scope — a GPU span closes frames after the code that opened it has returned. Bytes collected, collection counts and GC pause time are out too, for the reasons above.
 
 The report is a log line and the capture is a file — neither is a panel. The reader and its viewer landed as **Carbon** (above); the UI-hosted test and profiling platform is still the roadmap item this was built to feed. There is still no `.xsd` for the frame format: the reader is hand-written and is the only consumer, so a schema would validate nothing but files the engine itself wrote.

@@ -41,9 +41,11 @@ namespace ArctisAurora.Core.Diagnostics
         {
             public long calls;
             public long totalTicks;
+            public long totalBytes;
             public long minTicks;
             public long maxTicks;
             public long openStart;
+            public long openBytes;
             public int open;
         }
 
@@ -55,6 +57,7 @@ namespace ArctisAurora.Core.Diagnostics
             public string[] stack = new string[32];
             public int stackDepth;
             public long periodStart;
+            public long periodBytes;
 
             // capture: the open zones' span indices, this frame's counters, and the batch being filled
             public int[] records = new int[32];
@@ -66,6 +69,7 @@ namespace ArctisAurora.Core.Diagnostics
             public int remaining;
             public int dropped;
             public long frameStart;
+            public long frameBytesStart;
             public long frameIndex;
             public int frameFirstSpan;
         }
@@ -98,10 +102,19 @@ namespace ArctisAurora.Core.Diagnostics
                 bool outermost = zone.open++ == 0;
 
                 long now = 0;
-                if (outermost || capturing) now = Stopwatch.GetTimestamp();
-                if (outermost) zone.openStart = now;
+                long bytes = 0;
+                if (outermost || capturing)
+                {
+                    now = Stopwatch.GetTimestamp();
+                    bytes = GC.GetAllocatedBytesForCurrentThread();
+                }
+                if (outermost)
+                {
+                    zone.openStart = now;
+                    zone.openBytes = bytes;
+                }
                 if (capturing)
-                    tables.records[tables.stackDepth] = tables.batch!.AddSpan(name, now - tables.frameStart, tables.stackDepth);
+                    tables.records[tables.stackDepth] = tables.batch!.AddSpan(name, now - tables.frameStart, tables.stackDepth, bytes);
 
                 tables.stackDepth++;
             }
@@ -127,17 +140,19 @@ namespace ArctisAurora.Core.Diagnostics
                 if (!outermost && !capturing) return;
 
                 long now = Stopwatch.GetTimestamp();
+                long bytes = GC.GetAllocatedBytesForCurrentThread();
 
                 if (capturing)
                 {
                     int record = tables.records[tables.stackDepth];
-                    if (record >= 0) tables.batch!.CloseSpan(record, now - tables.frameStart);
+                    if (record >= 0) tables.batch!.CloseSpan(record, now - tables.frameStart, bytes);
                 }
 
                 if (!outermost) return;
 
                 long elapsed = now - zone.openStart;
                 zone.totalTicks += elapsed;
+                zone.totalBytes += bytes - zone.openBytes;
                 if (elapsed < zone.minTicks) zone.minTicks = elapsed;
                 if (elapsed > zone.maxTicks) zone.maxTicks = elapsed;
             }
@@ -187,6 +202,7 @@ namespace ArctisAurora.Core.Diagnostics
                 ThreadedSystem? system = ThreadedSystem.Current;
 
                 tables.frameStart = Stopwatch.GetTimestamp();
+                tables.frameBytesStart = GC.GetAllocatedBytesForCurrentThread();
                 tables.frameIndex = system != null ? system.Epoch : tables.frameIndex + 1;
 
                 int session = Volatile.Read(ref _session);
@@ -230,7 +246,12 @@ namespace ArctisAurora.Core.Diagnostics
                 if (!enabled) return;
 
                 Tables? tables = _tables;
-                if (tables == null || !tables.capturing) return;
+                if (tables == null) return;
+
+                long bytes = GC.GetAllocatedBytesForCurrentThread() - tables.frameBytesStart;
+                tables.periodBytes += bytes;
+
+                if (!tables.capturing) return;
 
                 tables.capturing = false;
 
@@ -245,6 +266,7 @@ namespace ArctisAurora.Core.Diagnostics
                 frame.index = tables.frameIndex;
                 frame.start = tables.frameStart;
                 frame.duration = duration;
+                frame.bytes = bytes;
                 frame.firstSpan = tables.frameFirstSpan;
                 frame.spanCount = batch.spanCount - tables.frameFirstSpan;
                 frame.firstCounter = firstCounter;
@@ -332,16 +354,19 @@ namespace ArctisAurora.Core.Diagnostics
             {
                 string owner = ThreadedSystem.Current?.Name ?? $"t{Environment.CurrentManagedThreadId}";
 
+                Log.Info($"{owner} {periodMs:F0}ms — allocated {Bytes(tables.periodBytes)}");
+
                 foreach (KeyValuePair<string, ZoneData> entry in tables.zones)
                 {
                     ZoneData zone = entry.Value;
                     long min = zone.minTicks == long.MaxValue ? 0 : zone.minTicks;
-                    Log.Info($"{owner} {periodMs:F0}ms — {entry.Key} {Ms(zone.totalTicks):F2}ms x{zone.calls} (min {Ms(min):F3} max {Ms(zone.maxTicks):F3}){CountersOf(tables, entry.Key)}");
+                    Log.Info($"{owner} {periodMs:F0}ms — {entry.Key} {Ms(zone.totalTicks):F2}ms x{zone.calls} (min {Ms(min):F3} max {Ms(zone.maxTicks):F3}) {Bytes(zone.totalBytes)}{CountersOf(tables, entry.Key)}");
                 }
             }
 
             tables.zones.Clear();
             tables.counters.Clear();
+            tables.periodBytes = 0;
             tables.periodStart = now;
         }
 
@@ -358,5 +383,13 @@ namespace ArctisAurora.Core.Diagnostics
         }
 
         private static double Ms(long ticks) => ticks * 1000.0 / Stopwatch.Frequency;
+
+        private static string Bytes(long bytes)
+        {
+            if (bytes < 1024) return $"{bytes}B";
+            if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1}KB";
+            if (bytes < 1024L * 1024 * 1024) return $"{bytes / (1024.0 * 1024.0):F2}MB";
+            return $"{bytes / (1024.0 * 1024.0 * 1024.0):F2}GB";
+        }
     }
 }

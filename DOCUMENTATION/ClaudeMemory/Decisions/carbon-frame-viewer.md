@@ -144,6 +144,23 @@ A zone whose recorded parent never became a row would silently vanish, so a seco
 zone the tree walk missed at depth 0. Nothing hits it today; a diagnostic table quietly dropping a
 row is the failure worth spending five lines on.
 
+### 11. Allocation shows on the frame bar and in the table, not on a span (2026-09-03)
+
+[[engine-profiling]] §12 put bytes on every span and every frame. Carbon draws three of them:
+
+- **The zone table's thread header** carries the thread's whole allocation over the capture, summed
+  from `<F A>` — which includes what ran outside any zone, so it is larger than the root zone's.
+- **A zone row's detail line** carries that zone's bytes, rolled up the same way its time is.
+- **The frame bar's caption** (row 0 of a lane) carries the frame's bytes beside the thread name.
+
+**Spans deliberately do not carry bytes in the chart.** A span needs `LabelMinWidth` (70 px) to earn
+a caption at all, and §9's `{name} {duration}` already fills it — appending bytes would push the
+duration out of a span barely wide enough to be labelled, and span labels are `clipOutOfBounds`. The
+zone table is where the per-zone number is legible.
+
+Formatting is `CapturedThread.Bytes`, a static beside the instance `Ms` — one place both controls
+share, on the reader's side of the boundary §2 draws.
+
 ## Facts that were expensive to establish
 
 - **A `widthStar` `LabelControl` inside a horizontal `StackPanel` is measured at width 0 and wraps to

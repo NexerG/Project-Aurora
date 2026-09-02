@@ -62,6 +62,7 @@ namespace Carbon.Editor.CustomControls
         {
             public long calls;
             public long total;
+            public long bytes;
             public long min;
             public long max;
             public int depth;
@@ -117,9 +118,12 @@ namespace Carbon.Editor.CustomControls
 
             // Spans arrive in pre-order, so whatever is open one level up is the parent.
             string[] open = new string[32];
+            long threadBytes = 0;
 
             foreach (CapturedFrame frame in thread.frames)
             {
+                threadBytes += frame.bytes;
+
                 for (int i = 0; i < frame.spanCount; i++)
                 {
                     CapturedSpan span = thread.spans[frame.firstSpan + i];
@@ -139,6 +143,7 @@ namespace Carbon.Editor.CustomControls
                     }
                     rolled.calls++;
                     rolled.total += elapsed;
+                    rolled.bytes += span.bytes;
                     if (elapsed < rolled.min) rolled.min = elapsed;
                     if (elapsed > rolled.max) rolled.max = elapsed;
                     zones[name] = rolled;
@@ -155,7 +160,7 @@ namespace Carbon.Editor.CustomControls
 
             rows.AddChild(new LabelControl
             {
-                text = $"{thread.thread} — {thread.frames.Count} frames{(thread.dropped > 0 ? $", {thread.dropped} dropped" : "")}{(thread.truncated ? ", truncated" : "")}",
+                text = $"{thread.thread} — {thread.frames.Count} frames, {CapturedThread.Bytes(threadBytes)} allocated{(thread.dropped > 0 ? $", {thread.dropped} dropped" : "")}{(thread.truncated ? ", truncated" : "")}",
                 fontSize = zoneFontSize,
                 controlColorHex = headerColorHex,
                 preferredHeight = 22,
@@ -243,7 +248,7 @@ namespace Carbon.Editor.CustomControls
 
             row.AddChild(new LabelControl
             {
-                text = $"x{rolled.calls}  min {thread.Ms(rolled.min):F3}  max {thread.Ms(rolled.max):F3}{Counters(name, counters)}",
+                text = $"x{rolled.calls}  min {thread.Ms(rolled.min):F3}  max {thread.Ms(rolled.max):F3}  {CapturedThread.Bytes(rolled.bytes)}{Counters(name, counters)}",
                 fontSize = detailFontSize,
                 controlColorHex = detailColorHex,
                 preferredHeight = 15,

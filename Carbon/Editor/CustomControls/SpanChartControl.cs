@@ -95,6 +95,7 @@ namespace Carbon.Editor.CustomControls
             public int row;
             public long begin;
             public long end;
+            public long bytes;
             public string name;
         }
 
@@ -236,7 +237,7 @@ namespace Carbon.Editor.CustomControls
                     long frameEnd = frame.start + frame.duration;
                     if (frameEnd < _windowStart || frame.start > windowEnd) continue;
 
-                    Add(lane, 0, frame.start, frameEnd, minTicks, labelTicks, thread.thread);
+                    Add(lane, 0, frame.start, frameEnd, minTicks, labelTicks, thread.thread, frame.bytes);
 
                     for (int i = 0; i < frame.spanCount && _placed.Count < maxRects; i++)
                     {
@@ -314,13 +315,13 @@ namespace Carbon.Editor.CustomControls
         private static int Decimals(double step) =>
             step <= 0 ? 0 : Math.Clamp((int)Math.Ceiling(-Math.Log10(step)), 0, 6);
 
-        private bool Add(int lane, int row, long begin, long end, long minTicks, long labelTicks, string name)
+        private bool Add(int lane, int row, long begin, long end, long minTicks, long labelTicks, string name, long bytes = 0)
         {
             if (end - begin < minTicks) return false;
 
             if (end - begin >= labelTicks && _labelled.Count < maxLabels) _labelled.Add(_placed.Count);
 
-            _placed.Add(new Placed { lane = lane, row = row, begin = begin, end = end, name = name });
+            _placed.Add(new Placed { lane = lane, row = row, begin = begin, end = end, bytes = bytes, name = name });
             return true;
         }
 
@@ -371,7 +372,9 @@ namespace Carbon.Editor.CustomControls
 
                 // rebuilding a label rebuilds one control per character, so only on a real change
                 Placed placed = _placed[_labelled[i]];
-                string caption = $"{placed.name}  {Duration(placed.end - placed.begin)}";
+                string caption = placed.bytes != 0
+                    ? $"{placed.name}  {Duration(placed.end - placed.begin)}  {CapturedThread.Bytes(placed.bytes)}"
+                    : $"{placed.name}  {Duration(placed.end - placed.begin)}";
                 if (label.text != caption) label.text = caption;
             }
 
