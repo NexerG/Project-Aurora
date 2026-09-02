@@ -102,6 +102,9 @@ Namespace shorthands used in the tables:
 | tick order, threads | `Core.Engine`; `Threading.MainSystem`, `RenderSystem`, `PhysicsSystem`, `ThreadedSystem` | — | [[ecs-rework-data-pools]] |
 | entity create / destroy | `Registry.EntityRegistry`; `Core.Engine.Interpolate` | `EntityRegistry.entities.xml` | [[entity-lifecycle-queues]] |
 | logging | `Diag.LogChannel`, `LogLevel`, `LoggingSettings`; `Diag.Sinks.*` | `Bootstrap.bootstrap.xml`, `Shutdown.shutdown.xml` | [[engine-logging]] |
+| profiling — timing a tick phase, counting calls | `Diag.Profiling` (`Zone.Start`/`End`/`Increment`, `Report`); zones in `Core.Engine.MainTick`, `Threading.RenderSystem` | — | [[engine-profiling]] |
+| frame capture — every span of every frame, to a file | `Diag.Profiling.Frame`, `Diag.FrameSpool`, `ProfilingSettings`; frame edges in `Threading.ThreadedSystem.Loop` | `Bootstrap.bootstrap.xml`, `Shutdown.shutdown.xml` | [[engine-profiling]] |
+| reading a frame file back | `Diag.FrameCaptureReader`; `CaptureSession`, `CapturedThread`, `CapturedFrame`, `CapturedSpan` | `Profiling/<session>/<thread>.frames.xml` | [[carbon-frame-viewer]] |
 
 ## Rendering
 
@@ -123,6 +126,16 @@ Namespace shorthands used in the tables:
 | the note browser | `Thorium.Editor.CustomControls.VaultBrowserControl` | `UI.ui.xml` | [[vault-browser-and-shell]] |
 | host-side control subclasses | `Thorium.Editor.Decorations` | — | — |
 
+## Carbon (the frame viewer)
+
+| Concept | Code | Data | Note |
+|---|---|---|---|
+| app entry, wiring the four views | `Carbon.Carbon`, `Carbon.CarbonSettings` | `Carbon/Data/XML/Settings/` | [[carbon-frame-viewer]] |
+| the capture session list, Load XML | `Carbon.Editor.CustomControls.SessionListControl`; `Carbon.Editor.CarbonActions` | `Carbon/Data/XML/Documents/UI/UI.ui.xml` | [[carbon-frame-viewer]] |
+| frames over time, click to select one | `Carbon.Editor.CustomControls.FrameStripControl` | `UI.ui.xml` | [[carbon-frame-viewer]] |
+| flame chart and the aligned timeline | `Carbon.Editor.CustomControls.SpanChartControl` (`Mode="Frame"` / `"Timeline"`) | `UI.ui.xml` | [[carbon-frame-viewer]] |
+| zone totals, calls, min/max, counters | `Carbon.Editor.CustomControls.ZoneTableControl` | `UI.ui.xml` | [[carbon-frame-viewer]] |
+
 ## Facts that cost time to rediscover
 
 - **There is no theme file, no stylesheet, no palette.** A colour is a per-control attribute in the
@@ -131,8 +144,13 @@ Namespace shorthands used in the tables:
   `ControlColor` names only the 16 enum values in `EnumColorToHex`; everything else is `ColorHex`.
 - **Data XML files carry their kind in the filename** — `Bootstrap.bootstrap.xml`, not `Bootstrap.xml`.
   Notes written before that landed still use the short name. See [[xml-type-suffix]].
-- **Shaders exist in three copies** and the `.spv` must stay byte-identical across them. Edit the
-  `AuroraEngine` copy; the `shader-pipeline` skill owns the procedure.
+- **Shaders exist in four copies** — `AuroraEngine/`, `Thorium/`, `AuroraEditor/`, `Carbon/` — and the
+  `.spv` must stay byte-identical across them. Edit the `AuroraEngine` copy; the `shader-pipeline`
+  skill owns the procedure. Carbon carries only the four the UI path loads (`UIRasterizer/UI.*` and
+  `Modules/Compositor/compositor.*`), because it never constructs another renderer type.
+- **An app is launched from its own `bin/Debug/<tfm>/`, not by `dotnet run`.** `Paths.GetPath`
+  resolves `../../../Data` against the *working directory*, so the wrong one kills boot at
+  `XSDGenerator`. Same rule puts `Shaders/` in every app.
 - **`Thorium` was `Periodic`; `AuroraEngine` was `ParticleSimulator`.** Older notes, commits and plan
   files use the old names. See [project-map.md](project-map.md).
 - **Set 0 belongs to the renderer**, not to a module — a module's own descriptor sets start at 1.

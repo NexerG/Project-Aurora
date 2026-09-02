@@ -5,7 +5,7 @@
   <xs:import schemaLocation="InputTypeSchema.xsd" namespace="http://arctisaurora/AuroraInputTypes" />
   <xs:import schemaLocation="UITypeSchema.xsd" namespace="http://arctisaurora/AuroraUITypes" />
   <xs:simpleType name="Settings">
-    <xs:union memberTypes="types:SettingScope types:LogLevel types:WindowMode" />
+    <xs:union memberTypes="types:SettingScope types:LogLevel types:CaptureMode types:WindowMode" />
   </xs:simpleType>
   <xs:attributeGroup name="Vault.Attributes">
     <xs:attributeGroup ref="types:Setting.Attributes" />
@@ -24,6 +24,8 @@
       <xs:element name="LogConsole" type="types:LogConsole" />
       <xs:element name="LogFile" type="types:LogFile" />
       <xs:element name="LogRecorder" type="types:LogRecorder" />
+      <xs:element name="ProfilingReport" type="types:ProfilingReport" />
+      <xs:element name="ProfilingCapture" type="types:ProfilingCapture" />
       <xs:element name="DoubleClick" type="types:DoubleClick" />
       <xs:element name="KeyRepeat" type="types:KeyRepeat" />
       <xs:element name="Device" type="types:Device" />
@@ -174,6 +176,7 @@
       <xs:element name="Session" type="types:Session" />
       <xs:element name="DocumentSettings" type="types:DocumentSettings" />
       <xs:element name="Logging" type="types:Logging" />
+      <xs:element name="Profiling" type="types:Profiling" />
       <xs:element name="InputBindings" type="types:InputBindings" />
       <xs:element name="Input" type="types:Input" />
       <xs:element name="Graphics" type="types:Graphics" />
@@ -237,6 +240,41 @@
       <xs:enumeration value="Off" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:simpleType name="CaptureMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Off" />
+      <xs:enumeration value="Continuous" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="ProfilingReport.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Enabled" type="xs:boolean" />
+  </xs:attributeGroup>
+  <xs:element name="ProfilingReport" type="types:ProfilingReport" />
+  <xs:complexType name="ProfilingReport">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:ProfilingReport.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="ProfilingCapture.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Mode" type="types:CaptureMode" />
+    <xs:attribute name="BurstFrames" type="xs:int" />
+    <xs:attribute name="FramesPerBatch" type="xs:int" />
+    <xs:attribute name="Directory" type="xs:string" />
+    <xs:attribute name="MaxFileMB" type="xs:int" />
+    <xs:attribute name="Keep" type="xs:int" />
+  </xs:attributeGroup>
+  <xs:element name="ProfilingCapture" type="types:ProfilingCapture" />
+  <xs:complexType name="ProfilingCapture">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:ProfilingCapture.Attributes" />
+  </xs:complexType>
+  <xs:element name="Profiling" type="types:Profiling" />
+  <xs:complexType name="Profiling">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
+    </xs:sequence>
+  </xs:complexType>
   <xs:attributeGroup name="Bind.Attributes">
     <xs:attribute name="Action" type="xs:string" />
     <xs:attribute name="Trigger" type="Input:Keys" />

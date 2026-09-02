@@ -24,6 +24,10 @@
       <xs:enumeration value="LogRecorder" />
       <xs:enumeration value="Logging" />
       <xs:enumeration value="LogLevel" />
+      <xs:enumeration value="CaptureMode" />
+      <xs:enumeration value="ProfilingReport" />
+      <xs:enumeration value="ProfilingCapture" />
+      <xs:enumeration value="Profiling" />
       <xs:enumeration value="Bind" />
       <xs:enumeration value="InputBindings" />
       <xs:enumeration value="DoubleClick" />

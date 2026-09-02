@@ -6,6 +6,7 @@
 		<!--pre-renderer-->
 		<Step Action="Settings.LoadAll"/>
 		<Step Action="Logging.Configure"/>
+		<Step Action="Profiling.Configure"/>
 		<Step Action="DataManager.ParseXML"/>
 		<Step Action="EntityRegistry.ParseXML"/>
 		<Step Action="InputHandler.LoadInputs"/>

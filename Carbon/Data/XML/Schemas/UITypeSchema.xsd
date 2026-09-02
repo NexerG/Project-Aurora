@@ -1,0 +1,685 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:types="http://arctisaurora/AuroraUITypes" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:allTypes="http://arctisaurora/AuroraTypes" xmlns:EntityRegistry="http://arctisaurora/AuroraEntityRegistryTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraUITypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
+  <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
+  <xs:import schemaLocation="EntityRegistryTypeSchema.xsd" namespace="http://arctisaurora/AuroraEntityRegistryTypes" />
+  <xs:simpleType name="UI">
+    <xs:union memberTypes="types:SpanChartMode types:GradientKind types:TextStyleType types:DockMode types:GridSizeMode types:Scrollable types:ControlColor types:FillMode types:HorizontalAlignment types:VeticalAlignment types:WindowingModeEnum types:ScalingAxisEnum types:Orientation" />
+  </xs:simpleType>
+  <xs:attributeGroup name="FrameStrip.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+    <xs:attribute name="MaxBars" type="xs:int" />
+    <xs:attribute name="LaneSpacing" type="xs:float" />
+    <xs:attribute name="LabelWidth" type="xs:float" />
+    <xs:attribute name="BarGap" type="xs:float" />
+    <xs:attribute name="LabelFontSize" type="xs:int" />
+    <xs:attribute name="BarColorHex" type="xs:string" />
+    <xs:attribute name="SelectedBarColorHex" type="xs:string" />
+    <xs:attribute name="LabelColorHex" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="FrameStrip" type="types:FrameStrip" />
+  <xs:complexType name="FrameStrip">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:FrameStrip.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="SessionList.Attributes">
+    <xs:attributeGroup ref="types:ScrollableControl.Attributes" />
+    <xs:attribute name="RowHeight" type="xs:int" />
+    <xs:attribute name="RowSpacing" type="xs:float" />
+    <xs:attribute name="RowColorHex" type="xs:string" />
+    <xs:attribute name="RowHoverColorHex" type="xs:string" />
+    <xs:attribute name="RowPressColorHex" type="xs:string" />
+    <xs:attribute name="NameColorHex" type="xs:string" />
+    <xs:attribute name="SelectedColorHex" type="xs:string" />
+    <xs:attribute name="DetailColorHex" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="SessionList" type="types:SessionList" />
+  <xs:complexType name="SessionList">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:SessionList.Attributes" />
+  </xs:complexType>
+  <xs:simpleType name="SpanChartMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Frame" />
+      <xs:enumeration value="Timeline" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="SpanChart.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+    <xs:attribute name="Mode" type="types:SpanChartMode" />
+    <xs:attribute name="RowHeight" type="xs:float" />
+    <xs:attribute name="RowGap" type="xs:float" />
+    <xs:attribute name="LaneSpacing" type="xs:float" />
+    <xs:attribute name="LabelWidth" type="xs:float" />
+    <xs:attribute name="LabelFontSize" type="xs:int" />
+    <xs:attribute name="MaxRects" type="xs:int" />
+    <xs:attribute name="MaxLabels" type="xs:int" />
+    <xs:attribute name="MinSpanWidth" type="xs:float" />
+    <xs:attribute name="LabelMinWidth" type="xs:float" />
+    <xs:attribute name="RulerHeight" type="xs:float" />
+    <xs:attribute name="DefaultWindowFrames" type="xs:int" />
+    <xs:attribute name="FrameColorHex" type="xs:string" />
+    <xs:attribute name="DepthColorsHex" type="xs:string" />
+    <xs:attribute name="SpanLabelColorHex" type="xs:string" />
+    <xs:attribute name="LaneLabelColorHex" type="xs:string" />
+    <xs:attribute name="TickColorHex" type="xs:string" />
+    <xs:attribute name="RulerLabelColorHex" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="SpanChart" type="types:SpanChart" />
+  <xs:complexType name="SpanChart">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:SpanChart.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="ZoneTable.Attributes">
+    <xs:attributeGroup ref="types:ScrollableControl.Attributes" />
+    <xs:attribute name="RowSpacing" type="xs:float" />
+    <xs:attribute name="ZoneFontSize" type="xs:int" />
+    <xs:attribute name="DetailFontSize" type="xs:int" />
+    <xs:attribute name="NameWidth" type="xs:float" />
+    <xs:attribute name="TotalWidth" type="xs:float" />
+    <xs:attribute name="Indent" type="xs:float" />
+    <xs:attribute name="SwatchWidth" type="xs:float" />
+    <xs:attribute name="DepthColorsHex" type="xs:string" />
+    <xs:attribute name="SeparatorColorHex" type="xs:string" />
+    <xs:attribute name="HeaderColorHex" type="xs:string" />
+    <xs:attribute name="ZoneColorHex" type="xs:string" />
+    <xs:attribute name="DetailColorHex" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="ZoneTable" type="types:ZoneTable" />
+  <xs:complexType name="ZoneTable">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:ZoneTable.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="MenuItem.Attributes">
+    <xs:attribute name="Caption" type="xs:string" />
+    <xs:attribute name="Action" type="xs:string" />
+    <xs:attribute name="EnabledWhen" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="MenuItem" type="types:MenuItem" />
+  <xs:complexType name="MenuItem">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:MenuItem.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="ContextMenu.Attributes">
+    <xs:attribute name="Name" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="ContextMenu" type="types:ContextMenu" />
+  <xs:group name="ContextMenuItemDefinition.Children">
+    <xs:choice>
+      <xs:element name="MenuItem" type="types:MenuItem" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="ContextMenu">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:ContextMenuItemDefinition.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:ContextMenu.Attributes" />
+  </xs:complexType>
+  <xs:element name="ContextMenus" type="types:ContextMenus" />
+  <xs:group name="ContextMenuDefinition.Children">
+    <xs:choice>
+      <xs:element name="ContextMenu" type="types:ContextMenu" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="ContextMenus">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:ContextMenuDefinition.Children" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:simpleType name="GradientKind">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Linear" />
+      <xs:enumeration value="Radial" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="Stop.Attributes">
+    <xs:attribute name="Color" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
+    <xs:attribute name="Pos" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="Stop" type="types:Stop" />
+  <xs:complexType name="Stop">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Stop.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="Gradient.Attributes">
+    <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="Kind" type="types:GradientKind" />
+    <xs:attribute name="Angle" type="xs:float" />
+    <xs:attribute name="CenterX" type="xs:float" />
+    <xs:attribute name="CenterY" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="Gradient" type="types:Gradient" />
+  <xs:group name="GradientStopDefinition.Children">
+    <xs:choice>
+      <xs:element name="Stop" type="types:Stop" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="Gradient">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:GradientStopDefinition.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:Gradient.Attributes" />
+  </xs:complexType>
+  <xs:element name="Gradients" type="types:Gradients" />
+  <xs:group name="GradientDefinition.Children">
+    <xs:choice>
+      <xs:element name="Gradient" type="types:Gradient" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="Gradients">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:GradientDefinition.Children" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:attributeGroup name="Icon.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+    <xs:attribute name="Set" type="xs:string" />
+    <xs:attribute name="Icon" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="Icon" type="types:Icon" />
+  <xs:complexType name="Icon">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Icon.Attributes" />
+  </xs:complexType>
+  <xs:element name="Panel" type="types:Panel" />
+  <xs:group name="IXMLChild_UI.Children">
+    <xs:choice>
+      <xs:element name="FrameStrip" type="types:FrameStrip" />
+      <xs:element name="SessionList" type="types:SessionList" />
+      <xs:element name="SpanChart" type="types:SpanChart" />
+      <xs:element name="ZoneTable" type="types:ZoneTable" />
+      <xs:element name="Icon" type="types:Icon" />
+      <xs:element name="Panel" type="types:Panel" />
+      <xs:element name="TitleBar" type="types:TitleBar" />
+      <xs:element name="Window" type="types:Window" />
+      <xs:element name="WindowFrame" type="types:WindowFrame" />
+      <xs:element name="Label" type="types:Label" />
+      <xs:element name="TextBlock" type="types:TextBlock" />
+      <xs:element name="TextBox" type="types:TextBox" />
+      <xs:element name="TextInput" type="types:TextInput" />
+      <xs:element name="Block" type="types:Block" />
+      <xs:element name="DocumentEditor" type="types:DocumentEditor" />
+      <xs:element name="DocumentToolbar" type="types:DocumentToolbar" />
+      <xs:element name="Run" type="types:Run" />
+      <xs:element name="Button" type="types:Button" />
+      <xs:element name="CheckBox" type="types:CheckBox" />
+      <xs:element name="Dropdown" type="types:Dropdown" />
+      <xs:element name="KeyCapture" type="types:KeyCapture" />
+      <xs:element name="MenuButton" type="types:MenuButton" />
+      <xs:element name="Splitter" type="types:Splitter" />
+      <xs:element name="Dock" type="types:Dock" />
+      <xs:element name="EditableTabs" type="types:EditableTabs" />
+      <xs:element name="GridList" type="types:GridList" />
+      <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+      <xs:element name="SplitView" type="types:SplitView" />
+      <xs:element name="StackPanel" type="types:StackPanel" />
+      <xs:element name="TabItem" type="types:TabItem" />
+      <xs:element name="TabView" type="types:TabView" />
+      <xs:element name="Workspace" type="types:Workspace" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="Panel">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="1" ref="types:IXMLChild_UI.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+  </xs:complexType>
+  <xs:element name="TitleBar" type="types:TitleBar" />
+  <xs:complexType name="TitleBar">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:IXMLChild_UI.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:StackPanel.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="Window.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+    <xs:attribute name="WindowingMode" type="types:WindowingModeEnum" />
+    <xs:attribute name="Autoscaling" type="xs:boolean" />
+    <xs:attribute name="ScalingAxis" type="types:ScalingAxisEnum" />
+  </xs:attributeGroup>
+  <xs:element name="Window" type="types:Window" />
+  <xs:complexType name="Window">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="1" ref="types:IXMLChild_UI.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:Window.Attributes" />
+  </xs:complexType>
+  <xs:element name="WindowFrame" type="types:WindowFrame" />
+  <xs:complexType name="WindowFrame">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="1" ref="types:IXMLChild_UI.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="Label.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+    <xs:attribute name="Text" type="xs:string" />
+    <xs:attribute name="FontSize" type="xs:int" />
+    <xs:attribute name="StylingType" type="types:TextStyleType" />
+    <xs:attribute name="FontName" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="Label" type="types:Label" />
+  <xs:complexType name="Label">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Label.Attributes" />
+  </xs:complexType>
+  <xs:element name="TextBlock" type="types:TextBlock" />
+  <xs:complexType name="TextBlock">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:IXMLChild_UI.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="TextBox.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+    <xs:attribute name="Text" type="xs:string" />
+    <xs:attribute name="FontSize" type="xs:int" />
+    <xs:attribute name="TextColorHex" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="TextBox" type="types:TextBox" />
+  <xs:complexType name="TextBox">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:TextBox.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="TextInput.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+    <xs:attribute name="Bold" type="xs:boolean" />
+    <xs:attribute name="Italic" type="xs:boolean" />
+    <xs:attribute name="Strikethrough" type="xs:boolean" />
+    <xs:attribute name="Text" type="xs:string" />
+    <xs:attribute name="FontSize" type="xs:int" />
+    <xs:attribute name="StylingType" type="types:TextStyleType" />
+    <xs:attribute name="FontName" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="TextInput" type="types:TextInput" />
+  <xs:complexType name="TextInput">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:TextInput.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="Block.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+    <xs:attribute name="StylingType" type="types:TextStyleType" />
+  </xs:attributeGroup>
+  <xs:element name="Block" type="types:Block" />
+  <xs:group name="TextInputControl.Children">
+    <xs:choice>
+      <xs:element name="TextInput" type="types:TextInput" />
+      <xs:element name="Run" type="types:Run" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="Block">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:TextInputControl.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:Block.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="DocumentEditor.Attributes">
+    <xs:attributeGroup ref="types:ScrollableControl.Attributes" />
+    <xs:attribute name="CaretColorHex" type="xs:string" />
+    <xs:attribute name="SelectionColorHex" type="xs:string" />
+    <xs:attribute name="Source" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="DocumentEditor" type="types:DocumentEditor" />
+  <xs:complexType name="DocumentEditor">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:DocumentEditor.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="DocumentToolbar.Attributes">
+    <xs:attributeGroup ref="types:StackPanel.Attributes" />
+    <xs:attribute name="HoverColorHex" type="xs:string" />
+    <xs:attribute name="PressColorHex" type="xs:string" />
+    <xs:attribute name="IdleInkColorHex" type="xs:string" />
+    <xs:attribute name="ActiveInkColorHex" type="xs:string" />
+    <xs:attribute name="SeparatorColorHex" type="xs:string" />
+    <xs:attribute name="FieldColorHex" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="DocumentToolbar" type="types:DocumentToolbar" />
+  <xs:complexType name="DocumentToolbar">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:DocumentToolbar.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="Run.Attributes">
+    <xs:attributeGroup ref="types:TextInput.Attributes" />
+    <xs:attribute name="FontSizeAuthored" type="xs:boolean" />
+  </xs:attributeGroup>
+  <xs:element name="Run" type="types:Run" />
+  <xs:complexType name="Run">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Run.Attributes" />
+  </xs:complexType>
+  <xs:simpleType name="TextStyleType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Inherit" />
+      <xs:enumeration value="Text" />
+      <xs:enumeration value="Heading1" />
+      <xs:enumeration value="Heading2" />
+      <xs:enumeration value="Heading3" />
+      <xs:enumeration value="Heading4" />
+      <xs:enumeration value="Heading5" />
+      <xs:enumeration value="Heading6" />
+      <xs:enumeration value="Comment" />
+      <xs:enumeration value="Code" />
+      <xs:enumeration value="Quote" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="TextStyle.Attributes">
+    <xs:attribute name="Type" type="types:TextStyleType" />
+    <xs:attribute name="FontSize" type="xs:int" />
+  </xs:attributeGroup>
+  <xs:element name="TextStyle" type="types:TextStyle" />
+  <xs:complexType name="TextStyle">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:TextStyle.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="DocumentLayout.Attributes">
+    <xs:attribute name="LineHeight" type="xs:float" />
+    <xs:attribute name="BlockSpacing" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="DocumentLayout" type="types:DocumentLayout" />
+  <xs:complexType name="DocumentLayout">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="TextStyle" type="types:TextStyle">
+        <xs:annotation>
+          <xs:documentation>Per-type text styles; empty inherits the editor's.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attributeGroup ref="types:DocumentLayout.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="Document.Attributes">
+    <xs:attribute name="Name" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="Document" type="types:Document" />
+  <xs:group name="Block.Children">
+    <xs:choice>
+      <xs:element name="Block" type="types:Block" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="Document">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="1" name="DocumentLayout" type="types:DocumentLayout">
+        <xs:annotation>
+          <xs:documentation>Layout parameters for this note.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Block.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:Document.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="Button.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+    <xs:attribute name="HoverColorHex" type="xs:string" />
+    <xs:attribute name="PressColorHex" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="Button" type="types:Button" />
+  <xs:complexType name="Button">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="1" ref="types:IXMLChild_UI.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:Button.Attributes" />
+  </xs:complexType>
+  <xs:element name="CheckBox" type="types:CheckBox" />
+  <xs:complexType name="CheckBox">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Button.Attributes" />
+  </xs:complexType>
+  <xs:element name="Dropdown" type="types:Dropdown" />
+  <xs:complexType name="Dropdown">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Button.Attributes" />
+  </xs:complexType>
+  <xs:element name="KeyCapture" type="types:KeyCapture" />
+  <xs:complexType name="KeyCapture">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Button.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="MenuButton.Attributes">
+    <xs:attributeGroup ref="types:Button.Attributes" />
+    <xs:attribute name="Caption" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="MenuButton" type="types:MenuButton" />
+  <xs:complexType name="MenuButton">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:MenuButton.Attributes" />
+  </xs:complexType>
+  <xs:element name="Splitter" type="types:Splitter" />
+  <xs:complexType name="Splitter">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Button.Attributes" />
+  </xs:complexType>
+  <xs:simpleType name="DockMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="fill" />
+      <xs:enumeration value="left" />
+      <xs:enumeration value="right" />
+      <xs:enumeration value="top" />
+      <xs:enumeration value="bottom" />
+      <xs:enumeration value="unknown" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="Dock.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+    <xs:attribute name="LastChildFill" type="xs:boolean" />
+  </xs:attributeGroup>
+  <xs:element name="Dock" type="types:Dock" />
+  <xs:complexType name="Dock">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:IXMLChild_UI.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:Dock.Attributes" />
+  </xs:complexType>
+  <xs:element name="EditableTabs" type="types:EditableTabs" />
+  <xs:complexType name="EditableTabs">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:IXMLChild_UI.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:TabView.Attributes" />
+  </xs:complexType>
+  <xs:simpleType name="GridSizeMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Fixed" />
+      <xs:enumeration value="Auto" />
+      <xs:enumeration value="Star" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="RowDefinition.Attributes">
+    <xs:attribute name="Height" type="xs:float" />
+    <xs:attribute name="SizeMode" type="types:GridSizeMode" />
+    <xs:attribute name="GapAfter" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="RowDefinition" type="types:RowDefinition" />
+  <xs:complexType name="RowDefinition">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:RowDefinition.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="ColumnDefinition.Attributes">
+    <xs:attribute name="Width" type="xs:float" />
+    <xs:attribute name="SizeMode" type="types:GridSizeMode" />
+    <xs:attribute name="GapAfter" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="ColumnDefinition" type="types:ColumnDefinition" />
+  <xs:complexType name="ColumnDefinition">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:ColumnDefinition.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="GridCell.Attributes">
+    <xs:attribute name="Row" type="xs:int" />
+    <xs:attribute name="Column" type="xs:int" />
+    <xs:attribute name="RowSpan" type="xs:int" />
+    <xs:attribute name="ColumnSpan" type="xs:int" />
+  </xs:attributeGroup>
+  <xs:element name="GridCell" type="types:GridCell" />
+  <xs:complexType name="GridCell">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:GridCell.Attributes" />
+  </xs:complexType>
+  <xs:element name="GridList" type="types:GridList" />
+  <xs:complexType name="GridList">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="RowDefinition" type="types:RowDefinition">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="ColumnDefinition" type="types:ColumnDefinition">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:IXMLChild_UI.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+  </xs:complexType>
+  <xs:simpleType name="Scrollable">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Vertical" />
+      <xs:enumeration value="Horizontal" />
+      <xs:enumeration value="Both" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="ScrollableControl.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+    <xs:attribute name="ThumbColorHex" type="xs:string" />
+    <xs:attribute name="ThumbHoverColorHex" type="xs:string" />
+    <xs:attribute name="ThumbPressColorHex" type="xs:string" />
+    <xs:attribute name="ScrollDirection" type="types:Scrollable" />
+    <xs:attribute name="ScrollSensitivity" type="xs:float" />
+    <xs:attribute name="Overscroll" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="ScrollableControl" type="types:ScrollableControl" />
+  <xs:complexType name="ScrollableControl">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="1" ref="types:IXMLChild_UI.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:ScrollableControl.Attributes" />
+  </xs:complexType>
+  <xs:element name="SplitView" type="types:SplitView" />
+  <xs:complexType name="SplitView">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:IXMLChild_UI.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:StackPanel.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="StackPanel.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+    <xs:attribute name="Orientation" type="types:Orientation" />
+    <xs:attribute name="Spacing" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="StackPanel" type="types:StackPanel" />
+  <xs:complexType name="StackPanel">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:IXMLChild_UI.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:StackPanel.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="TabItem.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+    <xs:attribute name="Header" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="TabItem" type="types:TabItem" />
+  <xs:complexType name="TabItem">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="1" ref="types:IXMLChild_UI.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:TabItem.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="TabView.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+    <xs:attribute name="TabHeight" type="xs:float" />
+    <xs:attribute name="TabWidth" type="xs:float" />
+    <xs:attribute name="TabColorHex" type="xs:string" />
+    <xs:attribute name="ActiveTabColorHex" type="xs:string" />
+    <xs:attribute name="TabHoverColorHex" type="xs:string" />
+    <xs:attribute name="TabInkColorHex" type="xs:string" />
+    <xs:attribute name="GripColorHex" type="xs:string" />
+    <xs:attribute name="GripHoverColorHex" type="xs:string" />
+    <xs:attribute name="GripPressColorHex" type="xs:string" />
+    <xs:attribute name="TearOffDocument" type="xs:string" />
+    <xs:attribute name="TabContextMenu" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="TabView" type="types:TabView" />
+  <xs:complexType name="TabView">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:IXMLChild_UI.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:TabView.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="Workspace.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+    <xs:attribute name="Default" type="xs:string" />
+    <xs:attribute name="Pane" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="Workspace" type="types:Workspace" />
+  <xs:complexType name="Workspace">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="1" ref="types:IXMLChild_UI.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:Workspace.Attributes" />
+  </xs:complexType>
+  <xs:simpleType name="ControlColor">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="red" />
+      <xs:enumeration value="green" />
+      <xs:enumeration value="blue" />
+      <xs:enumeration value="white" />
+      <xs:enumeration value="black" />
+      <xs:enumeration value="yellow" />
+      <xs:enumeration value="cyan" />
+      <xs:enumeration value="magenta" />
+      <xs:enumeration value="gray" />
+      <xs:enumeration value="orange" />
+      <xs:enumeration value="purple" />
+      <xs:enumeration value="brown" />
+      <xs:enumeration value="pink" />
+      <xs:enumeration value="lime" />
+      <xs:enumeration value="navy" />
+      <xs:enumeration value="teal" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="FillMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Uniform" />
+      <xs:enumeration value="Stretch" />
+      <xs:enumeration value="Fill" />
+      <xs:enumeration value="None" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="HorizontalAlignment">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Center" />
+      <xs:enumeration value="Left" />
+      <xs:enumeration value="Right" />
+      <xs:enumeration value="Stretch" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="VeticalAlignment">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Top" />
+      <xs:enumeration value="Center" />
+      <xs:enumeration value="Bottom" />
+      <xs:enumeration value="Stretch" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="WindowingModeEnum">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="KeepLocal" />
+      <xs:enumeration value="WindowSize" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="ScalingAxisEnum">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Vertical" />
+      <xs:enumeration value="Horizontal" />
+      <xs:enumeration value="HorizontalExclusive" />
+      <xs:enumeration value="VerticalExclusive" />
+      <xs:enumeration value="Both" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="Orientation">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Horizontal" />
+      <xs:enumeration value="Vertical" />
+    </xs:restriction>
+  </xs:simpleType>
+</xs:schema>

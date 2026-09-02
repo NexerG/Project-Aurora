@@ -30,6 +30,7 @@
           <xs:enumeration value="Text.CaretLineEnd" />
           <xs:enumeration value="Text.CaretPageUp" />
           <xs:enumeration value="Text.CaretPageDown" />
+          <xs:enumeration value="Profiling.Capture" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>
@@ -72,6 +73,7 @@
           <xs:enumeration value="Settings.LoadAll" />
           <xs:enumeration value="AssetImporter.RunImports" />
           <xs:enumeration value="Logging.Configure" />
+          <xs:enumeration value="Profiling.Configure" />
           <xs:enumeration value="DataManager.ParseXML" />
           <xs:enumeration value="Engine.SystemSetup" />
           <xs:enumeration value="Engine.InitWindowing" />
@@ -101,6 +103,7 @@
           <xs:enumeration value="Notes.SaveEdited" />
           <xs:enumeration value="Settings.SaveAll" />
           <xs:enumeration value="Logging.Flush" />
+          <xs:enumeration value="Profiling.Flush" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>

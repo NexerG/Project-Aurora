@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window xmlns="http://arctisaurora/AuroraUITypes"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://arctisaurora/UI ../../Schemas/UITypeSchema.xsd"
+        Width="1400" Height="900" WindowingMode="WindowSize" Autoscaling="false" ScalingAxis="Vertical" ColorHex="#FBFAF8">
+
+	<WindowFrame ColorHex="#FBFAF8">
+	<StackPanel Orientation="Vertical" ColorHex="#FBFAF8">
+
+		<TitleBar Orientation="Horizontal" Height="32" ColorHex="#EBEAE5">
+			<Label Text="Carbon" FontSize="14" Width="80" Height="32" ColorHex="#5F5D56"/>
+			<Panel WidthStar="1" Height="32" ColorHex="#EBEAE5" BubbleClick="true"/>
+			<Button Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD" onRelease="Window.Minimize">
+				<Icon Set="default" Icon="minimize" Width="14" Height="14" ColorHex="#5F5D56"/>
+			</Button>
+			<Button Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD" onRelease="Window.MaximizeRestore">
+				<Icon Set="default" Icon="maximize" Width="18" Height="18" ColorHex="#5F5D56"/>
+			</Button>
+			<Button Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#C42B1E" PressColorHex="#A82318" onRelease="Window.Close">
+				<Icon Set="default" Icon="close" Width="14" Height="14" ColorHex="#5F5D56"/>
+			</Button>
+		</TitleBar>
+
+		<StackPanel Orientation="Horizontal" HeightStar="1" ColorHex="#FBFAF8">
+
+			<StackPanel Orientation="Vertical" Width="340" MinWidth="220" ColorHex="#F2F1ED" Padding="8" Spacing="8">
+				<Button Height="28" HorizontalAlignment="Stretch" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
+						CornerRadius="4" onRelease="Carbon.LoadCapture">
+					<Label Text="Load XML" FontSize="13" ColorHex="#5F5D56"/>
+				</Button>
+				<SessionList Name="Sessions" Height="150" ColorHex="#F2F1ED"
+							 RowColorHex="#E3E1D9" RowHoverColorHex="#DCDAD3" RowPressColorHex="#D0CEC6"
+							 NameColorHex="#23221E" SelectedColorHex="#3A3833" DetailColorHex="#918F87"
+							 ThumbColorHex="#D7D5CD" ThumbHoverColorHex="#C9C6BC" ThumbPressColorHex="#BAB7AC"/>
+				<ZoneTable Name="Zones" HeightStar="1" ColorHex="#F2F1ED"
+						   Indent="14" SwatchWidth="3" SeparatorColorHex="#DCDAD3"
+						   DepthColorsHex="#B8A48C,#C4A882,#A8B49C,#B0A8BC,#C0B098"
+						   HeaderColorHex="#3A3833" ZoneColorHex="#23221E" DetailColorHex="#918F87"
+						   ThumbColorHex="#D7D5CD" ThumbHoverColorHex="#C9C6BC" ThumbPressColorHex="#BAB7AC"/>
+			</StackPanel>
+
+			<Splitter Width="5" ColorHex="#E6E4DE" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"/>
+
+			<StackPanel Orientation="Vertical" WidthStar="1" ColorHex="#FBFAF8" Padding="8" Spacing="8">
+				<FrameStrip Name="Strip" Height="140" ColorHex="#F5F4F0" Padding="8"
+							BarColorHex="#C9C6BC" SelectedBarColorHex="#C4622B" LabelColorHex="#918F87"/>
+				<SpanChart Name="Flame" Mode="Frame" HeightStar="1" ColorHex="#F5F4F0" Padding="8"
+						   RulerHeight="18" TickColorHex="#C9C6BC" RulerLabelColorHex="#918F87"
+						   FrameColorHex="#E3E1D9" SpanLabelColorHex="#2C2B26" LaneLabelColorHex="#918F87"/>
+				<SpanChart Name="Timeline" Mode="Timeline" HeightStar="1" ColorHex="#F5F4F0" Padding="8"
+						   MaxLabels="80" RulerHeight="18" TickColorHex="#C9C6BC" RulerLabelColorHex="#918F87"
+						   FrameColorHex="#E3E1D9" SpanLabelColorHex="#2C2B26" LaneLabelColorHex="#918F87"/>
+			</StackPanel>
+
+		</StackPanel>
+
+	</StackPanel>
+	</WindowFrame>
+</Window>

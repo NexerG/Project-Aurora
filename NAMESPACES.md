@@ -12,6 +12,8 @@ ArctisAurora.Core.Data.Commands -> AuroraEngine/Core/Data/Commands/CommandApplie
 ArctisAurora.Core.Data.Commands -> AuroraEngine/Core/Data/Commands/CommandArena.cs
 ArctisAurora.Core.Data.Commands -> AuroraEngine/Core/Data/Commands/CommandLane.cs
 ArctisAurora.Core.Data.Commands -> AuroraEngine/Core/Data/Commands/SystemCommand.cs
+ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/FrameCaptureReader.cs
+ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/FrameSpool.cs
 ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/LogChannel.cs
 ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/LoggingSettings.cs
 ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/LogHandlers.cs
@@ -19,6 +21,8 @@ ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/LogLane.cs
 ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/LogLevel.cs
 ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/LogSpool.cs
 ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/LogWriter.cs
+ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/Profiling.cs
+ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/ProfilingSettings.cs
 ArctisAurora.Core.Diagnostics.Sinks -> AuroraEngine/Core/Diagnostics/Sinks/ConsoleSink.cs
 ArctisAurora.Core.Diagnostics.Sinks -> AuroraEngine/Core/Diagnostics/Sinks/FileSink.cs
 ArctisAurora.Core.Diagnostics.Sinks -> AuroraEngine/Core/Diagnostics/Sinks/FlightRecorder.cs
@@ -187,6 +191,14 @@ AuroraEditor -> AuroraEditor/Editor.cs
 AuroraEditor.EditorProgram.Components -> AuroraEditor/EditorProgram/Components/AsmTestComp.cs
 AuroraEditor.EditorProgram.CustomControls -> AuroraEditor/EditorProgram/CustomControls/CustomTestControl.cs
 AuroraEditor.EditorProgram.UIFunctions -> AuroraEditor/EditorProgram/UIFunctions/Decorations.cs
+Carbon -> Carbon/Carbon.cs
+Carbon -> Carbon/CarbonSettings.cs
+Carbon.Editor -> Carbon/Editor/CarbonActions.cs
+Carbon.Editor -> Carbon/Editor/Decorations.cs
+Carbon.Editor.CustomControls -> Carbon/Editor/CustomControls/FrameStripControl.cs
+Carbon.Editor.CustomControls -> Carbon/Editor/CustomControls/SessionListControl.cs
+Carbon.Editor.CustomControls -> Carbon/Editor/CustomControls/SpanChartControl.cs
+Carbon.Editor.CustomControls -> Carbon/Editor/CustomControls/ZoneTableControl.cs
 Thorium -> Thorium/Thorium.cs
 Thorium -> Thorium/ThoriumSettings.cs
 Thorium.Editor -> Thorium/Editor/Decorations.cs

@@ -3,13 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.2.11415.280
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ArctisAurora", "AuroraEngine.csproj", "{54804112-7A00-4445-B703-BF3954B1BF82}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AuroraEngine", "AuroraEngine.csproj", "{54804112-7A00-4445-B703-BF3954B1BF82}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AuroraEditor", "..\AuroraEditor\AuroraEditor.csproj", "{99BFD4C0-1923-4945-94E2-EB110921F264}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Thorium", "..\Thorium\Thorium.csproj", "{DB5273F4-750C-46DA-B7CD-0BE1A6DF0885}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "_Build", "..\_Build\_Build.csproj", "{E13AEB0C-8B30-47A2-AD2E-D6EA6499A06A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Carbon", "..\Carbon\Carbon.csproj", "{C485033A-B6AD-4490-8C67-497DD7D80F16}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -69,6 +71,18 @@ Global
 		{E13AEB0C-8B30-47A2-AD2E-D6EA6499A06A}.Release|x64.Build.0 = Release|Any CPU
 		{E13AEB0C-8B30-47A2-AD2E-D6EA6499A06A}.Release|x86.ActiveCfg = Release|Any CPU
 		{E13AEB0C-8B30-47A2-AD2E-D6EA6499A06A}.Release|x86.Build.0 = Release|Any CPU
+		{C485033A-B6AD-4490-8C67-497DD7D80F16}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C485033A-B6AD-4490-8C67-497DD7D80F16}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C485033A-B6AD-4490-8C67-497DD7D80F16}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C485033A-B6AD-4490-8C67-497DD7D80F16}.Debug|x64.Build.0 = Debug|Any CPU
+		{C485033A-B6AD-4490-8C67-497DD7D80F16}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C485033A-B6AD-4490-8C67-497DD7D80F16}.Debug|x86.Build.0 = Debug|Any CPU
+		{C485033A-B6AD-4490-8C67-497DD7D80F16}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C485033A-B6AD-4490-8C67-497DD7D80F16}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C485033A-B6AD-4490-8C67-497DD7D80F16}.Release|x64.ActiveCfg = Release|Any CPU
+		{C485033A-B6AD-4490-8C67-497DD7D80F16}.Release|x64.Build.0 = Release|Any CPU
+		{C485033A-B6AD-4490-8C67-497DD7D80F16}.Release|x86.ActiveCfg = Release|Any CPU
+		{C485033A-B6AD-4490-8C67-497DD7D80F16}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -232,6 +232,7 @@ Abstract names below map to real top-level folders. Source of truth for code loc
 | `Engine` | `AuroraEngine` | `ArctisAurora.*` (`Core`, `EngineWork`) | Core game engine — lives in `AuroraEngine/` under `Core/`; no separate Engine project. Folder renamed from `ParticleSimulator` (2026-07); assembly/root namespace still `ArctisAurora`. | Active |
 | `Editor` | `AuroraEditor` | `AuroraEditor.*` | Visual editor; consumer of the Engine | Early stage |
 | `TextEditor` | `Thorium` | `Thorium`, `Thorium.Editor.*` | Obsidian/Notion-style note app; host that boots the Engine. Folder/namespaces renamed from `Periodic` (2026-08) | Planning |
+| `Viewer` | `Carbon` | `Carbon`, `Carbon.Editor.*` | Profiler frame-capture viewer; host that boots the Engine. Reads `*.frames.xml` written by `FrameSpool` | Active |
 | — | `AuroraTesting` | — | Test project | — |
 | — | `_Build` | `_Build` | Tooling; `GenerateNamespaces.cmd` regenerates `NAMESPACES.md` | — |
 
@@ -425,9 +426,12 @@ The full Vulkan pipeline is working and rendering UI:
   See `ClaudeMemory/Decisions/mapped-streaming-buffers.md`
 - Module command buffers are recorded **only when dirty**, so anything that must change per frame has
   to change through memory a stable descriptor already points at — not through a re-record
-- Shaders live in **three physical copies** (`AuroraEngine/`, `Thorium/`, `AuroraEditor/Shaders/`).
-  Edit the `AuroraEngine` copy, compile with `glslc --target-env=vulkan1.3`, copy the `.spv` to all
-  three — the UI `.spv` are SPIR-V 1.6 and must stay byte-identical across projects
+- Shaders live in **four physical copies** (`AuroraEngine/`, `Thorium/`, `AuroraEditor/Shaders/`,
+  `Carbon/Shaders/`), because they are loaded by a `"../../../Shaders/…"` path relative to the
+  running app's own folder. Edit the `AuroraEngine` copy, compile with
+  `glslc --target-env=vulkan1.3`, copy the `.spv` to all four — the UI `.spv` are SPIR-V 1.6 and must
+  stay byte-identical across projects. `Carbon/` carries only the UI path's four
+  (`UIRasterizer/UI.*`, `Modules/Compositor/compositor.*`)
 - Do NOT redesign the Vulkan pipeline; focus help on the scene/widget graph layer above it
 
 #### Asset Registry — Key Facts

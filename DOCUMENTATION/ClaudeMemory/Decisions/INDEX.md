@@ -100,6 +100,8 @@ Standing constraints (ECS storage, Vulkan internals, physics, XSD-not-JSON) are 
 | [[shutdown-sequence]] | shutdown is the bootstrap sequence run backwards, in two phases; only `Request` may refuse | `Shutdown`, `Bootstrapper`, `NoteActions` |
 | [[entity-lifecycle-queues]] | lifecycle drains through queues popped between frames, not `foreach` over live lists | `Engine.Interpolate`, `EntityRegistry` |
 | [[engine-logging]] | per-thread SPSC lanes drained by one background thread; a log call is a memory write | `LogChannel`, `LogLane`, `Diagnostics.Sinks.*` |
+| [[engine-profiling]] | zones time and increments count, both compiled out by flag; per-thread tables, no shared state; a capture streams every span of every frame to XML off-thread | `Profiling`, `FrameSpool`, `ThreadedSystem.Loop` |
+| [[carbon-frame-viewer]] | the frame reader sits beside the writer; Carbon is a fourth app drawing it, and one control is both the flame chart and the aligned timeline | `FrameCaptureReader`, `SpanChartControl`, `FrameStripControl` |
 | [[winforms-to-console]] | the engine assembly is a plain console app; WinForms is off | `AuroraEngine.csproj`, `Program`, `Engine` |
 
 ## Rendering and Vulkan

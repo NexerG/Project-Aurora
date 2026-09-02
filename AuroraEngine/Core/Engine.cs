@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Data;
+using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Threading;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing.Serialization;
@@ -272,27 +273,46 @@ namespace ArctisAurora.EngineWork
         // registries, input handler and UI state that Engine owns.
         internal void MainTick()
         {
+            Profiling.Zone.Start("MainTick");
+
+            Profiling.Zone.Start("PollEvents");
             AGlfwWindow._glfw.PollEvents();
+            Profiling.Zone.End("PollEvents");
+
             ReapClosedWindows();
             DrainPosted();
             UICollisionHandling.ApplyPendingFocus();
-            InputHandler.instance.ActivateKeybinds();
 
+            Profiling.Zone.Start("ActivateKeybinds");
+            InputHandler.instance.ActivateKeybinds();
+            Profiling.Zone.End("ActivateKeybinds");
+
+            Profiling.Zone.Start("HandleUI");
             foreach (RenderWindow window in windows.Values)
+            {
+                Profiling.Zone.Increment("Window");
                 HandleUI(window);
+            }
             DragGhost.Follow();
             ContextMenus.Tick();
+            Profiling.Zone.End("HandleUI");
 
             // here should go entity updates &/or interpolation
+            Profiling.Zone.Start("Interpolate");
             Interpolate();
+            Profiling.Zone.End("Interpolate");
 
             // Drain queued destroys -> compact -> resequence across every data pool. This still
             // MOVES pool memory, and the render thread is no longer parked while it runs — the
             // address-stable storage rework is what makes this safe.
+            Profiling.Zone.Start("FrameEdge");
             DataManager.FrameEdge();
+            Profiling.Zone.End("FrameEdge");
 
             // Dense indices have settled, so each window module can be told the range it draws.
             UILayout.RefreshWindowRanges();
+
+            Profiling.Zone.End("MainTick");
         }
 
         private void HandleUI(RenderWindow window)

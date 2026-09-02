@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
@@ -22,6 +23,8 @@ namespace ArctisAurora.Core.Threading
         // that uses them. Main only ever makes and unmakes the OS window and flags this side.
         protected override void Tick()
         {
+            Profiling.Zone.Start("RenderTick");
+
             foreach (RenderWindow window in Engine.windows.Values)
             {
                 if (window.closeRequested)
@@ -46,8 +49,12 @@ namespace ArctisAurora.Core.Threading
                     continue;
                 }
 
+                Profiling.Zone.Start("Draw");
                 Engine.renderer.Draw(window);
+                Profiling.Zone.End("Draw");
             }
+
+            Profiling.Zone.End("RenderTick");
         }
     }
 }

@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows10.0.22621.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="Data\UIMasks\defaultMask.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Data\UIMasks\invisibleMask.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AuroraEngine\AuroraEngine.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Data\XML\Schemas\actionSchema.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Update="Data\XML\Schemas\AllTypesSchema.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Update="Data\XML\Schemas\InputTypeSchema.xsd">
+      <SubType>Designer</SubType>
+    </None>
+    <None Update="Data\XML\Schemas\UITypeSchema.xsd">
+      <SubType>Designer</SubType>
+    </None>
+  </ItemGroup>
+
+</Project>

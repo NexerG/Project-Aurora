@@ -158,6 +158,7 @@ namespace ArctisAurora.Core.Threading
                 while (_running)
                 {
                     long tickStart = Stopwatch.GetTimestamp();
+                    Profiling.Frame.Begin();
 
                     Volatile.Read(ref _epoch);
 
@@ -167,6 +168,9 @@ namespace ArctisAurora.Core.Threading
 
                     Volatile.Write(ref _epoch, _epoch + 1);
                     Volatile.Write(ref _lastTickMs, ElapsedMs(tickStart));
+
+                    Profiling.Frame.End();
+                    Profiling.Report();
 
                     Pace(tickStart);
                 }

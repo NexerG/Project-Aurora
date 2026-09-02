@@ -114,4 +114,8 @@
 		<Press />
 	</Keybind>
 
+	<Keybind Trigger="F9" Action="Profiling.Capture">
+		<Press />
+	</Keybind>
+
 </KeybindMap>

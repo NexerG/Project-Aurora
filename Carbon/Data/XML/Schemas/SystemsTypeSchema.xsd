@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:types="http://arctisaurora/AuroraSystemsTypes" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:allTypes="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraSystemsTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
+  <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
+  <xs:element name="Main" type="types:Main" />
+  <xs:complexType name="Main">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="Physics" type="types:Physics" />
+  <xs:complexType name="Physics">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="Render" type="types:Render" />
+  <xs:complexType name="Render">
+    <xs:sequence />
+  </xs:complexType>
+</xs:schema>

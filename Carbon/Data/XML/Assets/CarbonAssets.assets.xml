@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AssetManifest xmlns="http://arctisaurora/AuroraAssetRegistryTypes"
+			   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			   xsi:schemaLocation="http://arctisaurora/AuroraAssetRegistryTypes ../Schemas/AssetRegistryTypeSchema.xsd">
+
+	<Asset Type="UIDocumentAsset" Name="main" Source="XML/Documents/UI/UI.ui.xml"/>
+
+</AssetManifest>
