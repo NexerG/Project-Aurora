@@ -244,6 +244,7 @@
     <xs:restriction base="xs:string">
       <xs:enumeration value="Off" />
       <xs:enumeration value="Continuous" />
+      <xs:enumeration value="Boot" />
     </xs:restriction>
   </xs:simpleType>
   <xs:attributeGroup name="ProfilingReport.Attributes">

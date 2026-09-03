@@ -36,6 +36,9 @@ namespace ArctisAurora.Core.Diagnostics
         private static int _session;
         private static volatile int _sessionFrames;
 
+        // --profile on the command line, which beats ProfilingCapture.Mode
+        private static bool _bootArmed;
+
         // one zone over the current report period, plus the span it has open
         private struct ZoneData
         {
@@ -192,9 +195,9 @@ namespace ArctisAurora.Core.Diagnostics
 
         public static class Frame
         {
-            // Opens the recording window for one tick of the calling thread.
+            // Opens the recording window for one tick of the calling thread, on a lane named for its owner.
             [Conditional("DEBUG"), Conditional("PROFILE")]
-            public static void Begin()
+            public static void Begin(string? owner = null)
             {
                 if (!enabled) return;
 
@@ -217,9 +220,17 @@ namespace ArctisAurora.Core.Diagnostics
                 tables.capturing = false;
                 if (session == 0 || tables.remaining == 0) return;
 
+                // a thread that gains a system identity moves to a lane of its own name
+                string name = system?.Name ?? owner ?? $"t{Environment.CurrentManagedThreadId}";
+                if (tables.lane != null && tables.lane.Thread != name)
+                {
+                    Hand(tables, true);
+                    tables.lane = null;
+                }
+
                 if (tables.batch == null)
                 {
-                    tables.lane ??= new CaptureLane(system?.Name ?? $"t{Environment.CurrentManagedThreadId}", FrameSpool.framesPerBatch);
+                    tables.lane ??= new CaptureLane(name, FrameSpool.framesPerBatch);
 
                     tables.batch = tables.lane.Take();
                     if (tables.batch == null)
@@ -299,7 +310,36 @@ namespace ArctisAurora.Core.Diagnostics
         [A_XSDActionDependency("Profiling.Capture", "Input", "Records the next BurstFrames frames of every thread to a frame file")]
         public static void Capture() => Capture(FrameSpool.burstFrames);
 
-        [A_XSDActionDependency("Profiling.Configure", "Bootstrap", "Applies ProfilingSettings and opens a continuous capture if one is asked for")]
+        // Opens a boot capture when --profile or --profile=N is on the command line. Runs before the
+        // bootstrap phase, which is the only way the phase itself lands in one.
+        public static bool ArmBoot()
+        {
+            string[] args = Environment.GetCommandLineArgs();
+            for (int i = 1; i < args.Length; i++)
+            {
+                string arg = args[i];
+                bool valued = arg.StartsWith("--profile=", StringComparison.Ordinal);
+                if (!valued && arg != "--profile") continue;
+
+                int frames = FrameSpool.burstFrames;
+                if (valued && (!int.TryParse(arg.AsSpan("--profile=".Length), out frames) || frames <= 0))
+                {
+                    Log.Warn($"{arg} — not a frame count, capturing {FrameSpool.burstFrames} instead");
+                    frames = FrameSpool.burstFrames;
+                }
+
+                FrameSpool.BeginSession("Boot", frames);
+                _sessionFrames = frames;
+                Interlocked.Increment(ref _session);
+                _bootArmed = true;
+
+                Log.Info($"profiling from boot — {frames} frames");
+                return true;
+            }
+            return false;
+        }
+
+        [A_XSDActionDependency("Profiling.Configure", "Bootstrap", "Applies ProfilingSettings and opens the capture its Mode asks for")]
         public static bool Configure()
         {
             ProfilingSettings settings = SettingsRegistry.Get<ProfilingSettings>();
@@ -307,10 +347,18 @@ namespace ArctisAurora.Core.Diagnostics
             reportEnabled = settings.report.enabled;
             FrameSpool.Configure(settings.capture);
 
+            if (_bootArmed) return true;
+
             if (settings.capture.mode == CaptureMode.Continuous)
             {
                 FrameSpool.BeginSession("Continuous", 0);
                 _sessionFrames = -1;
+                Interlocked.Increment(ref _session);
+            }
+            else if (settings.capture.mode == CaptureMode.Boot)
+            {
+                FrameSpool.BeginSession("Boot", FrameSpool.burstFrames);
+                _sessionFrames = FrameSpool.burstFrames;
                 Interlocked.Increment(ref _session);
             }
             return true;

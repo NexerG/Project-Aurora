@@ -238,26 +238,18 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             return window.ui.ToDesignSpace(window.mousePos);
         }
 
-        // Places the caret and marks the hit run editable; shift keeps the anchor and extends.
+        // Places the caret and marks the run editable; shift keeps the anchor and extends. The
+        // geometry answers which slot was clicked, never the hit-test.
         public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
         {
-            TextControl run = RunUnder(UICollisionHandling.hovering);
             if (content != null)
             {
                 // the live pointer, not oldPos, which lags the click by a frame
                 Vector2D<float> mouse = PointerInWindow();
 
-                if (run != null)
+                if (content.CaretOffText(mouse.X, mouse.Y, out TextControl run, out int offset))
                 {
-                    LayoutRect inner = run.arrangedRect.Shrink(run.padding);
-
-                    content.SetCaret(run, run.OffsetAt(mouse.X - inner.x, mouse.Y - inner.y), Extending);
-                    StartDrag();
-                }
-                // a click past the text hits no run, so the geometry answers instead of the hit-test
-                else if (content.CaretOffText(mouse.X, mouse.Y, out TextControl off, out int offset))
-                {
-                    content.SetCaret(off, offset, Extending);
+                    content.SetCaret(run, offset, Extending);
                     StartDrag();
                 }
             }
@@ -447,14 +439,5 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             RequestScrollToCaret();
         }
         #endregion
-
-        // Nearest TextControl at or above the hit control.
-        private static TextControl RunUnder(VulkanControl hit)
-        {
-            for (VulkanControl control = hit; control != null; control = control.parent as VulkanControl)
-                if (control is TextControl run) return run;
-
-            return null;
-        }
     }
 }

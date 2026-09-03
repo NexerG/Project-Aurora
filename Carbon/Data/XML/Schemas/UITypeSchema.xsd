@@ -46,6 +46,10 @@
   </xs:simpleType>
   <xs:attributeGroup name="SpanChart.Attributes">
     <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+    <xs:attribute name="TrackColorHex" type="xs:string" />
+    <xs:attribute name="ThumbColorHex" type="xs:string" />
+    <xs:attribute name="ThumbHoverColorHex" type="xs:string" />
+    <xs:attribute name="ThumbPressColorHex" type="xs:string" />
     <xs:attribute name="Mode" type="types:SpanChartMode" />
     <xs:attribute name="RowHeight" type="xs:float" />
     <xs:attribute name="RowGap" type="xs:float" />
@@ -64,6 +68,7 @@
     <xs:attribute name="LaneLabelColorHex" type="xs:string" />
     <xs:attribute name="TickColorHex" type="xs:string" />
     <xs:attribute name="RulerLabelColorHex" type="xs:string" />
+    <xs:attribute name="ScrollBarHeight" type="xs:float" />
   </xs:attributeGroup>
   <xs:element name="SpanChart" type="types:SpanChart" />
   <xs:complexType name="SpanChart">

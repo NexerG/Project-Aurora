@@ -201,6 +201,38 @@ note, and a single Ctrl+Z restored it exactly — bold run and block structure i
 cross-block `DeleteRange` → `InsertFragment` path [[document-undo]] flags as the one to distrust, and it
 held.
 
+### 13. A click resolves its caret from the geometry, never from the run it hit (found by GUI test, 2026-09-03)
+
+Reported as: turn on bold and italic, then click further along the same line, and the click paints a
+selection from the point the styles were applied to wherever the pointer went. Nothing to do with
+styling — it needs only a block holding **more than one run**, which is what every style application
+leaves behind. A fresh note is one run per block, which is why it took formatting to surface.
+
+**The hit-test cannot name the run under the pointer.** `TextBlockControl.Arrange` hands every run the
+block's full inner rect — a run places its own glyphs from `firstLineOffset` — so the runs of a line
+all carry the same quad. `FindDeepestValid` returns the *first* child whose quad holds the point, so a
+click past the first run's glyphs recurses into it, matches none of them, and returns that run.
+`hovering` is run 1 for every point in the block.
+
+**Press and drag then answered differently.** `ResolveOnClick` trusted `hovering`: `RunUnder` gave run
+1, `OffsetAt` ran off the end of its text and returned `Length(run1)`, and `Normalize` walked that to
+`(run 2, 0)` — the styled boundary — where the anchor collapsed. `SolveDrag` runs later in the same
+tick, because the press had just called `StartDrag`, and `ResolveDrag` resolves through `CaretOffText`,
+which is right. It extends. Anchor on the boundary, focus under the pointer: a selection nobody dragged,
+and one that survives the release.
+
+`ResolveOnClick` now calls `CaretOffText` for **every** click — what its own else-branch already did for
+a click past the text, and what the drag has always done. The two cannot disagree because they are one
+path. `RunUnder` had no other caller and is deleted.
+
+**Not fixed: the hit-test still lies.** `hovering` stays the block's first run for any point in it.
+Nothing else reads it — `GlyphControl.OnContextAdded` repointing `activeControl` (decision 8) just stops
+firing for the later runs, and `Text.Write` targets `CaretRun` either way. The root fix is a `HitTest`
+override on `TextControl` measuring the line spans rather than the quad; not taken, because it is more
+code for a consumer that does not exist yet.
+
+Builds clean, 0 errors, no new warnings. **NOT GUI-verified.**
+
 ## Still open
 
 - **Clipping.** `ClipRect` is computed every `Arrange` and has no consumer, so nothing is scissored.

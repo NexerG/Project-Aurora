@@ -3,6 +3,7 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.Core.UISystem.Controls.Containers;
+using ArctisAurora.Core.UISystem.Controls.Interactable;
 using ArctisAurora.Core.UISystem.Controls.Text;
 using Silk.NET.Maths;
 
@@ -81,12 +82,31 @@ namespace Carbon.Editor.CustomControls
 
         [A_XSDElementProperty("RulerLabelColorHex", "UI", "Text color of a ruler time label.")]
         public string rulerLabelColorHex = "#918F87";
+
+        // bottom scroll bar
+        [A_XSDElementProperty("ScrollBarHeight", "UI", "Height of the scroll bar along the bottom edge, in pixels.")]
+        public float scrollBarHeight = 8f;
+
+        [A_XSDElementProperty("TrackColorHex", "UI", "Ground of the scroll bar's track.")]
+        public string trackColorHex { get => field; set { field = value; if (_track != null) _track.controlColorHex = value; } } = "#EBEAE5";
+
+        [A_XSDElementProperty("ThumbColorHex", "UI", "Ground of the scroll thumb at rest.")]
+        public string thumbColorHex { get => field; set { field = value; if (_thumb != null) _thumb.controlColorHex = value; } } = "#D7D5CD";
+
+        [A_XSDElementProperty("ThumbHoverColorHex", "UI", "Ground of a hovered scroll thumb.")]
+        public string thumbHoverColorHex { get => field; set { field = value; if (_thumb != null) _thumb.hoverColorHex = value; } } = "#C9C6BC";
+
+        [A_XSDElementProperty("ThumbPressColorHex", "UI", "Ground of a held scroll thumb.")]
+        public string thumbPressColorHex { get => field; set { field = value; if (_thumb != null) _thumb.pressColorHex = value; } } = "#BAB7AC";
         #endregion
 
         // ruler shape — marks any closer together than this have no room for their own label
         private const float tickMinSpacing = 80f;
         private const float tickMarkHeight = 5f;
         private const int maxTicks = 32;
+
+        // the narrowest a thumb gets, however far the capture is zoomed out of
+        private const float minThumbWidth = 24f;
 
         // one rectangle to draw, in absolute ticks
         private struct Placed
@@ -113,6 +133,10 @@ namespace Carbon.Editor.CustomControls
         private readonly List<LabelControl> _tickLabels = new List<LabelControl>();
         private long _tickStep;
 
+        // the bottom scroll bar — where the window sits in the whole capture
+        private readonly PanelControl _track;
+        private readonly ChartScrollThumbControl _thumb;
+
         private string[] _depthColors = Array.Empty<string>();
 
         private CaptureSession? _session;
@@ -128,6 +152,20 @@ namespace Carbon.Editor.CustomControls
         private long _frequency = 1;
         private long _dragStart;
         private float _dragFrom;
+
+        public SpanChartControl()
+        {
+            _track = new PanelControl { controlColorHex = trackColorHex, hitTestable = false };
+            _thumb = new ChartScrollThumbControl(this)
+            {
+                controlColorHex = thumbColorHex,
+                hoverColorHex = thumbHoverColorHex,
+                pressColorHex = thumbPressColorHex
+            };
+
+            AddChild(_track);
+            AddChild(_thumb);
+        }
 
         // Every thread of a capture, and in Timeline mode the whole of it becomes the window.
         public void SetSession(CaptureSession session)
@@ -246,7 +284,7 @@ namespace Carbon.Editor.CustomControls
                         long end = frame.start + span.end;
                         if (end < _windowStart || begin > windowEnd) continue;
 
-                        if (Add(lane, span.depth + 1, begin, end, minTicks, labelTicks, thread.NameOf(span.name)))
+                        if (Add(lane, span.depth + 1, begin, end, minTicks, labelTicks, thread.NameOf(span.name), span.bytes))
                             rows = Math.Max(rows, span.depth + 2);
                     }
                 }
@@ -481,6 +519,22 @@ namespace Carbon.Editor.CustomControls
             _windowStart = clamped;
             Rebuild();
         }
+
+        // what the thumb reads and writes
+        public float ThumbTravel { get; private set; }
+
+        public long WindowStart => _windowStart;
+
+        public long ScrollRange => Math.Max(0, _boundsSpan - _windowSpan);
+
+        public void ScrollTo(long start)
+        {
+            long clamped = Math.Clamp(start, _boundsStart, _boundsStart + _boundsSpan - _windowSpan);
+            if (clamped == _windowStart) return;
+
+            _windowStart = clamped;
+            Rebuild();
+        }
         #endregion
 
         #region ---- layout ----
@@ -546,7 +600,65 @@ namespace Carbon.Editor.CustomControls
                 _labels[i].Arrange(new LayoutRect(rect.x + 4, rect.y + (rowHeight - labelFontSize) * 0.5f,
                     MathF.Max(1, rect.width - 8), labelFontSize + 2));
             }
+
+            ArrangeScrollBar(inner, plotX, plotWidth);
+        }
+
+        // Frame mode has nothing to scroll — its window is the frame the strip picked — so the bar
+        // arranges to nothing, which draws no pixels and fails the hit-test.
+        private void ArrangeScrollBar(LayoutRect inner, float plotX, float plotWidth)
+        {
+            if (mode != SpanChartMode.Timeline || ScrollRange <= 0)
+            {
+                ThumbTravel = 0f;
+                _track.Arrange(LayoutRect.Empty);
+                _thumb.Arrange(LayoutRect.Empty);
+                return;
+            }
+
+            float top = inner.Bottom - scrollBarHeight;
+            _track.Arrange(new LayoutRect(plotX, top, plotWidth, scrollBarHeight));
+
+            float width = MathF.Min(plotWidth, MathF.Max(minThumbWidth, (float)_windowSpan / _boundsSpan * plotWidth));
+            ThumbTravel = plotWidth - width;
+
+            _thumb.Arrange(new LayoutRect(
+                plotX + (float)(_windowStart - _boundsStart) / ScrollRange * ThumbTravel,
+                top, width, scrollBarHeight));
         }
         #endregion
+    }
+
+    // The bottom scroll bar's thumb. Built and positioned by the chart, never authored in XML.
+    internal sealed class ChartScrollThumbControl : ButtonControl
+    {
+        private readonly SpanChartControl chart;
+        private float grab;
+        private long grabStart;
+
+        public ChartScrollThumbControl(SpanChartControl chart)
+        {
+            this.chart = chart;
+        }
+
+        public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
+        {
+            grab = (oldPos + delta).X;
+            grabStart = chart.WindowStart;
+            StartDrag();
+            base.ResolveOnClick(oldPos, delta);
+        }
+
+        // Pointer travel along the track maps onto the capture by the ratio between the two.
+        public override void ResolveDrag(Vector2D<float> lastPos, Vector2D<float> delta)
+        {
+            float travel = chart.ThumbTravel;
+            if (travel > 0f)
+            {
+                float moved = (lastPos + delta).X - grab;
+                chart.ScrollTo(grabStart + (long)(moved / travel * chart.ScrollRange));
+            }
+            base.ResolveDrag(lastPos, delta);
+        }
     }
 }

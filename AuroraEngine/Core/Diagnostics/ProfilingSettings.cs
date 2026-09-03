@@ -6,7 +6,8 @@ namespace ArctisAurora.Core.Diagnostics
     public enum CaptureMode : byte
     {
         Off,
-        Continuous
+        Continuous,
+        Boot
     }
 
     [A_XSDType("ProfilingReport", "Settings")]

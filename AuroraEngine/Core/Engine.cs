@@ -97,6 +97,7 @@ namespace ArctisAurora.EngineWork
             //im.Save(Paths.UIMASKS + "\\defaultMask.png");
 
             Bootstrapper.Load(Paths.BOOTSTRAP);
+            Profiling.ArmBoot();
             Bootstrapper.RunPhase("Bootstrap");
             Shutdown.Load(Paths.SHUTDOWN);
 

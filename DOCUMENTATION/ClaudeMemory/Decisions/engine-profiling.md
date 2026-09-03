@@ -234,6 +234,83 @@ measurement.
   allocates nothing stays a self-closing `<Z N B E />`. A capture file written before this reads
   back as zero rather than failing.
 
+## 13. A boot capture has to be armed before the phase that would configure it (user, 2026-09-03)
+
+**Date:** 2026-09-03
+**Scope:** `Profiling` — `ArmBoot`, `Frame.Begin`, `Configure`; `ProfilingSettings` — `CaptureMode`;
+`Bootstrapper.RunPhase`; `Engine.Init`.
+
+Two ways to ask for one, because they cover different windows and only one can cover the boot itself.
+
+### The setting cannot capture the phase that reads it
+
+`Settings.LoadAll` is bootstrap step 1 and `Profiling.Configure` is step 3, so a session armed from
+`ProfilingCapture.Mode` begins at the *next* frame — and the bootstrap phase is over before the first
+frame exists. `CaptureMode.Boot` therefore buys what `Continuous` buys minus the never-ending part:
+the first `BurstFrames` frames of every thread, from launch, persisted so a repeat run needs no
+argument. Measured: three files, 60 frames each, and no `Bootstrap.frames.xml` in the folder.
+
+`--profile` / `--profile=N` is read straight off `Environment.GetCommandLineArgs()` by
+`Profiling.ArmBoot`, called from `Engine.Init` **before** `Bootstrapper.RunPhase` — the only point
+early enough. It lives in the engine rather than each host's `Main`, so all three applications get it
+without a line of their own. The flag beats the setting: `_bootArmed` short-circuits `Configure`'s own
+arm, because re-arming mid-phase would close the boot frame's file and open a second session folder.
+
+**Still out of reach either way: `XSDGenerator.GenerateXSD()`**, which every host runs in `Main`
+before `Engine.Init`. Catching it needs the host to arm first, and no host does.
+
+### The phase is one frame and a step is a zone
+
+`Bootstrapper.RunPhase` brackets its step loop in `Frame.Begin(phaseName)` / `Frame.End()`, and each
+`method.Invoke` in `Zone.Start(stepName)` / `End(stepName)`. Opens are flat and in order, so the file
+is the boot's flame chart with nothing to reconstruct.
+
+**Rejected: one frame per step.** `<F D>` would then be the same number `RunPhase` already logs, and
+it throws away the only thing the frame view adds — every step on one timeline against one total.
+
+### A thread that gains a system identity moves lane
+
+The boot frame runs on the main thread before `mainSystem.Adopt()`, so `ThreadedSystem.Current` is
+null and `Frame.Begin` took its `t{managedThreadId}` fallback. `Tables.lane` is built once and cached,
+so **the main thread's real frames would then have landed in `t1.frames.xml`** and no `Main.frames.xml`
+would have existed at all. `Frame.Begin` now compares the lane's name against the owner every frame
+and, when they differ, hands the batch off as `last` and drops the lane. That is what closes the boot
+frame's own file, and the check is general rather than a boot special case.
+
+`Begin` grew `string? owner = null` for it — `ThreadedSystem.Loop` passes nothing, `RunPhase` passes
+the phase name, which is what names `Bootstrap.frames.xml`. The `$"t{…}"` interpolation stays behind
+two `??`, so an engine thread never allocates for it.
+
+### Consequences to hold on to
+
+- **`--profile=N` is N frames per thread, and the boot frame is one of main's.** Measured 1 + 119 on
+  main against 120 each on render and physics. Left as is — the budget is honestly per-thread.
+- **The boot lane is built with the default `FramesPerBatch`**, since `FrameSpool.Configure` has not
+  run when it is created: three 64-frame batches for one frame, and the ~292KB lands in that frame's
+  own `<F A>`, which is §12's warm-up rule doing exactly what it says.
+- **`<F I>` is 1 on the boot frame**, not 0 — there is no `Epoch` to read, so it takes the
+  `frameIndex + 1` fallback.
+- **The bootstrap steps land in the main thread's report tables too**, so the first `Report()` period
+  carries them mixed with a second of real ticks. Cleared at the next period, and only visible with
+  `ProfilingReport.Enabled`.
+- **A step that throws leaves its zone open** — `Zone.End` sits after `method.Invoke` with no
+  `finally`. A boot step throwing is fatal anyway, and §7's clearing bounds it.
+
+**Verified in a running Thorium, 2026-09-03** — the first profiler change that was. `--profile=120`
+wrote `Bootstrap` / `Main` / `Physics` / `Render` frame files, all four closed cleanly by the burst
+ending rather than by the process dying:
+
+| Case | Result |
+|---|---|
+| header | `Thread="Bootstrap"`, `Mode="Boot"`, `Requested="120"` |
+| the phase | one `<F I="1" D="7884058" A="255416888">` — 788.4ms, 243.6MB |
+| steps | 25 `<Z>`, one per `Bootstrap.bootstrap.xml` step, in XML order |
+| against the log | `phase 'Bootstrap' — 790ms, 25 steps`, the phase timer being the wider bracket |
+| the lane split | `Bootstrap.frames.xml` 1 frame, `Main.frames.xml` 119, both closed |
+| slowest step | `Renderer.Initialize` 253.6ms; `AssetRegistries.PreloadAssets` 154.9ms |
+| largest allocator | `Context.LoadContexts` 91.5MB; `InputHandler.LoadInputs` 63.2MB |
+| the setting alone | `Mode="Boot" BurstFrames="60"`, no flag → 3 files × 60 frames, no `Bootstrap` |
+
 ## Left standing
 
 - **GPU is out entirely** (user, 2026-09-02). Frame times can be read back from a `VkQueryPool`, and
@@ -267,6 +344,8 @@ measurement.
   `PROFILING.md`.
 - **`Profiling.Flush` stops the spool for good** — it is a `Commit` step and nothing captures after
   shutdown. A `Capture` after a `Flush` in the same process would find a dead worker.
+- **Nothing a host does before `Engine.Init` can be captured**, `XSDGenerator.GenerateXSD()` most of
+  all. The earliest arm is `Profiling.ArmBoot` inside `Init`; see §13.
 - ~~**The visualizer is not here.**~~ **Landed 2026-09-02 as `Carbon`** — a fourth application on the
   engine's own UI, with `FrameCaptureReader` beside `FrameSpool`. See [[carbon-frame-viewer]].
 

@@ -144,22 +144,70 @@ A zone whose recorded parent never became a row would silently vanish, so a seco
 zone the tree walk missed at depth 0. Nothing hits it today; a diagnostic table quietly dropping a
 row is the failure worth spending five lines on.
 
-### 11. Allocation shows on the frame bar and in the table, not on a span (2026-09-03)
+### 11. Allocation shows on every span, on the frame bar and in the table (2026-09-03)
 
-[[engine-profiling]] §12 put bytes on every span and every frame. Carbon draws three of them:
+[[engine-profiling]] §12 put bytes on every span and every frame. Carbon draws all four of them:
 
 - **The zone table's thread header** carries the thread's whole allocation over the capture, summed
   from `<F A>` — which includes what ran outside any zone, so it is larger than the root zone's.
 - **A zone row's detail line** carries that zone's bytes, rolled up the same way its time is.
 - **The frame bar's caption** (row 0 of a lane) carries the frame's bytes beside the thread name.
+- **A span's caption** carries that span's own bytes, third after its name and duration.
 
-**Spans deliberately do not carry bytes in the chart.** A span needs `LabelMinWidth` (70 px) to earn
-a caption at all, and §9's `{name} {duration}` already fills it — appending bytes would push the
-duration out of a span barely wide enough to be labelled, and span labels are `clipOutOfBounds`. The
-zone table is where the per-zone number is legible.
+**Reversed 2026-09-03: spans were first shipped without bytes and now carry them** (user — a boot
+capture reads `Bootstrap 243.58MB` on the frame bar with nothing on `Settings.LoadAll`, which is the
+number actually wanted). The original reason stands as a *consequence*, not a veto: a span needs
+`LabelMinWidth` (70 px) to earn a caption at all, and `{name} {duration} {bytes}` overruns a bar
+barely over that threshold — span labels are `clipOutOfBounds`, so the bytes are what clips off.
+Deliberately not traded for: a wider `LabelMinWidth` (fewer labelled spans), or dropping the duration.
+Both charts take it, since `Flame` and `Timeline` are one control.
+
+**The number is inclusive, matching §12 of [[engine-profiling]]** — a parent span's bytes contain its
+children's, the same way the zone table's rollup does. Bootstrap steps are flat so the boot capture
+reads as self-bytes; a nested zone does not.
+
+A span that allocated nothing keeps the two-part caption, because `<Z>` is written without an `A` and
+the caption branches on `bytes != 0` — which is also what an older capture file, written before
+allocation existed, reads back as.
 
 Formatting is `CapturedThread.Bytes`, a static beside the instance `Ms` — one place both controls
 share, on the reader's side of the boundary §2 draws.
+
+### 12. The timeline scrolls with a bar; the flame chart does not (user, 2026-09-03)
+
+The timeline panned by dragging its body and zoomed on the wheel, with nothing on screen saying where
+the window sat in the capture. A track across the plot column, with a thumb whose width is
+`_windowSpan / _boundsSpan` and whose offset is `(_windowStart - _boundsStart) / ScrollRange`, says
+both at once and drags.
+
+**Nothing in the engine could be reused.** `ScrollableControl.ArrangeThumb` returns before doing
+anything unless `CanScrollVertical`, so there is no horizontal scrollbar to inherit, and
+`ScrollThumbControl` takes a `ScrollableControl` in its constructor and writes through
+`SetScrollOffset`. `ChartScrollThumbControl` is Carbon's own `ButtonControl` — which is also what buys
+the hover and press tints for free. `SpanChartControl` exposes `ThumbTravel`, `WindowStart`,
+`ScrollRange` and `ScrollTo`, deliberately the shape of `ThumbTravel` / `MaxScrollOffset` /
+`SetScrollOffset`, so the thumb's arithmetic is the engine's with X substituted for Y.
+
+**Frame mode gets no bar.** Its window *is* the frame the strip picked, so the thumb would be a
+hairline standing for a window nothing may move, and dragging it would fight the strip for ownership
+of `_windowStart`. Track and thumb arrange to `LayoutRect.Empty`, which draws no pixels and fails the
+hit-test — the same collapse `ScrollableControl` uses when its content fits.
+
+**The bar takes no vertical room from the lanes.** It is pinned to `inner.Bottom` rather than placed
+below the deepest lane, because lanes already grow unbounded downward: reserving space would have
+changed existing geometry to avoid a collision three lanes never reach.
+
+**Rejected: clicking the track to page or jump.** The engine's scrollbar has no track control at all,
+let alone that behaviour, and a press on the track falls through to the chart and pans, which is what
+was already there.
+
+Colours are XML attributes on the `Timeline` element, the `Thumb*ColorHex` triple `SessionList` and
+`ZoneTable` already carry. `Flame` is left without them, since it never draws one.
+
+Measured in the running app against a real 60-frame capture: track 425→1383 px, thumb 70 px — 7.3% of
+it, for a ~137 ms window on a ~1.9 s capture — and hover resolving to `#C9C6BC`. **The drag itself was
+confirmed by the user, not by the harness**: a scripted press registered the press tint and then never
+moved the thumb, so that path proved nothing either way.
 
 ## Facts that were expensive to establish
 
@@ -202,6 +250,9 @@ share, on the reader's side of the boundary §2 draws.
   timeline wants. A single-file picker needs a `FolderPicker.PickFile` that does not exist.
 - **Zoom is about the window centre, not the pointer** — `ResolveOnScrollUp/Down()` take no
   coordinates.
+- **A resize does not `Rebuild`.** `Ticks()` picks its step from `PlotWidth()`, so after the window is
+  resized the ruler keeps the step it chose at the old width — 10 ms marks were seen 70 px apart,
+  under `tickMinSpacing`'s 80 — until the next zoom, pan or frame selection re-runs it.
 - **Nothing draws counters in the charts.** They are in the aggregate table only.
 - **No diffing two captures, no live tailing of a Continuous session, no export.**
 - **`Periodic/` at the repo root still holds a stray `obj/`**, dead since the 2026-08 rename.

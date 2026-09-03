@@ -14,7 +14,7 @@ Dependencies:
 Implementors:
   - "[[PROFILING]]"
 Namespace: ArctisAurora.Core.Diagnostics
-SourceFiles: AuroraEngine/Core/Diagnostics/Profiling.cs, AuroraEngine/Core/Diagnostics/FrameSpool.cs, AuroraEngine/Core/Diagnostics/ProfilingSettings.cs
+SourceFiles: AuroraEngine/Core/Diagnostics/Profiling.cs, AuroraEngine/Core/Diagnostics/FrameSpool.cs, AuroraEngine/Core/Diagnostics/ProfilingSettings.cs, AuroraEngine/Core/Bootstrapper.cs
 VerifiedAgainst: 2026-09-03
 ---
 ## Overview
@@ -65,6 +65,8 @@ Zones nest, and an increment always attributes to the innermost one that is open
 ### What is instrumented today
 `MainTick` carries `MainTick`, `PollEvents`, `ActivateKeybinds`, `HandleUI` (with a `Window` counter), `Interpolate` and `FrameEdge`. `RenderSystem.Tick` carries `RenderTick` and `Draw`. The frame edges themselves are in `ThreadedSystem.Loop`, so every system has them, physics included.
 
+Outside the tick loop, `Bootstrapper.RunPhase` carries a zone named for every bootstrap step and brackets the whole phase in a frame of its own.
+
 ### Re-entering a zone
 A zone entered again while already open does not start a second timer. It deepens the one already running.
 
@@ -110,11 +112,27 @@ Profiling.Capture();          // the next BurstFrames frames, then it closes the
 Profiling.Capture(1200);      // or a length of your own
 ```
 
-`Profiling.Capture` is tagged as an `Input` action, so it can be bound to a key in an application's `InputMap.inputs.xml` — nothing binds it yet. Setting `ProfilingCapture.Mode` to `Continuous` starts one at boot instead, rolling into a new session folder every `MaxFileMB` and keeping the last `Keep` of them.
+`Profiling.Capture` is tagged as an `Input` action, so it can be bound to a key in an application's `InputMap.inputs.xml`; Thorium binds it to `F9`. Setting `ProfilingCapture.Mode` to `Continuous` starts one at launch instead and never ends it, rolling into a new session folder every `MaxFileMB` and keeping the last `Keep` of them.
 
 While a capture is live, `Zone.Start` appends a record and `Zone.End` patches its end time. Opens happen in the order the zones nest, so the array is already in document order and needs no sorting. Nothing on the timed thread formats anything: `FrameSpool`, a background thread, does every `XmlWriter` call and every file write, which is the point — batching the writes without moving the formatting would only have relocated the cost.
 
 Each thread holds three batches. If the spool falls behind and none is free, **frames are dropped and counted, never waited on** — a profiler that stalls the thing it measures is worse than one with a gap in it. The count surfaces as `Dropped` on the next batch written. Two gaps follow from never touching another thread's tables, and are accepted: drops still pending when a capture ends are not reported, and a partial batch held by a thread at shutdown is lost.
+
+### Profiling a launch
+Two ways to start a capture at launch rather than at a keypress, and they do not cover the same window.
+
+```
+Thorium.exe --profile          # BurstFrames frames of every thread, from boot
+Thorium.exe --profile=1200     # or a length of your own
+```
+
+`Profiling.ArmBoot` reads that off the process command line and opens the session from `Engine.Init`, before the bootstrap phase runs — which is why **the bootstrap phase itself is captured**, as one frame holding a zone per step, written as `Bootstrap.frames.xml` beside the thread files. It lives in the engine rather than in each application's `Main`, so Thorium, Carbon and the Editor all take the flag without knowing about it.
+
+Setting `ProfilingCapture.Mode` to `Boot` does the same for a run with no argument, and is the one to reach for when every launch should be profiled. It cannot capture the bootstrap phase: the setting is read by `Profiling.Configure`, which is itself a step of the phase in question, so the capture only opens in time for the first real frame. The flag wins when both are set.
+
+Neither reaches `XSDGenerator.GenerateXSD()`, which every application runs in `Main` before the engine is initialised at all.
+
+One number to read carefully: `--profile=N` is N frames **per thread**, and on the main thread the bootstrap frame is one of them. A 120-frame capture writes 1 boot frame and 119 main frames, against a full 120 each from render and physics.
 
 ### The frame file
 One file per thread, `Profiling/<yyyyMMdd-HHmmss>/<thread>.frames.xml`.

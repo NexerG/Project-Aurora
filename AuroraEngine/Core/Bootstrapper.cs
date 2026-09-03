@@ -81,6 +81,8 @@ namespace ArctisAurora.EngineWork
             long phaseStart = Stopwatch.GetTimestamp();
             int ran = 0;
 
+            Profiling.Frame.Begin(phaseName);
+
             foreach (string stepName in steps)
             {
                 if (!_actions.TryGetValue(stepName, out MethodInfo method))
@@ -93,7 +95,9 @@ namespace ArctisAurora.EngineWork
                 Log.Info($"running: {stepName}");
 
                 long stepStart = Stopwatch.GetTimestamp();
+                Profiling.Zone.Start(stepName);
                 bool failed = method.Invoke(null, null) is false;
+                Profiling.Zone.End(stepName);
                 double ms = ElapsedMs(stepStart);
                 ran++;
 
@@ -102,9 +106,12 @@ namespace ArctisAurora.EngineWork
                 if (failed)
                 {
                     Log.Error($"step '{stepName}' reported failure — phase '{phaseName}' halted.");
+                    Profiling.Frame.End();
                     return false;
                 }
             }
+
+            Profiling.Frame.End();
 
             Log.Info($"phase '{phaseName}' — {ElapsedMs(phaseStart):F0}ms, {ran} steps");
             return true;

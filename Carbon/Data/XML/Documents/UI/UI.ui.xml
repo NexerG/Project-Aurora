@@ -49,7 +49,8 @@
 						   FrameColorHex="#E3E1D9" SpanLabelColorHex="#2C2B26" LaneLabelColorHex="#918F87"/>
 				<SpanChart Name="Timeline" Mode="Timeline" HeightStar="1" ColorHex="#F5F4F0" Padding="8"
 						   MaxLabels="80" RulerHeight="18" TickColorHex="#C9C6BC" RulerLabelColorHex="#918F87"
-						   FrameColorHex="#E3E1D9" SpanLabelColorHex="#2C2B26" LaneLabelColorHex="#918F87"/>
+						   FrameColorHex="#E3E1D9" SpanLabelColorHex="#2C2B26" LaneLabelColorHex="#918F87"
+						   TrackColorHex="#EBEAE5" ThumbColorHex="#D7D5CD" ThumbHoverColorHex="#C9C6BC" ThumbPressColorHex="#BAB7AC"/>
 			</StackPanel>
 
 		</StackPanel>
