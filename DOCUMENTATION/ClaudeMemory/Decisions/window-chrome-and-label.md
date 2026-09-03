@@ -128,12 +128,91 @@ their outermost pixels. The edge bands either side of each corner still hit.
 Also gone the same day: the `EdgeThickness="2" EdgeColorHex="#C42B1E"` left on `UI.xml`'s maximize
 button from testing the edge feature.
 
+## The move is Windows', not ours (2026-09-03)
+
+Decision 3's drift algorithm is **gone**. `TitleBarControl.ResolveOnClick` now calls
+`AGlfwWindow.DragByCaption`, which is `ReleaseCapture()` plus
+`SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0)`. Windows runs its own modal move loop from
+there, so **snap to the top edge, drag-to-restore of a maximized window, the side and quadrant
+snaps, the translucent snap preview and window shake all arrive for free.** No code of ours
+implements any of them, and none of it can be implemented faithfully — the snap overlay and the
+snap zones are not public API.
+
+**Rejected: re-implementing snap by hand** — restore-under-cursor on first movement while
+maximized, plus a monitor-work-area top band checked each `ResolveDrag` and a `MaximizeWindow` in
+`StopDrag`. It keeps the drag ours and never parks main, but it is an approximation of Windows'
+behaviour: no preview rectangle, top-edge only, and it would drift from whatever the OS does next.
+
+### Blocking main turned out not to block anything visible
+
+`SendMessage` does not return until the button comes up, so main parks for the whole drag. That was
+the objection to the handoff, and it was **wrong**: `RenderSystem`'s epoch wait is a **startup gate
+only**, so after the first tick the render thread draws on its own loop regardless of what main is
+doing. The window keeps repainting through the drag.
+
+The one thing main still owes the loop is layout, because a snap resizes the window mid-drag.
+GLFW's size callback fires from inside the modal loop and already calls `uiRoot.FitTo`, and
+`WriteArrangedTransform` writes **straight into the pool** the render thread reads — no deferred
+command queue in between. So `UILayout.ResolveLayout()` + `RefreshWindowRanges()` is the entire
+pump, driven by `SetTimer` with a `TIMERPROC`: `DispatchMessage` invokes the callback directly for
+`WM_TIMER`, which is how an app animates during size/move without owning the loop.
+
+**The pump must never pump messages.** A nested `PollEvents` — `PeekMessage(PM_REMOVE)` — would
+remove the mouse-moves the OS loop is tracking the drag with. No `WndProc` subclass either, for the
+same reason: nothing of ours gets between GLFW's proc and the loop.
+
+### Two desyncs the handoff leaves behind, both handled at the call site
+
+- **The button-up is eaten** by the loop that it ends, so GLFW never reports it and `keyTracker`
+  would hold `MouseLeft` down forever. `ResolveOnClick` synthesises the release through
+  `InputHandler.ProcessMouseClick(..., InputAction.Release, 0)` — the same path the real callback
+  takes.
+- **`deltaTime` would be the drag's length.** `MainSystem` measures tick to tick and the parked tick
+  is one tick, so the next one would be handed multiple seconds — key repeat, the tap window and the
+  caret blink all count real seconds off it. New `MainSystem.ResyncClock()` drops the baseline so
+  that tick starts from zero.
+
+Cost accepted: one multi-second `MainTick` per drag in the profiler capture.
+
+### Snap is bought by taking a framed window and deleting the frame
+
+The handoff alone gave **drag-to-restore but no snap-to-top**: `SC_MOVE` restores on its own and
+needs no styles, but the shell arranges only windows it considers arrangeable. Two things disqualify
+GLFW's: `getWindowStyle` adds `WS_MAXIMIZEBOX | WS_THICKFRAME` **only in the `decorated` branch**,
+and an undecorated window is `WS_POPUP`, which the shell will not arrange at any style. Adding
+`WS_MAXIMIZEBOX` on its own was tried first and **changed nothing** — `WS_POPUP` is the disqualifier.
+
+So `AGlfwWindow.AllowSnapping()` does what Chromium does for a frameless window: make it an
+*ordinary* framed window and then delete the frame's geometry.
+
+1. Clear `WS_POPUP`, OR in `WS_CAPTION | WS_THICKFRAME | WS_MAXIMIZEBOX`, `SWP_FRAMECHANGED`.
+2. Subclass the WndProc — `SetWindowLongPtr(GWLP_WNDPROC)`, chaining everything else to GLFW's
+   through `CallWindowProcW` — and answer **one** message: `WM_NCCALCSIZE` with `wParam == TRUE`
+   returns `0`, which makes the client rect the whole window rect. No caption, no border, layout
+   byte-for-byte what it was.
+3. Same handler, maximized: with no non-client area the window rect overhangs the monitor by the
+   frame it no longer has and covers the taskbar, so the proposed rect is replaced with the
+   monitor's work area.
+
+Called alongside `RoundCorners()` on the boot window, a torn-off window and a `withChrome` menu
+window — the three that draw a `TitleBar`. Not the ghost, not a plain menu.
+
+The subclass is passive and pumps nothing, so the rule above still holds: nothing of ours gets
+between the OS move loop and its messages.
+
+GLFW keeps thinking the window is undecorated, and that stays *consistent* — it sizes through
+`AdjustWindowRectEx` with a popup style, which adds no padding, and after `WM_NCCALCSIZE` the window
+genuinely has none. Nothing re-derives the style afterwards; GLFW only rewrites it on
+`glfwSetWindowAttrib`, which nothing calls.
+
+`WM_NCHITTEST` is deliberately not handled — the frame is gone, so there is no non-client band to
+hit, and resizing is `WindowFrameControl`'s grips ([[window-frame-resize]]).
+
 ## Still open
 
-- **No resizing.** `ResizeableControl` is still dead and the window is undecorated, so there are no
-  resize edges. Only maximize/restore changes the size.
-- **Dragging a maximized window moves it while still maximized** instead of restoring it first, which
-  is what every OS does. Two lines in `ResolveOnClick` whenever it is worth having.
-- No hover or press feedback on the buttons — they are the `ButtonControl` default grey throughout.
+- **No hover or press feedback** on the buttons — they are the `ButtonControl` default grey
+  throughout.
+- Resizing landed separately — see [[window-frame-resize]]. Its manual edge grips and this native
+  move now coexist; a native snap-resize goes through the same size callback either way.
 
 Related: [[vault-browser-and-shell]], [[named-input-modifiers]]

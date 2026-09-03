@@ -8,32 +8,34 @@ using Silk.NET.Maths;
 namespace ArctisAurora.Core.UISystem.Controls
 {
     // A stack panel that moves the window while it is dragged. The window is created undecorated,
-    // so this is the only thing that can move it.
+    // so this is the only thing that can move it. The move itself is Windows', not ours — snap,
+    // drag-to-restore and the snap preview come with it and nothing here implements them.
     [A_XSDType("TitleBar", "UI", AllowedChildren = typeof(IXMLChild_UI))]
     public unsafe class TitleBarControl : StackPanelControl
     {
-        private Vector2D<float> grab;
-
         public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
         {
-            grab = RenderWindow.Of(this).mousePos;
-            StartDrag();
+            RenderWindow window = RenderWindow.Of(this);
+
+            window.os.DragByCaption(Pump);
+
+            // The OS loop consumes the button-up that ends it, so GLFW never reports one and the
+            // key tracker would hold the button down forever.
+            InputHandler.instance.ProcessMouseClick(window.os.handle, MouseButton.Left, InputAction.Release, 0);
+
+            // The tick this ran on lasted as long as the drag did, and key repeat, the tap window
+            // and the caret blink all count seconds off the tick that follows it.
+            Engine.mainSystem.ResyncClock();
+
             base.ResolveOnClick(oldPos, delta);
         }
 
-        // Moves the window by however far the pointer has drifted from where it grabbed. Moving the
-        // window carries the pointer with it, so the drift returns to zero and this converges rather
-        // than running away. Raw window pixels, not design space — the window moves in screen units.
-        public override void ResolveDrag(Vector2D<float> lastPos, Vector2D<float> delta)
+        // Everything main owes the OS loop: a snap resizes the window, whose GLFW callback fits the
+        // root, and the arrange writes straight into the pool the render thread is already reading.
+        private static void Pump()
         {
-            RenderWindow window = RenderWindow.Of(this);
-            WindowHandle* handle = window.os.handle;
-            AGlfwWindow._glfw.GetWindowPos(handle, out int x, out int y);
-            AGlfwWindow._glfw.SetWindowPos(handle,
-                x + (int)(window.mousePos.X - grab.X),
-                y + (int)(window.mousePos.Y - grab.Y));
-
-            base.ResolveDrag(lastPos, delta);
+            UILayout.ResolveLayout();
+            UILayout.RefreshWindowRanges();
         }
     }
 }

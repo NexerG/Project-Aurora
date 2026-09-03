@@ -17,6 +17,10 @@ namespace ArctisAurora.Core.Threading
 
         private long _lastTick;
 
+        // Drops the baseline, so the tick after something that parked main for seconds — a native
+        // window drag — starts from a zero delta instead of charging the whole stall to it.
+        internal void ResyncClock() => _lastTick = 0;
+
         protected override void Tick()
         {
             // Tick to tick, and deliberately not LastTickMs: that is sampled before the pacing

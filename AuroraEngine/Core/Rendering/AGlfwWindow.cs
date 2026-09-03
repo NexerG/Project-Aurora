@@ -56,6 +56,7 @@ namespace ArctisAurora.EngineWork.Rendering
             }
 
             RoundCorners();
+            AllowSnapping();
             UpdateWindowSize(ref windowSize);
             SetResizeCallback(WindwoResizeCallback);
         }
@@ -75,6 +76,7 @@ namespace ArctisAurora.EngineWork.Rendering
                 throw new Exception("Failed to create window");
 
             RoundCorners();
+            AllowSnapping();
             _glfw.SetWindowPos(handle, x, y);
             UpdateWindowSize(ref windowSize);
             SetResizeCallback(WindwoResizeCallback);
@@ -121,6 +123,7 @@ namespace ArctisAurora.EngineWork.Rendering
                 throw new Exception("Failed to create the context menu window");
 
             RoundCorners();
+            if (withChrome) AllowSnapping();
             UpdateWindowSize(ref windowSize);
         }
 
@@ -139,6 +142,67 @@ namespace ArctisAurora.EngineWork.Rendering
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
+
+        // The shell arranges nothing that is WS_POPUP, which is what GLFW makes every undecorated
+        // window — so snap is bought by taking an ordinary framed window and deleting the frame's
+        // geometry in WM_NCCALCSIZE, rather than by declaring the window frameless.
+        private void AllowSnapping()
+        {
+            IntPtr window = Hwnd;
+            SetWindowLongPtr(window, windowStyle, (GetWindowLongPtr(window, windowStyle) & ~popup) | snappableFrame);
+
+            frameProc = FrameProc;
+            previousProc = SetWindowLongPtr(window, windowProcedure, Marshal.GetFunctionPointerForDelegate(frameProc));
+
+            SetWindowPos(window, IntPtr.Zero, 0, 0, 0, 0, frameChanged);
+        }
+
+        // Makes the client rect the whole window rect, so the caption and border the restyle added
+        // reserve and paint nothing. Every other message is the one GLFW installed.
+        private IntPtr FrameProc(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam)
+        {
+            if (message != ncCalcSize || wParam == IntPtr.Zero)
+                return CallWindowProc(previousProc, hwnd, message, wParam, lParam);
+
+            // With no non-client area left, a maximized window's rect overhangs the monitor by the
+            // frame it no longer has, and covers the taskbar. The work area is what it should fill.
+            if ((GetWindowLongPtr(hwnd, windowStyle) & maximized) != 0)
+            {
+                MonitorInfo info = new MonitorInfo();
+                info.size = (uint)Marshal.SizeOf<MonitorInfo>();
+                if (GetMonitorInfo(MonitorFromWindow(hwnd, monitorNearest), ref info))
+                    Marshal.StructureToPtr(info.work, lParam, false);
+            }
+            return IntPtr.Zero;
+        }
+
+        // Held for as long as the window is, because native code keeps the pointer to it.
+        private WndProc frameProc = null!;
+        private IntPtr previousProc;
+
+        private delegate IntPtr WndProc(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
+
+        // GWL_STYLE, GWLP_WNDPROC, WM_NCCALCSIZE
+        private const int windowStyle = -16;
+        private const int windowProcedure = -4;
+        private const uint ncCalcSize = 0x0083;
+
+        // WS_POPUP; WS_CAPTION | WS_THICKFRAME | WS_MAXIMIZEBOX; WS_MAXIMIZE
+        private static readonly nint popup = (nint)0x80000000L;
+        private static readonly nint snappableFrame = (nint)(0x00C00000L | 0x00040000L | 0x00010000L);
+        private static readonly nint maximized = (nint)0x01000000L;
+
+        // SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE
+        private const uint frameChanged = 0x0020 | 0x0002 | 0x0001 | 0x0004 | 0x0010;
+
+        [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")]
+        private static extern IntPtr GetWindowLongPtr(IntPtr hwnd, int index);
+
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")]
+        private static extern IntPtr SetWindowLongPtr(IntPtr hwnd, int index, IntPtr value);
+
+        [DllImport("user32.dll", EntryPoint = "CallWindowProcW")]
+        private static extern IntPtr CallWindowProc(IntPtr previous, IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
 
         // The OS window behind the GLFW one, for the Win32 calls that need an owner.
         internal IntPtr Hwnd => new GlfwNativeWindow(_glfw, handle).Win32!.Value.Hwnd;
@@ -320,6 +384,46 @@ namespace ArctisAurora.EngineWork.Rendering
 
         [DllImport("user32.dll")]
         private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
+        #endregion
+
+        #region ---- native caption drag ----
+        // Hands the drag to Windows, which is the only way to get snap, drag-to-restore and the
+        // snap preview on a window it does not decorate. This blocks until the button comes up:
+        // the pump is called on a timer so layout keeps up with a snap mid-drag, and must never
+        // pump messages of its own — a nested PeekMessage would steal the moves the OS loop tracks.
+        internal void DragByCaption(Action pump)
+        {
+            _pump = pump;
+            IntPtr window = Hwnd;
+            ReleaseCapture();
+            IntPtr timer = SetTimer(window, pumpTimer, 8, _onPumpTimer);
+
+            SendMessage(window, ncLButtonDown, (IntPtr)htCaption, IntPtr.Zero);
+
+            if (timer != IntPtr.Zero) KillTimer(window, pumpTimer);
+            _pump = null;
+        }
+
+        private static Action _pump;
+        private static readonly TimerProc _onPumpTimer = (hwnd, message, id, time) => _pump?.Invoke();
+
+        private const uint ncLButtonDown = 0x00A1;
+        private const int htCaption = 2;
+        private static readonly UIntPtr pumpTimer = (UIntPtr)1;
+
+        private delegate void TimerProc(IntPtr hwnd, uint message, UIntPtr id, uint time);
+
+        [DllImport("user32.dll")]
+        private static extern bool ReleaseCapture();
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SetTimer(IntPtr hwnd, UIntPtr id, uint intervalMs, TimerProc callback);
+
+        [DllImport("user32.dll")]
+        private static extern bool KillTimer(IntPtr hwnd, UIntPtr id);
         #endregion
 
         // Publishes the new size itself, for windows with no resize callback to do it.

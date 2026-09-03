@@ -64,8 +64,9 @@ drag, and an untestable strip is skipped by `FindDeepestValid` outright, so thos
 whatever is underneath instead of being swallowed by a grip that would decline to act. Refusing the
 work inside the click handler would have left the pixels dead.
 
-Restoring on drag, the way the title bar arguably should, is deliberately not done here — that is a
-separate open item about the title bar.
+Restoring on drag, the way the title bar arguably should, is deliberately not done here — it belongs
+to the title bar, and since 2026-09-03 Windows does it, because the move is a native caption drag.
+See [[window-chrome-and-label]].
 
 ### 5. The cursor changes only when the shape changes
 
