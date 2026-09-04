@@ -7,7 +7,8 @@ namespace ArctisAurora.Core.UISystem
     {
         Regular,
         Bold,
-        Italic
+        Italic,
+        BoldItalic
     }
 
     // One face's measurements for one character.
@@ -32,6 +33,7 @@ namespace ArctisAurora.Core.UISystem
         public GlyphMetrics regular;
         public GlyphMetrics bold;
         public GlyphMetrics italic;
+        public GlyphMetrics boldItalic;
 
         [@NonSerializable]
         public List<List<Edge>> edgeContours = new List<List<Edge>>();
@@ -49,8 +51,20 @@ namespace ArctisAurora.Core.UISystem
         {
             FontStyle.Bold => bold,
             FontStyle.Italic => italic,
+            FontStyle.BoldItalic => boldItalic,
             _ => regular
         };
+
+        public void SetMetrics(FontStyle style, GlyphMetrics metrics)
+        {
+            switch (style)
+            {
+                case FontStyle.Bold: bold = metrics; break;
+                case FontStyle.Italic: italic = metrics; break;
+                case FontStyle.BoldItalic: boldItalic = metrics; break;
+                default: regular = metrics; break;
+            }
+        }
 
         public void BuildEdges()
         {

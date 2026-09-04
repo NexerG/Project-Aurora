@@ -17,6 +17,7 @@ space is left, so the second pane follows for free and only one number is ever a
 would work star-against-star, but it is a second code path with no caller — the shell is one fixed
 pane and one star pane, and the timeline UI in Phase C would be the first thing to need the other
 shape. Building it now would be designing off a use case that does not exist.
+**Superseded 2026-09-03 — Carbon's charts are that caller. See the second amendment below.**
 
 A splitter whose parent is not a `StackPanel`, or that has nothing before it, is **inert rather than
 throwing** — `PreviousPane()` returns null and both handlers return early.
@@ -162,7 +163,75 @@ cross offer can only reduce over-measurement there, never worsen it.
 
 **Rejected: give both panes stars.** `SplitterControl` resizes by writing the *fixed* pane's size and
 letting the star pane absorb the rest — the arrangement this whole note is about. Two stars would
-have nothing to write.
+have nothing to write. **Superseded 2026-09-03 — two stars now trade weight; see below.**
+
+---
+
+# Amendment — two star panes trade weight instead of one writing a size (2026-09-03)
+
+**Status:** LANDED. Builds clean. **GUI-verified** — Carbon booted with the panes at 1:2, and the
+drag itself confirmed by the user.
+**Scope:** `ArctisAurora.Core.UISystem.Controls.Interactable` (`SplitterControl`),
+`Carbon/Data/XML/Documents/UI/UI.ui.xml`.
+
+## The caller §1 was waiting for
+
+Carbon's flame chart and timeline are both star panes in one vertical stack, and the user asked for a
+grip between them starting at `1*` / `2*` (2026-09-03). The original path is inert there: `Arrange`
+gives a star child `heightStar * starUnit` and never reads `preferredHeight`, so the write lands on a
+field nothing consults. §1 named this exact shape as the thing that would need the other path.
+
+## Decisions
+
+### 1. The pair's weight sum is held, so only the boundary moves
+
+`ResolveOnClick` records the two panes' combined arranged main size (`grabTotal`) and their combined
+weight (`grabWeight`); each `ResolveDrag` recomputes
+
+```
+main       = clamp(grabSize + (now - grab), floor, grabTotal - nextFloor)
+prev.star  = grabWeight * main / grabTotal
+next.star  = grabWeight - prev.star
+```
+
+Holding the sum keeps every *other* star sibling's share intact — the pair divides only what the pair
+already had. Grab-relative for the same reason §3 gives.
+
+**Rejected: writing one pane's size and clearing the other's star.** It would reuse the existing path
+exactly, but the first drag would silently rewrite the XML's authored intent, and a window resize
+after it would no longer split 1:2 — the ratio is the thing the author asked for.
+
+### 2. Which path runs is read off the panes, not authored
+
+`grabStar` is set at grab time: both neighbours star on the parent's main axis, and their combined
+arranged size above zero. Anything else falls to the original write, so Thorium's shell, Carbon's
+sidebar and every `SplitViewControl` split are untouched — none has a star pane before its grip.
+`SplitViewControl.SizePane` still builds fixed-before-star deliberately.
+
+### 3. A weight may not reach zero
+
+`IsHeightStar` is `heightStar > 0f`, so a pane dragged to exactly zero stops being a star child
+mid-drag and falls back to `DesiredSize` — which is large. Both ends of the clamp therefore floor at
+`max(minHeight, 1)` pixel. Carbon authors `MinHeight="10"` on both charts (user, 2026-09-03).
+
+**`minHeight` on a star pane is only honoured by this drag.** `StackPanelControl.Arrange` clamps a
+star child to `star * starUnit` and the remaining space, never to `minHeight`, so shrinking the
+window can still squeeze a pane below its floor. Not fixed here — that is the panel's rule, and
+changing it would move every existing star pane.
+
+### 4. The stars are fields, so the drag invalidates by hand
+
+`preferredWidth`/`preferredHeight` are properties that call `InvalidateLayout` on write; `widthStar`
+and `heightStar` are plain fields. `DragStars` calls `pane.InvalidateLayout()` itself, once — the
+panel re-measures and re-arranges every child, so dirtying one of the pair is enough.
+
+## Known gaps
+
+- **The ratio is not persisted.** `SessionLayout.SplitPane` captures `preferredWidth`/`preferredHeight`
+  only, so a star split reopens at whatever the XML authored. Carbon does not use `SessionLayout` at
+  all; a `SplitViewControl` would need a stars field in `SessionPane` to keep a dragged ratio.
+- Nothing exercises the horizontal star-against-star case yet — the arithmetic is shared, but only the
+  vertical one has been driven.
 
 Related: [[ui-clipping]], [[vault-browser-and-shell]], [[button-states-and-hover-bubbling]],
-[[tab-view-control]]
+[[tab-view-control]], [[carbon-frame-viewer]], [[session-restore]]

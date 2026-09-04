@@ -44,10 +44,13 @@
 			<StackPanel Orientation="Vertical" WidthStar="1" ColorHex="#FBFAF8" Padding="8" Spacing="8">
 				<FrameStrip Name="Strip" Height="140" ColorHex="#F5F4F0" Padding="8"
 							BarColorHex="#C9C6BC" SelectedBarColorHex="#C4622B" LabelColorHex="#918F87"/>
-				<SpanChart Name="Flame" Mode="Frame" HeightStar="1" ColorHex="#F5F4F0" Padding="8"
+				<SpanChart Name="Flame" Mode="Frame" HeightStar="1" MinHeight="10" ClipToBounds="true" ColorHex="#F5F4F0" Padding="8"
 						   RulerHeight="18" TickColorHex="#C9C6BC" RulerLabelColorHex="#918F87"
 						   FrameColorHex="#E3E1D9" SpanLabelColorHex="#2C2B26" LaneLabelColorHex="#918F87"/>
-				<SpanChart Name="Timeline" Mode="Timeline" HeightStar="1" ColorHex="#F5F4F0" Padding="8"
+
+				<Splitter Height="5" ColorHex="#E6E4DE" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"/>
+
+				<SpanChart Name="Timeline" Mode="Timeline" HeightStar="2" MinHeight="10" ClipToBounds="true" ColorHex="#F5F4F0" Padding="8"
 						   MaxLabels="80" RulerHeight="18" TickColorHex="#C9C6BC" RulerLabelColorHex="#918F87"
 						   FrameColorHex="#E3E1D9" SpanLabelColorHex="#2C2B26" LaneLabelColorHex="#918F87"
 						   TrackColorHex="#EBEAE5" ThumbColorHex="#D7D5CD" ThumbHoverColorHex="#C9C6BC" ThumbPressColorHex="#BAB7AC"/>

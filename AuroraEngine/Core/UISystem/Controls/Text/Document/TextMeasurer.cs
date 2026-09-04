@@ -149,7 +149,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 {
                     TextStyleType type = inline.stylingType == TextStyleType.Inherit
                         ? block.stylingType : inline.stylingType;
-                    FontStyle style = inline.bold ? FontStyle.Bold
+                    FontStyle style = inline.bold ? (inline.italic ? FontStyle.BoldItalic : FontStyle.Bold)
                         : inline.italic ? FontStyle.Italic : FontStyle.Regular;
                     runs.Add(new Run(inline.text, inline.fontName, documentLayout.FontSizeFor(type), style));
                 }

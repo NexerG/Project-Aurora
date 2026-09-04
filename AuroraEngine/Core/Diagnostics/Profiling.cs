@@ -202,10 +202,16 @@ namespace ArctisAurora.Core.Diagnostics
                 if (!enabled) return;
 
                 Tables tables = _tables ??= new Tables();
-                ThreadedSystem? system = ThreadedSystem.Current;
+                Open(tables, owner);
 
                 tables.frameStart = Stopwatch.GetTimestamp();
                 tables.frameBytesStart = GC.GetAllocatedBytesForCurrentThread();
+            }
+
+            // Picks the lane and the batch this frame records into.
+            private static void Open(Tables tables, string? owner)
+            {
+                ThreadedSystem? system = ThreadedSystem.Current;
                 tables.frameIndex = system != null ? system.Epoch : tables.frameIndex + 1;
 
                 int session = Volatile.Read(ref _session);

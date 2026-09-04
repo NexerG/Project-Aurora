@@ -201,13 +201,19 @@ carries `Data/Fonts/<name>/<name>.import.xml`:
 | Field | Why it invalidates |
 |-------|--------------------|
 | `Source` | the entry now points at a different face |
-| `SourceHash` | SHA256 of the `.ttf` — the installed font was replaced |
+| `SourceHash` | SHA256 of every `.ttf` in the family — an installed face was replaced |
+| `BoldSource` / `ItalicSource` / `BoldItalicSource` | which secondary faces the probe resolved, by filename |
 | `Charset` | resolved character string, stored verbatim, not hashed — debuggable |
 | `GlyphSize` | atlas cell size changed |
-| `ImporterVersion` | a `const` in `AssetImporter`; bump to re-cook everything |
+| `ImporterVersion` | a `const` in `AssetImporter`; bump to re-cook everything. **4** since [[bold-italic-face]] |
 
-All five must match, **and** the `.agd` and `_atlas.png` must exist — a stamp alone never authorises
-a skip. Granularity is per font: changing one entry re-bakes that face and leaves the others.
+All of them must match, **and** the `.agd` and `_atlas.png` must exist — a stamp alone never authorises
+a skip. Granularity is per font: changing one entry re-bakes that family and leaves the others.
+
+**A change to the `.agd` field layout is an `ImporterVersion` bump, always.** The stamp describes the
+*sources*, so it cannot notice that the reader's expectations moved — a family whose faces did not change
+would keep a stamp that matches and an atlas that `Serializer.DeserializeAttributed` then misreads
+positionally.
 
 `.ttf` bytes are hashed rather than timestamped because a re-bake is expensive enough that a false
 positive matters, and mtime moves for reasons content does not.

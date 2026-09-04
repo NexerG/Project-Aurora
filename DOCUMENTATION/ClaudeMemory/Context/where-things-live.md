@@ -33,6 +33,7 @@ Namespace shorthands used in the tables:
 | title bar, minimise/maximise/close | `UI.Controls.TitleBarControl`, `WindowFrameControl`; `UI.Actions.WindowActions`; `UI.Text.LabelControl` | host `UI.ui.xml` | [[window-chrome-and-label]], [[window-frame-resize]] |
 | icons | `UI.IconSet`; `UI.Controls.IconControl`; `Assets.IconSetAsset`; `Filing.SvgPath` | `*/Data/Icons/*/*.import.xml` | — |
 | fonts, glyph atlas | `UI.AuroraFont`, `UI.Glyph`; `Assets.FontAsset`; `ArctisAurora.Core.Generators.MTSDFGen` | `*/Data/Fonts/*/*.import.xml`; `AuroraEngine/Data/XML/Imports/EngineFonts.imports.xml` | [[atlas-is-unorm-not-srgb]] |
+| which face a run draws in — regular, bold, italic, bold-italic | `UI.FontStyle`, `UI.AtlasMetaData` (`Effective`, `StyleBlock`, `CellIndex`); `Filing.AssetImporter` face probing | `AuroraEngine/Data/XML/Imports/EngineFonts.imports.xml` attrs `Bold`, `Italic`, `BoldItalic` | [[bold-italic-face]] |
 | button hover / press appearance | `UI.Interactable.ButtonControl`; `UI.UICollisionHandling` | — | [[button-states-and-hover-bubbling]] |
 
 ## Layout and hit-testing
@@ -67,7 +68,7 @@ Namespace shorthands used in the tables:
 | line breaking, text measurement | `UI.Doc.TextMeasurer` | — | [[text-layout-one-measurer]] |
 | caret — blink, position, follow | `UI.Doc.CaretControl`, `DocumentEditorControl` | — | [[caret-blink-and-focus]], [[document-caret-scrolling]] |
 | selection | `UI.Doc.SelectionControl`, `CaretSlot` | — | [[document-selection]] |
-| bold / italic / headings, format bar | `UI.Doc.DocumentToolbarControl`; `UI.Edits.StyleRangeEdit` | `AuroraEngine/Data/XML/Settings/DocumentSettings.settings.xml` | [[document-format-bar]], [[armed-style-at-the-caret]], [[text-styling-types]] |
+| bold / italic / headings, format bar | `UI.Doc.DocumentToolbarControl`; `UI.Edits.StyleRangeEdit` | `AuroraEngine/Data/XML/Settings/DocumentSettings.settings.xml` | [[document-format-bar]], [[armed-style-at-the-caret]], [[text-styling-types]], [[bold-italic-face]] |
 | undo / redo | `Editing.UndoStack`, `EditStep`, `IEditRecord`; `UI.Edits.*` | — | [[document-undo]] |
 | single-line text fields | `UI.Editing.TextInputControl`, `TextBoxControl`; `UI.Text.TextControl` | — | [[note-naming-and-text-field]] |
 | note load / save | `UI.Doc.DocumentXml`; `Filing.Serializer`, `XmlReflection` | `*/Data/Notes/*.xml` | [../Patterns/document-xml-persistence.md](../Patterns/document-xml-persistence.md), [[xml-save-skips-defaults]] |

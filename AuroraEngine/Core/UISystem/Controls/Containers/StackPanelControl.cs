@@ -52,17 +52,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                 bool isStar = orientation == Orientation.Vertical ? child.IsHeightStar : child.IsWidthStar;
                 if (isStar)
                 {
+                    // Cross size comes from pass 2, at the real main-axis allocation.
                     totalStarWeight += orientation == Orientation.Vertical ? child.heightStar : child.widthStar;
-                    // Cross axis: still measure with full cross offer so we know cross desired size.
-                    Vector2D<float> crossOffer = orientation == Orientation.Vertical
-                        ? new Vector2D<float>(inner.width, 0)
-                        : new Vector2D<float>(0, inner.height);
-                    child.Measure(crossOffer);
-
-                    float childCross = orientation == Orientation.Vertical
-                        ? child.DesiredSize.X + child.margin.totalHorizontal
-                        : child.DesiredSize.Y + child.margin.totalVertical;
-                    maxCross = MathF.Max(maxCross, childCross);
                 }
                 else
                 {
@@ -101,6 +92,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                     if (!isStar) continue;
 
                     float starMain = (orientation == Orientation.Vertical ? child.heightStar : child.widthStar) * starUnit;
+                    starMain = MathF.Max(starMain, orientation == Orientation.Vertical ? child.minHeight : child.minWidth);
 
                     Vector2D<float> starOffer = orientation == Orientation.Vertical
                         ? new Vector2D<float>(inner.width, starMain)
@@ -205,6 +197,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                         ? child.heightStar * starUnit - child.margin.totalVertical
                         : child.DesiredSize.Y;
                     childH = Math.Clamp(childH, 0, MathF.Max(0, inner.Bottom - cursor - child.margin.totalVertical));
+                    if (isStar) childH = MathF.Max(childH, child.minHeight);
 
                     float childY = cursor + child.margin.top;
                     child.Arrange(new LayoutRect(childX, childY, childW, childH));
@@ -228,6 +221,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                         ? child.widthStar * starUnit - child.margin.totalHorizontal
                         : child.DesiredSize.X;
                     childW = Math.Clamp(childW, 0, MathF.Max(0, inner.Right - cursor - child.margin.totalHorizontal));
+                    if (isStar) childW = MathF.Max(childW, child.minWidth);
 
                     float childX = cursor + child.margin.left;
                     child.Arrange(new LayoutRect(childX, childY, childW, childH));

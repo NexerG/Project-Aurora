@@ -280,9 +280,11 @@ namespace ArctisAurora.EngineWork
             AGlfwWindow._glfw.PollEvents();
             Profiling.Zone.End("PollEvents");
 
+            Profiling.Zone.Start("WindowingTick");
             ReapClosedWindows();
             DrainPosted();
             UICollisionHandling.ApplyPendingFocus();
+            Profiling.Zone.End("WindowingTick");
 
             Profiling.Zone.Start("ActivateKeybinds");
             InputHandler.instance.ActivateKeybinds();
@@ -311,7 +313,9 @@ namespace ArctisAurora.EngineWork
             Profiling.Zone.End("FrameEdge");
 
             // Dense indices have settled, so each window module can be told the range it draws.
+            Profiling.Zone.Start("RefreshWindowRanges");
             UILayout.RefreshWindowRanges();
+            Profiling.Zone.End("RefreshWindowRanges");
 
             Profiling.Zone.End("MainTick");
         }
@@ -395,8 +399,10 @@ namespace ArctisAurora.EngineWork
 
                 entity.OnTick();
             }
-            
+
+            Profiling.Zone.Start("ResolveLayout");
             UILayout.ResolveLayout();
+            Profiling.Zone.End("ResolveLayout");
 
             /*if(EntityRegistry.entitiesToUpdate.Count > 0)
             {

@@ -223,12 +223,22 @@ measurement.
 
 ### Consequences to hold on to
 
-- **The frame window is `Frame.Begin`→`Frame.End`**, which is what excludes `Report()`'s own string
-  interpolation — the report runs *after* `Frame.End`, so switching it on does not inflate `A`.
-- **Warm-up lands on the frame, not on a zone.** Frame 0 carries the profiler's own one-time table
-  growth: 304 bytes for the report tables, ~292 KB more when a capture's three batches are built in
-  `Frame.Begin`. Zones read identically in frame 0 and frame 5. Steady state is exact — 100 frames of
-  a 100,000-byte allocation measured 10,002,400 twice running.
+- **The frame window is the *end* of `Frame.Begin`→top of `Frame.End`** (user, 2026-09-03). Both
+  origins are stamped after `Open` has picked the lane and batch, which is why `Begin`'s body is a
+  separate method — it has three exits and all three must land on the same origin. This excludes the
+  profiler at both ends: the `CaptureLane` and its three batches at one, `Report()`'s string
+  interpolation at the other.
+- **Frame 0 used to carry 285.6 KB on a thread that does nothing.** `PhysicsSystem.Tick` is empty and
+  Carbon still totalled 292,464 B for the lane — `CaptureLane`'s ctor, measured exactly:
+  `SpanRecord[2048]` 81,944 + `CounterRecord[512]` 12,312 + `FrameRecord[64]` 3,096 + object, ×3
+  batches. 240 KB of it is span storage a zone-less thread never writes.
+- **Growth during the tick is still counted, deliberately.** The first `Zone.Start` grows the report
+  dictionaries (~304 B) and `AddSpan` doubles an overflowing span array (~160 KB, once per pooled
+  batch). Excluding these needs a monotonic `overheadBytes` on `Tables`, an `openOverhead` in
+  `ZoneData`, a field on `SpanRecord` (40→48 B, +20% on those 80 KB arrays) and extra
+  `GetAllocatedBytesForCurrentThread()` reads on the zone hot path — rejected as too much machinery
+  for one-off amounts. Steady state is exact regardless — 100 frames of a 100,000-byte allocation
+  measured 10,002,400 twice running.
 - **Per-thread means per-thread.** Work a zone hands to a pool thread does not appear in its bytes.
 - `<F A>` is always written; `<Z A>` only when non-zero **and** the span closed, so a zone that
   allocates nothing stays a self-closing `<Z N B E />`. A capture file written before this reads

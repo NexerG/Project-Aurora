@@ -25,6 +25,9 @@ namespace ArctisAurora.Core.Filing.Serialization
         [A_XSDElementProperty("Italic", "AssetRegistry")]
         public string italic { get; set; } = string.Empty;
 
+        [A_XSDElementProperty("BoldItalic", "AssetRegistry")]
+        public string boldItalic { get; set; } = string.Empty;
+
         [A_XSDElementProperty("Charset", "AssetRegistry")]
         public string charset { get; set; } = string.Empty;
 
@@ -66,6 +69,7 @@ namespace ArctisAurora.Core.Filing.Serialization
         public string sourceHash = string.Empty;
         public string boldSource = string.Empty;
         public string italicSource = string.Empty;
+        public string boldItalicSource = string.Empty;
         public string charset = string.Empty;
         public int glyphSize;
         public int importerVersion;
@@ -75,6 +79,7 @@ namespace ArctisAurora.Core.Filing.Serialization
             && sourceHash == other.sourceHash
             && boldSource == other.boldSource
             && italicSource == other.italicSource
+            && boldItalicSource == other.boldItalicSource
             && charset == other.charset
             && glyphSize == other.glyphSize
             && importerVersion == other.importerVersion;

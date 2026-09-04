@@ -39,7 +39,7 @@ Standing constraints (ECS storage, Vulkan internals, physics, XSD-not-JSON) are 
 |---|---|---|
 | [[tab-view-control]] | hiding is a collapsed clip; a closed tab is destroyed, not kept | `TabViewControl`, `TabItemControl`, `VulkanControl` |
 | [[tab-rename-and-double-click]] | a double click is dispatched from the release; the renaming strip is its own control | `TabViewControl`, `EditableTabsControl`, `UICollisionHandling` |
-| [[splitter-and-pane-sizing]] | a splitter writes one pane's size and the star pane absorbs the rest | `SplitterControl` |
+| [[splitter-and-pane-sizing]] | a splitter writes one pane's size and the star pane absorbs the rest — or, between two star panes, trades weight across the pair | `SplitterControl`, `StackPanelControl` |
 | [[scrollbar-thumb]] | the thumb goes at the head of `children` (hit order is paint order reversed); content gets a gutter | `ScrollableControl`, `ScrollThumbControl` |
 | [[scroll-overscroll]] | overscroll is extra range on `MaxScrollOffset`, not a second offset | `ScrollableControl`, `DocumentEditorControl` |
 | [[file-browser-tree]] | the file browser is an engine control over a lazy `FileObject` tree | `FileObject`, `FileBrowserControl`, `FileTreeControl` |
@@ -56,6 +56,7 @@ Standing constraints (ECS storage, Vulkan internals, physics, XSD-not-JSON) are 
 | [[text-layout-one-measurer]] | one measurer decides every line break; the document is a plain control tree | `TextMeasurer`, `DocumentControl` |
 | [[text-styling-types]] | a heading is a value on `ContentBlock`, not a subclass | `ContentBlock`, `stylingType` |
 | [[document-format-bar]] | one range-styling primitive, and a bar that never takes the caret | `DocumentToolbarControl`, `StyleRangeEdit`, `ContentBlock`, `TextRun` |
+| [[bold-italic-face]] | bold-italic is a fourth baked face; a family missing it falls back to regular | `FontStyle`, `Glyph`, `AtlasMetaData`, `AssetImporter` |
 | [[armed-style-at-the-caret]] | a style chosen with nothing selected is armed, not discarded | `DocumentControl`, `DocumentEditorControl`, `TextInputActions` |
 | [[document-selection]] | selection is two caret slots; the engine's drag lifecycle was finished to carry it | `CaretSlot`, `SelectionControl`, `VulkanControl.StartDrag` |
 | [[caret-blink-and-focus]] | the caret blinks itself, and a run tells the document when focus left | `CaretControl`, `DocumentControl`, `TextRun` |

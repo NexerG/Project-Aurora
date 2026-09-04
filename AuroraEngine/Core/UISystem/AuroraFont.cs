@@ -99,8 +99,9 @@ namespace ArctisAurora.Core.UISystem
             }
         }
 
-        // Faces arrive in block order — regular, then bold if present, then italic if present.
-        internal static void GenerateGlyphAtlas(AuroraFont[] faces, string[] facePaths, bool hasBold, bool hasItalic,
+        // faceStyles names each face in block order — regular first, then whichever of bold, italic
+        // and bold-italic the family actually had.
+        internal static void GenerateGlyphAtlas(AuroraFont[] faces, string[] facePaths, FontStyle[] faceStyles,
             string baseName, int perGlyphSize, string outputRoot)
         {
             // One array per face. Contours live here and never reach the .agd.
@@ -112,21 +113,16 @@ namespace ArctisAurora.Core.UISystem
             glyphs.glyphCount = faces[0].textData.characterCount;
             glyphs.chars = faces[0].textData.characters;
             glyphs.glyphs = faceGlyphs[0];
-            glyphs.hasBold = hasBold;
-            glyphs.hasItalic = hasItalic;
+            glyphs.hasBold = faceStyles.Contains(FontStyle.Bold);
+            glyphs.hasItalic = faceStyles.Contains(FontStyle.Italic);
+            glyphs.hasBoldItalic = faceStyles.Contains(FontStyle.BoldItalic);
             glyphs.pxRange = MTSDFGen.PxRange;
 
             // Every face measures its own advances and ink boxes; fold them onto the regular glyph
-            // that carries all three sets.
+            // that carries all four sets.
             for (int f = 1; f < faces.Length; f++)
-            {
-                bool isBold = hasBold && f == 1;
                 for (int i = 0; i < glyphs.glyphCount; i++)
-                {
-                    if (isBold) glyphs.glyphs[i].bold = faceGlyphs[f][i].regular;
-                    else glyphs.glyphs[i].italic = faceGlyphs[f][i].regular;
-                }
-            }
+                    glyphs.glyphs[i].SetMetrics(faceStyles[f], faceGlyphs[f][i].regular);
 
             string atlasDataPath = Path.Combine(outputRoot, baseName, $"{baseName}.agd"); // aurora glyph data
             Serializer.SerializeAttributed(glyphs, atlasDataPath);
@@ -553,8 +549,10 @@ namespace ArctisAurora.Core.UISystem
         public bool hasBold;
         [@Serializable]
         public bool hasItalic;
+        [@Serializable]
+        public bool hasBoldItalic;
 
-        public int styleCount => 1 + (hasBold ? 1 : 0) + (hasItalic ? 1 : 0);
+        public int styleCount => 1 + (hasBold ? 1 : 0) + (hasItalic ? 1 : 0) + (hasBoldItalic ? 1 : 0);
 
         public int cellCount => glyphCount * styleCount;
 
@@ -563,6 +561,7 @@ namespace ArctisAurora.Core.UISystem
         {
             FontStyle.Bold when hasBold => FontStyle.Bold,
             FontStyle.Italic when hasItalic => FontStyle.Italic,
+            FontStyle.BoldItalic when hasBoldItalic => FontStyle.BoldItalic,
             _ => FontStyle.Regular
         };
 
@@ -570,6 +569,7 @@ namespace ArctisAurora.Core.UISystem
         {
             FontStyle.Bold when hasBold => 1,
             FontStyle.Italic when hasItalic => hasBold ? 2 : 1,
+            FontStyle.BoldItalic when hasBoldItalic => 1 + (hasBold ? 1 : 0) + (hasItalic ? 1 : 0),
             _ => 0
         };
 

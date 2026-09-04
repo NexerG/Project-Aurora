@@ -209,6 +209,29 @@ it, for a ~137 ms window on a ~1.9 s capture — and hover resolving to `#C9C6BC
 confirmed by the user, not by the harness**: a scripted press registered the press tint and then never
 moved the thumb, so that path proved nothing either way.
 
+### 13. The two charts split 1:2 and the split drags (user, 2026-09-03)
+
+`Flame` and `Timeline` were `HeightStar="1"` each, so a boot capture — one lane, a handful of
+bootstrap steps — got the same half of the column as a three-thread timeline. `Timeline` is now
+`HeightStar="2"` and a `Splitter` sits between them.
+
+**Both panes keep their stars; the grip trades weight between them.** That is a new path in
+`SplitterControl` and the reason it exists — see [[splitter-and-pane-sizing]]'s second amendment. The
+alternative was pinning `Flame` to a pixel height and leaving `Timeline` the only star, which is the
+shape the engine already had, but then the 1:2 the user asked for could only be authored as a number
+that stops being 1:2 the moment the window resizes.
+
+**`MinHeight="10"` on both** (user, 2026-09-03). It is the drag's clamp only — `StackPanelControl`
+does not enforce `minHeight` on a star child, so a small enough window still squeezes past it.
+
+**`ClipToBounds="true"` on both, which they did not carry before.** Neither chart clipped: lanes grow
+downward from `inner.y + rulerHeight` unbounded (§12), and until the panes could be dragged small
+that never reached anything. A pane at its 10 px floor would otherwise paint its lanes over its
+neighbour.
+
+The ruler's step is unaffected — `Ticks()` chooses from `PlotWidth()` and this grip moves heights, so
+the "no `Rebuild` on resize" gap below is not reachable through it.
+
 ## Facts that were expensive to establish
 
 - **A `widthStar` `LabelControl` inside a horizontal `StackPanel` is measured at width 0 and wraps to
