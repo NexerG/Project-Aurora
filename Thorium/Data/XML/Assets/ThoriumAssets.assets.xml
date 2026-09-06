@@ -9,4 +9,7 @@
 	<Asset Type="UIDocumentAsset" Name="settings"   Source="XML/Documents/UI/Settings.ui.xml"/>
 	<Asset Type="UIDocumentAsset" Name="vaults"     Source="XML/Documents/UI/Vaults.ui.xml"/>
 
+	<!-- landing 6a probe, deleted with 6b -->
+	<Asset Type="UIDocumentAsset" Name="next-probe" Source="XML/Documents/UI/NextProbe.ui.xml"/>
+
 </AssetManifest>

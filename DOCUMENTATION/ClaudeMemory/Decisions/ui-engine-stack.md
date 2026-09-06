@@ -1,13 +1,14 @@
 # Decision — the UI is rebuilt beside the old one, not migrated in place
 
 **Date:** 2026-09-06
-**Status:** **PARTIAL** — landings 1–4 built and GUI-verified; landings 5–6 agreed, not built.
+**Status:** **PARTIAL** — landings 1–5 built and GUI-verified; landing 6 agreed, not built.
 **Scope:** `ArctisAurora.Core.UI` — `UIEngine`, `Control`, `WindowRoot`, `TextRunControl`, `StyleSpan`,
 `IGlyphPressTarget`, `NextCaretControl`, `ArrangeData`, `ControlGeometry`, `VulkanControl`,
 `VulkanControlType`, `ArrangeFlags`, `HorizontalAlignment`, `VerticalAlignment`, `DockMode`, `PointerEvent`,
 `PointerPhase`;
 `ArctisAurora.Core.ECS.EngineEntity` — `Entity.FreeIn`;
 `ArctisAurora.Core.UISystem.Controls.Text.Document` — `TextMeasurer.Run`;
+`ArctisAurora.Core.UISystem` — `Gradients`, `GpuGradient`;
 `ArctisAurora.EngineWork.Rendering.Modules` — `UIEngineModule`, `CompositorModule`;
 `ArctisAurora.EngineWork.Rendering` — `AuroraCamera`, `AGlfwWindow`;
 `Shaders/UIEngine/UIEngine.vert`, `Shaders/UIEngine/UIEngine.frag`;
@@ -109,6 +110,126 @@ One `Control` owns **0..N** `VulkanControl` rows. A panel owns 1; a text run own
 - The scaffolding gains `ProbeDocumentControl` — the smallest thing that can own a caret across a run — and a
   three-span paragraph wrapping at 360.
 
+## What changed — landing 5, images, icons and gradients
+
+**No struct changed.** `uvs`, `textureIndex` and `gradientIndex` were already in `VulkanControl` and
+`gradientRect` already in `ControlGeometry`, all written by nothing. The row sizes are still 140 / 96 / 92.
+
+- **`VulkanControl.noTexture`** = `uint.MaxValue`. Table slot 0 is a real texture (`defaultMask.png`), so 0
+  cannot mean "none". `Control`'s constructor writes the sentinel and a full-rect UV set into `rows[0]`.
+- **`Control.sampler`** (`TextureAsset?`), **`Control.kind`** (`VulkanControlType`), **`Control.gradient`**
+  (`string` → `Gradients.IndexOf`) and **`Control.SetUVRect(u0, v0, u1, v1)`**, which lays the four corners
+  out in the quad mesh's vertex order — `uv1` is the far corner, the order `TextRunControl.WriteGlyph` uses.
+- **Frag**: the gradient table at **set 1, binding 3** with `sampleGradient` copied verbatim from
+  `UIRasterizer/UI.frag`; an `ImageControl` branch multiplying the texel into colour *and* alpha; a
+  `PanelControl` mask branch multiplying the MTSDF coverage in last. Both texture reads sit behind
+  `fragTextureIndex != NO_TEXTURE`, and `fragType` is `flat`, so the derivatives inside `msdfDistance` stay
+  in primitive-uniform control flow.
+- **Vert**: two more flat outs, `fragGradientIndex` and `fragGradientRect`, off fields already declared.
+- **`UIEngineModule`**: binding 3 appended to the four parallel set-1 lists as a `FragmentBit` storage
+  buffer, the storage pool size 2 → 3, and a **static** `_gradientBuffer` built once in `PrepareObjects`.
+  Static because the table is per-process and never changes after bootstrap; **not** freed in
+  `DestroyGpuResources`, or closing one window would dangle every other window's descriptor.
+- Scaffolding gains `image` (the icon atlas as flat colour, Center/Top), `icon` (the `folder` cell through
+  the MTSDF path, Right/Center) and `swatch` (the `accent` gradient, Right/Bottom).
+
+## What changed — landing 6a, the base gap
+
+The base the port lands on, frozen before any subclass moves. No subclass ported, no `Core.UISystem` file
+touched, no old file deleted — 6a is additive so the tree still builds and boots on its own.
+
+- **`Control` parses XML.** `ControlXml.cs` is a second file of the same `partial class Control`, holding
+  `ParseXML` / `Parse` / `RecursiveParse` / `ResolveAttributes` ported from `VulkanControl`. Partial rather
+  than a separate static class because `Parse` writes a `WindowRoot`'s first arranged rect through the
+  `protected` `WriteArranged`. The `WindowControl` special case becomes `WindowRoot`: `WriteArranged` at the
+  authored size plus `RegisterDirtyRoot`, where the old one also wrote a transform the new stack has not got.
+- **`Control` is `[A_XSDType("NextVulkanControl", "EntityRegistry", isAbstract: true)]`**, `WindowRoot` is
+  `NextWindow`, `ContainerControl` is `NextContainer` — `Next`-prefixed, [[parallel-stack-name-collisions]].
+- **~25 authored members gained `[A_XSDElementProperty]`** under the old attribute names, so the same
+  `Width`, `Padding`, `ColorHex`, `HorizontalAlignment` an existing `*.ui.xml` writes bind unchanged.
+- **`ContainerControl`** — multi-child `AddChild`, stretch defaults. `AbstractContainerControl`'s replacement,
+  and like it, it does **not** override `Measure`/`Arrange`; a container that lays out more than one child is
+  a subclass, and those arrive at 6b.
+- **`CornerRadii` restored** (`topLeft`, `topRight`, `bottomLeft`, `bottomRight`) with its `TypeConverter`,
+  replacing landing 1's single float. `Thickness` gained its two- and four-argument constructors and
+  `ThicknessConverter`, without which `Margin="8,4"` cannot parse at all.
+- **`ControlColor`** and `EnumColorToHex` ported. Untagged, like the alignment and dock enums —
+  `ResolveAttributes` parses an enum by reflection, never through `AnyXMLType`.
+- **The gap the subclasses call**: `width`/`height`/`size`/`SetSize`/`SetWidth`/`SetHeight`, `hitTestable`
+  (now honoured by `UIEngine.HitTest`), `canBeActiveContext`, `takesActiveControl`, `FindByName`.
+- **`UIEngine` took `SolveScroll` and `ActiveTarget`** out of `UICollisionHandling` — the wheel and the
+  walk-up to whatever may hold the active context, the latter gating `SolvePress` on `takesActiveControl`.
+- **`PointerPhase.Scroll`** and `Control.OnPointerScroll`, so the wheel walks up like every other phase and
+  the `ScrollableControl` special case the old `SolveScroll` carries becomes a subclass override at 6b.
+- The landing 2–5 scaffolding is gone. In its place `BuildProbe` parses **`NextProbe.ui.xml`**, which is the
+  only thing XML can build until 6b tags the subclasses, and registers one delegate handler on it.
+
+**Context menus were built and then removed** (user, 2026-09-06) — `contextMenus`, `BuildContextMenu` and
+`OpenContextMenu` arrive with the controls that host them, and their removal also took the
+`ContextMenuBuilder` coupling to `Core.UISystem` back out.
+
+**The drag runs end to end, minus delivery to its claimant.** A left press on a control whose `draggable` is
+set calls `StartDrag()` from the base `OnPointerPress`, which sets the `NextDragging` context and tells the
+parent `ChildDraggedOut`. `UIEngine.CheckDrag` runs each tick from `Poll` to find what the drag is over. A
+left release calls `UIEngine.EndDrag(point)` **ahead of the release guards**, because a drag ends wherever the
+pointer is and that is rarely still over the control the press landed on; `EndDrag` fires `DraggingOverEnd`,
+then `Control.FinishDrag(dragged, point)` on the target, then clears both the target and `NextDragging`.
+
+**`draggable` is a flag rather than an override, and the press wiring is in the base.** `StartDrag()` stays
+public so a control can claim a drag from something other than a plain press — the old stack's five in-place
+draggers (splitter, scroll thumb, text selection, text box, Carbon's chart) all claim from their own handlers
+and want no flag. The flag exists so the base can do it for the tear-out case without every control becoming
+draggable. Gated on the left button, because `OnPointerPress` fires for both and nothing drags with the right.
+
+**One control is the drag target, exactly as one control is hovered**, and the events bubble from it:
+`DraggingOverStart` when the drag arrives, `DraggingOver` every tick it stays, `DraggingOverEnd` when it
+leaves — each walking up until one returns true, the same shape every other event on this stack uses. The
+target is the deepest hit, *not* whoever consumed the event, which is the same split
+[[button-states-and-hover-bubbling]] settles for hover: identity is the hit, notification bubbles.
+`UIEngine.FinishDrag()` ends the pair by firing `DraggingOverEnd` and clearing the target; it does not yet
+clear `NextDragging`, offer the drop or tell the claimant, and nothing calls it.
+
+**`ChildDraggedOut` is the reparenting hook, not the exit half of the over-trio.** A container is told which
+child a drag took out of it — a tab strip losing a tab is the case — and it fires from `StartDrag`, while the
+child is still parented, so "out" means the gesture began rather than that a detach happened. Only the parent
+side exists: the dragged control needs no telling, since it is the one being dragged. A matching
+`DraggedOut(oldParent)` on the child was added and removed the same day (user, 2026-09-06).
+
+**`CheckDrag` reuses the hover's own walk rather than the old stack's geometry search.** `HitTest` gained a
+`skip` parameter, rejected at the subtree root so nothing beneath it is reached either, and `CheckDrag`
+passes the dragged control — which is under the pointer by definition and would otherwise answer every time.
+Skipping the node alone was rejected: a dragged tab's label is also under the pointer and would take the hit
+in its place. The old stack does not skip at all, and only gets away with it because `TabViewControl` is an
+ancestor of the button being dragged, so the walk up reaches the right answer by accident.
+
+This is a different mechanism from the old `HitFor`, which finds the target by screen geometry — screen
+point, the window whose rect holds it, that window's tree — because a captured pointer means no other window
+is ever told it is being hovered. `CheckDrag` works inside one window only. Dragging *between* windows still
+wants `HitFor`, `WindowAt` and `Poll`'s `ownsDrag` exemption.
+
+## The drag gap
+
+The gesture runs start to finish; what is missing is everything told to the **claimant**. Seven controls claim
+a drag in the old stack —
+`TabStripButtonControl`, `ScrollThumbControl`, `SplitterControl`, `DocumentEditorControl`, `TextBoxControl`,
+`WindowFrameControl` (on a grip) and Carbon's `SpanChartControl` (twice). **Five of them need only per-tick
+delivery**; the drop, hint and ghost machinery exists for tab dragging alone — `TabViewControl` is the only
+`ResolveDrop` / `ResolveDropHint` / `ClearDropHint` implementor in the repo, and `TabStripButtonControl` the
+only `DragGhost.Show` caller.
+
+| Missing | What it is | Wanted by |
+|---|---|---|
+| `Control.onDrag`, `RegisterOnDrag`, `ResolveDrag` | the per-tick callback | all 7 |
+| `UIEngine.SolveDrag`, called from `Poll` | delivers it each tick, and holds the **stale-release guard** — `Poll` returns early while the pointer is outside the window, so a button released out there never reaches `SolveRelease` and `justReleased` is gone by the next tick; without the guard the drag stays live for good | all 7 |
+| `Control.onDragStop`, `RegisterDragStop`, `StopDrag` | the end-of-gesture callback **on the claimant**. `EndDrag` tells the target, never the thing being dragged | all 7 |
+| the **stale-release** guard | `Poll` returns early while the pointer is outside the window, so a button released out there never reaches `SolveRelease`, `justReleased` is gone by the next tick, and the drag stays live for good. The old `SolveDrag` checked the button's real state every tick; nothing does now | all 7 |
+| `Poll`'s `ownsDrag` exemption + `UIEngine.WindowOf` | the press captures the pointer to the window it went down in, so that window must keep polling once `isInWindow` goes false. Without it `CheckDrag` stops at the window edge and the release is never seen | all 7 |
+| `UIEngine.HitFor` + `WindowAt` | `CheckDrag` across windows, where the hover walk cannot reach — found by **geometry, not hover**, since no other window is told the pointer is over it. Screen point → the window whose rect holds it (active preferred, ghosts and closing windows skipped) → that window's tree | tabs |
+| `UIEngine.OfferDrop` + `Control.ResolveDrop` | superseded — `EndDrag` calls `Control.FinishDrag` on the target. What it does **not** do is walk up: the target either handles the drop or it is lost, where `OfferDrop` offered each ancestor in turn | tabs |
+| `Control.ResolveDropHint` | superseded — the `DraggingOverStart`/`Over`/`End` trio is the per-tick hint, and `_dragTarget` replaced the `NextHinted` context. A field, not a context, because nothing outside `UIEngine` asks yet | — |
+| `UIEngine.RaiseHovered` | brings the window under the drag forward, once per crossing; needs the active-window latch | tabs |
+| `DragGhost` + `Control.draggingOpacity` | the preview window. A second view of the dragged control's own pool rows, not a copy — needs a `rangeRoot` on `UIEngineModule`, which does not exist, and `DragGhost.Follow` is called from `Engine.HandleUI` | tabs |
+
 ## Row layout — measured, not estimated
 
 Printed by `UIEngine.Bootstrap` via `Unsafe.SizeOf` at boot.
@@ -134,6 +255,28 @@ passes plus the shader branch, nothing more.
 **Parallel build, not in-place migration.** The conversation-1 plan appended columns to `UIControls` and kept
 the recursive driver, which meant every intermediate state had to keep Thorium running. A second namespace,
 second pool and second module let the old stack stay whole until landing 6 deletes it.
+
+**One sampler slot per row, its meaning selected by `kind`** — the distance field on `MTSDFControl`, a
+coverage mask on `PanelControl`, the colour source on `ImageControl`. Same shape as the `edge` pair below, and
+for the same reason: one slot with three readings beats three slots with one consumer each. The cost is real
+and was taken knowingly — **an image cannot also carry a mask**, because there is one `textureIndex` and one
+UV set. The fix, if something ever wants both, is a second index plus a second UV set, which grows
+`VulkanControl` from 92 B and moves both `scalar` strides. Nothing in the tree wants it.
+
+Named `sampler` by the user over `texture` and `maskAsset`, both of which name one of the three readings.
+`SamplerAsset` and `Silk.NET.Vulkan.Sampler` already exist in the same render path — no C# ambiguity, since
+`Core.UI` imports neither, but the word now means two things there.
+
+**`uint.MaxValue` as the "no texture" sentinel, not a reserved slot 0.** Gradients could reserve slot 0
+([[ui-gradients]]) because that table is built by one loader. The texture table is filled in asset-load order
+and slot 0 is `defaultMask.png`, a real texture the old stack still resolves `maskAsset = null` to. Reserving
+it would have meant a null texture, a change to `TextureAsset`, and a behaviour change in the stack being
+deleted.
+
+**The mask multiplies last, after the edge band.** A mask is the final silhouette, so it cuts the stroke along
+with the fill — a masked panel with an edge gets the edge clipped to the mask's shape rather than a rounded
+rectangle's outline floating around an arbitrary silhouette. Verified by pointing `card` at the `close` cell:
+the whole quad, edge band included, collapsed to the glyph.
 
 **One `edge` pair, not `edge` + `outline`.** They stroke two different distance fields — `outline` thresholds
 the MSDF texture further out (screen pixels), `edge` bands the analytic rounded box inward (design pixels).
@@ -259,38 +402,92 @@ Renamed `NextCaretControl`, the same workaround as `VulkanControlData` and the `
 Rejected: keying the map on `FullName`, which changes the id of every serialized type and stops every saved
 note, scene and session file reading. See [[parallel-stack-name-collisions]].
 
+## Why these choices — landing 6a
+
+**The port cannot go beside the old stack under its own names, so 6a froze the base instead of moving
+anything.** `RegisterSerializableTypes` keys on the simple name and `[@Serializable]` is inherited, so
+`Core.UI.PanelControl` and `Core.UISystem.Controls.PanelControl` cannot both exist —
+[[parallel-stack-name-collisions]]. The user chose the `Next` prefix over move-and-delete (2026-09-06), which
+keeps the build green through 6b at the cost of renaming ~56 classes back at 6d. 6a therefore adds only what
+has no counterpart to collide with, and every XSD name it does introduce is already prefixed.
+
+**XML parsing came across verbatim rather than being rebuilt around the new event model.** `ResolveAttributes`
+binds an `Action`-typed member from a tagged static method; `Control`'s handlers are
+`Func<PointerEvent, bool>`, so that branch is inert and no XML event attribute binds yet. Rebuilding it would
+have meant settling what `BubbleClick="true"` means when bubbling is "return false" — a fork worth one
+round-trip, not a silent choice. Everything else an existing `*.ui.xml` writes binds today.
+
+**`ContainerControl` is concrete where `AbstractContainerControl` is abstract**, purely so the probe document
+has an element to instantiate. It costs nothing: a container with no layout override behaves exactly as a
+plain `Control` with the one-child restriction lifted.
+
+**`Thickness` needed its converter before anything else could be verified.** It was not in the agreed file
+list — `TypeDescriptor.GetConverter` on the landing-1 `Thickness` returns the default, which cannot read
+`"16"`, so `Padding` and `Margin` silently fail and the XML pass proves nothing.
+
+**Drag and context menus came out after being built.** Both were in the agreed 6a list and both worked — the
+drag lifecycle was driven end to end with synthetic input before removal. The user took them out (2026-09-06)
+because neither has a consumer until the controls that use them are ported, and both are shaped by the open
+event-binding fork: `onDragStop` is `Action`-typed, so it would have been the one ported event able to bind
+from XML today, and `contextMenus` is read by `ContextMenus.Compose`, which is still typed to
+`VulkanControl`. Freezing them now would have settled that fork by accident.
+
 ## Known gaps
 
-- Landings 5–6 are unbuilt. See [../Context/ui-engine-plan.md](../Context/ui-engine-plan.md).
+- Landings 6b–6d are unbuilt. See [../Context/ui-engine-plan.md](../Context/ui-engine-plan.md).
+- **No XML event attribute binds.** `onClick`, `onEnter`, `onScrollUp` and the `Bubble*` flags have no
+  member on `Control` to bind to, and the shape they should take is the open fork above. Handlers reach the
+  new stack through `RegisterOnPress` / `RegisterOnDrag` / `RegisterOnScroll` in C# only.
+- **`WindowRoot.Arrange` ignores a child's `margin`.** Landing 2 behaviour, found by 6a's probe when a
+  `Margin="0,0,56,0"` swatch arranged flush to the padding edge. Not 6a's to fix; a container that honours
+  margins is what 6b brings.
+- **A drag never reaches its claimant.** The target hears everything; the thing being dragged hears nothing —
+  no per-tick position, no end-of-gesture callback. See *The drag gap* above.
+- **A release outside the window leaves the drag live for good**, because `Poll` returns early and nothing
+  re-checks the button's real state. The `ownsDrag` exemption and the stale-release guard are one fix.
+- **`EndDrag` does not walk up.** `Control.FinishDrag` is called on the drag target alone, where the old
+  `OfferDrop` offered each ancestor in turn until one took it.
+- **`EndDrag` clears `NextDragging` after the callbacks**, not before, so a handler that reads the context
+  rather than its `dragged` argument still sees a live drag. Both handlers are given `dragged` outright.
+- **`draggable` on an ancestor still fires**, because the press bubbles — a `draggable` container drags when
+  a child does not consume the press. Correct, and worth knowing before setting the flag high in a tree.
+- **A subclass overriding `OnPointerPress` without calling base never drags**, flag or not.
+- **`ChildDraggedOut` has no caller from a real reparent** — `StartDrag` fires it while the child is still
+  attached. Nothing on the new stack detaches anything.
+- Nothing opens a menu; `ContextMenus`, `DragGhost` and `pressSwallowed` stay in the old stack.
+- **`ContextMenu="…"` in a `*.ui.xml` binds to nothing** and is silently skipped — unmatched attributes are
+  ignored by `ResolveAttributes`, not an error. Seven live sites across `UI.ui.xml` and `Workspace.ui.xml`.
 - **`TextRunControl` treats every character as a glyph**, `\n` included, exactly as the outgoing stack does.
   Paragraph breaks are a block concern and blocks arrive at landing 6.
 - **No `firstLineOffset` / `lastLineEndX` handshake.** A run measures from x = 0 of its own box; the flow that
   lets a bold run continue a line its predecessor started is a block concern too.
 - `IndexAt`/`CaretAt` duplicate `TextControl.OffsetAt`/`CaretAt` while both stacks live. The outgoing copy
   dies at landing 6.
-- `Core.UI` compiles against `Core.UISystem` for `TextMeasurer`, `FontStyle`, `Glyph`, `AtlasMetaData` and
-  `GlyphControl.CellScale`/`atlasInkMargin`. The font system is not the control stack and should survive the
-  landing-6 delete; where it lands is not decided.
-- The sampler set serves the MTSDF path only. **No mask branch** — `maskAsset`, and with it a panel with an
-  arbitrary silhouette, is landing 5.
+- `Core.UI` compiles against `Core.UISystem` for `TextMeasurer`, `FontStyle`, `Glyph`, `AtlasMetaData`,
+  `GlyphControl.CellScale`/`atlasInkMargin` and `Gradients`. Neither the font system nor the gradient table is
+  the control stack and both should survive the landing-6 delete; where they land is not decided.
+- **An image with a mask is not expressible** — one `textureIndex`, one UV set, meaning chosen by `kind`.
+- **A gradient on an `ImageControl` replaces the texture**, because the ramp assigns `color` outright after
+  the image multiply. Consistent with the old stack, and untested — nothing sets both.
+- **No `IconControl` or `ImageControl` C# subclass.** The kinds are reached through `Control.kind` +
+  `sampler` + `SetUVRect`; the atlas cell arithmetic is duplicated between `TextRunControl.WriteGlyph`, the
+  outgoing `IconControl.Rebind` and `UIEngine.SetIconCell`. The landing-6 port is what collapses it.
+- **`Gradients.Table` is uploaded once and never re-uploaded**, same gap [[ui-gradients]] records; the new
+  module's writer is `UIEngineModule.CreateGradientTable`.
+- `_gradientBuffer` is never destroyed — process lifetime, matching `MCUI`.
 - `TextRunControl.spans` is a public `List<StyleSpan>` mutated through `SetSpans`, which re-measures wholesale.
   Nothing edits one span in place yet.
-- **Scroll, drag and context-menu gating are not ported.** `SolveScroll` and its `ScrollableControl` walk,
-  `ContextMenus.OpenIn` / `DismissedBy`, `SolveDrag` and the whole drop-hint path stay in the old stack.
-- `canBeActiveContext` and `takesActiveControl` are not ported either — 6 subclasses override them, so they
-  arrive with the landing 6 port. Until then every hit control can take the active context.
-- `UIEngine.Bootstrap` builds a scaffolding tree on the primary window. The port at landing 6 removes it.
-- **Only `WindowRoot` holds siblings.** A plain `Control` throws on a second child, as the old base does, and
-  its `Measure`/`Arrange` handle one. Containers arrive with the landing 6 port; nothing between now and then
-  can lay out a list.
-- `ArrangeData.width` / `height` are unused — copies of the outgoing stack's vestigial `width`/`height`, which
-  default to 72 and are read only by `size`. The layout math uses `preferredWidth`/`preferredHeight`.
+- **Only the wheel came across.** `SolveScroll`'s `ScrollableControl` walk did not — the wheel now bubbles as
+  a phase and the container consumes it, which is a 6b subclass override.
+- `UIEngine.Bootstrap` parses a probe document into the primary window. 6b removes it with `NextProbe.ui.xml`.
+- **Only `WindowRoot` and `ContainerControl` hold siblings**, and neither lays more than one child out —
+  `WindowRoot` aligns them all in its own box, `ContainerControl` inherits the one-child `Measure`/`Arrange`.
+  A container that arranges a list is a 6b subclass.
+- `ArrangeData.width` / `height` back `Control.width`/`height`/`size`, which exist for the subclasses that
+  call them and are read by nothing in the layout math — that uses `preferredWidth`/`preferredHeight`.
 - Cumulative child offsets (the drop-targeting cache) are deferred to the landing that reads them.
 - `UIEngineModule.UpdateModule` re-records its command buffer every frame rather than on `isDirty`. Landing 1
   scaffolding; it makes the range change land, and it contradicts the record-only-when-dirty rule.
-- The gradient table is still absent from `UIEngineModule` and its shaders. It returns as binding 3 — the
-  numbering the old shader already uses, so nothing renumbers. `ControlGeometry.gradientRect` and
-  `VulkanControl.gradientIndex` are written and read by nothing.
 - `UIEngineModule` mirrors the whole pool **per window**. Correct, but wants revisiting before the pool is large.
 - `CreatePipeline` is duplicated verbatim from `UIModule`. Collapse at landing 6, not before — sharing it now
   would mean refactoring the module being deleted.
@@ -300,4 +497,4 @@ note, scene and session file reading. See [[parallel-stack-name-collisions]].
 Related: [[ui-data-control-split]], [[entity-transform-split]], [[text-layout-one-measurer]],
 [[glyphs-as-pool-data]], [[control-edge-and-outline]], [[mapped-streaming-buffers]], [[gpu-global-frame-data]],
 [[ecs-rework-data-pools]], [[parallel-stack-name-collisions]], [[caret-blink-and-focus]],
-[[document-selection]]
+[[document-selection]], [[ui-gradients]]

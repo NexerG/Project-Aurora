@@ -1,5 +1,8 @@
 using ArctisAurora.Core.Data;
 using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Registry.Assets;
+using ArctisAurora.Core.UISystem;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.UI
@@ -7,7 +10,8 @@ namespace ArctisAurora.Core.UI
     // One UI element: an ArrangeData row in UIElements and the VulkanControl rows it draws in
     // VulkanControls. Every control owns rows[0]; a text run appends one per glyph. No transform —
     // the baked matrix lives in ControlGeometry.
-    public class Control : Entity
+    [A_XSDType("NextVulkanControl", "EntityRegistry", isAbstract: true)]
+    public partial class Control : Entity
     {
         // The camera's ortho box is z in [-512, -0.01], so a root sits at -10 and depth steps toward
         // the near plane from there. Matches what the outgoing stack writes.
@@ -59,6 +63,8 @@ namespace ArctisAurora.Core.UI
         {
             visual.type = VulkanControlType.PanelControl;
             visual.tint = new Vector4D<float>(1, 1, 1, 1);
+            visual.textureIndex = VulkanControl.noTexture;
+            SetUVRect(0f, 0f, 1f, 1f);
 
             ref ArrangeData a = ref arrange;
             a.horizontalPosition = 0.5f;
@@ -73,36 +79,42 @@ namespace ArctisAurora.Core.UI
         }
 
         #region ---- authored layout ----
+        [A_XSDElementProperty("Width", "UI", "Width in pixels. 0 = auto.")]
         public float preferredWidth
         {
             get => arrange.preferredWidth;
             set { if (Set(ref arrange.preferredWidth, value)) InvalidateLayout(); }
         }
 
+        [A_XSDElementProperty("Height", "UI", "Height in pixels. 0 = auto.")]
         public float preferredHeight
         {
             get => arrange.preferredHeight;
             set { if (Set(ref arrange.preferredHeight, value)) InvalidateLayout(); }
         }
 
+        [A_XSDElementProperty("MinWidth", "UI", "Minimum width in pixels.")]
         public float minWidth
         {
             get => arrange.minWidth;
             set { if (Set(ref arrange.minWidth, value)) InvalidateLayout(); }
         }
 
+        [A_XSDElementProperty("MinHeight", "UI", "Minimum height in pixels.")]
         public float minHeight
         {
             get => arrange.minHeight;
             set { if (Set(ref arrange.minHeight, value)) InvalidateLayout(); }
         }
 
+        [A_XSDElementProperty("WidthStar", "UI", "Proportional width share inside a horizontal stack. 0 = fixed/auto.")]
         public float widthStar
         {
             get => arrange.widthStar;
             set { if (Set(ref arrange.widthStar, value)) InvalidateLayout(); }
         }
 
+        [A_XSDElementProperty("HeightStar", "UI", "Proportional height share inside a vertical stack. 0 = fixed/auto.")]
         public float heightStar
         {
             get => arrange.heightStar;
@@ -112,60 +124,100 @@ namespace ArctisAurora.Core.UI
         public bool IsWidthStar => arrange.widthStar > 0f;
         public bool IsHeightStar => arrange.heightStar > 0f;
 
+        // The size a control is given outright, where preferredWidth/Height are what it asks for.
+        public float width
+        {
+            get => arrange.width;
+            set { if (Set(ref arrange.width, value)) InvalidateLayout(); }
+        }
+
+        public float height
+        {
+            get => arrange.height;
+            set { if (Set(ref arrange.height, value)) InvalidateLayout(); }
+        }
+
+        public virtual Vector2D<float> size
+        {
+            get => new Vector2D<float>(arrange.width, arrange.height);
+            set
+            {
+                ref ArrangeData a = ref arrange;
+                bool changed = a.width != value.X || a.height != value.Y;
+                a.width = value.X;
+                a.height = value.Y;
+                if (changed) InvalidateLayout();
+            }
+        }
+
+        public virtual void SetSize(Vector2D<float> size) => this.size = size;
+        public virtual void SetWidth(float x) => width = x;
+        public virtual void SetHeight(float y) => height = y;
+
+        [A_XSDElementProperty("Margin", "UI", "Space outside the control in pixels.")]
         public Thickness margin
         {
             get => arrange.margin;
             set { arrange.margin = value; InvalidateLayout(); }
         }
 
+        [A_XSDElementProperty("Padding", "UI", "Space inside the control in pixels.")]
         public Thickness padding
         {
             get => arrange.padding;
             set { arrange.padding = value; InvalidateLayout(); }
         }
 
+        [A_XSDElementProperty("HorizontalAlignment", "UI", "How this control fills its parent's horizontal slot.")]
         public HorizontalAlignment horizontalAlignment
         {
             get => (HorizontalAlignment)arrange.horizontalAlignment;
             set { arrange.horizontalAlignment = (byte)value; InvalidateArrange(); }
         }
 
+        [A_XSDElementProperty("VerticalAlignment", "UI", "How this control fills its parent's vertical slot.")]
         public VerticalAlignment verticalAlignment
         {
             get => (VerticalAlignment)arrange.verticalAlignment;
             set { arrange.verticalAlignment = (byte)value; InvalidateArrange(); }
         }
 
+        [A_XSDElementProperty("HorizontalPos", "UI", "Position within the parent, [0;1]. Works with non-container controls.")]
         public float horizontalPosition
         {
             get => arrange.horizontalPosition;
             set { if (Set(ref arrange.horizontalPosition, value)) InvalidateArrange(); }
         }
 
+        [A_XSDElementProperty("VerticalPos", "UI", "Position within the parent, [0;1]. Works with non-container controls.")]
         public float verticalPosition
         {
             get => arrange.verticalPosition;
             set { if (Set(ref arrange.verticalPosition, value)) InvalidateArrange(); }
         }
 
+        [A_XSDElementProperty("DockMode", "UI", "Sets the control's dock mode. Fill - fills the entire area.")]
         public DockMode dockMode
         {
             get => (DockMode)arrange.dockMode;
             set { arrange.dockMode = (byte)value; InvalidateLayout(); }
         }
 
+        [A_XSDElementProperty("Grid.Column", "UI", "If present in a grid sets the control's grid column.")]
         public short gridColumn
         {
             get => arrange.gridColumn;
             set { arrange.gridColumn = value; InvalidateLayout(); }
         }
 
+        [A_XSDElementProperty("Grid.Row", "UI", "If present in a grid sets the control's grid row.")]
         public short gridRow
         {
             get => arrange.gridRow;
             set { arrange.gridRow = value; InvalidateLayout(); }
         }
 
+        [A_XSDElementProperty("ClipToBounds", "UI", "Will not render or hit-test children outside bounds.")]
         public bool clipOutOfBounds
         {
             get => HasFlag(ArrangeFlags.Clip);
@@ -182,6 +234,7 @@ namespace ArctisAurora.Core.UI
 
         #region ---- paint ----
         // Virtual because a text run's colour belongs to its spans, not to rows[0].
+        [A_XSDElementProperty("ColorHex", "UI", "Sets the control color via hex code.")]
         public virtual string colorHex
         {
             get => field;
@@ -194,6 +247,7 @@ namespace ArctisAurora.Core.UI
             }
         } = "#FFFFFF";
 
+        [A_XSDElementProperty("Alpha", "UI", "Opacity of the control, 0 to 1. Multiplies the coverage its mask already carries.")]
         public virtual float alpha
         {
             get => field;
@@ -205,17 +259,30 @@ namespace ArctisAurora.Core.UI
             }
         } = 1f;
 
-        public float cornerRadius
+        [A_XSDElementProperty("ControlColor", "UI", "Sets the color of the control.")]
+        public ControlColor controlColor
         {
             get => field;
             set
             {
                 field = value;
-                visual.cornerRadius = new Vector4D<float>(value, value, value, value);
+                colorHex = EnumColorToHex(value);
+            }
+        }
+
+        [A_XSDElementProperty("CornerRadius", "UI", "Rounds the control's corners, in design-space pixels. \"8\", \"top,bottom\" or \"topLeft,topRight,bottomLeft,bottomRight\".")]
+        public CornerRadii cornerRadius
+        {
+            get => field;
+            set
+            {
+                field = value;
+                visual.cornerRadius = value.AsVector();
                 Publish();
             }
         }
 
+        [A_XSDElementProperty("EdgeColorHex", "UI", "Sets the control's border color via hex code. Needs EdgeThickness to show.")]
         public string edgeColorHex
         {
             get => field;
@@ -227,6 +294,7 @@ namespace ArctisAurora.Core.UI
             }
         } = "#000000";
 
+        [A_XSDElementProperty("EdgeThickness", "UI", "Border width in design-space pixels, drawn inward from the control's edge. Zero draws none.")]
         public float edgeThickness
         {
             get => field;
@@ -237,6 +305,54 @@ namespace ArctisAurora.Core.UI
                 Publish();
             }
         }
+
+        // Which of the three quad kinds rows[0] draws, and so what its sampler means.
+        public VulkanControlType kind
+        {
+            get => field;
+            set
+            {
+                field = value;
+                visual.type = value;
+                Publish();
+            }
+        } = VulkanControlType.PanelControl;
+
+        // The distance field on MTSDFControl, the coverage mask on PanelControl, the colour on
+        // ImageControl. Null samples nothing.
+        public TextureAsset? sampler
+        {
+            get => field;
+            set
+            {
+                field = value;
+                visual.textureIndex = value?.textureIndex ?? VulkanControl.noTexture;
+                Publish();
+            }
+        }
+
+        // The quad mesh's vertex order — uv1 is the far corner, not the near one.
+        public void SetUVRect(float u0, float v0, float u1, float v1)
+        {
+            ref VulkanControl v = ref visual;
+            v.uvs.uv1 = new Vector2D<float>(u1, v1);
+            v.uvs.uv2 = new Vector2D<float>(u0, v0);
+            v.uvs.uv3 = new Vector2D<float>(u0, v1);
+            v.uvs.uv4 = new Vector2D<float>(u1, v0);
+            Publish();
+        }
+
+        [A_XSDElementProperty("Gradient", "UI", "Name of a gradient in Gradients.gradients.xml, ramped across this control's rect in place of its colour.")]
+        public virtual string gradient
+        {
+            get => field;
+            set
+            {
+                field = value;
+                visual.gradientIndex = Gradients.IndexOf(value);
+                Publish();
+            }
+        } = "";
         #endregion
 
         #region ---- layout state ----
@@ -436,12 +552,61 @@ namespace ArctisAurora.Core.UI
         public void RegisterOnRelease(Func<PointerEvent, bool> handler) => onRelease = handler;
         public void RegisterOnTap(Func<PointerEvent, bool> handler) => onTap = handler;
 
+        public Func<PointerEvent, bool>? onScroll;
+        public void RegisterOnScroll(Func<PointerEvent, bool> handler) => onScroll = handler;
+
         public virtual bool OnPointerEnter(PointerEvent e) => onEnter?.Invoke(e) ?? false;
         public virtual bool OnPointerExit(PointerEvent e) => onExit?.Invoke(e) ?? false;
         public virtual bool OnPointerMove(PointerEvent e) => onMove?.Invoke(e) ?? false;
-        public virtual bool OnPointerPress(PointerEvent e) => onPress?.Invoke(e) ?? false;
+        public virtual bool OnPointerPress(PointerEvent e)
+        {
+            if (draggable && e.button == PointerEvent.leftButton) StartDrag();
+            return onPress?.Invoke(e) ?? false;
+        }
         public virtual bool OnPointerRelease(PointerEvent e) => onRelease?.Invoke(e) ?? false;
         public virtual bool OnPointerTap(PointerEvent e) => onTap?.Invoke(e) ?? false;
+
+        // The wheel, carried in PointerEvent.delta. Walks up like every other phase.
+        public virtual bool OnPointerScroll(PointerEvent e) => onScroll?.Invoke(e) ?? false;
+
+        // Decoration drawn inside a control that owns the interaction — a caret, a selection box.
+        // Skipped by the hit-test so it does not swallow the click it sits over.
+        public bool hitTestable = true;
+
+        // False hands the active context to the parent instead.
+        public virtual bool canBeActiveContext => true;
+
+        // False leaves the active control where it was when this one is pressed.
+        public virtual bool takesActiveControl => true;
+
+        // Whether a left press on this control begins a drag.
+        [A_XSDElementProperty("Draggable", "UI", "A left press on this control begins a drag.")]
+        public bool draggable = false;
+
+        // Claims the drag and tells the parent it lost a child. Also callable directly, for a drag
+        // that starts on something other than a plain press.
+        public void StartDrag()
+        {
+            UIEngine.SetDragging(this);
+            (parent as Control)?.ChildDraggedOut(this);
+        }
+
+        // A drag arrived over this control, is still over it, and has left it. All three walk up
+        // until one returns true, like every other pointer event.
+        public virtual bool DraggingOverStart(Control dragged, Vector2D<float> point) => false;
+        public virtual bool DraggingOver(Control dragged, Vector2D<float> point) => false;
+        public virtual bool DraggingOverEnd(Control dragged) => false;
+
+        // A drag was released on this control.
+        public virtual void FinishDrag(Control dragged, Vector2D<float> point) { }
+
+        // This control is being dragged, and the pointer left every window or entered one. An
+        // overlap counts as neither — the window under the pointer is not knowable there.
+        public virtual void DraggedOutOfWindow() { }
+        public virtual void DraggedIntoWindow() { }
+
+        // A child of this control was dragged out of it.
+        public virtual void ChildDraggedOut(Control child) { }
         #endregion
 
         #region ---- tree ----
@@ -464,6 +629,9 @@ namespace ArctisAurora.Core.UI
             InvalidateLayout();
         }
 
+        // A control's children are always controls.
+        public override Control FindByName(string querryName) => (Control)base.FindByName(querryName);
+
         // Both pools resequence together — UIElements holds one row per control, VulkanControls one
         // per drawn quad, and the same DFS walk keys them.
         protected void MarkTreeOrderDirty()
@@ -483,6 +651,30 @@ namespace ArctisAurora.Core.UI
         internal void Publish() => Publish(0);
 
         internal void Publish(int row) => UIEngine.Controls.MarkContentDirty(rows[row]);
+
+        public static string EnumColorToHex(ControlColor color)
+        {
+            return color switch
+            {
+                ControlColor.red => "#FF0000",
+                ControlColor.green => "#00FF00",
+                ControlColor.blue => "#0000FF",
+                ControlColor.white => "#FFFFFF",
+                ControlColor.black => "#000000",
+                ControlColor.yellow => "#FFFF00",
+                ControlColor.cyan => "#00FFFF",
+                ControlColor.magenta => "#FF00FF",
+                ControlColor.gray => "#808080",
+                ControlColor.orange => "#FFA500",
+                ControlColor.purple => "#800080",
+                ControlColor.brown => "#A52A2A",
+                ControlColor.pink => "#FFC0CB",
+                ControlColor.lime => "#00FF00",
+                ControlColor.navy => "#000080",
+                ControlColor.teal => "#008080",
+                _ => "#FFFFFF",
+            };
+        }
 
         public static Vector3D<float> HexToRGB(string hex)
         {

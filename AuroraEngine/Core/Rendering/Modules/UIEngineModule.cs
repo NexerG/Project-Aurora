@@ -3,6 +3,7 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.UI;
+using ArctisAurora.Core.UISystem;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Core.Native;
@@ -22,7 +23,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override ERendererStage RendererStage => ERendererStage.UI;
 
         internal override uint[][] descriptorMaxCounts => new uint[][] {
-            new uint[] { 1, 1, 1 },                   // set 1: camera UBO, geometry SSBO, control SSBO
+            new uint[] { 1, 1, 1, 1 },                // set 1: camera UBO, geometry SSBO, control SSBO, gradient SSBO
             new uint[] { TextureAsset.MaxTextures }   // set 2: one sampler per distinct texture
         };
 
@@ -47,7 +48,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override List<List<DescriptorType>> descriptorTypes => new()
         {
             new List<DescriptorType> {
-                DescriptorType.UniformBuffer, DescriptorType.StorageBuffer, DescriptorType.StorageBuffer
+                DescriptorType.UniformBuffer, DescriptorType.StorageBuffer, DescriptorType.StorageBuffer,
+                DescriptorType.StorageBuffer
             },
             new List<DescriptorType> {
                 DescriptorType.CombinedImageSampler
@@ -56,7 +58,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override List<List<ShaderStageFlags>> shaderStages => new()
         {
             new List<ShaderStageFlags>{
-                ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit
+                ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit,
+                ShaderStageFlags.FragmentBit
             },
             new List<ShaderStageFlags>{
                 ShaderStageFlags.FragmentBit
@@ -64,7 +67,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         };
         internal override DescriptorBindingFlags[][] descriptorBindingFlags => [
             [
-                DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.None
+                DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.None,
+                DescriptorBindingFlags.None
             ],
             [
                 DescriptorBindingFlags.VariableDescriptorCountBit | DescriptorBindingFlags.PartiallyBoundBit
@@ -85,6 +89,11 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         private DeviceMemory[] _controlMemories = null!;
         private nint[] _controlMapped = null!;
         private int _mirrorCapacity = -1;
+
+        // One table for the whole process, uploaded once — never destroyed with a window, or the
+        // windows that outlive it would keep a dangling descriptor.
+        private static Silk.NET.Vulkan.Buffer _gradientBuffer;
+        private static DeviceMemory _gradientMemory;
 
         private PoolCursor[] _cursors = null!;
         private int[] _frameBuiltCapacity = null!;
@@ -143,7 +152,17 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             Renderer.renderer.CreateCommandPool((uint)Renderer.queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit), out moduleCommandPool, CommandPoolCreateFlags.ResetCommandBufferBit);
             RegisterVulkanQueue(Renderer.queueAllocator, Renderer.vk, ref Renderer.logicalDevice);
             _quad = AssetRegistries.GetRegistryByValueType<string, AVulkanMesh>(typeof(AVulkanMesh))["uidefault"];
+            CreateGradientTable();
             PrepareCamera();
+        }
+
+        // Slot 0 is always present, so the buffer is never zero-sized even with no gradients authored.
+        private static void CreateGradientTable()
+        {
+            if (_gradientBuffer.Handle != default) return;
+
+            GpuGradient[] gradients = Gradients.Table;
+            AVulkanBufferHandler.CreateBuffer(ref gradients, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref _gradientBuffer, ref _gradientMemory, BufferUsageFlags.StorageBufferBit);
         }
 
         internal override void PrepareCamera()
@@ -268,7 +287,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.StorageBuffer,
-                    DescriptorCount = 2
+                    DescriptorCount = 3
                 },
                 new DescriptorPoolSize()
                 {
@@ -324,6 +343,12 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 Offset = 0,
                 Range = (ulong)(Unsafe.SizeOf<VulkanControl>() * _mirrorCapacity)
             };
+            DescriptorBufferInfo gradientInfo = new DescriptorBufferInfo()
+            {
+                Buffer = _gradientBuffer,
+                Offset = 0,
+                Range = (ulong)(Unsafe.SizeOf<GpuGradient>() * Gradients.Count)
+            };
             WriteDescriptorSet[] writes = new WriteDescriptorSet[]
             {
                 new WriteDescriptorSet
@@ -355,6 +380,16 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     DstArrayElement = 0,
                     DescriptorType = DescriptorType.StorageBuffer,
                     PBufferInfo = &controlInfo
+                },
+                new WriteDescriptorSet
+                {
+                    SType = StructureType.WriteDescriptorSet,
+                    DstSet = frameResources[currentFrame].sets[0],
+                    DstBinding = 3,
+                    DescriptorCount = 1,
+                    DstArrayElement = 0,
+                    DescriptorType = DescriptorType.StorageBuffer,
+                    PBufferInfo = &gradientInfo
                 }
             };
             fixed (WriteDescriptorSet* writesPtr = writes)

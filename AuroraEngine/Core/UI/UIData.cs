@@ -1,5 +1,7 @@
 using ArctisAurora.Core.Registry;
 using Silk.NET.Maths;
+using System.ComponentModel;
+using System.Globalization;
 using System.Runtime.InteropServices;
 
 namespace ArctisAurora.Core.UI
@@ -93,6 +95,7 @@ namespace ArctisAurora.Core.UI
         public static LayoutRect Infinite => new LayoutRect(0, 0, float.MaxValue, float.MaxValue);
     }
 
+    [TypeConverter(typeof(ThicknessConverter))]
     public struct Thickness
     {
         public float top;
@@ -105,10 +108,113 @@ namespace ArctisAurora.Core.UI
             top = right = bottom = left = uniform;
         }
 
+        public Thickness(float horizontal, float vertical)
+        {
+            left = right = horizontal;
+            top = bottom = vertical;
+        }
+
+        public Thickness(float top, float right, float bottom, float left)
+        {
+            this.top = top;
+            this.right = right;
+            this.bottom = bottom;
+            this.left = left;
+        }
+
         public float totalHorizontal => left + right;
         public float totalVertical => top + bottom;
 
         public static Thickness Zero => new Thickness(0);
+    }
+
+    // "8" | "8,4" | "1,2,3,4", one comma-separated value per Thickness constructor.
+    public class ThicknessConverter : TypeConverter
+    {
+        public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType) =>
+            sourceType == typeof(string) || base.CanConvertFrom(context, sourceType);
+
+        public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
+        {
+            if (value is not string text) return base.ConvertFrom(context, culture, value);
+
+            string[] parts = text.Split(',');
+            float[] sides = new float[parts.Length];
+            for (int i = 0; i < parts.Length; i++)
+                sides[i] = float.Parse(parts[i].Trim(), culture);
+
+            return parts.Length switch
+            {
+                1 => new Thickness(sides[0]),
+                2 => new Thickness(sides[0], sides[1]),
+                4 => new Thickness(sides[0], sides[1], sides[2], sides[3]),
+                _ => throw new FormatException($"Thickness \"{text}\" needs 1, 2 or 4 comma-separated values.")
+            };
+        }
+    }
+
+    [TypeConverter(typeof(CornerRadiiConverter))]
+    public struct CornerRadii
+    {
+        public float topLeft;
+        public float topRight;
+        public float bottomLeft;
+        public float bottomRight;
+
+        public CornerRadii(float uniform)
+        {
+            topLeft = topRight = bottomLeft = bottomRight = uniform;
+        }
+
+        public CornerRadii(float top, float bottom)
+        {
+            topLeft = topRight = top;
+            bottomLeft = bottomRight = bottom;
+        }
+
+        public CornerRadii(float topLeft, float topRight, float bottomLeft, float bottomRight)
+        {
+            this.topLeft = topLeft;
+            this.topRight = topRight;
+            this.bottomLeft = bottomLeft;
+            this.bottomRight = bottomRight;
+        }
+
+        public Vector4D<float> AsVector() => new Vector4D<float>(topLeft, topRight, bottomLeft, bottomRight);
+
+        public static CornerRadii Zero => new CornerRadii(0);
+    }
+
+    // "8" | "8,4" | "1,2,3,4", one comma-separated value per CornerRadii constructor.
+    public class CornerRadiiConverter : TypeConverter
+    {
+        public override bool CanConvertFrom(ITypeDescriptorContext? context, Type sourceType) =>
+            sourceType == typeof(string) || base.CanConvertFrom(context, sourceType);
+
+        public override object? ConvertFrom(ITypeDescriptorContext? context, CultureInfo? culture, object value)
+        {
+            if (value is not string text) return base.ConvertFrom(context, culture, value);
+
+            string[] parts = text.Split(',');
+            float[] corners = new float[parts.Length];
+            for (int i = 0; i < parts.Length; i++)
+                corners[i] = float.Parse(parts[i].Trim(), culture);
+
+            return parts.Length switch
+            {
+                1 => new CornerRadii(corners[0]),
+                2 => new CornerRadii(corners[0], corners[1]),
+                4 => new CornerRadii(corners[0], corners[1], corners[2], corners[3]),
+                _ => throw new FormatException($"CornerRadii \"{text}\" needs 1, 2 or 4 comma-separated values.")
+            };
+        }
+    }
+
+    // Untagged, like the alignment and dock enums — the old stack owns these [A_XSDType] names and
+    // ResolveAttributes parses an enum by reflection, not through AnyXMLType.
+    public enum ControlColor
+    {
+        red, green, blue, white, black, yellow, cyan, magenta, gray, orange, purple, brown, pink, lime, navy, teal,
     }
 
     public struct QuadUVs
@@ -171,6 +277,9 @@ namespace ArctisAurora.Core.UI
     [StructLayout(LayoutKind.Sequential, Pack = 1), A_XSDType("VulkanControlData", "DataPools")]
     public struct VulkanControl
     {
+        // textureIndex when the row samples nothing; slot 0 is a real texture
+        public const uint noTexture = uint.MaxValue;
+
         public VulkanControlType type;
         public QuadUVs uvs;
         public Vector4D<float> tint;

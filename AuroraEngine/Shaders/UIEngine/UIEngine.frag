@@ -1,5 +1,26 @@
 #version 450
 #extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_scalar_block_layout : enable
+
+struct GradientStop
+{
+    vec4 color;
+    float pos;
+};
+
+struct Gradient
+{
+    vec2 direction;
+    vec2 center;
+    uint kind;
+    uint stopCount;
+    GradientStop stops[8];
+};
+
+// uploaded once at bootstrap and shared by every window, so a definition is named rather than copied
+layout(set = 1, binding = 3, scalar) readonly buffer GradientBuffer {
+    Gradient gradients[];
+} GB;
 
 layout(location = 0) in vec2 fragPos;
 layout(location = 1) in flat vec4 fragClip;
@@ -12,6 +33,8 @@ layout(location = 7) in flat float fragEdgeThickness;
 layout(location = 8) in vec2 fragUV;
 layout(location = 9) in flat uint fragTextureIndex;
 layout(location = 10) in flat uint fragType;
+layout(location = 11) in flat uint fragGradientIndex;
+layout(location = 12) in flat vec4 fragGradientRect;
 
 layout(location = 0) out vec4 outColor;
 
@@ -20,9 +43,45 @@ layout(set = 2, binding = 0) uniform sampler2D samplers[];
 
 // VulkanControlType
 const uint MTSDF_CONTROL = 0u;
+const uint PANEL_CONTROL = 1u;
+const uint IMAGE_CONTROL = 2u;
+
+// VulkanControl.noTexture
+const uint NO_TEXTURE = 0xFFFFFFFFu;
 
 float median(float r, float g, float b) {
     return max(min(r, g), min(max(r, g), b));
+}
+
+// Ramps a gradient across rect, in the same design space as p. Linear spans the rect corner to
+// corner along its direction; radial is an ellipse reaching the farthest corner.
+vec4 sampleGradient(uint index, vec2 p, vec4 rect)
+{
+    Gradient g = GB.gradients[index];
+    vec2 extent = max((rect.zw - rect.xy) * 0.5f, vec2(1e-5f));
+    vec2 local = p - (rect.xy + rect.zw) * 0.5f;
+
+    float t;
+    if (g.kind == 0u)
+    {
+        float span = abs(g.direction.x) * extent.x + abs(g.direction.y) * extent.y;
+        t = (dot(local, g.direction) + span) / (2.0f * span);
+    }
+    else
+    {
+        vec2 offset = (g.center * 2.0f - 1.0f) * extent;
+        t = length((local - offset) / (extent + abs(offset)));
+    }
+    t = clamp(t, 0.0f, 1.0f);
+
+    vec4 color = g.stops[0].color;
+    for (uint i = 1u; i < g.stopCount; ++i)
+    {
+        float from = g.stops[i - 1u].pos;
+        float to = g.stops[i].pos;
+        color = mix(color, g.stops[i].color, clamp((t - from) / max(to - from, 1e-5f), 0.0f, 1.0f));
+    }
+    return color;
 }
 
 // Signed distance to a rounded rectangle, negative inside. r is (topLeft, topRight, bottomLeft, bottomRight).
@@ -64,6 +123,7 @@ void main()
         discard;
 
     vec3 color = fragTint.rgb;
+    float alpha = fragTint.a;
     float opacity;
     float dist;
     float aa;
@@ -81,6 +141,21 @@ void main()
         dist = -sdRoundBox(fragLocal, fragHalfExtent, fragRadius);
         aa = fwidth(dist);
         opacity = clamp(dist / aa + 0.5f, 0.0f, 1.0f);
+
+        if (fragType == IMAGE_CONTROL && fragTextureIndex != NO_TEXTURE)
+        {
+            vec4 texel = texture(samplers[fragTextureIndex], fragUV);
+            color *= texel.rgb;
+            alpha *= texel.a;
+        }
+    }
+
+    // gradient — replaces the fill, so the edge still bands over it
+    if (fragGradientIndex > 0u)
+    {
+        vec4 ramp = sampleGradient(fragGradientIndex, fragPos, fragGradientRect);
+        color = ramp.rgb;
+        alpha *= ramp.a;
     }
 
     // edge — the outermost band of the silhouette, carrying its own coverage
@@ -95,5 +170,9 @@ void main()
         opacity = max(opacity, band);
     }
 
-    outColor = vec4(color, opacity * fragTint.a);
+    // mask — the last silhouette, so it cuts the edge band along with the fill
+    if (fragType == PANEL_CONTROL && fragTextureIndex != NO_TEXTURE)
+        opacity *= clamp(msdfDistance() + 0.5f, 0.0f, 1.0f);
+
+    outColor = vec4(color, opacity * alpha);
 }

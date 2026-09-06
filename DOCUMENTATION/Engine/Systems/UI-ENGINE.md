@@ -17,7 +17,7 @@ Implementors:
   - "[[UI-ENGINE]]"
 Namespace: ArctisAurora.Core.UI
 SourceFiles: AuroraEngine/Core/UI/*.cs, AuroraEngine/Core/Rendering/Modules/UIEngineModule.cs, AuroraEngine/Shaders/UIEngine/*
-VerifiedAgainst: 2026-09-06
+VerifiedAgainst: 2026-09-06 (landing 6a)
 ---
 ## Overview
 
@@ -25,7 +25,7 @@ The UI is being rebuilt in a new namespace beside the old one rather than migrat
 
 The rebuild exists to separate three kinds of data that were previously one row. What the layout pass reads never reaches the GPU at all. What the arrange pass produces and what the paint properties produce go to the GPU as two independent buffers, because a window resize and a colour change dirty completely different bytes and had been forcing each other's uploads.
 
-> The stack draws, lays itself out, answers the pointer and renders text with a caret. Images and icons are designed and agreed but do not exist yet.
+> The stack draws, lays itself out, answers the pointer, renders text with a caret, and paints images, icons, masks and gradients. What is left is porting the thirty-nine existing controls onto it and deleting the old one.
 
 ## Two things are called a control
 
@@ -57,13 +57,33 @@ Neither had a single consumer anywhere in the engine — no control set either p
 
 They collapsed into one `edge` pair whose meaning the kind selects: on an `MTSDFControl` it strokes the glyph silhouette, on anything else it bands the rounded box, and it is design pixels in both cases so a themed two-pixel border means the same thing on a letter and on a panel. What is lost is a control carrying both at once, which the icon control documented and nothing used.
 
+## One sampler slot, read three ways
+
+A drawn row names at most one texture and one rectangle within it, and what that texture *means* is decided by the row's kind rather than by a separate field for each use.
+
+On a distance-field row it is the field itself, which is how both a letter and an icon are drawn — the shader cannot tell the two apart, because there is nothing to tell apart. On an image row it is the picture, multiplied into the colour and into the opacity, so a texture with transparent corners keeps them. On a panel row it is a mask: an arbitrary silhouette the rounded rectangle is cut down to.
+
+This is the same shape the stroke took. One slot with three readings is smaller than three slots each with one consumer, and it is the readings that differ, not the plumbing.
+
+The price is that the three readings are exclusive. An image cannot also carry a mask, because there is one texture and one rectangle to name it with. Giving it both means a second index and a second rectangle on every row in the buffer, including the several hundred rows a paragraph of text occupies, and nothing has yet wanted it.
+
+A row that names no texture samples nothing at all. The absence is a real value rather than an empty one, because the first slot of the texture table is an ordinary texture that something is entitled to use — so the shader tests for the sentinel rather than for zero, and a plain panel issues no sampling instruction.
+
 ## Masks
 
-A mask gives a control an arbitrary silhouette instead of a rectangle, and it is meant to be reached for. The default mask paints, an invisible mask paints nothing, and a control can name any texture in the table.
+A mask is a capability, not a special case for text, and it is meant to be reached for. A control names any texture in the table and its rectangle becomes that shape.
 
-Because a mask is a capability rather than a special case for text, the sampler set serves all three kinds. A panel with a mask samples it; a panel without one does not, and the shader branches on whether a mask is assigned rather than on which kind the control is.
+The mask is applied last, after the stroke. A masked control is one silhouette, so its border follows the mask's outline rather than floating around it as the rounded rectangle it would otherwise have been.
 
-> The texture table itself has arrived, because glyphs need it. The mask branch has not: today the shader samples a texture only for a glyph, and a panel cannot yet be given a silhouette of its own.
+> A mask replaces the shape; it does not tint it. Colour, gradient and stroke all still apply, and all of them are cut by it.
+
+## Gradients
+
+A control can name a gradient instead of a flat colour, and the ramp is evaluated per pixel from a table uploaded once at startup rather than carried on the row — the row holds only which row of that table it wants, and the rectangle the ramp spans.
+
+That rectangle is separate from the control's own box on purpose. Every glyph of a paragraph is its own drawn row, so a ramp measured against each row's box would restart on every letter; measured against a rectangle handed down from above, one ramp runs across the whole run.
+
+The ramp replaces the fill rather than tinting it, so a control with both a picture and a gradient shows the gradient. Nothing does both today.
 
 ## Depth
 
@@ -98,7 +118,9 @@ Two caches ride on every element: the rectangle covering it and everything benea
 
 ## The window root
 
-One kind of element holds siblings: the root of a window's tree. Everything else takes a single child, which is what containers exist to change.
+Two kinds of element hold siblings: the root of a window's tree, and the container base every multi-child control derives from. A plain control takes a single child and throws on a second.
+
+Holding siblings and arranging them are separate things. The container base only lifts the restriction; it inherits the single-child measure and arrange, so a bare container places one child and ignores the rest. Deciding where several children go — stacking them, splitting them, scrolling them — is what a container subclass is for.
 
 The root also owns the box the whole tree is laid out in. By default that box is the window's pixels, so a control's coordinates are screen pixels; with scaling switched on it is the window divided by whatever the chosen axis implies, so the tree keeps an authored design size and everything below it scales with the window without knowing anything about it. Pointer positions are converted into the same box before anything is hit-tested.
 
@@ -187,9 +209,9 @@ Every window polls, and the hover is global because there is one pointer — hen
 
 ## Hit-testing
 
-Every control is hit-testable. There is no opt-out flag, and a decoration sitting over a button no longer has to be excluded from the test by hand.
+The deepest control under the pointer wins the hit, and the event then walks up the tree until some handler consumes it by returning true. A control with no handler consumes nothing, so the click reaches whatever above it does care, and the event carries the control that was actually under the pointer so an ancestor handling it still knows what was hit.
 
-The deepest control under the pointer always wins the hit, and the event then walks up the tree until some handler consumes it by returning true. A control with no handler consumes nothing, so the click reaches whatever above it does care, and the event carries the control that was actually under the pointer so an ancestor handling it still knows what was hit.
+A control can take itself out of the test by clearing its hit-testable flag. That exists for decorations drawn inside something that owns the interaction — a caret, a selection box — which sit over the thing the pointer is aiming at and would otherwise swallow the click, because the deepest hit is the one that wins.
 
 ```
 HitTest(control, point)
@@ -198,6 +220,7 @@ HitTest(control, point)
 	if the point is outside the rectangle covering its whole subtree
 		return nothing
 	for each child, last to first
+		if the child is not hit-testable, skip it
 		ask the same question of that child
 		if it answered, return that answer
 	if the point is inside both the control's clip and its own box
@@ -218,6 +241,66 @@ Exactly one control is hovered: the deepest one under the pointer. Its parents a
 What reaches the parents is the *event*, by the same bubbling every other pointer event uses. The letter is told it was entered; if it does not consume that, its run is told, then the paragraph, and so on up until something does. That is what makes hovering a button's label light the button, without the button having to know a label exists.
 
 When the pointer moves from one control to another, the old one is sent an exit and the new one an enter — each bubbling on its own. Moving the pointer within a control sends it a move, every tick.
+
+## The wheel
+
+The wheel is not special. It is a pointer event like the others: it starts at the hovered control and walks up until something consumes it, carrying the scroll amount where a move would carry its delta. A scrolling container is then just a control that handles it, rather than a case the input code has to know the name of.
+
+## Claiming a drag
+
+A drag is claimed, not detected. Nothing starts dragging because the pointer moved with a button down. A control that should be draggable says so with a flag, and a left press then claims the drag for it; anything wanting a drag on some other trigger claims it by hand instead. The flag is per control rather than a property of the base, because most things that drag do not move at all — a splitter, a scroll thumb and a text selection are all drags, and none of them is a thing you can pick up.
+
+Claiming publishes the control as the dragging context, which is how anything else in the engine asks what is being dragged without the two sides knowing about each other, and tells the control's parent that it has lost a child. Destroying a control clears the context, as it clears every other one.
+
+Two things follow from the claim living on the press. A press bubbles, so a draggable container drags when nothing beneath it consumes the press — which is usually what you want and occasionally a surprise. And a control that overrides the press without calling its base never drags, flag or not.
+
+Every tick after that, the drag is resolved against whatever is beneath it, and exactly one control is the drag's target — the same arrangement hovering uses, where one control is hovered and the notification bubbles from it. The target is told the drag arrived, told again every tick it stays, and told when it leaves. All three walk up until something takes them, exactly as a click does, so a container can answer for a child that does not care.
+
+Finding what is beneath a drag is the hover's own walk with one addition: the dragged control's whole subtree is taken out of the answer. It sits under the pointer by definition — that is what dragging means — so without the exclusion it would answer every time and nothing else could ever be found. The exclusion is applied at the subtree's root rather than to the one control, because the parts of a dragged thing are under the pointer too, and a dragged tab reporting that the drag is over its own label is no more useful than it reporting itself.
+
+```
+CheckDrag(point, root)
+	if nothing is being dragged
+		return
+	find the deepest control under the point, ignoring the dragged subtree
+	if that is not the target it was last tick
+		tell the old target the drag left it, bubbling
+		make this one the target
+		tell it the drag arrived, bubbling
+	tell the target the drag is over it, bubbling
+```
+
+Losing a child *out* of a container is a different event from something being dragged *over* it, and only the container is told — a tab strip needs to know a tab has left it, while the tab itself is the thing being dragged and needs no telling.
+
+The release ends the drag, and it is handled before the checks that guard an ordinary click. A click only counts where it started, so releasing somewhere else cancels it; a drag is the opposite — it ends wherever the pointer has got to, and that is rarely where it began. The target is told the drag has left it and then that it was dropped on it, and only afterwards is the drag forgotten.
+
+The drop goes to the target and stops there. It is not offered up the tree the way a click is, so a container that wants to accept drops aimed at its children has to be the thing under the pointer, not merely an ancestor of it.
+
+> That is as far as the new stack goes. Nothing tells the *dragged* control anything at all — not that the pointer moved, not that the gesture ended. Nothing previews a drag, nothing actually reparents, and there are no context menus. Those arrive with the controls that need them; until then the old stack owns all of it.
+
+## Building a tree from a document
+
+A tree can be written as XML instead of constructed in code. An element names a type, its attributes name properties on that type, and nesting is parenting — so a document is read by creating the type the root element names, setting what its attributes ask for, and recursing.
+
+Attributes bind by name rather than by position. A property is bindable when it carries the element-property attribute, and the name in that attribute is what the XML writes — so the same document text keeps working when the property behind it is renamed. Values convert through the type's own converter, which is how a padding of `"16"` and a padding of `"8,4"` and a padding of `"1,2,3,4"` all reach the same property, and how a corner radius names one, two or four corners.
+
+```
+Parse(element)
+	create the type this element names
+	for each attribute
+		find the member whose element-property name matches
+		if that member is an action, resolve the named method and add it
+		else if it is an enumeration, parse the value by name
+		else convert the value with the member type's converter
+	if what was created is a window root
+		give it its authored rectangle and register it as needing layout
+	for each child element
+		parse it the same way
+		if it is a control, add it as a child
+		else put it in the one list on the parent that accepts its type
+```
+
+The last branch is what lets a document carry things that are not controls at all — a list of gradient stops, a set of column definitions — without the parser knowing any of their names.
 
 ## Text and the caret
 

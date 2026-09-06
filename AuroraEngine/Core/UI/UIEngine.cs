@@ -4,12 +4,13 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem;
 using ArctisAurora.EngineWork;
+using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Maths;
+using Silk.NET.Vulkan;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using CaretGeometry = ArctisAurora.Core.UISystem.Controls.Text.Document.CaretGeometry;
 
 namespace ArctisAurora.Core.UI
 {
@@ -109,6 +110,26 @@ namespace ArctisAurora.Core.UI
         [A_ActiveContext("NextPressTarget")]
         public static Control pressTarget { get; set; }
 
+        // The control that claimed the drag. Nothing delivers to it yet — see the drag gap in
+        // ClaudeMemory/Decisions/ui-engine-stack.md.
+        [A_ActiveContext("NextDragging")]
+        public static Control dragging { get; set; }
+
+        // what the drag is currently over, so it can be told when the drag leaves it
+        private static Control _dragTarget;
+
+        // the drag target's own window-space point, so the release does not have to recompute it
+        private static Vector2D<float> _dragPoint;
+
+        // The window the pointer is over while a drag runs, null when it is over none or when an
+        // overlap makes the answer ambiguous. Only meaningful mid-drag — a captured pointer is what
+        // makes the geometry search necessary, and it costs a position query per window per tick.
+        [A_ActiveContext("NextMouseOverWindow")]
+        public static RenderWindow mouseOverWindow { get; set; }
+
+        [A_ActiveContext("NextActiveWindow")]
+        public static RenderWindow activeWindow { get; set; }
+
         private static Vector2D<float> _lastPoint;
         private static bool _sameTargetTap;
 
@@ -122,15 +143,22 @@ namespace ArctisAurora.Core.UI
             Vector2D<float> delta = point - _lastPoint;
             _lastPoint = point;
 
+            // A pressed button captures the pointer to the window it went down in, which keeps
+            // reporting positions far outside itself and stops every other window hearing anything.
+            // So the drag's own window drives the whole gesture, wherever the pointer has gone.
+            bool ownsDrag = dragging != null && ReferenceEquals(WindowOf(dragging), window);
+
             // The pointer left this window, so nothing of ours is under it any more. Scoped to our
             // own tree, because every window polls and the contexts are global.
-            if (!window.isInWindow)
+            if (!window.isInWindow && !ownsDrag)
             {
                 if (RootOf(hovering) == root) SetHovering(null, point, delta);
                 return;
             }
 
-            SolveHover(point, delta, root);
+            if (window.isInWindow) SolveHover(point, delta, root);
+
+            if (ownsDrag) SolveDragWindow(window);
 
             KeyStateEntry lmb = InputHandler.instance.keyTracker.GetState(Keys.MouseLeft);
             KeyStateEntry rmb = InputHandler.instance.keyTracker.GetState(Keys.MouseRight);
@@ -146,6 +174,11 @@ namespace ArctisAurora.Core.UI
                 if (rmb.justPressed) SolvePress(point, delta, PointerEvent.rightButton);
                 if (rmb.justReleased) SolveRelease(point, delta, PointerEvent.rightButton, rmb.tapCount);
             }
+
+            if (ownsDrag) CheckDrag(window);
+
+            if (window.scrollDelta.X != 0 || window.scrollDelta.Y != 0)
+                SolveScroll(point, window.scrollDelta);
         }
 
         private static void SolveHover(Vector2D<float> point, Vector2D<float> delta, WindowRoot root)
@@ -180,30 +213,189 @@ namespace ArctisAurora.Core.UI
 
             if (button == PointerEvent.leftButton)
             {
+                Control target = ActiveTarget(hovering);
                 Control previous = pressTarget;
-                _sameTargetTap = ReferenceEquals(hovering, previous);
+                _sameTargetTap = ReferenceEquals(target, previous);
                 if (!_sameTargetTap)
                 {
-                    Context.Set("NextPressTarget", hovering);
+                    Context.Set("NextPressTarget", target);
                     (previous as IContext)?.OnContextRemoved("NextPressTarget");
-                    (hovering as IContext)?.OnContextAdded("NextPressTarget");
+                    (target as IContext)?.OnContextAdded("NextPressTarget");
                 }
-                SetActiveControl(hovering);
+                if (target?.takesActiveControl != false) SetActiveControl(target);
             }
 
             Dispatch(Event(hovering, point, delta, button, 0), PointerPhase.Press);
         }
 
+        // Walks up to the first control that can hold the active context.
+        private static Control ActiveTarget(Control control)
+        {
+            while (control != null && !control.canBeActiveContext)
+                control = control.parent as Control;
+            return control;
+        }
+
         // A release only counts on the control the press landed on, so dragging off a button cancels it.
         private static void SolveRelease(Vector2D<float> point, Vector2D<float> delta, int button, int tapCount)
         {
+            // Ahead of the guards below: a drag ends wherever the pointer is, which is rarely still
+            // over the control the press landed on.
+            if (button == PointerEvent.leftButton && dragging != null)
+            {
+                EndDrag();
+                return;
+            }
+
             if (hovering == null) return;
-            if (button == PointerEvent.leftButton && !ReferenceEquals(hovering, pressTarget)) return;
+            if (button == PointerEvent.leftButton && !ReferenceEquals(ActiveTarget(hovering), pressTarget)) return;
 
             Dispatch(Event(hovering, point, delta, button, tapCount), PointerPhase.Release);
 
             if (button == PointerEvent.leftButton && tapCount >= 2 && _sameTargetTap)
                 Dispatch(Event(hovering, point, delta, button, tapCount), PointerPhase.Tap);
+        }
+
+        // Which window the pointer is over, and what that means for focus. An overlap is not
+        // resolvable — GLFW publishes no z-order — so an ambiguous answer changes nothing rather
+        // than guessing, and only an unambiguous one moves the active window.
+        private static unsafe void SolveDragWindow(RenderWindow source)
+        {
+            int count = WindowsAt(ScreenPoint(source), out RenderWindow single);
+
+            SetMouseOverWindow(count == 1 ? single : null);
+
+            if (count == 0) SetActiveWindow(null);
+            else if (count == 1 && !ReferenceEquals(single, activeWindow))
+            {
+                single.os.Raise();
+                SetActiveWindow(single);
+            }
+        }
+
+        // How many windows hold the point, and which one when that is exactly one.
+        private static unsafe int WindowsAt(Vector2D<float> screen, out RenderWindow single)
+        {
+            single = null;
+            int count = 0;
+
+            foreach (RenderWindow window in Engine.windows.Values)
+            {
+                // the preview sits under the pointer by definition, so it is never a drop target
+                if (window.closeRequested || window.isGhost) continue;
+
+                AGlfwWindow._glfw.GetWindowPos(window.os.handle, out int x, out int y);
+                Extent2D size = window.os.windowSize;
+                if (screen.X < x || screen.Y < y || screen.X >= x + size.Width || screen.Y >= y + size.Height)
+                    continue;
+
+                count++;
+                single = window;
+            }
+            return count;
+        }
+
+        private static unsafe Vector2D<float> ScreenPoint(RenderWindow source)
+        {
+            AGlfwWindow._glfw.GetWindowPos(source.os.handle, out int sx, out int sy);
+            return new Vector2D<float>(sx + source.mousePos.X, sy + source.mousePos.Y);
+        }
+
+        private static void SetMouseOverWindow(RenderWindow window)
+        {
+            if (ReferenceEquals(mouseOverWindow, window)) return;
+
+            bool wasIn = mouseOverWindow != null;
+            Context.Set("NextMouseOverWindow", window);
+
+            if (wasIn) dragging?.DraggedOutOfWindow();
+            if (window != null) dragging?.DraggedIntoWindow();
+        }
+
+        private static void SetActiveWindow(RenderWindow window)
+        {
+            if (ReferenceEquals(activeWindow, window)) return;
+            Context.Set("NextActiveWindow", window);
+        }
+
+        // The control under the pointer mid-drag, in the target window's own design space. Found by
+        // geometry rather than by hover: a captured pointer means no other window is ever told the
+        // pointer is over it.
+        private static unsafe Control HitFor(RenderWindow source, out Vector2D<float> local)
+        {
+            local = Vector2D<float>.Zero;
+
+            RenderWindow target = mouseOverWindow;
+            WindowRoot root = target?.uiNext?.uiRoot;
+            if (root == null) return null;
+
+            Vector2D<float> screen = ScreenPoint(source);
+            AGlfwWindow._glfw.GetWindowPos(target.os.handle, out int tx, out int ty);
+
+            local = root.ToDesignSpace(new Vector2D<float>(screen.X - tx, screen.Y - ty), target.os.windowSize);
+            return HitTest(root, local, dragging);
+        }
+
+        // What the drag is over, and the offer to whatever that is. The hover's own walk, minus the
+        // dragged subtree — it sits under the pointer by definition, so it would answer every time.
+        // One control is the target, as one control is hovered; the events bubble from it.
+        private static void CheckDrag(RenderWindow source)
+        {
+            if (dragging == null) return;
+
+            Control target = HitFor(source, out Vector2D<float> point);
+            _dragPoint = point;
+
+            if (!ReferenceEquals(target, _dragTarget))
+            {
+                for (Control c = _dragTarget; c != null; c = c.parent as Control)
+                    if (c.DraggingOverEnd(dragging)) break;
+
+                _dragTarget = target;
+
+                for (Control c = target; c != null; c = c.parent as Control)
+                    if (c.DraggingOverStart(dragging, point)) break;
+            }
+
+            for (Control c = target; c != null; c = c.parent as Control)
+                if (c.DraggingOver(dragging, point)) break;
+        }
+
+        // The window a control is drawn into — its root is some window's uiNext root. Null for a
+        // subtree detached from every window.
+        public static RenderWindow WindowOf(Control control)
+        {
+            Control root = RootOf(control);
+            if (root == null) return null;
+
+            foreach (RenderWindow window in Engine.windows.Values)
+                if (ReferenceEquals(window.uiNext?.uiRoot, root))
+                    return window;
+            return null;
+        }
+
+        // Ends the drag: the target hears the drag leave, then that it was dropped on it. Telling the
+        // claimant is still to come.
+        public static void EndDrag()
+        {
+            Control target = _dragTarget;
+            Control dragged = dragging;
+
+            for (Control c = target; c != null; c = c.parent as Control)
+                if (c.DraggingOverEnd(dragged)) break;
+
+            target?.FinishDrag(dragged, _dragPoint);
+
+            _dragTarget = null;
+            SetMouseOverWindow(null);
+            SetDragging(null);
+        }
+
+        // The wheel walks up from the hovered control until something consumes it.
+        private static void SolveScroll(Vector2D<float> point, Vector2D<float> offset)
+        {
+            if (hovering == null) return;
+            Dispatch(Event(hovering, point, offset, 0, 0), PointerPhase.Scroll);
         }
 
         // Also called with no click behind it, by anything that has to hold the active context before
@@ -218,6 +410,17 @@ namespace ArctisAurora.Core.UI
             (control as IContext)?.OnContextAdded("NextActiveControl");
         }
 
+        // Assigns the drag context and notifies both sides. Null ends the claim.
+        public static void SetDragging(Control control)
+        {
+            if (ReferenceEquals(dragging, control)) return;
+
+            Control previous = dragging;
+            Context.Set("NextDragging", control);
+            (previous as IContext)?.OnContextRemoved("NextDragging");
+            (control as IContext)?.OnContextAdded("NextDragging");
+        }
+
         // Drops a destroyed control out of every context holding it. Assigns directly — the control
         // is going away, so notifying it is the thing to avoid.
         public static void Forget(Control control)
@@ -225,21 +428,24 @@ namespace ArctisAurora.Core.UI
             if (ReferenceEquals(hovering, control)) hovering = null;
             if (ReferenceEquals(activeControl, control)) activeControl = null;
             if (ReferenceEquals(pressTarget, control)) pressTarget = null;
+            if (ReferenceEquals(dragging, control)) dragging = null;
+            if (ReferenceEquals(_dragTarget, control)) _dragTarget = null;
             Context.Forget(control);
         }
 
         // Deepest control whose clip and box hold the point. Children last to first, because depth
-        // testing is off and the later sibling is the one drawn on top.
-        public static Control HitTest(Control control, Vector2D<float> point)
+        // testing is off and the later sibling is the one drawn on top. skip takes a whole subtree
+        // out of the answer, rejected at its root so nothing beneath it is reached either.
+        public static Control HitTest(Control control, Vector2D<float> point, Control skip = null)
         {
-            if (control.hidden) return null;
+            if (control.hidden || ReferenceEquals(control, skip)) return null;
             if (!control.arrange.subtreeBounds.Contains(point)) return null;
 
             for (int i = control.children.Count - 1; i >= 0; i--)
             {
-                if (control.children[i] is not Control child) continue;
+                if (control.children[i] is not Control child || !child.hitTestable) continue;
 
-                Control deeper = HitTest(child, point);
+                Control deeper = HitTest(child, point, skip);
                 if (deeper != null) return deeper;
             }
             return HitsNode(control, point) ? control : null;
@@ -266,6 +472,7 @@ namespace ArctisAurora.Core.UI
                     PointerPhase.Press => control.OnPointerPress(e),
                     PointerPhase.Release => control.OnPointerRelease(e),
                     PointerPhase.Tap => control.OnPointerTap(e),
+                    PointerPhase.Scroll => control.OnPointerScroll(e),
                     _ => false
                 };
                 if (consumed) return;
@@ -402,244 +609,24 @@ namespace ArctisAurora.Core.UI
                      $"ControlGeometry {Unsafe.SizeOf<ControlGeometry>()} B, " +
                      $"VulkanControl {Unsafe.SizeOf<VulkanControl>()} B");
 
-            BuildScaffolding(Engine.primary);
+            BuildProbe(Engine.primary);
             return true;
         }
 
-        // Landing 2 scaffolding: nesting, padding, margin, alignment and a clipped overflow, so the
-        // arrange pass has something to be wrong about. Built back to front, so pool allocation
-        // order is nothing like DFS order and the resequence has to earn its keep. The port at
-        // landing 6 removes it.
-        private static void BuildScaffolding(RenderWindow window)
+        // Landing 6a scaffolding: the probe document is the only thing on the new stack that XML can
+        // build, because no subclass carries an [A_XSDType] until 6b. It exists to prove the parser,
+        // the converters and the container base, and 6b deletes it with the document.
+        private static void BuildProbe(RenderWindow window)
         {
-            Control bar = new ProbeControl
-            {
-                name = "bar",
-                preferredHeight = 48,
-                horizontalAlignment = HorizontalAlignment.Stretch,
-                verticalAlignment = VerticalAlignment.Bottom,
-                colorHex = "#06D6A0",
-                cornerRadius = 6f
-            };
-
-            // Overlapping siblings. over is added last, so it draws on top and must take the hit.
-            Control under = new ProbeControl
-            {
-                name = "under",
-                preferredWidth = 200,
-                preferredHeight = 120,
-                horizontalAlignment = HorizontalAlignment.Center,
-                verticalAlignment = VerticalAlignment.Center,
-                colorHex = "#8338EC",
-                cornerRadius = 8f
-            };
-            Control over = new ProbeControl
-            {
-                name = "over",
-                preferredWidth = 120,
-                preferredHeight = 200,
-                horizontalAlignment = HorizontalAlignment.Center,
-                verticalAlignment = VerticalAlignment.Center,
-                colorHex = "#FB5607",
-                cornerRadius = 8f
-            };
-
-            Control clipped = new Control
-            {
-                name = "clipped",
-                preferredWidth = 200,
-                preferredHeight = 140,
-                horizontalAlignment = HorizontalAlignment.Right,
-                verticalAlignment = VerticalAlignment.Top,
-                clipOutOfBounds = true,
-                colorHex = "#2A2F3A",
-                cornerRadius = 8f
-            };
-            Control overflow = new Control
-            {
-                name = "overflow",
-                preferredWidth = 320,
-                preferredHeight = 260,
-                colorHex = "#EF476F"
-            };
-            clipped.AddChild(overflow);
-
-            Control card = new ProbeControl
-            {
-                name = "card",
-                preferredWidth = 360,
-                preferredHeight = 220,
-                padding = new Thickness(16),
-                horizontalAlignment = HorizontalAlignment.Left,
-                verticalAlignment = VerticalAlignment.Top,
-                colorHex = "#3AA6FF",
-                cornerRadius = 16f,
-                edgeColorHex = "#FFFFFF",
-                edgeThickness = 2f
-            };
-            Control inner = new Control
-            {
-                name = "inner",
-                padding = new Thickness(12),
-                colorHex = "#12314A",
-                cornerRadius = 8f
-            };
-            // Passes everything through, so hovering it lights card two levels up.
-            Control leaf = new ProbeControl(consumes: false)
-            {
-                name = "leaf",
-                preferredWidth = 120,
-                preferredHeight = 60,
-                colorHex = "#FFD166",
-                cornerRadius = 4f
-            };
-            inner.AddChild(leaf);
-            card.AddChild(inner);
-
-            WindowRoot root = new WindowRoot { name = "root", padding = new Thickness(24) };
-            root.AddChild(card);
-            root.AddChild(clipped);
-            root.AddChild(under);
-            root.AddChild(over);
-            root.AddChild(bar);
-            root.AddChild(BuildParagraph());
-
+            WindowRoot root = (WindowRoot)Control.ParseXML("next-probe");
             window.uiNext.uiRoot = root;
+
+            // A delegate handler, which is how a ported subclass will reach the new scroll path.
+            // Registered here rather than authored, because binding an event from XML is the one
+            // thing 6a left open.
+            Control bar = root.FindByName("bar");
+            bar.RegisterOnScroll(e => { bar.colorHex = e.delta.Y > 0 ? "#FFD166" : "#8338EC"; return true; });
         }
 
-        // Landing 4 scaffolding: one run wrapping at 360, styled by three spans so a line crosses
-        // segments and runIndex has to map back to the right span.
-        private static Control BuildParagraph()
-        {
-            const string body = "The quick brown fox jumps over the lazy dog, then wraps onto another line. ";
-            const string emphasis = "Bold and amber";
-            const string tail = ", and back to regular text that keeps on wrapping.";
-
-            TextRunControl run = new TextRunControl
-            {
-                name = "paragraph",
-                preferredWidth = 360,
-                horizontalPosition = 0f,
-                text = body + emphasis + tail,
-                colorHex = "#1B2430"
-            };
-            run.SetSpans(
-                new StyleSpan { count = body.Length, style = FontStyle.Regular },
-                new StyleSpan { count = emphasis.Length, style = FontStyle.Bold, colorHex = "#FFD166" },
-                new StyleSpan { style = FontStyle.Regular });
-
-            return new ProbeDocumentControl(run)
-            {
-                name = "document",
-                horizontalAlignment = HorizontalAlignment.Left,
-                verticalAlignment = VerticalAlignment.Center
-            };
-        }
-
-        // Landing 3 scaffolding: makes hover and press visible, and consumes or does not on demand.
-        // The port at landing 6 removes it.
-        private class ProbeControl : Control
-        {
-            private readonly bool _consumes;
-            private string _resting;
-
-            public ProbeControl(bool consumes = true)
-            {
-                _consumes = consumes;
-            }
-
-            public override bool OnPointerEnter(PointerEvent e)
-            {
-                _resting ??= colorHex;
-                colorHex = "#FFFFFF";
-                return _consumes;
-            }
-
-            public override bool OnPointerExit(PointerEvent e)
-            {
-                colorHex = _resting;
-                return _consumes;
-            }
-
-            public override bool OnPointerPress(PointerEvent e)
-            {
-                colorHex = "#111111";
-                return _consumes;
-            }
-
-            public override bool OnPointerRelease(PointerEvent e)
-            {
-                colorHex = "#FFFFFF";
-                return _consumes;
-            }
-        }
-
-        // Landing 4 scaffolding: the smallest thing that can own a caret across a run, because the
-        // caret belongs to the document and there is no document until landing 6 ports one. Holds
-        // its two children outright — a plain Control takes one, and containers arrive with the port.
-        private class ProbeDocumentControl : Control, IGlyphPressTarget
-        {
-            private readonly TextRunControl _run;
-            private readonly NextCaretControl _caret;
-            private int _offset;
-
-            public ProbeDocumentControl(TextRunControl run)
-            {
-                alpha = 0f;
-                _run = run;
-                _caret = new NextCaretControl { name = "caret", colorHex = "#FF3B30" };
-                Adopt(_run);
-                Adopt(_caret);
-            }
-
-            private void Adopt(Control child)
-            {
-                children.Add(child);
-                child.parent = this;
-                MarkTreeOrderDirty();
-                InvalidateLayout();
-            }
-
-            public void GlyphPressed(TextRunControl run, int index)
-            {
-                _offset = index;
-                _caret.Focus();
-                InvalidateArrange();
-            }
-
-            // The caret is drawn last, so it takes the hit inside its own two pixels; the document
-            // owns the area either way and resolves the point against the run.
-            public override bool OnPointerPress(PointerEvent e)
-            {
-                GlyphPressed(_run, _run.IndexAt(e.point));
-                return true;
-            }
-
-            public override Vector2D<float> Measure(Vector2D<float> availableSize)
-            {
-                Vector2D<float> desired = _run.Measure(availableSize);
-                _caret.Measure(availableSize);
-
-                arrange.desired = desired;
-                SetFlag(ArrangeFlags.MeasureDirty, false);
-                return desired;
-            }
-
-            public override void Arrange(LayoutRect finalRect)
-            {
-                WriteArranged(finalRect);
-                _run.Arrange(finalRect);
-
-                CaretGeometry caret = _run.CaretAt(_offset);
-                Vector2D<float> origin = _run.TextOrigin;
-                _caret.Arrange(new LayoutRect(origin.X + caret.x, origin.Y + caret.top,
-                    NextCaretControl.Width, caret.height));
-
-                SetFlag(ArrangeFlags.ArrangeDirty, false);
-            }
-
-            public override void AddChild(Entity entity) =>
-                throw new Exception("The scaffolding document takes its children in its constructor");
-        }
     }
 }

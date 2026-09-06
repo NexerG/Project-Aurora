@@ -11,7 +11,8 @@ namespace ArctisAurora.Core.UI
         Move,
         Press,
         Release,
-        Tap
+        Tap,
+        Scroll
     }
 
     // One pointer notification. target is the control that was actually under the pointer, so an

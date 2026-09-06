@@ -62,7 +62,9 @@ ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/MainSystem.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/PhysicsSystem.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/RenderSystem.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/ThreadedSystem.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ContainerControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Control.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ControlXml.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextCaretControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PointerEvent.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TextRunControl.cs

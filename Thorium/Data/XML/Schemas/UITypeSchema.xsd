@@ -26,6 +26,16 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:VaultBrowser.Attributes" />
   </xs:complexType>
+  <xs:element name="NextContainer" type="types:NextContainer" />
+  <xs:complexType name="NextContainer">
+    <xs:sequence />
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextWindow" type="types:NextWindow" />
+  <xs:complexType name="NextWindow">
+    <xs:sequence />
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+  </xs:complexType>
   <xs:attributeGroup name="MenuItem.Attributes">
     <xs:attribute name="Caption" type="xs:string" />
     <xs:attribute name="Action" type="xs:string" />

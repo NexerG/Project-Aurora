@@ -1,6 +1,6 @@
 # UI Engine — state and resume point
 
-**Rewritten:** 2026-09-06. **Landings 1–4 are built and GUI-verified. Landings 5–6 are agreed and unbuilt.**
+**Rewritten:** 2026-09-06. **Landings 1–5 and 6a are built and GUI-verified. 6b–6d are agreed and unbuilt.**
 
 This file exists so the work can be picked up cold. The decisions and their reasoning are in
 [../Decisions/ui-engine-stack.md](../Decisions/ui-engine-stack.md) and
@@ -48,7 +48,8 @@ ArrangeData 140 B   ControlGeometry 96 B   VulkanControl 92 B
 Holds **`DataHandle[] rows`**, `rows[0]` being its own quad; `AllocateRow` / `TrimRows` / `Publish(i)` /
 `GeometryAt(i)` / `VisualAt(i)` address the rest. Exposes `arrange`, `geometry`, `visual` as `ref` accessors,
 the authored layout properties over `ArrangeData`, `colorHex` / `alpha` (both **`virtual`**) / `cornerRadius` /
-`edgeColorHex` / `edgeThickness`, `Measure` / `Arrange` / `WriteArranged`, `InvalidateLayout` /
+`edgeColorHex` / `edgeThickness` / `kind` / `sampler` / `gradient` / `SetUVRect`,
+`Measure` / `Arrange` / `WriteArranged`, `InvalidateLayout` /
 `InvalidateArrange`, `Hide` / `Show` and `RefreshSubtreeCache`. **`AddChild` throws on a second child**, as
 the outgoing base does.
 
@@ -79,9 +80,11 @@ columns per swapchain image through `MirrorPool`, one dirty range each. Holds `u
 
 **Shaders** — `Shaders/UIEngine/UIEngine.vert` + `.frag`, compiled `--target-env=vulkan1.3`, mirrored
 byte-identical into `Thorium/`, `AuroraEditor/` and `Carbon/`. Set 0 renderer global, set 1 module
-(camera UBO + two `scalar` SSBOs), **set 2 the texture table** (`sampler2D samplers[]`, variable count,
-`TextureAsset.MaxTextures`). The frag branches on `fragType == MTSDFControl`; the `edge` band is shared code
-over a `dist`/`aa` pair each branch fills in its own units. No gradient buffer (binding 3) and no mask branch.
+(camera UBO + two `scalar` SSBOs + **the gradient table at binding 3**), **set 2 the texture table**
+(`sampler2D samplers[]`, variable count, `TextureAsset.MaxTextures`). The frag branches on `fragType`; the
+`edge` band is shared code over a `dist`/`aa` pair each branch fills in its own units. An image multiplies its
+texel into colour and alpha, a panel's mask multiplies coverage in last, and both reads sit behind
+`fragTextureIndex != NO_TEXTURE` (`VulkanControl.noTexture`, `uint.MaxValue`).
 
 **`ERendererTypes.UIEngine`** and its `AuroraCamera` case — ortho over `WindowRoot.ViewportSize`, falling back
 to the raw swapchain extent when the window has no root.
@@ -96,7 +99,9 @@ DFS order and the resequence has real work.
 `card`, `bar`, `under` and `over` are `ProbeControl`, which recolours on enter/exit/press/release; `leaf` is a
 `ProbeControl` that **consumes nothing**, so hovering it bubbles through `inner` (a plain `Control`) to `card`.
 Landing 4 added a `document` (Left/Center): a `ProbeDocumentControl` holding a `TextRunControl` wrapping at
-360 across three `StyleSpan`s and a `NextCaretControl`. The landing 6 port removes all of it.
+360 across three `StyleSpan`s and a `NextCaretControl`. Landing 5 added `BuildSampled` — `image` (the icon
+atlas as flat colour, Center/Top), `icon` (the `folder` cell, Right/Center) and `swatch` (the `accent`
+gradient, Right/Bottom). The landing 6 port removes all of it.
 
 ## Settled — do not re-litigate without asking
 
@@ -222,32 +227,129 @@ barrier ones.
 **Not exercised:** editing the text after the first measure, a second run in one document, a font with a real
 bold face (the default family may collapse `Bold` to regular), and `edge` on a glyph.
 
-### 5 — images and icons
+### 5 — images and icons — **DONE 2026-09-06**
 
-- `ImageControl` path; `textureIndex` and `uvs` become live for all three kinds.
-- Gradient table returns as binding 3.
+Built as planned, with four answered forks: **one** sampler slot whose meaning `kind` selects, so an image
+cannot also carry a mask (a second index plus a second UV set is the fix, and grows the 92 B row);
+`uint.MaxValue` as the "no texture" sentinel rather than a reserved slot 0, because table slot 0 is a real
+texture the old stack resolves `maskAsset = null` to; the property named **`sampler`** (user, over `texture`
+and `maskAsset`); and the landing **kept** rather than handed to a subagent — descriptor plumbing, coverage
+ordering and a shader are what §10 reserves, and there was no exact old→new text to brief.
 
-→ *verify:* an icon and a texture render; a control with no mask assigned takes no texture sample.
+No struct changed — every field was already there and written by nothing. The mask multiplies **last**, after
+the edge band, so it cuts the stroke along with the fill. The gradient buffer is a **static** on
+`UIEngineModule`, never freed, because the table is per-process.
+
+→ *verified:* in Thorium, an `ImageControl` draws the icon atlas as flat colour — the 3×3 grid of icon shapes
+with the MSDF's own colour fringing, cut by the texture's alpha; the `folder` cell renders as a clean amber
+silhouette through the MTSDF path; the `accent` gradient ramps left to right across a rounded box and `glow`
+renders as a radial ellipse with an alpha falloff; pointing `card.sampler` at the `close` cell collapses the
+whole 360×220 quad, edge band included, to the glyph, and removing it restores the box exactly. Row sizes
+still 140 / 96 / 92 at boot. No validation error beyond the pre-existing six barrier ones, the
+`DemoteToHelperInvocation` pair and the `SamplerAsset` default — in particular none from set 1 binding 3.
+**Not exercised:** an image and a mask together (not expressible), a gradient on an image, a second window's
+copy of the gradient descriptor, and `edge` on a glyph.
 
 ### 6 — port and delete
 
-- Port the 39 `VulkanControl` subclasses to `Control`.
-- Delete `Core.UISystem`, the `UIControls` pool, `UIModule`, `MCUI`, `UI.vert`/`UI.frag`.
-- Rename the `VulkanControlData` XSD type back to `VulkanControl`, `NextCaretControl` back to `CaretControl`,
-  and the `NextHovering` / `NextActiveControl` / `NextPressTarget` contexts back to their plain names.
-- Decide where `TextMeasurer`, `FontStyle`, `Glyph`, `AtlasMetaData` and `GlyphControl`'s cell constants live
-  once `Core.UISystem` is gone — `Core.UI` compiles against all of them.
-- Collapse the duplicated `CreatePipeline`.
+**The count is 56, not 39** — the original number missed the text/document set and the host apps: 31 chrome,
+container and interactable classes (3,838 lines), 15 text and document (4,894, incl. 3 private nested), 7 in
+Thorium, Carbon and the Editor (1,576), plus 3,231 lines of support that moves with them.
+
+**Forks the user settled, 2026-09-06:** `Next` prefixes rather than move-and-delete (green build throughout,
+~56 renames at 6d); the document stack ports in this programme rather than later; `CornerRadii` restored;
+`outline` stays merged into `edge`; `ContextMenus.menuFactory` carried across unchanged and remade later;
+sliced into 6a–6d.
+
+#### 6a — the base gap — **DONE 2026-09-06**
+
+Built as planned, then narrowed. `Control` parses XML, `CornerRadii` and the `Thickness` converters are back,
+a `ContainerControl` takes more than one child, and `UIEngine` holds `UICollisionHandling`'s scroll and
+active-target half. Additive only — no subclass ported, no `Core.UISystem` file touched.
+
+Three things not in the agreed file list, each forced by the verification: `ThicknessConverter` (without it
+`Padding` cannot parse at all), `[A_XSDType]` on `WindowRoot` and `ContainerControl` (without a tagged root
+and one concrete child, XML builds nothing), and `Control` made `partial` so `ControlXml.cs` reaches
+`WriteArranged`. One thing deliberately left open: **binding an event attribute from XML** — see *Open*.
+
+**Drag and context menus were built, verified, then removed and the drag partly restored** (user,
+2026-09-06). Context menus are out entirely — `contextMenus`/`BuildContextMenu`/`OpenContextMenu` land with
+the controls that host them. The drag then came back and was wired end to end: `Control.draggable` gates a
+`StartDrag()` from the base `OnPointerPress`, which sets `NextDragging` and calls the parent's
+`ChildDraggedOut`; `CheckDrag` runs each tick from `Poll` holding one drag target the way one control is
+hovered, bubbling `DraggingOverStart` / `DraggingOver` / `DraggingOverEnd` from it — the hover's own walk
+with `HitTest`'s new `skip` taking the dragged subtree out of the answer; and a left release calls
+`UIEngine.EndDrag(point)` ahead of the release guards, which ends the over-pair, calls `Control.FinishDrag`
+on the target and clears both. **What the claimant hears is still nothing.** Still out:
+`ResolveDrag`/`StopDrag`/`draggingOpacity`, the stale-release guard, `HitFor`/`RaiseHovered`/`WindowOf`/
+`WindowAt` and `Poll`'s `ownsDrag` exemption. Full list and who wants each in
+[[ui-engine-stack]] § *The drag gap*.
+
+→ *verified:* all four projects build clean; Thorium boots, row sizes still 140 / 96 / 92, 9 errors and all
+of them the pre-existing set. `NextProbe.ui.xml` parses and draws over the old UI: the card is exactly
+360×220 at (24,24) with a 2 px white edge band, its `CornerRadius="16,4,16,4"` measuring a 7 px diagonal
+inset on both left corners against 3 px on both right ones (theory 7.7 / 4.2), `ClipToBounds` cutting a
+320×260 child to its 200×140 parent on both axes, `ControlColor="teal"` resolving to `#008080`,
+`Gradient="accent"` ramping `#393732` → `#2E2D28` → `#24231F` left to right, and a `Stretch`/`Bottom` bar
+spanning the width. Driven with synthetic input: the wheel over the bar recoloured it amber up / purple down
+through `PointerPhase.Scroll`. No resequence warning, no DEBUG subtree-cache mismatch, through boot, layout
+and a scroll.
+**Not exercised:** `hitTestable = false`, `canBeActiveContext = false`, and the swatch's
+`CornerRadius="10,0"` bottom half, which the bar draws over.
+**Verified before removal, and no longer in the tree:** the drag lifecycle — a press on a *child* bubbled to
+the card, claimed the drag, held it `#FF3B30` for the drag's duration and restored `#3AA6FF` on release.
+**Not re-verified after the drag and context-menu removal** (user: "go dont verify").
+
+#### 6b — chrome, containers, interactables, hosts
+
+- Port the 31 engine chrome/container/interactable classes and the 7 host ones onto `Control` /
+  `ContainerControl`, each `Next`-prefixed, each with a `Next`-prefixed `[A_XSDType]`.
+- The `bubbleX` → walk-until-consumed conversion, per class.
+- `ScrollableControl`'s wheel handling becomes an `OnPointerScroll` override.
+- **The drag stack, back in with its first consumer** — `Control.StartDrag`/`ResolveDrag`/`StopDrag`/
+  `ResolveDrop`/`ResolveDropHint`/`ClearDropHint`, `UIEngine.SetDragging`/`SolveDrag`/`HitFor`/`OfferDrop`/
+  `UpdateDropHint`/`RaiseHovered`/`WindowOf`/`WindowAt`, the `NextDragging`/`NextHinted` contexts and
+  `Poll`'s `ownsDrag` exemption. All written and GUI-verified at 6a, then removed; recoverable from the
+  landing 6a commit.
+- **The context-menu hooks, likewise** — `contextMenus`, `BuildContextMenu`, `OpenContextMenu` — plus
+  `NextContextMenus` and the menu controls that host them, so `ContextMenu="…"` binds again.
+- `NextDragGhost`, which needs `rangeRoot` on `UIEngineModule`.
+- Delete `NextProbe.ui.xml` and `UIEngine.BuildProbe`.
+
+→ *verify:* a `Next`-prefixed copy of Thorium's `UI.ui.xml` builds the real shell — title bar, tabs, splits,
+the file browser — on the new stack.
+
+#### 6c — text and documents
+
+The 15 text/document classes. Not a port: `TextControl`, `LabelControl`, `GlyphControl` and `TextRun` are one
+control per glyph, the model `TextRunControl` replaced. Pulls in `SelectionControl` (needs drag, now ported)
+and `DocumentEditorControl.CaretAtPoint` (needs blocks).
+
+→ *verify:* a note opens, edits and saves on the new stack.
+
+#### 6d — delete
+
+- Delete `Core.UISystem`, the `UIControls` pool, `UIModule`, `MCUI`, `UILayout`, `UI.vert`/`UI.frag`.
+- Drop every `Next` prefix — ~56 classes, their XSD names, `VulkanControlData`, `NextCaretControl`, and the
+  `NextHovering` / `NextActiveControl` / `NextPressTarget` / `NextDragging` / `NextHinted` contexts.
+- Decide where `TextMeasurer`, `FontStyle`, `Glyph`, `AtlasMetaData`, `GlyphControl`'s cell constants,
+  `Gradients` and the active-window latch live.
+- Collapse the three copies of the atlas-cell arithmetic and the duplicated `CreatePipeline`.
 - Regenerate `NAMESPACES.md`.
 
 → *verify:* Thorium boots entirely on the new stack.
 
-**Handoff (CLAUDE.md §10):** landings 2–4 stay with the model — layout correctness, dispatch, Vulkan. Landing 5
-and the mechanical half of 6 (39 subclasses, the 15 `hitTestable` sites) go to a subagent once the base is
-frozen and old/new text is exact.
+**Handoff (CLAUDE.md §10):** landings 2–5 and 6a stayed with the model — layout correctness, dispatch, Vulkan,
+and 6a is the design the rest is measured against. Landing 5 was originally marked for a subagent and was
+kept: descriptor plumbing, coverage ordering and a shader are what §10 reserves. **6b's rebase is the sweep
+that goes out** now the base is frozen — exact old→new text per class, one agent per folder. 6c stays.
 
 ## Open — not decided
 
+- **How an event attribute binds from XML.** `ResolveAttributes` binds an `Action`-typed member; `Control`'s
+  handlers are `Func<PointerEvent, bool>`. Either `Control` grows `Action` events beside the funcs and the
+  virtuals fire both, or the parser wraps a tagged method into a func — and then `BubbleClick="true"` has to
+  mean "return false", which changes what every `Bubble*` already in a `*.ui.xml` does. Blocks 6b.
 - **Deferred out of landing 4, each waiting on something specific:** `SelectionControl` (needs drag ported),
   `DocumentEditorControl.CaretAtPoint` (needs blocks), the XML shape for per-character settings (needs the new
   stack to parse XML at all).
@@ -264,6 +366,8 @@ frozen and old/new text is exact.
 - **`_components` / `children` lazy allocation** — user chose *neither* (2026-09-06). 64 B/entity stands.
 - **Ticking as a group** — [[entity-tick-group]], raised and parked.
 - **`DataPool.Write<T>(handle, value)`** — the missing assign-plus-`MarkContentDirty` primitive.
+- **A second sampler slot**, so an image can also carry a mask. Costs a `maskIndex` plus a second UV set and
+  moves the 92 B stride; parked until something wants both.
 - Whether per-window mirrors in `UIEngineModule` should become shared.
 - Whether visible-only glyph expansion lands, and on what evidence.
 

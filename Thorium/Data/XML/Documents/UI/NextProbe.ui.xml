@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Landing 6a probe. The only elements the new stack can build until 6b tags its subclasses:
+     NextWindow is WindowRoot, NextContainer is ContainerControl. Deleted with 6b. -->
+<NextWindow Width="1280" Height="720" Padding="24">
+
+	<!-- attributes: colour, corner radii as four values, edge band, padding -->
+	<NextContainer Name="card"
+	               Width="360" Height="220"
+	               Padding="16"
+	               HorizontalAlignment="Left" VerticalAlignment="Top"
+	               ColorHex="#3AA6FF"
+	               CornerRadius="16,4,16,4"
+	               EdgeColorHex="#FFFFFF" EdgeThickness="2">
+		<NextContainer Name="inner" Padding="12" ColorHex="#12314A" CornerRadius="8"/>
+	</NextContainer>
+
+	<!-- ClipToBounds, with a child larger than its parent -->
+	<NextContainer Name="clipped"
+	               Width="200" Height="140"
+	               HorizontalAlignment="Right" VerticalAlignment="Top"
+	               ClipToBounds="true"
+	               ColorHex="#2A2F3A" CornerRadius="8">
+		<NextContainer Name="overflow" Width="320" Height="260" ColorHex="#EF476F"/>
+	</NextContainer>
+
+	<!-- the ControlColor enum and a two-value corner radius -->
+	<NextContainer Name="swatch"
+	               Width="220" Height="90"
+	               HorizontalAlignment="Right" VerticalAlignment="Bottom"
+	               Margin="0,0,56,0"
+	               ControlColor="teal" CornerRadius="10,0"/>
+
+	<!-- Stretch alignment and a bottom anchor -->
+	<NextContainer Name="bar"
+	               Height="48"
+	               HorizontalAlignment="Stretch" VerticalAlignment="Bottom"
+	               ColorHex="#06D6A0" CornerRadius="6"/>
+
+	<!-- the gradient table, ramped across the control's own rect -->
+	<NextContainer Name="ramp"
+	               Width="240" Height="120"
+	               HorizontalAlignment="Center" VerticalAlignment="Center"
+	               CornerRadius="12"
+	               Gradient="accent"/>
+
+</NextWindow>

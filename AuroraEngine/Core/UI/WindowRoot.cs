@@ -1,4 +1,5 @@
 using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Registry;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 
@@ -6,6 +7,7 @@ namespace ArctisAurora.Core.UI
 {
     // The control a window's tree hangs from. It is the one node that holds siblings, and the one
     // that knows the box the tree is laid out in — every control below it works in that box's units.
+    [A_XSDType("NextWindow", "UI")]
     public class WindowRoot : Control
     {
         public enum WindowingMode

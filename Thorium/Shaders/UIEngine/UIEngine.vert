@@ -61,6 +61,8 @@ layout(location = 7) out flat float fragEdgeThickness;
 layout(location = 8) out vec2 fragUV;
 layout(location = 9) out flat uint fragTextureIndex;
 layout(location = 10) out flat uint fragType;
+layout(location = 11) out flat uint fragGradientIndex;
+layout(location = 12) out flat vec4 fragGradientRect;
 
 void main() {
     mat4 model = GEO.rows[gl_InstanceIndex].matrix;
@@ -85,4 +87,8 @@ void main() {
     fragUV = CTRL.rows[gl_InstanceIndex].uvs[gl_VertexIndex];
     fragTextureIndex = CTRL.rows[gl_InstanceIndex].textureIndex;
     fragType = CTRL.rows[gl_InstanceIndex].type;
+
+    // shares a space with fragPos, so a run can hand its glyphs a rect wider than their own cells
+    fragGradientIndex = CTRL.rows[gl_InstanceIndex].gradientIndex;
+    fragGradientRect = GEO.rows[gl_InstanceIndex].gradientRect;
 }
