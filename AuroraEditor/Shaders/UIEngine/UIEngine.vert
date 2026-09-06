@@ -58,6 +58,9 @@ layout(location = 4) out flat vec4 fragRadius;
 layout(location = 5) out flat vec4 fragTint;
 layout(location = 6) out flat vec3 fragEdgeColor;
 layout(location = 7) out flat float fragEdgeThickness;
+layout(location = 8) out vec2 fragUV;
+layout(location = 9) out flat uint fragTextureIndex;
+layout(location = 10) out flat uint fragType;
 
 void main() {
     mat4 model = GEO.rows[gl_InstanceIndex].matrix;
@@ -77,4 +80,9 @@ void main() {
     fragTint = CTRL.rows[gl_InstanceIndex].tint;
     fragEdgeColor = CTRL.rows[gl_InstanceIndex].edgeColor;
     fragEdgeThickness = CTRL.rows[gl_InstanceIndex].edgeThickness;
+
+    // the atlas cell, cut per row — a text run hands each of its glyphs a different one
+    fragUV = CTRL.rows[gl_InstanceIndex].uvs[gl_VertexIndex];
+    fragTextureIndex = CTRL.rows[gl_InstanceIndex].textureIndex;
+    fragType = CTRL.rows[gl_InstanceIndex].type;
 }

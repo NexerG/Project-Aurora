@@ -85,6 +85,20 @@ namespace ArctisAurora.Core.ECS.EngineEntity
             return handle;
         }
 
+        // Releases one extra row ahead of the entity's own teardown.
+        protected void FreeIn(DataHandle handle)
+        {
+            if (_extraHandles == null) return;
+
+            int index = Array.IndexOf(_extraHandles, handle);
+            if (index < 0) return;
+
+            DataManager.Get(handle.PoolId).Free(handle);
+            for (int i = index; i < _extraHandles.Length - 1; i++)
+                _extraHandles[i] = _extraHandles[i + 1];
+            Array.Resize(ref _extraHandles, _extraHandles.Length - 1);
+        }
+
         // Every row the entity holds, in every pool. A handle names its own pool, so nothing has
         // to remember which.
         internal void FreePooledData()

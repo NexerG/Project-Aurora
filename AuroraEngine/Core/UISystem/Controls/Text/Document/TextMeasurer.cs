@@ -106,12 +106,29 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             public readonly int fontSize;
             public readonly FontStyle style;
 
+            // The slice of text this run covers, so several differently-styled spans can share one
+            // string instead of each holding a substring cut on every measure.
+            public readonly int charStart;
+            public readonly int charCount;
+
             public Run(string text, string fontName, int fontSize, FontStyle style = FontStyle.Regular)
             {
                 this.text = text;
                 this.fontName = fontName;
                 this.fontSize = fontSize;
                 this.style = style;
+                charStart = 0;
+                charCount = text?.Length ?? 0;
+            }
+
+            public Run(string text, int charStart, int charCount, string fontName, int fontSize, FontStyle style)
+            {
+                this.text = text;
+                this.fontName = fontName;
+                this.fontSize = fontSize;
+                this.style = style;
+                this.charStart = charStart;
+                this.charCount = charCount;
             }
         }
 
@@ -217,12 +234,13 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             for (int r = 0; r < runs.Count; r++)
             {
                 Run run = runs[r];
-                if (string.IsNullOrEmpty(run.text)) continue;
+                if (string.IsNullOrEmpty(run.text) || run.charCount <= 0) continue;
 
                 // Resolved once per run, not per character — the line box does not vary within a run.
                 (float ascent, float descent) = LineBox(run, metrics, lineHeight);
 
-                for (int i = 0; i < run.text.Length; i++)
+                int end = run.charStart + run.charCount;
+                for (int i = run.charStart; i < end; i++)
                 {
                     char c = run.text[i];
                     bool breakAfter = c == ' ' || c == '\t';

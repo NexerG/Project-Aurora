@@ -25,7 +25,7 @@ The UI is being rebuilt in a new namespace beside the old one rather than migrat
 
 The rebuild exists to separate three kinds of data that were previously one row. What the layout pass reads never reaches the GPU at all. What the arrange pass produces and what the paint properties produce go to the GPU as two independent buffers, because a window resize and a colour change dirty completely different bytes and had been forcing each other's uploads.
 
-> The stack draws, lays itself out and answers the pointer. Text and images are designed and agreed but do not exist yet.
+> The stack draws, lays itself out, answers the pointer and renders text with a caret. Images and icons are designed and agreed but do not exist yet.
 
 ## Two things are called a control
 
@@ -47,7 +47,7 @@ The kinds are `MTSDFControl` for anything drawn from a distance field, `PanelCon
 
 `VulkanControl` is paint: the kind, the texture coordinates, the tint, the texture index, the corner radii, one stroke colour and width, and a gradient index. It is 92 bytes.
 
-The two GPU structs live in one pool and the layout struct in another, so a `Control` holds a row in each. An element's row in the draw pool is what the renderer mirrors; nothing walks the tree to draw.
+The two GPU structs live in one pool and the layout struct in another, so a `Control` holds exactly one layout row and an array of draw rows. The first of those is the element's own quad; a run of text appends one more per character. An element's rows in the draw pool are what the renderer mirrors; nothing walks the tree to draw.
 
 ## Why the stroke is one pair and not two
 
@@ -62,6 +62,8 @@ They collapsed into one `edge` pair whose meaning the kind selects: on an `MTSDF
 A mask gives a control an arbitrary silhouette instead of a rectangle, and it is meant to be reached for. The default mask paints, an invisible mask paints nothing, and a control can name any texture in the table.
 
 Because a mask is a capability rather than a special case for text, the sampler set serves all three kinds. A panel with a mask samples it; a panel without one does not, and the shader branches on whether a mask is assigned rather than on which kind the control is.
+
+> The texture table itself has arrived, because glyphs need it. The mask branch has not: today the shader samples a texture only for a glyph, and a panel cannot yet be given a silhouette of its own.
 
 ## Depth
 
@@ -119,7 +121,7 @@ RefreshWindowRanges()
 	remember the versions
 	first = 0
 	for each window
-		count = the size of its root's subtree, or zero if it has no root
+		count = the draw rows under its root, or zero if it has no root
 		if the window's range changed
 			publish it and mark every one of its command buffers for re-recording
 		first = first + count
@@ -219,11 +221,35 @@ When the pointer moves from one control to another, the old one is sent an exit 
 
 ## Text and the caret
 
-A run of text is one control holding a string and its settings, and the measurer turns that into lines, segments and caret geometry without a single glyph object existing.
+A run of text is one control holding a string and its settings, and the measurer turns that into lines, segments and caret geometry without a single glyph object ever existing. What the run owns instead is a draw row per character, appended after its own, so a paragraph of four hundred letters is one node in the tree and four hundred and one rows in a buffer.
 
-The caret belongs to the document. Pressing a glyph tells the document which run was hit and which character index within it, and the document places its own caret beside that character.
+Per-character settings — bold, colour, italic, size — live on the run as a list of spans, because a glyph is only a GPU row and has nowhere to keep state of its own. A span carries a length, a face and a colour; the spans tile the string in order and the last one absorbs whatever is left, so appending to the text needs no change to the span list at all. Each span becomes one input run for the measurer, and the measurer already reports which run every stretch of a line came from — which is how a line that crosses from regular into bold and back gets each stretch drawn in the right face.
 
-> Per-character settings — bold, colour, italic, size, animation — have to live in the run's data, because a glyph exists only as a GPU row and has nowhere to keep state of its own. The document format has no way to express those spans yet.
+The measurer takes a slice of the string rather than a string of its own, so the spans of one paragraph share one string and nothing is copied to measure it.
+
+```
+Arrange(rect)
+	write the run's own row: matrix, clip, gradient space
+	shrink the rect by padding
+	offset the text inside the box by the leftover space, weighted by the authored position
+	for each line
+		pen = the text origin
+		baseline = the text origin plus the line's baseline
+		for each stretch of that line
+			take the colour and the face of the span it came from
+			for each character in it
+				cut the glyph's cell out of the atlas
+				write its matrix, its clip and its atlas coordinates into that character's row
+				pen = pen + the glyph's advance
+```
+
+Every character owns the row at its own index, so the mapping from character to row never depends on how the lines happened to break.
+
+The caret belongs to the document, not to the run. Pressing anywhere in the text asks the run which character the point fell on — resolved from the same measured lines the glyphs were placed on, taking the slot after a character once the point is past its midpoint — and the document places its own caret beside that character. A caret is an ordinary control with a narrow box, blinking on its own tick.
+
+> The slot at the end of a wrapped line belongs to the line below it. Without that rule the caret sits off the right edge of the window instead of in front of the word that wrapped.
+
+> There is no way to author any of this in XML yet. The new stack reads no documents of its own, so spans are built in code, and the format that will express them is designed with the document rather than now.
 
 ## Related
 

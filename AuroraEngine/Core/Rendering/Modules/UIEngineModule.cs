@@ -1,6 +1,7 @@
 using ArctisAurora.Core.Data;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering.Helpers;
@@ -21,35 +22,55 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override ERendererStage RendererStage => ERendererStage.UI;
 
         internal override uint[][] descriptorMaxCounts => new uint[][] {
-            new uint[] { 1, 1, 1 }   // set 1: camera UBO, geometry SSBO, control SSBO
+            new uint[] { 1, 1, 1 },                   // set 1: camera UBO, geometry SSBO, control SSBO
+            new uint[] { TextureAsset.MaxTextures }   // set 2: one sampler per distinct texture
         };
 
-        internal override PhysicalDeviceFeatures features => new();
+        internal override uint GetVariableDescriptorCount(int set) => TextureAsset.MaxTextures;
+
+        internal override PhysicalDeviceFeatures features => new()
+        {
+            SamplerAnisotropy = true
+        };
 
         internal override PhysicalDeviceVulkan12Features features12 => new()
         {
             SType = StructureType.PhysicalDeviceVulkan12Features,
-            ScalarBlockLayout = true
+            ScalarBlockLayout = true,
+            RuntimeDescriptorArray = true,
+            DescriptorIndexing = true,
+            DescriptorBindingVariableDescriptorCount = true,
+            DescriptorBindingPartiallyBound = true,
+            ShaderSampledImageArrayNonUniformIndexing = true
         };
 
         internal override List<List<DescriptorType>> descriptorTypes => new()
         {
             new List<DescriptorType> {
                 DescriptorType.UniformBuffer, DescriptorType.StorageBuffer, DescriptorType.StorageBuffer
+            },
+            new List<DescriptorType> {
+                DescriptorType.CombinedImageSampler
             }
         };
         internal override List<List<ShaderStageFlags>> shaderStages => new()
         {
             new List<ShaderStageFlags>{
                 ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit
+            },
+            new List<ShaderStageFlags>{
+                ShaderStageFlags.FragmentBit
             }
         };
         internal override DescriptorBindingFlags[][] descriptorBindingFlags => [
             [
                 DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.None
+            ],
+            [
+                DescriptorBindingFlags.VariableDescriptorCountBit | DescriptorBindingFlags.PartiallyBoundBit
             ]
         ];
-        internal override int variableSetCount => 1;
+        internal override int variableSetCount => 2;
 
         internal override IReadOnlyList<Entity> renderEntities { get; set; } = Array.Empty<Entity>();
 
@@ -67,6 +88,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         private PoolCursor[] _cursors = null!;
         private int[] _frameBuiltCapacity = null!;
+        private int[] _frameTableVersion = null!;
 
         private DataPool ControlPool => UIEngine.Controls;
 
@@ -110,6 +132,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             frameResources = new FrameResources[window.imageCount];
             _frameBuiltCapacity = new int[window.imageCount];
             Array.Fill(_frameBuiltCapacity, -1);
+            _frameTableVersion = new int[window.imageCount];
+            Array.Fill(_frameTableVersion, -1);
 
             _cursors = null;
         }
@@ -142,12 +166,21 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
             MirrorPool(currentFrame, content ? dirtyMin : 0, content ? dirtyMax : -1);
 
-            if (pool.Count > 0 && _frameBuiltCapacity[currentFrame] != _mirrorCapacity)
+            if (pool.Count > 0)
             {
-                CreateDescriptorPool(currentFrame, 0);
-                AllocateDescriptorSets(currentFrame);
-                UpdateDescriptorSets(currentFrame, pool.Count);
-                _frameBuiltCapacity[currentFrame] = _mirrorCapacity;
+                if (_frameBuiltCapacity[currentFrame] != _mirrorCapacity)
+                {
+                    CreateDescriptorPool(currentFrame, 0);
+                    AllocateDescriptorSets(currentFrame);
+                    UpdateDescriptorSets(currentFrame, pool.Count);
+                    _frameBuiltCapacity[currentFrame] = _mirrorCapacity;
+                    _frameTableVersion[currentFrame] = TextureAsset.TableVersion;
+                }
+                else if (_frameTableVersion[currentFrame] != TextureAsset.TableVersion)
+                {
+                    WriteTextureTable(currentFrame);
+                    _frameTableVersion[currentFrame] = TextureAsset.TableVersion;
+                }
             }
 
             WriteCommandBuffers(currentFrame);
@@ -236,6 +269,11 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 {
                     Type = DescriptorType.StorageBuffer,
                     DescriptorCount = 2
+                },
+                new DescriptorPoolSize()
+                {
+                    Type = DescriptorType.CombinedImageSampler,
+                    DescriptorCount = TextureAsset.MaxTextures
                 }
             ];
         }
@@ -322,6 +360,44 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             fixed (WriteDescriptorSet* writesPtr = writes)
             {
                 Renderer.vk!.UpdateDescriptorSets(Renderer.logicalDevice, (uint)writes.Length, writesPtr, 0, null);
+            }
+
+            WriteTextureTable(currentFrame);
+        }
+
+        // The texture table (set 2, binding 0), indexed by TextureAsset.textureIndex — the same
+        // index a glyph row carries.
+        private void WriteTextureTable(int currentFrame)
+        {
+            IReadOnlyList<TextureAsset> table = TextureAsset.Table;
+            if (table.Count == 0) return;
+
+            Sampler sampler = AssetRegistries
+                .GetRegistryByValueType<string, SamplerAsset>(typeof(SamplerAsset))["ControlSampler"].handle;
+
+            DescriptorImageInfo[] samplerInfos = new DescriptorImageInfo[table.Count];
+            for (int k = 0; k < table.Count; k++)
+            {
+                samplerInfos[k] = new()
+                {
+                    ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
+                    ImageView = table[k].textureImageView,
+                    Sampler = sampler
+                };
+            }
+            fixed (DescriptorImageInfo* samplerInfosPtr = samplerInfos)
+            {
+                WriteDescriptorSet write = new WriteDescriptorSet
+                {
+                    SType = StructureType.WriteDescriptorSet,
+                    DstSet = frameResources[currentFrame].sets[1],
+                    DstBinding = 0,
+                    DstArrayElement = 0,
+                    DescriptorCount = (uint)table.Count,
+                    DescriptorType = DescriptorType.CombinedImageSampler,
+                    PImageInfo = samplerInfosPtr
+                };
+                Renderer.vk!.UpdateDescriptorSets(Renderer.logicalDevice, 1, &write, 0, null);
             }
         }
 
@@ -598,6 +674,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 }
                 Renderer.vk.CmdBindIndexBuffer(commandBuffers[currentFrame], _quad.indexBuffer, 0, IndexType.Uint32);
                 Renderer.vk.CmdBindDescriptorSets(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipelineLayout, 1, 1, frameResources[currentFrame].sets[0], 0, null);
+                Renderer.vk.CmdBindDescriptorSets(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipelineLayout, 2, 1, frameResources[currentFrame].sets[1], 0, null);
                 Renderer.vk.CmdDrawIndexed(commandBuffers[currentFrame], (uint)_quad.indices.Length, (uint)instanceCount, 0, 0, (uint)firstInstance);
             }
 

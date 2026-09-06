@@ -72,6 +72,8 @@ Namespace shorthands used in the tables:
 | bold / italic / headings, format bar | `UI.Doc.DocumentToolbarControl`; `UI.Edits.StyleRangeEdit` | `AuroraEngine/Data/XML/Settings/DocumentSettings.settings.xml` | [[document-format-bar]], [[armed-style-at-the-caret]], [[text-styling-types]], [[bold-italic-face]] |
 | undo / redo | `Editing.UndoStack`, `EditStep`, `IEditRecord`; `UI.Edits.*` | — | [[document-undo]] |
 | single-line text fields | `UI.Editing.TextInputControl`, `TextBoxControl`; `UI.Text.TextControl` | — | [[note-naming-and-text-field]] |
+| text and the caret on the **new** stack — a paragraph as one control, a GPU row per glyph | `UINext.TextRunControl` (`spans`, `IndexAt`, `CaretAt`, `TextOrigin`), `StyleSpan`, `IGlyphPressTarget`, `NextCaretControl`; `Shaders/UIEngine/UIEngine.frag` MTSDF branch | — | [[ui-engine-stack]] |
+| per-character bold / colour / size on a run | `UINext.StyleSpan`; `UI.Doc.TextMeasurer.Run` (`charStart`/`charCount`) | none yet — the new stack parses no XML | [[ui-engine-stack]] |
 | note load / save | `UI.Doc.DocumentXml`; `Filing.Serializer`, `XmlReflection` | `*/Data/Notes/*.xml` | [../Patterns/document-xml-persistence.md](../Patterns/document-xml-persistence.md), [[xml-save-skips-defaults]] |
 
 ## Input
@@ -117,7 +119,7 @@ Namespace shorthands used in the tables:
 | device, swapchain, frame loop | `Render.Renderer`, `Swapchain`, `RenderWindow`, `VulkanRenderer` | — | [[render-window-owns-the-swapchain]], [[swapchain-extent-is-the-truth]], [[dynamic-rendering]] |
 | OS windows, focus, placement | `Render.AGlfwWindow` | — | [[active-glfw-window-context]] |
 | the UI draw path | `Render.Modules.UIModule`; `Render.MeshSubComponents.MCUI`; `Render.UI.UIRenderer` | — | [[glyphs-as-pool-data]], [[gpu-global-frame-data]] |
-| the **new** UI draw path | `Render.Modules.UIEngineModule` (`window.uiNext`, `uiRoot`, `firstInstance`); `UINext.UIEngine`, `Control`, `WindowRoot` | `AuroraEngine/Data/XML/Documents/Pools.pools.xml` (`UIElements`, `VulkanControls`) | [[ui-engine-stack]] |
+| the **new** UI draw path | `Render.Modules.UIEngineModule` (`window.uiNext`, `uiRoot`, `firstInstance`, `WriteTextureTable`); `UINext.UIEngine`, `Control` (`rows`), `WindowRoot` | `AuroraEngine/Data/XML/Documents/Pools.pools.xml` (`UIElements`, `VulkanControls`) | [[ui-engine-stack]] |
 | the **new** measure/arrange pass, dirty roots, per-window ranges | `UINext.UIEngine` (`ResolveLayout`, `RefreshWindowRanges`, `NextElementOrder`, `NextControlOrder`); `UINext.Control` (`Measure`, `Arrange`, `InvalidateLayout`) | `Pools.pools.xml` (`SortAction`) | [[ui-engine-stack]] |
 | the **new** window root, design-space fitting | `UINext.WindowRoot` (`FitTo`, `ViewportSize`, `ToDesignSpace`) | — | [[ui-engine-stack]] |
 | the **new** hit-test, hover, press, bubbling | `UINext.UIEngine` (`Poll`, `HitTest`, `Dispatch`, `Forget`); `UINext.PointerEvent`, `PointerPhase`; `UINext.Control` (`OnPointerX`, `RegisterOnX`) | — | [[ui-engine-stack]] |

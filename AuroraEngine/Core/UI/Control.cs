@@ -4,9 +4,9 @@ using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.UI
 {
-    // One UI element: an ArrangeData row in UIElements and the VulkanControl row it draws in
-    // VulkanControls. The draw row becomes a range at landing 4, when a text run starts emitting
-    // one per glyph. No transform — the baked matrix lives in ControlGeometry.
+    // One UI element: an ArrangeData row in UIElements and the VulkanControl rows it draws in
+    // VulkanControls. Every control owns rows[0]; a text run appends one per glyph. No transform —
+    // the baked matrix lives in ControlGeometry.
     public class Control : Entity
     {
         // The camera's ortho box is z in [-512, -0.01], so a root sits at -10 and depth steps toward
@@ -16,16 +16,43 @@ namespace ArctisAurora.Core.UI
 
         protected override string PoolName => "UIElements";
 
-        internal DataHandle controlHandle;
+        // draw rows, in the order the DFS walk emits them
+        internal DataHandle[] rows = null!;
 
         public ref ArrangeData arrange => ref Pool.GetRef<ArrangeData>(dataHandle);
-        public ref ControlGeometry geometry => ref UIEngine.Controls.GetRef<ControlGeometry>(controlHandle);
-        public ref VulkanControl visual => ref UIEngine.Controls.GetRef<VulkanControl>(controlHandle);
+        public ref ControlGeometry geometry => ref GeometryAt(0);
+        public ref VulkanControl visual => ref VisualAt(0);
+
+        public ref ControlGeometry GeometryAt(int row) => ref UIEngine.Controls.GetRef<ControlGeometry>(rows[row]);
+        public ref VulkanControl VisualAt(int row) => ref UIEngine.Controls.GetRef<VulkanControl>(rows[row]);
 
         protected override void AllocatePooledData()
         {
             base.AllocatePooledData();
-            controlHandle = AllocateIn("VulkanControls");
+            rows = new[] { AllocateIn("VulkanControls") };
+        }
+
+        // Appends a draw row and returns its index. The pool resequences to DFS order at the frame
+        // edge, so the new row lands beside the others whatever dense index it took.
+        protected int AllocateRow()
+        {
+            Array.Resize(ref rows, rows.Length + 1);
+            rows[^1] = AllocateIn("VulkanControls");
+            MarkTreeOrderDirty();
+            return rows.Length - 1;
+        }
+
+        // Drops the last count rows. The pool free is deferred to the frame edge; the handle leaves
+        // this array now, so the resequence that runs after it never names a dead row.
+        protected void TrimRows(int count)
+        {
+            if (count <= 0) return;
+
+            for (int i = rows.Length - count; i < rows.Length; i++)
+                FreeIn(rows[i]);
+
+            Array.Resize(ref rows, rows.Length - count);
+            MarkTreeOrderDirty();
         }
 
         public Control()
@@ -154,7 +181,8 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- paint ----
-        public string colorHex
+        // Virtual because a text run's colour belongs to its spans, not to rows[0].
+        public virtual string colorHex
         {
             get => field;
             set
@@ -166,7 +194,7 @@ namespace ArctisAurora.Core.UI
             }
         } = "#FFFFFF";
 
-        public float alpha
+        public virtual float alpha
         {
             get => field;
             set
@@ -436,7 +464,8 @@ namespace ArctisAurora.Core.UI
             InvalidateLayout();
         }
 
-        // Both pools hold one row per control in the same DFS order, so both resequence together.
+        // Both pools resequence together — UIElements holds one row per control, VulkanControls one
+        // per drawn quad, and the same DFS walk keys them.
         protected void MarkTreeOrderDirty()
         {
             Pool.MarkOrderDirty();
@@ -451,7 +480,9 @@ namespace ArctisAurora.Core.UI
         }
 
         // Widens the draw pool's dirty range so this row is re-uploaded.
-        internal void Publish() => UIEngine.Controls.MarkContentDirty(controlHandle);
+        internal void Publish() => Publish(0);
+
+        internal void Publish(int row) => UIEngine.Controls.MarkContentDirty(rows[row]);
 
         public static Vector3D<float> HexToRGB(string hex)
         {

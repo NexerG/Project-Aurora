@@ -1,6 +1,6 @@
 # UI Engine — state and resume point
 
-**Rewritten:** 2026-09-06. **Landings 1–3 are built and GUI-verified. Landings 4–6 are agreed and unbuilt.**
+**Rewritten:** 2026-09-06. **Landings 1–4 are built and GUI-verified. Landings 5–6 are agreed and unbuilt.**
 
 This file exists so the work can be picked up cold. The decisions and their reasoning are in
 [../Decisions/ui-engine-stack.md](../Decisions/ui-engine-stack.md) and
@@ -24,7 +24,8 @@ One `Control` owns **0..N** `VulkanControl` rows. A panel owns 1; a text run own
 ## What exists now
 
 **Namespace `ArctisAurora.Core.UI`** — `UIData.cs` (the three structs, the enums, `LayoutRect`, `Thickness`,
-`QuadUVs`), `Control.cs`, `WindowRoot.cs`, `PointerEvent.cs`, `UIEngine.cs`.
+`QuadUVs`), `Control.cs`, `WindowRoot.cs`, `PointerEvent.cs`, `TextRunControl.cs` (`StyleSpan`,
+`IGlyphPressTarget`, `TextRunControl`), `NextCaretControl.cs`, `UIEngine.cs`.
 
 **Pools**, in `Pools.pools.xml`, both `Ordered="true"`:
 
@@ -43,11 +44,20 @@ resolves `[A_XSDType]` by **name alone, first declaration wins**, and the old cl
 ArrangeData 140 B   ControlGeometry 96 B   VulkanControl 92 B
 ```
 
-**`Control : Entity`** — `PoolName => "UIElements"`, second row via `Entity.AllocateIn("VulkanControls")` in an
-`AllocatePooledData` override. Exposes `arrange`, `geometry`, `visual` as `ref` accessors, the authored layout
-properties over `ArrangeData`, `colorHex` / `alpha` / `cornerRadius` / `edgeColorHex` / `edgeThickness`,
-`Measure` / `Arrange` / `WriteArranged`, `InvalidateLayout` / `InvalidateArrange`, `Hide` / `Show` and
-`RefreshSubtreeCache`. **`AddChild` throws on a second child**, as the outgoing base does.
+**`Control : Entity`** — `PoolName => "UIElements"`, draw rows via `Entity.AllocateIn("VulkanControls")`.
+Holds **`DataHandle[] rows`**, `rows[0]` being its own quad; `AllocateRow` / `TrimRows` / `Publish(i)` /
+`GeometryAt(i)` / `VisualAt(i)` address the rest. Exposes `arrange`, `geometry`, `visual` as `ref` accessors,
+the authored layout properties over `ArrangeData`, `colorHex` / `alpha` (both **`virtual`**) / `cornerRadius` /
+`edgeColorHex` / `edgeThickness`, `Measure` / `Arrange` / `WriteArranged`, `InvalidateLayout` /
+`InvalidateArrange`, `Hide` / `Show` and `RefreshSubtreeCache`. **`AddChild` throws on a second child**, as
+the outgoing base does.
+
+**`TextRunControl : Control`** — a paragraph as one control. `text` + `List<StyleSpan>` (spans tile in order,
+the last absorbing the remainder) + a measured `BlockLayout`, emitting one row per character at
+`rows[1 + charIndex]`. `rows[0]` is its own box and never paints. `IndexAt(point)` / `CaretAt(offset)` /
+`TextOrigin` answer caret questions; `OnPointerPress` walks up to the first `IGlyphPressTarget`.
+**`NextCaretControl : Control`** — the blink and 2px width, named around a serializable-id collision
+(see [[parallel-stack-name-collisions]]).
 
 **`WindowRoot : Control`** — the only node that holds siblings. Carries `WindowingMode`, `autoscaling`,
 `ScalingAxis`, `ViewportSize`, `FitTo`, `ToDesignSpace`, and a `Measure`/`Arrange` that loops children by
@@ -69,7 +79,9 @@ columns per swapchain image through `MirrorPool`, one dirty range each. Holds `u
 
 **Shaders** — `Shaders/UIEngine/UIEngine.vert` + `.frag`, compiled `--target-env=vulkan1.3`, mirrored
 byte-identical into `Thorium/`, `AuroraEditor/` and `Carbon/`. Set 0 renderer global, set 1 module
-(camera UBO + two `scalar` SSBOs). No sampler set yet.
+(camera UBO + two `scalar` SSBOs), **set 2 the texture table** (`sampler2D samplers[]`, variable count,
+`TextureAsset.MaxTextures`). The frag branches on `fragType == MTSDFControl`; the `edge` band is shared code
+over a `dist`/`aa` pair each branch fills in its own units. No gradient buffer (binding 3) and no mask branch.
 
 **`ERendererTypes.UIEngine`** and its `AuroraCamera` case — ortho over `WindowRoot.ViewportSize`, falling back
 to the raw swapchain extent when the window has no root.
@@ -83,7 +95,8 @@ DFS order and the resequence has real work.
 
 `card`, `bar`, `under` and `over` are `ProbeControl`, which recolours on enter/exit/press/release; `leaf` is a
 `ProbeControl` that **consumes nothing**, so hovering it bubbles through `inner` (a plain `Control`) to `card`.
-The landing 6 port removes all of it.
+Landing 4 added a `document` (Left/Center): a `ProbeDocumentControl` holding a `TextRunControl` wrapping at
+360 across three `StyleSpan`s and a `NextCaretControl`. The landing 6 port removes all of it.
 
 ## Settled — do not re-litigate without asking
 
@@ -187,19 +200,27 @@ which consumes it; leaving returns both to their resting colours; two overlappin
 one drawn on top and to the exposed arm of the one underneath; a press recolours the pressed control.
 **Not exercised:** double-tap, right button, and the pointer leaving the window.
 
-### 4 — text and caret
+### 4 — text and caret — **DONE 2026-09-06**
 
-- `TextRunControl` holds `text` + `BlockLayout` + per-character style spans, and emits one `VulkanControl` per
-  glyph. The single `controlHandle` becomes a `(first, count)` range here.
-- `MTSDFControl` path in the shader: sampler set returns as **set 2**, `edge` strokes the MSDF silhouette.
-- Press path: `run.OnPress(point)` → `layout.IndexAt(point)` → `document.GlyphPressed(run, index)`. The document
-  owns the caret and positions it from `CaretGeometry`.
-- `CaretControl`, `SelectionControl` and `DocumentEditorControl.CaretAtPoint` are rebuilt, not ported.
-- **New XML shape needed**: per-character settings (bold, colour, italic, size, animation) as spans over a
-  string. Nothing in today's document format expresses it.
+Built as planned, with six answered forks: spans reach the measurer as a **slice** over one string
+(`TextMeasurer.Run.charStart`/`charCount`) rather than as substrings, because without spans a paragraph could
+not hold a bold word at all; the document is **scaffolding** (`ProbeDocumentControl`) rather than a real
+container pulled forward; `SelectionControl`, `DocumentEditorControl.CaretAtPoint` and the per-character XML
+shape are all **deferred** — nothing can drive selection without drag, there are no blocks, and the new stack
+parses no XML; a run **keeps** its own transparent `rows[0]`.
 
-→ *verify:* a paragraph renders with one `Control` per run and one `VulkanControl` per glyph; pressing a glyph
-puts the caret on the correct side of it, at every line's start, end and wrap point.
+Departure taken mid-build: `CaretControl` had to become **`NextCaretControl`** — see
+[[parallel-stack-name-collisions]].
+
+→ *verified:* a three-span paragraph renders in Thorium wrapping at 360 into three lines, one `Control` and one
+draw row per character; the amber bold span crosses a line boundary with the right characters in it; four
+probed clicks put the caret at line 1 offset 0 (x 24), mid line 1 (clicked x 217 → caret 219), line 2's start
+past the first character's midpoint (x 36), and line 3's end (x 334), with line tops exactly 24 px apart;
+caret blinks; no resequence warning and no DEBUG subtree-cache mismatch through boot, layout and four clicks;
+no Vulkan validation error beyond the pre-existing `DemoteToHelperInvocation` pair and the asset-upload
+barrier ones.
+**Not exercised:** editing the text after the first measure, a second run in one document, a font with a real
+bold face (the default family may collapse `Bold` to regular), and `edge` on a glyph.
 
 ### 5 — images and icons
 
@@ -212,7 +233,10 @@ puts the caret on the correct side of it, at every line's start, end and wrap po
 
 - Port the 39 `VulkanControl` subclasses to `Control`.
 - Delete `Core.UISystem`, the `UIControls` pool, `UIModule`, `MCUI`, `UI.vert`/`UI.frag`.
-- Rename the `VulkanControlData` XSD type back to `VulkanControl`.
+- Rename the `VulkanControlData` XSD type back to `VulkanControl`, `NextCaretControl` back to `CaretControl`,
+  and the `NextHovering` / `NextActiveControl` / `NextPressTarget` contexts back to their plain names.
+- Decide where `TextMeasurer`, `FontStyle`, `Glyph`, `AtlasMetaData` and `GlyphControl`'s cell constants live
+  once `Core.UISystem` is gone — `Core.UI` compiles against all of them.
 - Collapse the duplicated `CreatePipeline`.
 - Regenerate `NAMESPACES.md`.
 
@@ -223,6 +247,13 @@ and the mechanical half of 6 (39 subclasses, the 15 `hitTestable` sites) go to a
 frozen and old/new text is exact.
 
 ## Open — not decided
+
+- **Deferred out of landing 4, each waiting on something specific:** `SelectionControl` (needs drag ported),
+  `DocumentEditorControl.CaretAtPoint` (needs blocks), the XML shape for per-character settings (needs the new
+  stack to parse XML at all).
+- **Where the font system lands when `Core.UISystem` is deleted.** `TextMeasurer`, `FontStyle`, `Glyph`,
+  `AtlasMetaData` and `GlyphControl`'s cell constants are not the control stack, and `Core.UI` compiles
+  against all of them.
 
 - **`ContextMenus.menuFactory` must die** (user, explicit). One override, `Thorium.cs`, supplying a
   `WindowedContextMenuControl` with six hardcoded hex colours. Deleting the field alone breaks Thorium's menu

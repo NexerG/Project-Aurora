@@ -2,12 +2,14 @@ using ArctisAurora.Core.Data;
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.UISystem;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Maths;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using CaretGeometry = ArctisAurora.Core.UISystem.Controls.Text.Document.CaretGeometry;
 
 namespace ArctisAurora.Core.UI
 {
@@ -305,11 +307,13 @@ namespace ArctisAurora.Core.UI
             int count = pool.Count;
             List<int> order = new List<int>(count);
 
-            HashSet<Control> windowRoots = new HashSet<Control>();
+            // Also what stops a control being collected twice: a run owns one dense row per glyph,
+            // so the sweep below meets a detached run once per row it holds.
+            HashSet<Control> collected = new HashSet<Control>();
             foreach (RenderWindow window in Engine.windows.Values)
             {
                 WindowRoot root = window.uiNext?.uiRoot;
-                if (root == null || !windowRoots.Add(root)) continue;
+                if (root == null || !collected.Add(root)) continue;
                 CollectDFS(root, order, elements);
             }
 
@@ -318,7 +322,7 @@ namespace ArctisAurora.Core.UI
             for (int i = 0; i < count; i++)
             {
                 if (pool.OwnerAt(i) is Control control && control.parent is not Control
-                    && !windowRoots.Contains(control))
+                    && collected.Add(control))
                     CollectDFS(control, order, elements);
             }
             return order;
@@ -326,7 +330,9 @@ namespace ArctisAurora.Core.UI
 
         private static void CollectDFS(Control control, List<int> order, bool elements)
         {
-            order.Add(elements ? control.dataHandle.StableId : control.controlHandle.StableId);
+            if (elements) order.Add(control.dataHandle.StableId);
+            else foreach (DataHandle row in control.rows) order.Add(row.StableId);
+
             foreach (Entity child in control.children)
                 if (child is Control childControl)
                     CollectDFS(childControl, order, elements);
@@ -378,9 +384,10 @@ namespace ArctisAurora.Core.UI
                 ui.isDirty[i] = true;
         }
 
+        // Draw rows, not controls — a text run contributes one per glyph.
         private static int CountSubtree(Control control)
         {
-            int count = 1;
+            int count = control.rows.Length;
             foreach (Entity child in control.children)
                 if (child is Control childControl)
                     count += CountSubtree(childControl);
@@ -495,8 +502,38 @@ namespace ArctisAurora.Core.UI
             root.AddChild(under);
             root.AddChild(over);
             root.AddChild(bar);
+            root.AddChild(BuildParagraph());
 
             window.uiNext.uiRoot = root;
+        }
+
+        // Landing 4 scaffolding: one run wrapping at 360, styled by three spans so a line crosses
+        // segments and runIndex has to map back to the right span.
+        private static Control BuildParagraph()
+        {
+            const string body = "The quick brown fox jumps over the lazy dog, then wraps onto another line. ";
+            const string emphasis = "Bold and amber";
+            const string tail = ", and back to regular text that keeps on wrapping.";
+
+            TextRunControl run = new TextRunControl
+            {
+                name = "paragraph",
+                preferredWidth = 360,
+                horizontalPosition = 0f,
+                text = body + emphasis + tail,
+                colorHex = "#1B2430"
+            };
+            run.SetSpans(
+                new StyleSpan { count = body.Length, style = FontStyle.Regular },
+                new StyleSpan { count = emphasis.Length, style = FontStyle.Bold, colorHex = "#FFD166" },
+                new StyleSpan { style = FontStyle.Regular });
+
+            return new ProbeDocumentControl(run)
+            {
+                name = "document",
+                horizontalAlignment = HorizontalAlignment.Left,
+                verticalAlignment = VerticalAlignment.Center
+            };
         }
 
         // Landing 3 scaffolding: makes hover and press visible, and consumes or does not on demand.
@@ -535,6 +572,74 @@ namespace ArctisAurora.Core.UI
                 colorHex = "#FFFFFF";
                 return _consumes;
             }
+        }
+
+        // Landing 4 scaffolding: the smallest thing that can own a caret across a run, because the
+        // caret belongs to the document and there is no document until landing 6 ports one. Holds
+        // its two children outright — a plain Control takes one, and containers arrive with the port.
+        private class ProbeDocumentControl : Control, IGlyphPressTarget
+        {
+            private readonly TextRunControl _run;
+            private readonly NextCaretControl _caret;
+            private int _offset;
+
+            public ProbeDocumentControl(TextRunControl run)
+            {
+                alpha = 0f;
+                _run = run;
+                _caret = new NextCaretControl { name = "caret", colorHex = "#FF3B30" };
+                Adopt(_run);
+                Adopt(_caret);
+            }
+
+            private void Adopt(Control child)
+            {
+                children.Add(child);
+                child.parent = this;
+                MarkTreeOrderDirty();
+                InvalidateLayout();
+            }
+
+            public void GlyphPressed(TextRunControl run, int index)
+            {
+                _offset = index;
+                _caret.Focus();
+                InvalidateArrange();
+            }
+
+            // The caret is drawn last, so it takes the hit inside its own two pixels; the document
+            // owns the area either way and resolves the point against the run.
+            public override bool OnPointerPress(PointerEvent e)
+            {
+                GlyphPressed(_run, _run.IndexAt(e.point));
+                return true;
+            }
+
+            public override Vector2D<float> Measure(Vector2D<float> availableSize)
+            {
+                Vector2D<float> desired = _run.Measure(availableSize);
+                _caret.Measure(availableSize);
+
+                arrange.desired = desired;
+                SetFlag(ArrangeFlags.MeasureDirty, false);
+                return desired;
+            }
+
+            public override void Arrange(LayoutRect finalRect)
+            {
+                WriteArranged(finalRect);
+                _run.Arrange(finalRect);
+
+                CaretGeometry caret = _run.CaretAt(_offset);
+                Vector2D<float> origin = _run.TextOrigin;
+                _caret.Arrange(new LayoutRect(origin.X + caret.x, origin.Y + caret.top,
+                    NextCaretControl.Width, caret.height));
+
+                SetFlag(ArrangeFlags.ArrangeDirty, false);
+            }
+
+            public override void AddChild(Entity entity) =>
+                throw new Exception("The scaffolding document takes its children in its constructor");
         }
     }
 }
