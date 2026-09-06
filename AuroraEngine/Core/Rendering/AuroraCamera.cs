@@ -114,6 +114,12 @@ namespace ArctisAurora.EngineWork.Rendering
                     _projection = Matrix4X4.CreateOrthographicOffCenter(origin.X, origin.X + box.X,
                         origin.Y, origin.Y + box.Y, 0.01f, 512f);
                     break;
+
+                case ERendererTypes.UIEngine:
+                    _view = Matrix4X4.CreateLookAt(Vector3D<float>.Zero, _front, _localUp);
+                    _projection = Matrix4X4.CreateOrthographicOffCenter(0, _extent.Width,
+                        0, _extent.Height, 0.01f, 512f);
+                    break;
                 default:
                     break;
             }

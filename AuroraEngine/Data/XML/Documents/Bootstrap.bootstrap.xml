@@ -35,6 +35,7 @@
 		<Step Action="Renderer.PrepareDescriptors"/>
 		<Step Action="Renderer.SetupPipelines"/>
 		<Step Action="Renderer.CreateSyncObjects"/>
+		<Step Action="UIEngine.Bootstrap"/>
 	</Phase>
 
 </BootstrapSequence>

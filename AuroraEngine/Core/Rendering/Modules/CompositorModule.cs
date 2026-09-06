@@ -252,8 +252,8 @@ namespace ArctisAurora.Core.Rendering.Modules
                     DataSize = (nuint)sizeof(int),
                     PData = &moduleCount
                 };
-                // then on fragStage:
-                fragStage.PSpecializationInfo = &specInfo;
+                // into the array the pipeline reads, not the local it was copied from
+                stages[1].PSpecializationInfo = &specInfo;
 
                 // viewport + scissor are dynamic so the pipeline survives window resize
                 DynamicState* dynamicStatesPtr = stackalloc DynamicState[] { DynamicState.Viewport, DynamicState.Scissor };

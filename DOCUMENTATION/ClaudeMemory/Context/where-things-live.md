@@ -20,7 +20,8 @@ Namespace shorthands used in the tables:
 | `Registry` | `ArctisAurora.Core.Registry`; `Assets` = `...Registry.Assets` |
 | `Render` | `ArctisAurora.EngineWork.Rendering` (+ `.Modules`, `.Helpers`, `.MeshSubComponents`) |
 | `Threading` | `ArctisAurora.Core.Threading` |
-| `UI` | `ArctisAurora.Core.UISystem`; `.Controls`, `.Containers`, `.Interactable`, `.Text`, `.Doc` (`Text.Document`), `.Edits` (`Text.Document.Edits`), `.Editing` (`Text.Editing`), `.Actions` |
+| `UI` | `ArctisAurora.Core.UISystem`; `.Controls`, `.Containers`, `.Interactable`, `.Text`, `.Doc` (`Text.Document`), `.Edits` (`Text.Document.Edits`), `.Editing` (`Text.Editing`), `.Actions` — **the outgoing stack** |
+| `UINext` | `ArctisAurora.Core.UI` — the replacement stack, built beside the old one. `Control` is CPU, `VulkanControl` is one GPU quad |
 
 ## Look, colour and chrome
 
@@ -102,6 +103,7 @@ Namespace shorthands used in the tables:
 | quitting, save prompts | `Core.Shutdown`; `UI.Actions.NoteActions`, `WindowActions` | `AuroraEngine/Data/XML/Documents/Shutdown.shutdown.xml` | [[shutdown-sequence]] |
 | tick order, threads | `Core.Engine`; `Threading.MainSystem`, `RenderSystem`, `PhysicsSystem`, `ThreadedSystem` | — | [[ecs-rework-data-pools]] |
 | entity create / destroy | `Registry.EntityRegistry`; `Core.Engine.Interpolate` | `EntityRegistry.entities.xml` | [[entity-lifecycle-queues]] |
+| which columns an entity has; an entity's position/scale | `ECS.EngineEntity.Entity` (`PoolName`, `AllocatePooledData`, `AllocateIn`, `FreePooledData`), `TransformEntity` | `AuroraEngine/Data/XML/Documents/Pools.pools.xml` | [[entity-transform-split]] |
 | logging | `Diag.LogChannel`, `LogLevel`, `LoggingSettings`; `Diag.Sinks.*` | `Bootstrap.bootstrap.xml`, `Shutdown.shutdown.xml` | [[engine-logging]] |
 | profiling — timing a tick phase, counting calls | `Diag.Profiling` (`Zone.Start`/`End`/`Increment`, `Report`); zones in `Core.Engine.MainTick`, `Threading.RenderSystem` | — | [[engine-profiling]] |
 | frame capture — every span of every frame, to a file | `Diag.Profiling.Frame`, `Diag.FrameSpool`, `ProfilingSettings`; frame edges in `Threading.ThreadedSystem.Loop` | `Bootstrap.bootstrap.xml`, `Shutdown.shutdown.xml` | [[engine-profiling]] |
@@ -115,6 +117,9 @@ Namespace shorthands used in the tables:
 | device, swapchain, frame loop | `Render.Renderer`, `Swapchain`, `RenderWindow`, `VulkanRenderer` | — | [[render-window-owns-the-swapchain]], [[swapchain-extent-is-the-truth]], [[dynamic-rendering]] |
 | OS windows, focus, placement | `Render.AGlfwWindow` | — | [[active-glfw-window-context]] |
 | the UI draw path | `Render.Modules.UIModule`; `Render.MeshSubComponents.MCUI`; `Render.UI.UIRenderer` | — | [[glyphs-as-pool-data]], [[gpu-global-frame-data]] |
+| the **new** UI draw path | `Render.Modules.UIEngineModule` (`window.uiNext`); `UINext.UIEngine`, `Control` | `AuroraEngine/Data/XML/Documents/Pools.pools.xml` (`UIElements`, `VulkanControls`) | [[ui-engine-stack]] |
+| compositing several modules into one window | `Core.Rendering.Modules.CompositorModule`; `compositorOrder` on `Render.Modules.RenderingModule` | — | [[ui-engine-stack]] |
+| new UI shaders | `*/Shaders/UIEngine/UIEngine.vert`, `UIEngine.frag` — four copies | — | `shader-pipeline` skill |
 | buffers, GPU memory | `Render.Helpers.AVulkanBufferHandler` | — | [[mapped-streaming-buffers]], [[engine-resource-manager]] |
 | UI shaders | `*/Shaders/UIRasterizer/UI.vert`, `UI.frag` — three copies | — | `shader-pipeline` skill |
 | graphics settings | `Render.GraphicsSettings`, `DisplayNames` | `Thorium/Data/XML/Settings/Graphics.settings.xml` | [[settings-categories]] |

@@ -42,13 +42,13 @@ namespace ArctisAurora.CustomEntityComponents
 
             for (int i = 0; i < _particles.Count; i++)
             {
-                Vector3D<float> pos = new Vector3D<float>(parent.transform.position.X, parent.transform.position.Y, parent.transform.position.Z);
-                //Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(parent.transform.rotation.X, parent.transform.rotation.Y, parent.transform.rotation.Z);
+                Vector3D<float> pos = new Vector3D<float>(transform.position.X, transform.position.Y, transform.position.Z);
+                //Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(transform.rotation.X, transform.rotation.Y, transform.rotation.Z);
 
                 Matrix4X4<float> transformation = Matrix4X4<float>.Identity;
                 transformation *= Matrix4X4.CreateTranslation(pos);
                 //transformation *= Matrix4X4.CreateFromQuaternion(q);
-                //transformation *= Matrix4X4.CreateScale(parent.transform.scale);
+                //transformation *= Matrix4X4.CreateScale(transform.scale);
 
                 _instanceMatrix.Add(transformation);
             }
@@ -59,12 +59,12 @@ namespace ArctisAurora.CustomEntityComponents
             for (int i = 0; i < ps.Count; i++)
             {
                 Vector3D<float> pos = new Vector3D<float>(ps[i].point.X, ps[i].point.Y, ps[i].point.Z);
-                Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(parent.transform.rotation.X, parent.transform.rotation.Y, parent.transform.rotation.Z);
+                Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(transform.rotation.X, transform.rotation.Y, transform.rotation.Z);
 
                 Matrix4X4<float> transformation = Matrix4X4<float>.Identity;
                 transformation *= Matrix4X4.CreateTranslation(pos);
                 transformation *= Matrix4X4.CreateFromQuaternion(q);
-                transformation *= Matrix4X4.CreateScale(parent.transform.scale);
+                transformation *= Matrix4X4.CreateScale(transform.scale);
 
                 _instanceMatrix[i] = transformation;
             }

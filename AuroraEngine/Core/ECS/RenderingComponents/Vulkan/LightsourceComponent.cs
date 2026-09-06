@@ -56,7 +56,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
             base.SingletonMatrix();
             _lightData.projection = Matrix4X4.CreateOrthographicOffCenter(-35f, 35f, -35f, 35f, 5, 300f);
             _lightData.projection.M22 *= -1;
-            _lightData.view = Matrix4X4.CreateLookAt(parent.transform.position, Vector3D<float>.Zero, Vector3D<float>.UnitY);
+            _lightData.view = Matrix4X4.CreateLookAt(transform.position, Vector3D<float>.Zero, Vector3D<float>.UnitY);
 
             //AVulkanBufferHandler.CreateBuffer(ref _lightData, ref _lightDataBuffer, ref _lightDataDM, BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.UniformBufferBit);
         }

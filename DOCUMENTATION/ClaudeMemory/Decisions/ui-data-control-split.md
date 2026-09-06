@@ -1,5 +1,13 @@
 # Decision — the UI splits into data and visualization; L2 virtualization is dropped
 
+**SUPERSEDED IN APPROACH, 2026-09-06** — the data/visualization split was right and is being built, but this
+note's *method* is not: the rebuild is a parallel stack in a new namespace, not columns appended to
+`UIControls`. Two claims below are now wrong. **"This does not lower the control count"** is false under the
+landed design — a text run is one `Control` emitting one GPU row per glyph, so glyphs stopped being objects.
+And the tree does **not** move into the pool; `Control` keeps parent/children through `Entity`. Read
+[ui-engine-stack](ui-engine-stack.md) and [../Context/ui-engine-plan.md](../Context/ui-engine-plan.md) first;
+this note is kept for the alternatives it rejected and why.
+
 **Date:** 2026-08-17
 **Status:** PLANNED, not started. **Sequenced after Thorium and the test/profiling platform** —
 the UI ships as it is first, then the engine is redone against this.

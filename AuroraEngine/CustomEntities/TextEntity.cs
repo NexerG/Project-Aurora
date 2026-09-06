@@ -7,7 +7,7 @@ using Silk.NET.Maths;
 
 namespace ArctisAurora.CustomEntities
 {
-    internal class TextEntity : Entity
+    internal class TextEntity : TransformEntity
     {
         internal string text;
         internal List<GlyphControl> children = new List<GlyphControl>();

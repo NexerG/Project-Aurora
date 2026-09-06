@@ -43,6 +43,9 @@ namespace ArctisAurora.EngineWork.Rendering
         // the module holding this window's UI tree — the window itself owns no controls
         public UIModule ui;
 
+        // the new UI stack, composited over ui while both run
+        public UIEngineModule uiNext;
+
         // UI document this window's tree was built from. Null on a window that holds no session —
         // menus, the drag preview — which is what tells a session capture what to record.
         public string uiDocument;
@@ -71,9 +74,11 @@ namespace ArctisAurora.EngineWork.Rendering
         {
             os = new AGlfwWindow(width, height, this);
             ui = new UIModule();
+            uiNext = new UIEngineModule();
             modules = new RenderingModule[]
             {
                 ui,
+                uiNext,
             };
 
             // A module knows its window from birth. BindWindow only runs when the render thread

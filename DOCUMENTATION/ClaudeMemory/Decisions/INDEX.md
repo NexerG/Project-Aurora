@@ -31,7 +31,8 @@ Standing constraints (ECS storage, Vulkan internals, physics, XSD-not-JSON) are 
 | [[thickness-type-converter]] | `Thickness` parses XML by mirroring its own constructors, not CSS | `VulkanControl.Thickness`, `ThicknessConverter` |
 | [[entity-reparenting-and-names]] | reparenting is detach + the new parent's `AddChild`; a name lives on `Entity` | `Entity`, `VulkanControl` |
 | [[window-scaling-modes]] | a window root has a windowing mode, and the ortho box is what changes | `WindowControl`, `AuroraCamera`, `EntityRegistry.uiTree` |
-| [[ui-data-control-split]] | **PLANNED** — most of the UI becomes data, controls become visualization; L2 virtualization dropped | — |
+| [[ui-data-control-split]] | **SUPERSEDED in approach** — the split was right, the in-place migration was not; see [[ui-engine-stack]] | — |
+| [[ui-engine-stack]] | **PARTIAL** — the UI is rebuilt in a new namespace beside the old one; `Control` is CPU, `VulkanControl` is one GPU quad | `UIEngine`, `Control`, `ArrangeData`, `ControlGeometry`, `VulkanControl`, `UIEngineModule` |
 
 ## Containers and navigation
 
@@ -100,6 +101,8 @@ Standing constraints (ECS storage, Vulkan internals, physics, XSD-not-JSON) are 
 |---|---|---|
 | [[shutdown-sequence]] | shutdown is the bootstrap sequence run backwards, in two phases; only `Request` may refuse | `Shutdown`, `Bootstrapper`, `NoteActions` |
 | [[entity-lifecycle-queues]] | lifecycle drains through queues popped between frames, not `foreach` over live lists | `Engine.Interpolate`, `EntityRegistry` |
+| [[entity-transform-split]] | an entity's columns are what its pool declares; the transform moved down to `TransformEntity` and an entity frees rows in every pool it holds | `Entity`, `TransformEntity`, `EntityComponent`, `EntityRegistry` |
+| [[entity-tick-group]] | **FUTURE** — ticking should iterate a `"Tickable"` group, not every entity behind a flag | `Engine.Interpolate`, `EntityRegistry` |
 | [[engine-logging]] | per-thread SPSC lanes drained by one background thread; a log call is a memory write | `LogChannel`, `LogLane`, `Diagnostics.Sinks.*` |
 | [[engine-profiling]] | zones time and increments count, both compiled out by flag; per-thread tables, no shared state; a capture streams every span of every frame to XML off-thread, and `--profile` arms one early enough to hold the bootstrap phase | `Profiling`, `FrameSpool`, `ThreadedSystem.Loop`, `Bootstrapper.RunPhase` |
 | [[carbon-frame-viewer]] | the frame reader sits beside the writer; Carbon is a fourth app drawing it, and one control is both the flame chart and the aligned timeline | `FrameCaptureReader`, `SpanChartControl`, `FrameStripControl` |

@@ -143,7 +143,7 @@ namespace ArctisAurora.Core.Registry
                 Entity entity = _toDestroy.Pop();
                 Unregister(entity);
                 entity.OnDestroy();
-                entity.Pool.Free(entity.dataHandle);
+                entity.FreePooledData();
             }
         }
 

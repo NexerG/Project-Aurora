@@ -19,7 +19,7 @@ namespace ArctisAurora.Core.UISystem.Controls
     { }
 
     [A_XSDType("VulkanControl", "EntityRegistry", isAbstract: true)]
-    public unsafe class VulkanControl : Entity, IXMLParser<VulkanControl>, IXMLChild_UI
+    public unsafe class VulkanControl : TransformEntity, IXMLParser<VulkanControl>, IXMLChild_UI
     {
         #region ---- STRUCTS ----
         [StructLayout(LayoutKind.Sequential, Pack = 1), A_XSDType("ControlStyle", "AssetRegistry")]

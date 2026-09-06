@@ -58,9 +58,9 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         {
             Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0,0,0);
             Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-            _transform *= Matrix4X4.CreateScale(parent.transform.scale);
+            _transform *= Matrix4X4.CreateScale(transform.scale);
             //_transform *= Matrix4X4.CreateFromQuaternion(q);
-            _transform *= Matrix4X4.CreateTranslation(parent.transform.position);
+            _transform *= Matrix4X4.CreateTranslation(transform.position);
 
             transformMatrices.Add(_transform);
         }
@@ -71,9 +71,9 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         {
             Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0, 0, 0);
             Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-            _transform *= Matrix4X4.CreateScale(parent.transform.scale);
+            _transform *= Matrix4X4.CreateScale(transform.scale);
             _transform *= Matrix4X4.CreateFromQuaternion(q);
-            _transform *= Matrix4X4.CreateTranslation(parent.transform.position);
+            _transform *= Matrix4X4.CreateTranslation(transform.position);
 
             transformMatrices[0] = _transform;
             Matrix4X4<float>[] _mats = transformMatrices.ToArray();

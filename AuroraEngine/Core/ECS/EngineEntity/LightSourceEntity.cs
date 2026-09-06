@@ -4,7 +4,7 @@ using System.Numerics;
 
 namespace ArctisAurora.Core.ECS.EngineEntity
 {
-    internal class LightSourceEntity : Entity
+    internal class LightSourceEntity : TransformEntity
     {
         public LightSourceEntity()
         {

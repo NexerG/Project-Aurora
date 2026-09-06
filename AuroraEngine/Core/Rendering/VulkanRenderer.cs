@@ -19,7 +19,8 @@ namespace ArctisAurora.EngineWork.Rendering
         Pathtracer,
         RadianceCascades,
         RadianceCascades2D,
-        UITemp
+        UITemp,
+        UIEngine
     }
 
     [Obsolete("this class is in the deprecation phase", false)]

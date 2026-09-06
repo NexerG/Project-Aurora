@@ -25,7 +25,11 @@ VerifiedAgainst: 2026-05-30
 ---
 ## Description
 
-The base object the engine simulates. It owns a [[Transform]], a list of components ([[EntityComponent]]), and child entities. The constructors auto-register it into the `Entities` entity group and enqueue it for `OnStart` on the registry's start queue. Marking it dirty enqueues it into `EntitiesToUpdate` and cascades to children.
+The base object the engine simulates. It owns a list of components ([[EntityComponent]]), child entities, and a row in whichever data pool it names. The constructors auto-register it into the `Entities` entity group and enqueue it for `OnStart` on the registry's start queue. Marking it dirty enqueues it into `EntitiesToUpdate` and cascades to children.
+
+An entity does **not** own a [[Transform]]. Which component columns it has is decided entirely by the pool it binds to, so an entity whose pool declares no transform column pays nothing for one — not on the object, where the accessor was only ever a reference into pooled storage, and not in the pool. `TransformEntity` is the subclass that adds the transform accessors and seeds the default scale, and everything positional in the world derives from it. The UI's new `Control` derives straight from `Entity` and carries no transform at all, because its matrix is baked into its own draw row instead.
+
+An entity may hold rows in more than one pool. `AllocateIn` takes an extra row and records it, and the registry frees every row an entity holds when it is destroyed — a handle names its own pool, so nothing has to track which row came from where.
 
 > The ECS is currently class/object-based rather than data-oriented â€” a known piece of engine techdebt.
 
@@ -51,7 +55,6 @@ The base object the engine simulates. It owns a [[Transform]], a list of compone
 
 ```C#
 [@Serializable] bool enabled = true;
-[@Serializable] public Transform transform;
 [@Serializable] [A_XSDElementProperty("Name", "EntityRegistry")] public string name = "entity";
 [@Serializable] public List<EntityComponent> _components = new();
 [@Serializable] public List<Entity> children = new();

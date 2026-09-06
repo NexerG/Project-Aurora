@@ -354,9 +354,9 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
         {
             Quaternion<float> q = Quaternion<float>.Identity;
             Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-            _transform *= Matrix4X4.CreateScale(parent.transform.scale);
+            _transform *= Matrix4X4.CreateScale(transform.scale);
             _transform *= Matrix4X4.CreateFromQuaternion(q);
-            _transform *= Matrix4X4.CreateTranslation(parent.transform.position);
+            _transform *= Matrix4X4.CreateTranslation(transform.position);
             _transform = Matrix4X4.Transpose(_transform);
             transformMatrices.Add(_transform);
 
@@ -369,11 +369,11 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 
         internal override void UpdateMatrices()
         {
-            Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(parent.transform.rotation.X,parent.transform.rotation.Y,parent.transform.rotation.Z);
+            Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(transform.rotation.X,transform.rotation.Y,transform.rotation.Z);
             Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-            _transform *= Matrix4X4.CreateScale(parent.transform.scale);
+            _transform *= Matrix4X4.CreateScale(transform.scale);
             _transform *= Matrix4X4.CreateFromQuaternion(q);
-            _transform *= Matrix4X4.CreateTranslation(parent.transform.position);
+            _transform *= Matrix4X4.CreateTranslation(transform.position);
             _transform = Matrix4X4.Transpose(_transform);
 
             transformMatrices[0] = _transform;
@@ -385,7 +385,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 
             UpdateBLAS();
 
-            //parent.transform._changed = false;
+            //transform._changed = false;
         }
 
         internal override void EnqueueDrawCommands(ref ulong[] _offset, int _loopIndex, ref CommandBuffer _commandBuffer)

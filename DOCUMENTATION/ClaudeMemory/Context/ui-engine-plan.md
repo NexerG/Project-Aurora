@@ -1,152 +1,217 @@
-# UI Engine — agreed plan and resume point
+# UI Engine — state and resume point
 
-**Agreed:** 2026-09-04. **Nothing built.** No code, no XML, no shaders changed yet.
-**Supersedes in scope, not in content:** [../Decisions/ui-data-control-split.md](../Decisions/ui-data-control-split.md),
-which designed the split but concluded it could not lower the control count. This plan combines that
-split with the escape hatch recorded in [../Decisions/text-layout-one-measurer.md](../Decisions/text-layout-one-measurer.md),
-which does lower it.
+**Rewritten:** 2026-09-06. **Landing 1 is built and GUI-verified. Landings 2–6 are agreed and unbuilt.**
 
-This file exists so the work can be picked up cold. It carries the decisions already taken, the facts
-that were expensive to establish, and enough per-landing detail to build from without redesigning.
+This file exists so the work can be picked up cold. The decisions and their reasoning are in
+[../Decisions/ui-engine-stack.md](../Decisions/ui-engine-stack.md) and
+[../Decisions/entity-transform-split.md](../Decisions/entity-transform-split.md); this file is what to *do
+next* and what already exists.
 
-## Goal
+The 2026-09-04 version of this file planned an in-place migration of `UIControls` with columns appended to it.
+**That approach is dead** — the user chose a parallel build (attempt 3, 2026-09-05/06). Nothing below assumes it.
 
-Split the UI into a **data tier** and a **renderable tier**. The data tier holds every element and is
-sized for ~1M rows; the renderable tier holds only what is actually drawn, ~5k rows, and is the only
-thing the GPU mirrors. Text runs hold a string, not one control per character; glyphs materialize when
-visible and are discarded when they are not.
+## Vocabulary — do not get these backwards
 
-Entry point is `UIEngine.Poll()` — a new static class in `Core.UISystem`, **on the main thread**, no
-thread of its own. It is shaped like `UICollisionHandling` (static, one per-tick driver) but written
-against the new data.
-
-**Out of scope, deliberately:** a second UI thread; replacing the Vulkan pipeline; changing the ECS
-storage model outside the two UI pools.
-
-## The two tiers
-
-| | Data tier | Renderable tier |
+| Name | Side | Is |
 |---|---|---|
-| Pool | `UIControls` | `Renderables` (new) |
-| Sized for | ~1M rows | ~5k rows |
-| Row holds | layout inputs, arranged + clip rect, style/role, kind, content handle | `GpuTransform`, `ControlData`, `RenderableKind` |
-| Mirrored to GPU | no | yes — `MCUI` mirrors this instead |
-| Text | one row per run, holding a string | one row per **visible** glyph quad |
+| `Control` | CPU | tree node, logic, layout. One per element |
+| `VulkanControl` | GPU | one drawn quad. Struct, kind-tagged, no behaviour |
+| `VulkanControlType` | — | `MTSDFControl`, `PanelControl`, `ImageControl` |
 
-The renderable tier is expected to collapse to three kinds: **panel** (one colour or none),
-**glyph/vector**, **image**. `RenderableKind` is that field.
+One `Control` owns **0..N** `VulkanControl` rows. A panel owns 1; a text run owns one per glyph. The old
+`Core.UISystem.Controls.VulkanControl` keeps its name until landing 6.
 
-Because the renderable pool holds only what is drawn, it **is** the compacted visible set —
-`firstInstance`/`instanceCount` are plain ranges in it. No index buffer, no indirect draw, no
-compaction pass.
+## What exists now
 
-## Standing decisions
+**Namespace `ArctisAurora.Core.UI`** — `UIData.cs` (the three structs, the enum, `LayoutRect`, `Thickness`,
+`QuadUVs`), `Control.cs`, `UIEngine.cs`.
 
-Settled with the user 2026-09-04. Do not re-litigate without asking.
+**Pools**, in `Pools.pools.xml`, both `Ordered="true"` with no `SortAction` yet:
+
+| Pool | Columns | Capacity |
+|---|---|---|
+| `UIElements` | `ArrangeData` | 1024 |
+| `VulkanControls` | `ControlGeometry`, `VulkanControlData` | 4096 |
+
+`VulkanControlData` is the XSD name of the `VulkanControl` struct — renamed because `AnyXMLType.FindType`
+resolves `[A_XSDType]` by **name alone, first declaration wins**, and the old class already owns
+`"VulkanControl"`. Collision disappears at landing 6.
+
+**Row sizes**, printed by `UIEngine.Bootstrap` at boot via `Unsafe.SizeOf`:
+
+```
+ArrangeData 140 B   ControlGeometry 96 B   VulkanControl 92 B
+```
+
+**`Control : Entity`** — `PoolName => "UIElements"`, second row via `Entity.AllocateIn("VulkanControls")` in an
+`AllocatePooledData` override. Exposes `arrange`, `geometry`, `visual` as `ref` accessors, plus
+`colorHex` / `alpha` / `cornerRadius` / `edgeColorHex` / `edgeThickness` and `SetArranged(LayoutRect)`.
+
+**`UIEngineModule`** — second `RenderingModule` on every `RenderWindow` (`window.uiNext`, index 1 in
+`modules`). `compositorOrder = 10`, transparent clear, so the old stack composites underneath. Mirrors both GPU
+columns per swapchain image through `MirrorPool`, one dirty range each.
+
+**Shaders** — `Shaders/UIEngine/UIEngine.vert` + `.frag`, compiled `--target-env=vulkan1.3`, mirrored
+byte-identical into `Thorium/`, `AuroraEditor/` and `Carbon/`. Set 0 renderer global, set 1 module
+(camera UBO + two `scalar` SSBOs). No sampler set yet.
+
+**`ERendererTypes.UIEngine`** and its `AuroraCamera` case — ortho over the raw swapchain extent.
+
+**Bootstrap** — `<Step Action="UIEngine.Bootstrap"/>` is the last step of `Bootstrap.bootstrap.xml`. It logs
+the row sizes and creates a **smoke panel** at `(80, 80, 320, 180)`, `#3AA6FF`, radius 16, white 2 px edge.
+That panel is scaffolding and the arrange pass removes it.
+
+## Settled — do not re-litigate without asking
 
 | Decision | Why |
 |---|---|
-| One new class, `UIEngine`, static, main thread, entry `Poll()` | The old system stays runnable beside it while the migration happens |
-| **Split entry, not one call.** `Poll()` at the `HandleUI` site does input + animations; `PollLayout()` is called from `Interpolate` where `ResolveLayout` sits | Layout runs *after* `OnTick` today. One call at the input site would run it before, and anything invalidating layout from `OnTick` (glyph sync, caret) would land a frame late |
-| New columns are **appended** to `UIControls`, never reordered | Column ids come from `Pools.pools.xml` declaration order and in-flight `SystemCommand`s carry them |
-| Layout stays **recursive** through the existing virtual `Measure`/`Arrange` for now | Going flat needs the layout-kind switch across every container at once, and `TextBlockControl`'s inline flow may not survive it. Separable from the column work; do the columns first |
-| Hit-test becomes a **backward scan** over dense order — last drawn wins, so first hit is deepest | Behaviour-identical today because every UI transform is scale+translate. Must return to a quad test if per-letter rotation ever ships |
-| Visibility early-out is **opt-in per container** — `childrenMonotonic`, false by default, true only on `StackPanelControl` (vertical), `TextBlockControl`, `GridListControl` | Those three advance a layout cursor monotonically. A container that positions a later child above an earlier one (docking, overlays) would silently drop it |
-| A theme is chosen by a **file inside the vault** | The user's framing: the vault declares which style it uses. Travels with the vault; not a property of this machine |
-| Theme roles name a **mask** as well as colours | There is no XML attribute for a mask today and 15 C# sites hardcode one. A role owning it makes the invisible-mask trap data |
-| Per-character authored style must live in the **run's data**, never on the glyph object | A glyph dematerializes; its object cannot be the home of state that has to survive. This is the condition under which [../Decisions/glyphs-as-pool-data.md](../Decisions/glyphs-as-pool-data.md)'s per-letter colour/rotation/animation requirement still holds |
-| Only **content** elements virtualize; chrome controls stay alive | `TabViewControl`, `FileBrowserControl` and others wire handlers imperatively with capturing lambdas, which cannot be rebuilt from a data row |
-| Dematerialization is **refused** for an element holding focus, an active drag, or an open edit | Otherwise `activeControl` dangles |
-| Draw count changing per frame is handled by **re-recording**, not indirect draw | See the facts below — the UI command buffer is ~15 calls |
+| Parallel build in a new namespace; delete the old at landing 6 | The old stack stays whole and runnable throughout |
+| Three data categories: `ArrangeData` CPU-only, `ControlGeometry` + `VulkanControl` on the GPU | Arrange and paint dirty different bytes; today's `ControlData` re-uploads 4.25× more than changed |
+| A run is one `Control` emitting one row per glyph (1:N) | Kills the 56.7k-glyph-object ceiling. Per-character style must live in the run's data |
+| Hit-test walks the **CPU tree** with a `subtreeBounds` early-out | Strictly tighter than today's inherited-`ClipRect` test |
+| Every control is hit-testable; handler returns `true` to consume | Deletes `hitTestable` (15 sites) and ~16 `bubbleXxx` bools |
+| Caret: glyph notifies the document, document spawns the caret | User's model. Replaces today's geometry-only `CaretAtPoint` |
+| Both insert caches — `subtreeCount`/`subtreeBounds` **and** cumulative child offsets | Tree-insert/collision, and drop targeting |
+| One `edge` pair, design pixels, meaning selected by `type` | Two names for two distance fields, neither with a consumer |
+| Masks serve all three kinds | A mask is a capability, not a hazard — the branch is "no mask assigned", not "panels never sample" |
+| Split entry: `Poll()` at the `HandleUI` site, `PollLayout()` at the `Interpolate` site | Layout must run after `OnTick`, or an `OnTick` invalidation lands a frame late |
+| `Control : Entity`, per entity-kind columns | Animation runs on `OnTick` + components. See [[entity-transform-split]] |
+| Row building is **incremental per element**, not a per-frame rebuild | ~56.7k glyph rows × 200 B is ~11 MB/frame — not affordable |
+| Emit rows for **all** glyphs for now, not visible-only | Visible-only is a strict improvement that drops in at the same seam; it needs a per-document line cache and its own correctness surface |
 
 ## Facts that were expensive to establish
 
-Measured or read out of the code on 2026-09-04. Re-deriving these is most of the cost of a cold start.
+**Depth.** The ortho box is z ∈ [−512, −0.01].
+`z_ndc = z·(−0.0019531632) − 1.9531632e−05`, so **world z ≤ −0.01 or the near plane clips it**. The old stack
+puts a window root at **−10** and steps +0.001 per depth level. `Control.rootDepth = -10f`. A control at z = 0
+draws nothing at all.
 
-**Memory, per control, today**
+**`CompositorModule` never specialized `MODULE_COUNT`.** `stages` was built as a `stackalloc` **copy** of
+`fragStage`, and `PSpecializationInfo` was assigned to the local afterwards. Fixed to `stages[1].…`. Symptom
+if it regresses: a second module renders correctly into its own image and the compositor never samples it —
+no validation error, nothing on screen.
 
-- Pool row: `TransformData` 36 B + `ControlData` 136 B (`Pack=1`) + `GpuTransform` 64 B = **236 B**, allocated at pool **capacity**, not count.
-- Pool indirection: 24 B per capacity slot (`_slots`, `_backMap`, `_versions`, `_publishedSlotVersion` at 4 each, `_owners` at 8).
-- Heap object: `VulkanControl` ≈ **432 B** (16 B header, ~64 B `Entity`, ~352 B own — 19 reference fields, 20 four-byte scalars, two `Thickness`, two `LayoutRect`, `CornerRadii`, `Sampler`, `DateTime`, 13 bools), plus **two `List<>` objects at 32 B each** allocated in field initialisers. `_components` is allocated for every entity and never used by a control.
-- GPU: 200 B per row (`GpuTransform` + `ControlData`) **per swapchain image**; `TransformData` is CPU-only.
-- All in: **~1.2 KB per control.** At the recorded 56.7k-control note, ~28 MB managed + ~13 MB pool + ~23–34 MB device.
+**The compositor blends `result = src + result·(1−src.a)` ascending**, so higher `compositorOrder` composites
+on top. `UIModule` clears opaque; anything above it must clear transparent.
 
-**Things that are not what an older note says**
+**`Renderer` drives modules generically** — feature merge, `PrepareObjects`, `CreateOutputImages`,
+`CreatePipeline`, `UpdateModule`/`UpdateFrameData`, the command-buffer submit and `RecreateSwapchain` all loop
+`window.modules`. Adding a module needs no renderer change. **But `Renderer.PrimaryRendererType` is
+`modules[0].rendererType`**, so `ui` must stay at index 0.
 
-- **Descriptors do not scale with control count.** Set 0 is 4 descriptors (camera UBO + transforms, control-data and gradient SSBOs); set 1 is `TextureAsset.MaxTextures` = **256** samplers, indexed by `textureIndex`. The "already past `UIModule`'s 50,000-cap descriptor array" line in [thorium-editor-architecture.md](thorium-editor-architecture.md) is **stale** — that array became a texture table.
-- **Corner radius already works end to end.** `CornerRadii` + its `TypeConverter` → `VulkanControl.ResolveAttributes` (which uses `TypeDescriptor.GetConverter`) → `ControlData.cornerRadius` → `UI.vert`'s `fragRadius` → `sdRoundBox` → `opacity *= inside`. Four `.ui.xml` files author `CornerRadius="4"` today. The styling work is a theme, not a repair.
+**`PoolColumn<T> where T : struct`** — managed references cannot live in a pool column. Any `(start, count)`
+scheme for children or components must keep the objects in a plain managed array beside the pool.
 
-**What makes the plan cheap**
+**`DataPool.GetRef<T>` costs a `Dictionary<Type, IPoolColumn>` lookup plus a slot indirection per call**, on
+top of `AssertOwner` (a `[ThreadStatic]` read and two branches). Hoisting `Backing<T>()` out of a loop removes
+the dictionary; a recursive walk that calls `GetRef` per node pays it per node.
 
-- **Visibility is already computed.** `VulkanControl.Arrange` sets `ClipRect = Intersect(finalRect, parent.ClipRect)` when `clipOutOfBounds`, and `Hide()` collapses it to a degenerate rect. So *visible ⇔ arranged ∩ clip has positive area*. No new data is needed to compute it.
-- **`DataPool.OwnerAt(dense)` walks in DFS order today**, because `UIControls` is `Ordered` with `SortAction="UI.DFSOrder"`. A visibility pass can iterate in draw order before any column work lands.
-- **`UILayout.RefreshWindowRanges` already publishes per-window `firstInstance`/`instanceCount` and already sets `ui.isDirty[i] = true` when they change.** The re-record trigger exists; the pass replaces the body, not the plumbing.
-- **The UI command buffer is ~15 Vulkan calls** — begin, barrier, begin-rendering, bind pipeline, bind global set, viewport, scissor, bind vertex, bind index, two descriptor binds, draw, end-rendering, barrier, end. Re-recording it when the visible set changes is negligible, so `vkCmdDrawIndexedIndirect` is **not needed**.
-- **`TextMeasurer` runs from a string and `IGlyphMetrics` alone** — no atlas, no `FontAsset`, no GPU, by design so a test can fabricate metrics. `TextControl` already holds a `BlockLayout`, and `LineSegment` is already `(runIndex, charStart, charCount, width)`. Text can be laid out fully without a single glyph control existing.
-- **`TransformData` and the arranged rect are the same information.** `VulkanControl.WriteArrangedTransform` derives position and scale from `finalRect`, and `CommitTransform` bakes the matrix. The data tier carries the rect; both transform columns belong to the renderable tier. This is what gets the data row from 236 B to ~100 B, and 1M rows from 236 MB to ~100 MB.
+**`TextMeasurer` runs from a string and `IGlyphMetrics` alone** — no atlas, no `FontAsset`, no GPU. It already
+produces `BlockLayout`, `TextLine`, `LineSegment(runIndex, charStart, charCount, width)` and
+`CaretGeometry(x, top, height, baseline)`. A run can be laid out and a caret placed with no glyph object.
 
-**Costs the plan should not re-discover**
+**`hitTestable = false` has 15 sites** in the old stack. Fourteen are decorations whose parent handles the
+click and which consumed-bubbling covers. The fifteenth, `WindowFrameControl`'s resize grips, hands pixels to a
+**sibling drawn behind them** when maximized — bubbling to a parent does not reproduce that. The user has
+deferred it to "context logic" rather than `Hide()`.
 
-- `ControlData` mixes layout output (`clip` 16 B, `gradientRect` 16 B) with paint (104 B: uvs, tint, textureIndex, cornerRadius, edge, outline, gradientIndex). Every `Arrange` dirties the whole 136-byte row to change 32 bytes, so `MCUI.MakeInstanced` re-uploads **4.25× more than changed** on every resize.
-- `ref` accessors over a pool column cost a `Dictionary<Type, IPoolColumn>` lookup plus a slot indirection **per access**. Moving layout fields onto columns while the driver is still recursive is a knowing regression, paid back when the loop flattens.
-- Masks are hardcoded at **15 C# sites** as `AssetRegistries.GetAsset<TextureAsset>("invisible")` (`SplitViewControl`, `TabViewControl`, `WorkspaceControl`, `FileBrowserControl`, `DocumentControl`, `DocumentEditorControl`, `ContextMenuControl`, `EditableLabelControl`, `ConfirmWindow`, `DocumentToolbarControl`). There is no XML attribute for a mask.
-- `SettingsWindow.Editor` builds a `DropdownControl` only for enums, optionally narrowed by `[A_XSDDomain]`. A string setting falls through to a `TextBoxControl`, so a theme picker needs a new editor kind: a string setting with a runtime option list.
-- Vault switching pattern, from [../Decisions/vault-list-and-switching.md](../Decisions/vault-list-and-switching.md): writing the setting **is** the switch; nothing caches it and everything downstream re-reads. A theme should follow the same shape.
+**Neither `edge` nor `outline` had a single consumer** — no C# control set either, no `.ui.xml` authored either.
 
-## Landings, in agreed order
+## Landings
 
-### 1 — data structure
+### 2 — tree and layout
 
-**1.1 Layout and geometry off the object.** New `LayoutData` and `GeometryData` structs in `Core.UISystem` (not `Core.Data` — they use `Thickness` and `LayoutRect`, and `Core.Data` must not depend upward; precedent is `ControlData`, already a UI-owned column). Appended to `UIControls` in `Pools.pools.xml`.
+- `Control` uses the inherited `Entity.children` (`List<Entity>`); `AddChild` enforces Control-only; walks cast.
+  **Required** — `Entity.Destroy()`'s `EnqueueSubtree` walks that list.
+- `Measure`/`Arrange` recursive, per the old shape. `ArrangeData`'s flags byte carries clip / hidden /
+  measure-dirty / arrange-dirty. The alignment and dock bytes get their enums here; landing 1 left them bare.
+- `subtreeBounds` and `subtreeCount` maintained on the way *out* of `Arrange`.
+- Cumulative child offsets on the container object as a `float[]` — the one piece that cannot be a fixed-stride
+  pool column.
+- A DFS `SortAction` for both pools, mirroring `UILayout.DFSOrder`.
+- Per-window `firstInstance`/`instanceCount`, mirroring `UILayout.RefreshWindowRanges`.
+- Deletes the smoke panel.
 
-- `LayoutData` — width/height, preferred and min sizes, star weights, margin, padding, h/v position, both alignments, a flags byte (clip, hidden, measure-dirty, arrange-dirty, hit-testable), a depth byte.
-- `GeometryData` — `arranged`, `clip`, `desiredSize`.
-- `VulkanControl`'s ~20 layout fields become properties over `ref Pool.GetRef<LayoutData>(dataHandle)`, keeping their names and their setter side effects. **No control subclass changes** — they read these by name and the names survive.
+→ *verify:* nested panels, a stack, a clipped scroll region arrange correctly; `subtreeBounds`/`subtreeCount`
+equal a brute-force recompute at every node; row ranges stay contiguous in DFS order across an insert, a remove
+and a reparent.
 
-→ *verify:* builds clean; `Unsafe.SizeOf<>` on both matches the field census; Thorium renders identical. Invisible by construction.
+### 3 — input
 
-**1.2 `Renderables` as a second pool.** Declared in `Pools.pools.xml` holding `GpuTransform` + `ControlData` + `RenderableKind`. `MCUI` mirrors `Renderables` instead of `UIControls`; `UIControls` sheds both transform columns. Every control still gets a renderable row at this step — the point is that the tiers exist and the GPU is fed from the renderable one.
+- `UIEngine.Poll(RenderWindow)` at the `HandleUI` site; `UIEngine.PollLayout()` where `ResolveLayout` sits.
+- Recursive hit-test with the `subtreeBounds` early-out. Deepest wins, always.
+- `struct PointerEvent { Control target; Vector2D<float> point, delta; int button, tapCount; }` — carries the
+  original target so an ancestor handler knows what was under the pointer.
+- Dispatch walks up until a handler returns `true`.
+- Hover/enter/exit, press, release. **Dragging is out** (user, deferred).
+- Contexts (`Hovering`, `ActiveControl`, `PressTarget`) keep today's `Context.Set` / `IContext` wiring.
 
-→ *verify:* renders identical; `UIControls` row drops to ~100 B; both pools report expected counts at boot.
+→ *verify:* hover lights a button, click and release fire, deepest wins on overlap, a decoration over a button
+does not eat the click.
 
-**1.3 Text as data.** `TextRun`'s authoritative content becomes `text` + `BlockLayout`; `SyncGlyphs()` stops firing from the `text` setter and becomes deferrable. Still materializes everything at this step — only the trigger moves.
+### 4 — text and caret
 
-→ *verify:* renders identical; typing, caret, selection and undo unchanged.
+- `TextRunControl` holds `text` + `BlockLayout` + per-character style spans, and emits one `VulkanControl` per
+  glyph. The single `controlHandle` becomes a `(first, count)` range here.
+- `MTSDFControl` path in the shader: sampler set returns as **set 2**, `edge` strokes the MSDF silhouette.
+- Press path: `run.OnPress(point)` → `layout.IndexAt(point)` → `document.GlyphPressed(run, index)`. The document
+  owns the caret and positions it from `CaretGeometry`.
+- `CaretControl`, `SelectionControl` and `DocumentEditorControl.CaretAtPoint` are rebuilt, not ported.
+- **New XML shape needed**: per-character settings (bold, colour, italic, size, animation) as spans over a
+  string. Nothing in today's document format expresses it.
 
-### 2 — cache and visibility
+→ *verify:* a paragraph renders with one `Control` per run and one `VulkanControl` per glyph; pressing a glyph
+puts the caret on the correct side of it, at every line's start, end and wrap point.
 
-The pass **builds** the renderable pool rather than filtering a draw range. Walk the data tier in DFS
-order; visible ⇔ arranged ∩ clip; allocate a renderable row per visible element; expand a visible
-run's `BlockLayout` into glyph renderables for its visible lines only.
+### 5 — images and icons
 
-- Per-document cache on `DocumentControl` — block → run → line ranges, binary-searched by Y, so a scroll does not touch every glyph.
-- A container whose own rect and visibility are unchanged keeps its rows wholesale.
-- Early-out per `childrenMonotonic` above.
-- Runs first as a **full scan** (correct, verifiable), then the cache on top, kept only if a Carbon capture says it beat the full scan.
+- `ImageControl` path; `textureIndex` and `uvs` become live for all three kinds.
+- Gradient table returns as binding 3.
 
-→ *verify:* a shadow-compare flag runs both paths and logs divergence; the union of the new visible set must equal what the old path drew that was actually on screen, across a scroll sweep, a resize, a tab switch and a `Hide()`/`Show()`.
+→ *verify:* an icon and a texture render; a control with no mask assigned takes no texture sample.
 
-### 3 — theme and animation
+### 6 — port and delete
 
-- `Theme.theme.xml` on the `Gradients` pattern, parsed by a `Theme.LoadTheme` bootstrap step beside `Gradients.LoadGradients`. A `Role` carries a base colour, hover/press variants, and a mask name.
-- New `Role` attribute on `VulkanControl`. `ButtonControl.ApplyState` resolves from the role. **Explicit `ColorHex` beats the role**, so existing `.ui.xml` renders unchanged.
-- The 15 hardcoded mask sites become role defaults.
-- Theme named by a vault-local file, held as a setting, live-reapplied across the `"Controls"` registry group.
-- `UIEngine.Animate(control, property, target, animation)` writing through immediately; `Animations.animations.xml` declaring name/duration/easing, parsed into a table; `Ease(Easing, float t)` complete; `PollAnimations()` present and returning.
+- Port the 39 `VulkanControl` subclasses to `Control`.
+- Delete `Core.UISystem`, the `UIControls` pool, `UIModule`, `MCUI`, `UI.vert`/`UI.frag`.
+- Rename the `VulkanControlData` XSD type back to `VulkanControl`.
+- Collapse the duplicated `CreatePipeline`.
+- Regenerate `NAMESPACES.md`.
 
-### 4 — all else
+→ *verify:* Thorium boots entirely on the new stack.
 
-Flat forward loop with the layout-kind switch. `ControlData` collapsed to what each of the three
-renderable kinds actually needs, and the `UI.frag` branch that stops MSDF-decoding plain panels — the
-`.spv` recompile across four trees, via the `shader-pipeline` skill.
+**Handoff (CLAUDE.md §10):** landings 2–4 stay with the model — layout correctness, dispatch, Vulkan. Landing 5
+and the mechanical half of 6 (39 subclasses, the 15 `hitTestable` sites) go to a subagent once the base is
+frozen and old/new text is exact.
 
 ## Open — not decided
 
-- How the run → glyph expansion interacts with the caret, selection rectangles, and `TextBlockControl`'s `firstLineOffset`/`lastLineEndX` handshake. Design against landed 1.3 rather than guessing now.
-- Whether the data tier keeps parent/child links as `(start, count)` ranges or something else. [../Decisions/ecs-rework-data-pools.md](../Decisions/ecs-rework-data-pools.md) has the `(start, count)` answer for children; strings and style inheritance are still unsolved.
-- Whether every current container survives becoming a layout-kind switch.
-- Where per-character style spans live once per-letter styling is actually authored.
+- **`ContextMenus.menuFactory` must die** (user, explicit). One override, `Thorium.cs`, supplying a
+  `WindowedContextMenuControl` with six hardcoded hex colours. Deleting the field alone breaks Thorium's menu
+  styling; a replacement (theme roles + a windowed-vs-inline setting) was proposed and not yet approved.
+- **`WindowFrameControl`'s maximized grips** — deferred to "context logic" (user, 2026-09-06).
+- **Children and components as `(start, count)` ranges** — analysed, parked (user: "for now do nothing with
+  this"). Not a slowdown; the cost is that mutation stops being O(1) and settles at the frame edge.
+- **`_components` / `children` lazy allocation** — user chose *neither* (2026-09-06). 64 B/entity stands.
+- **Ticking as a group** — [[entity-tick-group]], raised and parked.
+- **`DataPool.Write<T>(handle, value)`** — the missing assign-plus-`MarkContentDirty` primitive.
+- Whether per-window mirrors in `UIEngineModule` should become shared.
+- Whether visible-only glyph expansion lands, and on what evidence.
 
-Related: [[ui-data-control-split]], [[text-layout-one-measurer]], [[glyphs-as-pool-data]],
-[[ecs-rework-data-pools]], [[thorium-editor-architecture]], [[vault-list-and-switching]],
-[[control-edge-and-outline]]
+## How to run and verify
+
+Launch from the exe's own folder — `Paths.GetPath` resolves `..\..\..` against the process working directory:
+
+```
+Thorium/bin/Debug/net10.0-windows10.0.22621.0/Thorium.exe
+```
+
+Capture: `SetWindowPos(hwnd, HWND_TOPMOST, …, 0x43)` → `CopyFromScreen` → `SetWindowPos(…, HWND_NOTOPMOST, …)`.
+`PrintWindow` returns blank on a Vulkan surface. See the `aurora-verify` skill.
+
+Shaders: edit the `AuroraEngine` copy, `glslc --target-env=vulkan1.3`, mirror the source *and* the `.spv` to
+`Thorium/`, `AuroraEditor/` and `Carbon/`, then confirm byte-identical. See the `shader-pipeline` skill — note
+its paths still say `Periodic`, which is now `Thorium`, and it does not mention `Carbon`.
+
+Related: [[ui-engine-stack]], [[entity-transform-split]], [[entity-tick-group]], [[ui-data-control-split]],
+[[text-layout-one-measurer]], [[glyphs-as-pool-data]], [[ecs-rework-data-pools]], [[thorium-editor-architecture]]

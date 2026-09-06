@@ -51,46 +51,50 @@ namespace ArctisAurora.Core.ECS.EngineEntity
         public List<Entity> children = new List<Entity>();
 
         #region ---- data pool ----
-        // Which pool this entity's transform lives in. Overridden by subclasses (e.g. controls
-        // use "UIControls"). Resolved during construction, so it must not touch derived fields.
+        // Which pool this entity's row lives in, and therefore which component columns it has.
+        // Overridden by subclasses (e.g. controls use "UIElements"). Resolved during construction,
+        // so it must not touch derived fields.
         protected virtual string PoolName => "Entities";
         private DataPool _pool = null!;
         internal DataHandle dataHandle;
         public DataPool Pool => _pool;
-        // This entity's pooled transform (position/rotation/scale) — a ref into the dense array.
-        // Direct writes (transform.position = ...) are allowed and fast but do NOT mark the pool
-        // dirty; use the Set* helpers below when the change must be re-uploaded.
-        public ref TransformData transform => ref _pool.GetRef<TransformData>(dataHandle);
 
-        public void SetPosition(Vector3D<float> position)
-        {
-            transform.position = position;
-            _pool.MarkContentDirty(dataHandle);
-        }
+        // rows this entity holds in pools other than its own
+        private DataHandle[]? _extraHandles;
 
-        public void SetScale(Vector3D<float> scale)
-        {
-            transform.scale = scale;
-            _pool.MarkContentDirty(dataHandle);
-        }
-
-        public void SetRotation(Vector3D<float> rotation)
-        {
-            transform.rotation = rotation;
-            _pool.MarkContentDirty(dataHandle);
-        }
-
-        public void SetTransform(TransformData value)
-        {
-            transform = value;
-            _pool.MarkContentDirty(dataHandle);
-        }
-
-        private void AllocatePooledTransform()
+        // Binds the entity to its pool and takes its row. An override adds rows in other pools
+        // through AllocateIn, and seeds whatever columns its pool declares.
+        protected virtual void AllocatePooledData()
         {
             _pool = DataManager.Get(PoolName);
             dataHandle = _pool.Allocate(this);
-            transform.scale = new Vector3D<float>(1, 1, 1);   // preserve the old default scale
+        }
+
+        // A row in a second pool, freed with the entity.
+        protected DataHandle AllocateIn(string poolName)
+        {
+            DataHandle handle = DataManager.Get(poolName).Allocate(this);
+
+            if (_extraHandles == null)
+                _extraHandles = new[] { handle };
+            else
+            {
+                Array.Resize(ref _extraHandles, _extraHandles.Length + 1);
+                _extraHandles[^1] = handle;
+            }
+            return handle;
+        }
+
+        // Every row the entity holds, in every pool. A handle names its own pool, so nothing has
+        // to remember which.
+        internal void FreePooledData()
+        {
+            _pool.Free(dataHandle);
+
+            if (_extraHandles == null) return;
+            for (int i = 0; i < _extraHandles.Length; i++)
+                DataManager.Get(_extraHandles[i].PoolId).Free(_extraHandles[i]);
+            _extraHandles = null;
         }
 
         private bool _destroyed = false;
@@ -121,7 +125,7 @@ namespace ArctisAurora.Core.ECS.EngineEntity
 
         public Entity()
         {
-            AllocatePooledTransform();
+            AllocatePooledData();
             EntityRegistry.AddToGroup("Entities", this);
             EntityRegistry.EnqueueStart(this);
         }
@@ -129,7 +133,7 @@ namespace ArctisAurora.Core.ECS.EngineEntity
         public Entity(string name)
         {
             this.name = name;
-            AllocatePooledTransform();
+            AllocatePooledData();
             EntityRegistry.AddToGroup("Entities", this);
             EntityRegistry.EnqueueStart(this);
         }

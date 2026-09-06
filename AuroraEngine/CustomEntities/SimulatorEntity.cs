@@ -4,7 +4,7 @@ using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 
 namespace ArctisAurora.CustomEntities
 {
-    internal class SimulatorEntity : Entity
+    internal class SimulatorEntity : TransformEntity
     {
         public SimulatorEntity()
         {

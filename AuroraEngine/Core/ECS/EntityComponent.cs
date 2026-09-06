@@ -16,6 +16,10 @@ namespace ArctisAurora.EngineWork.ComponentBehaviour
         [NonSerializable]
         internal bool started;
 
+        // A component attaches to any entity; one that reads a transform requires its entity to
+        // carry one, which is what the cast asserts.
+        protected ref Core.Data.TransformData transform => ref ((TransformEntity)parent).transform;
+
         public virtual void OnStart() //runs on creation of the component in the world
         {
 

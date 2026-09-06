@@ -65,6 +65,7 @@
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>
         <xs:restriction base="xs:string">
+          <xs:enumeration value="UIEngine.Bootstrap" />
           <xs:enumeration value="ContextMenus.LoadMenus" />
           <xs:enumeration value="Gradients.LoadGradients" />
           <xs:enumeration value="Context.LoadContexts" />

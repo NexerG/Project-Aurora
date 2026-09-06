@@ -28,6 +28,7 @@ ArctisAurora.Core.Diagnostics.Sinks -> AuroraEngine/Core/Diagnostics/Sinks/FileS
 ArctisAurora.Core.Diagnostics.Sinks -> AuroraEngine/Core/Diagnostics/Sinks/FlightRecorder.cs
 ArctisAurora.Core.ECS.EngineEntity -> AuroraEngine/Core/ECS/EngineEntity/Entity.cs
 ArctisAurora.Core.ECS.EngineEntity -> AuroraEngine/Core/ECS/EngineEntity/LightSourceEntity.cs
+ArctisAurora.Core.ECS.EngineEntity -> AuroraEngine/Core/ECS/EngineEntity/TransformEntity.cs
 ArctisAurora.Core.Editing -> AuroraEngine/Core/Editing/EditStep.cs
 ArctisAurora.Core.Editing -> AuroraEngine/Core/Editing/IEditRecord.cs
 ArctisAurora.Core.Editing -> AuroraEngine/Core/Editing/UndoStack.cs
@@ -61,6 +62,9 @@ ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/MainSystem.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/PhysicsSystem.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/RenderSystem.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/ThreadedSystem.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Control.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UIData.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UIEngine.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISettings.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/AuroraFont.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/Bezier.cs
@@ -175,6 +179,7 @@ ArctisAurora.EngineWork.Rendering.MeshSubComponents -> AuroraEngine/Core/Renderi
 ArctisAurora.EngineWork.Rendering.MeshSubComponents -> AuroraEngine/Core/Rendering/MeshSubComponents/MCRaytracing.cs
 ArctisAurora.EngineWork.Rendering.MeshSubComponents -> AuroraEngine/Core/Rendering/MeshSubComponents/MCUI.cs
 ArctisAurora.EngineWork.Rendering.Modules -> AuroraEngine/Core/Rendering/Modules/RenderingModule.cs
+ArctisAurora.EngineWork.Rendering.Modules -> AuroraEngine/Core/Rendering/Modules/UIEngineModule.cs
 ArctisAurora.EngineWork.Rendering.Modules -> AuroraEngine/Core/Rendering/Modules/UIModule.cs
 ArctisAurora.EngineWork.Rendering.RendererTypes -> AuroraEngine/Core/Rendering/RendererTypes/Pathtracing.cs
 ArctisAurora.EngineWork.Rendering.RendererTypes -> AuroraEngine/Core/Rendering/RendererTypes/RadianceCascades2D.cs
