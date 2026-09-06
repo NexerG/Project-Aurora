@@ -1,9 +1,11 @@
 # Decision — the UI is rebuilt beside the old one, not migrated in place
 
 **Date:** 2026-09-06
-**Status:** **PARTIAL** — landing 1 built and GUI-verified; landings 2–6 agreed, not built.
-**Scope:** `ArctisAurora.Core.UI` — `UIEngine`, `Control`, `ArrangeData`, `ControlGeometry`, `VulkanControl`,
-`VulkanControlType`; `ArctisAurora.EngineWork.Rendering.Modules` — `UIEngineModule`, `CompositorModule`;
+**Status:** **PARTIAL** — landings 1–2 built and GUI-verified; landings 3–6 agreed, not built.
+**Scope:** `ArctisAurora.Core.UI` — `UIEngine`, `Control`, `WindowRoot`, `ArrangeData`, `ControlGeometry`,
+`VulkanControl`, `VulkanControlType`, `ArrangeFlags`, `HorizontalAlignment`, `VerticalAlignment`, `DockMode`;
+`ArctisAurora.EngineWork.Rendering.Modules` — `UIEngineModule`, `CompositorModule`;
+`ArctisAurora.EngineWork.Rendering` — `AuroraCamera`, `AGlfwWindow`;
 `Shaders/UIEngine/UIEngine.vert`, `Shaders/UIEngine/UIEngine.frag`;
 `AuroraEngine/Data/XML/Documents/Pools.pools.xml`, `Bootstrap.bootstrap.xml`
 
@@ -26,18 +28,38 @@ because the namespaces differ.
 
 One `Control` owns **0..N** `VulkanControl` rows. A panel owns 1; a text run owns one per glyph.
 
-## What changed
+## What changed — landing 1, the stack draws
 
 - New namespace `ArctisAurora.Core.UI` beside `Core.UISystem`. The old stack is untouched and still runs.
 - Two pools in `Pools.pools.xml`: `UIElements` (`ArrangeData`) and `VulkanControls` (`ControlGeometry` +
-  `VulkanControlData`). Both `Ordered="true"`, no `SortAction` yet.
+  `VulkanControlData`). Both `Ordered="true"`.
 - `UIEngine` — static, main thread, `Bootstrap` step registered as the last step of `Bootstrap.bootstrap.xml`.
-  Holds the two pool accessors and (landing 1 only) a smoke panel.
 - `Control : Entity`, `PoolName => "UIElements"`, second row taken through `Entity.AllocateIn`.
 - `UIEngineModule` — second `RenderingModule` on every `RenderWindow`, `compositorOrder = 10`, transparent
   clear so the old stack composites underneath.
-- `ERendererTypes.UIEngine` plus its `AuroraCamera` case (ortho over the raw swapchain extent).
+- `ERendererTypes.UIEngine` plus its `AuroraCamera` case.
 - `CompositorModule` — `stages[1].PSpecializationInfo` instead of assigning to the already-copied local.
+
+## What changed — landing 2, tree and layout
+
+- `Control.Measure`/`Arrange` — the outgoing stack's two-pass shape, single-child, ported onto `ArrangeData`.
+  `WriteArranged` bakes the matrix into `ControlGeometry` and inherits or intersects the clip.
+- `ArrangeFlags` (`Clip`, `Hidden`, `MeasureDirty`, `ArrangeDirty`) packs into `ArrangeData.flags`;
+  `HorizontalAlignment`, `VerticalAlignment` and `DockMode` give the bare bytes their meaning. None carry
+  `[A_XSDType]` — the old stack owns those names and `AnyXMLType.FindType` resolves by name alone.
+- `InvalidateLayout` / `InvalidateArrange` walk to the topmost clean ancestor and register it with
+  `UIEngine.RegisterDirtyRoot`; `UIEngine.ResolveLayout` drains the set at the `Interpolate` site.
+- `Control.RefreshSubtreeCache` fills `subtreeBounds` / `subtreeCount`, run by `ResolveLayout` after `Arrange`.
+- `WindowRoot : Control` — the one node that holds siblings, carrying `WindowingMode`, `autoscaling`,
+  `ScalingAxis`, `ViewportSize`, `FitTo` and `ToDesignSpace` from the outgoing `WindowControl`.
+  `AuroraCamera`'s ortho box is now `ViewportSize`, not the raw extent, and `AGlfwWindow`'s resize callback
+  refits it.
+- `UIEngine.NextElementOrder` / `NextControlOrder` — `SortAction` on each pool, one DFS walk, keyed by
+  `dataHandle` for `UIElements` and `controlHandle` for `VulkanControls`.
+- `UIEngineModule.uiRoot`, `firstInstance` and `instanceCount`; the draw is the window's slice, not the whole
+  pool. Published by `UIEngine.RefreshWindowRanges` at the frame edge.
+- The smoke panel is replaced by a scaffolding tree on the primary window, built back to front so pool
+  allocation order is nothing like DFS order.
 
 ## Row layout — measured, not estimated
 
@@ -86,6 +108,25 @@ object in existence. Per-character style must therefore live in the run's data, 
 `Control` always wins the hit and dispatch walks up until a handler returns `true`, replacing ~16 `bubbleXxx`
 bool fields and `BubbleAll()`.
 
+**The subtree caches are refreshed after `Arrange`, not inside it.** Maintaining them on the way out of
+`Arrange` would put the accumulation in the base method, which every override then has to remember to call —
+39 subclasses arrive at landing 6, and one that forgets produces a silently short window range and a hit-test
+that misses. Sealing `Arrange` behind a template method and a new `ArrangeCore` virtual would fix that, but it
+renames the thing the plan already names and buys nothing a separate walk does not. `ResolveLayout` walks the
+dirty subtree once more instead: one extra pointer-chase over nodes that were just measured and arranged, and
+no override can get it wrong. A DEBUG-only recompute in `ResolveLayout` compares the two.
+
+**`RefreshWindowRanges` counts the subtree fresh rather than reading `subtreeCount`.** `Entity.Destroy`
+detaches through `parent.children.Remove`, not `RemoveChild`, so a destroy moves `StructuralVersion` without
+invalidating any layout — the cache would be stale at exactly the moment the range recomputes. The cache is
+for the hit-test's early-out and drop targeting; the range walk stays independent of it, as in the old stack.
+
+**A `WindowRoot` is transparent, not masked.** The outgoing `WindowControl` opts out of painting with
+`maskAsset = "invisible"`; the new stack has no sampler set until landing 5, so a root drew an opaque
+full-window quad over everything the old stack had composited underneath. `alpha = 0f` in the constructor is
+the same opt-out with the mechanism available. Revisit when the sampler set lands — a mask is the more honest
+expression of "this node is structural".
+
 ## Traps this landing discovered
 
 **The camera's ortho box is z ∈ [−512, −0.01].** `CreateOrthographicOffCenter(…, 0.01f, 512f)` with an
@@ -101,9 +142,16 @@ validation error. Anything adding a third module should confirm the constant sti
 
 ## Known gaps
 
-- Landings 2–6 are unbuilt. See [../Context/ui-engine-plan.md](../Context/ui-engine-plan.md).
-- `UIEngine.Bootstrap` creates a smoke panel that draws in every window of every host. Scaffolding; the arrange
-  pass removes it.
+- Landings 3–6 are unbuilt. See [../Context/ui-engine-plan.md](../Context/ui-engine-plan.md).
+- `UIEngine.Bootstrap` builds a scaffolding tree on the primary window. The port at landing 6 removes it.
+- **Only `WindowRoot` holds siblings.** A plain `Control` throws on a second child, as the old base does, and
+  its `Measure`/`Arrange` handle one. Containers arrive with the landing 6 port; nothing between now and then
+  can lay out a list.
+- `ArrangeData.width` / `height` are unused — copies of the outgoing stack's vestigial `width`/`height`, which
+  default to 72 and are read only by `size`. The layout math uses `preferredWidth`/`preferredHeight`.
+- Cumulative child offsets (the drop-targeting cache) are deferred to the landing that reads them.
+- `UIEngineModule.UpdateModule` re-records its command buffer every frame rather than on `isDirty`. Landing 1
+  scaffolding; it makes the range change land, and it contradicts the record-only-when-dirty rule.
 - The sampler set, the gradient table and the MSDF path are absent from `UIEngineModule` and its shaders.
   They return as set 2 and binding 3 — the numbering the old shader already uses, so nothing renumbers.
 - `UIEngineModule` mirrors the whole pool **per window**. Correct, but wants revisiting before the pool is large.

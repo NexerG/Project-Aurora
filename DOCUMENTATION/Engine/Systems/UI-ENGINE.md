@@ -25,7 +25,7 @@ The UI is being rebuilt in a new namespace beside the old one rather than migrat
 
 The rebuild exists to separate three kinds of data that were previously one row. What the layout pass reads never reaches the GPU at all. What the arrange pass produces and what the paint properties produce go to the GPU as two independent buffers, because a window resize and a colour change dirty completely different bytes and had been forcing each other's uploads.
 
-> Only the first stage is built. Layout, input, text and images are designed and agreed but do not exist yet.
+> The stack draws and lays itself out. Input, text and images are designed and agreed but do not exist yet.
 
 ## Two things are called a control
 
@@ -69,6 +69,64 @@ The camera projects an orthographic box that only accepts world z between −512
 
 A window root sits at −10 and each level of depth steps one thousandth of a unit toward the camera, which is both painter order and the order the tree is walked in.
 
+## Laying out
+
+Layout is the two-pass shape the old stack used, carried over unchanged in behaviour and moved onto the pooled arrange row. Measure asks an element how big it wants to be given a box; arrange tells it the rectangle it actually got. A plain control handles a single child, offering it the box minus its own padding and then, if it has no size of its own, shrinking to fit what the child asked for.
+
+Arrange is where an element becomes something drawable. It writes the rectangle into its arrange row, bakes a scale-and-translate matrix into its geometry row at one depth step nearer the camera than its parent, and settles its clip rectangle — inheriting the parent's, or intersecting it with its own rectangle when the element clips.
+
+Nothing lays out every frame. Changing an authored property marks the element dirty and walks up the tree marking ancestors, stopping at the first one already dirty, and registers the topmost newly dirtied element as a root. The tick then resolves each root once.
+
+```
+ResolveLayout()
+	if nothing is dirty
+		return
+	take a copy of the dirty roots and clear the set
+	for each root
+		if its measure is dirty
+			offer it its own arranged size, or infinity if it has never been arranged
+			measure it
+			arrange it into its arranged rectangle, or into its desired size if it has none
+		else if only its arrange is dirty
+			arrange it into the rectangle it already has
+		refresh the subtree caches under it
+```
+
+Two caches ride on every element: the rectangle covering it and everything beneath it, and how many elements its subtree holds. Both are filled by a separate walk after arrange rather than by arrange itself, so no future override can forget to maintain them. In debug builds the same walk is repeated independently and any disagreement is logged as an error.
+
+## The window root
+
+One kind of element holds siblings: the root of a window's tree. Everything else takes a single child, which is what containers exist to change.
+
+The root also owns the box the whole tree is laid out in. By default that box is the window's pixels, so a control's coordinates are screen pixels; with scaling switched on it is the window divided by whatever the chosen axis implies, so the tree keeps an authored design size and everything below it scales with the window without knowing anything about it. Pointer positions are converted into the same box before anything is hit-tested.
+
+A resize refits the root, which re-lays the tree and moves the camera's projection box to match.
+
+> A root has no appearance of its own. Until masks arrive it opts out of drawing by being fully transparent — an opaque root is a full-window quad that hides everything the old stack composited underneath.
+
+## Dense order and per-window ranges
+
+The draw pool is shared by every window, and the order rows sit in is the order they are drawn. That order is a depth-first walk of the control tree, which is painter order and layout-dependency order at the same time — a parent before its children, always.
+
+The pool does not maintain that order as elements are created. Inserting or reparenting flags the pool, and at the frame edge it asks for the whole permutation and applies it in one pass. Both pools are walked together, since one holds a row per element and the other a row per drawn quad, but the walk yields a different handle for each.
+
+Because the order is depth-first, a window's tree is a contiguous run of rows, and a window can be drawn as a slice of the shared pool rather than a buffer of its own.
+
+```
+RefreshWindowRanges()
+	if no pool version moved and nothing invalidated the ranges
+		return
+	remember the versions
+	first = 0
+	for each window
+		count = the size of its root's subtree, or zero if it has no root
+		if the window's range changed
+			publish it and mark every one of its command buffers for re-recording
+		first = first + count
+```
+
+The count is walked fresh rather than read from the subtree cache, because destroying an element detaches it without invalidating any layout — the cache would be stale at exactly the moment the range is recomputed.
+
 ## The draw module
 
 The new stack is a second rendering module on every window, sitting beside the old one in the same module list. The compositor blends module outputs in order of a per-module sort key, so the new module carries a higher key and clears its own image transparent, letting the old UI show through everywhere the new stack has drawn nothing.
@@ -101,6 +159,8 @@ The engine drives the UI from two places in the tick rather than one, and the sp
 
 Input is polled where the old collision handler was called, before entity logic runs. Layout is resolved after entity logic, because anything that invalidates layout from inside a tick — a glyph resync, a caret move — would otherwise land a frame late and show up as a one-frame lag that is very hard to attribute.
 
+Layout resolution is in place. Input polling is not.
+
 ```
 Poll(window)
 	resolve the deepest control under the pointer
@@ -109,12 +169,6 @@ Poll(window)
 		tell the new one it was entered
 	dispatch press, release and hover to it
 	walk up from it until a handler consumes the event
-
-PollLayout()
-	for each dirty root
-		measure it against its current size
-		arrange it into its current rectangle
-		rebuild the draw rows of every element that changed
 ```
 
 ## Hit-testing

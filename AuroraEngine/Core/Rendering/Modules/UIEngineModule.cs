@@ -70,6 +70,25 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         private DataPool ControlPool => UIEngine.Controls;
 
+        private WindowRoot _uiRoot;
+
+        // The tree this module draws, and its slice of the shared draw pool in dense order. The
+        // range is published by UIEngine.RefreshWindowRanges; assigning tears the outgoing tree down.
+        public WindowRoot uiRoot
+        {
+            get => _uiRoot;
+            set
+            {
+                _uiRoot?.Destroy();
+                _uiRoot = value;
+                UIEngine.InvalidateWindowRanges();
+                value?.FitTo(window.os.windowSize);
+            }
+        }
+
+        internal int firstInstance;
+        internal int instanceCount;
+
         private PoolCursor Cursor(int frame)
         {
             _cursors ??= new PoolCursor[window.imageCount];
@@ -562,8 +581,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
             Renderer.vk.CmdBeginRendering(commandBuffers[currentFrame], &renderingInfo);
 
-            int instances = ControlPool.Count;
-            if (instances > 0 && frameResources[currentFrame] != null && frameResources[currentFrame].sets != null)
+            if (instanceCount > 0 && frameResources[currentFrame] != null && frameResources[currentFrame].sets != null)
             {
                 Renderer.vk.CmdBindPipeline(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipeline);
                 Renderer.vk.CmdBindDescriptorSets(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipelineLayout, 0, 1, Renderer.globalSets[currentFrame], 0, null);
@@ -580,7 +598,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 }
                 Renderer.vk.CmdBindIndexBuffer(commandBuffers[currentFrame], _quad.indexBuffer, 0, IndexType.Uint32);
                 Renderer.vk.CmdBindDescriptorSets(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipelineLayout, 1, 1, frameResources[currentFrame].sets[0], 0, null);
-                Renderer.vk.CmdDrawIndexed(commandBuffers[currentFrame], (uint)_quad.indices.Length, (uint)instances, 0, 0, 0);
+                Renderer.vk.CmdDrawIndexed(commandBuffers[currentFrame], (uint)_quad.indices.Length, (uint)instanceCount, 0, 0, (uint)firstInstance);
             }
 
             Renderer.vk.CmdEndRendering(commandBuffers[currentFrame]);

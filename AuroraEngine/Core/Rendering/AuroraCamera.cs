@@ -7,6 +7,7 @@ using Buffer = Silk.NET.Vulkan.Buffer;
 using Keys = Silk.NET.GLFW.Keys;
 
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.UI;
 using ArctisAurora.Core.UISystem.Controls;
 
 namespace ArctisAurora.EngineWork.Rendering
@@ -116,9 +117,14 @@ namespace ArctisAurora.EngineWork.Rendering
                     break;
 
                 case ERendererTypes.UIEngine:
+                    WindowRoot nextRoot = ((UIEngineModule)_owner).uiRoot;
+                    Vector2D<float> nextBox = nextRoot != null
+                        ? nextRoot.ViewportSize(_extent)
+                        : new Vector2D<float>(_extent.Width, _extent.Height);
+
                     _view = Matrix4X4.CreateLookAt(Vector3D<float>.Zero, _front, _localUp);
-                    _projection = Matrix4X4.CreateOrthographicOffCenter(0, _extent.Width,
-                        0, _extent.Height, 0.01f, 512f);
+                    _projection = Matrix4X4.CreateOrthographicOffCenter(0, nextBox.X,
+                        0, nextBox.Y, 0.01f, 512f);
                     break;
                 default:
                     break;

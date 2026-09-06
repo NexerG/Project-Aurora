@@ -61,6 +61,17 @@
       </xs:simpleType>
     </xs:union>
   </xs:simpleType>
+  <xs:simpleType name="PoolSort">
+    <xs:union memberTypes="actions:Any">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="UI.NextElementOrder" />
+          <xs:enumeration value="UI.NextControlOrder" />
+          <xs:enumeration value="UI.DFSOrder" />
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
   <xs:simpleType name="Bootstrap">
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>
@@ -105,15 +116,6 @@
           <xs:enumeration value="Settings.SaveAll" />
           <xs:enumeration value="Logging.Flush" />
           <xs:enumeration value="Profiling.Flush" />
-        </xs:restriction>
-      </xs:simpleType>
-    </xs:union>
-  </xs:simpleType>
-  <xs:simpleType name="PoolSort">
-    <xs:union memberTypes="actions:Any">
-      <xs:simpleType>
-        <xs:restriction base="xs:string">
-          <xs:enumeration value="UI.DFSOrder" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>

@@ -117,7 +117,9 @@ Namespace shorthands used in the tables:
 | device, swapchain, frame loop | `Render.Renderer`, `Swapchain`, `RenderWindow`, `VulkanRenderer` | — | [[render-window-owns-the-swapchain]], [[swapchain-extent-is-the-truth]], [[dynamic-rendering]] |
 | OS windows, focus, placement | `Render.AGlfwWindow` | — | [[active-glfw-window-context]] |
 | the UI draw path | `Render.Modules.UIModule`; `Render.MeshSubComponents.MCUI`; `Render.UI.UIRenderer` | — | [[glyphs-as-pool-data]], [[gpu-global-frame-data]] |
-| the **new** UI draw path | `Render.Modules.UIEngineModule` (`window.uiNext`); `UINext.UIEngine`, `Control` | `AuroraEngine/Data/XML/Documents/Pools.pools.xml` (`UIElements`, `VulkanControls`) | [[ui-engine-stack]] |
+| the **new** UI draw path | `Render.Modules.UIEngineModule` (`window.uiNext`, `uiRoot`, `firstInstance`); `UINext.UIEngine`, `Control`, `WindowRoot` | `AuroraEngine/Data/XML/Documents/Pools.pools.xml` (`UIElements`, `VulkanControls`) | [[ui-engine-stack]] |
+| the **new** measure/arrange pass, dirty roots, per-window ranges | `UINext.UIEngine` (`ResolveLayout`, `RefreshWindowRanges`, `NextElementOrder`, `NextControlOrder`); `UINext.Control` (`Measure`, `Arrange`, `InvalidateLayout`) | `Pools.pools.xml` (`SortAction`) | [[ui-engine-stack]] |
+| the **new** window root, design-space fitting | `UINext.WindowRoot` (`FitTo`, `ViewportSize`, `ToDesignSpace`) | — | [[ui-engine-stack]] |
 | compositing several modules into one window | `Core.Rendering.Modules.CompositorModule`; `compositorOrder` on `Render.Modules.RenderingModule` | — | [[ui-engine-stack]] |
 | new UI shaders | `*/Shaders/UIEngine/UIEngine.vert`, `UIEngine.frag` — four copies | — | `shader-pipeline` skill |
 | buffers, GPU memory | `Render.Helpers.AVulkanBufferHandler` | — | [[mapped-streaming-buffers]], [[engine-resource-manager]] |

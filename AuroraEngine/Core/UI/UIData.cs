@@ -12,6 +12,32 @@ namespace ArctisAurora.Core.UI
         ImageControl
     }
 
+    public enum HorizontalAlignment : byte
+    {
+        Center, Left, Right, Stretch
+    }
+
+    public enum VerticalAlignment : byte
+    {
+        Top, Center, Bottom, Stretch
+    }
+
+    public enum DockMode : byte
+    {
+        Fill, Left, Right, Top, Bottom, Unknown
+    }
+
+    // ArrangeData.flags
+    [Flags]
+    public enum ArrangeFlags : byte
+    {
+        None = 0,
+        Clip = 1,
+        Hidden = 2,
+        MeasureDirty = 4,
+        ArrangeDirty = 8
+    }
+
     public struct LayoutRect
     {
         public float x;
@@ -30,7 +56,41 @@ namespace ArctisAurora.Core.UI
         public float Right => x + width;
         public float Bottom => y + height;
 
+        public Vector2D<float> size => new Vector2D<float>(width, height);
+
+        // A rect inset on all sides, clamped so it cannot invert.
+        public LayoutRect Shrink(Thickness t) => new LayoutRect(
+            x + t.left,
+            y + t.top,
+            MathF.Max(0, width - t.totalHorizontal),
+            MathF.Max(0, height - t.totalVertical)
+        );
+
+        public bool Contains(Vector2D<float> point) =>
+            point.X >= x && point.X <= Right &&
+            point.Y >= y && point.Y <= Bottom;
+
+        public static LayoutRect Intersect(LayoutRect a, LayoutRect b)
+        {
+            float rx = MathF.Max(a.x, b.x);
+            float ry = MathF.Max(a.y, b.y);
+            float rr = MathF.Min(a.Right, b.Right);
+            float rb = MathF.Min(a.Bottom, b.Bottom);
+            return new LayoutRect(rx, ry, MathF.Max(0, rr - rx), MathF.Max(0, rb - ry));
+        }
+
+        // The smallest rect holding both. A zero-area rect still contributes its corner.
+        public static LayoutRect Union(LayoutRect a, LayoutRect b)
+        {
+            float rx = MathF.Min(a.x, b.x);
+            float ry = MathF.Min(a.y, b.y);
+            float rr = MathF.Max(a.Right, b.Right);
+            float rb = MathF.Max(a.Bottom, b.Bottom);
+            return new LayoutRect(rx, ry, rr - rx, rb - ry);
+        }
+
         public static LayoutRect Empty => new LayoutRect(0, 0, 0, 0);
+        public static LayoutRect Infinite => new LayoutRect(0, 0, float.MaxValue, float.MaxValue);
     }
 
     public struct Thickness

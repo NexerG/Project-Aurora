@@ -4,6 +4,7 @@ using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Threading;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing.Serialization;
+using ArctisAurora.Core.UI;
 using ArctisAurora.Core.UISystem;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork.Registry;
@@ -315,6 +316,7 @@ namespace ArctisAurora.EngineWork
             // Dense indices have settled, so each window module can be told the range it draws.
             Profiling.Zone.Start("RefreshWindowRanges");
             UILayout.RefreshWindowRanges();
+            UIEngine.RefreshWindowRanges();
             Profiling.Zone.End("RefreshWindowRanges");
 
             Profiling.Zone.End("MainTick");
@@ -402,6 +404,7 @@ namespace ArctisAurora.EngineWork
 
             Profiling.Zone.Start("ResolveLayout");
             UILayout.ResolveLayout();
+            UIEngine.ResolveLayout();
             Profiling.Zone.End("ResolveLayout");
 
             /*if(EntityRegistry.entitiesToUpdate.Count > 0)

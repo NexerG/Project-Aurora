@@ -1,6 +1,6 @@
 # UI Engine — state and resume point
 
-**Rewritten:** 2026-09-06. **Landing 1 is built and GUI-verified. Landings 2–6 are agreed and unbuilt.**
+**Rewritten:** 2026-09-06. **Landings 1–2 are built and GUI-verified. Landings 3–6 are agreed and unbuilt.**
 
 This file exists so the work can be picked up cold. The decisions and their reasoning are in
 [../Decisions/ui-engine-stack.md](../Decisions/ui-engine-stack.md) and
@@ -23,15 +23,15 @@ One `Control` owns **0..N** `VulkanControl` rows. A panel owns 1; a text run own
 
 ## What exists now
 
-**Namespace `ArctisAurora.Core.UI`** — `UIData.cs` (the three structs, the enum, `LayoutRect`, `Thickness`,
-`QuadUVs`), `Control.cs`, `UIEngine.cs`.
+**Namespace `ArctisAurora.Core.UI`** — `UIData.cs` (the three structs, the enums, `LayoutRect`, `Thickness`,
+`QuadUVs`), `Control.cs`, `WindowRoot.cs`, `UIEngine.cs`.
 
-**Pools**, in `Pools.pools.xml`, both `Ordered="true"` with no `SortAction` yet:
+**Pools**, in `Pools.pools.xml`, both `Ordered="true"`:
 
-| Pool | Columns | Capacity |
-|---|---|---|
-| `UIElements` | `ArrangeData` | 1024 |
-| `VulkanControls` | `ControlGeometry`, `VulkanControlData` | 4096 |
+| Pool | Columns | Capacity | SortAction |
+|---|---|---|---|
+| `UIElements` | `ArrangeData` | 1024 | `UI.NextElementOrder` |
+| `VulkanControls` | `ControlGeometry`, `VulkanControlData` | 4096 | `UI.NextControlOrder` |
 
 `VulkanControlData` is the XSD name of the `VulkanControl` struct — renamed because `AnyXMLType.FindType`
 resolves `[A_XSDType]` by **name alone, first declaration wins**, and the old class already owns
@@ -44,22 +44,35 @@ ArrangeData 140 B   ControlGeometry 96 B   VulkanControl 92 B
 ```
 
 **`Control : Entity`** — `PoolName => "UIElements"`, second row via `Entity.AllocateIn("VulkanControls")` in an
-`AllocatePooledData` override. Exposes `arrange`, `geometry`, `visual` as `ref` accessors, plus
-`colorHex` / `alpha` / `cornerRadius` / `edgeColorHex` / `edgeThickness` and `SetArranged(LayoutRect)`.
+`AllocatePooledData` override. Exposes `arrange`, `geometry`, `visual` as `ref` accessors, the authored layout
+properties over `ArrangeData`, `colorHex` / `alpha` / `cornerRadius` / `edgeColorHex` / `edgeThickness`,
+`Measure` / `Arrange` / `WriteArranged`, `InvalidateLayout` / `InvalidateArrange`, `Hide` / `Show` and
+`RefreshSubtreeCache`. **`AddChild` throws on a second child**, as the outgoing base does.
+
+**`WindowRoot : Control`** — the only node that holds siblings. Carries `WindowingMode`, `autoscaling`,
+`ScalingAxis`, `ViewportSize`, `FitTo`, `ToDesignSpace`, and a `Measure`/`Arrange` that loops children by
+alignment. Transparent (`alpha = 0f`) because there is no invisible mask to opt out with yet.
+
+**`UIEngine`** — `RegisterDirtyRoot` / `ResolveLayout` at the `Interpolate` site, `RefreshWindowRanges` at the
+frame edge, the two `PoolSort` actions, and `BuildScaffolding`.
 
 **`UIEngineModule`** — second `RenderingModule` on every `RenderWindow` (`window.uiNext`, index 1 in
 `modules`). `compositorOrder = 10`, transparent clear, so the old stack composites underneath. Mirrors both GPU
-columns per swapchain image through `MirrorPool`, one dirty range each.
+columns per swapchain image through `MirrorPool`, one dirty range each. Holds `uiRoot`, `firstInstance` and
+`instanceCount`; the draw is the window's slice. A window with no root draws nothing.
 
 **Shaders** — `Shaders/UIEngine/UIEngine.vert` + `.frag`, compiled `--target-env=vulkan1.3`, mirrored
 byte-identical into `Thorium/`, `AuroraEditor/` and `Carbon/`. Set 0 renderer global, set 1 module
 (camera UBO + two `scalar` SSBOs). No sampler set yet.
 
-**`ERendererTypes.UIEngine`** and its `AuroraCamera` case — ortho over the raw swapchain extent.
+**`ERendererTypes.UIEngine`** and its `AuroraCamera` case — ortho over `WindowRoot.ViewportSize`, falling back
+to the raw swapchain extent when the window has no root.
 
 **Bootstrap** — `<Step Action="UIEngine.Bootstrap"/>` is the last step of `Bootstrap.bootstrap.xml`. It logs
-the row sizes and creates a **smoke panel** at `(80, 80, 320, 180)`, `#3AA6FF`, radius 16, white 2 px edge.
-That panel is scaffolding and the arrange pass removes it.
+the row sizes and builds a **scaffolding tree** on `Engine.primary`: a root at window size, padding 24,
+holding `card` (360×220, padding 16, Left/Top) → `inner` → `leaf` (120×60), `clipped` (200×140, Right/Top,
+`clipOutOfBounds`) → `overflow` (320×260), and `bar` (height 48, Stretch/Bottom). Built back to front, so
+pool allocation order is nothing like DFS order and the resequence has real work. The landing 6 port removes it.
 
 ## Settled — do not re-litigate without asking
 
@@ -117,28 +130,38 @@ deferred it to "context logic" rather than `Hide()`.
 
 **Neither `edge` nor `outline` had a single consumer** — no C# control set either, no `.ui.xml` authored either.
 
+**A new stack root paints unless told not to.** A `Control` with default `alpha = 1` and the window's rect is a
+full-window opaque quad, and the compositor puts it over everything the old stack drew — the window goes blank
+white and reads as the old stack having broken. `WindowRoot` sets `alpha = 0f`. This is the same trap the
+`aurora-verify` skill records for `maskAsset`, in the stack that has no masks yet.
+
+**The old stack does not re-lay out on a `MoveWindow` resize.** Its content stays at the previous width and
+clips, while the new stack's tree refits correctly from the very next line of the same GLFW callback.
+Reproduced on the unmodified HEAD build (commit before landing 2), so it predates this work — but it means a
+resize capture shows a torn old stack and that is not evidence of a regression.
+
 ## Landings
 
-### 2 — tree and layout
+### 2 — tree and layout — **DONE 2026-09-06**
 
-- `Control` uses the inherited `Entity.children` (`List<Entity>`); `AddChild` enforces Control-only; walks cast.
-  **Required** — `Entity.Destroy()`'s `EnqueueSubtree` walks that list.
-- `Measure`/`Arrange` recursive, per the old shape. `ArrangeData`'s flags byte carries clip / hidden /
-  measure-dirty / arrange-dirty. The alignment and dock bytes get their enums here; landing 1 left them bare.
-- `subtreeBounds` and `subtreeCount` maintained on the way *out* of `Arrange`.
-- Cumulative child offsets on the container object as a `float[]` — the one piece that cannot be a fixed-stride
-  pool column.
-- A DFS `SortAction` for both pools, mirroring `UILayout.DFSOrder`.
-- Per-window `firstInstance`/`instanceCount`, mirroring `UILayout.RefreshWindowRanges`.
-- Deletes the smoke panel.
+Built as planned, with three answered forks: cumulative child offsets **deferred** to the landing that reads
+them; verification by nested plain `Control`s plus a DEBUG recompute rather than by pulling `StackControl`
+forward; `WindowControl`'s design-space scaling **ported** onto `WindowRoot` rather than dropped.
 
-→ *verify:* nested panels, a stack, a clipped scroll region arrange correctly; `subtreeBounds`/`subtreeCount`
-equal a brute-force recompute at every node; row ranges stay contiguous in DFS order across an insert, a remove
-and a reparent.
+`subtreeBounds`/`subtreeCount` are refreshed by `ResolveLayout` after `Arrange` rather than inside it, and
+`RefreshWindowRanges` counts fresh rather than reading the cache — see [[ui-engine-stack]] for both reasons.
+
+→ *verified:* the scaffolding tree arranges and draws over the old stack in Thorium; nesting, padding, margin,
+Left/Right/Stretch alignment, bottom anchoring and an inherited clip on a 320×260 child inside a 200×140 parent
+all correct; a `MoveWindow` resize re-lays the tree; painter order correct with pool allocation order reversed,
+so the DFS resequence ran; no resequence warning, so the walk reached every live row in both pools; the DEBUG
+recompute logged no mismatch; a second window (the File menu) draws none of the primary's rows.
+**Not exercised at runtime:** a remove or a reparent after the first resequence.
 
 ### 3 — input
 
-- `UIEngine.Poll(RenderWindow)` at the `HandleUI` site; `UIEngine.PollLayout()` where `ResolveLayout` sits.
+- `UIEngine.Poll(RenderWindow)` at the `HandleUI` site. `UIEngine.ResolveLayout()` already sits beside
+  `UILayout.ResolveLayout` in `Interpolate`, so only the input half is left.
 - Recursive hit-test with the `subtreeBounds` early-out. Deepest wins, always.
 - `struct PointerEvent { Control target; Vector2D<float> point, delta; int button, tapCount; }` — carries the
   original target so an ancestor handler knows what was under the pointer.

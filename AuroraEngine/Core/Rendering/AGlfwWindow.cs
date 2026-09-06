@@ -519,6 +519,7 @@ namespace ArctisAurora.EngineWork.Rendering
             windowSize = new Extent2D((uint)fbWidth, (uint)fbHeight);
 
             owner.ui.uiRoot?.FitTo(windowSize);
+            owner.uiNext.uiRoot?.FitTo(windowSize);
         }
     }
 }
