@@ -46,6 +46,12 @@
     <xs:restriction base="xs:string">
       <xs:enumeration value="VaultBrowser" />
       <xs:enumeration value="NextContainer" />
+      <xs:enumeration value="NextButton" />
+      <xs:enumeration value="NextIcon" />
+      <xs:enumeration value="NextLabel" />
+      <xs:enumeration value="NextPanel" />
+      <xs:enumeration value="NextStackPanel" />
+      <xs:enumeration value="NextTextRun" />
       <xs:enumeration value="NextWindow" />
       <xs:enumeration value="MenuItem" />
       <xs:enumeration value="ContextMenu" />
@@ -92,6 +98,7 @@
       <xs:enumeration value="TabItem" />
       <xs:enumeration value="TabView" />
       <xs:enumeration value="Workspace" />
+      <xs:enumeration value="NextOrientation" />
       <xs:enumeration value="ControlColor" />
       <xs:enumeration value="FillMode" />
       <xs:enumeration value="HorizontalAlignment" />

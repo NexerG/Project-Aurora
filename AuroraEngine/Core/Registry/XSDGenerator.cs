@@ -282,6 +282,7 @@ namespace ArctisAurora.Core.Registry
         private static Type ReferencedTypeOf(Type memberType)
         {
             Type referenced = memberType.IsGenericType
+                && memberType.GetGenericArguments().Length == 1
                 && typeof(IEnumerable<>).MakeGenericType(memberType.GetGenericArguments()).IsAssignableFrom(memberType)
                 ? memberType.GetGenericArguments()[0]
                 : memberType;
@@ -938,6 +939,8 @@ namespace ArctisAurora.Core.Registry
         // nested elements instead, so they stay on the type's own sequence.
         private static bool IsAttributeMember(Type memberType)
         {
+            if (typeof(Delegate).IsAssignableFrom(memberType)) return true;
+
             if (memberType.IsGenericType
                 && typeof(IEnumerable<>).MakeGenericType(memberType.GetGenericArguments()).IsAssignableFrom(memberType))
                 return false;
@@ -962,10 +965,11 @@ namespace ArctisAurora.Core.Registry
         {
             Type resolved = Nullable.GetUnderlyingType(memberType) ?? memberType;
 
+            if (typeof(Delegate).IsAssignableFrom(resolved)) return $"actions:{xmlAttr?.Category}";
+
             string? mapped = AnyXMLType.typeMap.FirstOrDefault(kvp => kvp.Value == resolved).Key;
             if (mapped != null)
             {
-                if (mapped == "Action") return $"actions:{xmlAttr?.Category}";
                 if (mapped == "types:Uncategorized") return $"allTypes:{xmlAttr?.Category}";
                 return mapped;
             }

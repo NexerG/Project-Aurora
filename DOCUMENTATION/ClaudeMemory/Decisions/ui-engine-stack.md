@@ -207,6 +207,97 @@ point, the window whose rect holds it, that window's tree — because a captured
 is ever told it is being hovered. `CheckDrag` works inside one window only. Dragging *between* windows still
 wants `HitFor`, `WindowAt` and `Poll`'s `ownsDrag` exemption.
 
+## The active context is a question, not a flag — 6b0, 2026-09-06
+
+`canBeActiveContext` was a bool and `UIEngine.ActiveTarget` walked the parent chain over it. It is now
+`Control.ActiveContextTarget()`, returning the control that takes the context — `this` by default, and a
+decoration answering `(parent as Control)?.ActiveContextTarget()`.
+
+**Why, given the bool covered every override that exists.** All three old overrides (`Label`, `Glyph`,
+`Icon`) mean "not me, walk up", which the bool says fine. The case it cannot say is 6c's: `TextBoxControl`,
+`TextInputControl` and `DocumentEditorControl` each wrap a run in padding and chrome, and pressing the
+padding should focus **the run** — a child. A bool can only decline; the walk only goes up. The migration
+cost is symmetric either way, so there was no reason to defer it to the landing that needs it.
+
+**What it costs.** `grep canBeActiveContext` used to show every opt-out with its answer on the same line;
+now each override's body has to be read. And two overrides pointing at each other is an infinite recursion
+where a `while` over `parent` could not loop — it fails as a stack overflow in the pointer path. Accepted
+unguarded: tree depth is small and a cycle shows up on the first frame. An alternative was considered and
+rejected — overrides return one hop and `UIEngine` iterates to a fixed point with a depth cap, which keeps
+termination in one place at the cost of more machinery in the engine.
+
+**What makes it observable.** `SolveRelease` drops a release whose `ActiveContextTarget()` differs from
+`pressTarget`. So a button whose caption does *not* override it fires only when press and release land on
+the same one of the two — press the glyphs, release on the button's padding, and nothing happens. That is
+the negative control that was actually run, not reasoned about.
+
+## Ports — 6b1, 2026-09-06
+
+- **`NextButtonControl` overrides `colorHex` rather than writing the tint.** The old button kept the authored
+  colour in `controlColorHex` and wrote state into `controlData.style.tint` directly. On the new stack
+  `colorHex` *is* the tint writer, so the override keeps the authored value in a private `restColorHex` and
+  `ApplyState` assigns `base.colorHex`. `get` returns the authored colour, not the shown one.
+- **The pointer overrides call base and then return `true` unconditionally.** Base invokes the registered
+  delegate — which is where an XML `onRelease` fires — and the button consumes regardless, because a button
+  owns its own pointer events.
+- **`NextStackPanel`'s enum is `"NextOrientation"`.** Same `FindType`-resolves-by-name collision as
+  `VulkanControlData`; the attribute stays `Orientation=` because attribute names are per-type.
+- **`WindowRoot.Arrange` ignores its children's `margin`.** It positions by alignment inside the padded box
+  and never reads `ca.margin`. Pre-existing — `NextProbe.ui.xml`'s `swatch` carries a `Margin` that does
+  nothing — and it means a root child cannot be offset by margin.
+
+## A composited module's alpha factor must be One, not SrcAlpha — 2026-09-07
+
+`UIEngineModule`'s blend attachment had `SrcAlphaBlendFactor = SrcAlpha` alongside
+`DstAlphaBlendFactor = OneMinusSrcAlpha`, so the alpha channel accumulated `a_src² + a_dst(1−a_src)`
+instead of `a_src + a_dst(1−a_src)`. A glyph edge at 0.5 coverage over an opaque panel came out at alpha
+**0.75**, and the compositor's `result = src + result·(1 − src.a)` then let 25 % of whatever the module
+below drew bleed through every antialiased edge. Against the old stack drawing the same title bar at the
+same coordinates that reads as a sub-pixel double image — text that looks chunky rather than soft.
+
+**`UIModule` carries the identical mistake and it is inert there**, because it is composited first and its
+alpha never reaches the output. Do not copy its blend state when the two `CreatePipeline` bodies are
+collapsed at 6d — copy `UIEngineModule`'s.
+
+**Not the glyph maths.** Both fragment shaders resolve MTSDF identically — `screenPxRange * (sd - 0.5)`
+from `pxRange = 4.0` and `fwidth(fragUV)`, with the same median-vs-true-distance reconciliation — so
+`aa = 1.0` in the new shader is correct, the distance already being in screen pixels.
+
+**Still unverified:** the compositor samples module outputs with `Filter.Linear`. That is free only if the
+offscreen extent matches the swapchain's and the fullscreen triangle lands on texel centres; nobody has
+checked that they do.
+
+## XML event attributes — landing 6b prerequisite, 2026-09-06
+
+`Control`'s seven pointer handlers carry `[A_XSDElementProperty("onEnter"…"onScroll", "UI")]` and bind from a
+`*.ui.xml` the way the old stack's `Action` fields did. Three edits made it work:
+
+- `XSDGenerator.IsAttributeMember` returns true for any `Delegate`, and `ResolveTypeName` emits
+  `actions:{Category}` for one — replacing the `mapped == "Action"` special case. `AnyXMLType.typeMap` is left
+  alone: registering `Func<PointerEvent, bool>` there would put a `Core.UI` type inside `Core.Registry`.
+- `ControlXml.ResolveAttributes` gained a `Func<PointerEvent, bool>` branch that resolves the tagged method as
+  an `Action`, wraps it `_ => { act(); return true; }`, and combines with `+=`.
+
+**Signatures could not change.** The tagged-action pool feeds three binding sites with three shapes —
+keybinds take `Action`, `ContextMenus.BindAction` picks `Action` or `Action<VulkanControl>` via
+`TakesTarget`, and `*.ui.xml` takes `Action` — and only one of them has a `PointerEvent` to hand over. Every
+one of the nine methods bound from a `*.ui.xml` is `public static void X()`. Adapting at the binding site is
+what `ContextMenus` already does.
+
+**The wrapper returns `true`, so an XML-bound handler consumes.** Right for a button; a non-consuming XML
+handler would be a new attribute, not a flag on this one.
+
+**`+=` on a `Func<,bool>` is multicast, so only the last registration's return value survives.** Harmless as
+wired — `ResolveAttributes` runs after the constructor, so an XML handler is appended after a C# one and its
+`true` is the answer. It bites the other way round.
+
+**`MakeGenericType` arity is a live trap in this file.** Three sites do
+`typeof(IEnumerable<>).MakeGenericType(memberType.GetGenericArguments())` to ask "is this a collection", which
+**throws** on any member whose type has two type arguments. Nothing tagged had two until `Func<PointerEvent,
+bool>` did, and `XSDGenerator.ReferencedTypeOf` crashed the whole boot from `GenerateXSD`. Guarded there with
+`GetGenericArguments().Length == 1`. The third site, in `GenerateComplexType`, is unreachable for a delegate
+because `IsAttributeMember` now returns true first — a tagged `Dictionary<K,V>` would still reach it.
+
 ## The drag gap
 
 The gesture runs start to finish; what is missing is everything told to the **claimant**. Seven controls claim

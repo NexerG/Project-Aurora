@@ -28,8 +28,14 @@
     <xs:attribute name="EdgeColorHex" type="xs:string" />
     <xs:attribute name="EdgeThickness" type="xs:float" />
     <xs:attribute name="Gradient" type="xs:string" />
-    <xs:attribute name="DraggingOpacity" type="xs:float" />
-    <xs:attribute name="ContextMenu" type="xs:string" />
+    <xs:attribute name="onEnter" type="actions:UI" />
+    <xs:attribute name="onExit" type="actions:UI" />
+    <xs:attribute name="onMove" type="actions:UI" />
+    <xs:attribute name="onPress" type="actions:UI" />
+    <xs:attribute name="onRelease" type="actions:UI" />
+    <xs:attribute name="onTap" type="actions:UI" />
+    <xs:attribute name="onScroll" type="actions:UI" />
+    <xs:attribute name="Draggable" type="xs:boolean" />
   </xs:attributeGroup>
   <xs:attributeGroup name="VulkanControl.Attributes">
     <xs:attributeGroup ref="types:Entity.Attributes" />

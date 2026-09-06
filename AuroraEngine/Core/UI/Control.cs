@@ -538,11 +538,17 @@ namespace ArctisAurora.Core.UI
         #region ---- pointer ----
         // One handler per event, and the last registration wins. A subclass overrides the virtual;
         // outside code registers a delegate.
+        [A_XSDElementProperty("onEnter", "UI")]
         public Func<PointerEvent, bool>? onEnter;
+        [A_XSDElementProperty("onExit", "UI")]
         public Func<PointerEvent, bool>? onExit;
+        [A_XSDElementProperty("onMove", "UI")]
         public Func<PointerEvent, bool>? onMove;
+        [A_XSDElementProperty("onPress", "UI")]
         public Func<PointerEvent, bool>? onPress;
+        [A_XSDElementProperty("onRelease", "UI")]
         public Func<PointerEvent, bool>? onRelease;
+        [A_XSDElementProperty("onTap", "UI")]
         public Func<PointerEvent, bool>? onTap;
 
         public void RegisterOnEnter(Func<PointerEvent, bool> handler) => onEnter = handler;
@@ -552,6 +558,7 @@ namespace ArctisAurora.Core.UI
         public void RegisterOnRelease(Func<PointerEvent, bool> handler) => onRelease = handler;
         public void RegisterOnTap(Func<PointerEvent, bool> handler) => onTap = handler;
 
+        [A_XSDElementProperty("onScroll", "UI")]
         public Func<PointerEvent, bool>? onScroll;
         public void RegisterOnScroll(Func<PointerEvent, bool> handler) => onScroll = handler;
 
@@ -573,8 +580,8 @@ namespace ArctisAurora.Core.UI
         // Skipped by the hit-test so it does not swallow the click it sits over.
         public bool hitTestable = true;
 
-        // False hands the active context to the parent instead.
-        public virtual bool canBeActiveContext => true;
+        // The control that takes the active context when this one is pressed. Itself by default.
+        public virtual Control? ActiveContextTarget() => this;
 
         // False leaves the active control where it was when this one is pressed.
         public virtual bool takesActiveControl => true;

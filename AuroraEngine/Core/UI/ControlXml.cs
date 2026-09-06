@@ -114,6 +114,33 @@ namespace ArctisAurora.Core.UI
                     continue;
                 }
 
+                if (memberType == typeof(Func<PointerEvent, bool>))
+                {
+                    MethodInfo? pointerMethod = tagged
+                        .FirstOrDefault(x => string.Equals(x.attr.Name, attr.Value, StringComparison.OrdinalIgnoreCase))
+                        .method;
+
+                    if (pointerMethod == null)
+                        throw new Exception($"Action method '{attr.Value}' not found in A_XSDActionDependency.");
+
+                    Action bound = (Action)Delegate.CreateDelegate(typeof(Action), pointerMethod);
+                    Func<PointerEvent, bool> handler = _ => { bound(); return true; };
+
+                    if (prop is PropertyInfo handlerProperty)
+                    {
+                        Func<PointerEvent, bool>? currentHandler = (Func<PointerEvent, bool>?)handlerProperty.GetValue(topControl);
+                        handlerProperty.SetValue(topControl, currentHandler + handler);
+                        continue;
+                    }
+                    if (prop is FieldInfo handlerField)
+                    {
+                        Func<PointerEvent, bool>? currentHandler = (Func<PointerEvent, bool>?)handlerField.GetValue(topControl);
+                        handlerField.SetValue(topControl, currentHandler + handler);
+                        continue;
+                    }
+                    continue;
+                }
+
                 if (memberType.IsEnum)
                 {
                     object enumValue = Enum.Parse(memberType, attr.Value);

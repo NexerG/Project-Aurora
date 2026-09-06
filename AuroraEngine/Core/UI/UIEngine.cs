@@ -213,7 +213,7 @@ namespace ArctisAurora.Core.UI
 
             if (button == PointerEvent.leftButton)
             {
-                Control target = ActiveTarget(hovering);
+                Control target = hovering.ActiveContextTarget();
                 Control previous = pressTarget;
                 _sameTargetTap = ReferenceEquals(target, previous);
                 if (!_sameTargetTap)
@@ -228,14 +228,6 @@ namespace ArctisAurora.Core.UI
             Dispatch(Event(hovering, point, delta, button, 0), PointerPhase.Press);
         }
 
-        // Walks up to the first control that can hold the active context.
-        private static Control ActiveTarget(Control control)
-        {
-            while (control != null && !control.canBeActiveContext)
-                control = control.parent as Control;
-            return control;
-        }
-
         // A release only counts on the control the press landed on, so dragging off a button cancels it.
         private static void SolveRelease(Vector2D<float> point, Vector2D<float> delta, int button, int tapCount)
         {
@@ -248,7 +240,7 @@ namespace ArctisAurora.Core.UI
             }
 
             if (hovering == null) return;
-            if (button == PointerEvent.leftButton && !ReferenceEquals(ActiveTarget(hovering), pressTarget)) return;
+            if (button == PointerEvent.leftButton && !ReferenceEquals(hovering.ActiveContextTarget(), pressTarget)) return;
 
             Dispatch(Event(hovering, point, delta, button, tapCount), PointerPhase.Release);
 

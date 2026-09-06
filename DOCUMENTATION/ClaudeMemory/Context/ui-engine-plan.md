@@ -1,6 +1,7 @@
 # UI Engine — state and resume point
 
-**Rewritten:** 2026-09-06. **Landings 1–5 and 6a are built and GUI-verified. 6b–6d are agreed and unbuilt.**
+**Rewritten:** 2026-09-06. **Landings 1–5, 6a, 6b0 and most of 6b1 are built and GUI-verified. The rest of
+6b–6d is agreed and unbuilt.**
 
 This file exists so the work can be picked up cold. The decisions and their reasoning are in
 [../Decisions/ui-engine-stack.md](../Decisions/ui-engine-stack.md) and
@@ -64,6 +65,14 @@ the last absorbing the remainder) + a measured `BlockLayout`, emitting one row p
 `ScalingAxis`, `ViewportSize`, `FitTo`, `ToDesignSpace`, and a `Measure`/`Arrange` that loops children by
 alignment. Transparent (`alpha = 0f`) because there is no invisible mask to opt out with yet.
 
+**The 6b0/6b1 subclasses**, all in `Core/UI/` — `NextLabelControl` (`"NextLabel"`, a `TextRunControl` that
+hands the context up), `NextPanelControl` (`"NextPanel"`, a `Control` and its tag),
+`NextStackPanelControl` (`"NextStackPanel"`, `ContainerControl`, the two-pass star layout ported whole; its
+enum is `"NextOrientation"` because the old owns `"Orientation"`), `NextButtonControl` (`"NextButton"`, the
+three-state tint over an overridden `colorHex` that keeps the authored rest colour) and `NextIconControl`
+(`"NextIcon"`, `kind = MTSDFControl` plus one `SetUVRect` for the atlas cell). `TextRunControl` is now
+`[A_XSDType("NextTextRun", "UI", isAbstract: true)]` with `Text` / `FontSize` / `FontName` authorable.
+
 **`UIEngine`** — `RegisterDirtyRoot` / `ResolveLayout` at the `Interpolate` site, `Poll` at the top of
 `HandleUI`, `HitTest` / `Dispatch` / `Forget` / `SetActiveControl`, the `NextHovering` / `NextActiveControl` /
 `NextPressTarget` contexts, `RefreshWindowRanges` at the frame edge, the two `PoolSort` actions, and
@@ -122,6 +131,9 @@ gradient, Right/Bottom). The landing 6 port removes all of it.
 | `Control : Entity`, per entity-kind columns | Animation runs on `OnTick` + components. See [[entity-transform-split]] |
 | Row building is **incremental per element**, not a per-frame rebuild | ~56.7k glyph rows × 200 B is ~11 MB/frame — not affordable |
 | Emit rows for **all** glyphs for now, not visible-only | Visible-only is a strict improvement that drops in at the same seam; it needs a per-document line cache and its own correctness surface |
+| An XML event attribute binds by **wrapping the tagged method into a func that returns `true`**, combined with `+=` | The tagged action pool feeds keybinds, context menus and `*.ui.xml` with three different delegate shapes; only one has a `PointerEvent`. See [[ui-engine-stack]] |
+| Any **delegate**-typed member is an XSD attribute, not just `Action` | One shape test in the generator instead of a `Core.UI` type registered inside `Core.Registry` |
+| `canBeActiveContext` is a **question that returns a control**, `Control.ActiveContextTarget()` | 6c's `TextBox`/`TextInput`/`DocumentEditor` need to focus a *child* run, which a "not me" bool cannot express |
 
 ## Facts that were expensive to establish
 
@@ -300,11 +312,57 @@ and a scroll.
 the card, claimed the drag, held it `#FF3B30` for the drag's duration and restored `#3AA6FF` on release.
 **Not re-verified after the drag and context-menu removal** (user: "go dont verify").
 
+#### 6b0 — the label, and the active context becomes a question — **DONE 2026-09-06**
+
+`canBeActiveContext` (bool) became `Control.ActiveContextTarget()` returning the control that takes the
+context — itself by default, a decoration answering with its parent's answer. `UIEngine`'s `ActiveTarget`
+walk is gone; both call sites ask the hovered control directly. `TextRunControl` is XSD-tagged and
+`NextLabelControl` is the first override.
+
+→ *verified:* `<NextLabel Text="Probe" FontSize="13" ColorHex="#5F5D56"/>` parses and draws in the probe. In
+a `NextButton`, pressing the caption's glyphs and releasing on the button's own padding **fires the button**
+— and with the override commented out the same gesture fires nothing, because the release identity check
+compares the label against the button. Both halves were run.
+**Not exercised:** a target that is not an ancestor, and the recursion cycle two mutual overrides would make.
+
+#### 6b1 — chrome and interactables — **PARTIAL, 2026-09-06**
+
+Built: `NextPanel`, `NextStackPanel`, `NextButton`, `NextIcon`. **`NextTitleBar` and `NextMenuButton` were
+cut from the landing by the user**; `NextWindowFrame` is parked on a fork — it needs `onDrag`, which is in
+the drag gap, so it lands with the drag stack rather than here. Two things established while reading it:
+its grips must be **appended, not inserted at 0**, because the new hit-test walks last to first; and the
+maximized-grip problem may not exist on the new stack, since `hitTestable = false` makes the walk `continue`
+to the sibling behind rather than swallow the pixel.
+
+→ *verified:* first as a floating 500×32 strip — `NextStackPanel` laying a label, a `WidthStar="1"` spacer
+and three buttons left to right with 4 px `Spacing`, three distinct tints (`#EBEAE5` rest, `#E3E1D9` hover,
+`#D7D5CD` press) restoring on exit, `NextIcon` drawing the atlas cells as clean silhouettes at 14 and 18 px,
+and `onRelease` firing `Window.Minimize` from both an icon button and a captioned one. Then rebuilt as the
+**real title bar**: `NextProbe.ui.xml`'s root padding dropped to 0 so a `Stretch`/`Top` stack sits flush at
+y 0..32 across the full width, holding `Thorium`/`File`/`Edit`/`View` captions at 72/48/48/48 and the
+minimize/maximize/close trio at 46 each, with `Gradient="titlebar"` across the bar. Hover tints one button
+and leaves its neighbours at rest, close goes `#C42B1E` on hover and `#A82318` on press, and releasing close
+runs `Shutdown.Request()` and exits. Nine errors at boot and all of them the pre-existing set — one
+`SamplerAsset` default, six barrier `dstAccessMask`, the `DemoteToHelperInvocation` pair. No resequence
+warning, no DEBUG subtree-cache mismatch.
+**Not attributable:** the window buttons sit exactly over the old stack's, which are wired to the same
+actions, so the *firing* does not prove which stack fired. The *tints* do — the new module composites on top.
+**Not exercised:** `Spacing` on a vertical stack, star children in both axes at once, `MinWidth`/`MinHeight`
+clamping, and a stack nested in a stack.
+**The probe's root is now `Padding="0"`**, so `card` and `clipped` are flush to the window corners and the
+title bar covers their top 32 px — `card`'s two top corner radii are no longer visible in the live probe.
+Root padding was verified at landing 2 and is recorded there.
+
 #### 6b — chrome, containers, interactables, hosts
 
-- Port the 31 engine chrome/container/interactable classes and the 7 host ones onto `Control` /
+**Unblocked 2026-09-06** — the event-attribute fork is settled and built; see *XML event attributes* below.
+
+- Port the remaining engine chrome/container/interactable classes and the 7 host ones onto `Control` /
   `ContainerControl`, each `Next`-prefixed, each with a `Next`-prefixed `[A_XSDType]`.
 - The `bubbleX` → walk-until-consumed conversion, per class.
+- **Delete the six authored `BubbleClick="true"` sites** — every one is the same title-bar spacer
+  `<Panel WidthStar="1" Height="32"/>`, there so the click reaches `TitleBar` for caption drag. The new base
+  returns `false` with no handler, so it bubbles for free. No `Bubble*` attribute needs a new meaning.
 - `ScrollableControl`'s wheel handling becomes an `OnPointerScroll` override.
 - **The drag stack, back in with its first consumer** — `Control.StartDrag`/`ResolveDrag`/`StopDrag`/
   `ResolveDrop`/`ResolveDropHint`/`ClearDropHint`, `UIEngine.SetDragging`/`SolveDrag`/`HitFor`/`OfferDrop`/
@@ -346,10 +404,6 @@ that goes out** now the base is frozen — exact old→new text per class, one a
 
 ## Open — not decided
 
-- **How an event attribute binds from XML.** `ResolveAttributes` binds an `Action`-typed member; `Control`'s
-  handlers are `Func<PointerEvent, bool>`. Either `Control` grows `Action` events beside the funcs and the
-  virtuals fire both, or the parser wraps a tagged method into a func — and then `BubbleClick="true"` has to
-  mean "return false", which changes what every `Bubble*` already in a `*.ui.xml` does. Blocks 6b.
 - **Deferred out of landing 4, each waiting on something specific:** `SelectionControl` (needs drag ported),
   `DocumentEditorControl.CaretAtPoint` (needs blocks), the XML shape for per-character settings (needs the new
   stack to parse XML at all).

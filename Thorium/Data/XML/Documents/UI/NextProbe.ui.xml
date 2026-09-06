@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Landing 6a probe. The only elements the new stack can build until 6b tags its subclasses:
-     NextWindow is WindowRoot, NextContainer is ContainerControl. Deleted with 6b. -->
-<NextWindow Width="1280" Height="720" Padding="24">
+<!-- Landing 6a/6b0/6b1 probe. NextWindow is WindowRoot, NextContainer is ContainerControl.
+     Deleted with 6b. -->
+<NextWindow Width="1280" Height="720" Padding="0">
 
 	<!-- attributes: colour, corner radii as four values, edge band, padding -->
 	<NextContainer Name="card"
@@ -42,5 +42,53 @@
 	               HorizontalAlignment="Center" VerticalAlignment="Center"
 	               CornerRadius="12"
 	               Gradient="accent"/>
+
+	<!-- 6b1: the shell's title bar, minus the caption drag and the resize grips -->
+	<NextStackPanel Name="titlebar"
+	                Orientation="Horizontal" Height="32"
+	                HorizontalAlignment="Stretch" VerticalAlignment="Top"
+	                ColorHex="#EBEAE5" Gradient="titlebar">
+		<NextButton Name="menuThorium" Width="72"
+		            ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD">
+			<NextLabel Text="Thorium" FontSize="13"
+			           HorizontalPos="0.5" VerticalPos="0.5" ColorHex="#5F5D56"/>
+		</NextButton>
+		<NextButton Name="menuFile" Width="48"
+		            ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD">
+			<NextLabel Text="File" FontSize="13"
+			           HorizontalPos="0.5" VerticalPos="0.5" ColorHex="#5F5D56"/>
+		</NextButton>
+		<NextButton Name="menuEdit" Width="48"
+		            ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD">
+			<NextLabel Text="Edit" FontSize="13"
+			           HorizontalPos="0.5" VerticalPos="0.5" ColorHex="#5F5D56"/>
+		</NextButton>
+		<NextButton Name="menuView" Width="48"
+		            ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD">
+			<NextLabel Text="View" FontSize="13"
+			           HorizontalPos="0.5" VerticalPos="0.5" ColorHex="#5F5D56"/>
+		</NextButton>
+
+		<NextPanel Name="spacer" WidthStar="1" ColorHex="#EBEAE5"/>
+
+		<NextButton Name="min" Width="46"
+		            ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD"
+		            onRelease="Window.Minimize">
+			<NextIcon Set="default" Icon="minimize" Width="14" Height="14"
+			          HorizontalPos="0.5" VerticalPos="0.5" ColorHex="#5F5D56"/>
+		</NextButton>
+		<NextButton Name="max" Width="46"
+		            ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD"
+		            onRelease="Window.MaximizeRestore">
+			<NextIcon Set="default" Icon="maximize" Width="18" Height="18"
+			          HorizontalPos="0.5" VerticalPos="0.5" ColorHex="#5F5D56"/>
+		</NextButton>
+		<NextButton Name="close" Width="46"
+		            ColorHex="#EBEAE5" HoverColorHex="#C42B1E" PressColorHex="#A82318"
+		            onRelease="Window.Close">
+			<NextIcon Set="default" Icon="close" Width="14" Height="14"
+			          HorizontalPos="0.5" VerticalPos="0.5" ColorHex="#5F5D56"/>
+		</NextButton>
+	</NextStackPanel>
 
 </NextWindow>

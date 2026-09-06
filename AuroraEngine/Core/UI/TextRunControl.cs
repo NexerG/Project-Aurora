@@ -1,4 +1,5 @@
 using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.UISystem;
 using ArctisAurora.Core.UISystem.Controls.Text;
@@ -26,6 +27,7 @@ namespace ArctisAurora.Core.UI
     // A block of text as one control: the string, the spans styling it, and one draw row per
     // character after the control's own. Glyphs are rows and not controls, so the hit-test lands on
     // the run and IndexAt resolves which character was under the point.
+    [A_XSDType("NextTextRun", "UI", isAbstract: true)]
     public class TextRunControl : Control
     {
         private static FontAssetGlyphMetrics metrics = null!;
@@ -56,6 +58,7 @@ namespace ArctisAurora.Core.UI
             _fontAsset = ResolveFont(fontName);
         }
 
+        [A_XSDElementProperty("Text", "UI", "The string this run lays out.")]
         public string text
         {
             get => field;
@@ -68,6 +71,7 @@ namespace ArctisAurora.Core.UI
             }
         } = string.Empty;
 
+        [A_XSDElementProperty("FontSize", "UI", "Type size in design-space pixels.")]
         public int fontSize
         {
             get => field;
@@ -79,6 +83,7 @@ namespace ArctisAurora.Core.UI
             }
         } = 16;
 
+        [A_XSDElementProperty("FontName", "UI", "Font family, as named in the asset manifest.")]
         public string fontName
         {
             get => field;

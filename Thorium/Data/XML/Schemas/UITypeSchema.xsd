@@ -4,7 +4,7 @@
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:import schemaLocation="EntityRegistryTypeSchema.xsd" namespace="http://arctisaurora/AuroraEntityRegistryTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:GradientKind types:TextStyleType types:DockMode types:GridSizeMode types:Scrollable types:ControlColor types:FillMode types:HorizontalAlignment types:VeticalAlignment types:WindowingModeEnum types:ScalingAxisEnum types:Orientation" />
+    <xs:union memberTypes="types:GradientKind types:TextStyleType types:DockMode types:GridSizeMode types:Scrollable types:NextOrientation types:ControlColor types:FillMode types:HorizontalAlignment types:VeticalAlignment types:WindowingModeEnum types:ScalingAxisEnum types:Orientation" />
   </xs:simpleType>
   <xs:attributeGroup name="VaultBrowser.Attributes">
     <xs:attributeGroup ref="types:ScrollableControl.Attributes" />
@@ -31,6 +31,52 @@
     <xs:sequence />
     <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="NextButton.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+    <xs:attribute name="HoverColorHex" type="xs:string" />
+    <xs:attribute name="PressColorHex" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="NextButton" type="types:NextButton" />
+  <xs:complexType name="NextButton">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextButton.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextIcon.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+    <xs:attribute name="Set" type="xs:string" />
+    <xs:attribute name="Icon" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="NextIcon" type="types:NextIcon" />
+  <xs:complexType name="NextIcon">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextIcon.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextLabel" type="types:NextLabel" />
+  <xs:complexType name="NextLabel">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextTextRun.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextPanel" type="types:NextPanel" />
+  <xs:complexType name="NextPanel">
+    <xs:sequence />
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextStackPanel.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+    <xs:attribute name="Orientation" type="types:NextOrientation" />
+    <xs:attribute name="Spacing" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="NextStackPanel" type="types:NextStackPanel" />
+  <xs:complexType name="NextStackPanel">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextStackPanel.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextTextRun.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+    <xs:attribute name="Text" type="xs:string" />
+    <xs:attribute name="FontSize" type="xs:int" />
+    <xs:attribute name="FontName" type="xs:string" />
+  </xs:attributeGroup>
   <xs:element name="NextWindow" type="types:NextWindow" />
   <xs:complexType name="NextWindow">
     <xs:sequence />
@@ -560,6 +606,12 @@
     </xs:sequence>
     <xs:attributeGroup ref="types:Workspace.Attributes" />
   </xs:complexType>
+  <xs:simpleType name="NextOrientation">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Horizontal" />
+      <xs:enumeration value="Vertical" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:simpleType name="ControlColor">
     <xs:restriction base="xs:string">
       <xs:enumeration value="red" />
