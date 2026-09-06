@@ -391,6 +391,31 @@ namespace ArctisAurora.Core.UI
         }
         #endregion
 
+        #region ---- pointer ----
+        // One handler per event, and the last registration wins. A subclass overrides the virtual;
+        // outside code registers a delegate.
+        public Func<PointerEvent, bool>? onEnter;
+        public Func<PointerEvent, bool>? onExit;
+        public Func<PointerEvent, bool>? onMove;
+        public Func<PointerEvent, bool>? onPress;
+        public Func<PointerEvent, bool>? onRelease;
+        public Func<PointerEvent, bool>? onTap;
+
+        public void RegisterOnEnter(Func<PointerEvent, bool> handler) => onEnter = handler;
+        public void RegisterOnExit(Func<PointerEvent, bool> handler) => onExit = handler;
+        public void RegisterOnMove(Func<PointerEvent, bool> handler) => onMove = handler;
+        public void RegisterOnPress(Func<PointerEvent, bool> handler) => onPress = handler;
+        public void RegisterOnRelease(Func<PointerEvent, bool> handler) => onRelease = handler;
+        public void RegisterOnTap(Func<PointerEvent, bool> handler) => onTap = handler;
+
+        public virtual bool OnPointerEnter(PointerEvent e) => onEnter?.Invoke(e) ?? false;
+        public virtual bool OnPointerExit(PointerEvent e) => onExit?.Invoke(e) ?? false;
+        public virtual bool OnPointerMove(PointerEvent e) => onMove?.Invoke(e) ?? false;
+        public virtual bool OnPointerPress(PointerEvent e) => onPress?.Invoke(e) ?? false;
+        public virtual bool OnPointerRelease(PointerEvent e) => onRelease?.Invoke(e) ?? false;
+        public virtual bool OnPointerTap(PointerEvent e) => onTap?.Invoke(e) ?? false;
+        #endregion
+
         #region ---- tree ----
         public override void AddChild(Entity entity)
         {
@@ -418,6 +443,12 @@ namespace ArctisAurora.Core.UI
             UIEngine.Controls.MarkOrderDirty();
         }
         #endregion
+
+        public override void OnDestroy()
+        {
+            base.OnDestroy();
+            UIEngine.Forget(this);
+        }
 
         // Widens the draw pool's dirty range so this row is re-uploaded.
         internal void Publish() => UIEngine.Controls.MarkContentDirty(controlHandle);

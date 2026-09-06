@@ -1,6 +1,6 @@
 # UI Engine — state and resume point
 
-**Rewritten:** 2026-09-06. **Landings 1–2 are built and GUI-verified. Landings 3–6 are agreed and unbuilt.**
+**Rewritten:** 2026-09-06. **Landings 1–3 are built and GUI-verified. Landings 4–6 are agreed and unbuilt.**
 
 This file exists so the work can be picked up cold. The decisions and their reasoning are in
 [../Decisions/ui-engine-stack.md](../Decisions/ui-engine-stack.md) and
@@ -24,7 +24,7 @@ One `Control` owns **0..N** `VulkanControl` rows. A panel owns 1; a text run own
 ## What exists now
 
 **Namespace `ArctisAurora.Core.UI`** — `UIData.cs` (the three structs, the enums, `LayoutRect`, `Thickness`,
-`QuadUVs`), `Control.cs`, `WindowRoot.cs`, `UIEngine.cs`.
+`QuadUVs`), `Control.cs`, `WindowRoot.cs`, `PointerEvent.cs`, `UIEngine.cs`.
 
 **Pools**, in `Pools.pools.xml`, both `Ordered="true"`:
 
@@ -53,8 +53,14 @@ properties over `ArrangeData`, `colorHex` / `alpha` / `cornerRadius` / `edgeColo
 `ScalingAxis`, `ViewportSize`, `FitTo`, `ToDesignSpace`, and a `Measure`/`Arrange` that loops children by
 alignment. Transparent (`alpha = 0f`) because there is no invisible mask to opt out with yet.
 
-**`UIEngine`** — `RegisterDirtyRoot` / `ResolveLayout` at the `Interpolate` site, `RefreshWindowRanges` at the
-frame edge, the two `PoolSort` actions, and `BuildScaffolding`.
+**`UIEngine`** — `RegisterDirtyRoot` / `ResolveLayout` at the `Interpolate` site, `Poll` at the top of
+`HandleUI`, `HitTest` / `Dispatch` / `Forget` / `SetActiveControl`, the `NextHovering` / `NextActiveControl` /
+`NextPressTarget` contexts, `RefreshWindowRanges` at the frame edge, the two `PoolSort` actions, and
+`BuildScaffolding`.
+
+**`PointerEvent`** (`target`, `point`, `delta`, `button`, `tapCount`) and **`PointerPhase`** — `Control` has one
+`virtual bool OnPointerX(PointerEvent)` and one `Func<PointerEvent, bool>` per phase, and `RegisterOnX` sets
+rather than combines.
 
 **`UIEngineModule`** — second `RenderingModule` on every `RenderWindow` (`window.uiNext`, index 1 in
 `modules`). `compositorOrder = 10`, transparent clear, so the old stack composites underneath. Mirrors both GPU
@@ -71,8 +77,13 @@ to the raw swapchain extent when the window has no root.
 **Bootstrap** — `<Step Action="UIEngine.Bootstrap"/>` is the last step of `Bootstrap.bootstrap.xml`. It logs
 the row sizes and builds a **scaffolding tree** on `Engine.primary`: a root at window size, padding 24,
 holding `card` (360×220, padding 16, Left/Top) → `inner` → `leaf` (120×60), `clipped` (200×140, Right/Top,
-`clipOutOfBounds`) → `overflow` (320×260), and `bar` (height 48, Stretch/Bottom). Built back to front, so
-pool allocation order is nothing like DFS order and the resequence has real work. The landing 6 port removes it.
+`clipOutOfBounds`) → `overflow` (320×260), the overlapping `under` (200×120) and `over` (120×200) both
+centred, and `bar` (height 48, Stretch/Bottom). Built back to front, so pool allocation order is nothing like
+DFS order and the resequence has real work.
+
+`card`, `bar`, `under` and `over` are `ProbeControl`, which recolours on enter/exit/press/release; `leaf` is a
+`ProbeControl` that **consumes nothing**, so hovering it bubbles through `inner` (a plain `Control`) to `card`.
+The landing 6 port removes all of it.
 
 ## Settled — do not re-litigate without asking
 
@@ -87,7 +98,9 @@ pool allocation order is nothing like DFS order and the resequence has real work
 | Both insert caches — `subtreeCount`/`subtreeBounds` **and** cumulative child offsets | Tree-insert/collision, and drop targeting |
 | One `edge` pair, design pixels, meaning selected by `type` | Two names for two distance fields, neither with a consumer |
 | Masks serve all three kinds | A mask is a capability, not a hazard — the branch is "no mask assigned", not "panels never sample" |
-| Split entry: `Poll()` at the `HandleUI` site, `PollLayout()` at the `Interpolate` site | Layout must run after `OnTick`, or an `OnTick` invalidation lands a frame late |
+| Split entry: `Poll()` at the `HandleUI` site, `ResolveLayout()` at the `Interpolate` site | Layout must run after `OnTick`, or an `OnTick` invalidation lands a frame late |
+| Hover is one control; ancestors hear the bubbled event, they are not hovered | Hovering a glyph does not make the window root hovered |
+| The hit-test walks children last to first | Depth testing is off, so the later sibling is the one drawn on top |
 | `Control : Entity`, per entity-kind columns | Animation runs on `OnTick` + components. See [[entity-transform-split]] |
 | Row building is **incremental per element**, not a per-frame rebuild | ~56.7k glyph rows × 200 B is ~11 MB/frame — not affordable |
 | Emit rows for **all** glyphs for now, not visible-only | Visible-only is a strict improvement that drops in at the same seam; it needs a per-document line cache and its own correctness surface |
@@ -158,19 +171,21 @@ so the DFS resequence ran; no resequence warning, so the walk reached every live
 recompute logged no mismatch; a second window (the File menu) draws none of the primary's rows.
 **Not exercised at runtime:** a remove or a reparent after the first resequence.
 
-### 3 — input
+### 3 — input — **DONE 2026-09-06**
 
-- `UIEngine.Poll(RenderWindow)` at the `HandleUI` site. `UIEngine.ResolveLayout()` already sits beside
-  `UILayout.ResolveLayout` in `Interpolate`, so only the input half is left.
-- Recursive hit-test with the `subtreeBounds` early-out. Deepest wins, always.
-- `struct PointerEvent { Control target; Vector2D<float> point, delta; int button, tapCount; }` — carries the
-  original target so an ancestor handler knows what was under the pointer.
-- Dispatch walks up until a handler returns `true`.
-- Hover/enter/exit, press, release. **Dragging is out** (user, deferred).
-- Contexts (`Hovering`, `ActiveControl`, `PressTarget`) keep today's `Context.Set` / `IContext` wiring.
+Built as planned. Three answered forks: contexts registered under `Next`-prefixed names now and renamed at
+landing 6; delegate handlers built now alongside the virtuals; the hit-test walks children **last to first**
+so the sibling drawn on top takes the hit, which the outgoing stack gets backwards.
 
-→ *verify:* hover lights a button, click and release fire, deepest wins on overlap, a decoration over a button
-does not eat the click.
+Hover is **one control**, not a chain — ancestors are not hovered, they only hear the bubbled event.
+`Enter` and `Exit` go through the same walk-up-until-consumed dispatch as press and release.
+
+Not ported, deliberately: scroll, drag, context-menu gating, `canBeActiveContext` / `takesActiveControl`.
+
+→ *verified:* hovering `leaf` lights `leaf` and bubbles through `inner` (no handler, unchanged) to `card`,
+which consumes it; leaving returns both to their resting colours; two overlapping siblings hand the hit to the
+one drawn on top and to the exposed arm of the one underneath; a press recolours the pressed control.
+**Not exercised:** double-tap, right button, and the pointer leaving the window.
 
 ### 4 — text and caret
 

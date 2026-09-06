@@ -1,9 +1,10 @@
 # Decision — the UI is rebuilt beside the old one, not migrated in place
 
 **Date:** 2026-09-06
-**Status:** **PARTIAL** — landings 1–2 built and GUI-verified; landings 3–6 agreed, not built.
+**Status:** **PARTIAL** — landings 1–3 built and GUI-verified; landings 4–6 agreed, not built.
 **Scope:** `ArctisAurora.Core.UI` — `UIEngine`, `Control`, `WindowRoot`, `ArrangeData`, `ControlGeometry`,
-`VulkanControl`, `VulkanControlType`, `ArrangeFlags`, `HorizontalAlignment`, `VerticalAlignment`, `DockMode`;
+`VulkanControl`, `VulkanControlType`, `ArrangeFlags`, `HorizontalAlignment`, `VerticalAlignment`, `DockMode`,
+`PointerEvent`, `PointerPhase`;
 `ArctisAurora.EngineWork.Rendering.Modules` — `UIEngineModule`, `CompositorModule`;
 `ArctisAurora.EngineWork.Rendering` — `AuroraCamera`, `AGlfwWindow`;
 `Shaders/UIEngine/UIEngine.vert`, `Shaders/UIEngine/UIEngine.frag`;
@@ -61,6 +62,21 @@ One `Control` owns **0..N** `VulkanControl` rows. A panel owns 1; a text run own
 - The smoke panel is replaced by a scaffolding tree on the primary window, built back to front so pool
   allocation order is nothing like DFS order.
 
+## What changed — landing 3, input
+
+- `PointerEvent` (`target`, `point`, `delta`, `button`, `tapCount`) and `PointerPhase`
+  (`Enter`, `Exit`, `Move`, `Press`, `Release`, `Tap`).
+- `Control` gains six `virtual bool OnPointerX(PointerEvent)` plus one `Func<PointerEvent, bool>` field and a
+  `RegisterOnX` per event. `OnDestroy` calls `UIEngine.Forget`.
+- `UIEngine.Poll(RenderWindow)` at the top of `Engine.HandleUI`, ahead of that method's own guards.
+- `UIEngine.HitTest` — `subtreeBounds` early-out, then the node's own `clip` and `arranged`, children walked
+  **last to first**.
+- `UIEngine.Dispatch` — one walk from the hit control up through its parents until a handler returns `true`.
+  Every phase goes through it, `Enter` and `Exit` included.
+- Contexts `NextHovering`, `NextActiveControl`, `NextPressTarget`, with `Context.Set` / `IContext` /
+  `Forget` wired as the outgoing stack wires them.
+- The scaffolding gains `ProbeControl`, which recolours on enter/exit/press/release and consumes or does not.
+
 ## Row layout — measured, not estimated
 
 Printed by `UIEngine.Bootstrap` via `Unsafe.SizeOf` at boot.
@@ -108,6 +124,35 @@ object in existence. Per-character style must therefore live in the run's data, 
 `Control` always wins the hit and dispatch walks up until a handler returns `true`, replacing ~16 `bubbleXxx`
 bool fields and `BubbleAll()`.
 
+**Hover is one control, not a chain.** Hovering a glyph does not make its document, its panel and the window
+root "hovered" — only the deepest hit is. Ancestors hear about it because the event bubbles to them, which is
+the same mechanism press and release use, and it is what lights a button when the pointer is over its label.
+An earlier draft modelled hover as a set and proposed diffing the old and new chains on every move; there is
+no chain to diff. `Exit` fires on the outgoing control, `Enter` on the incoming one, both bubbling.
+
+**The hit-test walks children last to first.** Depth testing is off on both UI pipelines, so what is on top is
+purely what was drawn last, and dense order is DFS — a later sibling and its subtree paint over an earlier one.
+The old `FindDeepestValid` iterates forward and returns the *first* subtree containing the point, so an
+overlapping pair hands the click to the sibling drawn underneath. It never compares candidates; "first" just
+means "added first". `WindowControl.AddOverlay` is the case that would bite, and it only escapes because
+`SolveHover` re-roots at an open menu before the comparison happens. Reversed here.
+
+**Clip plus an axis-aligned box, not a transformed quad.** The old test builds four corners from the pooled
+transform and runs four cross products, with a guard because a collapsed quad passes the edge test for every
+point on the plane. Nothing rotates — `WriteArranged` bakes scale and translation, `ArrangeData` has no
+rotation field, and the old `TransformToWorld`'s rotation is commented out — so `arranged.Contains` is exact
+and a degenerate rect is simply false. `HitsNode` is the single method a future rotation would change.
+
+**The new contexts are `Next`-prefixed.** `A_ActiveContext` registers by name into one dictionary and the last
+registration wins, so a second `[A_ActiveContext("ActiveControl")]` takes the old stack's slot — and
+`Thorium.contexts.xml` derives `ActiveTabViewer` from `ActiveControl`, so Thorium's tab context would quietly
+stop tracking. Same shape as the `VulkanControlData` XSD-name workaround; landing 6 renames both.
+
+**One handler per event, last registration wins.** A multicast `Func<PointerEvent, bool>` returns only the last
+delegate's answer, and OR-ing the invocation list allocates an array on every dispatch — including the `Move`
+that runs each tick the pointer is over anything. A subclass override is the primary mechanism; the delegate is
+for outside wiring. Revisit at landing 6, when it is known what actually registers.
+
 **The subtree caches are refreshed after `Arrange`, not inside it.** Maintaining them on the way out of
 `Arrange` would put the accumulation in the base method, which every override then has to remember to call —
 39 subclasses arrive at landing 6, and one that forgets produces a silently short window range and a hit-test
@@ -142,7 +187,11 @@ validation error. Anything adding a third module should confirm the constant sti
 
 ## Known gaps
 
-- Landings 3–6 are unbuilt. See [../Context/ui-engine-plan.md](../Context/ui-engine-plan.md).
+- Landings 4–6 are unbuilt. See [../Context/ui-engine-plan.md](../Context/ui-engine-plan.md).
+- **Scroll, drag and context-menu gating are not ported.** `SolveScroll` and its `ScrollableControl` walk,
+  `ContextMenus.OpenIn` / `DismissedBy`, `SolveDrag` and the whole drop-hint path stay in the old stack.
+- `canBeActiveContext` and `takesActiveControl` are not ported either — 6 subclasses override them, so they
+  arrive with the landing 6 port. Until then every hit control can take the active context.
 - `UIEngine.Bootstrap` builds a scaffolding tree on the primary window. The port at landing 6 removes it.
 - **Only `WindowRoot` holds siblings.** A plain `Control` throws on a second child, as the old base does, and
   its `Measure`/`Arrange` handle one. Containers arrive with the landing 6 port; nothing between now and then

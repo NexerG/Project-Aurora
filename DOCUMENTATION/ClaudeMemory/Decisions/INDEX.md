@@ -32,7 +32,7 @@ Standing constraints (ECS storage, Vulkan internals, physics, XSD-not-JSON) are 
 | [[entity-reparenting-and-names]] | reparenting is detach + the new parent's `AddChild`; a name lives on `Entity` | `Entity`, `VulkanControl` |
 | [[window-scaling-modes]] | a window root has a windowing mode, and the ortho box is what changes | `WindowControl`, `AuroraCamera`, `EntityRegistry.uiTree` |
 | [[ui-data-control-split]] | **SUPERSEDED in approach** — the split was right, the in-place migration was not; see [[ui-engine-stack]] | — |
-| [[ui-engine-stack]] | **PARTIAL** — the UI is rebuilt in a new namespace beside the old one; `Control` is CPU, `VulkanControl` is one GPU quad. Landings 1–2 built: it draws, measures, arranges and takes a per-window slice | `UIEngine`, `Control`, `WindowRoot`, `ArrangeData`, `ControlGeometry`, `VulkanControl`, `UIEngineModule` |
+| [[ui-engine-stack]] | **PARTIAL** — the UI is rebuilt in a new namespace beside the old one; `Control` is CPU, `VulkanControl` is one GPU quad. Landings 1–3 built: it draws, measures, arranges, takes a per-window slice and dispatches the pointer | `UIEngine`, `Control`, `WindowRoot`, `ArrangeData`, `ControlGeometry`, `VulkanControl`, `PointerEvent`, `UIEngineModule` |
 
 ## Containers and navigation
 

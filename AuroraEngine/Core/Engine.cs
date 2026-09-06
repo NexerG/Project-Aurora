@@ -326,6 +326,9 @@ namespace ArctisAurora.EngineWork
         {
             if (window.closeRequested) return;
 
+            // Ahead of the guards below, so the new stack still hears the pointer leaving a window.
+            UIEngine.Poll(window);
+
             // A pressed button captures the pointer to the window it went down in, which keeps
             // reporting positions far outside itself and stops every other window hearing anything.
             // So the drag's own window drives the whole gesture, wherever the pointer has gone.

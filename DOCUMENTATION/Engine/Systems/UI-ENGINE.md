@@ -25,7 +25,7 @@ The UI is being rebuilt in a new namespace beside the old one rather than migrat
 
 The rebuild exists to separate three kinds of data that were previously one row. What the layout pass reads never reaches the GPU at all. What the arrange pass produces and what the paint properties produce go to the GPU as two independent buffers, because a window resize and a colour change dirty completely different bytes and had been forcing each other's uploads.
 
-> The stack draws and lays itself out. Input, text and images are designed and agreed but do not exist yet.
+> The stack draws, lays itself out and answers the pointer. Text and images are designed and agreed but do not exist yet.
 
 ## Two things are called a control
 
@@ -159,17 +159,29 @@ The engine drives the UI from two places in the tick rather than one, and the sp
 
 Input is polled where the old collision handler was called, before entity logic runs. Layout is resolved after entity logic, because anything that invalidates layout from inside a tick — a glyph resync, a caret move — would otherwise land a frame late and show up as a one-frame lag that is very hard to attribute.
 
-Layout resolution is in place. Input polling is not.
-
 ```
 Poll(window)
+	if the window has no tree
+		return
+	turn the window's pointer position into the tree's own units
+	if the pointer is no longer inside this window
+		if the hovered control belongs to our tree
+			clear the hover
+		return
 	resolve the deepest control under the pointer
-	if it changed since last tick
-		tell the old one it was exited
-		tell the new one it was entered
-	dispatch press, release and hover to it
-	walk up from it until a handler consumes the event
+	if it is not the one hovered last tick
+		dispatch an exit from the old one
+		make the new one the hovered control
+		dispatch an enter from it
+	dispatch a move from the hovered control
+	for each mouse button
+		if it went down this tick
+			dispatch a press
+		if it came up this tick
+			dispatch a release
 ```
+
+Every window polls, and the hover is global because there is one pointer — hence the check that a leaving window only clears a hover that was its own.
 
 ## Hit-testing
 
@@ -177,7 +189,33 @@ Every control is hit-testable. There is no opt-out flag, and a decoration sittin
 
 The deepest control under the pointer always wins the hit, and the event then walks up the tree until some handler consumes it by returning true. A control with no handler consumes nothing, so the click reaches whatever above it does care, and the event carries the control that was actually under the pointer so an ancestor handling it still knows what was hit.
 
+```
+HitTest(control, point)
+	if the control is hidden
+		return nothing
+	if the point is outside the rectangle covering its whole subtree
+		return nothing
+	for each child, last to first
+		ask the same question of that child
+		if it answered, return that answer
+	if the point is inside both the control's clip and its own box
+		return the control
+	return nothing
+```
+
 The walk rejects whole subtrees using a cached bounding rectangle that covers an element and everything under it, which is a strictly tighter test than the inherited clip rectangle the old stack used.
+
+Children are asked last to first because that is the reverse of the order they were drawn in, so the sibling painted on top is the one that answers. The old stack asks them front to back and takes the first hit, which quietly hands the click to whichever overlapping sibling happens to be underneath.
+
+The test itself is the intersection of the control's clip rectangle and its own arranged box. Both are axis-aligned, and nothing in the UI rotates, so an axis-aligned test is exact rather than an approximation. If rotation ever arrives, this is the one place that changes.
+
+## Hovering
+
+Exactly one control is hovered: the deepest one under the pointer. Its parents are not hovered. Hovering a letter does not mean the paragraph, the document, the panel and the window are all hovered too.
+
+What reaches the parents is the *event*, by the same bubbling every other pointer event uses. The letter is told it was entered; if it does not consume that, its run is told, then the paragraph, and so on up until something does. That is what makes hovering a button's label light the button, without the button having to know a label exists.
+
+When the pointer moves from one control to another, the old one is sent an exit and the new one an enter — each bubbling on its own. Moving the pointer within a control sends it a move, every tick.
 
 ## Text and the caret
 

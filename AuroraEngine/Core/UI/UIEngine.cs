@@ -11,7 +11,7 @@ using System.Runtime.CompilerServices;
 
 namespace ArctisAurora.Core.UI
 {
-    // Entry point of the UI, on the main thread. Poll() arrives at landing 3.
+    // Entry point of the UI, on the main thread.
     public static class UIEngine
     {
         private static readonly LogChannel Log = LogChannel.For("UIEngine");
@@ -91,6 +91,202 @@ namespace ArctisAurora.Core.UI
                 Log.Error($"'{control.name}' subtreeBounds ({a.subtreeBounds.x}, {a.subtreeBounds.y}, " +
                           $"{a.subtreeBounds.width}, {a.subtreeBounds.height}) != recomputed " +
                           $"({bounds.x}, {bounds.y}, {bounds.width}, {bounds.height})");
+        }
+        #endregion
+
+        #region ---- input ----
+        // One pointer, so these are global. The names carry a Next prefix because A_ActiveContext
+        // registers by name into one dictionary and the outgoing stack owns the plain ones — landing
+        // 6 renames them when it deletes Core.UISystem.
+        [A_ActiveContext("NextHovering")]
+        public static Control hovering { get; set; }
+
+        [A_ActiveContext("NextActiveControl")]
+        public static Control activeControl { get; set; }
+
+        [A_ActiveContext("NextPressTarget")]
+        public static Control pressTarget { get; set; }
+
+        private static Vector2D<float> _lastPoint;
+        private static bool _sameTargetTap;
+
+        // Resolves the pointer against one window's tree and dispatches what the buttons did.
+        public static void Poll(RenderWindow window)
+        {
+            WindowRoot root = window.uiNext?.uiRoot;
+            if (root == null) return;
+
+            Vector2D<float> point = root.ToDesignSpace(window.mousePos, window.os.windowSize);
+            Vector2D<float> delta = point - _lastPoint;
+            _lastPoint = point;
+
+            // The pointer left this window, so nothing of ours is under it any more. Scoped to our
+            // own tree, because every window polls and the contexts are global.
+            if (!window.isInWindow)
+            {
+                if (RootOf(hovering) == root) SetHovering(null, point, delta);
+                return;
+            }
+
+            SolveHover(point, delta, root);
+
+            KeyStateEntry lmb = InputHandler.instance.keyTracker.GetState(Keys.MouseLeft);
+            KeyStateEntry rmb = InputHandler.instance.keyTracker.GetState(Keys.MouseRight);
+
+            if (lmb != null)
+            {
+                if (lmb.justPressed) SolvePress(point, delta, PointerEvent.leftButton);
+                if (lmb.justReleased) SolveRelease(point, delta, PointerEvent.leftButton, lmb.tapCount);
+            }
+
+            if (rmb != null)
+            {
+                if (rmb.justPressed) SolvePress(point, delta, PointerEvent.rightButton);
+                if (rmb.justReleased) SolveRelease(point, delta, PointerEvent.rightButton, rmb.tapCount);
+            }
+        }
+
+        private static void SolveHover(Vector2D<float> point, Vector2D<float> delta, WindowRoot root)
+        {
+            Control deepest = HitTest(root, point);
+            if (ReferenceEquals(deepest, root)) deepest = null;
+
+            SetHovering(deepest, point, delta);
+
+            if (hovering != null)
+                Dispatch(Event(hovering, point, delta, 0, 0), PointerPhase.Move);
+        }
+
+        private static void SetHovering(Control control, Vector2D<float> point, Vector2D<float> delta)
+        {
+            if (ReferenceEquals(hovering, control)) return;
+
+            Control previous = hovering;
+            (previous as IContext)?.OnContextRemoved("NextHovering");
+            if (previous != null)
+                Dispatch(Event(previous, point, delta, 0, 0), PointerPhase.Exit);
+
+            Context.Set("NextHovering", control);
+            (control as IContext)?.OnContextAdded("NextHovering");
+            if (control != null)
+                Dispatch(Event(control, point, delta, 0, 0), PointerPhase.Enter);
+        }
+
+        private static void SolvePress(Vector2D<float> point, Vector2D<float> delta, int button)
+        {
+            if (hovering == null) return;
+
+            if (button == PointerEvent.leftButton)
+            {
+                Control previous = pressTarget;
+                _sameTargetTap = ReferenceEquals(hovering, previous);
+                if (!_sameTargetTap)
+                {
+                    Context.Set("NextPressTarget", hovering);
+                    (previous as IContext)?.OnContextRemoved("NextPressTarget");
+                    (hovering as IContext)?.OnContextAdded("NextPressTarget");
+                }
+                SetActiveControl(hovering);
+            }
+
+            Dispatch(Event(hovering, point, delta, button, 0), PointerPhase.Press);
+        }
+
+        // A release only counts on the control the press landed on, so dragging off a button cancels it.
+        private static void SolveRelease(Vector2D<float> point, Vector2D<float> delta, int button, int tapCount)
+        {
+            if (hovering == null) return;
+            if (button == PointerEvent.leftButton && !ReferenceEquals(hovering, pressTarget)) return;
+
+            Dispatch(Event(hovering, point, delta, button, tapCount), PointerPhase.Release);
+
+            if (button == PointerEvent.leftButton && tapCount >= 2 && _sameTargetTap)
+                Dispatch(Event(hovering, point, delta, button, tapCount), PointerPhase.Tap);
+        }
+
+        // Also called with no click behind it, by anything that has to hold the active context before
+        // the pointer ever reaches it.
+        public static void SetActiveControl(Control control)
+        {
+            if (ReferenceEquals(activeControl, control)) return;
+
+            Control previous = activeControl;
+            Context.Set("NextActiveControl", control);
+            (previous as IContext)?.OnContextRemoved("NextActiveControl");
+            (control as IContext)?.OnContextAdded("NextActiveControl");
+        }
+
+        // Drops a destroyed control out of every context holding it. Assigns directly — the control
+        // is going away, so notifying it is the thing to avoid.
+        public static void Forget(Control control)
+        {
+            if (ReferenceEquals(hovering, control)) hovering = null;
+            if (ReferenceEquals(activeControl, control)) activeControl = null;
+            if (ReferenceEquals(pressTarget, control)) pressTarget = null;
+            Context.Forget(control);
+        }
+
+        // Deepest control whose clip and box hold the point. Children last to first, because depth
+        // testing is off and the later sibling is the one drawn on top.
+        public static Control HitTest(Control control, Vector2D<float> point)
+        {
+            if (control.hidden) return null;
+            if (!control.arrange.subtreeBounds.Contains(point)) return null;
+
+            for (int i = control.children.Count - 1; i >= 0; i--)
+            {
+                if (control.children[i] is not Control child) continue;
+
+                Control deeper = HitTest(child, point);
+                if (deeper != null) return deeper;
+            }
+            return HitsNode(control, point) ? control : null;
+        }
+
+        // The clip is inherited, so a point outside it rules the control out wherever it was arranged.
+        // An axis-aligned box is exact while nothing rotates; a rotation would change only this.
+        private static bool HitsNode(Control control, Vector2D<float> point)
+        {
+            ref ArrangeData a = ref control.arrange;
+            return a.clip.Contains(point) && a.arranged.Contains(point);
+        }
+
+        private static void Dispatch(PointerEvent e, PointerPhase phase)
+        {
+            Control control = e.target;
+            while (control != null)
+            {
+                bool consumed = phase switch
+                {
+                    PointerPhase.Enter => control.OnPointerEnter(e),
+                    PointerPhase.Exit => control.OnPointerExit(e),
+                    PointerPhase.Move => control.OnPointerMove(e),
+                    PointerPhase.Press => control.OnPointerPress(e),
+                    PointerPhase.Release => control.OnPointerRelease(e),
+                    PointerPhase.Tap => control.OnPointerTap(e),
+                    _ => false
+                };
+                if (consumed) return;
+                control = control.parent as Control;
+            }
+        }
+
+        private static PointerEvent Event(Control target, Vector2D<float> point, Vector2D<float> delta,
+                                          int button, int tapCount) =>
+            new PointerEvent
+            {
+                target = target,
+                point = point,
+                delta = delta,
+                button = button,
+                tapCount = tapCount
+            };
+
+        private static Control RootOf(Control control)
+        {
+            while (control?.parent is Control parent)
+                control = parent;
+            return control;
         }
         #endregion
 
@@ -209,7 +405,7 @@ namespace ArctisAurora.Core.UI
         // landing 6 removes it.
         private static void BuildScaffolding(RenderWindow window)
         {
-            Control bar = new Control
+            Control bar = new ProbeControl
             {
                 name = "bar",
                 preferredHeight = 48,
@@ -217,6 +413,28 @@ namespace ArctisAurora.Core.UI
                 verticalAlignment = VerticalAlignment.Bottom,
                 colorHex = "#06D6A0",
                 cornerRadius = 6f
+            };
+
+            // Overlapping siblings. over is added last, so it draws on top and must take the hit.
+            Control under = new ProbeControl
+            {
+                name = "under",
+                preferredWidth = 200,
+                preferredHeight = 120,
+                horizontalAlignment = HorizontalAlignment.Center,
+                verticalAlignment = VerticalAlignment.Center,
+                colorHex = "#8338EC",
+                cornerRadius = 8f
+            };
+            Control over = new ProbeControl
+            {
+                name = "over",
+                preferredWidth = 120,
+                preferredHeight = 200,
+                horizontalAlignment = HorizontalAlignment.Center,
+                verticalAlignment = VerticalAlignment.Center,
+                colorHex = "#FB5607",
+                cornerRadius = 8f
             };
 
             Control clipped = new Control
@@ -239,7 +457,7 @@ namespace ArctisAurora.Core.UI
             };
             clipped.AddChild(overflow);
 
-            Control card = new Control
+            Control card = new ProbeControl
             {
                 name = "card",
                 preferredWidth = 360,
@@ -259,7 +477,8 @@ namespace ArctisAurora.Core.UI
                 colorHex = "#12314A",
                 cornerRadius = 8f
             };
-            Control leaf = new Control
+            // Passes everything through, so hovering it lights card two levels up.
+            Control leaf = new ProbeControl(consumes: false)
             {
                 name = "leaf",
                 preferredWidth = 120,
@@ -273,9 +492,49 @@ namespace ArctisAurora.Core.UI
             WindowRoot root = new WindowRoot { name = "root", padding = new Thickness(24) };
             root.AddChild(card);
             root.AddChild(clipped);
+            root.AddChild(under);
+            root.AddChild(over);
             root.AddChild(bar);
 
             window.uiNext.uiRoot = root;
+        }
+
+        // Landing 3 scaffolding: makes hover and press visible, and consumes or does not on demand.
+        // The port at landing 6 removes it.
+        private class ProbeControl : Control
+        {
+            private readonly bool _consumes;
+            private string _resting;
+
+            public ProbeControl(bool consumes = true)
+            {
+                _consumes = consumes;
+            }
+
+            public override bool OnPointerEnter(PointerEvent e)
+            {
+                _resting ??= colorHex;
+                colorHex = "#FFFFFF";
+                return _consumes;
+            }
+
+            public override bool OnPointerExit(PointerEvent e)
+            {
+                colorHex = _resting;
+                return _consumes;
+            }
+
+            public override bool OnPointerPress(PointerEvent e)
+            {
+                colorHex = "#111111";
+                return _consumes;
+            }
+
+            public override bool OnPointerRelease(PointerEvent e)
+            {
+                colorHex = "#FFFFFF";
+                return _consumes;
+            }
         }
     }
 }

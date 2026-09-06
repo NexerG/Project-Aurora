@@ -120,6 +120,7 @@ Namespace shorthands used in the tables:
 | the **new** UI draw path | `Render.Modules.UIEngineModule` (`window.uiNext`, `uiRoot`, `firstInstance`); `UINext.UIEngine`, `Control`, `WindowRoot` | `AuroraEngine/Data/XML/Documents/Pools.pools.xml` (`UIElements`, `VulkanControls`) | [[ui-engine-stack]] |
 | the **new** measure/arrange pass, dirty roots, per-window ranges | `UINext.UIEngine` (`ResolveLayout`, `RefreshWindowRanges`, `NextElementOrder`, `NextControlOrder`); `UINext.Control` (`Measure`, `Arrange`, `InvalidateLayout`) | `Pools.pools.xml` (`SortAction`) | [[ui-engine-stack]] |
 | the **new** window root, design-space fitting | `UINext.WindowRoot` (`FitTo`, `ViewportSize`, `ToDesignSpace`) | — | [[ui-engine-stack]] |
+| the **new** hit-test, hover, press, bubbling | `UINext.UIEngine` (`Poll`, `HitTest`, `Dispatch`, `Forget`); `UINext.PointerEvent`, `PointerPhase`; `UINext.Control` (`OnPointerX`, `RegisterOnX`) | — | [[ui-engine-stack]] |
 | compositing several modules into one window | `Core.Rendering.Modules.CompositorModule`; `compositorOrder` on `Render.Modules.RenderingModule` | — | [[ui-engine-stack]] |
 | new UI shaders | `*/Shaders/UIEngine/UIEngine.vert`, `UIEngine.frag` — four copies | — | `shader-pipeline` skill |
 | buffers, GPU memory | `Render.Helpers.AVulkanBufferHandler` | — | [[mapped-streaming-buffers]], [[engine-resource-manager]] |
