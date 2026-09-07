@@ -396,7 +396,8 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
-/.claude
+/.claude/*
+!/.claude/skills/
 
 # Obsidian
 DOCUMENTATION/.obsidian/
