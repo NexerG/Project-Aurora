@@ -77,16 +77,62 @@ These rules apply **only** to the vault. They do not apply to ClaudeMemory.
 
 ## Work in Progress List
 
-One checklist entry, and the surrounding entries are the template. The shape:
+**The WIP list holds open work only.** It is the file that answers "what am I working on", so it has to be
+readable whole in one cheap read. Two rules keep it that way, and they are the only two.
+
+### A landed entry leaves the file
+
+On completion the entry moves to `DOCUMENTATION/Changelog.md` — verbatim, appended, dated. It does not stay
+behind as a `- [x]`. Narrative is free in the Changelog because nothing reads it whole; in the WIP list it is
+the entire problem. When this rule was written the list was 187 KB, and **81% of it was completed work** —
+138 done entries averaging 1095 B against 202 open entries averaging 171 B.
+
+**A done entry with open children is two different situations, and they get opposite treatment.**
+
+- **The children are residual gaps in the thing that landed** — they would read as nonsense standing alone.
+  The parent stays, **as a stub**: headline, date, `— landed, See …`. The narrative is already in the note it
+  points at, so keeping it here is pure duplication. 12 entries are in this state.
+- **A child is its own piece of work that merely got filed underneath** — Alt+F4 under "shutdown is a
+  sequence", the folder browser under "Project browser". **Promote the child to its parent's level and let
+  the parent leave.** 9 entries went this way at the split.
+
+The test: read the child on its own. If it still makes sense, it does not belong nested.
 
 ```
-- [x] **short headline (2026-08-23)** — what changed and the reasoning that matters, dense, single physical line. **Verified**: what was actually checked. **NOT GUI-verified.** See `ClaudeMemory/Decisions/note-name.md`
+- **short headline (2026-08-23)** — what changed and the reasoning that matters, dense, single physical line. **Verified**: what was actually checked. **NOT GUI-verified.** See `ClaudeMemory/Decisions/note-name.md`
 ```
 
-- Nest open follow-ups under it as `- [ ]` children rather than starting a new top-level item.
-- The verification claim is load-bearing and has its own rules — see the `aurora-verify` skill for which word
-  is honest.
+The verification claim is load-bearing and has its own rules — see `aurora-verify` for which word is honest.
+
+### An open entry is an index row, not a write-up
+
+Hard cap **~400 characters**. An item that needs a paragraph has earned a `Decisions/` note; write the note
+and let the entry point at it.
+
+```
+- [ ] **`WindowRoot.Arrange` ignores a child's `margin`** — landing 2 behaviour, found by 6a's probe → `stack-panel-arrange-clamp`
+```
+
+This is the discipline `Decisions/INDEX.md` already runs on: 70 notes in 13 KB, because each row says what the
+note settles and then stops. Without the cap, eviction is a one-time cut and the file regrows — 24 open
+entries were already over 400 characters, carrying half of all open work between them.
+
+### A multi-part plan gets its own file
+
+An entry describing work in several parts — slices, stages, an A-to-N sequence, or a design with open
+questions — does not belong in the list at all. It goes to `ClaudeMemory/Context/<name>-plan.md` and leaves a
+descriptor: what it is, the one thing that makes it matter, and the pointer. `log-viewer-plan.md` is the model
+for the file; `ui-animation-plan.md`, `file-chooser-plan.md` and `keybind-intent-plan.md` were split out this
+way. Append to an existing plan file when the work is a follow-up to one — the entity-registry group went into
+`multi-windowing-plan.md`, not a file of its own.
+
+A plan file states its status in its own header. **"Agreed" and "nothing designed yet" are different files** —
+do not let a wish list read as a settled plan.
+
+- Nest open follow-ups as `- [ ]` children under their parent rather than starting a new top-level item —
+  children are how a multi-part item tracks its own progress, and that is the only thing they are for.
 - Strike through and mark `**REVERTED <date>**` rather than deleting an entry that was undone.
+- The tripwire is in `aurora-orient`: `wc -c` over 40 KB means the list needs curating.
 
 ## What does not get written down
 
@@ -105,6 +151,10 @@ list and every decision note that repeated it — not only the newest file.
 - The ClaudeMemory note hardcodes no paths outside the `**Scope:**` line.
 - Every `[[link]]` names a file that exists in `ClaudeMemory/`, or is deliberately a forward reference.
 - The WIP entry's verification word matches what was actually done.
+- Every `- [x]` still in the WIP list has an open descendant, and no new open entry is over 400 characters:
+  `grep '\[ \]' "DOCUMENTATION/Work in Progress List.md" | awk 'length>400' | wc -l`
+  (24 legacy long entries predate the cap and drain as their work lands — do not retro-cap them, 20 have no
+  note to point at yet.)
 - Every note in `Decisions/` has a row in `Decisions/INDEX.md`:
   `ls Decisions/*.md | while read f; do n=$(basename "$f" .md); case "$n" in INDEX|README) continue;; esac;
   grep -q "\[\[$n\]\]" Decisions/INDEX.md || echo "unindexed: $n"; done`

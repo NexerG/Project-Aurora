@@ -28,7 +28,7 @@ or a host's `Data/XML/Documents/Inputs/InputMap.inputs.xml` that resolves to not
 ## Build
 
 ```bash
-cd "C:/Projects-Repositories/Aurora/Project-Aurora" && dotnet build AuroraEngine/ArctisAurora.sln
+cd "$(git rev-parse --show-toplevel)" && dotnet build AuroraEngine/ArctisAurora.sln 2>&1 | grep -E "error|Build succeeded|Build FAILED"
 ```
 
 Nothing in the build compiles or validates shaders — a `.spv` change is invisible to it. See `shader-pipeline`.

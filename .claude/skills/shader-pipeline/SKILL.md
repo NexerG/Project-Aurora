@@ -21,13 +21,13 @@ sources fall cosmetically out of step while every `.spv` stayed identical, so no
 One shader — the usual case:
 
 ```bash
-cd "C:/Projects-Repositories/Aurora/Project-Aurora/AuroraEngine/Shaders" && glslc --target-env=vulkan1.3 UIRasterizer/UI.vert -o UIRasterizer/UI.vert.spv
+cd "$(git rev-parse --show-toplevel)/AuroraEngine/Shaders" && glslc --target-env=vulkan1.3 UIRasterizer/UI.vert -o UIRasterizer/UI.vert.spv
 ```
 
 All nineteen:
 
 ```bash
-cd "C:/Projects-Repositories/Aurora/Project-Aurora/AuroraEngine/Shaders" && for s in Modules/Compositor/compositor.vert Modules/Compositor/compositor.frag PathtracingShaders/closesthit.rchit PathtracingShaders/miss.rmiss PathtracingShaders/raygen.rgen PathtracingShaders/shadows.rmiss RadianceCascades2D/Radiance.Drawing.comp RadianceCascades2D/Radiance.LayerCompute.comp RadianceCascades2D/Radiance.Phosphorus.comp RadianceCascades2D/Radiance.Probes.comp Shadowmap.vert Shadowmap.frag UIEngine/UIEngine.vert UIEngine/UIEngine.frag UIRasterizer/UI.vert UIRasterizer/UI.frag vulkan.vert vulkan.frag; do glslc --target-env=vulkan1.3 "$s" -o "$s.spv" || echo "FAILED $s"; done; glslc --target-env=vulkan1.3 RadianceCascades2D/Radiance.compute.comp -o RadianceCascades2D/Radiance.comp.spv || echo "FAILED Radiance.compute.comp"
+cd "$(git rev-parse --show-toplevel)/AuroraEngine/Shaders" && for s in Modules/Compositor/compositor.vert Modules/Compositor/compositor.frag PathtracingShaders/closesthit.rchit PathtracingShaders/miss.rmiss PathtracingShaders/raygen.rgen PathtracingShaders/shadows.rmiss RadianceCascades2D/Radiance.Drawing.comp RadianceCascades2D/Radiance.LayerCompute.comp RadianceCascades2D/Radiance.Phosphorus.comp RadianceCascades2D/Radiance.Probes.comp Shadowmap.vert Shadowmap.frag UIEngine/UIEngine.vert UIEngine/UIEngine.frag UIRasterizer/UI.vert UIRasterizer/UI.frag vulkan.vert vulkan.frag; do glslc --target-env=vulkan1.3 "$s" -o "$s.spv" || echo "FAILED $s"; done; glslc --target-env=vulkan1.3 RadianceCascades2D/Radiance.compute.comp -o RadianceCascades2D/Radiance.comp.spv || echo "FAILED Radiance.compute.comp"
 ```
 
 `--target-env=vulkan1.3` is not optional. It is what emits SPIR-V 1.6, which is what every shipped `.spv` here
@@ -36,13 +36,13 @@ is. Drop it and you get an older SPIR-V that fails to load at pipeline creation,
 ## Mirror
 
 ```bash
-cd "C:/Projects-Repositories/Aurora/Project-Aurora/AuroraEngine/Shaders" && find . -type f ! -name '*.png' | while read f; do cp "$f" "../../Thorium/Shaders/$f"; cp "$f" "../../AuroraEditor/Shaders/$f"; if [ -f "../../Carbon/Shaders/$f" ]; then cp "$f" "../../Carbon/Shaders/$f"; fi; done
+cd "$(git rev-parse --show-toplevel)/AuroraEngine/Shaders" && find . -type f ! -name '*.png' | while read f; do cp "$f" "../../Thorium/Shaders/$f"; cp "$f" "../../AuroraEditor/Shaders/$f"; if [ -f "../../Carbon/Shaders/$f" ]; then cp "$f" "../../Carbon/Shaders/$f"; fi; done
 ```
 
 ## Verify — prints only mismatches
 
 ```bash
-cd "C:/Projects-Repositories/Aurora/Project-Aurora" && for f in $(cd AuroraEngine/Shaders && find . -type f ! -name '*.png' | sort); do s=ok; cmp -s "AuroraEngine/Shaders/$f" "Thorium/Shaders/$f" || s="DIFF-Thorium"; cmp -s "AuroraEngine/Shaders/$f" "AuroraEditor/Shaders/$f" || s="$s DIFF-Editor"; if [ -f "Carbon/Shaders/$f" ]; then cmp -s "AuroraEngine/Shaders/$f" "Carbon/Shaders/$f" || s="$s DIFF-Carbon"; fi; [ "$s" = ok ] || echo "$s  $f"; done; echo "--- comparison done ---"
+cd "$(git rev-parse --show-toplevel)" && for f in $(cd AuroraEngine/Shaders && find . -type f ! -name '*.png' | sort); do s=ok; cmp -s "AuroraEngine/Shaders/$f" "Thorium/Shaders/$f" || s="DIFF-Thorium"; cmp -s "AuroraEngine/Shaders/$f" "AuroraEditor/Shaders/$f" || s="$s DIFF-Editor"; if [ -f "Carbon/Shaders/$f" ]; then cmp -s "AuroraEngine/Shaders/$f" "Carbon/Shaders/$f" || s="$s DIFF-Carbon"; fi; [ "$s" = ok ] || echo "$s  $f"; done; echo "--- comparison done ---"
 ```
 
 Silence between the command and `--- comparison done ---` is a pass.

@@ -65,12 +65,15 @@ ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/ThreadedSystem.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ContainerControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Control.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ControlXml.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DrawList.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextButtonControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextCaretControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextIconControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextLabelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextPanelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextStackPanelControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextTitleBarControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextWindowFrameControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PointerEvent.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TextRunControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UIData.cs

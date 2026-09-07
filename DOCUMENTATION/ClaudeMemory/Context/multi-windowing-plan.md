@@ -320,6 +320,28 @@ round trip — tear off outside, drag back into the main strip — leaves both t
 emptied window. Ten cycles: zero failures, zero validation output, private bytes 202.0→197.7MB and
 handles 654→652, never more than one preview window.
 
+## Open follow-up — an entity registry group of top-level controls
+
+**Not built.** So a window can grab or reference a root without walking the tree.
+
+`EntityRegistry` already has the group mechanism — `Controls` is a group, and `GetGroup(name).As<T>()`
+is how `MCUI` and `UIModule` reach it. This is a **second group holding only roots**, written on root
+assignment and on reparent, plus a lookup answering "which root owns this control" without climbing
+`parent` to the top.
+
+Wanted by three slices above:
+
+| Slice | Needs |
+|---|---|
+| 1 | `UI.DFSOrder` needs the roots in a stable order |
+| 3 | `RenderWindow.Of(control)` |
+| 5 | a torn-off window needs its new root registered |
+
+It also retires the `FindByName` walks from the window root that `VaultBrowserControl` does on every
+note open. **Slice 3 turned that from a tidiness point into a visible bug:** those walks start at
+`Engine.primary.ui.uiRoot`, so clicking a note in the **second** window's sidebar opens it in the
+**first**.
+
 ## Known traps carried forward
 
 - **Frame pacing across N FIFO swapchains on one render thread.** Serial acquire→present will settle
