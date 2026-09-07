@@ -39,6 +39,39 @@
 	               HorizontalAlignment="Stretch" VerticalAlignment="Bottom"
 	               ColorHex="#06D6A0" CornerRadius="6"/>
 
+	<!-- 6b tier 1: a sized pane against a star one, and a star pair inside it -->
+	<NextSplitView Name="split"
+	               Orientation="Horizontal"
+	               Width="420" Height="200"
+	               HorizontalAlignment="Left" VerticalAlignment="Center">
+		<NextPanel Name="paneA" Width="160" ColorHex="#2A2F3A" CornerRadius="6"/>
+		<NextSplitter Name="gripH" Width="5"/>
+		<NextSplitView Name="splitV" Orientation="Vertical" WidthStar="1">
+			<NextPanel Name="paneB" HeightStar="1" ColorHex="#12314A" CornerRadius="6"/>
+			<NextSplitter Name="gripV" Height="5"/>
+			<NextPanel Name="paneC" HeightStar="1" ColorHex="#EF476F" CornerRadius="6"/>
+		</NextSplitView>
+	</NextSplitView>
+
+	<!-- 6b tier 1: content overflowing on both axes, so both thumbs show -->
+	<NextScrollable Name="scroller"
+	                Width="260" Height="200"
+	                HorizontalAlignment="Right" VerticalAlignment="Center"
+	                ScrollDirection="Both"
+	                ColorHex="#1A1D24" CornerRadius="6">
+		<!-- alternating row widths, so a horizontal shift is visible at all -->
+		<NextStackPanel Name="scrollBody" Orientation="Vertical" Width="420" Spacing="6">
+			<NextPanel Width="420" Height="40" ColorHex="#3AA6FF"/>
+			<NextPanel Width="140" Height="40" ColorHex="#06D6A0"/>
+			<NextPanel Width="420" Height="40" ColorHex="#FFD166"/>
+			<NextPanel Width="140" Height="40" ColorHex="#EF476F"/>
+			<NextPanel Width="420" Height="40" ColorHex="#8338EC"/>
+			<NextPanel Width="140" Height="40" ColorHex="#3AA6FF"/>
+			<NextPanel Width="420" Height="40" ColorHex="#06D6A0"/>
+			<NextPanel Width="140" Height="40" ColorHex="#FFD166"/>
+		</NextStackPanel>
+	</NextScrollable>
+
 	<!-- the gradient table, ramped across the control's own rect -->
 	<NextContainer Name="ramp"
 	               Width="240" Height="120"
@@ -93,6 +126,15 @@
 			          HorizontalPos="0.5" VerticalPos="0.5" ColorHex="#5F5D56"/>
 		</NextButton>
 	</NextTitleBar>
+
+	<!-- 6b tier 1: content that fits, so neither thumb may draw -->
+	<NextScrollable Name="fits"
+	                Width="200" Height="120"
+	                HorizontalAlignment="Center" VerticalAlignment="Bottom"
+	                ScrollDirection="Both"
+	                ColorHex="#1A1D24" CornerRadius="6">
+		<NextPanel Name="fitsBody" Width="120" Height="60" ColorHex="#06D6A0"/>
+	</NextScrollable>
 
 </NextWindowFrame>
 

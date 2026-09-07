@@ -283,7 +283,45 @@ The release ends the drag, and it is handled before the checks that guard an ord
 
 The drop goes to the target and stops there. It is not offered up the tree the way a click is, so a container that wants to accept drops aimed at its children has to be the thing under the pointer, not merely an ancestor of it.
 
-> That is as far as the new stack goes. Nothing tells the *dragged* control anything at all — not that the pointer moved, not that the gesture ended. Nothing previews a drag, nothing actually reparents, and there are no context menus. Those arrive with the controls that need them; until then the old stack owns all of it.
+The claimant hears the gesture too, and hears it differently from everyone else. Where the target is told things that bubble, the claimant is handed its position every tick and told once when the gesture ends — delivered straight to it, never walked up, because a drag belongs to the control that claimed it and to nothing above. That directness is what a splitter, a scroll thumb and a window frame all need: each of them only wants to know where the pointer is now, and each of them answers by moving something.
+
+A drag whose release was never seen is abandoned rather than left running. The pointer can leave every window mid-gesture and let go somewhere the engine hears nothing about, so the button is re-checked each tick, and a claim held with the button up ends immediately — the target hears the drag leave, the claimant hears it stop, and no drop is offered, because where the release happened is not knowable. The claim also exempts its own window from the rule that a window with the pointer outside it processes nothing, since a pressed button captures the pointer to the window it went down in and that window is the only one still hearing about the gesture.
+
+> Two halves are still missing. Nothing previews a drag and nothing reparents, so a drop that should move something between containers has no way to show what it would do; and there are no context menus. Those arrive with the controls that need them — tabs, chiefly — and until then the old stack owns both.
+
+## Splits and scrolling
+
+A splitter is a button that resizes the sibling ahead of it. It has no idea what a pane is — it looks at the stack it sits in, takes the control before it and the control after it, and writes sizes onto them. That is the whole design, and it is why a splitter dropped anywhere else is inert rather than broken: with no stack for a parent, there is no sibling ahead, and it simply does nothing.
+
+Which size it writes depends on what it finds. Between a pane with a size and a pane taking a share of what is left, it writes the first pane's size and the second absorbs the difference. Between two panes that both take shares, it cannot write a size at all without dropping one of them out of share-sizing entirely, so instead it splits their combined share between them — the boundary moves and the pair's total does not. A share of zero would stop being a share, which is why each side is floored a pixel above its minimum rather than at it.
+
+The size is computed from where the grab began, not accumulated from each tick's movement. Accumulating drifts: once a pane hits its floor the pointer keeps moving while the pane cannot, and the two part company, so that dragging back the other way does nothing until the accumulated debt is paid off.
+
+```
+OnDrag(point)
+	pane = the sibling ahead of this one
+	if there is none
+		return
+	wanted = the pane's size when the grab began + how far the pointer has moved since
+	if both panes take shares
+		clamp wanted between the two floors
+		give the pane its proportion of the pair's combined share
+		give the next pane the remainder
+	else
+		write wanted onto the pane as its size, no smaller than its minimum
+```
+
+A split view is a stack panel and nothing more. It exists as its own type only so that collapsing a split can never reach chrome someone authored, and it paints nothing of its own — the panes inside it are what you see.
+
+A scrollable is a viewport with one child, and its trick is that it lies in one direction only. It measures its child against its own size rather than against infinity, so the child lays out to a real width and wraps where it should; but whatever the child comes back with, the viewport reports its own size upward. A container that sums past what it was offered is not an error — that overflow *is* the scroll range. Then the child is arranged at its full size and shifted by the scroll offset, and the clip does the rest.
+
+A child that cannot size itself is the one case this cannot absorb. Asked how big it wants to be with no constraint to answer against, it reports the whole offer back, and a stack that sums such a child arrives at a number no scroll range can be computed from. The viewport treats a measurement that large as no measurement at all and falls back to its own size, which makes the range zero. That is the honest outcome — the content genuinely did not say how big it is — rather than a repair for authoring it that way.
+
+Space for a scrollbar is reserved on any axis that can scroll, whether or not a thumb is currently showing. Reserving it only when needed would mean the appearance of a thumb narrows the content, and narrowing the content is exactly what can make it tall enough to need the thumb — a viewport that flickers between two states forever.
+
+There is a thumb per axis, and each is sized by the ratio the track bears to the content, floored so it stays big enough to grab. When an axis fits, its thumb is arranged at zero size, which is enough to make it disappear completely: a zero-area rectangle shares no area with anything, so it neither draws nor answers the hit-test.
+
+Thumbs are appended after the content rather than inserted before it. The hit-test walks children backwards and takes the first thing it finds, so the last child wins an overlap — and a thumb that lost its overlap to the content beneath it could never be grabbed.
 
 ## Building a tree from a document
 

@@ -74,7 +74,14 @@ hands the context up), `NextPanelControl` (`"NextPanel"`, a `Control` and its ta
 enum is `"NextOrientation"` because the old owns `"Orientation"`), `NextButtonControl` (`"NextButton"`, the
 three-state tint over an overridden `colorHex` that keeps the authored rest colour) and `NextIconControl`
 (`"NextIcon"`, `kind = MTSDFControl` plus one `SetUVRect` for the atlas cell). `TextRunControl` is now
-`[A_XSDType("NextTextRun", "UI", isAbstract: true)]` with `Text` / `FontSize` / `FontName` authorable.
+`[A_XSDType("NextTextRun", "UI", isAbstract: true)]` with `Text` / `FontSize` / `FontName` authorable. Landing
+6b1 also carries `NextTitleBarControl` and `NextWindowFrameControl`, which arrived with the window move and
+resize rather than with the strip.
+
+**The 6b2 subclasses**, same folder — `NextSplitterControl` (`"NextSplitter"`, a `NextButtonControl` that
+resizes the sibling ahead of it), `NextScrollableControl` (`"NextScrollable"`, a `ContainerControl` viewport
+whose enum is `"NextScrollDirection"`), `NextScrollThumbControl` (**untagged** — the viewport builds it, XML
+never names it) and `NextSplitViewControl` (`"NextSplitView"`, a `NextStackPanelControl` at `alpha = 0f`).
 
 **`UIEngine`** — `RegisterDirtyRoot` / `ResolveLayout` at the `Interpolate` site, `Poll` at the top of
 `HandleUI`, `HitTest` / `Dispatch` / `Forget` / `SetActiveControl`, the `NextHovering` / `NextActiveControl` /
@@ -357,6 +364,57 @@ clamping, and a stack nested in a stack.
 **The probe's root is now `Padding="0"`**, so `card` and `clipped` are flush to the window corners and the
 title bar covers their top 32 px — `card`'s two top corner radii are no longer visible in the live probe.
 Root padding was verified at landing 2 and is recorded there.
+
+#### 6b2 — splits and scrolling — **DONE 2026-09-08**
+
+`NextSplitterControl`, `NextScrollThumbControl`, `NextScrollableControl`, `NextSplitViewControl`. The tier that
+needed no new engine surface: the per-tick drag half landed with the window frame, so `onDrag` was already
+there, and `OnPointerScroll` already walks up until consumed.
+
+**Forks the user settled, 2026-09-08:** `NextSplitView` is the *type only* — `Split`/`Collapse`/`NewPane`/
+`NewGrip`/`SizePane` and `SplitEdge` are typed on `TabViewControl` end to end, so they land with the tabs;
+transparency is `alpha = 0f` rather than the `"invisible"` mask, matching `WindowRoot` and the frame grips;
+the `contentSize` overflow bug is **fixed in the new copy** rather than ported; XSD names correct the old
+stack's skew, where the *enum* owned `"Scrollable"` and the class owned `"ScrollableControl"` — the new pair is
+`"NextScrollable"` and `"NextScrollDirection"`. A horizontal scrollbar was added on top of the port (user).
+
+Four things the port changed rather than copied:
+
+| Old | New | Why |
+|---|---|---|
+| `children.Insert(0, thumb)` | `children.Add(thumb)` | the hit-test walks **last to first**, so a head-inserted thumb loses every press. Same correction the frame grips carry |
+| one vertical thumb, `ThumbTravel` a float | one thumb per axis, `ThumbTravel` a `Vector2D<float>` | the horizontal scrollbar. Both thumbs always exist; the unused one arranges `LayoutRect.Empty`, and `Overlaps` is strict so a zero-area quad neither draws nor hit-tests |
+| `ResolveOnScrollUp` / `ResolveOnScrollDown` | one `OnPointerScroll` | the wheel is one phase now. Real `e.delta` rather than a forced ±1 tick, and it returns false at the end of an axis so an outer viewport gets the rest |
+| `WriteArrangedTransform` + a hand-rolled `ClipRect` | `WriteArranged` | `clipOutOfBounds = true` in the ctor makes the base intersect |
+
+**The `contentSize` overflow is guarded, not repaired.** A stack offers `float.MaxValue` on its main axis to a
+non-star child; an unsized child returns it, and the sum arrives here as `MaxValue`. `Usable` falls back to the
+viewport past a `float.MaxValue * 0.5f` sentinel, so the range is zero rather than nonsense — the honest
+consequence of authoring an unsized child in a bounded stack, not a repair for it. `Arrange` reads the guarded
+`contentSize` rather than `child.DesiredSize`, so the child is not arranged at `MaxValue` either. The **old**
+stack keeps the bug until 6d deletes it.
+
+→ *verified:* GUI-verified in Thorium against `NextProbe.ui.xml`. A `<NextSplitView>` 420×200 at Left/Center
+holding a 160 px pane, a 5 px `<NextSplitter>` and a nested vertical `<NextSplitView>` of two `HeightStar="1"`
+panes: grips draw at `#2A2A2A`, dragging the horizontal grip +100 px moved the sized pane 160 → 260 with the
+outer width unchanged, and dragging the vertical grip +60 px grew the top star pane and shrank the bottom one
+with their combined extent unchanged (260..460 before and after). A `<NextScrollable ScrollDirection="Both">`
+260×200 over a 420×362 stack shows both thumbs at the measured lengths (vertical 98 px of a 188 px track,
+horizontal 146 px of a 248 px one); four wheel notches scrolled the content up and slid the vertical thumb
+down; dragging the horizontal thumb +80 px scrolled X, read off rows authored at alternating 420/140 widths
+because uniform rows make a horizontal shift invisible. A second `<NextScrollable>` whose content fits draws
+**neither** thumb — the gutter pixels read the viewport's own `#1A1D24`.
+Boot output is **error-for-error identical to a `git stash`ed clean tree**: 18 errors, 9 `vkAllocateMemory`,
+6 barrier `dstAccessMask`, one duplicate-limit notice, one `DemoteToHelperInvocation`, one `SamplerAsset`
+default. Row sizes still 140 / 96 / 92. No resequence warning, no DEBUG subtree-cache mismatch.
+**Not exercised:** the `HResize`/`VResize` cursor change — `GetCursor` from another process reports the
+calling thread's cursor, so the shape is not checkable this way; the wheel bubbling from an exhausted inner
+viewport to an outer one (the probe nests none); a release outside the window ending a grip drag;
+`ScrollIntoView`, which has no caller on the new stack until 6c.
+
+**A scrollable stretches content smaller than its viewport**, because `Arrange` takes `MathF.Max(contentSize,
+inner)` on a scrollable axis. Carried over from the old stack, and visible in the fits-case probe where a
+120×60 panel fills the 176×108 viewport.
 
 #### 6b — chrome, containers, interactables, hosts
 

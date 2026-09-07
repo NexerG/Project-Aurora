@@ -4,7 +4,7 @@
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:import schemaLocation="EntityRegistryTypeSchema.xsd" namespace="http://arctisaurora/AuroraEntityRegistryTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:GradientKind types:TextStyleType types:DockMode types:GridSizeMode types:Scrollable types:NextOrientation types:ControlColor types:FillMode types:HorizontalAlignment types:VeticalAlignment types:WindowingModeEnum types:ScalingAxisEnum types:Orientation" />
+    <xs:union memberTypes="types:NextScrollDirection types:GradientKind types:TextStyleType types:DockMode types:GridSizeMode types:Scrollable types:NextOrientation types:ControlColor types:FillMode types:HorizontalAlignment types:VeticalAlignment types:WindowingModeEnum types:ScalingAxisEnum types:Orientation" />
   </xs:simpleType>
   <xs:attributeGroup name="VaultBrowser.Attributes">
     <xs:attributeGroup ref="types:ScrollableControl.Attributes" />
@@ -60,6 +60,37 @@
   <xs:complexType name="NextPanel">
     <xs:sequence />
     <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+  </xs:complexType>
+  <xs:simpleType name="NextScrollDirection">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Vertical" />
+      <xs:enumeration value="Horizontal" />
+      <xs:enumeration value="Both" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="NextScrollable.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+    <xs:attribute name="ThumbColorHex" type="xs:string" />
+    <xs:attribute name="ThumbHoverColorHex" type="xs:string" />
+    <xs:attribute name="ThumbPressColorHex" type="xs:string" />
+    <xs:attribute name="ScrollDirection" type="types:NextScrollDirection" />
+    <xs:attribute name="ScrollSensitivity" type="xs:float" />
+    <xs:attribute name="Overscroll" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="NextScrollable" type="types:NextScrollable" />
+  <xs:complexType name="NextScrollable">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextScrollable.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextSplitter" type="types:NextSplitter" />
+  <xs:complexType name="NextSplitter">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextButton.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextSplitView" type="types:NextSplitView" />
+  <xs:complexType name="NextSplitView">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextStackPanel.Attributes" />
   </xs:complexType>
   <xs:attributeGroup name="NextStackPanel.Attributes">
     <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
