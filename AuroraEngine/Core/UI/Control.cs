@@ -1,4 +1,3 @@
-using ArctisAurora.Core.Data;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
@@ -7,9 +6,8 @@ using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.UI
 {
-    // One UI element: an ArrangeData row in UIElements and the VulkanControl rows it draws in
-    // VulkanControls. Every control owns rows[0]; a text run appends one per glyph. No transform —
-    // the baked matrix lives in ControlGeometry.
+    // One UI element: an ArrangeData row in UIElements and the quads it emits into a window's draw
+    // list. No transform — the baked matrix lives in ControlGeometry.
     [A_XSDType("NextVulkanControl", "EntityRegistry", isAbstract: true)]
     public partial class Control : Entity
     {
@@ -20,44 +18,13 @@ namespace ArctisAurora.Core.UI
 
         protected override string PoolName => "UIElements";
 
-        // draw rows, in the order the DFS walk emits them
-        internal DataHandle[] rows = null!;
+        // the control's own quad, copied into the draw list by Emit
+        private ControlGeometry _geometry;
+        private VulkanControl _visual;
 
         public ref ArrangeData arrange => ref Pool.GetRef<ArrangeData>(dataHandle);
-        public ref ControlGeometry geometry => ref GeometryAt(0);
-        public ref VulkanControl visual => ref VisualAt(0);
-
-        public ref ControlGeometry GeometryAt(int row) => ref UIEngine.Controls.GetRef<ControlGeometry>(rows[row]);
-        public ref VulkanControl VisualAt(int row) => ref UIEngine.Controls.GetRef<VulkanControl>(rows[row]);
-
-        protected override void AllocatePooledData()
-        {
-            base.AllocatePooledData();
-            rows = new[] { AllocateIn("VulkanControls") };
-        }
-
-        // Appends a draw row and returns its index. The pool resequences to DFS order at the frame
-        // edge, so the new row lands beside the others whatever dense index it took.
-        protected int AllocateRow()
-        {
-            Array.Resize(ref rows, rows.Length + 1);
-            rows[^1] = AllocateIn("VulkanControls");
-            MarkTreeOrderDirty();
-            return rows.Length - 1;
-        }
-
-        // Drops the last count rows. The pool free is deferred to the frame edge; the handle leaves
-        // this array now, so the resequence that runs after it never names a dead row.
-        protected void TrimRows(int count)
-        {
-            if (count <= 0) return;
-
-            for (int i = rows.Length - count; i < rows.Length; i++)
-                FreeIn(rows[i]);
-
-            Array.Resize(ref rows, rows.Length - count);
-            MarkTreeOrderDirty();
-        }
+        public ref ControlGeometry geometry => ref _geometry;
+        public ref VulkanControl visual => ref _visual;
 
         public Control()
         {
@@ -74,7 +41,6 @@ namespace ArctisAurora.Core.UI
             a.flags = (byte)(ArrangeFlags.MeasureDirty | ArrangeFlags.ArrangeDirty);
 
             ClipRect = LayoutRect.Infinite;
-            Publish();
             UIEngine.RegisterDirtyRoot(this);
         }
 
@@ -233,7 +199,7 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- paint ----
-        // Virtual because a text run's colour belongs to its spans, not to rows[0].
+        // Virtual because a text run's colour belongs to its spans, not to its own quad.
         [A_XSDElementProperty("ColorHex", "UI", "Sets the control color via hex code.")]
         public virtual string colorHex
         {
@@ -243,7 +209,6 @@ namespace ArctisAurora.Core.UI
                 field = value;
                 Vector3D<float> rgb = HexToRGB(value);
                 visual.tint = new Vector4D<float>(rgb, visual.tint.W);
-                Publish();
             }
         } = "#FFFFFF";
 
@@ -255,7 +220,6 @@ namespace ArctisAurora.Core.UI
             {
                 field = value;
                 visual.tint.W = value;
-                Publish();
             }
         } = 1f;
 
@@ -278,7 +242,6 @@ namespace ArctisAurora.Core.UI
             {
                 field = value;
                 visual.cornerRadius = value.AsVector();
-                Publish();
             }
         }
 
@@ -290,7 +253,6 @@ namespace ArctisAurora.Core.UI
             {
                 field = value;
                 visual.edgeColor = HexToRGB(value);
-                Publish();
             }
         } = "#000000";
 
@@ -302,11 +264,10 @@ namespace ArctisAurora.Core.UI
             {
                 field = value;
                 visual.edgeThickness = value;
-                Publish();
             }
         }
 
-        // Which of the three quad kinds rows[0] draws, and so what its sampler means.
+        // Which of the three quad kinds this control draws, and so what its sampler means.
         public VulkanControlType kind
         {
             get => field;
@@ -314,7 +275,6 @@ namespace ArctisAurora.Core.UI
             {
                 field = value;
                 visual.type = value;
-                Publish();
             }
         } = VulkanControlType.PanelControl;
 
@@ -327,7 +287,6 @@ namespace ArctisAurora.Core.UI
             {
                 field = value;
                 visual.textureIndex = value?.textureIndex ?? VulkanControl.noTexture;
-                Publish();
             }
         }
 
@@ -339,7 +298,6 @@ namespace ArctisAurora.Core.UI
             v.uvs.uv2 = new Vector2D<float>(u0, v0);
             v.uvs.uv3 = new Vector2D<float>(u0, v1);
             v.uvs.uv4 = new Vector2D<float>(u1, v0);
-            Publish();
         }
 
         [A_XSDElementProperty("Gradient", "UI", "Name of a gradient in Gradients.gradients.xml, ramped across this control's rect in place of its colour.")]
@@ -350,7 +308,6 @@ namespace ArctisAurora.Core.UI
             {
                 field = value;
                 visual.gradientIndex = Gradients.IndexOf(value);
-                Publish();
             }
         } = "";
         #endregion
@@ -370,7 +327,6 @@ namespace ArctisAurora.Core.UI
             {
                 arrange.clip = value;
                 geometry.clip = new Vector4D<float>(value.x, value.y, value.Right, value.Bottom);
-                Publish();
             }
         }
 
@@ -379,7 +335,6 @@ namespace ArctisAurora.Core.UI
         internal void SetGradientSpace(LayoutRect rect)
         {
             geometry.gradientRect = new Vector4D<float>(rect.x, rect.y, rect.Right, rect.Bottom);
-            Publish();
         }
 
         public bool isMeasureDirty => HasFlag(ArrangeFlags.MeasureDirty);
@@ -546,7 +501,7 @@ namespace ArctisAurora.Core.UI
             child.Arrange(new LayoutRect(childX, childY, childW, childH));
         }
 
-        // Union of this subtree's arranged rects, and how many rows it holds. Written by the pass
+        // Union of this subtree's arranged rects, and how many controls it holds. Written by the pass
         // UIEngine runs after Arrange, so no override has to remember to maintain them.
         internal void RefreshSubtreeCache()
         {
@@ -566,6 +521,19 @@ namespace ArctisAurora.Core.UI
             ref ArrangeData a = ref arrange;
             a.subtreeBounds = bounds;
             a.subtreeCount = count;
+        }
+
+        // Appends this control's quads to the window's draw list. A control off its own clip emits
+        // nothing; its children are still offered the walk, because a clip is inherited and theirs
+        // may sit somewhere else entirely.
+        internal virtual void Emit(DrawList list)
+        {
+            ref ArrangeData a = ref arrange;
+            if (!a.arranged.Overlaps(a.clip)) return;
+
+            int slot = list.Next();
+            list.GeometryAt(slot) = _geometry;
+            list.VisualAt(slot) = _visual;
         }
         #endregion
 
@@ -684,13 +652,8 @@ namespace ArctisAurora.Core.UI
         // A control's children are always controls.
         public override Control FindByName(string querryName) => (Control)base.FindByName(querryName);
 
-        // Both pools resequence together — UIElements holds one row per control, VulkanControls one
-        // per drawn quad, and the same DFS walk keys them.
-        protected void MarkTreeOrderDirty()
-        {
-            Pool.MarkOrderDirty();
-            UIEngine.Controls.MarkOrderDirty();
-        }
+        // Keeps UIElements in DFS order, which is the order layout walks it in.
+        protected void MarkTreeOrderDirty() => Pool.MarkOrderDirty();
         #endregion
 
         public override void OnDestroy()
@@ -698,11 +661,6 @@ namespace ArctisAurora.Core.UI
             base.OnDestroy();
             UIEngine.Forget(this);
         }
-
-        // Widens the draw pool's dirty range so this row is re-uploaded.
-        internal void Publish() => Publish(0);
-
-        internal void Publish(int row) => UIEngine.Controls.MarkContentDirty(rows[row]);
 
         public static string EnumColorToHex(ControlColor color)
         {

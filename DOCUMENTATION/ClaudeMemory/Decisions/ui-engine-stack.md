@@ -18,6 +18,12 @@
 migration of `UIControls`. The resume plan lives in
 [../Context/ui-engine-plan.md](../Context/ui-engine-plan.md).
 
+> **Superseded in part by [ui-draw-list](ui-draw-list.md) (2026-09-07).** The `VulkanControls` pool is
+> gone: `ControlGeometry` and `VulkanControl` are fields on `Control`, and a per-window DFS walk emits
+> the visible ones into a `DrawList`. Everything below about draw *rows*, `rows[]`, `AllocateRow`,
+> `Publish` and per-window instance ranges describes storage that no longer exists — the geometry,
+> the shaders and the layout it feeds are unchanged.
+
 ## Vocabulary — the two things called "control"
 
 Getting these backwards makes every other sentence wrong.

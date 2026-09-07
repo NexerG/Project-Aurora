@@ -72,7 +72,8 @@ Namespace shorthands used in the tables:
 | bold / italic / headings, format bar | `UI.Doc.DocumentToolbarControl`; `UI.Edits.StyleRangeEdit` | `AuroraEngine/Data/XML/Settings/DocumentSettings.settings.xml` | [[document-format-bar]], [[armed-style-at-the-caret]], [[text-styling-types]], [[bold-italic-face]] |
 | undo / redo | `Editing.UndoStack`, `EditStep`, `IEditRecord`; `UI.Edits.*` | — | [[document-undo]] |
 | single-line text fields | `UI.Editing.TextInputControl`, `TextBoxControl`; `UI.Text.TextControl` | — | [[note-naming-and-text-field]] |
-| text and the caret on the **new** stack — a paragraph as one control, a GPU row per glyph | `UINext.TextRunControl` (`spans`, `IndexAt`, `CaretAt`, `TextOrigin`), `StyleSpan`, `IGlyphPressTarget`, `NextCaretControl`; `Shaders/UIEngine/UIEngine.frag` MTSDF branch | — | [[ui-engine-stack]] |
+| text and the caret on the **new** stack — a paragraph as one control, a GPU quad per visible glyph | `UINext.TextRunControl` (`spans`, `Emit`, `IndexAt`, `CaretAt`, `TextOrigin`), `StyleSpan`, `IGlyphPressTarget`, `NextCaretControl`; `Shaders/UIEngine/UIEngine.frag` MTSDF branch | — | [[ui-engine-stack]], [[ui-draw-list]] |
+| what the new stack draws this frame, and what it culls | `UINext.DrawList`, `Control.Emit`, `UIEngine.BuildDrawLists`, `LayoutRect.Overlaps`; `Render.Modules.UIEngineModule` (`drawList`, `MirrorDrawList`) | — | [[ui-draw-list]] |
 | per-character bold / colour / size on a run | `UINext.StyleSpan`; `UI.Doc.TextMeasurer.Run` (`charStart`/`charCount`) | none yet — the new stack parses no XML | [[ui-engine-stack]] |
 | note load / save | `UI.Doc.DocumentXml`; `Filing.Serializer`, `XmlReflection` | `*/Data/Notes/*.xml` | [../Patterns/document-xml-persistence.md](../Patterns/document-xml-persistence.md), [[xml-save-skips-defaults]] |
 

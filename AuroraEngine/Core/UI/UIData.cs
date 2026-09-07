@@ -72,6 +72,11 @@ namespace ArctisAurora.Core.UI
             point.X >= x && point.X <= Right &&
             point.Y >= y && point.Y <= Bottom;
 
+        // Strict, so a rect touching the edge of another shares no area and does not overlap.
+        public bool Overlaps(LayoutRect other) =>
+            x < other.Right && Right > other.x &&
+            y < other.Bottom && Bottom > other.y;
+
         public static LayoutRect Intersect(LayoutRect a, LayoutRect b)
         {
             float rx = MathF.Max(a.x, b.x);

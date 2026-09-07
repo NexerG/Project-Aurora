@@ -20,10 +20,8 @@ namespace ArctisAurora.Core.UI
         private static readonly LogChannel Log = LogChannel.For("UIEngine");
 
         private static DataPool _elements;
-        private static DataPool _controls;
 
         public static DataPool Elements => _elements ??= DataManager.Get("UIElements");
-        public static DataPool Controls => _controls ??= DataManager.Get("VulkanControls");
 
         #region ---- layout ----
         private static readonly HashSet<Control> _dirtyRoots = new HashSet<Control>();
@@ -521,105 +519,81 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- dense order ----
-        // Canonical dense order for both pools = DFS pre-order of the control tree, which is painter
-        // order and layout-dependency order at once. UIElements is keyed by the entity's own handle,
-        // VulkanControls by the draw row it allocated, so the walk is shared and the key is not.
+        // Canonical dense order for UIElements = DFS pre-order of the control tree, which is painter
+        // order and layout-dependency order at once.
         [A_XSDActionDependency("UI.NextElementOrder", "PoolSort")]
-        public static IReadOnlyList<int> NextElementOrder(DataPool pool) => DFSOrder(pool, true);
-
-        [A_XSDActionDependency("UI.NextControlOrder", "PoolSort")]
-        public static IReadOnlyList<int> NextControlOrder(DataPool pool) => DFSOrder(pool, false);
-
-        private static IReadOnlyList<int> DFSOrder(DataPool pool, bool elements)
+        public static IReadOnlyList<int> NextElementOrder(DataPool pool)
         {
             int count = pool.Count;
             List<int> order = new List<int>(count);
 
-            // Also what stops a control being collected twice: a run owns one dense row per glyph,
-            // so the sweep below meets a detached run once per row it holds.
             HashSet<Control> collected = new HashSet<Control>();
             foreach (RenderWindow window in Engine.windows.Values)
             {
                 WindowRoot root = window.uiNext?.uiRoot;
                 if (root == null || !collected.Add(root)) continue;
-                CollectDFS(root, order, elements);
+                CollectDFS(root, order);
             }
 
-            // Detached subtrees are roots too, and no window draws them. They follow every window so
-            // the window ranges stay contiguous from zero.
+            // Detached subtrees are roots too, and no window draws them.
             for (int i = 0; i < count; i++)
             {
                 if (pool.OwnerAt(i) is Control control && control.parent is not Control
                     && collected.Add(control))
-                    CollectDFS(control, order, elements);
+                    CollectDFS(control, order);
             }
             return order;
         }
 
-        private static void CollectDFS(Control control, List<int> order, bool elements)
+        private static void CollectDFS(Control control, List<int> order)
         {
-            if (elements) order.Add(control.dataHandle.StableId);
-            else foreach (DataHandle row in control.rows) order.Add(row.StableId);
+            order.Add(control.dataHandle.StableId);
 
             foreach (Entity child in control.children)
                 if (child is Control childControl)
-                    CollectDFS(childControl, order, elements);
+                    CollectDFS(childControl, order);
         }
         #endregion
 
-        #region ---- per-window instance ranges ----
-        private static ulong _rangesStructural = ulong.MaxValue;
-        private static ulong _rangesOrder = ulong.MaxValue;
-        private static bool _rangesDirty = true;
-
-        // A root swap moves no pool rows, so no pool version would report it.
-        public static void InvalidateWindowRanges() => _rangesDirty = true;
-
-        // Publishes each window module's slice of the shared draw pool. Dense order is DFS with the
-        // windows in Engine.windows order, so a window's subtree is the contiguous run starting where
-        // the previous window's ended. Runs at the frame edge, never per frame.
-        public static void RefreshWindowRanges()
+        #region ---- draw lists ----
+        // Rebuilds every window's draw list from its tree, in DFS pre-order — painter order, the same
+        // order the draw pool used to be sorted into. Runs at the frame edge, after Arrange has
+        // settled every rect and clip.
+        //
+        // Unconditional for now. The rebuild is bounded by what fits on screen rather than by the
+        // size of the tree, so this is affordable; a dirty flag makes an idle window free later.
+        public static void BuildDrawLists()
         {
-            DataPool pool = Controls;
-            if (!_rangesDirty && pool.StructuralVersion == _rangesStructural && pool.OrderVersion == _rangesOrder)
-                return;
-
-            _rangesStructural = pool.StructuralVersion;
-            _rangesOrder = pool.OrderVersion;
-            _rangesDirty = false;
-
-            int first = 0;
             foreach (RenderWindow window in Engine.windows.Values)
             {
                 UIEngineModule ui = window.uiNext;
-                int count = ui.uiRoot == null ? 0 : CountSubtree(ui.uiRoot);
-                Publish(ui, first, count);
-                first += count;
+                if (ui == null) continue;
+
+                ui.drawList.Clear();
+                int walked = ui.uiRoot == null ? 0 : Collect(ui.uiRoot, ui.drawList);
+
+                Log.Every(1000).Debug($"'{ui.uiRoot?.name}' walked {walked} controls, " +
+                                      $"emitted {ui.drawList.Count} quads");
             }
         }
 
-        // The range rides in the recorded command buffer, so a module whose range moved has to
-        // record again.
-        private static void Publish(UIEngineModule ui, int first, int count)
+        // A subtree whose bounds miss the clip it inherited contributes nothing, so the walk stops
+        // there — which is what keeps a scrolled document's cost proportional to the visible part.
+        // Returns how many controls it reached.
+        private static int Collect(Control control, DrawList list)
         {
-            if (ui.firstInstance == first && ui.instanceCount == count) return;
+            if (control.hidden) return 0;
 
-            ui.firstInstance = first;
-            ui.instanceCount = count;
+            ref ArrangeData a = ref control.arrange;
+            if (!a.subtreeBounds.Overlaps(a.clip)) return 0;
 
-            if (ui.isDirty == null) return;
-            for (int i = 0; i < ui.isDirty.Length; i++)
-                ui.isDirty[i] = true;
-        }
+            control.Emit(list);
 
-        // Draw rows, not controls — a text run contributes one per glyph.
-        private static int CountSubtree(Control control)
-        {
-            int count = control.rows.Length;
+            int walked = 1;
             foreach (Entity child in control.children)
                 if (child is Control childControl)
-                    count += CountSubtree(childControl);
-            return count;
+                    walked += Collect(childControl, list);
+            return walked;
         }
         #endregion
 

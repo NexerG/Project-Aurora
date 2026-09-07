@@ -1,4 +1,3 @@
-using ArctisAurora.Core.Data;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
@@ -14,8 +13,8 @@ using VulkanControl = ArctisAurora.Core.UI.VulkanControl;
 
 namespace ArctisAurora.EngineWork.Rendering.Modules
 {
-    // Draws the VulkanControls pool. Two mirrors, one per column, so an arrange and a paint change
-    // upload independently.
+    // Draws one window's draw list, which the UI engine rebuilds from its tree each frame. Two
+    // mirrors, one per column, because the shader reads the two as separate buffers.
     public unsafe class UIEngineModule : RenderingModule
     {
         internal override ERendererTypes rendererType => ERendererTypes.UIEngine;
@@ -95,16 +94,18 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         private static Silk.NET.Vulkan.Buffer _gradientBuffer;
         private static DeviceMemory _gradientMemory;
 
-        private PoolCursor[] _cursors = null!;
         private int[] _frameBuiltCapacity = null!;
         private int[] _frameTableVersion = null!;
 
-        private DataPool ControlPool => UIEngine.Controls;
+        // This window's quads for the frame, rebuilt by UIEngine.BuildDrawLists on the main thread.
+        internal readonly DrawList drawList = new DrawList();
+
+        // What the last MirrorDrawList copied, and so what the record that follows it may draw.
+        private int _drawCount;
 
         private WindowRoot _uiRoot;
 
-        // The tree this module draws, and its slice of the shared draw pool in dense order. The
-        // range is published by UIEngine.RefreshWindowRanges; assigning tears the outgoing tree down.
+        // The tree this module draws. Assigning tears the outgoing tree down.
         public WindowRoot uiRoot
         {
             get => _uiRoot;
@@ -112,21 +113,13 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             {
                 _uiRoot?.Destroy();
                 _uiRoot = value;
-                UIEngine.InvalidateWindowRanges();
                 value?.FitTo(window.os.windowSize);
             }
         }
 
-        internal int firstInstance;
-        internal int instanceCount;
-
-        private PoolCursor Cursor(int frame)
-        {
-            _cursors ??= new PoolCursor[window.imageCount];
-            return _cursors[frame] ??= new PoolCursor(ControlPool);
-        }
-
-        internal override bool HasPendingWork(int frame) => Cursor(frame).HasPending;
+        // The list is rebuilt every frame, so every frame is pending. A dirty flag on the rebuild is
+        // what gives this an answer worth asking.
+        internal override bool HasPendingWork(int frame) => true;
 
         // Composited over UIModule while both stacks run.
         public UIEngineModule()
@@ -143,8 +136,6 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             Array.Fill(_frameBuiltCapacity, -1);
             _frameTableVersion = new int[window.imageCount];
             Array.Fill(_frameTableVersion, -1);
-
-            _cursors = null;
         }
 
         internal override void PrepareObjects()
@@ -177,46 +168,35 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal override void UpdateModule(int currentFrame)
         {
-            DataPool pool = ControlPool;
-            PoolCursor cursor = Cursor(currentFrame);
+            MirrorDrawList(currentFrame);
 
-            cursor.TryConsumeStructural();
-            bool content = cursor.TryConsumeContent(out int dirtyMin, out int dirtyMax);
-
-            MirrorPool(currentFrame, content ? dirtyMin : 0, content ? dirtyMax : -1);
-
-            if (pool.Count > 0)
+            if (_frameBuiltCapacity[currentFrame] != _mirrorCapacity)
             {
-                if (_frameBuiltCapacity[currentFrame] != _mirrorCapacity)
-                {
-                    CreateDescriptorPool(currentFrame, 0);
-                    AllocateDescriptorSets(currentFrame);
-                    UpdateDescriptorSets(currentFrame, pool.Count);
-                    _frameBuiltCapacity[currentFrame] = _mirrorCapacity;
-                    _frameTableVersion[currentFrame] = TextureAsset.TableVersion;
-                }
-                else if (_frameTableVersion[currentFrame] != TextureAsset.TableVersion)
-                {
-                    WriteTextureTable(currentFrame);
-                    _frameTableVersion[currentFrame] = TextureAsset.TableVersion;
-                }
+                CreateDescriptorPool(currentFrame, 0);
+                AllocateDescriptorSets(currentFrame);
+                UpdateDescriptorSets(currentFrame, _drawCount);
+                _frameBuiltCapacity[currentFrame] = _mirrorCapacity;
+                _frameTableVersion[currentFrame] = TextureAsset.TableVersion;
+            }
+            else if (_frameTableVersion[currentFrame] != TextureAsset.TableVersion)
+            {
+                WriteTextureTable(currentFrame);
+                _frameTableVersion[currentFrame] = TextureAsset.TableVersion;
             }
 
             WriteCommandBuffers(currentFrame);
         }
 
-        // Copies the dirty dense range of both columns into this image's mirrors. A capacity change
-        // recreates them from the whole columns and ignores the range.
-        private void MirrorPool(int currentFrame, int dirtyMin, int dirtyMax)
+        // Copies this frame's draw list into the image's mirrors. Both arrays and the count are read
+        // once: the main thread rebuilds the list while this runs, and a growth swaps the arrays out
+        // from under a second read.
+        private void MirrorDrawList(int currentFrame)
         {
-            DataPool pool = ControlPool;
-            int live = pool.Count;
-            if (live == 0) return;
+            ControlGeometry[] geometry = drawList.Geometry;
+            VulkanControl[] controls = drawList.Visual;
+            _drawCount = Math.Min(drawList.Count, geometry.Length);
 
-            ControlGeometry[] geometry = pool.Backing<ControlGeometry>();
-            VulkanControl[] controls = pool.Backing<VulkanControl>();
-
-            if (_mirrorCapacity != pool.Capacity)
+            if (_mirrorCapacity != geometry.Length)
             {
                 Renderer.vk.DeviceWaitIdle(Renderer.logicalDevice);
                 DestroyMirrors();
@@ -235,20 +215,14 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 {
                     AVulkanBufferHandler.CreateMappedBuffer(geometrySize, ref _geometryBuffers[i], ref _geometryMemories[i], out _geometryMapped[i], AVulkanBufferHandler.storageBufferFlags);
                     AVulkanBufferHandler.CreateMappedBuffer(controlSize, ref _controlBuffers[i], ref _controlMemories[i], out _controlMapped[i], AVulkanBufferHandler.storageBufferFlags);
-                    AVulkanBufferHandler.WriteMappedRange(_geometryMapped[i], geometry, 0, geometry.Length);
-                    AVulkanBufferHandler.WriteMappedRange(_controlMapped[i], controls, 0, controls.Length);
                 }
-                _mirrorCapacity = pool.Capacity;
-                return;
+                _mirrorCapacity = geometry.Length;
             }
 
-            if (dirtyMax >= live) dirtyMax = live - 1;
-            if (dirtyMin < 0) dirtyMin = 0;
-            if (dirtyMax < dirtyMin) return;
+            if (_drawCount == 0) return;
 
-            int count = dirtyMax - dirtyMin + 1;
-            AVulkanBufferHandler.WriteMappedRange(_geometryMapped[currentFrame], geometry, dirtyMin, count);
-            AVulkanBufferHandler.WriteMappedRange(_controlMapped[currentFrame], controls, dirtyMin, count);
+            AVulkanBufferHandler.WriteMappedRange(_geometryMapped[currentFrame], geometry, 0, _drawCount);
+            AVulkanBufferHandler.WriteMappedRange(_controlMapped[currentFrame], controls, 0, _drawCount);
         }
 
         private void DestroyMirrors()
@@ -692,7 +666,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
             Renderer.vk.CmdBeginRendering(commandBuffers[currentFrame], &renderingInfo);
 
-            if (instanceCount > 0 && frameResources[currentFrame] != null && frameResources[currentFrame].sets != null)
+            if (_drawCount > 0 && frameResources[currentFrame] != null && frameResources[currentFrame].sets != null)
             {
                 Renderer.vk.CmdBindPipeline(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipeline);
                 Renderer.vk.CmdBindDescriptorSets(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipelineLayout, 0, 1, Renderer.globalSets[currentFrame], 0, null);
@@ -710,7 +684,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 Renderer.vk.CmdBindIndexBuffer(commandBuffers[currentFrame], _quad.indexBuffer, 0, IndexType.Uint32);
                 Renderer.vk.CmdBindDescriptorSets(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipelineLayout, 1, 1, frameResources[currentFrame].sets[0], 0, null);
                 Renderer.vk.CmdBindDescriptorSets(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipelineLayout, 2, 1, frameResources[currentFrame].sets[1], 0, null);
-                Renderer.vk.CmdDrawIndexed(commandBuffers[currentFrame], (uint)_quad.indices.Length, (uint)instanceCount, 0, 0, (uint)firstInstance);
+                Renderer.vk.CmdDrawIndexed(commandBuffers[currentFrame], (uint)_quad.indices.Length, (uint)_drawCount, 0, 0, 0);
             }
 
             Renderer.vk.CmdEndRendering(commandBuffers[currentFrame]);

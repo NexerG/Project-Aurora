@@ -17,13 +17,13 @@ Implementors:
   - "[[UI-ENGINE]]"
 Namespace: ArctisAurora.Core.UI
 SourceFiles: AuroraEngine/Core/UI/*.cs, AuroraEngine/Core/Rendering/Modules/UIEngineModule.cs, AuroraEngine/Shaders/UIEngine/*
-VerifiedAgainst: 2026-09-06 (landing 6a)
+VerifiedAgainst: 2026-09-07 (draw list)
 ---
 ## Overview
 
 The UI is being rebuilt in a new namespace beside the old one rather than migrated in place, so the existing editor keeps running untouched while the replacement grows underneath it. The old stack draws first and the new one composites over it; when the new stack is complete the old one is deleted in a single pass.
 
-The rebuild exists to separate three kinds of data that were previously one row. What the layout pass reads never reaches the GPU at all. What the arrange pass produces and what the paint properties produce go to the GPU as two independent buffers, because a window resize and a colour change dirty completely different bytes and had been forcing each other's uploads.
+The rebuild exists to separate three kinds of data that were previously one row. What the layout pass reads never reaches the GPU at all. What the arrange pass produces and what the paint properties produce go to the GPU as two separate buffers, because they are written by different passes and the old single row made each of them carry the other.
 
 > The stack draws, lays itself out, answers the pointer, renders text with a caret, and paints images, icons, masks and gradients. What is left is porting the thirty-nine existing controls onto it and deleting the old one.
 
@@ -47,7 +47,7 @@ The kinds are `MTSDFControl` for anything drawn from a distance field, `PanelCon
 
 `VulkanControl` is paint: the kind, the texture coordinates, the tint, the texture index, the corner radii, one stroke colour and width, and a gradient index. It is 92 bytes.
 
-The two GPU structs live in one pool and the layout struct in another, so a `Control` holds exactly one layout row and an array of draw rows. The first of those is the element's own quad; a run of text appends one more per character. An element's rows in the draw pool are what the renderer mirrors; nothing walks the tree to draw.
+The layout struct lives in a pool, because layout reads it in tree order and wants it packed. The two GPU structs are plain fields on the element, because nothing reads them in place — they are copied out into a list once a frame, and an element that is not on screen is never asked for them at all.
 
 ## Why the stroke is one pair and not two
 
@@ -65,7 +65,7 @@ On a distance-field row it is the field itself, which is how both a letter and a
 
 This is the same shape the stroke took. One slot with three readings is smaller than three slots each with one consumer, and it is the readings that differ, not the plumbing.
 
-The price is that the three readings are exclusive. An image cannot also carry a mask, because there is one texture and one rectangle to name it with. Giving it both means a second index and a second rectangle on every row in the buffer, including the several hundred rows a paragraph of text occupies, and nothing has yet wanted it.
+The price is that the three readings are exclusive. An image cannot also carry a mask, because there is one texture and one rectangle to name it with. Giving it both means a second index and a second rectangle on every quad in the buffer, including the several hundred a paragraph of text emits, and nothing has yet wanted it.
 
 A row that names no texture samples nothing at all. The absence is a real value rather than an empty one, because the first slot of the texture table is an ordinary texture that something is entitled to use — so the shader tests for the sentinel rather than for zero, and a plain panel issues no sampling instruction.
 
@@ -128,60 +128,67 @@ A resize refits the root, which re-lays the tree and moves the camera's projecti
 
 > A root has no appearance of its own. Until masks arrive it opts out of drawing by being fully transparent — an opaque root is a full-window quad that hides everything the old stack composited underneath.
 
-## Dense order and per-window ranges
+## The draw list
 
-The draw pool is shared by every window, and the order rows sit in is the order they are drawn. That order is a depth-first walk of the control tree, which is painter order and layout-dependency order at the same time — a parent before its children, always.
+Every window owns a list of quads, and the order they sit in is the order they are drawn. That order is a depth-first walk of the control tree, which is painter order and layout-dependency order at the same time — a parent before its children, always. Nothing maintains the order between frames, because the walk that produces it is the same walk that reads the tree.
 
-The pool does not maintain that order as elements are created. Inserting or reparenting flags the pool, and at the frame edge it asks for the whole permutation and applies it in one pass. Both pools are walked together, since one holds a row per element and the other a row per drawn quad, but the walk yields a different handle for each.
-
-Because the order is depth-first, a window's tree is a contiguous run of rows, and a window can be drawn as a slice of the shared pool rather than a buffer of its own.
+The walk runs at the frame edge, after arrange has settled every rectangle and clip, and it culls as it goes.
 
 ```
-RefreshWindowRanges()
-	if no pool version moved and nothing invalidated the ranges
-		return
-	remember the versions
-	first = 0
+BuildDrawLists()
 	for each window
-		count = the draw rows under its root, or zero if it has no root
-		if the window's range changed
-			publish it and mark every one of its command buffers for re-recording
-		first = first + count
+		clear its list
+		Collect(its root, the list)
+
+Collect(control, list)
+	if the control is hidden
+		return
+	if the subtree's bounds do not overlap the clip it inherited
+		return
+	ask the control to emit its quads
+	for each child
+		Collect(child, list)
 ```
 
-The count is walked fresh rather than read from the subtree cache, because destroying an element detaches it without invalidating any layout — the cache would be stale at exactly the moment the range is recomputed.
+Both prunes read rectangles the layout pass already maintains. The subtree test is sound because a child's clip is always a subset of its parent's — arrange either inherits it or intersects it, never widens it — and the chain terminates at the window root's own rectangle. So "off the screen" and "outside some ancestor's clip" are one test, not two, and a scrolled document costs what is visible rather than what it contains.
+
+A control emits nothing when its own rectangle misses its clip, but its children are still offered the walk: the clip is inherited, so a child may be arranged somewhere else entirely.
+
+Culling decides whether a quad is *submitted*. One that is only partly on screen is submitted whole and cut per pixel by the fragment shader, exactly as before.
+
+> Rebuilding every frame is affordable only because of the cull. The list is bounded by what fits on the screen, not by the size of the tree — a note of four hundred thousand letters and one of forty emit the same few thousand quads. Without the cull this would be megabytes a frame and the list would have to be maintained incrementally instead.
 
 ## The draw module
 
 The new stack is a second rendering module on every window, sitting beside the old one in the same module list. The compositor blends module outputs in order of a per-module sort key, so the new module carries a higher key and clears its own image transparent, letting the old UI show through everywhere the new stack has drawn nothing.
 
-Mirroring the pool to the GPU:
+Mirroring the list to the GPU:
 
 ```
-MirrorPool(image, dirtyFirst, dirtyLast)
-	if the pool is empty
-		return
-	if the pool capacity changed since the last mirror
+MirrorDrawList(image)
+	read the list's two arrays and its count into locals, once
+	if the list's capacity changed since the last mirror
 		wait for the device to go idle
 		destroy the old buffers
 		for each swapchain image
-			create a mapped buffer for the geometry column
-			create a mapped buffer for the paint column
-			copy both columns in full
+			create a mapped buffer for the geometry array
+			create a mapped buffer for the paint array
 		remember the new capacity
+	if the count is zero
 		return
-	clamp the dirty range to what is live
-	copy the geometry column's dirty range into this image's buffer
-	copy the paint column's dirty range into this image's buffer
+	copy the geometry prefix into this image's buffer
+	copy the paint prefix into this image's buffer
 ```
 
-Because the two columns have their own dirty ranges, a resize copies 96 bytes per changed row and a repaint copies 92, rather than both paying for either.
+The arrays and the count are read once and only once, because the main thread is rebuilding the list while this runs and a growth swaps both arrays out from under a second read. The count captured here is also what the recording that follows draws, so an image never draws a newer count against an older buffer.
+
+> That overlap is the same coarse race the old mirroring ran, made certain rather than occasional by rebuilding every frame. The worst case is a quad drawn at last frame's position for one frame. The fix, when it earns itself, is a small ring of lists rather than a lock.
 
 ## Entry points
 
-The engine drives the UI from two places in the tick rather than one, and the split is deliberate.
+The engine drives the UI from three places in the tick rather than one, and the order is deliberate.
 
-Input is polled where the old collision handler was called, before entity logic runs. Layout is resolved after entity logic, because anything that invalidates layout from inside a tick — a glyph resync, a caret move — would otherwise land a frame late and show up as a one-frame lag that is very hard to attribute.
+Input is polled where the old collision handler was called, before entity logic runs. Layout is resolved after entity logic, because anything that invalidates layout from inside a tick — a caret move, a text edit — would otherwise land a frame late and show up as a one-frame lag that is very hard to attribute. The draw lists are built last, at the frame edge, because they read the rectangles and clips layout has just settled.
 
 ```
 Poll(window)
@@ -304,29 +311,39 @@ The last branch is what lets a document carry things that are not controls at al
 
 ## Text and the caret
 
-A run of text is one control holding a string and its settings, and the measurer turns that into lines, segments and caret geometry without a single glyph object ever existing. What the run owns instead is a draw row per character, appended after its own, so a paragraph of four hundred letters is one node in the tree and four hundred and one rows in a buffer.
+A run of text is one control holding a string and its settings, and the measurer turns that into lines, segments and caret geometry without a single glyph object ever existing. The run owns no per-character storage at all: a paragraph of four hundred letters is one node in the tree, and it emits a quad for each letter that is actually on the screen.
 
-Per-character settings — bold, colour, italic, size — live on the run as a list of spans, because a glyph is only a GPU row and has nowhere to keep state of its own. A span carries a length, a face and a colour; the spans tile the string in order and the last one absorbs whatever is left, so appending to the text needs no change to the span list at all. Each span becomes one input run for the measurer, and the measurer already reports which run every stretch of a line came from — which is how a line that crosses from regular into bold and back gets each stretch drawn in the right face.
+Per-character settings — bold, colour, italic, size — live on the run as a list of spans, because a glyph is only a quad in a list and has nowhere to keep state of its own. A span carries a length, a face and a colour; the spans tile the string in order and the last one absorbs whatever is left, so appending to the text needs no change to the span list at all. Each span becomes one input run for the measurer, and the measurer already reports which run every stretch of a line came from — which is how a line that crosses from regular into bold and back gets each stretch drawn in the right face.
 
 The measurer takes a slice of the string rather than a string of its own, so the spans of one paragraph share one string and nothing is copied to measure it.
 
+Arrange only places the block. Cutting the glyphs happens at emit, against the clip of the moment, so a run that scrolls does no work for the lines that scrolled away.
+
 ```
 Arrange(rect)
-	write the run's own row: matrix, clip, gradient space
 	shrink the rect by padding
 	offset the text inside the box by the leftover space, weighted by the authored position
+	remember that as the text origin
+
+Emit(list)
 	for each line
+		if the line sits entirely above the clip
+			skip it
+		if the line starts below the clip
+			stop
 		pen = the text origin
 		baseline = the text origin plus the line's baseline
 		for each stretch of that line
 			take the colour and the face of the span it came from
 			for each character in it
 				cut the glyph's cell out of the atlas
-				write its matrix, its clip and its atlas coordinates into that character's row
+				append its matrix, its clip and its atlas coordinates to the list
 				pen = pen + the glyph's advance
 ```
 
-Every character owns the row at its own index, so the mapping from character to row never depends on how the lines happened to break.
+Skipping a line costs the next one nothing, because the pen restarts at the origin on every line rather than carrying across them. The run never emits a quad for itself — its own box is the node, the glyphs are the ink.
+
+> A line that is only half inside the clip is emitted whole, and the fragment shader cuts it. Culling is by line and not by glyph: a document scrolls vertically, so the horizontal case buys little and costs a test per character.
 
 The caret belongs to the document, not to the run. Pressing anywhere in the text asks the run which character the point fell on — resolved from the same measured lines the glyphs were placed on, taking the slot after a character once the point is past its midpoint — and the document places its own caret beside that character. A caret is an ordinary control with a narrow box, blinking on its own tick.
 

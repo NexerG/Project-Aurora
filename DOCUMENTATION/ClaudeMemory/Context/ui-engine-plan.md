@@ -19,8 +19,8 @@ The 2026-09-04 version of this file planned an in-place migration of `UIControls
 | `VulkanControl` | GPU | one drawn quad. Struct, kind-tagged, no behaviour |
 | `VulkanControlType` | — | `MTSDFControl`, `PanelControl`, `ImageControl` |
 
-One `Control` owns **0..N** `VulkanControl` rows. A panel owns 1; a text run owns one per glyph. The old
-`Core.UISystem.Controls.VulkanControl` keeps its name until landing 6.
+One `Control` emits **0..N** `VulkanControl` quads. A panel emits 1; a text run emits one per *visible*
+glyph and none for itself. The old `Core.UISystem.Controls.VulkanControl` keeps its name until landing 6.
 
 ## What exists now
 
@@ -33,7 +33,9 @@ One `Control` owns **0..N** `VulkanControl` rows. A panel owns 1; a text run own
 | Pool | Columns | Capacity | SortAction |
 |---|---|---|---|
 | `UIElements` | `ArrangeData` | 1024 | `UI.NextElementOrder` |
-| `VulkanControls` | `ControlGeometry`, `VulkanControlData` | 4096 | `UI.NextControlOrder` |
+
+`VulkanControls` was deleted 2026-09-07 — the two GPU structs are fields on `Control` and a per-window walk
+emits them into a `DrawList`. See [[ui-draw-list]].
 
 `VulkanControlData` is the XSD name of the `VulkanControl` struct — renamed because `AnyXMLType.FindType`
 resolves `[A_XSDType]` by **name alone, first declaration wins**, and the old class already owns
@@ -45,9 +47,9 @@ resolves `[A_XSDType]` by **name alone, first declaration wins**, and the old cl
 ArrangeData 140 B   ControlGeometry 96 B   VulkanControl 92 B
 ```
 
-**`Control : Entity`** — `PoolName => "UIElements"`, draw rows via `Entity.AllocateIn("VulkanControls")`.
-Holds **`DataHandle[] rows`**, `rows[0]` being its own quad; `AllocateRow` / `TrimRows` / `Publish(i)` /
-`GeometryAt(i)` / `VisualAt(i)` address the rest. Exposes `arrange`, `geometry`, `visual` as `ref` accessors,
+**`Control : Entity`** — `PoolName => "UIElements"`. Holds its own quad in two plain fields and copies them
+into the draw list from **`Emit(DrawList)`**, which a control off its own clip skips. Exposes `arrange`
+(a pool `ref`), `geometry` and `visual` (`ref` to the fields),
 the authored layout properties over `ArrangeData`, `colorHex` / `alpha` (both **`virtual`**) / `cornerRadius` /
 `edgeColorHex` / `edgeThickness` / `kind` / `sampler` / `gradient` / `SetUVRect`,
 `Measure` / `Arrange` / `WriteArranged`, `InvalidateLayout` /
@@ -55,8 +57,9 @@ the authored layout properties over `ArrangeData`, `colorHex` / `alpha` (both **
 the outgoing base does.
 
 **`TextRunControl : Control`** — a paragraph as one control. `text` + `List<StyleSpan>` (spans tile in order,
-the last absorbing the remainder) + a measured `BlockLayout`, emitting one row per character at
-`rows[1 + charIndex]`. `rows[0]` is its own box and never paints. `IndexAt(point)` / `CaretAt(offset)` /
+the last absorbing the remainder) + a measured `BlockLayout`. `Emit` walks the lines, skips those outside
+the clip band, and appends one quad per character of the rest; the run's own box never paints.
+`IndexAt(point)` / `CaretAt(offset)` /
 `TextOrigin` answer caret questions; `OnPointerPress` walks up to the first `IGlyphPressTarget`.
 **`NextCaretControl : Control`** — the blink and 2px width, named around a serializable-id collision
 (see [[parallel-stack-name-collisions]]).
@@ -75,17 +78,17 @@ three-state tint over an overridden `colorHex` that keeps the authored rest colo
 
 **`UIEngine`** — `RegisterDirtyRoot` / `ResolveLayout` at the `Interpolate` site, `Poll` at the top of
 `HandleUI`, `HitTest` / `Dispatch` / `Forget` / `SetActiveControl`, the `NextHovering` / `NextActiveControl` /
-`NextPressTarget` contexts, `RefreshWindowRanges` at the frame edge, the two `PoolSort` actions, and
-`BuildScaffolding`.
+`NextPressTarget` contexts, `BuildDrawLists` at the frame edge, the `UI.NextElementOrder` `PoolSort` action,
+and `BuildProbe`.
 
 **`PointerEvent`** (`target`, `point`, `delta`, `button`, `tapCount`) and **`PointerPhase`** — `Control` has one
 `virtual bool OnPointerX(PointerEvent)` and one `Func<PointerEvent, bool>` per phase, and `RegisterOnX` sets
 rather than combines.
 
 **`UIEngineModule`** — second `RenderingModule` on every `RenderWindow` (`window.uiNext`, index 1 in
-`modules`). `compositorOrder = 10`, transparent clear, so the old stack composites underneath. Mirrors both GPU
-columns per swapchain image through `MirrorPool`, one dirty range each. Holds `uiRoot`, `firstInstance` and
-`instanceCount`; the draw is the window's slice. A window with no root draws nothing.
+`modules`). `compositorOrder = 10`, transparent clear, so the old stack composites underneath. Owns the window's
+`drawList` and mirrors its prefix per swapchain image through `MirrorDrawList`, every frame. Holds `uiRoot`;
+the draw is `_drawCount` instances from zero. A window with no root draws nothing.
 
 **Shaders** — `Shaders/UIEngine/UIEngine.vert` + `.frag`, compiled `--target-env=vulkan1.3`, mirrored
 byte-identical into `Thorium/`, `AuroraEditor/` and `Carbon/`. Set 0 renderer global, set 1 module
@@ -129,8 +132,8 @@ gradient, Right/Bottom). The landing 6 port removes all of it.
 | Hover is one control; ancestors hear the bubbled event, they are not hovered | Hovering a glyph does not make the window root hovered |
 | The hit-test walks children last to first | Depth testing is off, so the later sibling is the one drawn on top |
 | `Control : Entity`, per entity-kind columns | Animation runs on `OnTick` + components. See [[entity-transform-split]] |
-| Row building is **incremental per element**, not a per-frame rebuild | ~56.7k glyph rows × 200 B is ~11 MB/frame — not affordable |
-| Emit rows for **all** glyphs for now, not visible-only | Visible-only is a strict improvement that drops in at the same seam; it needs a per-document line cache and its own correctness surface |
+| ~~Row building is **incremental per element**, not a per-frame rebuild~~ **REVERSED 2026-09-07** | The 11 MB/frame was a list sized by the document. Culled, the list is sized by the screen — the probe emits 44 quads. See [[ui-draw-list]] |
+| ~~Emit rows for **all** glyphs for now, not visible-only~~ **REVERSED 2026-09-07** | A run emits a quad per visible glyph, off the lines the measurer already produced. No per-document cache was needed; the clip band and `_layout.lines` were enough |
 | An XML event attribute binds by **wrapping the tagged method into a func that returns `true`**, combined with `+=` | The tagged action pool feeds keybinds, context menus and `*.ui.xml` with three different delegate shapes; only one has a `PointerEvent`. See [[ui-engine-stack]] |
 | Any **delegate**-typed member is an XSD attribute, not just `Action` | One shape test in the generator instead of a `Core.UI` type registered inside `Core.Registry` |
 | `canBeActiveContext` is a **question that returns a control**, `Control.ActiveContextTarget()` | 6c's `TextBox`/`TextInput`/`DocumentEditor` need to focus a *child* run, which a "not me" bool cannot express |
@@ -193,6 +196,7 @@ forward; `WindowControl`'s design-space scaling **ported** onto `WindowRoot` rat
 
 `subtreeBounds`/`subtreeCount` are refreshed by `ResolveLayout` after `Arrange` rather than inside it, and
 `RefreshWindowRanges` counts fresh rather than reading the cache — see [[ui-engine-stack]] for both reasons.
+(`RefreshWindowRanges` is gone as of [[ui-draw-list]]; the cache is now the walk's prune instead.)
 
 → *verified:* the scaffolding tree arranges and draws over the old stack in Thorium; nesting, padding, margin,
 Left/Right/Stretch alignment, bottom anchoring and an inherited clip on a 320×260 child inside a 200×140 parent
@@ -224,7 +228,8 @@ Built as planned, with six answered forks: spans reach the measurer as a **slice
 not hold a bold word at all; the document is **scaffolding** (`ProbeDocumentControl`) rather than a real
 container pulled forward; `SelectionControl`, `DocumentEditorControl.CaretAtPoint` and the per-character XML
 shape are all **deferred** — nothing can drive selection without drag, there are no blocks, and the new stack
-parses no XML; a run **keeps** its own transparent `rows[0]`.
+parses no XML; a run **keeps** its own transparent `rows[0]` (as of [[ui-draw-list]] it emits no quad for
+itself at all).
 
 Departure taken mid-build: `CaretControl` had to become **`NextCaretControl`** — see
 [[parallel-stack-name-collisions]].
@@ -423,7 +428,11 @@ that goes out** now the base is frozen — exact old→new text per class, one a
 - **A second sampler slot**, so an image can also carry a mask. Costs a `maskIndex` plus a second UV set and
   moves the 92 B stride; parked until something wants both.
 - Whether per-window mirrors in `UIEngineModule` should become shared.
-- Whether visible-only glyph expansion lands, and on what evidence.
+- ~~Whether visible-only glyph expansion lands, and on what evidence.~~ **Settled 2026-09-07** — it
+  landed as part of [[ui-draw-list]]: a run emits only the lines meeting its clip. 342 characters in a
+  40 px clipped box emit 141 quads.
+- **Rebuild the draw list on change rather than every frame** — agreed, deliberately deferred so the
+  concept is easier to watch running. One flag, and `HasPendingWork` stops answering `true`.
 
 ## How to run and verify
 

@@ -36,7 +36,7 @@ namespace ArctisAurora.Core.UI
         private static void Pump()
         {
             UIEngine.ResolveLayout();
-            UIEngine.RefreshWindowRanges();
+            UIEngine.BuildDrawLists();
         }
     }
 }

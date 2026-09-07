@@ -316,7 +316,7 @@ namespace ArctisAurora.EngineWork
             // Dense indices have settled, so each window module can be told the range it draws.
             Profiling.Zone.Start("RefreshWindowRanges");
             UILayout.RefreshWindowRanges();
-            UIEngine.RefreshWindowRanges();
+            UIEngine.BuildDrawLists();
             Profiling.Zone.End("RefreshWindowRanges");
 
             Profiling.Zone.End("MainTick");

@@ -24,9 +24,9 @@ namespace ArctisAurora.Core.UI
         void GlyphPressed(TextRunControl run, int index);
     }
 
-    // A block of text as one control: the string, the spans styling it, and one draw row per
-    // character after the control's own. Glyphs are rows and not controls, so the hit-test lands on
-    // the run and IndexAt resolves which character was under the point.
+    // A block of text as one control: the string, the spans styling it, and one emitted quad per
+    // visible character. Glyphs are quads and not controls, so the hit-test lands on the run and
+    // IndexAt resolves which character was under the point.
     [A_XSDType("NextTextRun", "UI", isAbstract: true)]
     public class TextRunControl : Control
     {
@@ -50,11 +50,8 @@ namespace ArctisAurora.Core.UI
         public FontStyle style = FontStyle.Regular;
         public float lineHeight = 1.5f;
 
-        // The run's own row is the node's box; the glyphs are the ink, so rows[0] never paints.
         public TextRunControl()
         {
-            visual.tint.W = 0f;
-            Publish();
             _fontAsset = ResolveFont(fontName);
         }
 
@@ -66,7 +63,6 @@ namespace ArctisAurora.Core.UI
             {
                 if (field == value) return;
                 field = value;
-                SyncRows();
                 InvalidateLayout();
             }
         } = string.Empty;
@@ -96,8 +92,7 @@ namespace ArctisAurora.Core.UI
             }
         } = "default";
 
-        // Colour and alpha reach the glyphs, never rows[0]. The next Arrange rewrites every glyph
-        // row anyway, so a repaint is an arrange rather than a second walk over the rows.
+        // Colour and alpha reach the glyphs, never the run's own quad, which is never emitted.
         public override string colorHex
         {
             get => base.colorHex;
@@ -135,14 +130,6 @@ namespace ArctisAurora.Core.UI
                 AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset));
 
             return fonts.TryGetValue(name ?? "default", out FontAsset named) ? named : fonts["default"];
-        }
-
-        // One draw row per character, after the control's own.
-        private void SyncRows()
-        {
-            int want = (text ?? string.Empty).Length + 1;
-            while (rows.Length < want) AllocateRow();
-            if (rows.Length > want) TrimRows(rows.Length - want);
         }
 
         #region ---- layout ----
@@ -193,7 +180,7 @@ namespace ArctisAurora.Core.UI
             return a.desired;
         }
 
-        // Places the glyphs on the lines Measure produced, one draw row each.
+        // Places the text block. The glyphs are cut at emit, against the clip of the moment.
         public override void Arrange(LayoutRect finalRect)
         {
             WriteArranged(finalRect);
@@ -209,7 +196,15 @@ namespace ArctisAurora.Core.UI
             float slackY = a.preferredHeight > 0
                 ? MathF.Max(0f, inner.height - _layout.height) * a.verticalPosition : 0f;
             _origin = new Vector2D<float>(inner.x + slackX, inner.y + slackY);
+        }
 
+        // The run's own box is not ink, so only glyphs land. A line outside the clip is skipped
+        // whole — the pen restarts per line, so dropping one costs the next nothing.
+        internal override void Emit(DrawList list)
+        {
+            if (_layout == null || _fontAsset == null) return;
+
+            LayoutRect box = arrange.clip;
             float z = depth + depthStep;
             Vector4D<float> clip = geometry.clip;
             Vector4D<float> gradientRect = geometry.gradientRect;
@@ -217,6 +212,10 @@ namespace ArctisAurora.Core.UI
 
             foreach (TextLine line in _layout.lines)
             {
+                float lineTop = _origin.Y + line.top;
+                if (lineTop + line.height <= box.y) continue;
+                if (lineTop >= box.Bottom) break;
+
                 float baselineY = _origin.Y + line.baseline;
                 float pen = _origin.X;
 
@@ -230,7 +229,7 @@ namespace ArctisAurora.Core.UI
                         int index = segment.charStart + k;
                         if (index >= s.Length) break;
 
-                        pen += WriteGlyph(index + 1, s[index], segmentStyle, color,
+                        pen += WriteGlyph(list, s[index], segmentStyle, color,
                                           pen, baselineY, z, clip, gradientRect);
                     }
                 }
@@ -240,7 +239,7 @@ namespace ArctisAurora.Core.UI
         // Cuts one glyph's quad out of the atlas and writes both of its columns, returning the pen
         // advance. Cell geometry is GlyphControl's, which is also what FontAssetGlyphMetrics
         // reproduces — three copies of it would drift.
-        private float WriteGlyph(int row, char character, FontStyle glyphStyle, Vector3D<float> color,
+        private float WriteGlyph(DrawList list, char character, FontStyle glyphStyle, Vector3D<float> color,
                                  float penX, float baselineY, float z,
                                  Vector4D<float> clip, Vector4D<float> gradientRect)
         {
@@ -278,7 +277,8 @@ namespace ArctisAurora.Core.UI
             matrix *= Matrix4X4.CreateScale(cellW, cellH, 1f);
             matrix *= Matrix4X4.CreateTranslation(x + cellW * 0.5f, y + cellH * 0.5f, z);
 
-            ref ControlGeometry g = ref GeometryAt(row);
+            int slot = list.Next();
+            ref ControlGeometry g = ref list.GeometryAt(slot);
             g.matrix = matrix;
             g.clip = clip;
             g.gradientRect = gradientRect;
@@ -295,7 +295,7 @@ namespace ArctisAurora.Core.UI
             float u1 = xOffset + cellUV - texelPad;
             float v1 = yOffset + cellUV - texelPad;
 
-            ref VulkanControl v = ref VisualAt(row);
+            ref VulkanControl v = ref list.VisualAt(slot);
             v.type = VulkanControlType.MTSDFControl;
             v.uvs.uv1 = new Vector2D<float>(u1, v1);
             v.uvs.uv2 = new Vector2D<float>(u0, v0);
@@ -304,10 +304,10 @@ namespace ArctisAurora.Core.UI
             v.tint = new Vector4D<float>(color, _alpha);
             v.textureIndex = _fontAsset.textureAsset.textureIndex;
             v.cornerRadius = Vector4D<float>.Zero;
+            v.edgeColor = Vector3D<float>.Zero;
             v.edgeThickness = 0f;
             v.gradientIndex = 0;
 
-            Publish(row);
             return m.advanceWidth * fontSize;
         }
         #endregion
