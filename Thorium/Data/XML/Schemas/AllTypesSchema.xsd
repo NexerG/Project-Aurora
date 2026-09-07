@@ -51,6 +51,8 @@
       <xs:enumeration value="NextLabel" />
       <xs:enumeration value="NextPanel" />
       <xs:enumeration value="NextStackPanel" />
+      <xs:enumeration value="NextTitleBar" />
+      <xs:enumeration value="NextWindowFrame" />
       <xs:enumeration value="NextTextRun" />
       <xs:enumeration value="NextWindow" />
       <xs:enumeration value="MenuItem" />

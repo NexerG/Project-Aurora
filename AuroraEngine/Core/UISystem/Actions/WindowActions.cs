@@ -6,6 +6,7 @@ using ArctisAurora.Core.UISystem.Controls.Text.Document;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.GLFW;
+using UIEngine = ArctisAurora.Core.UI.UIEngine;
 
 namespace ArctisAurora.Core.UISystem.Actions
 {
@@ -16,7 +17,8 @@ namespace ArctisAurora.Core.UISystem.Actions
         // These are bound from XML as zero-argument delegates, so the window comes from the control
         // that fired them: the menu's owner when one is open, otherwise whatever the pointer is on.
         private static RenderWindow Acting() =>
-            RenderWindow.Of(ContextMenus.invoker ?? UICollisionHandling.hovering);
+            UIEngine.WindowOf(UIEngine.hovering)
+            ?? RenderWindow.Of(ContextMenus.invoker ?? UICollisionHandling.hovering);
 
         [A_XSDActionDependency("Window.Minimize", "UI", "Iconifies the window")]
         public static void Minimize()

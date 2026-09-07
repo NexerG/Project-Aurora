@@ -175,7 +175,12 @@ namespace ArctisAurora.Core.UI
                 if (rmb.justReleased) SolveRelease(point, delta, PointerEvent.rightButton, rmb.tapCount);
             }
 
-            if (ownsDrag) CheckDrag(window);
+            // Claimant before target, so a lost release is caught before anything is offered a drop.
+            if (ownsDrag)
+            {
+                SolveDrag(point, delta);
+                CheckDrag(window);
+            }
 
             if (window.scrollDelta.X != 0 || window.scrollDelta.Y != 0)
                 SolveScroll(point, window.scrollDelta);
@@ -366,8 +371,8 @@ namespace ArctisAurora.Core.UI
             return null;
         }
 
-        // Ends the drag: the target hears the drag leave, then that it was dropped on it. Telling the
-        // claimant is still to come.
+        // Ends the drag: the target hears the drag leave, then that it was dropped on it, then the
+        // claimant hears the gesture end.
         public static void EndDrag()
         {
             Control target = _dragTarget;
@@ -377,10 +382,34 @@ namespace ArctisAurora.Core.UI
                 if (c.DraggingOverEnd(dragged)) break;
 
             target?.FinishDrag(dragged, _dragPoint);
+            dragged?.OnDragStop();
 
             _dragTarget = null;
             SetMouseOverWindow(null);
             SetDragging(null);
+        }
+
+        // Feeds the claimant each tick, and abandons a claim whose release went unseen. The lost
+        // release ends the gesture without offering a drop, because where it happened is unknown.
+        private static void SolveDrag(Vector2D<float> point, Vector2D<float> delta)
+        {
+            if (dragging == null) return;
+
+            if (!InputHandler.instance.IsKeyDown(Keys.MouseLeft))
+            {
+                Control stale = dragging;
+
+                for (Control c = _dragTarget; c != null; c = c.parent as Control)
+                    if (c.DraggingOverEnd(stale)) break;
+
+                _dragTarget = null;
+                SetMouseOverWindow(null);
+                SetDragging(null);
+                stale.OnDragStop();
+                return;
+            }
+
+            dragging.OnDrag(Event(dragging, point, delta, PointerEvent.leftButton, 0));
         }
 
         // The wheel walks up from the hovered control until something consumes it.

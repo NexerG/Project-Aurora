@@ -71,6 +71,16 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:NextStackPanel.Attributes" />
   </xs:complexType>
+  <xs:element name="NextTitleBar" type="types:NextTitleBar" />
+  <xs:complexType name="NextTitleBar">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextStackPanel.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextWindowFrame" type="types:NextWindowFrame" />
+  <xs:complexType name="NextWindowFrame">
+    <xs:sequence />
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+  </xs:complexType>
   <xs:attributeGroup name="NextTextRun.Attributes">
     <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
     <xs:attribute name="Text" type="xs:string" />

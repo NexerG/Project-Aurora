@@ -512,6 +512,40 @@ namespace ArctisAurora.Core.UI
             SetGradientSpace(finalRect);
         }
 
+        // Places one child in a box by its own alignment, stretching it on either axis that asks.
+        protected static void ArrangeByAlignment(Control child, LayoutRect inner)
+        {
+            ref ArrangeData ca = ref child.arrange;
+            HorizontalAlignment ha = (HorizontalAlignment)ca.horizontalAlignment;
+            VerticalAlignment va = (VerticalAlignment)ca.verticalAlignment;
+
+            float childW = ha == HorizontalAlignment.Stretch
+                ? inner.width
+                : MathF.Min(ca.desired.X, inner.width);
+
+            float childH = va == VerticalAlignment.Stretch
+                ? inner.height
+                : MathF.Min(ca.desired.Y, inner.height);
+
+            float childX = ha switch
+            {
+                HorizontalAlignment.Left => inner.x,
+                HorizontalAlignment.Right => inner.x + inner.width - childW,
+                HorizontalAlignment.Center => inner.x + (inner.width - childW) * 0.5f,
+                _ => inner.x,
+            };
+
+            float childY = va switch
+            {
+                VerticalAlignment.Top => inner.y,
+                VerticalAlignment.Bottom => inner.y + inner.height - childH,
+                VerticalAlignment.Center => inner.y + (inner.height - childH) * 0.5f,
+                _ => inner.y,
+            };
+
+            child.Arrange(new LayoutRect(childX, childY, childW, childH));
+        }
+
         // Union of this subtree's arranged rects, and how many rows it holds. Written by the pass
         // UIEngine runs after Arrange, so no override has to remember to maintain them.
         internal void RefreshSubtreeCache()
@@ -597,6 +631,17 @@ namespace ArctisAurora.Core.UI
             UIEngine.SetDragging(this);
             (parent as Control)?.ChildDraggedOut(this);
         }
+
+        // What the claimant hears while it is being dragged. Delivered straight to it rather than
+        // walked up, so neither returns whether it was consumed.
+        public Action<PointerEvent>? onDrag;
+        public Action? onDragStop;
+
+        public void RegisterOnDrag(Action<PointerEvent> handler) => onDrag = handler;
+        public void RegisterOnDragStop(Action handler) => onDragStop = handler;
+
+        public virtual void OnDrag(PointerEvent e) => onDrag?.Invoke(e);
+        public virtual void OnDragStop() => onDragStop?.Invoke();
 
         // A drag arrived over this control, is still over it, and has left it. All three walk up
         // until one returns true, like every other pointer event.

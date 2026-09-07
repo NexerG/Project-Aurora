@@ -108,39 +108,8 @@ namespace ArctisAurora.Core.UI
             LayoutRect inner = finalRect.Shrink(arrange.padding);
 
             foreach (Entity e in children)
-            {
-                if (e is not Control child) continue;
-
-                ref ArrangeData ca = ref child.arrange;
-                HorizontalAlignment ha = (HorizontalAlignment)ca.horizontalAlignment;
-                VerticalAlignment va = (VerticalAlignment)ca.verticalAlignment;
-
-                float childW = ha == HorizontalAlignment.Stretch
-                    ? inner.width
-                    : MathF.Min(ca.desired.X, inner.width);
-
-                float childH = va == VerticalAlignment.Stretch
-                    ? inner.height
-                    : MathF.Min(ca.desired.Y, inner.height);
-
-                float childX = ha switch
-                {
-                    HorizontalAlignment.Left => inner.x,
-                    HorizontalAlignment.Right => inner.x + inner.width - childW,
-                    HorizontalAlignment.Center => inner.x + (inner.width - childW) * 0.5f,
-                    _ => inner.x,
-                };
-
-                float childY = va switch
-                {
-                    VerticalAlignment.Top => inner.y,
-                    VerticalAlignment.Bottom => inner.y + inner.height - childH,
-                    VerticalAlignment.Center => inner.y + (inner.height - childH) * 0.5f,
-                    _ => inner.y,
-                };
-
-                child.Arrange(new LayoutRect(childX, childY, childW, childH));
-            }
+                if (e is Control child)
+                    ArrangeByAlignment(child, inner);
 
             SetFlag(ArrangeFlags.ArrangeDirty, false);
         }

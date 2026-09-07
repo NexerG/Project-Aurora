@@ -77,7 +77,7 @@ namespace ArctisAurora.EngineWork.Rendering
             uiNext = new UIEngineModule();
             modules = new RenderingModule[]
             {
-                ui,
+                //ui,
                 uiNext,
             };
 
@@ -85,6 +85,10 @@ namespace ArctisAurora.EngineWork.Rendering
             // builds the GPU side, and a tree can be assigned to a window before that happens.
             for (int i = 0; i < modules.Length; i++)
                 modules[i].window = this;
+
+            // Off the module list, so nothing binds, records or composites it. Still holds this
+            // window's outgoing tree, and its uiRoot setter fits against this.
+            ui.window = this;
         }
 
         // Brings the window forward. Restored first when iconified — focusing a minimized window

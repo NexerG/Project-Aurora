@@ -3,6 +3,9 @@
      Deleted with 6b. -->
 <NextWindow Width="1280" Height="720" Padding="0">
 
+<!-- the resize grips, and the box everything else is arranged in -->
+<NextWindowFrame Name="frame" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+
 	<!-- attributes: colour, corner radii as four values, edge band, padding -->
 	<NextContainer Name="card"
 	               Width="360" Height="220"
@@ -43,8 +46,8 @@
 	               CornerRadius="12"
 	               Gradient="accent"/>
 
-	<!-- 6b1: the shell's title bar, minus the caption drag and the resize grips -->
-	<NextStackPanel Name="titlebar"
+	<!-- 6b1: the shell's title bar -->
+	<NextTitleBar Name="titlebar"
 	                Orientation="Horizontal" Height="32"
 	                HorizontalAlignment="Stretch" VerticalAlignment="Top"
 	                ColorHex="#EBEAE5" Gradient="titlebar">
@@ -89,6 +92,8 @@
 			<NextIcon Set="default" Icon="close" Width="14" Height="14"
 			          HorizontalPos="0.5" VerticalPos="0.5" ColorHex="#5F5D56"/>
 		</NextButton>
-	</NextStackPanel>
+	</NextTitleBar>
+
+</NextWindowFrame>
 
 </NextWindow>
