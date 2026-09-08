@@ -44,9 +44,19 @@
   </xs:simpleType>
   <xs:simpleType name="UI">
     <xs:restriction base="xs:string">
+      <xs:enumeration value="NextVaultBrowser" />
       <xs:enumeration value="VaultBrowser" />
       <xs:enumeration value="NextContainer" />
       <xs:enumeration value="NextButton" />
+      <xs:enumeration value="NextDock" />
+      <xs:enumeration value="NextEditableLabel" />
+      <xs:enumeration value="NextEditableTabs" />
+      <xs:enumeration value="NextFileRow" />
+      <xs:enumeration value="NextGridSizeMode" />
+      <xs:enumeration value="NextRowDefinition" />
+      <xs:enumeration value="NextColumnDefinition" />
+      <xs:enumeration value="NextGridCell" />
+      <xs:enumeration value="NextGridList" />
       <xs:enumeration value="NextIcon" />
       <xs:enumeration value="NextLabel" />
       <xs:enumeration value="NextPanel" />
@@ -55,8 +65,12 @@
       <xs:enumeration value="NextSplitter" />
       <xs:enumeration value="NextSplitView" />
       <xs:enumeration value="NextStackPanel" />
+      <xs:enumeration value="NextTabItem" />
+      <xs:enumeration value="NextTabView" />
+      <xs:enumeration value="NextTextBox" />
       <xs:enumeration value="NextTitleBar" />
       <xs:enumeration value="NextWindowFrame" />
+      <xs:enumeration value="NextWorkspace" />
       <xs:enumeration value="NextTextRun" />
       <xs:enumeration value="NextWindow" />
       <xs:enumeration value="MenuItem" />

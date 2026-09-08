@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Thorium's shell on the new stack, mirroring UI.ui.xml. Stubs stand in for the controls that
+     have not been ported: the menu buttons carry no menu, and the document toolbar is a bare band.
+     Replaces NextProbe.ui.xml as the bench. -->
+<NextWindow Width="1280" Height="720" WindowingMode="WindowSize" Autoscaling="false" ScalingAxis="Vertical" ColorHex="#FBFAF8">
+
+	<NextWindowFrame ColorHex="#FBFAF8">
+	<NextStackPanel Orientation="Vertical" ColorHex="#FBFAF8">
+
+		<NextTitleBar Orientation="Horizontal" Height="32" ColorHex="#EBEAE5" Gradient="titlebar">
+			<NextButton Width="72" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD">
+				<NextLabel Text="Thorium" FontSize="13" HorizontalPos="0.5" VerticalPos="0.5" ColorHex="#5F5D56"/>
+			</NextButton>
+			<NextButton Width="48" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD">
+				<NextLabel Text="File" FontSize="13" HorizontalPos="0.5" VerticalPos="0.5" ColorHex="#5F5D56"/>
+			</NextButton>
+			<NextButton Width="48" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD">
+				<NextLabel Text="Edit" FontSize="13" HorizontalPos="0.5" VerticalPos="0.5" ColorHex="#5F5D56"/>
+			</NextButton>
+			<NextButton Width="48" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD">
+				<NextLabel Text="View" FontSize="13" HorizontalPos="0.5" VerticalPos="0.5" ColorHex="#5F5D56"/>
+			</NextButton>
+			<NextPanel WidthStar="1" Height="32" ColorHex="#EBEAE5"/>
+			<NextButton Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD" onRelease="Window.Minimize">
+				<NextIcon Set="default" Icon="minimize" Width="14" Height="14" HorizontalPos="0.5" VerticalPos="0.5" ColorHex="#5F5D56"/>
+			</NextButton>
+			<NextButton Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD" onRelease="Window.MaximizeRestore">
+				<NextIcon Set="default" Icon="maximize" Width="18" Height="18" HorizontalPos="0.5" VerticalPos="0.5" ColorHex="#5F5D56"/>
+			</NextButton>
+			<NextButton Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#C42B1E" PressColorHex="#A82318" onRelease="Window.Close">
+				<NextIcon Set="default" Icon="close" Width="14" Height="14" HorizontalPos="0.5" VerticalPos="0.5" ColorHex="#5F5D56"/>
+			</NextButton>
+		</NextTitleBar>
+
+		<NextStackPanel Orientation="Horizontal" HeightStar="1" ColorHex="#FBFAF8">
+			<NextStackPanel Orientation="Vertical" Width="220" MinWidth="120" ColorHex="#F2F1ED">
+				<NextVaultBrowser Name="Browser" HeightStar="1" ColorHex="#F2F1ED" Padding="8"
+				                  RowColorHex="#F2F1ED" RowHoverColorHex="#EAE8E2" RowPressColorHex="#E3E1D9"
+				                  FolderColorHex="#918F87" FileColorHex="#34322D" RowFieldColorHex="#EAE8E2"
+				                  ThumbColorHex="#D7D5CD" ThumbHoverColorHex="#C9C6BC" ThumbPressColorHex="#BAB7AC"/>
+			</NextStackPanel>
+			<NextSplitter Width="5" ColorHex="#E6E4DE" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"/>
+			<NextStackPanel Orientation="Vertical" WidthStar="1" ColorHex="#FBFAF8">
+				<!-- stub: DocumentToolbar is 6c -->
+				<NextPanel Height="30" HorizontalAlignment="Stretch" ColorHex="#FBFAF8"/>
+				<NextWorkspace Name="Workspace" HeightStar="1" Default="next-workspace" Pane="next-tab-pane"/>
+			</NextStackPanel>
+		</NextStackPanel>
+	</NextStackPanel>
+	</NextWindowFrame>
+</NextWindow>

@@ -369,22 +369,26 @@ namespace ArctisAurora.Core.UI
             return null;
         }
 
-        // Ends the drag: the target hears the drag leave, then that it was dropped on it, then the
-        // claimant hears the gesture end.
+        // Ends the drag: the target hears the drag leave, the drop is offered up its ancestors until
+        // one takes it, then the claimant hears the gesture end and whether anything took it. The
+        // contexts are cleared first, so a handler asking whether a drag is live gets no.
         public static void EndDrag()
         {
             Control target = _dragTarget;
             Control dragged = dragging;
 
-            for (Control c = target; c != null; c = c.parent as Control)
-                if (c.DraggingOverEnd(dragged)) break;
-
-            target?.FinishDrag(dragged, _dragPoint);
-            dragged?.OnDragStop();
-
             _dragTarget = null;
             SetMouseOverWindow(null);
             SetDragging(null);
+
+            for (Control c = target; c != null; c = c.parent as Control)
+                if (c.DraggingOverEnd(dragged)) break;
+
+            bool accepted = false;
+            for (Control c = target; c != null && !accepted; c = c.parent as Control)
+                accepted = c.FinishDrag(dragged, _dragPoint);
+
+            dragged?.OnDragStop(accepted);
         }
 
         // Feeds the claimant each tick, and abandons a claim whose release went unseen. The lost
@@ -403,7 +407,7 @@ namespace ArctisAurora.Core.UI
                 _dragTarget = null;
                 SetMouseOverWindow(null);
                 SetDragging(null);
-                stale.OnDragStop();
+                stale.OnDragStop(false);
                 return;
             }
 
@@ -604,23 +608,18 @@ namespace ArctisAurora.Core.UI
                      $"ControlGeometry {Unsafe.SizeOf<ControlGeometry>()} B, " +
                      $"VulkanControl {Unsafe.SizeOf<VulkanControl>()} B");
 
-            BuildProbe(Engine.primary);
+            BuildShell(Engine.primary);
             return true;
         }
 
-        // Landing 6a scaffolding: the probe document is the only thing on the new stack that XML can
-        // build, because no subclass carries an [A_XSDType] until 6b. It exists to prove the parser,
-        // the converters and the container base, and 6b deletes it with the document.
-        private static void BuildProbe(RenderWindow window)
+        // Landing 6b scaffolding: Thorium's shell on the new stack, standing in for the session
+        // restore that still runs on the outgoing one. 6d deletes it with the document.
+        private static void BuildShell(RenderWindow window)
         {
-            WindowRoot root = (WindowRoot)Control.ParseXML("next-probe");
+            WindowRoot root = (WindowRoot)Control.ParseXML("next-main");
             window.uiNext.uiRoot = root;
 
-            // A delegate handler, which is how a ported subclass will reach the new scroll path.
-            // Registered here rather than authored, because binding an event from XML is the one
-            // thing 6a left open.
-            Control bar = root.FindByName("bar");
-            bar.RegisterOnScroll(e => { bar.colorHex = e.delta.Y > 0 ? "#FFD166" : "#8338EC"; return true; });
+            NextWorkspaceControl.In(root)?.LoadDefault();
         }
 
     }

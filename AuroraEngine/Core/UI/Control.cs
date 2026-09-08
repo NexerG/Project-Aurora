@@ -603,13 +603,13 @@ namespace ArctisAurora.Core.UI
         // What the claimant hears while it is being dragged. Delivered straight to it rather than
         // walked up, so neither returns whether it was consumed.
         public Action<PointerEvent>? onDrag;
-        public Action? onDragStop;
+        public Action<bool>? onDragStop;
 
         public void RegisterOnDrag(Action<PointerEvent> handler) => onDrag = handler;
-        public void RegisterOnDragStop(Action handler) => onDragStop = handler;
+        public void RegisterOnDragStop(Action<bool> handler) => onDragStop = handler;
 
         public virtual void OnDrag(PointerEvent e) => onDrag?.Invoke(e);
-        public virtual void OnDragStop() => onDragStop?.Invoke();
+        public virtual void OnDragStop(bool accepted) => onDragStop?.Invoke(accepted);
 
         // A drag arrived over this control, is still over it, and has left it. All three walk up
         // until one returns true, like every other pointer event.
@@ -617,8 +617,9 @@ namespace ArctisAurora.Core.UI
         public virtual bool DraggingOver(Control dragged, Vector2D<float> point) => false;
         public virtual bool DraggingOverEnd(Control dragged) => false;
 
-        // A drag was released on this control.
-        public virtual void FinishDrag(Control dragged, Vector2D<float> point) { }
+        // A drag was released on this control. Walks up until one takes it, and what nobody took is
+        // what the claimant hears as a refused drop.
+        public virtual bool FinishDrag(Control dragged, Vector2D<float> point) => false;
 
         // This control is being dragged, and the pointer left every window or entered one. An
         // overlap counts as neither — the window under the pointer is not knowable there.

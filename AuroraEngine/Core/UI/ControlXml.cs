@@ -143,7 +143,7 @@ namespace ArctisAurora.Core.UI
 
                 if (memberType.IsEnum)
                 {
-                    object enumValue = Enum.Parse(memberType, attr.Value);
+                    object enumValue = Enum.Parse(memberType, attr.Value, true);
                     if (prop is PropertyInfo enumProperty) enumProperty.SetValue(topControl, enumValue);
                     else ((FieldInfo)prop).SetValue(topControl, enumValue);
                     continue;

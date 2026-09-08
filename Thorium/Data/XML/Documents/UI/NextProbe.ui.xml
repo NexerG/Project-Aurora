@@ -127,6 +127,72 @@
 		</NextButton>
 	</NextTitleBar>
 
+	<!-- 6b tier 2: two tab views either side of a grip, for the drag between them -->
+	<NextSplitView Name="tabsplit"
+	               Orientation="Horizontal"
+	               Width="520" Height="240"
+	               HorizontalAlignment="Left" VerticalAlignment="Bottom">
+		<NextTabView Name="tabsLeft" Width="250">
+			<NextTabItem Header="alpha">
+				<NextPanel ColorHex="#12314A"/>
+			</NextTabItem>
+			<NextTabItem Header="beta">
+				<NextPanel ColorHex="#3AA6FF"/>
+			</NextTabItem>
+		</NextTabView>
+		<NextSplitter Name="tabGrip" Width="5"/>
+		<NextTabView Name="tabsRight" WidthStar="1">
+			<NextTabItem Header="gamma">
+				<NextPanel ColorHex="#EF476F"/>
+			</NextTabItem>
+		</NextTabView>
+	</NextSplitView>
+
+	<!-- 6b tier 3: containers and file browsing. Padded clear of the title bar. -->
+	<NextPanel Name="probe3"
+	           Width="780" Height="330"
+	           HorizontalAlignment="Center" VerticalAlignment="Top"
+	           Padding="40,0,0,0" Alpha="0">
+		<NextStackPanel Name="probe3Row" Orientation="Horizontal" Spacing="8" Alpha="0">
+
+			<!-- dock bands in declaration order, the last child filling what is left -->
+			<NextDock Name="dock" Width="300" Height="280" Padding="4"
+			          ColorHex="#1A1D24" CornerRadius="6">
+				<NextPanel Name="dockTop" DockMode="Top" Height="24" ColorHex="#FFD166"/>
+				<NextPanel Name="dockLeft" DockMode="Left" Width="48" ColorHex="#8338EC"/>
+				<NextVaultBrowser Name="vault"
+				                  RowHeight="20" RowFontSize="13" Indent="10"
+				                  ColorHex="#171717"/>
+			</NextDock>
+
+			<!-- a Fixed band, a Star band, and two Star columns weighted 1 and 2 -->
+			<NextGridList Name="grid" Width="280" Height="280" Padding="4"
+			              ColorHex="#1A1D24" CornerRadius="6">
+				<NextRowDefinition SizeMode="Fixed" Height="60"/>
+				<NextRowDefinition SizeMode="Star" Height="1"/>
+				<NextColumnDefinition SizeMode="Star" Width="1"/>
+				<NextColumnDefinition SizeMode="Star" Width="2"/>
+				<NextPanel Grid.Row="0" Grid.Column="0" ColorHex="#3AA6FF"/>
+				<NextPanel Grid.Row="0" Grid.Column="1" ColorHex="#06D6A0"/>
+				<NextPanel Grid.Row="1" Grid.Column="0" ColorHex="#EF476F"/>
+				<NextPanel Grid.Row="1" Grid.Column="1" ColorHex="#FFD166"/>
+			</NextGridList>
+
+			<!-- a transparent workspace holding one authored pane, and renameable tab captions -->
+			<NextWorkspace Name="workspace" Width="176" Height="280">
+				<NextEditableTabs Name="renameTabs">
+					<NextTabItem Header="one">
+						<NextPanel ColorHex="#12314A"/>
+					</NextTabItem>
+					<NextTabItem Header="two">
+						<NextPanel ColorHex="#2A2F3A"/>
+					</NextTabItem>
+				</NextEditableTabs>
+			</NextWorkspace>
+
+		</NextStackPanel>
+	</NextPanel>
+
 	<!-- 6b tier 1: content that fits, so neither thumb may draw -->
 	<NextScrollable Name="fits"
 	                Width="200" Height="120"

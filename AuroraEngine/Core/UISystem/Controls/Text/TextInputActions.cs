@@ -1,4 +1,5 @@
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.UI;
 using ArctisAurora.Core.UISystem.Controls.Text.Document;
 using ArctisAurora.Core.UISystem.Controls.Text.Editing;
 using ArctisAurora.EngineWork;
@@ -31,6 +32,14 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             DocumentEditorControl editor = FocusedEditor();
             if (editor == null)
             {
+                NextTextBoxControl nextBox = NextBox();
+                if (nextBox != null)
+                {
+                    while (input.Count > 0)
+                        nextBox.WriteChar(input.Dequeue());
+                    return;
+                }
+
                 TextBoxControl box = Box();
                 if (box == null) return;
 
@@ -74,6 +83,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             DocumentEditorControl editor = FocusedEditor();
             if (editor != null) { editor.Backspace(); return; }
 
+            NextTextBoxControl nextBox = NextBox();
+            if (nextBox != null) { nextBox.Backspace(); return; }
+
             Box()?.Backspace();
         }
 
@@ -82,6 +94,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         {
             DocumentEditorControl editor = FocusedEditor();
             if (editor != null) { editor.Delete(); return; }
+
+            NextTextBoxControl nextBox = NextBox();
+            if (nextBox != null) { nextBox.Delete(); return; }
 
             Box()?.Delete();
         }
@@ -92,6 +107,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             DocumentEditorControl editor = FocusedEditor();
             if (editor != null) { editor.SplitBlock(); return; }
 
+            NextTextBoxControl nextBox = NextBox();
+            if (nextBox != null) { nextBox.Commit(); return; }
+
             Box()?.Commit();
         }
 
@@ -100,6 +118,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         {
             DocumentEditorControl editor = FocusedEditor();
             if (editor != null) { editor.SelectAll(); return; }
+
+            NextTextBoxControl nextBox = NextBox();
+            if (nextBox != null) { nextBox.SelectAll(); return; }
 
             Box()?.SelectAll();
         }
@@ -129,7 +150,13 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         public static void Redo() => FocusedEditor()?.Redo();
 
         [A_XSDActionDependency("Text.Cancel", "Input", "Abandons the edit in a standalone field and restores what it held")]
-        public static void Cancel() => Box()?.Cancel();
+        public static void Cancel()
+        {
+            NextTextBoxControl nextBox = NextBox();
+            if (nextBox != null) { nextBox.Cancel(); return; }
+
+            Box()?.Cancel();
+        }
 
         [A_XSDActionDependency("Text.Save", "Input", "Writes the focused note back to the file it was loaded from")]
         public static void Save() => FocusedEditor()?.SaveNamed();
@@ -168,7 +195,26 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                 return;
             }
 
+            NextTextBoxControl nextBox = NextBox();
+            if (nextBox != null)
+            {
+                nextBox.MoveCaret(move, InputHandler.instance.IsModifierDown(InputModifier.Extend));
+                return;
+            }
+
             Box()?.MoveCaret(move, InputHandler.instance.IsModifierDown(InputModifier.Extend));
+        }
+
+        // The new stack's field, resolved off its own active-control context. Tried before Box, and
+        // only one of the two stacks ever holds a field.
+        private static NextTextBoxControl NextBox()
+        {
+            for (ArctisAurora.Core.UI.Control control = UIEngine.activeControl;
+                 control != null;
+                 control = control.parent as ArctisAurora.Core.UI.Control)
+                if (control is NextTextBoxControl box) return box.isEditing ? box : null;
+
+            return null;
         }
 
         // Nearest standalone field at or above whatever the collision handler last made active. The

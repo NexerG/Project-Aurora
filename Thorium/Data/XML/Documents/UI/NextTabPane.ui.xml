@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One empty pane, mirroring TabPane.ui.xml. TearOffDocument waits on multi-windowing. -->
+<NextEditableTabs Name="Tabs" HeightStar="1" ColorHex="#FBFAF8"
+                  TabHeight="28" TabWidth="180"
+                  TabColorHex="#F0EFEA" ActiveTabColorHex="#FBFAF8" TabHoverColorHex="#E8E6E0" TabInkColorHex="#34322D"
+                  GripColorHex="#E6E4DE" GripHoverColorHex="#DCDAD3" GripPressColorHex="#D0CEC6"/>

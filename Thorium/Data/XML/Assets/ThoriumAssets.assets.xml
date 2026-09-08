@@ -9,7 +9,10 @@
 	<Asset Type="UIDocumentAsset" Name="settings"   Source="XML/Documents/UI/Settings.ui.xml"/>
 	<Asset Type="UIDocumentAsset" Name="vaults"     Source="XML/Documents/UI/Vaults.ui.xml"/>
 
-	<!-- landing 6a probe, deleted with 6b -->
-	<Asset Type="UIDocumentAsset" Name="next-probe" Source="XML/Documents/UI/NextProbe.ui.xml"/>
+	<!-- the shell on the new stack, and the landing 6a probe it replaced -->
+	<Asset Type="UIDocumentAsset" Name="next-main"      Source="XML/Documents/UI/NextUI.ui.xml"/>
+	<Asset Type="UIDocumentAsset" Name="next-workspace" Source="XML/Documents/UI/NextWorkspace.ui.xml"/>
+	<Asset Type="UIDocumentAsset" Name="next-tab-pane"  Source="XML/Documents/UI/NextTabPane.ui.xml"/>
+	<Asset Type="UIDocumentAsset" Name="next-probe"     Source="XML/Documents/UI/NextProbe.ui.xml"/>
 
 </AssetManifest>

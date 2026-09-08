@@ -68,6 +68,14 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ControlXml.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DrawList.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextButtonControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextCaretControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextDockingControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextEditableLabelControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextEditableTabsControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextFileBrowserControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextFileRowControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextFileTreeControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextGridListControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextHintControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextIconControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextLabelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextPanelControl.cs
@@ -76,8 +84,13 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextScrollThumbControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextSplitterControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextSplitViewControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextStackPanelControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextTabItemControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextTabStripButtonControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextTabViewControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextTextBoxControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextTitleBarControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextWindowFrameControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextWorkspaceControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PointerEvent.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TextRunControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UIData.cs
@@ -226,4 +239,5 @@ Thorium -> Thorium/Thorium.cs
 Thorium -> Thorium/ThoriumSettings.cs
 Thorium.Editor -> Thorium/Editor/Decorations.cs
 Thorium.Editor -> Thorium/Editor/VaultsWindow.cs
+Thorium.Editor.CustomControls -> Thorium/Editor/CustomControls/NextVaultBrowserControl.cs
 Thorium.Editor.CustomControls -> Thorium/Editor/CustomControls/VaultBrowserControl.cs
