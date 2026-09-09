@@ -42,7 +42,7 @@ public int cellCount => glyphCount * styleCount;
 
 The atlas holds one cell per (character, face), laid out as consecutive per-face blocks in a square grid of `ceil(sqrt(cellCount))` cells to a side — regular first, then whichever of bold, italic and bold-italic the family had a file for. Nothing above this class knows how many faces there are: `CellIndex` turns a character index and a [[Glyph]] style into a flat cell number, and the caller divides it into the grid. Adding a face is therefore arithmetic here and nothing at all in the shader.
 
-`Effective` is the honesty step. A family with no italic file still gets asked for italic by any run whose author toggled it, and the answer is regular — the style collapses in the metrics and in the cell together, so a run never measures against one face and draws in another. It does not cascade: bold-italic on a family that has bold but no bold-italic draws regular, not bold, because claiming a weight the family does not carry for that style is the worse failure. See `ClaudeMemory/Decisions/bold-italic-face.md`.
+`Effective` is the honesty step. A family with no italic file still gets asked for italic by any run whose author toggled it, and the answer is regular — the style collapses in the metrics and in the cell together, so a run never measures against one face and draws in another. It does not cascade: bold-italic on a family that has bold but no bold-italic draws regular, not bold, because claiming a weight the family does not carry for that style is the worse failure.
 
 ## Methods / Functions
 

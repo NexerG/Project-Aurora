@@ -29,7 +29,7 @@ An open context menu: a translucent ground over a column of entries, floated in 
 
 It hosts itself. `Open` composes, fills, measures and attaches; `Attach` and `Detach` are the only two things a different host has to answer differently, which is what [[Windowed Context Menu]] overrides to put the same column in an OS window of its own. Which of the two a right click builds is `ContextMenus.menuFactory`, a host-level default set once at startup — [[Thorium]] sets it to the windowed one.
 
-Nothing here composes. `ContextMenus.Compose` walks the named menus a control declares plus whatever it adds in code, and the entries arrive as a list of `ContextEntry` already bound to the control that was right-clicked — see the `invoker` decision in ClaudeMemory. This control only draws them and takes the pointer.
+Nothing here composes. `ContextMenus.Compose` walks the named menus a control declares plus whatever it adds in code, and the entries arrive as a list of `ContextEntry` already bound to the control that was right-clicked. This control only draws them and takes the pointer.
 
 Nothing here is sized either. Entries measure to their widest caption and the menu to them, and where it lands is [[Window Control]]'s `AddOverlay`, which flips the menu back over the click point at the right or bottom edge and clamps it when it still does not fit.
 
