@@ -11,6 +11,7 @@ namespace ArctisAurora.Core.Data
         Type ElementType { get; }
         void Grow(int newCapacity);
         void Move(int from, int to);            // dense[to] = dense[from]
+        void Clear(int dense);                  // dense[i] = default
         void Permute(int[] destToSrc, int count); // new[i] = old[destToSrc[i]] for i in [0,count)
 
         // Byte-level writes, for applying a drained SystemCommand whose payload sits in a producer's
@@ -39,6 +40,8 @@ namespace ArctisAurora.Core.Data
         }
 
         public void Move(int from, int to) => data[to] = data[from];
+
+        public void Clear(int dense) => data[dense] = default;
 
         public int ElementSize => Unsafe.SizeOf<T>();
 

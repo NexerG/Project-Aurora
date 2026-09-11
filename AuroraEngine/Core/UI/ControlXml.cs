@@ -46,7 +46,15 @@ namespace ArctisAurora.Core.UI
             return control;
         }
 
-        private static void RecursiveParse(XElement root, Control topControl, (MethodInfo method, A_XSDActionDependencyAttribute attr)[] tagged)
+        // Builds a context menu from a menu document.
+        internal static ContextMenu ParseMenu(string path)
+        {
+            ContextMenu menu = new ContextMenu();
+            RecursiveParse(XDocument.Load(path).Root, menu, TaggedActions);
+            return menu;
+        }
+
+        private static void RecursiveParse(XElement root, object owner, (MethodInfo method, A_XSDActionDependencyAttribute attr)[] tagged)
         {
             foreach (XElement element in root.Elements())
             {
@@ -57,18 +65,19 @@ namespace ArctisAurora.Core.UI
                 // Not a control — the owner holds it in the one List<> whose element type accepts it.
                 if (!typeof(Control).IsAssignableFrom(type))
                 {
-                    FieldInfo field = topControl.GetType()
+                    FieldInfo field = owner.GetType()
                         .GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                         .FirstOrDefault(f => f.FieldType.IsGenericType &&
                                              f.FieldType.GetGenericTypeDefinition() == typeof(List<>)
                                              && f.FieldType.GetGenericArguments()[0].IsAssignableFrom(control.GetType()));
-                    IList list = (IList)field.GetValue(topControl);
+                    IList list = (IList)field.GetValue(owner);
 
                     list.Add(control);
+                    RecursiveParse(element, control, tagged);
                     continue;
                 }
-                topControl.AddChild((Control)control);
-                RecursiveParse(element, (Control)control, tagged);
+                ((Control)owner).AddChild((Control)control);
+                RecursiveParse(element, control, tagged);
             }
         }
 

@@ -60,7 +60,7 @@ namespace ArctisAurora.Core.UI
         {
             pressed = false;
             ApplyState();
-            base.OnPointerRelease(e);
+            if (e.button == PointerEvent.leftButton) base.OnPointerRelease(e);
             return true;
         }
 

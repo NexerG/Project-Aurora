@@ -51,6 +51,7 @@ ArctisAurora.Core.Registry -> AuroraEngine/Core/Registry/SettingCategory.cs
 ArctisAurora.Core.Registry -> AuroraEngine/Core/Registry/SettingsRegistry.cs
 ArctisAurora.Core.Registry -> AuroraEngine/Core/Registry/XSDGenerator.cs
 ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/AbstractAsset.cs
+ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/ContextMenuAsset.cs
 ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/FontAsset.cs
 ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/IconSetAsset.cs
 ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/SamplerAsset.cs
@@ -63,12 +64,18 @@ ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/PhysicsSystem.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/RenderSystem.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/ThreadedSystem.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ContainerControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ContextMenuEntries.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Control.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ControlXml.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DrawList.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextButtonControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextCaretControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextCheckBoxControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextContextMenuControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextContextMenus.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextDockingControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextDragGhost.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextDropdownControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextEditableLabelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextEditableTabsControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextFileBrowserControl.cs
@@ -77,7 +84,9 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextFileTreeControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextGridListControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextHintControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextIconControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextKeyCaptureControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextLabelControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextMenuButtonControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextPanelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextScrollableControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextScrollThumbControl.cs
@@ -95,6 +104,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PointerEvent.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TextRunControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UIData.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UIEngine.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UITreeDump.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WindowRoot.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISettings.cs
 ArctisAurora.Core.UISystem -> AuroraEngine/Core/UISystem/AuroraFont.cs

@@ -588,9 +588,19 @@ namespace ArctisAurora.Core.UI
         // False leaves the active control where it was when this one is pressed.
         public virtual bool takesActiveControl => true;
 
+        // context menu
+        [A_XSDElementProperty("ContextMenu", "UI", "The menu document, or registered menu, this control offers on right click.")]
+        public string? contextMenu;
+        [A_XSDElementProperty("StopsContextMenu", "UI", "Ancestors add nothing to a context menu opened on this control.")]
+        public bool stopsContextMenu = false;
+
         // Whether a left press on this control begins a drag.
         [A_XSDElementProperty("Draggable", "UI", "A left press on this control begins a drag.")]
         public bool draggable = false;
+
+        // drag preview opacity; negative uses the UI setting
+        [A_XSDElementProperty("DraggingOpacity", "UI", "Opacity of this control's drag preview. Negative uses the UI setting.")]
+        public float draggingOpacity = -1f;
 
         // Claims the drag and tells the parent it lost a child. Also callable directly, for a drag
         // that starts on something other than a plain press.

@@ -3,7 +3,7 @@
      document editors, which are 6c. -->
 <NextSplitView Orientation="Horizontal" HeightStar="1">
 
-	<NextEditableTabs Name="Tabs" Width="525" MinWidth="120" ColorHex="#FBFAF8"
+	<NextEditableTabs Name="Tabs" Width="525" MinWidth="120" ColorHex="#FBFAF8" ContextMenu="view"
 	                  TabHeight="28" TabWidth="180"
 	                  TabColorHex="#F0EFEA" ActiveTabColorHex="#FBFAF8" TabHoverColorHex="#E8E6E0" TabInkColorHex="#34322D"
 	                  GripColorHex="#E6E4DE" GripHoverColorHex="#DCDAD3" GripPressColorHex="#D0CEC6">
@@ -12,7 +12,7 @@
 		</NextTabItem>
 	</NextEditableTabs>
 	<NextSplitter Width="5" ColorHex="#E6E4DE" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"/>
-	<NextEditableTabs Name="TabsRight" WidthStar="1" MinWidth="120" ColorHex="#FBFAF8"
+	<NextEditableTabs Name="TabsRight" WidthStar="1" MinWidth="120" ColorHex="#FBFAF8" ContextMenu="view"
 	                  TabHeight="28" TabWidth="180"
 	                  TabColorHex="#F0EFEA" ActiveTabColorHex="#FBFAF8" TabHoverColorHex="#E8E6E0" TabInkColorHex="#34322D"
 	                  GripColorHex="#E6E4DE" GripHoverColorHex="#DCDAD3" GripPressColorHex="#D0CEC6">

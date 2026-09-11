@@ -298,7 +298,9 @@ namespace ArctisAurora.EngineWork
                 HandleUI(window);
             }
             DragGhost.Follow();
+            NextDragGhost.Follow();
             ContextMenus.Tick();
+            NextContextMenus.Tick();
             Profiling.Zone.End("HandleUI");
 
             // here should go entity updates &/or interpolation

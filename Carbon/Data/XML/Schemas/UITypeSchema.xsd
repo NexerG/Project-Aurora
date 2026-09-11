@@ -4,7 +4,7 @@
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:import schemaLocation="EntityRegistryTypeSchema.xsd" namespace="http://arctisaurora/AuroraEntityRegistryTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:SpanChartMode types:GradientKind types:TextStyleType types:DockMode types:GridSizeMode types:Scrollable types:ControlColor types:FillMode types:HorizontalAlignment types:VeticalAlignment types:WindowingModeEnum types:ScalingAxisEnum types:Orientation" />
+    <xs:union memberTypes="types:SpanChartMode types:NextGridSizeMode types:NextScrollDirection types:GradientKind types:TextStyleType types:DockMode types:GridSizeMode types:Scrollable types:NextOrientation types:ControlColor types:FillMode types:HorizontalAlignment types:VeticalAlignment types:WindowingModeEnum types:ScalingAxisEnum types:Orientation" />
   </xs:simpleType>
   <xs:attributeGroup name="FrameStrip.Attributes">
     <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
@@ -94,6 +94,273 @@
   <xs:complexType name="ZoneTable">
     <xs:sequence />
     <xs:attributeGroup ref="types:ZoneTable.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextContainer" type="types:NextContainer" />
+  <xs:complexType name="NextContainer">
+    <xs:sequence />
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextContextMenu" type="types:NextContextMenu" />
+  <xs:group name="ContextMenuEntry.Children">
+    <xs:choice>
+      <xs:element name="NextContextButton" type="types:NextContextButton" />
+      <xs:element name="NextContextLine" type="types:NextContextLine" />
+      <xs:element name="NextContextSubmenu" type="types:NextContextSubmenu" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="NextContextMenu">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:ContextMenuEntry.Children" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:attributeGroup name="NextContextButton.Attributes">
+    <xs:attribute name="Text" type="xs:string" />
+    <xs:attribute name="Action" type="actions:UI" />
+  </xs:attributeGroup>
+  <xs:element name="NextContextButton" type="types:NextContextButton" />
+  <xs:complexType name="NextContextButton">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextContextButton.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextContextLine" type="types:NextContextLine" />
+  <xs:complexType name="NextContextLine">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:attributeGroup name="NextContextSubmenu.Attributes">
+    <xs:attribute name="Text" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="NextContextSubmenu" type="types:NextContextSubmenu" />
+  <xs:complexType name="NextContextSubmenu">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:ContextMenuEntry.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:NextContextSubmenu.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextButton.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+    <xs:attribute name="HoverColorHex" type="xs:string" />
+    <xs:attribute name="PressColorHex" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="NextButton" type="types:NextButton" />
+  <xs:complexType name="NextButton">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextButton.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextDock.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+    <xs:attribute name="LastChildFill" type="xs:boolean" />
+  </xs:attributeGroup>
+  <xs:element name="NextDock" type="types:NextDock" />
+  <xs:complexType name="NextDock">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextDock.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextEditableLabel.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+    <xs:attribute name="Text" type="xs:string" />
+    <xs:attribute name="FontSize" type="xs:int" />
+    <xs:attribute name="TextColorHex" type="xs:string" />
+    <xs:attribute name="FieldColorHex" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="NextEditableLabel" type="types:NextEditableLabel" />
+  <xs:complexType name="NextEditableLabel">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextEditableLabel.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextEditableTabs" type="types:NextEditableTabs" />
+  <xs:complexType name="NextEditableTabs">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextTabView.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextFileRow" type="types:NextFileRow" />
+  <xs:complexType name="NextFileRow">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextButton.Attributes" />
+  </xs:complexType>
+  <xs:simpleType name="NextGridSizeMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Fixed" />
+      <xs:enumeration value="Auto" />
+      <xs:enumeration value="Star" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="NextRowDefinition.Attributes">
+    <xs:attribute name="Height" type="xs:float" />
+    <xs:attribute name="SizeMode" type="types:NextGridSizeMode" />
+    <xs:attribute name="GapAfter" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="NextRowDefinition" type="types:NextRowDefinition" />
+  <xs:complexType name="NextRowDefinition">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextRowDefinition.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextColumnDefinition.Attributes">
+    <xs:attribute name="Width" type="xs:float" />
+    <xs:attribute name="SizeMode" type="types:NextGridSizeMode" />
+    <xs:attribute name="GapAfter" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="NextColumnDefinition" type="types:NextColumnDefinition" />
+  <xs:complexType name="NextColumnDefinition">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextColumnDefinition.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextGridCell.Attributes">
+    <xs:attribute name="Row" type="xs:int" />
+    <xs:attribute name="Column" type="xs:int" />
+    <xs:attribute name="RowSpan" type="xs:int" />
+    <xs:attribute name="ColumnSpan" type="xs:int" />
+  </xs:attributeGroup>
+  <xs:element name="NextGridCell" type="types:NextGridCell" />
+  <xs:complexType name="NextGridCell">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextGridCell.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextGridList" type="types:NextGridList" />
+  <xs:complexType name="NextGridList">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="RowDefinition" type="types:NextRowDefinition">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="ColumnDefinition" type="types:NextColumnDefinition">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextIcon.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+    <xs:attribute name="Set" type="xs:string" />
+    <xs:attribute name="Icon" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="NextIcon" type="types:NextIcon" />
+  <xs:complexType name="NextIcon">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextIcon.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextLabel" type="types:NextLabel" />
+  <xs:complexType name="NextLabel">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextTextRun.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextPanel" type="types:NextPanel" />
+  <xs:complexType name="NextPanel">
+    <xs:sequence />
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+  </xs:complexType>
+  <xs:simpleType name="NextScrollDirection">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Vertical" />
+      <xs:enumeration value="Horizontal" />
+      <xs:enumeration value="Both" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="NextScrollable.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+    <xs:attribute name="ThumbColorHex" type="xs:string" />
+    <xs:attribute name="ThumbHoverColorHex" type="xs:string" />
+    <xs:attribute name="ThumbPressColorHex" type="xs:string" />
+    <xs:attribute name="ScrollDirection" type="types:NextScrollDirection" />
+    <xs:attribute name="ScrollSensitivity" type="xs:float" />
+    <xs:attribute name="Overscroll" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="NextScrollable" type="types:NextScrollable" />
+  <xs:complexType name="NextScrollable">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextScrollable.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextSplitter" type="types:NextSplitter" />
+  <xs:complexType name="NextSplitter">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextButton.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextSplitView" type="types:NextSplitView" />
+  <xs:complexType name="NextSplitView">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextStackPanel.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextStackPanel.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+    <xs:attribute name="Orientation" type="types:NextOrientation" />
+    <xs:attribute name="Spacing" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="NextStackPanel" type="types:NextStackPanel" />
+  <xs:complexType name="NextStackPanel">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextStackPanel.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextTabItem.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+    <xs:attribute name="Header" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="NextTabItem" type="types:NextTabItem" />
+  <xs:complexType name="NextTabItem">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextTabItem.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextTabView.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+    <xs:attribute name="TabHeight" type="xs:float" />
+    <xs:attribute name="TabWidth" type="xs:float" />
+    <xs:attribute name="TabColorHex" type="xs:string" />
+    <xs:attribute name="ActiveTabColorHex" type="xs:string" />
+    <xs:attribute name="TabHoverColorHex" type="xs:string" />
+    <xs:attribute name="TabInkColorHex" type="xs:string" />
+    <xs:attribute name="GripColorHex" type="xs:string" />
+    <xs:attribute name="GripHoverColorHex" type="xs:string" />
+    <xs:attribute name="GripPressColorHex" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="NextTabView" type="types:NextTabView" />
+  <xs:complexType name="NextTabView">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextTabView.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextTextBox.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+    <xs:attribute name="Text" type="xs:string" />
+    <xs:attribute name="FontSize" type="xs:int" />
+    <xs:attribute name="TextColorHex" type="xs:string" />
+    <xs:attribute name="SelectionColorHex" type="xs:string" />
+    <xs:attribute name="CaretColorHex" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="NextTextBox" type="types:NextTextBox" />
+  <xs:complexType name="NextTextBox">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextTextBox.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextTitleBar" type="types:NextTitleBar" />
+  <xs:complexType name="NextTitleBar">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextStackPanel.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextWindowFrame" type="types:NextWindowFrame" />
+  <xs:complexType name="NextWindowFrame">
+    <xs:sequence />
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextWorkspace.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+    <xs:attribute name="Default" type="xs:string" />
+    <xs:attribute name="Pane" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="NextWorkspace" type="types:NextWorkspace" />
+  <xs:complexType name="NextWorkspace">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextWorkspace.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextTextRun.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+    <xs:attribute name="Text" type="xs:string" />
+    <xs:attribute name="FontSize" type="xs:int" />
+    <xs:attribute name="FontName" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="NextWindow" type="types:NextWindow" />
+  <xs:complexType name="NextWindow">
+    <xs:sequence />
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
   </xs:complexType>
   <xs:attributeGroup name="MenuItem.Attributes">
     <xs:attribute name="Caption" type="xs:string" />
@@ -622,6 +889,12 @@
     </xs:sequence>
     <xs:attributeGroup ref="types:Workspace.Attributes" />
   </xs:complexType>
+  <xs:simpleType name="NextOrientation">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Horizontal" />
+      <xs:enumeration value="Vertical" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:simpleType name="ControlColor">
     <xs:restriction base="xs:string">
       <xs:enumeration value="red" />

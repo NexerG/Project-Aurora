@@ -23,6 +23,9 @@ Namespace shorthands used in the tables:
 | `UI` | `ArctisAurora.Core.UISystem`; `.Controls`, `.Containers`, `.Interactable`, `.Text`, `.Doc` (`Text.Document`), `.Edits` (`Text.Document.Edits`), `.Editing` (`Text.Editing`), `.Actions` — **the outgoing stack** |
 | `UINext` | `ArctisAurora.Core.UI` — the replacement stack, built beside the old one. `Control` is CPU, `VulkanControl` is one GPU quad |
 
+**A `UINext` type by name → [ui-orientation.md](ui-orientation.md)**: one entry per component — what it does, its
+XML element, entry points, regions. The rows below answer "which types own this concept".
+
 ## Look, colour and chrome
 
 | Concept | Code | Data | Note |
@@ -112,6 +115,7 @@ Namespace shorthands used in the tables:
 | frame capture — every span of every frame, to a file | `Diag.Profiling.Frame`, `Diag.FrameSpool`, `ProfilingSettings`; frame edges in `Threading.ThreadedSystem.Loop` | `Bootstrap.bootstrap.xml`, `Shutdown.shutdown.xml` | [[engine-profiling]] |
 | profiling a launch — `--profile[=N]`, or `Mode="Boot"` | `Diag.Profiling.ArmBoot` (called from `Core.Engine.Init`), `Diag.CaptureMode`; phase frame + step zones in `Core.Bootstrapper.RunPhase` | `*/Data/XML/Settings/` (`<Profiling><ProfilingCapture Mode="Boot"/>`) | [[engine-profiling]] §13 |
 | reading a frame file back | `Diag.FrameCaptureReader`; `CaptureSession`, `CapturedThread`, `CapturedFrame`, `CapturedSpan` | `Profiling/<session>/<thread>.frames.xml` | [[carbon-frame-viewer]] |
+| the new-stack tree as laid out — every control's rect, to a file (F10) | `UINext.UITreeDump` (`UI.DumpTree`) | `Thorium/Data/XML/Documents/Inputs/InputMap.inputs.xml`; writes `uitree.xml` beside the exe | `aurora-verify` skill |
 
 ## Rendering
 
@@ -127,7 +131,10 @@ Namespace shorthands used in the tables:
 | the **new** wheel | `UINext.UIEngine` (`SolveScroll`, `ActiveTarget`); `UINext.Control` (`OnPointerScroll`, `RegisterOnScroll`) | — | [[ui-engine-stack]] |
 | dragging on the **new** stack | `UINext.Control` — `draggable` (gates the press), `StartDrag`, `DraggingOverStart`/`DraggingOver`/`DraggingOverEnd`, `FinishDrag`, `ChildDraggedOut`; `UINext.UIEngine` — `SetDragging`, `dragging` (`NextDragging` context), `CheckDrag`, `EndDrag`, `HitTest`'s `skip` | `*.ui.xml` attr `Draggable` | [[ui-engine-stack]] § the drag gap |
 | delivering a drag to its **claimant** on the new stack | `UINext.Control` (`onDrag`, `onDragStop`, `OnDrag`, `OnDragStop`, `RegisterOnDrag`); `UINext.UIEngine` (`SolveDrag` and its stale-release guard, `WindowOf`, `Poll`'s `ownsDrag`). Consumers: `UINext.NextWindowFrameControl`, `NextSplitterControl`, `NextScrollThumbControl` | — | [[ui-engine-stack]] |
-| the drag preview and context menus on the new stack | **nothing yet** — they return at 6b with the controls that use them; the old stack's are `UI.ContextMenus`, `UI.DragGhost` | — | [[ui-engine-stack]] |
+| context menus on the **new** stack, right click, submenus | `UINext.NextContextMenus` (`Collect`, `Open`, `Register`, `Get`, `target`, `Tick`); `UINext.NextContextMenuControl` (+ `Row`); `UINext.ContextMenu`, `ContextMenuButton`, `ContextMenuLine`, `ContextMenuSubmenu`; `UINext.Control` (`contextMenu`, `stopsContextMenu`, `ParseMenu`); `Registry.Assets.ContextMenuAsset` | `Thorium/Data/XML/Documents/Menus/*.menu.xml`, listed as `ContextMenuAsset` in `ThoriumAssets.assets.xml`; the engine's `view` and `tab` in `AuroraEngine/Data/XML/Documents/Menus/`, listed in `EngineAssets.assets.xml`; dictionary `contextMenus` in `Registry.registry.xml`; `*.ui.xml` attrs `ContextMenu`, `StopsContextMenu` | [[next-context-menus]] |
+| menu bar buttons, dropdowns, checkboxes, key capture on the **new** stack | `UINext.NextMenuButtonControl`, `NextDropdownControl`, `NextCheckBoxControl`, `NextKeyCaptureControl` | `*.ui.xml` `<NextMenuButton ContextMenu="…">`, `<NextDropdown>`, `<NextCheckBox>`, `<NextKeyCapture>` | [[next-context-menus]] |
+| tab and view menu actions — close, split — on the **new** stack | `UISystem.Actions.TabActions`, `ViewActions`, `UIActions.Invoking` (new stack first, via `UINext.NextContextMenus.target`); `UINext.NextTabViewControl.tabContextMenu` | `Tab.menu.xml`, `View.menu.xml`; `*.ui.xml` attr `TabContextMenu` | [[next-context-menus]] |
+| the drag preview on the new stack | `UINext.NextDragGhost` (`Show`, `Hide`, `Follow`); `Render.Modules.UIEngineModule` (`rangeRoot`, `rangeRect`); `UINext.Control.draggingOpacity`. The old stack's is `UI.DragGhost` | `*.ui.xml` attr `DraggingOpacity`; `<UI><DragGhost Opacity>` setting | [[ui-engine-stack]], [[render-thread-reads-pool-row]] |
 | splits and grips on the **new** stack | `UINext.NextSplitViewControl` (a transparent `NextStackPanelControl`); `UINext.NextSplitterControl` (`PreviousPane`/`NextPane`, `DragStars`) — `Split`/`Collapse` are not ported, they land with the tabs | `*.ui.xml` `<NextSplitView>`, `<NextSplitter>` | [[ui-engine-stack]] |
 | scrolling and thumbs on the **new** stack | `UINext.NextScrollableControl` (`scrollDirection`, `MaxScrollOffset`, `ThumbTravel`, `ArrangeThumbs`, `EnsureThumbs`, `OnPointerScroll`, `ScrollIntoView`); `UINext.NextScrollThumbControl` — one thumb per axis, both appended so the last-to-first hit-test reaches them | `*.ui.xml` `<NextScrollable>` attrs `ScrollDirection`, `ScrollSensitivity`, `Overscroll`, `Thumb*ColorHex` | [[ui-engine-stack]] |
 | building a **new**-stack tree from XML | `UINext.Control.ParseXML` (in `ControlXml.cs`); the `[A_XSDElementProperty]` set on `UINext.Control`; `UINext.ContainerControl` | `Thorium/Data/XML/Documents/UI/NextProbe.ui.xml`, registered in `ThoriumAssets.assets.xml` — both deleted at 6b | [[ui-engine-stack]] |

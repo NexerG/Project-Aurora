@@ -1,6 +1,8 @@
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.UI;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.Core.UISystem.Controls.Containers;
+using VulkanControl = ArctisAurora.Core.UISystem.Controls.VulkanControl;
 
 namespace ArctisAurora.Core.UISystem.Actions
 {
@@ -10,37 +12,47 @@ namespace ArctisAurora.Core.UISystem.Actions
     public static class TabActions
     {
         [A_XSDActionDependency("Tab.Close", "UI", "Closes the tab the menu was opened on")]
-        public static void Close(VulkanControl target)
+        public static void Close()
         {
-            TabStripButtonControl tab = target as TabStripButtonControl;
+            if (NextTab() is NextTabStripButtonControl next) { next.owner.CloseTab(next.item); return; }
+
+            TabStripButtonControl? tab = Tab();
             tab?.owner.CloseTab(tab.item);
         }
 
         [A_XSDActionDependency("Tab.CloseOthers", "UI", "Closes every tab in the view but this one")]
-        public static void CloseOthers(VulkanControl target)
+        public static void CloseOthers()
         {
-            TabStripButtonControl tab = target as TabStripButtonControl;
+            if (NextTab() is NextTabStripButtonControl next) { next.owner.CloseOthers(next.item); return; }
+
+            TabStripButtonControl? tab = Tab();
             tab?.owner.CloseOthers(tab.item);
         }
 
         [A_XSDActionDependency("Tab.CloseRight", "UI", "Closes every tab after this one in the strip")]
-        public static void CloseRight(VulkanControl target)
+        public static void CloseRight()
         {
-            TabStripButtonControl tab = target as TabStripButtonControl;
+            if (NextTab() is NextTabStripButtonControl next) { next.owner.CloseToTheRight(next.item); return; }
+
+            TabStripButtonControl? tab = Tab();
             tab?.owner.CloseToTheRight(tab.item);
         }
 
         [A_XSDActionDependency("Tab.SplitRight", "UI", "Moves this tab into a new pane beside its view")]
-        public static void SplitRight(VulkanControl target)
+        public static void SplitRight()
         {
-            TabStripButtonControl tab = target as TabStripButtonControl;
+            if (NextTab() is NextTabStripButtonControl next) { next.owner.SplitOff(next.item, NextSplitViewControl.SplitEdge.Right); return; }
+
+            TabStripButtonControl? tab = Tab();
             tab?.owner.SplitOff(tab.item, SplitViewControl.SplitEdge.Right);
         }
 
         [A_XSDActionDependency("Tab.SplitDown", "UI", "Moves this tab into a new pane below its view")]
-        public static void SplitDown(VulkanControl target)
+        public static void SplitDown()
         {
-            TabStripButtonControl tab = target as TabStripButtonControl;
+            if (NextTab() is NextTabStripButtonControl next) { next.owner.SplitOff(next.item, NextSplitViewControl.SplitEdge.Bottom); return; }
+
+            TabStripButtonControl? tab = Tab();
             tab?.owner.SplitOff(tab.item, SplitViewControl.SplitEdge.Bottom);
         }
 
@@ -74,5 +86,16 @@ namespace ArctisAurora.Core.UISystem.Actions
         public static bool CanTearOff(VulkanControl target) =>
             target is TabStripButtonControl tab && !string.IsNullOrEmpty(tab.owner.tearOffDocument);
         #endregion
+
+        // The strip button the menu was opened on, on the new stack and then the old.
+        private static NextTabStripButtonControl? NextTab()
+        {
+            for (Control? c = NextContextMenus.target; c != null; c = c.parent as Control)
+                if (c is NextTabStripButtonControl tab) return tab;
+
+            return null;
+        }
+
+        private static TabStripButtonControl? Tab() => ContextMenus.invoker as TabStripButtonControl;
     }
 }

@@ -45,14 +45,29 @@ grep -nE '(public|private|internal|protected).*\(.*\)\s*$' path/to/File.cs
 
 A written index would rot exactly the way `Patterns/finding-code.md` says recorded paths rot, and faster.
 
+**UI work starts at `Context/ui-orientation.md`** — one entry per `UINext` component: what it does, its XML
+element, entry points, region names. It is a component index, not a method index: the entry says which region
+to `sed`, and methods stay a grep. Read the entry, not the source file; dig into code only when the entry is
+not enough.
+
+**A note over ~10 KB is read like a source file** — `grep -n '^#' note.md`, then `sed` the one section.
+`Decisions/ui-engine-stack.md` is 48 KB and ordered by landing, not topic; the orientation file links its
+sections, never the whole note.
+
 ## When a whole-file read is right
 
-225 `.cs` files, 1.88 MB, largest 1810 lines, median 8.4 KB. CLAUDE.md §2 names the three cases, and they are
-the only three:
+Almost never. 225 `.cs` files, 1.88 MB, largest 1810 lines, median 8.4 KB. CLAUDE.md §2's three cases —
+changing control flow, changing a type's shape, working somewhere the indexes do not name — widen the read to
+the regions the change touches or calls into, not to the file. Map it, then read only those regions:
 
-- changing control flow
-- changing a type's shape
-- working somewhere the indexes do not name
+```bash
+grep -nE '#region|(public|private|internal|protected).*\(' path/to/File.cs
+sed -n 'START,ENDp' path/to/File.cs
+```
+
+An off-topic region stays unread — `Control`'s authored XML properties were no input to context menus, and
+reading all 702 lines of it cost more than any other read in that session. Read end to end only when the map
+cannot say which regions matter.
 
 Otherwise: grep the symbol, `sed` the window around the hit, and change the lines you came for. "No plan built
 on a guess" means do not guess about the lines you are changing — not read 1,200 to change 3.

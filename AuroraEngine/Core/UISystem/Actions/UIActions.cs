@@ -1,7 +1,9 @@
 ﻿using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.UI;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
+using VulkanControl = ArctisAurora.Core.UISystem.Controls.VulkanControl;
 
 namespace ArctisAurora.Core.UISystem.Actions
 {
@@ -14,6 +16,9 @@ namespace ArctisAurora.Core.UISystem.Actions
         // which window asked, and falling back to the primary is what a keybind with no tree means.
         public static RenderWindow Invoking()
         {
+            RenderWindow next = UIEngine.WindowOf(NextContextMenus.target ?? UIEngine.activeControl ?? UIEngine.hovering);
+            if (next != null) return next;
+
             VulkanControl control = ContextMenus.invoker
                 ?? UICollisionHandling.activeControl ?? UICollisionHandling.hovering;
 

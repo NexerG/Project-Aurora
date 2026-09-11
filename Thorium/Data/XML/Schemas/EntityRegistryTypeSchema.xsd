@@ -35,7 +35,10 @@
     <xs:attribute name="onRelease" type="actions:UI" />
     <xs:attribute name="onTap" type="actions:UI" />
     <xs:attribute name="onScroll" type="actions:UI" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
+    <xs:attribute name="StopsContextMenu" type="xs:boolean" />
     <xs:attribute name="Draggable" type="xs:boolean" />
+    <xs:attribute name="DraggingOpacity" type="xs:float" />
   </xs:attributeGroup>
   <xs:attributeGroup name="VulkanControl.Attributes">
     <xs:attributeGroup ref="types:Entity.Attributes" />

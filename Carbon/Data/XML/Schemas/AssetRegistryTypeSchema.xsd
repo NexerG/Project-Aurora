@@ -6,6 +6,10 @@
   <xs:complexType name="IParseableTypes">
     <xs:sequence />
   </xs:complexType>
+  <xs:element name="ContextMenuAsset" type="types:ContextMenuAsset" />
+  <xs:complexType name="ContextMenuAsset">
+    <xs:sequence />
+  </xs:complexType>
   <xs:element name="FontAsset" type="types:FontAsset" />
   <xs:complexType name="FontAsset">
     <xs:sequence />

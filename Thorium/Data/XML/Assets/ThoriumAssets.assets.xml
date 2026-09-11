@@ -15,4 +15,10 @@
 	<Asset Type="UIDocumentAsset" Name="next-tab-pane"  Source="XML/Documents/UI/NextTabPane.ui.xml"/>
 	<Asset Type="UIDocumentAsset" Name="next-probe"     Source="XML/Documents/UI/NextProbe.ui.xml"/>
 
+	<!-- context menus on the new stack, named by a control's ContextMenu attribute -->
+	<Asset Type="ContextMenuAsset" Name="title-bar" Source="XML/Documents/Menus/TitleBar.menu.xml"/>
+	<Asset Type="ContextMenuAsset" Name="thorium"   Source="XML/Documents/Menus/Thorium.menu.xml"/>
+	<Asset Type="ContextMenuAsset" Name="file"      Source="XML/Documents/Menus/File.menu.xml"/>
+	<Asset Type="ContextMenuAsset" Name="edit"      Source="XML/Documents/Menus/Edit.menu.xml"/>
+
 </AssetManifest>

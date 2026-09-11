@@ -47,8 +47,15 @@
       <xs:enumeration value="NextVaultBrowser" />
       <xs:enumeration value="VaultBrowser" />
       <xs:enumeration value="NextContainer" />
+      <xs:enumeration value="NextContextMenu" />
+      <xs:enumeration value="NextContextEntry" />
+      <xs:enumeration value="NextContextButton" />
+      <xs:enumeration value="NextContextLine" />
+      <xs:enumeration value="NextContextSubmenu" />
       <xs:enumeration value="NextButton" />
+      <xs:enumeration value="NextCheckBox" />
       <xs:enumeration value="NextDock" />
+      <xs:enumeration value="NextDropdown" />
       <xs:enumeration value="NextEditableLabel" />
       <xs:enumeration value="NextEditableTabs" />
       <xs:enumeration value="NextFileRow" />
@@ -58,7 +65,9 @@
       <xs:enumeration value="NextGridCell" />
       <xs:enumeration value="NextGridList" />
       <xs:enumeration value="NextIcon" />
+      <xs:enumeration value="NextKeyCapture" />
       <xs:enumeration value="NextLabel" />
+      <xs:enumeration value="NextMenuButton" />
       <xs:enumeration value="NextPanel" />
       <xs:enumeration value="NextScrollDirection" />
       <xs:enumeration value="NextScrollable" />
@@ -167,6 +176,7 @@
   <xs:simpleType name="AssetRegistry">
     <xs:restriction base="xs:string">
       <xs:enumeration value="IParseableTypes" />
+      <xs:enumeration value="ContextMenuAsset" />
       <xs:enumeration value="FontAsset" />
       <xs:enumeration value="IconSetAsset" />
       <xs:enumeration value="TextureAsset" />

@@ -1,7 +1,7 @@
 # UI Engine — state and resume point
 
-**Rewritten:** 2026-09-06. **Landings 1–5, 6a, 6b0 and most of 6b1 are built and GUI-verified. The rest of
-6b–6d is agreed and unbuilt.**
+**Rewritten:** 2026-09-06. **Landings 1–5 and 6a–6b3 are built (2026-09-12). Left: 6c, then 6c2, then 6d, and
+6b's probe deletion.**
 
 This file exists so the work can be picked up cold. The decisions and their reasoning are in
 [../Decisions/ui-engine-stack.md](../Decisions/ui-engine-stack.md) and
@@ -416,12 +416,44 @@ viewport to an outer one (the probe nests none); a release outside the window en
 inner)` on a scrollable axis. Carried over from the old stack, and visible in the fits-case probe where a
 120×60 panel fills the 176×108 viewport.
 
+#### 6b3 — the last interactables, the menu bar, the ghost and the action classes — **DONE 2026-09-12**
+
+`NextCheckBox`, `NextDropdown`, `NextKeyCapture`, `NextMenuButton`, `NextDragGhost`. `TabActions`, `ViewActions`
+and `UIActions` resolve the new stack first. Thorium's four title-bar buttons are menu buttons over
+`thorium` / `file` / `edit` / `view`; a tab offers `tab`, a workspace view offers `view`.
+
+**Forks the user settled, 2026-09-11/12:** `ResizeableControl` is not ported — transform-era, referenced only by
+commented-out lines in the Editor, and `NextWindowFrame` already resizes windows; it dies at 6d. `WindowControl`
+needed nothing: `WindowRoot` is its port and `NextContextMenus` replaced its overlay. A menu button's caption stays
+an authored `<NextLabel>` child and it drops only its own menu; no `EnabledWhen` greying; tab buttons stop the
+menu walk. `NoteActions` and the editor half of `TextInputActions` wait for 6c — both are `DocumentEditorControl`
+through and through. Windows, hosts, tear-off and `SessionLayout` moved to 6c2.
+
+| Old | New | Why |
+|---|---|---|
+| the ghost's camera reads `rangeRoot.arrangedRect` | `UIEngineModule.rangeRect`, built in `NextDragGhost.Show` | the camera runs on the render thread and `arrangedRect` is a `UIElements` row; the pool's owner assert killed the first run → [[render-thread-reads-pool-row]] |
+| ghost window `drag-ghost` | `next-drag-ghost` | `Engine.Publish` keys windows by name; the old ghost's would collide |
+| `mark.BubbleAll()` | `mark.hitTestable = false` | the release only counts on the control the press landed on |
+| `ResolveOnClick` / `ResolveOnRelease` | `OnPointerPress` / `OnPointerRelease`, left button only | a right release opens a menu instead |
+| `Tab.X(VulkanControl target)` | zero-argument, `NextContextMenus.target` then `ContextMenus.invoker` | the new menu format binds `Action` only |
+| `MenuButton` opens `Compose(this)` at the pointer | its own menu at its bottom-left edge | user |
+
+→ *verified:* all four projects build clean; boot error set 18. GUI, synthetic input + topmost capture: the four
+title-bar menus each drop their own entries under the button, and pressing another swaps them; a right click on
+a tab opens the `tab` group and Close closed the tab it was opened on. The ghost: the user dragged a tab by hand
+and it looks right — a synthetic-input capture had shown it at the screen's top-left instead, not chased.
+**Not exercised:** `NextCheckBox`, `NextDropdown`, `NextKeyCapture` (user: don't verify; `SettingsWindow` is their
+only consumer); every split path — Tab ▸ Split, View ▸ Split, Ctrl+\ and Ctrl+Shift+\ — and Close on an inactive
+tab, all of which need two tabs in one view; the tab buttons' stop; `UIActions.Invoking`, which has no new-stack
+caller.
+
 #### 6b — chrome, containers, interactables, hosts
 
 **Unblocked 2026-09-06** — the event-attribute fork is settled and built; see *XML event attributes* below.
 
-- Port the remaining engine chrome/container/interactable classes and the 7 host ones onto `Control` /
-  `ContainerControl`, each `Next`-prefixed, each with a `Next`-prefixed `[A_XSDType]`.
+- Port the remaining engine chrome/container/interactable classes onto `Control` /
+  `ContainerControl`, each `Next`-prefixed, each with a `Next`-prefixed `[A_XSDType]`. The hosts and the
+  secondary windows moved to **6c2** (user, 2026-09-11).
 - The `bubbleX` → walk-until-consumed conversion, per class.
 - **Delete the six authored `BubbleClick="true"` sites** — every one is the same title-bar spacer
   `<Panel WidthStar="1" Height="32"/>`, there so the click reaches `TitleBar` for caption drag. The new base
@@ -432,9 +464,10 @@ inner)` on a scrollable axis. Carried over from the old stack, and visible in th
   `UpdateDropHint`/`RaiseHovered`/`WindowOf`/`WindowAt`, the `NextDragging`/`NextHinted` contexts and
   `Poll`'s `ownsDrag` exemption. All written and GUI-verified at 6a, then removed; recoverable from the
   landing 6a commit.
-- **The context-menu hooks, likewise** — `contextMenus`, `BuildContextMenu`, `OpenContextMenu` — plus
-  `NextContextMenus` and the menu controls that host them, so `ContextMenu="…"` binds again.
-- `NextDragGhost`, which needs `rangeRoot` on `UIEngineModule`.
+- ~~**The context-menu hooks, likewise** — `contextMenus`, `BuildContextMenu`, `OpenContextMenu` — plus
+  `NextContextMenus` and the menu controls that host them, so `ContextMenu="…"` binds again.~~ **Landed
+  2026-09-11, redesigned rather than restored** — a menu is a `*.menu.xml` a control names. See [[next-context-menus]].
+- ~~`NextDragGhost`, which needs `rangeRoot` on `UIEngineModule`.~~ **Landed at 6b3.**
 - Delete `NextProbe.ui.xml` and `UIEngine.BuildProbe`.
 
 → *verify:* a `Next`-prefixed copy of Thorium's `UI.ui.xml` builds the real shell — title bar, tabs, splits,
@@ -447,6 +480,25 @@ control per glyph, the model `TextRunControl` replaced. Pulls in `SelectionContr
 and `DocumentEditorControl.CaretAtPoint` (needs blocks).
 
 → *verify:* a note opens, edits and saves on the new stack.
+
+#### 6c2 — windows and hosts
+
+**Moved out of 6b to the end of the port** (user, 2026-09-11) — after 6c, before 6d.
+
+- The secondary windows built in code: `ConfirmWindow`, `NoteNameWindow`, `SettingsWindow`, `MenuScreen`,
+  Thorium's `VaultsWindow`; their documents `Settings.ui.xml` and `Vaults.ui.xml`.
+- `SettingsWindow` is the only consumer of `NextCheckBox`, `NextDropdown` and `NextKeyCapture`, ported at 6b3
+  unverified — this is where they are first driven. `NextDropdown`'s list has no XML way in.
+- `UIActions.Invoking` is retargeted at 6b3, but every caller — `Settings.Open`, `Vaults.Open`, the Editor's
+  `Decorations` — is one of these windows.
+- Tab tear-off: `TabViewControl.TearOff`, `tearOffDocument`, `Tab.MoveToNewWindow`, `Tab.CanTearOff`,
+  `TabWindow.ui.xml`.
+- `SessionLayout` (user: later) — it restores torn-off windows as well as panes.
+- Hosts: Carbon's `FrameStripControl`, `SessionListControl`, `SpanChartControl` (+ `ChartScrollThumbControl`),
+  `ZoneTableControl` and Carbon's `UI.ui.xml`; the Editor's `CustomTestControl`; Thorium's old
+  `VaultBrowserControl`, beside the ported `NextVaultBrowserControl`.
+
+→ *verify:* each window opens, draws and closes on the new stack; Carbon boots on it.
 
 #### 6d — delete
 
@@ -477,6 +529,8 @@ that goes out** now the base is frozen — exact old→new text per class, one a
 - **`ContextMenus.menuFactory` must die** (user, explicit). One override, `Thorium.cs`, supplying a
   `WindowedContextMenuControl` with six hardcoded hex colours. Deleting the field alone breaks Thorium's menu
   styling; a replacement (theme roles + a windowed-vs-inline setting) was proposed and not yet approved.
+  **The new stack has no factory** — a menu is inline when it fits and windowed when not
+  ([[next-context-menus]]); the old field goes with 6d. Theme roles for menu colours remain open.
 - **`WindowFrameControl`'s maximized grips** — deferred to "context logic" (user, 2026-09-06).
 - **Children and components as `(start, count)` ranges** — analysed, parked (user: "for now do nothing with
   this"). Not a slowdown; the cost is that mutation stops being O(1) and settles at the frame edge.

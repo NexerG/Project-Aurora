@@ -118,4 +118,8 @@
 		<Press />
 	</Keybind>
 
+	<Keybind Trigger="F10" Action="UI.DumpTree">
+		<Press />
+	</Keybind>
+
 </KeybindMap>

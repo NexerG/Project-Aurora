@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<NextContextMenu>
+	<NextContextButton Text="Minimize" Action="Window.Minimize"/>
+	<NextContextButton Text="Maximize" Action="Window.MaximizeRestore"/>
+	<NextContextLine/>
+	<NextContextButton Text="Close" Action="Window.Close"/>
+</NextContextMenu>

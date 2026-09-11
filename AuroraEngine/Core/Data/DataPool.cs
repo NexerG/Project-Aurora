@@ -271,6 +271,8 @@ namespace ArctisAurora.Core.Data
 
             int stableId = _freeIds.Count > 0 ? _freeIds.Pop() : _highStableId++;
             int dense = _count++;
+            foreach (IPoolColumn col in _columnsByIndex)
+                col.Clear(dense);
             _slots[stableId] = dense;
             _backMap[dense] = stableId;
             _owners[dense] = owner;

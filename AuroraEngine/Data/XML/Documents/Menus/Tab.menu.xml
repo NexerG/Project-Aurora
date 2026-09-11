@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<NextContextMenu>
+	<NextContextButton Text="Close" Action="Tab.Close"/>
+	<NextContextButton Text="Close others" Action="Tab.CloseOthers"/>
+	<NextContextButton Text="Close to the right" Action="Tab.CloseRight"/>
+	<NextContextButton Text="Split right" Action="Tab.SplitRight"/>
+	<NextContextButton Text="Split down" Action="Tab.SplitDown"/>
+</NextContextMenu>

@@ -228,8 +228,17 @@ rebuild — landed in slice 6 as `PoolCursor.OrderChanged`.
   every dead row — the destroyed entity stayed reachable from the pool, and so uncollectable, until
   a later `Allocate` happened to reuse that exact dense index. Bounded (capacity-worth at worst),
   not a growing leak, but it meant "destroyed" did not imply "collectable". Only `_owners` needs
-  this; the component columns are unmanaged, so their slack is just numbers nobody reads. Nothing
-  reads `OwnerAt` above `Count`, so clearing the slack cannot be observed by a consumer.
+  this; the component columns are unmanaged, ~~so their slack is just numbers nobody reads~~ —
+  **wrong, see the next bullet**. Nothing reads `OwnerAt` above `Count`, so clearing the slack
+  cannot be observed by a consumer.
+- **`DataPool.Allocate` clears the new row in every column (2026-09-11).** Column slack *was* read:
+  `Allocate` hands out dense index `_count`, which is exactly where the last removal left a dead
+  element's data, so a new element started with it. `Control()` resets only position, alignment
+  and flags, so a control built after one was destroyed inherited its `preferredWidth`, `padding`
+  and `margin` — surfaced by context menus ([[next-context-menus]]), whose captions wrapped a
+  character per line. `IPoolColumn.Clear(dense)` / `PoolColumn<T>.Clear` zero the row. Chosen
+  over resetting in `Control()` (user): that fixes one entity type and leaves every other pool
+  handing out stale rows.
 - **Verified by running Thorium** (no automated tests — see auto-memory). Boot: one resequence of
   5 rows, then quiet (flag clears, nothing re-dirties per frame). Click + type: 6 → 7 → 8 rows, one
   resequence per keystroke, glyph children 3 → 8, no mismatch warning. Destroy (temporary scene

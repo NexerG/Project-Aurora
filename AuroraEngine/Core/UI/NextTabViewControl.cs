@@ -35,6 +35,10 @@ namespace ArctisAurora.Core.UI
         public string gripHoverColorHex = "#3D3D3D";
         [A_XSDElementProperty("GripPressColorHex", "UI", "Ground of a held pane splitter.")]
         public string gripPressColorHex = "#4A4A4A";
+
+        // menu each tab in the strip names
+        [A_XSDElementProperty("TabContextMenu", "UI", "Menu a tab in the strip offers on right click.")]
+        public string tabContextMenu = "tab";
         #endregion
 
         // caption and close button geometry
@@ -355,7 +359,9 @@ namespace ArctisAurora.Core.UI
                 hoverColorHex = tabHoverColorHex,
                 pressColorHex = tabHoverColorHex,
                 item = item,
-                owner = this
+                owner = this,
+                contextMenu = tabContextMenu,
+                stopsContextMenu = true
             };
             tab.RegisterOnRelease(e => { SetActive(item); return true; });
 

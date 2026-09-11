@@ -11,5 +11,6 @@
 	<Dictionary Name="ActiveContexts" KeyType="xs:string" ValueType="Object"/>
 	<Dictionary Name="Samplers" KeyType="xs:string" ValueType="SamplerAsset"/>
 	<Dictionary Name="uiDocuments" KeyType="xs:string" ValueType="UIDocumentAsset"/>
+	<Dictionary Name="contextMenus" KeyType="xs:string" ValueType="ContextMenuAsset"/>
 
 </AssetRegistries>

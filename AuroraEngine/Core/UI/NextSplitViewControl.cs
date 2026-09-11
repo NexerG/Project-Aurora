@@ -124,6 +124,8 @@ namespace ArctisAurora.Core.UI
             pane.gripColorHex = source.gripColorHex;
             pane.gripHoverColorHex = source.gripHoverColorHex;
             pane.gripPressColorHex = source.gripPressColorHex;
+            pane.tabContextMenu = source.tabContextMenu;
+            pane.contextMenu = source.contextMenu;
 
             return pane;
         }

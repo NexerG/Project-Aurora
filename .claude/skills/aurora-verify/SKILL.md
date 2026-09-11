@@ -52,12 +52,26 @@ Three things that do not work, so they are not worth retrying:
 - `PrintWindow` comes back blank, because the surface is Vulkan-rendered.
 
 What works: `SetWindowPos(hwnd, HWND_TOPMOST, …, 0x43)` → capture → `SetWindowPos(hwnd, HWND_NOTOPMOST, …)`.
+`capture.ps1` beside this file does exactly that, DPI-aware, client area only — do not retype it:
+
+```bash
+powershell -NoProfile -ExecutionPolicy Bypass -File .claude/skills/aurora-verify/capture.ps1 -Process Thorium -Out <scratchpad>/shot.png -Region 740,56,210,40
+```
+
+**Crop by default.** `-Region x,y,w,h` is in client pixels. A crop costs a fraction of a full-window shot and is
+not downscaled, so it shows more for less. Leave `-Region` off only when the whole layout is the question.
 
 **A structural dump is not a visual check.** A control-tree dump of parents, arranged rects and glyph counts
 verifies geometry and wiring and says nothing about what is drawn. This exact substitution was reported as
 "verified" on 2026-08-07 while the window was mostly white — a `StackPanelControl` had inherited the default
 `maskAsset` and was painting a solid quad under white text. If capture fails, say the visual check did not
 happen. Do not reuse the word for a proxy.
+
+**F10 writes that dump for the new stack** — `UINext.UITreeDump` (`UI.DumpTree`) → `uitree.xml` beside the
+exe: every window's tree with arranged `X Y W H`, desired `W H`, `Hidden`. Thorium's is ~17 KB, so grep it for
+the control in question; never read it whole. With the root unscaled a rect is client pixels, i.e. directly a
+`-Region` — grep the control, then crop the capture to it. F10 needs the window focused: click an empty pane
+first (a title-bar click enters the OS drag loop).
 
 Corollary: **a new container in a draw path needs its `maskAsset` checked.** The default paints; opting out is
 explicit and per-control (`WindowControl`, `TextControl`, `TextBlockControl`, `DocumentEditorControl`,

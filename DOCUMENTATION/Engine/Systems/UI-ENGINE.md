@@ -287,7 +287,9 @@ The claimant hears the gesture too, and hears it differently from everyone else.
 
 A drag whose release was never seen is abandoned rather than left running. The pointer can leave every window mid-gesture and let go somewhere the engine hears nothing about, so the button is re-checked each tick, and a claim held with the button up ends immediately — the target hears the drag leave, the claimant hears it stop, and no drop is offered, because where the release happened is not knowable. The claim also exempts its own window from the rule that a window with the pointer outside it processes nothing, since a pressed button captures the pointer to the window it went down in and that window is the only one still hearing about the gesture.
 
-> Two halves are still missing. Nothing previews a drag and nothing reparents, so a drop that should move something between containers has no way to show what it would do; and there are no context menus. Those arrive with the controls that need them — tabs, chiefly — and until then the old stack owns both.
+A dragged tab is previewed in a small floating window that sits centred under the pointer and follows it, past the edge of the application if need be. The preview is not a copy: the floating window is told which control to draw and draws it where it already lives, so the tab stays in its strip for the whole gesture and nothing is cloned or reparented until the drop. One window serves every drag — it is built on the first one and hidden between them, because building a window inside a gesture would stall it.
+
+> The preview's framing is worked out once, when the drag starts, and handed to its window as plain data. The render thread may not ask a control for its layout — that lives in a pool only the main thread may touch — so anything the renderer needs from a control has to be copied out for it first.
 
 ## Splits and scrolling
 
@@ -342,10 +344,55 @@ Parse(element)
 	for each child element
 		parse it the same way
 		if it is a control, add it as a child
-		else put it in the one list on the parent that accepts its type
+		else put it in the one list on the parent that accepts its type, and parse its own children into it
 ```
 
 The last branch is what lets a document carry things that are not controls at all — a list of gradient stops, a set of column definitions — without the parser knowing any of their names.
+
+## Context menus
+
+A context menu is its own document. The document that builds a window's tree says nothing about menus beyond a name: a control names the menu it offers, and the menu lives in a file of its own, registered by name the way UI documents are but in a registry of its own. A menu can equally be built in code and registered under a name, and a control naming it cannot tell the difference.
+
+A menu is a list of entries, and an entry is data, not a control — a button with a caption and an action, a line, or a submenu holding entries of its own. Nothing is laid out or drawn until the menu opens; at that moment a panel is built from the entries, and it is destroyed again when the menu closes. Because the entries are data, one menu can be named by any number of controls and its document is parsed only once.
+
+A menu is gathered, not looked up. Releasing the right button walks up from the control under the pointer, and every control on the way that names a menu adds its entries, with a line between one control's group and the next. A control can stop the walk: its own entries still count, but nothing above it adds any. That is how a title bar offers the window's commands without the application's general menu tacked on underneath. If the walk collects nothing, no menu opens. A button acts on a left release only, so right-clicking one gathers a menu instead of pressing it.
+
+```
+Collect(control)
+	entries = empty
+	for each control from this one up to the root
+		if it names a menu that has entries
+			if entries already holds something
+				add a line
+			add the menu's entries
+		if it stops the walk
+			stop
+	return entries
+```
+
+Where the panel goes depends on whether it fits. It is measured at the pointer, and if it lies entirely inside the window it becomes the last child of the window's root — the last child is the one drawn last, so it is on top of everything, and the hit-test walks children backwards, so it is also the first thing a click finds. If it would cross the window's edge by even a pixel, it gets a small window of its own instead, placed at the pointer's position on the screen.
+
+```
+Host(panel)
+	measure the panel
+	if the panel at its position lies entirely inside the origin window
+		append it to the origin window's root
+	else
+		open a menu window the size of the panel
+		give it a root holding the panel
+		place it at the panel's position on the screen
+		show it
+```
+
+Submenus open on hover, beside the row that holds them and level with it, and they follow the same rule — always tested against the window the menu was opened in, never against the menu that summoned them. Every panel's position is kept in that window's terms even when it lives in a window of its own, which is what lets a submenu's position be its parent's plus the row's offset wherever the parent ended up. Hovering a different row of the parent closes whatever was open beneath it.
+
+A menu closes three ways. Clicking a button runs its action and then closes every open panel. Pressing anywhere that is not a panel closes the menu and lets the press carry on to whatever is under it, so a right-click elsewhere closes one menu and opens the next. And the application losing focus closes it — asked every tick across every window at once rather than answered by the focus notification, because a submenu in its own window takes focus from its parent's window, and at that moment nothing says whether focus went somewhere else in the application or away from it.
+
+An action written in a menu document takes no arguments, so it finds out what it is acting on by asking which control the menu was opened on. That answer is set before the action runs and cleared when the menu closes. The window commands read it first, which is what makes Maximize from a menu in its own window maximize the window it was opened from rather than the menu.
+
+A menu bar button opens on a left press rather than a right click, and shows only its own menu, dropped directly beneath it. It leaves the focused control where it was, so the entries act on what you were working in — View ▸ Split right splits the view you last clicked into, not the title bar. A tab offers its own menu and stops the gathering there, so the view's entries are not repeated under every tab; the view offers its splits from its own empty area. Tab and view actions look for the tab or view above the control the menu was opened on, and when there is none they fall back to the focused control and then to whatever is under the pointer.
+
+> Opening or closing a panel inside the window re-lays the whole window out, because adding or removing a child of the root invalidates the root.
 
 ## Text and the caret
 

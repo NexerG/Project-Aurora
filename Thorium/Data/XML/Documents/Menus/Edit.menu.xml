@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<NextContextMenu>
+	<NextContextButton Text="Undo" Action="Text.Undo"/>
+	<NextContextButton Text="Redo" Action="Text.Redo"/>
+</NextContextMenu>

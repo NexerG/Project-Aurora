@@ -3,6 +3,42 @@
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:import schemaLocation="UITypeSchema.xsd" namespace="http://arctisaurora/AuroraUITypes" />
+  <xs:attributeGroup name="NextVulkanControl.Attributes">
+    <xs:attributeGroup ref="types:Entity.Attributes" />
+    <xs:attribute name="Width" type="xs:float" />
+    <xs:attribute name="Height" type="xs:float" />
+    <xs:attribute name="MinWidth" type="xs:float" />
+    <xs:attribute name="MinHeight" type="xs:float" />
+    <xs:attribute name="WidthStar" type="xs:float" />
+    <xs:attribute name="HeightStar" type="xs:float" />
+    <xs:attribute name="Margin" type="xs:string" />
+    <xs:attribute name="Padding" type="xs:string" />
+    <xs:attribute name="HorizontalAlignment" type="xs:string" />
+    <xs:attribute name="VerticalAlignment" type="xs:string" />
+    <xs:attribute name="HorizontalPos" type="xs:float" />
+    <xs:attribute name="VerticalPos" type="xs:float" />
+    <xs:attribute name="DockMode" type="xs:string" />
+    <xs:attribute name="Grid.Column" type="xs:short" />
+    <xs:attribute name="Grid.Row" type="xs:short" />
+    <xs:attribute name="ClipToBounds" type="xs:boolean" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="Alpha" type="xs:float" />
+    <xs:attribute name="ControlColor" type="xs:string" />
+    <xs:attribute name="CornerRadius" type="xs:string" />
+    <xs:attribute name="EdgeColorHex" type="xs:string" />
+    <xs:attribute name="EdgeThickness" type="xs:float" />
+    <xs:attribute name="Gradient" type="xs:string" />
+    <xs:attribute name="onEnter" type="actions:UI" />
+    <xs:attribute name="onExit" type="actions:UI" />
+    <xs:attribute name="onMove" type="actions:UI" />
+    <xs:attribute name="onPress" type="actions:UI" />
+    <xs:attribute name="onRelease" type="actions:UI" />
+    <xs:attribute name="onTap" type="actions:UI" />
+    <xs:attribute name="onScroll" type="actions:UI" />
+    <xs:attribute name="ContextMenu" type="xs:string" />
+    <xs:attribute name="StopsContextMenu" type="xs:boolean" />
+    <xs:attribute name="Draggable" type="xs:boolean" />
+  </xs:attributeGroup>
   <xs:attributeGroup name="VulkanControl.Attributes">
     <xs:attributeGroup ref="types:Entity.Attributes" />
     <xs:attribute name="Width" type="xs:int" />

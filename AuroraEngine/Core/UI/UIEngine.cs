@@ -212,6 +212,7 @@ namespace ArctisAurora.Core.UI
 
         private static void SolvePress(Vector2D<float> point, Vector2D<float> delta, int button)
         {
+            NextContextMenus.DismissUnlessInside(hovering);
             if (hovering == null) return;
 
             if (button == PointerEvent.leftButton)
@@ -249,6 +250,9 @@ namespace ArctisAurora.Core.UI
 
             if (button == PointerEvent.leftButton && tapCount >= 2 && _sameTargetTap)
                 Dispatch(Event(hovering, point, delta, button, tapCount), PointerPhase.Tap);
+
+            if (button == PointerEvent.rightButton)
+                NextContextMenus.OpenOn(hovering, point);
         }
 
         // Which window the pointer is over, and what that means for focus. An overlap is not
@@ -574,7 +578,8 @@ namespace ArctisAurora.Core.UI
                 if (ui == null) continue;
 
                 ui.drawList.Clear();
-                int walked = ui.uiRoot == null ? 0 : Collect(ui.uiRoot, ui.drawList);
+                Control root = ui.rangeRoot ?? ui.uiRoot;
+                int walked = root == null ? 0 : Collect(root, ui.drawList);
 
                 Log.Every(1000).Debug($"'{ui.uiRoot?.name}' walked {walked} controls, " +
                                       $"emitted {ui.drawList.Count} quads");

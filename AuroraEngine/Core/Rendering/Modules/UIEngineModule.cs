@@ -100,6 +100,11 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         // This window's quads for the frame, rebuilt by UIEngine.BuildDrawLists on the main thread.
         internal readonly DrawList drawList = new DrawList();
 
+        // A drag preview's control, drawn in place of a tree; it stays in its own window's tree. The
+        // rect is its box, built on the main thread for the camera.
+        internal Control? rangeRoot;
+        internal LayoutRect? rangeRect;
+
         // What the last MirrorDrawList copied, and so what the record that follows it may draw.
         private int _drawCount;
 

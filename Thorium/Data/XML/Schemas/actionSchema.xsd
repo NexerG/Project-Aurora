@@ -11,6 +11,7 @@
       <xs:simpleType>
         <xs:restriction base="xs:string">
           <xs:enumeration value="ExitApplication" />
+          <xs:enumeration value="UI.DumpTree" />
           <xs:enumeration value="Text.Write" />
           <xs:enumeration value="Text.Backspace" />
           <xs:enumeration value="Text.Delete" />

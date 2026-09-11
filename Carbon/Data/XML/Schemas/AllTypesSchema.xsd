@@ -47,6 +47,38 @@
       <xs:enumeration value="SpanChartMode" />
       <xs:enumeration value="SpanChart" />
       <xs:enumeration value="ZoneTable" />
+      <xs:enumeration value="NextContainer" />
+      <xs:enumeration value="NextContextMenu" />
+      <xs:enumeration value="NextContextEntry" />
+      <xs:enumeration value="NextContextButton" />
+      <xs:enumeration value="NextContextLine" />
+      <xs:enumeration value="NextContextSubmenu" />
+      <xs:enumeration value="NextButton" />
+      <xs:enumeration value="NextDock" />
+      <xs:enumeration value="NextEditableLabel" />
+      <xs:enumeration value="NextEditableTabs" />
+      <xs:enumeration value="NextFileRow" />
+      <xs:enumeration value="NextGridSizeMode" />
+      <xs:enumeration value="NextRowDefinition" />
+      <xs:enumeration value="NextColumnDefinition" />
+      <xs:enumeration value="NextGridCell" />
+      <xs:enumeration value="NextGridList" />
+      <xs:enumeration value="NextIcon" />
+      <xs:enumeration value="NextLabel" />
+      <xs:enumeration value="NextPanel" />
+      <xs:enumeration value="NextScrollDirection" />
+      <xs:enumeration value="NextScrollable" />
+      <xs:enumeration value="NextSplitter" />
+      <xs:enumeration value="NextSplitView" />
+      <xs:enumeration value="NextStackPanel" />
+      <xs:enumeration value="NextTabItem" />
+      <xs:enumeration value="NextTabView" />
+      <xs:enumeration value="NextTextBox" />
+      <xs:enumeration value="NextTitleBar" />
+      <xs:enumeration value="NextWindowFrame" />
+      <xs:enumeration value="NextWorkspace" />
+      <xs:enumeration value="NextTextRun" />
+      <xs:enumeration value="NextWindow" />
       <xs:enumeration value="MenuItem" />
       <xs:enumeration value="ContextMenu" />
       <xs:enumeration value="ContextMenus" />
@@ -92,6 +124,7 @@
       <xs:enumeration value="TabItem" />
       <xs:enumeration value="TabView" />
       <xs:enumeration value="Workspace" />
+      <xs:enumeration value="NextOrientation" />
       <xs:enumeration value="ControlColor" />
       <xs:enumeration value="FillMode" />
       <xs:enumeration value="HorizontalAlignment" />
@@ -103,10 +136,24 @@
   </xs:simpleType>
   <xs:simpleType name="EntityRegistry">
     <xs:restriction base="xs:string">
+      <xs:enumeration value="NextVulkanControl" />
       <xs:enumeration value="VulkanControl" />
       <xs:enumeration value="Entry" />
       <xs:enumeration value="EntityRegistries" />
       <xs:enumeration value="Entity" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="DataPools">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="ArrangeData" />
+      <xs:enumeration value="ControlGeometry" />
+      <xs:enumeration value="VulkanControlData" />
+      <xs:enumeration value="GpuTransform" />
+      <xs:enumeration value="PoolGrowthType" />
+      <xs:enumeration value="Component" />
+      <xs:enumeration value="Pool" />
+      <xs:enumeration value="EnginePools" />
+      <xs:enumeration value="TransformData" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Systems">
@@ -126,6 +173,7 @@
   <xs:simpleType name="AssetRegistry">
     <xs:restriction base="xs:string">
       <xs:enumeration value="IParseableTypes" />
+      <xs:enumeration value="ContextMenuAsset" />
       <xs:enumeration value="FontAsset" />
       <xs:enumeration value="IconSetAsset" />
       <xs:enumeration value="TextureAsset" />
@@ -147,16 +195,6 @@
       <xs:enumeration value="SamplerAddressMode" />
       <xs:enumeration value="SamplerMipmapMode" />
       <xs:enumeration value="SamplerAsset" />
-    </xs:restriction>
-  </xs:simpleType>
-  <xs:simpleType name="DataPools">
-    <xs:restriction base="xs:string">
-      <xs:enumeration value="GpuTransform" />
-      <xs:enumeration value="PoolGrowthType" />
-      <xs:enumeration value="Component" />
-      <xs:enumeration value="Pool" />
-      <xs:enumeration value="EnginePools" />
-      <xs:enumeration value="TransformData" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Bootstrap">
@@ -202,7 +240,7 @@
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Uncategorized">
-    <xs:union memberTypes="types:Settings types:UI types:EntityRegistry types:Systems types:Context types:AssetRegistry types:Rendering types:DataPools types:Bootstrap types:Input types:Shutdown types:Pools">
+    <xs:union memberTypes="types:Settings types:UI types:EntityRegistry types:DataPools types:Systems types:Context types:AssetRegistry types:Rendering types:Bootstrap types:Input types:Shutdown types:Pools">
       <xs:simpleType>
         <xs:restriction base="xs:string">
           <xs:enumeration value="xs:string" />

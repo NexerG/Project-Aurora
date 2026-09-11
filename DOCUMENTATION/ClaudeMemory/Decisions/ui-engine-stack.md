@@ -325,7 +325,7 @@ only `DragGhost.Show` caller.
 | `UIEngine.OfferDrop` + `Control.ResolveDrop` | superseded — `EndDrag` calls `Control.FinishDrag` on the target. What it does **not** do is walk up: the target either handles the drop or it is lost, where `OfferDrop` offered each ancestor in turn | tabs |
 | `Control.ResolveDropHint` | superseded — the `DraggingOverStart`/`Over`/`End` trio is the per-tick hint, and `_dragTarget` replaced the `NextHinted` context. A field, not a context, because nothing outside `UIEngine` asks yet | — |
 | `UIEngine.RaiseHovered` | brings the window under the drag forward, once per crossing; needs the active-window latch | tabs |
-| `DragGhost` + `Control.draggingOpacity` | the preview window. A second view of the dragged control's own pool rows, not a copy — needs a `rangeRoot` on `UIEngineModule`, which does not exist, and `DragGhost.Follow` is called from `Engine.HandleUI` | tabs |
+| `DragGhost` + `Control.draggingOpacity` | **landed 2026-09-12 as `NextDragGhost`** — `UIEngineModule.rangeRoot`, which `BuildDrawLists` walks in place of `uiRoot`, and `rangeRect`, the box built in `Show` on the main thread because the camera runs on the render thread and may not read a `UIElements` row ([[render-thread-reads-pool-row]]). `NextDragGhost.Follow` runs beside the old one in `Engine.MainTick` | tabs |
 
 ## Row layout — measured, not estimated
 

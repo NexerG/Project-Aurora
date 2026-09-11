@@ -117,14 +117,26 @@ namespace ArctisAurora.EngineWork.Rendering
                     break;
 
                 case ERendererTypes.UIEngine:
-                    WindowRoot nextRoot = ((UIEngineModule)_owner).uiRoot;
-                    Vector2D<float> nextBox = nextRoot != null
-                        ? nextRoot.ViewportSize(_extent)
-                        : new Vector2D<float>(_extent.Width, _extent.Height);
+                    UIEngineModule nextModule = (UIEngineModule)_owner;
+                    LayoutRect? ghost = nextModule.rangeRect;
+                    WindowRoot nextRoot = nextModule.uiRoot;
+                    Vector2D<float> nextOrigin = Vector2D<float>.Zero;
+                    Vector2D<float> nextBox;
+
+                    if (ghost.HasValue)
+                    {
+                        // a drag preview: the control's own box, so it fills the window at any extent
+                        nextBox = ghost.Value.size;
+                        nextOrigin = new Vector2D<float>(ghost.Value.x, ghost.Value.y);
+                    }
+                    else
+                        nextBox = nextRoot != null
+                            ? nextRoot.ViewportSize(_extent)
+                            : new Vector2D<float>(_extent.Width, _extent.Height);
 
                     _view = Matrix4X4.CreateLookAt(Vector3D<float>.Zero, _front, _localUp);
-                    _projection = Matrix4X4.CreateOrthographicOffCenter(0, nextBox.X,
-                        0, nextBox.Y, 0.01f, 512f);
+                    _projection = Matrix4X4.CreateOrthographicOffCenter(nextOrigin.X, nextOrigin.X + nextBox.X,
+                        nextOrigin.Y, nextOrigin.Y + nextBox.Y, 0.01f, 512f);
                     break;
                 default:
                     break;

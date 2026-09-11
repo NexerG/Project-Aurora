@@ -51,6 +51,42 @@
     <xs:sequence />
     <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
   </xs:complexType>
+  <xs:element name="NextContextMenu" type="types:NextContextMenu" />
+  <xs:group name="ContextMenuEntry.Children">
+    <xs:choice>
+      <xs:element name="NextContextButton" type="types:NextContextButton" />
+      <xs:element name="NextContextLine" type="types:NextContextLine" />
+      <xs:element name="NextContextSubmenu" type="types:NextContextSubmenu" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="NextContextMenu">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:ContextMenuEntry.Children" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:attributeGroup name="NextContextButton.Attributes">
+    <xs:attribute name="Text" type="xs:string" />
+    <xs:attribute name="Action" type="actions:UI" />
+  </xs:attributeGroup>
+  <xs:element name="NextContextButton" type="types:NextContextButton" />
+  <xs:complexType name="NextContextButton">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextContextButton.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextContextLine" type="types:NextContextLine" />
+  <xs:complexType name="NextContextLine">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:attributeGroup name="NextContextSubmenu.Attributes">
+    <xs:attribute name="Text" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="NextContextSubmenu" type="types:NextContextSubmenu" />
+  <xs:complexType name="NextContextSubmenu">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:ContextMenuEntry.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:NextContextSubmenu.Attributes" />
+  </xs:complexType>
   <xs:attributeGroup name="NextButton.Attributes">
     <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
     <xs:attribute name="HoverColorHex" type="xs:string" />
@@ -58,6 +94,11 @@
   </xs:attributeGroup>
   <xs:element name="NextButton" type="types:NextButton" />
   <xs:complexType name="NextButton">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextButton.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextCheckBox" type="types:NextCheckBox" />
+  <xs:complexType name="NextCheckBox">
     <xs:sequence />
     <xs:attributeGroup ref="types:NextButton.Attributes" />
   </xs:complexType>
@@ -69,6 +110,11 @@
   <xs:complexType name="NextDock">
     <xs:sequence />
     <xs:attributeGroup ref="types:NextDock.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextDropdown" type="types:NextDropdown" />
+  <xs:complexType name="NextDropdown">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextButton.Attributes" />
   </xs:complexType>
   <xs:attributeGroup name="NextEditableLabel.Attributes">
     <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
@@ -156,10 +202,20 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:NextIcon.Attributes" />
   </xs:complexType>
+  <xs:element name="NextKeyCapture" type="types:NextKeyCapture" />
+  <xs:complexType name="NextKeyCapture">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextButton.Attributes" />
+  </xs:complexType>
   <xs:element name="NextLabel" type="types:NextLabel" />
   <xs:complexType name="NextLabel">
     <xs:sequence />
     <xs:attributeGroup ref="types:NextTextRun.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextMenuButton" type="types:NextMenuButton" />
+  <xs:complexType name="NextMenuButton">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextButton.Attributes" />
   </xs:complexType>
   <xs:element name="NextPanel" type="types:NextPanel" />
   <xs:complexType name="NextPanel">
@@ -227,6 +283,7 @@
     <xs:attribute name="GripColorHex" type="xs:string" />
     <xs:attribute name="GripHoverColorHex" type="xs:string" />
     <xs:attribute name="GripPressColorHex" type="xs:string" />
+    <xs:attribute name="TabContextMenu" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="NextTabView" type="types:NextTabView" />
   <xs:complexType name="NextTabView">

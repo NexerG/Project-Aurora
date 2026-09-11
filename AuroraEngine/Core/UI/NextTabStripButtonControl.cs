@@ -41,6 +41,7 @@ namespace ArctisAurora.Core.UI
                     armed = false;
                     dragging = true;
                     StartDrag();
+                    NextDragGhost.Show(this);
                 }
             }
             return base.OnPointerMove(e);
@@ -56,6 +57,7 @@ namespace ArctisAurora.Core.UI
         // tab that moved to another view is no longer ours and SetActive drops it.
         public override void OnDragStop(bool accepted)
         {
+            NextDragGhost.Hide();
             dragging = false;
             owner.SetActive(item);
             base.OnDragStop(accepted);
