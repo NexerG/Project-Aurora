@@ -2,6 +2,7 @@ using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls.Text;
+using ArctisAurora.Core.UISystem.Controls.Text.Document;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.UI
@@ -116,6 +117,49 @@ namespace ArctisAurora.Core.UI
 
             MarkDirty();
             RequestScrollToCaret();
+        }
+        #endregion
+
+        #region ---- styling ----
+        // What a toggle reads its current state from, and what the format bar reflects.
+        public NextCaretStyle? StyleSource => content?.StyleSource;
+
+        public TextStyleType CaretBlockStyling => content?.CaretBlockStyling ?? TextStyleType.Text;
+
+        public void ApplyStyle(NextStyleDelta delta)
+        {
+            if (content == null) return;
+
+            using (BeginStep("Formatting"))
+                if (content.ApplyStyle(delta)) MarkDirty();
+        }
+
+        // Nothing is written, so there is no step and no dirty note until the next character.
+        public void ArmStyle(NextStyleDelta delta) => content?.ArmStyle(delta);
+
+        // For a control that must take the active context before it can be used: it captures the
+        // range on the way in and hands it back here, rather than asking what is selected once the
+        // note no longer holds the caret.
+        public bool SelectedRange(out NextDocumentAddress from, out NextDocumentAddress to)
+        {
+            from = to = default;
+            return content != null && content.OrderedSelection(out from, out to);
+        }
+
+        public void ApplyStyleTo(NextDocumentAddress from, NextDocumentAddress to, NextStyleDelta delta)
+        {
+            if (content == null) return;
+
+            using (BeginStep("Formatting"))
+                if (content.ApplyStyleTo(from, to, delta)) MarkDirty();
+        }
+
+        public void SetBlockStyling(TextStyleType type)
+        {
+            if (content == null) return;
+
+            using (BeginStep("Paragraph style"))
+                if (content.SetBlockStyling(type)) MarkDirty();
         }
         #endregion
 

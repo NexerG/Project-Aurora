@@ -261,6 +261,33 @@ namespace ArctisAurora.Core.UI
             return spans[^1];
         }
 
+        // Restyles a character range: a boundary is cut at each end, every span between takes the
+        // delta, and what the change made identical folds back together.
+        public void StyleRange(int start, int end, NextStyleDelta delta)
+        {
+            if (end <= start) return;
+
+            SplitSpanAt(end);
+            int first = SplitSpanAt(start);
+
+            int at = start;
+            for (int i = first; i < spans.Count && at < end; i++)
+            {
+                StyleSpan span = spans[i];
+                int spanEnd = i == spans.Count - 1 ? Length : at + span.count;
+
+                if (spanEnd <= end)
+                {
+                    delta.Apply(ref span);
+                    spans[i] = span;
+                }
+                at = spanEnd;
+            }
+
+            MergeSpans();
+            InvalidateLayout();
+        }
+
         private void AppendSpans(List<StyleSpan> add, string slice)
         {
             spans.AddRange(add);

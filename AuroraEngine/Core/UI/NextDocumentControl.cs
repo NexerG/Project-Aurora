@@ -1,5 +1,6 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Editing;
+using ArctisAurora.Core.UISystem;
 using ArctisAurora.Core.UISystem.Controls.Text.Document;
 using ArctisAurora.EngineWork;
 using Silk.NET.Maths;
@@ -20,6 +21,77 @@ namespace ArctisAurora.Core.UI
         }
 
         public bool Equals(NextCaretSlot other) => block == other.block && offset == other.offset;
+    }
+
+    // A style change as data, so an edit record can carry one and redo can replay it. A member left
+    // null is one the change does not speak to — which is what lets bold over a multicoloured
+    // selection keep every colour in it.
+    public readonly struct NextStyleDelta
+    {
+        public readonly bool? bold;
+        public readonly bool? italic;
+        public readonly bool? strikethrough;
+        public readonly string colorHex;
+        public readonly int? fontSize;
+
+        public NextStyleDelta(bool? bold = null, bool? italic = null, bool? strikethrough = null,
+            string colorHex = null, int? fontSize = null)
+        {
+            this.bold = bold;
+            this.italic = italic;
+            this.strikethrough = strikethrough;
+            this.colorHex = colorHex;
+            this.fontSize = fontSize;
+        }
+
+        public void Apply(ref StyleSpan span)
+        {
+            bool isBold = bold ?? span.IsBold;
+            bool isItalic = italic ?? span.IsItalic;
+            span.style = isBold ? (isItalic ? FontStyle.BoldItalic : FontStyle.Bold)
+                                : isItalic ? FontStyle.Italic : FontStyle.Regular;
+
+            if (strikethrough.HasValue) span.strikethrough = strikethrough.Value;
+            if (colorHex != null) span.colorHex = colorHex;
+            if (fontSize.HasValue)
+            {
+                span.fontSizeAuthored = true;
+                span.fontSize = fontSize.Value;
+            }
+        }
+
+        // This delta with another laid over it; the newer one wins wherever it speaks.
+        public NextStyleDelta With(NextStyleDelta over) => new NextStyleDelta(
+            over.bold ?? bold, over.italic ?? italic, over.strikethrough ?? strikethrough,
+            over.colorHex ?? colorHex, over.fontSize ?? fontSize);
+
+        // Whether applying this would move anything on the span.
+        public bool Changes(StyleSpan span) =>
+            (bold.HasValue && bold != span.IsBold)
+            || (italic.HasValue && italic != span.IsItalic)
+            || (strikethrough.HasValue && strikethrough != span.strikethrough)
+            || (colorHex != null && colorHex != span.colorHex)
+            || (fontSize.HasValue && fontSize != span.fontSize);
+    }
+
+    // The style the next character will take: the span the caret sits in, with an armed change laid
+    // over it. Resolved against the block, so an unset span member reads as what it draws as.
+    public readonly struct NextCaretStyle
+    {
+        public readonly bool bold;
+        public readonly bool italic;
+        public readonly bool strikethrough;
+        public readonly string colorHex;
+        public readonly int fontSize;
+
+        public NextCaretStyle(NextBlockControl block, StyleSpan span, NextStyleDelta armed)
+        {
+            bold = armed.bold ?? span.IsBold;
+            italic = armed.italic ?? span.IsItalic;
+            strikethrough = armed.strikethrough ?? span.strikethrough;
+            colorHex = armed.colorHex ?? span.colorHex ?? block.colorHex;
+            fontSize = armed.fontSize ?? (span.fontSize > 0 ? span.fontSize : block.fontSize);
+        }
     }
 
     // The note's content area: blocks stacked top to bottom, with the caret over them.
@@ -45,6 +117,9 @@ namespace ArctisAurora.Core.UI
 
         // Where a selection started; equal to the caret means nothing is selected.
         private NextCaretSlot anchor;
+
+        // a style change with nothing to apply it to, spent on the next character typed
+        private NextStyleDelta pending;
 
         // A line above the caret ends exactly where the caret's line begins; the slack is for the
         // float arithmetic that got them both there.
@@ -397,17 +472,26 @@ namespace ArctisAurora.Core.UI
         }
 
         // Records the insert before the write, because the address is read off the caret the write is
-        // about to advance.
+        // about to advance. An armed style is spent here: the character is written with the style
+        // beside it and then restyled, so the partition and both records are a selection restyle's.
         internal void TypeChar(char c)
         {
             if (caretBlock == null) return;
 
-            NextDocumentAddress at = AddressOf(caretBlock, caretOffset);
+            NextBlockControl block = caretBlock;
+            NextDocumentAddress at = AddressOf(block, caretOffset);
+            NextStyleDelta armed = pending;
+            pending = default;
 
             undo?.Push(new NextTextEdit(this, at, c.ToString(), true));
-            caretBlock.InsertText(caretOffset, c.ToString());
+            block.InsertText(at.offset, c.ToString());
 
-            SetCaret(caretBlock, caretOffset + 1);
+            SetCaret(block, at.offset + 1);
+
+            if (!armed.Changes(block.StyleAt(at.offset + 1))) return;
+
+            ApplyStyleTo(at, new NextDocumentAddress(at.block, at.offset + 1), armed);
+            CollapseSelection();
         }
 
         // Blocks sit between the highlight boxes at the head of the child list and the caret at its
@@ -436,6 +520,144 @@ namespace ArctisAurora.Core.UI
                 if (child is NextBlockControl block) blocks.Add(block);
 
             return blocks;
+        }
+        #endregion
+
+        #region ---- styling ----
+        // What a toggle reads its current state from, and what the format bar reflects. The
+        // selection's start rather than the caret's own end, so a backwards drag reads the same
+        // style a forwards one does.
+        public NextCaretStyle? StyleSource
+        {
+            get
+            {
+                NextBlockControl block = caretBlock;
+                int offset = caretOffset;
+
+                if (OrderedSelection(out NextDocumentAddress from, out _)
+                    && Resolve(from, out NextBlockControl start, out int startOffset))
+                {
+                    block = start;
+                    offset = startOffset;
+                }
+
+                return block == null ? null : new NextCaretStyle(block, block.StyleAt(offset), pending);
+            }
+        }
+
+        public TextStyleType CaretBlockStyling => caretBlock?.stylingType ?? TextStyleType.Text;
+
+        // Restyles the selected range; with nothing selected the style is armed for the next
+        // character instead. False either way when nothing was written.
+        public bool ApplyStyle(NextStyleDelta delta)
+        {
+            if (OrderedSelection(out NextDocumentAddress from, out NextDocumentAddress to))
+                return ApplyStyleTo(from, to, delta);
+
+            ArmStyle(delta);
+            return false;
+        }
+
+        // Holds a style for the next character typed. Merged into what is already armed, so bold
+        // then italic types both; dropped once it agrees with the span the caret is in, which is
+        // what makes a second toggle disarm rather than pin the span's own style onto it.
+        public void ArmStyle(NextStyleDelta delta)
+        {
+            if (caretBlock == null) return;
+
+            pending = pending.With(delta);
+            if (!pending.Changes(caretBlock.StyleAt(caretOffset))) pending = default;
+        }
+
+        // Restyles an addressed range; false when an end names a block the document does not have.
+        public bool ApplyStyleTo(NextDocumentAddress from, NextDocumentAddress to, NextStyleDelta delta)
+        {
+            int count = Blocks().Count;
+            if (from.block < 0 || to.block < 0 || from.block >= count || to.block >= count) return false;
+
+            List<NextBlockSnapshot> before = SnapshotBlocks(from.block, to.block);
+
+            ApplyStyleBetween(from, to, delta);
+            undo?.Push(new NextStyleRangeEdit(this, from.block, before, from, to, delta));
+            return true;
+        }
+
+        // Addressed rather than read off the selection, so redo can replay it against the spans undo
+        // restored. Offsets are block-relative, so nothing here has to survive a re-partition.
+        internal void ApplyStyleBetween(NextDocumentAddress from, NextDocumentAddress to, NextStyleDelta delta)
+        {
+            List<NextBlockControl> blocks = Blocks();
+            if (from.block < 0 || to.block >= blocks.Count || to.block < from.block) return;
+
+            for (int b = from.block; b <= to.block; b++)
+                blocks[b].StyleRange(
+                    b == from.block ? Math.Clamp(from.offset, 0, blocks[b].Length) : 0,
+                    b == to.block ? Math.Clamp(to.offset, 0, blocks[b].Length) : blocks[b].Length,
+                    delta);
+
+            anchor = new NextCaretSlot(blocks[from.block],
+                Math.Clamp(from.offset, 0, blocks[from.block].Length));
+            SetCaret(blocks[to.block], Math.Clamp(to.offset, 0, blocks[to.block].Length), true);
+        }
+
+        // The styling type of every block the range touches; with nothing selected, the caret's own.
+        public bool SetBlockStyling(TextStyleType type)
+        {
+            if (caretBlock == null) return false;
+
+            int first, last;
+            if (OrderedSelection(out NextDocumentAddress from, out NextDocumentAddress to))
+            {
+                first = from.block;
+                last = to.block;
+            }
+            else first = last = Blocks().IndexOf(caretBlock);
+
+            if (first < 0 || last < 0) return false;
+
+            List<NextBlockSnapshot> before = SnapshotBlocks(first, last);
+            SetBlockStylingBetween(first, last, type);
+            undo?.Push(new NextStyleRangeEdit(this, first, before, type));
+            return true;
+        }
+
+        internal void SetBlockStylingBetween(int first, int last, TextStyleType type)
+        {
+            List<NextBlockControl> blocks = Blocks();
+
+            for (int b = first; b <= last && b < blocks.Count; b++)
+            {
+                blocks[b].stylingType = type;
+                blocks[b].ApplyLayout(document.layout);
+            }
+        }
+
+        // A style change leaves the text alone, so a span of blocks as data is the whole inverse.
+        internal List<NextBlockSnapshot> SnapshotBlocks(int first, int last)
+        {
+            List<NextBlockControl> blocks = Blocks();
+            List<NextBlockSnapshot> snapshots = new List<NextBlockSnapshot>();
+
+            for (int b = first; b <= last && b < blocks.Count; b++)
+                snapshots.Add(blocks[b].Snapshot());
+
+            return snapshots;
+        }
+
+        // Undo for both styling primitives. Neither adds or removes a block, so the blocks
+        // themselves survive and only their spans are rewritten.
+        internal void RestoreBlocks(int firstBlock, List<NextBlockSnapshot> before)
+        {
+            List<NextBlockControl> blocks = Blocks();
+
+            for (int i = 0; i < before.Count; i++)
+            {
+                int index = firstBlock + i;
+                if (index < 0 || index >= blocks.Count) continue;
+
+                blocks[index].Restore(before[i]);
+                blocks[index].ApplyLayout(document.layout);
+            }
         }
         #endregion
 

@@ -17,7 +17,7 @@ Implementors:
   - "[[UI-ENGINE]]"
 Namespace: ArctisAurora.Core.UI
 SourceFiles: AuroraEngine/Core/UI/*.cs, AuroraEngine/Core/Rendering/Modules/UIEngineModule.cs, AuroraEngine/Shaders/UIEngine/*
-VerifiedAgainst: 2026-09-07 (draw list)
+VerifiedAgainst: 2026-09-12 (draw list count handover, clip as coverage)
 ---
 ## Overview
 
@@ -43,7 +43,7 @@ The kinds are `MTSDFControl` for anything drawn from a distance field, `PanelCon
 
 `ArrangeData` is the measure and arrange state — the authored width, height, margin, padding, alignment and star weights, the arranged and clip rectangles the pass produces, and two caches used to make collision and insertion cheap. It is 140 bytes and it never leaves the CPU.
 
-`ControlGeometry` is what arrange produces for the GPU: the baked model matrix, the clip rectangle the fragment shader discards against, and the rectangle a gradient ramps across. It is 96 bytes.
+`ControlGeometry` is what arrange produces for the GPU: the baked model matrix, the clip rectangle the fragment shader cuts against, and the rectangle a gradient ramps across. It is 96 bytes.
 
 `VulkanControl` is paint: the kind, the texture coordinates, the tint, the texture index, the corner radii, one stroke colour and width, and a gradient index. It is 92 bytes.
 
@@ -91,6 +91,14 @@ The camera projects an orthographic box that only accepts world z between −512
 
 A window root sits at −10 and each level of depth steps one thousandth of a unit toward the camera, which is both painter order and the order the tree is walked in.
 
+## Clipping a quad to its rectangle
+
+The walk decides whether a quad is submitted at all; a quad that is only partly visible is submitted whole and cut in the fragment shader against the clip rectangle it carries. The cut is not a discard. The shader resolves the clip test to one or zero and multiplies it into the alpha it was going to write anyway, so a clipped fragment runs to the end of the shader and then contributes nothing.
+
+> Writing it as a discard is the obvious way and it was how this started, but a discarded fragment stops existing, and the shader asks for derivatives after the clip test — the antialiasing width of a rounded corner and of an edge stroke are both `fwidth`. Derivatives are computed across a 2×2 block of fragments, and the clip is a rectangle edge that cuts straight through those blocks, so killing the fragments on one side leaves the survivors on the other differencing against something that is no longer there. Multiplying instead keeps every fragment alive to the end, which is the only reason the antialiasing along a clip boundary is defined at all.
+
+This costs the full shader for fragments that end up invisible, and the bill is small because it is only ever paid at a boundary: a control that misses its clip entirely is culled by the walk and never reaches the GPU.
+
 ## Laying out
 
 Layout is the two-pass shape the old stack used, carried over unchanged in behaviour and moved onto the pooled arrange row. Measure asks an element how big it wants to be given a box; arrange tells it the rectangle it actually got. A plain control handles a single child, offering it the box minus its own padding and then, if it has no size of its own, shrinking to fit what the child asked for.
@@ -137,8 +145,9 @@ The walk runs at the frame edge, after arrange has settled every rectangle and c
 ```
 BuildDrawLists()
 	for each window
-		clear its list
+		rewind its list's walk cursor
 		Collect(its root, the list)
+		publish the cursor as the list's count
 
 Collect(control, list)
 	if the control is hidden
@@ -182,7 +191,13 @@ MirrorDrawList(image)
 
 The arrays and the count are read once and only once, because the main thread is rebuilding the list while this runs and a growth swaps both arrays out from under a second read. The count captured here is also what the recording that follows draws, so an image never draws a newer count against an older buffer.
 
-> That overlap is the same coarse race the old mirroring ran, made certain rather than occasional by rebuilding every frame. The worst case is a quad drawn at last frame's position for one frame. The fix, when it earns itself, is a small ring of lists rather than a lock.
+The count the render thread reads is not the one the walk is filling. A list carries two positions: a cursor that the walk rewinds and advances, and a count that is handed over once, after the walk has finished. Between the two the render thread keeps drawing the previous frame's count, so it can never see a list that is half built.
+
+> This was not a refinement. The two threads genuinely overlap — the frame edge no longer parks the renderer — and while clearing the list meant writing zero to the count the render thread was reading, a mirror that sampled at the wrong moment drew nothing at all. At tick rate that is not a dropped frame, it is a flickering window, and it was the flicker the UI actually had.
+
+The handover is a volatile write against a volatile read, which is the part that is easy to leave out and impossible to see missing. Without it the count is allowed to become visible before the rows that justify it, and the reader draws quads that were never written.
+
+> What this does not buy is a tear-free read. The walk still overwrites slots in place while the mirror copies them, so two controls can be a frame apart from each other. Removing that needs two sets of arrays and a swap, which costs about 48 KB and has not been built, because the blanking was the part anyone could see.
 
 ## Entry points
 
@@ -434,7 +449,43 @@ The caret belongs to the document, not to the run. Pressing anywhere in the text
 
 > The slot at the end of a wrapped line belongs to the line below it. Without that rule the caret sits off the right edge of the window instead of in front of the word that wrapped.
 
-> There is no way to author any of this in XML yet. The new stack reads no documents of its own, so spans are built in code, and the format that will express them is designed with the document rather than now.
+## Notes — blocks, spans and the format bar
+
+A note is a list of blocks, and a block is one run control: the paragraph's whole string with its styled slices as spans over it. The file writes those slices out as runs and the load turns each one back into a span, so the format is the outgoing stack's and the tree beneath it is not. Nothing in the tree is smaller than a paragraph.
+
+That collapses addressing. A position in a note is a block and a character offset into it, where the old stack needed a block, a run inside it and an offset into that run — and needed a rule for which run a boundary between two of them belonged to. An offset survives a restyle that cuts the spans underneath it, because it never named a span in the first place; the old addressing had to be repaired every time a run was split or two were folded back together.
+
+A style change is a delta rather than a style: each of bold, italic, strikethrough, colour and size is either spoken to or left alone, which is what lets bold over a multicoloured selection keep every colour in it. Applying one cuts a span boundary at each end of the range, applies the delta to the spans between, and folds back together whatever the change made identical, so a paragraph does not accumulate a span boundary per edit.
+
+```
+StyleRange(start, end, delta)
+	cut a span boundary at end
+	cut a span boundary at start
+	for each span from the one starting at start
+		if the span ends at or before end
+			apply the delta to it
+	fold neighbouring spans nothing distinguishes back into one
+	invalidate the layout
+```
+
+With nothing selected there is nothing to restyle, so the delta is armed instead: held on the document, merged with anything already armed, and dropped the moment it agrees with the span the caret is in — which is what makes a second press of bold disarm rather than pin the span's own weight onto it. The next character spends it.
+
+```
+TypeChar(c)
+	take what is armed, and disarm
+	record the insert at the caret
+	insert the character into the caret's block
+	move the caret past it
+	if what was armed would change that character's span
+		restyle that one character
+		collapse the selection the restyle left behind
+```
+
+Undoing a style change needs no inverse delta. The text is untouched, so the spans that were on the range are the whole inverse: the record carries the blocks it covered as data and undo writes them back, while redo replays the forward change against the spans undo restored.
+
+The format bar owns no editor. Every button resolves the note that holds the caret when it is pressed, the same walk the keybinds do, which is why nothing in the bar may take the active control — the walk starts at whatever is active, and a button that took it would leave the bar acting on itself. A button opts out, and so must the caption, the chevron and the row holding them: the active context is resolved from the control the press actually hit, so decoration inside a button is marked not hit-testable and the press lands on the button that owns it.
+
+> The px field is the exception, because it cannot be typed into without taking the focus. It captures the note and the selected range on the press that focuses it, and applies the size to that range when it commits — asking what is selected afterwards would ask a note the caret has already left.
 
 ## Related
 

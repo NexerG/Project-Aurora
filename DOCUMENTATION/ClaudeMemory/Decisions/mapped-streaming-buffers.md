@@ -109,6 +109,23 @@ all (decision 2), and for bulk write-once data the transfer queue's DMA engine b
 CPU writes while leaving BAR space for things that need it. The dividing line is upload-once-read-many
 into device-local (stage) against rewritten-every-frame (map).
 
+### 7. No allocation asks for a device address (2026-09-12)
+
+`CreateBuffer(ulong, …, preferred, required)` chained a `MemoryAllocateFlagsInfo` carrying
+`MemoryAllocateFlags.AddressBitKhr` onto every `vkAllocateMemory`, and every buffer in the engine
+funnels through this overload — `CreateMappedBuffer` and both generic `CreateBuffer<T>` included.
+`VkPhysicalDeviceVulkan12Features::bufferDeviceAddress` is requested only by `UIModule`, so on the new
+stack the feature is off and each allocation raised `VUID-VkMemoryAllocateInfo-flags-03331`. Ten per
+boot, which is the validation layer's duplicate cap, so the true count was higher.
+
+The `pNext` chain is gone. Nothing live takes an address: the callers that do —
+`Pathtracing.CreateShaderBindingTable` and `MCRaytracing`, through `AVulkanHelper.GetBufferAdress` —
+sit on the legacy `VulkanRenderer` path that neither `Renderer` nor `Engine` reaches.
+
+**Rejected: an optional `bool deviceAddress = false` parameter** passed `true` at those three sites.
+It keeps a live parameter for a dead path. Reviving raytracing means restoring the flag *and*
+requesting the feature, and a parameter would hide half that requirement rather than surface it.
+
 ## What came out
 
 Per frame, per window, with one UI module:

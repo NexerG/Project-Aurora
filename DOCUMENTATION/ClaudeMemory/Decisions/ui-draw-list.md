@@ -54,9 +54,11 @@ quads**, and the visible band is exactly the lines that meet the clip.
 - **The per-glyph atlas and metric lookups now run per frame** for visible glyphs, where they used to
   run once per arrange. Bounded by the screen; the first thing a rebuild-on-change flag removes.
 - **`HasPendingWork` returns `true`**, so every image re-records every frame. Same flag fixes it.
-- **Main rebuilds the list while render copies it.** Same coarse race the pool mirrors already ran;
-  `MirrorDrawList` reads both array references and the count into locals once, so a growth mid-copy
-  cannot throw. The fix, when it matters, is a 3-deep ring of lists, not a lock.
+- **Main rebuilds the list while render copies it.** ~~Same coarse race the pool mirrors already ran;
+  the fix, when it matters, is a 3-deep ring of lists, not a lock.~~ **CORRECTED 2026-09-12** — the
+  race was not benign. `Clear()` zeroing `_count` under the reader blanked the window for whole
+  frames, which is what the visible flicker was. Fixed by splitting the cursor from the published
+  count, not by a ring; see [ui-draw-list-publish](ui-draw-list-publish.md).
 - `DrawList.Next()` does **not** clear the slot it hands back. Both emitters write their structs whole
   — `TextRunControl.WriteGlyph` sets `edgeColor` for no other reason.
 
@@ -68,8 +70,10 @@ quads**, and the visible band is exactly the lines that meet the clip.
   the walk emits. Depth testing is off, so this is load-bearing.
 - **The shaders.** No binding, no indirection, no `.spv` recompile — the draw is still
   `GEO.rows[gl_InstanceIndex]`, the list is just shorter.
-- **Clipping is still a fragment `discard`.** The cull decides whether a quad is *submitted*; a
-  partially visible one is still cut per pixel by `UIEngine.frag`.
+- **Clipping is still per-fragment.** The cull decides whether a quad is *submitted*; a partially
+  visible one is still cut per pixel by `UIEngine.frag`. It stopped being a `discard` on 2026-09-12
+  — the clip now multiplies coverage into alpha; see
+  [ui-engine-clip-as-coverage](ui-engine-clip-as-coverage.md).
 
 ## Rejected
 

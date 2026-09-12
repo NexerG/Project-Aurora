@@ -41,8 +41,10 @@
 			</NextStackPanel>
 			<NextSplitter Width="5" ColorHex="#E6E4DE" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"/>
 			<NextStackPanel Orientation="Vertical" WidthStar="1" ColorHex="#FBFAF8">
-				<!-- stub: DocumentToolbar is 6c -->
-				<NextPanel Height="30" HorizontalAlignment="Stretch" ColorHex="#FBFAF8"/>
+				<NextDocumentToolbar Height="30" HorizontalAlignment="Stretch" ColorHex="#FBFAF8"
+				                     HoverColorHex="#EAE8E2" PressColorHex="#E3E1D9"
+				                     IdleInkColorHex="#5F5D56" ActiveInkColorHex="#2F6FB3"
+				                     SeparatorColorHex="#E6E4DE" FieldColorHex="#F2F1ED"/>
 				<NextWorkspace Name="Workspace" HeightStar="1" Default="next-workspace" Pane="next-tab-pane"/>
 			</NextStackPanel>
 		</NextStackPanel>

@@ -82,6 +82,54 @@ namespace ArctisAurora.Core.UI
         public void Redo() => document.SplitBlockAt(at);
     }
 
+    // A style change over a range, span styling or block styling alike. The text is untouched, so
+    // the inverse is the spans that were on it — no fragment, no structural surgery.
+    public sealed class NextStyleRangeEdit : IEditRecord
+    {
+        private readonly NextDocumentControl document;
+        private readonly int firstBlock;
+        private readonly List<NextBlockSnapshot> before;
+
+        // span styling
+        private readonly NextDocumentAddress from;
+        private readonly NextDocumentAddress to;
+        private readonly NextStyleDelta delta;
+
+        // block styling; absent means this record is a span restyle
+        private readonly TextStyleType? blockStyling;
+
+        public NextStyleRangeEdit(NextDocumentControl document, int firstBlock,
+            List<NextBlockSnapshot> before, NextDocumentAddress from, NextDocumentAddress to,
+            NextStyleDelta delta)
+        {
+            this.document = document;
+            this.firstBlock = firstBlock;
+            this.before = before;
+            this.from = from;
+            this.to = to;
+            this.delta = delta;
+        }
+
+        public NextStyleRangeEdit(NextDocumentControl document, int firstBlock,
+            List<NextBlockSnapshot> before, TextStyleType blockStyling)
+        {
+            this.document = document;
+            this.firstBlock = firstBlock;
+            this.before = before;
+            this.blockStyling = blockStyling;
+        }
+
+        public void Undo() => document.RestoreBlocks(firstBlock, before);
+
+        public void Redo()
+        {
+            if (blockStyling.HasValue)
+                document.SetBlockStylingBetween(firstBlock, firstBlock + before.Count - 1, blockStyling.Value);
+            else
+                document.ApplyStyleBetween(from, to, delta);
+        }
+    }
+
     // A delete of a range, inside one block or across several. Redo replays the forward primitive
     // rather than inverting the inverse, so only one direction is hand-written.
     public sealed class NextDeleteRangeEdit : IEditRecord

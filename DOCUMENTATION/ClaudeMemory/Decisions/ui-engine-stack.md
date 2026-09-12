@@ -340,6 +340,62 @@ Printed by `UIEngine.Bootstrap` via `Unsafe.SizeOf` at boot.
 `ControlGeometry` is `matrix` + `clip` + `gradientRect`. `VulkanControl` is `type` + `uvs` + `tint` +
 `textureIndex` + `cornerRadius` + `edgeColor`/`edgeThickness` + `gradientIndex`.
 
+## What changed — landing 6c, documents — 2026-09-12
+
+The 15 text/document classes, rebuilt rather than ported. Landed in three commits: the read path, editing and
+undo, the format bar.
+
+| New | Shape | Replaces |
+|---|---|---|
+| `NextBlockControl` | `TextRunControl` — one paragraph, spans over one string | `Block`/`ContentBlock` + every `TextRun` in it |
+| `NextRun` | `<NextRun>`, load/save only | `TextRun`'s authored attributes |
+| `NextDocumentControl` | `ContainerControl`, `IGlyphPressTarget` — blocks, caret, selection, editing, styling | `DocumentControl` |
+| `NextDocumentEditorControl` | `<NextDocumentEditor>` · `NextScrollableControl`, `IContext` | `DocumentEditorControl` |
+| `NextDocumentToolbarControl` | `<NextDocumentToolbar>` · `NextStackPanelControl` | `DocumentToolbarControl` |
+| `NextRichTextDocument`, `NextDocumentEditSession` | `<NextDocument>` + the open file's dirty flag and history | `RichTextDocument`, `DocumentEditSession` |
+| `NextDocumentXml` | load/save over the **same** file format | `DocumentXml` |
+| `NextDocumentAddress`, `NextBlockSnapshot`, `NextDocumentFragment` | `(block, offset)`, a block as data, what a delete removed | `DocumentAddress`, `BlockSnapshot`+`RunSnapshot`, `DocumentFragment` |
+| `NextTextEdit`, `NextSplitEdit`, `NextDeleteRangeEdit`, `NextStyleRangeEdit` | `IEditRecord`s | `RunTextEdit`, `SplitEdit`, `DeleteRangeEdit`, `StyleRangeEdit` |
+| `NextStyleDelta`, `NextCaretStyle` | a change as data; the style the next character takes | `StyleDelta`, `CaretStyle` |
+
+`TextStyleType`, `TextStyle`, `DocumentLayout`, `DocumentSettings`, `TextMeasurer` and `Core.Editing.UndoStack`
+are **shared with the outgoing stack**, not copied.
+
+**A run becomes a `StyleSpan`, a block becomes one control, so the run level is gone.** With it go
+`Normalize`, `AdjacentRun`, `SplitRunAt`/`MergeRuns`, `RunSnapshot`, `carriedRunDropped` and
+`tailRunDestroyed` — every one of which existed to keep `(block, run, offset)` valid across a re-partition.
+A block-relative offset cannot be invalidated by one, so `ApplyStyleBetween` needs no character-offset
+round-trip and the re-partition needs no caret repair.
+
+`StyleSpan` grew the six document fields — `fontName`, `fontSize`, `gradient`, `strikethrough`,
+`stylingType`, `fontSizeAuthored` — because it is CPU-only data that never reaches a GPU row (user,
+2026-09-12). `stylingType` and `fontSizeAuthored` are carried but never drawn: they are what lets a note save
+back as it was written rather than with the scheme's sizes baked in.
+
+**The format bar resolves its target per press and takes no active control**, the way the outgoing bar does.
+New on this stack: the active context is resolved from the control the press *hit*
+(`UIEngine.SolvePress` → `hovering.ActiveContextTarget()`, then `takesActiveControl` on the **result**), so a
+caption row inside a button resolved to itself and the walk for the focused note came back empty. The captions,
+the chevrons and the row are `hitTestable = false`, which lands the press on the button that opts out.
+
+**`NextTabViewControl.CloseTab` saves a dirty session before closing**; the outgoing stack saved
+unconditionally. `NoteActions` and `TextInputActions` gained new-stack branches beside the old ones rather
+than a shared abstraction — both stacks live until 6d, and the two editors share no base type.
+
+### Known gaps — 6c
+
+- **A `TextRunControl`'s `colorHex` setter only invalidates arrange, but the glyph colours are built in
+  `BuildRuns` at measure.** A label recoloured after its first measure does not repaint; the format bar's
+  colour swatch calls `InvalidateLayout` itself. Nothing else on either stack recolours text after build, so
+  this is latent, not observed.
+- **Seen once, not reproduced:** after a long mixed chain (select-all bold → undo → block styling → armed
+  colour → typed character → drag-select → px size), the saved file carried every span change but not the
+  block's `StylingType`. The same block styling saved correctly in isolation, twice.
+- Word and line selection by double/triple click is still **NOT GUI-verified** — a synthetic click never
+  reaches `tapCount` 2, which 6b's own tab-caption rename proves is the driver and not the stack.
+- No naming prompt on the new stack: an unnamed note is written under the file name it already has, because
+  the prompt is a window and windows are 6c2. `NoteActions.SettleUnnamed` still walks old trees only.
+
 ## Why these choices
 
 **Three categories, two of them GPU-side, because a resize and a repaint dirty different bytes.**
