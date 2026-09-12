@@ -81,7 +81,7 @@ explicit and per-control (`WindowControl`, `TextControl`, `TextBlockControl`, `D
 
 `SetCursorPos` + `mouse_event` for the pointer, `[System.Windows.Forms.SendKeys]` for characters.
 
-Three traps, each of which has already produced a wrong conclusion:
+Five traps, each of which has already produced a wrong conclusion:
 
 - **`Engine.HandleUI` returns immediately while `UICollisionHandling.isInWindow` is false.** Input that leaves
   the pointer outside the window makes the *next* drag silently do nothing, which reads as a broken feature.
@@ -93,6 +93,16 @@ Three traps, each of which has already produced a wrong conclusion:
 - **`Text.Write` is bound `<Continuous/>`.** `SendKeys` steals focus, the key's release lands on another
   window, and the bind keeps firing — pouring characters into whatever note has focus. Drive text with
   explicit key-up, and restore any note the probe wrote to.
+- **`keybd_event` goes to the foreground window, and a capture between keystrokes can take it.** Every
+  `capture.ps1` run is another process; once it has the foreground the next key lands nowhere and the app reads
+  as ignoring the gesture. Ctrl+A then Ctrl+B did nothing after an intervening capture on 2026-09-12 and worked
+  on the first try when sent in the same call as the click that focused the window. Drive and capture in
+  separate calls, click into the window first, and assert `GetForegroundWindow()` against the process's
+  `MainWindowHandle` before believing a negative result.
+- **Extended keys do not arrive at all.** Arrow keys, Home/End, PageUp/PageDown and Delete produce nothing
+  through `keybd_event` (with or without `KEYEVENTF_EXTENDEDKEY`) or `SendKeys`, while characters, Enter,
+  Backspace, F10 and every Ctrl combo work through the same paths. Caret movement and `Text.Delete` can only be
+  checked by hand — do not report them as broken from a script.
 
 ## Before calling something an engine defect
 
