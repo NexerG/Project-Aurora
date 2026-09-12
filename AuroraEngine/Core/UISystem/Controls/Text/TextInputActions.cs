@@ -153,21 +153,29 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         }
 
         [A_XSDActionDependency("Text.Bold", "Input", "Toggles bold over the selection, or for what is typed next")]
-        public static void Bold() => Toggle(style => new StyleDelta(bold: !style.bold));
+        public static void Bold() => Toggle(style => new StyleDelta(bold: !style.bold),
+                                            style => new NextStyleDelta(bold: !style.bold));
 
         [A_XSDActionDependency("Text.Italic", "Input", "Toggles italic over the selection, or for what is typed next")]
-        public static void Italic() => Toggle(style => new StyleDelta(italic: !style.italic));
+        public static void Italic() => Toggle(style => new StyleDelta(italic: !style.italic),
+                                              style => new NextStyleDelta(italic: !style.italic));
 
-        // The state comes off the caret's style, so a toggle is what that is not.
-        private static void Toggle(Func<CaretStyle, StyleDelta> delta)
+        // The state comes off the caret's style, so a toggle is what that is not. Each stack
+        // declares a caret style and a delta of its own, so each reads the toggle for itself.
+        private static void Toggle(Func<CaretStyle, StyleDelta> delta,
+            Func<NextCaretStyle, NextStyleDelta> nextDelta)
         {
             DocumentEditorControl editor = FocusedEditor();
-            if (editor == null) return;
+            if (editor != null)
+            {
+                CaretStyle? source = editor.StyleSource;
+                if (source != null) editor.ApplyStyle(delta(source.Value));
+                return;
+            }
 
-            CaretStyle? source = editor.StyleSource;
-            if (source == null) return;
-
-            editor.ApplyStyle(delta(source.Value));
+            NextDocumentEditorControl next = NextEditor();
+            NextCaretStyle? nextSource = next?.StyleSource;
+            if (nextSource != null) next.ApplyStyle(nextDelta(nextSource.Value));
         }
 
         [A_XSDActionDependency("Text.Undo", "Input", "Reverses the last edit made to the focused note")]

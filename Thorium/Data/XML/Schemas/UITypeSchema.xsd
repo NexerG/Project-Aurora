@@ -140,6 +140,20 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:NextDocumentEditor.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="NextDocumentToolbar.Attributes">
+    <xs:attributeGroup ref="types:NextStackPanel.Attributes" />
+    <xs:attribute name="HoverColorHex" type="xs:string" />
+    <xs:attribute name="PressColorHex" type="xs:string" />
+    <xs:attribute name="IdleInkColorHex" type="xs:string" />
+    <xs:attribute name="ActiveInkColorHex" type="xs:string" />
+    <xs:attribute name="SeparatorColorHex" type="xs:string" />
+    <xs:attribute name="FieldColorHex" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="NextDocumentToolbar" type="types:NextDocumentToolbar" />
+  <xs:complexType name="NextDocumentToolbar">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextDocumentToolbar.Attributes" />
+  </xs:complexType>
   <xs:element name="NextDropdown" type="types:NextDropdown" />
   <xs:complexType name="NextDropdown">
     <xs:sequence />

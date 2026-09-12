@@ -57,6 +57,7 @@
       <xs:enumeration value="NextCheckBox" />
       <xs:enumeration value="NextDock" />
       <xs:enumeration value="NextDocumentEditor" />
+      <xs:enumeration value="NextDocumentToolbar" />
       <xs:enumeration value="NextDropdown" />
       <xs:enumeration value="NextEditableLabel" />
       <xs:enumeration value="NextEditableTabs" />

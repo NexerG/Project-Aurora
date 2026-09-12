@@ -28,6 +28,9 @@ namespace ArctisAurora.Core.UI
         // where an unauthored size comes from, kept so a note saves back as it was written
         public TextStyleType stylingType;
         public bool fontSizeAuthored;
+
+        public bool IsBold => style == FontStyle.Bold || style == FontStyle.BoldItalic;
+        public bool IsItalic => style == FontStyle.Italic || style == FontStyle.BoldItalic;
     }
 
     // What a run tells when a glyph is pressed.

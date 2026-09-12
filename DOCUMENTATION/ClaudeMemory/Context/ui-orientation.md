@@ -74,7 +74,9 @@ Many children, both alignments default to `Stretch`. Base of every multi-child c
 
 ### DrawList
 Per window, rebuilt each frame: parallel `ControlGeometry[]` / `VulkanControl[]`, `Next()` hands out a slot,
-`Clear()`. Filled by `Control.Emit`; mirrored by the render thread. Why: [[ui-draw-list]].
+`Clear()` rewinds the walk. Filled by `Control.Emit`; mirrored by the render thread. `Clear()` does **not**
+touch `Count` — the walk fills `_cursor` and `Publish()` hands it over at the end, so the reader never sees a
+partial count. Why: [[ui-draw-list]], [[ui-draw-list-publish]].
 
 ### UIData — value types
 - `LayoutRect` (`x`, `y`, `width`, `height`, `Right`, `Bottom`, `Overlaps`); `Thickness`, `CornerRadii`
@@ -109,9 +111,12 @@ Per window, rebuilt each frame: parallel `ControlGeometry[]` / `VulkanControl[]`
 ## Text
 
 - **TextRunControl** abstract `<NextTextRun>` · Control — a paragraph as one control, a GPU quad per visible
-  glyph. `spans` of `StyleSpan` (`count`, `style`, `colorHex`), `SetSpans`, `style`, `lineHeight`. Regions
-  `layout` (`Measure`, `Arrange`, `Emit`) and `caret geometry` (`IndexAt`, `CaretAt`, `TextOrigin`, `Length`).
-  `OnPointerPress` → `IGlyphPressTarget`. XML `Text`, `FontSize`, `FontName`. Why: [[ui-engine-stack]] § landing 4.
+  glyph. `spans` of `StyleSpan` (`count`, `style`, `colorHex`, `fontName`, `fontSize`, `gradient`,
+  `strikethrough`, `stylingType`, `fontSizeAuthored`, `IsBold`/`IsItalic`), `SetSpans`, `style`, `lineHeight`.
+  Regions `layout` (`Measure`, `Arrange`, `Emit`) and `caret geometry` (`IndexAt`, `CaretAt`, `TextOrigin`,
+  `Length`, `Lines`). `OnPointerPress` → `IGlyphPressTarget`. XML `Text`, `FontSize`, `FontName`. **A colour
+  set after the first measure does not repaint** — `BuildRuns` reads it, and the setter invalidates arrange
+  only. Why: [[ui-engine-stack]] § landing 4, § landing 6c.
 - **NextLabelControl** `<NextLabel>` · TextRunControl — read-only text. Old `LabelControl`.
 - **NextTextBoxControl** `<NextTextBox>` · ContainerControl, `IContext` — single-line field with caret and
   selection. `Focus`, `SelectAll`, `WriteChar`, `Backspace`, `Delete`, `MoveCaret`, `Commit`, `Cancel`,
@@ -120,6 +125,48 @@ Per window, rebuilt each frame: parallel `ControlGeometry[]` / `VulkanControl[]`
 - **NextEditableLabelControl** `<NextEditableLabel>` · ContainerControl — label that swaps to a text field on
   double-click. `BeginEdit`. XML `Text`, `FontSize`, `TextColorHex`, `FieldColorHex`. Old
   `EditableLabelControl`, [[inline-rename]] (old).
+
+## Documents
+
+- **NextBlockControl** (no XML) · TextRunControl — one block of a note: the paragraph's string with its runs as
+  spans. `stylingType`, `ApplyLayout(DocumentLayout)`, `AppendRun`, `Runs()`. Region `text and spans`:
+  `InsertText`, `RemoveText`, `SplitAt`, `AppendBlock`, `Snapshot`/`SliceSnapshot`/`Restore`/`From`,
+  `InsertSlice`/`AppendSlice`, `StyleAt`, `StyleRange`, `SplitSpanAt`, `MergeSpans`. A boundary belongs to the
+  span **after** it. Replaces `Block`/`ContentBlock` + `TextRun`.
+- **NextRun** `<NextRun>` — a run as the file writes it; exists at load and save only. `Text`, `Bold`, `Italic`,
+  `Strikethrough`, `ColorHex`, `ControlColor`, `Gradient`, `FontName`, `FontSize`, `FontSizeAuthored`,
+  `StylingType`.
+- **NextDocumentControl** (no XML) · ContainerControl, `IGlyphPressTarget` — the content area. Regions `caret`
+  (`SetCaret`, `CollapseSelection`, `GlyphPressed`, `OnPointerTap`), `caret navigation` (`CaretPoint`,
+  `CaretAtPoint`, `CaretOffText`, `AdjacentBlock`), `selection` (`SelectWord`, `SelectAll`,
+  `OrderedSelection`, highlights inserted at the **head** of `children` so they paint behind the text),
+  `editing` (`DeleteSelection`, `SplitBlock`, `TypeChar`, `Blocks`), `styling` (`StyleSource`,
+  `CaretBlockStyling`, `ApplyStyle`, `ArmStyle`, `ApplyStyleTo`/`ApplyStyleBetween`, `SetBlockStyling`,
+  `SnapshotBlocks`, `RestoreBlocks`), `addressing` (`AddressOf`, `Resolve`, `CaretTo`) and `undo primitives`
+  (`InsertText`, `RemoveText`, `DeleteBetween`, `InsertFragment`, `JoinBlockWithNext`). Also declares
+  `NextCaretSlot`, `NextStyleDelta` and `NextCaretStyle`. Old `DocumentControl`.
+- **NextDocumentEditorControl** `<NextDocumentEditor>` · NextScrollableControl, `IContext` — one open note.
+  `Source`/`LoadPath`/`LoadDocument`, `Save`, `needsNaming`, `FocusCaret`; regions `styling` (forwards under a
+  `BeginStep`), `selection` (`SelectLine`, `BeginSelectionDrag`, `OnDrag` + autoscroll), `caret movement`
+  (`MoveCaret`), `editing` (`Backspace`, `Delete`, `SplitBlock`, `TypeChar`), `history`
+  (`BeginStep`/`Undo`/`Redo`/`MarkDirty`), `focus`. `Arrange` scrolls to the caret and **must never exit with
+  the arrange flag set**. XML adds `CaretColorHex`, `SelectionColorHex` to the scrollable's. Old
+  `DocumentEditorControl`.
+- **NextDocumentToolbarControl** `<NextDocumentToolbar>` · NextStackPanelControl — the format bar for whichever
+  note holds the caret; resolves it per press through `TextInputActions.NextEditor()` and takes no active
+  control. `OnTick` reflects bold/italic/styling/colour/size; nested `NextToolButton` (acts on press) and
+  `NextPxBox` (the one part that does take the focus; captures the range on its press). XML `HoverColorHex`,
+  `PressColorHex`, `IdleInkColorHex`, `ActiveInkColorHex`, `SeparatorColorHex`, `FieldColorHex`. Old
+  `DocumentToolbarControl`, [[document-format-bar]], [[armed-style-at-the-caret]] (old).
+- **NextRichTextDocument** `<NextDocument>` — the model: `blocks`, `name`, `layout`; `ParseXML`, `Save`.
+  **NextDocumentEditSession** — the open file: `path`, `undo`, `isDirty`, `MarkDirty`, `Repath`, `Save`.
+- **NextDocumentXml** — load and save over the outgoing stack's file format; the block level is written by
+  hand because `"Document"`/`"Block"`/`"Run"` belong to the old XSD types until 6d.
+  [../Patterns/document-xml-persistence.md](../Patterns/document-xml-persistence.md)
+- **NextDocumentEdits.cs** — `NextDocumentAddress` (`(block, offset)`), `NextBlockSnapshot`,
+  `NextDocumentFragment`, and the records `NextTextEdit`, `NextSplitEdit`, `NextDeleteRangeEdit`,
+  `NextStyleRangeEdit`. Undo currency is snapshots and fragments, never control references — undo rebuilds
+  blocks. Why: [[ui-engine-stack]] § landing 6c.
 
 ## Layout containers
 

@@ -580,6 +580,7 @@ namespace ArctisAurora.Core.UI
                 ui.drawList.Clear();
                 Control root = ui.rangeRoot ?? ui.uiRoot;
                 int walked = root == null ? 0 : Collect(root, ui.drawList);
+                ui.drawList.Publish();
 
                 Log.Every(1000).Debug($"'{ui.uiRoot?.name}' walked {walked} controls, " +
                                       $"emitted {ui.drawList.Count} quads");

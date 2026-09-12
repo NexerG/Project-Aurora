@@ -78,6 +78,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextDockingControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextDocumentControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextDocumentEditorControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextDocumentEdits.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextDocumentToolbarControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextDocumentXml.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextDragGhost.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextDropdownControl.cs

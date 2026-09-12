@@ -77,8 +77,14 @@ XML element, entry points, regions. The rows below answer "which types own this 
 | single-line text fields | `UI.Editing.TextInputControl`, `TextBoxControl`; `UI.Text.TextControl` | — | [[note-naming-and-text-field]] |
 | text and the caret on the **new** stack — a paragraph as one control, a GPU quad per visible glyph | `UINext.TextRunControl` (`spans`, `Emit`, `IndexAt`, `CaretAt`, `TextOrigin`), `StyleSpan`, `IGlyphPressTarget`, `NextCaretControl`; `Shaders/UIEngine/UIEngine.frag` MTSDF branch | — | [[ui-engine-stack]], [[ui-draw-list]] |
 | what the new stack draws this frame, and what it culls | `UINext.DrawList`, `Control.Emit`, `UIEngine.BuildDrawLists`, `LayoutRect.Overlaps`; `Render.Modules.UIEngineModule` (`drawList`, `MirrorDrawList`) | — | [[ui-draw-list]] |
-| per-character bold / colour / size on a run | `UINext.StyleSpan`; `UI.Doc.TextMeasurer.Run` (`charStart`/`charCount`) | none yet — the new stack parses no XML | [[ui-engine-stack]] |
+| the UI flickering, a frame drawing blank or short | `UINext.DrawList` (`Clear`, `Publish`, `Count`, `_cursor`), `UIEngine.BuildDrawLists`; `Render.Modules.UIEngineModule.MirrorDrawList` | — | [[ui-draw-list-publish]] |
+| clipping on the **new** stack | `UINext.Control` (`arrange.clip`), `UIEngine.Collect`; `Shaders/UIEngine/UIEngine.frag` (`inClip`) | — | [[ui-engine-clip-as-coverage]] |
+| per-character bold / colour / size on a run | `UINext.StyleSpan`; `UI.Doc.TextMeasurer.Run` (`charStart`/`charCount`) | `*/Data/Notes/*.xml` `<Run>` attrs | [[ui-engine-stack]] |
 | note load / save | `UI.Doc.DocumentXml`; `Filing.Serializer`, `XmlReflection` | `*/Data/Notes/*.xml` | [../Patterns/document-xml-persistence.md](../Patterns/document-xml-persistence.md), [[xml-save-skips-defaults]] |
+| a note on the **new** stack — blocks, caret, selection, editing | `UINext.NextDocumentControl`, `NextBlockControl` (+ `NextRun`), `NextDocumentEditorControl`, `NextCaretSlot` | host `*.ui.xml` `<NextDocumentEditor Source>`; `*/Data/Notes/*.xml` | [[ui-engine-stack]], [[document-selection]] (old) |
+| bold / italic / headings, format bar on the **new** stack | `UINext.NextDocumentToolbarControl`, `NextStyleDelta`, `NextCaretStyle`, `NextStyleRangeEdit`; `UI.Text.TextInputActions` (`Toggle`, `NextEditor`) | host `*.ui.xml` `<NextDocumentToolbar>`; `AuroraEngine/Data/XML/Settings/DocumentSettings.settings.xml` | [[ui-engine-stack]], [[document-format-bar]] (old), [[armed-style-at-the-caret]] (old) |
+| undo / redo on the **new** stack | `Editing.UndoStack`; `UINext.NextTextEdit`, `NextSplitEdit`, `NextDeleteRangeEdit`, `NextStyleRangeEdit`, `NextBlockSnapshot`, `NextDocumentFragment`, `NextDocumentAddress` | — | [[ui-engine-stack]], [[document-undo]] (old) |
+| note load / save on the **new** stack | `UINext.NextDocumentXml`, `NextRichTextDocument`, `NextDocumentEditSession`; `UI.Actions.NoteActions` | `*/Data/Notes/*.xml` — same format as the outgoing stack | [[ui-engine-stack]], [../Patterns/document-xml-persistence.md](../Patterns/document-xml-persistence.md) |
 
 ## Input
 

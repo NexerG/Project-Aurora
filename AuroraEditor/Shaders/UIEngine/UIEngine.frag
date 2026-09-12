@@ -118,9 +118,9 @@ float msdfDistance()
 
 void main()
 {
-    if (fragPos.x < fragClip.x || fragPos.y < fragClip.y ||
-        fragPos.x > fragClip.z || fragPos.y > fragClip.w)
-        discard;
+    // clip as coverage
+    float inClip = (fragPos.x < fragClip.x || fragPos.y < fragClip.y ||
+                    fragPos.x > fragClip.z || fragPos.y > fragClip.w) ? 0.0f : 1.0f;
 
     vec3 color = fragTint.rgb;
     float alpha = fragTint.a;
@@ -174,5 +174,5 @@ void main()
     if (fragType == PANEL_CONTROL && fragTextureIndex != NO_TEXTURE)
         opacity *= clamp(msdfDistance() + 0.5f, 0.0f, 1.0f);
 
-    outColor = vec4(color, opacity * alpha);
+    outColor = vec4(color, opacity * alpha * inClip);
 }

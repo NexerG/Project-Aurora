@@ -403,17 +403,11 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             MemoryRequirements _memReqs = new MemoryRequirements();
             Renderer.vk.GetBufferMemoryRequirements(Renderer.logicalDevice, _buffer, out _memReqs);
 
-            var allocateFlagsInfo = new MemoryAllocateFlagsInfo
-            {
-                SType = StructureType.MemoryAllocateFlagsInfo,
-                Flags = MemoryAllocateFlags.AddressBitKhr // Enable device address for
-            };
             MemoryAllocateInfo _allocateInfo = new MemoryAllocateInfo()
             {
                 SType = StructureType.MemoryAllocateInfo,
                 AllocationSize = _memReqs.Size,
-                MemoryTypeIndex = FindMemoryType(_memReqs.MemoryTypeBits, _preferred, _required),
-                PNext = &allocateFlagsInfo
+                MemoryTypeIndex = FindMemoryType(_memReqs.MemoryTypeBits, _preferred, _required)
             };
 
             fixed (DeviceMemory* _bufferMemoryPtr = &_bufferMemory)

@@ -1,7 +1,7 @@
 # UI Engine — state and resume point
 
-**Rewritten:** 2026-09-06. **Landings 1–5, 6a–6b3, 6c-a and 6c-b are built (2026-09-12). Left: 6c-c the format
-bar, then 6c2, then 6d, and 6b's probe deletion.**
+**Rewritten:** 2026-09-06. **Landings 1–5, 6a–6b3 and all of 6c are built (2026-09-12). Left: 6c2 the windows
+and hosts, then 6d the delete, and 6b's probe deletion.**
 
 This file exists so the work can be picked up cold. The decisions and their reasoning are in
 [../Decisions/ui-engine-stack.md](../Decisions/ui-engine-stack.md) and
@@ -530,6 +530,45 @@ Ctrl combos all work**, so caret movement and the Delete key cannot be driven fr
 **Not exercised:** word and line selection by double/triple click — a synthetic click never reaches `tapCount`
 2, which 6b's own tab-caption rename proves is the driver and not the stack; autoscroll past a viewport edge,
 no note being taller than the viewport.
+
+##### 6c-c — the format bar — **DONE 2026-09-12**
+
+`NextStyleDelta` and `NextCaretStyle` (in `NextDocumentControl.cs`), the document's `styling` region
+(`StyleSource`, `CaretBlockStyling`, `ApplyStyle`, `ArmStyle`, `ApplyStyleTo`/`ApplyStyleBetween`,
+`SetBlockStyling`/`SetBlockStylingBetween`, `SnapshotBlocks`, `RestoreBlocks`), `NextBlockControl.StyleRange`,
+`StyleSpan.IsBold`/`IsItalic`, `NextStyleRangeEdit`, the editor's forwarding region under a `BeginStep`, and
+`NextDocumentToolbarControl` (+ nested `NextToolButton`, `NextPxBox`) replacing the stub band in
+`NextUI.ui.xml`. `TextInputActions.Toggle` takes a delta per stack and routes to whichever editor is focused.
+`TypeChar` spends an armed style on the character it just wrote.
+
+→ *verified:* builds clean; boot error set 7 (one sampler asset, six repeats of one Vulkan validation barrier
+warning) — none of them ours. GUI, synthetic input + topmost capture: the bar draws over both panes (B, I,
+`Heading 2 ⌄`, `A ⌄`, the px field); Ctrl+A then Ctrl+B turned all 7 blocks bold **and left every colour and
+the gray run alone**, Ctrl+Z put them back; the B glyph lit to exactly the authored `ActiveInkColorHex`
+(pixel-sampled `#2F6FB3`, not eyeballed); the styling menu's 10 entries and the colour menu's 8 open under
+their buttons; `Heading 2` on the caret's block enlarged and rewrapped it and the caption and px field
+followed (`Heading 2`, 28); `Red` with no selection armed, and the next character came out red **and** bold —
+it inherited the bold span it was inserted into, exactly what `SpanForInsert` promises; a drag-selected range
+took `24` from the px field. The saved file proves all of it at byte level: the typed character is
+`<Run Text="x" Bold="true" ColorHex="#E06C75" />`, the range is
+`<Run Text="ndered b" ColorHex="#808080" FontSize="24" FontSizeAuthored="true" />`, and an isolated block
+restyle saves as `<Block StylingType="Heading2">` with its spans untouched. The px field and the caret keys
+were confirmed by hand (user, 2026-09-12).
+
+**Traps this stage discovered.** (1) The active context resolves from the control the press *hit* —
+`SolvePress` calls `hovering.ActiveContextTarget()` and then checks `takesActiveControl` on the **result** — so
+a caption row inside a bar button answered for itself and the walk for the focused note came back empty; the
+captions, chevrons and rows are `hitTestable = false`. (2) A nested private class collides in
+`AssetRegistries.RegisterSerializableTypes`, which hashes `t.Name` for every `[Serializable]` type: `ToolButton`
+and `PxBox` beside the outgoing bar's own nested pair threw *An item with the same key has already been added*
+at boot. The `Next` prefix rule reaches nested types too. (3) A `TextRunControl`'s glyph colours are built in
+`BuildRuns` at measure, but the `colorHex` setter invalidates arrange only — the bar recolours its swatch with
+an explicit `InvalidateLayout`.
+
+**Not exercised:** the `Default` colour entry and `Comment`/`Code`/`Quote` stylings (the other menu rows share
+one code path); strikethrough, which no gesture reaches on either stack. **Seen once, not reproduced:** after a
+long mixed chain, a saved note carried every span change but not the block's `StylingType` — the same restyle
+saved correctly in isolation twice.
 
 #### 6c2 — windows and hosts
 
