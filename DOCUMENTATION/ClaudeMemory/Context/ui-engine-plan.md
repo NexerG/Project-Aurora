@@ -1,7 +1,7 @@
 # UI Engine — state and resume point
 
-**Rewritten:** 2026-09-06. **Landings 1–5, 6a–6b3 and 6c-a are built (2026-09-12). Left: 6c-b editing, 6c-c the
-format bar, then 6c2, then 6d, and 6b's probe deletion.**
+**Rewritten:** 2026-09-06. **Landings 1–5, 6a–6b3, 6c-a and 6c-b are built (2026-09-12). Left: 6c-c the format
+bar, then 6c2, then 6d, and 6b's probe deletion.**
 
 This file exists so the work can be picked up cold. The decisions and their reasoning are in
 [../Decisions/ui-engine-stack.md](../Decisions/ui-engine-stack.md) and
@@ -505,6 +505,31 @@ its note into a new tab, active, with a mixed-style block drawn. **Not exercised
 dirty until 6c-b), scrolling (no note is taller than the viewport), rename propagation into open tabs.
 **Synthetic-input note:** a press-driven control needs the press held past a tick, and a fresh instance ignores
 pointer presses until one click has landed on the chrome — both bit this session before the caret was believed.
+
+##### 6c-b — editing, undo and selection — **DONE 2026-09-12**
+
+Span mechanics on `NextBlockControl` (`InsertText`, `RemoveText`, `SplitAt`, `AppendBlock`, snapshots and
+slices, `SpanForInsert` where a boundary belongs to the span after it, `SplitSpanAt`/`MergeSpans`/
+`DropEmptySpans`), the selection and editing regions on `NextDocumentControl` (word/line/all, `OrderedSelection`,
+highlights inserted at the head of `children` so they paint behind the text, `DeleteSelection`, `SplitBlock`,
+`TypeChar`, block insert/remove, `AddressOf`/`Resolve`/`CaretTo`), the editor's keyboard and drag surface on
+`NextDocumentEditorControl` (`BeginStep`/`Undo`/`Redo`, `MoveCaret`, `Backspace`/`Delete`, selection drag with
+autoscroll), and `NextDocumentEdits.cs` — `NextDocumentAddress`, `NextBlockSnapshot`, `NextDocumentFragment`
+and the three records `NextTextEdit`, `NextSplitEdit`, `NextDeleteRangeEdit`. `TextInputActions` and
+`NoteActions` grew new-stack branches beside the old ones, resolved through `NextEditor()` off
+`UIEngine.activeControl`. `NextTabViewControl.CloseTab` saves a dirty session before closing; the old stack
+saved unconditionally.
+
+→ *verified:* builds clean; boot error set still 18. GUI, synthetic input + topmost capture: typing, Enter
+split, Backspace join, undo and redo ×4 each; Select All draws 22 line boxes behind the text; a drag extends a
+selection across blocks to exact endpoints; a multi-block delete (7→5) and its undo (→7) save back differing
+from the authored file only by `ControlColor="gray"` → `ColorHex="#808080"` and run-attribute order, the two
+divergences the plan declared. Arrow keys, Home/End and Shift+Home verified by hand (user, 2026-09-12) —
+**every Windows extended key is dead under `keybd_event` and `SendKeys` while typing, Enter, Backspace, F10 and
+Ctrl combos all work**, so caret movement and the Delete key cannot be driven from a script here.
+**Not exercised:** word and line selection by double/triple click — a synthetic click never reaches `tapCount`
+2, which 6b's own tab-caption rename proves is the driver and not the stack; autoscroll past a viewport edge,
+no note being taller than the viewport.
 
 #### 6c2 — windows and hosts
 

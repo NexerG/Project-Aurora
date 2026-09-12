@@ -32,6 +32,21 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             DocumentEditorControl editor = FocusedEditor();
             if (editor == null)
             {
+                NextDocumentEditorControl next = NextEditor();
+                if (next != null)
+                {
+                    // one step per character, so one press is one undo however many the queue held
+                    while (input.Count > 0)
+                        using (next.BeginStep("Typing"))
+                        {
+                            next.DeleteSelection();
+                            next.TypeChar(input.Dequeue());
+                        }
+
+                    next.MarkDirty();
+                    return;
+                }
+
                 NextTextBoxControl nextBox = NextBox();
                 if (nextBox != null)
                 {
@@ -83,6 +98,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             DocumentEditorControl editor = FocusedEditor();
             if (editor != null) { editor.Backspace(); return; }
 
+            NextDocumentEditorControl next = NextEditor();
+            if (next != null) { next.Backspace(); return; }
+
             NextTextBoxControl nextBox = NextBox();
             if (nextBox != null) { nextBox.Backspace(); return; }
 
@@ -94,6 +112,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         {
             DocumentEditorControl editor = FocusedEditor();
             if (editor != null) { editor.Delete(); return; }
+
+            NextDocumentEditorControl next = NextEditor();
+            if (next != null) { next.Delete(); return; }
 
             NextTextBoxControl nextBox = NextBox();
             if (nextBox != null) { nextBox.Delete(); return; }
@@ -107,6 +128,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             DocumentEditorControl editor = FocusedEditor();
             if (editor != null) { editor.SplitBlock(); return; }
 
+            NextDocumentEditorControl next = NextEditor();
+            if (next != null) { next.SplitBlock(); return; }
+
             NextTextBoxControl nextBox = NextBox();
             if (nextBox != null) { nextBox.Commit(); return; }
 
@@ -118,6 +142,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         {
             DocumentEditorControl editor = FocusedEditor();
             if (editor != null) { editor.SelectAll(); return; }
+
+            NextDocumentEditorControl next = NextEditor();
+            if (next != null) { next.SelectAll(); return; }
 
             NextTextBoxControl nextBox = NextBox();
             if (nextBox != null) { nextBox.SelectAll(); return; }
@@ -144,10 +171,22 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         }
 
         [A_XSDActionDependency("Text.Undo", "Input", "Reverses the last edit made to the focused note")]
-        public static void Undo() => FocusedEditor()?.Undo();
+        public static void Undo()
+        {
+            DocumentEditorControl editor = FocusedEditor();
+            if (editor != null) { editor.Undo(); return; }
+
+            NextEditor()?.Undo();
+        }
 
         [A_XSDActionDependency("Text.Redo", "Input", "Reapplies the last edit undone in the focused note")]
-        public static void Redo() => FocusedEditor()?.Redo();
+        public static void Redo()
+        {
+            DocumentEditorControl editor = FocusedEditor();
+            if (editor != null) { editor.Redo(); return; }
+
+            NextEditor()?.Redo();
+        }
 
         [A_XSDActionDependency("Text.Cancel", "Input", "Abandons the edit in a standalone field and restores what it held")]
         public static void Cancel()
@@ -159,7 +198,15 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         }
 
         [A_XSDActionDependency("Text.Save", "Input", "Writes the focused note back to the file it was loaded from")]
-        public static void Save() => FocusedEditor()?.SaveNamed();
+        public static void Save()
+        {
+            DocumentEditorControl editor = FocusedEditor();
+            if (editor != null) { editor.SaveNamed(); return; }
+
+            // No naming prompt on the new stack until the windows land at 6c2; an unnamed note is
+            // written under the file name it already has.
+            NextEditor()?.Save();
+        }
 
         [A_XSDActionDependency("Text.CaretLeft", "Input")]
         public static void CaretLeft() => Move(CaretMove.Left);
@@ -195,6 +242,13 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                 return;
             }
 
+            NextDocumentEditorControl next = NextEditor();
+            if (next != null)
+            {
+                next.MoveCaret(move, InputHandler.instance.IsModifierDown(InputModifier.Extend));
+                return;
+            }
+
             NextTextBoxControl nextBox = NextBox();
             if (nextBox != null)
             {
@@ -203,6 +257,17 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             }
 
             Box()?.MoveCaret(move, InputHandler.instance.IsModifierDown(InputModifier.Extend));
+        }
+
+        // Nearest document editor at or above whatever the new stack last made active.
+        internal static NextDocumentEditorControl NextEditor()
+        {
+            for (ArctisAurora.Core.UI.Control control = UIEngine.activeControl;
+                 control != null;
+                 control = control.parent as ArctisAurora.Core.UI.Control)
+                if (control is NextDocumentEditorControl editor) return editor;
+
+            return null;
         }
 
         // The new stack's field, resolved off its own active-control context. Tried before Box, and
