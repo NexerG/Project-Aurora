@@ -112,6 +112,236 @@ namespace ArctisAurora.Core.UI
             text += slice;
         }
 
+        #region ---- text and spans ----
+        // Inserts text at a character offset. A boundary belongs to the span after it, which is the
+        // run the outgoing stack's caret normalization put a caret in.
+        public void InsertText(int offset, string insert)
+        {
+            if (string.IsNullOrEmpty(insert)) return;
+
+            int index = SpanForInsert(offset);
+            StyleSpan span = spans[index];
+            span.count += insert.Length;
+            spans[index] = span;
+
+            text = (text ?? string.Empty).Insert(offset, insert);
+        }
+
+        public void RemoveText(int offset, int count)
+        {
+            if (count <= 0) return;
+
+            int end = offset + count;
+            int start = 0;
+
+            for (int i = 0; i < spans.Count; i++)
+            {
+                StyleSpan span = spans[i];
+                int spanEnd = start + span.count;
+
+                int cut = Math.Min(spanEnd, end) - Math.Max(start, offset);
+                if (cut > 0)
+                {
+                    span.count -= cut;
+                    spans[i] = span;
+                }
+                start = spanEnd;
+            }
+
+            text = (text ?? string.Empty).Remove(offset, count);
+            DropEmptySpans();
+        }
+
+        // Keeps [0..offset) and returns a detached block of the same styling holding the rest.
+        public NextBlockControl SplitAt(int offset)
+        {
+            string whole = text ?? string.Empty;
+            NextBlockControl tail = new NextBlockControl
+            {
+                stylingType = stylingType,
+                colorHex = colorHex,
+                fontName = fontName,
+                fontSize = fontSize,
+                lineHeight = lineHeight
+            };
+
+            int index = SplitSpanAt(offset);
+            tail.spans.Clear();
+            for (int i = index; i < spans.Count; i++)
+                tail.spans.Add(spans[i]);
+            spans.RemoveRange(index, spans.Count - index);
+
+            tail.text = whole[offset..];
+            text = whole[..offset];
+
+            if (spans.Count == 0) spans.Add(new StyleSpan { count = 0, style = style });
+            if (tail.spans.Count == 0) tail.spans.Add(new StyleSpan { count = 0, style = style });
+
+            return tail;
+        }
+
+        // The inverse of a split: the other block's text and spans land on the end of this one.
+        public void AppendBlock(NextBlockControl tail)
+        {
+            AppendSpans(tail.spans, tail.text ?? string.Empty);
+        }
+
+        // One block's content as data, for an edit record that has to put it back.
+        public NextBlockSnapshot Snapshot() => SliceSnapshot(0, Length);
+
+        // The part of this block a range covers, and nothing else.
+        public NextBlockSnapshot SliceSnapshot(int from, int to)
+        {
+            NextBlockSnapshot snapshot = new NextBlockSnapshot
+            {
+                stylingType = stylingType,
+                text = (text ?? string.Empty)[from..to]
+            };
+
+            int start = 0;
+            foreach (StyleSpan span in spans)
+            {
+                int spanEnd = start + span.count;
+                int covered = Math.Min(spanEnd, to) - Math.Max(start, from);
+                if (covered > 0)
+                {
+                    StyleSpan cut = span;
+                    cut.count = covered;
+                    snapshot.spans.Add(cut);
+                }
+                start = spanEnd;
+            }
+
+            if (snapshot.spans.Count == 0)
+                snapshot.spans.Add(new StyleSpan { count = 0, style = style });
+
+            return snapshot;
+        }
+
+        // Puts a captured slice back, styles and all.
+        public void InsertSlice(int offset, NextBlockSnapshot slice)
+        {
+            int index = SplitSpanAt(offset);
+            spans.InsertRange(index, slice.spans);
+            text = (text ?? string.Empty).Insert(offset, slice.text);
+
+            DropEmptySpans();
+            MergeSpans();
+        }
+
+        public void AppendSlice(NextBlockSnapshot slice) => AppendSpans(slice.spans, slice.text);
+
+        // Replaces everything this block holds.
+        public void Restore(NextBlockSnapshot snapshot)
+        {
+            stylingType = snapshot.stylingType;
+            spans.Clear();
+            spans.AddRange(snapshot.spans);
+            text = snapshot.text;
+            InvalidateLayout();
+        }
+
+        public static NextBlockControl From(NextBlockSnapshot snapshot)
+        {
+            NextBlockControl block = new NextBlockControl();
+            block.Restore(snapshot);
+            return block;
+        }
+
+        // The style the character before an offset carries, which is what a caret there takes.
+        public StyleSpan StyleAt(int offset)
+        {
+            int start = 0;
+            foreach (StyleSpan span in spans)
+            {
+                int spanEnd = start + span.count;
+                if (offset < spanEnd || spanEnd == Length) return span;
+                start = spanEnd;
+            }
+            return spans[^1];
+        }
+
+        private void AppendSpans(List<StyleSpan> add, string slice)
+        {
+            spans.AddRange(add);
+            text = (text ?? string.Empty) + slice;
+
+            DropEmptySpans();
+            MergeSpans();
+        }
+
+        private int SpanForInsert(int offset)
+        {
+            int start = 0;
+            for (int i = 0; i < spans.Count; i++)
+            {
+                int spanEnd = start + spans[i].count;
+                if (offset == start && i > 0) return i;
+                if (offset < spanEnd) return i;
+                start = spanEnd;
+            }
+            return spans.Count - 1;
+        }
+
+        // Makes a span boundary fall exactly on an offset and returns the index that starts there.
+        // An offset already on one splits nothing, which is what keeps a repeated edit from shredding
+        // a block into one span per character.
+        public int SplitSpanAt(int offset)
+        {
+            int start = 0;
+            for (int i = 0; i < spans.Count; i++)
+            {
+                StyleSpan span = spans[i];
+                int spanEnd = start + span.count;
+
+                if (offset == start) return i;
+                if (offset < spanEnd)
+                {
+                    StyleSpan left = span;
+                    left.count = offset - start;
+                    StyleSpan right = span;
+                    right.count = spanEnd - offset;
+
+                    spans[i] = left;
+                    spans.Insert(i + 1, right);
+                    return i + 1;
+                }
+                start = spanEnd;
+            }
+            return spans.Count;
+        }
+
+        // Folds neighbours nothing distinguishes back into one, so a document does not accumulate a
+        // span boundary per edit.
+        public void MergeSpans()
+        {
+            for (int i = spans.Count - 1; i > 0; i--)
+                if (SameStyle(spans[i - 1], spans[i]))
+                {
+                    StyleSpan merged = spans[i - 1];
+                    merged.count += spans[i].count;
+                    spans[i - 1] = merged;
+                    spans.RemoveAt(i);
+                }
+        }
+
+        private void DropEmptySpans()
+        {
+            for (int i = spans.Count - 1; i >= 0; i--)
+                if (spans[i].count == 0 && spans.Count > 1) spans.RemoveAt(i);
+        }
+
+        private static bool SameStyle(StyleSpan a, StyleSpan b) =>
+            a.style == b.style
+            && a.colorHex == b.colorHex
+            && a.gradient == b.gradient
+            && a.fontName == b.fontName
+            && a.fontSize == b.fontSize
+            && a.strikethrough == b.strikethrough
+            && a.stylingType == b.stylingType
+            && a.fontSizeAuthored == b.fontSizeAuthored;
+        #endregion
+
         // Save: the spans cut back into runs. The last span absorbs whatever is left of the string,
         // so its count is read off the text rather than trusted.
         public List<NextRun> Runs()

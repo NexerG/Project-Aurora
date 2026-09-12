@@ -39,7 +39,10 @@ namespace ArctisAurora.Core.UISystem.Actions
         public static bool SaveEdited()
         {
             foreach (RenderWindow window in Engine.windows.Values)
+            {
                 SaveEditedIn(window.ui.uiRoot);
+                SaveEditedIn(window.uiNext?.uiRoot);
+            }
 
             return true;
         }
@@ -60,6 +63,7 @@ namespace ArctisAurora.Core.UISystem.Actions
             }
 
             SaveEditedIn(window.ui.uiRoot);
+            SaveEditedIn(window.uiNext?.uiRoot);
             onSettled?.Invoke();
         }
         #endregion
@@ -84,6 +88,20 @@ namespace ArctisAurora.Core.UISystem.Actions
                     return found;
 
             return null;
+        }
+
+        // The new stack's editors, which the naming prompt cannot reach yet — an unnamed note is
+        // written under the file name it already has. See 6c in ClaudeMemory/Context/ui-engine-plan.md.
+        private static void SaveEditedIn(ArctisAurora.Core.UI.Control control)
+        {
+            if (control == null) return;
+            if (control is ArctisAurora.Core.UI.NextDocumentEditorControl editor
+                && editor.session != null && editor.session.isDirty)
+                editor.Save();
+
+            foreach (Entity child in control.children)
+                if (child is ArctisAurora.Core.UI.Control childControl)
+                    SaveEditedIn(childControl);
         }
 
         // Only what was actually edited. A first save of a hand-authored note does not reproduce its

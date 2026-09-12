@@ -246,10 +246,14 @@ namespace ArctisAurora.Core.UI
             InvalidateLayout();
         }
 
-        // Tears the whole subtree down — the strip button with it.
+        // Writes an edited note, then tears the whole subtree down — the strip button with it. An
+        // unnamed note is written as it is; the naming prompt is a window, so it waits for 6c2.
         public void CloseTab(NextTabItemControl item)
         {
             if (item == null || !children.Contains(item)) return;
+
+            NextDocumentEditorControl editor = EditorOf(item);
+            if (editor?.session != null && editor.session.isDirty) editor.Save();
 
             FinishClose(item);
         }

@@ -1,5 +1,7 @@
+using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.UISystem.Controls.Text;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.UI
@@ -24,6 +26,8 @@ namespace ArctisAurora.Core.UI
             get => field;
             set { field = value; if (content != null) content.selectionColorHex = value; }
         } = "#264F78";
+
+        private const float autoScrollRate = 0.25f;
 
         private NextDocumentControl content;
 
@@ -75,6 +79,7 @@ namespace ArctisAurora.Core.UI
                 document = document,
                 caretColorHex = caretColorHex,
                 selectionColorHex = selectionColorHex,
+                undo = session?.undo,
                 alpha = 0f
             };
             AddChild(content);
@@ -87,6 +92,195 @@ namespace ArctisAurora.Core.UI
         }
 
         public void Save() => session?.Save();
+
+        #region ---- history ----
+        // Every path that changes the document ends here, so the close paths can tell an edited note
+        // from one that was only opened.
+        public void MarkDirty() => session?.MarkDirty();
+
+        // One user action's worth of edits. A note with no session has no history, and the default
+        // scope discards what is pushed into it.
+        public EditScope BeginStep(string label) => session != null ? session.undo.Begin(label) : default;
+
+        public void Undo()
+        {
+            if (session == null || !session.undo.Undo()) return;
+
+            MarkDirty();
+            RequestScrollToCaret();
+        }
+
+        public void Redo()
+        {
+            if (session == null || !session.undo.Redo()) return;
+
+            MarkDirty();
+            RequestScrollToCaret();
+        }
+        #endregion
+
+        #region ---- selection ----
+        public void CollapseSelection() => content?.CollapseSelection();
+
+        public void SelectAll() => content?.SelectAll();
+
+        public bool DeleteSelection()
+        {
+            if (content == null || !content.DeleteSelection()) return false;
+
+            MarkDirty();
+            return true;
+        }
+
+        public NextBlockControl CaretBlock => content?.caretBlock;
+
+        // Two clicks take the word, three the visual line.
+        internal void SelectLine()
+        {
+            MoveCaret(CaretMove.LineStart);
+            MoveCaret(CaretMove.LineEnd, true);
+        }
+
+        internal void BeginSelectionDrag() => StartDrag();
+
+        // Held-button drag: the caret follows the pointer, the anchor stays where the press landed.
+        public override void OnDrag(PointerEvent e)
+        {
+            base.OnDrag(e);
+            if (content == null) return;
+
+            AutoScroll(e.point);
+
+            if (content.CaretOffText(e.point, out NextBlockControl block, out int offset))
+                content.SetCaret(block, offset, true);
+        }
+
+        // Dragging past the viewport edge scrolls, so a selection can run off-screen. The caret
+        // resolves against the geometry this frame still has and catches up on the next tick.
+        private void AutoScroll(Vector2D<float> point)
+        {
+            LayoutRect inner = arrangedRect.Shrink(arrange.padding);
+
+            float overshoot = point.Y < inner.y ? point.Y - inner.y
+                            : point.Y > inner.Bottom ? point.Y - inner.Bottom
+                            : 0f;
+            if (overshoot == 0f) return;
+
+            Vector2D<float> offset = GetScrollOffset();
+            SetScrollOffset(new Vector2D<float>(offset.X, offset.Y + overshoot * autoScrollRate));
+        }
+        #endregion
+
+        #region ---- caret movement ----
+        public void MoveCaret(CaretMove move, bool extend = false)
+        {
+            if (content?.caretBlock == null) return;
+
+            if (move == CaretMove.Left) MoveLeft(extend);
+            else if (move == CaretMove.Right) MoveRight(extend);
+            else MoveToPoint(move, extend);
+
+            RequestScrollToCaret();
+        }
+
+        private void MoveLeft(bool extend)
+        {
+            if (content.caretOffset > 0)
+            {
+                content.SetCaret(content.caretBlock, content.caretOffset - 1, extend);
+                return;
+            }
+
+            NextBlockControl previous = content.AdjacentBlock(content.caretBlock, -1);
+            if (previous != null) content.SetCaret(previous, previous.Length, extend);
+        }
+
+        private void MoveRight(bool extend)
+        {
+            if (content.caretOffset < content.caretBlock.Length)
+            {
+                content.SetCaret(content.caretBlock, content.caretOffset + 1, extend);
+                return;
+            }
+
+            NextBlockControl next = content.AdjacentBlock(content.caretBlock, 1);
+            if (next != null) content.SetCaret(next, 0, extend);
+        }
+
+        // Up/down, line start/end and page moves are all "resolve this point", because a visual line
+        // is a line of the block rather than of the caret.
+        private void MoveToPoint(CaretMove move, bool extend)
+        {
+            if (!content.CaretPoint(out float x, out float y, out float height)) return;
+
+            LayoutRect inner = content.arrangedRect.Shrink(content.arrange.padding);
+            float page = arrangedRect.Shrink(arrange.padding).height;
+
+            float targetX = move switch
+            {
+                CaretMove.LineStart => inner.x,
+                CaretMove.LineEnd => inner.x + inner.width,
+                _ => x
+            };
+
+            float targetY = move switch
+            {
+                CaretMove.Up => y,
+                CaretMove.Down => y + height,
+                CaretMove.PageUp => y - page,
+                CaretMove.PageDown => y + page,
+                _ => y + height * 0.5f
+            };
+
+            // Up and down have to exclude the line the caret is already on. Probing just outside it
+            // is not enough: blocks are spaced apart, so the current line stays the nearest band to a
+            // point one pixel off it and the caret never crosses a block boundary.
+            float bandMin = move == CaretMove.Down ? y + height : float.NegativeInfinity;
+            float bandMax = move == CaretMove.Up ? y : float.PositiveInfinity;
+
+            if (content.CaretAtPoint(targetX, targetY, out NextBlockControl block, out int offset, bandMin, bandMax))
+                content.SetCaret(block, offset, extend);
+        }
+        #endregion
+
+        #region ---- editing ----
+        public void Backspace() => DeleteOver(CaretMove.Left);
+
+        public void Delete() => DeleteOver(CaretMove.Right);
+
+        // Without a selection the caret makes one a character wide, so deleting past a block boundary
+        // follows the same rules the arrow keys already resolve.
+        private void DeleteOver(CaretMove move)
+        {
+            if (content?.caretBlock == null) return;
+
+            using (BeginStep(move == CaretMove.Left ? "Backspace" : "Delete"))
+            {
+                if (!content.HasSelection) MoveCaret(move, true);
+                if (content.DeleteSelection()) MarkDirty();
+            }
+
+            RequestScrollToCaret();
+        }
+
+        public void SplitBlock()
+        {
+            if (content == null) return;
+
+            using (BeginStep("New paragraph"))
+                content.SplitBlock();
+
+            MarkDirty();
+            RequestScrollToCaret();
+        }
+
+        // One character, recorded against the block it lands in.
+        public void TypeChar(char c)
+        {
+            content?.TypeChar(c);
+            RequestScrollToCaret();
+        }
+        #endregion
 
         // Edited, and never given a name. The naming prompt is a window, so it waits for 6c2.
         public bool needsNaming => session != null && session.isDirty && session.document.name == null;
