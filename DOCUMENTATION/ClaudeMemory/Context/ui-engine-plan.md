@@ -1,7 +1,7 @@
 # UI Engine — state and resume point
 
-**Rewritten:** 2026-09-06. **Landings 1–5 and 6a–6b3 are built (2026-09-12). Left: 6c, then 6c2, then 6d, and
-6b's probe deletion.**
+**Rewritten:** 2026-09-06. **Landings 1–5, 6a–6b3 and 6c-a are built (2026-09-12). Left: 6c-b editing, 6c-c the
+format bar, then 6c2, then 6d, and 6b's probe deletion.**
 
 This file exists so the work can be picked up cold. The decisions and their reasoning are in
 [../Decisions/ui-engine-stack.md](../Decisions/ui-engine-stack.md) and
@@ -479,7 +479,32 @@ The 15 text/document classes. Not a port: `TextControl`, `LabelControl`, `GlyphC
 control per glyph, the model `TextRunControl` replaced. Pulls in `SelectionControl` (needs drag, now ported)
 and `DocumentEditorControl.CaretAtPoint` (needs blocks).
 
+**Forks the user settled, 2026-09-12:** a run becomes a `StyleSpan` and a block becomes one control, so
+addressing is `(block, offset)` and the run level is gone. Notes load and save through `NextDocumentXml`, a
+copy of `DocumentXml` over the same file format with the block level written by hand. `StyleSpan` carries the
+document's own `stylingType` and `fontSizeAuthored` because it is CPU-only data. Landing in three commits.
+
 → *verify:* a note opens, edits and saves on the new stack.
+
+##### 6c-a — a note draws and takes a caret — **DONE 2026-09-12**
+
+`NextBlockControl` (+ `NextRun`, the load/save shape of a run), `NextRichTextDocument` +
+`NextDocumentEditSession`, `NextDocumentXml`, `NextDocumentControl` (+ `NextCaretSlot`),
+`NextDocumentEditorControl`. `StyleSpan` grew per-span font, size, gradient and strikethrough, and
+`TextRunControl` resolves all four per segment in `BuildRuns`/`Emit`. `NextTabViewControl` gained the open-note
+helpers (`EditorOf`, `FindOpenDocument(s)`, `TabViews`, `Retitle`); `NextVaultBrowserControl` opens a note into
+the focused pane, through a new `NextActiveTabViewer` declared context (the latch the old `ActiveTabViewer` is).
+`TextStyleType`, `TextStyle`, `DocumentLayout` and `DocumentSettings` are shared with the outgoing stack, not
+copied.
+
+→ *verified:* builds clean; boot error set still 18. GUI, synthetic input + topmost capture: both authored notes
+draw — the heading in `electrolize` with the `accent` gradient measured as a real ramp along the run
+(#373631 → #2C2B26 across it), the gray and bold runs, the wrap point and the block spacing; a press placed the
+caret at the pressed character (click x=420 → caret x=417.09) and it blinks; a row in the vault browser opened
+its note into a new tab, active, with a mixed-style block drawn. **Not exercised:** save (no path makes a note
+dirty until 6c-b), scrolling (no note is taller than the viewport), rename propagation into open tabs.
+**Synthetic-input note:** a press-driven control needs the press held past a tick, and a fresh instance ignores
+pointer presses until one click has landed on the chrome — both bit this session before the caret was believed.
 
 #### 6c2 — windows and hosts
 

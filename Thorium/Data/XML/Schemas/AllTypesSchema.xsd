@@ -52,9 +52,11 @@
       <xs:enumeration value="NextContextButton" />
       <xs:enumeration value="NextContextLine" />
       <xs:enumeration value="NextContextSubmenu" />
+      <xs:enumeration value="NextRun" />
       <xs:enumeration value="NextButton" />
       <xs:enumeration value="NextCheckBox" />
       <xs:enumeration value="NextDock" />
+      <xs:enumeration value="NextDocumentEditor" />
       <xs:enumeration value="NextDropdown" />
       <xs:enumeration value="NextEditableLabel" />
       <xs:enumeration value="NextEditableTabs" />
@@ -69,6 +71,7 @@
       <xs:enumeration value="NextLabel" />
       <xs:enumeration value="NextMenuButton" />
       <xs:enumeration value="NextPanel" />
+      <xs:enumeration value="NextDocument" />
       <xs:enumeration value="NextScrollDirection" />
       <xs:enumeration value="NextScrollable" />
       <xs:enumeration value="NextSplitter" />

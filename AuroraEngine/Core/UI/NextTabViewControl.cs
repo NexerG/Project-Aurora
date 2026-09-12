@@ -336,6 +336,66 @@ namespace ArctisAurora.Core.UI
             return previous;
         }
 
+        #region ---- open notes ----
+        // Recaptions one tab; the strip is drawn from the headers, so it is rebuilt with it.
+        public void Retitle(NextTabItemControl item, string header)
+        {
+            if (item == null) return;
+
+            item.header = header;
+            RebuildStrip();
+        }
+
+        public static NextDocumentEditorControl EditorOf(NextTabItemControl item) =>
+            item.children.Count > 0 ? item.children[0] as NextDocumentEditorControl : null;
+
+        // The tab showing this note, in whichever window it is open. Identity is the file the editor
+        // loaded, not the tab's caption — a tab seeded from a UI document carries no name to match on.
+        public static NextTabItemControl FindOpenDocument(string path, out NextTabViewControl owner)
+        {
+            foreach ((NextTabItemControl item, NextTabViewControl view) in FindOpenDocuments(path))
+            {
+                owner = view;
+                return item;
+            }
+
+            owner = null;
+            return null;
+        }
+
+        // Every tab showing this note. The tree is the register of what is open, so a rename that
+        // walks it cannot be told about a view that has since been closed.
+        public static IEnumerable<(NextTabItemControl item, NextTabViewControl view)> FindOpenDocuments(string path)
+        {
+            string target = Path.GetFullPath(path);
+
+            foreach (RenderWindow window in Engine.windows.Values)
+            {
+                if (window.uiNext?.uiRoot == null) continue;
+
+                foreach (NextTabViewControl view in TabViews(window.uiNext.uiRoot))
+                    foreach (NextTabItemControl item in view.Items)
+                    {
+                        string open = EditorOf(item)?.session?.path;
+                        if (open != null && string.Equals(open, target, StringComparison.OrdinalIgnoreCase))
+                            yield return (item, view);
+                    }
+            }
+        }
+
+        // Every tab view under a control, itself included.
+        public static IEnumerable<NextTabViewControl> TabViews(Control control)
+        {
+            if (control == null) yield break;
+            if (control is NextTabViewControl view) yield return view;
+
+            foreach (Entity child in control.children)
+                if (child is Control childControl)
+                    foreach (NextTabViewControl found in TabViews(childControl))
+                        yield return found;
+        }
+        #endregion
+
         #region ---- strip ----
         private void RebuildStrip()
         {
