@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The workspace's authored arrangement, mirroring Workspace.ui.xml. Panels stand in for the
-     document editors, which are 6c. -->
+<!-- The workspace's authored arrangement, mirroring Workspace.ui.xml. TearOffDocument waits on 6c2. -->
 <NextSplitView Orientation="Horizontal" HeightStar="1">
 
 	<NextEditableTabs Name="Tabs" Width="525" MinWidth="120" ColorHex="#FBFAF8" ContextMenu="view"
@@ -8,7 +7,8 @@
 	                  TabColorHex="#F0EFEA" ActiveTabColorHex="#FBFAF8" TabHoverColorHex="#E8E6E0" TabInkColorHex="#34322D"
 	                  GripColorHex="#E6E4DE" GripHoverColorHex="#DCDAD3" GripPressColorHex="#D0CEC6">
 		<NextTabItem Header="SampleNote">
-			<NextPanel ColorHex="#FBFAF8"/>
+			<NextDocumentEditor Source="../../Notes/SampleNote.xml" CaretColorHex="#23221E" SelectionColorHex="#D7D5CD"
+			                    ThumbColorHex="#D7D5CD" ThumbHoverColorHex="#C9C6BC" ThumbPressColorHex="#BAB7AC"/>
 		</NextTabItem>
 	</NextEditableTabs>
 	<NextSplitter Width="5" ColorHex="#E6E4DE" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"/>
@@ -17,7 +17,8 @@
 	                  TabColorHex="#F0EFEA" ActiveTabColorHex="#FBFAF8" TabHoverColorHex="#E8E6E0" TabInkColorHex="#34322D"
 	                  GripColorHex="#E6E4DE" GripHoverColorHex="#DCDAD3" GripPressColorHex="#D0CEC6">
 		<NextTabItem Header="Keybinds">
-			<NextPanel ColorHex="#FBFAF8"/>
+			<NextDocumentEditor Source="../../Notes/Reference/Keybinds.xml" CaretColorHex="#23221E" SelectionColorHex="#D7D5CD"
+			                    ThumbColorHex="#D7D5CD" ThumbHoverColorHex="#C9C6BC" ThumbPressColorHex="#BAB7AC"/>
 		</NextTabItem>
 	</NextEditableTabs>
 </NextSplitView>

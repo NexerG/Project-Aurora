@@ -87,6 +87,24 @@
     </xs:sequence>
     <xs:attributeGroup ref="types:NextContextSubmenu.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="NextRun.Attributes">
+    <xs:attribute name="Text" type="xs:string" />
+    <xs:attribute name="Bold" type="xs:boolean" />
+    <xs:attribute name="Italic" type="xs:boolean" />
+    <xs:attribute name="Strikethrough" type="xs:boolean" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="ControlColor" type="xs:string" />
+    <xs:attribute name="Gradient" type="xs:string" />
+    <xs:attribute name="FontName" type="xs:string" />
+    <xs:attribute name="FontSize" type="xs:int" />
+    <xs:attribute name="FontSizeAuthored" type="xs:boolean" />
+    <xs:attribute name="StylingType" type="types:TextStyleType" />
+  </xs:attributeGroup>
+  <xs:element name="NextRun" type="types:NextRun" />
+  <xs:complexType name="NextRun">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextRun.Attributes" />
+  </xs:complexType>
   <xs:attributeGroup name="NextButton.Attributes">
     <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
     <xs:attribute name="HoverColorHex" type="xs:string" />
@@ -110,6 +128,17 @@
   <xs:complexType name="NextDock">
     <xs:sequence />
     <xs:attributeGroup ref="types:NextDock.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextDocumentEditor.Attributes">
+    <xs:attributeGroup ref="types:NextScrollable.Attributes" />
+    <xs:attribute name="CaretColorHex" type="xs:string" />
+    <xs:attribute name="SelectionColorHex" type="xs:string" />
+    <xs:attribute name="Source" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="NextDocumentEditor" type="types:NextDocumentEditor" />
+  <xs:complexType name="NextDocumentEditor">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextDocumentEditor.Attributes" />
   </xs:complexType>
   <xs:element name="NextDropdown" type="types:NextDropdown" />
   <xs:complexType name="NextDropdown">
@@ -221,6 +250,20 @@
   <xs:complexType name="NextPanel">
     <xs:sequence />
     <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextDocument.Attributes">
+    <xs:attribute name="Name" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="NextDocument" type="types:NextDocument" />
+  <xs:complexType name="NextDocument">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="1" name="DocumentLayout" type="types:DocumentLayout">
+        <xs:annotation>
+          <xs:documentation>Layout parameters for this note.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attributeGroup ref="types:NextDocument.Attributes" />
   </xs:complexType>
   <xs:simpleType name="NextScrollDirection">
     <xs:restriction base="xs:string">
