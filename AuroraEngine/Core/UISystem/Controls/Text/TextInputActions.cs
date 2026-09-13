@@ -211,9 +211,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             DocumentEditorControl editor = FocusedEditor();
             if (editor != null) { editor.SaveNamed(); return; }
 
-            // No naming prompt on the new stack until the windows land at 6c2; an unnamed note is
-            // written under the file name it already has.
-            NextEditor()?.Save();
+            NextEditor()?.SaveNamed();
         }
 
         [A_XSDActionDependency("Text.CaretLeft", "Input")]

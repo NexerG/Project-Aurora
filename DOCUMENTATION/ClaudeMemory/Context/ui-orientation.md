@@ -61,8 +61,7 @@ Why: [[ui-engine-stack]] § XML event attributes.
 | `dense order` | `NextElementOrder(pool)` — the DFS order the `UIElements` pool sorts to |
 | `draw lists` | `BuildDrawLists` → `Collect` → `Control.Emit`, per window |
 
-Outside regions: `Bootstrap` (the `UIEngine.Bootstrap` step) → `BuildShell` parses `next-main` into the primary
-window and loads the workspace default — landing-6b scaffolding.
+No bootstrap step: each host sets `Engine.primary.uiNext.uiRoot` from `Control.ParseXML` itself.
 
 ### WindowRoot — `<NextWindow>` · Control
 A window's root, transparent; `RenderWindow.uiNext.uiRoot`. Fits the tree to the window: `FitTo`,
@@ -276,10 +275,13 @@ partial count. Why: [[ui-draw-list]], [[ui-draw-list-publish]].
 - `Thorium.Editor.CustomControls.NextVaultBrowserControl` — new stack, `NextFileTreeControl`: the vault as a
   tree, renames on disk.
 - `…VaultBrowserControl` — old stack, `FileTreeControl`: note tree; open, create, rename, delete.
-- `Carbon.Editor.CustomControls.FrameStripControl` — old stack: frame bars per thread, peak per bar.
-- `…SessionListControl` — old stack, `ScrollableControl`: capture session folders.
-- `…SpanChartControl` — old stack: flame chart / timeline with zoom and pan; nested `ChartScrollThumbControl`.
-- `…ZoneTableControl` — old stack, `ScrollableControl`: zone statistics per thread.
+- `Carbon.Editor.CustomControls.NextFrameStripControl` `<NextFrameStrip>` · ContainerControl — frame bars per
+  thread, peak per bar; `OnPointerPress` maps the point to a bar, `onFrameSelected`.
+- `…NextSessionListControl` `<NextSessionList>` · NextScrollableControl — capture session folders; `Load`,
+  `onSessionLoaded`.
+- `…NextSpanChartControl` `<NextSpanChart Mode>` · ContainerControl — flame chart / timeline; `OnPointerScroll`
+  zooms, `OnPointerPress` + `OnDrag` pan; nested `NextChartScrollThumbControl`.
+- `…NextZoneTableControl` `<NextZoneTable>` · NextScrollableControl — zone statistics per thread.
 
 ## Looking at it
 

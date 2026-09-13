@@ -40,21 +40,6 @@
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
     </xs:sequence>
   </xs:complexType>
-  <xs:attributeGroup name="DragGhost.Attributes">
-    <xs:attributeGroup ref="types:Setting.Attributes" />
-    <xs:attribute name="Opacity" type="xs:float" />
-  </xs:attributeGroup>
-  <xs:element name="DragGhost" type="types:DragGhost" />
-  <xs:complexType name="DragGhost">
-    <xs:sequence />
-    <xs:attributeGroup ref="types:DragGhost.Attributes" />
-  </xs:complexType>
-  <xs:element name="UI" type="types:UI" />
-  <xs:complexType name="UI">
-    <xs:sequence>
-      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
-    </xs:sequence>
-  </xs:complexType>
   <xs:attributeGroup name="SessionTab.Attributes">
     <xs:attribute name="Path" type="xs:string" />
   </xs:attributeGroup>
@@ -64,7 +49,7 @@
     <xs:attributeGroup ref="types:SessionTab.Attributes" />
   </xs:complexType>
   <xs:attributeGroup name="SessionPane.Attributes">
-    <xs:attribute name="Orientation" type="UI:Orientation" />
+    <xs:attribute name="Orientation" type="UI:NextOrientation" />
     <xs:attribute name="Size" type="xs:int" />
     <xs:attribute name="Active" type="xs:int" />
   </xs:attributeGroup>
@@ -128,6 +113,21 @@
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:SessionScope.Children" />
     </xs:sequence>
   </xs:complexType>
+  <xs:attributeGroup name="DragGhost.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Opacity" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="DragGhost" type="types:DragGhost" />
+  <xs:complexType name="DragGhost">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:DragGhost.Attributes" />
+  </xs:complexType>
+  <xs:element name="UI" type="types:UI" />
+  <xs:complexType name="UI">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
+    </xs:sequence>
+  </xs:complexType>
   <xs:element name="DocumentSettings" type="types:DocumentSettings" />
   <xs:complexType name="DocumentSettings">
     <xs:sequence>
@@ -152,8 +152,8 @@
   <xs:group name="ISettingsGroup.Children">
     <xs:choice>
       <xs:element name="Carbon" type="types:Carbon" />
-      <xs:element name="UI" type="types:UI" />
       <xs:element name="Session" type="types:Session" />
+      <xs:element name="UI" type="types:UI" />
       <xs:element name="DocumentSettings" type="types:DocumentSettings" />
       <xs:element name="Logging" type="types:Logging" />
       <xs:element name="Profiling" type="types:Profiling" />

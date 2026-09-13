@@ -1,10 +1,7 @@
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.UISystem.Controls;
-using ArctisAurora.Core.UISystem.Controls.Containers;
-using ArctisAurora.Core.UISystem.Controls.Interactable;
-using ArctisAurora.Core.UISystem.Controls.Text;
+using ArctisAurora.Core.UI;
 using Silk.NET.Maths;
 
 namespace Carbon.Editor.CustomControls
@@ -22,8 +19,8 @@ namespace Carbon.Editor.CustomControls
     //
     // Row 0 of a lane is the frame itself and rows below it are its spans, so the gap between the
     // root span's end and the frame's end draws the parked tail without computing it.
-    [A_XSDType("SpanChart", "UI")]
-    public class SpanChartControl : AbstractContainerControl
+    [A_XSDType("NextSpanChart", "UI")]
+    public class NextSpanChartControl : ContainerControl
     {
         #region properties
         [A_XSDElementProperty("Mode", "UI", "Frame draws the selected frame alone; Timeline draws every thread on the absolute clock.")]
@@ -88,10 +85,10 @@ namespace Carbon.Editor.CustomControls
         public float scrollBarHeight = 8f;
 
         [A_XSDElementProperty("TrackColorHex", "UI", "Ground of the scroll bar's track.")]
-        public string trackColorHex { get => field; set { field = value; if (_track != null) _track.controlColorHex = value; } } = "#EBEAE5";
+        public string trackColorHex { get => field; set { field = value; if (_track != null) _track.colorHex = value; } } = "#EBEAE5";
 
         [A_XSDElementProperty("ThumbColorHex", "UI", "Ground of the scroll thumb at rest.")]
-        public string thumbColorHex { get => field; set { field = value; if (_thumb != null) _thumb.controlColorHex = value; } } = "#D7D5CD";
+        public string thumbColorHex { get => field; set { field = value; if (_thumb != null) _thumb.colorHex = value; } } = "#D7D5CD";
 
         [A_XSDElementProperty("ThumbHoverColorHex", "UI", "Ground of a hovered scroll thumb.")]
         public string thumbHoverColorHex { get => field; set { field = value; if (_thumb != null) _thumb.hoverColorHex = value; } } = "#C9C6BC";
@@ -120,22 +117,22 @@ namespace Carbon.Editor.CustomControls
         }
 
         private readonly List<Placed> _placed = new List<Placed>();
-        private readonly List<PanelControl> _rects = new List<PanelControl>();
-        private readonly List<LabelControl> _labels = new List<LabelControl>();
-        private readonly List<LabelControl> _laneLabels = new List<LabelControl>();
+        private readonly List<NextPanelControl> _rects = new List<NextPanelControl>();
+        private readonly List<NextLabelControl> _labels = new List<NextLabelControl>();
+        private readonly List<NextLabelControl> _laneLabels = new List<NextLabelControl>();
         private readonly List<CapturedThread> _lanes = new List<CapturedThread>();
         private readonly List<int> _laneRows = new List<int>();
         private readonly List<int> _labelled = new List<int>();
 
         // ruler marks, in ticks from the capture's start so panning slides them rather than renumbering
         private readonly List<long> _tickOffsets = new List<long>();
-        private readonly List<PanelControl> _ticks = new List<PanelControl>();
-        private readonly List<LabelControl> _tickLabels = new List<LabelControl>();
+        private readonly List<NextPanelControl> _ticks = new List<NextPanelControl>();
+        private readonly List<NextLabelControl> _tickLabels = new List<NextLabelControl>();
         private long _tickStep;
 
         // the bottom scroll bar — where the window sits in the whole capture
-        private readonly PanelControl _track;
-        private readonly ChartScrollThumbControl _thumb;
+        private readonly NextPanelControl _track;
+        private readonly NextChartScrollThumbControl _thumb;
 
         private string[] _depthColors = Array.Empty<string>();
 
@@ -153,12 +150,12 @@ namespace Carbon.Editor.CustomControls
         private long _dragStart;
         private float _dragFrom;
 
-        public SpanChartControl()
+        public NextSpanChartControl()
         {
-            _track = new PanelControl { controlColorHex = trackColorHex, hitTestable = false };
-            _thumb = new ChartScrollThumbControl(this)
+            _track = new NextPanelControl { colorHex = trackColorHex, hitTestable = false };
+            _thumb = new NextChartScrollThumbControl(this)
             {
-                controlColorHex = thumbColorHex,
+                colorHex = thumbColorHex,
                 hoverColorHex = thumbHoverColorHex,
                 pressColorHex = thumbPressColorHex
             };
@@ -371,16 +368,16 @@ namespace Carbon.Editor.CustomControls
 
             while (_rects.Count < _placed.Count)
             {
-                PanelControl rect = new PanelControl { hitTestable = false };
+                NextPanelControl rect = new NextPanelControl { hitTestable = false };
                 _rects.Add(rect);
                 AddChild(rect);
             }
 
             for (int i = 0; i < _placed.Count; i++)
             {
-                PanelControl rect = _rects[i];
+                NextPanelControl rect = _rects[i];
                 if (rect.hidden) rect.Show();
-                rect.controlColorHex = _placed[i].row == 0
+                rect.colorHex = _placed[i].row == 0
                     ? frameColorHex
                     : _depthColors[(_placed[i].row - 1) % _depthColors.Length];
             }
@@ -390,10 +387,10 @@ namespace Carbon.Editor.CustomControls
 
             while (_labels.Count < _labelled.Count)
             {
-                LabelControl label = new LabelControl
+                NextLabelControl label = new NextLabelControl
                 {
                     fontSize = labelFontSize,
-                    controlColorHex = spanLabelColorHex,
+                    colorHex = spanLabelColorHex,
                     horizontalPosition = 0f,
                     hitTestable = false,
                     // to its own span, not to the chart, or a long name runs over the next one
@@ -405,10 +402,9 @@ namespace Carbon.Editor.CustomControls
 
             for (int i = 0; i < _labelled.Count; i++)
             {
-                LabelControl label = _labels[i];
+                NextLabelControl label = _labels[i];
                 if (label.hidden) label.Show();
 
-                // rebuilding a label rebuilds one control per character, so only on a real change
                 Placed placed = _placed[_labelled[i]];
                 string caption = placed.bytes != 0
                     ? $"{placed.name}  {Duration(placed.end - placed.begin)}  {CapturedThread.Bytes(placed.bytes)}"
@@ -421,10 +417,10 @@ namespace Carbon.Editor.CustomControls
 
             while (_laneLabels.Count < _lanes.Count)
             {
-                LabelControl label = new LabelControl
+                NextLabelControl label = new NextLabelControl
                 {
                     fontSize = labelFontSize,
-                    controlColorHex = laneLabelColorHex,
+                    colorHex = laneLabelColorHex,
                     horizontalPosition = 0f,
                     hitTestable = false
                 };
@@ -434,7 +430,7 @@ namespace Carbon.Editor.CustomControls
 
             for (int i = 0; i < _lanes.Count; i++)
             {
-                LabelControl label = _laneLabels[i];
+                NextLabelControl label = _laneLabels[i];
                 if (label.hidden) label.Show();
                 if (label.text != _lanes[i].thread) label.text = _lanes[i].thread;
             }
@@ -444,11 +440,11 @@ namespace Carbon.Editor.CustomControls
 
             while (_ticks.Count < _tickOffsets.Count)
             {
-                PanelControl mark = new PanelControl { hitTestable = false };
-                LabelControl stamp = new LabelControl
+                NextPanelControl mark = new NextPanelControl { hitTestable = false };
+                NextLabelControl stamp = new NextLabelControl
                 {
                     fontSize = labelFontSize,
-                    controlColorHex = rulerLabelColorHex,
+                    colorHex = rulerLabelColorHex,
                     horizontalPosition = 0f,
                     hitTestable = false
                 };
@@ -463,7 +459,7 @@ namespace Carbon.Editor.CustomControls
                 if (_ticks[i].hidden) _ticks[i].Show();
                 if (_tickLabels[i].hidden) _tickLabels[i].Show();
 
-                _ticks[i].controlColorHex = tickColorHex;
+                _ticks[i].colorHex = tickColorHex;
 
                 string stamp = Stamp(_tickOffsets[i]);
                 if (_tickLabels[i].text != stamp) _tickLabels[i].text = stamp;
@@ -479,9 +475,12 @@ namespace Carbon.Editor.CustomControls
 
         #region ---- interaction ----
         // Timeline only — the frame view's window is whatever the strip selected.
-        public override bool ResolveOnScrollUp() => Zoom(0.8f);
-
-        public override bool ResolveOnScrollDown() => Zoom(1.25f);
+        public override bool OnPointerScroll(PointerEvent e)
+        {
+            if (e.delta.Y > 0) return Zoom(0.8f);
+            if (e.delta.Y < 0) return Zoom(1.25f);
+            return base.OnPointerScroll(e);
+        }
 
         private bool Zoom(float factor)
         {
@@ -496,21 +495,22 @@ namespace Carbon.Editor.CustomControls
             return true;
         }
 
-        public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
+        public override bool OnPointerPress(PointerEvent e)
         {
-            if (mode != SpanChartMode.Timeline) return;
+            if (mode != SpanChartMode.Timeline || e.button != PointerEvent.leftButton) return base.OnPointerPress(e);
 
             _dragStart = _windowStart;
-            _dragFrom = oldPos.X + delta.X;
+            _dragFrom = e.point.X;
             StartDrag();
+            return true;
         }
 
         // Panned from where the grab started, so a clamped window cannot drift from the pointer.
-        public override void ResolveDrag(Vector2D<float> lastPos, Vector2D<float> delta)
+        public override void OnDrag(PointerEvent e)
         {
             if (mode != SpanChartMode.Timeline) return;
 
-            float moved = (lastPos.X + delta.X) - _dragFrom;
+            float moved = e.point.X - _dragFrom;
             long shifted = _dragStart - (long)(moved / MathF.Max(1, PlotWidth()) * _windowSpan);
 
             long clamped = Math.Clamp(shifted, _boundsStart, _boundsStart + _boundsSpan - _windowSpan);
@@ -545,7 +545,7 @@ namespace Carbon.Editor.CustomControls
             Vector2D<float> size = base.Measure(availableSize);
 
             foreach (Entity child in children)
-                if (child is VulkanControl control && !control.hidden) control.Measure(size);
+                if (child is Control control && !control.hidden) control.Measure(size);
 
             return size;
         }
@@ -595,7 +595,6 @@ namespace Carbon.Editor.CustomControls
 
             for (int i = 0; i < _labelled.Count; i++)
             {
-                Placed placed = _placed[_labelled[i]];
                 LayoutRect rect = _rects[_labelled[i]].arrangedRect;
                 _labels[i].Arrange(new LayoutRect(rect.x + 4, rect.y + (rowHeight - labelFontSize) * 0.5f,
                     MathF.Max(1, rect.width - 8), labelFontSize + 2));
@@ -630,35 +629,35 @@ namespace Carbon.Editor.CustomControls
     }
 
     // The bottom scroll bar's thumb. Built and positioned by the chart, never authored in XML.
-    internal sealed class ChartScrollThumbControl : ButtonControl
+    internal sealed class NextChartScrollThumbControl : NextButtonControl
     {
-        private readonly SpanChartControl chart;
+        private readonly NextSpanChartControl chart;
         private float grab;
         private long grabStart;
 
-        public ChartScrollThumbControl(SpanChartControl chart)
+        public NextChartScrollThumbControl(NextSpanChartControl chart)
         {
             this.chart = chart;
         }
 
-        public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
+        public override bool OnPointerPress(PointerEvent e)
         {
-            grab = (oldPos + delta).X;
+            grab = e.point.X;
             grabStart = chart.WindowStart;
             StartDrag();
-            base.ResolveOnClick(oldPos, delta);
+            return base.OnPointerPress(e);
         }
 
         // Pointer travel along the track maps onto the capture by the ratio between the two.
-        public override void ResolveDrag(Vector2D<float> lastPos, Vector2D<float> delta)
+        public override void OnDrag(PointerEvent e)
         {
             float travel = chart.ThumbTravel;
             if (travel > 0f)
             {
-                float moved = (lastPos + delta).X - grab;
+                float moved = e.point.X - grab;
                 chart.ScrollTo(grabStart + (long)(moved / travel * chart.ScrollRange));
             }
-            base.ResolveDrag(lastPos, delta);
+            base.OnDrag(e);
         }
     }
 }

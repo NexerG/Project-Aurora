@@ -5,6 +5,9 @@
 drawn, zoom and pan exercised, every number cross-checked against the file that produced it. Verified
 against a synthetic three-thread capture from the real writer **and against two real Thorium
 captures** (300 frames of `Main`/`Render`/`Physics`, F9, clean exit).
+**Ported 2026-09-13:** the views are `NextFrameStripControl`, `NextSessionListControl`, `NextSpanChartControl`
+(+ `NextChartScrollThumbControl`) and `NextZoneTableControl` on the new UI stack; the old names below are the
+same classes before the port. See [[ui-engine-plan]] § 6c2.
 **Scope:** new `Carbon/` project; `ArctisAurora.Core.Diagnostics.FrameCaptureReader`;
 `Thorium/Data/XML/Documents/Inputs/InputMap.inputs.xml`.
 

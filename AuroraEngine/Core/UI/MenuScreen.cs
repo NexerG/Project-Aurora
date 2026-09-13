@@ -1,9 +1,8 @@
-using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.Vulkan;
 
-namespace ArctisAurora.Core.UISystem
+namespace ArctisAurora.Core.UI
 {
     // A named screen in its own menu window, centred over the window that asked for it. The OS
     // window and its GLFW handle are the engine's, so an application asks for a screen and gets back
@@ -12,7 +11,7 @@ namespace ArctisAurora.Core.UISystem
     {
         // Null when the screen is already up — that one is raised instead, and there is nothing to
         // fill.
-        public static unsafe WindowControl Open(string name, string document, uint width, uint height, RenderWindow source)
+        public static unsafe WindowRoot? Open(string name, string document, uint width, uint height, RenderWindow source)
         {
             if (source == null) return null;
 
@@ -26,8 +25,8 @@ namespace ArctisAurora.Core.UISystem
             RenderWindow window = Engine.OpenMenuWindow(name, width, height, true);
             window.isActivable = true;
 
-            WindowControl root = (WindowControl)VulkanControl.ParseXML(document);
-            window.ui.uiRoot = root;
+            WindowRoot root = (WindowRoot)Control.ParseXML(document);
+            window.uiNext.uiRoot = root;
 
             window.os.Resize(width, height);
             root.FitTo(new Extent2D(width, height));

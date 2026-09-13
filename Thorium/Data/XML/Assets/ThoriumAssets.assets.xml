@@ -9,16 +9,19 @@
 	<Asset Type="UIDocumentAsset" Name="settings"   Source="XML/Documents/UI/Settings.ui.xml"/>
 	<Asset Type="UIDocumentAsset" Name="vaults"     Source="XML/Documents/UI/Vaults.ui.xml"/>
 
-	<!-- the shell on the new stack, and the landing 6a probe it replaced -->
+	<!-- the shell on the new stack -->
 	<Asset Type="UIDocumentAsset" Name="next-main"      Source="XML/Documents/UI/NextUI.ui.xml"/>
 	<Asset Type="UIDocumentAsset" Name="next-workspace" Source="XML/Documents/UI/NextWorkspace.ui.xml"/>
 	<Asset Type="UIDocumentAsset" Name="next-tab-pane"  Source="XML/Documents/UI/NextTabPane.ui.xml"/>
-	<Asset Type="UIDocumentAsset" Name="next-probe"     Source="XML/Documents/UI/NextProbe.ui.xml"/>
 
 	<!-- context menus on the new stack, named by a control's ContextMenu attribute -->
 	<Asset Type="ContextMenuAsset" Name="title-bar" Source="XML/Documents/Menus/TitleBar.menu.xml"/>
 	<Asset Type="ContextMenuAsset" Name="thorium"   Source="XML/Documents/Menus/Thorium.menu.xml"/>
 	<Asset Type="ContextMenuAsset" Name="file"      Source="XML/Documents/Menus/File.menu.xml"/>
 	<Asset Type="ContextMenuAsset" Name="edit"      Source="XML/Documents/Menus/Edit.menu.xml"/>
+
+	<Asset Type="ContextMenuAsset" Name="vault"        Source="XML/Documents/Menus/Vault.menu.xml"/>
+	<Asset Type="ContextMenuAsset" Name="vault-folder" Source="XML/Documents/Menus/VaultFolder.menu.xml"/>
+	<Asset Type="ContextMenuAsset" Name="vault-note"   Source="XML/Documents/Menus/VaultNote.menu.xml"/>
 
 </AssetManifest>

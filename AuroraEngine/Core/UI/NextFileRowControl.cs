@@ -7,8 +7,10 @@ namespace ArctisAurora.Core.UI
     [A_XSDType("NextFileRow", "UI")]
     public class NextFileRowControl : NextButtonControl
     {
-        internal FileObject file = null!;
-        internal NextFileBrowserControl browser = null!;
+        // Public, because a context-menu action is zero-argument and reaches the entry only through
+        // the row NextContextMenus.target sits in.
+        public FileObject file = null!;
+        public NextFileBrowserControl browser = null!;
         internal NextEditableLabelControl label = null!;
     }
 }

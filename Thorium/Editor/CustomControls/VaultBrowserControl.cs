@@ -65,13 +65,6 @@ namespace Thorium.Editor.CustomControls
         }
 
         #region ---- note operations ----
-        [A_XSDActionDependency("Notes.New", "UI", "Creates a note at the vault root and opens it")]
-        public static void New()
-        {
-            VaultBrowserControl browser = Engine.primary.ui.uiRoot.FindByName(browserName) as VaultBrowserControl;
-            browser?.NewNote(browser.RootPath);
-        }
-
         private void NewNote(string folder) =>
             NoteNameWindow.Ask(RenderWindow.Of(this), "Untitled", name => CreateNote(folder, name), null, null);
 

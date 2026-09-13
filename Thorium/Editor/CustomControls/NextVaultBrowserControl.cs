@@ -2,6 +2,7 @@ using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
+using Microsoft.VisualBasic.FileIO;
 using System.Xml.Linq;
 
 namespace Thorium.Editor.CustomControls
@@ -17,6 +18,11 @@ namespace Thorium.Editor.CustomControls
         // context declared in Contexts/Thorium.contexts.xml
         private const string tabsContext = "NextActiveTabViewer";
 
+        // menu documents registered in ThoriumAssets.assets.xml
+        private const string vaultMenu = "vault";
+        private const string folderMenu = "vault-folder";
+        private const string noteMenu = "vault-note";
+
         // matching the NextDocumentEditor attributes in NextWorkspace.ui.xml
         private const string caretHex = "#23221E";
         private const string selectionHex = "#D7D5CD";
@@ -26,6 +32,7 @@ namespace Thorium.Editor.CustomControls
 
         public NextVaultBrowserControl()
         {
+            contextMenu = vaultMenu;
             Rebuild();
         }
 
@@ -43,6 +50,106 @@ namespace Thorium.Editor.CustomControls
         protected override void Activate(FileObject file) => Open(file.path);
 
         protected override void Rename(FileObject file, string newName) => RenameNote(file.path, newName);
+
+        protected override string RowContextMenu(FileObject file) =>
+            file.type == FileObject.FileType.Directory ? folderMenu : noteMenu;
+
+        #region ---- note operations ----
+        [A_XSDActionDependency("Notes.New", "UI", "Creates a note at the vault root and opens it")]
+        public static void New()
+        {
+            NextVaultBrowserControl browser = Browser();
+            browser?.NewNote(browser.RootPath);
+        }
+
+        [A_XSDActionDependency("Notes.NewHere", "UI", "Creates a note beside the entry the menu was opened on")]
+        public static void NewHere()
+        {
+            NextFileRowControl row = MenuRow();
+            if (row == null) { New(); return; }
+
+            Browser()?.NewNote(row.file.type == FileObject.FileType.Directory ? row.file.path : row.file.parent.path);
+        }
+
+        [A_XSDActionDependency("Notes.Rename", "UI", "Turns the name of the note the menu was opened on into a field")]
+        public static void RenameEntry()
+        {
+            NextFileRowControl row = MenuRow();
+            if (row != null) Browser()?.BeginRename(row.file);
+        }
+
+        [A_XSDActionDependency("Notes.Duplicate", "UI", "Copies the note the menu was opened on and opens the copy")]
+        public static void Duplicate()
+        {
+            NextFileRowControl row = MenuRow();
+            if (row != null) Browser()?.DuplicateNote(row.file);
+        }
+
+        [A_XSDActionDependency("Notes.Delete", "UI", "Asks, then sends the note the menu was opened on to the recycle bin")]
+        public static void Delete()
+        {
+            NextFileRowControl row = MenuRow();
+            if (row != null) Browser()?.DeleteNote(row.file);
+        }
+
+        // The row the open menu was opened on, or null when it was opened on the browser's ground.
+        private static NextFileRowControl MenuRow()
+        {
+            for (Control c = NextContextMenus.target; c != null; c = c.parent as Control)
+                if (c is NextFileRowControl row) return row;
+
+            return null;
+        }
+
+        private static NextVaultBrowserControl Browser() =>
+            Engine.primary.uiNext.uiRoot?.FindByName(browserName) as NextVaultBrowserControl;
+
+        private void NewNote(string folder) =>
+            NextNoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreateNote(folder, name), null, null);
+
+        // A note needs a block holding a run before it can be typed into — the editor places its
+        // caret on a run and builds neither.
+        private void CreateNote(string folder, string name)
+        {
+            string path = FreePath(folder, name);
+
+            NextRichTextDocument document = new NextRichTextDocument { name = Path.GetFileNameWithoutExtension(path) };
+            NextBlockControl block = new NextBlockControl();
+            block.AppendRun(new NextRun());
+            document.blocks.Add(block);
+            document.Save(path);
+            block.Destroy();
+
+            Expand(folder);
+            Rebuild();
+            Open(path);
+        }
+
+        private void DuplicateNote(FileObject file)
+        {
+            string path = FreePath(file.parent.path, Path.GetFileNameWithoutExtension(file.path) + " copy");
+
+            File.Copy(file.path, path);
+            WriteName(path, Path.GetFileNameWithoutExtension(path));
+
+            Rebuild();
+            Open(path);
+        }
+
+        private void DeleteNote(FileObject file) =>
+            NextConfirmWindow.Ask(UIEngine.WindowOf(this), $"Delete \"{DisplayName(file)}\"?",
+                () => DeleteFile(file.path), null);
+
+        // The tab goes first and goes unwritten, or closing it would put the note back on disk.
+        private void DeleteFile(string path)
+        {
+            NextTabItemControl open = NextTabViewControl.FindOpenDocument(path, out NextTabViewControl owner);
+            if (open != null) owner.FinishClose(open);
+
+            FileSystem.DeleteFile(path, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+            Rebuild();
+        }
+        #endregion
 
         // The name lives in three places: the file, the Name inside it, and every editor already
         // holding the note open. Static, because a tab renames through here too and has no row.
@@ -87,6 +194,33 @@ namespace Thorium.Editor.CustomControls
             tabs.SetActive(tab);
         }
 
+        // Opens the first note in tree order.
+        public static void OpenFirstNote()
+        {
+            NextVaultBrowserControl browser = Browser();
+            string note = browser?.FirstNote(browser.root);
+            if (note != null) Open(note);
+        }
+
+        // Walks the model rather than the rows, so a collapsed folder's notes still count.
+        private string FirstNote(FileObject folder)
+        {
+            if (folder == null) return null;
+
+            foreach (FileObject child in folder.Children)
+            {
+                if (child.type == FileObject.FileType.Directory)
+                {
+                    string found = FirstNote(child);
+                    if (found != null) return found;
+                    continue;
+                }
+
+                if (Accepts(child)) return child.path;
+            }
+            return null;
+        }
+
         // The split pane last clicked in, so a note opens where the work is. Only this window counts —
         // the browser has no business opening notes in one that was torn off.
         private static NextTabViewControl FocusedTabs()
@@ -108,6 +242,7 @@ namespace Thorium.Editor.CustomControls
                 thumbPressColorHex = thumbPressHex
             };
             editor.LoadPath(notePath);
+            editor.onNamed = name => RenameNote(editor.session.path, name);
 
             NextTabItemControl tab = new NextTabItemControl
             {

@@ -173,8 +173,8 @@ namespace ArctisAurora.Core.UI
             SetFlag(ArrangeFlags.ArrangeDirty, false);
         }
 
-        // Each thumb sits in its own gutter and collapses to nothing when its axis fits — a zero
-        // size quad shares no area with its clip, so it neither draws nor hit-tests.
+        // Each thumb sits in its own gutter and is hidden while its axis fits, which takes it out of
+        // the draw and out of the hit-test.
         private void ArrangeThumbs(LayoutRect finalRect, LayoutRect inner)
         {
             EnsureThumbs();
@@ -189,13 +189,18 @@ namespace ArctisAurora.Core.UI
                     MathF.Max(minThumbLength, inner.height * inner.height / (inner.height + max.Y)));
                 travelY = inner.height - length;
 
+                verticalThumb.Show();
                 verticalThumb.Arrange(new LayoutRect(
                     finalRect.Right - barWidth - barInset,
                     inner.y + travelY * scrollOffset.Y / max.Y,
                     barWidth,
                     length));
             }
-            else verticalThumb.Arrange(LayoutRect.Empty);
+            else
+            {
+                verticalThumb.Arrange(LayoutRect.Empty);
+                verticalThumb.Hide();
+            }
 
             if (CanScrollHorizontal && max.X > 0f && inner.width > 0f)
             {
@@ -203,13 +208,18 @@ namespace ArctisAurora.Core.UI
                     MathF.Max(minThumbLength, inner.width * inner.width / (inner.width + max.X)));
                 travelX = inner.width - length;
 
+                horizontalThumb.Show();
                 horizontalThumb.Arrange(new LayoutRect(
                     inner.x + travelX * scrollOffset.X / max.X,
                     finalRect.Bottom - barWidth - barInset,
                     length,
                     barWidth));
             }
-            else horizontalThumb.Arrange(LayoutRect.Empty);
+            else
+            {
+                horizontalThumb.Arrange(LayoutRect.Empty);
+                horizontalThumb.Hide();
+            }
 
             ThumbTravel = new Vector2D<float>(travelX, travelY);
         }

@@ -1,9 +1,7 @@
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.UISystem.Controls;
-using ArctisAurora.Core.UISystem.Controls.Containers;
-using ArctisAurora.Core.UISystem.Controls.Text;
+using ArctisAurora.Core.UI;
 using Silk.NET.Maths;
 
 namespace Carbon.Editor.CustomControls
@@ -11,8 +9,8 @@ namespace Carbon.Editor.CustomControls
     // One lane per thread, one bar per frame, height against that lane's longest frame. More frames
     // than bars means a bar covers a run of them and stands for the longest one in it, so a spike
     // never averages away.
-    [A_XSDType("FrameStrip", "UI")]
-    public class FrameStripControl : AbstractContainerControl
+    [A_XSDType("NextFrameStrip", "UI")]
+    public class NextFrameStripControl : ContainerControl
     {
         #region properties
         // lane metrics
@@ -46,8 +44,8 @@ namespace Carbon.Editor.CustomControls
         private sealed class Lane
         {
             public CapturedThread thread = null!;
-            public LabelControl label = null!;
-            public PanelControl[] bars = Array.Empty<PanelControl>();
+            public NextLabelControl label = null!;
+            public NextPanelControl[] bars = Array.Empty<NextPanelControl>();
             public int[] frames = Array.Empty<int>();
             public long[] durations = Array.Empty<long>();
             public long longest = 1;
@@ -88,14 +86,14 @@ namespace Carbon.Editor.CustomControls
             Lane lane = new Lane
             {
                 thread = thread,
-                bars = new PanelControl[count],
+                bars = new NextPanelControl[count],
                 frames = new int[count],
                 durations = new long[count],
-                label = new LabelControl
+                label = new NextLabelControl
                 {
                     text = thread.thread,
                     fontSize = labelFontSize,
-                    controlColorHex = labelColorHex,
+                    colorHex = labelColorHex,
                     horizontalPosition = 0f,
                     hitTestable = false
                 }
@@ -116,7 +114,7 @@ namespace Carbon.Editor.CustomControls
                 lane.durations[bar] = thread.frames[peak].duration;
                 if (lane.durations[bar] > lane.longest) lane.longest = lane.durations[bar];
 
-                PanelControl panel = new PanelControl { controlColorHex = barColorHex, hitTestable = false };
+                NextPanelControl panel = new NextPanelControl { colorHex = barColorHex, hitTestable = false };
                 lane.bars[bar] = panel;
                 AddChild(panel);
             }
@@ -141,45 +139,45 @@ namespace Carbon.Editor.CustomControls
             if (bar < 0 || bar >= lane.bars.Length) return;
 
             if (_selectedLane >= 0 && _selectedBar >= 0)
-                _lanes[_selectedLane].bars[_selectedBar].controlColorHex = barColorHex;
+                _lanes[_selectedLane].bars[_selectedBar].colorHex = barColorHex;
 
             _selectedLane = laneIndex;
             _selectedBar = bar;
-            lane.bars[bar].controlColorHex = selectedBarColorHex;
+            lane.bars[bar].colorHex = selectedBarColorHex;
 
             onFrameSelected?.Invoke(lane.thread, lane.frames[bar]);
         }
 
         // The bars are not hit-testable, so the strip maps the point itself.
-        public override void ResolveOnClick(Vector2D<float> point, Vector2D<float> delta)
+        public override bool OnPointerPress(PointerEvent e)
         {
-            if (_lanes.Count == 0) return;
+            if (e.button != PointerEvent.leftButton || _lanes.Count == 0) return base.OnPointerPress(e);
 
             LayoutRect inner = arrangedRect.Shrink(padding);
             float laneHeight = LaneHeight(inner);
-            if (laneHeight <= 0) return;
+            if (laneHeight <= 0) return true;
 
-            int laneIndex = (int)((point.Y - inner.y) / (laneHeight + laneSpacing));
-            if (laneIndex < 0 || laneIndex >= _lanes.Count) return;
+            int laneIndex = (int)((e.point.Y - inner.y) / (laneHeight + laneSpacing));
+            if (laneIndex < 0 || laneIndex >= _lanes.Count) return true;
 
             Lane lane = _lanes[laneIndex];
             float plotX = inner.x + labelWidth;
             float plotWidth = MathF.Max(1, inner.Right - plotX);
 
-            int bar = (int)((point.X - plotX) / plotWidth * lane.bars.Length);
+            int bar = (int)((e.point.X - plotX) / plotWidth * lane.bars.Length);
             Select(laneIndex, Math.Clamp(bar, 0, lane.bars.Length - 1));
+            return true;
         }
 
         private float LaneHeight(LayoutRect inner) =>
             (inner.height - laneSpacing * MathF.Max(0, _lanes.Count - 1)) / MathF.Max(1, _lanes.Count);
 
-        // base owns the transform, the clip and the dirty flags — they are the engine assembly's.
         public override Vector2D<float> Measure(Vector2D<float> availableSize)
         {
             Vector2D<float> size = base.Measure(availableSize);
 
             foreach (Entity child in children)
-                if (child is VulkanControl control) control.Measure(size);
+                if (child is Control control) control.Measure(size);
 
             return size;
         }

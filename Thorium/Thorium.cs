@@ -1,9 +1,11 @@
 ﻿using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.UI;
 using ArctisAurora.Core.UISystem;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.EngineWork;
 using Thorium.Editor.CustomControls;
+using VulkanControl = ArctisAurora.Core.UISystem.Controls.VulkanControl;
 
 namespace Thorium
 {
@@ -27,7 +29,7 @@ namespace Thorium
 
             // A layout belongs to the vault it was arranged in.
             SessionLayout.scope = KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
-            SessionLayout.tabFactory = VaultBrowserControl.BuildTab;
+            SessionLayout.tabFactory = NextVaultBrowserControl.BuildTab;
 
             ContextMenus.menuFactory = () => new WindowedContextMenuControl
             {
@@ -60,6 +62,7 @@ namespace Thorium
 
             Engine.primary.uiDocument = "main";
             Engine.primary.ui.uiRoot = windowControl;
+            Engine.primary.uiNext.uiRoot = (WindowRoot)Control.ParseXML("next-main");
             SessionLayout.Restore();
             // UI.ui.xml seeds both panes, so this would add a second tab for a note already open.
             //VaultBrowserControl.OpenFirstNote();

@@ -68,6 +68,10 @@ namespace ArctisAurora.Core.UI
         // not offering the entry.
         protected virtual void Rename(FileObject file, string newName) { }
 
+        // The menu a row offers. Null leaves the row with whatever the browser itself names, which is
+        // what a folder and a file having the same entries looks like.
+        protected virtual string? RowContextMenu(FileObject file) => null;
+
         // Turns one entry's name into a field, in place.
         protected void BeginRename(FileObject file)
         {
@@ -135,6 +139,10 @@ namespace ArctisAurora.Core.UI
             content.AddChild(gutter);
             content.AddChild(name);
 
+            // A row with a menu of its own is the whole menu — the browser's ground entries are for
+            // the ground, and the walk would otherwise append them under every row.
+            string rowMenu = RowContextMenu(file);
+
             NextFileRowControl row = new NextFileRowControl
             {
                 file = file,
@@ -146,7 +154,9 @@ namespace ArctisAurora.Core.UI
                 padding = new Thickness(0, 0, 0, rowInset),
                 colorHex = rowColorHex,
                 hoverColorHex = rowHoverColorHex,
-                pressColorHex = rowPressColorHex
+                pressColorHex = rowPressColorHex,
+                contextMenu = rowMenu,
+                stopsContextMenu = rowMenu != null
             };
             row.AddChild(content);
             row.RegisterOnRelease(_ => { activate(); return true; });

@@ -1,13 +1,10 @@
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.UISystem.Controls;
-using ArctisAurora.Core.UISystem.Controls.Containers;
-using ArctisAurora.Core.UISystem.Controls.Interactable;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 
-namespace ArctisAurora.Core.UISystem
+namespace ArctisAurora.Core.UI
 {
     // What a SessionPane may hold: more panes, or the tabs of a leaf.
     public interface ISessionChild { }
@@ -24,7 +21,7 @@ namespace ArctisAurora.Core.UISystem
     public class SessionPane : ISessionChild
     {
         [A_XSDElementProperty("Orientation", "Settings", "Axis a split pane divides along.")]
-        public StackPanelControl.Orientation orientation { get; set; } = StackPanelControl.Orientation.Horizontal;
+        public NextStackPanelControl.Orientation orientation { get; set; } = NextStackPanelControl.Orientation.Horizontal;
 
         [A_XSDElementProperty("Size", "Settings", "Fixed main-axis size in pixels; 0 for the pane that takes the remainder.")]
         public int size { get; set; }
@@ -86,7 +83,7 @@ namespace ArctisAurora.Core.UISystem
 
         // How the host turns a saved path into a tab. The engine can build the editor but not what
         // the host binds to it, so restoring tabs needs this set.
-        public static Func<string, TabItemControl> tabFactory;
+        public static Func<string, NextTabItemControl> tabFactory;
 
         // secondary windows are renamed on restore, so a later tear-off cannot collide with one
         private const string restoredWindow = "session-";
@@ -96,7 +93,7 @@ namespace ArctisAurora.Core.UISystem
         // assigned; every other window is opened here. Falls back to the authored arrangement.
         public static void Restore()
         {
-            WorkspaceControl primary = WorkspaceControl.In(Engine.primary.ui.uiRoot);
+            NextWorkspaceControl primary = NextWorkspaceControl.In(Engine.primary.uiNext.uiRoot);
             SessionScope recorded = SettingsRegistry.Get<SessionLayout>().Recorded(scope);
 
             if (recorded == null || recorded.windows.Count == 0)
@@ -132,9 +129,9 @@ namespace ArctisAurora.Core.UISystem
                 (uint)record.width, (uint)record.height, x, y);
 
             window.uiDocument = record.document;
-            window.ui.uiRoot = (WindowControl)VulkanControl.ParseXML(record.document);
+            window.uiNext.uiRoot = (WindowRoot)Control.ParseXML(record.document);
 
-            Fill(WorkspaceControl.In(window.ui.uiRoot), record);
+            Fill(NextWorkspaceControl.In(window.uiNext.uiRoot), record);
             if (record.maximized) window.os.Maximize();
         }
 
@@ -160,35 +157,35 @@ namespace ArctisAurora.Core.UISystem
 
         // A window with no panes recorded still gets its authored arrangement, so a record written
         // before a workspace existed does not open an empty window.
-        private static void Fill(WorkspaceControl workspace, SessionWindow record)
+        private static void Fill(NextWorkspaceControl workspace, SessionWindow record)
         {
             if (workspace == null) return;
 
             if (record.panes.Count == 0) { workspace.LoadDefault(); return; }
 
-            TabViewControl seed = workspace.LoadPane();
+            NextTabViewControl seed = workspace.LoadPane();
             if (seed == null) { workspace.LoadDefault(); return; }
 
             Build(record.panes[0], seed);
         }
 
         // The arrangement replayed as the splits that would have produced it, so all of
-        // SplitViewControl's grip and sizing rules are the ones that apply.
-        private static void Build(SessionPane record, TabViewControl into)
+        // NextSplitViewControl's grip and sizing rules are the ones that apply.
+        private static void Build(SessionPane record, NextTabViewControl into)
         {
             if (record.panes.Count == 0) { FillTabs(record, into); return; }
 
-            bool vertical = record.orientation == StackPanelControl.Orientation.Vertical;
-            SplitViewControl.SplitEdge edge = vertical
-                ? SplitViewControl.SplitEdge.Bottom
-                : SplitViewControl.SplitEdge.Right;
+            bool vertical = record.orientation == NextStackPanelControl.Orientation.Vertical;
+            NextSplitViewControl.SplitEdge edge = vertical
+                ? NextSplitViewControl.SplitEdge.Bottom
+                : NextSplitViewControl.SplitEdge.Right;
 
-            List<TabViewControl> panes = new List<TabViewControl>();
-            TabViewControl current = into;
+            List<NextTabViewControl> panes = new List<NextTabViewControl>();
+            NextTabViewControl current = into;
 
             for (int i = 0; i < record.panes.Count - 1; i++)
             {
-                TabViewControl fresh = SplitViewControl.Split(current, edge);
+                NextTabViewControl fresh = NextSplitViewControl.Split(current, edge);
                 if (fresh == null) break;
 
                 panes.Add(current);
@@ -213,7 +210,7 @@ namespace ArctisAurora.Core.UISystem
 
         // A note that is no longer on disk is dropped rather than reopened, so the active index is
         // resolved against the tabs that were actually built.
-        private static void FillTabs(SessionPane record, TabViewControl view)
+        private static void FillTabs(SessionPane record, NextTabViewControl view)
         {
             if (tabFactory == null)
             {
@@ -221,7 +218,7 @@ namespace ArctisAurora.Core.UISystem
                 return;
             }
 
-            TabItemControl active = null;
+            NextTabItemControl active = null;
 
             for (int i = 0; i < record.tabs.Count; i++)
             {
@@ -232,7 +229,7 @@ namespace ArctisAurora.Core.UISystem
                     continue;
                 }
 
-                TabItemControl tab = tabFactory(path);
+                NextTabItemControl tab = tabFactory(path);
                 if (tab == null) continue;
 
                 view.AddChild(tab);
@@ -268,7 +265,7 @@ namespace ArctisAurora.Core.UISystem
             {
                 if (string.IsNullOrEmpty(window.uiDocument) || window.closeRequested) continue;
 
-                WorkspaceControl workspace = WorkspaceControl.In(window.ui.uiRoot);
+                NextWorkspaceControl workspace = NextWorkspaceControl.In(window.uiNext.uiRoot);
                 if (workspace == null) continue;
 
                 (int x, int y, int width, int height, bool maximized) = window.os.GetPlacement();
@@ -284,7 +281,7 @@ namespace ArctisAurora.Core.UISystem
                     maximized = maximized
                 };
 
-                if (workspace.children.Count > 0 && workspace.children[0] is VulkanControl content
+                if (workspace.children.Count > 0 && workspace.children[0] is Control content
                     && PaneOf(content) is SessionPane root)
                     record.panes.Add(root);
 
@@ -295,24 +292,24 @@ namespace ArctisAurora.Core.UISystem
             Log.Info($"captured {captured.Count} window(s) for '{scope}'");
         }
 
-        private static SessionPane PaneOf(VulkanControl node)
+        private static SessionPane PaneOf(Control node)
         {
-            if (node is SplitViewControl split) return SplitPane(split);
-            if (node is TabViewControl view) return LeafPane(view);
+            if (node is NextSplitViewControl split) return SplitPane(split);
+            if (node is NextTabViewControl view) return LeafPane(view);
             return null;
         }
 
-        private static SessionPane SplitPane(SplitViewControl split)
+        private static SessionPane SplitPane(NextSplitViewControl split)
         {
             SessionPane record = new SessionPane { orientation = split.orientation };
-            bool vertical = split.orientation == StackPanelControl.Orientation.Vertical;
+            bool vertical = split.orientation == NextStackPanelControl.Orientation.Vertical;
 
             foreach (Entity child in split.children)
             {
-                if (child is not VulkanControl pane || pane is SplitterControl) continue;
+                if (child is not Control pane || pane is NextSplitterControl) continue;
                 if (PaneOf(pane) is not SessionPane captured) continue;
 
-                captured.size = vertical ? pane.preferredHeight : pane.preferredWidth;
+                captured.size = (int)(vertical ? pane.preferredHeight : pane.preferredWidth);
                 record.panes.Add(captured);
             }
 
@@ -321,13 +318,13 @@ namespace ArctisAurora.Core.UISystem
 
         // A tab whose editor never loaded a file cannot be reopened, so it is left out and the active
         // index counts only what was written.
-        private static SessionPane LeafPane(TabViewControl view)
+        private static SessionPane LeafPane(NextTabViewControl view)
         {
             SessionPane record = new SessionPane();
 
-            foreach (TabItemControl item in view.Items)
+            foreach (NextTabItemControl item in view.Items)
             {
-                string path = TabViewControl.EditorOf(item)?.session?.path;
+                string path = NextTabViewControl.EditorOf(item)?.session?.path;
                 if (path == null) continue;
 
                 if (ReferenceEquals(item, view.activeItem)) record.active = record.tabs.Count;

@@ -143,7 +143,7 @@ XML element, entry points, regions. The rows below answer "which types own this 
 | the drag preview on the new stack | `UINext.NextDragGhost` (`Show`, `Hide`, `Follow`); `Render.Modules.UIEngineModule` (`rangeRoot`, `rangeRect`); `UINext.Control.draggingOpacity`. The old stack's is `UI.DragGhost` | `*.ui.xml` attr `DraggingOpacity`; `<UI><DragGhost Opacity>` setting | [[ui-engine-stack]], [[render-thread-reads-pool-row]] |
 | splits and grips on the **new** stack | `UINext.NextSplitViewControl` (a transparent `NextStackPanelControl`); `UINext.NextSplitterControl` (`PreviousPane`/`NextPane`, `DragStars`) — `Split`/`Collapse` are not ported, they land with the tabs | `*.ui.xml` `<NextSplitView>`, `<NextSplitter>` | [[ui-engine-stack]] |
 | scrolling and thumbs on the **new** stack | `UINext.NextScrollableControl` (`scrollDirection`, `MaxScrollOffset`, `ThumbTravel`, `ArrangeThumbs`, `EnsureThumbs`, `OnPointerScroll`, `ScrollIntoView`); `UINext.NextScrollThumbControl` — one thumb per axis, both appended so the last-to-first hit-test reaches them | `*.ui.xml` `<NextScrollable>` attrs `ScrollDirection`, `ScrollSensitivity`, `Overscroll`, `Thumb*ColorHex` | [[ui-engine-stack]] |
-| building a **new**-stack tree from XML | `UINext.Control.ParseXML` (in `ControlXml.cs`); the `[A_XSDElementProperty]` set on `UINext.Control`; `UINext.ContainerControl` | `Thorium/Data/XML/Documents/UI/NextProbe.ui.xml`, registered in `ThoriumAssets.assets.xml` — both deleted at 6b | [[ui-engine-stack]] |
+| building a **new**-stack tree from XML | `UINext.Control.ParseXML` (in `ControlXml.cs`); the `[A_XSDElementProperty]` set on `UINext.Control`; `UINext.ContainerControl` | any `Next*` `*.ui.xml`, e.g. `Thorium/Data/XML/Documents/UI/NextUI.ui.xml`, registered in `ThoriumAssets.assets.xml` | [[ui-engine-stack]] |
 | corner radii, padding and margin on the **new** stack | `UINext.CornerRadii` + `CornerRadiiConverter`, `UINext.Thickness` + `ThicknessConverter`, `UINext.ControlColor` | `*.ui.xml` attrs `CornerRadius`, `Padding`, `Margin`, `ControlColor` | [[ui-engine-stack]] |
 | images, icons, masks and gradients on the **new** stack — one sampler slot read three ways | `UINext.Control` (`kind`, `sampler`, `SetUVRect`, `gradient`), `VulkanControl.noTexture`, `VulkanControlType`; `Render.Modules.UIEngineModule` (`CreateGradientTable`, set 1 binding 3); `Shaders/UIEngine/UIEngine.frag` | `Thorium/Data/XML/Documents/Gradients.gradients.xml` | [[ui-engine-stack]], [[ui-gradients]] |
 | compositing several modules into one window | `Core.Rendering.Modules.CompositorModule`; `compositorOrder` on `Render.Modules.RenderingModule` | — | [[ui-engine-stack]] |
@@ -166,10 +166,10 @@ XML element, entry points, regions. The rows below answer "which types own this 
 | Concept | Code | Data | Note |
 |---|---|---|---|
 | app entry, wiring the four views | `Carbon.Carbon`, `Carbon.CarbonSettings` | `Carbon/Data/XML/Settings/` | [[carbon-frame-viewer]] |
-| the capture session list, Load XML | `Carbon.Editor.CustomControls.SessionListControl`; `Carbon.Editor.CarbonActions` | `Carbon/Data/XML/Documents/UI/UI.ui.xml` | [[carbon-frame-viewer]] |
-| frames over time, click to select one | `Carbon.Editor.CustomControls.FrameStripControl` | `UI.ui.xml` | [[carbon-frame-viewer]] |
-| flame chart and the aligned timeline, the timeline's scroll bar | `Carbon.Editor.CustomControls.SpanChartControl` (`Mode="Frame"` / `"Timeline"`), `ChartScrollThumbControl` | `UI.ui.xml` | [[carbon-frame-viewer]] |
-| zone totals, calls, min/max, counters | `Carbon.Editor.CustomControls.ZoneTableControl` | `UI.ui.xml` | [[carbon-frame-viewer]] |
+| the capture session list, Load XML | `Carbon.Editor.CustomControls.NextSessionListControl`; `Carbon.Editor.CarbonActions` | `Carbon/Data/XML/Documents/UI/UI.ui.xml` | [[carbon-frame-viewer]] |
+| frames over time, click to select one | `Carbon.Editor.CustomControls.NextFrameStripControl` | `UI.ui.xml` | [[carbon-frame-viewer]] |
+| flame chart and the aligned timeline, the timeline's scroll bar | `Carbon.Editor.CustomControls.NextSpanChartControl` (`Mode="Frame"` / `"Timeline"`), `NextChartScrollThumbControl` | `UI.ui.xml` | [[carbon-frame-viewer]] |
+| zone totals, calls, min/max, counters | `Carbon.Editor.CustomControls.NextZoneTableControl` | `UI.ui.xml` | [[carbon-frame-viewer]] |
 
 ## Facts that cost time to rediscover
 

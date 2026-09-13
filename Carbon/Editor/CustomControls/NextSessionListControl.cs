@@ -1,20 +1,15 @@
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.Registry.Assets;
-using ArctisAurora.Core.UISystem.Controls;
-using ArctisAurora.Core.UISystem.Controls.Containers;
-using ArctisAurora.Core.UISystem.Controls.Interactable;
-using ArctisAurora.Core.UISystem.Controls.Text;
+using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
-using ArctisAurora.EngineWork.Registry;
 
 namespace Carbon.Editor.CustomControls
 {
     // Capture session folders under the configured root, newest first. Selecting one reads every
     // thread file in it; the folders themselves are listed without parsing anything.
-    [A_XSDType("SessionList", "UI")]
-    public class SessionListControl : ScrollableControl
+    [A_XSDType("NextSessionList", "UI")]
+    public class NextSessionListControl : NextScrollableControl
     {
         private static readonly LogChannel Log = LogChannel.For("Carbon");
 
@@ -46,18 +41,18 @@ namespace Carbon.Editor.CustomControls
         public string detailColorHex = "#918F87";
         #endregion
 
-        private readonly StackPanelControl rows = new StackPanelControl();
+        private readonly NextStackPanelControl rows = new NextStackPanelControl();
 
         public CaptureSession? Loaded { get; private set; }
 
         public Action<CaptureSession>? onSessionLoaded;
 
-        public SessionListControl()
+        public NextSessionListControl()
         {
             scrollDirection = ScrollDirection.Vertical;
 
-            rows.maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");
-            rows.orientation = StackPanelControl.Orientation.Vertical;
+            rows.alpha = 0f;
+            rows.orientation = NextStackPanelControl.Orientation.Vertical;
             AddChild(rows);
 
             Rebuild();
@@ -104,42 +99,41 @@ namespace Carbon.Editor.CustomControls
             onSessionLoaded?.Invoke(session);
         }
 
-        private VulkanControl Row(CaptureSessionInfo session)
+        private Control Row(CaptureSessionInfo session)
         {
             bool loaded = Loaded != null && string.Equals(Loaded.directory, session.directory, StringComparison.OrdinalIgnoreCase);
 
-            StackPanelControl content = new StackPanelControl
+            NextStackPanelControl content = new NextStackPanelControl
             {
-                orientation = StackPanelControl.Orientation.Vertical,
-                maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible"),
+                orientation = NextStackPanelControl.Orientation.Vertical,
+                alpha = 0f,
                 horizontalPosition = 0f
             };
-            content.BubbleAll();
 
-            content.AddChild(new LabelControl
+            content.AddChild(new NextLabelControl
             {
                 text = session.name,
                 fontSize = 14,
-                controlColorHex = loaded ? selectedColorHex : nameColorHex,
+                colorHex = loaded ? selectedColorHex : nameColorHex,
                 preferredHeight = 18,
                 horizontalPosition = 0f
             });
 
-            content.AddChild(new LabelControl
+            content.AddChild(new NextLabelControl
             {
                 text = string.Join(", ", session.threads),
                 fontSize = 11,
-                controlColorHex = detailColorHex,
+                colorHex = detailColorHex,
                 preferredHeight = 14,
                 horizontalPosition = 0f
             });
 
-            ButtonControl row = new ButtonControl
+            NextButtonControl row = new NextButtonControl
             {
                 preferredHeight = rowHeight,
                 horizontalAlignment = HorizontalAlignment.Stretch,
                 padding = new Thickness(0, 0, 0, 8),
-                controlColorHex = rowColorHex,
+                colorHex = rowColorHex,
                 hoverColorHex = rowHoverColorHex,
                 pressColorHex = rowPressColorHex,
                 cornerRadius = new CornerRadii(4)
@@ -147,7 +141,7 @@ namespace Carbon.Editor.CustomControls
             row.AddChild(content);
 
             // Posted, so the rows this click is still bubbling through are not torn down under it.
-            row.RegisterOnRelease(() => Engine.Post(() => Load(session.directory)));
+            row.RegisterOnRelease(_ => { Engine.Post(() => Load(session.directory)); return true; });
 
             return row;
         }

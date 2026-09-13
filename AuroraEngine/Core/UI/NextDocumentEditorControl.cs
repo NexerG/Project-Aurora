@@ -3,6 +3,7 @@ using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.Core.UISystem.Controls.Text.Document;
+using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.Maths;
 
 namespace ArctisAurora.Core.UI
@@ -93,6 +94,45 @@ namespace ArctisAurora.Core.UI
         }
 
         public void Save() => session?.Save();
+
+        // Naming an unnamed note is a rename — the host follows the name onto the file, onto every
+        // tab holding the note and onto its own list. Null when nothing owns the note that way.
+        public Action<string>? onNamed;
+
+        // Writes the note, asking for a name first when it has never been named. onSaved runs once it
+        // is on disk, onDiscarded if the note was left unwritten on purpose, onCancelled if the
+        // answer was abandoned. Passing no onDiscarded leaves the prompt without that button.
+        public void SaveNamed(Action onSaved = null, Action onDiscarded = null, Action onCancelled = null)
+        {
+            if (session == null) { onSaved?.Invoke(); return; }
+
+            if (!needsNaming)
+            {
+                session.Save();
+                onSaved?.Invoke();
+                return;
+            }
+
+            // An editor outside a tree has no window to prompt over. Answering for it beats asking
+            // a prompt that refuses and leaves the caller waiting on a callback that never comes.
+            RenderWindow window = UIEngine.WindowOf(this);
+            if (window == null)
+            {
+                (onDiscarded ?? onSaved)?.Invoke();
+                return;
+            }
+
+            NextNoteNameWindow.Ask(window, Path.GetFileNameWithoutExtension(session.path),
+                name =>
+                {
+                    session.document.name = name;
+                    session.Save();
+                    onNamed?.Invoke(name);
+                    onSaved?.Invoke();
+                },
+                onDiscarded,
+                onCancelled);
+        }
 
         #region ---- history ----
         // Every path that changes the document ends here, so the close paths can tell an edited note
@@ -326,7 +366,8 @@ namespace ArctisAurora.Core.UI
         }
         #endregion
 
-        // Edited, and never given a name. The naming prompt is a window, so it waits for 6c2.
+        // Edited, and never given a name. Nothing derives a name from the file, so this stays true
+        // until someone answers the prompt.
         public bool needsNaming => session != null && session.isDirty && session.document.name == null;
 
         public void FocusCaret()

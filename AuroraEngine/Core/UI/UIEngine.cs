@@ -10,7 +10,6 @@ using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Maths;
 using Silk.NET.Vulkan;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 
 namespace ArctisAurora.Core.UI
 {
@@ -39,6 +38,11 @@ namespace ArctisAurora.Core.UI
 
             foreach (Control root in roots)
             {
+                // A control with an owner is not a root. Every control registers itself when it is
+                // constructed, before it is attached; resolving one of those here measures it at
+                // infinity and arranges it at the origin, behind the owner that lays it out.
+                if (root.parent is Control) continue;
+
                 if (root.isMeasureDirty)
                 {
                     // Pass 1 — offer the root its own current arranged size, or infinite if it has
@@ -606,27 +610,5 @@ namespace ArctisAurora.Core.UI
             return walked;
         }
         #endregion
-
-        [A_XSDActionDependency("UIEngine.Bootstrap", "Bootstrap")]
-        public static bool Bootstrap()
-        {
-            Log.Info($"row sizes — ArrangeData {Unsafe.SizeOf<ArrangeData>()} B, " +
-                     $"ControlGeometry {Unsafe.SizeOf<ControlGeometry>()} B, " +
-                     $"VulkanControl {Unsafe.SizeOf<VulkanControl>()} B");
-
-            BuildShell(Engine.primary);
-            return true;
-        }
-
-        // Landing 6b scaffolding: Thorium's shell on the new stack, standing in for the session
-        // restore that still runs on the outgoing one. 6d deletes it with the document.
-        private static void BuildShell(RenderWindow window)
-        {
-            WindowRoot root = (WindowRoot)Control.ParseXML("next-main");
-            window.uiNext.uiRoot = root;
-
-            NextWorkspaceControl.In(root)?.LoadDefault();
-        }
-
     }
 }

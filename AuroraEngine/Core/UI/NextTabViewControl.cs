@@ -36,6 +36,10 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("GripPressColorHex", "UI", "Ground of a held pane splitter.")]
         public string gripPressColorHex = "#4A4A4A";
 
+        // tear-off
+        [A_XSDElementProperty("TearOffDocument", "UI", "UI document a tab dragged out of every window opens in.")]
+        public string tearOffDocument = "";
+
         // menu each tab in the strip names
         [A_XSDElementProperty("TabContextMenu", "UI", "Menu a tab in the strip offers on right click.")]
         public string tabContextMenu = "tab";
@@ -49,6 +53,11 @@ namespace ArctisAurora.Core.UI
         private const string closeCaption = "x";
         private const string closeHoverColorHex = "#C42B1E";
         private const string closePressColorHex = "#A82318";
+
+        // torn-off window geometry
+        private const uint tearOffWidth = 900;
+        private const uint tearOffHeight = 640;
+        private static int _tornWindows;
 
         // share of a side inside which a dropped tab splits instead of moving in
         private const float edgeBand = 0.25f;
@@ -233,6 +242,37 @@ namespace ArctisAurora.Core.UI
         }
         #endregion
 
+        // Moves a tab into a window of its own, built from tearOffDocument and placed at the pointer.
+        internal unsafe void TearOff(NextTabItemControl item)
+        {
+            if (string.IsNullOrEmpty(tearOffDocument)) return;
+
+            RenderWindow source = UIEngine.WindowOf(this);
+            AGlfwWindow._glfw.GetWindowPos(source.os.handle, out int wx, out int wy);
+
+            RenderWindow torn = Engine.OpenWindow($"tab-{++_tornWindows}", tearOffWidth, tearOffHeight,
+                wx + (int)source.mousePos.X, wy + (int)source.mousePos.Y);
+            torn.uiDocument = tearOffDocument;
+            WindowRoot root = (WindowRoot)ParseXML(tearOffDocument);
+            torn.uiNext.uiRoot = root;
+            NextWorkspaceControl.In(root)?.LoadDefault();
+
+            NextTabViewControl view = FirstTabView(root);
+            if (view == null) return;
+
+            item.SetParent(view);
+            view.SetActive(item);
+        }
+
+        private static NextTabViewControl FirstTabView(Control control)
+        {
+            if (control is NextTabViewControl view) return view;
+            foreach (Entity child in control.children)
+                if (child is Control childControl && FirstTabView(childControl) is NextTabViewControl found)
+                    return found;
+            return null;
+        }
+
         public void SetActive(NextTabItemControl item)
         {
             if (item != null && !children.Contains(item)) return;
@@ -247,32 +287,61 @@ namespace ArctisAurora.Core.UI
         }
 
         // Writes an edited note, then tears the whole subtree down — the strip button with it. An
-        // unnamed note is written as it is; the naming prompt is a window, so it waits for 6c2.
-        public void CloseTab(NextTabItemControl item)
+        // edited note that has never been named asks for one first, and the teardown waits for the
+        // answer; abandoning the naming abandons the close.
+        public void CloseTab(NextTabItemControl item) => CloseTab(item, null);
+
+        // onClosed runs once the tab is gone. Cancelling the prompt runs nothing, which is what stops
+        // a queue of closes at the tab the user changed their mind about.
+        private void CloseTab(NextTabItemControl item, Action onClosed)
         {
-            if (item == null || !children.Contains(item)) return;
+            if (item == null || !children.Contains(item)) { onClosed?.Invoke(); return; }
 
             NextDocumentEditorControl editor = EditorOf(item);
+            if (editor != null && editor.needsNaming)
+            {
+                editor.SaveNamed(
+                    () => { FinishClose(item); onClosed?.Invoke(); },
+                    () => { FinishClose(item); onClosed?.Invoke(); });
+                return;
+            }
+
             if (editor?.session != null && editor.session.isDirty) editor.Save();
 
             FinishClose(item);
+            onClosed?.Invoke();
         }
 
         // Snapshotted, because closing detaches the tab from children as it goes.
         public void CloseOthers(NextTabItemControl keep)
         {
-            foreach (NextTabItemControl item in Items.ToArray())
-                if (!ReferenceEquals(item, keep)) CloseTab(item);
+            List<NextTabItemControl> queue = new List<NextTabItemControl>();
+            foreach (NextTabItemControl item in Items)
+                if (!ReferenceEquals(item, keep)) queue.Add(item);
+
+            CloseNext(queue, 0);
         }
 
         public void CloseToTheRight(NextTabItemControl from)
         {
+            List<NextTabItemControl> queue = new List<NextTabItemControl>();
             bool passed = false;
-            foreach (NextTabItemControl item in Items.ToArray())
+            foreach (NextTabItemControl item in Items)
             {
                 if (ReferenceEquals(item, from)) { passed = true; continue; }
-                if (passed) CloseTab(item);
+                if (passed) queue.Add(item);
             }
+
+            CloseNext(queue, 0);
+        }
+
+        // One tab at a time, each opened from the previous one's completion — the naming prompt is a
+        // single window and a second ask while one is up is refused.
+        private void CloseNext(List<NextTabItemControl> queue, int index)
+        {
+            if (index >= queue.Count) return;
+
+            CloseTab(queue[index], () => CloseNext(queue, index + 1));
         }
 
         // Moves one named tab into a new pane beside this view. Splitting off our own only tab would
@@ -292,7 +361,8 @@ namespace ArctisAurora.Core.UI
         // A view of this kind, for a split to fill.
         protected internal virtual NextTabViewControl NewOfSameKind() => new NextTabViewControl();
 
-        private void FinishClose(NextTabItemControl item)
+        // Also the discard path: a note deleted on disk closes through here, unwritten.
+        public void FinishClose(NextTabItemControl item)
         {
             if (item == null || !children.Contains(item)) return;
 
