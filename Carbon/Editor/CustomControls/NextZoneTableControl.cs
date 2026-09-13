@@ -2,19 +2,15 @@ using System.Text;
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.Registry.Assets;
-using ArctisAurora.Core.UISystem.Controls;
-using ArctisAurora.Core.UISystem.Controls.Containers;
-using ArctisAurora.Core.UISystem.Controls.Text;
-using ArctisAurora.EngineWork.Registry;
+using ArctisAurora.Core.UI;
 
 namespace Carbon.Editor.CustomControls
 {
     // Every zone of a capture, per thread, longest first — the numbers the one-second report prints,
     // but over the whole file. Rolled up from the span stream, which records every instance, so a
     // zone that re-enters itself totals more here than the report's outermost-only rule gives it.
-    [A_XSDType("ZoneTable", "UI")]
-    public class ZoneTableControl : ScrollableControl
+    [A_XSDType("NextZoneTable", "UI")]
+    public class NextZoneTableControl : NextScrollableControl
     {
         #region properties
         [A_XSDElementProperty("RowSpacing", "UI", "Space between rows in pixels.")]
@@ -26,8 +22,7 @@ namespace Carbon.Editor.CustomControls
         [A_XSDElementProperty("DetailFontSize", "UI", "Font size of a zone's counts line.")]
         public int detailFontSize = 11;
 
-        // Fixed columns, because a star-width Label is measured at zero width and wraps to one
-        // glyph per line — LabelControl does not override TextControl.WrapWidth.
+        // column widths
         [A_XSDElementProperty("NameWidth", "UI", "Width of the zone name column in pixels.")]
         public float nameWidth = 210f;
 
@@ -69,15 +64,15 @@ namespace Carbon.Editor.CustomControls
             public string parent;
         }
 
-        private readonly StackPanelControl rows = new StackPanelControl();
+        private readonly NextStackPanelControl rows = new NextStackPanelControl();
         private string[] _depthColors = Array.Empty<string>();
 
-        public ZoneTableControl()
+        public NextZoneTableControl()
         {
             scrollDirection = ScrollDirection.Vertical;
 
-            rows.maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");
-            rows.orientation = StackPanelControl.Orientation.Vertical;
+            rows.alpha = 0f;
+            rows.orientation = NextStackPanelControl.Orientation.Vertical;
             AddChild(rows);
         }
 
@@ -102,11 +97,11 @@ namespace Carbon.Editor.CustomControls
             InvalidateLayout();
         }
 
-        private VulkanControl Separator() => new PanelControl
+        private Control Separator() => new NextPanelControl
         {
             preferredHeight = 1,
             horizontalAlignment = HorizontalAlignment.Stretch,
-            controlColorHex = separatorColorHex,
+            colorHex = separatorColorHex,
             margin = new Thickness(6, 0, 6, 0),
             hitTestable = false
         };
@@ -158,11 +153,11 @@ namespace Carbon.Editor.CustomControls
                 }
             }
 
-            rows.AddChild(new LabelControl
+            rows.AddChild(new NextLabelControl
             {
                 text = $"{thread.thread} — {thread.frames.Count} frames, {CapturedThread.Bytes(threadBytes)} allocated{(thread.dropped > 0 ? $", {thread.dropped} dropped" : "")}{(thread.truncated ? ", truncated" : "")}",
                 fontSize = zoneFontSize,
-                controlColorHex = headerColorHex,
+                colorHex = headerColorHex,
                 preferredHeight = 22,
                 horizontalPosition = 0f
             });
@@ -192,65 +187,63 @@ namespace Carbon.Editor.CustomControls
             }
         }
 
-        private VulkanControl Row(CapturedThread thread, string name, Rolled rolled,
+        private Control Row(CapturedThread thread, string name, Rolled rolled,
             Dictionary<(string zone, string name), long> counters, int depth)
         {
             float inset = indent * depth;
             float gutter = swatchWidth + 6;
 
-            StackPanelControl head = new StackPanelControl
+            NextStackPanelControl head = new NextStackPanelControl
             {
-                orientation = StackPanelControl.Orientation.Horizontal,
-                maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible"),
+                orientation = NextStackPanelControl.Orientation.Horizontal,
+                alpha = 0f,
                 preferredHeight = 17
             };
-            head.BubbleAll();
 
-            head.AddChild(new PanelControl
+            head.AddChild(new NextPanelControl
             {
-                preferredWidth = (int)swatchWidth,
+                preferredWidth = swatchWidth,
                 preferredHeight = 17,
-                controlColorHex = _depthColors[depth % _depthColors.Length],
+                colorHex = _depthColors[depth % _depthColors.Length],
                 margin = new Thickness(0, 6, 0, 0),
                 hitTestable = false
             });
 
-            head.AddChild(new LabelControl
+            head.AddChild(new NextLabelControl
             {
                 text = name,
                 fontSize = zoneFontSize,
-                controlColorHex = zoneColorHex,
-                preferredWidth = (int)MathF.Max(40, nameWidth - inset - gutter),
+                colorHex = zoneColorHex,
+                preferredWidth = MathF.Max(40, nameWidth - inset - gutter),
                 preferredHeight = 17,
                 horizontalPosition = 0f
             });
 
-            head.AddChild(new LabelControl
+            head.AddChild(new NextLabelControl
             {
                 text = $"{thread.Ms(rolled.total):F2}ms",
                 fontSize = zoneFontSize,
-                controlColorHex = zoneColorHex,
-                preferredWidth = (int)totalWidth,
+                colorHex = zoneColorHex,
+                preferredWidth = totalWidth,
                 preferredHeight = 17,
                 horizontalPosition = 1f
             });
 
-            StackPanelControl row = new StackPanelControl
+            NextStackPanelControl row = new NextStackPanelControl
             {
-                orientation = StackPanelControl.Orientation.Vertical,
-                maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible"),
+                orientation = NextStackPanelControl.Orientation.Vertical,
+                alpha = 0f,
                 preferredHeight = 34,
                 margin = new Thickness(0, 0, 0, inset),
                 horizontalPosition = 0f
             };
-            row.BubbleAll();
             row.AddChild(head);
 
-            row.AddChild(new LabelControl
+            row.AddChild(new NextLabelControl
             {
                 text = $"x{rolled.calls}  min {thread.Ms(rolled.min):F3}  max {thread.Ms(rolled.max):F3}  {CapturedThread.Bytes(rolled.bytes)}{Counters(name, counters)}",
                 fontSize = detailFontSize,
-                controlColorHex = detailColorHex,
+                colorHex = detailColorHex,
                 preferredHeight = 15,
                 margin = new Thickness(0, 0, 0, gutter),
                 horizontalPosition = 0f

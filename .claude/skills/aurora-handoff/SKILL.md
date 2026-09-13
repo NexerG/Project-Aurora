@@ -22,14 +22,14 @@ mechanical sweep, not one per file" is this same arithmetic.
 
 ## Which one
 
-| | `aurora-mechanic` | `aurora-scout` |
-|---|---|---|
-| does | exact edits across a named file set | answers one question, read-only |
-| tools | Read, Edit, Glob, Grep — **no Bash** | Read, Glob, Grep, Bash |
-| send when | old text, new text and the file list are all fixed | the reading is much larger than the answer |
-| never send | anything needing a judgment call | anything that must decide something |
+| | `aurora-mechanic` | `aurora-scout` | `aurora-committer` |
+|---|---|---|---|
+| does | exact edits across a named file set | answers one question, read-only | one commit of the whole tree, message from the diff |
+| tools | Read, Edit, Glob, Grep — **no Bash** | Read, Glob, Grep, Bash | Read, Glob, Grep, Bash — **no Edit** |
+| send when | old text, new text and the file list are all fixed | the reading is much larger than the answer | the user asked for a commit |
+| never send | anything needing a judgment call | anything that must decide something | a requested split into multiple commits |
 
-Neither can notice it is departing from a plan it was never shown (§8). If the work could turn into a
+None of them can notice it is departing from a plan it was never shown (§8). If the work could turn into a
 departure, it stays with you.
 
 ## The brief

@@ -134,6 +134,7 @@ namespace ArctisAurora.Core.UI
                 preferredHeight = 20,
                 fontSize = captionSize,
                 textColorHex = idleInkHex,
+                caretColorHex = "#000000",
                 colorHex = fieldHex
             };
             pxField.pressed = CapturePx;

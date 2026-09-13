@@ -1,13 +1,8 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.Registry.Assets;
-using ArctisAurora.Core.UISystem;
+using ArctisAurora.Core.UI;
 using ArctisAurora.Core.UISystem.Actions;
-using ArctisAurora.Core.UISystem.Controls;
-using ArctisAurora.Core.UISystem.Controls.Containers;
-using ArctisAurora.Core.UISystem.Controls.Interactable;
-using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
@@ -25,7 +20,7 @@ namespace Thorium.Editor
         private const uint windowWidth = 520;
         private const uint windowHeight = 400;
 
-        // control name in UI.ui.xml
+        // control name in NextUI.ui.xml
         private const string browserName = "Browser";
 
         // layout
@@ -41,15 +36,15 @@ namespace Thorium.Editor
         private const string currentHex = "#3A3833";
         private const string pathHex = "#918F87";
 
-        private static StackPanelControl _rows = null!;
+        private static NextStackPanelControl _rows = null!;
 
         // One screen at a time; a second ask raises the one already up and returns no root.
         public static void Open(RenderWindow source)
         {
-            WindowControl root = MenuScreen.Open(windowName, document, windowWidth, windowHeight, source);
+            WindowRoot root = MenuScreen.Open(windowName, document, windowWidth, windowHeight, source);
             if (root == null) return;
 
-            _rows = (StackPanelControl)root.FindByName("Rows");
+            _rows = (NextStackPanelControl)root.FindByName("Rows");
             Fill();
         }
 
@@ -89,48 +84,48 @@ namespace Thorium.Editor
             _rows.InvalidateLayout();
         }
 
-        private static VulkanControl Row(string path, bool current)
+        private static Control Row(string path, bool current)
         {
-            StackPanelControl content = new StackPanelControl
+            NextStackPanelControl content = new NextStackPanelControl
             {
-                orientation = StackPanelControl.Orientation.Vertical,
-                maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible"),
+                orientation = NextStackPanelControl.Orientation.Vertical,
+                alpha = 0f,
+                hitTestable = false,
                 horizontalPosition = 0f
             };
-            content.BubbleAll();
 
-            content.AddChild(new LabelControl
+            content.AddChild(new NextLabelControl
             {
                 text = Path.GetFileName(Path.TrimEndingDirectorySeparator(path)),
                 fontSize = 14,
-                controlColorHex = current ? currentHex : nameHex,
+                colorHex = current ? currentHex : nameHex,
                 preferredHeight = nameHeight,
                 horizontalPosition = 0f
             });
 
-            content.AddChild(new LabelControl
+            content.AddChild(new NextLabelControl
             {
                 text = path,
                 fontSize = 11,
-                controlColorHex = pathHex,
+                colorHex = pathHex,
                 preferredHeight = pathHeight,
                 horizontalPosition = 0f
             });
 
-            ButtonControl row = new ButtonControl
+            NextButtonControl row = new NextButtonControl
             {
                 preferredHeight = rowHeight,
-                horizontalAlignment = VulkanControl.HorizontalAlignment.Stretch,
-                padding = new VulkanControl.Thickness(0, 0, 0, 10),
-                controlColorHex = rowHex,
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                padding = new Thickness(0, 0, 0, 10),
+                colorHex = rowHex,
                 hoverColorHex = rowHoverHex,
                 pressColorHex = rowPressHex,
-                cornerRadius = new VulkanControl.CornerRadii(4)
+                cornerRadius = new CornerRadii(4)
             };
             row.AddChild(content);
 
             // Posted, so the tree this click is still bubbling through is not torn down under it.
-            row.RegisterOnRelease(() => Engine.Post(() => Switch(path)));
+            row.RegisterOnRelease(_ => { Engine.Post(() => Switch(path)); return true; });
 
             return row;
         }
@@ -146,9 +141,9 @@ namespace Thorium.Editor
                 SettingsRegistry.Commit();
 
                 CloseTabs();
-                VaultBrowserControl browser = Engine.primary.ui.uiRoot.FindByName(browserName) as VaultBrowserControl;
+                NextVaultBrowserControl browser = Engine.primary.uiNext.uiRoot.FindByName(browserName) as NextVaultBrowserControl;
                 browser?.Rebuild();
-                VaultBrowserControl.OpenFirstNote();
+                NextVaultBrowserControl.OpenFirstNote();
             }
 
             if (Engine.windows.TryGetValue(windowName, out RenderWindow window)) Engine.CloseWindow(window);
@@ -157,23 +152,9 @@ namespace Thorium.Editor
         // Every note on screen belongs to the vault being left. CloseTab writes each one first.
         private static void CloseTabs()
         {
-            List<TabViewControl> views = new List<TabViewControl>();
-            Collect(Engine.primary.ui.uiRoot, views);
-
-            foreach (TabViewControl view in views)
-                foreach (TabItemControl item in view.Items.ToArray())
+            foreach (NextTabViewControl view in NextTabViewControl.TabViews(Engine.primary.uiNext.uiRoot).ToList())
+                foreach (NextTabItemControl item in view.Items.ToArray())
                     view.CloseTab(item);
-        }
-
-        // Stops at a tab view rather than descending into it — below one lies a document, which is
-        // one control per glyph.
-        private static void Collect(Entity node, List<TabViewControl> found)
-        {
-            if (node == null) return;
-            if (node is TabViewControl view) { found.Add(view); return; }
-
-            foreach (Entity child in node.children.ToArray())
-                Collect(child, found);
         }
         #endregion
     }

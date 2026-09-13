@@ -5,4 +5,5 @@
 	<NextContextButton Text="Close to the right" Action="Tab.CloseRight"/>
 	<NextContextButton Text="Split right" Action="Tab.SplitRight"/>
 	<NextContextButton Text="Split down" Action="Tab.SplitDown"/>
+	<NextContextButton Text="Move to new window" Action="Tab.MoveToNewWindow"/>
 </NextContextMenu>

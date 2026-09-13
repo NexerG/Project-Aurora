@@ -43,6 +43,10 @@
           <xs:enumeration value="Vaults.Open" />
           <xs:enumeration value="Vaults.Add" />
           <xs:enumeration value="Notes.New" />
+          <xs:enumeration value="Notes.NewHere" />
+          <xs:enumeration value="Notes.Rename" />
+          <xs:enumeration value="Notes.Duplicate" />
+          <xs:enumeration value="Notes.Delete" />
           <xs:enumeration value="Settings.Open" />
           <xs:enumeration value="Settings.Save" />
           <xs:enumeration value="Tab.Close" />
@@ -62,6 +66,20 @@
       </xs:simpleType>
     </xs:union>
   </xs:simpleType>
+  <xs:simpleType name="Shutdown">
+    <xs:union memberTypes="actions:Any">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="Session.Capture" />
+          <xs:enumeration value="Notes.SettleUnnamed" />
+          <xs:enumeration value="Notes.SaveEdited" />
+          <xs:enumeration value="Settings.SaveAll" />
+          <xs:enumeration value="Logging.Flush" />
+          <xs:enumeration value="Profiling.Flush" />
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
   <xs:simpleType name="PoolSort">
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>
@@ -76,7 +94,6 @@
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>
         <xs:restriction base="xs:string">
-          <xs:enumeration value="UIEngine.Bootstrap" />
           <xs:enumeration value="ContextMenus.LoadMenus" />
           <xs:enumeration value="Gradients.LoadGradients" />
           <xs:enumeration value="Context.LoadContexts" />
@@ -102,20 +119,6 @@
           <xs:enumeration value="AssetRegistries.PrepareDefaultAssets" />
           <xs:enumeration value="AssetRegistries.PreloadAssets" />
           <xs:enumeration value="AssetRegistries.PrepareAllAssets" />
-        </xs:restriction>
-      </xs:simpleType>
-    </xs:union>
-  </xs:simpleType>
-  <xs:simpleType name="Shutdown">
-    <xs:union memberTypes="actions:Any">
-      <xs:simpleType>
-        <xs:restriction base="xs:string">
-          <xs:enumeration value="Session.Capture" />
-          <xs:enumeration value="Notes.SettleUnnamed" />
-          <xs:enumeration value="Notes.SaveEdited" />
-          <xs:enumeration value="Settings.SaveAll" />
-          <xs:enumeration value="Logging.Flush" />
-          <xs:enumeration value="Profiling.Flush" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>

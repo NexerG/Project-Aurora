@@ -195,12 +195,16 @@ namespace ArctisAurora.Core.UI
             if (context == "NextActiveControl") LoseFocus();
         }
 
-        // Raised only when the context went somewhere outside the box.
+        // Raised only when the context went somewhere outside the box. The session ends here rather
+        // than in the handler, so the caret leaves with the focus whatever onBlur decides to do.
         private void LoseFocus()
         {
             for (Control control = UIEngine.activeControl; control != null; control = control.parent as Control)
                 if (ReferenceEquals(control, this)) return;
 
+            isEditing = false;
+            caret.Blur();
+            InvalidateArrange();
             onBlur?.Invoke();
         }
         #endregion

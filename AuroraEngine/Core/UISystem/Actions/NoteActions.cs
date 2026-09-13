@@ -15,8 +15,14 @@ namespace ArctisAurora.Core.UISystem.Actions
         // Notes the user chose not to save. Remembered for the length of one shutdown attempt, or the
         // walk finds them again and never gets past them.
         private static readonly HashSet<DocumentEditorControl> discarded = new HashSet<DocumentEditorControl>();
+        private static readonly HashSet<ArctisAurora.Core.UI.NextDocumentEditorControl> discardedNext =
+            new HashSet<ArctisAurora.Core.UI.NextDocumentEditorControl>();
 
-        internal static void ForgetDiscarded() => discarded.Clear();
+        internal static void ForgetDiscarded()
+        {
+            discarded.Clear();
+            discardedNext.Clear();
+        }
 
         #region ---- shutdown steps ----
         // One prompt per attempt: the answer re-enters the sequence, which finds the next unnamed
@@ -26,11 +32,21 @@ namespace ArctisAurora.Core.UISystem.Actions
         public static bool SettleUnnamed()
         {
             DocumentEditorControl unnamed = FirstUnnamed();
-            if (unnamed == null) return true;
+            if (unnamed != null)
+            {
+                unnamed.SaveNamed(
+                    Shutdown.Resume,
+                    () => { discarded.Add(unnamed); Shutdown.Resume(); });
 
-            unnamed.SaveNamed(
+                return false;
+            }
+
+            ArctisAurora.Core.UI.NextDocumentEditorControl unnamedNext = FirstUnnamedNext();
+            if (unnamedNext == null) return true;
+
+            unnamedNext.SaveNamed(
                 Shutdown.Resume,
-                () => { discarded.Add(unnamed); Shutdown.Resume(); });
+                () => { discardedNext.Add(unnamedNext); Shutdown.Resume(); });
 
             return false;
         }
@@ -62,6 +78,15 @@ namespace ArctisAurora.Core.UISystem.Actions
                 return;
             }
 
+            ArctisAurora.Core.UI.NextDocumentEditorControl unnamedNext = FirstUnnamedNext(window.uiNext?.uiRoot);
+            if (unnamedNext != null)
+            {
+                unnamedNext.SaveNamed(
+                    () => SettleWindow(window, onSettled),
+                    () => { discardedNext.Add(unnamedNext); SettleWindow(window, onSettled); });
+                return;
+            }
+
             SaveEditedIn(window.ui.uiRoot);
             SaveEditedIn(window.uiNext?.uiRoot);
             onSettled?.Invoke();
@@ -90,12 +115,35 @@ namespace ArctisAurora.Core.UISystem.Actions
             return null;
         }
 
-        // The new stack's editors, which the naming prompt cannot reach yet — an unnamed note is
-        // written under the file name it already has. See 6c in ClaudeMemory/Context/ui-engine-plan.md.
+        private static ArctisAurora.Core.UI.NextDocumentEditorControl FirstUnnamedNext()
+        {
+            foreach (RenderWindow window in Engine.windows.Values)
+                if (FirstUnnamedNext(window.uiNext?.uiRoot) is ArctisAurora.Core.UI.NextDocumentEditorControl found)
+                    return found;
+
+            return null;
+        }
+
+        private static ArctisAurora.Core.UI.NextDocumentEditorControl FirstUnnamedNext(ArctisAurora.Core.UI.Control control)
+        {
+            if (control == null) return null;
+            if (control is ArctisAurora.Core.UI.NextDocumentEditorControl editor
+                && editor.needsNaming && !discardedNext.Contains(editor))
+                return editor;
+
+            foreach (Entity child in control.children)
+                if (child is ArctisAurora.Core.UI.Control childControl
+                    && FirstUnnamedNext(childControl) is ArctisAurora.Core.UI.NextDocumentEditorControl found)
+                    return found;
+
+            return null;
+        }
+
         private static void SaveEditedIn(ArctisAurora.Core.UI.Control control)
         {
             if (control == null) return;
             if (control is ArctisAurora.Core.UI.NextDocumentEditorControl editor
+                && !discardedNext.Contains(editor)
                 && editor.session != null && editor.session.isDirty)
                 editor.Save();
 

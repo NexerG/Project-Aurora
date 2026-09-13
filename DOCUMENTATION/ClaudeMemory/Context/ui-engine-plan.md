@@ -1,7 +1,7 @@
 # UI Engine — state and resume point
 
-**Rewritten:** 2026-09-06. **Landings 1–5, 6a–6b3 and all of 6c are built (2026-09-12). Left: 6c2 the windows
-and hosts, then 6d the delete, and 6b's probe deletion.**
+**Rewritten:** 2026-09-06. **Landings 1–5, all of 6b and 6c, and 6c2's windows and hosts are built
+(2026-09-13). Left: 6c2's by-hand checks — the name and confirm prompts, tear-off — then 6d the delete.**
 
 This file exists so the work can be picked up cold. The decisions and their reasoning are in
 [../Decisions/ui-engine-stack.md](../Decisions/ui-engine-stack.md) and
@@ -85,8 +85,7 @@ never names it) and `NextSplitViewControl` (`"NextSplitView"`, a `NextStackPanel
 
 **`UIEngine`** — `RegisterDirtyRoot` / `ResolveLayout` at the `Interpolate` site, `Poll` at the top of
 `HandleUI`, `HitTest` / `Dispatch` / `Forget` / `SetActiveControl`, the `NextHovering` / `NextActiveControl` /
-`NextPressTarget` contexts, `BuildDrawLists` at the frame edge, the `UI.NextElementOrder` `PoolSort` action,
-and `BuildProbe`.
+`NextPressTarget` contexts, `BuildDrawLists` at the frame edge, and the `UI.NextElementOrder` `PoolSort` action.
 
 **`PointerEvent`** (`target`, `point`, `delta`, `button`, `tapCount`) and **`PointerPhase`** — `Control` has one
 `virtual bool OnPointerX(PointerEvent)` and one `Func<PointerEvent, bool>` per phase, and `RegisterOnX` sets
@@ -108,7 +107,8 @@ texel into colour and alpha, a panel's mask multiplies coverage in last, and bot
 **`ERendererTypes.UIEngine`** and its `AuroraCamera` case — ortho over `WindowRoot.ViewportSize`, falling back
 to the raw swapchain extent when the window has no root.
 
-**Bootstrap** — `<Step Action="UIEngine.Bootstrap"/>` is the last step of `Bootstrap.bootstrap.xml`. It logs
+**Bootstrap** — **gone at 6c2 (2026-09-13)**: the step is out of `Bootstrap.bootstrap.xml` and each host sets
+`uiNext.uiRoot` itself. At landing 2, `<Step Action="UIEngine.Bootstrap"/>` was the last step. It logged
 the row sizes and builds a **scaffolding tree** on `Engine.primary`: a root at window size, padding 24,
 holding `card` (360×220, padding 16, Left/Top) → `inner` → `leaf` (120×60), `clipped` (200×140, Right/Top,
 `clipOutOfBounds`) → `overflow` (320×260), the overlapping `under` (200×120) and `over` (120×200) both
@@ -468,7 +468,8 @@ caller.
   `NextContextMenus` and the menu controls that host them, so `ContextMenu="…"` binds again.~~ **Landed
   2026-09-11, redesigned rather than restored** — a menu is a `*.menu.xml` a control names. See [[next-context-menus]].
 - ~~`NextDragGhost`, which needs `rangeRoot` on `UIEngineModule`.~~ **Landed at 6b3.**
-- Delete `NextProbe.ui.xml` and `UIEngine.BuildProbe`.
+- ~~Delete `NextProbe.ui.xml` and `UIEngine.BuildProbe`.~~ **Done 2026-09-13** — `BuildProbe` went with the
+  `UIEngine.Bootstrap` step; the document and its `next-probe` asset row followed.
 
 → *verify:* a `Next`-prefixed copy of Thorium's `UI.ui.xml` builds the real shell — title bar, tabs, splits,
 the file browser — on the new stack.
@@ -570,7 +571,7 @@ one code path); strikethrough, which no gesture reaches on either stack. **Seen 
 long mixed chain, a saved note carried every span change but not the block's `StylingType` — the same restyle
 saved correctly in isolation twice.
 
-#### 6c2 — windows and hosts
+#### 6c2 — windows and hosts — **BUILT, PARTLY VERIFIED 2026-09-13**
 
 **Moved out of 6b to the end of the port** (user, 2026-09-11) — after 6c, before 6d.
 
@@ -588,6 +589,31 @@ saved correctly in isolation twice.
   `VaultBrowserControl`, beside the ported `NextVaultBrowserControl`.
 
 → *verify:* each window opens, draws and closes on the new stack; Carbon boots on it.
+
+**What landed:**
+- Windows: `SettingsWindow`, `MenuScreen` and `SessionLayout` moved into `Core.UI` on `Next` types;
+  `NextConfirmWindow` and `NextNoteNameWindow` are new; `Settings.ui.xml`, `Vaults.ui.xml` and
+  `TabWindow.ui.xml` are `Next*` documents; tear-off is `NextTabViewControl.TearOff`. The old `ConfirmWindow`
+  and `NoteNameWindow` stay for the old `DocumentEditorControl` and `VaultBrowserControl` and go at 6d.
+- Carbon: ported **in place of** the old classes, not beside them — `NextFrameStripControl`,
+  `NextSessionListControl`, `NextZoneTableControl`, `NextSpanChartControl` (+ `NextChartScrollThumbControl`).
+  `UI.ui.xml` is a `Next*` document and `Carbon.cs` sets `uiNext` only. Click → `OnPointerPress`, wheel →
+  `OnPointerScroll` (`delta.Y > 0` zooms in), drag → `StartDrag` + `OnDrag`.
+- Editor: `CustomTestControl` deleted, nothing else (user, 2026-09-13). The Editor still boots the old stack —
+  `Editor.cs`, its `UI.ui.xml`/`Alt.ui.xml`, `Decorations.ShowAlt`/`ShowMain` — so 6d's delete breaks it.
+
+→ *verified:*
+- **Carbon GUI-verified** (the user, and capture): boots on the new stack alone; a session row loads a capture;
+  strip, flame chart, timeline and zone table fill; a strip click moves both charts; timeline wheel zoom, body
+  pan and thumb drag.
+- **Thorium boot-verified.** Settings GUI-verified — opens, switches category, checkbox toggles, dropdown lists
+  and picks, key capture arms, closes. Vaults opens, draws, closes.
+- **NOT GUI-verified:** the name prompt draws but takes no synthetic click (no hover tint, Cancel dead), and
+  keys cannot reach it past the foreground lock — a by-hand check comes before calling it broken. The confirm
+  prompt and tear-off were not exercised.
+- Found on the way: an armed key capture takes the next **mouse** press. Clicking Settings' close bound
+  `ExitApplication` to `MouseLeft` and quit on the release — `InputHandler.FirstPressed` counts mouse buttons.
+  Shared by both stacks, so it predates the port; nothing was persisted.
 
 #### 6d — delete
 

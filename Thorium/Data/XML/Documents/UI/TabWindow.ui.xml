@@ -1,31 +1,29 @@
-﻿<Window xmlns="http://arctisaurora/AuroraUITypes"
-        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://arctisaurora/UI ../../Schemas/UITypeSchema.xsd"
-        Width="900" Height="640" WindowingMode="WindowSize" Autoscaling="false" ScalingAxis="Vertical" ColorHex="#FBFAF8">
+<?xml version="1.0" encoding="utf-8"?>
+<NextWindow Width="900" Height="640" WindowingMode="WindowSize" Autoscaling="false" ScalingAxis="Vertical" ColorHex="#FBFAF8">
 
-	<WindowFrame ColorHex="#FBFAF8">
-	<StackPanel Orientation="Vertical" ColorHex="#FBFAF8">
+	<NextWindowFrame ColorHex="#FBFAF8">
+	<NextStackPanel Orientation="Vertical" ColorHex="#FBFAF8">
 
-		<TitleBar Orientation="Horizontal" Height="32" ColorHex="#EBEAE5">
-			<Label Text="Thorium" FontSize="14" Width="120" Height="32" ColorHex="#5F5D56"/>
-			<Panel WidthStar="1" Height="32" ColorHex="#EBEAE5" BubbleClick="true"/>
-			<Button Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD" onRelease="Window.Minimize">
-				<Label Text="-" FontSize="16" ColorHex="#5F5D56"/>
-			</Button>
-			<Button Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD" onRelease="Window.MaximizeRestore">
-				<Label Text="[]" FontSize="16" ColorHex="#5F5D56"/>
-			</Button>
-			<Button Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#C42B1E" PressColorHex="#A82318" onRelease="Window.Close">
-				<Label Text="X" FontSize="16" ColorHex="#5F5D56"/>
-			</Button>
-		</TitleBar>
+		<NextTitleBar Orientation="Horizontal" Height="32" ColorHex="#EBEAE5">
+			<NextLabel Text="Thorium" FontSize="14" Width="120" Height="32" ColorHex="#5F5D56"/>
+			<NextPanel WidthStar="1" Height="32" ColorHex="#EBEAE5"/>
+			<NextButton Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD" onRelease="Window.Minimize">
+				<NextLabel Text="-" FontSize="16" ColorHex="#5F5D56"/>
+			</NextButton>
+			<NextButton Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD" onRelease="Window.MaximizeRestore">
+				<NextLabel Text="[]" FontSize="16" ColorHex="#5F5D56"/>
+			</NextButton>
+			<NextButton Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#C42B1E" PressColorHex="#A82318" onRelease="Window.Close">
+				<NextLabel Text="X" FontSize="16" ColorHex="#5F5D56"/>
+			</NextButton>
+		</NextTitleBar>
 
-		<DocumentToolbar Height="30" HorizontalAlignment="Stretch" ColorHex="#FBFAF8"
-						 HoverColorHex="#F0EFEA" PressColorHex="#EAE8E2"
-						 IdleInkColorHex="#6F6D66" ActiveInkColorHex="#3A3833"
-						 SeparatorColorHex="#DCDAD3" FieldColorHex="#EAE8E2"/>
+		<NextDocumentToolbar Height="30" HorizontalAlignment="Stretch" ColorHex="#FBFAF8"
+							 HoverColorHex="#F0EFEA" PressColorHex="#EAE8E2"
+							 IdleInkColorHex="#6F6D66" ActiveInkColorHex="#3A3833"
+							 SeparatorColorHex="#DCDAD3" FieldColorHex="#EAE8E2"/>
 
-		<Workspace Name="Workspace" HeightStar="1" Default="tab-pane" Pane="tab-pane"/>
-	</StackPanel>
-	</WindowFrame>
-</Window>
+		<NextWorkspace Name="Workspace" HeightStar="1" Default="next-tab-pane" Pane="next-tab-pane"/>
+	</NextStackPanel>
+	</NextWindowFrame>
+</NextWindow>

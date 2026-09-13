@@ -6,8 +6,8 @@
   <xs:simpleType name="UI">
     <xs:union memberTypes="types:SpanChartMode types:NextGridSizeMode types:NextScrollDirection types:GradientKind types:TextStyleType types:DockMode types:GridSizeMode types:Scrollable types:NextOrientation types:ControlColor types:FillMode types:HorizontalAlignment types:VeticalAlignment types:WindowingModeEnum types:ScalingAxisEnum types:Orientation" />
   </xs:simpleType>
-  <xs:attributeGroup name="FrameStrip.Attributes">
-    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+  <xs:attributeGroup name="NextFrameStrip.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
     <xs:attribute name="MaxBars" type="xs:int" />
     <xs:attribute name="LaneSpacing" type="xs:float" />
     <xs:attribute name="LabelWidth" type="xs:float" />
@@ -17,13 +17,13 @@
     <xs:attribute name="SelectedBarColorHex" type="xs:string" />
     <xs:attribute name="LabelColorHex" type="xs:string" />
   </xs:attributeGroup>
-  <xs:element name="FrameStrip" type="types:FrameStrip" />
-  <xs:complexType name="FrameStrip">
+  <xs:element name="NextFrameStrip" type="types:NextFrameStrip" />
+  <xs:complexType name="NextFrameStrip">
     <xs:sequence />
-    <xs:attributeGroup ref="types:FrameStrip.Attributes" />
+    <xs:attributeGroup ref="types:NextFrameStrip.Attributes" />
   </xs:complexType>
-  <xs:attributeGroup name="SessionList.Attributes">
-    <xs:attributeGroup ref="types:ScrollableControl.Attributes" />
+  <xs:attributeGroup name="NextSessionList.Attributes">
+    <xs:attributeGroup ref="types:NextScrollable.Attributes" />
     <xs:attribute name="RowHeight" type="xs:int" />
     <xs:attribute name="RowSpacing" type="xs:float" />
     <xs:attribute name="RowColorHex" type="xs:string" />
@@ -33,10 +33,10 @@
     <xs:attribute name="SelectedColorHex" type="xs:string" />
     <xs:attribute name="DetailColorHex" type="xs:string" />
   </xs:attributeGroup>
-  <xs:element name="SessionList" type="types:SessionList" />
-  <xs:complexType name="SessionList">
+  <xs:element name="NextSessionList" type="types:NextSessionList" />
+  <xs:complexType name="NextSessionList">
     <xs:sequence />
-    <xs:attributeGroup ref="types:SessionList.Attributes" />
+    <xs:attributeGroup ref="types:NextSessionList.Attributes" />
   </xs:complexType>
   <xs:simpleType name="SpanChartMode">
     <xs:restriction base="xs:string">
@@ -44,8 +44,8 @@
       <xs:enumeration value="Timeline" />
     </xs:restriction>
   </xs:simpleType>
-  <xs:attributeGroup name="SpanChart.Attributes">
-    <xs:attributeGroup ref="EntityRegistry:VulkanControl.Attributes" />
+  <xs:attributeGroup name="NextSpanChart.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
     <xs:attribute name="TrackColorHex" type="xs:string" />
     <xs:attribute name="ThumbColorHex" type="xs:string" />
     <xs:attribute name="ThumbHoverColorHex" type="xs:string" />
@@ -70,13 +70,13 @@
     <xs:attribute name="RulerLabelColorHex" type="xs:string" />
     <xs:attribute name="ScrollBarHeight" type="xs:float" />
   </xs:attributeGroup>
-  <xs:element name="SpanChart" type="types:SpanChart" />
-  <xs:complexType name="SpanChart">
+  <xs:element name="NextSpanChart" type="types:NextSpanChart" />
+  <xs:complexType name="NextSpanChart">
     <xs:sequence />
-    <xs:attributeGroup ref="types:SpanChart.Attributes" />
+    <xs:attributeGroup ref="types:NextSpanChart.Attributes" />
   </xs:complexType>
-  <xs:attributeGroup name="ZoneTable.Attributes">
-    <xs:attributeGroup ref="types:ScrollableControl.Attributes" />
+  <xs:attributeGroup name="NextZoneTable.Attributes">
+    <xs:attributeGroup ref="types:NextScrollable.Attributes" />
     <xs:attribute name="RowSpacing" type="xs:float" />
     <xs:attribute name="ZoneFontSize" type="xs:int" />
     <xs:attribute name="DetailFontSize" type="xs:int" />
@@ -90,10 +90,10 @@
     <xs:attribute name="ZoneColorHex" type="xs:string" />
     <xs:attribute name="DetailColorHex" type="xs:string" />
   </xs:attributeGroup>
-  <xs:element name="ZoneTable" type="types:ZoneTable" />
-  <xs:complexType name="ZoneTable">
+  <xs:element name="NextZoneTable" type="types:NextZoneTable" />
+  <xs:complexType name="NextZoneTable">
     <xs:sequence />
-    <xs:attributeGroup ref="types:ZoneTable.Attributes" />
+    <xs:attributeGroup ref="types:NextZoneTable.Attributes" />
   </xs:complexType>
   <xs:element name="NextContainer" type="types:NextContainer" />
   <xs:complexType name="NextContainer">
@@ -136,6 +136,24 @@
     </xs:sequence>
     <xs:attributeGroup ref="types:NextContextSubmenu.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="NextRun.Attributes">
+    <xs:attribute name="Text" type="xs:string" />
+    <xs:attribute name="Bold" type="xs:boolean" />
+    <xs:attribute name="Italic" type="xs:boolean" />
+    <xs:attribute name="Strikethrough" type="xs:boolean" />
+    <xs:attribute name="ColorHex" type="xs:string" />
+    <xs:attribute name="ControlColor" type="xs:string" />
+    <xs:attribute name="Gradient" type="xs:string" />
+    <xs:attribute name="FontName" type="xs:string" />
+    <xs:attribute name="FontSize" type="xs:int" />
+    <xs:attribute name="FontSizeAuthored" type="xs:boolean" />
+    <xs:attribute name="StylingType" type="types:TextStyleType" />
+  </xs:attributeGroup>
+  <xs:element name="NextRun" type="types:NextRun" />
+  <xs:complexType name="NextRun">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextRun.Attributes" />
+  </xs:complexType>
   <xs:attributeGroup name="NextButton.Attributes">
     <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
     <xs:attribute name="HoverColorHex" type="xs:string" />
@@ -143,6 +161,11 @@
   </xs:attributeGroup>
   <xs:element name="NextButton" type="types:NextButton" />
   <xs:complexType name="NextButton">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextButton.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextCheckBox" type="types:NextCheckBox" />
+  <xs:complexType name="NextCheckBox">
     <xs:sequence />
     <xs:attributeGroup ref="types:NextButton.Attributes" />
   </xs:complexType>
@@ -154,6 +177,36 @@
   <xs:complexType name="NextDock">
     <xs:sequence />
     <xs:attributeGroup ref="types:NextDock.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextDocumentEditor.Attributes">
+    <xs:attributeGroup ref="types:NextScrollable.Attributes" />
+    <xs:attribute name="CaretColorHex" type="xs:string" />
+    <xs:attribute name="SelectionColorHex" type="xs:string" />
+    <xs:attribute name="Source" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="NextDocumentEditor" type="types:NextDocumentEditor" />
+  <xs:complexType name="NextDocumentEditor">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextDocumentEditor.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextDocumentToolbar.Attributes">
+    <xs:attributeGroup ref="types:NextStackPanel.Attributes" />
+    <xs:attribute name="HoverColorHex" type="xs:string" />
+    <xs:attribute name="PressColorHex" type="xs:string" />
+    <xs:attribute name="IdleInkColorHex" type="xs:string" />
+    <xs:attribute name="ActiveInkColorHex" type="xs:string" />
+    <xs:attribute name="SeparatorColorHex" type="xs:string" />
+    <xs:attribute name="FieldColorHex" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="NextDocumentToolbar" type="types:NextDocumentToolbar" />
+  <xs:complexType name="NextDocumentToolbar">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextDocumentToolbar.Attributes" />
+  </xs:complexType>
+  <xs:element name="NextDropdown" type="types:NextDropdown" />
+  <xs:complexType name="NextDropdown">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextButton.Attributes" />
   </xs:complexType>
   <xs:attributeGroup name="NextEditableLabel.Attributes">
     <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
@@ -241,15 +294,39 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:NextIcon.Attributes" />
   </xs:complexType>
+  <xs:element name="NextKeyCapture" type="types:NextKeyCapture" />
+  <xs:complexType name="NextKeyCapture">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextButton.Attributes" />
+  </xs:complexType>
   <xs:element name="NextLabel" type="types:NextLabel" />
   <xs:complexType name="NextLabel">
     <xs:sequence />
     <xs:attributeGroup ref="types:NextTextRun.Attributes" />
   </xs:complexType>
+  <xs:element name="NextMenuButton" type="types:NextMenuButton" />
+  <xs:complexType name="NextMenuButton">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextButton.Attributes" />
+  </xs:complexType>
   <xs:element name="NextPanel" type="types:NextPanel" />
   <xs:complexType name="NextPanel">
     <xs:sequence />
     <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="NextDocument.Attributes">
+    <xs:attribute name="Name" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="NextDocument" type="types:NextDocument" />
+  <xs:complexType name="NextDocument">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="1" name="DocumentLayout" type="types:DocumentLayout">
+        <xs:annotation>
+          <xs:documentation>Layout parameters for this note.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attributeGroup ref="types:NextDocument.Attributes" />
   </xs:complexType>
   <xs:simpleType name="NextScrollDirection">
     <xs:restriction base="xs:string">
@@ -312,6 +389,8 @@
     <xs:attribute name="GripColorHex" type="xs:string" />
     <xs:attribute name="GripHoverColorHex" type="xs:string" />
     <xs:attribute name="GripPressColorHex" type="xs:string" />
+    <xs:attribute name="TearOffDocument" type="xs:string" />
+    <xs:attribute name="TabContextMenu" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="NextTabView" type="types:NextTabView" />
   <xs:complexType name="NextTabView">
@@ -457,10 +536,6 @@
   <xs:element name="Panel" type="types:Panel" />
   <xs:group name="IXMLChild_UI.Children">
     <xs:choice>
-      <xs:element name="FrameStrip" type="types:FrameStrip" />
-      <xs:element name="SessionList" type="types:SessionList" />
-      <xs:element name="SpanChart" type="types:SpanChart" />
-      <xs:element name="ZoneTable" type="types:ZoneTable" />
       <xs:element name="Icon" type="types:Icon" />
       <xs:element name="Panel" type="types:Panel" />
       <xs:element name="TitleBar" type="types:TitleBar" />

@@ -340,6 +340,7 @@
     <xs:attribute name="GripColorHex" type="xs:string" />
     <xs:attribute name="GripHoverColorHex" type="xs:string" />
     <xs:attribute name="GripPressColorHex" type="xs:string" />
+    <xs:attribute name="TearOffDocument" type="xs:string" />
     <xs:attribute name="TabContextMenu" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="NextTabView" type="types:NextTabView" />

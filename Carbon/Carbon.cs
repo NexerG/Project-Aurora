@@ -1,5 +1,5 @@
 using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.UISystem.Controls;
+using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
 using Carbon.Editor.CustomControls;
 
@@ -18,24 +18,24 @@ namespace Carbon
             engine.Init(false);
             InputHandler.SetActiveKeybindGroup("InputMap");
 
-            WindowControl windowControl = (WindowControl)VulkanControl.ParseXML("main");
+            WindowRoot root = (WindowRoot)Control.ParseXML("main");
 
             Engine.primary.uiDocument = "main";
-            Engine.primary.ui.uiRoot = windowControl;
+            Engine.primary.uiNext.uiRoot = root;
 
-            Wire(windowControl);
+            Wire(root);
 
             engine.Run();
         }
 
         // The views only ever hear about a capture through here, so no control looks another up.
-        private static void Wire(WindowControl root)
+        private static void Wire(WindowRoot root)
         {
-            SessionListControl sessions = (SessionListControl)root.FindByName("Sessions");
-            FrameStripControl strip = (FrameStripControl)root.FindByName("Strip");
-            SpanChartControl flame = (SpanChartControl)root.FindByName("Flame");
-            SpanChartControl timeline = (SpanChartControl)root.FindByName("Timeline");
-            ZoneTableControl zones = (ZoneTableControl)root.FindByName("Zones");
+            NextSessionListControl sessions = (NextSessionListControl)root.FindByName("Sessions");
+            NextFrameStripControl strip = (NextFrameStripControl)root.FindByName("Strip");
+            NextSpanChartControl flame = (NextSpanChartControl)root.FindByName("Flame");
+            NextSpanChartControl timeline = (NextSpanChartControl)root.FindByName("Timeline");
+            NextZoneTableControl zones = (NextZoneTableControl)root.FindByName("Zones");
 
             // The strip is last, because taking a session is what makes it choose a frame.
             sessions.onSessionLoaded = session =>

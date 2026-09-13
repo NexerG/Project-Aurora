@@ -57,9 +57,11 @@ namespace ArctisAurora.Core.UISystem.Actions
         }
 
         [A_XSDActionDependency("Tab.MoveToNewWindow", "UI", "Moves this tab into a window of its own")]
-        public static void MoveToNewWindow(VulkanControl target)
+        public static void MoveToNewWindow()
         {
-            TabStripButtonControl tab = target as TabStripButtonControl;
+            if (NextTab() is NextTabStripButtonControl next) { next.owner.TearOff(next.item); return; }
+
+            TabStripButtonControl? tab = Tab();
             tab?.owner.TearOff(tab.item);
         }
 

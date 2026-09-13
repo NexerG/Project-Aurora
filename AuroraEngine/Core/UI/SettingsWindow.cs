@@ -1,13 +1,7 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.UISystem.Actions;
-using ArctisAurora.Core.UISystem.Controls;
-using ArctisAurora.Core.UISystem.Controls.Containers;
-using ArctisAurora.Core.UISystem.Controls.Interactable;
-using ArctisAurora.Core.UISystem.Controls.Text;
-using ArctisAurora.Core.UISystem.Controls.Text.Editing;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
@@ -15,7 +9,7 @@ using Silk.NET.Vulkan;
 using System.ComponentModel;
 using System.Reflection;
 
-namespace ArctisAurora.Core.UISystem
+namespace ArctisAurora.Core.UI
 {
     // Every settings group the registry knows, plus the active keybinds, as one screen. The shell is
     // Settings.ui.xml — frame, title bar and star sizing come from there; only the rows are reflected,
@@ -44,7 +38,7 @@ namespace ArctisAurora.Core.UISystem
         private const string buttonHoverHex = "#4A4A4A";
         private const string buttonPressHex = "#2A2A2A";
 
-        private static StackPanelControl _rows = null!;
+        private static NextStackPanelControl _rows = null!;
 
         public static unsafe void Open(RenderWindow source)
         {
@@ -61,16 +55,16 @@ namespace ArctisAurora.Core.UISystem
             RenderWindow window = Engine.OpenMenuWindow(windowName, windowWidth, windowHeight, true);
             window.isActivable = true;
 
-            WindowControl root = (WindowControl)VulkanControl.ParseXML(document);
-            window.ui.uiRoot = root;
+            WindowRoot root = (WindowRoot)Control.ParseXML(document);
+            window.uiNext.uiRoot = root;
 
-            StackPanelControl categories = (StackPanelControl)root.FindByName("Categories");
-            _rows = (StackPanelControl)root.FindByName("Rows");
+            NextStackPanelControl categories = (NextStackPanelControl)root.FindByName("Categories");
+            _rows = (NextStackPanelControl)root.FindByName("Rows");
 
             foreach (string category in Categories())
             {
                 string named = category;
-                ButtonControl button = Button(named, () => ShowCategory(named), categoryWidth);
+                NextButtonControl button = Button(named, () => ShowCategory(named), categoryWidth);
                 button.horizontalPosition = 0f;
                 categories.AddChild(button);
             }
@@ -155,21 +149,21 @@ namespace ArctisAurora.Core.UISystem
             }
         }
 
-        private static VulkanControl Row(string caption, VulkanControl editor)
+        private static Control Row(string caption, Control editor)
         {
-            StackPanelControl row = new StackPanelControl
+            NextStackPanelControl row = new NextStackPanelControl
             {
-                orientation = StackPanelControl.Orientation.Horizontal,
-                maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible"),
+                orientation = NextStackPanelControl.Orientation.Horizontal,
+                alpha = 0f,
                 preferredHeight = rowHeight,
                 Spacing = 10
             };
 
-            row.AddChild(new LabelControl
+            row.AddChild(new NextLabelControl
             {
                 text = caption,
                 fontSize = 14,
-                controlColorHex = labelHex,
+                colorHex = labelHex,
                 preferredWidth = labelWidth,
                 horizontalPosition = 0f
             });
@@ -182,16 +176,16 @@ namespace ArctisAurora.Core.UISystem
         #region ---- editors ----
         // The editor a member's type asks for. An enum restricted by [A_XSDDomain] offers the
         // domain's variants, which is the same set the loader would accept.
-        private static VulkanControl Editor(Setting setting, MemberInfo member)
+        private static Control Editor(Setting setting, MemberInfo member)
         {
             Type memberType = XmlReflection.MemberType(member);
             object current = XmlReflection.GetMember(member, setting);
 
             if (memberType == typeof(bool))
             {
-                CheckBoxControl box = new CheckBoxControl
+                NextCheckBoxControl box = new NextCheckBoxControl
                 {
-                    controlColorHex = fieldGroundHex,
+                    colorHex = fieldGroundHex,
                     hoverColorHex = buttonHoverHex,
                     isChecked = (bool)current
                 };
@@ -203,14 +197,14 @@ namespace ArctisAurora.Core.UISystem
             {
                 Type domain = A_XSDDomainAttribute.DomainOf(member) ?? memberType;
 
-                DropdownControl dropdown = new DropdownControl
+                NextDropdownControl dropdown = new NextDropdownControl
                 {
                     preferredWidth = editorWidth,
                     preferredHeight = rowHeight,
-                    controlColorHex = fieldGroundHex,
+                    colorHex = fieldGroundHex,
                     hoverColorHex = buttonHoverHex,
                     pressColorHex = buttonPressHex,
-                    cornerRadius = new VulkanControl.CornerRadii(3),
+                    cornerRadius = new CornerRadii(3),
                     options = Enum.GetNames(domain),
                     selected = current?.ToString() ?? ""
                 };
@@ -218,14 +212,14 @@ namespace ArctisAurora.Core.UISystem
                 return dropdown;
             }
 
-            TextBoxControl field = new TextBoxControl
+            NextTextBoxControl field = new NextTextBoxControl
             {
                 preferredWidth = editorWidth,
                 preferredHeight = rowHeight,
-                controlColorHex = fieldGroundHex,
+                colorHex = fieldGroundHex,
                 textColorHex = "#EAEAEA",
                 fontSize = 14,
-                padding = new VulkanControl.Thickness(0, 6, 0, 8),
+                padding = new Thickness(0, 6, 0, 8),
                 text = current?.ToString() ?? ""
             };
             field.onCommit = text =>
@@ -245,28 +239,28 @@ namespace ArctisAurora.Core.UISystem
         }
 
         // A locked bind is the build's, so it reads as text with nothing to press.
-        private static VulkanControl KeybindEditor(KeybindDefinition bind)
+        private static Control KeybindEditor(KeybindDefinition bind)
         {
             List<Keys> modifiers = bind.modifiers.Select(m => m.key).ToList();
 
             if (bind.access == KeybindAccess.Locked)
-                return new LabelControl
+                return new NextLabelControl
                 {
-                    text = KeyCaptureControl.Describe(bind.trigger, modifiers),
+                    text = NextKeyCaptureControl.Describe(bind.trigger, modifiers),
                     fontSize = 14,
-                    controlColorHex = "#6E6E6E",
+                    colorHex = "#6E6E6E",
                     preferredWidth = editorWidth,
                     horizontalPosition = 0f
                 };
 
-            KeyCaptureControl capture = new KeyCaptureControl
+            NextKeyCaptureControl capture = new NextKeyCaptureControl
             {
                 preferredWidth = editorWidth,
                 preferredHeight = rowHeight,
-                controlColorHex = fieldGroundHex,
+                colorHex = fieldGroundHex,
                 hoverColorHex = buttonHoverHex,
                 pressColorHex = buttonPressHex,
-                cornerRadius = new VulkanControl.CornerRadii(3)
+                cornerRadius = new CornerRadii(3)
             };
             capture.SetCombo(bind.trigger, modifiers);
             capture.onCaptured = (trigger, held) =>
@@ -282,19 +276,19 @@ namespace ArctisAurora.Core.UISystem
             return capture;
         }
 
-        private static ButtonControl Button(string caption, Action action, int width = 90)
+        private static NextButtonControl Button(string caption, Action action, int width = 90)
         {
-            ButtonControl button = new ButtonControl
+            NextButtonControl button = new NextButtonControl
             {
                 preferredWidth = width,
                 preferredHeight = 26,
-                controlColorHex = buttonHex,
+                colorHex = buttonHex,
                 hoverColorHex = buttonHoverHex,
                 pressColorHex = buttonPressHex,
-                cornerRadius = new VulkanControl.CornerRadii(4)
+                cornerRadius = new CornerRadii(4)
             };
-            button.AddChild(new LabelControl { text = caption, fontSize = 14, controlColorHex = labelHex });
-            button.RegisterOnRelease(action);
+            button.AddChild(new NextLabelControl { text = caption, fontSize = 14, colorHex = labelHex });
+            button.RegisterOnRelease(_ => { action(); return true; });
             return button;
         }
         #endregion

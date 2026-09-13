@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Thorium's shell on the new stack, mirroring UI.ui.xml. Stubs stand in for the controls that
-     have not been ported: the document toolbar is a bare band.
-     Replaces NextProbe.ui.xml as the bench. -->
+     have not been ported: the document toolbar is a bare band. -->
 <NextWindow Width="1280" Height="720" WindowingMode="WindowSize" Autoscaling="false" ScalingAxis="Vertical" ColorHex="#FBFAF8">
 
 	<NextWindowFrame ColorHex="#FBFAF8">
