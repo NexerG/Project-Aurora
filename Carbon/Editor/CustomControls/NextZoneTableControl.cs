@@ -35,6 +35,9 @@ namespace Carbon.Editor.CustomControls
         [A_XSDElementProperty("SwatchWidth", "UI", "Width of the depth colour bar ahead of a zone's name, in pixels.")]
         public float swatchWidth = 3f;
 
+        [A_XSDElementProperty("DeltaWidth", "UI", "Width of the change-against-baseline column in pixels.")]
+        public float deltaWidth = 100f;
+
         // palette
         [A_XSDElementProperty("DepthColorsHex", "UI", "Comma separated colours, one per nesting level, cycled. Matches the span chart.")]
         public string depthColorsHex = "#B8A48C,#C4A882,#A8B49C,#B0A8BC,#C0B098";
@@ -50,6 +53,12 @@ namespace Carbon.Editor.CustomControls
 
         [A_XSDElementProperty("DetailColorHex", "UI", "Text color of a zone's counts line.")]
         public string detailColorHex = "#918F87";
+
+        [A_XSDElementProperty("SlowerColorHex", "UI", "Text color of a zone's change when it got slower than the baseline.")]
+        public string slowerColorHex = "#B0452E";
+
+        [A_XSDElementProperty("FasterColorHex", "UI", "Text color of a zone's change when it got faster than the baseline.")]
+        public string fasterColorHex = "#5B7F45";
         #endregion
 
         // one zone over a whole capture, plus where it sits in the nesting
@@ -66,6 +75,8 @@ namespace Carbon.Editor.CustomControls
 
         private readonly NextStackPanelControl rows = new NextStackPanelControl();
         private string[] _depthColors = Array.Empty<string>();
+        private CaptureSession? _session;
+        private CaptureSession? _baseline;
 
         public NextZoneTableControl()
         {
@@ -78,6 +89,8 @@ namespace Carbon.Editor.CustomControls
 
         public void SetSession(CaptureSession session)
         {
+            _session = session;
+
             foreach (Entity row in rows.children.ToArray())
                 row.Destroy();
 
@@ -86,16 +99,42 @@ namespace Carbon.Editor.CustomControls
             _depthColors = depthColorsHex.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (_depthColors.Length == 0) _depthColors = new[] { "#B8A48C" };
 
+            if (_baseline != null) rows.AddChild(Header($"compared with {_baseline.name}"));
+
             bool first = true;
             foreach (CapturedThread thread in session.threads)
             {
                 if (!first) rows.AddChild(Separator());
                 first = false;
-                Fill(thread);
+                Fill(thread, _baseline?.threads.Find(t => t.thread == thread.thread));
             }
+
+            if (_baseline != null)
+                foreach (CapturedThread gone in _baseline.threads)
+                    if (!session.threads.Exists(t => t.thread == gone.thread))
+                    {
+                        rows.AddChild(Separator());
+                        rows.AddChild(Header($"{gone.thread} — only in baseline"));
+                    }
 
             InvalidateLayout();
         }
+
+        // Compares every session shown after this against the baseline, or stops comparing on null.
+        public void SetBaseline(CaptureSession? baseline)
+        {
+            _baseline = baseline;
+            if (_session != null) SetSession(_session);
+        }
+
+        private Control Header(string text) => new NextLabelControl
+        {
+            text = text,
+            fontSize = zoneFontSize,
+            colorHex = headerColorHex,
+            preferredHeight = 22,
+            horizontalPosition = 0f
+        };
 
         private Control Separator() => new NextPanelControl
         {
@@ -106,14 +145,48 @@ namespace Carbon.Editor.CustomControls
             hitTestable = false
         };
 
-        private void Fill(CapturedThread thread)
+        private void Fill(CapturedThread thread, CapturedThread? baseThread)
+        {
+            Dictionary<(string zone, string name), long> counters = new Dictionary<(string, string), long>();
+            Dictionary<string, Rolled> zones = Roll(thread, counters, out long threadBytes);
+            Dictionary<string, Rolled>? baseZones = baseThread != null
+                ? Roll(baseThread, new Dictionary<(string, string), long>(), out _)
+                : null;
+
+            string compared = _baseline == null ? "" : baseThread != null ? $" vs {baseThread.frames.Count}" : ", not in baseline";
+            rows.AddChild(Header($"{thread.thread} — {thread.frames.Count} frames{compared}, {CapturedThread.Bytes(threadBytes)} allocated{(thread.dropped > 0 ? $", {thread.dropped} dropped" : "")}{(thread.truncated ? ", truncated" : "")}"));
+
+            HashSet<string> emitted = new HashSet<string>();
+            Emit(thread, zones, counters, string.Empty, 0, emitted, baseThread, baseZones);
+
+            // A zone whose parent never became a row would otherwise vanish from a diagnostic table.
+            foreach (KeyValuePair<string, Rolled> zone in zones.OrderByDescending(z => z.Value.total))
+                if (emitted.Add(zone.Key))
+                    rows.AddChild(Row(thread, zone.Key, zone.Value, counters, 0, baseThread, baseZones));
+
+            if (baseThread == null || baseZones == null) return;
+
+            foreach (KeyValuePair<string, Rolled> zone in baseZones.OrderByDescending(z => z.Value.total))
+                if (!zones.ContainsKey(zone.Key))
+                    rows.AddChild(new NextLabelControl
+                    {
+                        text = $"{zone.Key} — gone, was {PerFrame(baseThread, zone.Value.total):F2}ms/f",
+                        fontSize = detailFontSize,
+                        colorHex = detailColorHex,
+                        preferredHeight = 17,
+                        horizontalPosition = 0f
+                    });
+        }
+
+        // Every zone of one thread over the whole capture, and its counters into the table given.
+        private static Dictionary<string, Rolled> Roll(CapturedThread thread,
+            Dictionary<(string zone, string name), long> counters, out long threadBytes)
         {
             Dictionary<string, Rolled> zones = new Dictionary<string, Rolled>();
-            Dictionary<(string zone, string name), long> counters = new Dictionary<(string, string), long>();
 
             // Spans arrive in pre-order, so whatever is open one level up is the parent.
             string[] open = new string[32];
-            long threadBytes = 0;
+            threadBytes = 0;
 
             foreach (CapturedFrame frame in thread.frames)
             {
@@ -153,27 +226,13 @@ namespace Carbon.Editor.CustomControls
                 }
             }
 
-            rows.AddChild(new NextLabelControl
-            {
-                text = $"{thread.thread} — {thread.frames.Count} frames, {CapturedThread.Bytes(threadBytes)} allocated{(thread.dropped > 0 ? $", {thread.dropped} dropped" : "")}{(thread.truncated ? ", truncated" : "")}",
-                fontSize = zoneFontSize,
-                colorHex = headerColorHex,
-                preferredHeight = 22,
-                horizontalPosition = 0f
-            });
-
-            HashSet<string> emitted = new HashSet<string>();
-            Emit(thread, zones, counters, string.Empty, 0, emitted);
-
-            // A zone whose parent never became a row would otherwise vanish from a diagnostic table.
-            foreach (KeyValuePair<string, Rolled> zone in zones.OrderByDescending(z => z.Value.total))
-                if (emitted.Add(zone.Key))
-                    rows.AddChild(Row(thread, zone.Key, zone.Value, counters, 0));
+            return zones;
         }
 
         // Children under their parent, and siblings by cost.
         private void Emit(CapturedThread thread, Dictionary<string, Rolled> zones,
-            Dictionary<(string zone, string name), long> counters, string parent, int depth, HashSet<string> emitted)
+            Dictionary<(string zone, string name), long> counters, string parent, int depth, HashSet<string> emitted,
+            CapturedThread? baseThread, Dictionary<string, Rolled>? baseZones)
         {
             foreach (KeyValuePair<string, Rolled> zone in zones
                 .Where(z => z.Value.depth == depth && z.Value.parent == parent)
@@ -182,13 +241,14 @@ namespace Carbon.Editor.CustomControls
             {
                 if (!emitted.Add(zone.Key)) continue;
 
-                rows.AddChild(Row(thread, zone.Key, zone.Value, counters, depth));
-                Emit(thread, zones, counters, zone.Key, depth + 1, emitted);
+                rows.AddChild(Row(thread, zone.Key, zone.Value, counters, depth, baseThread, baseZones));
+                Emit(thread, zones, counters, zone.Key, depth + 1, emitted, baseThread, baseZones);
             }
         }
 
         private Control Row(CapturedThread thread, string name, Rolled rolled,
-            Dictionary<(string zone, string name), long> counters, int depth)
+            Dictionary<(string zone, string name), long> counters, int depth,
+            CapturedThread? baseThread, Dictionary<string, Rolled>? baseZones)
         {
             float inset = indent * depth;
             float gutter = swatchWidth + 6;
@@ -221,13 +281,16 @@ namespace Carbon.Editor.CustomControls
 
             head.AddChild(new NextLabelControl
             {
-                text = $"{thread.Ms(rolled.total):F2}ms",
+                text = _baseline != null ? $"{PerFrame(thread, rolled.total):F2}ms/f" : $"{thread.Ms(rolled.total):F2}ms",
                 fontSize = zoneFontSize,
                 colorHex = zoneColorHex,
                 preferredWidth = totalWidth,
                 preferredHeight = 17,
                 horizontalPosition = 1f
             });
+
+            if (_baseline != null)
+                head.AddChild(Delta(PerFrame(thread, rolled.total), name, baseThread, baseZones));
 
             NextStackPanelControl row = new NextStackPanelControl
             {
@@ -251,6 +314,38 @@ namespace Carbon.Editor.CustomControls
 
             return row;
         }
+
+        // A zone's change in milliseconds per frame against the same zone in the baseline.
+        private Control Delta(double now, string name, CapturedThread? baseThread, Dictionary<string, Rolled>? baseZones)
+        {
+            string text = "new";
+            string color = detailColorHex;
+
+            if (baseThread != null && baseZones != null && baseZones.TryGetValue(name, out Rolled before))
+            {
+                double then = PerFrame(baseThread, before.total);
+                double change = now - then;
+                text = then > 0
+                    ? $"{change:+0.00;-0.00;0.00} {change / then * 100:+0;-0;0}%"
+                    : $"{change:+0.00;-0.00;0.00}";
+
+                double shown = Math.Round(change, 2);
+                color = shown > 0 ? slowerColorHex : shown < 0 ? fasterColorHex : detailColorHex;
+            }
+
+            return new NextLabelControl
+            {
+                text = text,
+                fontSize = zoneFontSize,
+                colorHex = color,
+                preferredWidth = deltaWidth,
+                preferredHeight = 17,
+                horizontalPosition = 1f
+            };
+        }
+
+        private static double PerFrame(CapturedThread thread, long ticks) =>
+            thread.Ms(ticks) / Math.Max(1, thread.frames.Count);
 
         private static string Counters(string zone, Dictionary<(string zone, string name), long> counters)
         {

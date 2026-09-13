@@ -172,6 +172,8 @@ The measured window opens at the *end* of `Frame.Begin` and closes at the top of
 
 The viewer that draws these files is **Carbon**, a fourth application on the engine's own UI beside Thorium and the Editor. It shows the session list, a bar per frame per thread, one frame's flame chart, every thread aligned on the absolute clock, and the zone totals rolled up over the capture. The flame chart and the timeline open one third and two thirds of the column and a grip between them drags that ratio, since a boot capture wants most of its room in the flame chart and a three-thread session wants it in the timeline. See `ClaudeMemory/Decisions/carbon-frame-viewer.md`.
 
+Two captures compare in the zone table. **Pin as baseline** keeps the loaded session, and every session loaded after it shows each zone as milliseconds per frame beside its change against the same thread and zone in the baseline, slower in red and faster in green, until **Clear baseline**. The comparison is per frame because a total is a sum over however many frames the file holds, and two captures rarely hold the same number. The charts and the frame strip stay on one capture, since frame N of one run has no counterpart in another.
+
 ### Reading the output
 ```
 Main 1002ms — allocated 12.41MB

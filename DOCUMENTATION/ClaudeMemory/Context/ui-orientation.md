@@ -281,7 +281,8 @@ partial count. Why: [[ui-draw-list]], [[ui-draw-list-publish]].
   `onSessionLoaded`.
 - `…NextSpanChartControl` `<NextSpanChart Mode>` · ContainerControl — flame chart / timeline; `OnPointerScroll`
   zooms, `OnPointerPress` + `OnDrag` pan; nested `NextChartScrollThumbControl`.
-- `…NextZoneTableControl` `<NextZoneTable>` · NextScrollableControl — zone statistics per thread.
+- `…NextZoneTableControl` `<NextZoneTable>` · NextScrollableControl — zone statistics per thread; `SetSession`,
+  `SetBaseline` (per-frame diff). XML `DeltaWidth`, `SlowerColorHex`, `FasterColorHex`.
 
 ## Looking at it
 

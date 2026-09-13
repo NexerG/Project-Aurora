@@ -84,11 +84,14 @@
     <xs:attribute name="TotalWidth" type="xs:float" />
     <xs:attribute name="Indent" type="xs:float" />
     <xs:attribute name="SwatchWidth" type="xs:float" />
+    <xs:attribute name="DeltaWidth" type="xs:float" />
     <xs:attribute name="DepthColorsHex" type="xs:string" />
     <xs:attribute name="SeparatorColorHex" type="xs:string" />
     <xs:attribute name="HeaderColorHex" type="xs:string" />
     <xs:attribute name="ZoneColorHex" type="xs:string" />
     <xs:attribute name="DetailColorHex" type="xs:string" />
+    <xs:attribute name="SlowerColorHex" type="xs:string" />
+    <xs:attribute name="FasterColorHex" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="NextZoneTable" type="types:NextZoneTable" />
   <xs:complexType name="NextZoneTable">

@@ -20,17 +20,28 @@
 
 		<NextStackPanel Orientation="Horizontal" HeightStar="1" ColorHex="#FBFAF8">
 
-			<NextStackPanel Orientation="Vertical" Width="340" MinWidth="220" ColorHex="#F2F1ED" Padding="8" Spacing="8">
+			<NextStackPanel Orientation="Vertical" Width="420" MinWidth="220" ColorHex="#F2F1ED" Padding="8" Spacing="8">
 				<NextButton Height="28" HorizontalAlignment="Stretch" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
 							CornerRadius="4" onRelease="Carbon.LoadCapture">
 					<NextLabel Text="Load XML" FontSize="13" ColorHex="#5F5D56"/>
 				</NextButton>
+				<NextStackPanel Orientation="Horizontal" Height="28" HorizontalAlignment="Stretch" Spacing="8" ColorHex="#F2F1ED">
+					<NextButton WidthStar="1" Height="28" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
+								CornerRadius="4" onRelease="Carbon.PinBaseline">
+						<NextLabel Text="Pin as baseline" FontSize="13" ColorHex="#5F5D56"/>
+					</NextButton>
+					<NextButton WidthStar="1" Height="28" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
+								CornerRadius="4" onRelease="Carbon.ClearBaseline">
+						<NextLabel Text="Clear baseline" FontSize="13" ColorHex="#5F5D56"/>
+					</NextButton>
+				</NextStackPanel>
 				<NextSessionList Name="Sessions" Height="150" ColorHex="#F2F1ED"
 								 RowColorHex="#E3E1D9" RowHoverColorHex="#DCDAD3" RowPressColorHex="#D0CEC6"
 								 NameColorHex="#23221E" SelectedColorHex="#3A3833" DetailColorHex="#918F87"
 								 ThumbColorHex="#D7D5CD" ThumbHoverColorHex="#C9C6BC" ThumbPressColorHex="#BAB7AC"/>
 				<NextZoneTable Name="Zones" HeightStar="1" ColorHex="#F2F1ED"
-							   Indent="14" SwatchWidth="3" SeparatorColorHex="#DCDAD3"
+							   Indent="14" SwatchWidth="3" DeltaWidth="100" SeparatorColorHex="#DCDAD3"
+							   SlowerColorHex="#B0452E" FasterColorHex="#5B7F45"
 							   DepthColorsHex="#B8A48C,#C4A882,#A8B49C,#B0A8BC,#C0B098"
 							   HeaderColorHex="#3A3833" ZoneColorHex="#23221E" DetailColorHex="#918F87"
 							   ThumbColorHex="#D7D5CD" ThumbHoverColorHex="#C9C6BC" ThumbPressColorHex="#BAB7AC"/>

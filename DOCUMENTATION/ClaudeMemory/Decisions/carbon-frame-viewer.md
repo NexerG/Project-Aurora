@@ -235,6 +235,35 @@ neighbour.
 The ruler's step is unaffected — `Ticks()` chooses from `PlotWidth()` and this grip moves heights, so
 the "no `Rebuild` on resize" gap below is not reachable through it.
 
+### 14. Two captures compare through a pinned baseline, in the zone table only (2026-09-13)
+
+The user left the shape to Claude ("I'll let you decide"). Before this, comparing meant two Carbon
+processes or flicking between sessions.
+
+- `Carbon.PinBaseline` hands `NextSessionListControl.Loaded` to `NextZoneTableControl.SetBaseline`;
+  `Carbon.ClearBaseline` passes `null`. Every session loaded afterwards is diffed against it.
+- While pinned, a zone's number is **ms per frame** and a delta column reads `+16.05 +372%`, coloured
+  `SlowerColorHex` / `FasterColorHex` by the sign of the change *as printed*. A `compared with <name>`
+  row leads the table and each thread header adds `vs <baseline frames>`.
+- Matching is **thread name + zone name**, the key the roll-up already collapses on. A zone only in the
+  loaded capture reads `new`; one only in the baseline trails its thread as `<zone> — gone, was X ms/f`;
+  a thread only in the baseline gets a header line.
+- The roll-up left `Fill` for `Roll(thread, counters, out bytes)`, so both captures go through one path.
+
+**The zone table is the only view where two runs share keys.** Frame N of one run has no counterpart in
+another, so the strip, flame chart and timeline side by side are still two pictures compared by eye.
+Rejected: a second set of views (A/B columns) — more UI, same eyeballing; a second window in the same
+process — cheapest, and equivalent to the two Carbons the user said did not work.
+
+**Per frame, because totals sum however many frames the file holds.** Continuous captures hold any number:
+2000 frames against 1500 reads −25% on every zone before anything changed. min/max are per instance
+already and stay on the detail line untouched.
+
+**ms/f only while pinned**, so a single capture still reads in totals, the way §8's report does.
+
+**A button pins, not a session row**, because a folder picked through Load XML outside `captureRoot`
+never becomes a row. The `compared with` row names the baseline wherever it came from.
+
 ## Facts that were expensive to establish
 
 - **A `widthStar` `LabelControl` inside a horizontal `StackPanel` is measured at width 0 and wraps to
@@ -264,7 +293,8 @@ the "no `Rebuild` on resize" gap below is not reachable through it.
 - **`ExitApplication` is defined per application**, in each host's `Decorations.cs`, not in the
   engine. Carbon needed its own.
 - **U+2026 (`…`) is not in the baked charset**, so "Load XML…" renders as "Load XML". Thorium's
-  "Add vault…" has the same hole.
+  "Add vault…" has the same hole. **Neither is U+2014 (`—`)**: every zone-table thread header has always
+  drawn `Main   1500 frames`, and §14's `gone` / `only in baseline` rows inherit the gap.
 
 ## Left standing
 
@@ -280,7 +310,15 @@ the "no `Rebuild` on resize" gap below is not reachable through it.
   resized the ruler keeps the step it chose at the old width — 10 ms marks were seen 70 px apart,
   under `tickMinSpacing`'s 80 — until the next zoom, pan or frame selection re-runs it.
 - **Nothing draws counters in the charts.** They are in the aggregate table only.
-- **No diffing two captures, no live tailing of a Continuous session, no export.**
+- **No live tailing of a Continuous session, no export.**
+- **The baseline diff is a mean per frame and nothing else** — no median, no p95, no noise band. A
+  `+13%` on a 0.03 ms/f zone between two runs is as likely noise as change. It is not persisted across
+  a restart, and a pinned session stays in memory beside the loaded one.
+- **Per-frame numbers print `F2`**, so a zone under 5 µs/frame reads `0.00ms/f` beside a real
+  percentage (`FrameEdge 0.00ms/f 0.00 -10%`). `TotalWidth="74"` just holds `20.37ms/f`; a third
+  decimal needs the column wider.
+- **Nothing outside the zone table compares.** A baseline overlay on the strip was left out: frame
+  index lines up between runs only for Boot captures.
 - **`Periodic/` at the repo root still holds a stray `obj/`**, dead since the 2026-08 rename.
   Unrelated, untouched.
 
@@ -325,6 +363,17 @@ Against two real Thorium captures (`%APPDATA%\Thorium\Profiling\`, 300 frames pe
 | ruler under zoom | five wheel notches re-stepped 10 ms → 5 ms, precision following it |
 | call tree | `MainTick` over `Interpolate` 27.24 / `HandleUI` 9.93 / `PollEvents` 5.44 / `ActivateKeybinds` 3.39 / `FrameEdge` 0.43, and `RenderTick` over `Draw` |
 | separators | rules above `Physics` and `Render`, none above the first thread |
+
+§14's baseline, **GUI-verified** 2026-09-13 against real Thorium captures, every number checked against
+a scratch roll-up over the XML outside the repo:
+
+| Case | Result |
+|---|---|
+| pin `Stage0-0200k-rearrange`, itself loaded | every change `0.00 0%`; `MainTick 4.32`, `Interpolate 4.22`, `ResolveLayout 0.18` ms/f — the script's |
+| load `Stage0-1000k-rearrange`, 1500 frames vs 2000 | `MainTick 20.37 +16.05 +372%`, `Interpolate +16.04 +380%`, `ResolveLayout +0.98 +536%`, `ActivateKeybinds -22%` — all nine zones match |
+| clear | totals again, `MainTick 30550.11ms` = 20.37 × 1500 |
+| pin `Stage0-1000k-boot`, load the rearrange | faster colour on `MainTick -5.17 -20%`; `Bootstrap only in baseline` last |
+| `new` / `gone` zone rows | **NOT GUI-verified** — no two real captures differ in zone names |
 
 Three things that capture said about the **engine**, not about Carbon:
 

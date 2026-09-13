@@ -170,6 +170,7 @@ XML element, entry points, regions. The rows below answer "which types own this 
 | frames over time, click to select one | `Carbon.Editor.CustomControls.NextFrameStripControl` | `UI.ui.xml` | [[carbon-frame-viewer]] |
 | flame chart and the aligned timeline, the timeline's scroll bar | `Carbon.Editor.CustomControls.NextSpanChartControl` (`Mode="Frame"` / `"Timeline"`), `NextChartScrollThumbControl` | `UI.ui.xml` | [[carbon-frame-viewer]] |
 | zone totals, calls, min/max, counters | `Carbon.Editor.CustomControls.NextZoneTableControl` | `UI.ui.xml` | [[carbon-frame-viewer]] |
+| comparing two captures, pinning a baseline | `NextZoneTableControl.SetBaseline`; `Carbon.Editor.CarbonActions` (`Carbon.PinBaseline`, `Carbon.ClearBaseline`) | `UI.ui.xml` | [[carbon-frame-viewer]] §14 |
 
 ## Facts that cost time to rediscover
 
