@@ -109,7 +109,7 @@ Standing constraints (ECS storage, Vulkan internals, physics, XSD-not-JSON) are 
 | [[entity-tick-group]] | **FUTURE** — ticking should iterate a `"Tickable"` group, not every entity behind a flag | `Engine.Interpolate`, `EntityRegistry` |
 | [[engine-logging]] | per-thread SPSC lanes drained by one background thread; a log call is a memory write | `LogChannel`, `LogLane`, `Diagnostics.Sinks.*` |
 | [[engine-profiling]] | zones time and increments count, both compiled out by flag; per-thread tables, no shared state; a capture streams every span of every frame to XML off-thread, and `--profile` arms one early enough to hold the bootstrap phase | `Profiling`, `FrameSpool`, `ThreadedSystem.Loop`, `Bootstrapper.RunPhase` |
-| [[carbon-frame-viewer]] | the frame reader sits beside the writer; Carbon is a fourth app drawing it, and one control is both the flame chart and the aligned timeline | `FrameCaptureReader`, `SpanChartControl`, `FrameStripControl` |
+| [[carbon-frame-viewer]] | the frame reader sits beside the writer; Carbon is a fourth app drawing it, and one control is both the flame chart and the aligned timeline; two captures compare through a pinned baseline, per frame, in the zone table only | `FrameCaptureReader`, `SpanChartControl`, `FrameStripControl`, `NextZoneTableControl.SetBaseline` |
 | [[winforms-to-console]] | the engine assembly is a plain console app; WinForms is off | `AuroraEngine.csproj`, `Program`, `Engine` |
 
 ## Rendering and Vulkan

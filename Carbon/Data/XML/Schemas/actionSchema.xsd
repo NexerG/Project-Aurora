@@ -11,6 +11,8 @@
       <xs:simpleType>
         <xs:restriction base="xs:string">
           <xs:enumeration value="Carbon.LoadCapture" />
+          <xs:enumeration value="Carbon.PinBaseline" />
+          <xs:enumeration value="Carbon.ClearBaseline" />
           <xs:enumeration value="Settings.Open" />
           <xs:enumeration value="Settings.Save" />
           <xs:enumeration value="Tab.Close" />
