@@ -8,7 +8,7 @@ using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using Silk.NET.Core.Native;
-using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
 using static ArctisAurora.Core.UISystem.Controls.VulkanControl;
@@ -118,7 +118,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal VulkanControl? rangeRoot;
 
         // Window pixels to the units this module's tree is laid out in.
-        public Vector2D<float> ToDesignSpace(Vector2D<float> windowPoint) =>
+        public Vector2 ToDesignSpace(Vector2 windowPoint) =>
             _uiRoot == null ? windowPoint : _uiRoot.ToDesignSpace(windowPoint, window.os.windowSize);
 
         internal struct DeferredResources

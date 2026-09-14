@@ -37,7 +37,7 @@ XML element, entry points, regions. The rows below answer "which types own this 
 | title bar, minimise/maximise/close | `UI.Controls.TitleBarControl`, `WindowFrameControl`; `UI.Actions.WindowActions`; `UI.Text.LabelControl` | host `UI.ui.xml` | [[window-chrome-and-label]], [[window-frame-resize]] |
 | icons | `UI.IconSet`; `UI.Controls.IconControl`; `Assets.IconSetAsset`; `Filing.SvgPath` | `*/Data/Icons/*/*.import.xml` | — |
 | fonts, glyph atlas | `UI.AuroraFont`, `UI.Glyph`; `Assets.FontAsset`; `ArctisAurora.Core.Generators.MTSDFGen` | `*/Data/Fonts/*/*.import.xml`; `AuroraEngine/Data/XML/Imports/EngineFonts.imports.xml` | [[atlas-is-unorm-not-srgb]] |
-| which face a run draws in — regular, bold, italic, bold-italic | `UI.FontStyle`, `UI.AtlasMetaData` (`Effective`, `StyleBlock`, `CellIndex`); `Filing.AssetImporter` face probing | `AuroraEngine/Data/XML/Imports/EngineFonts.imports.xml` attrs `Bold`, `Italic`, `BoldItalic` | [[bold-italic-face]] |
+| which face a run draws in — regular, bold, italic, bold-italic | `UI.FontStyle`, `UI.AtlasMetaData` (`Effective`, `StyleBlock`, `CellIndex`, `charIndex`); `Filing.AssetImporter` face probing | `AuroraEngine/Data/XML/Imports/EngineFonts.imports.xml` attrs `Bold`, `Italic`, `BoldItalic` | [[bold-italic-face]] |
 | button hover / press appearance | `UI.Interactable.ButtonControl`; `UI.UICollisionHandling` | — | [[button-states-and-hover-bubbling]] |
 
 ## Layout and hit-testing
@@ -120,7 +120,8 @@ XML element, entry points, regions. The rows below answer "which types own this 
 | profiling — timing a tick phase, counting calls | `Diag.Profiling` (`Zone.Start`/`End`/`Increment`, `Report`); zones in `Core.Engine.MainTick`, `Threading.RenderSystem` | — | [[engine-profiling]] |
 | frame capture — every span of every frame, to a file | `Diag.Profiling.Frame`, `Diag.FrameSpool`, `ProfilingSettings`; frame edges in `Threading.ThreadedSystem.Loop` | `Bootstrap.bootstrap.xml`, `Shutdown.shutdown.xml` | [[engine-profiling]] |
 | profiling a launch — `--profile[=N]`, or `Mode="Boot"` | `Diag.Profiling.ArmBoot` (called from `Core.Engine.Init`), `Diag.CaptureMode`; phase frame + step zones in `Core.Bootstrapper.RunPhase` | `*/Data/XML/Settings/` (`<Profiling><ProfilingCapture Mode="Boot"/>`) | [[engine-profiling]] §13 |
-| reading a frame file back | `Diag.FrameCaptureReader`; `CaptureSession`, `CapturedThread`, `CapturedFrame`, `CapturedSpan` | `Profiling/<session>/<thread>.frames.xml` | [[carbon-frame-viewer]] |
+| profiling data pools — items, capacity, memory per frame; `--profile-pools` | `Diag.Profiling.Frame.Pool` (called from `Data.DataManager.FrameEdge`), `Data.DataPool.ReservedBytes`, `Diag.ProfilingCaptureSetting.pools`; `Diag.FrameSpool.WriteFrame` (`<P>`) | `*/Data/XML/Settings/` (`<Profiling><ProfilingCapture Pools="true"/>`) | [[engine-profiling]] §14 |
+| reading a frame file back | `Diag.FrameCaptureReader`; `CaptureSession`, `CapturedThread`, `CapturedFrame`, `CapturedSpan`, `CapturedPool` | `Profiling/<session>/<thread>.frames.xml` | [[carbon-frame-viewer]] |
 | the new-stack tree as laid out — every control's rect, to a file (F10) | `UINext.UITreeDump` (`UI.DumpTree`) | `Thorium/Data/XML/Documents/Inputs/InputMap.inputs.xml`; writes `uitree.xml` beside the exe | `aurora-verify` skill |
 
 ## Rendering
@@ -165,12 +166,14 @@ XML element, entry points, regions. The rows below answer "which types own this 
 
 | Concept | Code | Data | Note |
 |---|---|---|---|
-| app entry, wiring the four views | `Carbon.Carbon`, `Carbon.CarbonSettings` | `Carbon/Data/XML/Settings/` | [[carbon-frame-viewer]] |
+| app entry, wiring the views | `Carbon.Carbon`, `Carbon.CarbonSettings` | `Carbon/Data/XML/Settings/` | [[carbon-frame-viewer]] |
 | the capture session list, Load XML | `Carbon.Editor.CustomControls.NextSessionListControl`; `Carbon.Editor.CarbonActions` | `Carbon/Data/XML/Documents/UI/UI.ui.xml` | [[carbon-frame-viewer]] |
 | frames over time, click to select one | `Carbon.Editor.CustomControls.NextFrameStripControl` | `UI.ui.xml` | [[carbon-frame-viewer]] |
 | flame chart and the aligned timeline, the timeline's scroll bar | `Carbon.Editor.CustomControls.NextSpanChartControl` (`Mode="Frame"` / `"Timeline"`), `NextChartScrollThumbControl` | `UI.ui.xml` | [[carbon-frame-viewer]] |
 | zone totals, calls, min/max, counters | `Carbon.Editor.CustomControls.NextZoneTableControl` | `UI.ui.xml` | [[carbon-frame-viewer]] |
-| comparing two captures, pinning a baseline | `NextZoneTableControl.SetBaseline`; `Carbon.Editor.CarbonActions` (`Carbon.PinBaseline`, `Carbon.ClearBaseline`) | `UI.ui.xml` | [[carbon-frame-viewer]] §14 |
+| data pools in a capture — the table's pools block, the clicked frame's readout | `NextZoneTableControl.Pools`; `Carbon.Editor.Comparison.PoolLine` (`Show`) | `UI.ui.xml` (`Pools`) | [[carbon-frame-viewer]] §16 |
+| comparing two captures, pinning a baseline | `NextZoneTableControl.SetBaseline`; `Carbon.Editor.Comparison`; `Carbon.Editor.CarbonActions` (`Carbon.PinBaseline`, `Carbon.ClearBaseline`) | `UI.ui.xml` | [[carbon-frame-viewer]] §14, §15 |
+| second frame strip, slide / swap / scale against the first, which capture the charts show | `Carbon.Editor.Comparison`; `NextFrameStripControl.SetOffset` / `SetReferenceScale` / `Mark`; `CarbonActions` (`Carbon.SlideLeft`, `Carbon.SlideRight`, `Carbon.SwapStrips`); `ArctisAurora.Core.UI.NextSliderControl` | `UI.ui.xml` (`CompareStrip`, `Scale`) | [[carbon-frame-viewer]] §15 |
 
 ## Facts that cost time to rediscover
 

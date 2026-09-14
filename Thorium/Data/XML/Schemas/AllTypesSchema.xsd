@@ -7,13 +7,13 @@
       <xs:enumeration value="Thorium" />
       <xs:enumeration value="KnownVault" />
       <xs:enumeration value="Vaults" />
-      <xs:enumeration value="DragGhost" />
-      <xs:enumeration value="UI" />
       <xs:enumeration value="SessionTab" />
       <xs:enumeration value="SessionPane" />
       <xs:enumeration value="SessionWindow" />
       <xs:enumeration value="SessionScope" />
       <xs:enumeration value="Session" />
+      <xs:enumeration value="DragGhost" />
+      <xs:enumeration value="UI" />
       <xs:enumeration value="DocumentSettings" />
       <xs:enumeration value="SettingScope" />
       <xs:enumeration value="Setting" />
@@ -75,6 +75,7 @@
       <xs:enumeration value="NextDocument" />
       <xs:enumeration value="NextScrollDirection" />
       <xs:enumeration value="NextScrollable" />
+      <xs:enumeration value="NextSlider" />
       <xs:enumeration value="NextSplitter" />
       <xs:enumeration value="NextSplitView" />
       <xs:enumeration value="NextStackPanel" />

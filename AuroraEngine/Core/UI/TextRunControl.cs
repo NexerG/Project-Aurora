@@ -5,7 +5,7 @@ using ArctisAurora.Core.UISystem;
 using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.Core.UISystem.Controls.Text.Document;
 using ArctisAurora.EngineWork.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -49,23 +49,26 @@ namespace ArctisAurora.Core.UI
 
         private FontAsset _fontAsset;
         private BlockLayout _layout;
+        private float _wrapWidth;
 
         // one entry per span, rebuilt each measure; LineSegment.runIndex indexes all four
         private readonly List<TextMeasurer.Run> _runs = new List<TextMeasurer.Run>();
-        private readonly List<Vector3D<float>> _runColors = new List<Vector3D<float>>();
+        private readonly List<Vector3> _runColors = new List<Vector3>();
         private readonly List<FontAsset> _runFonts = new List<FontAsset>();
         private readonly List<uint> _runGradients = new List<uint>();
 
         // where the first line's pen starts, in design space
-        private Vector2D<float> _origin;
+        private Vector2 _origin;
 
-        private Vector3D<float> _color = new Vector3D<float>(1, 1, 1);
+        private Vector3 _color = new Vector3(1, 1, 1);
         private float _alpha = 1f;
 
         // authored text
         public readonly List<StyleSpan> spans = new List<StyleSpan>();
         public FontStyle style = FontStyle.Regular;
         public float lineHeight = 1.5f;
+
+        protected virtual bool Wraps => true;
 
         public TextRunControl()
         {
@@ -117,7 +120,7 @@ namespace ArctisAurora.Core.UI
             {
                 base.colorHex = value;
                 _color = HexToRGB(value);
-                InvalidateArrange();
+                InvalidateLayout();
             }
         }
 
@@ -139,8 +142,7 @@ namespace ArctisAurora.Core.UI
             InvalidateLayout();
         }
 
-        // Mirrors FontAssetGlyphMetrics.Resolve — a run measuring by one name and drawing from
-        // another puts every glyph at an x the measurement never predicted.
+        // Resolves a font name, falling back to default.
         private static FontAsset ResolveFont(string name)
         {
             Dictionary<string, FontAsset> fonts =
@@ -162,7 +164,7 @@ namespace ArctisAurora.Core.UI
             string s = text ?? string.Empty;
             if (spans.Count == 0)
             {
-                _runs.Add(new TextMeasurer.Run(s, 0, s.Length, fontName, fontSize, style));
+                _runs.Add(new TextMeasurer.Run(s, 0, s.Length, fontName, _fontAsset.atlasMetaData, fontSize, style));
                 _runColors.Add(_color);
                 _runFonts.Add(_fontAsset);
                 _runGradients.Add(visual.gradientIndex);
@@ -179,30 +181,35 @@ namespace ArctisAurora.Core.UI
 
                 string spanFont = spans[i].fontName ?? fontName;
                 int spanSize = spans[i].fontSize > 0 ? spans[i].fontSize : fontSize;
+                FontAsset font = spans[i].fontName == null ? _fontAsset : ResolveFont(spanFont);
 
-                _runs.Add(new TextMeasurer.Run(s, start, count, spanFont, spanSize, spans[i].style));
+                _runs.Add(new TextMeasurer.Run(s, start, count, spanFont, font.atlasMetaData, spanSize, spans[i].style));
                 _runColors.Add(spans[i].colorHex == null ? _color : HexToRGB(spans[i].colorHex));
-                _runFonts.Add(spans[i].fontName == null ? _fontAsset : ResolveFont(spanFont));
+                _runFonts.Add(font);
                 _runGradients.Add(spans[i].gradient == null
                     ? visual.gradientIndex : Gradients.IndexOf(spans[i].gradient));
                 start += count;
             }
         }
 
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             metrics ??= new FontAssetGlyphMetrics();
 
             ref ArrangeData a = ref arrange;
             float contentWidth = a.preferredWidth > 0 ? a.preferredWidth : availableSize.X;
+            float wrapWidth = Wraps ? contentWidth : float.MaxValue;
+
+            if (!isMeasureDirty && _layout != null && wrapWidth == _wrapWidth) return a.desired;
 
             BuildRuns();
-            _layout = TextMeasurer.MeasureBlock(_runs, contentWidth, metrics, lineHeight);
+            _layout = TextMeasurer.MeasureBlock(_runs, wrapWidth, metrics, lineHeight);
+            _wrapWidth = wrapWidth;
 
             float w = a.preferredWidth > 0 ? a.preferredWidth : _layout.width;
             float h = a.preferredHeight > 0 ? a.preferredHeight : _layout.height;
 
-            a.desired = new Vector2D<float>(w, h);
+            a.desired = new Vector2(w, h);
             SetFlag(ArrangeFlags.MeasureDirty, false);
             return a.desired;
         }
@@ -222,7 +229,7 @@ namespace ArctisAurora.Core.UI
                 ? MathF.Max(0f, inner.width - _layout.width) * a.horizontalPosition : 0f;
             float slackY = a.preferredHeight > 0
                 ? MathF.Max(0f, inner.height - _layout.height) * a.verticalPosition : 0f;
-            _origin = new Vector2D<float>(inner.x + slackX, inner.y + slackY);
+            _origin = new Vector2(inner.x + slackX, inner.y + slackY);
         }
 
         // The run's own box is not ink, so only glyphs land. A line outside the clip is skipped
@@ -233,8 +240,8 @@ namespace ArctisAurora.Core.UI
 
             LayoutRect box = arrange.clip;
             float z = depth + depthStep;
-            Vector4D<float> clip = geometry.clip;
-            Vector4D<float> gradientRect = geometry.gradientRect;
+            Vector4 clip = geometry.clip;
+            Vector4 gradientRect = geometry.gradientRect;
             string s = text ?? string.Empty;
 
             foreach (TextLine line in _layout.lines)
@@ -248,7 +255,7 @@ namespace ArctisAurora.Core.UI
 
                 foreach (LineSegment segment in line.segments)
                 {
-                    Vector3D<float> color = _runColors[segment.runIndex];
+                    Vector3 color = _runColors[segment.runIndex];
                     TextMeasurer.Run run = _runs[segment.runIndex];
                     FontAsset font = _runFonts[segment.runIndex];
                     uint gradientIndex = _runGradients[segment.runIndex];
@@ -268,10 +275,10 @@ namespace ArctisAurora.Core.UI
         // Cuts one glyph's quad out of the atlas and writes both of its columns, returning the pen
         // advance. Cell geometry is GlyphControl's, which is also what FontAssetGlyphMetrics
         // reproduces — three copies of it would drift.
-        private float WriteGlyph(DrawList list, char character, FontStyle glyphStyle, Vector3D<float> color,
+        private float WriteGlyph(DrawList list, char character, FontStyle glyphStyle, Vector3 color,
                                  FontAsset font, int size, uint gradientIndex,
                                  float penX, float baselineY, float z,
-                                 Vector4D<float> clip, Vector4D<float> gradientRect)
+                                 Vector4 clip, Vector4 gradientRect)
         {
             AtlasMetaData atlas = font.atlasMetaData;
             (Glyph glyph, int index) = atlas.GetGlyphAndIndex(character);
@@ -303,9 +310,9 @@ namespace ArctisAurora.Core.UI
             float x = penX + bearingX;
             float y = baselineY - ascent;
 
-            Matrix4X4<float> matrix = Matrix4X4<float>.Identity;
-            matrix *= Matrix4X4.CreateScale(cellW, cellH, 1f);
-            matrix *= Matrix4X4.CreateTranslation(x + cellW * 0.5f, y + cellH * 0.5f, z);
+            Matrix4x4 matrix = Matrix4x4.Identity;
+            matrix *= Matrix4x4.CreateScale(cellW, cellH, 1f);
+            matrix *= Matrix4x4.CreateTranslation(x + cellW * 0.5f, y + cellH * 0.5f, z);
 
             int slot = list.Next();
             ref ControlGeometry g = ref list.GeometryAt(slot);
@@ -327,14 +334,14 @@ namespace ArctisAurora.Core.UI
 
             ref VulkanControl v = ref list.VisualAt(slot);
             v.type = VulkanControlType.MTSDFControl;
-            v.uvs.uv1 = new Vector2D<float>(u1, v1);
-            v.uvs.uv2 = new Vector2D<float>(u0, v0);
-            v.uvs.uv3 = new Vector2D<float>(u0, v1);
-            v.uvs.uv4 = new Vector2D<float>(u1, v0);
-            v.tint = new Vector4D<float>(color, _alpha);
+            v.uvs.uv1 = new Vector2(u1, v1);
+            v.uvs.uv2 = new Vector2(u0, v0);
+            v.uvs.uv3 = new Vector2(u0, v1);
+            v.uvs.uv4 = new Vector2(u1, v0);
+            v.tint = new Vector4(color, _alpha);
             v.textureIndex = font.textureAsset.textureIndex;
-            v.cornerRadius = Vector4D<float>.Zero;
-            v.edgeColor = Vector3D<float>.Zero;
+            v.cornerRadius = Vector4.Zero;
+            v.edgeColor = Vector3.Zero;
             v.edgeThickness = 0f;
             v.gradientIndex = gradientIndex;
 
@@ -345,7 +352,7 @@ namespace ArctisAurora.Core.UI
         #region ---- caret geometry ----
         // Design space point to the character slot it belongs to. A press past a character's
         // midpoint takes the slot after it, or the end of a word could never be clicked.
-        public int IndexAt(Vector2D<float> point)
+        public int IndexAt(Vector2 point)
         {
             if (_layout == null) return 0;
 
@@ -358,7 +365,7 @@ namespace ArctisAurora.Core.UI
                 TextMeasurer.Run run = _runs[segment.runIndex];
                 for (int i = 0; i < segment.charCount; i++)
                 {
-                    float advance = TextMeasurer.MeasureAdvance(text[segment.charStart + i], run, metrics);
+                    float advance = TextMeasurer.MeasureAdvance(text[segment.charStart + i], run);
                     if (localX < pen + advance * 0.5f) return segment.charStart + i;
                     pen += advance;
                 }
@@ -398,7 +405,7 @@ namespace ArctisAurora.Core.UI
 
                     TextMeasurer.Run run = _runs[segment.runIndex];
                     for (int c = segment.charStart; c < offset; c++)
-                        x += TextMeasurer.MeasureAdvance(text[c], run, metrics);
+                        x += TextMeasurer.MeasureAdvance(text[c], run);
 
                     return new CaretGeometry(x, line.top, line.height, line.baseline);
                 }
@@ -409,7 +416,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // What CaretAt is relative to: the design-space point the first line's pen starts at.
-        public Vector2D<float> TextOrigin => _origin;
+        public Vector2 TextOrigin => _origin;
 
         // The measured lines, in this run's own space. Null until the first measure.
         public IReadOnlyList<TextLine> Lines => _layout?.lines;

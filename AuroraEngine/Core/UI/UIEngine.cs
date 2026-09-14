@@ -7,7 +7,7 @@ using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Modules;
-using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 using System.Diagnostics;
 
@@ -47,15 +47,15 @@ namespace ArctisAurora.Core.UI
                 {
                     // Pass 1 — offer the root its own current arranged size, or infinite if it has
                     // never been arranged.
-                    Vector2D<float> offer = root.arrangedRect.size == Vector2D<float>.Zero
-                        ? new Vector2D<float>(float.MaxValue, float.MaxValue)
+                    Vector2 offer = root.arrangedRect.size == Vector2.Zero
+                        ? new Vector2(float.MaxValue, float.MaxValue)
                         : root.arrangedRect.size;
 
                     root.Measure(offer);
 
                     // Pass 2 — re-arrange from the root's current rect. A window root is fitted
                     // externally, on resize.
-                    LayoutRect finalRect = root.arrangedRect.size == Vector2D<float>.Zero
+                    LayoutRect finalRect = root.arrangedRect.size == Vector2.Zero
                         ? new LayoutRect(0, 0, root.DesiredSize.X, root.DesiredSize.Y)
                         : root.arrangedRect;
 
@@ -121,7 +121,7 @@ namespace ArctisAurora.Core.UI
         private static Control _dragTarget;
 
         // the drag target's own window-space point, so the release does not have to recompute it
-        private static Vector2D<float> _dragPoint;
+        private static Vector2 _dragPoint;
 
         // The window the pointer is over while a drag runs, null when it is over none or when an
         // overlap makes the answer ambiguous. Only meaningful mid-drag — a captured pointer is what
@@ -132,7 +132,7 @@ namespace ArctisAurora.Core.UI
         [A_ActiveContext("NextActiveWindow")]
         public static RenderWindow activeWindow { get; set; }
 
-        private static Vector2D<float> _lastPoint;
+        private static Vector2 _lastPoint;
         private static bool _sameTargetTap;
 
         // Resolves the pointer against one window's tree and dispatches what the buttons did.
@@ -141,8 +141,8 @@ namespace ArctisAurora.Core.UI
             WindowRoot root = window.uiNext?.uiRoot;
             if (root == null) return;
 
-            Vector2D<float> point = root.ToDesignSpace(window.mousePos, window.os.windowSize);
-            Vector2D<float> delta = point - _lastPoint;
+            Vector2 point = root.ToDesignSpace(window.mousePos, window.os.windowSize);
+            Vector2 delta = point - _lastPoint;
             _lastPoint = point;
 
             // A pressed button captures the pointer to the window it went down in, which keeps
@@ -188,7 +188,7 @@ namespace ArctisAurora.Core.UI
                 SolveScroll(point, window.scrollDelta);
         }
 
-        private static void SolveHover(Vector2D<float> point, Vector2D<float> delta, WindowRoot root)
+        private static void SolveHover(Vector2 point, Vector2 delta, WindowRoot root)
         {
             Control deepest = HitTest(root, point);
             if (ReferenceEquals(deepest, root)) deepest = null;
@@ -199,7 +199,7 @@ namespace ArctisAurora.Core.UI
                 Dispatch(Event(hovering, point, delta, 0, 0), PointerPhase.Move);
         }
 
-        private static void SetHovering(Control control, Vector2D<float> point, Vector2D<float> delta)
+        private static void SetHovering(Control control, Vector2 point, Vector2 delta)
         {
             if (ReferenceEquals(hovering, control)) return;
 
@@ -214,7 +214,7 @@ namespace ArctisAurora.Core.UI
                 Dispatch(Event(control, point, delta, 0, 0), PointerPhase.Enter);
         }
 
-        private static void SolvePress(Vector2D<float> point, Vector2D<float> delta, int button)
+        private static void SolvePress(Vector2 point, Vector2 delta, int button)
         {
             NextContextMenus.DismissUnlessInside(hovering);
             if (hovering == null) return;
@@ -237,7 +237,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // A release only counts on the control the press landed on, so dragging off a button cancels it.
-        private static void SolveRelease(Vector2D<float> point, Vector2D<float> delta, int button, int tapCount)
+        private static void SolveRelease(Vector2 point, Vector2 delta, int button, int tapCount)
         {
             // Ahead of the guards below: a drag ends wherever the pointer is, which is rarely still
             // over the control the press landed on.
@@ -277,7 +277,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // How many windows hold the point, and which one when that is exactly one.
-        private static unsafe int WindowsAt(Vector2D<float> screen, out RenderWindow single)
+        private static unsafe int WindowsAt(Vector2 screen, out RenderWindow single)
         {
             single = null;
             int count = 0;
@@ -298,10 +298,10 @@ namespace ArctisAurora.Core.UI
             return count;
         }
 
-        private static unsafe Vector2D<float> ScreenPoint(RenderWindow source)
+        private static unsafe Vector2 ScreenPoint(RenderWindow source)
         {
             AGlfwWindow._glfw.GetWindowPos(source.os.handle, out int sx, out int sy);
-            return new Vector2D<float>(sx + source.mousePos.X, sy + source.mousePos.Y);
+            return new Vector2(sx + source.mousePos.X, sy + source.mousePos.Y);
         }
 
         private static void SetMouseOverWindow(RenderWindow window)
@@ -324,18 +324,18 @@ namespace ArctisAurora.Core.UI
         // The control under the pointer mid-drag, in the target window's own design space. Found by
         // geometry rather than by hover: a captured pointer means no other window is ever told the
         // pointer is over it.
-        private static unsafe Control HitFor(RenderWindow source, out Vector2D<float> local)
+        private static unsafe Control HitFor(RenderWindow source, out Vector2 local)
         {
-            local = Vector2D<float>.Zero;
+            local = Vector2.Zero;
 
             RenderWindow target = mouseOverWindow;
             WindowRoot root = target?.uiNext?.uiRoot;
             if (root == null) return null;
 
-            Vector2D<float> screen = ScreenPoint(source);
+            Vector2 screen = ScreenPoint(source);
             AGlfwWindow._glfw.GetWindowPos(target.os.handle, out int tx, out int ty);
 
-            local = root.ToDesignSpace(new Vector2D<float>(screen.X - tx, screen.Y - ty), target.os.windowSize);
+            local = root.ToDesignSpace(new Vector2(screen.X - tx, screen.Y - ty), target.os.windowSize);
             return HitTest(root, local, dragging);
         }
 
@@ -346,7 +346,7 @@ namespace ArctisAurora.Core.UI
         {
             if (dragging == null) return;
 
-            Control target = HitFor(source, out Vector2D<float> point);
+            Control target = HitFor(source, out Vector2 point);
             _dragPoint = point;
 
             if (!ReferenceEquals(target, _dragTarget))
@@ -401,7 +401,7 @@ namespace ArctisAurora.Core.UI
 
         // Feeds the claimant each tick, and abandons a claim whose release went unseen. The lost
         // release ends the gesture without offering a drop, because where it happened is unknown.
-        private static void SolveDrag(Vector2D<float> point, Vector2D<float> delta)
+        private static void SolveDrag(Vector2 point, Vector2 delta)
         {
             if (dragging == null) return;
 
@@ -423,7 +423,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // The wheel walks up from the hovered control until something consumes it.
-        private static void SolveScroll(Vector2D<float> point, Vector2D<float> offset)
+        private static void SolveScroll(Vector2 point, Vector2 offset)
         {
             if (hovering == null) return;
             Dispatch(Event(hovering, point, offset, 0, 0), PointerPhase.Scroll);
@@ -467,7 +467,7 @@ namespace ArctisAurora.Core.UI
         // Deepest control whose clip and box hold the point. Children last to first, because depth
         // testing is off and the later sibling is the one drawn on top. skip takes a whole subtree
         // out of the answer, rejected at its root so nothing beneath it is reached either.
-        public static Control HitTest(Control control, Vector2D<float> point, Control skip = null)
+        public static Control HitTest(Control control, Vector2 point, Control skip = null)
         {
             if (control.hidden || ReferenceEquals(control, skip)) return null;
             if (!control.arrange.subtreeBounds.Contains(point)) return null;
@@ -484,7 +484,7 @@ namespace ArctisAurora.Core.UI
 
         // The clip is inherited, so a point outside it rules the control out wherever it was arranged.
         // An axis-aligned box is exact while nothing rotates; a rotation would change only this.
-        private static bool HitsNode(Control control, Vector2D<float> point)
+        private static bool HitsNode(Control control, Vector2 point)
         {
             ref ArrangeData a = ref control.arrange;
             return a.clip.Contains(point) && a.arranged.Contains(point);
@@ -511,7 +511,7 @@ namespace ArctisAurora.Core.UI
             }
         }
 
-        private static PointerEvent Event(Control target, Vector2D<float> point, Vector2D<float> delta,
+        private static PointerEvent Event(Control target, Vector2 point, Vector2 delta,
                                           int button, int tapCount) =>
             new PointerEvent
             {

@@ -1,4 +1,4 @@
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -20,7 +20,7 @@ namespace ArctisAurora.Core.UI
         public override bool OnPointerPress(PointerEvent e)
         {
             grab = vertical ? e.point.Y : e.point.X;
-            Vector2D<float> offset = viewport.GetScrollOffset();
+            Vector2 offset = viewport.GetScrollOffset();
             grabOffset = vertical ? offset.Y : offset.X;
             StartDrag();
             return base.OnPointerPress(e);
@@ -33,13 +33,13 @@ namespace ArctisAurora.Core.UI
             if (travel > 0f)
             {
                 float moved = (vertical ? e.point.Y : e.point.X) - grab;
-                Vector2D<float> max = viewport.MaxScrollOffset;
-                Vector2D<float> now = viewport.GetScrollOffset();
+                Vector2 max = viewport.MaxScrollOffset;
+                Vector2 now = viewport.GetScrollOffset();
                 float wanted = grabOffset + moved * (vertical ? max.Y : max.X) / travel;
 
                 viewport.SetScrollOffset(vertical
-                    ? new Vector2D<float>(now.X, wanted)
-                    : new Vector2D<float>(wanted, now.Y));
+                    ? new Vector2(now.X, wanted)
+                    : new Vector2(wanted, now.Y));
             }
             base.OnDrag(e);
         }

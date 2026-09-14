@@ -1,6 +1,6 @@
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls.Text;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls.Interactable
 {
@@ -45,7 +45,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
             }
 
             ContextMenus.OpenList(this, entries,
-                new Vector2D<float>(arrangedRect.x, arrangedRect.y + arrangedRect.height));
+                new Vector2(arrangedRect.x, arrangedRect.y + arrangedRect.height));
         }
 
         private void Pick(string option)

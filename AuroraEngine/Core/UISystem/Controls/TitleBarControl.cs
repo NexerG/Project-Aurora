@@ -3,7 +3,7 @@ using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.GLFW;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls
 {
@@ -13,7 +13,7 @@ namespace ArctisAurora.Core.UISystem.Controls
     [A_XSDType("TitleBar", "UI", AllowedChildren = typeof(IXMLChild_UI))]
     public unsafe class TitleBarControl : StackPanelControl
     {
-        public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
+        public override void ResolveOnClick(Vector2 oldPos, Vector2 delta)
         {
             RenderWindow window = RenderWindow.Of(this);
 

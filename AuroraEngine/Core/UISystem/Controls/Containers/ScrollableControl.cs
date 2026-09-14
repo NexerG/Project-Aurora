@@ -1,7 +1,7 @@
 ﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.UISystem.Controls.Interactable;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls.Containers
 {
@@ -28,17 +28,17 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         /// <summary>
         /// Current scroll offset in pixels. Positive Y = content scrolled upward.
         /// </summary>
-        private Vector2D<float> scrollOffset = new Vector2D<float>(0, 0);
+        private Vector2 scrollOffset = new Vector2(0, 0);
 
         /// <summary>
         /// The child's full content size after measure — may exceed viewport.
         /// </summary>
-        private Vector2D<float> contentSize = new Vector2D<float>(0, 0);
+        private Vector2 contentSize = new Vector2(0, 0);
 
         /// <summary>
         /// The usable inner viewport size (arranged rect minus padding).
         /// </summary>
-        private Vector2D<float> viewportSize = new Vector2D<float>(0, 0);
+        private Vector2 viewportSize = new Vector2(0, 0);
 
         public bool CanScrollHorizontal => scrollDirection == ScrollDirection.Horizontal || scrollDirection == ScrollDirection.Both;
         public bool CanScrollVertical => scrollDirection == ScrollDirection.Vertical || scrollDirection == ScrollDirection.Both;
@@ -89,12 +89,12 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         /// <summary>
         /// How far the content can scroll on each axis, overscroll included. Zero if content fits.
         /// </summary>
-        public Vector2D<float> MaxScrollOffset
+        public Vector2 MaxScrollOffset
         {
             get
             {
                 float overflowY = MathF.Max(0, contentSize.Y - viewportSize.Y);
-                return new Vector2D<float>(
+                return new Vector2(
                     MathF.Max(0, contentSize.X - viewportSize.X),
                     overflowY > 0 ? overflowY + viewportSize.Y * overscroll : 0);
             }
@@ -112,7 +112,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         //  own viewport size as DesiredSize so the parent layout isn't
         //  affected by overflowing content.
         // -------------------------------------------------------------------
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             // Our own preferred/min size, same logic as base VulkanControl
             float w = preferredWidth > 0 ? preferredWidth : MathF.Max(availableSize.X, minWidth);
@@ -128,16 +128,16 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                 // Containers (StackPanel etc.) will sum their children and
                 // may report a size LARGER than this — that's fine, it means
                 // scrolling activates.
-                Vector2D<float> childDesired = child.Measure(new Vector2D<float>(innerW, innerH));
+                Vector2 childDesired = child.Measure(new Vector2(innerW, innerH));
                 contentSize = childDesired;
             }
             else
             {
-                contentSize = new Vector2D<float>(0, 0);
+                contentSize = new Vector2(0, 0);
             }
 
             // We always report our own viewport size, never the child's overflow.
-            DesiredSize = new Vector2D<float>(w, h);
+            DesiredSize = new Vector2(w, h);
             isMeasureDirty = false;
             return DesiredSize;
         }
@@ -163,7 +163,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             // Inner viewport after our padding, less the scrollbar gutter
             LayoutRect innerRect = finalRect.Shrink(padding);
             innerRect.width = MathF.Max(0, innerRect.width - Gutter);
-            viewportSize = new Vector2D<float>(innerRect.width, innerRect.height);
+            viewportSize = new Vector2(innerRect.width, innerRect.height);
 
             // Clamp scroll offset to valid range
             ClampScrollOffset();
@@ -264,14 +264,14 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         /// <summary>
         /// Programmatic scroll — sets offset directly in pixels.
         /// </summary>
-        public void SetScrollOffset(Vector2D<float> offset)
+        public void SetScrollOffset(Vector2 offset)
         {
             scrollOffset = offset;
             ClampScrollOffset();
             InvalidateArrange();
         }
 
-        public Vector2D<float> GetScrollOffset() => scrollOffset;
+        public Vector2 GetScrollOffset() => scrollOffset;
 
         /// <summary>
         /// Scroll to make a specific child rect visible within the viewport.
@@ -305,7 +305,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
         private void ClampScrollOffset()
         {
-            Vector2D<float> max = MaxScrollOffset;
+            Vector2 max = MaxScrollOffset;
             scrollOffset.X = MathF.Max(0, MathF.Min(scrollOffset.X, max.X));
             scrollOffset.Y = MathF.Max(0, MathF.Min(scrollOffset.Y, max.Y));
         }
@@ -322,7 +322,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             entity.parent = this;
             children.Add(entity);
             MarkTreeOrderDirty();
-            scrollOffset = new Vector2D<float>(0, 0); // reset scroll when content changes
+            scrollOffset = new Vector2(0, 0); // reset scroll when content changes
             InvalidateLayout();
         }
 
@@ -357,7 +357,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                 onScrollDown.Invoke();
                 return true;
             }
-            Vector2D<float> max = MaxScrollOffset;
+            Vector2 max = MaxScrollOffset;
             if (CanScrollVertical && scrollOffset.Y < max.Y)
             {
                 OnScrollInput(0, 1);

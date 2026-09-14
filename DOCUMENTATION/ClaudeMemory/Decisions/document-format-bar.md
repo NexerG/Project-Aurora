@@ -39,8 +39,8 @@ overrides it as `bold ? Bold : italic ? Italic : Regular`. It is read in exactly
 cell to point at. Verified on screen: Ctrl+A then Ctrl+I over the sample note left the pre-existing
 bold run bold rather than italicising it.
 
-`IGlyphMetrics` gained `Effective(fontName, style)` so the measurer collapses a missing face the same
-way `GlyphControl` does. That is the load-bearing bit — both sides now compute
+`TextMeasurer.Run` carries `face = atlas.Effective(style)`, resolved once per run, so the measurer
+collapses a missing face the same way `GlyphControl` does. That is the load-bearing bit — both sides now compute
 `glyph.Metrics(atlasMetaData.Effective(style)).advanceWidth * px` from the same asset, so they cannot
 drift by construction rather than by care.
 

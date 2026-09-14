@@ -5,7 +5,7 @@ using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Modules;
-using Silk.NET.Maths;
+using System.Numerics;
 using static ArctisAurora.Core.UISystem.Controls.VulkanControl;
 
 namespace ArctisAurora.Core.UISystem
@@ -142,15 +142,15 @@ namespace ArctisAurora.Core.UISystem
                 {
                     // Pass 1 — offer the root its own current arranged size (or infinite
                     // if it has never been arranged, meaning it's a window root).
-                    Vector2D<float> offer = root.arrangedRect.size == Vector2D<float>.Zero
-                        ? new Vector2D<float>(float.MaxValue, float.MaxValue)
+                    Vector2 offer = root.arrangedRect.size == Vector2.Zero
+                        ? new Vector2(float.MaxValue, float.MaxValue)
                         : root.arrangedRect.size;
 
                     root.Measure(offer);
 
                     // Pass 2 — re-arrange from the root's current rect.
                     // Window roots have their ArrangedRect set externally (on window resize).
-                    LayoutRect finalRect = root.arrangedRect.size == Vector2D<float>.Zero
+                    LayoutRect finalRect = root.arrangedRect.size == Vector2.Zero
                         ? new LayoutRect(root.transform.position.X,
                                          root.transform.position.Y,
                                          root.DesiredSize.X,

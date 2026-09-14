@@ -4,7 +4,7 @@ using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.GLFW;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls.Interactable
 {
@@ -13,7 +13,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
     [A_XSDType("Splitter", "UI")]
     public class SplitterControl : ButtonControl
     {
-        private Vector2D<float> grab;
+        private Vector2 grab;
         private float grabSize;
 
         // star against star
@@ -40,7 +40,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
             base.ResolveExit();
         }
 
-        public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
+        public override void ResolveOnClick(Vector2 oldPos, Vector2 delta)
         {
             VulkanControl pane = PreviousPane();
             if (pane != null)
@@ -66,13 +66,13 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
 
         // Sized from where the grab started rather than by accumulating per-tick deltas, so a clamped
         // pane cannot drift away from the pointer that is dragging it.
-        public override void ResolveDrag(Vector2D<float> lastPos, Vector2D<float> delta)
+        public override void ResolveDrag(Vector2 lastPos, Vector2 delta)
         {
             VulkanControl pane = PreviousPane();
             if (pane == null) return;
 
             bool vertical = IsVertical;
-            Vector2D<float> now = lastPos + delta;
+            Vector2 now = lastPos + delta;
             float wanted = grabSize + (vertical ? now.Y - grab.Y : now.X - grab.X);
 
             if (grabStar) DragStars(pane, vertical, wanted);

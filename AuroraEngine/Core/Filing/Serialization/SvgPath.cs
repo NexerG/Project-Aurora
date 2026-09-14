@@ -1,5 +1,5 @@
 using ArctisAurora.Core.UISystem;
-using Silk.NET.Maths;
+using System.Numerics;
 using System.Globalization;
 using System.Xml.Linq;
 
@@ -101,7 +101,7 @@ namespace ArctisAurora.Core.Filing.Serialization
             reason = string.Empty;
             int i = 0;
             char command = '\0';
-            Vector2D<float> current = default, start = default, lastCubic = default, lastQuad = default;
+            Vector2 current = default, start = default, lastCubic = default, lastQuad = default;
             bool wasCubic = false, wasQuad = false;
             Bezier contour = null;
 
@@ -120,7 +120,7 @@ namespace ArctisAurora.Core.Filing.Serialization
                 else if (command == '\0') { reason = "path data does not start with a command"; return false; }
 
                 bool relative = char.IsLower(command);
-                Vector2D<float> origin = relative ? current : Vector2D<float>.Zero;
+                Vector2 origin = relative ? current : Vector2.Zero;
 
                 switch (char.ToUpperInvariant(command))
                 {
@@ -143,10 +143,10 @@ namespace ArctisAurora.Core.Filing.Serialization
                     case 'V':
                     {
                         if (contour == null) { reason = "line before any moveto"; return false; }
-                        Vector2D<float> to = char.ToUpperInvariant(command) switch
+                        Vector2 to = char.ToUpperInvariant(command) switch
                         {
-                            'H' => new Vector2D<float>(origin.X + ReadNumber(data, ref i), current.Y),
-                            'V' => new Vector2D<float>(current.X, origin.Y + ReadNumber(data, ref i)),
+                            'H' => new Vector2(origin.X + ReadNumber(data, ref i), current.Y),
+                            'V' => new Vector2(current.X, origin.Y + ReadNumber(data, ref i)),
                             _ => origin + ReadPoint(data, ref i),
                         };
                         AddCubic(contour, current + (to - current) / 3f, current + (to - current) * (2f / 3f), to);
@@ -159,11 +159,11 @@ namespace ArctisAurora.Core.Filing.Serialization
                     case 'S':
                     {
                         if (contour == null) { reason = "curve before any moveto"; return false; }
-                        Vector2D<float> c0 = char.ToUpperInvariant(command) == 'S'
+                        Vector2 c0 = char.ToUpperInvariant(command) == 'S'
                             ? (wasCubic ? current * 2f - lastCubic : current)
                             : origin + ReadPoint(data, ref i);
-                        Vector2D<float> c1 = origin + ReadPoint(data, ref i);
-                        Vector2D<float> to = origin + ReadPoint(data, ref i);
+                        Vector2 c1 = origin + ReadPoint(data, ref i);
+                        Vector2 to = origin + ReadPoint(data, ref i);
                         AddCubic(contour, c0, c1, to);
                         current = to;
                         lastCubic = c1;
@@ -176,10 +176,10 @@ namespace ArctisAurora.Core.Filing.Serialization
                     case 'T':
                     {
                         if (contour == null) { reason = "curve before any moveto"; return false; }
-                        Vector2D<float> control = char.ToUpperInvariant(command) == 'T'
+                        Vector2 control = char.ToUpperInvariant(command) == 'T'
                             ? (wasQuad ? current * 2f - lastQuad : current)
                             : origin + ReadPoint(data, ref i);
-                        Vector2D<float> to = origin + ReadPoint(data, ref i);
+                        Vector2 to = origin + ReadPoint(data, ref i);
                         AddCubic(contour, current + (control - current) * (2f / 3f), to + (control - to) * (2f / 3f), to);
                         current = to;
                         lastQuad = control;
@@ -202,7 +202,7 @@ namespace ArctisAurora.Core.Filing.Serialization
             return true;
         }
 
-        private static void AddCubic(Bezier contour, Vector2D<float> c0, Vector2D<float> c1, Vector2D<float> to)
+        private static void AddCubic(Bezier contour, Vector2 c0, Vector2 c1, Vector2 to)
         {
             contour.points.Add(new Bezier.Point(c0, false) { isCubicControl = true });
             contour.points.Add(new Bezier.Point(c1, false) { isCubicControl = true });
@@ -211,12 +211,12 @@ namespace ArctisAurora.Core.Filing.Serialization
 
         // A fill closes whether the data said Z or not. An already-closed run ends on a duplicate of
         // the start anchor, which has to go so the wrap does not become a zero-length segment.
-        private static void Close(List<Bezier> contours, ref Bezier contour, Vector2D<float> current, Vector2D<float> start)
+        private static void Close(List<Bezier> contours, ref Bezier contour, Vector2 current, Vector2 start)
         {
             if (contour == null) return;
             if (contour.points.Count >= 4)
             {
-                if (Vector2D.DistanceSquared(current, start) < 1e-12f)
+                if (Vector2.DistanceSquared(current, start) < 1e-12f)
                     contour.points.RemoveAt(contour.points.Count - 1);
                 else
                 {
@@ -234,8 +234,8 @@ namespace ArctisAurora.Core.Filing.Serialization
                 || data[i] == '\n' || data[i] == '\r')) i++;
         }
 
-        private static Vector2D<float> ReadPoint(string data, ref int i) =>
-            new Vector2D<float>(ReadNumber(data, ref i), ReadNumber(data, ref i));
+        private static Vector2 ReadPoint(string data, ref int i) =>
+            new Vector2(ReadNumber(data, ref i), ReadNumber(data, ref i));
 
         private static float ReadNumber(string data, ref int i)
         {

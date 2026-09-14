@@ -5,7 +5,7 @@ using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.GLFW;
-using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 using ScrollableControl = ArctisAurora.Core.UISystem.Controls.Containers.ScrollableControl;
 using InputHandler = ArctisAurora.EngineWork.InputHandler;
@@ -17,8 +17,8 @@ namespace ArctisAurora.Core.UISystem
     {
         public static UICollisionHandling instance = null!;
 
-        public Vector2D<float> lastMousePos;
-        public Vector2D<float> delta;
+        public Vector2 lastMousePos;
+        public Vector2 delta;
 
         [A_ActiveContext("Hovering")]
         public static VulkanControl hovering { get; set; }
@@ -57,14 +57,14 @@ namespace ArctisAurora.Core.UISystem
 
         // The root is the tree of whichever window the pointer is in — one pointer, so the hover,
         // drag and active contexts below stay global.
-        public void SolveHover(Vector2D<float> mousePos, VulkanControl root)
+        public void SolveHover(Vector2 mousePos, VulkanControl root)
         {
             if (root == null) return;
 
             // An open menu takes the whole pointer — nothing under it answers while it is up.
             root = ContextMenus.OpenIn(root) ?? root;
 
-            Vector2D<float>[] localVerts = new Vector2D<float>[4];
+            Vector2[] localVerts = new Vector2[4];
 
             VulkanControl deepest = FindDeepestValid(mousePos, root, ref localVerts);
             if (deepest != root && deepest != null)
@@ -91,7 +91,7 @@ namespace ArctisAurora.Core.UISystem
             }
         }
 
-        public void SolveLMBPress(Vector2D<float> mousePos, VulkanControl root)
+        public void SolveLMBPress(Vector2 mousePos, VulkanControl root)
         {
             pressSwallowed = ContextMenus.DismissedBy(root, mousePos);
             if (pressSwallowed) return;
@@ -139,7 +139,7 @@ namespace ArctisAurora.Core.UISystem
             Context.Set("ActiveGLFWWindow", window);
         }
 
-        public void SolveLMBRelease(Vector2D<float> mousePos, int tapCount)
+        public void SolveLMBRelease(Vector2 mousePos, int tapCount)
         {
             if (pressSwallowed)
             {
@@ -167,7 +167,7 @@ namespace ArctisAurora.Core.UISystem
                 hovering?.ResolveOnMultiClick(tapCount);
         }
 
-        public void SolveRMBPress(Vector2D<float> mousePos, VulkanControl root)
+        public void SolveRMBPress(Vector2 mousePos, VulkanControl root)
         {
             if (ContextMenus.DismissedBy(root, mousePos)) return;
             if (hovering == null) return;
@@ -175,13 +175,13 @@ namespace ArctisAurora.Core.UISystem
             hovering.OpenContextMenu();
         }
 
-        public void SolveRMBRelease(Vector2D<float> mousePos)
+        public void SolveRMBRelease(Vector2 mousePos)
         {
             if (hovering == null) return;
             hovering?.ResolveOnAltRelease();
         }
         
-        public void SolveDrag(Vector2D<float> mousePos)
+        public void SolveDrag(Vector2 mousePos)
         {
             if (dragging == null) return;
 
@@ -202,7 +202,7 @@ namespace ArctisAurora.Core.UISystem
             UpdateDropHint(dragging);
         }
 
-        public void SolveScroll(Vector2D<float> offset)
+        public void SolveScroll(Vector2 offset)
         {
             VulkanControl target = hovering;
             while (target != null)
@@ -232,7 +232,7 @@ namespace ArctisAurora.Core.UISystem
         }
 
         #region ---- HELPERS ----
-        private VulkanControl FindDeepestValid(Vector2D<float> mousePos, VulkanControl current, ref Vector2D<float>[] localVerts)
+        private VulkanControl FindDeepestValid(Vector2 mousePos, VulkanControl current, ref Vector2[] localVerts)
         {
             // The clip rect is inherited, so a point outside it rules out the whole subtree — a row
             // scrolled past the top of its viewport is drawn nowhere and must be clickable nowhere.
@@ -282,22 +282,22 @@ namespace ArctisAurora.Core.UISystem
         // window, so no other window is told the pointer is over it and its tree is never hovered.
         // The drag's window does still report accurate positions, so the target is found by geometry
         // — screen point, the window whose rect holds it, that window's tree.
-        private static VulkanControl HitFor(VulkanControl dropped, out Vector2D<float> local, out RenderWindow target)
+        private static VulkanControl HitFor(VulkanControl dropped, out Vector2 local, out RenderWindow target)
         {
-            local = Vector2D<float>.Zero;
+            local = Vector2.Zero;
             target = null;
 
             RenderWindow source = RenderWindow.Of(dropped);
             if (source == null) return null;
 
             AGlfwWindow._glfw.GetWindowPos(source.os.handle, out int sx, out int sy);
-            Vector2D<float> screen = new Vector2D<float>(sx + source.mousePos.X, sy + source.mousePos.Y);
+            Vector2 screen = new Vector2(sx + source.mousePos.X, sy + source.mousePos.Y);
 
             target = WindowAt(screen);
             if (target == null || target.ui.uiRoot == null) return null;
 
             AGlfwWindow._glfw.GetWindowPos(target.os.handle, out int tx, out int ty);
-            local = target.ui.ToDesignSpace(new Vector2D<float>(screen.X - tx, screen.Y - ty));
+            local = target.ui.ToDesignSpace(new Vector2(screen.X - tx, screen.Y - ty));
 
             return instance.HitTest(local, target.ui.uiRoot);
         }
@@ -305,7 +305,7 @@ namespace ArctisAurora.Core.UISystem
         // Offers the dropped control to whatever is under the pointer, innermost first.
         private static void OfferDrop(VulkanControl dropped)
         {
-            VulkanControl control = HitFor(dropped, out Vector2D<float> local, out _);
+            VulkanControl control = HitFor(dropped, out Vector2 local, out _);
             while (control != null)
             {
                 if (control.ResolveDrop(dropped, local)) return;
@@ -316,7 +316,7 @@ namespace ArctisAurora.Core.UISystem
         // Asks the same walk to show where the drop would land, once per tick the drag runs.
         private static void UpdateDropHint(VulkanControl dropped)
         {
-            VulkanControl control = HitFor(dropped, out Vector2D<float> local, out RenderWindow window);
+            VulkanControl control = HitFor(dropped, out Vector2 local, out RenderWindow window);
             RaiseHovered(window);
             VulkanControl next = null;
 
@@ -360,7 +360,7 @@ namespace ArctisAurora.Core.UISystem
 
         // Window whose rect holds the point, the active one preferred. GLFW publishes no z-order,
         // so the rest of an overlap is resolved by map order.
-        private static RenderWindow WindowAt(Vector2D<float> screen)
+        private static RenderWindow WindowAt(Vector2 screen)
         {
             RenderWindow first = null;
 
@@ -381,9 +381,9 @@ namespace ArctisAurora.Core.UISystem
         }
 
         // The deepest hit-testable control under a point in one tree.
-        public VulkanControl HitTest(Vector2D<float> point, VulkanControl root)
+        public VulkanControl HitTest(Vector2 point, VulkanControl root)
         {
-            Vector2D<float>[] localVerts = new Vector2D<float>[4];
+            Vector2[] localVerts = new Vector2[4];
             return FindDeepestValid(point, root, ref localVerts);
         }
 
@@ -395,48 +395,48 @@ namespace ArctisAurora.Core.UISystem
             return control;
         }
 
-        private bool SolvePositions(VulkanControl entity, Vector2D<float> pos, Vector2D<float>[] localVerts)
+        private bool SolvePositions(VulkanControl entity, Vector2 pos, Vector2[] localVerts)
         {
             // A collapsed quad passes the edge test for every point on the plane — every cross
             // product is zero, so "all on the same side" is vacuously true — which turns a control
             // arranged to nothing into one that swallows the entire hit-test.
             if (entity.transform.scale.X == 0f || entity.transform.scale.Y == 0f) return false;
 
-            localVerts[0] = new Vector2D<float>(-0.5f, -0.5f);
-            localVerts[1] = new Vector2D<float>(0.5f, -0.5f);
-            localVerts[2] = new Vector2D<float>(0.5f, 0.5f);
-            localVerts[3] = new Vector2D<float>(-0.5f, 0.5f);
+            localVerts[0] = new Vector2(-0.5f, -0.5f);
+            localVerts[1] = new Vector2(0.5f, -0.5f);
+            localVerts[2] = new Vector2(0.5f, 0.5f);
+            localVerts[3] = new Vector2(-0.5f, 0.5f);
 
             localVerts = TransformToWorld(entity.transform, localVerts);
             return IsPointInQuad(pos, localVerts);
         }
 
-        private Vector2D<float>[] TransformToWorld(TransformData transform, Vector2D<float>[] localVerts)
+        private Vector2[] TransformToWorld(TransformData transform, Vector2[] localVerts)
         {
-            Vector2D<float>[] worldVerts = new Vector2D<float>[4];
+            Vector2[] worldVerts = new Vector2[4];
 
             //float cos = MathF.Cos(transform.rotation);
             //float sin = MathF.Sin(transform.rotation);
 
             for (int i = 0; i < 4; i++)
             {
-                Vector2D<float> scaled = new Vector2D<float>(localVerts[i].X * transform.scale.X, localVerts[i].Y * transform.scale.Y);
-                worldVerts[i] = new Vector2D<float>(scaled.X + transform.position.X, scaled.Y + transform.position.Y);
+                Vector2 scaled = new Vector2(localVerts[i].X * transform.scale.X, localVerts[i].Y * transform.scale.Y);
+                worldVerts[i] = new Vector2(scaled.X + transform.position.X, scaled.Y + transform.position.Y);
             }
 
             return worldVerts;
         }
 
-        private bool IsPointInQuad(Vector2D<float> point, Vector2D<float>[] quadVerts)
+        private bool IsPointInQuad(Vector2 point, Vector2[] quadVerts)
         {
             bool sameSide = true;
 
             for (int i = 0; i < 4; i++)
             {
-                Vector2D<float> a = quadVerts[i];
-                Vector2D<float> b = quadVerts[(i + 1) % 4];
-                Vector2D<float> edge = b - a;
-                Vector2D<float> toPoint = point - a;
+                Vector2 a = quadVerts[i];
+                Vector2 b = quadVerts[(i + 1) % 4];
+                Vector2 edge = b - a;
+                Vector2 toPoint = point - a;
 
                 float cross = edge.X * toPoint.Y - edge.Y * toPoint.X;
 

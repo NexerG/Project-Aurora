@@ -4,7 +4,7 @@ using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.Core.UISystem.Controls.Text.Document;
 using ArctisAurora.EngineWork.Rendering;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -241,7 +241,7 @@ namespace ArctisAurora.Core.UI
 
         // Dragging past the viewport edge scrolls, so a selection can run off-screen. The caret
         // resolves against the geometry this frame still has and catches up on the next tick.
-        private void AutoScroll(Vector2D<float> point)
+        private void AutoScroll(Vector2 point)
         {
             LayoutRect inner = arrangedRect.Shrink(arrange.padding);
 
@@ -250,8 +250,8 @@ namespace ArctisAurora.Core.UI
                             : 0f;
             if (overshoot == 0f) return;
 
-            Vector2D<float> offset = GetScrollOffset();
-            SetScrollOffset(new Vector2D<float>(offset.X, offset.Y + overshoot * autoScrollRate));
+            Vector2 offset = GetScrollOffset();
+            SetScrollOffset(new Vector2(offset.X, offset.Y + overshoot * autoScrollRate));
         }
         #endregion
 
@@ -394,7 +394,7 @@ namespace ArctisAurora.Core.UI
 
             if (!content.CaretPoint(out float x, out float y, out float height)) return;
 
-            Vector2D<float> before = GetScrollOffset();
+            Vector2 before = GetScrollOffset();
             ScrollIntoView(new LayoutRect(x, y, NextCaretControl.Width, height));
 
             if (GetScrollOffset() != before) base.Arrange(finalRect);

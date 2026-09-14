@@ -24,7 +24,16 @@ namespace ArctisAurora.Core.Diagnostics
         public long value;
     }
 
-    // one frame's slice of its batch's span and counter arrays
+    // one data pool's live items, capacity and reserved bytes as the frame left it
+    internal struct PoolRecord
+    {
+        public string name;
+        public int count;
+        public int capacity;
+        public long bytes;
+    }
+
+    // one frame's slice of its batch's record arrays
     internal struct FrameRecord
     {
         public long index;
@@ -35,6 +44,8 @@ namespace ArctisAurora.Core.Diagnostics
         public int spanCount;
         public int firstCounter;
         public int counterCount;
+        public int firstPool;
+        public int poolCount;
     }
 
     // A run of frames handed whole from the thread that recorded them to the spool that writes
@@ -51,12 +62,15 @@ namespace ArctisAurora.Core.Diagnostics
         public int spanCount;
         public CounterRecord[] counters;
         public int counterCount;
+        public PoolRecord[] pools;
+        public int poolCount;
 
         public CaptureBatch(int framesPerBatch)
         {
             frames = new FrameRecord[framesPerBatch];
             spans = new SpanRecord[framesPerBatch * 32];
             counters = new CounterRecord[framesPerBatch * 8];
+            pools = new PoolRecord[FrameSpool.pools ? framesPerBatch * 4 : 0];
         }
 
         public void Reset()
@@ -64,6 +78,7 @@ namespace ArctisAurora.Core.Diagnostics
             frameCount = 0;
             spanCount = 0;
             counterCount = 0;
+            poolCount = 0;
             dropped = 0;
             last = false;
         }
@@ -97,6 +112,17 @@ namespace ArctisAurora.Core.Diagnostics
             counter.span = span;
             counter.name = name;
             counter.value = value;
+        }
+
+        public void AddPool(string name, int count, int capacity, long bytes)
+        {
+            if (poolCount == pools.Length) Array.Resize(ref pools, Math.Max(16, pools.Length * 2));
+
+            ref PoolRecord pool = ref pools[poolCount++];
+            pool.name = name;
+            pool.count = count;
+            pool.capacity = capacity;
+            pool.bytes = bytes;
         }
     }
 
@@ -175,6 +201,7 @@ namespace ArctisAurora.Core.Diagnostics
         // settings
         internal static int framesPerBatch = 64;
         internal static int burstFrames = 300;
+        internal static bool pools;
         private static string _directory = "Profiling";
         private static long _maxBytes = 64L * 1024 * 1024;
         private static int _keep = 5;
@@ -194,6 +221,7 @@ namespace ArctisAurora.Core.Diagnostics
         {
             framesPerBatch = Math.Max(1, settings.framesPerBatch);
             burstFrames = Math.Max(1, settings.burstFrames);
+            pools = settings.pools;
             _directory = settings.directory;
             _maxBytes = Math.Max(1, settings.maxFileMB) * 1024L * 1024L;
             _keep = Math.Max(1, settings.keep);
@@ -370,6 +398,18 @@ namespace ArctisAurora.Core.Diagnostics
             }
 
             WriteCounters(writer, batch, ref frame, -1);
+
+            for (int i = 0; i < frame.poolCount; i++)
+            {
+                ref PoolRecord pool = ref batch.pools[frame.firstPool + i];
+                writer.xml.WriteStartElement("P", ns);
+                Attribute(writer, "N", writer.names[pool.name]);
+                Attribute(writer, "C", pool.count);
+                Attribute(writer, "K", pool.capacity);
+                Attribute(writer, "M", pool.bytes);
+                writer.xml.WriteEndElement();
+            }
+
             writer.xml.WriteEndElement();
         }
 
@@ -391,6 +431,7 @@ namespace ArctisAurora.Core.Diagnostics
         {
             for (int i = 0; i < batch.spanCount; i++) Declare(writer, batch.spans[i].name);
             for (int i = 0; i < batch.counterCount; i++) Declare(writer, batch.counters[i].name);
+            for (int i = 0; i < batch.poolCount; i++) Declare(writer, batch.pools[i].name);
         }
 
         private static void Declare(Writer writer, string name)

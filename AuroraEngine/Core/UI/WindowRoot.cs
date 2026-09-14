@@ -1,6 +1,6 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 
 namespace ArctisAurora.Core.UI
@@ -34,26 +34,26 @@ namespace ArctisAurora.Core.UI
 
         // The box the tree is laid out and projected in. Window pixels unless the content scales,
         // in which case it is the window divided by the scale the chosen axis implies.
-        public Vector2D<float> ViewportSize(Extent2D window)
+        public Vector2 ViewportSize(Extent2D window)
         {
             if (!autoscaling || windowingMode == WindowingMode.KeepLocal
                 || preferredWidth <= 0 || preferredHeight <= 0)
-                return new Vector2D<float>(window.Width, window.Height);
+                return new Vector2(window.Width, window.Height);
 
             switch (scalingAxis)
             {
                 case ScalingAxis.Both:
-                    return new Vector2D<float>(preferredWidth, preferredHeight);
+                    return new Vector2(preferredWidth, preferredHeight);
                 case ScalingAxis.Vertical:
-                    return new Vector2D<float>(window.Width * preferredHeight / window.Height, preferredHeight);
+                    return new Vector2(window.Width * preferredHeight / window.Height, preferredHeight);
                 case ScalingAxis.Horizontal:
-                    return new Vector2D<float>(preferredWidth, window.Height * preferredWidth / window.Width);
+                    return new Vector2(preferredWidth, window.Height * preferredWidth / window.Width);
                 case ScalingAxis.HorizontalExclusive:
-                    return new Vector2D<float>(preferredWidth, window.Height);
+                    return new Vector2(preferredWidth, window.Height);
                 case ScalingAxis.VerticalExclusive:
-                    return new Vector2D<float>(window.Width, preferredHeight);
+                    return new Vector2(window.Width, preferredHeight);
                 default:
-                    return new Vector2D<float>(window.Width, window.Height);
+                    return new Vector2(window.Width, window.Height);
             }
         }
 
@@ -63,7 +63,7 @@ namespace ArctisAurora.Core.UI
             if (windowingMode == WindowingMode.KeepLocal) return;
             if (window.Width == 0 || window.Height == 0) return;
 
-            Vector2D<float> box = ViewportSize(window);
+            Vector2 box = ViewportSize(window);
             WriteArranged(new LayoutRect(0, 0, box.X, box.Y));
 
             SetFlag(ArrangeFlags.MeasureDirty, true);
@@ -72,23 +72,23 @@ namespace ArctisAurora.Core.UI
         }
 
         // Window pixels to the units the tree is laid out in — identity unless the content scales.
-        public Vector2D<float> ToDesignSpace(Vector2D<float> windowPoint, Extent2D window)
+        public Vector2 ToDesignSpace(Vector2 windowPoint, Extent2D window)
         {
             if (window.Width == 0 || window.Height == 0) return windowPoint;
 
-            Vector2D<float> box = ViewportSize(window);
-            return new Vector2D<float>(windowPoint.X * box.X / window.Width,
+            Vector2 box = ViewportSize(window);
+            return new Vector2(windowPoint.X * box.X / window.Width,
                                        windowPoint.Y * box.Y / window.Height);
         }
 
         // The root measures at the box it was fitted to. preferredWidth/Height are the design size
         // ViewportSize reads, not a cap the tree inherits.
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             if (windowingMode == WindowingMode.KeepLocal) return base.Measure(availableSize);
 
             Thickness pad = arrange.padding;
-            Vector2D<float> inner = new Vector2D<float>(
+            Vector2 inner = new Vector2(
                 MathF.Max(0, availableSize.X - pad.totalHorizontal),
                 MathF.Max(0, availableSize.Y - pad.totalVertical));
 

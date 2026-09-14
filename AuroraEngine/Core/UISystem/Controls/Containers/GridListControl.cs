@@ -1,6 +1,6 @@
 ﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.ECS.EngineEntity;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls.Containers
 {
@@ -102,7 +102,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                 columnDefinitions.Add(new ColumnDefinition { sizeMode = GridSizeMode.Star, value = 1 });
         }
 
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             EnsureDefaults();
 
@@ -126,7 +126,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                 VulkanControl child = assignment.child;
 
                 // Offer the child a rough size: full inner rect (we'll tighten in Arrange).
-                Vector2D<float> childDesired = child.Measure(inner.size);
+                Vector2 childDesired = child.Measure(inner.size);
 
                 if (assignment.rowSpan == 1 && rowDefinitions[assignment.row].sizeMode == GridSizeMode.Auto)
                     rowDefinitions[assignment.row].resolvedSize = MathF.Max(
@@ -166,7 +166,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             if (preferredWidth > 0) totalW = MathF.Max(totalW, preferredWidth);
             if (preferredHeight > 0) totalH = MathF.Max(totalH, preferredHeight);
 
-            DesiredSize = new Vector2D<float>(totalW, totalH);
+            DesiredSize = new Vector2(totalW, totalH);
             isMeasureDirty = false;
             return DesiredSize;
         }

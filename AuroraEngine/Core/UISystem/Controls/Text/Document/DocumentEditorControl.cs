@@ -8,7 +8,7 @@ using ArctisAurora.Core.UISystem.Controls.Text.Document.Edits;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 {
@@ -225,14 +225,14 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 
             if (!content.CaretPoint(out float x, out float y, out float height)) return;
 
-            Vector2D<float> before = GetScrollOffset();
+            Vector2 before = GetScrollOffset();
             ScrollIntoView(new LayoutRect(x, y, CaretControl.Width, height));
 
             if (GetScrollOffset() != before) base.Arrange(finalRect);
             else isArrangeDirty = false;
         }
 
-        private Vector2D<float> PointerInWindow()
+        private Vector2 PointerInWindow()
         {
             RenderWindow window = RenderWindow.Of(this);
             return window.ui.ToDesignSpace(window.mousePos);
@@ -240,12 +240,12 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 
         // Places the caret and marks the run editable; shift keeps the anchor and extends. The
         // geometry answers which slot was clicked, never the hit-test.
-        public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
+        public override void ResolveOnClick(Vector2 oldPos, Vector2 delta)
         {
             if (content != null)
             {
                 // the live pointer, not oldPos, which lags the click by a frame
-                Vector2D<float> mouse = PointerInWindow();
+                Vector2 mouse = PointerInWindow();
 
                 if (content.CaretOffText(mouse.X, mouse.Y, out TextControl run, out int offset))
                 {
@@ -274,12 +274,12 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         }
 
         // Held-button drag: the focus follows the mouse, the anchor stays where the press landed.
-        public override void ResolveDrag(Vector2D<float> lastPos, Vector2D<float> delta)
+        public override void ResolveDrag(Vector2 lastPos, Vector2 delta)
         {
             if (content != null)
             {
                 // the live pointer, not lastPos, which lags by a frame
-                Vector2D<float> mouse = PointerInWindow();
+                Vector2 mouse = PointerInWindow();
                 AutoScroll(mouse);
 
                 if (content.CaretOffText(mouse.X, mouse.Y, out TextControl run, out int offset))
@@ -291,7 +291,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 
         // Dragging past the viewport edge scrolls, so a selection can run off-screen. The caret
         // resolves against the geometry this frame still has and catches up on the next tick.
-        private void AutoScroll(Vector2D<float> mouse)
+        private void AutoScroll(Vector2 mouse)
         {
             LayoutRect inner = arrangedRect.Shrink(padding);
 
@@ -300,8 +300,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                             : 0f;
             if (overshoot == 0f) return;
 
-            Vector2D<float> offset = GetScrollOffset();
-            SetScrollOffset(new Vector2D<float>(offset.X, offset.Y + overshoot * autoScrollRate));
+            Vector2 offset = GetScrollOffset();
+            SetScrollOffset(new Vector2(offset.X, offset.Y + overshoot * autoScrollRate));
         }
 
         private static bool Extending => InputHandler.instance.IsModifierDown(InputModifier.Extend);

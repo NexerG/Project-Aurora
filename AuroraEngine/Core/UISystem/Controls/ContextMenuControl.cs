@@ -5,7 +5,7 @@ using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls
 {
@@ -65,7 +65,7 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         // Shows a list this control did not compose, at a point the caller chose — what a dropdown
         // needs, and the reason a windowed menu's escape from the parent's clip rect is reusable.
-        public bool OpenWith(VulkanControl owner, IReadOnlyList<ContextEntry> entries, Vector2D<float> point)
+        public bool OpenWith(VulkanControl owner, IReadOnlyList<ContextEntry> entries, Vector2 point)
         {
             if (entries.Count == 0) return false;
 
@@ -75,7 +75,7 @@ namespace ArctisAurora.Core.UISystem.Controls
             if (isOpen) Detach();
 
             Fill(entries);
-            Measure(new Vector2D<float>(float.MaxValue, float.MaxValue));
+            Measure(new Vector2(float.MaxValue, float.MaxValue));
             Attach(source, point);
 
             isOpen = true;
@@ -94,7 +94,7 @@ namespace ArctisAurora.Core.UISystem.Controls
         // nothing to watch — the press that lands outside it takes it down.
         public virtual void Tick() { }
 
-        protected virtual void Attach(RenderWindow source, Vector2D<float> point) =>
+        protected virtual void Attach(RenderWindow source, Vector2 point) =>
             source.ui.uiRoot.AddOverlay(this, point);
 
         protected virtual void Detach() => (parent as WindowControl)?.RemoveOverlay();

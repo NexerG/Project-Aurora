@@ -1,5 +1,5 @@
 using ArctisAurora.Core.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -105,13 +105,13 @@ namespace ArctisAurora.Core.UI
         private Control Visible => isEditing ? box : label;
 
         #region ---- layout ----
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
-            Vector2D<float> desired = Visible.Measure(new Vector2D<float>(
+            Vector2 desired = Visible.Measure(new Vector2(
                 MathF.Max(0, availableSize.X - padding.totalHorizontal),
                 MathF.Max(0, availableSize.Y - padding.totalVertical)));
 
-            arrange.desired = new Vector2D<float>(
+            arrange.desired = new Vector2(
                 preferredWidth > 0 ? preferredWidth : desired.X + padding.totalHorizontal,
                 preferredHeight > 0 ? preferredHeight : desired.Y + padding.totalVertical);
             SetFlag(ArrangeFlags.MeasureDirty, false);

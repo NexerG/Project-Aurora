@@ -1,5 +1,5 @@
 ﻿using ArctisAurora.Core.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls.Containers
 {
@@ -48,7 +48,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         {
         }
 
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             float w = preferredWidth > 0 ? preferredWidth : availableSize.X;
             float h = preferredHeight > 0 ? preferredHeight : availableSize.Y;
@@ -70,10 +70,10 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                 if (children[i] is not VulkanControl child) continue;
 
                 DockMode mode = ResolveDockMode(child, i);
-                Vector2D<float> offer = new Vector2D<float>(
+                Vector2 offer = new Vector2(
                     MathF.Max(0, remaining.width),
                     MathF.Max(0, remaining.height));
-                Vector2D<float> desired = child.Measure(offer);
+                Vector2 desired = child.Measure(offer);
 
                 switch (mode)
                 {
@@ -128,7 +128,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             float finalW = preferredWidth > 0 ? MathF.Max(contentW, preferredWidth) : contentW;
             float finalH = preferredHeight > 0 ? MathF.Max(contentH, preferredHeight) : contentH;
 
-            DesiredSize = new Vector2D<float>(finalW, finalH);
+            DesiredSize = new Vector2(finalW, finalH);
             isMeasureDirty = false;
             return DesiredSize;
         }

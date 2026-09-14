@@ -75,6 +75,7 @@ namespace ArctisAurora.Core.Diagnostics
             public long frameBytesStart;
             public long frameIndex;
             public int frameFirstSpan;
+            public int frameFirstPool;
         }
 
         [ThreadStatic] private static Tables? _tables;
@@ -253,6 +254,7 @@ namespace ArctisAurora.Core.Diagnostics
 
                 tables.frameCounters.Clear();
                 tables.frameFirstSpan = tables.batch.spanCount;
+                tables.frameFirstPool = tables.batch.poolCount;
                 tables.capturing = true;
             }
 
@@ -288,9 +290,23 @@ namespace ArctisAurora.Core.Diagnostics
                 frame.spanCount = batch.spanCount - tables.frameFirstSpan;
                 frame.firstCounter = firstCounter;
                 frame.counterCount = batch.counterCount - firstCounter;
+                frame.firstPool = tables.frameFirstPool;
+                frame.poolCount = batch.poolCount - tables.frameFirstPool;
 
                 bool finished = tables.remaining > 0 && --tables.remaining == 0;
                 if (finished || batch.frameCount == batch.frames.Length) Hand(tables, finished);
+            }
+
+            // Records one data pool's size into the frame being captured.
+            [Conditional("DEBUG"), Conditional("PROFILE")]
+            public static void Pool(string name, int count, int capacity, long bytes)
+            {
+                if (!enabled || !FrameSpool.pools) return;
+
+                Tables? tables = _tables;
+                if (tables == null || !tables.capturing) return;
+
+                tables.batch!.AddPool(name, count, capacity, bytes);
             }
 
             private static void Hand(Tables tables, bool last)
@@ -352,6 +368,7 @@ namespace ArctisAurora.Core.Diagnostics
 
             reportEnabled = settings.report.enabled;
             FrameSpool.Configure(settings.capture);
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "--profile-pools") >= 0) FrameSpool.pools = true;
 
             if (_bootArmed) return true;
 

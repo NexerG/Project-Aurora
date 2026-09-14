@@ -1,6 +1,6 @@
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
-using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 
 namespace ArctisAurora.Core.UISystem.Controls
@@ -31,7 +31,7 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         // The menu measures to its widest caption, so the window is sized to it and never the other
         // way round.
-        protected override unsafe void Attach(RenderWindow source, Vector2D<float> point)
+        protected override unsafe void Attach(RenderWindow source, Vector2 point)
         {
             Build();
             _source = source;

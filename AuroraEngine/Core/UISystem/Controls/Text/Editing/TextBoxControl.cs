@@ -4,7 +4,7 @@ using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.Core.UISystem.Controls.Text.Document;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
 {
@@ -20,7 +20,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
         {
             protected override float WrapWidth(float available) => float.MaxValue;
 
-            public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
+            public override void ResolveOnClick(Vector2 oldPos, Vector2 delta)
             {
                 BeginEdit();
                 (parent as VulkanControl)?.ResolveOnClick(oldPos, delta);
@@ -188,7 +188,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
         #endregion
 
         #region ---- pointer ----
-        public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
+        public override void ResolveOnClick(Vector2 oldPos, Vector2 delta)
         {
             line.BeginEdit();
 
@@ -200,7 +200,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
             InvalidateArrange();
         }
 
-        public override void ResolveDrag(Vector2D<float> lastPos, Vector2D<float> delta)
+        public override void ResolveDrag(Vector2 lastPos, Vector2 delta)
         {
             line.cursorPosition = OffsetUnderPointer();
             InvalidateArrange();
@@ -211,21 +211,21 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
             RenderWindow window = RenderWindow.Of(this);
             if (window == null) return line.cursorPosition;
 
-            Vector2D<float> mouse = window.ui.ToDesignSpace(window.mousePos);
+            Vector2 mouse = window.ui.ToDesignSpace(window.mousePos);
             LayoutRect inner = line.arrangedRect.Shrink(line.padding);
             return line.OffsetAt(mouse.X - inner.x, mouse.Y - inner.y);
         }
         #endregion
 
         #region ---- layout ----
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             float w = preferredWidth > 0 ? preferredWidth : MathF.Max(minWidth, availableSize.X);
             float h = preferredHeight > 0 ? preferredHeight : MathF.Max(minHeight, availableSize.Y);
 
-            line.Measure(new Vector2D<float>(float.MaxValue, float.MaxValue));
+            line.Measure(new Vector2(float.MaxValue, float.MaxValue));
 
-            DesiredSize = new Vector2D<float>(w, h);
+            DesiredSize = new Vector2(w, h);
             isMeasureDirty = false;
             return DesiredSize;
         }

@@ -384,10 +384,6 @@ than a shared abstraction — both stacks live until 6d, and the two editors sha
 
 ### Known gaps — 6c
 
-- **A `TextRunControl`'s `colorHex` setter only invalidates arrange, but the glyph colours are built in
-  `BuildRuns` at measure.** A label recoloured after its first measure does not repaint; the format bar's
-  colour swatch calls `InvalidateLayout` itself. Nothing else on either stack recolours text after build, so
-  this is latent, not observed.
 - **Seen once, not reproduced:** after a long mixed chain (select-all bold → undo → block styling → armed
   colour → typed character → drag-select → px size), the saved file carried every span change but not the
   block's `StylingType`. The same block styling saved correctly in isolation, twice.
@@ -522,6 +518,19 @@ no span edit at all.
 `Control` and overridden to leave `rows[0]` alone; resolving which span owns a given character outside the
 arrange walk would need a per-character span map. `Arrange` already rewrites every glyph row's tint, so the
 override invalidates arrange instead — the same full rewrite the outgoing `RepointGlyphs` does.
+
+**A clean text run skips `Measure`, so its colour change re-measures (2026-09-14).** Invalidating one block
+walks `MeasureDirty` up to the document, and `NextDocumentControl.Measure` measures every block — each keystroke
+rebuilt the runs, flattened and rewrapped every paragraph in the note. `TextRunControl.Measure` now returns
+`desired` when the run is not dirty and its wrap width equals `_wrapWidth`; a resize still rewraps, since
+invalidation walks up and never down. The dirty flag is then the only thing that reruns `BuildRuns`, which
+reads `colorHex`, so for text runs the setter invalidates layout and the paragraph above no longer holds. A
+recolour used to reach the glyphs only when some later measure happened to pass through, and
+`NextFileBrowserControl.RestyleRows` recolours labels without invalidating. Rejected: building `_runColors` in
+`Arrange` to keep a recolour arrange-only — every block below a growing paragraph re-arranges per keystroke and
+would re-parse its spans' hex each time. Rejected: caching `Flatten`'s output, which is width-independent — 24 B
+per character held for every open block against [[thorium-editor-architecture]]'s layout budget, for a saving
+only a resize would see.
 
 **The document owns the caret, so the scaffolding grew a document.** The settled model is that a glyph
 notifies the document and the document spawns the caret; a run owning its own caret gets the count wrong the

@@ -1,5 +1,5 @@
 using ArctisAurora.EngineWork;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -19,7 +19,7 @@ namespace ArctisAurora.Core.UI
 
         // press state
         private bool armed;
-        private Vector2D<float> grab;
+        private Vector2 grab;
 
         public override bool OnPointerPress(PointerEvent e)
         {
@@ -36,7 +36,7 @@ namespace ArctisAurora.Core.UI
             if (armed)
             {
                 if (!InputHandler.instance.IsKeyDown(Keys.MouseLeft)) armed = false;
-                else if ((e.point - grab).Length >= tearThreshold)
+                else if ((e.point - grab).Length() >= tearThreshold)
                 {
                     armed = false;
                     dragging = true;

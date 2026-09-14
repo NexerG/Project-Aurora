@@ -27,8 +27,13 @@ namespace ArctisAurora.Core.Data
     public sealed class PoolColumn<T> : IPoolColumn where T : struct
     {
         public T[] data;
+        private T[] _scratch;
 
-        public PoolColumn(int capacity) => data = new T[capacity];
+        public PoolColumn(int capacity)
+        {
+            data = new T[capacity];
+            _scratch = new T[capacity];
+        }
 
         public Type ElementType => typeof(T);
 
@@ -37,6 +42,7 @@ namespace ArctisAurora.Core.Data
             T[] bigger = new T[newCapacity];
             Array.Copy(data, bigger, data.Length);
             data = bigger;
+            _scratch = new T[newCapacity];
         }
 
         public void Move(int from, int to) => data[to] = data[from];
@@ -56,13 +62,9 @@ namespace ArctisAurora.Core.Data
 
         public void Permute(int[] destToSrc, int count)
         {
-            // Gather into a temp then copy back — arbitrary permutation can't be done in
-            // place with Array.Copy. Runs only at a frame edge on resequence, so the temp
-            // allocation is acceptable.
-            T[] tmp = new T[count];
             for (int i = 0; i < count; i++)
-                tmp[i] = data[destToSrc[i]];
-            Array.Copy(tmp, data, count);
+                _scratch[i] = data[destToSrc[i]];
+            Array.Copy(_scratch, data, count);
         }
     }
 }

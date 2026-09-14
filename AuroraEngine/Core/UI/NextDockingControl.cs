@@ -1,6 +1,6 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -18,7 +18,7 @@ namespace ArctisAurora.Core.UI
         public Control? right;
         public Control? center;
 
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             float w = preferredWidth > 0 ? preferredWidth : availableSize.X;
             float h = preferredHeight > 0 ? preferredHeight : availableSize.Y;
@@ -38,7 +38,7 @@ namespace ArctisAurora.Core.UI
                 if (children[i] is not Control child) continue;
 
                 DockMode mode = ResolveDockMode(child, i);
-                Vector2D<float> desired = child.Measure(new Vector2D<float>(
+                Vector2 desired = child.Measure(new Vector2(
                     MathF.Max(0, remaining.width),
                     MathF.Max(0, remaining.height)));
 
@@ -90,7 +90,7 @@ namespace ArctisAurora.Core.UI
             float contentW = usedLeft + usedRight + MathF.Max(fillW, remaining.width) + padding.totalHorizontal;
             float contentH = usedTop + usedBottom + MathF.Max(fillH, remaining.height) + padding.totalVertical;
 
-            arrange.desired = new Vector2D<float>(
+            arrange.desired = new Vector2(
                 preferredWidth > 0 ? MathF.Max(contentW, preferredWidth) : contentW,
                 preferredHeight > 0 ? MathF.Max(contentH, preferredHeight) : contentH);
             SetFlag(ArrangeFlags.MeasureDirty, false);

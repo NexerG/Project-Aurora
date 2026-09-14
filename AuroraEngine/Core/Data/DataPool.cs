@@ -42,16 +42,22 @@ namespace ArctisAurora.Core.Data
         private int[] _backMap;    // dense index -> stableId
         private int[] _versions;   // stableId -> version (>= 1 for a live/recyclable slot)
         private object[] _owners;  // dense index -> proxy back-reference (managed sidecar)
+        private int[] _permuteScratch;    // resequence scratch
+        private object[] _ownersScratch;
         private readonly Stack<int> _freeIds = new();
         private int _highStableId; // next never-issued stableId
         private int _count;
         private int _capacity;
+        private readonly int _slotBytes;
 
         private readonly HashSet<int> _pendingFree = new();
         private bool _orderDirty;
 
         public int Count => _count;
         public int Capacity => _capacity;
+
+        // Bytes of every capacity-sized array the pool holds.
+        public long ReservedBytes => (long)_capacity * _slotBytes;
         public bool StructuralDirty { get; private set; }
 
         // Dirty range in dense-index space: the contiguous slice [DirtyMin, DirtyMax] (inclusive)
@@ -147,6 +153,8 @@ namespace ArctisAurora.Core.Data
             _backMap = new int[capacity];
             _versions = new int[capacity];
             _owners = new object[capacity];
+            _permuteScratch = new int[capacity];
+            _ownersScratch = new object[capacity];
             Array.Fill(_versions, 1);
 
             _publishedSlotVersion = new int[capacity];
@@ -155,6 +163,7 @@ namespace ArctisAurora.Core.Data
             // Nothing in C# declares the mapping — reorder the <Component> elements and every
             // in-flight command's ColumnId means something else.
             List<IPoolColumn> columnOrder = new();
+            _slotBytes = 4 * sizeof(int) + IntPtr.Size;
             foreach (Type t in componentTypes)
             {
                 Type columnType = typeof(PoolColumn<>).MakeGenericType(t);
@@ -162,6 +171,7 @@ namespace ArctisAurora.Core.Data
                 _columnIds[t] = (ushort)columnOrder.Count;
                 _columns[t] = column;
                 columnOrder.Add(column);
+                _slotBytes += column.ElementSize;
             }
             _columnsByIndex = columnOrder.ToArray();
         }
@@ -484,17 +494,17 @@ namespace ArctisAurora.Core.Data
                 return false;
             }
 
-            int[] destToSrc = new int[_count];
+            int[] destToSrc = _permuteScratch;
             for (int i = 0; i < _count; i++)
                 destToSrc[i] = _slots[order[i]];
 
             foreach (IPoolColumn col in _columns.Values)
                 col.Permute(destToSrc, _count);
 
-            object[] ownersTmp = new object[_count];
             for (int i = 0; i < _count; i++)
-                ownersTmp[i] = _owners[destToSrc[i]];
-            Array.Copy(ownersTmp, _owners, _count);
+                _ownersScratch[i] = _owners[destToSrc[i]];
+            Array.Copy(_ownersScratch, _owners, _count);
+            Array.Clear(_ownersScratch, 0, _count);
 
             for (int i = 0; i < _count; i++)
             {
@@ -529,6 +539,8 @@ namespace ArctisAurora.Core.Data
             Array.Resize(ref _slots, newCap);
             Array.Resize(ref _backMap, newCap);
             Array.Resize(ref _owners, newCap);
+            _permuteScratch = new int[newCap];
+            _ownersScratch = new object[newCap];
             int old = _versions.Length;
             Array.Resize(ref _versions, newCap);
             for (int i = old; i < newCap; i++)

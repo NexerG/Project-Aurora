@@ -1,5 +1,5 @@
 using ArctisAurora.Core.Data;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.ECS.EngineEntity
 {
@@ -20,22 +20,22 @@ namespace ArctisAurora.Core.ECS.EngineEntity
         protected override void AllocatePooledData()
         {
             base.AllocatePooledData();
-            transform.scale = new Vector3D<float>(1, 1, 1);   // preserve the old default scale
+            transform.scale = new Vector3(1, 1, 1);   // preserve the old default scale
         }
 
-        public void SetPosition(Vector3D<float> position)
+        public void SetPosition(Vector3 position)
         {
             transform.position = position;
             Pool.MarkContentDirty(dataHandle);
         }
 
-        public void SetScale(Vector3D<float> scale)
+        public void SetScale(Vector3 scale)
         {
             transform.scale = scale;
             Pool.MarkContentDirty(dataHandle);
         }
 
-        public void SetRotation(Vector3D<float> rotation)
+        public void SetRotation(Vector3 rotation)
         {
             transform.rotation = rotation;
             Pool.MarkContentDirty(dataHandle);

@@ -1,6 +1,6 @@
 ﻿using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.Modules;
-using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
@@ -21,14 +21,14 @@ namespace ArctisAurora.EngineWork.Rendering
         //keyboard
         internal Dictionary<Keys, bool> _keyStates = new Dictionary<Keys, bool>();
         //variables
-        internal Vector3D<float> _pos = new Vector3D<float>(0, 0, 0);
-        internal Vector3D<float> _rotation = new Vector3D<float>(0, 0, 0);
-        internal Vector3D<float> _localUp = new Vector3D<float>(0, 1, 0);
-        internal Vector3D<float> _front = new Vector3D<float>(0, 0, -1);
-        internal Vector3D<float> _localRight = new Vector3D<float>(0, 0, 0);
+        internal Vector3 _pos = new Vector3(0, 0, 0);
+        internal Vector3 _rotation = new Vector3(0, 0, 0);
+        internal Vector3 _localUp = new Vector3(0, 1, 0);
+        internal Vector3 _front = new Vector3(0, 0, -1);
+        internal Vector3 _localRight = new Vector3(0, 0, 0);
         //matrices
-        internal Matrix4X4<float> _view = Matrix4X4<float>.Identity;
-        internal Matrix4X4<float> _projection = Matrix4X4<float>.Identity;
+        internal Matrix4x4 _view = Matrix4x4.Identity;
+        internal Matrix4x4 _projection = Matrix4x4.Identity;
         //controls
         float _speed = 0.5f;
         float _sensitivity = 0.25f;
@@ -69,50 +69,50 @@ namespace ArctisAurora.EngineWork.Rendering
             switch (_owner.rendererType)
             {
                 case ERendererTypes.Rasterizer:
-                    _front.X = MathF.Cos(Scalar.DegreesToRadians(_rotation.X)) * MathF.Cos(Scalar.DegreesToRadians(_rotation.Y));
-                    _front.Y = MathF.Sin(Scalar.DegreesToRadians(_rotation.Y));
-                    _front.Z = MathF.Sin(Scalar.DegreesToRadians(_rotation.X)) * MathF.Cos(Scalar.DegreesToRadians(_rotation.Y));
-                    _front = Vector3D.Normalize(_front);
+                    _front.X = MathF.Cos(float.DegreesToRadians(_rotation.X)) * MathF.Cos(float.DegreesToRadians(_rotation.Y));
+                    _front.Y = MathF.Sin(float.DegreesToRadians(_rotation.Y));
+                    _front.Z = MathF.Sin(float.DegreesToRadians(_rotation.X)) * MathF.Cos(float.DegreesToRadians(_rotation.Y));
+                    _front = Vector3.Normalize(_front);
 
-                    _localRight = Vector3D.Normalize(Vector3D.Cross(_front, Vector3D<float>.UnitY));
-                    _localUp = Vector3D.Normalize(Vector3D.Cross(_localRight, _front));
+                    _localRight = Vector3.Normalize(Vector3.Cross(_front, Vector3.UnitY));
+                    _localUp = Vector3.Normalize(Vector3.Cross(_localRight, _front));
 
-                    _view = Matrix4X4.CreateLookAt(_pos, _pos + _front, Vector3D<float>.UnitY);
-                    _projection = Matrix4X4.CreatePerspectiveFieldOfView(Scalar.DegreesToRadians(60.0f), _extent.Width / _extent.Height, 0.1f, 512f);
+                    _view = Matrix4x4.CreateLookAt(_pos, _pos + _front, Vector3.UnitY);
+                    _projection = Matrix4x4.CreatePerspectiveFieldOfView(float.DegreesToRadians(60.0f), _extent.Width / _extent.Height, 0.1f, 512f);
                     _projection.M22 *= -1;
                     break;
 
                 case ERendererTypes.Pathtracer:
-                    Matrix4X4<float> _tempView;
-                    Matrix4X4<float> _tempProjection;
+                    Matrix4x4 _tempView;
+                    Matrix4x4 _tempProjection;
 
-                    Matrix4X4.Invert(_view, out _tempView);
-                    Matrix4X4.Invert(_projection, out _tempProjection);
+                    Matrix4x4.Invert(_view, out _tempView);
+                    Matrix4x4.Invert(_projection, out _tempProjection);
                     _view = _tempView;
                     _projection = _tempProjection;
                     break;
 
                 case ERendererTypes.UITemp:
                     UIModule ui = (UIModule)_owner;
-                    Vector2D<float> box;
-                    Vector2D<float> origin = Vector2D<float>.Zero;
+                    Vector2 box;
+                    Vector2 origin = Vector2.Zero;
 
                     if (ui.rangeRoot != null)
                     {
                         // a drag preview: the control's own box, so it fills the window at any extent
                         box = ui.rangeRoot.arrangedRect.size;
-                        origin = new Vector2D<float>(ui.rangeRoot.arrangedRect.x, ui.rangeRoot.arrangedRect.y);
+                        origin = new Vector2(ui.rangeRoot.arrangedRect.x, ui.rangeRoot.arrangedRect.y);
                     }
                     else
                     {
                         WindowControl root = ui.uiRoot;
                         box = root != null
                             ? root.ViewportSize(_extent)
-                            : new Vector2D<float>(_extent.Width, _extent.Height);
+                            : new Vector2(_extent.Width, _extent.Height);
                     }
 
-                    _view = Matrix4X4.CreateLookAt(Vector3D<float>.Zero, _front, _localUp);
-                    _projection = Matrix4X4.CreateOrthographicOffCenter(origin.X, origin.X + box.X,
+                    _view = Matrix4x4.CreateLookAt(Vector3.Zero, _front, _localUp);
+                    _projection = Matrix4x4.CreateOrthographicOffCenter(origin.X, origin.X + box.X,
                         origin.Y, origin.Y + box.Y, 0.01f, 512f);
                     break;
 
@@ -120,22 +120,22 @@ namespace ArctisAurora.EngineWork.Rendering
                     UIEngineModule nextModule = (UIEngineModule)_owner;
                     LayoutRect? ghost = nextModule.rangeRect;
                     WindowRoot nextRoot = nextModule.uiRoot;
-                    Vector2D<float> nextOrigin = Vector2D<float>.Zero;
-                    Vector2D<float> nextBox;
+                    Vector2 nextOrigin = Vector2.Zero;
+                    Vector2 nextBox;
 
                     if (ghost.HasValue)
                     {
                         // a drag preview: the control's own box, so it fills the window at any extent
                         nextBox = ghost.Value.size;
-                        nextOrigin = new Vector2D<float>(ghost.Value.x, ghost.Value.y);
+                        nextOrigin = new Vector2(ghost.Value.x, ghost.Value.y);
                     }
                     else
                         nextBox = nextRoot != null
                             ? nextRoot.ViewportSize(_extent)
-                            : new Vector2D<float>(_extent.Width, _extent.Height);
+                            : new Vector2(_extent.Width, _extent.Height);
 
-                    _view = Matrix4X4.CreateLookAt(Vector3D<float>.Zero, _front, _localUp);
-                    _projection = Matrix4X4.CreateOrthographicOffCenter(nextOrigin.X, nextOrigin.X + nextBox.X,
+                    _view = Matrix4x4.CreateLookAt(Vector3.Zero, _front, _localUp);
+                    _projection = Matrix4x4.CreateOrthographicOffCenter(nextOrigin.X, nextOrigin.X + nextBox.X,
                         nextOrigin.Y, nextOrigin.Y + nextBox.Y, 0.01f, 512f);
                     break;
                 default:
@@ -177,7 +177,7 @@ namespace ArctisAurora.EngineWork.Rendering
                 _firstMove = false;
             }
 
-            Vector2D<float> _delta = new Vector2D<float>((float)(xPos - _lastX), (float)(yPos - _lastY));
+            Vector2 _delta = new Vector2((float)(xPos - _lastX), (float)(yPos - _lastY));
             _lastX = xPos;
             _lastY = yPos;
 
@@ -214,11 +214,11 @@ namespace ArctisAurora.EngineWork.Rendering
             //EQ up down on unitY
             if (_keyStates[Keys.E])
             {
-                _pos += _speed * Vector3D<float>.UnitY;
+                _pos += _speed * Vector3.UnitY;
             }
             if (_keyStates[Keys.Q])
             {
-                _pos += _speed * -Vector3D<float>.UnitY;
+                _pos += _speed * -Vector3.UnitY;
             }
             //space ctrl local up down
             if (_keyStates[Keys.LeftControl])
@@ -241,7 +241,7 @@ namespace ArctisAurora.EngineWork.Rendering
                 return toClamp;
         }
 
-        internal static Vector2D<float> GetPixelSizeInWorldSpace(float left, float right, float bot, float top, int screenWidth, int screenHeight)
+        internal static Vector2 GetPixelSizeInWorldSpace(float left, float right, float bot, float top, int screenWidth, int screenHeight)
         {
             float worldWidth = right - left;
             float worldHeight = top - bot;
@@ -249,7 +249,7 @@ namespace ArctisAurora.EngineWork.Rendering
             float pixelWidth = worldWidth / screenWidth;
             float pixelHeight = worldHeight / screenHeight;
 
-            return new Vector2D<float>(pixelWidth, pixelHeight);
+            return new Vector2(pixelWidth, pixelHeight);
         }
 
         internal void UpdateCameraMatrix(Extent2D windowExtent, uint imageIndex, int i)

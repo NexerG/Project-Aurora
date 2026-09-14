@@ -1,7 +1,7 @@
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls;
-using Silk.NET.Maths;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Xml.Linq;
@@ -55,7 +55,7 @@ namespace ArctisAurora.Core.UISystem
     [StructLayout(LayoutKind.Sequential)]
     public struct GpuGradientStop
     {
-        public Vector4D<float> color;
+        public Vector4 color;
         public float position;
     }
 
@@ -69,8 +69,8 @@ namespace ArctisAurora.Core.UISystem
     public struct GpuGradient
     {
         // direction is the baked unit vector of Angle; center is normalised across the rect
-        public Vector2D<float> direction;
-        public Vector2D<float> center;
+        public Vector2 direction;
+        public Vector2 center;
         public uint kind;
         public uint stopCount;
         public GradientStops stops;
@@ -166,8 +166,8 @@ namespace ArctisAurora.Core.UISystem
             float radians = definition.angle * MathF.PI / 180f;
             GpuGradient gradient = new GpuGradient
             {
-                direction = new Vector2D<float>(MathF.Cos(radians), MathF.Sin(radians)),
-                center = new Vector2D<float>(definition.centerX, definition.centerY),
+                direction = new Vector2(MathF.Cos(radians), MathF.Sin(radians)),
+                center = new Vector2(definition.centerX, definition.centerY),
                 kind = (uint)definition.kind,
                 stopCount = (uint)definition.stops.Count
             };
@@ -177,7 +177,7 @@ namespace ArctisAurora.Core.UISystem
                 GradientStopDefinition stop = definition.stops[i];
                 gradient.stops[i] = new GpuGradientStop
                 {
-                    color = new Vector4D<float>(VulkanControl.HexToRGB(stop.colorHex), stop.alpha),
+                    color = new Vector4(VulkanControl.HexToRGB(stop.colorHex), stop.alpha),
                     position = stop.position
                 };
             }

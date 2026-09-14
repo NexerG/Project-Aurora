@@ -1,6 +1,7 @@
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
+using Carbon.Editor;
 using Carbon.Editor.CustomControls;
 
 namespace Carbon
@@ -28,29 +29,23 @@ namespace Carbon
             engine.Run();
         }
 
-        // The views only ever hear about a capture through here, so no control looks another up.
+        // The views only ever hear about a capture through Comparison, so no control looks another up.
         private static void Wire(WindowRoot root)
         {
             NextSessionListControl sessions = (NextSessionListControl)root.FindByName("Sessions");
-            NextFrameStripControl strip = (NextFrameStripControl)root.FindByName("Strip");
-            NextSpanChartControl flame = (NextSpanChartControl)root.FindByName("Flame");
-            NextSpanChartControl timeline = (NextSpanChartControl)root.FindByName("Timeline");
-            NextZoneTableControl zones = (NextZoneTableControl)root.FindByName("Zones");
 
-            // The strip is last, because taking a session is what makes it choose a frame.
-            sessions.onSessionLoaded = session =>
-            {
-                flame.SetSession(session);
-                timeline.SetSession(session);
-                zones.SetSession(session);
-                strip.SetSession(session);
-            };
+            Comparison.Attach(
+                (NextFrameStripControl)root.FindByName("Strip"),
+                (NextFrameStripControl)root.FindByName("CompareStrip"),
+                (NextSpanChartControl)root.FindByName("Flame"),
+                (NextSpanChartControl)root.FindByName("Timeline"),
+                (NextZoneTableControl)root.FindByName("Zones"),
+                (NextSliderControl)root.FindByName("Scale"),
+                (NextLabelControl)root.FindByName("Offset"),
+                (NextLabelControl)root.FindByName("ScaleValue"),
+                (NextLabelControl)root.FindByName("Pools"));
 
-            strip.onFrameSelected = (thread, frame) =>
-            {
-                flame.SetFrame(thread, frame);
-                timeline.SetFrame(thread, frame);
-            };
+            sessions.onSessionLoaded = Comparison.Load;
         }
     }
 }

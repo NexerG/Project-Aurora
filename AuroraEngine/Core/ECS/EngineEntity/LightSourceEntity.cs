@@ -1,5 +1,4 @@
 ﻿using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
-using Silk.NET.Maths;
 using System.Numerics;
 
 namespace ArctisAurora.Core.ECS.EngineEntity
@@ -21,7 +20,7 @@ namespace ArctisAurora.Core.ECS.EngineEntity
             base.OnTick();
         }
 
-        public void UpdateLightPosition(Vector3D<float> newPos)
+        public void UpdateLightPosition(Vector3 newPos)
         {
             //transform.position = newPos;
 

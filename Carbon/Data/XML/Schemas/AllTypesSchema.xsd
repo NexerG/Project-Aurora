@@ -76,6 +76,7 @@
       <xs:enumeration value="NextDocument" />
       <xs:enumeration value="NextScrollDirection" />
       <xs:enumeration value="NextScrollable" />
+      <xs:enumeration value="NextSlider" />
       <xs:enumeration value="NextSplitter" />
       <xs:enumeration value="NextSplitView" />
       <xs:enumeration value="NextStackPanel" />

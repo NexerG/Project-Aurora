@@ -1,6 +1,6 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -94,7 +94,7 @@ namespace ArctisAurora.Core.UI
                 columnDefinitions.Add(new NextColumnDefinition { sizeMode = NextGridSizeMode.Star, value = 1 });
         }
 
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             EnsureDefaults();
 
@@ -122,7 +122,7 @@ namespace ArctisAurora.Core.UI
                 if (assignment.child == null) continue;
                 Control child = assignment.child;
 
-                Vector2D<float> childDesired = child.Measure(inner.size);
+                Vector2 childDesired = child.Measure(inner.size);
 
                 if (assignment.rowSpan == 1 && rowDefinitions[assignment.row].sizeMode == NextGridSizeMode.Auto)
                     rowDefinitions[assignment.row].resolvedSize = MathF.Max(
@@ -162,7 +162,7 @@ namespace ArctisAurora.Core.UI
             if (preferredWidth > 0) totalW = MathF.Max(totalW, preferredWidth);
             if (preferredHeight > 0) totalH = MathF.Max(totalH, preferredHeight);
 
-            arrange.desired = new Vector2D<float>(totalW, totalH);
+            arrange.desired = new Vector2(totalW, totalH);
             SetFlag(ArrangeFlags.MeasureDirty, false);
             return arrange.desired;
         }

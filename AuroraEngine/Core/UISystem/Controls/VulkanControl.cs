@@ -4,6 +4,7 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.EngineWork.Registry;
 using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 using System.Collections;
 using System.ComponentModel;
@@ -26,26 +27,26 @@ namespace ArctisAurora.Core.UISystem.Controls
         public struct ControlStyle
         {
             // rgb tint, a opacity
-            public Vector4D<float> tint;
+            public Vector4 tint;
             //public Sampler image;
             //public Sampler mask;
 
             public static ControlStyle Default()
             {
                 Dictionary<string, ControlStyle> dStyles = AssetRegistries.GetRegistryByValueType<string, ControlStyle>(typeof(ControlStyle));
-                return dStyles.GetValueOrDefault("default", new ControlStyle { tint = new Vector4D<float>(1, 1, 1, 1) });
+                return dStyles.GetValueOrDefault("default", new ControlStyle { tint = new Vector4(1, 1, 1, 1) });
             }
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         public struct QuadUVs
         {
-            public Vector2D<float> uv1;
-            public Vector2D<float> uv2;
-            public Vector2D<float> uv3;
-            public Vector2D<float> uv4;
+            public Vector2 uv1;
+            public Vector2 uv2;
+            public Vector2 uv3;
+            public Vector2 uv4;
 
-            public QuadUVs(Vector2D<float> uv1, Vector2D<float> uv2, Vector2D<float> uv3, Vector2D<float> uv4)
+            public QuadUVs(Vector2 uv1, Vector2 uv2, Vector2 uv3, Vector2 uv4)
             {
                 this.uv1 = uv1;
                 this.uv2 = uv2;
@@ -53,7 +54,7 @@ namespace ArctisAurora.Core.UISystem.Controls
                 this.uv4 = uv4;
             }
 
-            public QuadUVs(Vector2D<float>[] uvs)
+            public QuadUVs(Vector2[] uvs)
             {
                 uv1 = uvs[0];
                 uv2 = uvs[1];
@@ -69,19 +70,19 @@ namespace ArctisAurora.Core.UISystem.Controls
             public ControlStyle style;
             public uint textureIndex;
             // clip bounds in design space, as (left, top, right, bottom)
-            public Vector4D<float> clip;
+            public Vector4 clip;
             // corner radii in design-space pixels, as (topLeft, topRight, bottomLeft, bottomRight)
-            public Vector4D<float> cornerRadius;
+            public Vector4 cornerRadius;
             // border band along the rounded silhouette, thickness in design-space pixels
-            public Vector3D<float> edgeColor;
+            public Vector3 edgeColor;
             public float edgeThickness;
             // stroke around the mask's own shape, width in screen pixels
-            public Vector3D<float> outlineColor;
+            public Vector3 outlineColor;
             public float outlineWidth;
             // row in the gradient table, 0 for none
             public uint gradientIndex;
             // rect the gradient ramps across, in design space, as (left, top, right, bottom)
-            public Vector4D<float> gradientRect;
+            public Vector4 gradientRect;
         }
 
         [A_XSDType("ControlColor", "UI")]
@@ -193,7 +194,7 @@ namespace ArctisAurora.Core.UISystem.Controls
                 this.bottomRight = bottomRight;
             }
 
-            public Vector4D<float> AsVector() => new Vector4D<float>(topLeft, topRight, bottomLeft, bottomRight);
+            public Vector4 AsVector() => new Vector4(topLeft, topRight, bottomLeft, bottomRight);
 
             public static CornerRadii Zero => new CornerRadii(0);
         }
@@ -238,7 +239,7 @@ namespace ArctisAurora.Core.UISystem.Controls
                 this.height = height;
             }
 
-            public LayoutRect(Vector2D<float> position, Vector2D<float> size)
+            public LayoutRect(Vector2 position, Vector2 size)
             {
                 x = position.X;
                 y = position.Y;
@@ -249,8 +250,8 @@ namespace ArctisAurora.Core.UISystem.Controls
             public float Right => x + width;
             public float Bottom => y + height;
 
-            public Vector2D<float> Position => new Vector2D<float>(x, y);
-            public Vector2D<float> size => new Vector2D<float>(width, height);
+            public Vector2 Position => new Vector2(x, y);
+            public Vector2 size => new Vector2(width, height);
 
             // A rect inset on all sides, clamped so it cannot invert.
             public LayoutRect Shrink(Thickness t) => new LayoutRect(
@@ -260,7 +261,7 @@ namespace ArctisAurora.Core.UISystem.Controls
                 MathF.Max(0, height - t.totalVertical)
             );
 
-            public bool Contains(Vector2D<float> point) =>
+            public bool Contains(Vector2 point) =>
                 point.X >= x && point.X <= Right &&
                 point.Y >= y && point.Y <= Bottom;
 
@@ -413,8 +414,8 @@ namespace ArctisAurora.Core.UISystem.Controls
             set
             {
                 field = value;
-                Vector3D<float> rgb = HexToRGB(value);
-                controlData.style.tint = new Vector4D<float>(rgb, controlData.style.tint.W);
+                Vector3 rgb = HexToRGB(value);
+                controlData.style.tint = new Vector4(rgb, controlData.style.tint.W);
                 //isDirty = true;
                 UpdateControlData();
             }
@@ -439,8 +440,8 @@ namespace ArctisAurora.Core.UISystem.Controls
             set
             {
                 string hex = EnumColorToHex(value);
-                Vector3D<float> rgb = HexToRGB(hex);
-                controlData.style.tint = new Vector4D<float>(rgb, controlData.style.tint.W);
+                Vector3 rgb = HexToRGB(hex);
+                controlData.style.tint = new Vector4(rgb, controlData.style.tint.W);
                 UpdateControlData();
                 field = value;
                 controlColorHex = hex;
@@ -543,7 +544,7 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         #region ---- EVENTS ----
         //fuck do i do with this yet to figure out. tbh idk if this is even a problem
-        public event Action<Vector2D<float>>? hover;
+        public event Action<Vector2>? hover;
         [A_XSDElementProperty("onEnter", "UI")]
         public Action? onEnter;
         [A_XSDElementProperty("BubbleEnter", "UI")]
@@ -578,7 +579,7 @@ namespace ArctisAurora.Core.UISystem.Controls
         [A_XSDElementProperty("BubbleAltRelease", "UI")]
         public bool bubbleAltRelease = false;
 
-        public Action<Vector2D<float>, Vector2D<float>>? onDrag;
+        public Action<Vector2, Vector2>? onDrag;
         [A_XSDElementProperty("onDragStop", "UI")]
         public Action? onDragStop;
 
@@ -602,7 +603,7 @@ namespace ArctisAurora.Core.UISystem.Controls
         // False leaves the active control where it was when this one is pressed.
         public virtual bool takesActiveControl => true;
 
-        public bool HitTest(Vector2D<float> point) => ClipRect.Contains(point);
+        public bool HitTest(Vector2 point) => ClipRect.Contains(point);
         #endregion
 
         // EXTRAS
@@ -610,7 +611,7 @@ namespace ArctisAurora.Core.UISystem.Controls
         public string contextMenus = "";
 
         #region ---- Layout State ----
-        public Vector2D<float> DesiredSize { get; protected set; }
+        public Vector2 DesiredSize { get; protected set; }
 
         // Every assignment mirrors into the pool row the gradient ramps across, so no Arrange
         // override has to know about gradients.
@@ -628,7 +629,7 @@ namespace ArctisAurora.Core.UISystem.Controls
         // glyphs its own rect so the ramp spans the text instead of restarting per letter.
         internal void SetGradientSpace(LayoutRect rect)
         {
-            controlData.gradientRect = new Vector4D<float>(rect.x, rect.y, rect.Right, rect.Bottom);
+            controlData.gradientRect = new Vector4(rect.x, rect.y, rect.Right, rect.Bottom);
             UpdateControlData();
         }
 
@@ -639,7 +640,7 @@ namespace ArctisAurora.Core.UISystem.Controls
             protected set
             {
                 field = value;
-                controlData.clip = new Vector4D<float>(value.x, value.y, value.Right, value.Bottom);
+                controlData.clip = new Vector4(value.x, value.y, value.Right, value.Bottom);
                 UpdateControlData();
             }
         }
@@ -712,19 +713,19 @@ namespace ArctisAurora.Core.UISystem.Controls
         #endregion
 
         #region ---- Layout API (two-pass) ----
-        public virtual Vector2D<float> Measure(Vector2D<float> availableSize)
+        public virtual Vector2 Measure(Vector2 availableSize)
         {
             float w = preferredWidth > 0 ? preferredWidth : MathF.Max(minWidth, availableSize.X);
             float h = preferredHeight > 0 ? preferredHeight : MathF.Max(minHeight, availableSize.Y); 
             if (children.Count == 1 && children[0] is VulkanControl childControl)
             {
-                Vector2D<float> childDesired = childControl.Measure(new Vector2D<float>(
+                Vector2 childDesired = childControl.Measure(new Vector2(
                     MathF.Max(0, w - padding.totalHorizontal),
                     MathF.Max(0, h - padding.totalVertical)));
                 if (preferredWidth == 0) w = childDesired.X + padding.totalHorizontal;
                 if (preferredHeight == 0) h = childDesired.Y + padding.totalVertical;
             }
-            DesiredSize = new Vector2D<float>(w, h);
+            DesiredSize = new Vector2(w, h);
             isMeasureDirty = false;
             return DesiredSize;
         }
@@ -762,11 +763,11 @@ namespace ArctisAurora.Core.UISystem.Controls
                 ? pc.transform.position.Z + 0.001f
                 : transform.position.Z;
             ref TransformData t = ref transform;
-            t.position = new Vector3D<float>(
+            t.position = new Vector3(
                 finalRect.x + finalRect.width / 2f,
                 finalRect.y + finalRect.height / 2f,
                 z);
-            t.scale = new Vector3D<float>(finalRect.width, finalRect.height, 1);
+            t.scale = new Vector3(finalRect.width, finalRect.height, 1);
             CommitTransform();
         }
 
@@ -774,9 +775,9 @@ namespace ArctisAurora.Core.UISystem.Controls
         protected void CommitTransform()
         {
             ref TransformData t = ref transform;
-            Matrix4X4<float> m = Matrix4X4<float>.Identity;
-            m *= Matrix4X4.CreateScale(t.scale);
-            m *= Matrix4X4.CreateTranslation(t.position);
+            Matrix4x4 m = Matrix4x4.Identity;
+            m *= Matrix4x4.CreateScale(t.scale);
+            m *= Matrix4x4.CreateTranslation(t.position);
 
             Pool.GetRef<GpuTransform>(dataHandle).matrix = m;
             Pool.MarkContentDirty(dataHandle);
@@ -841,9 +842,9 @@ namespace ArctisAurora.Core.UISystem.Controls
         public override VulkanControl FindByName(string querryName) => (VulkanControl)base.FindByName(querryName);
 
         #region size_setters
-        public virtual void SetSize(Vector2D<float> size)
+        public virtual void SetSize(Vector2 size)
         {
-            this.size = (Vector2D<int>)size;
+            this.size = new Vector2D<int>((int)size.X, (int)size.Y);
         }
         public virtual void SetSize(Vector2D<int> size)
         {
@@ -862,8 +863,8 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         #region mouse_events
         // HOVER
-        public void RegisterHover(Action<Vector2D<float>> action) => hover += action;
-        public void ResolveHover(Vector2D<float> pos) => hover?.Invoke(pos);
+        public void RegisterHover(Action<Vector2> action) => hover += action;
+        public void ResolveHover(Vector2 pos) => hover?.Invoke(pos);
 
         public void RegisterOnEnter(Action action) => onEnter += action;
         public virtual void ResolveOnEnter()
@@ -881,8 +882,8 @@ namespace ArctisAurora.Core.UISystem.Controls
                 parentControl.ResolveExit();
         }
 
-        public void RegisterOnDrag(Action<Vector2D<float>, Vector2D<float>> action) => onDrag += action;
-        public virtual void ResolveDrag(Vector2D<float> lastPos, Vector2D<float> delta) => onDrag?.Invoke(lastPos, delta);
+        public void RegisterOnDrag(Action<Vector2, Vector2> action) => onDrag += action;
+        public virtual void ResolveDrag(Vector2 lastPos, Vector2 delta) => onDrag?.Invoke(lastPos, delta);
 
         // Claims the drag, so ResolveDrag runs every tick until the button comes up. Opt-in from a
         // click handler rather than automatic on press — the deepest hit is a glyph, and what wants
@@ -894,11 +895,11 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         // A drag was released over this control at a point in design space. False means "not mine"
         // and the offer walks up.
-        public virtual bool ResolveDrop(VulkanControl dropped, Vector2D<float> point) => false;
+        public virtual bool ResolveDrop(VulkanControl dropped, Vector2 point) => false;
 
         // The same offer while the button is still down, so the target can show where it would land.
         // Answered by whoever would take the drop, and walked up the same way.
-        public virtual bool ResolveDropHint(VulkanControl dropped, Vector2D<float> point) => false;
+        public virtual bool ResolveDropHint(VulkanControl dropped, Vector2 point) => false;
 
         public virtual void ClearDropHint() { }
 
@@ -915,7 +916,7 @@ namespace ArctisAurora.Core.UISystem.Controls
         }
 
         public void RegisterOnClick(Action action) => onClick += action;
-        public virtual void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
+        public virtual void ResolveOnClick(Vector2 oldPos, Vector2 delta)
         {
             onClick?.Invoke();
             if (bubbleClick && parent is VulkanControl parentControl)
@@ -1019,7 +1020,7 @@ namespace ArctisAurora.Core.UISystem.Controls
             };
         }
 
-        public static Vector3D<float> HexToRGB(string hex)
+        public static Vector3 HexToRGB(string hex)
         {
             if (hex.StartsWith("#"))
             {
@@ -1032,7 +1033,7 @@ namespace ArctisAurora.Core.UISystem.Controls
             byte r = Convert.ToByte(hex.Substring(0, 2), 16);
             byte g = Convert.ToByte(hex.Substring(2, 2), 16);
             byte b = Convert.ToByte(hex.Substring(4, 2), 16);
-            return new Vector3D<float>(r / 255f, g / 255f, b / 255f);
+            return new Vector3(r / 255f, g / 255f, b / 255f);
         }
 
         public override void Invalidate()
@@ -1074,8 +1075,8 @@ namespace ArctisAurora.Core.UISystem.Controls
                 window.arrangedRect = new LayoutRect(0, 0, window.preferredWidth, window.preferredHeight);
                 UILayout.RegisterDirtyRoot(window);
                 ref TransformData wt = ref window.transform;
-                wt.position = new Vector3D<float>(window.preferredWidth / 2f, window.preferredHeight / 2f, wt.position.Z);
-                wt.scale = new Vector3D<float>(window.preferredWidth, window.preferredHeight, 1);
+                wt.position = new Vector3(window.preferredWidth / 2f, window.preferredHeight / 2f, wt.position.Z);
+                wt.scale = new Vector3(window.preferredWidth, window.preferredHeight, 1);
                 window.CommitTransform();
             }
 

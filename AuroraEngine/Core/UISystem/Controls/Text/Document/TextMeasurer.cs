@@ -1,4 +1,3 @@
-using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.EngineWork.Registry;
@@ -25,12 +24,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
     // device.
     public interface IGlyphMetrics
     {
-        Glyph Get(string fontName, char character);
         LineMetrics GetLineMetrics(string fontName);
-
-        // The face a family actually has for a style, so the measurer picks the same metrics set
-        // GlyphControl cut the quad from.
-        FontStyle Effective(string fontName, FontStyle style);
     }
 
     // One run's contribution to a line. A line carries a list of these rather than a single run
@@ -106,27 +100,35 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             public readonly int fontSize;
             public readonly FontStyle style;
 
+            // resolved once per run
+            public readonly AtlasMetaData atlas;
+            public readonly FontStyle face;
+
             // The slice of text this run covers, so several differently-styled spans can share one
             // string instead of each holding a substring cut on every measure.
             public readonly int charStart;
             public readonly int charCount;
 
-            public Run(string text, string fontName, int fontSize, FontStyle style = FontStyle.Regular)
+            public Run(string text, string fontName, AtlasMetaData atlas, int fontSize, FontStyle style = FontStyle.Regular)
             {
                 this.text = text;
                 this.fontName = fontName;
+                this.atlas = atlas;
                 this.fontSize = fontSize;
                 this.style = style;
+                face = atlas.Effective(style);
                 charStart = 0;
                 charCount = text?.Length ?? 0;
             }
 
-            public Run(string text, int charStart, int charCount, string fontName, int fontSize, FontStyle style)
+            public Run(string text, int charStart, int charCount, string fontName, AtlasMetaData atlas, int fontSize, FontStyle style)
             {
                 this.text = text;
                 this.fontName = fontName;
+                this.atlas = atlas;
                 this.fontSize = fontSize;
                 this.style = style;
+                face = atlas.Effective(style);
                 this.charStart = charStart;
                 this.charCount = charCount;
             }
@@ -153,25 +155,6 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 this.ascent = ascent;
                 this.descent = descent;
             }
-        }
-
-        // Bridge from the document model to the measurer's input. Runs are TextInputControls, so this
-        // is the one place that reads text off a control — the overload below stays plain data, which
-        // is what lets it run against fabricated metrics with no registry and no GPU.
-        public static BlockLayout MeasureBlock(ContentBlock block, float contentWidth, IGlyphMetrics metrics, DocumentLayout documentLayout)
-        {
-            List<Run> runs = new List<Run>(block.children.Count);
-            foreach (Entity child in block.children)
-                if (child is TextRun inline)
-                {
-                    TextStyleType type = inline.stylingType == TextStyleType.Inherit
-                        ? block.stylingType : inline.stylingType;
-                    FontStyle style = inline.bold ? (inline.italic ? FontStyle.BoldItalic : FontStyle.Bold)
-                        : inline.italic ? FontStyle.Italic : FontStyle.Regular;
-                    runs.Add(new Run(inline.text, inline.fontName, documentLayout.FontSizeFor(type), style));
-                }
-
-            return MeasureBlock(runs, contentWidth, metrics, documentLayout.lineHeight);
         }
 
         // firstLineOffset applies to line 0 only.
@@ -244,7 +227,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 {
                     char c = run.text[i];
                     bool breakAfter = c == ' ' || c == '\t';
-                    chars.Add(new PenChar(r, i, breakAfter, MeasureAdvance(c, run, metrics), ascent, descent));
+                    chars.Add(new PenChar(r, i, breakAfter, MeasureAdvance(c, run), ascent, descent));
                 }
             }
             return chars;
@@ -318,12 +301,12 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         // does, so unexpected text measures as a gap instead of throwing. Public because
         // DocumentLayoutCache re-walks a line's advances when hit-testing: two copies of the pen
         // formula would let clicks drift out of step with the lines they are being tested against.
-        public static float MeasureAdvance(char character, Run run, IGlyphMetrics metrics)
+        public static float MeasureAdvance(char character, in Run run)
         {
-            Glyph glyph = metrics.Get(run.fontName, character) ?? metrics.Get(run.fontName, ' ');
+            Glyph glyph = run.atlas.GetGlyph(character) ?? run.atlas.GetGlyph(' ');
             if (glyph == null) return 0f;
 
-            return glyph.Metrics(metrics.Effective(run.fontName, run.style)).advanceWidth * run.fontSize;
+            return glyph.Metrics(run.face).advanceWidth * run.fontSize;
         }
     }
 
@@ -335,11 +318,6 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset));
 
         private readonly Dictionary<string, LineMetrics> lineBoxes = new Dictionary<string, LineMetrics>();
-
-        public Glyph Get(string fontName, char character) => Resolve(fontName).atlasMetaData.GetGlyph(character);
-
-        public FontStyle Effective(string fontName, FontStyle style) =>
-            Resolve(fontName).atlasMetaData.Effective(style);
 
         // The tallest ascent and deepest descent any glyph in the font reaches, so every line is the
         // same height and none of them clip. The font's own hhea ascender/descender would be the

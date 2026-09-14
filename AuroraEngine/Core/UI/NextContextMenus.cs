@@ -5,7 +5,7 @@ using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.GLFW;
-using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 
 namespace ArctisAurora.Core.UI
@@ -69,14 +69,14 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- open and close ----
-        internal static void OpenOn(Control? control, Vector2D<float> point)
+        internal static void OpenOn(Control? control, Vector2 point)
         {
             if (control == null) return;
             Open(Collect(control), control, point);
         }
 
         // Opens a menu of entries on a control, at a point in its window's design space.
-        public static void Open(List<ContextMenuEntry> entries, Control on, Vector2D<float> point)
+        public static void Open(List<ContextMenuEntry> entries, Control on, Vector2 point)
         {
             Close();
             if (entries.Count == 0) return;
@@ -118,9 +118,9 @@ namespace ArctisAurora.Core.UI
         private static void Host(NextContextMenuControl panel)
         {
             WindowRoot root = _origin!.uiNext.uiRoot;
-            Vector2D<float> viewport = root.arrangedRect.size;
-            Vector2D<float> size = panel.Measure(viewport);
-            Vector2D<float> at = panel.position;
+            Vector2 viewport = root.arrangedRect.size;
+            Vector2 size = panel.Measure(viewport);
+            Vector2 at = panel.position;
 
             if (at.X >= 0 && at.Y >= 0 && at.X + size.X <= viewport.X && at.Y + size.Y <= viewport.Y)
                 root.AddChild(panel);
@@ -130,7 +130,7 @@ namespace ArctisAurora.Core.UI
             _open.Add(panel);
         }
 
-        private static unsafe void HostInWindow(NextContextMenuControl panel, Vector2D<float> size, Vector2D<float> viewport)
+        private static unsafe void HostInWindow(NextContextMenuControl panel, Vector2 size, Vector2 viewport)
         {
             RenderWindow window = Engine.OpenMenuWindow($"context-menu-{_windowSerial++}",
                                                         (uint)MathF.Ceiling(size.X), (uint)MathF.Ceiling(size.Y));
@@ -160,7 +160,7 @@ namespace ArctisAurora.Core.UI
 
             LayoutRect r = row.arrangedRect;
             LayoutRect p = panel.arrangedRect;
-            Vector2D<float> at = panel.position + new Vector2D<float>(r.x + r.width - p.x, r.y - p.y - panel.padding.top);
+            Vector2 at = panel.position + new Vector2(r.x + r.width - p.x, r.y - p.y - panel.padding.top);
 
             Host(new NextContextMenuControl(submenu.entries, deeper) { position = at, opener = row });
         }

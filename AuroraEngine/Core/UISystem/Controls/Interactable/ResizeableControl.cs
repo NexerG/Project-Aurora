@@ -2,7 +2,7 @@
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.GLFW;
-using Silk.NET.Maths;
+using System.Numerics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,7 +27,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
             RegisterOnRelease(OnRelease);
         }
 
-        private void Hover(Vector2D<float> pos)
+        private void Hover(Vector2 pos)
         {
             RenderWindow.Of(this)?.os.ChangeCursor(GetCursor(pos));
         }
@@ -42,7 +42,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
             isResizing = false;
         }
 
-        private void Drag(Vector2D<float> lastPos, Vector2D<float> delta)
+        private void Drag(Vector2 lastPos, Vector2 delta)
         {
             if (!isResizing)
             {
@@ -69,31 +69,31 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
             }
         }
 
-        internal void Resize(Vector2D<float> delta, bool left, bool right, bool top, bool bot)
+        internal void Resize(Vector2 delta, bool left, bool right, bool top, bool bot)
         {
-            Vector3D<float> newControlPos = transform.position;
-            Vector3D<float> newControlScale = transform.scale;
+            Vector3 newControlPos = transform.position;
+            Vector3 newControlScale = transform.scale;
 
             if (left)
             {
-                newControlPos += new Vector3D<float>(0, 0, delta.X / 2);
-                newControlScale += new Vector3D<float>(0, 0, -delta.X);
+                newControlPos += new Vector3(0, 0, delta.X / 2);
+                newControlScale += new Vector3(0, 0, -delta.X);
             }
             if(right)
             {
-                newControlPos += new Vector3D<float>(0, 0, delta.X / 2);
-                newControlScale += new Vector3D<float>(0, 0, delta.X);
+                newControlPos += new Vector3(0, 0, delta.X / 2);
+                newControlScale += new Vector3(0, 0, delta.X);
             }
 
             if (top)
             {
-                newControlPos += new Vector3D<float>(0, delta.Y / 2, 0);
-                newControlScale += new Vector3D<float>(0, -delta.Y, 0);
+                newControlPos += new Vector3(0, delta.Y / 2, 0);
+                newControlScale += new Vector3(0, -delta.Y, 0);
             }
             if (bot)
             {
-                newControlPos += new Vector3D<float>(0, delta.Y / 2, 0);
-                newControlScale += new Vector3D<float>(0, delta.Y, 0);
+                newControlPos += new Vector3(0, delta.Y / 2, 0);
+                newControlScale += new Vector3(0, delta.Y, 0);
             }
             ref var t = ref transform;
             t.position = newControlPos;
@@ -101,7 +101,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
             CommitTransform();
         }
 
-        internal CursorShape GetCursor(Vector2D<float> pos)
+        internal CursorShape GetCursor(Vector2 pos)
         {
             bool isByEdgeHorizontally = MathF.Abs(MathF.Abs(pos.X - transform.position.Z) - MathF.Abs(transform.scale.Z) / 2) < 7;
             bool isByEdgeVertically = MathF.Abs(MathF.Abs(pos.Y - transform.position.Y) - MathF.Abs(transform.scale.Y) / 2) < 7;

@@ -96,8 +96,9 @@ for the decision to accept them and the escape hatch if they bite.
   - **Line height is CSS/Obsidian, not ink.** Box = `fontSize * DocumentLayout.lineHeight` (1.5),
     font ink box centred, leftover split as half-leading, baseline at `halfLeading + ascent`.
     Per-glyph ink made a line grow when someone typed a "g". Mixed styles take the tallest box.
-  - `IGlyphMetrics` = `Get(fontName, char)` + `GetLineMetrics(fontName)`. Production derives the
-    font box as max ink across the glyph set; `hhea` ascender/descender would be better but
+  - `IGlyphMetrics` = `GetLineMetrics(fontName)` only, once per run. Advances read `Run.atlas` /
+    `Run.face`, resolved by the control that builds the run — no name lookup per character.
+    Production derives the font box as max ink across the glyph set; `hhea` ascender/descender would be better but
     `GenerateGlyphAtlas` reads and discards them, so they are not in the `.agd`.
   - `MeasureBlock(ContentBlock, ...)` is the only control-touching overload; the plain-data one
     beneath runs headless. Blocks/runs are `VulkanControl`s whose ctor hits the asset registry,

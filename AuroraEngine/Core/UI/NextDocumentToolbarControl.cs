@@ -2,7 +2,7 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.Core.UISystem.Controls.Text.Document;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -283,7 +283,7 @@ namespace ArctisAurora.Core.UI
 
         private static void Drop(NextToolButton owner, List<ContextMenuEntry> entries) =>
             NextContextMenus.Open(entries, owner,
-                new Vector2D<float>(owner.arrangedRect.x, owner.arrangedRect.Bottom));
+                new Vector2(owner.arrangedRect.x, owner.arrangedRect.Bottom));
 
         private static string CaptionFor(TextStyleType type)
         {

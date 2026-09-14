@@ -6,7 +6,7 @@ using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.RendererTypes;
-using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 using static ArctisAurora.EngineWork.Rendering.Helpers.AVulkanHelper;
 using Buffer = Silk.NET.Vulkan.Buffer;
@@ -17,15 +17,15 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
     {
         internal struct LightData
         {
-            internal Matrix4X4<float> view;
-            internal Matrix4X4<float> projection;
-            internal Vector3D<float> position;
-            internal Vector3D<float> color;
+            internal Matrix4x4 view;
+            internal Matrix4x4 projection;
+            internal Vector3 position;
+            internal Vector3 color;
 
             public LightData()
             {
-                position = new Vector3D<float>(0, 0, 0);
-                color = new Vector3D<float>(1, 1, 1);
+                position = new Vector3(0, 0, 0);
+                color = new Vector3(1, 1, 1);
             }
         }
 
@@ -54,9 +54,9 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         internal override void SingletonMatrix()
         {
             base.SingletonMatrix();
-            _lightData.projection = Matrix4X4.CreateOrthographicOffCenter(-35f, 35f, -35f, 35f, 5, 300f);
+            _lightData.projection = Matrix4x4.CreateOrthographicOffCenter(-35f, 35f, -35f, 35f, 5, 300f);
             _lightData.projection.M22 *= -1;
-            _lightData.view = Matrix4X4.CreateLookAt(transform.position, Vector3D<float>.Zero, Vector3D<float>.UnitY);
+            _lightData.view = Matrix4x4.CreateLookAt(transform.position, Vector3.Zero, Vector3.UnitY);
 
             //AVulkanBufferHandler.CreateBuffer(ref _lightData, ref _lightDataBuffer, ref _lightDataDM, BufferUsageFlags.ShaderDeviceAddressBit | BufferUsageFlags.UniformBufferBit);
         }

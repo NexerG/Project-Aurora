@@ -2,7 +2,7 @@ using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UI;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace Carbon.Editor.CustomControls
 {
@@ -43,55 +43,80 @@ namespace Carbon.Editor.CustomControls
         // A thread's row: its bars, and which frame each bar stands for.
         private sealed class Lane
         {
-            public CapturedThread thread = null!;
+            public CapturedThread? thread;
             public NextLabelControl label = null!;
             public NextPanelControl[] bars = Array.Empty<NextPanelControl>();
             public int[] frames = Array.Empty<int>();
             public long[] durations = Array.Empty<long>();
+            public int columns = 1;
             public long longest = 1;
+            public long reference;
         }
 
         private readonly List<Lane> _lanes = new List<Lane>();
-        private int _selectedLane = -1;
-        private int _selectedBar = -1;
+
+        // selection
+        private CapturedThread? _selectedThread;
+        private int _selectedFrame = -1;
+        private NextPanelControl? _highlighted;
+
+        // alignment against the counterpart
+        private int _offset;
+        private float _referenceScale;
 
         public Action<CapturedThread, int>? onFrameSelected;
 
-        public CapturedThread? SelectedThread =>
-            _selectedLane >= 0 && _selectedLane < _lanes.Count ? _lanes[_selectedLane].thread : null;
+        public CaptureSession? Session { get; private set; }
 
-        // Replaces every lane, then selects the longest frame of the first thread so the views
-        // below open on something worth looking at.
-        public void SetSession(CaptureSession session)
+        public CapturedThread? SelectedThread => _selectedThread;
+
+        // Replaces every lane. A counterpart lines lanes and frame columns up with the strip it is compared against.
+        public void SetSession(CaptureSession? session, CaptureSession? counterpart = null)
         {
             foreach (Entity child in children.ToArray())
                 child.Destroy();
 
             _lanes.Clear();
-            _selectedLane = -1;
-            _selectedBar = -1;
+            _selectedThread = null;
+            _selectedFrame = -1;
+            _highlighted = null;
+            Session = session;
 
-            foreach (CapturedThread thread in session.threads)
-                if (thread.frames.Count > 0) _lanes.Add(BuildLane(thread));
+            if (session != null)
+            {
+                List<string> names = new List<string>();
+                foreach (CapturedThread thread in session.threads)
+                    if (thread.frames.Count > 0) names.Add(thread.thread);
+                if (counterpart != null)
+                    foreach (CapturedThread thread in counterpart.threads)
+                        if (thread.frames.Count > 0 && !names.Contains(thread.thread)) names.Add(thread.thread);
+                names.Sort(StringComparer.Ordinal);
+
+                foreach (string name in names)
+                    _lanes.Add(BuildLane(name, Find(session, name), counterpart != null ? Find(counterpart, name) : null));
+            }
 
             InvalidateLayout();
-
-            if (_lanes.Count > 0) Select(0, Peak(_lanes[0]));
         }
 
-        private Lane BuildLane(CapturedThread thread)
+        private static CapturedThread? Find(CaptureSession session, string name) =>
+            session.threads.Find(t => t.thread == name && t.frames.Count > 0);
+
+        private Lane BuildLane(string name, CapturedThread? thread, CapturedThread? other)
         {
-            int count = Math.Min(thread.frames.Count, Math.Max(1, maxBars));
+            int columns = Math.Max(1, Math.Max(thread?.frames.Count ?? 0, other?.frames.Count ?? 0));
+            int count = Math.Min(columns, Math.Max(1, maxBars));
 
             Lane lane = new Lane
             {
                 thread = thread,
+                columns = columns,
                 bars = new NextPanelControl[count],
                 frames = new int[count],
                 durations = new long[count],
                 label = new NextLabelControl
                 {
-                    text = thread.thread,
+                    text = name,
                     fontSize = labelFontSize,
                     colorHex = labelColorHex,
                     horizontalPosition = 0f,
@@ -99,28 +124,62 @@ namespace Carbon.Editor.CustomControls
                 }
             };
 
-            // one bucket per bar, standing for its longest frame
             for (int bar = 0; bar < count; bar++)
             {
-                int from = (int)((long)bar * thread.frames.Count / count);
-                int to = (int)((long)(bar + 1) * thread.frames.Count / count);
-                if (to <= from) to = from + 1;
-
-                int peak = from;
-                for (int i = from; i < to && i < thread.frames.Count; i++)
-                    if (thread.frames[i].duration > thread.frames[peak].duration) peak = i;
-
-                lane.frames[bar] = peak;
-                lane.durations[bar] = thread.frames[peak].duration;
-                if (lane.durations[bar] > lane.longest) lane.longest = lane.durations[bar];
-
                 NextPanelControl panel = new NextPanelControl { colorHex = barColorHex, hitTestable = false };
                 lane.bars[bar] = panel;
                 AddChild(panel);
             }
 
+            if (other != null)
+                foreach (CapturedFrame frame in other.frames)
+                    if (frame.duration > lane.reference) lane.reference = frame.duration;
+
             AddChild(lane.label);
+            Bucket(lane);
             return lane;
+        }
+
+        private int From(Lane lane, int bar) => (int)((long)bar * lane.columns / lane.bars.Length) - _offset;
+
+        // one bucket per bar, standing for its longest frame
+        private void Bucket(Lane lane)
+        {
+            lane.longest = 1;
+
+            for (int bar = 0; bar < lane.bars.Length; bar++)
+            {
+                int from = From(lane, bar);
+                int to = From(lane, bar + 1);
+                if (to <= from) to = from + 1;
+
+                int peak = -1;
+                if (lane.thread != null)
+                    for (int i = Math.Max(0, from); i < to && i < lane.thread.frames.Count; i++)
+                        if (peak < 0 || lane.thread.frames[i].duration > lane.thread.frames[peak].duration) peak = i;
+
+                lane.frames[bar] = peak;
+                lane.durations[bar] = peak >= 0 ? lane.thread!.frames[peak].duration : 0;
+                if (lane.durations[bar] > lane.longest) lane.longest = lane.durations[bar];
+            }
+        }
+
+        // Shifts this strip's frames right by offset columns, keeping its bars.
+        public void SetOffset(int offset)
+        {
+            _offset = offset;
+            foreach (Lane lane in _lanes)
+                Bucket(lane);
+
+            Highlight();
+            InvalidateLayout();
+        }
+
+        // Lane heights against the lane's own longest frame at 0, the counterpart's at 1.
+        public void SetReferenceScale(float scale)
+        {
+            _referenceScale = Math.Clamp(scale, 0f, 1f);
+            InvalidateLayout();
         }
 
         private static int Peak(Lane lane)
@@ -131,21 +190,44 @@ namespace Carbon.Editor.CustomControls
             return bar;
         }
 
-        public void Select(int laneIndex, int bar)
+        // Reports the longest frame of the first lane, so the views below open on something worth looking at.
+        public void SelectPeak()
         {
-            if (laneIndex < 0 || laneIndex >= _lanes.Count) return;
+            Lane? lane = _lanes.Find(l => l.thread != null);
+            if (lane != null) Select(lane, lane.frames[Peak(lane)]);
+        }
 
-            Lane lane = _lanes[laneIndex];
-            if (bar < 0 || bar >= lane.bars.Length) return;
+        private void Select(Lane lane, int frame)
+        {
+            if (lane.thread == null || frame < 0) return;
 
-            if (_selectedLane >= 0 && _selectedBar >= 0)
-                _lanes[_selectedLane].bars[_selectedBar].colorHex = barColorHex;
+            Mark(lane.thread, frame);
+            onFrameSelected?.Invoke(lane.thread, frame);
+        }
 
-            _selectedLane = laneIndex;
-            _selectedBar = bar;
-            lane.bars[bar].colorHex = selectedBarColorHex;
+        // Highlights the bar holding a frame without reporting it; null clears.
+        public void Mark(CapturedThread? thread, int frame)
+        {
+            _selectedThread = thread;
+            _selectedFrame = frame;
+            Highlight();
+        }
 
-            onFrameSelected?.Invoke(lane.thread, lane.frames[bar]);
+        private void Highlight()
+        {
+            if (_highlighted != null) _highlighted.colorHex = barColorHex;
+            _highlighted = null;
+
+            Lane? lane = _selectedThread != null ? _lanes.Find(l => l.thread == _selectedThread) : null;
+            if (lane == null) return;
+
+            for (int bar = 0; bar < lane.bars.Length; bar++)
+                if (_selectedFrame >= From(lane, bar) && _selectedFrame < From(lane, bar + 1))
+                {
+                    _highlighted = lane.bars[bar];
+                    _highlighted.colorHex = selectedBarColorHex;
+                    return;
+                }
         }
 
         // The bars are not hit-testable, so the strip maps the point itself.
@@ -165,16 +247,16 @@ namespace Carbon.Editor.CustomControls
             float plotWidth = MathF.Max(1, inner.Right - plotX);
 
             int bar = (int)((e.point.X - plotX) / plotWidth * lane.bars.Length);
-            Select(laneIndex, Math.Clamp(bar, 0, lane.bars.Length - 1));
+            Select(lane, lane.frames[Math.Clamp(bar, 0, lane.bars.Length - 1)]);
             return true;
         }
 
         private float LaneHeight(LayoutRect inner) =>
             (inner.height - laneSpacing * MathF.Max(0, _lanes.Count - 1)) / MathF.Max(1, _lanes.Count);
 
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
-            Vector2D<float> size = base.Measure(availableSize);
+            Vector2 size = base.Measure(availableSize);
 
             foreach (Entity child in children)
                 if (child is Control control) control.Measure(size);
@@ -198,10 +280,17 @@ namespace Carbon.Editor.CustomControls
 
                 lane.label.Arrange(new LayoutRect(inner.x, top, labelWidth, labelFontSize + 2));
 
+                float longest = lane.reference > 0 ? lane.longest + (lane.reference - lane.longest) * _referenceScale : lane.longest;
                 float slot = plotWidth / lane.bars.Length;
                 for (int bar = 0; bar < lane.bars.Length; bar++)
                 {
-                    float height = MathF.Max(1, laneHeight * lane.durations[bar] / lane.longest);
+                    if (lane.frames[bar] < 0)
+                    {
+                        lane.bars[bar].Arrange(LayoutRect.Empty);
+                        continue;
+                    }
+
+                    float height = MathF.Min(laneHeight, MathF.Max(1, laneHeight * lane.durations[bar] / longest));
                     lane.bars[bar].Arrange(new LayoutRect(
                         plotX + bar * slot,
                         top + laneHeight - height,

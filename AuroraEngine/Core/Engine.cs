@@ -11,7 +11,7 @@ using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.GLFW;
-using Silk.NET.Maths;
+using System.Numerics;
 using System.Runtime.InteropServices;
 
 namespace ArctisAurora.EngineWork
@@ -340,7 +340,7 @@ namespace ArctisAurora.EngineWork
                 && ReferenceEquals(RenderWindow.Of(UICollisionHandling.dragging), window);
             if (!window.isInWindow && !ownsDrag) return;
 
-            Vector2D<float> mp = window.ui.ToDesignSpace(window.mousePos);
+            Vector2 mp = window.ui.ToDesignSpace(window.mousePos);
             uiCollisionHandler.delta = mp - uiCollisionHandler.lastMousePos;
             if (window.isInWindow)
                 uiCollisionHandler.SolveHover(mp, window.ui.uiRoot);

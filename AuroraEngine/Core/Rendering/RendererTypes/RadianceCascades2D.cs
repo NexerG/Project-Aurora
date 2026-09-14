@@ -4,6 +4,7 @@ using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Core.Native;
 using Silk.NET.GLFW;
 using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using Image = Silk.NET.Vulkan.Image;
@@ -79,7 +80,7 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
             public int rayOffset = 0;
             public Vector2D<int> probeCount;
             public Vector2D<int> probeDst;
-            public Vector2D<float> offset;
+            public Vector2 offset;
             public float importance;
             public float pad;
         }
@@ -96,7 +97,7 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
 
         internal struct WorldData()
         {
-            internal Vector3D<float> brushColor = new Vector3D<float>(1, 1, 1);
+            internal Vector3 brushColor = new Vector3(1, 1, 1);
             internal float lightStr = 1.0f;
             internal float emissive = 0.0f;
             internal Vector2D<int> mousePos = new Vector2D<int>(0, 0);
@@ -227,8 +228,8 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
             probesPostionB = new Buffer[layers];
             probesPositionDM = new DeviceMemory[layers];
             probeLayers = new ProbeLayer[layers];
-            Vector2D<float> localSize = new Vector2D<float>(canvasSize.Width - firstOffset, canvasSize.Height - firstOffset);
-            Vector2D<float> layerStart = new Vector2D<float>(firstOffset, firstOffset);
+            Vector2 localSize = new Vector2(canvasSize.Width - firstOffset, canvasSize.Height - firstOffset);
+            Vector2 layerStart = new Vector2(firstOffset, firstOffset);
             float localDistance = firstDistance;
             int localRayLength = rayLength;
             int localRayOffset = (int)firstOffset;
@@ -253,10 +254,10 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
                     }
                 }
 
-                probeLayers[i].offset = new Vector2D<float>((float)pos[i][0].X / localDistance,
+                probeLayers[i].offset = new Vector2((float)pos[i][0].X / localDistance,
                                                             (float)pos[i][0].Y / localDistance);
 
-                Vector2D<float> nextLayerOffset = new Vector2D<float>(localDistance / 2);
+                Vector2 nextLayerOffset = new Vector2(localDistance / 2);
                 layerStart += nextLayerOffset;
                 localDistance = 2 * localDistance;
 

@@ -1,5 +1,6 @@
 using ArctisAurora.Core.UISystem;
 using Silk.NET.Maths;
+using System.Numerics;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
@@ -25,15 +26,15 @@ namespace ArctisAurora.Core.Generators
                     Edge prev = edges[(j - 1 + edges.Count) % edges.Count];
                     Edge current = edges[j];
                     // Entry direction of current edge: B'(0) = 3(C0 - P0)
-                    Vector2D<float> dirIn = current.c0 - current.p0;
+                    Vector2 dirIn = current.c0 - current.p0;
                     // Exit direction of previous edge: B'(1) = 3(P1 - C1)
-                    Vector2D<float> dirOut = prev.p1 - prev.c1;
+                    Vector2 dirOut = prev.p1 - prev.c1;
 
-                    float lenOut = Vector2D.Distance(dirOut, Vector2D<float>.Zero);
-                    float lenIn = Vector2D.Distance(dirIn, Vector2D<float>.Zero);
+                    float lenOut = Vector2.Distance(dirOut, Vector2.Zero);
+                    float lenIn = Vector2.Distance(dirIn, Vector2.Zero);
                     if (lenOut > 1e-6f && lenIn > 1e-6f)
                     {
-                        float directionDot = Vector2D.Dot(dirOut / lenOut, dirIn / lenIn);
+                        float directionDot = Vector2.Dot(dirOut / lenOut, dirIn / lenIn);
                         if (directionDot < 0.5f)
                             colorIndex++;
                     }
@@ -90,7 +91,7 @@ namespace ArctisAurora.Core.Generators
                 {
                     float px = ((x + 0.5f) / innerSize) * (normW + 2 * spreadU) - spreadU;
                     float py = ((y + 0.5f) / innerSize) * (normH + 2 * spreadV) - spreadV;
-                    Vector2D<float> p = new Vector2D<float>(px, py);
+                    Vector2 p = new Vector2(px, py);
 
                     float redDist = Math.Clamp(GetClosestDistanceOfChannel(p, glyph, new Vector3D<int>(1, 0, 0)) * distanceFactor, -1, 1);
                     float greenDist = Math.Clamp(GetClosestDistanceOfChannel(p, glyph, new Vector3D<int>(0, 1, 0)) * distanceFactor, -1, 1);
@@ -107,7 +108,7 @@ namespace ArctisAurora.Core.Generators
             }
         }
 
-        public static float GetClosestDistanceOfChannel(Vector2D<float> p, Glyph glyph, Vector3D<int> channel)
+        public static float GetClosestDistanceOfChannel(Vector2 p, Glyph glyph, Vector3D<int> channel)
         {
             if (glyph.edgeContours.Count == 0) return -1;
 
@@ -138,23 +139,23 @@ namespace ArctisAurora.Core.Generators
             return minDist;
         }
 
-        private static float ClosestTOnBezier(Vector2D<float> p, Edge edge)
+        private static float ClosestTOnBezier(Vector2 p, Edge edge)
         {
             // Phase 1: coarse sample to find bracket
             int samples = 32;
             float bestT = 0f;
-            float bestDist = Vector2D.DistanceSquared(p, edge.p0);
+            float bestDist = Vector2.DistanceSquared(p, edge.p0);
 
-            float d1Sq = Vector2D.DistanceSquared(p, edge.p1);
+            float d1Sq = Vector2.DistanceSquared(p, edge.p1);
             if (d1Sq < bestDist) { bestDist = d1Sq; bestT = 1f; }
 
             for (int i = 1; i < samples; i++)
             {
                 float t = (float)i / samples;
                 float omt = 1f - t;
-                Vector2D<float> pt = omt * omt * omt * edge.p0 + 3f * omt * omt * t * edge.c0
+                Vector2 pt = omt * omt * omt * edge.p0 + 3f * omt * omt * t * edge.c0
                     + 3f * omt * t * t * edge.c1 + t * t * t * edge.p1;
-                float dSq = Vector2D.DistanceSquared(p, pt);
+                float dSq = Vector2.DistanceSquared(p, pt);
                 if (dSq < bestDist) { bestDist = dSq; bestT = t; }
             }
 
@@ -167,18 +168,18 @@ namespace ArctisAurora.Core.Generators
                 float omt = 1f - t2;
 
                 // B(t)
-                Vector2D<float> bt = omt * omt * omt * edge.p0 + 3f * omt * omt * t2 * edge.c0
+                Vector2 bt = omt * omt * omt * edge.p0 + 3f * omt * omt * t2 * edge.c0
                     + 3f * omt * t2 * t2 * edge.c1 + t2 * t2 * t2 * edge.p1;
                 // B'(t) = 3(1-t)^2(C0-P0) + 6(1-t)t(C1-C0) + 3t^2(P1-C1)
-                Vector2D<float> bt1 = 3f * omt * omt * (edge.c0 - edge.p0) + 6f * omt * t2 * (edge.c1 - edge.c0)
+                Vector2 bt1 = 3f * omt * omt * (edge.c0 - edge.p0) + 6f * omt * t2 * (edge.c1 - edge.c0)
                     + 3f * t2 * t2 * (edge.p1 - edge.c1);
                 // B''(t) = 6(1-t)(C1 - 2C0 + P0) + 6t(P1 - 2C1 + C0)
-                Vector2D<float> bt2 = 6f * omt * (edge.c1 - 2f * edge.c0 + edge.p0)
+                Vector2 bt2 = 6f * omt * (edge.c1 - 2f * edge.c0 + edge.p0)
                     + 6f * t2 * (edge.p1 - 2f * edge.c1 + edge.c0);
 
-                Vector2D<float> diff = bt - p;
-                float f = Vector2D.Dot(diff, bt1);
-                float fPrime = Vector2D.Dot(bt1, bt1) + Vector2D.Dot(diff, bt2);
+                Vector2 diff = bt - p;
+                float f = Vector2.Dot(diff, bt1);
+                float fPrime = Vector2.Dot(bt1, bt1) + Vector2.Dot(diff, bt2);
 
                 if (MathF.Abs(fPrime) < 1e-10f) break;
 
@@ -191,9 +192,9 @@ namespace ArctisAurora.Core.Generators
 
             // Compare refined result with best sample
             float omt2 = 1f - t2;
-            Vector2D<float> refined = omt2 * omt2 * omt2 * edge.p0 + 3f * omt2 * omt2 * t2 * edge.c0
+            Vector2 refined = omt2 * omt2 * omt2 * edge.p0 + 3f * omt2 * omt2 * t2 * edge.c0
                 + 3f * omt2 * t2 * t2 * edge.c1 + t2 * t2 * t2 * edge.p1;
-            float refinedDist = Vector2D.DistanceSquared(p, refined);
+            float refinedDist = Vector2.DistanceSquared(p, refined);
             if (refinedDist < bestDist) { bestDist = refinedDist; }
 
             return MathF.Sqrt(bestDist);
@@ -271,7 +272,7 @@ namespace ArctisAurora.Core.Generators
             };
         }
 
-        private static int ComputeWindingNumber(Vector2D<float> p, Glyph glyph)
+        private static int ComputeWindingNumber(Vector2 p, Glyph glyph)
         {
             int winding = 0;
 

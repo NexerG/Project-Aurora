@@ -4,7 +4,7 @@ using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.Core.UISystem.Controls.Text.Document.Edits;
 using ArctisAurora.EngineWork.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 {
@@ -218,7 +218,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             SetCaret(caretRun);
         }
 
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             float height = 0f;
             int blocks = 0;
@@ -227,7 +227,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             {
                 if (child is not Block block) continue;
 
-                height += block.Measure(new Vector2D<float>(availableSize.X, float.MaxValue)).Y;
+                height += block.Measure(new Vector2(availableSize.X, float.MaxValue)).Y;
                 blocks++;
             }
 
@@ -237,7 +237,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             foreach (SelectionControl box in highlights)
                 box.Measure(availableSize);
 
-            DesiredSize = new Vector2D<float>(availableSize.X, height);
+            DesiredSize = new Vector2(availableSize.X, height);
             isMeasureDirty = false;
             return DesiredSize;
         }

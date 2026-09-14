@@ -6,6 +6,8 @@ namespace ArctisAurora.Core.UI
     [A_XSDType("NextLabel", "UI")]
     public class NextLabelControl : TextRunControl
     {
+        protected override bool Wraps => false;
+
         public override Control? ActiveContextTarget() => (parent as Control)?.ActiveContextTarget();
     }
 }

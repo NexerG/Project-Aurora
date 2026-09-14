@@ -1,6 +1,6 @@
 ﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
-using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text
@@ -99,10 +99,10 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             float u1 = xOffset + glyphAtlasSize - texelPad;
             float v1 = yOffset + glyphAtlasSize - texelPad;
 
-            controlData.uvs.uv1 = new Vector2D<float>(u1, v1);
-            controlData.uvs.uv2 = new Vector2D<float>(u0, v0);
-            controlData.uvs.uv3 = new Vector2D<float>(u0, v1);
-            controlData.uvs.uv4 = new Vector2D<float>(u1, v0);
+            controlData.uvs.uv1 = new Vector2(u1, v1);
+            controlData.uvs.uv2 = new Vector2(u0, v0);
+            controlData.uvs.uv3 = new Vector2(u0, v1);
+            controlData.uvs.uv4 = new Vector2(u1, v0);
             UpdateControlData();
 
             // The preferred size setters invalidate on their own, but only when the number changes —
@@ -112,9 +112,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         }
 
 
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
-            DesiredSize = new Vector2D<float>(_cellW, _cellH);
+            DesiredSize = new Vector2(_cellW, _cellH);
             isMeasureDirty = false;
             return DesiredSize;
         }

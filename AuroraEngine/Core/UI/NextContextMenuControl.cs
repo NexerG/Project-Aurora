@@ -1,6 +1,6 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.EngineWork.Rendering;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -18,7 +18,7 @@ namespace ArctisAurora.Core.UI
 
         // placement — position is in the origin window's design space, even when hosted in its own
         public int depth;
-        public Vector2D<float> position;
+        public Vector2 position;
         public RenderWindow? window;
         public Row? opener;
 
@@ -40,7 +40,7 @@ namespace ArctisAurora.Core.UI
         // At its own position and size, whatever box the root offers.
         public override void Arrange(LayoutRect finalRect)
         {
-            Vector2D<float> at = window != null ? Vector2D<float>.Zero : position;
+            Vector2 at = window != null ? Vector2.Zero : position;
             base.Arrange(new LayoutRect(at.X, at.Y, DesiredSize.X, DesiredSize.Y));
         }
 
@@ -90,15 +90,15 @@ namespace ArctisAurora.Core.UI
                 InvalidateLayout();
             }
 
-            public override Vector2D<float> Measure(Vector2D<float> availableSize)
+            public override Vector2 Measure(Vector2 availableSize)
             {
-                Vector2D<float> c = caption.Measure(availableSize);
-                Vector2D<float> a = arrow?.Measure(availableSize) ?? Vector2D<float>.Zero;
+                Vector2 c = caption.Measure(availableSize);
+                Vector2 a = arrow?.Measure(availableSize) ?? Vector2.Zero;
 
                 float w = c.X + (arrow != null ? arrowGap + a.X : 0f) + padding.totalHorizontal;
                 float h = MathF.Max(c.Y, a.Y) + padding.totalVertical;
 
-                arrange.desired = new Vector2D<float>(w, h);
+                arrange.desired = new Vector2(w, h);
                 SetFlag(ArrangeFlags.MeasureDirty, false);
                 return arrange.desired;
             }
@@ -108,12 +108,12 @@ namespace ArctisAurora.Core.UI
                 WriteArranged(finalRect);
                 LayoutRect inner = finalRect.Shrink(padding);
 
-                Vector2D<float> c = caption.DesiredSize;
+                Vector2 c = caption.DesiredSize;
                 caption.Arrange(new LayoutRect(inner.x, inner.y + (inner.height - c.Y) * 0.5f, c.X, c.Y));
 
                 if (arrow != null)
                 {
-                    Vector2D<float> a = arrow.DesiredSize;
+                    Vector2 a = arrow.DesiredSize;
                     arrow.Arrange(new LayoutRect(inner.x + inner.width - a.X, inner.y + (inner.height - a.Y) * 0.5f, a.X, a.Y));
                 }
                 SetFlag(ArrangeFlags.ArrangeDirty, false);

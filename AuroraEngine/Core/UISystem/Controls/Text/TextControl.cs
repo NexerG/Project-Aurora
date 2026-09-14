@@ -3,7 +3,7 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.Core.UISystem.Controls.Text.Document;
 using ArctisAurora.EngineWork.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 using ArctisAurora.Core.Registry.Assets;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text
@@ -122,7 +122,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             glyph.Destroy();
         }
 
-        // Mirrors FontAssetGlyphMetrics.Resolve.
+        // Resolves a font name, falling back to default.
         private static FontAsset ResolveFont(string name)
         {
             Dictionary<string, FontAsset> fonts =
@@ -248,17 +248,17 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         // while its own width still comes from preferredWidth.
         protected virtual float WrapWidth(float available) => preferredWidth > 0 ? preferredWidth : available;
 
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             foreach (Entity child in children)
                 if (child is VulkanControl vc)
-                    vc.Measure(new Vector2D<float>(float.MaxValue, float.MaxValue));
+                    vc.Measure(new Vector2(float.MaxValue, float.MaxValue));
 
             metrics ??= new FontAssetGlyphMetrics();
 
             float contentWidth = WrapWidth(availableSize.X);
 
-            runBuffer[0] = new TextMeasurer.Run(text ?? string.Empty, fontName, fontSize, glyphStyle);
+            runBuffer[0] = new TextMeasurer.Run(text ?? string.Empty, fontName, _fontAsset.atlasMetaData, fontSize, glyphStyle);
             layout = TextMeasurer.MeasureBlock(runBuffer, contentWidth, metrics, lineHeight, firstLineOffset);
 
             TextLine last = layout.lines[layout.lines.Count - 1];
@@ -268,7 +268,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             float w = preferredWidth > 0 ? preferredWidth : layout.width;
             float h = preferredHeight > 0 ? preferredHeight : layout.height;
 
-            DesiredSize = new Vector2D<float>(w, h);
+            DesiredSize = new Vector2(w, h);
             isMeasureDirty = false;
             return DesiredSize;
         }
@@ -332,14 +332,14 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
 
             int lineIndex = LineAt(localY);
             TextLine line = layout.lines[lineIndex];
-            TextMeasurer.Run run = new TextMeasurer.Run(text ?? string.Empty, fontName, fontSize, glyphStyle);
+            TextMeasurer.Run run = new TextMeasurer.Run(text ?? string.Empty, fontName, _fontAsset.atlasMetaData, fontSize, glyphStyle);
             float pen = lineIndex == 0 ? firstLineOffset : 0f;
 
             foreach (LineSegment segment in line.segments)
             {
                 for (int i = 0; i < segment.charCount; i++)
                 {
-                    float advance = TextMeasurer.MeasureAdvance(text[segment.charStart + i], run, metrics);
+                    float advance = TextMeasurer.MeasureAdvance(text[segment.charStart + i], run);
                     if (localX < pen + advance * 0.5f) return segment.charStart + i;
                     pen += advance;
                 }
@@ -375,9 +375,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                         continue;
                     }
 
-                    TextMeasurer.Run run = new TextMeasurer.Run(text ?? string.Empty, fontName, fontSize, glyphStyle);
+                    TextMeasurer.Run run = new TextMeasurer.Run(text ?? string.Empty, fontName, _fontAsset.atlasMetaData, fontSize, glyphStyle);
                     for (int c = segment.charStart; c < offset; c++)
-                        x += TextMeasurer.MeasureAdvance(text[c], run, metrics);
+                        x += TextMeasurer.MeasureAdvance(text[c], run);
 
                     return new CaretGeometry(x, line.top, line.height, line.baseline);
                 }

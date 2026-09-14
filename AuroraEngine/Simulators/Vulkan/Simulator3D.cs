@@ -1,16 +1,16 @@
 ﻿using ArctisAurora.Forces;
 using ArctisAurora.ParticleTypes;
-using Silk.NET.Maths;
+using System.Numerics;
 using System.Drawing;
 
 namespace ArctisAurora.Simulators.Vulkan
 {
     public class Simulator3D
     {
-        Vector3D<float> simSize;
+        Vector3 simSize;
         //particles and forces
         List<Force> forces = new List<Force>();
-        Vector3D<float> ConstForce = new Vector3D<float>();
+        Vector3 ConstForce = new Vector3();
         List<Particle3D> parts;
         float[] densities;
         //Vars
@@ -22,7 +22,7 @@ namespace ArctisAurora.Simulators.Vulkan
         //Cells
         Entry[] SpatialLookup;
         int[] StartIndices;
-        public Vector3D<float>[] Offsets2D = new Vector3D<float>[27];
+        public Vector3[] Offsets2D = new Vector3[27];
 
         public Simulator3D() //SPH algorithm
         {
@@ -42,7 +42,7 @@ namespace ArctisAurora.Simulators.Vulkan
 
         public Simulator3D(List<Particle3D> parts)
         {
-            Gravity g = new Gravity(new Vector3D<float>(0f, 0f, 9.8f));
+            Gravity g = new Gravity(new Vector3(0f, 0f, 9.8f));
             forces.Add(g);
             this.parts = parts;
 
@@ -57,9 +57,9 @@ namespace ArctisAurora.Simulators.Vulkan
             UpdateUI();
         }
 
-        public Simulator3D(List<Particle3D> parts, Vector3D<float> simSize)
+        public Simulator3D(List<Particle3D> parts, Vector3 simSize)
         {
-            Gravity g = new Gravity(new Vector3D<float>(0f, -9.8f, 0f));
+            Gravity g = new Gravity(new Vector3(0f, -9.8f, 0f));
             forces.Add(g);
             this.parts = parts;
 
@@ -81,35 +81,35 @@ namespace ArctisAurora.Simulators.Vulkan
         public void CreateOffsets()
         {
             //middle layer
-            Offsets2D[0] = new Vector3D<float>(-1, 1, 0);
-            Offsets2D[1] = new Vector3D<float>(0, 1, 0);
-            Offsets2D[2] = new Vector3D<float>(1, 1, 0);
-            Offsets2D[3] = new Vector3D<float>(-1, 0, 0);
-            Offsets2D[4] = new Vector3D<float>(0, 0, 0);
-            Offsets2D[5] = new Vector3D<float>(1, 0, 0);
-            Offsets2D[6] = new Vector3D<float>(-1, -1, 0);
-            Offsets2D[7] = new Vector3D<float>(0, -1, 0);
-            Offsets2D[8] = new Vector3D<float>(1, -1, 0);
+            Offsets2D[0] = new Vector3(-1, 1, 0);
+            Offsets2D[1] = new Vector3(0, 1, 0);
+            Offsets2D[2] = new Vector3(1, 1, 0);
+            Offsets2D[3] = new Vector3(-1, 0, 0);
+            Offsets2D[4] = new Vector3(0, 0, 0);
+            Offsets2D[5] = new Vector3(1, 0, 0);
+            Offsets2D[6] = new Vector3(-1, -1, 0);
+            Offsets2D[7] = new Vector3(0, -1, 0);
+            Offsets2D[8] = new Vector3(1, -1, 0);
             //top layer
-            Offsets2D[9] = new Vector3D<float>(-1, 1, 1);
-            Offsets2D[10] = new Vector3D<float>(0, 1, 1);
-            Offsets2D[11] = new Vector3D<float>(1, 1, 1);
-            Offsets2D[12] = new Vector3D<float>(-1, 0, 1);
-            Offsets2D[13] = new Vector3D<float>(0, 0, 1);
-            Offsets2D[14] = new Vector3D<float>(1, 0, 1);
-            Offsets2D[15] = new Vector3D<float>(-1, -1, 1);
-            Offsets2D[16] = new Vector3D<float>(0, -1, 1);
-            Offsets2D[17] = new Vector3D<float>(1, -1, 1);
+            Offsets2D[9] = new Vector3(-1, 1, 1);
+            Offsets2D[10] = new Vector3(0, 1, 1);
+            Offsets2D[11] = new Vector3(1, 1, 1);
+            Offsets2D[12] = new Vector3(-1, 0, 1);
+            Offsets2D[13] = new Vector3(0, 0, 1);
+            Offsets2D[14] = new Vector3(1, 0, 1);
+            Offsets2D[15] = new Vector3(-1, -1, 1);
+            Offsets2D[16] = new Vector3(0, -1, 1);
+            Offsets2D[17] = new Vector3(1, -1, 1);
             //bottom layer
-            Offsets2D[18] = new Vector3D<float>(-1, 1, -1);
-            Offsets2D[19] = new Vector3D<float>(0, 1, -1);
-            Offsets2D[20] = new Vector3D<float>(1, 1, -1);
-            Offsets2D[21] = new Vector3D<float>(-1, 0, -1);
-            Offsets2D[22] = new Vector3D<float>(0, 0, -1);
-            Offsets2D[23] = new Vector3D<float>(1, 0, -1);
-            Offsets2D[24] = new Vector3D<float>(-1, -1, -1);
-            Offsets2D[25] = new Vector3D<float>(0, -1, -1);
-            Offsets2D[26] = new Vector3D<float>(1, -1, -1);
+            Offsets2D[18] = new Vector3(-1, 1, -1);
+            Offsets2D[19] = new Vector3(0, 1, -1);
+            Offsets2D[20] = new Vector3(1, 1, -1);
+            Offsets2D[21] = new Vector3(-1, 0, -1);
+            Offsets2D[22] = new Vector3(0, 0, -1);
+            Offsets2D[23] = new Vector3(1, 0, -1);
+            Offsets2D[24] = new Vector3(-1, -1, -1);
+            Offsets2D[25] = new Vector3(0, -1, -1);
+            Offsets2D[26] = new Vector3(1, -1, -1);
         }
 
         public void CalcConstForces()
@@ -157,15 +157,15 @@ namespace ArctisAurora.Simulators.Vulkan
             //pressure
             Parallel.For(0, parts.Count, i =>
             {
-                Vector3D<float> pressureForce = CalcPresureForce(i);
-                Vector3D<float> pressureAccel = pressureForce / densities[i];
+                Vector3 pressureForce = CalcPresureForce(i);
+                Vector3 pressureAccel = pressureForce / densities[i];
                 parts[i].velocity += pressureAccel * TimeScale;
             });
 
             //Viscosity
             Parallel.For(0, parts.Count, i =>
             {
-                Vector3D<float> ViscForce = CalculateViscosityForce(i);
+                Vector3 ViscForce = CalculateViscosityForce(i);
                 parts[i].velocity += ViscForce * viscosityStr;
             });
             UpdatePositions(parts);
@@ -207,7 +207,7 @@ namespace ArctisAurora.Simulators.Vulkan
             });
         }
 
-        private float CalculateDensity(Vector3D<float> samplePoint)
+        private float CalculateDensity(Vector3 samplePoint)
         {
             float density = 0;
             const float mass = 1;
@@ -215,7 +215,7 @@ namespace ArctisAurora.Simulators.Vulkan
             (int CenterX, int CenterY, int CenterZ) = PositionToCellCoord(samplePoint, smoothingRadius);
             float sqrRadius = smoothingRadius * smoothingRadius;
 
-            foreach (Vector3D<float> off in Offsets2D)
+            foreach (Vector3 off in Offsets2D)
             {
                 uint key = GetKeyFromHash(HashCell((int)(CenterX + off.X), (int)(CenterY + off.Y), (int)(CenterZ + off.Z)));
                 int cellStartIndex = StartIndices[key];
@@ -225,10 +225,10 @@ namespace ArctisAurora.Simulators.Vulkan
                     if (SpatialLookup[i].CKey != key) break;
 
                     int particleIndex = SpatialLookup[i].index;
-                    float sqrDist = (parts[particleIndex].PredPoint - samplePoint).LengthSquared;
+                    float sqrDist = (parts[particleIndex].PredPoint - samplePoint).LengthSquared();
                     if (sqrDist <= sqrRadius)
                     {
-                        float dist = Vector3D.Distance(samplePoint, parts[particleIndex].PredPoint);
+                        float dist = Vector3.Distance(samplePoint, parts[particleIndex].PredPoint);
 
                         float influence = SmoothingKernel(dist);
                         density += influence * mass;
@@ -248,14 +248,14 @@ namespace ArctisAurora.Simulators.Vulkan
         #endregion
 
         #region Pressure
-        Vector3D<float> CalcPresureForce(int index)
+        Vector3 CalcPresureForce(int index)
         {
-            Vector3D<float> PressureForce = new Vector3D<float>(0, 0, 0);
+            Vector3 PressureForce = new Vector3(0, 0, 0);
 
             (int CenterX, int CenterY, int CenterZ) = PositionToCellCoord(parts[index].PredPoint, smoothingRadius);
             float sqrRadius = smoothingRadius * smoothingRadius;
 
-            foreach (Vector3D<float> off in Offsets2D)
+            foreach (Vector3 off in Offsets2D)
             {
                 uint key = GetKeyFromHash(HashCell((int)(CenterX + off.X), (int)(CenterY + off.Y), (int)(CenterZ + off.Z)));
                 int cellStartIndex = StartIndices[key];
@@ -265,13 +265,13 @@ namespace ArctisAurora.Simulators.Vulkan
                     if (SpatialLookup[i].CKey != key) break;
 
                     int particleIndex = SpatialLookup[i].index;
-                    float sqrDist = (parts[particleIndex].point - parts[index].point).LengthSquared;
+                    float sqrDist = (parts[particleIndex].point - parts[index].point).LengthSquared();
                     if (sqrDist <= sqrRadius)
                     {
                         if (index == particleIndex) continue;
-                        Vector3D<float> offset = parts[particleIndex].PredPoint - parts[index].PredPoint;
-                        float dist = offset.Length;
-                        Vector3D<float> dir = dist == 0.0001 ? GetRandomDir() : offset / dist;
+                        Vector3 offset = parts[particleIndex].PredPoint - parts[index].PredPoint;
+                        float dist = offset.Length();
+                        Vector3 dir = dist == 0.0001 ? GetRandomDir() : offset / dist;
 
                         float slope = SmoothingKernelDerivative(dist);
                         float density = densities[particleIndex];
@@ -295,10 +295,10 @@ namespace ArctisAurora.Simulators.Vulkan
             float pressureB = ConvertDensityToPressure(DensB);
             return (pressureA + pressureB) / 2;
         }
-        private Vector3D<float> GetRandomDir()
+        private Vector3 GetRandomDir()
         {
             Random r = new Random();
-            return new Vector3D<float>(r.Next(-1, 1), r.Next(-1, 1), r.Next(-1, 1));
+            return new Vector3(r.Next(-1, 1), r.Next(-1, 1), r.Next(-1, 1));
         }
         float ConvertDensityToPressure(float density)
         {
@@ -309,14 +309,14 @@ namespace ArctisAurora.Simulators.Vulkan
         #endregion
 
         #region Viscosity
-        public Vector3D<float> CalculateViscosityForce(int index)
+        public Vector3 CalculateViscosityForce(int index)
         {
-            Vector3D<float> ViscosityForce = Vector3D<float>.Zero;
+            Vector3 ViscosityForce = Vector3.Zero;
 
             (int CenterX, int CenterY, int CenterZ) = PositionToCellCoord(parts[index].point, smoothingRadius);
             float sqrRadius = smoothingRadius * smoothingRadius;
 
-            foreach (Vector3D<float> off in Offsets2D)
+            foreach (Vector3 off in Offsets2D)
             {
                 uint key = GetKeyFromHash(HashCell((int)(CenterX + off.X), (int)(CenterY + off.Y), (int)(CenterZ + off.Z)));
                 int cellStartIndex = StartIndices[key];
@@ -326,12 +326,12 @@ namespace ArctisAurora.Simulators.Vulkan
                     if (SpatialLookup[i].CKey != key) break;
 
                     int particleIndex = SpatialLookup[i].index;
-                    float sqrDist = (parts[particleIndex].point - parts[index].point).LengthSquared;
+                    float sqrDist = (parts[particleIndex].point - parts[index].point).LengthSquared();
                     if (sqrDist <= sqrRadius)
                     {
                         if (index == particleIndex) continue;
 
-                        float dist = Vector3D.Distance(parts[index].point, parts[particleIndex].point);
+                        float dist = Vector3.Distance(parts[index].point, parts[particleIndex].point);
                         float influence = ViscositySmoothingKernel(dist);
                         ViscosityForce += (parts[particleIndex].velocity - parts[index].velocity) * influence;
                     }
@@ -389,7 +389,7 @@ namespace ArctisAurora.Simulators.Vulkan
             int cellZ = (int)(particle.PredPoint.Z / radius);
             return (cellX, cellY, cellZ);
         }
-        private (int cellX, int cellY, int cellZ) PositionToCellCoord(Vector3D<float> Point, float radius)
+        private (int cellX, int cellY, int cellZ) PositionToCellCoord(Vector3 Point, float radius)
         {
             int cellX = (int)(Point.X / radius);
             int cellY = (int)(Point.Y / radius);

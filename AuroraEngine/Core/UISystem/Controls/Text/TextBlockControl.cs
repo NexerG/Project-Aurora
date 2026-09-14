@@ -2,7 +2,7 @@
 using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.EngineWork.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text
 {
@@ -14,7 +14,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");
         }
 
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             LayoutRect inner = new LayoutRect(0, 0, availableSize.X, availableSize.Y).Shrink(padding);
 
@@ -31,7 +31,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
                 if (child is TextControl input)
                     input.firstLineOffset = cursorX;
 
-                Vector2D<float> desired = child.Measure(new Vector2D<float>(inner.width, float.MaxValue));
+                Vector2 desired = child.Measure(new Vector2(inner.width, float.MaxValue));
 
                 float childW = desired.X + child.margin.totalHorizontal;
                 float childH = desired.Y + child.margin.totalVertical;
@@ -79,7 +79,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
             float w = preferredWidth > 0 ? preferredWidth : maxWidth + padding.totalHorizontal;
             float h = preferredHeight > 0 ? preferredHeight : totalHeight + padding.totalVertical;
 
-            DesiredSize = new Vector2D<float>(w, h);
+            DesiredSize = new Vector2(w, h);
             isMeasureDirty = false;
             return DesiredSize;
         }

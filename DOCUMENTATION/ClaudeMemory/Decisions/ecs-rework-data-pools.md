@@ -239,6 +239,15 @@ rebuild — landed in slice 6 as `PoolCursor.OrderChanged`.
   character per line. `IPoolColumn.Clear(dense)` / `PoolColumn<T>.Clear` zero the row. Chosen
   over resetting in `Control()` (user): that fixes one entity type and leaves every other pool
   handing out stale rows.
+- **Resequence allocates nothing (2026-09-14).** `PoolColumn<T>` keeps a capacity-length
+  `_scratch` next to `data`; `DataPool` keeps `_permuteScratch` (`int[]`) and `_ownersScratch`
+  (`object[]`). All three are allocated in the ctor and reallocated in `Grow`, never nulled (user:
+  a scratch that comes and goes is the GC churn it exists to remove). Resequence runs once per
+  keystroke, so the per-call `new T[count]` was steady garbage — and LOH garbage once a column
+  passes 85KB. `Permute` gathers into scratch and copies back rather than swapping, so `data` stays
+  the same array between `Grow`s and a held `Backing<T>()` never goes stale. `_ownersScratch` is
+  cleared after the copy back, same reason as `ReleaseOwnerSlack`. Cost: every column doubles its
+  memory, including the unordered `Entities` pool that never permutes.
 - **Verified by running Thorium** (no automated tests — see auto-memory). Boot: one resequence of
   5 rows, then quiet (flag clears, nothing re-dirties per frame). Click + type: 6 → 7 → 8 rows, one
   resequence per keystroke, glyph children 3 → 8, no mismatch warning. Destroy (temporary scene

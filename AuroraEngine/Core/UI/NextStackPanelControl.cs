@@ -1,6 +1,6 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -25,7 +25,7 @@ namespace ArctisAurora.Core.UI
         public float Spacing = 0f;
         #endregion
 
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             // A pinned axis is the box the children divide, not the offer that came in.
             float boxWidth = preferredWidth > 0 ? preferredWidth : availableSize.X;
@@ -42,7 +42,7 @@ namespace ArctisAurora.Core.UI
             // Pass 1 — measure non-star children, accumulate star weights.
             foreach (Entity e in children)
             {
-                if (e is not Control child) continue;
+                if (e is not Control child || child.hidden) continue;
                 childCount++;
 
                 bool isStar = orientation == Orientation.Vertical ? child.IsHeightStar : child.IsWidthStar;
@@ -53,11 +53,11 @@ namespace ArctisAurora.Core.UI
                 }
                 else
                 {
-                    Vector2D<float> offer = orientation == Orientation.Vertical
-                        ? new Vector2D<float>(inner.width, float.MaxValue)
-                        : new Vector2D<float>(float.MaxValue, inner.height);
+                    Vector2 offer = orientation == Orientation.Vertical
+                        ? new Vector2(inner.width, float.MaxValue)
+                        : new Vector2(float.MaxValue, inner.height);
 
-                    Vector2D<float> desired = child.Measure(offer);
+                    Vector2 desired = child.Measure(offer);
 
                     float childMain = orientation == Orientation.Vertical
                         ? desired.Y + child.margin.totalVertical
@@ -83,18 +83,18 @@ namespace ArctisAurora.Core.UI
 
                 foreach (Entity e in children)
                 {
-                    if (e is not Control child) continue;
+                    if (e is not Control child || child.hidden) continue;
                     bool isStar = orientation == Orientation.Vertical ? child.IsHeightStar : child.IsWidthStar;
                     if (!isStar) continue;
 
                     float starMain = (orientation == Orientation.Vertical ? child.heightStar : child.widthStar) * starUnit;
                     starMain = MathF.Max(starMain, orientation == Orientation.Vertical ? child.minHeight : child.minWidth);
 
-                    Vector2D<float> starOffer = orientation == Orientation.Vertical
-                        ? new Vector2D<float>(inner.width, starMain)
-                        : new Vector2D<float>(starMain, inner.height);
+                    Vector2 starOffer = orientation == Orientation.Vertical
+                        ? new Vector2(inner.width, starMain)
+                        : new Vector2(starMain, inner.height);
 
-                    Vector2D<float> desired = child.Measure(starOffer);
+                    Vector2 desired = child.Measure(starOffer);
 
                     float childCross = orientation == Orientation.Vertical
                         ? desired.X + child.margin.totalHorizontal
@@ -117,7 +117,7 @@ namespace ArctisAurora.Core.UI
             if (preferredWidth > 0) w = MathF.Max(w, preferredWidth);
             if (preferredHeight > 0) h = MathF.Max(h, preferredHeight);
 
-            arrange.desired = new Vector2D<float>(w, h);
+            arrange.desired = new Vector2(w, h);
             SetFlag(ArrangeFlags.MeasureDirty, false);
             return arrange.desired;
         }
@@ -135,7 +135,7 @@ namespace ArctisAurora.Core.UI
 
             foreach (Entity e in children)
             {
-                if (e is not Control child) continue;
+                if (e is not Control child || child.hidden) continue;
                 childCount++;
                 bool isStar = orientation == Orientation.Vertical ? child.IsHeightStar : child.IsWidthStar;
                 if (isStar)
@@ -158,7 +158,7 @@ namespace ArctisAurora.Core.UI
 
             foreach (Entity e in children)
             {
-                if (e is not Control child) continue;
+                if (e is not Control child || child.hidden) continue;
 
                 if (!first) cursor += Spacing;
                 first = false;

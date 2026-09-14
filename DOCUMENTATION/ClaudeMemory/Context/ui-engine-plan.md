@@ -562,9 +562,7 @@ a caption row inside a bar button answered for itself and the walk for the focus
 captions, chevrons and rows are `hitTestable = false`. (2) A nested private class collides in
 `AssetRegistries.RegisterSerializableTypes`, which hashes `t.Name` for every `[Serializable]` type: `ToolButton`
 and `PxBox` beside the outgoing bar's own nested pair threw *An item with the same key has already been added*
-at boot. The `Next` prefix rule reaches nested types too. (3) A `TextRunControl`'s glyph colours are built in
-`BuildRuns` at measure, but the `colorHex` setter invalidates arrange only — the bar recolours its swatch with
-an explicit `InvalidateLayout`.
+at boot. The `Next` prefix rule reaches nested types too.
 
 **Not exercised:** the `Default` colour entry and `Comment`/`Code`/`Quote` stylings (the other menu rows share
 one code path); strikethrough, which no gesture reaches on either stack. **Seen once, not reproduced:** after a

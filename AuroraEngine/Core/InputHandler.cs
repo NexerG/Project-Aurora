@@ -2,7 +2,7 @@
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.GLFW;
-using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 using System.Reflection;
 using System.Xml.Linq;
@@ -1166,7 +1166,7 @@ namespace ArctisAurora.EngineWork
             foreach (RenderWindow window in Engine.windows.Values)
             {
                 window.scrollDelta = window.scrollDeltaWrite;
-                window.scrollDeltaWrite = new Vector2D<float>(0, 0);
+                window.scrollDeltaWrite = new Vector2(0, 0);
             }
 
             // Update key states from raw GLFW events

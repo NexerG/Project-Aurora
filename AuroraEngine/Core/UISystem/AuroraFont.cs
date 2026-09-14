@@ -1,6 +1,6 @@
 ﻿using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Generators;
-using Silk.NET.Maths;
+using System.Numerics;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using System.Runtime.InteropServices;
@@ -426,7 +426,7 @@ namespace ArctisAurora.Core.UISystem
                 {
                     float fx = a * xs[p] + c * ys[p] + dx;
                     float fy = b * xs[p] + d * ys[p] + dy;
-                    bezier.points.Add(new Bezier.Point(new Vector2D<float>(fx, fy), (flags[p] & 0x01) != 0));
+                    bezier.points.Add(new Bezier.Point(new Vector2(fx, fy), (flags[p] & 0x01) != 0));
                 }
                 dest.Add(bezier);
             }
@@ -552,6 +552,17 @@ namespace ArctisAurora.Core.UISystem
         [@Serializable]
         public bool hasBoldItalic;
 
+        // char to index into chars and glyphs, built on load
+        [NonSerializable]
+        private Dictionary<char, int> charIndex = null!;
+        private static readonly CharHash charHash = new CharHash();
+
+        private sealed class CharHash : IEqualityComparer<char>
+        {
+            public bool Equals(char a, char b) => a == b;
+            public int GetHashCode(char c) => c;
+        }
+
         public int styleCount => 1 + (hasBold ? 1 : 0) + (hasItalic ? 1 : 0) + (hasBoldItalic ? 1 : 0);
 
         public int cellCount => glyphCount * styleCount;
@@ -628,10 +639,17 @@ namespace ArctisAurora.Core.UISystem
             }
         }
 
+        // Maps each char to its glyph index.
+        public void BuildCharIndex()
+        {
+            charIndex = new Dictionary<char, int>(glyphCount, charHash);
+            for (int i = 0; i < glyphCount; i++)
+                charIndex.TryAdd(chars[i], i);
+        }
+
         public Glyph GetGlyph(char character)
         {
-            int index = Array.IndexOf(chars, character);
-            if (index >= 0 && index < glyphs.Length)
+            if (charIndex.TryGetValue(character, out int index))
             {
                 return glyphs[index];
             }
@@ -640,8 +658,7 @@ namespace ArctisAurora.Core.UISystem
 
         public (Glyph, int) GetGlyphAndIndex(char character)
         {
-            int index = Array.IndexOf(chars, character);
-            if (index >= 0 && index < glyphs.Length)
+            if (charIndex.TryGetValue(character, out int index))
             {
                 return (glyphs[index], index);
             }
@@ -650,8 +667,7 @@ namespace ArctisAurora.Core.UISystem
 
         public int GetIndexOfChar(char character)
         {
-            int index = Array.IndexOf(chars, character);
-            if (index >= 0 && index < glyphs.Length)
+            if (charIndex.TryGetValue(character, out int index))
             {
                 return index;
             }

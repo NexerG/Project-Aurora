@@ -2,7 +2,7 @@ using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.UISystem.Controls.Containers;
 using ArctisAurora.Core.UISystem.Controls.Text.Editing;
 using ArctisAurora.EngineWork.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text
 {
@@ -100,13 +100,13 @@ namespace ArctisAurora.Core.UISystem.Controls.Text
         private VulkanControl Visible => isEditing ? box : label;
 
         #region ---- layout ----
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
-            Vector2D<float> desired = Visible.Measure(new Vector2D<float>(
+            Vector2 desired = Visible.Measure(new Vector2(
                 MathF.Max(0, availableSize.X - padding.totalHorizontal),
                 MathF.Max(0, availableSize.Y - padding.totalVertical)));
 
-            DesiredSize = new Vector2D<float>(
+            DesiredSize = new Vector2(
                 preferredWidth > 0 ? preferredWidth : desired.X + padding.totalHorizontal,
                 preferredHeight > 0 ? preferredHeight : desired.Y + padding.totalVertical);
             isMeasureDirty = false;

@@ -47,9 +47,6 @@ namespace ArctisAurora.Core.UI
             _onDiscard = onDiscard;
             _onCancel = onCancel;
 
-            // Hiding collapses what a control draws but still reserves its slot, so the width goes
-            // with it or the row keeps a gap where the button was.
-            _discard.preferredWidth = onDiscard != null ? discardWidth : 1;
             if (onDiscard != null) _discard.Show(); else _discard.Hide();
 
             _field.text = suggestion ?? string.Empty;

@@ -1,4 +1,4 @@
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -23,8 +23,8 @@ namespace ArctisAurora.Core.UI
         public const int rightButton = 1;
 
         public Control target;
-        public Vector2D<float> point;
-        public Vector2D<float> delta;
+        public Vector2 point;
+        public Vector2 delta;
         public int button;
         public int tapCount;
     }

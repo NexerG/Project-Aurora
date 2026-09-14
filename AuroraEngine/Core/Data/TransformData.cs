@@ -1,5 +1,5 @@
 using ArctisAurora.Core.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 using System.Runtime.InteropServices;
 
 namespace ArctisAurora.Core.Data
@@ -11,33 +11,33 @@ namespace ArctisAurora.Core.Data
     [StructLayout(LayoutKind.Sequential), A_XSDType("TransformData", "DataPools")]
     public struct TransformData
     {
-        public Vector3D<float> position;
-        public Vector3D<float> scale;
-        public Vector3D<float> rotation;
+        public Vector3 position;
+        public Vector3 scale;
+        public Vector3 rotation;
 
         // ---- position ----
-        public void SetWorldPosition(Vector3D<float> worldPosition) => position = worldPosition;
-        public void MoveToPosition(Vector3D<float> newPosition) => position = newPosition;
-        public void SetLocalPosition(Vector3D<float> delta) => position += delta;
-        public void MoveLocalPosition(Vector3D<float> localOffset) => position += localOffset;
-        public Vector3D<float> GetEntityPosition() => position;
+        public void SetWorldPosition(Vector3 worldPosition) => position = worldPosition;
+        public void MoveToPosition(Vector3 newPosition) => position = newPosition;
+        public void SetLocalPosition(Vector3 delta) => position += delta;
+        public void MoveLocalPosition(Vector3 localOffset) => position += localOffset;
+        public Vector3 GetEntityPosition() => position;
 
         // ---- scale ----
-        public void SetWorldScale(Vector3D<float> s) => scale = s;
-        public void SetLocalScale(Vector3D<float> s) => scale = s;
-        public Vector3D<float> GetScale() => scale;
+        public void SetWorldScale(Vector3 s) => scale = s;
+        public void SetLocalScale(Vector3 s) => scale = s;
+        public Vector3 GetScale() => scale;
 
         // ---- rotation ----
-        public void SetRotationFromVector3(Vector3D<float> r) => rotation = r;
-        public Vector3D<float> GetEntityRotation() => rotation;
-        public Vector3D<float> CalculateRotationFromQuaternion() => rotation;
+        public void SetRotationFromVector3(Vector3 r) => rotation = r;
+        public Vector3 GetEntityRotation() => rotation;
+        public Vector3 CalculateRotationFromQuaternion() => rotation;
 
-        public Quaternion<float> GetQuaternion()
+        public Quaternion GetQuaternion()
         {
             float x = DegreesToRadians(rotation.X);
             float y = DegreesToRadians(rotation.Y);
             float z = DegreesToRadians(rotation.Z);
-            return Quaternion<float>.CreateFromYawPitchRoll(x, y, z);
+            return Quaternion.CreateFromYawPitchRoll(x, y, z);
         }
 
         private static float DegreesToRadians(float degrees) => degrees * (MathF.PI / 180.0f);
