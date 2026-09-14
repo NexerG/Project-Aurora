@@ -1,5 +1,5 @@
 using ArctisAurora.Core.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls.Interactable
 {
@@ -41,7 +41,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
             base.ResolveExit();
         }
 
-        public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
+        public override void ResolveOnClick(Vector2 oldPos, Vector2 delta)
         {
             pressed = true;
             ApplyState();
@@ -61,7 +61,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
                        : hovered ? hoverColorHex ?? controlColorHex
                        : controlColorHex;
 
-            controlData.style.tint = new Vector4D<float>(HexToRGB(hex), controlData.style.tint.W);
+            controlData.style.tint = new Vector4(HexToRGB(hex), controlData.style.tint.W);
             UpdateControlData();
         }
     }

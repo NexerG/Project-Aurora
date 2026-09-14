@@ -2,11 +2,12 @@
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Assimp;
-using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
+using Matrix4x4 = System.Numerics.Matrix4x4;
 
 // Legacy renderer, kept as a working reference until the migration.
 #pragma warning disable CS0618
@@ -258,13 +259,13 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             }*/
         }
 
-        internal override void MakeInstanced(ref List<Matrix4X4<float>> _matrices)
+        internal override void MakeInstanced(ref List<Matrix4x4> _matrices)
         {
             base.MakeInstanced(ref _matrices);
             instances = _matrices.Count;
             transformMatrices = _matrices;
 
-            Matrix4X4<float>[] _mats = _matrices.ToArray();
+            Matrix4x4[] _mats = _matrices.ToArray();
             // commented out
             //AVulkanBufferHandler.CreateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
 
@@ -278,7 +279,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
         {
             base.SingletonMatrix();
 
-            Matrix4X4<float>[] _mats = transformMatrices.ToArray();
+            Matrix4x4[] _mats = transformMatrices.ToArray();
             //AVulkanBufferHandler.CreateBuffer(ref _mats, ref transformsBuffer, ref _transformsBufferMemory, BufferUsageFlags.StorageBufferBit);
         }
 

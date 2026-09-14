@@ -3,7 +3,7 @@ using ArctisAurora.Core.Data;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 using ArctisAurora.Core.Registry.Assets;
 
@@ -38,39 +38,39 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         // a control floated at a point rather than aligned into the window
         private VulkanControl overlay;
-        private Vector2D<float> overlayOrigin;
+        private Vector2 overlayOrigin;
 
         public WindowControl()
         {
             maskAsset = AssetRegistries.GetAsset<TextureAsset>("invisible");
 
             ref TransformData t = ref transform;
-            t.position = new Vector3D<float>(t.position.X, t.position.Y, rootDepth);
+            t.position = new Vector3(t.position.X, t.position.Y, rootDepth);
             CommitTransform();
         }
 
         // The box the tree is laid out and projected in. Window pixels unless the content scales,
         // in which case it is the window divided by the scale the chosen axis implies.
-        public Vector2D<float> ViewportSize(Extent2D window)
+        public Vector2 ViewportSize(Extent2D window)
         {
             if (!autoscaling || windowingMode == WindowingMode.KeepLocal
                 || preferredWidth <= 0 || preferredHeight <= 0)
-                return new Vector2D<float>(window.Width, window.Height);
+                return new Vector2(window.Width, window.Height);
 
             switch (scalingAxis)
             {
                 case ScalingAxis.Both:
-                    return new Vector2D<float>(preferredWidth, preferredHeight);
+                    return new Vector2(preferredWidth, preferredHeight);
                 case ScalingAxis.Vertical:
-                    return new Vector2D<float>(window.Width * preferredHeight / window.Height, preferredHeight);
+                    return new Vector2(window.Width * preferredHeight / window.Height, preferredHeight);
                 case ScalingAxis.Horizontal:
-                    return new Vector2D<float>(preferredWidth, window.Height * preferredWidth / window.Width);
+                    return new Vector2(preferredWidth, window.Height * preferredWidth / window.Width);
                 case ScalingAxis.HorizontalExclusive:
-                    return new Vector2D<float>(preferredWidth, window.Height);
+                    return new Vector2(preferredWidth, window.Height);
                 case ScalingAxis.VerticalExclusive:
-                    return new Vector2D<float>(window.Width, preferredHeight);
+                    return new Vector2(window.Width, preferredHeight);
                 default:
-                    return new Vector2D<float>(window.Width, window.Height);
+                    return new Vector2(window.Width, window.Height);
             }
         }
 
@@ -80,12 +80,12 @@ namespace ArctisAurora.Core.UISystem.Controls
             if (windowingMode == WindowingMode.KeepLocal) return;
             if (window.Width == 0 || window.Height == 0) return;
 
-            Vector2D<float> box = ViewportSize(window);
+            Vector2 box = ViewportSize(window);
             arrangedRect = new LayoutRect(0, 0, box.X, box.Y);
 
             ref TransformData t = ref transform;
-            t.position = new Vector3D<float>(box.X / 2f, box.Y / 2f, t.position.Z);
-            t.scale = new Vector3D<float>(box.X, box.Y, 1);
+            t.position = new Vector3(box.X / 2f, box.Y / 2f, t.position.Z);
+            t.scale = new Vector3(box.X, box.Y, 1);
             CommitTransform();
 
             isMeasureDirty = true;
@@ -94,18 +94,18 @@ namespace ArctisAurora.Core.UISystem.Controls
         }
 
         // Window pixels to the units the tree is laid out in — identity unless the content scales.
-        public Vector2D<float> ToDesignSpace(Vector2D<float> windowPoint, Extent2D window)
+        public Vector2 ToDesignSpace(Vector2 windowPoint, Extent2D window)
         {
             if (window.Width == 0 || window.Height == 0) return windowPoint;
 
-            Vector2D<float> box = ViewportSize(window);
-            return new Vector2D<float>(windowPoint.X * box.X / window.Width,
+            Vector2 box = ViewportSize(window);
+            return new Vector2(windowPoint.X * box.X / window.Width,
                                        windowPoint.Y * box.Y / window.Height);
         }
 
         // Floats a control over the tree at a point. Appended past the single-child guard and last,
         // because dense order is DFS and the last child is what draws over everything.
-        public void AddOverlay(VulkanControl control, Vector2D<float> origin)
+        public void AddOverlay(VulkanControl control, Vector2 origin)
         {
             RemoveOverlay();
 
@@ -127,11 +127,11 @@ namespace ArctisAurora.Core.UISystem.Controls
 
         // The root measures at the box it was fitted to. The XML Width/Height are the design size
         // that ViewportSize reads, not a cap the tree inherits.
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             if (windowingMode == WindowingMode.KeepLocal) return base.Measure(availableSize);
 
-            Vector2D<float> inner = new Vector2D<float>(
+            Vector2 inner = new Vector2(
                 MathF.Max(0, availableSize.X - padding.totalHorizontal),
                 MathF.Max(0, availableSize.Y - padding.totalVertical));
 

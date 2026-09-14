@@ -2,7 +2,7 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -131,7 +131,7 @@ namespace ArctisAurora.Core.UI
         #region ---- drop ----
         // What a drop at this point would do — an edge to split on, or null to take the tab in.
         // The button comes back out so a caller can tell "no edge" from "not a tab drag at all".
-        private NextSplitViewControl.SplitEdge? PendingEdge(Control dropped, Vector2D<float> point, out NextTabStripButtonControl button)
+        private NextSplitViewControl.SplitEdge? PendingEdge(Control dropped, Vector2 point, out NextTabStripButtonControl button)
         {
             button = dropped as NextTabStripButtonControl;
             if (button == null || !button.dragging) { button = null; return null; }
@@ -143,7 +143,7 @@ namespace ArctisAurora.Core.UI
 
         // Accepts a tab dragged out of any strip, including our own. A drop in the outer band of a
         // side splits this view instead of taking the tab in.
-        public override bool FinishDrag(Control dragged, Vector2D<float> point)
+        public override bool FinishDrag(Control dragged, Vector2 point)
         {
             NextSplitViewControl.SplitEdge? edge = PendingEdge(dragged, point, out NextTabStripButtonControl button);
             if (button == null) return false;
@@ -168,9 +168,9 @@ namespace ArctisAurora.Core.UI
 
         // Claims the hint for any live tab drag over us, whether or not it is over an edge — the
         // middle is a drop we take too, it just splits nothing and so washes nothing.
-        public override bool DraggingOverStart(Control dragged, Vector2D<float> point) => ShowHint(dragged, point);
+        public override bool DraggingOverStart(Control dragged, Vector2 point) => ShowHint(dragged, point);
 
-        public override bool DraggingOver(Control dragged, Vector2D<float> point) => ShowHint(dragged, point);
+        public override bool DraggingOver(Control dragged, Vector2 point) => ShowHint(dragged, point);
 
         public override bool DraggingOverEnd(Control dragged)
         {
@@ -178,7 +178,7 @@ namespace ArctisAurora.Core.UI
             return false;
         }
 
-        private bool ShowHint(Control dragged, Vector2D<float> point)
+        private bool ShowHint(Control dragged, Vector2 point)
         {
             NextSplitViewControl.SplitEdge? edge = PendingEdge(dragged, point, out NextTabStripButtonControl button);
             if (button == null) return false;
@@ -221,7 +221,7 @@ namespace ArctisAurora.Core.UI
 
         // The outer band of a side, nearest side winning. Null in the middle and anywhere over the
         // strip, where a drop means "put the tab here".
-        private NextSplitViewControl.SplitEdge? EdgeAt(Vector2D<float> point)
+        private NextSplitViewControl.SplitEdge? EdgeAt(Vector2 point)
         {
             LayoutRect rect = arrangedRect;
             if (rect.width <= 0f || rect.height <= 0f) return null;
@@ -587,7 +587,7 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- layout ----
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             float w = preferredWidth > 0 ? preferredWidth : MathF.Max(minWidth, availableSize.X);
             float h = preferredHeight > 0 ? preferredHeight : MathF.Max(minHeight, availableSize.Y);
@@ -595,11 +595,11 @@ namespace ArctisAurora.Core.UI
             float innerW = MathF.Max(0, w - padding.totalHorizontal);
             float innerH = MathF.Max(0, h - padding.totalVertical);
 
-            strip.Measure(new Vector2D<float>(innerW, tabHeight));
-            activeItem?.Measure(new Vector2D<float>(innerW, MathF.Max(0, innerH - tabHeight)));
-            hint?.Measure(new Vector2D<float>(innerW, innerH));
+            strip.Measure(new Vector2(innerW, tabHeight));
+            activeItem?.Measure(new Vector2(innerW, MathF.Max(0, innerH - tabHeight)));
+            hint?.Measure(new Vector2(innerW, innerH));
 
-            arrange.desired = new Vector2D<float>(w, h);
+            arrange.desired = new Vector2(w, h);
             SetFlag(ArrangeFlags.MeasureDirty, false);
             return arrange.desired;
         }

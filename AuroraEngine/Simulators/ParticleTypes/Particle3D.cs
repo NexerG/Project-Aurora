@@ -1,12 +1,12 @@
-﻿using Silk.NET.Maths;
+﻿using System.Numerics;
 
 namespace ArctisAurora.ParticleTypes
 {
     public class Particle3D
     {
-        public Vector3D<float> point = new Vector3D<float>();
-        public Vector3D<float> PredPoint = new Vector3D<float>();
-        public Vector3D<float> velocity = new Vector3D<float>();
+        public Vector3 point = new Vector3();
+        public Vector3 PredPoint = new Vector3();
+        public Vector3 velocity = new Vector3();
         public float radius = 7;
 
         public Particle3D()
@@ -17,7 +17,7 @@ namespace ArctisAurora.ParticleTypes
             PredPoint = point;
         }
 
-        public Particle3D(Vector3D<float> point)
+        public Particle3D(Vector3 point)
         {
             this.point = point;
             velocity.X = 0; velocity.Y = 0; velocity.Z = 0;
@@ -43,7 +43,7 @@ namespace ArctisAurora.ParticleTypes
             PredPoint = point;
         }
 
-        public Particle3D(Vector3D<float> p, float HorizontalVelX, float HorizontalVelY, float VerticalVel)
+        public Particle3D(Vector3 p, float HorizontalVelX, float HorizontalVelY, float VerticalVel)
         {
             point = p;
             velocity.X = HorizontalVelX;
@@ -53,7 +53,7 @@ namespace ArctisAurora.ParticleTypes
             PredPoint = point;
         }
 
-        public Particle3D(Vector3D<float> p, Vector3D<float> v)
+        public Particle3D(Vector3 p, Vector3 v)
         {
             point = p;
             velocity = v;

@@ -100,6 +100,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextPanelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextRichTextDocument.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextScrollableControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextScrollThumbControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextSliderControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextSplitterControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextSplitViewControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NextStackPanelControl.cs
@@ -248,6 +249,7 @@ AuroraEditor.EditorProgram.UIFunctions -> AuroraEditor/EditorProgram/UIFunctions
 Carbon -> Carbon/Carbon.cs
 Carbon -> Carbon/CarbonSettings.cs
 Carbon.Editor -> Carbon/Editor/CarbonActions.cs
+Carbon.Editor -> Carbon/Editor/Comparison.cs
 Carbon.Editor -> Carbon/Editor/Decorations.cs
 Carbon.Editor.CustomControls -> Carbon/Editor/CustomControls/NextFrameStripControl.cs
 Carbon.Editor.CustomControls -> Carbon/Editor/CustomControls/NextSessionListControl.cs

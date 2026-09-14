@@ -34,6 +34,17 @@ public bool hasBold;
 public bool hasItalic;
 public bool hasBoldItalic;
 
+// char to index into chars and glyphs, built on load
+[NonSerializable]
+private Dictionary<char, int> charIndex;
+private static readonly CharHash charHash = new CharHash();
+
+private sealed class CharHash : IEqualityComparer<char>
+{
+	public bool Equals(char a, char b) => a == b;
+	public int GetHashCode(char c) => c;
+}
+
 public int styleCount => 1 + (hasBold ? 1 : 0) + (hasItalic ? 1 : 0) + (hasBoldItalic ? 1 : 0);
 public int cellCount => glyphCount * styleCount;
 ```
@@ -77,10 +88,16 @@ public int StyleBlock(FontStyle style) => style switch
 
 public int CellIndex(int charIndex, FontStyle style) => StyleBlock(style) * glyphCount + charIndex;
 
+public void BuildCharIndex()
+{
+	charIndex = new Dictionary<char, int>(glyphCount, charHash);
+	for (int i = 0; i < glyphCount; i++)
+		charIndex.TryAdd(chars[i], i);
+}
+
 public Glyph GetGlyph(char character)
 {
-	int index = Array.IndexOf(chars, character);
-	if (index >= 0 && index < glyphs.Length)
+	if (charIndex.TryGetValue(character, out int index))
 	{
 		return glyphs[index];
 	}
@@ -89,8 +106,7 @@ public Glyph GetGlyph(char character)
 
 public (Glyph, int) GetGlyphAndIndex(char character)
 {
-	int index = Array.IndexOf(chars, character);
-	if (index >= 0 && index < glyphs.Length)
+	if (charIndex.TryGetValue(character, out int index))
 	{
 		return (glyphs[index], index);
 	}
@@ -99,8 +115,7 @@ public (Glyph, int) GetGlyphAndIndex(char character)
 
 public int GetIndexOfChar(char character)
 {
-	int index = Array.IndexOf(chars, character);
-	if (index >= 0 && index < glyphs.Length)
+	if (charIndex.TryGetValue(character, out int index))
 	{
 		return index;
 	}

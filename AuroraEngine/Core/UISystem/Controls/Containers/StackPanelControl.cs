@@ -1,6 +1,6 @@
 ﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.ECS.EngineEntity;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls.Containers
 {
@@ -29,7 +29,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         {
         }
 
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             // A pinned axis is the box the children divide, not the offer that came in.
             float boxWidth = preferredWidth > 0 ? preferredWidth : availableSize.X;
@@ -57,11 +57,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                 }
                 else
                 {
-                    Vector2D<float> offer = orientation == Orientation.Vertical
-                        ? new Vector2D<float>(inner.width, float.MaxValue)
-                        : new Vector2D<float>(float.MaxValue, inner.height);
+                    Vector2 offer = orientation == Orientation.Vertical
+                        ? new Vector2(inner.width, float.MaxValue)
+                        : new Vector2(float.MaxValue, inner.height);
 
-                    Vector2D<float> desired = child.Measure(offer);
+                    Vector2 desired = child.Measure(offer);
 
                     float childMain = orientation == Orientation.Vertical
                         ? desired.Y + child.margin.totalVertical
@@ -94,11 +94,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
                     float starMain = (orientation == Orientation.Vertical ? child.heightStar : child.widthStar) * starUnit;
                     starMain = MathF.Max(starMain, orientation == Orientation.Vertical ? child.minHeight : child.minWidth);
 
-                    Vector2D<float> starOffer = orientation == Orientation.Vertical
-                        ? new Vector2D<float>(inner.width, starMain)
-                        : new Vector2D<float>(starMain, inner.height);
+                    Vector2 starOffer = orientation == Orientation.Vertical
+                        ? new Vector2(inner.width, starMain)
+                        : new Vector2(starMain, inner.height);
 
-                    Vector2D<float> desired = child.Measure(starOffer);
+                    Vector2 desired = child.Measure(starOffer);
 
                     float childCross = orientation == Orientation.Vertical
                         ? desired.X + child.margin.totalHorizontal
@@ -121,7 +121,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             if (preferredWidth > 0) w = MathF.Max(w, preferredWidth);
             if (preferredHeight > 0) h = MathF.Max(h, preferredHeight);
 
-            DesiredSize = new Vector2D<float>(w, h);
+            DesiredSize = new Vector2(w, h);
             isMeasureDirty = false;
             return DesiredSize;
         }

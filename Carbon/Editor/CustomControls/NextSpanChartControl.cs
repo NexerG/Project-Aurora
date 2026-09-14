@@ -2,7 +2,7 @@ using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UI;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace Carbon.Editor.CustomControls
 {
@@ -540,9 +540,9 @@ namespace Carbon.Editor.CustomControls
         #region ---- layout ----
         private float PlotWidth() => MathF.Max(1, arrangedRect.width - padding.totalHorizontal - labelWidth);
 
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
-            Vector2D<float> size = base.Measure(availableSize);
+            Vector2 size = base.Measure(availableSize);
 
             foreach (Entity child in children)
                 if (child is Control control && !control.hidden) control.Measure(size);

@@ -94,7 +94,11 @@ namespace ArctisAurora.Core.Data
         public static void FrameEdge()
         {
             for (int i = 0; i < _pools.Count; i++)
-                _pools[i].FrameEdge();
+            {
+                DataPool pool = _pools[i];
+                pool.FrameEdge();
+                Profiling.Frame.Pool(pool.Name, pool.Count, pool.Capacity, pool.ReservedBytes);
+            }
         }
 
         // Binds a "PoolSort" action name to a static IReadOnlyList<int> Method(DataPool).

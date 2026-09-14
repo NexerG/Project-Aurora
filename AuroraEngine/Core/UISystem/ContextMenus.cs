@@ -1,7 +1,7 @@
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls;
-using Silk.NET.Maths;
+using System.Numerics;
 using System.Reflection;
 using System.Xml.Linq;
 
@@ -118,7 +118,7 @@ namespace ArctisAurora.Core.UISystem
 
         // A list the caller built, shown at a point it chose. Used by controls that drop their own
         // options rather than a named menu.
-        public static bool OpenList(VulkanControl owner, IReadOnlyList<ContextEntry> entries, Vector2D<float> point)
+        public static bool OpenList(VulkanControl owner, IReadOnlyList<ContextEntry> entries, Vector2 point)
         {
             live ??= menuFactory();
             return live.OpenWith(owner, entries, point);
@@ -144,7 +144,7 @@ namespace ArctisAurora.Core.UISystem
         // A press outside an open menu takes it down and goes no further — it dismisses, it does not
         // also reach whatever it landed on. Asked of the tree the press landed in, because the point
         // and the menu's rect are only in the same space when the menu hangs in that tree.
-        internal static bool DismissedBy(VulkanControl root, Vector2D<float> point)
+        internal static bool DismissedBy(VulkanControl root, Vector2 point)
         {
             ContextMenuControl? menu = OpenIn(root);
             if (menu == null || menu.arrangedRect.Contains(point)) return false;

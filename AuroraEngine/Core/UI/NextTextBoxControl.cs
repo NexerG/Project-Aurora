@@ -3,7 +3,7 @@ using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.Core.UISystem.Controls.Text.Document;
 using ArctisAurora.EngineWork;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -226,14 +226,14 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- layout ----
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             float w = preferredWidth > 0 ? preferredWidth : MathF.Max(minWidth, availableSize.X);
             float h = preferredHeight > 0 ? preferredHeight : MathF.Max(minHeight, availableSize.Y);
 
-            line.Measure(new Vector2D<float>(float.MaxValue, float.MaxValue));
+            line.Measure(new Vector2(float.MaxValue, float.MaxValue));
 
-            arrange.desired = new Vector2D<float>(w, h);
+            arrange.desired = new Vector2(w, h);
             SetFlag(ArrangeFlags.MeasureDirty, false);
             return arrange.desired;
         }
@@ -266,7 +266,7 @@ namespace ArctisAurora.Core.UI
                 return;
             }
 
-            Vector2D<float> origin = line.TextOrigin;
+            Vector2 origin = line.TextOrigin;
             CaretGeometry at = line.CaretAt(cursor);
             caret.Arrange(new LayoutRect(origin.X + at.x, origin.Y + at.top, NextCaretControl.Width, at.height));
 

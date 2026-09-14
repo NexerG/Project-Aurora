@@ -1,6 +1,6 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -63,9 +63,9 @@ namespace ArctisAurora.Core.UI
 
         #region state
         // scroll state, in pixels; positive Y = content scrolled upward
-        private Vector2D<float> scrollOffset;
-        private Vector2D<float> contentSize;
-        private Vector2D<float> viewportSize;
+        private Vector2 scrollOffset;
+        private Vector2 contentSize;
+        private Vector2 viewportSize;
 
         // scrollbar metrics
         private const float barWidth = 8f;
@@ -88,7 +88,7 @@ namespace ArctisAurora.Core.UI
         private float gutterBottom => CanScrollHorizontal ? barWidth + barInset * 2f : 0f;
 
         // How far each thumb can slide, in pixels. Zero on an axis whose content fits.
-        public Vector2D<float> ThumbTravel { get; private set; }
+        public Vector2 ThumbTravel { get; private set; }
 
         // The single content child. The thumbs also live in children and are never it, so this is
         // read off the list rather than cached — a subclass may clear children to swap its content.
@@ -103,12 +103,12 @@ namespace ArctisAurora.Core.UI
         }
 
         // How far the content can scroll on each axis, overscroll included. Zero if content fits.
-        public Vector2D<float> MaxScrollOffset
+        public Vector2 MaxScrollOffset
         {
             get
             {
                 float overflowY = MathF.Max(0, contentSize.Y - viewportSize.Y);
-                return new Vector2D<float>(
+                return new Vector2(
                     MathF.Max(0, contentSize.X - viewportSize.X),
                     overflowY > 0 ? overflowY + viewportSize.Y * overscroll : 0);
             }
@@ -120,7 +120,7 @@ namespace ArctisAurora.Core.UI
         }
 
         #region layout
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             ref ArrangeData a = ref arrange;
             float w = a.preferredWidth > 0 ? a.preferredWidth : MathF.Max(a.minWidth, availableSize.X);
@@ -133,12 +133,12 @@ namespace ArctisAurora.Core.UI
             {
                 // The viewport, not infinity. A container that sums past it is what turns scrolling
                 // on; the viewport's own desired size never grows with it.
-                Vector2D<float> desired = child.Measure(new Vector2D<float>(innerW, innerH));
-                contentSize = new Vector2D<float>(Usable(desired.X, innerW), Usable(desired.Y, innerH));
+                Vector2 desired = child.Measure(new Vector2(innerW, innerH));
+                contentSize = new Vector2(Usable(desired.X, innerW), Usable(desired.Y, innerH));
             }
-            else contentSize = Vector2D<float>.Zero;
+            else contentSize = Vector2.Zero;
 
-            arrange.desired = new Vector2D<float>(w, h);
+            arrange.desired = new Vector2(w, h);
             SetFlag(ArrangeFlags.MeasureDirty, false);
             return arrange.desired;
         }
@@ -156,7 +156,7 @@ namespace ArctisAurora.Core.UI
             LayoutRect inner = finalRect.Shrink(arrange.padding);
             inner.width = MathF.Max(0, inner.width - gutterRight);
             inner.height = MathF.Max(0, inner.height - gutterBottom);
-            viewportSize = new Vector2D<float>(inner.width, inner.height);
+            viewportSize = new Vector2(inner.width, inner.height);
 
             ClampScrollOffset();
 
@@ -179,7 +179,7 @@ namespace ArctisAurora.Core.UI
         {
             EnsureThumbs();
 
-            Vector2D<float> max = MaxScrollOffset;
+            Vector2 max = MaxScrollOffset;
             float travelX = 0f;
             float travelY = 0f;
 
@@ -221,7 +221,7 @@ namespace ArctisAurora.Core.UI
                 horizontalThumb.Hide();
             }
 
-            ThumbTravel = new Vector2D<float>(travelX, travelY);
+            ThumbTravel = new Vector2(travelX, travelY);
         }
 
         // Appended, not inserted at the head: the hit-test walks last to first and takes the first
@@ -289,19 +289,19 @@ namespace ArctisAurora.Core.UI
         {
             if (deltaX == 0f && deltaY == 0f) return false;
 
-            Vector2D<float> before = scrollOffset;
+            Vector2 before = scrollOffset;
             OnScrollInput(deltaX, deltaY);
             return scrollOffset != before;
         }
 
-        public void SetScrollOffset(Vector2D<float> offset)
+        public void SetScrollOffset(Vector2 offset)
         {
             scrollOffset = offset;
             ClampScrollOffset();
             InvalidateArrange();
         }
 
-        public Vector2D<float> GetScrollOffset() => scrollOffset;
+        public Vector2 GetScrollOffset() => scrollOffset;
 
         // Scrolls a child rect into the viewport — "scroll to selection" in a list or an editor.
         public void ScrollIntoView(LayoutRect targetRect)
@@ -326,7 +326,7 @@ namespace ArctisAurora.Core.UI
 
         private void ClampScrollOffset()
         {
-            Vector2D<float> max = MaxScrollOffset;
+            Vector2 max = MaxScrollOffset;
             scrollOffset.X = MathF.Max(0, MathF.Min(scrollOffset.X, max.X));
             scrollOffset.Y = MathF.Max(0, MathF.Min(scrollOffset.Y, max.Y));
         }
@@ -340,7 +340,7 @@ namespace ArctisAurora.Core.UI
                 throw new Exception("NextScrollableControl supports only one child. Wrap multiple children in a container.");
 
             base.AddChild(entity);
-            scrollOffset = Vector2D<float>.Zero;
+            scrollOffset = Vector2.Zero;
         }
     }
 }

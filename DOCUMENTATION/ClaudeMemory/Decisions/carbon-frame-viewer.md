@@ -264,6 +264,87 @@ already and stay on the detail line untouched.
 **A button pins, not a session row**, because a folder picked through Load XML outside `captureRoot`
 never becomes a row. The `compared with` row names the baseline wherever it came from.
 
+The strip half of "two pictures compared by eye" is superseded by §15; the zone table's diff stands.
+
+### 15. A second frame strip holds the compared capture; the charts follow the last click (user, 2026-09-14)
+
+The user found §14 "not understandable at all" and specified the shape; the forks were theirs.
+
+- `Strip` holds the pinned baseline, `CompareStrip` under it the capture loaded after pinning (fork 1a).
+  **Swap** flips them. Nothing pinned: `Strip` holds the loaded capture and `CompareStrip` stays empty.
+- Flame and Timeline show the **last bar clicked in either strip**; the other strip's highlight clears.
+  The zone table is unchanged, still loaded vs baseline (fork 2a).
+- **Slide left / right** moves the lower strip's frames one column. **Swap negates the offset**, so the
+  alignment survives the flip. Pin and Clear reset the offset; the swap flag persists.
+- **Scale** 0–1: a lower lane's heights divide by `own + (counterpart − own) × t`, both that thread's
+  longest frame. Bars clamp at the lane height. The upper strip is always 0.
+- `Carbon.Editor.Comparison` (static) owns loaded, baseline, swap, offset, scale and what the charts show;
+  `Carbon.Wire` only hands it the views. The picker is the engine's new `ArctisAurora.Core.UI.NextSliderControl`
+  (fork 3c). `offset +3` and `0.49` are labels in the row, not part of the slider (fork 4).
+
+**Lanes and columns are shared between the two strips, or the picture lies.**
+- Lanes are the union of both captures' thread names, ordinal, so lane N is the same thread in both. A
+  thread one side lacks is a label-only lane.
+- A lane's columns are the longer of the two captures' frame counts for that thread; bars are
+  `min(columns, MaxBars)`. A bucket is a column range less the offset (`From`), so frame `i` sits at the
+  same x in both strips. §7's rule bucketed each strip over its own count, which put frame 1000 of a
+  2000-frame run under frame 750 of a 1500-frame one.
+- A frame slid past either edge is not drawn; an empty bucket arranges to `LayoutRect.Empty`. The axis
+  does not grow with the offset, so a slide moves bars and never rescales either strip.
+
+**Selection is (thread, frame), not (lane, bar).** A slide re-buckets and a swap rebuilds both strips, so
+a bar index would highlight whatever lands there next. `Mark` highlights without reporting — it is how
+`Comparison` clears the other strip and carries the highlight across a swap. `SetSession` no longer
+selects; `SelectPeak` does, for the capture just loaded.
+
+**The charts `SetSession` only when the clicked capture differs from the shown one**, so clicking within
+one capture keeps the timeline's zoom (§5). Clicking across captures resets it.
+
+**Rejected:** one control drawing both captures' lanes — the user asked for "another one under it", and
+two instances reuse all of §7. A Carbon-local slider — the user chose the engine.
+
+**Follow-up the same day (user, 2026-09-14):**
+- **`CompareStrip` is hidden while nothing compares** and takes no space (user: "only there when there's
+  something to compare to"). `Attach` hides it; `Refresh` shows it only with a lower capture. This needed
+  `NextStackPanelControl` to skip `hidden` children in measure, star share and arrange, and
+  `Control.Show()` to clear `MeasureDirty` before `InvalidateLayout` — see Facts.
+- **The slide buttons are 28×28 icon buttons**, `chevron-left-outline` / `chevron-right-outline`: hollow
+  chevrons, two opposite-wound contours (user chose hollow over mirroring the filled `chevron-right`).
+- **`NextLabel` never wraps** (user: a zone name ran onto the detail line). The zone name label sets
+  `clipOutOfBounds`, so a long name is cut at its column, mid-glyph (fork 1a, over `...` truncation).
+- `NextNoteNameWindow` lost its 1 px width trick for the hidden "Don't save" button, which only existed
+  because a hidden stack child kept its slot.
+
+### 16. Pools show as a summary in the table and a readout of the clicked frame (user, 2026-09-14)
+
+The capture side is [[engine-profiling]] §14. The user chose fork 2b over the table alone (2a) and over pool
+lanes in the frame strip (2c).
+
+- `NextZoneTableControl.Pools(thread)` runs after each thread's `Fill`: a `pools` header, then one two-line row
+  per pool, in first-recorded order — name with **peak** bytes on the right, then
+  `items min-max, last N, capacity peak`. Rolled over the whole capture into `RolledPool`.
+- A `NextLabel Name="Pools"` sits between `CompareStrip` and `Flame`. `Comparison.Show` sets it to the clicked
+  frame's pools, `name count/capacity bytes`, four spaces apart; `Comparison.Attach` takes it as a new last
+  parameter.
+- A thread that recorded no pools gets no block and an empty readout — `Render`, `Physics`, `Bootstrap` and
+  every capture written before §14.
+
+**Peak, not last, on the right.** The column is what the pool cost at worst. Last is in the detail line,
+beside the item range.
+
+**The readout follows the clicked thread, not Main.** A `Render` frame clears it rather than looking up the
+`Main` frame that overlaps its timestamp; that lookup is §5's free-running-threads problem again.
+
+**No baseline diff for pools.** §14's per-frame delta is zones only.
+
+**Rejected (2c): pool lanes in the frame strip.** It is the view that shows a pool over time, but a lane is a
+thread today, and bucketing a count is a different rule from §7's longest-frame bucket.
+
+**Verified, GUI:** on a `--profile=3000 --profile-pools` capture of Carbon itself, loaded through Load XML — the
+block read `UIElements 328.0KB / items 98-1219, last 1219, capacity 2048`, and a click on Main's load spike read
+`UIControls 0/1024 260.0KB    UIElements 809/1024 164.0KB    Entities 0/1024 60.0KB`. The Bootstrap frame the
+session opened on left the readout empty.
+
 ## Facts that were expensive to establish
 
 - **A `widthStar` `LabelControl` inside a horizontal `StackPanel` is measured at width 0 and wraps to
@@ -277,6 +358,9 @@ never becomes a row. The `compared with` row names the baseline wherever it came
   so `base` is `VulkanControl`'s.
 - **`Hide()` collapses the clip, and `Arrange` rewrites it.** A hidden child must be *skipped* by its
   parent's `Arrange`, not merely hidden, or it reappears.
+- **A child its parent skips can stay `MeasureDirty` forever, and then `Show()` lays nothing out.**
+  `InvalidateLayout` returns at the first already-dirty control, so a strip dirtied by `SetSession` while
+  hidden made `Show()` register no dirty root. `Show()` now clears `MeasureDirty` before invalidating.
 - **Debug paths resolve against the working directory.** `Paths.GetPath` returns
   `Path.GetFullPath(Path.Combine("..","..","..", path))`, so an app must be launched from its own
   `bin/Debug/<tfm>/`. `dotnet run` sets the repo root instead and boot dies at `XSDGenerator` with
@@ -317,8 +401,15 @@ never becomes a row. The `compared with` row names the baseline wherever it came
 - **Per-frame numbers print `F2`**, so a zone under 5 µs/frame reads `0.00ms/f` beside a real
   percentage (`FrameEdge 0.00ms/f 0.00 -10%`). `TotalWidth="74"` just holds `20.37ms/f`; a third
   decimal needs the column wider.
-- **Nothing outside the zone table compares.** A baseline overlay on the strip was left out: frame
-  index lines up between runs only for Boot captures.
+- **The flame chart and timeline show one capture at a time.** Only the strips sit side by side (§15);
+  only the zone table diffs numbers.
+- **A slide is one frame, and past `MaxBars` a bar is several.** On rearrange captures (1500–6000 frames
+  per thread) a press moves bucket edges by less than a bar and can look like nothing happened. Boot
+  captures (≤120 frames) move a bar per press.
+- **The offset is the whole strip's, not per thread.** Threads run free (§5), so aligning Main can
+  misalign Render.
+- **A selected frame slid out of range loses its highlight** while the charts keep showing it.
+- **Offset, scale and swap are not persisted.**
 - **`Periodic/` at the repo root still holds a stray `obj/`**, dead since the 2026-08 rename.
   Unrelated, untouched.
 
@@ -374,6 +465,28 @@ a scratch roll-up over the XML outside the repo:
 | clear | totals again, `MainTick 30550.11ms` = 20.37 × 1500 |
 | pin `Stage0-1000k-boot`, load the rearrange | faster colour on `MainTick -5.17 -20%`; `Bootstrap only in baseline` last |
 | `new` / `gone` zone rows | **NOT GUI-verified** — no two real captures differ in zone names |
+
+§15's two strips, **GUI-verified** 2026-09-14 by synthetic clicks and captures, pin `Stage0-1000k-boot`
+then load `Stage0-0200k-boot`:
+
+| Case | Result |
+|---|---|
+| load, nothing pinned | upper strip as before, lower empty, `offset 0`, `1.00` |
+| load while pinned | baseline upper, loaded lower with its Bootstrap peak lit; upper highlight cleared |
+| unequal counts | lower `Physics` (64 frames vs 120) ends at half width |
+| Slide right ×3 | `offset +3`; lower bars 3 columns right; 1-frame `Bootstrap` slid out, lane empty |
+| Swap | `offset -3`; 0200k upper with its shown frame re-lit; 1000k lower, first 3 frames cut |
+| scale 0 by press | `0.00`; lower lanes fill their own height |
+| scale by drag | thumb dragged to mid, `0.49` |
+| click a lower bar | that bar lit, upper cleared, flame on `Main 74.82ms` |
+| Clear | lower empty, `offset 0`, upper 0200k at its own counts, charts back on its peak |
+| follow-up: one capture | no lower strip; flame chart directly under the upper one |
+| follow-up: pin + load | lower strip appears, drawn — the capture it took while hidden |
+| follow-up: icons | hollow chevrons (8× crop); right ×2, left ×1 → `offset +1` |
+| follow-up: Clear | lower strip gone, space closed |
+| follow-up: zone name | `AssetRegistries.RegisterSerializabl` cut at its column, detail line clear |
+| follow-up: Thorium boot | documents still wrap, labels one line |
+| >`MaxBars` captures, "Don't save" prompt layout | **NOT GUI-verified** |
 
 Three things that capture said about the **engine**, not about Carbon:
 

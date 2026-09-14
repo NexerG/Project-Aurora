@@ -122,6 +122,8 @@ ResolveLayout()
 		refresh the subtree caches under it
 ```
 
+A hidden element takes no space in a stack panel. The panel skips it when measuring, when sharing out star space and when arranging, so neither its slot nor the spacing beside it is left behind. A skipped element is never measured, so it can stay marked dirty from something that changed while it was hidden, and a dirty mark stops the walk up the tree; showing an element clears that mark first, so the walk runs and the window is laid out again.
+
 Two caches ride on every element: the rectangle covering it and everything beneath it, and how many elements its subtree holds. Both are filled by a separate walk after arrange rather than by arrange itself, so no future override can forget to maintain them. In debug builds the same walk is repeated independently and any disagreement is logged as an error.
 
 ## The window root
@@ -416,6 +418,8 @@ A run of text is one control holding a string and its settings, and the measurer
 Per-character settings — bold, colour, italic, size — live on the run as a list of spans, because a glyph is only a quad in a list and has nowhere to keep state of its own. A span carries a length, a face and a colour; the spans tile the string in order and the last one absorbs whatever is left, so appending to the text needs no change to the span list at all. Each span becomes one input run for the measurer, and the measurer already reports which run every stretch of a line came from — which is how a line that crosses from regular into bold and back gets each stretch drawn in the right face.
 
 The measurer takes a slice of the string rather than a string of its own, so the spans of one paragraph share one string and nothing is copied to measure it.
+
+A label is a run that never wraps. Its whole string is one line however narrow its box, and whatever does not fit runs past the edge unless the label clips to its own rectangle. Paragraphs in a document and the line in a text box still wrap.
 
 Arrange only places the block. Cutting the glyphs happens at emit, against the clip of the moment, so a run that scrolls does no work for the lines that scrolled away.
 

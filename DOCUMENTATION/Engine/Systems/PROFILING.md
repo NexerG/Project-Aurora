@@ -139,18 +139,19 @@ One file per thread, `Profiling/<yyyyMMdd-HHmmss>/<thread>.frames.xml`.
 
 ```xml
 <FrameCapture Thread="Main" Frequency="10000000" Started="…" Mode="Burst" Requested="300">
-  <Names><N I="0" V="MainTick"/><N I="1" V="HandleUI"/><N I="2" V="Measure"/></Names>
+  <Names><N I="0" V="MainTick"/><N I="1" V="HandleUI"/><N I="2" V="Measure"/><N I="3" V="UIElements"/></Names>
   <Batch Seq="0" Dropped="0">
     <F I="10412" T="8823410992341" D="91004" A="350072">
       <Z N="0" B="0" E="83120" A="300048">
         <Z N="1" B="4903" E="12142" A="200024"><C N="2" V="412"/></Z>
       </Z>
+      <P N="3" C="98" K="1024" M="167936"/>
     </F>
   </Batch>
 </FrameCapture>
 ```
 
-`F` is a frame — `I` its index (the system's epoch), `T` the `Stopwatch` stamp it started on, `D` how long it took, `A` how many bytes it allocated. `Z` is a span and `C` a counter, `B` and `E` are ticks measured from the frame's own `T`, `A` is the span's own bytes, and `N` is an index into `Names`. Everything is a raw tick or byte count with `Frequency` at the top, because formatting a millisecond figure costs more than the span being measured; the reader divides.
+`F` is a frame — `I` its index (the system's epoch), `T` the `Stopwatch` stamp it started on, `D` how long it took, `A` how many bytes it allocated. `Z` is a span and `C` a counter, `B` and `E` are ticks measured from the frame's own `T`, `A` is the span's own bytes, and `N` is an index into `Names`. `P` is a data pool as the frame left it, written only when pools are being profiled — `C` its live items, `K` its capacity, `M` its reserved bytes. Everything is a raw tick or byte count with `Frequency` at the top, because formatting a millisecond figure costs more than the span being measured; the reader divides.
 
 Three consequences worth holding on to. The nesting of the elements is the nesting of the zones, so the file **is** the flame chart and nothing has to be reconstructed. `T` is process-wide, so two threads' files stack on one timeline without a correlation id — the render thread's wait sits directly under whatever main was doing. And the gap between `D` and the root span's `E` is time the thread spent parked, which draws itself.
 
@@ -167,12 +168,39 @@ The measured window opens at the *end* of `Frame.Begin` and closes at the top of
 
 **Bytes collected are not recorded.** The runtime does not expose bytes freed, and the one API that gives real per-collection detail, `GC.GetGCMemoryInfo()`, allocates — a profiler that allocates to measure allocation corrupts its own measurement. Collection counts and a derived reclaimed figure are described in `ClaudeMemory/Decisions/engine-profiling.md` §12 and were deliberately not built.
 
+### Pools
+A capture can also record every `DataPool` each frame: how many items it holds, its capacity, and the bytes it has reserved. It is off by default, because most captures are about time — turn it on with `<ProfilingCapture Pools="true"/>` in the settings, or for one run with `--profile-pools` on the command line, which switches it on whatever the setting says. The switch only adds pools to a capture; it does not start one, so it goes beside `--profile` or an F9 press.
+
+The pool reports itself, from the thread that owns it, right after it settles:
+
+```
+DataManager.FrameEdge()
+	for each pool
+		pool.FrameEdge()
+		Profiling.Frame.Pool(pool.Name, pool.Count, pool.Capacity, pool.ReservedBytes)
+
+Profiling.Frame.Pool(name, count, capacity, bytes)
+	if profiling is off or pools are not being recorded
+		return
+	if this thread is not capturing the current frame
+		return
+	append a pool record to the batch
+```
+
+Sampling after `FrameEdge` means a freed row is already gone, so the count is what the pool carries into the next frame. The profiler never walks the pools itself — a pool may only be read on the thread that owns it, and the pool's owner is exactly who calls this. Every pool is owned by Main today, so pools appear only in `Main.frames.xml`.
+
+Reserved bytes are the capacity times the size of one slot, and a slot is every column's element plus the pool's own bookkeeping — the slot map, back map, versions, published versions and owner reference, 24 bytes. Because every array the pool holds is sized to its capacity, the bytes actually in use are exactly `M × C / K`. What is not counted: array headers, the small side tables, the objects an owner reference points at, and any GPU buffer a pool is mirrored into. See `ClaudeMemory/Decisions/engine-profiling.md` §14.
+
 ### Reading it back
 `FrameCaptureReader` is the other half of `FrameSpool`, in the same namespace, and is `WriteFrame` run backwards — element nesting is the span depth, so the flat arrays come back the way the recording thread built them. `Enumerate(root)` lists session folders without parsing anything, `LoadSession(dir)` reads every thread file in one, and `LoadFile(path)` reads one. Truncation is expected rather than exceptional: what was read is kept, `truncated` is set, and the frame the writer died inside is dropped because nothing references its spans.
 
 The viewer that draws these files is **Carbon**, a fourth application on the engine's own UI beside Thorium and the Editor. It shows the session list, a bar per frame per thread, one frame's flame chart, every thread aligned on the absolute clock, and the zone totals rolled up over the capture. The flame chart and the timeline open one third and two thirds of the column and a grip between them drags that ratio, since a boot capture wants most of its room in the flame chart and a three-thread session wants it in the timeline. See `ClaudeMemory/Decisions/carbon-frame-viewer.md`.
 
-Two captures compare in the zone table. **Pin as baseline** keeps the loaded session, and every session loaded after it shows each zone as milliseconds per frame beside its change against the same thread and zone in the baseline, slower in red and faster in green, until **Clear baseline**. The comparison is per frame because a total is a sum over however many frames the file holds, and two captures rarely hold the same number. The charts and the frame strip stay on one capture, since frame N of one run has no counterpart in another.
+Two captures compare in the zone table. **Pin as baseline** keeps the loaded session, and every session loaded after it shows each zone as milliseconds per frame beside its change against the same thread and zone in the baseline, slower in red and faster in green, until **Clear baseline**. The comparison is per frame because a total is a sum over however many frames the file holds, and two captures rarely hold the same number.
+
+While a baseline is pinned a second frame strip sits under the first: the baseline on top, the capture loaded after it below, and **Swap** trades them. Both strips give a thread the same lane and the same frame columns, sized to whichever capture holds more frames, so frame N sits at the same x in both. **Slide left** and **Slide right** move the lower strip's frames one column at a time to line a spike up with its counterpart, and swapping negates the offset so the alignment holds. **Scale** runs from 0, where each lower lane is drawn against its own longest frame, to 1, where it is drawn against the upper strip's longest frame for that thread. The flame chart and the timeline show whichever bar was clicked last, in either strip.
+
+A capture with pools in it shows them twice. The zone table closes each thread with a **pools** block, one row per pool with its peak bytes beside the name and its item range, last count and peak capacity under it. A line under the frame strips reads out the pools of whichever frame was clicked last — name, items over capacity, bytes — and stays empty for a thread that recorded none.
 
 ### Reading the output
 ```

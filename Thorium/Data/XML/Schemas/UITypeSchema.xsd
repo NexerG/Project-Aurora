@@ -300,6 +300,19 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:NextScrollable.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="NextSlider.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:NextVulkanControl.Attributes" />
+    <xs:attribute name="Value" type="xs:float" />
+    <xs:attribute name="TrackColorHex" type="xs:string" />
+    <xs:attribute name="ThumbColorHex" type="xs:string" />
+    <xs:attribute name="TrackHeight" type="xs:float" />
+    <xs:attribute name="ThumbWidth" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="NextSlider" type="types:NextSlider" />
+  <xs:complexType name="NextSlider">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:NextSlider.Attributes" />
+  </xs:complexType>
   <xs:element name="NextSplitter" type="types:NextSplitter" />
   <xs:complexType name="NextSplitter">
     <xs:sequence />

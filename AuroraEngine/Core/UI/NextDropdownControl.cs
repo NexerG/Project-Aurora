@@ -1,5 +1,5 @@
 using ArctisAurora.Core.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -41,7 +41,7 @@ namespace ArctisAurora.Core.UI
                 entries.Add(new ContextMenuButton(option, () => Pick(option)));
 
             NextContextMenus.Open(entries, this,
-                new Vector2D<float>(arrangedRect.x, arrangedRect.y + arrangedRect.height));
+                new Vector2(arrangedRect.x, arrangedRect.y + arrangedRect.height));
             return true;
         }
 

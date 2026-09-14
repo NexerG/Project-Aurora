@@ -2,7 +2,7 @@ using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.EngineWork.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -66,11 +66,11 @@ namespace ArctisAurora.Core.UI
 
         // Width/Height are the artwork, not the cell. The bake pads every cell by an eighth of its
         // inner size per side, and GlyphControl.CellScale is that same margin undone.
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             float w = (preferredWidth > 0 ? preferredWidth : defaultSize) * GlyphControl.CellScale;
             float h = (preferredHeight > 0 ? preferredHeight : defaultSize) * GlyphControl.CellScale;
-            arrange.desired = new Vector2D<float>(w, h);
+            arrange.desired = new Vector2(w, h);
             SetFlag(ArrangeFlags.MeasureDirty, false);
             return arrange.desired;
         }

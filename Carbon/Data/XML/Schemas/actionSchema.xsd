@@ -13,6 +13,9 @@
           <xs:enumeration value="Carbon.LoadCapture" />
           <xs:enumeration value="Carbon.PinBaseline" />
           <xs:enumeration value="Carbon.ClearBaseline" />
+          <xs:enumeration value="Carbon.SlideLeft" />
+          <xs:enumeration value="Carbon.SlideRight" />
+          <xs:enumeration value="Carbon.SwapStrips" />
           <xs:enumeration value="Settings.Open" />
           <xs:enumeration value="Settings.Save" />
           <xs:enumeration value="Tab.Close" />

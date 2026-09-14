@@ -5,7 +5,7 @@ using ArctisAurora.Core.UISystem.Controls.Interactable;
 using ArctisAurora.Core.UISystem.Controls.Text.Document.Edits;
 using ArctisAurora.Core.UISystem.Controls.Text.Editing;
 using ArctisAurora.EngineWork.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 {
@@ -281,7 +281,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 
         private static void Drop(ToolButton owner, List<ContextEntry> entries) =>
             ContextMenus.OpenList(owner, entries,
-                new Vector2D<float>(owner.arrangedRect.x, owner.arrangedRect.Bottom));
+                new Vector2(owner.arrangedRect.x, owner.arrangedRect.Bottom));
 
         private static string CaptionFor(TextStyleType type)
         {
@@ -406,7 +406,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         {
             public Action? onPress;
 
-            public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
+            public override void ResolveOnClick(Vector2 oldPos, Vector2 delta)
             {
                 base.ResolveOnClick(oldPos, delta);
                 onPress?.Invoke();
@@ -421,7 +421,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
 
             public override bool takesActiveControl => false;
 
-            public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
+            public override void ResolveOnClick(Vector2 oldPos, Vector2 delta)
             {
                 base.ResolveOnClick(oldPos, delta);
                 onPress?.Invoke(this);

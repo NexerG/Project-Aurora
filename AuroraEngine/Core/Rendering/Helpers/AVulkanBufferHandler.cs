@@ -1,4 +1,4 @@
-﻿using Silk.NET.Maths;
+﻿using System.Numerics;
 using Silk.NET.Vulkan;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -12,11 +12,11 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 {
     public struct UBO
     {
-        public Matrix4X4<float> _view;
-        public Matrix4X4<float> _projection;
-        //public Matrix4X4<float> _lightProjection;
-        //public Matrix4X4<float> _lightView;
-        //public Vector3D<float> _camPos;
+        public Matrix4x4 _view;
+        public Matrix4x4 _projection;
+        //public Matrix4x4 _lightProjection;
+        //public Matrix4x4 _lightView;
+        //public Vector3 _camPos;
     }
 
     internal static unsafe class AVulkanBufferHandler

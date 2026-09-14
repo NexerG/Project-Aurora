@@ -17,17 +17,7 @@ namespace ArctisAurora.Core.Registry.Assets
 
         public FontAsset() { }
 
-        public Glyph GetGlyph(char c)
-        {
-            for (int i = 0; i < atlasMetaData.glyphCount; i++)
-            {
-                if (atlasMetaData.chars[i] == c)
-                {
-                    return atlasMetaData.glyphs[i];
-                }
-            }
-            return null;
-        }
+        public Glyph GetGlyph(char c) => atlasMetaData.GetGlyph(c);
 
         public override void Load(string name, string source)
         {
@@ -35,6 +25,7 @@ namespace ArctisAurora.Core.Registry.Assets
 
             atlasMetaData = new AtlasMetaData();
             Serializer.DeserializeAttributed(Paths.Font(fontName, fontName + ".agd"), ref atlasMetaData);
+            atlasMetaData.BuildCharIndex();
 
             if (atlasMetaData.pxRange != MTSDFGen.PxRange)
                 Log.Error($"font '{fontName}' was baked at pxRange {atlasMetaData.pxRange}, the shader expects {MTSDFGen.PxRange} — re-import it.");

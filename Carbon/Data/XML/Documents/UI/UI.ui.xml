@@ -50,8 +50,30 @@
 			<NextSplitter Width="5" ColorHex="#E6E4DE" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"/>
 
 			<NextStackPanel Orientation="Vertical" WidthStar="1" ColorHex="#FBFAF8" Padding="8" Spacing="8">
+				<NextStackPanel Orientation="Horizontal" Height="28" HorizontalAlignment="Stretch" Spacing="8" ColorHex="#FBFAF8">
+					<NextButton Width="28" Height="28" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
+								CornerRadius="4" onRelease="Carbon.SlideLeft">
+						<NextIcon Set="default" Icon="chevron-left-outline" Width="14" Height="14" ColorHex="#5F5D56"/>
+					</NextButton>
+					<NextLabel Name="Offset" Text="offset 0" FontSize="13" Width="80" Height="28" ColorHex="#918F87"/>
+					<NextButton Width="28" Height="28" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
+								CornerRadius="4" onRelease="Carbon.SlideRight">
+						<NextIcon Set="default" Icon="chevron-right-outline" Width="14" Height="14" ColorHex="#5F5D56"/>
+					</NextButton>
+					<NextButton Width="96" Height="28" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
+								CornerRadius="4" onRelease="Carbon.SwapStrips">
+						<NextLabel Text="Swap" FontSize="13" ColorHex="#5F5D56"/>
+					</NextButton>
+					<NextLabel Text="Scale" FontSize="13" Width="40" Height="28" ColorHex="#5F5D56"/>
+					<NextSlider Name="Scale" Width="200" Height="28" Value="1" TrackHeight="4" ThumbWidth="10"
+								TrackColorHex="#E3E1D9" ThumbColorHex="#C9C6BC"/>
+					<NextLabel Name="ScaleValue" Text="1.00" FontSize="13" Width="40" Height="28" ColorHex="#918F87"/>
+				</NextStackPanel>
 				<NextFrameStrip Name="Strip" Height="140" ColorHex="#F5F4F0" Padding="8"
 								BarColorHex="#C9C6BC" SelectedBarColorHex="#C4622B" LabelColorHex="#918F87"/>
+				<NextFrameStrip Name="CompareStrip" Height="140" ColorHex="#F5F4F0" Padding="8"
+								BarColorHex="#C9C6BC" SelectedBarColorHex="#C4622B" LabelColorHex="#918F87"/>
+				<NextLabel Name="Pools" Text="" FontSize="12" Height="18" HorizontalAlignment="Stretch" ColorHex="#918F87"/>
 				<NextSpanChart Name="Flame" Mode="Frame" HeightStar="1" MinHeight="10" ClipToBounds="true" ColorHex="#F5F4F0" Padding="8"
 							   RulerHeight="18" TickColorHex="#C9C6BC" RulerLabelColorHex="#918F87"
 							   FrameColorHex="#E3E1D9" SpanLabelColorHex="#2C2B26" LaneLabelColorHex="#918F87"/>

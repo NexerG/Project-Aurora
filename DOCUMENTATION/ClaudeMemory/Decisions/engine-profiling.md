@@ -321,6 +321,83 @@ ending rather than by the process dying:
 | largest allocator | `Context.LoadContexts` 91.5MB; `InputHandler.LoadInputs` 63.2MB |
 | the setting alone | `Mode="Boot" BurstFrames="60"`, no flag → 3 files × 60 frames, no `Bootstrap` |
 
+## 14. Data pools are a third record on the frame, pushed by the pool owner (user, 2026-09-14)
+
+**Date:** 2026-09-14
+**Scope:** `Profiling.Frame.Pool`, `Profiling.Configure`; `FrameSpool` — `PoolRecord`, `CaptureBatch.AddPool`,
+`WriteFrame`; `ProfilingCaptureSetting.pools`; `FrameCaptureReader` — `CapturedPool`; `DataPool.ReservedBytes`;
+`DataManager.FrameEdge`.
+
+### What changed
+- `DataManager.FrameEdge` calls `Profiling.Frame.Pool(name, Count, Capacity, ReservedBytes)` right after each
+  `DataPool.FrameEdge()`. Recorded only while the calling thread is capturing and `FrameSpool.pools` is set.
+- `<F>` gains one `<P N C K M/>` per pool, after its frame-level `<C>`: name id, live items, capacity, reserved
+  bytes. `M`, not `B`, because `B` is a span's begin.
+- `DataPool.ReservedBytes` = capacity × `_slotBytes`, fixed in the ctor: every column's `ElementSize` plus
+  `_slots`, `_backMap`, `_versions`, `_publishedSlotVersion` (4 × int) and `_owners` (a pointer).
+- Off by default. `<ProfilingCapture Pools="true"/>`, or `--profile-pools` on the command line, which forces it
+  on over the setting (fork 1b).
+- `CapturedFrame.firstPool`/`poolCount` slice `CapturedThread.pools`; truncation rolls pools back with the rest.
+  An older file reads with no pools.
+
+### Why these choices
+
+**A record of its own, not counters.** A counter is summed per `(zone, name)` and Carbon sums it across frames;
+a pool size is a gauge, and "UIElements 98 × 1315 frames" is nonsense. Naming counters `UIElements.Count`
+would also have meant a `Set` beside `Increment` and a reader that tells the two apart by string.
+
+**The owner pushes; Diagnostics does not read pools.** `Core.Data` already references `Core.Diagnostics` for
+logging, and a pool may only be read on its owning thread. A profiler walking `DataManager.Pools` would invert
+the layering and cross threads, which §5 exists to prevent. Pushed from the loop, it lands on the thread that
+owns the pool, in that thread's frame, with no lock.
+
+**Sampled after `FrameEdge`, not before.** Before it, freed rows are still alive until compaction; after it,
+`Count` is what the pool carries into the next frame.
+
+**Reserved bytes, and every capacity-sized array.** Every array is capacity-sized, so bytes are exactly linear
+in capacity and used bytes are `M × C / K` with nothing lost. Columns alone would hide 24 B a slot, which is
+40% of `Entities`. Not counted: array headers, the small side tables (`_freeIds`, `_pendingFree`, `_dirtyLog`),
+the objects `_owners` points at, and GPU mirrors of a pool.
+
+**One flag, not one for items and one for bytes.** They are one record at one cost; two switches would be
+configurability with nothing to choose between.
+
+**The switch sits in `Configure`, not `ArmBoot`.** `ArmBoot` reads the command line early because the boot
+frame needs it; no pool exists until `DataManager.ParseXML`, and nothing calls `FrameEdge` before `MainTick`.
+Read in `Configure`, it survives `FrameSpool.Configure` overwriting the flag from the setting.
+
+**`CaptureBatch.pools` is sized from the flag.** `framesPerBatch × 4` with it on, zero with it off, growing on
+overflow. A fixed 256-record array would add ~18 KB to frame 0's `<F A>` on every thread in every capture
+(§12). With the flag on, every thread still pays it, pool-less `Render` and `Physics` included — the lane does
+not know which thread will record pools. The boot lane is built before `Configure`, so it gets none — correct,
+the boot frame has no pools.
+
+**Every frame, not on change.** Counts change rarely, but a delta stream needs carry-forward in the reader and
+a full write at every batch and session edge. Three pools cost ~120 bytes of XML a frame.
+
+### Consequences to hold on to
+- **Every pool is Main's today, so pools only ever appear in `Main.frames.xml`.** A pool owned by another system
+  would be sampled on Main — but `DataManager.FrameEdge`'s flat loop already asserts on that (see `DataPool.FrameEdge`).
+- **Measured slot sizes:** `UIControls` 260 B, `UIElements` 164 B, `Entities` 60 B, each carrying 24 B of
+  bookkeeping.
+- **Not in the one-second report.** Capture only.
+- **The setting itself is not run-verified.** The switch path is; `Pools` is in the regenerated
+  `SettingsTypeSchema.xsd`, and settings parse through the same path as `BurstFrames`.
+
+### Verified
+
+`Carbon.exe --profile=3000 --profile-pools`, clicking three session rows during the burst:
+
+| Case | Result |
+|---|---|
+| records | 2999 Main frames, 8997 `<P>`; none in `Render`/`Physics` |
+| names | `UIControls`, `UIElements`, `Entities` declared in `<Names>` and resolved |
+| counts move | `UIElements` 98 (1315 frames) → 809 (623) → 1130 (666) → 1219 (395) |
+| growth | capacity 1024 → 2048 at 1130 items, `M` 167,936 → 335,872 |
+| steady state allocates nothing | 4 of 2999 `FrameEdge` spans carry `A`, all on a load frame |
+| switch off | `--profile=60` → 59 Main frames, no `<P>` |
+| an older capture | `Stage0-1000k-rearrange` loads in Carbon with no pools and no error |
+
 ## Left standing
 
 - **GPU is out entirely** (user, 2026-09-02). Frame times can be read back from a `VkQueryPool`, and

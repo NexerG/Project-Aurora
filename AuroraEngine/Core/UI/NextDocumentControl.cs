@@ -3,7 +3,7 @@ using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.UISystem;
 using ArctisAurora.Core.UISystem.Controls.Text.Document;
 using ArctisAurora.EngineWork;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -201,7 +201,7 @@ namespace ArctisAurora.Core.UI
             if (caretBlock == null) return false;
 
             CaretGeometry geometry = caretBlock.CaretAt(caretOffset);
-            Vector2D<float> origin = caretBlock.TextOrigin;
+            Vector2 origin = caretBlock.TextOrigin;
 
             x = origin.X + geometry.x;
             y = origin.Y + geometry.top;
@@ -233,7 +233,7 @@ namespace ArctisAurora.Core.UI
                 IReadOnlyList<TextLine> lines = candidate.Lines;
                 if (lines == null) continue;
 
-                Vector2D<float> origin = candidate.TextOrigin;
+                Vector2 origin = candidate.TextOrigin;
 
                 foreach (TextLine line in lines)
                 {
@@ -256,13 +256,13 @@ namespace ArctisAurora.Core.UI
             if (best == null) return false;
 
             block = best;
-            offset = best.IndexAt(new Vector2D<float>(x, best.TextOrigin.Y + bestLineTop + 1f));
+            offset = best.IndexAt(new Vector2(x, best.TextOrigin.Y + bestLineTop + 1f));
             return true;
         }
 
         // A point that landed on no line at all. Below every block there is no line worth resolving
         // against, so the document's end stands in; anywhere else the nearest slot does.
-        internal bool CaretOffText(Vector2D<float> point, out NextBlockControl block, out int offset)
+        internal bool CaretOffText(Vector2 point, out NextBlockControl block, out int offset)
         {
             NextBlockControl last = LastBlock();
             if (last != null && point.Y > last.arrangedRect.Bottom)
@@ -389,7 +389,7 @@ namespace ArctisAurora.Core.UI
             IReadOnlyList<TextLine> lines = block.Lines;
             if (lines == null || to <= from) return used;
 
-            Vector2D<float> origin = block.TextOrigin;
+            Vector2 origin = block.TextOrigin;
 
             foreach (TextLine line in lines)
             {
@@ -800,7 +800,7 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- layout ----
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             float height = 0f;
             int blocks = 0;
@@ -809,7 +809,7 @@ namespace ArctisAurora.Core.UI
             {
                 if (child is not NextBlockControl block) continue;
 
-                height += block.Measure(new Vector2D<float>(availableSize.X, float.MaxValue)).Y;
+                height += block.Measure(new Vector2(availableSize.X, float.MaxValue)).Y;
                 blocks++;
             }
 
@@ -819,7 +819,7 @@ namespace ArctisAurora.Core.UI
             foreach (NextPanelControl box in highlights)
                 box.Measure(availableSize);
 
-            arrange.desired = new Vector2D<float>(availableSize.X, height);
+            arrange.desired = new Vector2(availableSize.X, height);
             SetFlag(ArrangeFlags.MeasureDirty, false);
             return arrange.desired;
         }
@@ -858,7 +858,7 @@ namespace ArctisAurora.Core.UI
             }
 
             CaretGeometry geometry = caretBlock.CaretAt(caretOffset);
-            Vector2D<float> origin = caretBlock.TextOrigin;
+            Vector2 origin = caretBlock.TextOrigin;
 
             caret.Arrange(new LayoutRect(origin.X + geometry.x, origin.Y + geometry.top,
                 NextCaretControl.Width, geometry.height));

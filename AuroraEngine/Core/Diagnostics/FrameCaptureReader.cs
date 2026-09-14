@@ -21,7 +21,16 @@ namespace ArctisAurora.Core.Diagnostics
         public long value;
     }
 
-    // one frame's slice of its thread's span and counter arrays
+    // one data pool's live items, capacity and reserved bytes as the frame left it
+    public struct CapturedPool
+    {
+        public int name;
+        public long count;
+        public long capacity;
+        public long bytes;
+    }
+
+    // one frame's slice of its thread's record arrays
     public struct CapturedFrame
     {
         public long index;
@@ -32,6 +41,8 @@ namespace ArctisAurora.Core.Diagnostics
         public int spanCount;
         public int firstCounter;
         public int counterCount;
+        public int firstPool;
+        public int poolCount;
     }
 
     // One thread's frame file, read whole. Spans stay in document order, so a frame's slice is
@@ -51,6 +62,7 @@ namespace ArctisAurora.Core.Diagnostics
         public readonly List<CapturedFrame> frames = new List<CapturedFrame>();
         public readonly List<CapturedSpan> spans = new List<CapturedSpan>();
         public readonly List<CapturedCounter> counters = new List<CapturedCounter>();
+        public readonly List<CapturedPool> pools = new List<CapturedPool>();
 
         public double Ms(long ticks) => frequency > 0 ? ticks * 1000.0 / frequency : 0;
 
@@ -193,6 +205,7 @@ namespace ArctisAurora.Core.Diagnostics
                                 bytes = Long(reader, "A"),
                                 firstSpan = thread.spans.Count,
                                 firstCounter = thread.counters.Count,
+                                firstPool = thread.pools.Count,
                             };
                             depth = 0;
                             inFrame = true;
@@ -224,6 +237,16 @@ namespace ArctisAurora.Core.Diagnostics
                                 value = Long(reader, "V"),
                             });
                             break;
+
+                        case "P":
+                            thread.pools.Add(new CapturedPool
+                            {
+                                name = Int(reader, "N"),
+                                count = Long(reader, "C"),
+                                capacity = Long(reader, "K"),
+                                bytes = Long(reader, "M"),
+                            });
+                            break;
                     }
                 }
             }
@@ -234,6 +257,7 @@ namespace ArctisAurora.Core.Diagnostics
                 {
                     thread.spans.RemoveRange(frame.firstSpan, thread.spans.Count - frame.firstSpan);
                     thread.counters.RemoveRange(frame.firstCounter, thread.counters.Count - frame.firstCounter);
+                    thread.pools.RemoveRange(frame.firstPool, thread.pools.Count - frame.firstPool);
                 }
             }
             catch (Exception exception)
@@ -249,6 +273,7 @@ namespace ArctisAurora.Core.Diagnostics
         {
             frame.spanCount = thread.spans.Count - frame.firstSpan;
             frame.counterCount = thread.counters.Count - frame.firstCounter;
+            frame.poolCount = thread.pools.Count - frame.firstPool;
             thread.frames.Add(frame);
         }
 

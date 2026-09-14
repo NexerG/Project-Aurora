@@ -7,7 +7,7 @@ using ArctisAurora.Core.UISystem.Controls.Text.Document;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls.Containers
 {
@@ -134,7 +134,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
         // What a drop at this point would do — an edge to split on, or null to take the tab in.
         // The button comes back out so a caller can tell "no edge" from "not a tab drag at all".
-        private SplitViewControl.SplitEdge? PendingEdge(VulkanControl dropped, Vector2D<float> point, out TabStripButtonControl button)
+        private SplitViewControl.SplitEdge? PendingEdge(VulkanControl dropped, Vector2 point, out TabStripButtonControl button)
         {
             button = dropped as TabStripButtonControl;
             if (button == null || !button.dragging) { button = null; return null; }
@@ -146,7 +146,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
         // Accepts a tab dragged out of any strip, including our own. A drop in the outer band of a
         // side splits this view instead of taking the tab in.
-        public override bool ResolveDrop(VulkanControl dropped, Vector2D<float> point)
+        public override bool ResolveDrop(VulkanControl dropped, Vector2 point)
         {
             SplitViewControl.SplitEdge? edge = PendingEdge(dropped, point, out TabStripButtonControl button);
             if (button == null) return false;
@@ -173,7 +173,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
         // Claims the hint for any live tab drag over us, whether or not it is over an edge — the
         // middle is a drop we take too, it just splits nothing and so washes nothing.
-        public override bool ResolveDropHint(VulkanControl dropped, Vector2D<float> point)
+        public override bool ResolveDropHint(VulkanControl dropped, Vector2 point)
         {
             SplitViewControl.SplitEdge? edge = PendingEdge(dropped, point, out TabStripButtonControl button);
             if (button == null) return false;
@@ -218,7 +218,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
 
         // The outer band of a side, nearest side winning. Null in the middle and anywhere over the
         // strip, where a drop means "put the tab here".
-        private SplitViewControl.SplitEdge? EdgeAt(Vector2D<float> point)
+        private SplitViewControl.SplitEdge? EdgeAt(Vector2 point)
         {
             LayoutRect rect = arrangedRect;
             if (rect.width <= 0f || rect.height <= 0f) return null;
@@ -547,7 +547,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         #endregion
 
         #region ---- layout ----
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             float w = preferredWidth > 0 ? preferredWidth : MathF.Max(minWidth, availableSize.X);
             float h = preferredHeight > 0 ? preferredHeight : MathF.Max(minHeight, availableSize.Y);
@@ -555,11 +555,11 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             float innerW = MathF.Max(0, w - padding.totalHorizontal);
             float innerH = MathF.Max(0, h - padding.totalVertical);
 
-            strip.Measure(new Vector2D<float>(innerW, tabHeight));
-            activeItem?.Measure(new Vector2D<float>(innerW, MathF.Max(0, innerH - tabHeight)));
-            hint?.Measure(new Vector2D<float>(innerW, innerH));
+            strip.Measure(new Vector2(innerW, tabHeight));
+            activeItem?.Measure(new Vector2(innerW, MathF.Max(0, innerH - tabHeight)));
+            hint?.Measure(new Vector2(innerW, innerH));
 
-            DesiredSize = new Vector2D<float>(w, h);
+            DesiredSize = new Vector2(w, h);
             isMeasureDirty = false;
             return DesiredSize;
         }

@@ -96,6 +96,9 @@ partial count. Why: [[ui-draw-list]], [[ui-draw-list-publish]].
   [[button-states-and-hover-bubbling]] (old).
 - **NextCheckBoxControl** `<NextCheckBox>` · NextButtonControl — 18×18 box, a 10×10 mark panel that is not
   hit-tested. `isChecked`, `onChanged(bool)`; a left release toggles. Old `CheckBoxControl`.
+- **NextSliderControl** `<NextSlider>` · ContainerControl — `value` 0–1, a track and a thumb panel, neither
+  hit-tested. Press jumps, drag follows (`Pick`); `onChanged(float)` fires on the gesture only, not on a
+  `value` set. XML `Value`, `TrackHeight`, `ThumbWidth`, `TrackColorHex`, `ThumbColorHex`. No old counterpart.
 - **NextDropdownControl** `<NextDropdown>` · NextButtonControl — caption, `options`, `onPicked`, `selected`; a
   left release opens `options` as a menu under it. `options` is code-only. Old `DropdownControl`.
 - **NextKeyCaptureControl** `<NextKeyCapture>` · NextButtonControl — shows a combo (`SetCombo`, static
@@ -113,10 +116,11 @@ partial count. Why: [[ui-draw-list]], [[ui-draw-list-publish]].
   glyph. `spans` of `StyleSpan` (`count`, `style`, `colorHex`, `fontName`, `fontSize`, `gradient`,
   `strikethrough`, `stylingType`, `fontSizeAuthored`, `IsBold`/`IsItalic`), `SetSpans`, `style`, `lineHeight`.
   Regions `layout` (`Measure`, `Arrange`, `Emit`) and `caret geometry` (`IndexAt`, `CaretAt`, `TextOrigin`,
-  `Length`, `Lines`). `OnPointerPress` → `IGlyphPressTarget`. XML `Text`, `FontSize`, `FontName`. **A colour
-  set after the first measure does not repaint** — `BuildRuns` reads it, and the setter invalidates arrange
-  only. Why: [[ui-engine-stack]] § landing 4, § landing 6c.
-- **NextLabelControl** `<NextLabel>` · TextRunControl — read-only text. Old `LabelControl`.
+  `Length`, `Lines`). `OnPointerPress` → `IGlyphPressTarget`. XML `Text`, `FontSize`, `FontName`. **`Measure`
+  returns the last `desired` while the run is clean and its wrap width unchanged** — anything `BuildRuns` reads
+  must invalidate layout, which is why `colorHex` does. Why: [[ui-engine-stack]] § landing 4, § landing 6c.
+- **NextLabelControl** `<NextLabel>` · TextRunControl — read-only text, one line: overrides `Wraps` false, so
+  overflow runs past the box unless `ClipToBounds`. Old `LabelControl`.
 - **NextTextBoxControl** `<NextTextBox>` · ContainerControl, `IContext` — single-line field with caret and
   selection. `Focus`, `SelectAll`, `WriteChar`, `Backspace`, `Delete`, `MoveCaret`, `Commit`, `Cancel`,
   `OnContextAdded`/`OnContextRemoved`; nested `NextFieldLine` carries the run. XML `Text`, `FontSize`,
@@ -170,7 +174,7 @@ partial count. Why: [[ui-draw-list]], [[ui-draw-list-publish]].
 ## Layout containers
 
 - **NextStackPanelControl** `<NextStackPanel>` · ContainerControl — children in a row or column; star children
-  split what is left by weight. XML `Orientation`, `Spacing`. Old `StackPanelControl`,
+  split what is left by weight; a `hidden` child gets no slot and no spacing. XML `Orientation`, `Spacing`. Old `StackPanelControl`,
   [[stack-panel-arrange-clamp]] (old).
 - **NextDockingControl** `<NextDock>` · ContainerControl — children docked by their `DockMode`. XML
   `LastChildFill`. Old `DockingControl`.
@@ -282,7 +286,8 @@ partial count. Why: [[ui-draw-list]], [[ui-draw-list-publish]].
 - `…NextSpanChartControl` `<NextSpanChart Mode>` · ContainerControl — flame chart / timeline; `OnPointerScroll`
   zooms, `OnPointerPress` + `OnDrag` pan; nested `NextChartScrollThumbControl`.
 - `…NextZoneTableControl` `<NextZoneTable>` · NextScrollableControl — zone statistics per thread; `SetSession`,
-  `SetBaseline` (per-frame diff). XML `DeltaWidth`, `SlowerColorHex`, `FasterColorHex`.
+  `SetBaseline` (per-frame diff); `Pools` closes each thread with its data pools. XML `DeltaWidth`,
+  `SlowerColorHex`, `FasterColorHex`.
 
 ## Looking at it
 

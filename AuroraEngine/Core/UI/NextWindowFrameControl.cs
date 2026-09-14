@@ -3,7 +3,7 @@ using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using Silk.NET.GLFW;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -21,19 +21,19 @@ namespace ArctisAurora.Core.UI
 
         private CursorShape shown = CursorShape.Arrow;
         private bool left, right, top, bottom;
-        private Vector2D<float> grab;
+        private Vector2 grab;
         private int grabX, grabY, grabW, grabH;
 
         private bool IsGrip(Control control) => Array.IndexOf(grips, control) >= 0;
 
-        public override Vector2D<float> Measure(Vector2D<float> availableSize)
+        public override Vector2 Measure(Vector2 availableSize)
         {
             LayoutRect inner = new LayoutRect(0, 0, availableSize.X, availableSize.Y)
                 .Shrink(arrange.padding);
 
             foreach (Entity e in children)
                 if (e is Control child && !IsGrip(child))
-                    child.Measure(new Vector2D<float>(inner.width, inner.height));
+                    child.Measure(new Vector2(inner.width, inner.height));
 
             arrange.desired = availableSize;
             SetFlag(ArrangeFlags.MeasureDirty, false);
@@ -85,7 +85,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // Only on a change — the move callback runs every tick and the shape rarely differs.
-        private void Hover(Vector2D<float> pos)
+        private void Hover(Vector2 pos)
         {
             CursorShape shape = ShapeFor(EdgesAt(pos));
             if (shape == shown) return;
@@ -126,7 +126,7 @@ namespace ArctisAurora.Core.UI
             RenderWindow window = UIEngine.WindowOf(this);
             if (window == null) return;
 
-            Vector2D<float> now = ScreenPos(window);
+            Vector2 now = ScreenPos(window);
             int dx = (int)(now.X - grab.X);
             int dy = (int)(now.Y - grab.Y);
 
@@ -153,16 +153,16 @@ namespace ArctisAurora.Core.UI
             AGlfwWindow._glfw.SetWindowSize(handle, w, h);
         }
 
-        private static Vector2D<float> Pointer(RenderWindow window) =>
+        private static Vector2 Pointer(RenderWindow window) =>
             window.uiNext.uiRoot.ToDesignSpace(window.mousePos, window.os.windowSize);
 
-        private static Vector2D<float> ScreenPos(RenderWindow window)
+        private static Vector2 ScreenPos(RenderWindow window)
         {
             AGlfwWindow._glfw.GetWindowPos(window.os.handle, out int wx, out int wy);
-            return new Vector2D<float>(wx + window.mousePos.X, wy + window.mousePos.Y);
+            return new Vector2(wx + window.mousePos.X, wy + window.mousePos.Y);
         }
 
-        private (bool, bool, bool, bool) EdgesAt(Vector2D<float> pos)
+        private (bool, bool, bool, bool) EdgesAt(Vector2 pos)
         {
             LayoutRect rect = arrangedRect;
             return (pos.X - rect.x <= band, rect.Right - pos.X <= band,

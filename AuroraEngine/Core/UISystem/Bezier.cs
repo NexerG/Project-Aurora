@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.Core.Filing.Serialization;
 using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem
 {
@@ -7,10 +8,10 @@ namespace ArctisAurora.Core.UISystem
     public class Edge
     {
         // cubic control polygon, start anchor to end anchor
-        public Vector2D<float> p0;
-        public Vector2D<float> c0;
-        public Vector2D<float> c1;
-        public Vector2D<float> p1;
+        public Vector2 p0;
+        public Vector2 c0;
+        public Vector2 c1;
+        public Vector2 p1;
         public Vector3D<int> color;
     }
 
@@ -20,7 +21,7 @@ namespace ArctisAurora.Core.UISystem
         [@Serializable]
         public class Point
         {
-            public Vector2D<float> pos = new Vector2D<float>(1, 1);
+            public Vector2 pos = new Vector2(1, 1);
             public bool isAnchor;
             public bool isFill;
             // set on both controls of a cubic segment, so BuildEdges does not read the pair as
@@ -29,13 +30,13 @@ namespace ArctisAurora.Core.UISystem
 
             public Point() { }
 
-            public Point(Vector2D<float> np)
+            public Point(Vector2 np)
             {
                 pos = np;
                 isAnchor = true;
             }
 
-            public Point(Vector2D<float> np, bool isAnchored)
+            public Point(Vector2 np, bool isAnchored)
             {
                 pos = np;
                 isAnchor = isAnchored;
@@ -81,7 +82,7 @@ namespace ArctisAurora.Core.UISystem
             points.Add(p);
         }
 
-        public void AddPoint(Vector2D<float> np, bool isAnchored)
+        public void AddPoint(Vector2 np, bool isAnchored)
         {
             Point point = new Point(np, isAnchored);
             points.Add(point);

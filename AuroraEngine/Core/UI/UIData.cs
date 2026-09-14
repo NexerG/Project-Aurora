@@ -1,5 +1,5 @@
 using ArctisAurora.Core.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 using System.ComponentModel;
 using System.Globalization;
 using System.Runtime.InteropServices;
@@ -58,7 +58,7 @@ namespace ArctisAurora.Core.UI
         public float Right => x + width;
         public float Bottom => y + height;
 
-        public Vector2D<float> size => new Vector2D<float>(width, height);
+        public Vector2 size => new Vector2(width, height);
 
         // A rect inset on all sides, clamped so it cannot invert.
         public LayoutRect Shrink(Thickness t) => new LayoutRect(
@@ -68,7 +68,7 @@ namespace ArctisAurora.Core.UI
             MathF.Max(0, height - t.totalVertical)
         );
 
-        public bool Contains(Vector2D<float> point) =>
+        public bool Contains(Vector2 point) =>
             point.X >= x && point.X <= Right &&
             point.Y >= y && point.Y <= Bottom;
 
@@ -185,7 +185,7 @@ namespace ArctisAurora.Core.UI
             this.bottomRight = bottomRight;
         }
 
-        public Vector4D<float> AsVector() => new Vector4D<float>(topLeft, topRight, bottomLeft, bottomRight);
+        public Vector4 AsVector() => new Vector4(topLeft, topRight, bottomLeft, bottomRight);
 
         public static CornerRadii Zero => new CornerRadii(0);
     }
@@ -224,10 +224,10 @@ namespace ArctisAurora.Core.UI
 
     public struct QuadUVs
     {
-        public Vector2D<float> uv1;
-        public Vector2D<float> uv2;
-        public Vector2D<float> uv3;
-        public Vector2D<float> uv4;
+        public Vector2 uv1;
+        public Vector2 uv2;
+        public Vector2 uv3;
+        public Vector2 uv4;
     }
 
     // Measure and arrange, CPU only — never mirrored to the GPU.
@@ -261,7 +261,7 @@ namespace ArctisAurora.Core.UI
         // arrange output
         public LayoutRect arranged;
         public LayoutRect clip;
-        public Vector2D<float> desired;
+        public Vector2 desired;
 
         // collision and insert caches
         public LayoutRect subtreeBounds;
@@ -272,9 +272,9 @@ namespace ArctisAurora.Core.UI
     [StructLayout(LayoutKind.Sequential, Pack = 1), A_XSDType("ControlGeometry", "DataPools")]
     public struct ControlGeometry
     {
-        public Matrix4X4<float> matrix;
-        public Vector4D<float> clip;
-        public Vector4D<float> gradientRect;
+        public Matrix4x4 matrix;
+        public Vector4 clip;
+        public Vector4 gradientRect;
     }
 
     // Paint, one row per drawn quad. XSD-named VulkanControlData so it does not collide with the
@@ -287,11 +287,11 @@ namespace ArctisAurora.Core.UI
 
         public VulkanControlType type;
         public QuadUVs uvs;
-        public Vector4D<float> tint;
+        public Vector4 tint;
         public uint textureIndex;
-        public Vector4D<float> cornerRadius;
+        public Vector4 cornerRadius;
         // stroke, in design pixels — against the MSDF silhouette on MTSDFControl, the rounded box otherwise
-        public Vector3D<float> edgeColor;
+        public Vector3 edgeColor;
         public float edgeThickness;
         public uint gradientIndex;
     }

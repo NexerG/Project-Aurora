@@ -30,6 +30,10 @@ namespace ArctisAurora.Core.Diagnostics
         [A_XSDElementProperty("FramesPerBatch", "Settings")]
         public int framesPerBatch { get; set; } = 64;
 
+        // each data pool's items and reserved bytes, every frame; --profile-pools turns it on too
+        [A_XSDElementProperty("Pools", "Settings")]
+        public bool pools { get; set; } = false;
+
         // Relative to the folder holding the application's settings; absolute is taken as given.
         [A_XSDElementProperty("Directory", "Settings")]
         public string directory { get; set; } = "Profiling";

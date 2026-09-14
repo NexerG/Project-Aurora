@@ -1,5 +1,5 @@
 ﻿using ArctisAurora.Core.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
 {
@@ -144,14 +144,14 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Editing
         }
         #endregion
 
-        public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
+        public override void ResolveOnClick(Vector2 oldPos, Vector2 delta)
         {
             BeginEdit();
             //cursorPosition = HitTestCursor(oldPos);
             cursorPosition = text.Length;
         }
 
-        private int HitTestCursor(Vector2D<float> pos)
+        private int HitTestCursor(Vector2 pos)
         {
             float bestDist = float.MaxValue;
             int bestIndex = text.Length;

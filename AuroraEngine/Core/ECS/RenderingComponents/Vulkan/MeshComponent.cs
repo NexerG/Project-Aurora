@@ -3,9 +3,11 @@ using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Assimp;
-using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 using Buffer = Silk.NET.Vulkan.Buffer;
+using Matrix4x4 = System.Numerics.Matrix4x4;
+using Quaternion = System.Numerics.Quaternion;
 
 namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 {
@@ -21,7 +23,7 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
         internal DeviceMemory _transformsBufferMemory;
 
         internal int instances = 1;
-        internal List<Matrix4X4<float>> transformMatrices = new List<Matrix4X4<float>>();
+        internal List<Matrix4x4> transformMatrices = new List<Matrix4x4>();
 
         public MeshComponent()
         {
@@ -51,16 +53,16 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
         internal virtual void ReinstantiateDesriptorSets() { }
 
-        internal virtual void MakeInstanced(ref List<Matrix4X4<float>> _matrices) { }
+        internal virtual void MakeInstanced(ref List<Matrix4x4> _matrices) { }
         internal virtual void MakeInstanced() { }
 
         internal virtual void SingletonMatrix()
         {
-            Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0,0,0);
-            Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-            _transform *= Matrix4X4.CreateScale(transform.scale);
-            //_transform *= Matrix4X4.CreateFromQuaternion(q);
-            _transform *= Matrix4X4.CreateTranslation(transform.position);
+            Quaternion q = Quaternion.CreateFromYawPitchRoll(0,0,0);
+            Matrix4x4 _transform = Matrix4x4.Identity;
+            _transform *= Matrix4x4.CreateScale(transform.scale);
+            //_transform *= Matrix4x4.CreateFromQuaternion(q);
+            _transform *= Matrix4x4.CreateTranslation(transform.position);
 
             transformMatrices.Add(_transform);
         }
@@ -69,14 +71,14 @@ namespace ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan
 
         internal virtual void UpdateMatrices()
         {
-            Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(0, 0, 0);
-            Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-            _transform *= Matrix4X4.CreateScale(transform.scale);
-            _transform *= Matrix4X4.CreateFromQuaternion(q);
-            _transform *= Matrix4X4.CreateTranslation(transform.position);
+            Quaternion q = Quaternion.CreateFromYawPitchRoll(0, 0, 0);
+            Matrix4x4 _transform = Matrix4x4.Identity;
+            _transform *= Matrix4x4.CreateScale(transform.scale);
+            _transform *= Matrix4x4.CreateFromQuaternion(q);
+            _transform *= Matrix4x4.CreateTranslation(transform.position);
 
             transformMatrices[0] = _transform;
-            Matrix4X4<float>[] _mats = transformMatrices.ToArray();
+            Matrix4x4[] _mats = transformMatrices.ToArray();
             AVulkanBufferHandler.UpdateBuffer(ref _mats, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref transformsBuffer, ref _transformsBufferMemory, _aditionalUsageFlags);
         }
 

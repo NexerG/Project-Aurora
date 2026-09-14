@@ -1,5 +1,5 @@
 ﻿using ArctisAurora.Core.Filing.Serialization;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem
 {
@@ -112,7 +112,7 @@ namespace ArctisAurora.Core.UISystem
                         continue;
                     }
 
-                    Vector2D<float> control;
+                    Vector2 control;
                     if (next.isAnchor)
                     {
                         // Straight run: a quadratic whose control sits on the line is the line.

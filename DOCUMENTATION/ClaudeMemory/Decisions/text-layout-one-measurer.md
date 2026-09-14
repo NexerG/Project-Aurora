@@ -57,9 +57,9 @@ viewport" — was conditional on virtualization. Remove virtualization and it st
   the quads still come from the glyphs, so a glyph built at a stale size now *disagrees with the
   layout* rather than merely looking wrong. XML attribute order is undefined, so `Text` is routinely
   applied before `FontSize` on the same parse. Both setters repoint in place.
-- **`fontName` moved to `TextControl`** and resolves `_fontAsset`. Layout measures by name through
-  `IGlyphMetrics` while glyphs draw from the asset; a control naming one font and drawing another
-  puts every glyph at an x the measurement never predicted.
+- **`fontName` moved to `TextControl`** and resolves `_fontAsset`. The control passes
+  `_fontAsset.atlasMetaData` into `TextMeasurer.Run`, so advances and glyphs read one asset; only the
+  line box still resolves by name, through `IGlyphMetrics.GetLineMetrics`.
 - **`cursorPosition` moved to `TextControl`.** It is the same number `OffsetAt` resolves and
   `CaretAt` draws. `DocumentControl` reads it at `Arrange` rather than copying it, so typing moves
   the caret with no extra wiring — two cursors kept in step by hand is the classic desync bug.

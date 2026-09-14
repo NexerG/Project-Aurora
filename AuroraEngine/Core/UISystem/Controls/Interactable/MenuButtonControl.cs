@@ -1,6 +1,6 @@
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls.Text;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls.Interactable
 {
@@ -33,7 +33,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Interactable
             AddChild(label);
         }
 
-        public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
+        public override void ResolveOnClick(Vector2 oldPos, Vector2 delta)
         {
             base.ResolveOnClick(oldPos, delta);
             ContextMenus.Open(this);

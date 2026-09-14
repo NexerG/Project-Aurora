@@ -3,7 +3,7 @@ using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using Assimp;
-using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -13,9 +13,9 @@ namespace ArctisAurora.EngineWork.Rendering
 {
     public struct Vertex
     {
-        public Vector3D<float> _pos;
-        public Vector3D<float> _normal;
-        public Vector2D<float> _uv;
+        public Vector3 _pos;
+        public Vector3 _normal;
+        public Vector2 _uv;
 
         public static VertexInputBindingDescription GetBindingDescription()
         {
@@ -69,26 +69,26 @@ namespace ArctisAurora.EngineWork.Rendering
 
         /*internal Vertex[] _vertices = new[]
         {
-            new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(0.0f, 0.0f) },
-            new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f, -0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(0.0f, 5.0f) },
-            new Vertex { _pos = new Vector3D<float>( 0.5f, 0.0f, -0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(5.0f, 5.0f) },
-            new Vertex { _pos = new Vector3D<float>( 0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(5.0f, 0.0f) },
+            new Vertex { _pos = new Vector3(-0.5f, 0.0f,  0.5f), _normal = new Vector3(0.0f, -1.0f, 0.0f), _uv = new Vector2(0.0f, 0.0f) },
+            new Vertex { _pos = new Vector3(-0.5f, 0.0f, -0.5f), _normal = new Vector3(0.0f, -1.0f, 0.0f), _uv = new Vector2(0.0f, 5.0f) },
+            new Vertex { _pos = new Vector3( 0.5f, 0.0f, -0.5f), _normal = new Vector3(0.0f, -1.0f, 0.0f), _uv = new Vector2(5.0f, 5.0f) },
+            new Vertex { _pos = new Vector3( 0.5f, 0.0f,  0.5f), _normal = new Vector3(0.0f, -1.0f, 0.0f), _uv = new Vector2(5.0f, 0.0f) },
 
-            new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(-0.8f, 0.5f,  0.0f), _uv = new Vector2D<float>(0.0f, 0.0f) },
-            new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f, -0.5f), _normal = new Vector3D<float>(-0.8f, 0.5f,  0.0f), _uv = new Vector2D<float>(5.0f, 0.0f) },
-            new Vertex { _pos = new Vector3D<float>(0.0f, 0.8f,  0.0f), _normal =  new Vector3D<float>(-0.8f, 0.5f,  0.0f), _uv = new Vector2D<float>(2.5f, 5.0f) },
+            new Vertex { _pos = new Vector3(-0.5f, 0.0f,  0.5f), _normal = new Vector3(-0.8f, 0.5f,  0.0f), _uv = new Vector2(0.0f, 0.0f) },
+            new Vertex { _pos = new Vector3(-0.5f, 0.0f, -0.5f), _normal = new Vector3(-0.8f, 0.5f,  0.0f), _uv = new Vector2(5.0f, 0.0f) },
+            new Vertex { _pos = new Vector3(0.0f, 0.8f,  0.0f), _normal =  new Vector3(-0.8f, 0.5f,  0.0f), _uv = new Vector2(2.5f, 5.0f) },
 
-            new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f, -0.5f), _normal = new Vector3D<float>(0.0f, 0.5f, -0.8f), _uv = new Vector2D<float>(5.0f, 0.0f) },
-            new Vertex { _pos = new Vector3D<float>(0.5f, 0.0f, -0.5f), _normal =  new Vector3D<float>(0.0f, 0.5f, -0.8f), _uv = new Vector2D<float>(0.0f, 0.0f) },
-            new Vertex { _pos = new Vector3D<float>(0.0f, 0.8f,  0.0f), _normal =  new Vector3D<float>(0.0f, 0.5f, -0.8f), _uv = new Vector2D<float>(2.5f, 5.0f) },
+            new Vertex { _pos = new Vector3(-0.5f, 0.0f, -0.5f), _normal = new Vector3(0.0f, 0.5f, -0.8f), _uv = new Vector2(5.0f, 0.0f) },
+            new Vertex { _pos = new Vector3(0.5f, 0.0f, -0.5f), _normal =  new Vector3(0.0f, 0.5f, -0.8f), _uv = new Vector2(0.0f, 0.0f) },
+            new Vertex { _pos = new Vector3(0.0f, 0.8f,  0.0f), _normal =  new Vector3(0.0f, 0.5f, -0.8f), _uv = new Vector2(2.5f, 5.0f) },
 
-            new Vertex { _pos = new Vector3D<float>(0.5f, 0.0f, -0.5f), _normal =  new Vector3D<float>(0.8f, 0.5f,  0.0f), _uv = new Vector2D<float>(0.0f, 0.0f) },
-            new Vertex { _pos = new Vector3D<float>(0.5f, 0.0f,  0.5f), _normal =  new Vector3D<float>(0.8f, 0.5f,  0.0f), _uv = new Vector2D<float>(5.0f, 0.0f) },
-            new Vertex { _pos = new Vector3D<float>(0.0f, 0.8f,  0.0f), _normal =  new Vector3D<float>(0.8f, 0.5f,  0.0f), _uv = new Vector2D<float>(2.5f, 5.0f) },
+            new Vertex { _pos = new Vector3(0.5f, 0.0f, -0.5f), _normal =  new Vector3(0.8f, 0.5f,  0.0f), _uv = new Vector2(0.0f, 0.0f) },
+            new Vertex { _pos = new Vector3(0.5f, 0.0f,  0.5f), _normal =  new Vector3(0.8f, 0.5f,  0.0f), _uv = new Vector2(5.0f, 0.0f) },
+            new Vertex { _pos = new Vector3(0.0f, 0.8f,  0.0f), _normal =  new Vector3(0.8f, 0.5f,  0.0f), _uv = new Vector2(2.5f, 5.0f) },
 
-            new Vertex { _pos = new Vector3D<float>(0.5f, 0.0f,  0.5f), _normal =  new Vector3D<float>(0.0f, 0.5f,  0.8f), _uv = new Vector2D<float>(5.0f, 0.0f) },
-            new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(0.0f, 0.5f,  0.8f), _uv = new Vector2D<float>(0.0f, 0.0f) },
-            new Vertex { _pos = new Vector3D<float>(0.0f, 0.8f,  0.0f), _normal =  new Vector3D<float>(0.0f, 0.5f,  0.8f), _uv = new Vector2D<float>(2.5f, 5.0f) },
+            new Vertex { _pos = new Vector3(0.5f, 0.0f,  0.5f), _normal =  new Vector3(0.0f, 0.5f,  0.8f), _uv = new Vector2(5.0f, 0.0f) },
+            new Vertex { _pos = new Vector3(-0.5f, 0.0f,  0.5f), _normal = new Vector3(0.0f, 0.5f,  0.8f), _uv = new Vector2(0.0f, 0.0f) },
+            new Vertex { _pos = new Vector3(0.0f, 0.8f,  0.0f), _normal =  new Vector3(0.0f, 0.5f,  0.8f), _uv = new Vector2(2.5f, 5.0f) },
         };
         internal uint[] _indices = new uint[]
 {
@@ -134,9 +134,9 @@ namespace ArctisAurora.EngineWork.Rendering
             _vertices = new Vertex[sc.Meshes[0].VertexCount];
             for (int i = 0; i < sc.Meshes[0].VertexCount; i++)
             {
-                _vertices[i]._pos = new Vector3D<float>(verts[i].X, verts[i].Y, verts[i].Z);
-                _vertices[i]._uv = new Vector2D<float>(uvs[i].X, uvs[i].Y);
-                _vertices[i]._normal = new Vector3D<float>(normals[i].X, normals[i].Y, normals[i].Z);
+                _vertices[i]._pos = new Vector3(verts[i].X, verts[i].Y, verts[i].Z);
+                _vertices[i]._uv = new Vector2(uvs[i].X, uvs[i].Y);
+                _vertices[i]._normal = new Vector3(normals[i].X, normals[i].Y, normals[i].Z);
             }
 
             AVulkanBufferHandler.CreateBuffer(ref _vertices, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref vertexBuffer, ref _vertexBufferMemory, AVulkanBufferHandler.vertexBufferFlags);
@@ -155,12 +155,12 @@ namespace ArctisAurora.EngineWork.Rendering
             mesh._vertices = new[]
             {
                 // bottom.
-                new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(0.0f, 0.0f) },
-                new Vertex { _pos = new Vector3D<float>(-0.5f, 0.0f, -0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(0.0f, 5.0f) },
-                new Vertex { _pos = new Vector3D<float>( 0.5f, 0.0f, -0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(5.0f, 5.0f) },
-                new Vertex { _pos = new Vector3D<float>( 0.5f, 0.0f,  0.5f), _normal = new Vector3D<float>(0.0f, -1.0f, 0.0f), _uv = new Vector2D<float>(5.0f, 0.0f) },
+                new Vertex { _pos = new Vector3(-0.5f, 0.0f,  0.5f), _normal = new Vector3(0.0f, -1.0f, 0.0f), _uv = new Vector2(0.0f, 0.0f) },
+                new Vertex { _pos = new Vector3(-0.5f, 0.0f, -0.5f), _normal = new Vector3(0.0f, -1.0f, 0.0f), _uv = new Vector2(0.0f, 5.0f) },
+                new Vertex { _pos = new Vector3( 0.5f, 0.0f, -0.5f), _normal = new Vector3(0.0f, -1.0f, 0.0f), _uv = new Vector2(5.0f, 5.0f) },
+                new Vertex { _pos = new Vector3( 0.5f, 0.0f,  0.5f), _normal = new Vector3(0.0f, -1.0f, 0.0f), _uv = new Vector2(5.0f, 0.0f) },
                 // pyramid top.
-                new Vertex { _pos = new Vector3D<float>(0.0f, 0.8f,  0.0f), _normal =  new Vector3D<float>(0.0f, 0.5f,  0.8f), _uv = new Vector2D<float>(2.5f, 5.0f) },
+                new Vertex { _pos = new Vector3(0.0f, 0.8f,  0.0f), _normal =  new Vector3(0.0f, 0.5f,  0.8f), _uv = new Vector2(2.5f, 5.0f) },
             };
             mesh.indices = new uint[]
             {

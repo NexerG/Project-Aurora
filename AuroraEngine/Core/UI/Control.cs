@@ -2,7 +2,7 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.UISystem;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -29,7 +29,7 @@ namespace ArctisAurora.Core.UI
         public Control()
         {
             visual.type = VulkanControlType.PanelControl;
-            visual.tint = new Vector4D<float>(1, 1, 1, 1);
+            visual.tint = new Vector4(1, 1, 1, 1);
             visual.textureIndex = VulkanControl.noTexture;
             SetUVRect(0f, 0f, 1f, 1f);
 
@@ -103,9 +103,9 @@ namespace ArctisAurora.Core.UI
             set { if (Set(ref arrange.height, value)) InvalidateLayout(); }
         }
 
-        public virtual Vector2D<float> size
+        public virtual Vector2 size
         {
-            get => new Vector2D<float>(arrange.width, arrange.height);
+            get => new Vector2(arrange.width, arrange.height);
             set
             {
                 ref ArrangeData a = ref arrange;
@@ -116,7 +116,7 @@ namespace ArctisAurora.Core.UI
             }
         }
 
-        public virtual void SetSize(Vector2D<float> size) => this.size = size;
+        public virtual void SetSize(Vector2 size) => this.size = size;
         public virtual void SetWidth(float x) => width = x;
         public virtual void SetHeight(float y) => height = y;
 
@@ -207,8 +207,8 @@ namespace ArctisAurora.Core.UI
             set
             {
                 field = value;
-                Vector3D<float> rgb = HexToRGB(value);
-                visual.tint = new Vector4D<float>(rgb, visual.tint.W);
+                Vector3 rgb = HexToRGB(value);
+                visual.tint = new Vector4(rgb, visual.tint.W);
             }
         } = "#FFFFFF";
 
@@ -294,10 +294,10 @@ namespace ArctisAurora.Core.UI
         public void SetUVRect(float u0, float v0, float u1, float v1)
         {
             ref VulkanControl v = ref visual;
-            v.uvs.uv1 = new Vector2D<float>(u1, v1);
-            v.uvs.uv2 = new Vector2D<float>(u0, v0);
-            v.uvs.uv3 = new Vector2D<float>(u0, v1);
-            v.uvs.uv4 = new Vector2D<float>(u1, v0);
+            v.uvs.uv1 = new Vector2(u1, v1);
+            v.uvs.uv2 = new Vector2(u0, v0);
+            v.uvs.uv3 = new Vector2(u0, v1);
+            v.uvs.uv4 = new Vector2(u1, v0);
         }
 
         [A_XSDElementProperty("Gradient", "UI", "Name of a gradient in Gradients.gradients.xml, ramped across this control's rect in place of its colour.")]
@@ -314,7 +314,7 @@ namespace ArctisAurora.Core.UI
 
         #region ---- layout state ----
         public LayoutRect arrangedRect => arrange.arranged;
-        public Vector2D<float> DesiredSize => arrange.desired;
+        public Vector2 DesiredSize => arrange.desired;
 
         // The z the children step down from — the translation the last Arrange baked.
         internal float depth => geometry.matrix.M43;
@@ -326,7 +326,7 @@ namespace ArctisAurora.Core.UI
             protected set
             {
                 arrange.clip = value;
-                geometry.clip = new Vector4D<float>(value.x, value.y, value.Right, value.Bottom);
+                geometry.clip = new Vector4(value.x, value.y, value.Right, value.Bottom);
             }
         }
 
@@ -334,7 +334,7 @@ namespace ArctisAurora.Core.UI
         // glyphs its own rect so the ramp spans the text instead of restarting per letter.
         internal void SetGradientSpace(LayoutRect rect)
         {
-            geometry.gradientRect = new Vector4D<float>(rect.x, rect.y, rect.Right, rect.Bottom);
+            geometry.gradientRect = new Vector4(rect.x, rect.y, rect.Right, rect.Bottom);
         }
 
         public bool isMeasureDirty => HasFlag(ArrangeFlags.MeasureDirty);
@@ -399,6 +399,7 @@ namespace ArctisAurora.Core.UI
         {
             if (!hidden) return;
             SetFlag(ArrangeFlags.Hidden, false);
+            SetFlag(ArrangeFlags.MeasureDirty, false);
             InvalidateLayout();
         }
 
@@ -412,20 +413,20 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- layout (two-pass) ----
-        public virtual Vector2D<float> Measure(Vector2D<float> availableSize)
+        public virtual Vector2 Measure(Vector2 availableSize)
         {
             ref ArrangeData a = ref arrange;
             float w = a.preferredWidth > 0 ? a.preferredWidth : MathF.Max(a.minWidth, availableSize.X);
             float h = a.preferredHeight > 0 ? a.preferredHeight : MathF.Max(a.minHeight, availableSize.Y);
             if (children.Count == 1 && children[0] is Control childControl)
             {
-                Vector2D<float> childDesired = childControl.Measure(new Vector2D<float>(
+                Vector2 childDesired = childControl.Measure(new Vector2(
                     MathF.Max(0, w - a.padding.totalHorizontal),
                     MathF.Max(0, h - a.padding.totalVertical)));
                 if (a.preferredWidth == 0) w = childDesired.X + a.padding.totalHorizontal;
                 if (a.preferredHeight == 0) h = childDesired.Y + a.padding.totalVertical;
             }
-            arrange.desired = new Vector2D<float>(w, h);
+            arrange.desired = new Vector2(w, h);
             SetFlag(ArrangeFlags.MeasureDirty, false);
             return arrange.desired;
         }
@@ -454,9 +455,9 @@ namespace ArctisAurora.Core.UI
             Control parentControl = parent as Control;
             float z = parentControl != null ? parentControl.depth + depthStep : rootDepth;
 
-            Matrix4X4<float> m = Matrix4X4<float>.Identity;
-            m *= Matrix4X4.CreateScale(finalRect.width, finalRect.height, 1f);
-            m *= Matrix4X4.CreateTranslation(finalRect.x + finalRect.width * 0.5f,
+            Matrix4x4 m = Matrix4x4.Identity;
+            m *= Matrix4x4.CreateScale(finalRect.width, finalRect.height, 1f);
+            m *= Matrix4x4.CreateTranslation(finalRect.x + finalRect.width * 0.5f,
                                              finalRect.y + finalRect.height * 0.5f, z);
             geometry.matrix = m;
 
@@ -623,13 +624,13 @@ namespace ArctisAurora.Core.UI
 
         // A drag arrived over this control, is still over it, and has left it. All three walk up
         // until one returns true, like every other pointer event.
-        public virtual bool DraggingOverStart(Control dragged, Vector2D<float> point) => false;
-        public virtual bool DraggingOver(Control dragged, Vector2D<float> point) => false;
+        public virtual bool DraggingOverStart(Control dragged, Vector2 point) => false;
+        public virtual bool DraggingOver(Control dragged, Vector2 point) => false;
         public virtual bool DraggingOverEnd(Control dragged) => false;
 
         // A drag was released on this control. Walks up until one takes it, and what nobody took is
         // what the claimant hears as a refused drop.
-        public virtual bool FinishDrag(Control dragged, Vector2D<float> point) => false;
+        public virtual bool FinishDrag(Control dragged, Vector2 point) => false;
 
         // This control is being dragged, and the pointer left every window or entered one. An
         // overlap counts as neither — the window under the pointer is not knowable there.
@@ -697,7 +698,7 @@ namespace ArctisAurora.Core.UI
             };
         }
 
-        public static Vector3D<float> HexToRGB(string hex)
+        public static Vector3 HexToRGB(string hex)
         {
             if (hex.StartsWith("#")) hex = hex[1..];
             if (hex.Length != 6)
@@ -706,7 +707,7 @@ namespace ArctisAurora.Core.UI
             byte r = Convert.ToByte(hex.Substring(0, 2), 16);
             byte g = Convert.ToByte(hex.Substring(2, 2), 16);
             byte b = Convert.ToByte(hex.Substring(4, 2), 16);
-            return new Vector3D<float>(r / 255f, g / 255f, b / 255f);
+            return new Vector3(r / 255f, g / 255f, b / 255f);
         }
     }
 }

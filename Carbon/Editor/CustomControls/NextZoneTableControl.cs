@@ -73,6 +73,16 @@ namespace Carbon.Editor.CustomControls
             public string parent;
         }
 
+        // one data pool over a whole capture
+        private struct RolledPool
+        {
+            public long min;
+            public long max;
+            public long last;
+            public long capacity;
+            public long bytes;
+        }
+
         private readonly NextStackPanelControl rows = new NextStackPanelControl();
         private string[] _depthColors = Array.Empty<string>();
         private CaptureSession? _session;
@@ -107,6 +117,7 @@ namespace Carbon.Editor.CustomControls
                 if (!first) rows.AddChild(Separator());
                 first = false;
                 Fill(thread, _baseline?.threads.Find(t => t.thread == thread.thread));
+                Pools(thread);
             }
 
             if (_baseline != null)
@@ -176,6 +187,82 @@ namespace Carbon.Editor.CustomControls
                         preferredHeight = 17,
                         horizontalPosition = 0f
                     });
+        }
+
+        // Every data pool the thread recorded, with its item range and peak size.
+        private void Pools(CapturedThread thread)
+        {
+            if (thread.pools.Count == 0) return;
+
+            Dictionary<int, RolledPool> pools = new Dictionary<int, RolledPool>();
+            foreach (CapturedPool pool in thread.pools)
+            {
+                if (!pools.TryGetValue(pool.name, out RolledPool rolled))
+                    rolled = new RolledPool { min = long.MaxValue };
+
+                rolled.min = Math.Min(rolled.min, pool.count);
+                rolled.max = Math.Max(rolled.max, pool.count);
+                rolled.last = pool.count;
+                rolled.capacity = Math.Max(rolled.capacity, pool.capacity);
+                rolled.bytes = Math.Max(rolled.bytes, pool.bytes);
+                pools[pool.name] = rolled;
+            }
+
+            rows.AddChild(Header("pools"));
+
+            float gutter = swatchWidth + 6;
+            foreach (KeyValuePair<int, RolledPool> pool in pools)
+            {
+                NextStackPanelControl head = new NextStackPanelControl
+                {
+                    orientation = NextStackPanelControl.Orientation.Horizontal,
+                    alpha = 0f,
+                    preferredHeight = 17
+                };
+
+                head.AddChild(new NextLabelControl
+                {
+                    text = thread.NameOf(pool.Key),
+                    fontSize = zoneFontSize,
+                    colorHex = zoneColorHex,
+                    preferredWidth = nameWidth - gutter,
+                    preferredHeight = 17,
+                    margin = new Thickness(0, 0, 0, gutter),
+                    horizontalPosition = 0f,
+                    clipOutOfBounds = true
+                });
+
+                head.AddChild(new NextLabelControl
+                {
+                    text = CapturedThread.Bytes(pool.Value.bytes),
+                    fontSize = zoneFontSize,
+                    colorHex = zoneColorHex,
+                    preferredWidth = totalWidth,
+                    preferredHeight = 17,
+                    horizontalPosition = 1f
+                });
+
+                NextStackPanelControl row = new NextStackPanelControl
+                {
+                    orientation = NextStackPanelControl.Orientation.Vertical,
+                    alpha = 0f,
+                    preferredHeight = 34,
+                    horizontalPosition = 0f
+                };
+                row.AddChild(head);
+
+                row.AddChild(new NextLabelControl
+                {
+                    text = $"items {pool.Value.min}-{pool.Value.max}, last {pool.Value.last}, capacity {pool.Value.capacity}",
+                    fontSize = detailFontSize,
+                    colorHex = detailColorHex,
+                    preferredHeight = 15,
+                    margin = new Thickness(0, 0, 0, gutter),
+                    horizontalPosition = 0f
+                });
+
+                rows.AddChild(row);
+            }
         }
 
         // Every zone of one thread over the whole capture, and its counters into the table given.
@@ -276,7 +363,8 @@ namespace Carbon.Editor.CustomControls
                 colorHex = zoneColorHex,
                 preferredWidth = MathF.Max(40, nameWidth - inset - gutter),
                 preferredHeight = 17,
-                horizontalPosition = 0f
+                horizontalPosition = 0f,
+                clipOutOfBounds = true
             });
 
             head.AddChild(new NextLabelControl

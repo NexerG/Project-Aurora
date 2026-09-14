@@ -5,13 +5,15 @@ using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Assimp;
-using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 using System.Runtime.CompilerServices;
 using static ArctisAurora.EngineWork.Rendering.RendererTypes.Pathtracing;
 using static ArctisAurora.EngineWork.Rendering.VulkanRenderer;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
+using Matrix4x4 = System.Numerics.Matrix4x4;
+using Quaternion = System.Numerics.Quaternion;
 
 namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 {
@@ -40,7 +42,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
         internal AccelerationStructureInstanceKHR _accelerationInstance;
 
         // Material. WILL BE SEPARATED INTO A DIFFERENT CLASS LATER ON :))
-        Vector3D<float> _color = new Vector3D<float>(1,1,1);
+        Vector3 _color = new Vector3(1,1,1);
         internal Buffer _colorBuffer;
         DeviceMemory _colorMemory;
 
@@ -68,7 +70,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             //CreateDescriptorSet();
         }
 
-        internal void UpdateColor(Vector3D<float> color)
+        internal void UpdateColor(Vector3 color)
         {
             _color = color;
             //AVulkanBufferHandler.UpdateBuffer(ref _color, ref _colorBuffer, ref _colorMemory, BufferUsageFlags.None);
@@ -344,7 +346,7 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
             _b._deviceAddress = _vulkan.GetBufferDeviceAddress(_logicalDevice, &_driverBufferAddressInfo);
         }
 
-        internal override void MakeInstanced(ref List<Matrix4X4<float>> _matrices)
+        internal override void MakeInstanced(ref List<Matrix4x4> _matrices)
         {
             base.MakeInstanced(ref _matrices);
             //will have to adjust later because this should have to remake the TLAS
@@ -352,12 +354,12 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 
         internal override void SingletonMatrix()
         {
-            Quaternion<float> q = Quaternion<float>.Identity;
-            Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-            _transform *= Matrix4X4.CreateScale(transform.scale);
-            _transform *= Matrix4X4.CreateFromQuaternion(q);
-            _transform *= Matrix4X4.CreateTranslation(transform.position);
-            _transform = Matrix4X4.Transpose(_transform);
+            Quaternion q = Quaternion.Identity;
+            Matrix4x4 _transform = Matrix4x4.Identity;
+            _transform *= Matrix4x4.CreateScale(transform.scale);
+            _transform *= Matrix4x4.CreateFromQuaternion(q);
+            _transform *= Matrix4x4.CreateTranslation(transform.position);
+            _transform = Matrix4x4.Transpose(_transform);
             transformMatrices.Add(_transform);
 
             TransformMatrixKHR _entityVulkanTransform = new TransformMatrixKHR();
@@ -369,12 +371,12 @@ namespace ArctisAurora.EngineWork.Rendering.MeshSubComponents
 
         internal override void UpdateMatrices()
         {
-            Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(transform.rotation.X,transform.rotation.Y,transform.rotation.Z);
-            Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-            _transform *= Matrix4X4.CreateScale(transform.scale);
-            _transform *= Matrix4X4.CreateFromQuaternion(q);
-            _transform *= Matrix4X4.CreateTranslation(transform.position);
-            _transform = Matrix4X4.Transpose(_transform);
+            Quaternion q = Quaternion.CreateFromYawPitchRoll(transform.rotation.X,transform.rotation.Y,transform.rotation.Z);
+            Matrix4x4 _transform = Matrix4x4.Identity;
+            _transform *= Matrix4x4.CreateScale(transform.scale);
+            _transform *= Matrix4x4.CreateFromQuaternion(q);
+            _transform *= Matrix4x4.CreateTranslation(transform.position);
+            _transform = Matrix4x4.Transpose(_transform);
 
             transformMatrices[0] = _transform;
             TransformMatrixKHR _entityVulkanMatrix = new TransformMatrixKHR();

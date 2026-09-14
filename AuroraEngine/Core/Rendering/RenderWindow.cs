@@ -4,7 +4,7 @@ using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Core;
 using Silk.NET.GLFW;
-using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
 using Image = Silk.NET.Vulkan.Image;
@@ -66,9 +66,9 @@ namespace ArctisAurora.EngineWork.Rendering
         // input — the pointer is one device, but its position is reported per window, and a drag that
         // leaves a window keeps reporting to the window that owns it
         public bool isInWindow;
-        public Vector2D<float> mousePos;
-        public Vector2D<float> scrollDelta;
-        internal Vector2D<float> scrollDeltaWrite;
+        public Vector2 mousePos;
+        public Vector2 scrollDelta;
+        internal Vector2 scrollDeltaWrite;
 
         public RenderWindow(uint width, uint height)
         {

@@ -2,7 +2,7 @@ using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
-using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 
 namespace ArctisAurora.Core.UISystem
@@ -55,7 +55,7 @@ namespace ArctisAurora.Core.UISystem
         private static Extent2D PreviewSize(VulkanControl control)
         {
             Extent2D window = _source.os.windowSize;
-            Vector2D<float> viewport = _source.ui.uiRoot.ViewportSize(window);
+            Vector2 viewport = _source.ui.uiRoot.ViewportSize(window);
 
             return new Extent2D(
                 (uint)(control.arrangedRect.width * window.Width / viewport.X),

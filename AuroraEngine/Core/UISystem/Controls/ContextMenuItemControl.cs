@@ -1,5 +1,5 @@
 using ArctisAurora.Core.UISystem.Controls.Interactable;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls
 {
@@ -19,7 +19,7 @@ namespace ArctisAurora.Core.UISystem.Controls
             if (enabled) base.ResolveExit();
         }
 
-        public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
+        public override void ResolveOnClick(Vector2 oldPos, Vector2 delta)
         {
             if (enabled) base.ResolveOnClick(oldPos, delta);
         }

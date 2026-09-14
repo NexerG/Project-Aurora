@@ -3,7 +3,7 @@ using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.UISystem;
 using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.EngineWork.Registry;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.CustomEntities
 {
@@ -14,7 +14,7 @@ namespace ArctisAurora.CustomEntities
 
         FontAsset fontAsset;
 
-        internal TextEntity(string text, int px, Vector3D<float> pos)
+        internal TextEntity(string text, int px, Vector3 pos)
         {
             transform.SetWorldPosition(pos);
             this.text = text;
@@ -29,7 +29,7 @@ namespace ArctisAurora.CustomEntities
                 Glyph gAsset= fontAsset.atlasMetaData.GetGlyph(text[i]);
                 horizontalOffset += (gAsset.regular.leftSideOffset * px);
                 verticalOffset = (gAsset.regular.tsb * px);
-                Vector3D<float> glyphPos = transform.position + new Vector3D<float>(0, verticalOffset, horizontalOffset);
+                Vector3 glyphPos = transform.position + new Vector3(0, verticalOffset, horizontalOffset);
                 GlyphControl glyph = new GlyphControl(text[i], fontAsset, px);
                 children.Add(glyph);
 

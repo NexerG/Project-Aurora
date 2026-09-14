@@ -1,7 +1,7 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using Silk.NET.GLFW;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -10,7 +10,7 @@ namespace ArctisAurora.Core.UI
     [A_XSDType("NextSplitter", "UI")]
     public class NextSplitterControl : NextButtonControl
     {
-        private Vector2D<float> grab;
+        private Vector2 grab;
         private float grabSize;
 
         // star against star

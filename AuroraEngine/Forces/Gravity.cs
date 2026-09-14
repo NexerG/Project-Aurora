@@ -1,4 +1,4 @@
-﻿using Silk.NET.Maths;
+﻿using System.Numerics;
 using System.Drawing;
 
 namespace ArctisAurora.Forces
@@ -8,7 +8,7 @@ namespace ArctisAurora.Forces
         public Gravity(PointF force) : base(force)
         {
         }
-        public Gravity(Vector3D<float> force) : base(force)
+        public Gravity(Vector3 force) : base(force)
         {
         }
     }

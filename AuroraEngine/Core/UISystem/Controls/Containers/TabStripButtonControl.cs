@@ -1,5 +1,5 @@
 using ArctisAurora.Core.UISystem.Controls.Interactable;
-using Silk.NET.Maths;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UISystem.Controls.Containers
 {
@@ -21,9 +21,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
         // view is accepted and moves nothing, and that must not tear a window off.
         internal bool accepted;
 
-        private Vector2D<float> grab;
+        private Vector2 grab;
 
-        public override void ResolveOnClick(Vector2D<float> oldPos, Vector2D<float> delta)
+        public override void ResolveOnClick(Vector2 oldPos, Vector2 delta)
         {
             grab = oldPos;
             dragging = false;
@@ -32,9 +32,9 @@ namespace ArctisAurora.Core.UISystem.Controls.Containers
             base.ResolveOnClick(oldPos, delta);
         }
 
-        public override void ResolveDrag(Vector2D<float> lastPos, Vector2D<float> delta)
+        public override void ResolveDrag(Vector2 lastPos, Vector2 delta)
         {
-            if (!dragging && (lastPos - grab).Length >= tearThreshold)
+            if (!dragging && (lastPos - grab).Length() >= tearThreshold)
             {
                 dragging = true;
                 DragGhost.Show(this);

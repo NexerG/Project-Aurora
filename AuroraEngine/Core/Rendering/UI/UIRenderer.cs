@@ -3,7 +3,7 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
-using Silk.NET.Maths;
+using System.Numerics;
 using Silk.NET.Vulkan;
 
 // Legacy renderer, kept as a working reference until the migration. Superseded by UIModule — see the
@@ -21,7 +21,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
         };
         private Framebuffer[] _frameBuffer;
         //-------------------------------------
-        internal static Vector2D<float> unitsPerPixel;
+        internal static Vector2 unitsPerPixel;
         internal static MCUI meshComponent;
 
         public UIRenderer()
@@ -215,7 +215,7 @@ namespace ArctisAurora.EngineWork.Rendering.UI
                     //{
                     //    Buffer = component.uvBuffer,
                     //    Offset = 0,
-                    //    Range = (ulong)Unsafe.SizeOf<Vector2D<float>>() * 4
+                    //    Range = (ulong)Unsafe.SizeOf<Vector2>() * 4
                     //};
                 }
                 fixed (DescriptorBufferInfo* _uvBufferInfosPtr = _uvBufferInfos)

@@ -8,7 +8,7 @@ using Buffer = Silk.NET.Vulkan.Buffer;
 using Image = Silk.NET.Vulkan.Image;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 using static ArctisAurora.EngineWork.Rendering.MeshSubComponents.MCRaytracing;
-using Silk.NET.Maths;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
 using ArctisAurora.Core.ECS.EngineEntity;
@@ -466,13 +466,13 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
                 MCRaytracing component = _entitiesToRender[i].GetComponent<MCRaytracing>();
                 if (component != null)
                 {
-                    //Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(30f * MathF.PI / 180f, 0, 0);
-                    //Quaternion<float> q = Quaternion<float>.Identity;
-                    Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-                    /*_transform *= Matrix4X4.CreateScale(e.transform.scale);
-                    _transform *= Matrix4X4.CreateFromQuaternion(q);
-                    _transform *= Matrix4X4.CreateTranslation(e.transform.position);*/
-                    _transform = Matrix4X4.Transpose(_transform);
+                    //Quaternion q = Quaternion.CreateFromYawPitchRoll(30f * MathF.PI / 180f, 0, 0);
+                    //Quaternion q = Quaternion.Identity;
+                    Matrix4x4 _transform = Matrix4x4.Identity;
+                    /*_transform *= Matrix4x4.CreateScale(e.transform.scale);
+                    _transform *= Matrix4x4.CreateFromQuaternion(q);
+                    _transform *= Matrix4x4.CreateTranslation(e.transform.position);*/
+                    _transform = Matrix4x4.Transpose(_transform);
 
                     TransformMatrixKHR _instanceMatrix = new TransformMatrixKHR();
                     Unsafe.CopyBlock(_instanceMatrix.Matrix, Unsafe.AsPointer(ref _transform), 48);
@@ -659,13 +659,13 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
 
         internal static void UpdateAccInstance(MCRaytracing component)
         {
-            //Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(30f * MathF.PI / 180f, 0, 0);
-            //Quaternion<float> q = Quaternion<float>.Identity;
-            Matrix4X4<float> _transform = Matrix4X4<float>.Identity;
-            /*_transform *= Matrix4X4.CreateScale(e.transform.scale);
-            _transform *= Matrix4X4.CreateFromQuaternion(q);
-            _transform *= Matrix4X4.CreateTranslation(e.transform.position);*/
-            _transform = Matrix4X4.Transpose(_transform);
+            //Quaternion q = Quaternion.CreateFromYawPitchRoll(30f * MathF.PI / 180f, 0, 0);
+            //Quaternion q = Quaternion.Identity;
+            Matrix4x4 _transform = Matrix4x4.Identity;
+            /*_transform *= Matrix4x4.CreateScale(e.transform.scale);
+            _transform *= Matrix4x4.CreateFromQuaternion(q);
+            _transform *= Matrix4x4.CreateTranslation(e.transform.position);*/
+            _transform = Matrix4x4.Transpose(_transform);
 
             TransformMatrixKHR _instanceMatrix = new TransformMatrixKHR();
             Unsafe.CopyBlock(_instanceMatrix.Matrix, Unsafe.AsPointer(ref _transform), 48);
@@ -735,7 +735,7 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
                         {
                             Buffer = component._colorBuffer,
                             Offset = 0,
-                            Range = (ulong)sizeof(Vector3D<float>)
+                            Range = (ulong)sizeof(Vector3)
                         };
                     }
                     fixed (DescriptorBufferInfo* _colorUniformInfoPtr = _colorBufferInfos)

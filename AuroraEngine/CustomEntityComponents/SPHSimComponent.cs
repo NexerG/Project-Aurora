@@ -3,7 +3,7 @@ using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.ParticleTypes;
 using ArctisAurora.Simulators.Vulkan;
-using Silk.NET.Maths;
+using System.Numerics;
 
 // Legacy renderer, kept as a working reference until the migration.
 #pragma warning disable CS0618
@@ -14,7 +14,7 @@ namespace ArctisAurora.CustomEntityComponents
     {
         internal List<Particle3D> _particles = new List<Particle3D>();
         internal Simulator3D _simulator;
-        internal List<Matrix4X4<float>> _instanceMatrix = new List<Matrix4X4<float>>();
+        internal List<Matrix4x4> _instanceMatrix = new List<Matrix4x4>();
 
         public override void OnTick()
         {
@@ -38,17 +38,17 @@ namespace ArctisAurora.CustomEntityComponents
                 }
             }
 
-            _simulator = new Simulator3D(_particles, new Vector3D<float>(700, 700, 700));
+            _simulator = new Simulator3D(_particles, new Vector3(700, 700, 700));
 
             for (int i = 0; i < _particles.Count; i++)
             {
-                Vector3D<float> pos = new Vector3D<float>(transform.position.X, transform.position.Y, transform.position.Z);
-                //Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(transform.rotation.X, transform.rotation.Y, transform.rotation.Z);
+                Vector3 pos = new Vector3(transform.position.X, transform.position.Y, transform.position.Z);
+                //Quaternion q = Quaternion.CreateFromYawPitchRoll(transform.rotation.X, transform.rotation.Y, transform.rotation.Z);
 
-                Matrix4X4<float> transformation = Matrix4X4<float>.Identity;
-                transformation *= Matrix4X4.CreateTranslation(pos);
-                //transformation *= Matrix4X4.CreateFromQuaternion(q);
-                //transformation *= Matrix4X4.CreateScale(transform.scale);
+                Matrix4x4 transformation = Matrix4x4.Identity;
+                transformation *= Matrix4x4.CreateTranslation(pos);
+                //transformation *= Matrix4x4.CreateFromQuaternion(q);
+                //transformation *= Matrix4x4.CreateScale(transform.scale);
 
                 _instanceMatrix.Add(transformation);
             }
@@ -58,13 +58,13 @@ namespace ArctisAurora.CustomEntityComponents
         {
             for (int i = 0; i < ps.Count; i++)
             {
-                Vector3D<float> pos = new Vector3D<float>(ps[i].point.X, ps[i].point.Y, ps[i].point.Z);
-                Quaternion<float> q = Quaternion<float>.CreateFromYawPitchRoll(transform.rotation.X, transform.rotation.Y, transform.rotation.Z);
+                Vector3 pos = new Vector3(ps[i].point.X, ps[i].point.Y, ps[i].point.Z);
+                Quaternion q = Quaternion.CreateFromYawPitchRoll(transform.rotation.X, transform.rotation.Y, transform.rotation.Z);
 
-                Matrix4X4<float> transformation = Matrix4X4<float>.Identity;
-                transformation *= Matrix4X4.CreateTranslation(pos);
-                transformation *= Matrix4X4.CreateFromQuaternion(q);
-                transformation *= Matrix4X4.CreateScale(transform.scale);
+                Matrix4x4 transformation = Matrix4x4.Identity;
+                transformation *= Matrix4x4.CreateTranslation(pos);
+                transformation *= Matrix4x4.CreateFromQuaternion(q);
+                transformation *= Matrix4x4.CreateScale(transform.scale);
 
                 _instanceMatrix[i] = transformation;
             }

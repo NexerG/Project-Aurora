@@ -177,7 +177,7 @@ namespace ArctisAurora.EngineWork.Registry
 
             Dictionary<string, ControlStyle> dStyles = GetRegistryByValueType<string, ControlStyle>(typeof(ControlStyle));
             ControlStyle style = new ControlStyle();
-            style.tint = new Silk.NET.Maths.Vector4D<float>(1, 1, 1, 1);
+            style.tint = new System.Numerics.Vector4(1, 1, 1, 1);
             dStyles.Add("default", style);
 
             SamplerAsset sampler = new SamplerAsset("default");

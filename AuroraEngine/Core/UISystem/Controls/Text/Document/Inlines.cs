@@ -22,7 +22,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         }
 
         // Bubbles instead of beginning its own edit; the editor places the caret.
-        public override void ResolveOnClick(Silk.NET.Maths.Vector2D<float> oldPos, Silk.NET.Maths.Vector2D<float> delta)
+        public override void ResolveOnClick(System.Numerics.Vector2 oldPos, System.Numerics.Vector2 delta)
         {
             if (parent is VulkanControl parentControl)
                 parentControl.ResolveOnClick(oldPos, delta);

@@ -241,6 +241,7 @@
     <xs:attribute name="Mode" type="types:CaptureMode" />
     <xs:attribute name="BurstFrames" type="xs:int" />
     <xs:attribute name="FramesPerBatch" type="xs:int" />
+    <xs:attribute name="Pools" type="xs:boolean" />
     <xs:attribute name="Directory" type="xs:string" />
     <xs:attribute name="MaxFileMB" type="xs:int" />
     <xs:attribute name="Keep" type="xs:int" />
