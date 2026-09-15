@@ -398,6 +398,106 @@ a full write at every batch and session edge. Three pools cost ~120 bytes of XML
 | switch off | `--profile=60` → 59 Main frames, no `<P>` |
 | an older capture | `Stage0-1000k-rearrange` loads in Carbon with no pools and no error |
 
+## 15. A scenario drives the editor from inside the tick, under one capture (user, 2026-09-14)
+
+**Date:** 2026-09-14
+**Scope:** `ProfileScenario` — `Arm`, `Open`, `OnTick`; `Engine.Init`.
+
+Typing and a window resize on a 1,000,000-character note, recorded into the same capture session.
+
+### What changed
+- `--profile-scenario` → `ProfileScenario.Arm()`, called from `Engine.Init` right after `Profiling.ArmBoot`. Moves
+  the settings write root to a `ProfileScenario` folder beside the host's own, then posts the entity's creation
+  to the first main tick.
+- `ProfileScenario : Entity` counts main ticks in `OnTick`:
+
+| Tick | Does |
+|---|---|
+| 2 | `Open`: 1,000 `NextBlockControl`s of 1,000 chars (one `NextRun` each) into a `NextRichTextDocument`; a bare `WindowRoot` holding one stretched `NextDocumentEditorControl` replaces `Engine.primary.uiNext.uiRoot`; caret at the end of block 0, `FocusCaret` |
+| 30 | `Profiling.Capture(240)` |
+| 31–150 | one char into `InputHandler.charInputReadQueue`, then `TextInputActions.Write()`; zone `Scenario.Type` |
+| 151–270 | `glfwSetWindowSize` on the primary window, 8 px narrower a tick for 60 ticks, then back; zone `Scenario.Resize` |
+| 271 | logs the final length and window size, `Engine.Post(Shutdown.Request)` |
+
+- Captures and the log land where the host's normally do — both resolve against the write root's parent.
+
+### Why these choices
+
+**In the engine, not in Thorium (user, fork c).** `AGlfwWindow._glfw`, `RenderWindow.os` and the window handle
+are internal, and the editor is the engine's. In Thorium it would have needed a public resize on `RenderWindow`.
+It runs in any host with a primary window.
+
+**An entity, not a self-reposting `Engine.Post`.** `DrainPosted` loops `TryDequeue` until the queue is empty, so an
+action that re-posts itself never leaves the drain. An entity's `OnTick` runs once a tick in `Interpolate`, before
+`ResolveLayout`, so an edit and the remeasure it causes land in the same frame.
+
+**Its own tree, not a Thorium tab.** Only `LoadPath` replaces an editor's `NextDocumentEditSession`, so a generated
+note loaded into an open tab would dirty the previous note and push into its undo stack. The bare editor has no
+session, so the `Notes.*` shutdown steps find nothing.
+
+**The write root moves because `Session.Capture` would wipe the vault's layout.** It skips a window with no
+`NextWorkspaceControl` and assigns what it found wholesale — measured: `captured 0 window(s)` at shutdown.
+**Beside the host's settings, not `%TEMP%` (user, 2026-09-14).** `FrameSpool.CaptureRoot` and the log resolve
+against the write root's *parent*, so a `%TEMP%\AuroraProfileScenario` root put captures in `%TEMP%\Profiling`,
+which Carbon's default `CaptureRoot` never lists. A host with no write root (the Editor) is not redirected.
+
+**Typing goes through `Text.Write`, not `TypeChar`.** It runs the same `BeginStep` / `DeleteSelection` / `TypeChar`
+/ `MarkDirty` a key press does. The char is queued after `ActivateKeybinds` and drained immediately, so the real
+bind never sees it.
+
+**Resizing is `glfwSetWindowSize`, the call `NextWindowFrameControl` makes on an edge drag.** Not `SetWindowPos`
+from another process — `aurora-verify`'s 65535 trap. The size callback fires inside the call, `WindowRoot.FitTo`
+marks the root dirty, and that tick's `ResolveLayout` rewraps every block because `_wrapWidth` changed.
+
+**The swap waits for tick 2 (user, 2026-09-14).** Swapped in `OnStart` (tick 1), the host's shell was destroyed
+before its first layout. Its root was still in `UIEngine._dirtyRoots`, `ResolveLayout` laid the dead tree out, and
+its lazily built children — `NextWindowFrameControl`'s 4 grips and 6 `NextScrollThumbControl`s — were created under
+destroyed parents: live, never destroyed, unreachable from `NextElementOrder`. The result was `'UIElements'
+resequence order count 1006 != live count 1016 — skipping` on every frame, so every captured `FrameEdge` skipped
+its resequence. Found by walking `UIElements` owners against `NextElementOrder`. **Rejected:** skipping destroyed
+roots in `ResolveLayout` — it needs an `isDestroyed` accessor on `Entity` and is engine work outside this change.
+
+**Load stays out of the capture.** The first full measure of the million characters lands on tick 2; the capture
+opens 28 ticks later.
+
+**1,000 paragraphs of 1,000 chars (user, fork a).** Typing rewraps one block, resizing rewraps all. **Rejected:** one
+1M-char block (every keystroke rewraps everything) and 10,000 × 100 (measures control count more than wrapping).
+
+**Constants, not settings, and no scenario format.** One scenario; nothing asked for knobs.
+
+### Consequences to hold on to
+- **Each run counts toward `ProfilingCapture.Keep`** and prunes the host's oldest capture, the same as F9.
+- **No undo records.** The editor has no session, so no `NextTextEdit` is pushed; real typing pays for one.
+- **Typing lands at the top of the note**, so `RequestScrollToCaret` never scrolls.
+- **Every paragraph is identical**, so every block costs the same to wrap.
+- **A maximized window is untested** — `glfwSetWindowSize` on one is not an ordinary resize.
+- **The capture header says `Mode="Burst"`**, not the scenario's name.
+- **Destroying a root before its first layout leaks its lazy children.** Engine gap, open in the WIP list.
+
+### Verified
+
+Three runs of the first shape (swap on tick 1, write root in `%TEMP%`), `Thorium.exe --profile-scenario`:
+
+| Case | Result |
+|---|---|
+| exit | by itself, exit 0, both shutdown phases ran |
+| document | `1000000 chars in 1000 blocks` → `1000120 chars` |
+| window | 1280x720 at start and at end |
+| capture | `Main.frames.xml` 240 frames: `I` 30–149 carry `Scenario.Type`, 150–269 `Scenario.Resize` |
+| the remeasure | `ResolveLayout` avg 2.4 / 4.0 / 3.5 ms in typing frames against 86.5 / 89.0 / 85.9 ms in resize frames, max 121–152 ms |
+| user settings | `%APPDATA%\Thorium\Settings` hash unchanged |
+
+The final shape (swap on tick 2, write root beside the host's), one run:
+
+| Case | Result |
+|---|---|
+| the leak | 0 `resequence order count` warnings, against 272 per run before |
+| where it lands | session in `%APPDATA%\Thorium\Profiling`, scenario settings in `%APPDATA%\Thorium\ProfileScenario` |
+| capture | 240 frames, `I` 30–149 `Scenario.Type`, 150–269 `Scenario.Resize` |
+| the remeasure | `ResolveLayout` avg 2.85 ms typing, 87.59 ms resizing, max 144 ms |
+| document, window, exit | 1,000,000 → 1,000,120 chars, 1280x720 restored, exit 0 |
+| user settings | hash unchanged; the oldest capture was pruned (`Keep` 5) |
+
 ## Left standing
 
 - **GPU is out entirely** (user, 2026-09-02). Frame times can be read back from a `VkQueryPool`, and

@@ -86,8 +86,8 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
     }
 
     // Turns a block's runs into lines using font metrics alone. Every geometry question about the
-    // document is meant to resolve on the output of this, so it holds no state and touches nothing
-    // that needs a booted engine.
+    // document is meant to resolve on the output of this, so it touches nothing that needs a booted
+    // engine.
     public static class TextMeasurer
     {
         // A run reduced to what layout needs. Runs are TextInputControls today and constructing one
@@ -157,14 +157,18 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             }
         }
 
+        // shared by every measure
+        private static PenChar[] _penChars = new PenChar[1024];
+
         // firstLineOffset applies to line 0 only.
         public static BlockLayout MeasureBlock(IReadOnlyList<Run> runs, float contentWidth, IGlyphMetrics metrics,
             float lineHeight, float firstLineOffset = 0f)
         {
-            List<PenChar> chars = Flatten(runs, metrics, lineHeight);
+            int count = Flatten(runs, metrics, lineHeight);
+            PenChar[] chars = _penChars;
             BlockLayout layout = new BlockLayout();
 
-            if (chars.Count == 0)
+            if (count == 0)
             {
                 layout.lines.Add(EmptyLine(runs, metrics, lineHeight));
                 layout.height = layout.lines[0].height;
@@ -175,7 +179,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             int lastBreak = -1;     // last character this line is allowed to end on
             float penX = firstLineOffset;
 
-            for (int i = 0; i < chars.Count; i++)
+            for (int i = 0; i < count; i++)
             {
                 PenChar c = chars[i];
 
@@ -202,7 +206,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 if (c.breakAfter) lastBreak = i;
             }
 
-            AppendLine(layout, chars, lineStart, chars.Count - 1);
+            AppendLine(layout, chars, lineStart, count - 1);
 
             foreach (TextLine line in layout.lines)
                 if (line.width > layout.width) layout.width = line.width;
@@ -210,9 +214,20 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
             return layout;
         }
 
-        private static List<PenChar> Flatten(IReadOnlyList<Run> runs, IGlyphMetrics metrics, float lineHeight)
+        // Writes the runs' characters into _penChars, doubling it first if they do not fit.
+        private static int Flatten(IReadOnlyList<Run> runs, IGlyphMetrics metrics, float lineHeight)
         {
-            List<PenChar> chars = new List<PenChar>();
+            int needed = 0;
+            for (int r = 0; r < runs.Count; r++)
+                if (!string.IsNullOrEmpty(runs[r].text) && runs[r].charCount > 0)
+                    needed += runs[r].charCount;
+
+            int capacity = _penChars.Length;
+            while (capacity < needed) capacity *= 2;
+            if (capacity != _penChars.Length) _penChars = new PenChar[capacity];
+
+            PenChar[] chars = _penChars;
+            int count = 0;
 
             for (int r = 0; r < runs.Count; r++)
             {
@@ -227,10 +242,10 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
                 {
                     char c = run.text[i];
                     bool breakAfter = c == ' ' || c == '\t';
-                    chars.Add(new PenChar(r, i, breakAfter, MeasureAdvance(c, run), ascent, descent));
+                    chars[count++] = new PenChar(r, i, breakAfter, MeasureAdvance(c, run), ascent, descent);
                 }
             }
-            return chars;
+            return count;
         }
 
         // The CSS line box, which is what Obsidian gets from line-height and Word from its spacing
@@ -251,7 +266,7 @@ namespace ArctisAurora.Core.UISystem.Controls.Text.Document
         // Groups the run of characters into per-run segments and takes the line's box from the
         // tallest style on it, then stacks it under whatever the block holds so far. Taking a max
         // matters only where a line mixes font sizes; within one style every line comes out equal.
-        private static void AppendLine(BlockLayout layout, List<PenChar> chars, int from, int to)
+        private static void AppendLine(BlockLayout layout, PenChar[] chars, int from, int to)
         {
             TextLine line = new TextLine { top = layout.height };
 

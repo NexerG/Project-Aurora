@@ -60,11 +60,15 @@ Because the measurer needs only per-glyph metrics, it takes a narrow glyph-metri
 [[DocumentLayoutCache]] does not inherit that testability — it holds a [[Rich Text Document]], whose blocks *are* controls, and it reaches through them for run text and heading level, so it cannot be exercised without booting. That is a consequence of the P0 decision that the document model is the control tree, not an oversight to fix here: narrowing the cache to plain data would mean a second model beside the one that renders. It is the reason the cache's own verification is deferred to the in-app test/profiling platform rather than done the way the measurer's was.
 
 #### Measure Block (runs, content width, glyph metrics, document layout)
-`chars` = empty
+`chars` = the one pen array every measure shares
+while `chars` is shorter than the characters in `runs`
+	double its length   // a new, empty array: whatever it held is overwritten anyway
+`count` = 0
 for each `run` in `runs`
 	`box` = line box of `run` style   // resolved once per run, not per character
 	for each `char` in `run` text
-		append (`run` index, `char` index, advance width of `char` × run font size, `box`) to `chars`
+		`chars`[`count`] = (`run` index, `char` index, advance width of `char` × run font size, `box`)
+		`count` += 1
 `lineStart` = 0, `lastBreak` = none, `penX` = 0
 for each `c` in `chars`
 	if `c` is not whitespace and `penX` + `c` advance > `content width` and line is not empty
