@@ -42,6 +42,8 @@ namespace ArctisAurora.Core.UI
                 // infinity and arranges it at the origin, behind the owner that lays it out.
                 if (root.parent is Control) continue;
 
+                Profiling.Zone.Increment("Root");
+
                 if (root.isMeasureDirty)
                 {
                     // Pass 1 — offer the root its own current arranged size, or infinite if it has
@@ -50,7 +52,9 @@ namespace ArctisAurora.Core.UI
                         ? new Vector2(float.MaxValue, float.MaxValue)
                         : root.arrangedRect.size;
 
+                    Profiling.Zone.Start("Layout.Measure");
                     root.Measure(offer);
+                    Profiling.Zone.End("Layout.Measure");
 
                     // Pass 2 — re-arrange from the root's current rect. A window root is fitted
                     // externally, on resize.
@@ -58,15 +62,24 @@ namespace ArctisAurora.Core.UI
                         ? new LayoutRect(0, 0, root.DesiredSize.X, root.DesiredSize.Y)
                         : root.arrangedRect;
 
+                    Profiling.Zone.Start("Layout.Arrange");
                     root.Arrange(finalRect);
+                    Profiling.Zone.End("Layout.Arrange");
                 }
                 else if (root.isArrangeDirty)
                 {
+                    Profiling.Zone.Start("Layout.Arrange");
                     root.Arrange(root.arrangedRect);
+                    Profiling.Zone.End("Layout.Arrange");
                 }
 
+                Profiling.Zone.Start("Layout.SubtreeCache");
                 root.RefreshSubtreeCache();
+                Profiling.Zone.End("Layout.SubtreeCache");
+
+                Profiling.Zone.Start("Layout.VerifyCache");
                 VerifySubtreeCache(root);
+                Profiling.Zone.End("Layout.VerifyCache");
             }
         }
 

@@ -40,7 +40,7 @@ namespace ArctisAurora.EngineWork.Rendering
     public class VSyncSetting : Setting
     {
         [A_XSDElementProperty("On", "Settings")]
-        public bool on { get; set; } = true;
+        public bool on { get; set; } = false;
     }
 
     [A_XSDType("Validation", "Settings")]

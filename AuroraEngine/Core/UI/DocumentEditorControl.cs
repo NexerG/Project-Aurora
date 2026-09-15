@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
@@ -395,7 +396,12 @@ namespace ArctisAurora.Core.UI
             Vector2 before = GetScrollOffset();
             ScrollIntoView(new LayoutRect(x, y, CaretControl.Width, height));
 
-            if (GetScrollOffset() != before) base.Arrange(finalRect);
+            if (GetScrollOffset() != before)
+            {
+                Profiling.Zone.Start("Editor.Rearrange");
+                base.Arrange(finalRect);
+                Profiling.Zone.End("Editor.Rearrange");
+            }
             else SetFlag(ArrangeFlags.ArrangeDirty, false);
         }
 
