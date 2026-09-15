@@ -82,7 +82,7 @@ A **`SettingCategory`** holds `Setting` children instead, and a `Setting` is its
 [A_XSDType("VSync", "Settings")]
 public class VSyncSetting : Setting
 {
-    [A_XSDElementProperty("On", "Settings")] public bool on { get; set; } = true;
+    [A_XSDElementProperty("On", "Settings")] public bool on { get; set; } = false;
 }
 
 [A_XSDType("Graphics", "Settings", AllowedChildren = typeof(Setting))]

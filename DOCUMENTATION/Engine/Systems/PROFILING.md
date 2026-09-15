@@ -65,6 +65,8 @@ Zones nest, and an increment always attributes to the innermost one that is open
 ### What is instrumented today
 `MainTick` carries `MainTick`, `PollEvents`, `ActivateKeybinds`, `HandleUI` (with a `Window` counter), `Interpolate` and `FrameEdge`. `RenderSystem.Tick` carries `RenderTick` and `Draw`. The frame edges themselves are in `ThreadedSystem.Loop`, so every system has them, physics included.
 
+Under `ResolveLayout`, aimed at what a window resize costs: `UIEngine.ResolveLayout` carries `Layout.Measure`, `Layout.Arrange`, `Layout.SubtreeCache` and `Layout.VerifyCache` per root (with a `Root` counter); `DocumentControl` carries `Document.MeasureBlocks`, `Document.ArrangeBlocks` and `Document.ArrangeOverlays`; `TextRunControl.Measure` carries `Text.BuildRuns` and `Text.MeasureBlock` for every run that actually rewraps; `DocumentEditorControl.Arrange` carries `Editor.Rearrange` only when scrolling to the caret moves the view.
+
 Outside the tick loop, `Bootstrapper.RunPhase` carries a zone named for every bootstrap step and brackets the whole phase in a frame of its own.
 
 ### Re-entering a zone

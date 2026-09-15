@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.Filing;
@@ -804,6 +805,7 @@ namespace ArctisAurora.Core.UI
             float height = 0f;
             int blocks = 0;
 
+            Profiling.Zone.Start("Document.MeasureBlocks");
             foreach (Entity child in children)
             {
                 if (child is not BlockControl block) continue;
@@ -811,6 +813,7 @@ namespace ArctisAurora.Core.UI
                 height += block.Measure(new Vector2(availableSize.X, float.MaxValue)).Y;
                 blocks++;
             }
+            Profiling.Zone.End("Document.MeasureBlocks");
 
             if (blocks > 1) height += blockSpacing * (blocks - 1);
 
@@ -830,6 +833,7 @@ namespace ArctisAurora.Core.UI
             LayoutRect inner = finalRect.Shrink(arrange.padding);
             float y = inner.y;
 
+            Profiling.Zone.Start("Document.ArrangeBlocks");
             foreach (Entity child in children)
             {
                 if (child is not BlockControl block) continue;
@@ -837,10 +841,13 @@ namespace ArctisAurora.Core.UI
                 block.Arrange(new LayoutRect(inner.x, y, inner.width, block.DesiredSize.Y));
                 y += block.DesiredSize.Y + blockSpacing;
             }
+            Profiling.Zone.End("Document.ArrangeBlocks");
 
             // after the blocks, so every line's geometry is this frame's
+            Profiling.Zone.Start("Document.ArrangeOverlays");
             ArrangeSelection();
             ArrangeCaret();
+            Profiling.Zone.End("Document.ArrangeOverlays");
 
             SetFlag(ArrangeFlags.ArrangeDirty, false);
         }

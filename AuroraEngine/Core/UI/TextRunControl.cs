@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
@@ -200,8 +201,13 @@ namespace ArctisAurora.Core.UI
 
             if (!isMeasureDirty && _layout != null && wrapWidth == _wrapWidth) return a.desired;
 
+            Profiling.Zone.Start("Text.BuildRuns");
             BuildRuns();
+            Profiling.Zone.End("Text.BuildRuns");
+
+            Profiling.Zone.Start("Text.MeasureBlock");
             _layout = TextMeasurer.MeasureBlock(_runs, wrapWidth, metrics, lineHeight);
+            Profiling.Zone.End("Text.MeasureBlock");
             _wrapWidth = wrapWidth;
 
             float w = a.preferredWidth > 0 ? a.preferredWidth : _layout.width;
