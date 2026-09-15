@@ -54,7 +54,7 @@ Rules that bite:
 - **A landed system updates `Context/where-things-live.md`.** Add or correct the concept row — the words the
   user would say for it, the types that own it, the data XML it reads. Renaming or moving a type makes an
   existing row wrong; fix it there too.
-- **A `UINext` component added, removed, or with changed entry points updates its entry in
+- **A `UI` component added, removed, or with changed entry points updates its entry in
   `Context/ui-orientation.md`**, in the same change. The entry is what spares the next session the source
   file; a stale one sends it to the wrong member.
 - **No hardcoded file paths.** Reference `namespace` + class name; the path resolves through `NAMESPACES.md`.

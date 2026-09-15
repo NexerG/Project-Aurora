@@ -5,7 +5,7 @@ namespace ArctisAurora.Core.UI
 {
     // The base every control that holds more than one child derives from. A plain Control takes one;
     // this takes any number and leaves the arranging to whoever derives from it.
-    [A_XSDType("NextContainer", "UI")]
+    [A_XSDType("Container", "UI")]
     public class ContainerControl : Control
     {
         public ContainerControl()

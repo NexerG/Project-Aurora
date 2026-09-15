@@ -112,8 +112,4 @@
       </xs:element>
     </xs:sequence>
   </xs:complexType>
-  <xs:element name="ControlStyle" type="types:ControlStyle" />
-  <xs:complexType name="ControlStyle">
-    <xs:sequence />
-  </xs:complexType>
 </xs:schema>

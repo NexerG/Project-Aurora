@@ -434,7 +434,7 @@ The full Vulkan pipeline is working and rendering UI:
   running app's own folder. Edit the `AuroraEngine` copy, compile with
   `glslc --target-env=vulkan1.3`, copy the `.spv` to all four — the UI `.spv` are SPIR-V 1.6 and must
   stay byte-identical across projects. `Carbon/` carries only the UI path's four
-  (`UIRasterizer/UI.*`, `Modules/Compositor/compositor.*`)
+  (`UIEngine/UIEngine.*`, `Modules/Compositor/compositor.*`)
 - Do NOT redesign the Vulkan pipeline; focus help on the scene/widget graph layer above it
 
 #### Asset Registry — Key Facts

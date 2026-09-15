@@ -17,7 +17,7 @@ namespace ArctisAurora.EngineWork.Rendering
         public string name { get; set; } = "";
     }
 
-    [A_XSDType("Window", "Settings")]
+    [A_XSDType("WindowSetting", "Settings")]
     public class WindowSetting : Setting
     {
         [A_XSDType("WindowMode", "Settings")]

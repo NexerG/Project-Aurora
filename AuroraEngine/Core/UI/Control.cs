@@ -1,14 +1,13 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
-using ArctisAurora.Core.UISystem;
 using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
     // One UI element: an ArrangeData row in UIElements and the quads it emits into a window's draw
     // list. No transform — the baked matrix lives in ControlGeometry.
-    [A_XSDType("NextVulkanControl", "EntityRegistry", isAbstract: true)]
+    [A_XSDType("Control", "EntityRegistry", isAbstract: true)]
     public partial class Control : Entity
     {
         // The camera's ortho box is z in [-512, -0.01], so a root sits at -10 and depth steps toward

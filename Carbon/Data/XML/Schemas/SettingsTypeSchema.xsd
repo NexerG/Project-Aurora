@@ -30,7 +30,7 @@
       <xs:element name="KeyRepeat" type="types:KeyRepeat" />
       <xs:element name="Device" type="types:Device" />
       <xs:element name="Monitor" type="types:Monitor" />
-      <xs:element name="Window" type="types:Window" />
+      <xs:element name="WindowSetting" type="types:WindowSetting" />
       <xs:element name="VSync" type="types:VSync" />
       <xs:element name="Validation" type="types:Validation" />
     </xs:choice>
@@ -38,6 +38,16 @@
   <xs:complexType name="Carbon">
     <xs:sequence>
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="DocumentSettings" type="types:DocumentSettings" />
+  <xs:complexType name="DocumentSettings">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="1" name="DocumentLayout" type="UI:DocumentLayout">
+        <xs:annotation>
+          <xs:documentation>Editor-wide layout and text styles.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
     </xs:sequence>
   </xs:complexType>
   <xs:attributeGroup name="SessionTab.Attributes">
@@ -49,7 +59,7 @@
     <xs:attributeGroup ref="types:SessionTab.Attributes" />
   </xs:complexType>
   <xs:attributeGroup name="SessionPane.Attributes">
-    <xs:attribute name="Orientation" type="UI:NextOrientation" />
+    <xs:attribute name="Orientation" type="UI:Orientation" />
     <xs:attribute name="Size" type="xs:int" />
     <xs:attribute name="Active" type="xs:int" />
   </xs:attributeGroup>
@@ -128,16 +138,6 @@
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
     </xs:sequence>
   </xs:complexType>
-  <xs:element name="DocumentSettings" type="types:DocumentSettings" />
-  <xs:complexType name="DocumentSettings">
-    <xs:sequence>
-      <xs:element minOccurs="0" maxOccurs="1" name="DocumentLayout" type="UI:DocumentLayout">
-        <xs:annotation>
-          <xs:documentation>Editor-wide layout and text styles.</xs:documentation>
-        </xs:annotation>
-      </xs:element>
-    </xs:sequence>
-  </xs:complexType>
   <xs:simpleType name="SettingScope">
     <xs:restriction base="xs:string">
       <xs:enumeration value="App" />
@@ -152,9 +152,9 @@
   <xs:group name="ISettingsGroup.Children">
     <xs:choice>
       <xs:element name="Carbon" type="types:Carbon" />
+      <xs:element name="DocumentSettings" type="types:DocumentSettings" />
       <xs:element name="Session" type="types:Session" />
       <xs:element name="UI" type="types:UI" />
-      <xs:element name="DocumentSettings" type="types:DocumentSettings" />
       <xs:element name="Logging" type="types:Logging" />
       <xs:element name="Profiling" type="types:Profiling" />
       <xs:element name="InputBindings" type="types:InputBindings" />
@@ -321,16 +321,16 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:Monitor.Attributes" />
   </xs:complexType>
-  <xs:attributeGroup name="Window.Attributes">
+  <xs:attributeGroup name="WindowSetting.Attributes">
     <xs:attributeGroup ref="types:Setting.Attributes" />
     <xs:attribute name="Mode" type="types:WindowMode" />
     <xs:attribute name="Width" type="xs:unsignedInt" />
     <xs:attribute name="Height" type="xs:unsignedInt" />
   </xs:attributeGroup>
-  <xs:element name="Window" type="types:Window" />
-  <xs:complexType name="Window">
+  <xs:element name="WindowSetting" type="types:WindowSetting" />
+  <xs:complexType name="WindowSetting">
     <xs:sequence />
-    <xs:attributeGroup ref="types:Window.Attributes" />
+    <xs:attributeGroup ref="types:WindowSetting.Attributes" />
   </xs:complexType>
   <xs:attributeGroup name="VSync.Attributes">
     <xs:attributeGroup ref="types:Setting.Attributes" />

@@ -21,16 +21,18 @@ one flat map, so two types sharing a name collide however far apart their namesp
 `[@Serializable]` is **inherited**, so the first of these catches every `Entity` subclass whether or not it
 declares anything.
 
-**The rule while both stacks live:** a type in `Core.UI` that shares a simple name with anything in
-`Core.UISystem` takes a `Next` prefix, and landing 6 renames it back when `Core.UISystem` is deleted. Three
-places already do this — `VulkanControlData` (the XSD name of `Core.UI.VulkanControl`), `NextHovering` /
-`NextActiveControl` / `NextPressTarget`, and now `NextCaretControl`.
+**The rule while both stacks lived:** a type in `Core.UI` that shared a simple name with anything in
+`Core.UISystem` took a `Next` prefix. **Resolved 2026-09-15** — 6d dropped every prefix (types, XSD names,
+contexts) and `Core.UISystem` no longer exists.
 
-**Still to come:** `IconControl` at landing 5, and `SelectionControl` whenever it lands. Check the name before
-writing the file, not after the boot fails:
+**The trap outlives the stacks.** The prefix drop hit it twice more, both XSD-only: `NextWindow` → `Window`
+collided with `WindowSetting`'s `"Window"` (now `WindowRoot` / `WindowSetting`), and `Control`'s
+`NextVulkanControl` would have taken the `VulkanControl` struct's name (now `"Control"`). Check a new name —
+type and XSD — before writing the file, not after the boot fails:
 
 ```bash
 grep -rn "class <Name>" --include=*.cs AuroraEngine/ | grep -v bin | grep -v obj
+git grep -n 'A_XSDType("<Name>"' -- '*.cs'
 ```
 
 **Rejected:** keying `GenerateID` on `FullName`. It changes the serialized id of every type at once, so every

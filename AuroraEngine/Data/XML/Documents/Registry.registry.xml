@@ -6,7 +6,6 @@
 	<Dictionary Name="fonts" KeyType="xs:string" ValueType="FontAsset"/>
 	<Dictionary Name="iconSets" KeyType="xs:string" ValueType="IconSetAsset"/>
 	<Dictionary Name="textures" KeyType="xs:string" ValueType="TextureAsset"/>
-	<Dictionary Name="styles" KeyType="xs:string" ValueType="ControlStyle"/>
 	<Dictionary Name="uiActions" KeyType="xs:string" ValueType="Action"/>
 	<Dictionary Name="ActiveContexts" KeyType="xs:string" ValueType="Object"/>
 	<Dictionary Name="Samplers" KeyType="xs:string" ValueType="SamplerAsset"/>

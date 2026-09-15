@@ -1,7 +1,7 @@
+using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Generators;
 using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.UISystem;
 using Silk.NET.Vulkan;
 
 namespace ArctisAurora.Core.Registry.Assets

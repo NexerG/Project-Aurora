@@ -7,7 +7,6 @@ using Semaphore = Silk.NET.Vulkan.Semaphore;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Silk.NET.GLFW;
-using ArctisAurora.EngineWork.Rendering.UI;
 using System.Runtime.CompilerServices;
 using ArctisAurora.Core.ECS.EngineEntity;
 
@@ -102,11 +101,6 @@ namespace ArctisAurora.EngineWork.Rendering
                 case ERendererTypes.RadianceCascades2D:
                     {
                         RadianceCascades2D _cascades = new RadianceCascades2D();
-                        break;
-                    }
-                case ERendererTypes.UITemp:
-                    {
-                        UIRenderer _ui = new UIRenderer();
                         break;
                     }
                 default:

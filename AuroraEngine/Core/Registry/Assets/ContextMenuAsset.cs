@@ -11,7 +11,7 @@ namespace ArctisAurora.Core.Registry.Assets
 
         public ContextMenuAsset() { }
 
-        // Resolves only. NextContextMenus parses the document on first use.
+        // Resolves only. ContextMenus parses the document on first use.
         public override void Load(string name, string source)
         {
             this.name = name;

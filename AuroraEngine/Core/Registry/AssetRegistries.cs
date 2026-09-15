@@ -4,7 +4,6 @@ using ArctisAurora.EngineWork.Rendering;
 using System.Collections;
 using System.Reflection;
 using System.Xml.Linq;
-using static ArctisAurora.Core.UISystem.Controls.VulkanControl;
 using ArctisAurora.Core.Registry.Assets;
 
 namespace ArctisAurora.EngineWork.Registry
@@ -174,11 +173,6 @@ namespace ArctisAurora.EngineWork.Registry
         {
             Dictionary<string, AVulkanMesh> dMeshes = GetRegistryByValueType<string, AVulkanMesh>(typeof(AVulkanMesh));
             dMeshes.Add("default", AVulkanMesh.LoadDefault());
-
-            Dictionary<string, ControlStyle> dStyles = GetRegistryByValueType<string, ControlStyle>(typeof(ControlStyle));
-            ControlStyle style = new ControlStyle();
-            style.tint = new System.Numerics.Vector4(1, 1, 1, 1);
-            dStyles.Add("default", style);
 
             SamplerAsset sampler = new SamplerAsset("default");
             sampler.LoadDefault();

@@ -16,7 +16,7 @@ namespace ArctisAurora.Core.UI
             XElement tree = new XElement("UITree");
             foreach (KeyValuePair<string, RenderWindow> window in Engine.windows)
             {
-                WindowRoot root = window.Value.uiNext?.uiRoot;
+                WindowRoot root = window.Value.ui?.uiRoot;
                 if (root == null) continue;
 
                 tree.Add(new XElement("Window", new XAttribute("Key", window.Key), Node(root)));

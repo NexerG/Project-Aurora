@@ -413,7 +413,7 @@ Typing and a window resize on a 1,000,000-character note, recorded into the same
 
 | Tick | Does |
 |---|---|
-| 2 | `Open`: 1,000 `NextBlockControl`s of 1,000 chars (one `NextRun` each) into a `NextRichTextDocument`; a bare `WindowRoot` holding one stretched `NextDocumentEditorControl` replaces `Engine.primary.uiNext.uiRoot`; caret at the end of block 0, `FocusCaret` |
+| 2 | `Open`: 1,000 `BlockControl`s of 1,000 chars (one `Run` each) into a `RichTextDocument`; a bare `WindowRoot` holding one stretched `DocumentEditorControl` replaces `Engine.primary.ui.uiRoot`; caret at the end of block 0, `FocusCaret` |
 | 30 | `Profiling.Capture(240)` |
 | 31–150 | one char into `InputHandler.charInputReadQueue`, then `TextInputActions.Write()`; zone `Scenario.Type` |
 | 151–270 | `glfwSetWindowSize` on the primary window, 8 px narrower a tick for 60 ticks, then back; zone `Scenario.Resize` |
@@ -431,12 +431,12 @@ It runs in any host with a primary window.
 action that re-posts itself never leaves the drain. An entity's `OnTick` runs once a tick in `Interpolate`, before
 `ResolveLayout`, so an edit and the remeasure it causes land in the same frame.
 
-**Its own tree, not a Thorium tab.** Only `LoadPath` replaces an editor's `NextDocumentEditSession`, so a generated
+**Its own tree, not a Thorium tab.** Only `LoadPath` replaces an editor's `DocumentEditSession`, so a generated
 note loaded into an open tab would dirty the previous note and push into its undo stack. The bare editor has no
 session, so the `Notes.*` shutdown steps find nothing.
 
 **The write root moves because `Session.Capture` would wipe the vault's layout.** It skips a window with no
-`NextWorkspaceControl` and assigns what it found wholesale — measured: `captured 0 window(s)` at shutdown.
+`WorkspaceControl` and assigns what it found wholesale — measured: `captured 0 window(s)` at shutdown.
 **Beside the host's settings, not `%TEMP%` (user, 2026-09-14).** `FrameSpool.CaptureRoot` and the log resolve
 against the write root's *parent*, so a `%TEMP%\AuroraProfileScenario` root put captures in `%TEMP%\Profiling`,
 which Carbon's default `CaptureRoot` never lists. A host with no write root (the Editor) is not redirected.
@@ -445,16 +445,16 @@ which Carbon's default `CaptureRoot` never lists. A host with no write root (the
 / `MarkDirty` a key press does. The char is queued after `ActivateKeybinds` and drained immediately, so the real
 bind never sees it.
 
-**Resizing is `glfwSetWindowSize`, the call `NextWindowFrameControl` makes on an edge drag.** Not `SetWindowPos`
+**Resizing is `glfwSetWindowSize`, the call `WindowFrameControl` makes on an edge drag.** Not `SetWindowPos`
 from another process — `aurora-verify`'s 65535 trap. The size callback fires inside the call, `WindowRoot.FitTo`
 marks the root dirty, and that tick's `ResolveLayout` rewraps every block because `_wrapWidth` changed.
 
 **The swap waits for tick 2 (user, 2026-09-14).** Swapped in `OnStart` (tick 1), the host's shell was destroyed
 before its first layout. Its root was still in `UIEngine._dirtyRoots`, `ResolveLayout` laid the dead tree out, and
-its lazily built children — `NextWindowFrameControl`'s 4 grips and 6 `NextScrollThumbControl`s — were created under
-destroyed parents: live, never destroyed, unreachable from `NextElementOrder`. The result was `'UIElements'
+its lazily built children — `WindowFrameControl`'s 4 grips and 6 `ScrollThumbControl`s — were created under
+destroyed parents: live, never destroyed, unreachable from `ElementOrder`. The result was `'UIElements'
 resequence order count 1006 != live count 1016 — skipping` on every frame, so every captured `FrameEdge` skipped
-its resequence. Found by walking `UIElements` owners against `NextElementOrder`. **Rejected:** skipping destroyed
+its resequence. Found by walking `UIElements` owners against `ElementOrder`. **Rejected:** skipping destroyed
 roots in `ResolveLayout` — it needs an `isDestroyed` accessor on `Entity` and is engine work outside this change.
 
 **Load stays out of the capture.** The first full measure of the million characters lands on tick 2; the capture
@@ -467,7 +467,7 @@ opens 28 ticks later.
 
 ### Consequences to hold on to
 - **Each run counts toward `ProfilingCapture.Keep`** and prunes the host's oldest capture, the same as F9.
-- **No undo records.** The editor has no session, so no `NextTextEdit` is pushed; real typing pays for one.
+- **No undo records.** The editor has no session, so no `TextEdit` is pushed; real typing pays for one.
 - **Typing lands at the top of the note**, so `RequestScrollToCaret` never scrolls.
 - **Every paragraph is identical**, so every block costs the same to wrap.
 - **A maximized window is untested** — `glfwSetWindowSize` on one is not an ordinary resize.

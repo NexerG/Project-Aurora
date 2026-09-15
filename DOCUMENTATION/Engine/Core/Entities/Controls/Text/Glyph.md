@@ -20,8 +20,8 @@ Type:
   - Public
 Attributes:
   - Serializable
-Namespace: ArctisAurora.Core.UISystem
-SourceFile: AuroraEngine/Core/UISystem/Glyph.cs
+Namespace: ArctisAurora.Core.Filing
+SourceFile: AuroraEngine/Core/Filing/Glyph.cs
 VerifiedAgainst: 2026-09-04
 ---
 ## Description

@@ -45,8 +45,8 @@ what you can and say which part needed more.
 Lead with the answer in one or two sentences. Then pointers, one per line:
 
 ```
-AuroraEngine/Core/UISystem/Controls/VulkanControl.cs:732   Arrange — writes the arranged rect, calls CommitTransform
-AuroraEngine/Core/UISystem/Controls/Containers/StackPanelControl.cs:88   clamps children here
+AuroraEngine/Core/UI/Control.cs:434   Arrange — writes the arranged rect
+AuroraEngine/Core/UI/StackPanelControl.cs:171   clamps children here
 ```
 
 Rules for the report:

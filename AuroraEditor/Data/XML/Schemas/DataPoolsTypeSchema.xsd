@@ -5,8 +5,16 @@
   <xs:simpleType name="DataPools">
     <xs:union memberTypes="types:PoolGrowthType" />
   </xs:simpleType>
-  <xs:element name="GpuTransform" type="types:GpuTransform" />
-  <xs:complexType name="GpuTransform">
+  <xs:element name="ArrangeData" type="types:ArrangeData" />
+  <xs:complexType name="ArrangeData">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="ControlGeometry" type="types:ControlGeometry" />
+  <xs:complexType name="ControlGeometry">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="VulkanControl" type="types:VulkanControl" />
+  <xs:complexType name="VulkanControl">
     <xs:sequence />
   </xs:complexType>
   <xs:simpleType name="PoolGrowthType">

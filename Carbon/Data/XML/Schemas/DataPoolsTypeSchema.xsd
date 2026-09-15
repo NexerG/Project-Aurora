@@ -13,12 +13,8 @@
   <xs:complexType name="ControlGeometry">
     <xs:sequence />
   </xs:complexType>
-  <xs:element name="VulkanControlData" type="types:VulkanControlData" />
-  <xs:complexType name="VulkanControlData">
-    <xs:sequence />
-  </xs:complexType>
-  <xs:element name="GpuTransform" type="types:GpuTransform" />
-  <xs:complexType name="GpuTransform">
+  <xs:element name="VulkanControl" type="types:VulkanControl" />
+  <xs:complexType name="VulkanControl">
     <xs:sequence />
   </xs:complexType>
   <xs:simpleType name="PoolGrowthType">

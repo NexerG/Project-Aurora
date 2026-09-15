@@ -3,7 +3,7 @@
 **Date:** 2026-09-07
 **Status:** landed
 **Scope:** `ArctisAurora.Core.UI` — `DrawList`, `Control.Emit`, `Control.geometry`/`visual`,
-`UIEngine.BuildDrawLists`, `UIEngine.NextElementOrder`, `TextRunControl.Emit`, `LayoutRect.Overlaps`;
+`UIEngine.BuildDrawLists`, `UIEngine.ElementOrder`, `TextRunControl.Emit`, `LayoutRect.Overlaps`;
 `ArctisAurora.EngineWork.Rendering.Modules` — `UIEngineModule`;
 `AuroraEngine/Data/XML/Documents/Pools.pools.xml`
 
@@ -65,7 +65,7 @@ quads**, and the visible band is exactly the lines that meet the clip.
 ## What did not change
 
 - **`UIElements`/`ArrangeData` is still a pool**, still `Ordered`, still sorted by
-  `UI.NextElementOrder`. Only the GPU-facing columns moved.
+  `UI.ElementOrder`. Only the GPU-facing columns moved.
 - **Painter order.** DFS pre-order, parent before children, is what the pool was sorted into and what
   the walk emits. Depth testing is off, so this is load-bearing.
 - **The shaders.** No binding, no indirection, no `.spv` recompile — the draw is still
@@ -91,5 +91,5 @@ quads**, and the visible band is exactly the lines that meet the clip.
 - **Scroll as a uniform**, so arrange stops re-baking every glyph matrix. Unrelated to this note, and
   now the larger remaining cost.
 - `Entity.AllocateIn` / `FreeIn` / `_extraHandles` lost their only caller and are left in place.
-- `ControlGeometry` and `VulkanControlData` still carry `[A_XSDType(..., "DataPools")]` though no pool
+- `ControlGeometry` and `VulkanControl` still carry `[A_XSDType(..., "DataPools")]` though no pool
   declares them. Harmless; the generator just emits two unused types.

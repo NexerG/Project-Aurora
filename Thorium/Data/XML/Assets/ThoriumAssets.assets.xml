@@ -2,17 +2,14 @@
 			   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 			   xsi:schemaLocation="http://arctisaurora/AuroraAssetRegistryTypes ../Schemas/AssetRegistryTypeSchema.xsd">
 
-	<Asset Type="UIDocumentAsset" Name="main"       Source="XML/Documents/UI/UI.ui.xml"/>
-	<Asset Type="UIDocumentAsset" Name="workspace"  Source="XML/Documents/UI/Workspace.ui.xml"/>
 	<Asset Type="UIDocumentAsset" Name="tab-window" Source="XML/Documents/UI/TabWindow.ui.xml"/>
-	<Asset Type="UIDocumentAsset" Name="tab-pane"   Source="XML/Documents/UI/TabPane.ui.xml"/>
 	<Asset Type="UIDocumentAsset" Name="settings"   Source="XML/Documents/UI/Settings.ui.xml"/>
 	<Asset Type="UIDocumentAsset" Name="vaults"     Source="XML/Documents/UI/Vaults.ui.xml"/>
 
 	<!-- the shell on the new stack -->
-	<Asset Type="UIDocumentAsset" Name="next-main"      Source="XML/Documents/UI/NextUI.ui.xml"/>
-	<Asset Type="UIDocumentAsset" Name="next-workspace" Source="XML/Documents/UI/NextWorkspace.ui.xml"/>
-	<Asset Type="UIDocumentAsset" Name="next-tab-pane"  Source="XML/Documents/UI/NextTabPane.ui.xml"/>
+	<Asset Type="UIDocumentAsset" Name="main"      Source="XML/Documents/UI/UI.ui.xml"/>
+	<Asset Type="UIDocumentAsset" Name="workspace" Source="XML/Documents/UI/Workspace.ui.xml"/>
+	<Asset Type="UIDocumentAsset" Name="tab-pane"  Source="XML/Documents/UI/TabPane.ui.xml"/>
 
 	<!-- context menus on the new stack, named by a control's ContextMenu attribute -->
 	<Asset Type="ContextMenuAsset" Name="title-bar" Source="XML/Documents/Menus/TitleBar.menu.xml"/>

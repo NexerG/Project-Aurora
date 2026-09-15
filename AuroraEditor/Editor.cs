@@ -1,5 +1,4 @@
 ﻿using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering.Modules;
 
@@ -37,8 +36,6 @@ namespace AuroraEditor
             //Serializer.Deserialize(path, ref newS);
 
             // prepare level
-            WindowControl windowControl = (WindowControl)VulkanControl.ParseXML("main");
-            Engine.primary.ui.uiRoot = windowControl;
 
             /*ShortTextControl test = new ShortTextControl();
             EntityManager.uiTree = test;

@@ -23,10 +23,9 @@ namespace ArctisAurora.Core.UI
             }
 
             RenderWindow window = Engine.OpenMenuWindow(name, width, height, true);
-            window.isActivable = true;
 
             WindowRoot root = (WindowRoot)Control.ParseXML(document);
-            window.uiNext.uiRoot = root;
+            window.ui.uiRoot = root;
 
             window.os.Resize(width, height);
             root.FitTo(new Extent2D(width, height));

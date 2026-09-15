@@ -5,8 +5,6 @@ using ArctisAurora.Core.Threading;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.UI;
-using ArctisAurora.Core.UISystem;
-using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.Modules;
@@ -53,7 +51,6 @@ namespace ArctisAurora.EngineWork
 
         internal static Renderer renderer = null!;
         internal static InputHandler inputHandler = null!;
-        internal static UICollisionHandling uiCollisionHandler = null!;
         //internal static JobSystem jobSystem;
         internal static AssetRegistries assetRegistry = new AssetRegistries();
         internal static EntityRegistry entityManager = null!;
@@ -128,7 +125,6 @@ namespace ArctisAurora.EngineWork
         {
             entityManager = EntityRegistry.manager;
             entities = EntityRegistry.GetGroup("Entities").As<Entity>();
-            uiCollisionHandler = new UICollisionHandling();
             return true;
         }
 
@@ -137,7 +133,6 @@ namespace ArctisAurora.EngineWork
         {
             GraphicsSettings settings = SettingsRegistry.Get<GraphicsSettings>();
             RenderWindow window = new RenderWindow(settings.window.width, settings.window.height);
-            window.isActivable = true;
             primary = window;
             Publish(mainWindow, window);
 
@@ -152,7 +147,7 @@ namespace ArctisAurora.EngineWork
         // Vulkan, so it builds the GPU side at the top of its next tick and Draw skips until then.
         public static RenderWindow OpenWindow(string name, uint width, uint height, int x, int y)
         {
-            RenderWindow window = new RenderWindow(width, height) { isActivable = true };
+            RenderWindow window = new RenderWindow(width, height);
             window.os.CreateWindow(name, x, y);
             WireInput(window);
 
@@ -192,7 +187,6 @@ namespace ArctisAurora.EngineWork
                 return;
             }
 
-            window.ui.uiRoot?.Destroy();
             window.ui.uiRoot = null;
             window.closeRequested = true;
         }
@@ -250,7 +244,6 @@ namespace ArctisAurora.EngineWork
             window.os.SetCharCallback(inputHandler.ProcessCharInput);
             window.os.SetMouseOnWindowCallback(window.MouseCrossedBorder);
             window.os.SetScrollCallback(inputHandler.ProcessScrollWheel);
-            window.os.SetWindowFocusCallback(window.FocusChanged);
         }
 
         [A_XSDActionDependency("Renderer.InitRenderer", "Bootstrap")]
@@ -285,7 +278,6 @@ namespace ArctisAurora.EngineWork
             Profiling.Zone.Start("WindowingTick");
             ReapClosedWindows();
             DrainPosted();
-            UICollisionHandling.ApplyPendingFocus();
             Profiling.Zone.End("WindowingTick");
 
             Profiling.Zone.Start("ActivateKeybinds");
@@ -299,9 +291,7 @@ namespace ArctisAurora.EngineWork
                 HandleUI(window);
             }
             DragGhost.Follow();
-            NextDragGhost.Follow();
             ContextMenus.Tick();
-            NextContextMenus.Tick();
             Profiling.Zone.End("HandleUI");
 
             // here should go entity updates &/or interpolation
@@ -318,7 +308,6 @@ namespace ArctisAurora.EngineWork
 
             // Dense indices have settled, so each window module can be told the range it draws.
             Profiling.Zone.Start("RefreshWindowRanges");
-            UILayout.RefreshWindowRanges();
             UIEngine.BuildDrawLists();
             Profiling.Zone.End("RefreshWindowRanges");
 
@@ -329,52 +318,7 @@ namespace ArctisAurora.EngineWork
         {
             if (window.closeRequested) return;
 
-            // Ahead of the guards below, so the new stack still hears the pointer leaving a window.
             UIEngine.Poll(window);
-
-            // The outgoing stack no longer draws, so it no longer takes the pointer either.
-            /*
-            // A pressed button captures the pointer to the window it went down in, which keeps
-            // reporting positions far outside itself and stops every other window hearing anything.
-            // So the drag's own window drives the whole gesture, wherever the pointer has gone.
-            bool ownsDrag = UICollisionHandling.dragging != null
-                && ReferenceEquals(RenderWindow.Of(UICollisionHandling.dragging), window);
-            if (!window.isInWindow && !ownsDrag) return;
-
-            Vector2 mp = window.ui.ToDesignSpace(window.mousePos);
-            uiCollisionHandler.delta = mp - uiCollisionHandler.lastMousePos;
-            if (window.isInWindow)
-                uiCollisionHandler.SolveHover(mp, window.ui.uiRoot);
-
-            KeyStateEntry lmb = inputHandler.keyTracker.GetState(Keys.MouseLeft);
-            KeyStateEntry rmb = inputHandler.keyTracker.GetState(Keys.MouseRight);
-
-            if (lmb != null)
-            {
-                if (lmb.justPressed)
-                    uiCollisionHandler.SolveLMBPress(mp, window.ui.uiRoot);
-                if (lmb.justReleased)
-                    uiCollisionHandler.SolveLMBRelease(mp, lmb.tapCount);
-            }
-
-            if (rmb != null)
-            {
-                if (rmb.justPressed)
-                    uiCollisionHandler.SolveRMBPress(mp, window.ui.uiRoot);
-                if (rmb.justReleased)
-                    uiCollisionHandler.SolveRMBRelease(mp);
-            }
-
-            // After the release, not before it: the button is already up in the key tracker by the
-            // time this tick runs, so a drag solved first would take its own stale-release path and
-            // the release would never see a live drag.
-            uiCollisionHandler.SolveDrag(mp);
-
-            if (window.scrollDelta.X != 0 || window.scrollDelta.Y != 0)
-                uiCollisionHandler.SolveScroll(window.scrollDelta);
-
-            uiCollisionHandler.lastMousePos = mp;
-            */
         }
 
         private void Interpolate()
@@ -412,7 +356,6 @@ namespace ArctisAurora.EngineWork
             }
 
             Profiling.Zone.Start("ResolveLayout");
-            UILayout.ResolveLayout();
             UIEngine.ResolveLayout();
             Profiling.Zone.End("ResolveLayout");
 

@@ -1,7 +1,6 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.UISystem.Actions;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
@@ -38,7 +37,7 @@ namespace ArctisAurora.Core.UI
         private const string buttonHoverHex = "#4A4A4A";
         private const string buttonPressHex = "#2A2A2A";
 
-        private static NextStackPanelControl _rows = null!;
+        private static StackPanelControl _rows = null!;
 
         public static unsafe void Open(RenderWindow source)
         {
@@ -53,18 +52,17 @@ namespace ArctisAurora.Core.UI
             }
 
             RenderWindow window = Engine.OpenMenuWindow(windowName, windowWidth, windowHeight, true);
-            window.isActivable = true;
 
             WindowRoot root = (WindowRoot)Control.ParseXML(document);
-            window.uiNext.uiRoot = root;
+            window.ui.uiRoot = root;
 
-            NextStackPanelControl categories = (NextStackPanelControl)root.FindByName("Categories");
-            _rows = (NextStackPanelControl)root.FindByName("Rows");
+            StackPanelControl categories = (StackPanelControl)root.FindByName("Categories");
+            _rows = (StackPanelControl)root.FindByName("Rows");
 
             foreach (string category in Categories())
             {
                 string named = category;
-                NextButtonControl button = Button(named, () => ShowCategory(named), categoryWidth);
+                ButtonControl button = Button(named, () => ShowCategory(named), categoryWidth);
                 button.horizontalPosition = 0f;
                 categories.AddChild(button);
             }
@@ -151,15 +149,15 @@ namespace ArctisAurora.Core.UI
 
         private static Control Row(string caption, Control editor)
         {
-            NextStackPanelControl row = new NextStackPanelControl
+            StackPanelControl row = new StackPanelControl
             {
-                orientation = NextStackPanelControl.Orientation.Horizontal,
+                orientation = StackPanelControl.Orientation.Horizontal,
                 alpha = 0f,
                 preferredHeight = rowHeight,
                 Spacing = 10
             };
 
-            row.AddChild(new NextLabelControl
+            row.AddChild(new LabelControl
             {
                 text = caption,
                 fontSize = 14,
@@ -183,7 +181,7 @@ namespace ArctisAurora.Core.UI
 
             if (memberType == typeof(bool))
             {
-                NextCheckBoxControl box = new NextCheckBoxControl
+                CheckBoxControl box = new CheckBoxControl
                 {
                     colorHex = fieldGroundHex,
                     hoverColorHex = buttonHoverHex,
@@ -197,7 +195,7 @@ namespace ArctisAurora.Core.UI
             {
                 Type domain = A_XSDDomainAttribute.DomainOf(member) ?? memberType;
 
-                NextDropdownControl dropdown = new NextDropdownControl
+                DropdownControl dropdown = new DropdownControl
                 {
                     preferredWidth = editorWidth,
                     preferredHeight = rowHeight,
@@ -212,7 +210,7 @@ namespace ArctisAurora.Core.UI
                 return dropdown;
             }
 
-            NextTextBoxControl field = new NextTextBoxControl
+            TextBoxControl field = new TextBoxControl
             {
                 preferredWidth = editorWidth,
                 preferredHeight = rowHeight,
@@ -244,16 +242,16 @@ namespace ArctisAurora.Core.UI
             List<Keys> modifiers = bind.modifiers.Select(m => m.key).ToList();
 
             if (bind.access == KeybindAccess.Locked)
-                return new NextLabelControl
+                return new LabelControl
                 {
-                    text = NextKeyCaptureControl.Describe(bind.trigger, modifiers),
+                    text = KeyCaptureControl.Describe(bind.trigger, modifiers),
                     fontSize = 14,
                     colorHex = "#6E6E6E",
                     preferredWidth = editorWidth,
                     horizontalPosition = 0f
                 };
 
-            NextKeyCaptureControl capture = new NextKeyCaptureControl
+            KeyCaptureControl capture = new KeyCaptureControl
             {
                 preferredWidth = editorWidth,
                 preferredHeight = rowHeight,
@@ -276,9 +274,9 @@ namespace ArctisAurora.Core.UI
             return capture;
         }
 
-        private static NextButtonControl Button(string caption, Action action, int width = 90)
+        private static ButtonControl Button(string caption, Action action, int width = 90)
         {
-            NextButtonControl button = new NextButtonControl
+            ButtonControl button = new ButtonControl
             {
                 preferredWidth = width,
                 preferredHeight = 26,
@@ -287,7 +285,7 @@ namespace ArctisAurora.Core.UI
                 pressColorHex = buttonPressHex,
                 cornerRadius = new CornerRadii(4)
             };
-            button.AddChild(new NextLabelControl { text = caption, fontSize = 14, colorHex = labelHex });
+            button.AddChild(new LabelControl { text = caption, fontSize = 14, colorHex = labelHex });
             button.RegisterOnRelease(_ => { action(); return true; });
             return button;
         }

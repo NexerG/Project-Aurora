@@ -17,8 +17,8 @@ Used by:
 Type:
   - Public
 Attributes:
-Namespace: ArctisAurora.Core.UISystem
-SourceFile: AuroraEngine/Core/UISystem/Gradients.cs
+Namespace: ArctisAurora.Core.UI
+SourceFile: AuroraEngine/Core/UI/Gradients.cs
 VerifiedAgainst: 2026-08-22
 ---
 ## Description

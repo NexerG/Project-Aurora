@@ -61,8 +61,8 @@ If the brief carries a hint naming what landed, it wins for the subject. The bul
 - No opening prose paragraph, no `Key changes:` header, no closing paragraph, no metrics, no verification
   block.
 - Bullets say what changed, not why. No rationale, no rejected alternatives, no measurements.
-- A bullet names the behaviour or the type, not the file edit. "NextSplitter writes the sized pane ahead of
-  it" — not "Updated NextSplitter.cs".
+- A bullet names the behaviour or the type, not the file edit. "Splitter writes the sized pane ahead of
+  it" — not "Updated Splitter.cs".
 - Group by concept, not by file. Several files serving one change are one bullet.
 
 Real example from this repo:
@@ -70,14 +70,14 @@ Real example from this repo:
 ```
 Land document editing and undo on the new UI stack
 
-- NextBlockControl edits its spans: insert, remove, split, append, snapshot and slice
+- BlockControl edits its spans: insert, remove, split, append, snapshot and slice
 - A span boundary belongs to the span after it, so typing inherits the following style
-- NextDocumentControl owns selection, highlights, block split/join and (block, offset) addressing
+- DocumentControl owns selection, highlights, block split/join and (block, offset) addressing
 - Highlights go at the head of children so they paint behind the text
-- NextDocumentEdits carries the undo records: text, split and range delete
-- NextDocumentEditorControl adds caret movement, backspace/delete, selection drag and autoscroll
+- DocumentEdits carries the undo records: text, split and range delete
+- DocumentEditorControl adds caret movement, backspace/delete, selection drag and autoscroll
 - TextInputActions and NoteActions route to the new editor beside the old one
-- NextTabViewControl saves a dirty session before closing a tab
+- TabViewControl saves a dirty session before closing a tab
 ```
 
 Subject-only shape, for a small change:

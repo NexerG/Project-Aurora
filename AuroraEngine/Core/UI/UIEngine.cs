@@ -2,7 +2,6 @@ using ArctisAurora.Core.Data;
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.UISystem;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
@@ -100,21 +99,19 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- input ----
-        // One pointer, so these are global. The names carry a Next prefix because A_ActiveContext
-        // registers by name into one dictionary and the outgoing stack owns the plain ones — landing
-        // 6 renames them when it deletes Core.UISystem.
-        [A_ActiveContext("NextHovering")]
+        // One pointer, so these are global.
+        [A_ActiveContext("Hovering")]
         public static Control hovering { get; set; }
 
-        [A_ActiveContext("NextActiveControl")]
+        [A_ActiveContext("ActiveControl")]
         public static Control activeControl { get; set; }
 
-        [A_ActiveContext("NextPressTarget")]
+        [A_ActiveContext("PressTarget")]
         public static Control pressTarget { get; set; }
 
         // The control that claimed the drag. Nothing delivers to it yet — see the drag gap in
         // ClaudeMemory/Decisions/ui-engine-stack.md.
-        [A_ActiveContext("NextDragging")]
+        [A_ActiveContext("Dragging")]
         public static Control dragging { get; set; }
 
         // what the drag is currently over, so it can be told when the drag leaves it
@@ -126,10 +123,10 @@ namespace ArctisAurora.Core.UI
         // The window the pointer is over while a drag runs, null when it is over none or when an
         // overlap makes the answer ambiguous. Only meaningful mid-drag — a captured pointer is what
         // makes the geometry search necessary, and it costs a position query per window per tick.
-        [A_ActiveContext("NextMouseOverWindow")]
+        [A_ActiveContext("MouseOverWindow")]
         public static RenderWindow mouseOverWindow { get; set; }
 
-        [A_ActiveContext("NextActiveWindow")]
+        [A_ActiveContext("ActiveWindow")]
         public static RenderWindow activeWindow { get; set; }
 
         private static Vector2 _lastPoint;
@@ -138,7 +135,7 @@ namespace ArctisAurora.Core.UI
         // Resolves the pointer against one window's tree and dispatches what the buttons did.
         public static void Poll(RenderWindow window)
         {
-            WindowRoot root = window.uiNext?.uiRoot;
+            WindowRoot root = window.ui?.uiRoot;
             if (root == null) return;
 
             Vector2 point = root.ToDesignSpace(window.mousePos, window.os.windowSize);
@@ -204,19 +201,19 @@ namespace ArctisAurora.Core.UI
             if (ReferenceEquals(hovering, control)) return;
 
             Control previous = hovering;
-            (previous as IContext)?.OnContextRemoved("NextHovering");
+            (previous as IContext)?.OnContextRemoved("Hovering");
             if (previous != null)
                 Dispatch(Event(previous, point, delta, 0, 0), PointerPhase.Exit);
 
-            Context.Set("NextHovering", control);
-            (control as IContext)?.OnContextAdded("NextHovering");
+            Context.Set("Hovering", control);
+            (control as IContext)?.OnContextAdded("Hovering");
             if (control != null)
                 Dispatch(Event(control, point, delta, 0, 0), PointerPhase.Enter);
         }
 
         private static void SolvePress(Vector2 point, Vector2 delta, int button)
         {
-            NextContextMenus.DismissUnlessInside(hovering);
+            ContextMenus.DismissUnlessInside(hovering);
             if (hovering == null) return;
 
             if (button == PointerEvent.leftButton)
@@ -226,9 +223,9 @@ namespace ArctisAurora.Core.UI
                 _sameTargetTap = ReferenceEquals(target, previous);
                 if (!_sameTargetTap)
                 {
-                    Context.Set("NextPressTarget", target);
-                    (previous as IContext)?.OnContextRemoved("NextPressTarget");
-                    (target as IContext)?.OnContextAdded("NextPressTarget");
+                    Context.Set("PressTarget", target);
+                    (previous as IContext)?.OnContextRemoved("PressTarget");
+                    (target as IContext)?.OnContextAdded("PressTarget");
                 }
                 if (target?.takesActiveControl != false) SetActiveControl(target);
             }
@@ -256,7 +253,7 @@ namespace ArctisAurora.Core.UI
                 Dispatch(Event(hovering, point, delta, button, tapCount), PointerPhase.Tap);
 
             if (button == PointerEvent.rightButton)
-                NextContextMenus.OpenOn(hovering, point);
+                ContextMenus.OpenOn(hovering, point);
         }
 
         // Which window the pointer is over, and what that means for focus. An overlap is not
@@ -309,7 +306,7 @@ namespace ArctisAurora.Core.UI
             if (ReferenceEquals(mouseOverWindow, window)) return;
 
             bool wasIn = mouseOverWindow != null;
-            Context.Set("NextMouseOverWindow", window);
+            Context.Set("MouseOverWindow", window);
 
             if (wasIn) dragging?.DraggedOutOfWindow();
             if (window != null) dragging?.DraggedIntoWindow();
@@ -318,7 +315,7 @@ namespace ArctisAurora.Core.UI
         private static void SetActiveWindow(RenderWindow window)
         {
             if (ReferenceEquals(activeWindow, window)) return;
-            Context.Set("NextActiveWindow", window);
+            Context.Set("ActiveWindow", window);
         }
 
         // The control under the pointer mid-drag, in the target window's own design space. Found by
@@ -329,7 +326,7 @@ namespace ArctisAurora.Core.UI
             local = Vector2.Zero;
 
             RenderWindow target = mouseOverWindow;
-            WindowRoot root = target?.uiNext?.uiRoot;
+            WindowRoot root = target?.ui?.uiRoot;
             if (root == null) return null;
 
             Vector2 screen = ScreenPoint(source);
@@ -364,7 +361,7 @@ namespace ArctisAurora.Core.UI
                 if (c.DraggingOver(dragging, point)) break;
         }
 
-        // The window a control is drawn into — its root is some window's uiNext root. Null for a
+        // The window a control is drawn into — its root is some window's ui root. Null for a
         // subtree detached from every window.
         public static RenderWindow WindowOf(Control control)
         {
@@ -372,7 +369,7 @@ namespace ArctisAurora.Core.UI
             if (root == null) return null;
 
             foreach (RenderWindow window in Engine.windows.Values)
-                if (ReferenceEquals(window.uiNext?.uiRoot, root))
+                if (ReferenceEquals(window.ui?.uiRoot, root))
                     return window;
             return null;
         }
@@ -436,9 +433,9 @@ namespace ArctisAurora.Core.UI
             if (ReferenceEquals(activeControl, control)) return;
 
             Control previous = activeControl;
-            Context.Set("NextActiveControl", control);
-            (previous as IContext)?.OnContextRemoved("NextActiveControl");
-            (control as IContext)?.OnContextAdded("NextActiveControl");
+            Context.Set("ActiveControl", control);
+            (previous as IContext)?.OnContextRemoved("ActiveControl");
+            (control as IContext)?.OnContextAdded("ActiveControl");
         }
 
         // Assigns the drag context and notifies both sides. Null ends the claim.
@@ -447,9 +444,9 @@ namespace ArctisAurora.Core.UI
             if (ReferenceEquals(dragging, control)) return;
 
             Control previous = dragging;
-            Context.Set("NextDragging", control);
-            (previous as IContext)?.OnContextRemoved("NextDragging");
-            (control as IContext)?.OnContextAdded("NextDragging");
+            Context.Set("Dragging", control);
+            (previous as IContext)?.OnContextRemoved("Dragging");
+            (control as IContext)?.OnContextAdded("Dragging");
         }
 
         // Drops a destroyed control out of every context holding it. Assigns directly — the control
@@ -533,8 +530,8 @@ namespace ArctisAurora.Core.UI
         #region ---- dense order ----
         // Canonical dense order for UIElements = DFS pre-order of the control tree, which is painter
         // order and layout-dependency order at once.
-        [A_XSDActionDependency("UI.NextElementOrder", "PoolSort")]
-        public static IReadOnlyList<int> NextElementOrder(DataPool pool)
+        [A_XSDActionDependency("UI.ElementOrder", "PoolSort")]
+        public static IReadOnlyList<int> ElementOrder(DataPool pool)
         {
             int count = pool.Count;
             List<int> order = new List<int>(count);
@@ -542,7 +539,7 @@ namespace ArctisAurora.Core.UI
             HashSet<Control> collected = new HashSet<Control>();
             foreach (RenderWindow window in Engine.windows.Values)
             {
-                WindowRoot root = window.uiNext?.uiRoot;
+                WindowRoot root = window.ui?.uiRoot;
                 if (root == null || !collected.Add(root)) continue;
                 CollectDFS(root, order);
             }
@@ -578,7 +575,7 @@ namespace ArctisAurora.Core.UI
         {
             foreach (RenderWindow window in Engine.windows.Values)
             {
-                UIEngineModule ui = window.uiNext;
+                UIEngineModule ui = window.ui;
                 if (ui == null) continue;
 
                 ui.drawList.Clear();

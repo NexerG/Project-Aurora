@@ -1,6 +1,6 @@
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.UISystem.Actions;
+using ArctisAurora.Core.UI;
 using System.Diagnostics;
 using System.Reflection;
 using System.Xml.Linq;

@@ -2,7 +2,6 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UI;
-using ArctisAurora.Core.UISystem.Actions;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
@@ -20,7 +19,7 @@ namespace Thorium.Editor
         private const uint windowWidth = 520;
         private const uint windowHeight = 400;
 
-        // control name in NextUI.ui.xml
+        // control name in UI.ui.xml
         private const string browserName = "Browser";
 
         // layout
@@ -36,7 +35,7 @@ namespace Thorium.Editor
         private const string currentHex = "#3A3833";
         private const string pathHex = "#918F87";
 
-        private static NextStackPanelControl _rows = null!;
+        private static StackPanelControl _rows = null!;
 
         // One screen at a time; a second ask raises the one already up and returns no root.
         public static void Open(RenderWindow source)
@@ -44,7 +43,7 @@ namespace Thorium.Editor
             WindowRoot root = MenuScreen.Open(windowName, document, windowWidth, windowHeight, source);
             if (root == null) return;
 
-            _rows = (NextStackPanelControl)root.FindByName("Rows");
+            _rows = (StackPanelControl)root.FindByName("Rows");
             Fill();
         }
 
@@ -86,15 +85,15 @@ namespace Thorium.Editor
 
         private static Control Row(string path, bool current)
         {
-            NextStackPanelControl content = new NextStackPanelControl
+            StackPanelControl content = new StackPanelControl
             {
-                orientation = NextStackPanelControl.Orientation.Vertical,
+                orientation = StackPanelControl.Orientation.Vertical,
                 alpha = 0f,
                 hitTestable = false,
                 horizontalPosition = 0f
             };
 
-            content.AddChild(new NextLabelControl
+            content.AddChild(new LabelControl
             {
                 text = Path.GetFileName(Path.TrimEndingDirectorySeparator(path)),
                 fontSize = 14,
@@ -103,7 +102,7 @@ namespace Thorium.Editor
                 horizontalPosition = 0f
             });
 
-            content.AddChild(new NextLabelControl
+            content.AddChild(new LabelControl
             {
                 text = path,
                 fontSize = 11,
@@ -112,7 +111,7 @@ namespace Thorium.Editor
                 horizontalPosition = 0f
             });
 
-            NextButtonControl row = new NextButtonControl
+            ButtonControl row = new ButtonControl
             {
                 preferredHeight = rowHeight,
                 horizontalAlignment = HorizontalAlignment.Stretch,
@@ -141,9 +140,9 @@ namespace Thorium.Editor
                 SettingsRegistry.Commit();
 
                 CloseTabs();
-                NextVaultBrowserControl browser = Engine.primary.uiNext.uiRoot.FindByName(browserName) as NextVaultBrowserControl;
+                VaultBrowserControl browser = Engine.primary.ui.uiRoot.FindByName(browserName) as VaultBrowserControl;
                 browser?.Rebuild();
-                NextVaultBrowserControl.OpenFirstNote();
+                VaultBrowserControl.OpenFirstNote();
             }
 
             if (Engine.windows.TryGetValue(windowName, out RenderWindow window)) Engine.CloseWindow(window);
@@ -152,8 +151,8 @@ namespace Thorium.Editor
         // Every note on screen belongs to the vault being left. CloseTab writes each one first.
         private static void CloseTabs()
         {
-            foreach (NextTabViewControl view in NextTabViewControl.TabViews(Engine.primary.uiNext.uiRoot).ToList())
-                foreach (NextTabItemControl item in view.Items.ToArray())
+            foreach (TabViewControl view in TabViewControl.TabViews(Engine.primary.ui.uiRoot).ToList())
+                foreach (TabItemControl item in view.Items.ToArray())
                     view.CloseTab(item);
         }
         #endregion

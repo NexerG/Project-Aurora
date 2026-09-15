@@ -1,6 +1,4 @@
 using ArctisAurora.Core.Rendering.Modules;
-using ArctisAurora.Core.UISystem;
-using ArctisAurora.Core.UISystem.Controls;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Core;
 using Silk.NET.GLFW;
@@ -40,11 +38,8 @@ namespace ArctisAurora.EngineWork.Rendering
         internal RenderingModule[] modules;
         internal CompositorModule compositor = null!;
 
-        // the module holding this window's UI tree — the window itself owns no controls
-        public UIModule ui;
-
-        // the new UI stack, composited over ui while both run
-        public UIEngineModule uiNext;
+        // the module holding this window's UI tree
+        public UIEngineModule ui;
 
         // UI document this window's tree was built from. Null on a window that holds no session —
         // menus, the drag preview — which is what tells a session capture what to record.
@@ -53,9 +48,6 @@ namespace ArctisAurora.EngineWork.Rendering
         // A preview of a control being dragged: it holds no tree of its own, draws a second view of
         // a control that lives in another window, and is skipped by everything that walks trees.
         public bool isGhost;
-
-        // whether taking focus makes this the active window
-        public bool isActivable;
 
         // lifecycle handshake — main creates and destroys the OS window, the render thread owns every
         // Vulkan object, so each side flags the other rather than reaching across
@@ -73,22 +65,16 @@ namespace ArctisAurora.EngineWork.Rendering
         public RenderWindow(uint width, uint height)
         {
             os = new AGlfwWindow(width, height, this);
-            ui = new UIModule();
-            uiNext = new UIEngineModule();
+            ui = new UIEngineModule();
             modules = new RenderingModule[]
             {
-                //ui,
-                uiNext,
+                ui,
             };
 
             // A module knows its window from birth. BindWindow only runs when the render thread
             // builds the GPU side, and a tree can be assigned to a window before that happens.
             for (int i = 0; i < modules.Length; i++)
                 modules[i].window = this;
-
-            // Off the module list, so nothing binds, records or composites it. Still holds this
-            // window's outgoing tree, and its uiRoot setter fits against this.
-            ui.window = this;
         }
 
         // Brings the window forward. Restored first when iconified — focusing a minimized window
@@ -99,21 +85,6 @@ namespace ArctisAurora.EngineWork.Rendering
                 AGlfwWindow._glfw.RestoreWindow(os.handle);
 
             os.Focus();
-        }
-
-        // The window a control is drawn into — its root is some window's uiRoot. Null for a subtree
-        // detached from every window.
-        public static RenderWindow Of(VulkanControl control)
-        {
-            if (control == null) return null;
-
-            while (control.parent is VulkanControl parent)
-                control = parent;
-
-            foreach (RenderWindow window in Engine.windows.Values)
-                if (ReferenceEquals(window.ui.uiRoot, control))
-                    return window;
-            return null;
         }
 
         // Everything this window needs from the device, in one call. The primary window cannot use it
@@ -164,11 +135,5 @@ namespace ArctisAurora.EngineWork.Rendering
         }
 
         internal void MouseCrossedBorder(WindowHandle* handle, bool entered) => isInWindow = entered;
-
-        // Recorded, not published — the tick applies it outside PollEvents.
-        internal void FocusChanged(WindowHandle* handle, bool focused)
-        {
-            if (focused && isActivable) UICollisionHandling.pendingActiveGlfwWindow = this;
-        }
     }
 }

@@ -5,8 +5,91 @@
   <xs:import schemaLocation="InputTypeSchema.xsd" namespace="http://arctisaurora/AuroraInputTypes" />
   <xs:import schemaLocation="UITypeSchema.xsd" namespace="http://arctisaurora/AuroraUITypes" />
   <xs:simpleType name="Settings">
-    <xs:union memberTypes="types:SettingScope types:LogLevel types:WindowMode" />
+    <xs:union memberTypes="types:SettingScope types:LogLevel types:CaptureMode types:WindowMode" />
   </xs:simpleType>
+  <xs:element name="DocumentSettings" type="types:DocumentSettings" />
+  <xs:complexType name="DocumentSettings">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="1" name="DocumentLayout" type="UI:DocumentLayout">
+        <xs:annotation>
+          <xs:documentation>Editor-wide layout and text styles.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:attributeGroup name="SessionTab.Attributes">
+    <xs:attribute name="Path" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="SessionTab" type="types:SessionTab" />
+  <xs:complexType name="SessionTab">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:SessionTab.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="SessionPane.Attributes">
+    <xs:attribute name="Orientation" type="UI:Orientation" />
+    <xs:attribute name="Size" type="xs:int" />
+    <xs:attribute name="Active" type="xs:int" />
+  </xs:attributeGroup>
+  <xs:element name="SessionPane" type="types:SessionPane" />
+  <xs:group name="ISessionChild.Children">
+    <xs:choice>
+      <xs:element name="SessionTab" type="types:SessionTab" />
+      <xs:element name="SessionPane" type="types:SessionPane" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="SessionPane">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:ISessionChild.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:SessionPane.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="SessionWindow.Attributes">
+    <xs:attribute name="Document" type="xs:string" />
+    <xs:attribute name="Primary" type="xs:boolean" />
+    <xs:attribute name="X" type="xs:int" />
+    <xs:attribute name="Y" type="xs:int" />
+    <xs:attribute name="Width" type="xs:int" />
+    <xs:attribute name="Height" type="xs:int" />
+    <xs:attribute name="Maximized" type="xs:boolean" />
+  </xs:attributeGroup>
+  <xs:element name="SessionWindow" type="types:SessionWindow" />
+  <xs:group name="SessionPane.Children">
+    <xs:choice>
+      <xs:element name="SessionPane" type="types:SessionPane" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="SessionWindow">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:SessionPane.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:SessionWindow.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="SessionScope.Attributes">
+    <xs:attribute name="Key" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="SessionScope" type="types:SessionScope" />
+  <xs:group name="SessionWindow.Children">
+    <xs:choice>
+      <xs:element name="SessionWindow" type="types:SessionWindow" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="SessionScope">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:SessionWindow.Children" />
+    </xs:sequence>
+    <xs:attributeGroup ref="types:SessionScope.Attributes" />
+  </xs:complexType>
+  <xs:element name="Session" type="types:Session" />
+  <xs:group name="SessionScope.Children">
+    <xs:choice>
+      <xs:element name="SessionScope" type="types:SessionScope" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="Session">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:SessionScope.Children" />
+    </xs:sequence>
+  </xs:complexType>
   <xs:attributeGroup name="DragGhost.Attributes">
     <xs:attributeGroup ref="types:Setting.Attributes" />
     <xs:attribute name="Opacity" type="xs:float" />
@@ -23,11 +106,13 @@
       <xs:element name="LogConsole" type="types:LogConsole" />
       <xs:element name="LogFile" type="types:LogFile" />
       <xs:element name="LogRecorder" type="types:LogRecorder" />
+      <xs:element name="ProfilingReport" type="types:ProfilingReport" />
+      <xs:element name="ProfilingCapture" type="types:ProfilingCapture" />
       <xs:element name="DoubleClick" type="types:DoubleClick" />
       <xs:element name="KeyRepeat" type="types:KeyRepeat" />
       <xs:element name="Device" type="types:Device" />
       <xs:element name="Monitor" type="types:Monitor" />
-      <xs:element name="Window" type="types:Window" />
+      <xs:element name="WindowSetting" type="types:WindowSetting" />
       <xs:element name="VSync" type="types:VSync" />
       <xs:element name="Validation" type="types:Validation" />
     </xs:choice>
@@ -35,16 +120,6 @@
   <xs:complexType name="UI">
     <xs:sequence>
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
-    </xs:sequence>
-  </xs:complexType>
-  <xs:element name="DocumentSettings" type="types:DocumentSettings" />
-  <xs:complexType name="DocumentSettings">
-    <xs:sequence>
-      <xs:element minOccurs="0" maxOccurs="1" name="DocumentLayout" type="UI:DocumentLayout">
-        <xs:annotation>
-          <xs:documentation>Editor-wide layout and text styles.</xs:documentation>
-        </xs:annotation>
-      </xs:element>
     </xs:sequence>
   </xs:complexType>
   <xs:simpleType name="SettingScope">
@@ -60,9 +135,11 @@
   <xs:element name="UserSettings" type="types:UserSettings" />
   <xs:group name="ISettingsGroup.Children">
     <xs:choice>
-      <xs:element name="UI" type="types:UI" />
       <xs:element name="DocumentSettings" type="types:DocumentSettings" />
+      <xs:element name="Session" type="types:Session" />
+      <xs:element name="UI" type="types:UI" />
       <xs:element name="Logging" type="types:Logging" />
+      <xs:element name="Profiling" type="types:Profiling" />
       <xs:element name="InputBindings" type="types:InputBindings" />
       <xs:element name="Input" type="types:Input" />
       <xs:element name="Graphics" type="types:Graphics" />
@@ -126,6 +203,43 @@
       <xs:enumeration value="Off" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:simpleType name="CaptureMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Off" />
+      <xs:enumeration value="Continuous" />
+      <xs:enumeration value="Boot" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="ProfilingReport.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Enabled" type="xs:boolean" />
+  </xs:attributeGroup>
+  <xs:element name="ProfilingReport" type="types:ProfilingReport" />
+  <xs:complexType name="ProfilingReport">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:ProfilingReport.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="ProfilingCapture.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Mode" type="types:CaptureMode" />
+    <xs:attribute name="BurstFrames" type="xs:int" />
+    <xs:attribute name="FramesPerBatch" type="xs:int" />
+    <xs:attribute name="Pools" type="xs:boolean" />
+    <xs:attribute name="Directory" type="xs:string" />
+    <xs:attribute name="MaxFileMB" type="xs:int" />
+    <xs:attribute name="Keep" type="xs:int" />
+  </xs:attributeGroup>
+  <xs:element name="ProfilingCapture" type="types:ProfilingCapture" />
+  <xs:complexType name="ProfilingCapture">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:ProfilingCapture.Attributes" />
+  </xs:complexType>
+  <xs:element name="Profiling" type="types:Profiling" />
+  <xs:complexType name="Profiling">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
+    </xs:sequence>
+  </xs:complexType>
   <xs:attributeGroup name="Bind.Attributes">
     <xs:attribute name="Action" type="xs:string" />
     <xs:attribute name="Trigger" type="Input:Keys" />
@@ -190,16 +304,16 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:Monitor.Attributes" />
   </xs:complexType>
-  <xs:attributeGroup name="Window.Attributes">
+  <xs:attributeGroup name="WindowSetting.Attributes">
     <xs:attributeGroup ref="types:Setting.Attributes" />
     <xs:attribute name="Mode" type="types:WindowMode" />
     <xs:attribute name="Width" type="xs:unsignedInt" />
     <xs:attribute name="Height" type="xs:unsignedInt" />
   </xs:attributeGroup>
-  <xs:element name="Window" type="types:Window" />
-  <xs:complexType name="Window">
+  <xs:element name="WindowSetting" type="types:WindowSetting" />
+  <xs:complexType name="WindowSetting">
     <xs:sequence />
-    <xs:attributeGroup ref="types:Window.Attributes" />
+    <xs:attributeGroup ref="types:WindowSetting.Attributes" />
   </xs:complexType>
   <xs:attributeGroup name="VSync.Attributes">
     <xs:attributeGroup ref="types:Setting.Attributes" />
