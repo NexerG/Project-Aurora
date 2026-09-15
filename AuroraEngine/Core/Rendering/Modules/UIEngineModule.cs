@@ -2,7 +2,6 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.UI;
-using ArctisAurora.Core.UISystem;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Core.Native;

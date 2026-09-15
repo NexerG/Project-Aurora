@@ -261,9 +261,6 @@ namespace ArctisAurora.Core.ECS.EngineEntity
                     case ERendererTypes.Rasterizer:
                         component = (EntComp)(object)new MCRaster();
                         break;
-                    case ERendererTypes.UITemp:
-                        component = (EntComp)(object)new MCUI();
-                        break;
                     case ERendererTypes.Pathtracer:
                         component = (EntComp)(object)new MCRaytracing();
                         break;

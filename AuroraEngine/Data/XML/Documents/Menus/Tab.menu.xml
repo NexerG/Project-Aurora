@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<NextContextMenu>
-	<NextContextButton Text="Close" Action="Tab.Close"/>
-	<NextContextButton Text="Close others" Action="Tab.CloseOthers"/>
-	<NextContextButton Text="Close to the right" Action="Tab.CloseRight"/>
-	<NextContextButton Text="Split right" Action="Tab.SplitRight"/>
-	<NextContextButton Text="Split down" Action="Tab.SplitDown"/>
-	<NextContextButton Text="Move to new window" Action="Tab.MoveToNewWindow"/>
-</NextContextMenu>
+<ContextMenu>
+	<ContextButton Text="Close" Action="Tab.Close"/>
+	<ContextButton Text="Close others" Action="Tab.CloseOthers"/>
+	<ContextButton Text="Close to the right" Action="Tab.CloseRight"/>
+	<ContextButton Text="Split right" Action="Tab.SplitRight"/>
+	<ContextButton Text="Split down" Action="Tab.SplitDown"/>
+	<ContextButton Text="Move to new window" Action="Tab.MoveToNewWindow"/>
+</ContextMenu>

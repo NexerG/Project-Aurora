@@ -58,7 +58,7 @@ for the decision to accept them and the escape hatch if they bite.
   document (covers only the materialized viewport; two geometry systems).
 
 ## Engine vs Thorium boundary
-- **Engine** (`AuroraEngine/Core/UISystem/Controls/Text/...`): document model, edit session,
+- **Engine** (`AuroraEngine/Core/UI/`): document model, edit session,
   cursor/selection, caret control, editor view control, char/special-key routing.
 - **Thorium** (app): vault mount, file-tree browse, app-shell `UI.xml`, open/save actions, sample notes.
 - ~~**Held as of P5** — `VaultBrowserControl` and `ThoriumSettings` are Thorium's; the engine gained

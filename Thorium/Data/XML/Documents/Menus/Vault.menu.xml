@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<NextContextMenu>
-	<NextContextButton Text="New note" Action="Notes.New"/>
-</NextContextMenu>
+<ContextMenu>
+	<ContextButton Text="New note" Action="Notes.New"/>
+</ContextMenu>

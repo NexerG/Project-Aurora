@@ -67,7 +67,7 @@ verifies geometry and wiring and says nothing about what is drawn. This exact su
 `maskAsset` and was painting a solid quad under white text. If capture fails, say the visual check did not
 happen. Do not reuse the word for a proxy.
 
-**F10 writes that dump for the new stack** — `UINext.UITreeDump` (`UI.DumpTree`) → `uitree.xml` beside the
+**F10 writes that dump for the new stack** — `UI.UITreeDump` (`UI.DumpTree`) → `uitree.xml` beside the
 exe: every window's tree with arranged `X Y W H`, desired `W H`, `Hidden`. Thorium's is ~17 KB, so grep it for
 the control in question; never read it whole. With the root unscaled a rect is client pixels, i.e. directly a
 `-Region` — grep the control, then crop the capture to it. F10 needs the window focused: click an empty pane
@@ -83,7 +83,7 @@ explicit and per-control (`WindowControl`, `TextControl`, `TextBlockControl`, `D
 
 Five traps, each of which has already produced a wrong conclusion:
 
-- **`Engine.HandleUI` returns immediately while `UICollisionHandling.isInWindow` is false.** Input that leaves
+- **`UIEngine.Poll` returns immediately while `window.isInWindow` is false** (unless the window owns the drag). Input that leaves
   the pointer outside the window makes the *next* drag silently do nothing, which reads as a broken feature.
   Move the cursor inside and let a tick pass before driving anything.
 - **`SetWindowPos` from another process is not a resize.** It produces a `WM_SIZE` whose 16-bit `HIWORD` is

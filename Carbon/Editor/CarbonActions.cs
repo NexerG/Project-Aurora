@@ -13,7 +13,7 @@ namespace Carbon.Editor
         [A_XSDActionDependency("Carbon.LoadCapture", "UI", "Picks a capture folder and reads every thread file in it")]
         public static void LoadCapture()
         {
-            if (Engine.primary.uiNext.uiRoot.FindByName(sessionsName) is not NextSessionListControl sessions) return;
+            if (Engine.primary.ui.uiRoot.FindByName(sessionsName) is not SessionListControl sessions) return;
 
             FolderPicker.Pick(Engine.primary, SettingsRegistry.Get<CarbonSettings>().captureRoot.Resolved, picked =>
             {

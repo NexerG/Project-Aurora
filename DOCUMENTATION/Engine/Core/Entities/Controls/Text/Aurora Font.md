@@ -20,8 +20,8 @@ Type:
   - Public
 Attributes:
   - Serializable
-Namespace: ArctisAurora.Core.UISystem
-SourceFile: AuroraEngine/Core/UISystem/AuroraFont.cs
+Namespace: ArctisAurora.Core.Filing
+SourceFile: AuroraEngine/Core/Filing/AuroraFont.cs
 VerifiedAgainst: 2026-05-30
 ---
 ## Description

@@ -8,14 +8,14 @@ namespace Carbon.Editor
     public static class Comparison
     {
         // views
-        private static NextFrameStripControl _upper = null!;
-        private static NextFrameStripControl _lower = null!;
-        private static NextSpanChartControl _flame = null!;
-        private static NextSpanChartControl _timeline = null!;
-        private static NextZoneTableControl _zones = null!;
-        private static NextLabelControl _offsetLabel = null!;
-        private static NextLabelControl _scaleLabel = null!;
-        private static NextLabelControl _poolsLabel = null!;
+        private static FrameStripControl _upper = null!;
+        private static FrameStripControl _lower = null!;
+        private static SpanChartControl _flame = null!;
+        private static SpanChartControl _timeline = null!;
+        private static ZoneTableControl _zones = null!;
+        private static LabelControl _offsetLabel = null!;
+        private static LabelControl _scaleLabel = null!;
+        private static LabelControl _poolsLabel = null!;
 
         // captures
         private static CaptureSession? _loaded;
@@ -33,9 +33,9 @@ namespace Carbon.Editor
 
         private static bool Comparing => _loaded != null && _baseline != null && _loaded != _baseline;
 
-        public static void Attach(NextFrameStripControl upper, NextFrameStripControl lower, NextSpanChartControl flame,
-                                  NextSpanChartControl timeline, NextZoneTableControl zones, NextSliderControl scale,
-                                  NextLabelControl offsetLabel, NextLabelControl scaleLabel, NextLabelControl poolsLabel)
+        public static void Attach(FrameStripControl upper, FrameStripControl lower, SpanChartControl flame,
+                                  SpanChartControl timeline, ZoneTableControl zones, SliderControl scale,
+                                  LabelControl offsetLabel, LabelControl scaleLabel, LabelControl poolsLabel)
         {
             _upper = upper;
             _lower = lower;
@@ -137,7 +137,7 @@ namespace Carbon.Editor
         }
 
         // The latest bar clicked, from either strip.
-        private static void Show(NextFrameStripControl from, NextFrameStripControl other, CapturedThread thread, int frame)
+        private static void Show(FrameStripControl from, FrameStripControl other, CapturedThread thread, int frame)
         {
             other.Mark(null, -1);
 

@@ -1,9 +1,7 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
-using ArctisAurora.Core.UISystem;
-using ArctisAurora.Core.UISystem.Controls.Text;
-using ArctisAurora.Core.UISystem.Controls.Text.Document;
+using ArctisAurora.Core.Filing;
 using ArctisAurora.EngineWork.Registry;
 using System.Numerics;
 
@@ -42,7 +40,7 @@ namespace ArctisAurora.Core.UI
     // A block of text as one control: the string, the spans styling it, and one emitted quad per
     // visible character. Glyphs are quads and not controls, so the hit-test lands on the run and
     // IndexAt resolves which character was under the point.
-    [A_XSDType("NextTextRun", "UI", isAbstract: true)]
+    [A_XSDType("TextRun", "UI", isAbstract: true)]
     public class TextRunControl : Control
     {
         private static FontAssetGlyphMetrics metrics = null!;
@@ -293,17 +291,17 @@ namespace ArctisAurora.Core.UI
             FontStyle effective = atlas.Effective(glyphStyle);
             GlyphMetrics m = glyph.Metrics(effective);
 
-            float cellW = m.glyphWidth * size * GlyphControl.CellScale;
-            float cellH = m.glyphHeight * size * GlyphControl.CellScale;
-            float bearingX = m.leftSideOffset * size - cellW * GlyphControl.atlasInkMargin;
+            float cellW = m.glyphWidth * size * TextMeasurer.CellScale;
+            float cellH = m.glyphHeight * size * TextMeasurer.CellScale;
+            float bearingX = m.leftSideOffset * size - cellW * TextMeasurer.atlasInkMargin;
 
             float ascent = 0f;
             int range = m.yMax - m.yMin;
             if (range != 0)
             {
                 // baselineFromTop is a fraction OF THE CELL, so it scales the cell height
-                float baselineFromTop = GlyphControl.atlasInkMargin
-                    + (1f - 2f * GlyphControl.atlasInkMargin) * m.yMax / range;
+                float baselineFromTop = TextMeasurer.atlasInkMargin
+                    + (1f - 2f * TextMeasurer.atlasInkMargin) * m.yMax / range;
                 ascent = baselineFromTop * cellH;
             }
 

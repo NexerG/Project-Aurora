@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<NextContextMenu>
-	<NextContextButton Text="New note" Action="Notes.New"/>
-	<NextContextButton Text="Vaults" Action="Vaults.Open"/>
-	<NextContextButton Text="Save note" Action="Text.Save"/>
-</NextContextMenu>
+<ContextMenu>
+	<ContextButton Text="New note" Action="Notes.New"/>
+	<ContextButton Text="Vaults" Action="Vaults.Open"/>
+	<ContextButton Text="Save note" Action="Text.Save"/>
+</ContextMenu>

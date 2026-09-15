@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<NextContextMenu>
-	<NextContextButton Text="New note" Action="Notes.New"/>
-	<NextContextButton Text="Vaults" Action="Vaults.Open"/>
-	<NextContextButton Text="Settings" Action="Settings.Open"/>
-	<NextContextButton Text="Exit" Action="ExitApplication"/>
-</NextContextMenu>
+<ContextMenu>
+	<ContextButton Text="New note" Action="Notes.New"/>
+	<ContextButton Text="Vaults" Action="Vaults.Open"/>
+	<ContextButton Text="Settings" Action="Settings.Open"/>
+	<ContextButton Text="Exit" Action="ExitApplication"/>
+</ContextMenu>

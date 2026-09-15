@@ -29,7 +29,7 @@ Settled. Do not re-litigate without asking.
 | **Cap at ~500 entries, drop the oldest** (user, 2026-08-22) | Stays clear of the glyph ceiling below. The cap *is* the mitigation — there is no virtualization to fall back on |
 | **File feed is tail-only** | A direct consequence of the cap. Opening a 16 MB log shows its end, which is what you want after a crash, and is what a recorder dump already is. Paging further back is out |
 | **One control, two feeds** | The record shape is identical; only the source differs |
-| **`LogViewControl` lives in the engine**, not Thorium | `Core/UISystem/Controls/Containers/`, so the Editor can use it later. Thorium only declares it in XML |
+| **`LogViewControl` lives in the engine**, not Thorium | `Core/UI/`, so the Editor can use it later. Thorium only declares it in XML |
 | **Indent means continuation lines only** | A stack trace indents under its header. Free, and covers the crash case |
 | **No scope-based nesting in this pass** | Real phase→step folding needs the *logger* to emit depth (`Log.Scope`), which changes the record shape. Its own decision — inferring nesting in the viewer from the `running: X` text is guesswork that breaks on a reworded message |
 | **`MemorySink` is a new structure, not a reuse of `FlightRecorder`** | The recorder stores formatted bytes and drops the level, so nothing downstream can colour by it |
@@ -147,7 +147,7 @@ not as four orphan rows.
 
 ### 5. `LogViewControl`
 
-New `Core/UISystem/Controls/Containers/LogViewControl.cs`, `[A_XSDType("LogView", "UI")]`,
+New `Core/UI/LogViewControl.cs`, `[A_XSDType("LogView", "UI")]`,
 `: ScrollableControl`.
 
 - one horizontal row per entry, one `LabelControl` per column with its own `controlColorHex`

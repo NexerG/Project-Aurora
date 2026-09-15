@@ -22,7 +22,8 @@ Additional top-level items not in the table:
 - `Core/ECS/` — entities + components (`EngineEntity/`, `RenderingComponents/`).
 - `Core/Registry/` — `AssetRegistries.cs`, `EntityRegistry.cs`, `XSDGenerator.cs`, `Assets/`.
 - `Core/Rendering/` — Vulkan renderer, modules, pipelines, mesh subcomponents.
-- `Core/UISystem/` — `AuroraFont`, `Glyph`, layout + `Controls/` (widget tree).
+- `Core/UI/` — the control tree, layout, input dispatch, documents, actions, gradients.
+- `Core/Filing/` — `AuroraFont`, `Glyph`, `Bezier`, `IconSet`.
 - `Core/Filing/Serialization/` — `Serializer`, `AssetImporter`, `Paths`, `VirtualFileSystem`.
 
 > Detailed per-system facts live in `CLAUDE.md`. This file only fixes the name↔folder mapping

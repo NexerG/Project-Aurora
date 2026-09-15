@@ -5,8 +5,8 @@
 drawn, zoom and pan exercised, every number cross-checked against the file that produced it. Verified
 against a synthetic three-thread capture from the real writer **and against two real Thorium
 captures** (300 frames of `Main`/`Render`/`Physics`, F9, clean exit).
-**Ported 2026-09-13:** the views are `NextFrameStripControl`, `NextSessionListControl`, `NextSpanChartControl`
-(+ `NextChartScrollThumbControl`) and `NextZoneTableControl` on the new UI stack; the old names below are the
+**Ported 2026-09-13:** the views are `FrameStripControl`, `SessionListControl`, `SpanChartControl`
+(+ `ChartScrollThumbControl`) and `ZoneTableControl` on the new UI stack; the old names below are the
 same classes before the port. See [[ui-engine-plan]] § 6c2.
 **Scope:** new `Carbon/` project; `ArctisAurora.Core.Diagnostics.FrameCaptureReader`;
 `Thorium/Data/XML/Documents/Inputs/InputMap.inputs.xml`.
@@ -240,7 +240,7 @@ the "no `Rebuild` on resize" gap below is not reachable through it.
 The user left the shape to Claude ("I'll let you decide"). Before this, comparing meant two Carbon
 processes or flicking between sessions.
 
-- `Carbon.PinBaseline` hands `NextSessionListControl.Loaded` to `NextZoneTableControl.SetBaseline`;
+- `Carbon.PinBaseline` hands `SessionListControl.Loaded` to `ZoneTableControl.SetBaseline`;
   `Carbon.ClearBaseline` passes `null`. Every session loaded afterwards is diffed against it.
 - While pinned, a zone's number is **ms per frame** and a delta column reads `+16.05 +372%`, coloured
   `SlowerColorHex` / `FasterColorHex` by the sign of the change *as printed*. A `compared with <name>`
@@ -279,7 +279,7 @@ The user found §14 "not understandable at all" and specified the shape; the for
 - **Scale** 0–1: a lower lane's heights divide by `own + (counterpart − own) × t`, both that thread's
   longest frame. Bars clamp at the lane height. The upper strip is always 0.
 - `Carbon.Editor.Comparison` (static) owns loaded, baseline, swap, offset, scale and what the charts show;
-  `Carbon.Wire` only hands it the views. The picker is the engine's new `ArctisAurora.Core.UI.NextSliderControl`
+  `Carbon.Wire` only hands it the views. The picker is the engine's new `ArctisAurora.Core.UI.SliderControl`
   (fork 3c). `offset +3` and `0.49` are labels in the row, not part of the slider (fork 4).
 
 **Lanes and columns are shared between the two strips, or the picture lies.**
@@ -306,13 +306,13 @@ two instances reuse all of §7. A Carbon-local slider — the user chose the eng
 **Follow-up the same day (user, 2026-09-14):**
 - **`CompareStrip` is hidden while nothing compares** and takes no space (user: "only there when there's
   something to compare to"). `Attach` hides it; `Refresh` shows it only with a lower capture. This needed
-  `NextStackPanelControl` to skip `hidden` children in measure, star share and arrange, and
+  `StackPanelControl` to skip `hidden` children in measure, star share and arrange, and
   `Control.Show()` to clear `MeasureDirty` before `InvalidateLayout` — see Facts.
 - **The slide buttons are 28×28 icon buttons**, `chevron-left-outline` / `chevron-right-outline`: hollow
   chevrons, two opposite-wound contours (user chose hollow over mirroring the filled `chevron-right`).
-- **`NextLabel` never wraps** (user: a zone name ran onto the detail line). The zone name label sets
+- **`Label` never wraps** (user: a zone name ran onto the detail line). The zone name label sets
   `clipOutOfBounds`, so a long name is cut at its column, mid-glyph (fork 1a, over `...` truncation).
-- `NextNoteNameWindow` lost its 1 px width trick for the hidden "Don't save" button, which only existed
+- `NoteNameWindow` lost its 1 px width trick for the hidden "Don't save" button, which only existed
   because a hidden stack child kept its slot.
 
 ### 16. Pools show as a summary in the table and a readout of the clicked frame (user, 2026-09-14)
@@ -320,10 +320,10 @@ two instances reuse all of §7. A Carbon-local slider — the user chose the eng
 The capture side is [[engine-profiling]] §14. The user chose fork 2b over the table alone (2a) and over pool
 lanes in the frame strip (2c).
 
-- `NextZoneTableControl.Pools(thread)` runs after each thread's `Fill`: a `pools` header, then one two-line row
+- `ZoneTableControl.Pools(thread)` runs after each thread's `Fill`: a `pools` header, then one two-line row
   per pool, in first-recorded order — name with **peak** bytes on the right, then
   `items min-max, last N, capacity peak`. Rolled over the whole capture into `RolledPool`.
-- A `NextLabel Name="Pools"` sits between `CompareStrip` and `Flame`. `Comparison.Show` sets it to the clicked
+- A `Label Name="Pools"` sits between `CompareStrip` and `Flame`. `Comparison.Show` sets it to the clicked
   frame's pools, `name count/capacity bytes`, four spaces apart; `Comparison.Attach` takes it as a new last
   parameter.
 - A thread that recorded no pools gets no block and an empty readout — `Render`, `Physics`, `Bootstrap` and

@@ -2,7 +2,4 @@
 			   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 			   xsi:schemaLocation="http://arctisaurora/AuroraAssetRegistryTypes ../Schemas/AssetRegistryTypeSchema.xsd">
 
-	<Asset Type="UIDocumentAsset" Name="main" Source="XML/Documents/UI/UI.ui.xml"/>
-	<Asset Type="UIDocumentAsset" Name="alt"  Source="XML/Documents/UI/Alt.ui.xml"/>
-
 </AssetManifest>

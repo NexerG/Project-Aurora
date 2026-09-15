@@ -1,93 +1,93 @@
 <?xml version="1.0" encoding="utf-8"?>
-<NextWindow Width="1400" Height="900" WindowingMode="WindowSize" Autoscaling="false" ScalingAxis="Vertical" ColorHex="#FBFAF8">
+<WindowRoot Width="1400" Height="900" WindowingMode="WindowSize" Autoscaling="false" ScalingAxis="Vertical" ColorHex="#FBFAF8">
 
-	<NextWindowFrame ColorHex="#FBFAF8">
-	<NextStackPanel Orientation="Vertical" ColorHex="#FBFAF8">
+	<WindowFrame ColorHex="#FBFAF8">
+	<StackPanel Orientation="Vertical" ColorHex="#FBFAF8">
 
-		<NextTitleBar Orientation="Horizontal" Height="32" ColorHex="#EBEAE5">
-			<NextLabel Text="Carbon" FontSize="14" Width="80" Height="32" ColorHex="#5F5D56"/>
-			<NextPanel WidthStar="1" Height="32" ColorHex="#EBEAE5"/>
-			<NextButton Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD" onRelease="Window.Minimize">
-				<NextIcon Set="default" Icon="minimize" Width="14" Height="14" ColorHex="#5F5D56"/>
-			</NextButton>
-			<NextButton Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD" onRelease="Window.MaximizeRestore">
-				<NextIcon Set="default" Icon="maximize" Width="18" Height="18" ColorHex="#5F5D56"/>
-			</NextButton>
-			<NextButton Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#C42B1E" PressColorHex="#A82318" onRelease="Window.Close">
-				<NextIcon Set="default" Icon="close" Width="14" Height="14" ColorHex="#5F5D56"/>
-			</NextButton>
-		</NextTitleBar>
+		<TitleBar Orientation="Horizontal" Height="32" ColorHex="#EBEAE5">
+			<Label Text="Carbon" FontSize="14" Width="80" Height="32" ColorHex="#5F5D56"/>
+			<Panel WidthStar="1" Height="32" ColorHex="#EBEAE5"/>
+			<Button Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD" onRelease="Window.Minimize">
+				<Icon Set="default" Icon="minimize" Width="14" Height="14" ColorHex="#5F5D56"/>
+			</Button>
+			<Button Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD" onRelease="Window.MaximizeRestore">
+				<Icon Set="default" Icon="maximize" Width="18" Height="18" ColorHex="#5F5D56"/>
+			</Button>
+			<Button Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#C42B1E" PressColorHex="#A82318" onRelease="Window.Close">
+				<Icon Set="default" Icon="close" Width="14" Height="14" ColorHex="#5F5D56"/>
+			</Button>
+		</TitleBar>
 
-		<NextStackPanel Orientation="Horizontal" HeightStar="1" ColorHex="#FBFAF8">
+		<StackPanel Orientation="Horizontal" HeightStar="1" ColorHex="#FBFAF8">
 
-			<NextStackPanel Orientation="Vertical" Width="420" MinWidth="220" ColorHex="#F2F1ED" Padding="8" Spacing="8">
-				<NextButton Height="28" HorizontalAlignment="Stretch" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
+			<StackPanel Orientation="Vertical" Width="420" MinWidth="220" ColorHex="#F2F1ED" Padding="8" Spacing="8">
+				<Button Height="28" HorizontalAlignment="Stretch" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
 							CornerRadius="4" onRelease="Carbon.LoadCapture">
-					<NextLabel Text="Load XML" FontSize="13" ColorHex="#5F5D56"/>
-				</NextButton>
-				<NextStackPanel Orientation="Horizontal" Height="28" HorizontalAlignment="Stretch" Spacing="8" ColorHex="#F2F1ED">
-					<NextButton WidthStar="1" Height="28" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
+					<Label Text="Load XML" FontSize="13" ColorHex="#5F5D56"/>
+				</Button>
+				<StackPanel Orientation="Horizontal" Height="28" HorizontalAlignment="Stretch" Spacing="8" ColorHex="#F2F1ED">
+					<Button WidthStar="1" Height="28" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
 								CornerRadius="4" onRelease="Carbon.PinBaseline">
-						<NextLabel Text="Pin as baseline" FontSize="13" ColorHex="#5F5D56"/>
-					</NextButton>
-					<NextButton WidthStar="1" Height="28" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
+						<Label Text="Pin as baseline" FontSize="13" ColorHex="#5F5D56"/>
+					</Button>
+					<Button WidthStar="1" Height="28" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
 								CornerRadius="4" onRelease="Carbon.ClearBaseline">
-						<NextLabel Text="Clear baseline" FontSize="13" ColorHex="#5F5D56"/>
-					</NextButton>
-				</NextStackPanel>
-				<NextSessionList Name="Sessions" Height="150" ColorHex="#F2F1ED"
+						<Label Text="Clear baseline" FontSize="13" ColorHex="#5F5D56"/>
+					</Button>
+				</StackPanel>
+				<SessionList Name="Sessions" Height="150" ColorHex="#F2F1ED"
 								 RowColorHex="#E3E1D9" RowHoverColorHex="#DCDAD3" RowPressColorHex="#D0CEC6"
 								 NameColorHex="#23221E" SelectedColorHex="#3A3833" DetailColorHex="#918F87"
 								 ThumbColorHex="#D7D5CD" ThumbHoverColorHex="#C9C6BC" ThumbPressColorHex="#BAB7AC"/>
-				<NextZoneTable Name="Zones" HeightStar="1" ColorHex="#F2F1ED"
+				<ZoneTable Name="Zones" HeightStar="1" ColorHex="#F2F1ED"
 							   Indent="14" SwatchWidth="3" DeltaWidth="100" SeparatorColorHex="#DCDAD3"
 							   SlowerColorHex="#B0452E" FasterColorHex="#5B7F45"
 							   DepthColorsHex="#B8A48C,#C4A882,#A8B49C,#B0A8BC,#C0B098"
 							   HeaderColorHex="#3A3833" ZoneColorHex="#23221E" DetailColorHex="#918F87"
 							   ThumbColorHex="#D7D5CD" ThumbHoverColorHex="#C9C6BC" ThumbPressColorHex="#BAB7AC"/>
-			</NextStackPanel>
+			</StackPanel>
 
-			<NextSplitter Width="5" ColorHex="#E6E4DE" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"/>
+			<Splitter Width="5" ColorHex="#E6E4DE" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"/>
 
-			<NextStackPanel Orientation="Vertical" WidthStar="1" ColorHex="#FBFAF8" Padding="8" Spacing="8">
-				<NextStackPanel Orientation="Horizontal" Height="28" HorizontalAlignment="Stretch" Spacing="8" ColorHex="#FBFAF8">
-					<NextButton Width="28" Height="28" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
+			<StackPanel Orientation="Vertical" WidthStar="1" ColorHex="#FBFAF8" Padding="8" Spacing="8">
+				<StackPanel Orientation="Horizontal" Height="28" HorizontalAlignment="Stretch" Spacing="8" ColorHex="#FBFAF8">
+					<Button Width="28" Height="28" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
 								CornerRadius="4" onRelease="Carbon.SlideLeft">
-						<NextIcon Set="default" Icon="chevron-left-outline" Width="14" Height="14" ColorHex="#5F5D56"/>
-					</NextButton>
-					<NextLabel Name="Offset" Text="offset 0" FontSize="13" Width="80" Height="28" ColorHex="#918F87"/>
-					<NextButton Width="28" Height="28" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
+						<Icon Set="default" Icon="chevron-left-outline" Width="14" Height="14" ColorHex="#5F5D56"/>
+					</Button>
+					<Label Name="Offset" Text="offset 0" FontSize="13" Width="80" Height="28" ColorHex="#918F87"/>
+					<Button Width="28" Height="28" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
 								CornerRadius="4" onRelease="Carbon.SlideRight">
-						<NextIcon Set="default" Icon="chevron-right-outline" Width="14" Height="14" ColorHex="#5F5D56"/>
-					</NextButton>
-					<NextButton Width="96" Height="28" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
+						<Icon Set="default" Icon="chevron-right-outline" Width="14" Height="14" ColorHex="#5F5D56"/>
+					</Button>
+					<Button Width="96" Height="28" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
 								CornerRadius="4" onRelease="Carbon.SwapStrips">
-						<NextLabel Text="Swap" FontSize="13" ColorHex="#5F5D56"/>
-					</NextButton>
-					<NextLabel Text="Scale" FontSize="13" Width="40" Height="28" ColorHex="#5F5D56"/>
-					<NextSlider Name="Scale" Width="200" Height="28" Value="1" TrackHeight="4" ThumbWidth="10"
+						<Label Text="Swap" FontSize="13" ColorHex="#5F5D56"/>
+					</Button>
+					<Label Text="Scale" FontSize="13" Width="40" Height="28" ColorHex="#5F5D56"/>
+					<Slider Name="Scale" Width="200" Height="28" Value="1" TrackHeight="4" ThumbWidth="10"
 								TrackColorHex="#E3E1D9" ThumbColorHex="#C9C6BC"/>
-					<NextLabel Name="ScaleValue" Text="1.00" FontSize="13" Width="40" Height="28" ColorHex="#918F87"/>
-				</NextStackPanel>
-				<NextFrameStrip Name="Strip" Height="140" ColorHex="#F5F4F0" Padding="8"
+					<Label Name="ScaleValue" Text="1.00" FontSize="13" Width="40" Height="28" ColorHex="#918F87"/>
+				</StackPanel>
+				<FrameStrip Name="Strip" Height="140" ColorHex="#F5F4F0" Padding="8"
 								BarColorHex="#C9C6BC" SelectedBarColorHex="#C4622B" LabelColorHex="#918F87"/>
-				<NextFrameStrip Name="CompareStrip" Height="140" ColorHex="#F5F4F0" Padding="8"
+				<FrameStrip Name="CompareStrip" Height="140" ColorHex="#F5F4F0" Padding="8"
 								BarColorHex="#C9C6BC" SelectedBarColorHex="#C4622B" LabelColorHex="#918F87"/>
-				<NextLabel Name="Pools" Text="" FontSize="12" Height="18" HorizontalAlignment="Stretch" ColorHex="#918F87"/>
-				<NextSpanChart Name="Flame" Mode="Frame" HeightStar="1" MinHeight="10" ClipToBounds="true" ColorHex="#F5F4F0" Padding="8"
+				<Label Name="Pools" Text="" FontSize="12" Height="18" HorizontalAlignment="Stretch" ColorHex="#918F87"/>
+				<SpanChart Name="Flame" Mode="Frame" HeightStar="1" MinHeight="10" ClipToBounds="true" ColorHex="#F5F4F0" Padding="8"
 							   RulerHeight="18" TickColorHex="#C9C6BC" RulerLabelColorHex="#918F87"
 							   FrameColorHex="#E3E1D9" SpanLabelColorHex="#2C2B26" LaneLabelColorHex="#918F87"/>
 
-				<NextSplitter Height="5" ColorHex="#E6E4DE" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"/>
+				<Splitter Height="5" ColorHex="#E6E4DE" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"/>
 
-				<NextSpanChart Name="Timeline" Mode="Timeline" HeightStar="2" MinHeight="10" ClipToBounds="true" ColorHex="#F5F4F0" Padding="8"
+				<SpanChart Name="Timeline" Mode="Timeline" HeightStar="2" MinHeight="10" ClipToBounds="true" ColorHex="#F5F4F0" Padding="8"
 							   MaxLabels="80" RulerHeight="18" TickColorHex="#C9C6BC" RulerLabelColorHex="#918F87"
 							   FrameColorHex="#E3E1D9" SpanLabelColorHex="#2C2B26" LaneLabelColorHex="#918F87"
 							   TrackColorHex="#EBEAE5" ThumbColorHex="#D7D5CD" ThumbHoverColorHex="#C9C6BC" ThumbPressColorHex="#BAB7AC"/>
-			</NextStackPanel>
+			</StackPanel>
 
-		</NextStackPanel>
+		</StackPanel>
 
-	</NextStackPanel>
-	</NextWindowFrame>
-</NextWindow>
+	</StackPanel>
+	</WindowFrame>
+</WindowRoot>

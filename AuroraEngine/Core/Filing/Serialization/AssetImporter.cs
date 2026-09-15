@@ -1,10 +1,9 @@
 using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.UISystem;
 using ArctisAurora.EngineWork;
 using System.Security.Cryptography;
 using System.Xml.Linq;
-using static ArctisAurora.Core.UISystem.AuroraFont;
-using AuroraFont = ArctisAurora.Core.UISystem.AuroraFont;
+using static ArctisAurora.Core.Filing.AuroraFont;
+using AuroraFont = ArctisAurora.Core.Filing.AuroraFont;
 
 namespace ArctisAurora.Core.Filing.Serialization
 {

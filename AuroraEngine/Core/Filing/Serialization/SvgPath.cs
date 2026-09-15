@@ -1,4 +1,3 @@
-using ArctisAurora.Core.UISystem;
 using System.Numerics;
 using System.Globalization;
 using System.Xml.Linq;

@@ -1,7 +1,8 @@
 # UI orientation — the new stack, one entry per component
 
-**Scope:** `UINext` = `ArctisAurora.Core.UI`. The outgoing `UI` stack (`ArctisAurora.Core.UISystem`) is not
-described; an entry names its old twin, found with `grep -rn "class <Twin>\b" AuroraEngine/Core/UISystem`.
+**Scope:** `UI` = `ArctisAurora.Core.UI`. The old stack's controls were deleted 2026-09-15 (landing 6d);
+an entry still names its old twin, which survives only in git history and the "(old)" notes.
+`Core.UISystem` is gone too (2026-09-15): gradients, `TextMeasurer` and actions live here; fonts and icons in `Core.Filing`.
 
 **Use:** find the component → its entry says what it does, which region or members carry it, which note
 section settles it → `grep -n` the member, `sed` that region. Open a whole file only when the entry and the
@@ -15,7 +16,7 @@ region map both fail. Note links name one `§`: `grep -n '^## '` the note and re
 
 1. `InputHandler.ActivateKeybinds` — keybind actions run here, F10 `UI.DumpTree` among them.
 2. `Engine.HandleUI` → `UIEngine.Poll(window)`, per window — hover, press, release, drag, scroll → `Dispatch`.
-3. `NextDragGhost.Follow`, `NextContextMenus.Tick`.
+3. `DragGhost.Follow`, `ContextMenus.Tick`.
 4. `Engine.Interpolate` → `UIEngine.ResolveLayout` — measure + arrange each dirty root.
 5. `DataManager.FrameEdge`, then `UIEngine.BuildDrawLists` — DFS each window's root (a drag ghost's
    `rangeRoot` instead), `Control.Emit` the visible ones into the window's `DrawList`, culled to the screen.
@@ -26,7 +27,7 @@ Why: [[ui-draw-list]] § What changed; [[ui-engine-stack]] § Vocabulary.
 
 ## Core
 
-### Control — abstract `<NextVulkanControl>` · `ECS.EngineEntity.Entity` · partial with ControlXml
+### Control — abstract `<Control>` · `ECS.EngineEntity.Entity` · partial with ControlXml
 One tree node. Layout state is its `UIElements` pool row (`arrange` → `ArrangeData`); the GPU quad is plain
 fields (`geometry` → `ControlGeometry`, `visual` → `VulkanControl`). A plain `Control` takes one child.
 
@@ -43,7 +44,7 @@ Static, outside regions: `EnumColorToHex`, `HexToRGB`.
 Why: [[ui-engine-stack]] § landing 2, § landing 3, § landing 6a, § The active context is a question, § The drag gap.
 
 ### ControlXml — Control's XML half
-- `Control.ParseXML(document)` — a tree from a registered `UIDocumentAsset` by name (e.g. `next-main`); the
+- `Control.ParseXML(document)` — a tree from a registered `UIDocumentAsset` by name (e.g. `main`); the
   root element names its own type.
 - `Control.ParseMenu(path)` — a `*.menu.xml` into a `ContextMenu`.
 - `RecursiveParse` / `ResolveAttributes` — elements → `[A_XSDType]` classes, attributes →
@@ -57,18 +58,18 @@ Why: [[ui-engine-stack]] § XML event attributes.
 | region | holds |
 |---|---|
 | `layout` | `RegisterDirtyRoot`, `ResolveLayout`, `VerifySubtreeCache` |
-| `input` | `Poll(window)` → `SolveHover`, `SolvePress` (dismisses menus), `SolveRelease` (opens `NextContextMenus.OpenOn`), `SolveDrag`, `SolveScroll`, `SolveDragWindow`; `HitTest` (children last-to-first, optional `skip`), `Dispatch` (target up through parents until a handler returns `true`), `SetActiveControl`, `SetDragging`, `EndDrag`, `Forget`, `WindowOf` |
-| `dense order` | `NextElementOrder(pool)` — the DFS order the `UIElements` pool sorts to |
+| `input` | `Poll(window)` → `SolveHover`, `SolvePress` (dismisses menus), `SolveRelease` (opens `ContextMenus.OpenOn`), `SolveDrag`, `SolveScroll`, `SolveDragWindow`; `HitTest` (children last-to-first, optional `skip`), `Dispatch` (target up through parents until a handler returns `true`), `SetActiveControl`, `SetDragging`, `EndDrag`, `Forget`, `WindowOf` |
+| `dense order` | `ElementOrder(pool)` — the DFS order the `UIElements` pool sorts to |
 | `draw lists` | `BuildDrawLists` → `Collect` → `Control.Emit`, per window |
 
-No bootstrap step: each host sets `Engine.primary.uiNext.uiRoot` from `Control.ParseXML` itself.
+No bootstrap step: each host sets `Engine.primary.ui.uiRoot` from `Control.ParseXML` itself.
 
-### WindowRoot — `<NextWindow>` · Control
-A window's root, transparent; `RenderWindow.uiNext.uiRoot`. Fits the tree to the window: `FitTo`,
+### WindowRoot — `<WindowRoot>` · Control
+A window's root, transparent; `RenderWindow.ui.uiRoot`. Fits the tree to the window: `FitTo`,
 `ViewportSize`, `ToDesignSpace`; fields `windowingMode` (`KeepLocal`/`WindowSize`), `autoscaling`,
 `scalingAxis`. Unscaled, design space is window pixels.
 
-### ContainerControl — `<NextContainer>` · Control
+### ContainerControl — `<Container>` · Control
 Many children, both alignments default to `Stretch`. Base of every multi-child control.
 
 ### DrawList
@@ -90,56 +91,56 @@ partial count. Why: [[ui-draw-list]], [[ui-draw-list-publish]].
 
 ## Primitives
 
-- **NextPanelControl** `<NextPanel>` · Control — coloured box, at most one child. Old `PanelControl`.
-- **NextButtonControl** `<NextButton>` · NextPanelControl — panel with hover/press colours.
+- **PanelControl** `<Panel>` · Control — coloured box, at most one child. Old `PanelControl`.
+- **ButtonControl** `<Button>` · PanelControl — panel with hover/press colours.
   `OnPointerEnter/Exit/Press/Release`. XML `HoverColorHex`, `PressColorHex`. Old `ButtonControl`,
   [[button-states-and-hover-bubbling]] (old).
-- **NextCheckBoxControl** `<NextCheckBox>` · NextButtonControl — 18×18 box, a 10×10 mark panel that is not
+- **CheckBoxControl** `<CheckBox>` · ButtonControl — 18×18 box, a 10×10 mark panel that is not
   hit-tested. `isChecked`, `onChanged(bool)`; a left release toggles. Old `CheckBoxControl`.
-- **NextSliderControl** `<NextSlider>` · ContainerControl — `value` 0–1, a track and a thumb panel, neither
+- **SliderControl** `<Slider>` · ContainerControl — `value` 0–1, a track and a thumb panel, neither
   hit-tested. Press jumps, drag follows (`Pick`); `onChanged(float)` fires on the gesture only, not on a
   `value` set. XML `Value`, `TrackHeight`, `ThumbWidth`, `TrackColorHex`, `ThumbColorHex`. No old counterpart.
-- **NextDropdownControl** `<NextDropdown>` · NextButtonControl — caption, `options`, `onPicked`, `selected`; a
+- **DropdownControl** `<Dropdown>` · ButtonControl — caption, `options`, `onPicked`, `selected`; a
   left release opens `options` as a menu under it. `options` is code-only. Old `DropdownControl`.
-- **NextKeyCaptureControl** `<NextKeyCapture>` · NextButtonControl — shows a combo (`SetCombo`, static
+- **KeyCaptureControl** `<KeyCapture>` · ButtonControl — shows a combo (`SetCombo`, static
   `Describe`); a left release hands the next key to `InputHandler.Capture`; `OnDestroy` cancels a live capture,
   or every keybind stays swallowed. Old `KeyCaptureControl`.
-- **NextHintControl** (no XML) · NextPanelControl — translucent wash; the tab view's drop preview. Old `HintControl`.
-- **NextIconControl** `<NextIcon>` · Control — one cell of an icon set's MTSDF atlas, by set and name
+- **HintControl** (no XML) · PanelControl — translucent wash; the tab view's drop preview. Old `HintControl`.
+- **IconControl** `<Icon>` · Control — one cell of an icon set's MTSDF atlas, by set and name
   (private `Rebind`). XML `Set`, `Icon`. Old `IconControl`.
-- **NextCaretControl** (no XML) · Control — blinking insertion bar. `OnTick`, `Focus`, `Blur`. Old
+- **CaretControl** (no XML) · Control — blinking insertion bar. `OnTick`, `Focus`, `Blur`. Old
   `CaretControl`, [[caret-blink-and-focus]] (old).
 
 ## Text
 
-- **TextRunControl** abstract `<NextTextRun>` · Control — a paragraph as one control, a GPU quad per visible
+- **TextRunControl** abstract `<TextRun>` · Control — a paragraph as one control, a GPU quad per visible
   glyph. `spans` of `StyleSpan` (`count`, `style`, `colorHex`, `fontName`, `fontSize`, `gradient`,
   `strikethrough`, `stylingType`, `fontSizeAuthored`, `IsBold`/`IsItalic`), `SetSpans`, `style`, `lineHeight`.
   Regions `layout` (`Measure`, `Arrange`, `Emit`) and `caret geometry` (`IndexAt`, `CaretAt`, `TextOrigin`,
   `Length`, `Lines`). `OnPointerPress` → `IGlyphPressTarget`. XML `Text`, `FontSize`, `FontName`. **`Measure`
   returns the last `desired` while the run is clean and its wrap width unchanged** — anything `BuildRuns` reads
   must invalidate layout, which is why `colorHex` does. Why: [[ui-engine-stack]] § landing 4, § landing 6c.
-- **NextLabelControl** `<NextLabel>` · TextRunControl — read-only text, one line: overrides `Wraps` false, so
+- **LabelControl** `<Label>` · TextRunControl — read-only text, one line: overrides `Wraps` false, so
   overflow runs past the box unless `ClipToBounds`. Old `LabelControl`.
-- **NextTextBoxControl** `<NextTextBox>` · ContainerControl, `IContext` — single-line field with caret and
+- **TextBoxControl** `<TextBox>` · ContainerControl, `IContext` — single-line field with caret and
   selection. `Focus`, `SelectAll`, `WriteChar`, `Backspace`, `Delete`, `MoveCaret`, `Commit`, `Cancel`,
-  `OnContextAdded`/`OnContextRemoved`; nested `NextFieldLine` carries the run. XML `Text`, `FontSize`,
+  `OnContextAdded`/`OnContextRemoved`; nested `FieldLine` carries the run. XML `Text`, `FontSize`,
   `TextColorHex`, `SelectionColorHex`, `CaretColorHex`. Old `TextBoxControl`, [[note-naming-and-text-field]] (old).
-- **NextEditableLabelControl** `<NextEditableLabel>` · ContainerControl — label that swaps to a text field on
+- **EditableLabelControl** `<EditableLabel>` · ContainerControl — label that swaps to a text field on
   double-click. `BeginEdit`. XML `Text`, `FontSize`, `TextColorHex`, `FieldColorHex`. Old
   `EditableLabelControl`, [[inline-rename]] (old).
 
 ## Documents
 
-- **NextBlockControl** (no XML) · TextRunControl — one block of a note: the paragraph's string with its runs as
+- **BlockControl** (no XML) · TextRunControl — one block of a note: the paragraph's string with its runs as
   spans. `stylingType`, `ApplyLayout(DocumentLayout)`, `AppendRun`, `Runs()`. Region `text and spans`:
   `InsertText`, `RemoveText`, `SplitAt`, `AppendBlock`, `Snapshot`/`SliceSnapshot`/`Restore`/`From`,
   `InsertSlice`/`AppendSlice`, `StyleAt`, `StyleRange`, `SplitSpanAt`, `MergeSpans`. A boundary belongs to the
   span **after** it. Replaces `Block`/`ContentBlock` + `TextRun`.
-- **NextRun** `<NextRun>` — a run as the file writes it; exists at load and save only. `Text`, `Bold`, `Italic`,
+- **Run** `<Run>` — a run as the file writes it; exists at load and save only. `Text`, `Bold`, `Italic`,
   `Strikethrough`, `ColorHex`, `ControlColor`, `Gradient`, `FontName`, `FontSize`, `FontSizeAuthored`,
   `StylingType`.
-- **NextDocumentControl** (no XML) · ContainerControl, `IGlyphPressTarget` — the content area. Regions `caret`
+- **DocumentControl** (no XML) · ContainerControl, `IGlyphPressTarget` — the content area. Regions `caret`
   (`SetCaret`, `CollapseSelection`, `GlyphPressed`, `OnPointerTap`), `caret navigation` (`CaretPoint`,
   `CaretAtPoint`, `CaretOffText`, `AdjacentBlock`), `selection` (`SelectWord`, `SelectAll`,
   `OrderedSelection`, highlights inserted at the **head** of `children` so they paint behind the text),
@@ -147,122 +148,122 @@ partial count. Why: [[ui-draw-list]], [[ui-draw-list-publish]].
   `CaretBlockStyling`, `ApplyStyle`, `ArmStyle`, `ApplyStyleTo`/`ApplyStyleBetween`, `SetBlockStyling`,
   `SnapshotBlocks`, `RestoreBlocks`), `addressing` (`AddressOf`, `Resolve`, `CaretTo`) and `undo primitives`
   (`InsertText`, `RemoveText`, `DeleteBetween`, `InsertFragment`, `JoinBlockWithNext`). Also declares
-  `NextCaretSlot`, `NextStyleDelta` and `NextCaretStyle`. Old `DocumentControl`.
-- **NextDocumentEditorControl** `<NextDocumentEditor>` · NextScrollableControl, `IContext` — one open note.
+  `CaretSlot`, `StyleDelta` and `CaretStyle`. Old `DocumentControl`.
+- **DocumentEditorControl** `<DocumentEditor>` · ScrollableControl, `IContext` — one open note.
   `Source`/`LoadPath`/`LoadDocument`, `Save`, `needsNaming`, `FocusCaret`; regions `styling` (forwards under a
   `BeginStep`), `selection` (`SelectLine`, `BeginSelectionDrag`, `OnDrag` + autoscroll), `caret movement`
   (`MoveCaret`), `editing` (`Backspace`, `Delete`, `SplitBlock`, `TypeChar`), `history`
   (`BeginStep`/`Undo`/`Redo`/`MarkDirty`), `focus`. `Arrange` scrolls to the caret and **must never exit with
   the arrange flag set**. XML adds `CaretColorHex`, `SelectionColorHex` to the scrollable's. Old
   `DocumentEditorControl`.
-- **NextDocumentToolbarControl** `<NextDocumentToolbar>` · NextStackPanelControl — the format bar for whichever
-  note holds the caret; resolves it per press through `TextInputActions.NextEditor()` and takes no active
-  control. `OnTick` reflects bold/italic/styling/colour/size; nested `NextToolButton` (acts on press) and
-  `NextPxBox` (the one part that does take the focus; captures the range on its press). XML `HoverColorHex`,
+- **DocumentToolbarControl** `<DocumentToolbar>` · StackPanelControl — the format bar for whichever
+  note holds the caret; resolves it per press through `TextInputActions.Editor()` and takes no active
+  control. `OnTick` reflects bold/italic/styling/colour/size; nested `ToolButton` (acts on press) and
+  `PxBox` (the one part that does take the focus; captures the range on its press). XML `HoverColorHex`,
   `PressColorHex`, `IdleInkColorHex`, `ActiveInkColorHex`, `SeparatorColorHex`, `FieldColorHex`. Old
   `DocumentToolbarControl`, [[document-format-bar]], [[armed-style-at-the-caret]] (old).
-- **NextRichTextDocument** `<NextDocument>` — the model: `blocks`, `name`, `layout`; `ParseXML`, `Save`.
-  **NextDocumentEditSession** — the open file: `path`, `undo`, `isDirty`, `MarkDirty`, `Repath`, `Save`.
-- **NextDocumentXml** — load and save over the outgoing stack's file format; the block level is written by
-  hand because `"Document"`/`"Block"`/`"Run"` belong to the old XSD types until 6d.
+- **RichTextDocument** `<Document>` — the model: `blocks`, `name`, `layout`; `ParseXML`, `Save`.
+  **DocumentEditSession** — the open file: `path`, `undo`, `isDirty`, `MarkDirty`, `Repath`, `Save`.
+- **DocumentXml** — load and save of the note file format; the block level is written by hand. Since 6d
+  no XSD type declares `"Document"`/`"Block"`/`"Run"`, so a note's `schemaLocation` validates nothing.
   [../Patterns/document-xml-persistence.md](../Patterns/document-xml-persistence.md)
-- **NextDocumentEdits.cs** — `NextDocumentAddress` (`(block, offset)`), `NextBlockSnapshot`,
-  `NextDocumentFragment`, and the records `NextTextEdit`, `NextSplitEdit`, `NextDeleteRangeEdit`,
-  `NextStyleRangeEdit`. Undo currency is snapshots and fragments, never control references — undo rebuilds
+- **DocumentEdits.cs** — `DocumentAddress` (`(block, offset)`), `BlockSnapshot`,
+  `DocumentFragment`, and the records `TextEdit`, `SplitEdit`, `DeleteRangeEdit`,
+  `StyleRangeEdit`. Undo currency is snapshots and fragments, never control references — undo rebuilds
   blocks. Why: [[ui-engine-stack]] § landing 6c.
 
 ## Layout containers
 
-- **NextStackPanelControl** `<NextStackPanel>` · ContainerControl — children in a row or column; star children
+- **StackPanelControl** `<StackPanel>` · ContainerControl — children in a row or column; star children
   split what is left by weight; a `hidden` child gets no slot and no spacing. XML `Orientation`, `Spacing`. Old `StackPanelControl`,
   [[stack-panel-arrange-clamp]] (old).
-- **NextDockingControl** `<NextDock>` · ContainerControl — children docked by their `DockMode`. XML
+- **DockingControl** `<Dock>` · ContainerControl — children docked by their `DockMode`. XML
   `LastChildFill`. Old `DockingControl`.
-- **NextGridListControl** `<NextGridList>` · ContainerControl — band grid; a child claims its cell with
-  `Grid.Row`/`Grid.Column`. Child elements `<NextRowDefinition Height SizeMode GapAfter>`,
-  `<NextColumnDefinition Width SizeMode GapAfter>`; `SizeMode` is `Fixed`/`Auto`/`Star`. Old `GridListControl`.
-- **NextScrollableControl** `<NextScrollable>` (0–1 child) · ContainerControl — scrolls its child; one thumb
+- **GridListControl** `<GridList>` · ContainerControl — band grid; a child claims its cell with
+  `Grid.Row`/`Grid.Column`. Child elements `<RowDefinition Height SizeMode GapAfter>`,
+  `<ColumnDefinition Width SizeMode GapAfter>`; `SizeMode` is `Fixed`/`Auto`/`Star`. Old `GridListControl`.
+- **ScrollableControl** `<Scrollable>` (0–1 child) · ContainerControl — scrolls its child; one thumb
   per axis, appended last so hit-test reaches them first. Regions `properties`, `state`, `layout`,
   `scrolling`: `OnScrollInput`, `OnPointerScroll`, `SetScrollOffset`/`GetScrollOffset`, `ScrollIntoView`. XML
   `ScrollDirection`, `ScrollSensitivity`, `Overscroll`, `ThumbColorHex`, `ThumbHoverColorHex`,
   `ThumbPressColorHex`. Old `ScrollableControl`, [[scrollbar-thumb]], [[scroll-overscroll]] (old).
-- **NextScrollThumbControl** (no XML) · NextButtonControl — the thumb; its drag becomes a scroll offset.
+- **ScrollThumbControl** (no XML) · ButtonControl — the thumb; its drag becomes a scroll offset.
   `OnPointerPress`, `OnDrag`. Old `ScrollThumbControl`.
-- **NextSplitViewControl** `<NextSplitView>` · NextStackPanelControl — panes with grips between; static
+- **SplitViewControl** `<SplitView>` · StackPanelControl — panes with grips between; static
   `Split(tabView, SplitEdge)` and `Collapse(split, leaving)`. Old `SplitViewControl`,
   [[splitter-and-pane-sizing]] (old).
-- **NextSplitterControl** `<NextSplitter>` · NextButtonControl — grip: resizes a sized pane, or trades weight
+- **SplitterControl** `<Splitter>` · ButtonControl — grip: resizes a sized pane, or trades weight
   between two star panes (`DragStars`). `OnDrag`, `OnPointerEnter/Exit/Press`. Old `SplitterControl`.
 
 ## Tabs
 
-- **NextTabViewControl** `<NextTabView>` · ContainerControl — a strip of tab buttons over its
-  `NextTabItemControl` pages. Regions `properties`, `drop`, `strip`, `layout`. `SetActive`, `CloseTab`,
+- **TabViewControl** `<TabView>` · ContainerControl — a strip of tab buttons over its
+  `TabItemControl` pages. Regions `properties`, `drop`, `strip`, `layout`. `SetActive`, `CloseTab`,
   `CloseOthers`, `CloseToTheRight`, `SplitOff(item, edge)`; subclass hooks `NewOfSameKind`, `BuildCaption`;
   drop target via `DraggingOverStart/Over/End` (hint preview) and `FinishDrag`; nested `CloseButtonControl`.
   Each strip button names `tabContextMenu` and stops the menu walk. XML `TabHeight`, `TabWidth`, `TabColorHex`,
   `ActiveTabColorHex`, `TabHoverColorHex`, `TabInkColorHex`, `GripColorHex`, `GripHoverColorHex`,
   `GripPressColorHex`, `TabContextMenu`. Old `TabViewControl`, [[tab-view-control]] (old),
-  [[next-context-menus]] § Menu bar, tab and view menus.
-- **NextTabItemControl** `<NextTabItem>` · NextPanelControl — one page; XML `Header` is its caption. Old `TabItemControl`.
-- **NextTabStripButtonControl** (no XML) · NextButtonControl — a tab in the strip; a press moved past a
-  threshold becomes a drag and shows `NextDragGhost`, which `OnDragStop` hides. `OnPointerPress/Move/Release`,
+  [[context-menus]] § Menu bar, tab and view menus.
+- **TabItemControl** `<TabItem>` · PanelControl — one page; XML `Header` is its caption. Old `TabItemControl`.
+- **TabStripButtonControl** (no XML) · ButtonControl — a tab in the strip; a press moved past a
+  threshold becomes a drag and shows `DragGhost`, which `OnDragStop` hides. `OnPointerPress/Move/Release`,
   `OnDragStop`. Old `TabStripButtonControl`.
-- **NextDragGhost** static — the dragged control, drawn again in a floating window centred on the pointer.
+- **DragGhost** static — the dragged control, drawn again in a floating window centred on the pointer.
   `Show(control)`, `Hide`, `Follow`; sets `UIEngineModule.rangeRoot` and `rangeRect`; opacity from
   `Control.draggingOpacity` or the `DragGhost` UI setting. Old `DragGhost`,
   [[render-thread-reads-pool-row]].
-- **NextEditableTabsControl** `<NextEditableTabs>` · NextTabViewControl — captions rename in place on
+- **EditableTabsControl** `<EditableTabs>` · TabViewControl — captions rename in place on
   double-click (`BuildCaption`, `NewOfSameKind`). Old `EditableTabsControl`, [[tab-rename-and-double-click]] (old).
 
 ## Window chrome and shell
 
-- **NextWindowFrameControl** `<NextWindowFrame>` · ContainerControl — resize grips on an undecorated window's
+- **WindowFrameControl** `<WindowFrame>` · ContainerControl — resize grips on an undecorated window's
   edges, with cursor shapes. `Measure`, `Arrange`; private `EnsureGrips`, `BeginResize`, `ApplyResize`. Old
   `WindowFrameControl`, [[window-frame-resize]] (old).
-- **NextTitleBarControl** `<NextTitleBar>` · NextStackPanelControl — a left press hands the window to the OS
+- **TitleBarControl** `<TitleBar>` · StackPanelControl — a left press hands the window to the OS
   caption-drag loop (`os.DragByCaption`); `Pump` keeps layout and draw lists running inside it. Old
   `TitleBarControl`, [[window-chrome-and-label]] (old).
-- **NextWorkspaceControl** `<NextWorkspace>` (≤ 1 child) · NextPanelControl — holds the pane layout.
+- **WorkspaceControl** `<Workspace>` (≤ 1 child) · PanelControl — holds the pane layout.
   `LoadDefault`, `LoadPane`, static `In(root)`. XML `Default`, `Pane`. Old `WorkspaceControl`,
   [[session-restore]] (old).
-- **NextMenuButtonControl** `<NextMenuButton ContextMenu="…">` · NextButtonControl — menu bar entry: a left
+- **MenuButtonControl** `<MenuButton ContextMenu="…">` · ButtonControl — menu bar entry: a left
   press drops only the menu it names under it; `takesActiveControl => false`. Caption is an authored
-  `<NextLabel>` child. Old `MenuButtonControl`, [[next-context-menus]] § Menu bar, tab and view menus.
+  `<Label>` child. Old `MenuButtonControl`, [[context-menus]] § Menu bar, tab and view menus.
 
 ## Files
 
-- **NextFileBrowserControl** abstract, no XML · NextScrollableControl — rows of files under `RootPath`.
+- **FileBrowserControl** abstract, no XML · ScrollableControl — rows of files under `RootPath`.
   `Rebuild` → `PopulateRows` → `AddRow`; `BeginRename`. Host hooks: abstract `RootPath`, `PopulateRows`,
   `Activate(file)`; virtual `Accepts`, `DisplayName`, `Rename`. XML `RowHeight`, `Indent`, `RowSpacing`,
   `RowInset`, `GutterWidth`, `RowFontSize`, `RowColorHex`, `RowHoverColorHex`, `RowPressColorHex`,
   `FolderColorHex`, `FileColorHex`, `RowFieldColorHex`. Old `FileBrowserControl`, [[file-browser-tree]] (old).
-- **NextFileTreeControl** abstract · NextFileBrowserControl — folders expand in place: `PopulateRows`,
+- **FileTreeControl** abstract · FileBrowserControl — folders expand in place: `PopulateRows`,
   `Expand`. Old `FileTreeControl`.
-- **NextFileRowControl** `<NextFileRow>` · NextButtonControl — one file or folder row. Old `FileRowControl`.
+- **FileRowControl** `<FileRow>` · ButtonControl — one file or folder row. Old `FileRowControl`.
 
 ## Context menus
 
-- **NextContextMenus** static — menus by name. `Get` parses the `ContextMenuAsset` on first use (`Register`
+- **ContextMenus** static — menus by name. `Get` parses the `ContextMenuAsset` on first use (`Register`
   pre-seeds); `Collect(control)` walks up the parents gathering each `contextMenu`, a line between groups,
   until a `stopsContextMenu`. `OpenOn`/`Open`/`Close`; row input `Entered`, `Clicked`; `DismissUnlessInside`;
   `Tick`. Hosted as the root's last child when it fits, its own window when not. Regions `menus`,
-  `open and close`, `input`. Why: [[next-context-menus]].
-- **NextContextMenuControl** (no XML) · NextStackPanelControl — one menu panel at a `depth`; a nested
-  `Row` : NextButtonControl per entry (enter → `Entered` opens a submenu, release → `Clicked`). Old
+  `open and close`, `input`. Why: [[context-menus]].
+- **ContextMenuControl** (no XML) · StackPanelControl — one menu panel at a `depth`; a nested
+  `Row` : ButtonControl per entry (enter → `Entered` opens a submenu, release → `Clicked`). Old
   `ContextMenuControl`.
-- **ContextMenuEntries** — the menu document: root `<NextContextMenu>` (`ContextMenu`); entries
-  (`ContextMenuEntry`) `<NextContextButton Text Action>` (`ContextMenuButton`), `<NextContextLine>`
-  (`ContextMenuLine`), `<NextContextSubmenu Text>` (`ContextMenuSubmenu`).
+- **ContextMenuEntries** — the menu document: root `<ContextMenu>` (`ContextMenu`); entries
+  (`ContextMenuEntry`) `<ContextButton Text Action>` (`ContextMenuButton`), `<ContextLine>`
+  (`ContextMenuLine`), `<ContextSubmenu Text>` (`ContextMenuSubmenu`).
 - **`Registry.Assets.ContextMenuAsset`** — resolves a menu's path only. Data
   `*/Data/XML/Documents/Menus/*.menu.xml`, registered in the host's `*.assets.xml`; the engine's `view` and
   `tab` in `EngineAssets.assets.xml`.
-- Menu actions read `NextContextMenus.target`: `WindowActions`, `TabActions`, `ViewActions`,
-  `UIActions.Invoking` (old `Core.UISystem.Actions`, new stack first).
+- Menu actions read `ContextMenus.target`: `WindowActions`, `TabActions`, `ViewActions`,
+  `UIActions.Invoking`.
 
 ## XML authoring
 
-- Documents: `*/Data/XML/Documents/UI/*.ui.xml`, elements `Next*`, root `<NextWindow>`; registered as
+- Documents: `*/Data/XML/Documents/UI/*.ui.xml`, elements `Next*`, root `<WindowRoot>`; registered as
   `UIDocumentAsset`s in the host's `*.assets.xml`; built by `Control.ParseXML(name)`.
 - Every element inherits, from `Control`:
   - size — `Width`, `Height`, `MinWidth`, `MinHeight`, `WidthStar`, `HeightStar`, `Margin`, `Padding`
@@ -276,16 +277,15 @@ partial count. Why: [[ui-draw-list]], [[ui-draw-list-publish]].
 
 ## Host controls
 
-- `Thorium.Editor.CustomControls.NextVaultBrowserControl` — new stack, `NextFileTreeControl`: the vault as a
+- `Thorium.Editor.CustomControls.VaultBrowserControl` — new stack, `FileTreeControl`: the vault as a
   tree, renames on disk.
-- `…VaultBrowserControl` — old stack, `FileTreeControl`: note tree; open, create, rename, delete.
-- `Carbon.Editor.CustomControls.NextFrameStripControl` `<NextFrameStrip>` · ContainerControl — frame bars per
+- `Carbon.Editor.CustomControls.FrameStripControl` `<FrameStrip>` · ContainerControl — frame bars per
   thread, peak per bar; `OnPointerPress` maps the point to a bar, `onFrameSelected`.
-- `…NextSessionListControl` `<NextSessionList>` · NextScrollableControl — capture session folders; `Load`,
+- `…SessionListControl` `<SessionList>` · ScrollableControl — capture session folders; `Load`,
   `onSessionLoaded`.
-- `…NextSpanChartControl` `<NextSpanChart Mode>` · ContainerControl — flame chart / timeline; `OnPointerScroll`
-  zooms, `OnPointerPress` + `OnDrag` pan; nested `NextChartScrollThumbControl`.
-- `…NextZoneTableControl` `<NextZoneTable>` · NextScrollableControl — zone statistics per thread; `SetSession`,
+- `…SpanChartControl` `<SpanChart Mode>` · ContainerControl — flame chart / timeline; `OnPointerScroll`
+  zooms, `OnPointerPress` + `OnDrag` pan; nested `ChartScrollThumbControl`.
+- `…ZoneTableControl` `<ZoneTable>` · ScrollableControl — zone statistics per thread; `SetSession`,
   `SetBaseline` (per-frame diff); `Pools` closes each thread with its data pools. XML `DeltaWidth`,
   `SlowerColorHex`, `FasterColorHex`.
 

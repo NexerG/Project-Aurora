@@ -1,13 +1,13 @@
 ---
 name: shader-pipeline
-description: Compile and mirror Aurora's GLSL shaders across the four project trees. Use whenever a shader under Shaders/ is edited or added, a .spv needs rebuilding, or a change touches ControlData layout or descriptor set numbering — the SPIR-V ships in four copies that must stay byte-identical.
+description: Compile and mirror Aurora's GLSL shaders across the four project trees. Use whenever a shader under Shaders/ is edited or added, a .spv needs rebuilding, or a change touches the VulkanControl row layout or descriptor set numbering — the SPIR-V ships in four copies that must stay byte-identical.
 ---
 
 # Shader pipeline
 
 `AuroraEngine/Shaders/` is the source of truth. `Thorium/Shaders/` and `AuroraEditor/Shaders/` are full mirrors.
-`Carbon/Shaders/` mirrors only the UI path — `Modules/Compositor/compositor.*`, `UIEngine/UIEngine.*` and
-`UIRasterizer/UI.*`, source and `.spv` — so the files it lacks are by design, not drift. Never edit a mirror directly.
+`Carbon/Shaders/` mirrors only the UI path — `Modules/Compositor/compositor.*` and `UIEngine/UIEngine.*`,
+source and `.spv` — so the files it lacks are by design, not drift. Never edit a mirror directly.
 
 The loop: **edit the engine copy → compile → mirror source *and* `.spv` to every tree → confirm byte-identical.**
 
@@ -21,13 +21,13 @@ sources fall cosmetically out of step while every `.spv` stayed identical, so no
 One shader — the usual case:
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/AuroraEngine/Shaders" && glslc --target-env=vulkan1.3 UIRasterizer/UI.vert -o UIRasterizer/UI.vert.spv
+cd "$(git rev-parse --show-toplevel)/AuroraEngine/Shaders" && glslc --target-env=vulkan1.3 UIEngine/UIEngine.vert -o UIEngine/UIEngine.vert.spv
 ```
 
-All nineteen:
+All seventeen:
 
 ```bash
-cd "$(git rev-parse --show-toplevel)/AuroraEngine/Shaders" && for s in Modules/Compositor/compositor.vert Modules/Compositor/compositor.frag PathtracingShaders/closesthit.rchit PathtracingShaders/miss.rmiss PathtracingShaders/raygen.rgen PathtracingShaders/shadows.rmiss RadianceCascades2D/Radiance.Drawing.comp RadianceCascades2D/Radiance.LayerCompute.comp RadianceCascades2D/Radiance.Phosphorus.comp RadianceCascades2D/Radiance.Probes.comp Shadowmap.vert Shadowmap.frag UIEngine/UIEngine.vert UIEngine/UIEngine.frag UIRasterizer/UI.vert UIRasterizer/UI.frag vulkan.vert vulkan.frag; do glslc --target-env=vulkan1.3 "$s" -o "$s.spv" || echo "FAILED $s"; done; glslc --target-env=vulkan1.3 RadianceCascades2D/Radiance.compute.comp -o RadianceCascades2D/Radiance.comp.spv || echo "FAILED Radiance.compute.comp"
+cd "$(git rev-parse --show-toplevel)/AuroraEngine/Shaders" && for s in Modules/Compositor/compositor.vert Modules/Compositor/compositor.frag PathtracingShaders/closesthit.rchit PathtracingShaders/miss.rmiss PathtracingShaders/raygen.rgen PathtracingShaders/shadows.rmiss RadianceCascades2D/Radiance.Drawing.comp RadianceCascades2D/Radiance.LayerCompute.comp RadianceCascades2D/Radiance.Phosphorus.comp RadianceCascades2D/Radiance.Probes.comp Shadowmap.vert Shadowmap.frag UIEngine/UIEngine.vert UIEngine/UIEngine.frag vulkan.vert vulkan.frag; do glslc --target-env=vulkan1.3 "$s" -o "$s.spv" || echo "FAILED $s"; done; glslc --target-env=vulkan1.3 RadianceCascades2D/Radiance.compute.comp -o RadianceCascades2D/Radiance.comp.spv || echo "FAILED Radiance.compute.comp"
 ```
 
 `--target-env=vulkan1.3` is not optional. It is what emits SPIR-V 1.6, which is what every shipped `.spv` here
@@ -61,8 +61,6 @@ Silence between the command and `--- comparison done ---` is a pass.
   set means the shader, the pipeline layout, and the `firstSet` argument in that module's `EnqueueDrawCommands`
   all move in the same commit. The compositor is the exception — its own set is still 0. See
   `ClaudeMemory/Decisions/gpu-global-frame-data.md`.
-- **`UI.vert`'s instance block is `scalar` layout on purpose** — it gives a 136-byte stride matching the
-  `Pack=1` C# `ControlData` exactly. Switching it to `std430` shifts every control past the first.
 - **A `.spv` change is invisible to `dotnet build`.** Nothing compiles or validates shaders during the build,
   so the only proof is the byte-identical check above plus a run.
 

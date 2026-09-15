@@ -3,16 +3,18 @@
 **Date:** 2026-09-06
 **Status:** **PARTIAL** — landings 1–5 built and GUI-verified; landing 6 agreed, not built.
 **Scope:** `ArctisAurora.Core.UI` — `UIEngine`, `Control`, `WindowRoot`, `TextRunControl`, `StyleSpan`,
-`IGlyphPressTarget`, `NextCaretControl`, `ArrangeData`, `ControlGeometry`, `VulkanControl`,
+`IGlyphPressTarget`, `CaretControl`, `ArrangeData`, `ControlGeometry`, `VulkanControl`,
 `VulkanControlType`, `ArrangeFlags`, `HorizontalAlignment`, `VerticalAlignment`, `DockMode`, `PointerEvent`,
 `PointerPhase`;
 `ArctisAurora.Core.ECS.EngineEntity` — `Entity.FreeIn`;
-`ArctisAurora.Core.UISystem.Controls.Text.Document` — `TextMeasurer.Run`;
-`ArctisAurora.Core.UISystem` — `Gradients`, `GpuGradient`;
+`TextMeasurer.Run`, `Gradients`, `GpuGradient` (in `Core.UI` since 2026-09-15);
 `ArctisAurora.EngineWork.Rendering.Modules` — `UIEngineModule`, `CompositorModule`;
 `ArctisAurora.EngineWork.Rendering` — `AuroraCamera`, `AGlfwWindow`;
 `Shaders/UIEngine/UIEngine.vert`, `Shaders/UIEngine/UIEngine.frag`;
 `AuroraEngine/Data/XML/Documents/Pools.pools.xml`, `Bootstrap.bootstrap.xml`
+
+**2026-09-15:** 6d dropped every `Next` prefix and dissolved `Core.UISystem` (fonts → `Core.Filing`, the rest →
+`Core.UI`). Type names below are the current ones; prose about the prefix is history.
 
 **Supersedes in approach:** [ui-data-control-split](ui-data-control-split.md), which planned an in-place
 migration of `UIControls`. The resume plan lives in
@@ -43,7 +45,7 @@ One `Control` owns **0..N** `VulkanControl` rows. A panel owns 1; a text run own
 
 - New namespace `ArctisAurora.Core.UI` beside `Core.UISystem`. The old stack is untouched and still runs.
 - Two pools in `Pools.pools.xml`: `UIElements` (`ArrangeData`) and `VulkanControls` (`ControlGeometry` +
-  `VulkanControlData`). Both `Ordered="true"`.
+  `VulkanControl`). Both `Ordered="true"`.
 - `UIEngine` — static, main thread, `Bootstrap` step registered as the last step of `Bootstrap.bootstrap.xml`.
 - `Control : Entity`, `PoolName => "UIElements"`, second row taken through `Entity.AllocateIn`.
 - `UIEngineModule` — second `RenderingModule` on every `RenderWindow`, `compositorOrder = 10`, transparent
@@ -65,7 +67,7 @@ One `Control` owns **0..N** `VulkanControl` rows. A panel owns 1; a text run own
   `ScalingAxis`, `ViewportSize`, `FitTo` and `ToDesignSpace` from the outgoing `WindowControl`.
   `AuroraCamera`'s ortho box is now `ViewportSize`, not the raw extent, and `AGlfwWindow`'s resize callback
   refits it.
-- `UIEngine.NextElementOrder` / `NextControlOrder` — `SortAction` on each pool, one DFS walk, keyed by
+- `UIEngine.ElementOrder` / `NextControlOrder` — `SortAction` on each pool, one DFS walk, keyed by
   `dataHandle` for `UIElements` and `controlHandle` for `VulkanControls`.
 - `UIEngineModule.uiRoot`, `firstInstance` and `instanceCount`; the draw is the window's slice, not the whole
   pool. Published by `UIEngine.RefreshWindowRanges` at the frame edge.
@@ -83,7 +85,7 @@ One `Control` owns **0..N** `VulkanControl` rows. A panel owns 1; a text run own
   **last to first**.
 - `UIEngine.Dispatch` — one walk from the hit control up through its parents until a handler returns `true`.
   Every phase goes through it, `Enter` and `Exit` included.
-- Contexts `NextHovering`, `NextActiveControl`, `NextPressTarget`, with `Context.Set` / `IContext` /
+- Contexts `Hovering`, `ActiveControl`, `PressTarget`, with `Context.Set` / `IContext` /
   `Forget` wired as the outgoing stack wires them.
 - The scaffolding gains `ProbeControl`, which recolours on enter/exit/press/release and consumes or does not.
 
@@ -103,7 +105,7 @@ One `Control` owns **0..N** `VulkanControl` rows. A panel owns 1; a text run own
   per span and calls `MeasureBlock`; `Arrange` walks the lines and writes one glyph per row at
   `rows[1 + charIndex]`. `IndexAt`, `CaretAt` and `TextOrigin` answer caret questions off the same
   `BlockLayout`.
-- **`NextCaretControl`** — the outgoing `CaretControl`'s blink, `Focus`/`Blur` and 2px width, on a `Control`.
+- **`CaretControl`** — the outgoing `CaretControl`'s blink, `Focus`/`Blur` and 2px width, on a `Control`.
 - `IGlyphPressTarget` — `TextRunControl.OnPointerPress` resolves the index and walks up to the first parent
   implementing it, so the run never owns a caret.
 - **Shader**: the vert passes `fragUV` (per-vertex from the row's `uvs`), `fragTextureIndex` and `fragType`;
@@ -149,8 +151,8 @@ touched, no old file deleted — 6a is additive so the tree still builds and boo
   than a separate static class because `Parse` writes a `WindowRoot`'s first arranged rect through the
   `protected` `WriteArranged`. The `WindowControl` special case becomes `WindowRoot`: `WriteArranged` at the
   authored size plus `RegisterDirtyRoot`, where the old one also wrote a transform the new stack has not got.
-- **`Control` is `[A_XSDType("NextVulkanControl", "EntityRegistry", isAbstract: true)]`**, `WindowRoot` is
-  `NextWindow`, `ContainerControl` is `NextContainer` — `Next`-prefixed, [[parallel-stack-name-collisions]].
+- **`Control` is `[A_XSDType("Control", "EntityRegistry", isAbstract: true)]`**, `WindowRoot` is
+  `WindowRoot`, `ContainerControl` is `Container` — `Next`-prefixed, [[parallel-stack-name-collisions]].
 - **~25 authored members gained `[A_XSDElementProperty]`** under the old attribute names, so the same
   `Width`, `Padding`, `ColorHex`, `HorizontalAlignment` an existing `*.ui.xml` writes bind unchanged.
 - **`ContainerControl`** — multi-child `AddChild`, stretch defaults. `AbstractContainerControl`'s replacement,
@@ -175,11 +177,11 @@ touched, no old file deleted — 6a is additive so the tree still builds and boo
 `ContextMenuBuilder` coupling to `Core.UISystem` back out.
 
 **The drag runs end to end, minus delivery to its claimant.** A left press on a control whose `draggable` is
-set calls `StartDrag()` from the base `OnPointerPress`, which sets the `NextDragging` context and tells the
+set calls `StartDrag()` from the base `OnPointerPress`, which sets the `Dragging` context and tells the
 parent `ChildDraggedOut`. `UIEngine.CheckDrag` runs each tick from `Poll` to find what the drag is over. A
 left release calls `UIEngine.EndDrag(point)` **ahead of the release guards**, because a drag ends wherever the
 pointer is and that is rarely still over the control the press landed on; `EndDrag` fires `DraggingOverEnd`,
-then `Control.FinishDrag(dragged, point)` on the target, then clears both the target and `NextDragging`.
+then `Control.FinishDrag(dragged, point)` on the target, then clears both the target and `Dragging`.
 
 **`draggable` is a flag rather than an override, and the press wiring is in the base.** `StartDrag()` stays
 public so a control can claim a drag from something other than a plain press — the old stack's five in-place
@@ -193,7 +195,7 @@ leaves — each walking up until one returns true, the same shape every other ev
 target is the deepest hit, *not* whoever consumed the event, which is the same split
 [[button-states-and-hover-bubbling]] settles for hover: identity is the hit, notification bubbles.
 `UIEngine.FinishDrag()` ends the pair by firing `DraggingOverEnd` and clearing the target; it does not yet
-clear `NextDragging`, offer the drop or tell the claimant, and nothing calls it.
+clear `Dragging`, offer the drop or tell the claimant, and nothing calls it.
 
 **`ChildDraggedOut` is the reparenting hook, not the exit half of the over-trio.** A container is told which
 child a drag took out of it — a tab strip losing a tab is the case — and it fires from `StartDrag`, while the
@@ -239,15 +241,15 @@ the negative control that was actually run, not reasoned about.
 
 ## Ports — 6b1, 2026-09-06
 
-- **`NextButtonControl` overrides `colorHex` rather than writing the tint.** The old button kept the authored
+- **`ButtonControl` overrides `colorHex` rather than writing the tint.** The old button kept the authored
   colour in `controlColorHex` and wrote state into `controlData.style.tint` directly. On the new stack
   `colorHex` *is* the tint writer, so the override keeps the authored value in a private `restColorHex` and
   `ApplyState` assigns `base.colorHex`. `get` returns the authored colour, not the shown one.
 - **The pointer overrides call base and then return `true` unconditionally.** Base invokes the registered
   delegate — which is where an XML `onRelease` fires — and the button consumes regardless, because a button
   owns its own pointer events.
-- **`NextStackPanel`'s enum is `"NextOrientation"`.** Same `FindType`-resolves-by-name collision as
-  `VulkanControlData`; the attribute stays `Orientation=` because attribute names are per-type.
+- **`StackPanel`'s enum is `"Orientation"`.** Same `FindType`-resolves-by-name collision as
+  `VulkanControl`; the attribute stays `Orientation=` because attribute names are per-type.
 - **`WindowRoot.Arrange` ignores its children's `margin`.** It positions by alignment inside the padded box
   and never reads `ca.margin`. Pre-existing — `NextProbe.ui.xml`'s `swatch` carries a `Margin` that does
   nothing — and it means a root child cannot be offset by margin.
@@ -325,7 +327,7 @@ only `DragGhost.Show` caller.
 | `UIEngine.OfferDrop` + `Control.ResolveDrop` | superseded — `EndDrag` calls `Control.FinishDrag` on the target. What it does **not** do is walk up: the target either handles the drop or it is lost, where `OfferDrop` offered each ancestor in turn | tabs |
 | `Control.ResolveDropHint` | superseded — the `DraggingOverStart`/`Over`/`End` trio is the per-tick hint, and `_dragTarget` replaced the `NextHinted` context. A field, not a context, because nothing outside `UIEngine` asks yet | — |
 | `UIEngine.RaiseHovered` | brings the window under the drag forward, once per crossing; needs the active-window latch | tabs |
-| `DragGhost` + `Control.draggingOpacity` | **landed 2026-09-12 as `NextDragGhost`** — `UIEngineModule.rangeRoot`, which `BuildDrawLists` walks in place of `uiRoot`, and `rangeRect`, the box built in `Show` on the main thread because the camera runs on the render thread and may not read a `UIElements` row ([[render-thread-reads-pool-row]]). `NextDragGhost.Follow` runs beside the old one in `Engine.MainTick` | tabs |
+| `DragGhost` + `Control.draggingOpacity` | **landed 2026-09-12 as `DragGhost`** — `UIEngineModule.rangeRoot`, which `BuildDrawLists` walks in place of `uiRoot`, and `rangeRect`, the box built in `Show` on the main thread because the camera runs on the render thread and may not read a `UIElements` row ([[render-thread-reads-pool-row]]). `DragGhost.Follow` runs beside the old one in `Engine.MainTick` | tabs |
 
 ## Row layout — measured, not estimated
 
@@ -347,16 +349,16 @@ undo, the format bar.
 
 | New | Shape | Replaces |
 |---|---|---|
-| `NextBlockControl` | `TextRunControl` — one paragraph, spans over one string | `Block`/`ContentBlock` + every `TextRun` in it |
-| `NextRun` | `<NextRun>`, load/save only | `TextRun`'s authored attributes |
-| `NextDocumentControl` | `ContainerControl`, `IGlyphPressTarget` — blocks, caret, selection, editing, styling | `DocumentControl` |
-| `NextDocumentEditorControl` | `<NextDocumentEditor>` · `NextScrollableControl`, `IContext` | `DocumentEditorControl` |
-| `NextDocumentToolbarControl` | `<NextDocumentToolbar>` · `NextStackPanelControl` | `DocumentToolbarControl` |
-| `NextRichTextDocument`, `NextDocumentEditSession` | `<NextDocument>` + the open file's dirty flag and history | `RichTextDocument`, `DocumentEditSession` |
-| `NextDocumentXml` | load/save over the **same** file format | `DocumentXml` |
-| `NextDocumentAddress`, `NextBlockSnapshot`, `NextDocumentFragment` | `(block, offset)`, a block as data, what a delete removed | `DocumentAddress`, `BlockSnapshot`+`RunSnapshot`, `DocumentFragment` |
-| `NextTextEdit`, `NextSplitEdit`, `NextDeleteRangeEdit`, `NextStyleRangeEdit` | `IEditRecord`s | `RunTextEdit`, `SplitEdit`, `DeleteRangeEdit`, `StyleRangeEdit` |
-| `NextStyleDelta`, `NextCaretStyle` | a change as data; the style the next character takes | `StyleDelta`, `CaretStyle` |
+| `BlockControl` | `TextRunControl` — one paragraph, spans over one string | `Block`/`ContentBlock` + every `TextRun` in it |
+| `Run` | `<Run>`, load/save only | `TextRun`'s authored attributes |
+| `DocumentControl` | `ContainerControl`, `IGlyphPressTarget` — blocks, caret, selection, editing, styling | `DocumentControl` |
+| `DocumentEditorControl` | `<DocumentEditor>` · `ScrollableControl`, `IContext` | `DocumentEditorControl` |
+| `DocumentToolbarControl` | `<DocumentToolbar>` · `StackPanelControl` | `DocumentToolbarControl` |
+| `RichTextDocument`, `DocumentEditSession` | `<Document>` + the open file's dirty flag and history | `RichTextDocument`, `DocumentEditSession` |
+| `DocumentXml` | load/save over the **same** file format | `DocumentXml` |
+| `DocumentAddress`, `BlockSnapshot`, `DocumentFragment` | `(block, offset)`, a block as data, what a delete removed | `DocumentAddress`, `BlockSnapshot`+`RunSnapshot`, `DocumentFragment` |
+| `TextEdit`, `SplitEdit`, `DeleteRangeEdit`, `StyleRangeEdit` | `IEditRecord`s | `RunTextEdit`, `SplitEdit`, `DeleteRangeEdit`, `StyleRangeEdit` |
+| `StyleDelta`, `CaretStyle` | a change as data; the style the next character takes | `StyleDelta`, `CaretStyle` |
 
 `TextStyleType`, `TextStyle`, `DocumentLayout`, `DocumentSettings`, `TextMeasurer` and `Core.Editing.UndoStack`
 are **shared with the outgoing stack**, not copied.
@@ -378,7 +380,7 @@ New on this stack: the active context is resolved from the control the press *hi
 caption row inside a button resolved to itself and the walk for the focused note came back empty. The captions,
 the chevrons and the row are `hitTestable = false`, which lands the press on the button that opts out.
 
-**`NextTabViewControl.CloseTab` saves a dirty session before closing**; the outgoing stack saved
+**`TabViewControl.CloseTab` saves a dirty session before closing**; the outgoing stack saved
 unconditionally. `NoteActions` and `TextInputActions` gained new-stack branches beside the old ones rather
 than a shared abstraction — both stacks live until 6d, and the two editors share no base type.
 
@@ -470,7 +472,7 @@ and a degenerate rect is simply false. `HitsNode` is the single method a future 
 **The new contexts are `Next`-prefixed.** `A_ActiveContext` registers by name into one dictionary and the last
 registration wins, so a second `[A_ActiveContext("ActiveControl")]` takes the old stack's slot — and
 `Thorium.contexts.xml` derives `ActiveTabViewer` from `ActiveControl`, so Thorium's tab context would quietly
-stop tracking. Same shape as the `VulkanControlData` XSD-name workaround; landing 6 renames both.
+stop tracking. Same shape as the `VulkanControl` XSD-name workaround; landing 6 renames both.
 
 **One handler per event, last registration wins.** A multicast `Func<PointerEvent, bool>` returns only the last
 delegate's answer, and OR-ing the invocation list allocates an array on every dispatch — including the `Move`
@@ -520,13 +522,13 @@ arrange walk would need a per-character span map. `Arrange` already rewrites eve
 override invalidates arrange instead — the same full rewrite the outgoing `RepointGlyphs` does.
 
 **A clean text run skips `Measure`, so its colour change re-measures (2026-09-14).** Invalidating one block
-walks `MeasureDirty` up to the document, and `NextDocumentControl.Measure` measures every block — each keystroke
+walks `MeasureDirty` up to the document, and `DocumentControl.Measure` measures every block — each keystroke
 rebuilt the runs, flattened and rewrapped every paragraph in the note. `TextRunControl.Measure` now returns
 `desired` when the run is not dirty and its wrap width equals `_wrapWidth`; a resize still rewraps, since
 invalidation walks up and never down. The dirty flag is then the only thing that reruns `BuildRuns`, which
 reads `colorHex`, so for text runs the setter invalidates layout and the paragraph above no longer holds. A
 recolour used to reach the glyphs only when some later measure happened to pass through, and
-`NextFileBrowserControl.RestyleRows` recolours labels without invalidating. Rejected: building `_runColors` in
+`FileBrowserControl.RestyleRows` recolours labels without invalidating. Rejected: building `_runColors` in
 `Arrange` to keep a recolour arrange-only — every block below a growing paragraph re-arranges per keystroke and
 would re-parse its spans' hex each time. Rejected: caching `Flatten`'s output, which is width-independent — 24 B
 per character held for every open block against [[thorium-editor-architecture]]'s layout budget, for a saving
@@ -609,7 +611,7 @@ from XML today, and `contextMenus` is read by `ContextMenus.Compose`, which is s
   re-checks the button's real state. The `ownsDrag` exemption and the stale-release guard are one fix.
 - **`EndDrag` does not walk up.** `Control.FinishDrag` is called on the drag target alone, where the old
   `OfferDrop` offered each ancestor in turn until one took it.
-- **`EndDrag` clears `NextDragging` after the callbacks**, not before, so a handler that reads the context
+- **`EndDrag` clears `Dragging` after the callbacks**, not before, so a handler that reads the context
   rather than its `dragged` argument still sees a live drag. Both handlers are given `dragged` outright.
 - **`draggable` on an ancestor still fires**, because the press bubbles — a `draggable` container drags when
   a child does not consume the press. Correct, and worth knowing before setting the flag high in a tree.
@@ -625,9 +627,9 @@ from XML today, and `contextMenus` is read by `ContextMenus.Compose`, which is s
   lets a bold run continue a line its predecessor started is a block concern too.
 - `IndexAt`/`CaretAt` duplicate `TextControl.OffsetAt`/`CaretAt` while both stacks live. The outgoing copy
   dies at landing 6.
-- `Core.UI` compiles against `Core.UISystem` for `TextMeasurer`, `FontStyle`, `Glyph`, `AtlasMetaData`,
-  `GlyphControl.CellScale`/`atlasInkMargin` and `Gradients`. Neither the font system nor the gradient table is
-  the control stack and both should survive the landing-6 delete; where they land is not decided.
+- ~~`Core.UI` compiles against `Core.UISystem` for `TextMeasurer`, `FontStyle`, `Glyph`, `AtlasMetaData`,
+  `GlyphControl.CellScale`/`atlasInkMargin` and `Gradients`.~~ **Settled 2026-09-15** — the font system is in
+  `Core.Filing`; `TextMeasurer` and `Gradients` are in `Core.UI`.
 - **An image with a mask is not expressible** — one `textureIndex`, one UV set, meaning chosen by `kind`.
 - **A gradient on an `ImageControl` replaces the texture**, because the ramp assigns `color` outright after
   the image multiply. Consistent with the old stack, and untested — nothing sets both.

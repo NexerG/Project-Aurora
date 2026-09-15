@@ -45,7 +45,7 @@ grep -nE '(public|private|internal|protected).*\(.*\)\s*$' path/to/File.cs
 
 A written index would rot exactly the way `Patterns/finding-code.md` says recorded paths rot, and faster.
 
-**UI work starts at `Context/ui-orientation.md`** — one entry per `UINext` component: what it does, its XML
+**UI work starts at `Context/ui-orientation.md`** — one entry per `UI` component: what it does, its XML
 element, entry points, region names. It is a component index, not a method index: the entry says which region
 to `sed`, and methods stay a grep. Read the entry, not the source file; dig into code only when the entry is
 not enough.

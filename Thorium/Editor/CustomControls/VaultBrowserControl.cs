@@ -1,11 +1,7 @@
-using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.UISystem;
-using ArctisAurora.Core.UISystem.Controls.Containers;
-using ArctisAurora.Core.UISystem.Controls.Text.Document;
+using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
-using ArctisAurora.EngineWork.Rendering;
 using Microsoft.VisualBasic.FileIO;
 using System.Xml.Linq;
 
@@ -22,6 +18,11 @@ namespace Thorium.Editor.CustomControls
         // context declared in Contexts/Thorium.contexts.xml
         private const string tabsContext = "ActiveTabViewer";
 
+        // menu documents registered in ThoriumAssets.assets.xml
+        private const string vaultMenu = "vault";
+        private const string folderMenu = "vault-folder";
+        private const string noteMenu = "vault-note";
+
         // matching the DocumentEditor attributes in Workspace.ui.xml
         private const string caretHex = "#23221E";
         private const string selectionHex = "#D7D5CD";
@@ -31,6 +32,7 @@ namespace Thorium.Editor.CustomControls
 
         public VaultBrowserControl()
         {
+            contextMenu = vaultMenu;
             Rebuild();
         }
 
@@ -47,26 +49,63 @@ namespace Thorium.Editor.CustomControls
 
         protected override void Activate(FileObject file) => Open(file.path);
 
-        // The list's own ground, which stands for the vault root.
-        public override void BuildContextMenu(ContextMenuBuilder menu) => menu.Add("New note", () => NewNote(RootPath));
+        protected override void Rename(FileObject file, string newName) => RenameNote(file.path, newName);
 
-        protected override void BuildRowMenu(FileObject file, ContextMenuBuilder menu)
-        {
-            if (file.type == FileObject.FileType.Directory)
-            {
-                menu.Add("New note", () => NewNote(file.path));
-                return;
-            }
-
-            menu.Add("New note", () => NewNote(file.parent.path));
-            menu.Add("Rename note", () => BeginRename(file));
-            menu.Add("Duplicate note", () => DuplicateNote(file));
-            menu.Add("Delete note", () => DeleteNote(file));
-        }
+        protected override string RowContextMenu(FileObject file) =>
+            file.type == FileObject.FileType.Directory ? folderMenu : noteMenu;
 
         #region ---- note operations ----
+        [A_XSDActionDependency("Notes.New", "UI", "Creates a note at the vault root and opens it")]
+        public static void New()
+        {
+            VaultBrowserControl browser = Browser();
+            browser?.NewNote(browser.RootPath);
+        }
+
+        [A_XSDActionDependency("Notes.NewHere", "UI", "Creates a note beside the entry the menu was opened on")]
+        public static void NewHere()
+        {
+            FileRowControl row = MenuRow();
+            if (row == null) { New(); return; }
+
+            Browser()?.NewNote(row.file.type == FileObject.FileType.Directory ? row.file.path : row.file.parent.path);
+        }
+
+        [A_XSDActionDependency("Notes.Rename", "UI", "Turns the name of the note the menu was opened on into a field")]
+        public static void RenameEntry()
+        {
+            FileRowControl row = MenuRow();
+            if (row != null) Browser()?.BeginRename(row.file);
+        }
+
+        [A_XSDActionDependency("Notes.Duplicate", "UI", "Copies the note the menu was opened on and opens the copy")]
+        public static void Duplicate()
+        {
+            FileRowControl row = MenuRow();
+            if (row != null) Browser()?.DuplicateNote(row.file);
+        }
+
+        [A_XSDActionDependency("Notes.Delete", "UI", "Asks, then sends the note the menu was opened on to the recycle bin")]
+        public static void Delete()
+        {
+            FileRowControl row = MenuRow();
+            if (row != null) Browser()?.DeleteNote(row.file);
+        }
+
+        // The row the open menu was opened on, or null when it was opened on the browser's ground.
+        private static FileRowControl MenuRow()
+        {
+            for (Control c = ContextMenus.target; c != null; c = c.parent as Control)
+                if (c is FileRowControl row) return row;
+
+            return null;
+        }
+
+        private static VaultBrowserControl Browser() =>
+            Engine.primary.ui.uiRoot?.FindByName(browserName) as VaultBrowserControl;
+
         private void NewNote(string folder) =>
-            NoteNameWindow.Ask(RenderWindow.Of(this), "Untitled", name => CreateNote(folder, name), null, null);
+            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreateNote(folder, name), null, null);
 
         // A note needs a block holding a run before it can be typed into — the editor places its
         // caret on a run and builds neither.
@@ -75,8 +114,8 @@ namespace Thorium.Editor.CustomControls
             string path = FreePath(folder, name);
 
             RichTextDocument document = new RichTextDocument { name = Path.GetFileNameWithoutExtension(path) };
-            ContentBlock block = new ContentBlock();
-            block.AddChild(new TextRun { text = string.Empty });
+            BlockControl block = new BlockControl();
+            block.AppendRun(new Run());
             document.blocks.Add(block);
             document.Save(path);
             block.Destroy();
@@ -97,7 +136,20 @@ namespace Thorium.Editor.CustomControls
             Open(path);
         }
 
-        protected override void Rename(FileObject file, string newName) => RenameNote(file.path, newName);
+        private void DeleteNote(FileObject file) =>
+            ConfirmWindow.Ask(UIEngine.WindowOf(this), $"Delete \"{DisplayName(file)}\"?",
+                () => DeleteFile(file.path), null);
+
+        // The tab goes first and goes unwritten, or closing it would put the note back on disk.
+        private void DeleteFile(string path)
+        {
+            TabItemControl open = TabViewControl.FindOpenDocument(path, out TabViewControl owner);
+            if (open != null) owner.FinishClose(open);
+
+            FileSystem.DeleteFile(path, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+            Rebuild();
+        }
+        #endregion
 
         // The name lives in three places: the file, the Name inside it, and every editor already
         // holding the note open. Static, because a tab renames through here too and has no row.
@@ -122,50 +174,35 @@ namespace Thorium.Editor.CustomControls
             (Engine.primary.ui.uiRoot.FindByName(browserName) as VaultBrowserControl)?.Rebuild();
         }
 
-        private void DeleteNote(FileObject file) =>
-            ConfirmWindow.Ask(RenderWindow.Of(this), $"Delete \"{DisplayName(file)}\"?", () => Delete(file.path), null);
-
-        // The tab goes first and goes unwritten, or closing it would put the note back on disk.
-        private void Delete(string path)
+        // Focuses the note wherever it is already open, and only opens a tab when it is not.
+        private static void Open(string notePath)
         {
-            TabItemControl open = TabViewControl.FindOpenDocument(path, out TabViewControl owner);
-            if (open != null) owner.DiscardTab(open);
+            TabItemControl already = TabViewControl.FindOpenDocument(notePath, out TabViewControl owner);
+            if (already != null)
+            {
+                owner.SetActive(already);
+                UIEngine.WindowOf(owner)?.Focus();
+                return;
+            }
 
-            FileSystem.DeleteFile(path, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
-            Rebuild();
+            TabViewControl tabs = FocusedTabs()
+                ?? Engine.primary.ui.uiRoot.FindByName(tabsName) as TabViewControl;
+            if (tabs == null) return;
+
+            TabItemControl tab = BuildTab(notePath);
+            tabs.AddChild(tab);
+            tabs.SetActive(tab);
         }
 
-        // "Name", then "Name 2", "Name 3" — a name already taken is never written over.
-        private static string FreePath(string folder, string baseName)
-        {
-            string path = Path.Combine(folder, baseName + ".xml");
-            for (int i = 2; File.Exists(path); i++)
-                path = Path.Combine(folder, $"{baseName} {i}.xml");
-
-            return path;
-        }
-
-        // Copying a note copies the name written inside it, which is what a tab captions itself with.
-        private static void WriteName(string path, string name)
-        {
-            XDocument xml = XDocument.Load(path);
-            xml.Root!.SetAttributeValue("Name", name);
-            xml.Save(path);
-        }
-        #endregion
-
-        // Called from app startup once the whole tree exists — the rows are built while the XML is
-        // still parsing, before the editor is, and OnStart cannot do it because Engine.Interpolate
-        // drains its queue with a foreach and building a document creates entities.
+        // Opens the first note in tree order.
         public static void OpenFirstNote()
         {
-            VaultBrowserControl browser = Engine.primary.ui.uiRoot.FindByName(browserName) as VaultBrowserControl;
+            VaultBrowserControl browser = Browser();
             string note = browser?.FirstNote(browser.root);
             if (note != null) Open(note);
         }
 
-        // Walks the model rather than the rows — a collapsed folder contributes no row but its
-        // notes still count for tree order.
+        // Walks the model rather than the rows, so a collapsed folder's notes still count.
         private string FirstNote(FileObject folder)
         {
             if (folder == null) return null;
@@ -189,41 +226,7 @@ namespace Thorium.Editor.CustomControls
         private static TabViewControl FocusedTabs()
         {
             TabViewControl view = Context.Get<TabViewControl>(tabsContext);
-            return view != null && RenderWindow.Of(view) == Engine.primary ? view : null;
-        }
-
-        // The first pane in the window, whatever it is named.
-        private static TabViewControl FirstTabView(Entity node)
-        {
-            if (node == null) return null;
-            if (node is TabViewControl view) return view;
-
-            foreach (Entity child in node.children)
-                if (FirstTabView(child) is TabViewControl found)
-                    return found;
-
-            return null;
-        }
-
-        // Focuses the note wherever it is already open, and only opens a tab when it is not.
-        private static void Open(string notePath)
-        {
-            TabItemControl already = TabViewControl.FindOpenDocument(notePath, out TabViewControl owner);
-            if (already != null)
-            {
-                owner.SetActive(already);
-                RenderWindow.Of(owner)?.Focus();
-                return;
-            }
-
-            TabViewControl tabs = FocusedTabs()
-                ?? Engine.primary.ui.uiRoot.FindByName(tabsName) as TabViewControl
-                ?? FirstTabView(Engine.primary.ui.uiRoot);
-            if (tabs == null) return;
-
-            TabItemControl tab = BuildTab(notePath);
-            tabs.AddChild(tab);
-            tabs.SetActive(tab);
+            return view != null && UIEngine.WindowOf(view) == Engine.primary ? view : null;
         }
 
         // One tab holding one note, for whichever view is going to take it. Loaded before the tab is
@@ -239,6 +242,7 @@ namespace Thorium.Editor.CustomControls
                 thumbPressColorHex = thumbPressHex
             };
             editor.LoadPath(notePath);
+            editor.onNamed = name => RenameNote(editor.session.path, name);
 
             TabItemControl tab = new TabItemControl
             {
@@ -248,6 +252,23 @@ namespace Thorium.Editor.CustomControls
             };
             tab.AddChild(editor);
             return tab;
+        }
+
+        // "Name", then "Name 2", "Name 3" — a name already taken is never written over.
+        private static string FreePath(string folder, string baseName)
+        {
+            string path = Path.Combine(folder, baseName + ".xml");
+            for (int i = 2; File.Exists(path); i++)
+                path = Path.Combine(folder, $"{baseName} {i}.xml");
+
+            return path;
+        }
+
+        private static void WriteName(string path, string name)
+        {
+            XDocument xml = XDocument.Load(path);
+            xml.Root!.SetAttributeValue("Name", name);
+            xml.Save(path);
         }
     }
 }

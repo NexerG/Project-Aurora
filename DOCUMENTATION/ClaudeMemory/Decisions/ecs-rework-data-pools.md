@@ -235,7 +235,7 @@ rebuild — landed in slice 6 as `PoolCursor.OrderChanged`.
   `Allocate` hands out dense index `_count`, which is exactly where the last removal left a dead
   element's data, so a new element started with it. `Control()` resets only position, alignment
   and flags, so a control built after one was destroyed inherited its `preferredWidth`, `padding`
-  and `margin` — surfaced by context menus ([[next-context-menus]]), whose captions wrapped a
+  and `margin` — surfaced by context menus ([[context-menus]]), whose captions wrapped a
   character per line. `IPoolColumn.Clear(dense)` / `PoolColumn<T>.Clear` zero the row. Chosen
   over resetting in `Control()` (user): that fixes one entity type and leaves every other pool
   handing out stale rows.

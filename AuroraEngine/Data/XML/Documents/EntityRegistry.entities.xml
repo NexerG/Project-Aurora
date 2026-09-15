@@ -4,6 +4,5 @@
 	<List ListName="Entities" EntityType="Entity"/>
 	<List ListName="EntitiesToUpdate" EntityType="Entity"/>
 	<List ListName="EntitiesOnDestroy" EntityType="Entity"/>
-	<List ListName="Controls" EntityType="VulkanControl"/>
 
 </EntityRegistries>

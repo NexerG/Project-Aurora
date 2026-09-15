@@ -486,11 +486,6 @@ namespace ArctisAurora.EngineWork.Rendering
             _glfw.SetCursorEnterCallback(handle, callback);
         }
 
-        internal void SetWindowFocusCallback(WindowFocusCallback callback)
-        {
-            _glfw.SetWindowFocusCallback(handle, callback);
-        }
-
         internal void CreateSurface()
         {
             if (!Renderer.vk.TryGetInstanceExtension(Renderer.instance, out driverSurface))
@@ -519,7 +514,6 @@ namespace ArctisAurora.EngineWork.Rendering
             windowSize = new Extent2D((uint)fbWidth, (uint)fbHeight);
 
             owner.ui.uiRoot?.FitTo(windowSize);
-            owner.uiNext.uiRoot?.FitTo(windowSize);
         }
     }
 }

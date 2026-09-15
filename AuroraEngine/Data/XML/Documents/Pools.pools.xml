@@ -2,13 +2,7 @@
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:schemaLocation="http://arctisaurora/AuroraDataPoolsTypes ../Schemas/DataPoolsTypeSchema.xsd">
 
-	<Pool Name="UIControls" System="Main" Capacity="1024" Ordered="true" SortAction="UI.DFSOrder" Growth="Multiplicative" GrowthValue="2">
-		<Component Type="TransformData"/>
-		<Component Type="ControlData"/>
-		<Component Type="GpuTransform"/>
-	</Pool>
-
-	<Pool Name="UIElements" System="Main" Capacity="1024" Ordered="true" SortAction="UI.NextElementOrder" Growth="Multiplicative" GrowthValue="2">
+	<Pool Name="UIElements" System="Main" Capacity="1024" Ordered="true" SortAction="UI.ElementOrder" Growth="Multiplicative" GrowthValue="2">
 		<Component Type="ArrangeData"/>
 	</Pool>
 

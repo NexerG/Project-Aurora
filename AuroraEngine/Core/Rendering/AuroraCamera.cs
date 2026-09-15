@@ -8,7 +8,6 @@ using Keys = Silk.NET.GLFW.Keys;
 
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UI;
-using ArctisAurora.Core.UISystem.Controls;
 
 namespace ArctisAurora.EngineWork.Rendering
 {   
@@ -41,7 +40,7 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal AuroraCamera(RenderingModule owner) : this(owner, owner.window.imageCount) { }
 
-        // The dead renderer types (Rasterizer, Pathtracing, RadianceCascades2D, UIRenderer) build a
+        // The dead renderer types (Rasterizer, Pathtracing, RadianceCascades2D) build a
         // camera with no module behind it; three images is what they always assumed.
         internal AuroraCamera() : this(null, 3) { }
 
@@ -90,30 +89,6 @@ namespace ArctisAurora.EngineWork.Rendering
                     Matrix4x4.Invert(_projection, out _tempProjection);
                     _view = _tempView;
                     _projection = _tempProjection;
-                    break;
-
-                case ERendererTypes.UITemp:
-                    UIModule ui = (UIModule)_owner;
-                    Vector2 box;
-                    Vector2 origin = Vector2.Zero;
-
-                    if (ui.rangeRoot != null)
-                    {
-                        // a drag preview: the control's own box, so it fills the window at any extent
-                        box = ui.rangeRoot.arrangedRect.size;
-                        origin = new Vector2(ui.rangeRoot.arrangedRect.x, ui.rangeRoot.arrangedRect.y);
-                    }
-                    else
-                    {
-                        WindowControl root = ui.uiRoot;
-                        box = root != null
-                            ? root.ViewportSize(_extent)
-                            : new Vector2(_extent.Width, _extent.Height);
-                    }
-
-                    _view = Matrix4x4.CreateLookAt(Vector3.Zero, _front, _localUp);
-                    _projection = Matrix4x4.CreateOrthographicOffCenter(origin.X, origin.X + box.X,
-                        origin.Y, origin.Y + box.Y, 0.01f, 512f);
                     break;
 
                 case ERendererTypes.UIEngine:

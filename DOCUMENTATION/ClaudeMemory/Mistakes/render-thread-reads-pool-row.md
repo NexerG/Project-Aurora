@@ -18,7 +18,7 @@ margins, alignment. The old `VulkanControl.arrangedRect` was a plain field, whic
 asserted there.
 
 **The rule:** anything the render thread needs from a control is copied into a plain field on the module, on the
-main thread. The ghost's box is `UIEngineModule.rangeRect`, built in `NextDragGhost.Show` before the ghost is
+main thread. The ghost's box is `UIEngineModule.rangeRect`, built in `DragGhost.Show` before the ghost is
 shown and cleared in `Hide`; the camera reads only that. `geometry` and `visual` are plain fields and are fine —
 that is what the draw list copies.
 

@@ -277,9 +277,8 @@ namespace ArctisAurora.Core.UI
         public Vector4 gradientRect;
     }
 
-    // Paint, one row per drawn quad. XSD-named VulkanControlData so it does not collide with the
-    // outgoing UISystem.Controls.VulkanControl, whose [A_XSDType] name is resolved by name alone.
-    [StructLayout(LayoutKind.Sequential, Pack = 1), A_XSDType("VulkanControlData", "DataPools")]
+    // Paint, one row per drawn quad.
+    [StructLayout(LayoutKind.Sequential, Pack = 1), A_XSDType("VulkanControl", "DataPools")]
     public struct VulkanControl
     {
         // textureIndex when the row samples nothing; slot 0 is a real texture

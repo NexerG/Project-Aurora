@@ -1,7 +1,6 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.UI;
-using ArctisAurora.Core.UISystem.Controls.Text;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using System.Text;
@@ -24,7 +23,7 @@ namespace ArctisAurora.Core.Diagnostics
         private const int blockCount = 1000;
         private const int blockChars = 1000;
 
-        private NextRichTextDocument document = null!;
+        private RichTextDocument document = null!;
         private int tick;
         private int startWidth;
         private int startHeight;
@@ -47,26 +46,26 @@ namespace ArctisAurora.Core.Diagnostics
                 builder.Append("The quick brown fox jumps over the lazy dog while every line of the note wraps again. ");
             string paragraph = builder.ToString(0, blockChars);
 
-            document = new NextRichTextDocument();
+            document = new RichTextDocument();
             for (int i = 0; i < blockCount; i++)
             {
-                NextBlockControl block = new NextBlockControl();
-                block.AppendRun(new NextRun { text = paragraph });
+                BlockControl block = new BlockControl();
+                block.AppendRun(new Run { text = paragraph });
                 document.blocks.Add(block);
             }
 
-            NextDocumentEditorControl editor = new NextDocumentEditorControl
+            DocumentEditorControl editor = new DocumentEditorControl
             {
                 horizontalAlignment = HorizontalAlignment.Stretch,
                 verticalAlignment = VerticalAlignment.Stretch
             };
             WindowRoot root = new WindowRoot();
             root.AddChild(editor);
-            Engine.primary.uiNext.uiRoot = root;
+            Engine.primary.ui.uiRoot = root;
             editor.LoadDocument(document);
 
-            NextBlockControl first = document.blocks[0];
-            ((NextDocumentControl)first.parent).SetCaret(first, first.Length);
+            BlockControl first = document.blocks[0];
+            ((DocumentControl)first.parent).SetCaret(first, first.Length);
             editor.FocusCaret();
 
             AGlfwWindow._glfw.GetWindowSize(Engine.primary.os.handle, out startWidth, out startHeight);

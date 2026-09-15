@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<NextContextMenu>
-	<NextContextButton Text="New note" Action="Notes.NewHere"/>
-	<NextContextButton Text="Rename note" Action="Notes.Rename"/>
-	<NextContextButton Text="Duplicate note" Action="Notes.Duplicate"/>
-	<NextContextLine/>
-	<NextContextButton Text="Delete note" Action="Notes.Delete"/>
-</NextContextMenu>
+<ContextMenu>
+	<ContextButton Text="New note" Action="Notes.NewHere"/>
+	<ContextButton Text="Rename note" Action="Notes.Rename"/>
+	<ContextButton Text="Duplicate note" Action="Notes.Duplicate"/>
+	<ContextLine/>
+	<ContextButton Text="Delete note" Action="Notes.Delete"/>
+</ContextMenu>
