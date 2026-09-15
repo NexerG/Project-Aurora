@@ -14,7 +14,7 @@ Dependencies:
 Implementors:
   - "[[PROFILING]]"
 Namespace: ArctisAurora.Core.Diagnostics
-SourceFiles: AuroraEngine/Core/Diagnostics/Profiling.cs, AuroraEngine/Core/Diagnostics/FrameSpool.cs, AuroraEngine/Core/Diagnostics/ProfilingSettings.cs, AuroraEngine/Core/Bootstrapper.cs
+SourceFiles: AuroraEngine/Core/Diagnostics/Profiling.cs, AuroraEngine/Core/Diagnostics/FrameSpool.cs, AuroraEngine/Core/Diagnostics/ProfilingSettings.cs, AuroraEngine/Core/Diagnostics/ProfileScenario.cs, AuroraEngine/Core/Bootstrapper.cs
 VerifiedAgainst: 2026-09-03
 ---
 ## Overview
@@ -133,6 +133,39 @@ Setting `ProfilingCapture.Mode` to `Boot` does the same for a run with no argume
 Neither reaches `XSDGenerator.GenerateXSD()`, which every application runs in `Main` before the engine is initialised at all.
 
 One number to read carefully: `--profile=N` is N frames **per thread**, and on the main thread the bootstrap frame is one of them. A 120-frame capture writes 1 boot frame and 119 main frames, against a full 120 each from render and physics.
+
+### A scenario
+`--profile-scenario` records typing and a window resize on a 1,000,000-character note in one capture, with nobody at the keyboard, and quits when it is done.
+
+```
+Thorium.exe --profile-scenario
+```
+
+`ProfileScenario.Arm` reads the flag from `Engine.Init`, right after `ArmBoot`. It points the settings write root at a `ProfileScenario` folder beside the application's own, because the scenario replaces the window's tree and shutdown would otherwise save that empty layout over the real one. Captures and the log still land in the application's usual folders, so Carbon lists the session with the rest. The scenario itself is an entity, so it runs once a tick inside `Interpolate`, before layout resolves — an edit and the remeasure it causes land in the same frame.
+
+```
+ProfileScenario.OnTick()
+	tick += 1
+	if tick is 2
+		build 1,000 paragraphs of 1,000 characters into a note
+		replace the primary window's tree with one editor showing it
+		put the caret at the end of the first paragraph and focus the editor
+	if tick is 30
+		Profiling.Capture(240)
+	if tick is 31 to 150
+		zone Scenario.Type
+			queue one character and run Text.Write, the same action a key press runs
+	if tick is 151 to 270
+		zone Scenario.Resize
+			set the window 8 px narrower each tick for 60 ticks, then 8 px wider back to where it started
+	if tick is 271
+		log the note's length and the window's size
+		post Shutdown.Request
+```
+
+The tree waits until tick 2 so the application's own tree has been laid out once before it is destroyed. Destroyed any earlier, layout still ran over it and built children under controls that were already dead, and those children outlived the tree and stopped the UI pool from resequencing on every frame of the capture.
+
+In the file, frames carrying `Scenario.Type` are the typing half and frames carrying `Scenario.Resize` are the resize half. Each resize frame rewraps every paragraph inside `ResolveLayout`. A run counts toward `Keep` like any other capture, so it prunes the oldest session. The editor has no file behind it, so no undo records are made, which a real keystroke would pay for. See `ClaudeMemory/Decisions/engine-profiling.md` §15.
 
 ### The frame file
 One file per thread, `Profiling/<yyyyMMdd-HHmmss>/<thread>.frames.xml`.

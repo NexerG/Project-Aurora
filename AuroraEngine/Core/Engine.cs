@@ -99,6 +99,7 @@ namespace ArctisAurora.EngineWork
 
             Bootstrapper.Load(Paths.BOOTSTRAP);
             Profiling.ArmBoot();
+            ProfileScenario.Arm();
             Bootstrapper.RunPhase("Bootstrap");
             Shutdown.Load(Paths.SHUTDOWN);
 

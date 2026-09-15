@@ -129,6 +129,35 @@ slot", so the title centres with no change to `UI.xml` or `TabWindow.xml`.
   the same as CSS. `Thorium` measures ink at x 35..85, y 10..21 in its 120x32 box — centre (60,
   15.5) against (59.5, 15.5).
 
+## Every measure writes one cached `PenChar` array (user, 2026-09-15)
+
+`Flatten` built a fresh `List<PenChar>` with no capacity on every `MeasureBlock`: 24 B a character, grown
+4 → 8 → … by doubling, so a measure allocated about twice its final array. Found through
+`--profile-scenario` ([[engine-profiling]] §15) — typing into a 1,001-char paragraph cost `ResolveLayout`
+50,688 B a keystroke, and 99,864 B once the paragraph passed 1,024 chars; the list's share matched to the byte.
+
+- `TextMeasurer._penChars` is a static `PenChar[]`, 1024 to start. `Flatten` sums the runs' `charCount`, doubles
+  the capacity until it fits, allocates a new array only if it grew — no copy, the contents are overwritten —
+  writes by index and returns the count. `MeasureBlock` and `AppendLine` read the array up to that count.
+- **Plain `static`, not `[ThreadStatic]` (user).** Both callers — `TextRunControl.Measure` and
+  `TextControl.Measure` — run in layout on main, and nothing in the UI measures off it. **A measure from any
+  other thread would corrupt layouts silently.**
+- **Never grows back down.** One long paragraph keeps its array for the life of the process.
+- **Not touched:** the rest of a measure's output — `BlockLayout`, each `TextLine` and its `segments` list — is
+  still built fresh, ~1.4 KB for a 6-line paragraph.
+
+| `--profile-scenario` | Before | After |
+|---|---|---|
+| typing, `ResolveLayout` A | avg 90,129 B (50,688 → 106,736) | avg 1,873 B, steady 1,384; 50,560 once, at 1,025 chars |
+| resizing, `ResolveLayout` A | 51.0 MB a frame | 1.64 MB a frame |
+| typing, `ResolveLayout` time | 3.21 ms | 3.30 ms |
+| resizing, `ResolveLayout` time | 86.56 ms | 68.72 ms |
+
+**Verified:** builds; the same scenario run on the old and new builds, above. Screenshots of both, taken while
+typing, break every line at the same word. One "after" frame showed a line of scrambled glyphs for a single
+frame; a wrong measure would persist across frames because layout is cached, so it is taken for the draw-list
+tearing [[ui-draw-list-publish]] leaves open — **not proven**. The old stack's `TextControl` was not exercised.
+
 ## Still open
 
 - ~~`runColorHex` reaches no glyph.~~ Fixed 2026-08-07. `runColorHex` is deleted; a run carries the

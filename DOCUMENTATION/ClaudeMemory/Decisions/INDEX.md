@@ -58,7 +58,7 @@ Standing constraints (ECS storage, Vulkan internals, physics, XSD-not-JSON) are 
 
 | Note | Settles | Key symbols |
 |---|---|---|
-| [[text-layout-one-measurer]] | one measurer decides every line break; the document is a plain control tree | `TextMeasurer`, `DocumentControl` |
+| [[text-layout-one-measurer]] | one measurer decides every line break; the document is a plain control tree; every measure writes one cached, main-thread-only `PenChar` array | `TextMeasurer`, `DocumentControl`, `TextMeasurer._penChars` |
 | [[text-styling-types]] | a heading is a value on `ContentBlock`, not a subclass | `ContentBlock`, `stylingType` |
 | [[document-format-bar]] | one range-styling primitive, and a bar that never takes the caret | `DocumentToolbarControl`, `StyleRangeEdit`, `ContentBlock`, `TextRun` |
 | [[bold-italic-face]] | bold-italic is a fourth baked face; a family missing it falls back to regular | `FontStyle`, `Glyph`, `AtlasMetaData`, `AssetImporter` |
@@ -108,7 +108,7 @@ Standing constraints (ECS storage, Vulkan internals, physics, XSD-not-JSON) are 
 | [[entity-transform-split]] | an entity's columns are what its pool declares; the transform moved down to `TransformEntity` and an entity frees rows in every pool it holds | `Entity`, `TransformEntity`, `EntityComponent`, `EntityRegistry` |
 | [[entity-tick-group]] | **FUTURE** — ticking should iterate a `"Tickable"` group, not every entity behind a flag | `Engine.Interpolate`, `EntityRegistry` |
 | [[engine-logging]] | per-thread SPSC lanes drained by one background thread; a log call is a memory write | `LogChannel`, `LogLane`, `Diagnostics.Sinks.*` |
-| [[engine-profiling]] | zones time and increments count, both compiled out by flag; per-thread tables, no shared state; a capture streams every span of every frame to XML off-thread, and `--profile` arms one early enough to hold the bootstrap phase; each data pool's items and reserved bytes ride the frame, pushed by the pool owner | `Profiling`, `FrameSpool`, `ThreadedSystem.Loop`, `Bootstrapper.RunPhase`, `Profiling.Frame.Pool`, `DataPool.ReservedBytes` |
+| [[engine-profiling]] | zones time and increments count, both compiled out by flag; per-thread tables, no shared state; a capture streams every span of every frame to XML off-thread, and `--profile` arms one early enough to hold the bootstrap phase; each data pool's items and reserved bytes ride the frame, pushed by the pool owner; `--profile-scenario` types into and resizes a 1M-char note from inside the tick, under one capture | `Profiling`, `FrameSpool`, `ThreadedSystem.Loop`, `Bootstrapper.RunPhase`, `Profiling.Frame.Pool`, `DataPool.ReservedBytes`, `ProfileScenario` |
 | [[carbon-frame-viewer]] | the frame reader sits beside the writer; Carbon is a fourth app drawing it, and one control is both the flame chart and the aligned timeline; two captures compare through a pinned baseline, per frame, in the zone table; a second frame strip shares lanes and columns with the first, slides, swaps and scales against it, and the charts follow the last click; pools summarise in the table and read out for the clicked frame | `FrameCaptureReader`, `SpanChartControl`, `FrameStripControl`, `NextZoneTableControl.SetBaseline`, `NextZoneTableControl.Pools`, `Comparison`, `NextSliderControl` |
 | [[winforms-to-console]] | the engine assembly is a plain console app; WinForms is off | `AuroraEngine.csproj`, `Program`, `Engine` |
 

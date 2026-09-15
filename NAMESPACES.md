@@ -21,6 +21,7 @@ ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/LogLane.cs
 ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/LogLevel.cs
 ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/LogSpool.cs
 ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/LogWriter.cs
+ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/ProfileScenario.cs
 ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/Profiling.cs
 ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/ProfilingSettings.cs
 ArctisAurora.Core.Diagnostics.Sinks -> AuroraEngine/Core/Diagnostics/Sinks/ConsoleSink.cs
