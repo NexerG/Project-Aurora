@@ -29,7 +29,9 @@ XML element, entry points, regions. The rows below answer "which types own this 
 
 | Concept | Code | Data | Note |
 |---|---|---|---|
-| the theme, any control colour | `UI.Control` — `colorHex`, `edgeColorHex`, `EnumColorToHex`, `HexToRGB` | `*/Data/XML/Documents/UI/*.ui.xml` attrs `ColorHex`, `ControlColor`, `EdgeColorHex` | [[control-edge-and-outline]] |
+| the theme, palette, automatic colours, dark/light text on a panel | `UI.Palettes` (`LoadPalettes`, `Get`, `Default`, `Surface`, `Ink`, `Step`, `Inline`), `UI.PaletteDefinition`, `UI.PaletteRole`; `UI.Control` — `role`, `paletteName`, `InheritPaint`, `RepaintChildren` | `*/Data/XML/Documents/Palettes/*.palette.xml`; `*.ui.xml` attrs `Palette`, `Role` | [[ui-palettes]] |
+| an authored control colour | `UI.Control` — `colorHex`, `edgeColorHex`, `EnumColorToHex`, `HexToRGB` | `*/Data/XML/Documents/UI/*.ui.xml` attrs `ColorHex`, `ControlColor`, `EdgeColorHex` | [[control-edge-and-outline]], [[ui-palettes]] |
+| a quad's colour on the GPU — paint words, the paint table | `UI.VulkanControl` (`paint`, `alpha`, `edgePaint`); `UI.Palettes.Table`; `Rendering.Modules.UIEngineModule.MirrorPaints`; `Shaders/UIEngine/UIEngine.vert` `resolvePaint` | — | [[ui-palettes]] |
 | gradients | `UI.Gradients`; `UI.Control.gradient` | `Thorium/Data/XML/Documents/Gradients.gradients.xml` | [[ui-gradients]] |
 | corner rounding, edge + outline strokes | `UI.Control`, `VulkanControl`; `Shaders/UIEngine/UIEngine.frag` | — | [[control-edge-and-outline]] |
 | clipping a control to its parent | see "clipping on the **new** stack" below | — | [[ui-clipping]] (old stack) |
@@ -75,8 +77,8 @@ XML element, entry points, regions. The rows below answer "which types own this 
 | undo / redo | `Editing.UndoStack`, `EditStep`, `IEditRecord`; see the **new**-stack row below | — | [[document-undo]] |
 | single-line text fields | `UI.TextBoxControl` | — | [[note-naming-and-text-field]] |
 | text and the caret on the **new** stack — a paragraph as one control, a GPU quad per visible glyph | `UI.TextRunControl` (`spans`, `Emit`, `IndexAt`, `CaretAt`, `TextOrigin`), `StyleSpan`, `IGlyphPressTarget`, `CaretControl`; `Shaders/UIEngine/UIEngine.frag` MTSDF branch | — | [[ui-engine-stack]], [[ui-draw-list]] |
-| what the new stack draws this frame, and what it culls | `UI.DrawList`, `Control.Emit`, `UIEngine.BuildDrawLists`, `LayoutRect.Overlaps`; `Render.Modules.UIEngineModule` (`drawList`, `MirrorDrawList`) | — | [[ui-draw-list]] |
-| the UI flickering, a frame drawing blank or short | `UI.DrawList` (`Clear`, `Publish`, `Count`, `_cursor`), `UIEngine.BuildDrawLists`; `Render.Modules.UIEngineModule.MirrorDrawList` | — | [[ui-draw-list-publish]] |
+| what the new stack draws this frame, and what it culls — off screen, or too small to draw its contents; the draw list, the quad pool | `UI.UIEngine` (`Quads`, `BuildDrawLists`, `Collect`, `detailCullSize`), `Control.Emit`, `TextRunControl.WriteGlyph`, `LayoutRect.Overlaps`; `Data.DataPool` (`Rewind`, `Append`); `Render.Modules.UIEngineModule` (`PublishQuadRange`, `MirrorDrawList`) | `AuroraEngine/Data/XML/Documents/Pools.pools.xml` (`UIQuads`) | [[ui-draw-list]], [[ui-quads-pool]] |
+| the UI flickering, a frame drawing blank or short, one window showing another's quads | `UI.UIEngine.BuildDrawLists`; `Render.Modules.UIEngineModule` (`PublishQuadRange`, `_quadRange`, `MirrorDrawList`) | — | [[ui-draw-list-publish]], [[ui-quads-pool]] |
 | clipping on the **new** stack | `UI.Control` (`arrange.clip`), `UIEngine.Collect`; `Shaders/UIEngine/UIEngine.frag` (`inClip`) | — | [[ui-engine-clip-as-coverage]] |
 | per-character bold / colour / size on a run | `UI.StyleSpan`; `UI.TextMeasurer.Run` (`charStart`/`charCount`) | `*/Data/Notes/*.xml` `<Run>` attrs | [[ui-engine-stack]] |
 | note load / save | `UI.DocumentXml`; `Filing.Serializer`, `XmlReflection` | `*/Data/Notes/*.xml` | [../Patterns/document-xml-persistence.md](../Patterns/document-xml-persistence.md), [[xml-save-skips-defaults]] |
@@ -130,7 +132,7 @@ XML element, entry points, regions. The rows below answer "which types own this 
 |---|---|---|---|
 | device, swapchain, frame loop | `Render.Renderer`, `Swapchain`, `RenderWindow`, `VulkanRenderer` | — | [[render-window-owns-the-swapchain]], [[swapchain-extent-is-the-truth]], [[dynamic-rendering]] |
 | OS windows, placement; the active window | `Render.AGlfwWindow`; `UI.UIEngine.activeWindow` (`ActiveWindow`, set mid-drag only — OS focus feeds nothing since 2026-09-15) | — | [[active-glfw-window-context]] (old stack) |
-| the **new** UI draw path | `Render.Modules.UIEngineModule` (`window.ui`, `uiRoot`, `firstInstance`, `WriteTextureTable`); `UI.UIEngine`, `Control` (`rows`), `WindowRoot` | `AuroraEngine/Data/XML/Documents/Pools.pools.xml` (`UIElements`, `VulkanControls`) | [[ui-engine-stack]] |
+| the **new** UI draw path | `Render.Modules.UIEngineModule` (`window.ui`, `uiRoot`, `firstInstance`, `WriteTextureTable`); `UI.UIEngine`, `Control` (`rows`), `WindowRoot` | `AuroraEngine/Data/XML/Documents/Pools.pools.xml` (`UIElements`, `UIQuads`) | [[ui-engine-stack]] |
 | the **new** measure/arrange pass, dirty roots, per-window ranges | `UI.UIEngine` (`ResolveLayout`, `RefreshWindowRanges`, `ElementOrder`, `NextControlOrder`); `UI.Control` (`Measure`, `Arrange`, `InvalidateLayout`) | `Pools.pools.xml` (`SortAction`) | [[ui-engine-stack]] |
 | the **new** window root, design-space fitting | `UI.WindowRoot` (`FitTo`, `ViewportSize`, `ToDesignSpace`) | — | [[ui-engine-stack]] |
 | the **new** hit-test, hover, press, bubbling | `UI.UIEngine` (`Poll`, `HitTest`, `Dispatch`, `Forget`); `UI.PointerEvent`, `PointerPhase`; `UI.Control` (`OnPointerX`, `RegisterOnX`, `hitTestable`, `canBeActiveContext`, `takesActiveControl`) | — | [[ui-engine-stack]] |
@@ -175,9 +177,11 @@ XML element, entry points, regions. The rows below answer "which types own this 
 
 ## Facts that cost time to rediscover
 
-- **There is no theme file, no stylesheet, no palette.** A colour is a per-control attribute in the
-  host's `*.ui.xml`, or a hardcoded default in the control's C#. "Change the app's theme" means
-  editing those attributes across the `*.ui.xml` set plus the defaults in `UI.Control`.
+- **Palettes exist, but only slice 1 of 3 has landed.** A control with no `ColorHex` paints from its
+  `Role` against the nearest `Palette` above it; an authored `ColorHex` — including a hex default set
+  in a control's constructor — wins. Most composite controls and most `*.ui.xml` still author every
+  colour, so "change the app's theme" is still mostly editing attributes; Thorium's `Vaults.ui.xml` is
+  the one palette-driven window. See [[ui-palettes]] § Known gaps.
   `ControlColor` names only the 16 enum values in `EnumColorToHex`; everything else is `ColorHex`.
 - **Data XML files carry their kind in the filename** — `Bootstrap.bootstrap.xml`, not `Bootstrap.xml`.
   Notes written before that landed still use the short name. See [[xml-type-suffix]].

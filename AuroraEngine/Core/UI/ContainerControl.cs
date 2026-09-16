@@ -12,6 +12,7 @@ namespace ArctisAurora.Core.UI
         {
             horizontalAlignment = HorizontalAlignment.Stretch;
             verticalAlignment = VerticalAlignment.Stretch;
+            role = PaletteRole.Clear;
         }
 
         public override void AddChild(Entity entity)

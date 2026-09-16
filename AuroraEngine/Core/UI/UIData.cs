@@ -286,11 +286,13 @@ namespace ArctisAurora.Core.UI
 
         public VulkanControlType type;
         public QuadUVs uvs;
-        public Vector4 tint;
+        // paint words — see Palettes
+        public uint paint;
+        public float alpha;
         public uint textureIndex;
         public Vector4 cornerRadius;
         // stroke, in design pixels — against the MSDF silhouette on MTSDFControl, the rounded box otherwise
-        public Vector3 edgeColor;
+        public uint edgePaint;
         public float edgeThickness;
         public uint gradientIndex;
     }

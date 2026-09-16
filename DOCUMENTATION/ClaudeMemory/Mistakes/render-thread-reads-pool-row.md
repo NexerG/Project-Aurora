@@ -19,8 +19,9 @@ asserted there.
 
 **The rule:** anything the render thread needs from a control is copied into a plain field on the module, on the
 main thread. The ghost's box is `UIEngineModule.rangeRect`, built in `DragGhost.Show` before the ghost is
-shown and cleared in `Hide`; the camera reads only that. `geometry` and `visual` are plain fields and are fine —
-that is what the draw list copies.
+shown and cleared in `Hide`; the camera reads only that. `visual` is a plain field; there is no `geometry` since
+2026-09-16. The render thread touches the `UIQuads` pool only through `Backing<T>()` and the module's published
+range — [[ui-quads-pool]].
 
 **Still live:** the camera's own `WindowRoot.ViewportSize(_extent)` call reads `preferredWidth`/`Height` past
 its `!autoscaling` short-circuit. Safe while every window has `Autoscaling="false"`; the first autoscaling window

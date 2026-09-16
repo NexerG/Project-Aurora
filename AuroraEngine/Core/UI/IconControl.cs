@@ -32,6 +32,7 @@ namespace ArctisAurora.Core.UI
         public IconControl()
         {
             kind = VulkanControlType.MTSDFControl;
+            role = PaletteRole.MutedInk;
         }
 
         // Both attributes arrive one at a time during an XML parse, so this runs on each and does

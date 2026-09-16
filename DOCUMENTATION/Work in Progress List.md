@@ -99,6 +99,12 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] a rename opened while another is live is lost — the first one's commit calls `Retitle`, which rebuilds the strip and destroys the field the second one was just opened on. Any `RebuildStrip()` does it, opening or closing a tab included; the browser row has the same hole
 	- [ ] strip does not scroll — tabs are a fixed `TabWidth` and the strip clips, so past `width / TabWidth` the rest are unreachable. No drag-to-reorder, no `+`, no keyboard switching, no persisting open tabs across runs
 	- [ ] **switching notes no longer saves the one being left** — `vault-browser-and-shell` decision 4 saved because the note was about to be discarded; with tabs it stays live, so saving moved to close. Thorium still has no dirty tracking and no autosave, so a crash with several tabs open loses more than it did before
+	- [ ] **a pool growth between `MirrorDrawList`'s two `Backing<T>()` reads mis-sizes the control mirror (2026-09-16)** — geometry mirror sized from the new array, control mirror from the old, capacity recorded as new and never re-checked, so the next copy writes past it. Pre-existing; more frequent with `UIQuads`' +512 growth → `ui-quads-pool`
+	- [ ] reduce `ControlGeometry`'s matrix from `mat4` to `mat4x3` for data space and transfer optimisation
+	- [x] **UI palettes, slice 1 of 3 (2026-09-17)** — landed, See `ClaudeMemory/Decisions/ui-palettes.md`
+		- [ ] **slice 2 — composite controls onto roles** — ~60 `*ColorHex` attributes and ~134 C# hex literals (toolbar, file browser, tabs, thumbs, menus, dialogs, Settings, text box, slider, Carbon); agree a role-mapping table first, then a mechanical sweep. Includes `BlockControl.SplitAt` copying `colorHex` → `ui-palettes` § Known gaps
+		- [ ] **slice 3 — strip colours from the remaining `*.ui.xml`** — Thorium `UI`/`Settings`/`TabWindow`/`Workspace`/`TabPane`, engine `Settings`, Carbon `UI`; only `Vaults.ui.xml` is palette-driven → `ui-palettes` § Known gaps
+		- [ ] **palette resolution on a runtime `Role`/`Palette` change, a reparented control and the drag ghost is NOT GUI-verified** → `ui-palettes` § Known gaps
 - [ ] fix resolution stuff associated with DPI and stuff. use `glfwGetMonitorContentScale` *(non-essential)*
 
 ---

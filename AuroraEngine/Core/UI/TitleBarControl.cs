@@ -11,6 +11,11 @@ namespace ArctisAurora.Core.UI
     [A_XSDType("TitleBar", "UI")]
     public unsafe class TitleBarControl : StackPanelControl
     {
+        public TitleBarControl()
+        {
+            role = PaletteRole.Chrome;
+        }
+
         public override bool OnPointerPress(PointerEvent e)
         {
             RenderWindow window = UIEngine.WindowOf(this);

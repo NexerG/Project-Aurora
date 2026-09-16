@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Data;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
@@ -5,8 +6,8 @@ using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
-    // One UI element: an ArrangeData row in UIElements and the quads it emits into a window's draw
-    // list. No transform — the baked matrix lives in ControlGeometry.
+    // One UI element: an ArrangeData row in UIElements and the quads it emits into UIQuads.
+    // No transform — the matrix is built at emit.
     [A_XSDType("Control", "EntityRegistry", isAbstract: true)]
     public partial class Control : Entity
     {
@@ -17,18 +18,17 @@ namespace ArctisAurora.Core.UI
 
         protected override string PoolName => "UIElements";
 
-        // the control's own quad, copied into the draw list by Emit
-        private ControlGeometry _geometry;
+        // the control's own paint, copied into UIQuads by Emit
         private VulkanControl _visual;
 
         public ref ArrangeData arrange => ref Pool.GetRef<ArrangeData>(dataHandle);
-        public ref ControlGeometry geometry => ref _geometry;
         public ref VulkanControl visual => ref _visual;
 
         public Control()
         {
             visual.type = VulkanControlType.PanelControl;
-            visual.tint = new Vector4(1, 1, 1, 1);
+            visual.paint = Palettes.Inline(Vector3.One);
+            visual.alpha = 1f;
             visual.textureIndex = VulkanControl.noTexture;
             SetUVRect(0f, 0f, 1f, 1f);
 
@@ -206,8 +206,10 @@ namespace ArctisAurora.Core.UI
             set
             {
                 field = value;
-                Vector3 rgb = HexToRGB(value);
-                visual.tint = new Vector4(rgb, visual.tint.W);
+                colorAuthored = true;
+                SetPaint(Palettes.Inline(value));
+                visual.alpha = alpha;
+                RepaintChildren();
             }
         } = "#FFFFFF";
 
@@ -218,9 +220,39 @@ namespace ArctisAurora.Core.UI
             set
             {
                 field = value;
-                visual.tint.W = value;
+                visual.alpha = role == PaletteRole.Clear && !colorAuthored ? 0f : value;
+                RepaintChildren();
             }
         } = 1f;
+
+        [A_XSDElementProperty("Role", "UI", "The palette colour this control paints with. ColorHex wins over it.")]
+        public PaletteRole role
+        {
+            get => field;
+            set
+            {
+                field = value;
+                InvalidateArrange();
+            }
+        }
+
+        [A_XSDElementProperty("Palette", "UI", "Name of a palette in Palettes/*.palette.xml, for this control and everything under it that names none.")]
+        public string paletteName
+        {
+            get => field;
+            set
+            {
+                field = value;
+                ownPalette = Palettes.Get(value);
+                InvalidateArrange();
+            }
+        } = "";
+
+        // palette inheritance, resolved in WriteArranged like the clip
+        internal PaletteDefinition? ownPalette;
+        internal PaletteDefinition? palette;
+        internal uint groundBelow;
+        protected bool colorAuthored;
 
         [A_XSDElementProperty("ControlColor", "UI", "Sets the color of the control.")]
         public ControlColor controlColor
@@ -251,7 +283,7 @@ namespace ArctisAurora.Core.UI
             set
             {
                 field = value;
-                visual.edgeColor = HexToRGB(value);
+                visual.edgePaint = Palettes.Inline(value);
             }
         } = "#000000";
 
@@ -309,31 +341,81 @@ namespace ArctisAurora.Core.UI
                 visual.gradientIndex = Gradients.IndexOf(value);
             }
         } = "";
+
+        // Writes the word this control paints with.
+        protected virtual void SetPaint(uint paint) => visual.paint = paint;
+
+        // The word a role paints with; Clear shows the ground it sits on.
+        protected uint RolePaint(PaletteDefinition scheme, uint ground) => role switch
+        {
+            PaletteRole.None or PaletteRole.Clear => ground,
+            PaletteRole.Ink => Palettes.Ink(scheme, ground, false),
+            PaletteRole.MutedInk => Palettes.Ink(scheme, ground, true),
+            _ => Palettes.Surface(scheme, role)
+        };
+
+        // Paints an unauthored control from its role.
+        protected virtual void ApplyRole(PaletteDefinition scheme, uint ground)
+        {
+            if (role == PaletteRole.None) return;
+            SetPaint(RolePaint(scheme, ground));
+            visual.alpha = role == PaletteRole.Clear ? 0f : alpha;
+        }
+
+        // Takes the palette and ground from the parent and paints the role against them. Returns whether
+        // the ground left for the children moved.
+        internal bool InheritPaint()
+        {
+            Control? p = parent as Control;
+            palette = ownPalette ?? p?.palette ?? Palettes.Default;
+            uint ground = GroundBehind();
+            if (!colorAuthored) ApplyRole(palette, ground);
+
+            uint below = GroundBelow(ground);
+            bool moved = below != groundBelow;
+            groundBelow = below;
+            return moved;
+        }
+
+        // Repaints the children after this control's paint moved outside layout — CollapseClip's twin.
+        // A pending arrange repaints them anyway.
+        protected void RepaintChildren()
+        {
+            if (palette == null || isArrangeDirty) return;
+
+            uint below = GroundBelow(GroundBehind());
+            if (below == groundBelow) return;
+            groundBelow = below;
+            PushPaint(this);
+        }
+
+        private static void PushPaint(Control control)
+        {
+            foreach (Entity e in control.children)
+                if (e is Control child && child.palette != null && child.InheritPaint())
+                    PushPaint(child);
+        }
+
+        // The ground under this control: its parent's, or its palette's Ground at a root.
+        private uint GroundBehind()
+        {
+            Control? p = parent as Control;
+            return p?.palette != null ? p.groundBelow : Palettes.Surface(palette!, PaletteRole.Ground);
+        }
+
+        // The ground this control leaves for its children.
+        private uint GroundBelow(uint ground)
+            => visual.alpha > 0f && kind == VulkanControlType.PanelControl && sampler == null ? visual.paint : ground;
         #endregion
 
         #region ---- layout state ----
         public LayoutRect arrangedRect => arrange.arranged;
         public Vector2 DesiredSize => arrange.desired;
 
-        // The z the children step down from — the translation the last Arrange baked.
-        internal float depth => geometry.matrix.M43;
-
-        // Every assignment mirrors into the GPU row the fragment shader discards against.
         public LayoutRect ClipRect
         {
             get => arrange.clip;
-            protected set
-            {
-                arrange.clip = value;
-                geometry.clip = new Vector4(value.x, value.y, value.Right, value.Bottom);
-            }
-        }
-
-        // The rect a gradient ramps across, when it is not this control's own — a run hands its
-        // glyphs its own rect so the ramp spans the text instead of restarting per letter.
-        internal void SetGradientSpace(LayoutRect rect)
-        {
-            geometry.gradientRect = new Vector4(rect.x, rect.y, rect.Right, rect.Bottom);
+            protected set => arrange.clip = value;
         }
 
         public bool isMeasureDirty => HasFlag(ArrangeFlags.MeasureDirty);
@@ -446,25 +528,17 @@ namespace ArctisAurora.Core.UI
             SetFlag(ArrangeFlags.ArrangeDirty, false);
         }
 
-        // Bakes an arranged rect into the GPU geometry row and inherits or intersects the clip.
+        // Records an arranged rect, inherits or intersects the clip, and inherits the palette.
         protected void WriteArranged(LayoutRect finalRect)
         {
             arrange.arranged = finalRect;
 
             Control parentControl = parent as Control;
-            float z = parentControl != null ? parentControl.depth + depthStep : rootDepth;
-
-            Matrix4x4 m = Matrix4x4.Identity;
-            m *= Matrix4x4.CreateScale(finalRect.width, finalRect.height, 1f);
-            m *= Matrix4x4.CreateTranslation(finalRect.x + finalRect.width * 0.5f,
-                                             finalRect.y + finalRect.height * 0.5f, z);
-            geometry.matrix = m;
-
             ClipRect = parentControl == null ? finalRect
                 : clipOutOfBounds ? LayoutRect.Intersect(finalRect, parentControl.ClipRect)
                 : parentControl.ClipRect;
 
-            SetGradientSpace(finalRect);
+            InheritPaint();
         }
 
         // Places one child in a box by its own alignment, stretching it on either axis that asks.
@@ -523,17 +597,26 @@ namespace ArctisAurora.Core.UI
             a.subtreeCount = count;
         }
 
-        // Appends this control's quads to the window's draw list. A control off its own clip emits
+        // Appends this control's quads to UIQuads. A control off its own clip emits
         // nothing; its children are still offered the walk, because a clip is inherited and theirs
         // may sit somewhere else entirely.
-        internal virtual void Emit(DrawList list)
+        internal virtual void Emit(float z)
         {
             ref ArrangeData a = ref arrange;
             if (!a.arranged.Overlaps(a.clip)) return;
 
-            int slot = list.Next();
-            list.GeometryAt(slot) = _geometry;
-            list.VisualAt(slot) = _visual;
+            LayoutRect r = a.arranged;
+            LayoutRect c = a.clip;
+            DataPool quads = UIEngine.Quads;
+            int row = quads.Append();
+
+            ref ControlGeometry g = ref quads.GetSpan<ControlGeometry>()[row];
+            g.matrix = Matrix4x4.CreateScale(r.width, r.height, 1f)
+                     * Matrix4x4.CreateTranslation(r.x + r.width * 0.5f, r.y + r.height * 0.5f, z);
+            g.clip = new Vector4(c.x, c.y, c.Right, c.Bottom);
+            g.gradientRect = new Vector4(r.x, r.y, r.Right, r.Bottom);
+
+            quads.GetSpan<VulkanControl>()[row] = _visual;
         }
         #endregion
 

@@ -295,6 +295,26 @@ namespace ArctisAurora.Core.Data
             return new DataHandle(Id, stableId, _versions[stableId]);
         }
 
+        // Empties a handle-less pool.
+        public void Rewind()
+        {
+            AssertOwner(nameof(Rewind));
+            _count = 0;
+        }
+
+        // Appends an uncleared row to a handle-less pool and returns its dense index.
+        public int Append()
+        {
+            AssertOwner(nameof(Append));
+            if (_count >= _capacity)
+                Grow();
+
+            int dense = _count++;
+            if (dense < _dirtyMin) _dirtyMin = dense;
+            if (dense > _dirtyMax) _dirtyMax = dense;
+            return dense;
+        }
+
         // Deferred: enqueue only. The slot stays alive (handle valid) until FrameEdge drains
         // it. A repeat or stale Free is a no-op.
         public void Free(DataHandle h)

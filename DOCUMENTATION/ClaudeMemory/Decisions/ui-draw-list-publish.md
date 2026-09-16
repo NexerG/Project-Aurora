@@ -8,6 +8,10 @@
 **Corrects:** the "same coarse race … the fix is a 3-deep ring of lists" bullet in
 [ui-draw-list](ui-draw-list.md). The race was not benign and the fix was not a ring.
 
+> **`DrawList` deleted 2026-09-16 — see [ui-quads-pool](ui-quads-pool.md).** The split survives: the `UIQuads` pool's
+> count is the walk cursor, and `UIEngineModule.PublishQuadRange` is the one volatile handover, now `(first, count)`
+> packed into a `long`. The in-place tear below still applies, and now reaches across windows.
+
 ## What changed
 
 `DrawList` had one `_count`, zeroed by `Clear()` and incremented by `Next()`, read by the render

@@ -17,7 +17,7 @@ Implementors:
   - "[[UI-ENGINE]]"
 Namespace: ArctisAurora.Core.UI
 SourceFiles: AuroraEngine/Core/UI/*.cs, AuroraEngine/Core/Rendering/Modules/UIEngineModule.cs, AuroraEngine/Shaders/UIEngine/*
-VerifiedAgainst: 2026-09-12 (draw list count handover, clip as coverage)
+VerifiedAgainst: 2026-09-16 (UIQuads pool, per-window range handover, clip as coverage)
 ---
 ## Overview
 
@@ -43,11 +43,13 @@ The kinds are `MTSDFControl` for anything drawn from a distance field, `PanelCon
 
 `ArrangeData` is the measure and arrange state — the authored width, height, margin, padding, alignment and star weights, the arranged and clip rectangles the pass produces, and two caches used to make collision and insertion cheap. It is 140 bytes and it never leaves the CPU.
 
-`ControlGeometry` is what arrange produces for the GPU: the baked model matrix, the clip rectangle the fragment shader cuts against, and the rectangle a gradient ramps across. It is 96 bytes.
+`ControlGeometry` is where a quad sits for the GPU: the model matrix, the clip rectangle the fragment shader cuts against, and the rectangle a gradient ramps across. It is 96 bytes.
 
-`VulkanControl` is paint: the kind, the texture coordinates, the tint, the texture index, the corner radii, one stroke colour and width, and a gradient index. It is 92 bytes.
+`VulkanControl` is paint: the kind, the texture coordinates, a paint word and an opacity, the texture index, the corner radii, a stroke paint word and width, and a gradient index. It is 76 bytes.
 
-The layout struct lives in a pool, because layout reads it in tree order and wants it packed. The two GPU structs are plain fields on the element, because nothing reads them in place — they are copied out into a list once a frame, and an element that is not on screen is never asked for them at all.
+The layout struct lives in a pool, because layout reads it in tree order and wants it packed. The two GPU structs are not kept per element at all. Every frame they are written fresh into a second pool, `UIQuads`, one row per quad that is actually on screen — so an element that is not visible is never asked for them.
+
+Geometry is not stored anywhere, because everything it holds already is: the matrix comes from the arranged rectangle and a depth the walk hands down, the clip is the clip, and the gradient rectangle is the arranged rectangle. Paint is kept on the element as a plain `visual` field, because it is the parsed form of what was authored — hex colours already turned into numbers, a gradient name already turned into an index, texture coordinates that exist nowhere else — and parsing those again for every visible control every frame would be the expensive way to arrive at the same bytes.
 
 ## Why the stroke is one pair and not two
 
@@ -84,6 +86,39 @@ A control can name a gradient instead of a flat colour, and the ramp is evaluate
 That rectangle is separate from the control's own box on purpose. Every glyph of a paragraph is its own drawn row, so a ramp measured against each row's box would restart on every letter; measured against a rectangle handed down from above, one ramp runs across the whole run.
 
 The ramp replaces the fill rather than tinting it, so a control with both a picture and a gradient shows the gradient. Nothing does both today.
+
+## Palettes
+
+A control does not have to say what colour it is. It names a role — `Ground`, `Surface`, `Chrome`, `Field`, `Line`, `Accent`, `Danger`, `Ink`, `MutedInk`, or `Clear` to paint nothing — and the nearest palette above it says what that role looks like. Most controls already have a sensible role by default: a panel or container is `Clear`, text is `Ink`, an icon is `MutedInk`, a window frame is `Ground`, a title bar is `Chrome`.
+
+A palette is one file under `Palettes/`, eleven values: seven surface colours, a dark and a light text colour, how far a hover or press step moves a colour, and how far muted text fades into what is behind it. Every mount contributes, so the engine ships `default` and an app adds its own; an app file with the same name replaces the engine's. A tree names its palette on its root with `Palette="name"`, and any control further down can name another for everything below it.
+
+Text picks its colour from what it sits on. Of the palette's two text colours, it takes whichever contrasts more with the nearest opaque panel behind it, so text on a dark panel comes out light and on a light panel dark — including on a close button that turns red under the pointer. Hover and press shades and muted text are calculated from the palette rather than written into it, which is what keeps them correct on any ground.
+
+An authored colour always wins. `ColorHex` on a control, in XML or in code, opts that control out of the palette entirely.
+
+Every row carries its colour as a single 32-bit paint word. With the top bit set the low three bytes are the colour itself, which is exactly what a hex code holds; without it the word is a slot in a shared paint table, one block of slots per palette, which the vertex shader reads from a buffer the UI module mirrors per swapchain image. An authored colour never takes a slot, and a palette colour changes in one place rather than on every row that uses it.
+
+Colour is resolved the way the clip is. When a control is arranged it takes the palette and the ground from its parent and paints its role against them, and since attaching, moving and showing a control all end in an arrange, a control is never drawn unresolved. A colour that changes without a layout — a button's hover — pushes the new ground down to its children directly, the same way hiding a control pushes its collapsed clip down.
+
+```
+InheritPaint()
+	palette = own palette, else the parent's, else default
+	ground = the parent's ground below, or the palette's Ground at a root
+	if the colour is not authored
+		paint the role against palette and ground
+	ground below = this control's paint if it is an opaque plain panel, else ground
+
+RepaintChildren()
+	if never resolved, or an arrange is pending
+		return
+	recompute ground below
+	if it did not move
+		return
+	for each child
+		if the child's InheritPaint moved its own ground below
+			repaint that child's children
+```
 
 ## Depth
 
@@ -140,30 +175,48 @@ A resize refits the root, which re-lays the tree and moves the camera's projecti
 
 ## The draw list
 
-Every window owns a list of quads, and the order they sit in is the order they are drawn. That order is a depth-first walk of the control tree, which is painter order and layout-dependency order at the same time — a parent before its children, always. Nothing maintains the order between frames, because the walk that produces it is the same walk that reads the tree.
+Every window owns a run of rows in one shared pool of quads, `UIQuads`, and the order they sit in is the order they are drawn. That order is a depth-first walk of the control tree, which is painter order and layout-dependency order at the same time — a parent before its children, always. Nothing maintains the order between frames, because the walk that produces it is the same walk that reads the tree.
 
 The walk runs at the frame edge, after arrange has settled every rectangle and clip, and it culls as it goes.
 
 ```
 BuildDrawLists()
+	rewind the quad pool
 	for each window
-		rewind its list's walk cursor
-		Collect(its root, the list)
-		publish the cursor as the list's count
+		remember the pool's count as the window's first row
+		Collect(its root, the root depth)
+		publish the window's first row and row count as one write
 
-Collect(control, list)
+Collect(control, depth)
 	if the control is hidden
 		return
 	if the subtree's bounds do not overlap the clip it inherited
 		return
-	ask the control to emit its quads
+	ask the control to emit its quads at this depth
+	if the control's rectangle is narrower or shorter than the detail cull size
+		return
 	for each child
-		Collect(child, list)
+		Collect(child, one depth step nearer)
+
+Emit(control, depth)
+	if the control's rectangle does not overlap its clip
+		return
+	append a row to the quad pool
+	write the matrix from the arranged rectangle and the depth
+	write the clip rectangle
+	write the arranged rectangle as the gradient rectangle
+	copy the control's paint into the row
 ```
+
+The pool's rows have no handles. Nothing refers to a quad from one frame to the next, so the pool is only ever rewound and appended to. When an append finds it full it grows by 512 rows, as `Pools.pools.xml` declares, and it never shrinks.
 
 Both prunes read rectangles the layout pass already maintains. The subtree test is sound because a child's clip is always a subset of its parent's — arrange either inherits it or intersects it, never widens it — and the chain terminates at the window root's own rectangle. So "off the screen" and "outside some ancestor's clip" are one test, not two, and a scrolled document costs what is visible rather than what it contains.
 
 A control emits nothing when its own rectangle misses its clip, but its children are still offered the walk: the clip is inherited, so a child may be arranged somewhere else entirely.
+
+A control smaller than the detail cull size — 12 units on either axis, one constant in `UIEngine` for every control — still draws itself, but the walk does not enter its children. This is for a pageless canvas holding many notes: a note shrunk past reading draws its panel and none of its blocks, glyphs, caret or scrollbar. A text run's letters are its own emit rather than children, so a small label keeps its text. The size is in layout units, which are window pixels while the window root does not autoscale.
+
+> The size cull is draw-only. Hit-testing still walks into the children it skipped, and layout still measures and arranges them. A canvas that zooms by transform rather than by re-laying out would not shrink the rectangle this test reads.
 
 Culling decides whether a quad is *submitted*. One that is only partly on screen is submitted whole and cut per pixel by the fragment shader, exactly as before.
 
@@ -173,12 +226,13 @@ Culling decides whether a quad is *submitted*. One that is only partly on screen
 
 The new stack is a second rendering module on every window, sitting beside the old one in the same module list. The compositor blends module outputs in order of a per-module sort key, so the new module carries a higher key and clears its own image transparent, letting the old UI show through everywhere the new stack has drawn nothing.
 
-Mirroring the list to the GPU:
+Mirroring the window's rows to the GPU:
 
 ```
 MirrorDrawList(image)
-	read the list's two arrays and its count into locals, once
-	if the list's capacity changed since the last mirror
+	read the pool's two arrays and this window's published range into locals, once
+	clamp the count so the range fits the arrays
+	if the pool's capacity changed since the last mirror
 		wait for the device to go idle
 		destroy the old buffers
 		for each swapchain image
@@ -187,19 +241,21 @@ MirrorDrawList(image)
 		remember the new capacity
 	if the count is zero
 		return
-	copy the geometry prefix into this image's buffer
-	copy the paint prefix into this image's buffer
+	copy the window's geometry rows into this image's buffer, at the same offsets
+	copy the window's paint rows into this image's buffer, at the same offsets
 ```
 
-The arrays and the count are read once and only once, because the main thread is rebuilding the list while this runs and a growth swaps both arrays out from under a second read. The count captured here is also what the recording that follows draws, so an image never draws a newer count against an older buffer.
+The draw then starts at the window's first row instead of at zero, so the shader's instance index still lands on the right row and the shader did not have to change.
 
-The count the render thread reads is not the one the walk is filling. A list carries two positions: a cursor that the walk rewinds and advances, and a count that is handed over once, after the walk has finished. Between the two the render thread keeps drawing the previous frame's count, so it can never see a list that is half built.
+The arrays and the range are read once and only once, because the main thread is refilling the pool while this runs and a growth swaps both arrays out from under a second read. The range captured here is also what the recording that follows draws, so an image never draws a newer range against an older buffer.
+
+The range the render thread reads is not the pool's count. The pool's count is the cursor the walk rewinds and advances; each window's first row and row count are handed over once, packed into a single value, after that window's walk has finished. Until then the render thread keeps drawing the previous frame's range, so it can never see a window that is half built, or a first row from one frame paired with a count from another.
 
 > This was not a refinement. The two threads genuinely overlap — the frame edge no longer parks the renderer — and while clearing the list meant writing zero to the count the render thread was reading, a mirror that sampled at the wrong moment drew nothing at all. At tick rate that is not a dropped frame, it is a flickering window, and it was the flicker the UI actually had.
 
 The handover is a volatile write against a volatile read, which is the part that is easy to leave out and impossible to see missing. Without it the count is allowed to become visible before the rows that justify it, and the reader draws quads that were never written.
 
-> What this does not buy is a tear-free read. The walk still overwrites slots in place while the mirror copies them, so two controls can be a frame apart from each other. Removing that needs two sets of arrays and a swap, which costs about 48 KB and has not been built, because the blanking was the part anyone could see.
+> What this does not buy is a tear-free read. The walk still overwrites rows in place while the mirror copies them, so two controls can be a frame apart from each other. Because every window shares the pool, it reaches across windows too: when one window's quad count changes, the rows of every window after it shift, and for a frame a later window can draw some of an earlier window's quads. That is accepted. Removing it needs a second copy of the pool and a swap, and it lasts a frame.
 
 ## Entry points
 
@@ -441,7 +497,7 @@ Emit(list)
 			take the colour and the face of the span it came from
 			for each character in it
 				cut the glyph's cell out of the atlas
-				append its matrix, its clip and its atlas coordinates to the list
+				append its matrix, its clip and its atlas coordinates to the quad pool
 				pen = pen + the glyph's advance
 ```
 

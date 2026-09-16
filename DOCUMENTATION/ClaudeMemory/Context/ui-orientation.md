@@ -18,30 +18,31 @@ region map both fail. Note links name one `§`: `grep -n '^## '` the note and re
 2. `Engine.HandleUI` → `UIEngine.Poll(window)`, per window — hover, press, release, drag, scroll → `Dispatch`.
 3. `DragGhost.Follow`, `ContextMenus.Tick`.
 4. `Engine.Interpolate` → `UIEngine.ResolveLayout` — measure + arrange each dirty root.
-5. `DataManager.FrameEdge`, then `UIEngine.BuildDrawLists` — DFS each window's root (a drag ghost's
-   `rangeRoot` instead), `Control.Emit` the visible ones into the window's `DrawList`, culled to the screen.
-6. Render thread: `Render.Modules.UIEngineModule` mirrors the draw list and draws —
+5. `DataManager.FrameEdge`, then `UIEngine.BuildDrawLists` — rewind `UIQuads`, DFS each window's root (a drag
+   ghost's `rangeRoot` instead), `Control.Emit(z)` the visible ones into the pool, publish the window's range.
+6. Render thread: `Render.Modules.UIEngineModule` mirrors its `UIQuads` range and draws —
    `*/Shaders/UIEngine/UIEngine.vert|frag`, four copies (`shader-pipeline` skill).
 
-Why: [[ui-draw-list]] § What changed; [[ui-engine-stack]] § Vocabulary.
+Why: [[ui-draw-list]] § What changed, [[ui-quads-pool]]; [[ui-engine-stack]] § Vocabulary.
 
 ## Core
 
 ### Control — abstract `<Control>` · `ECS.EngineEntity.Entity` · partial with ControlXml
-One tree node. Layout state is its `UIElements` pool row (`arrange` → `ArrangeData`); the GPU quad is plain
-fields (`geometry` → `ControlGeometry`, `visual` → `VulkanControl`). A plain `Control` takes one child.
+One tree node. Layout state is its `UIElements` pool row (`arrange` → `ArrangeData`); paint is a plain field
+(`visual` → `VulkanControl`); `ControlGeometry` is built in `Emit`. A plain `Control` takes one child.
 
 | region | holds |
 |---|---|
 | `authored layout` | the inherited XML sizing attrs (see XML authoring); `SetSize`, `SetWidth`, `SetHeight`, `IsWidthStar`, `IsHeightStar` |
-| `paint` | colour, alpha, corner radii, edge, gradient; `kind`, `sampler`, `SetUVRect` |
-| `layout state` | `arrangedRect`, `DesiredSize`, `depth`, `SetGradientSpace`; flags `isMeasureDirty`, `isArrangeDirty`, `hidden`; `InvalidateLayout`, `InvalidateArrange`, `Hide`, `Show` |
-| `layout (two-pass)` | `Measure`, `Arrange`, `WriteArranged`, `ArrangeByAlignment`, `RefreshSubtreeCache`, `Emit` |
+| `paint` | colour, alpha, corner radii, edge, gradient; `kind`, `sampler`, `SetUVRect`; palette — `role`, `paletteName`, `ownPalette`, `palette`, `groundBelow`, `colorAuthored`; virtual `SetPaint`, `ApplyRole`; `RolePaint`, `InheritPaint`, `RepaintChildren` |
+| `layout state` | `arrangedRect`, `DesiredSize`, `ClipRect`; flags `isMeasureDirty`, `isArrangeDirty`, `hidden`; `InvalidateLayout`, `InvalidateArrange`, `Hide`, `Show` |
+| `layout (two-pass)` | `Measure`, `Arrange`, `WriteArranged` (clip and palette inheritance), `ArrangeByAlignment`, `RefreshSubtreeCache`, `Emit` |
 | `pointer` | `onEnter`…`onScroll` + `RegisterOnX` + virtual `OnPointerX`; `hitTestable`; `ActiveContextTarget`, `takesActiveControl`; `contextMenu`, `stopsContextMenu`; drag: `draggable`, `StartDrag`, `onDrag`, `onDragStop`, `DraggingOverStart`/`DraggingOver`/`DraggingOverEnd`, `FinishDrag`, `DraggedOutOfWindow`/`DraggedIntoWindow`, `ChildDraggedOut` |
 | `tree` | `AddChild` (throws on a second child), `RemoveChild`, `FindByName`, `MarkTreeOrderDirty` |
 
 Static, outside regions: `EnumColorToHex`, `HexToRGB`.
-Why: [[ui-engine-stack]] § landing 2, § landing 3, § landing 6a, § The active context is a question, § The drag gap.
+Why: [[ui-engine-stack]] § landing 2, § landing 3, § landing 6a, § The active context is a question, § The drag gap;
+palette: [[ui-palettes]].
 
 ### ControlXml — Control's XML half
 - `Control.ParseXML(document)` — a tree from a registered `UIDocumentAsset` by name (e.g. `main`); the
@@ -60,7 +61,7 @@ Why: [[ui-engine-stack]] § XML event attributes.
 | `layout` | `RegisterDirtyRoot`, `ResolveLayout`, `VerifySubtreeCache` |
 | `input` | `Poll(window)` → `SolveHover`, `SolvePress` (dismisses menus), `SolveRelease` (opens `ContextMenus.OpenOn`), `SolveDrag`, `SolveScroll`, `SolveDragWindow`; `HitTest` (children last-to-first, optional `skip`), `Dispatch` (target up through parents until a handler returns `true`), `SetActiveControl`, `SetDragging`, `EndDrag`, `Forget`, `WindowOf` |
 | `dense order` | `ElementOrder(pool)` — the DFS order the `UIElements` pool sorts to |
-| `draw lists` | `BuildDrawLists` → `Collect` → `Control.Emit`, per window |
+| `draw lists` | `Quads`; `BuildDrawLists` → `Collect(control, z)` → `Control.Emit(z)`, per window; `detailCullSize` — under it on either axis, `Collect` emits the control and skips its children |
 
 No bootstrap step: each host sets `Engine.primary.ui.uiRoot` from `Control.ParseXML` itself.
 
@@ -72,17 +73,26 @@ A window's root, transparent; `RenderWindow.ui.uiRoot`. Fits the tree to the win
 ### ContainerControl — `<Container>` · Control
 Many children, both alignments default to `Stretch`. Base of every multi-child control.
 
-### DrawList
-Per window, rebuilt each frame: parallel `ControlGeometry[]` / `VulkanControl[]`, `Next()` hands out a slot,
-`Clear()` rewinds the walk. Filled by `Control.Emit`; mirrored by the render thread. `Clear()` does **not**
-touch `Count` — the walk fills `_cursor` and `Publish()` hands it over at the end, so the reader never sees a
-partial count. Why: [[ui-draw-list]], [[ui-draw-list-publish]].
+### UIQuads — pool, not a class
+`UIEngine.Quads`, declared in `Pools.pools.xml`; columns `ControlGeometry`, `VulkanControl`. Handle-less: rewound
+once per frame (`DataPool.Rewind`), filled by `Control.Emit` / `TextRunControl.WriteGlyph` through
+`DataPool.Append` + `GetSpan<T>()[row]`. Every window shares it; each window's `(first, count)` goes to
+`UIEngineModule.PublishQuadRange` after its walk, and the render thread reads only that range and `Backing<T>()`.
+Why: [[ui-quads-pool]], [[ui-draw-list]], [[ui-draw-list-publish]].
+
+### Palettes — static, not a control
+Loads `Palettes/*.palette.xml` (`LoadPalettes`, bootstrap), `Get(name)`, `Default`; owns the paint table
+(`Table`, replaced whole). Paint words: `Inline`, `IsInline`, `ColorOf`. Derived words: `Surface`, `Ink`, `Step`;
+`Contrast`. Types beside it: `PaletteDefinition` `<Palette>`, `PaletteRole`. The GPU copy is
+`UIEngineModule.MirrorPaints`, set 1 binding 4.
+Why: [[ui-palettes]].
 
 ### UIData — value types
 - `LayoutRect` (`x`, `y`, `width`, `height`, `Right`, `Bottom`, `Overlaps`); `Thickness`, `CornerRadii`
   (+ their `TypeConverter`s); `QuadUVs`.
 - Rows: `ArrangeData` (pool `UIElements`), `ControlGeometry`, `VulkanControl` — the GPU quad, typed by
-  `VulkanControlType` (`MTSDFControl`, `PanelControl`, `ImageControl`).
+  `VulkanControlType` (`MTSDFControl`, `PanelControl`, `ImageControl`); its colours are paint words
+  (`paint`, `edgePaint`) plus `alpha`.
 - Enums: `HorizontalAlignment`, `VerticalAlignment`, `DockMode`, `ArrangeFlags` (`Clip`, `Hidden`,
   `MeasureDirty`, `ArrangeDirty`), `ControlColor`.
 
@@ -269,7 +279,8 @@ partial count. Why: [[ui-draw-list]], [[ui-draw-list-publish]].
   - size — `Width`, `Height`, `MinWidth`, `MinHeight`, `WidthStar`, `HeightStar`, `Margin`, `Padding`
   - place — `HorizontalAlignment`, `VerticalAlignment`, `HorizontalPos`, `VerticalPos`, `DockMode`,
     `Grid.Column`, `Grid.Row`, `ClipToBounds`
-  - paint — `ColorHex`, `Alpha`, `ControlColor`, `CornerRadius`, `EdgeColorHex`, `EdgeThickness`, `Gradient`
+  - paint — `ColorHex`, `Alpha`, `ControlColor`, `CornerRadius`, `EdgeColorHex`, `EdgeThickness`, `Gradient`,
+    `Role`, `Palette`
   - events, taking action names — `onEnter`, `onExit`, `onMove`, `onPress`, `onRelease`, `onTap`, `onScroll`
   - behaviour — `ContextMenu`, `StopsContextMenu`, `Draggable`
 - A control's own attributes are in its entry above. `*/Data/XML/Schemas/UITypeSchema.xsd` is generated and

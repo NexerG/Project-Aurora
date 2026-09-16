@@ -4,7 +4,7 @@
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:import schemaLocation="EntityRegistryTypeSchema.xsd" namespace="http://arctisaurora/AuroraEntityRegistryTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:GradientKind types:GridSizeMode types:TextStyleType types:ScrollDirection types:Orientation" />
+    <xs:union memberTypes="types:GradientKind types:GridSizeMode types:PaletteRole types:TextStyleType types:ScrollDirection types:Orientation" />
   </xs:simpleType>
   <xs:attributeGroup name="VaultBrowser.Attributes">
     <xs:attributeGroup ref="types:Scrollable.Attributes" />
@@ -285,6 +285,40 @@
   <xs:complexType name="MenuButton">
     <xs:sequence />
     <xs:attributeGroup ref="types:Button.Attributes" />
+  </xs:complexType>
+  <xs:simpleType name="PaletteRole">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="None" />
+      <xs:enumeration value="Clear" />
+      <xs:enumeration value="Ground" />
+      <xs:enumeration value="Surface" />
+      <xs:enumeration value="Chrome" />
+      <xs:enumeration value="Field" />
+      <xs:enumeration value="Line" />
+      <xs:enumeration value="Accent" />
+      <xs:enumeration value="Danger" />
+      <xs:enumeration value="Ink" />
+      <xs:enumeration value="MutedInk" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="Palette.Attributes">
+    <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="Ground" type="xs:string" />
+    <xs:attribute name="Surface" type="xs:string" />
+    <xs:attribute name="Chrome" type="xs:string" />
+    <xs:attribute name="Field" type="xs:string" />
+    <xs:attribute name="Line" type="xs:string" />
+    <xs:attribute name="Accent" type="xs:string" />
+    <xs:attribute name="Danger" type="xs:string" />
+    <xs:attribute name="DarkInk" type="xs:string" />
+    <xs:attribute name="LightInk" type="xs:string" />
+    <xs:attribute name="Step" type="xs:float" />
+    <xs:attribute name="Muted" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="Palette" type="types:Palette" />
+  <xs:complexType name="Palette">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Palette.Attributes" />
   </xs:complexType>
   <xs:element name="Panel" type="types:Panel" />
   <xs:complexType name="Panel">

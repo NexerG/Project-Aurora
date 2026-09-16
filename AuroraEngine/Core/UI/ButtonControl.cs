@@ -11,23 +11,33 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("PressColorHex", "UI", "Control color while the button is held.")]
         public string? pressColorHex;
 
-        private string restColorHex = "#8C8C8C";
+        private string? restColorHex;
+        private uint restPaint = Palettes.Inline("#8C8C8C");
         private bool hovered;
         private bool pressed;
 
         // The authored colour, not the shown one — the state picks which of the three is painted.
         public override string colorHex
         {
-            get => restColorHex;
+            get => restColorHex ?? base.colorHex;
             set
             {
+                base.colorHex = value;
                 restColorHex = value;
+                restPaint = Palettes.Inline(value);
                 ApplyState();
             }
         }
 
         public ButtonControl()
         {
+            ApplyState();
+        }
+
+        protected override void ApplyRole(PaletteDefinition scheme, uint ground)
+        {
+            if (role == PaletteRole.None) return;
+            restPaint = RolePaint(scheme, ground);
             ApplyState();
         }
 
@@ -64,8 +74,18 @@ namespace ArctisAurora.Core.UI
             return true;
         }
 
-        private void ApplyState() => base.colorHex = pressed ? pressColorHex ?? hoverColorHex ?? restColorHex
-                                                  : hovered ? hoverColorHex ?? restColorHex
-                                                  : restColorHex;
+        // An authored state colour wins; an authored rest falls back to itself, a palette rest steps.
+        private void ApplyState()
+        {
+            string? stateHex = pressed ? pressColorHex ?? hoverColorHex : hovered ? hoverColorHex : null;
+            bool fromPalette = restColorHex == null && palette != null && role != PaletteRole.None;
+            uint state = pressed ? 2u : hovered ? 1u : 0u;
+
+            SetPaint(stateHex != null ? Palettes.Inline(stateHex)
+                   : fromPalette ? Palettes.Step(palette!, restPaint, state)
+                   : restPaint);
+            visual.alpha = fromPalette && role == PaletteRole.Clear && state == 0 ? 0f : alpha;
+            RepaintChildren();
+        }
     }
 }

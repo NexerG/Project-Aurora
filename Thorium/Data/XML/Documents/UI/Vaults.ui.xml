@@ -1,34 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<WindowRoot Width="520" Height="400" WindowingMode="WindowSize" Autoscaling="false" ScalingAxis="Vertical" ColorHex="#F0EFEA">
+<WindowRoot Width="520" Height="400" WindowingMode="WindowSize" Autoscaling="false" ScalingAxis="Vertical" Palette="thorium-light">
 
-	<WindowFrame ColorHex="#F0EFEA">
-	<StackPanel Orientation="Vertical" ColorHex="#F0EFEA">
+	<WindowFrame Role="Surface">
+	<StackPanel Orientation="Vertical">
 
-		<TitleBar Orientation="Horizontal" Height="32" ColorHex="#EBEAE5">
-			<Label Text="Vaults" FontSize="14" Width="120" Height="32" ColorHex="#5F5D56"/>
-			<Panel WidthStar="1" Height="32" ColorHex="#EBEAE5"/>
-			<Button Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD" onRelease="Window.Minimize">
-				<Icon Set="default" Icon="minimize" Width="14" Height="14" ColorHex="#5F5D56"/>
+		<TitleBar Orientation="Horizontal" Height="32">
+			<Label Text="Vaults" FontSize="14" Width="120" Height="32" Role="MutedInk"/>
+			<Panel WidthStar="1" Height="32"/>
+			<Button Width="46" Height="32" onRelease="Window.Minimize">
+				<Icon Set="default" Icon="minimize" Width="14" Height="14"/>
 			</Button>
-			<Button Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#E3E1D9" PressColorHex="#D7D5CD" onRelease="Window.MaximizeRestore">
-				<Icon Set="default" Icon="maximize" Width="18" Height="18" ColorHex="#5F5D56"/>
+			<Button Width="46" Height="32" onRelease="Window.MaximizeRestore">
+				<Icon Set="default" Icon="maximize" Width="18" Height="18"/>
 			</Button>
-			<Button Width="46" Height="32" ColorHex="#EBEAE5" HoverColorHex="#C42B1E" PressColorHex="#A82318" onRelease="Window.Close">
-				<Icon Set="default" Icon="close" Width="14" Height="14" ColorHex="#5F5D56"/>
+			<Button Width="46" Height="32" HoverColorHex="#C42B1E" PressColorHex="#A82318" onRelease="Window.Close">
+				<Icon Set="default" Icon="close" Width="14" Height="14"/>
 			</Button>
 		</TitleBar>
 
-		<StackPanel Orientation="Vertical" HeightStar="1" ColorHex="#F0EFEA" Padding="12" Spacing="8">
-			<Scrollable HeightStar="1" ColorHex="#F0EFEA"
+		<StackPanel Orientation="Vertical" HeightStar="1" Padding="12" Spacing="8">
+			<Scrollable HeightStar="1"
 							ThumbColorHex="#D7D5CD" ThumbHoverColorHex="#C9C6BC" ThumbPressColorHex="#BAB7AC">
-				<StackPanel Name="Rows" Orientation="Vertical" Spacing="6" ColorHex="#F0EFEA"/>
+				<StackPanel Name="Rows" Orientation="Vertical" Spacing="6"/>
 			</Scrollable>
 
-			<StackPanel Orientation="Horizontal" Height="30" ColorHex="#F0EFEA">
-				<Panel WidthStar="1" Height="30" ColorHex="#F0EFEA"/>
-				<Button Width="110" Height="30" ColorHex="#E3E1D9" HoverColorHex="#DCDAD3" PressColorHex="#D0CEC6"
-							CornerRadius="4" onRelease="Vaults.Add">
-					<Label Text="Add vault…" FontSize="14" ColorHex="#5F5D56"/>
+			<StackPanel Orientation="Horizontal" Height="30">
+				<Panel WidthStar="1" Height="30"/>
+				<Button Width="110" Height="30" Role="Chrome" CornerRadius="4" onRelease="Vaults.Add">
+					<Label Text="Add vault…" FontSize="14" Role="MutedInk"/>
 				</Button>
 			</StackPanel>
 		</StackPanel>
