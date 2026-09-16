@@ -63,7 +63,7 @@ Zones nest, and an increment always attributes to the innermost one that is open
 `Report()` prints the calling thread's tables and clears them, at most once a second. It runs at the end of every `ThreadedSystem` tick, so each thread reports its own line and no thread ever reads another's tables. The printing is gated by `ProfilingReport.Enabled` and is **off by default**; the period still rolls and still clears when it is off, so nothing accumulates forever. The gate covers the whole log call, so switching the report off takes it out of the log file and the flight recorder as well as the console.
 
 ### What is instrumented today
-`MainTick` carries `MainTick`, `PollEvents`, `ActivateKeybinds`, `HandleUI` (with a `Window` counter), `Interpolate` and `FrameEdge`. `RenderSystem.Tick` carries `RenderTick` and `Draw`. The frame edges themselves are in `ThreadedSystem.Loop`, so every system has them, physics included.
+`MainTick` carries `MainTick`, `PollEvents`, `ActivateKeybinds`, `HandleUI` (with a `Window` counter), `Interpolate` and `FrameEdge`. `RenderSystem.Tick` carries `RenderTick` and `Draw`. Inside it, `Renderer.Draw` carries `Draw.Wait`, `Draw.Acquire`, `Draw.Update`, `Draw.Submit` and `Draw.Present`, and `Renderer.RecreateSwapchain` carries `Swapchain.Recreate` with `Swapchain.WaitIdle`, `Swapchain.DestroyOutputs`, `Swapchain.Destroy`, `Swapchain.Create`, `Swapchain.ResizePerImage`, `Swapchain.CreateOutputs` and `Swapchain.Descriptors` under it. The frame edges themselves are in `ThreadedSystem.Loop`, so every system has them, physics included.
 
 Under `ResolveLayout`, aimed at what a window resize costs: `UIEngine.ResolveLayout` carries `Layout.Measure`, `Layout.Arrange`, `Layout.SubtreeCache` and `Layout.VerifyCache` per root (with a `Root` counter); `DocumentControl` carries `Document.MeasureBlocks`, `Document.ArrangeBlocks` and `Document.ArrangeOverlays`; `TextRunControl.Measure` carries `Text.BuildRuns` and `Text.MeasureBlock` for every run that actually rewraps; `DocumentEditorControl.Arrange` carries `Editor.Rearrange` only when scrolling to the caret moves the view.
 
@@ -112,6 +112,7 @@ A capture records every span of every frame rather than a period's totals.
 ```csharp
 Profiling.Capture();          // the next BurstFrames frames, then it closes the files
 Profiling.Capture(1200);      // or a length of your own
+Profiling.CaptureUntilFlush(); // every frame until shutdown's Profiling.Flush
 ```
 
 `Profiling.Capture` is tagged as an `Input` action, so it can be bound to a key in an application's `InputMap.inputs.xml`; Thorium binds it to `F9`. Setting `ProfilingCapture.Mode` to `Continuous` starts one at launch instead and never ends it, rolling into a new session folder every `MaxFileMB` and keeping the last `Keep` of them.
@@ -153,7 +154,7 @@ ProfileScenario.OnTick()
 		replace the primary window's tree with one editor showing it
 		put the caret at the end of the first paragraph and focus the editor
 	if tick is 30
-		Profiling.Capture(240)
+		Profiling.CaptureUntilFlush()
 	if tick is 31 to 150
 		zone Scenario.Type
 			queue one character and run Text.Write, the same action a key press runs
@@ -190,7 +191,17 @@ One file per thread, `Profiling/<yyyyMMdd-HHmmss>/<thread>.frames.xml`.
 
 Three consequences worth holding on to. The nesting of the elements is the nesting of the zones, so the file **is** the flame chart and nothing has to be reconstructed. `T` is process-wide, so two threads' files stack on one timeline without a correlation id — the render thread's wait sits directly under whatever main was doing. And the gap between `D` and the root span's `E` is time the thread spent parked, which draws itself.
 
-A file whose process died has no closing `</FrameCapture>`. That is deliberate — the last partial batch of a crashed run is worthless, so a reader is expected to tolerate the truncation. A clean exit closes it through `Profiling.Flush`, the shutdown step before `Logging.Flush`.
+A file whose process died has no closing `</FrameCapture>`. That is deliberate — the last partial batch of a crashed run is worthless, so a reader is expected to tolerate the truncation. A clean exit closes it through `Profiling.Flush`, the shutdown step before `Logging.Flush`, which first waits for every thread to hand over the frames it is still holding — each one does at its next frame edge, and main, which is running the step, hands its own over directly.
+
+```
+Profiling.Flush()
+	end the capture
+	hand the calling thread's batch to the spool, dropping the frame it is in the middle of
+	wait until no thread holds a batch, for at most 2 seconds
+		if it timed out
+			warn how many batches were lost
+	stop the spool, which writes what is left and closes every file
+```
 
 One shape in the file catches readers out: a `Z` with no children and no counters is written self-closing, as `<Z N="3" B="84947" E="94958" />`, so nothing can wait for a closing tag that will not come. `A` is omitted from a span that allocated nothing, and from one the frame edge cut off before it closed; a file written before allocation was recorded reads back as zero rather than failing.
 
