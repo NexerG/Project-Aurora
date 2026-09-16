@@ -156,7 +156,8 @@ correct) when it writes the `<Names>` table.
 **Three batches per thread, and a starved pool drops frames rather than waiting.** Dropped frames are
 counted and surface as `Dropped=` on the next batch that gets written. Two holes follow from the
 no-cross-thread rule and are accepted: drops still pending when a capture ends are never reported,
-and a partial batch held by a thread at shutdown is lost (up to `FramesPerBatch - 1` frames).
+and ~~a partial batch held by a thread at shutdown is lost (up to `FramesPerBatch - 1` frames)~~ —
+**closed 2026-09-17**, `Profiling.Flush` now waits for it; see §16.
 
 ## 10. One file per thread, aligned by absolute timestamp
 
@@ -414,7 +415,7 @@ Typing and a window resize on a 1,000,000-character note, recorded into the same
 | Tick | Does |
 |---|---|
 | 2 | `Open`: 1,000 `BlockControl`s of 1,000 chars (one `Run` each) into a `RichTextDocument`; a bare `WindowRoot` holding one stretched `DocumentEditorControl` replaces `Engine.primary.ui.uiRoot`; caret at the end of block 0, `FocusCaret` |
-| 30 | `Profiling.Capture(240)` |
+| 30 | `Profiling.CaptureUntilFlush()` (was `Capture(240)` until 2026-09-17, §16) |
 | 31–150 | one char into `InputHandler.charInputReadQueue`, then `TextInputActions.Write()`; zone `Scenario.Type` |
 | 151–270 | `glfwSetWindowSize` on the primary window, 8 px narrower a tick for 60 ticks, then back; zone `Scenario.Resize` |
 | 271 | logs the final length and window size, `Engine.Post(Shutdown.Request)` |
@@ -497,6 +498,78 @@ The final shape (swap on tick 2, write root beside the host's), one run:
 | the remeasure | `ResolveLayout` avg 2.85 ms typing, 87.59 ms resizing, max 144 ms |
 | document, window, exit | 1,000,000 → 1,000,120 chars, 1280x720 restored, exit 0 |
 | user settings | hash unchanged; the oldest capture was pruned (`Keep` 5) |
+
+## 16. Shutdown waits for every thread's last batch, and the scenario captures to the end (user, 2026-09-17)
+
+**Date:** 2026-09-17
+**Scope:** `Profiling` — `Flush`, `CaptureUntilFlush`, `Frame.Release`, `Frame.Hand`, `Frame.Open`;
+`ProfileScenario.OnTick`; `Renderer` — `Draw`, `RecreateSwapchain`.
+
+Asked for to find out why a window resize on an integrated GPU draws stretched frames.
+
+### What changed
+- **Zones in `Renderer.Draw`:** `Draw.Wait` (timeline `WaitSemaphores`), `Draw.Acquire`, `Draw.Update` (global
+  buffers + module/compositor re-record), `Draw.Submit` (both submits), `Draw.Present`. They nest under
+  `RenderSystem.Tick`'s `Draw`.
+- **Zones in `Renderer.RecreateSwapchain`:** `Swapchain.Recreate` over the method (closed before the minimized
+  `return` too), children `Swapchain.WaitIdle`, `.DestroyOutputs`, `.Destroy`, `.Create`, `.ResizePerImage`
+  (only when the image count changed), `.CreateOutputs`, `.Descriptors`. Both call sites (after acquire, after
+  present) are covered by being inside the method.
+- **`Profiling.CaptureUntilFlush()`** — the `Continuous` branch of `Configure` as a call: `BeginSession("Burst",
+  0)`, `_sessionFrames = -1`. `ProfileScenario` tick 30 calls it instead of `Capture(240)`.
+- **`_heldBatches`** — `Interlocked` count of batches taken from a lane and not yet handed; incremented in
+  `Frame.Open` after a successful `Take`, decremented in `Frame.Hand`.
+- **`Frame.Release()`** — hands the calling thread's batch mid-frame and clears `capturing`, so the zones still
+  open in that frame and `Frame.End` skip the batch.
+- **`Profiling.Flush`** ends the session, `Frame.Release()`s the caller (main, inside the `Commit` step), then
+  `SpinWait.SpinUntil(_heldBatches == 0, flushWaitMs)` before `FrameSpool.Flush`. `flushWaitMs` = 2000; a
+  timeout logs `Warn` with the count left.
+
+### Why these choices
+
+**The scenario's fixed burst never reached the resize on the render thread.** `remaining` is per thread, so
+`Capture(240)` gave render 240 of *its* frames — under 0.5 s of typing at ~5,000 fps (RTX) or ~490 fps (iGPU).
+**Rejected:** `Capture(100_000)` — a magic number that has to outlast the fastest render thread, and it ends
+through `Flush` the same way.
+
+**An unbounded capture exposed §9's hole, so the hole got closed at `Flush` (user).** A thread hands a partial
+batch only at its next `Frame.Open` after the session changes. `Flush` stopped the spool inside main's last
+tick, so main's tail (192 of 241 frames kept) and — on the iGPU, whose resize render ticks take ~120 ms — the
+render thread's whole resize half (0 rebuild ticks) never reached a file. **Rejected:** a scenario-local
+`EndCapture` plus a delayed `Shutdown.Request` — scenario-only, and `Continuous` captures would still lose
+their tail at every exit.
+
+**The wait is a batch count, not a join.** Every thread keeps ticking through the `Commit` phase, so each
+hands its batch at its next frame edge — within one tick. Joining the systems would have meant moving
+`Profiling.Flush` out of `Shutdown.shutdown.xml` to after `Engine.Stop`, and after `Logging.Flush`. The
+counter is the first shared state on the recording path (§5), but it moves once per batch, not per zone.
+
+**Main hands its own batch rather than waiting for a frame edge it will never reach.** `Flush` runs inside
+main's tick and main's loop exits after it.
+
+### Consequences to hold on to
+- **The shutdown tick is not recorded** on main — `Release` drops the frame in progress.
+- **A thread that stops opening frames while holding a batch** (or `Profiling.enabled` flipped off) stalls
+  shutdown for `flushWaitMs`, then its frames are lost with a `Warn`.
+- **A thread that takes a batch just after the wait saw zero loses that frame.** It began after the capture
+  ended.
+- **`Flush` blocks main for up to one render tick** — 102 ms on the iGPU mid-rebuild, 28 ms on the RTX.
+- `Swapchain.Create` is not split (`vkCreateSwapchainKHR` / `GetSwapchainImages` / image views).
+
+### Verified
+
+Builds: Debug, Release, Release with `DEBUG` — 0 errors. One `--profile-scenario` run per GPU, validation
+off, the iGPU selected with `VK_LOADER_DRIVERS_SELECT=*amd*`:
+
+| Case | Result |
+|---|---|
+| main | 241 frames (`I` 30–270), `Dropped` 0 — 192 before the wait |
+| render | iGPU 921 frames with 12 resize rebuild ticks (0 before); RTX 10,875 |
+| flush | 102 ms iGPU, 28 ms RTX; no `not handed` warning; every file closes |
+| iGPU rebuild tick | `RenderTick` 117.9 ms: `Swapchain.Recreate` 116.2 — `Create` 93.0, `Destroy` 21.1, `CreateOutputs` 1.1, `WaitIdle` 0.16, `DestroyOutputs` 0.15; `Draw.Present` 1.6 |
+| RTX rebuild tick | 6.3 ms: `Recreate` 5.3 — `Create` 3.3, `DestroyOutputs` 0.72, `Destroy` 0.63, `CreateOutputs` 0.39; `Draw.Present` 0.86 |
+| iGPU typing tick | `Draw` 2.05 ms, of which `Draw.Wait` 1.85 |
+| iGPU resize | every render tick is a rebuild — 0 plain ticks in the resize half |
 
 ## Left standing
 

@@ -752,39 +752,60 @@ namespace ArctisAurora.EngineWork.Rendering
         // documents its window queries as main-thread only, and this runs on the render thread.
         internal void RecreateSwapchain(RenderWindow window)
         {
+            Profiling.Zone.Start("Swapchain.Recreate");
+
             // wait until the GPU is idle before tearing down resources still in use
+            Profiling.Zone.Start("Swapchain.WaitIdle");
             vk.DeviceWaitIdle(logicalDevice);
+            Profiling.Zone.End("Swapchain.WaitIdle");
 
             // bail if minimized
             if (window.os.windowSize.Width == 0 || window.os.windowSize.Height == 0)
+            {
+                Profiling.Zone.End("Swapchain.Recreate");
                 return;
+            }
 
             // tear down size-dependent resources (the module output images)
+            Profiling.Zone.Start("Swapchain.DestroyOutputs");
             for (int i = 0; i < window.modules.Length; i++)
                 window.modules[i].DestroySizeDependentResources();
             window.compositor.DestroySizeDependentResources();
+            Profiling.Zone.End("Swapchain.DestroyOutputs");
 
             // tear down the swapchain image views and the swapchain itself
+            Profiling.Zone.Start("Swapchain.Destroy");
             for (int i = 0; i < window.swapchainImageViews.Length; i++)
                 vk.DestroyImageView(logicalDevice, window.swapchainImageViews[i], null);
             window.swapchainKHR.DestroySwapchain(logicalDevice, window.swapchain, null);
+            Profiling.Zone.End("Swapchain.Destroy");
 
             // recreate the swapchain at the new size
             uint previousImageCount = window.imageCount;
+            Profiling.Zone.Start("Swapchain.Create");
             CreateSwapchain(window);
+            Profiling.Zone.End("Swapchain.Create");
 
             // A present-mode change can hand back a different number of images, and every per-image
             // array in the window and its modules was sized to the old count.
             if (window.imageCount != previousImageCount)
+            {
+                Profiling.Zone.Start("Swapchain.ResizePerImage");
                 ResizePerImageResources(window);
+                Profiling.Zone.End("Swapchain.ResizePerImage");
+            }
 
             // recreate per-module output images at the new size
+            Profiling.Zone.Start("Swapchain.CreateOutputs");
             for (int i = 0; i < window.modules.Length; i++)
                 window.modules[i].CreateOutputImages();
+            Profiling.Zone.End("Swapchain.CreateOutputs");
 
             // the compositor's descriptors sample the freshly created module output views — rewrite them
+            Profiling.Zone.Start("Swapchain.Descriptors");
             for (int f = 0; f < (int)window.imageCount; f++)
                 window.compositor.UpdateDescriptorSets(f, 0);
+            Profiling.Zone.End("Swapchain.Descriptors");
 
             // force command buffers to be re-recorded at the new size on every image
             for (int i = 0; i < window.modules.Length; i++)
@@ -792,6 +813,8 @@ namespace ArctisAurora.EngineWork.Rendering
                     window.modules[i].isDirty[d] = true;
             for (int d = 0; d < window.compositor.isDirty.Length; d++)
                 window.compositor.isDirty[d] = true;
+
+            Profiling.Zone.End("Swapchain.Recreate");
         }
 
         // Re-sizes everything indexed by swapchain image after the image count itself changed.
@@ -881,6 +904,7 @@ namespace ArctisAurora.EngineWork.Rendering
                 return;
 
             ulong waitValue = (window.frameCounter - MAX_FRAMES_IN_FLIGHT) * 2 + 2;
+            Profiling.Zone.Start("Draw.Wait");
             fixed(Semaphore* timelineSemaphorePtr = &window.timelineSemaphore)
             {
                 SemaphoreWaitInfo waitInfo = new SemaphoreWaitInfo()
@@ -892,9 +916,12 @@ namespace ArctisAurora.EngineWork.Rendering
                 };
                 vk.WaitSemaphores(logicalDevice, ref waitInfo, ulong.MaxValue);
             }
+            Profiling.Zone.End("Draw.Wait");
             // get next image
             uint imageIndex = 0;
+            Profiling.Zone.Start("Draw.Acquire");
             Result r = window.swapchainKHR.AcquireNextImage(logicalDevice, window.swapchain, ulong.MaxValue, window.imageAvailableSemaphores[window.currentFrame], default, ref imageIndex);
+            Profiling.Zone.End("Draw.Acquire");
 
             // update renderer if needed before draw
             if (r == Result.ErrorOutOfDateKhr)
@@ -909,6 +936,7 @@ namespace ArctisAurora.EngineWork.Rendering
             }
 
             // the renderer's own buffers first, then each module's
+            Profiling.Zone.Start("Draw.Update");
             UpdateGlobalBuffers(window, imageIndex);
 
             // update modules if needed
@@ -926,8 +954,10 @@ namespace ArctisAurora.EngineWork.Rendering
                 Log.Every(1000).Hot($"compositor re-recording image {imageIndex}");
                 window.compositor.UpdateModule((int)imageIndex);
             }
+            Profiling.Zone.End("Draw.Update");
 
             // submit command buffer
+            Profiling.Zone.Start("Draw.Submit");
             SubmitInfo _submitInfo = new SubmitInfo()
             {
                 SType = StructureType.SubmitInfo
@@ -1003,6 +1033,7 @@ namespace ArctisAurora.EngineWork.Rendering
             };
             if (vk.QueueSubmit(compositeQueue, 1, ref compositorSubmit, default) != Result.Success)
                 throw new Exception("Failed to submit compositor command buffer");
+            Profiling.Zone.End("Draw.Submit");
 
 
             // present
@@ -1017,7 +1048,9 @@ namespace ArctisAurora.EngineWork.Rendering
                 PSwapchains = _swapChains,
                 PImageIndices = &imageIndex
             };
+            Profiling.Zone.Start("Draw.Present");
             r = window.swapchainKHR.QueuePresent(presentQueue, ref _presentInfo);
+            Profiling.Zone.End("Draw.Present");
             if (r == Result.ErrorOutOfDateKhr || r == Result.SuboptimalKhr || window.os.frameBufferResized)
             {
                 Log.Info($"rebuilding swapchain — {(window.os.frameBufferResized ? "resize or request" : $"present returned {r}")}");
