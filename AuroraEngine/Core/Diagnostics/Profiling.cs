@@ -27,6 +27,7 @@ namespace ArctisAurora.Core.Diagnostics
 
         private const string rootZone = "(root)";
         private const int reportMs = 1000;
+        private const int flushWaitMs = 2000;
 
         // from ProfilingSettings
         internal static bool reportEnabled;
@@ -35,6 +36,9 @@ namespace ArctisAurora.Core.Diagnostics
         // -1 for continuous, 0 for stopped.
         private static int _session;
         private static volatile int _sessionFrames;
+
+        // batches taken from a lane and not yet handed to the spool, across every thread
+        private static int _heldBatches;
 
         // --profile on the command line, which beats ProfilingCapture.Mode
         private static bool _bootArmed;
@@ -245,6 +249,7 @@ namespace ArctisAurora.Core.Diagnostics
                         tables.dropped++;
                         return;
                     }
+                    Interlocked.Increment(ref _heldBatches);
                     tables.batch.dropped = tables.dropped;
                     tables.dropped = 0;
                 }
@@ -309,6 +314,16 @@ namespace ArctisAurora.Core.Diagnostics
                 tables.batch!.AddPool(name, count, capacity, bytes);
             }
 
+            // Hands the calling thread's batch over mid-frame. The frame in progress is not recorded.
+            internal static void Release()
+            {
+                Tables? tables = _tables;
+                if (tables == null) return;
+
+                tables.capturing = false;
+                Hand(tables, true);
+            }
+
             private static void Hand(Tables tables, bool last)
             {
                 if (tables.batch == null) return;
@@ -316,6 +331,7 @@ namespace ArctisAurora.Core.Diagnostics
                 tables.batch.last = last;
                 FrameSpool.Submit(tables.batch);
                 tables.batch = null;
+                Interlocked.Decrement(ref _heldBatches);
             }
         }
 
@@ -331,6 +347,14 @@ namespace ArctisAurora.Core.Diagnostics
 
         [A_XSDActionDependency("Profiling.Capture", "Input", "Records the next BurstFrames frames of every thread to a frame file")]
         public static void Capture() => Capture(FrameSpool.burstFrames);
+
+        // Records every frame of every thread until Flush.
+        public static void CaptureUntilFlush()
+        {
+            FrameSpool.BeginSession("Burst", 0);
+            _sessionFrames = -1;
+            Interlocked.Increment(ref _session);
+        }
 
         // Opens a boot capture when --profile or --profile=N is on the command line. Runs before the
         // bootstrap phase, which is the only way the phase itself lands in one.
@@ -392,6 +416,11 @@ namespace ArctisAurora.Core.Diagnostics
         {
             _sessionFrames = 0;
             Interlocked.Increment(ref _session);
+
+            Frame.Release();
+            if (!SpinWait.SpinUntil(() => Volatile.Read(ref _heldBatches) == 0, flushWaitMs))
+                Log.Warn($"{Volatile.Read(ref _heldBatches)} capture batch(es) not handed within {flushWaitMs}ms — their frames are lost");
+
             FrameSpool.Flush();
             return true;
         }
