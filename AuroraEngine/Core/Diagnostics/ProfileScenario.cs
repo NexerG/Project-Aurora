@@ -85,7 +85,7 @@ namespace ArctisAurora.Core.Diagnostics
 
             if (tick == settleTicks)
             {
-                Profiling.Capture(typeTicks + resizeTicks);
+                Profiling.CaptureUntilFlush();
                 return;
             }
 
