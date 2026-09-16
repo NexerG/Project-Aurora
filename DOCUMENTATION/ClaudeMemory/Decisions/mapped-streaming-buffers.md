@@ -126,6 +126,37 @@ sit on the legacy `VulkanRenderer` path that neither `Renderer` nor `Engine` rea
 It keeps a live parameter for a dead path. Reviving raytracing means restoring the flag *and*
 requesting the feature, and a parameter would hide half that requirement rather than surface it.
 
+### 8. Mirror growth is per image, when that image comes round (2026-09-16)
+
+Standing rule (user, 2026-09-16): **no `vkDeviceWaitIdle` for buffers.** The renderer pumps frames
+across the swapchain images; an image's resources are touched only once that image's own previous
+frame is done, and then only that image's.
+
+`UIEngineModule.MirrorDrawList` used to stall the device on `DrawList` growth and recreate every
+image's geometry/control pair at once. Now `_mirrorCapacity` is `int[]`, one per image (-1 = not
+built). When image *i* is acquired and its capacity differs from the draw list's, `DestroyMirror(i)`
+frees only that pair and it is recreated at the new size; `UpdateModule` then rebuilds image *i*'s
+descriptor pool and sets through the existing `_frameBuiltCapacity[i]` check. Other images keep
+their old-size pair, sets and command buffer — consistent with each other — until they come round.
+
+Why no explicit wait is needed: an image is only re-acquirable after its previous
+`vkQueuePresentKHR` was processed, and that present waits on `renderFinishedSemaphores[i]`, signalled
+by the compositor submit, which itself waits on the module submit. So on `AcquireNextImage` returning
+*i*, nothing on the GPU still reads image *i*'s buffers, pool or command buffer.
+
+**Rejected: an explicit per-image timeline value** (`ulong[]` on `RenderWindow`, recorded at submit,
+waited on before `UpdateModule`). It restates what acquire already guarantees; kept in reserve if
+acquire/present ever stops implying completion.
+
+`RebindImageCount` destroys all pairs and re-sizes the per-image arrays. It only runs at
+`BindWindow` (nothing built yet) and from `RecreateSwapchain`, which is already past its own
+`DeviceWaitIdle` — that stall belongs to the swapchain, not the buffers. This also fixes the arrays
+staying at the old length when the image count changes.
+
+Boot-verified on Thorium with sync validation on (1279 quads at boot → capacity 2048): no validation
+output after the first draw, clean teardown. Regrowth of an already-built image under load was not
+exercised.
+
 ## What came out
 
 Per frame, per window, with one UI module:
