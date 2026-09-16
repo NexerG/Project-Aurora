@@ -32,7 +32,9 @@ This is UI chrome. **The two have very different lifetimes and the UI one needs 
 
 - **Where it runs:** on `Interpolate()` alongside `OnTick`, or its own `ThreadedSystem`.
 - **Who owns an animation:** the control, or a central table. The UI data/visualization split wants the
-  table — see `ui-data-control-split.md`.
+  table — see `ui-data-control-split.md`. For colour, palettes left room for both (2026-09-17, not built): a
+  shared animation writes paint-table slots, a per-control one writes that control's inline paint word —
+  see `ui-palettes.md`.
 - **Whether it shares Phase C's keyframe/curve evaluation**, or stays a separate small thing for chrome.
 
 ## Before building

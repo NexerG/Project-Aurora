@@ -85,7 +85,6 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DocumentEdits.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DocumentToolbarControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DocumentXml.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DragGhost.cs
-ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DrawList.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DropdownControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/EditableLabelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/EditableTabsControl.cs
@@ -102,6 +101,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MenuButtonControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MenuScreen.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteActions.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteNameWindow.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Palettes.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PanelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PointerEvent.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/RichTextDocument.cs

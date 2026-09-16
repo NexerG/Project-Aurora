@@ -6,5 +6,9 @@ namespace ArctisAurora.Core.UI
     [A_XSDType("Panel", "UI")]
     public class PanelControl : Control
     {
+        public PanelControl()
+        {
+            role = PaletteRole.Clear;
+        }
     }
 }

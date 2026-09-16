@@ -6,6 +6,11 @@
 		<Component Type="ArrangeData"/>
 	</Pool>
 
+	<Pool Name="UIQuads" System="Main" Capacity="1024" Ordered="false" Growth="Additive" GrowthValue="512">
+		<Component Type="ControlGeometry"/>
+		<Component Type="VulkanControl"/>
+	</Pool>
+
 	<Pool Name="Entities" System="Main" Capacity="1024" Ordered="false" Growth="Multiplicative" GrowthValue="2">
 		<Component Type="TransformData"/>
 	</Pool>

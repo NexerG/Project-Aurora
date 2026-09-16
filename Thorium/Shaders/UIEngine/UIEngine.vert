@@ -37,18 +37,32 @@ struct VulkanControl
 {
     uint type;
     vec2[4] uvs;
-    vec4 tint;
+    uint paint;
+    float alpha;
     uint textureIndex;
     vec4 cornerRadius;
-    vec3 edgeColor;
+    uint edgePaint;
     float edgeThickness;
     uint gradientIndex;
 };
 
-// 92-byte stride, same reasoning as above
+// 76-byte stride, same reasoning as above
 layout(set = 1, binding = 2, scalar) readonly buffer ControlBuffer {
     VulkanControl rows[];
 } CTRL;
+
+// the palette slots a paint word indexes
+layout(set = 1, binding = 4, scalar) readonly buffer PaintBuffer {
+    vec4 paints[];
+} PAINT;
+
+// A paint word: 0xRRGGBB with the top bit set, or a slot.
+vec4 resolvePaint(uint word)
+{
+    if ((word & 0x80000000u) != 0u)
+        return vec4(float((word >> 16) & 0xFFu), float((word >> 8) & 0xFFu), float(word & 0xFFu), 255.0f) / 255.0f;
+    return PAINT.paints[word];
+}
 
 layout(location = 0) out vec2 fragPos;
 layout(location = 1) out flat vec4 fragClip;
@@ -79,8 +93,8 @@ void main() {
     fragHalfExtent = size * 0.5f;
 
     fragRadius = CTRL.rows[gl_InstanceIndex].cornerRadius;
-    fragTint = CTRL.rows[gl_InstanceIndex].tint;
-    fragEdgeColor = CTRL.rows[gl_InstanceIndex].edgeColor;
+    fragTint = resolvePaint(CTRL.rows[gl_InstanceIndex].paint) * vec4(1.0f, 1.0f, 1.0f, CTRL.rows[gl_InstanceIndex].alpha);
+    fragEdgeColor = resolvePaint(CTRL.rows[gl_InstanceIndex].edgePaint).rgb;
     fragEdgeThickness = CTRL.rows[gl_InstanceIndex].edgeThickness;
 
     // the atlas cell, cut per row — a text run hands each of its glyphs a different one

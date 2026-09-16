@@ -1,7 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<xs:schema xmlns:types="http://arctisaurora/AuroraEntityRegistryTypes" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:allTypes="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraEntityRegistryTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+<xs:schema xmlns:types="http://arctisaurora/AuroraEntityRegistryTypes" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:allTypes="http://arctisaurora/AuroraTypes" xmlns:UI="http://arctisaurora/AuroraUITypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraEntityRegistryTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
+  <xs:import schemaLocation="UITypeSchema.xsd" namespace="http://arctisaurora/AuroraUITypes" />
   <xs:attributeGroup name="Control.Attributes">
     <xs:attributeGroup ref="types:Entity.Attributes" />
     <xs:attribute name="Width" type="xs:float" />
@@ -22,6 +23,8 @@
     <xs:attribute name="ClipToBounds" type="xs:boolean" />
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="Alpha" type="xs:float" />
+    <xs:attribute name="Role" type="UI:PaletteRole" />
+    <xs:attribute name="Palette" type="xs:string" />
     <xs:attribute name="ControlColor" type="xs:string" />
     <xs:attribute name="CornerRadius" type="xs:string" />
     <xs:attribute name="EdgeColorHex" type="xs:string" />

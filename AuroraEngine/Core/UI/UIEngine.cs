@@ -18,8 +18,10 @@ namespace ArctisAurora.Core.UI
         private static readonly LogChannel Log = LogChannel.For("UIEngine");
 
         private static DataPool _elements;
+        private static DataPool _quads;
 
         public static DataPool Elements => _elements ??= DataManager.Get("UIElements");
+        public static DataPool Quads => _quads ??= DataManager.Get("UIQuads");
 
         #region ---- layout ----
         private static readonly HashSet<Control> _dirtyRoots = new HashSet<Control>();
@@ -578,7 +580,10 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- draw lists ----
-        // Rebuilds every window's draw list from its tree, in DFS pre-order — painter order, the same
+        // below this width or height a control draws but its children do not
+        private const float detailCullSize = 12f;
+
+        // Refills every window's UIQuads range from its tree, in DFS pre-order — painter order, the same
         // order the draw pool used to be sorted into. Runs at the frame edge, after Arrange has
         // settled every rect and clip.
         //
@@ -586,37 +591,42 @@ namespace ArctisAurora.Core.UI
         // size of the tree, so this is affordable; a dirty flag makes an idle window free later.
         public static void BuildDrawLists()
         {
+            DataPool quads = Quads;
+            quads.Rewind();
+
             foreach (RenderWindow window in Engine.windows.Values)
             {
                 UIEngineModule ui = window.ui;
                 if (ui == null) continue;
 
-                ui.drawList.Clear();
+                int first = quads.Count;
                 Control root = ui.rangeRoot ?? ui.uiRoot;
-                int walked = root == null ? 0 : Collect(root, ui.drawList);
-                ui.drawList.Publish();
+                int walked = root == null ? 0 : Collect(root, Control.rootDepth);
+                int count = quads.Count - first;
+                ui.PublishQuadRange(first, count);
 
                 Log.Every(1000).Debug($"'{ui.uiRoot?.name}' walked {walked} controls, " +
-                                      $"emitted {ui.drawList.Count} quads");
+                                      $"emitted {count} quads");
             }
         }
 
         // A subtree whose bounds miss the clip it inherited contributes nothing, so the walk stops
         // there — which is what keeps a scrolled document's cost proportional to the visible part.
         // Returns how many controls it reached.
-        private static int Collect(Control control, DrawList list)
+        private static int Collect(Control control, float z)
         {
             if (control.hidden) return 0;
 
             ref ArrangeData a = ref control.arrange;
             if (!a.subtreeBounds.Overlaps(a.clip)) return 0;
 
-            control.Emit(list);
+            control.Emit(z);
+            if (a.arranged.width < detailCullSize || a.arranged.height < detailCullSize) return 1;
 
             int walked = 1;
             foreach (Entity child in control.children)
                 if (child is Control childControl)
-                    walked += Collect(childControl, list);
+                    walked += Collect(childControl, z + Control.depthStep);
             return walked;
         }
         #endregion

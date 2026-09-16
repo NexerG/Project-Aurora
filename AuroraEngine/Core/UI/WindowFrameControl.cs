@@ -24,6 +24,11 @@ namespace ArctisAurora.Core.UI
         private Vector2 grab;
         private int grabX, grabY, grabW, grabH;
 
+        public WindowFrameControl()
+        {
+            role = PaletteRole.Ground;
+        }
+
         private bool IsGrip(Control control) => Array.IndexOf(grips, control) >= 0;
 
         public override Vector2 Measure(Vector2 availableSize)

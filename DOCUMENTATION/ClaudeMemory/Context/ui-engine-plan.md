@@ -34,9 +34,10 @@ glyph and none for itself.
 | Pool | Columns | Capacity | SortAction |
 |---|---|---|---|
 | `UIElements` | `ArrangeData` | 1024 | `UI.ElementOrder` |
+| `UIQuads` | `ControlGeometry`, `VulkanControl` | 1024, +512 | — (handle-less, `Rewind`/`Append`) |
 
-`VulkanControls` was deleted 2026-09-07 — the two GPU structs are fields on `Control` and a per-window walk
-emits them into a `DrawList`. See [[ui-draw-list]].
+`VulkanControls` was deleted 2026-09-07 ([[ui-draw-list]]). Since 2026-09-16 the per-window walk refills `UIQuads`,
+one range per window; see [[ui-quads-pool]].
 
 XSD names match their classes — `VulkanControl` for the struct, `Control` for the abstract entity, `WindowRoot`
 for the root (the settings type took `WindowSetting`, since `AnyXMLType.FindType` resolves by name alone).
@@ -47,9 +48,9 @@ for the root (the settings type took `WindowSetting`, since `AnyXMLType.FindType
 ArrangeData 140 B   ControlGeometry 96 B   VulkanControl 92 B
 ```
 
-**`Control : Entity`** — `PoolName => "UIElements"`. Holds its own quad in two plain fields and copies them
-into the draw list from **`Emit(DrawList)`**, which a control off its own clip skips. Exposes `arrange`
-(a pool `ref`), `geometry` and `visual` (`ref` to the fields),
+**`Control : Entity`** — `PoolName => "UIElements"`. Holds its paint in a plain `visual` field; **`Emit(float z)`**
+appends a `UIQuads` row, builds its geometry from `arrange` and z, copies `visual` — skipped for a control off its own
+clip. Exposes `arrange` (a pool `ref`), `visual` (`ref` to the field),
 the authored layout properties over `ArrangeData`, `colorHex` / `alpha` (both **`virtual`**) / `cornerRadius` /
 `edgeColorHex` / `edgeThickness` / `kind` / `sampler` / `gradient` / `SetUVRect`,
 `Measure` / `Arrange` / `WriteArranged`, `InvalidateLayout` /
@@ -92,9 +93,10 @@ never names it) and `SplitViewControl` (`"SplitView"`, a `StackPanelControl` at 
 rather than combines.
 
 **`UIEngineModule`** — second `RenderingModule` on every `RenderWindow` (`window.ui`, index 1 in
-`modules`). `compositorOrder = 10`, transparent clear, so the old stack composites underneath. Owns the window's
-`drawList` and mirrors its prefix per swapchain image through `MirrorDrawList`, every frame. Holds `uiRoot`;
-the draw is `_drawCount` instances from zero. A window with no root draws nothing.
+`modules`). `compositorOrder = 10`, transparent clear, so the old stack composites underneath. Holds the window's
+published `UIQuads` range (`PublishQuadRange`) and mirrors that range per swapchain image through `MirrorDrawList`,
+every frame. Holds `uiRoot`; the draw is `_drawCount` instances from `firstInstance = _drawFirst`. A window with no
+root draws nothing.
 
 **Shaders** — `Shaders/UIEngine/UIEngine.vert` + `.frag`, compiled `--target-env=vulkan1.3`, mirrored
 byte-identical into `Thorium/`, `AuroraEditor/` and `Carbon/`. Set 0 renderer global, set 1 module

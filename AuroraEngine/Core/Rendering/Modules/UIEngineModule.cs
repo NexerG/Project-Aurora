@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Data;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
@@ -6,13 +7,14 @@ using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
 using VulkanControl = ArctisAurora.Core.UI.VulkanControl;
 
 namespace ArctisAurora.EngineWork.Rendering.Modules
 {
-    // Draws one window's draw list, which the UI engine rebuilds from its tree each frame. Two
+    // Draws one window's UIQuads range, which the UI engine rebuilds from its tree each frame. Two
     // mirrors, one per column, because the shader reads the two as separate buffers.
     public unsafe class UIEngineModule : RenderingModule
     {
@@ -21,7 +23,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override ERendererStage RendererStage => ERendererStage.UI;
 
         internal override uint[][] descriptorMaxCounts => new uint[][] {
-            new uint[] { 1, 1, 1, 1 },                // set 1: camera UBO, geometry SSBO, control SSBO, gradient SSBO
+            new uint[] { 1, 1, 1, 1, 1 },             // set 1: camera UBO, geometry SSBO, control SSBO, gradient SSBO, paint SSBO
             new uint[] { TextureAsset.MaxTextures }   // set 2: one sampler per distinct texture
         };
 
@@ -47,7 +49,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         {
             new List<DescriptorType> {
                 DescriptorType.UniformBuffer, DescriptorType.StorageBuffer, DescriptorType.StorageBuffer,
-                DescriptorType.StorageBuffer
+                DescriptorType.StorageBuffer, DescriptorType.StorageBuffer
             },
             new List<DescriptorType> {
                 DescriptorType.CombinedImageSampler
@@ -57,7 +59,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         {
             new List<ShaderStageFlags>{
                 ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit,
-                ShaderStageFlags.FragmentBit
+                ShaderStageFlags.FragmentBit, ShaderStageFlags.VertexBit
             },
             new List<ShaderStageFlags>{
                 ShaderStageFlags.FragmentBit
@@ -66,7 +68,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override DescriptorBindingFlags[][] descriptorBindingFlags => [
             [
                 DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.None,
-                DescriptorBindingFlags.None
+                DescriptorBindingFlags.None, DescriptorBindingFlags.None
             ],
             [
                 DescriptorBindingFlags.VariableDescriptorCountBit | DescriptorBindingFlags.PartiallyBoundBit
@@ -88,6 +90,12 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         private nint[] _controlMapped = null!;
         private int[] _mirrorCapacity = null!;
 
+        // Per-image mirrors of Palettes.Table, rewritten when the published table is a different array.
+        private Silk.NET.Vulkan.Buffer[] _paintBuffers = null!;
+        private DeviceMemory[] _paintMemories = null!;
+        private nint[] _paintMapped = null!;
+        private Vector4[]?[] _paintWritten = null!;
+
         // One table for the whole process, uploaded once — never destroyed with a window, or the
         // windows that outlive it would keep a dangling descriptor.
         private static Silk.NET.Vulkan.Buffer _gradientBuffer;
@@ -96,8 +104,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         private int[] _frameBuiltCapacity = null!;
         private int[] _frameTableVersion = null!;
 
-        // This window's quads for the frame, rebuilt by UIEngine.BuildDrawLists on the main thread.
-        internal readonly DrawList drawList = new DrawList();
+        // This window's rows in UIEngine.Quads as first << 32 | count, published by UIEngine.BuildDrawLists.
+        private long _quadRange;
 
         // A drag preview's control, drawn in place of a tree; it stays in its own window's tree. The
         // rect is its box, built on the main thread for the camera.
@@ -105,6 +113,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal LayoutRect? rangeRect;
 
         // What the last MirrorDrawList copied, and so what the record that follows it may draw.
+        private int _drawFirst;
         private int _drawCount;
 
         private WindowRoot _uiRoot;
@@ -150,6 +159,10 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             _controlMapped = new nint[window.imageCount];
             _mirrorCapacity = new int[window.imageCount];
             Array.Fill(_mirrorCapacity, -1);
+            _paintBuffers = new Silk.NET.Vulkan.Buffer[window.imageCount];
+            _paintMemories = new DeviceMemory[window.imageCount];
+            _paintMapped = new nint[window.imageCount];
+            _paintWritten = new Vector4[]?[window.imageCount];
         }
 
         internal override void PrepareObjects()
@@ -183,6 +196,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override void UpdateModule(int currentFrame)
         {
             MirrorDrawList(currentFrame);
+            MirrorPaints(currentFrame);
 
             if (_frameBuiltCapacity[currentFrame] != _mirrorCapacity[currentFrame])
             {
@@ -201,14 +215,21 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             WriteCommandBuffers(currentFrame);
         }
 
-        // Copies this frame's draw list into the image's mirrors. Both arrays and the count are read
-        // once: the main thread rebuilds the list while this runs, and a growth swaps the arrays out
+        // Publishes this window's rows as one write.
+        internal void PublishQuadRange(int first, int count)
+            => Volatile.Write(ref _quadRange, ((long)first << 32) | (uint)count);
+
+        // Copies this window's UIQuads range into the image's mirrors. Both arrays and the range are read
+        // once: the main thread rebuilds the pool while this runs, and a growth swaps the arrays out
         // from under a second read.
         private void MirrorDrawList(int currentFrame)
         {
-            ControlGeometry[] geometry = drawList.Geometry;
-            VulkanControl[] controls = drawList.Visual;
-            _drawCount = Math.Min(drawList.Count, geometry.Length);
+            DataPool quads = UIEngine.Quads;
+            ControlGeometry[] geometry = quads.Backing<ControlGeometry>();
+            VulkanControl[] controls = quads.Backing<VulkanControl>();
+            long range = Volatile.Read(ref _quadRange);
+            _drawFirst = (int)(range >> 32);
+            _drawCount = Math.Clamp((int)range, 0, Math.Max(0, geometry.Length - _drawFirst));
 
             if (_mirrorCapacity[currentFrame] != geometry.Length)
             {
@@ -223,8 +244,26 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
             if (_drawCount == 0) return;
 
-            AVulkanBufferHandler.WriteMappedRange(_geometryMapped[currentFrame], geometry, 0, _drawCount);
-            AVulkanBufferHandler.WriteMappedRange(_controlMapped[currentFrame], controls, 0, _drawCount);
+            AVulkanBufferHandler.WriteMappedRange(_geometryMapped[currentFrame], geometry, _drawFirst, _drawCount);
+            AVulkanBufferHandler.WriteMappedRange(_controlMapped[currentFrame], controls, _drawFirst, _drawCount);
+        }
+
+        // Copies the paint table into the image's mirror when a new one was published. A mirror of another
+        // size is replaced, and the descriptor rebuild that follows points the set at it.
+        private void MirrorPaints(int currentFrame)
+        {
+            Vector4[] paints = Palettes.Table;
+            if (_paintWritten[currentFrame] == paints) return;
+
+            if (_paintWritten[currentFrame]?.Length != paints.Length)
+            {
+                DestroyPaintMirror(currentFrame);
+                AVulkanBufferHandler.CreateMappedBuffer((ulong)(sizeof(Vector4) * paints.Length), ref _paintBuffers[currentFrame], ref _paintMemories[currentFrame], out _paintMapped[currentFrame], AVulkanBufferHandler.storageBufferFlags);
+                _frameBuiltCapacity[currentFrame] = -1;
+            }
+
+            AVulkanBufferHandler.WriteMappedRange(_paintMapped[currentFrame], paints, 0, paints.Length);
+            _paintWritten[currentFrame] = paints;
         }
 
         private void DestroyMirrors()
@@ -232,7 +271,24 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             if (_geometryBuffers == null) return;
 
             for (int i = 0; i < _geometryBuffers.Length; i++)
+            {
                 DestroyMirror(i);
+                DestroyPaintMirror(i);
+            }
+        }
+
+        private void DestroyPaintMirror(int image)
+        {
+            if (_paintBuffers[image].Handle == default) return;
+
+            Renderer.vk.UnmapMemory(Renderer.logicalDevice, _paintMemories[image]);
+            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _paintBuffers[image], null);
+            Renderer.vk.FreeMemory(Renderer.logicalDevice, _paintMemories[image], null);
+
+            _paintBuffers[image] = default;
+            _paintMemories[image] = default;
+            _paintMapped[image] = 0;
+            _paintWritten[image] = null;
         }
 
         // Frees one image's pair of mirrors.
@@ -275,7 +331,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.StorageBuffer,
-                    DescriptorCount = 3
+                    DescriptorCount = 4
                 },
                 new DescriptorPoolSize()
                 {
@@ -311,7 +367,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal override void UpdateDescriptorSets(int currentFrame, int entityCount)
         {
-            if (_mirrorCapacity[currentFrame] < 0) return;
+            if (_mirrorCapacity[currentFrame] < 0 || _paintWritten[currentFrame] == null) return;
 
             DescriptorBufferInfo cameraInfo = new DescriptorBufferInfo()
             {
@@ -336,6 +392,12 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 Buffer = _gradientBuffer,
                 Offset = 0,
                 Range = (ulong)(Unsafe.SizeOf<GpuGradient>() * Gradients.Count)
+            };
+            DescriptorBufferInfo paintInfo = new DescriptorBufferInfo()
+            {
+                Buffer = _paintBuffers[currentFrame],
+                Offset = 0,
+                Range = (ulong)(Unsafe.SizeOf<Vector4>() * _paintWritten[currentFrame]!.Length)
             };
             WriteDescriptorSet[] writes = new WriteDescriptorSet[]
             {
@@ -378,6 +440,16 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     DstArrayElement = 0,
                     DescriptorType = DescriptorType.StorageBuffer,
                     PBufferInfo = &gradientInfo
+                },
+                new WriteDescriptorSet
+                {
+                    SType = StructureType.WriteDescriptorSet,
+                    DstSet = frameResources[currentFrame].sets[0],
+                    DstBinding = 4,
+                    DescriptorCount = 1,
+                    DstArrayElement = 0,
+                    DescriptorType = DescriptorType.StorageBuffer,
+                    PBufferInfo = &paintInfo
                 }
             };
             fixed (WriteDescriptorSet* writesPtr = writes)
@@ -698,7 +770,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 Renderer.vk.CmdBindIndexBuffer(commandBuffers[currentFrame], _quad.indexBuffer, 0, IndexType.Uint32);
                 Renderer.vk.CmdBindDescriptorSets(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipelineLayout, 1, 1, frameResources[currentFrame].sets[0], 0, null);
                 Renderer.vk.CmdBindDescriptorSets(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipelineLayout, 2, 1, frameResources[currentFrame].sets[1], 0, null);
-                Renderer.vk.CmdDrawIndexed(commandBuffers[currentFrame], (uint)_quad.indices.Length, (uint)_drawCount, 0, 0, 0);
+                Renderer.vk.CmdDrawIndexed(commandBuffers[currentFrame], (uint)_quad.indices.Length, (uint)_drawCount, 0, 0, (uint)_drawFirst);
             }
 
             Renderer.vk.CmdEndRendering(commandBuffers[currentFrame]);

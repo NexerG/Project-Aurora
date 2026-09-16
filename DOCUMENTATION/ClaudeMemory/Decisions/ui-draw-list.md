@@ -11,6 +11,11 @@
 and the "row building is incremental per element" row in
 [../Context/ui-engine-plan.md](../Context/ui-engine-plan.md).
 
+> **Storage reversed 2026-09-16 by [ui-quads-pool](ui-quads-pool.md).** `DrawList` is gone; the rows live in one
+> handle-less `UIQuads` pool with a range per window, `ControlGeometry` is built at emit rather than stored on
+> `Control`, and the `DataPools` XSD types are used again. The walk, both prunes, painter order and the per-frame
+> rebuild below still stand.
+
 ## What changed
 
 `ControlGeometry` and `VulkanControl` stopped being pool rows. They are two plain fields on `Control`.
@@ -45,6 +50,17 @@ Two prunes, both against rects the layout pass already maintains:
   the walk: the clip is inherited, so theirs may sit somewhere else entirely.
 - `TextRunControl.Emit` skips whole lines outside the clip band and breaks past the bottom. The pen
   restarts per line, so dropping one costs the next nothing.
+- **Size cull, added 2026-09-16.** `Collect` emits a control whose own `arranged` is under
+  `UIEngine.detailCullSize` (12) on either axis, then does not walk its children. Global and applied to
+  every control — the user rejected an authored per-control `MinDetailSize` (and a note-editor-only
+  scope) for one constant. Aimed at a pageless canvas with many notes on screen: a note too small to
+  read draws its panel and stops. A run's glyphs are its `Emit`, not children, so a small label still
+  draws its text.
+  - Units are layout units, which are window pixels only while `WindowRoot.autoscaling` is off —
+    true for every host today. Not converted through the root's scale.
+  - At 64 the tab headers (28 tall), text fields and toolbar buttons would lose their contents;
+    at 12 an F10 dump of Thorium's main window has no non-hidden control under the size that holds
+    children.
 
 Measured on the probe: a 342-character wrapped run in a 40 px `ClipToBounds` box emits **141 glyph
 quads**, and the visible band is exactly the lines that meet the clip.
@@ -91,5 +107,10 @@ quads**, and the visible band is exactly the lines that meet the clip.
 - **Scroll as a uniform**, so arrange stops re-baking every glyph matrix. Unrelated to this note, and
   now the larger remaining cost.
 - `Entity.AllocateIn` / `FreeIn` / `_extraHandles` lost their only caller and are left in place.
-- `ControlGeometry` and `VulkanControl` still carry `[A_XSDType(..., "DataPools")]` though no pool
-  declares them. Harmless; the generator just emits two unused types.
+- **Size cull gaps.** `HitTest` still walks children the draw skipped, so a press on a tiny note lands
+  in text that is not drawn. Layout still measures and arranges the whole subtree. A canvas zoom done
+  as a transform would not shrink `arranged`, so the test would have to take the zoom factor. No
+  hysteresis — a zoom resting at the size flickers. The cull firing is not exercised: nothing in the
+  current UI puts a control with visible children under 12.
+- ~~`ControlGeometry` and `VulkanControl` still carry `[A_XSDType(..., "DataPools")]` though no pool
+  declares them.~~ **Closed 2026-09-16** — `UIQuads` declares both; see [ui-quads-pool](ui-quads-pool.md).
