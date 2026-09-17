@@ -7,7 +7,7 @@ using System.Text;
 
 namespace ArctisAurora.Core.Diagnostics
 {
-    // --profile-scenario: types into, then resizes around, a 1,000,000-character note under one capture.
+    // --profile-scenario: types into and resizes a 1,000,000-character note, then resizes settings, under one capture.
     public unsafe class ProfileScenario : Entity
     {
         private static readonly LogChannel Log = LogChannel.For("Profiling");
@@ -18,6 +18,9 @@ namespace ArctisAurora.Core.Diagnostics
         private const int typeTicks = 120;
         private const int resizeTicks = 120;
         private const int resizeStep = 8;
+        private const int settingsSettleTicks = 30;
+        private const int settingsResizeTicks = 120;
+        private const int settingsHoldTicks = 900;
 
         // document shape
         private const int blockCount = 1000;
@@ -27,6 +30,9 @@ namespace ArctisAurora.Core.Diagnostics
         private int tick;
         private int startWidth;
         private int startHeight;
+        private RenderWindow settings = null!;
+        private int settingsWidth;
+        private int settingsHeight;
 
         public static void Arm()
         {
@@ -108,6 +114,22 @@ namespace ArctisAurora.Core.Diagnostics
                 Profiling.Zone.End("Scenario.Resize");
             }
             else if (step == typeTicks + resizeTicks + 1)
+            {
+                SettingsWindow.Open(Engine.primary);
+                SettingsWindow.ShowCategory(SettingsWindow.keybindsCategory);
+                settings = Engine.windows["settings"];
+                AGlfwWindow._glfw.GetWindowSize(settings.os.handle, out settingsWidth, out settingsHeight);
+            }
+            else if (step <= typeTicks + resizeTicks + 1 + settingsSettleTicks) { }
+            else if (step <= typeTicks + resizeTicks + 1 + settingsSettleTicks + settingsResizeTicks)
+            {
+                Profiling.Zone.Start("Scenario.ResizeSettings");
+                int r = step - (typeTicks + resizeTicks + 1 + settingsSettleTicks);
+                int widened = r <= settingsResizeTicks / 2 ? r : settingsResizeTicks - r;
+                AGlfwWindow._glfw.SetWindowSize(settings.os.handle, settingsWidth + widened * resizeStep, settingsHeight);
+                Profiling.Zone.End("Scenario.ResizeSettings");
+            }
+            else if (step == typeTicks + resizeTicks + 1 + settingsSettleTicks + settingsResizeTicks + settingsHoldTicks + 1)
             {
                 AGlfwWindow._glfw.GetWindowSize(Engine.primary.os.handle, out int width, out int height);
                 Log.Info($"scenario done — {document.blocks.Sum(b => b.Length)} chars, window {width}x{height}");

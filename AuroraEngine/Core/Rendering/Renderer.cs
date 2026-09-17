@@ -1094,7 +1094,6 @@ namespace ArctisAurora.EngineWork.Rendering
                 else
                 {
                     RecreateSwapchain(window);
-                    Log.Info($"rebuilt swapchain — {(requested ? "request" : r != Result.Success ? $"present returned {r}" : "resize")}, {previous.Width}x{previous.Height} → {window.swapchainExtent.Width}x{window.swapchainExtent.Height}");
                 }
             }
             else if (r != Result.Success)

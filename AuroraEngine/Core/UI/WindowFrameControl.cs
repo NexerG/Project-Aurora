@@ -151,11 +151,7 @@ namespace ArctisAurora.Core.UI
             }
             else if (bottom) h = Math.Max(minFrameHeight, grabH + dy);
 
-            WindowHandle* handle = window.os.handle;
-            AGlfwWindow._glfw.GetWindowPos(handle, out int curX, out int curY);
-            if (x != curX || y != curY)
-                AGlfwWindow._glfw.SetWindowPos(handle, x, y);
-            AGlfwWindow._glfw.SetWindowSize(handle, w, h);
+            window.os.SetBounds(x, y, w, h);
         }
 
         private static Vector2 Pointer(RenderWindow window) =>

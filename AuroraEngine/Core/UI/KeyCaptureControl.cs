@@ -21,6 +21,7 @@ namespace ArctisAurora.Core.UI
 
         public KeyCaptureControl()
         {
+            clipOutOfBounds = true;
             AddChild(label);
         }
 

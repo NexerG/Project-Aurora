@@ -98,7 +98,11 @@ the menu's own window when the menu is windowed.
   `TabStripButtonControl` at or above `target`, else the old `ContextMenus.invoker`. `ViewActions` looks for a
   view above `target`, `UIEngine.activeControl`, `UIEngine.hovering` in turn. `UIActions.Invoking` resolves the new
   stack's window first. Each keeps the old stack's path as a fallback until 6d.
-- `DropdownControl` builds `ContextMenuButton(text, action)` entries in code and opens them under itself.
+- `DropdownControl` builds `ContextMenuButton(text, action)` entries in code and opens them under itself, at least as wide as itself:
+  `ContextMenus.Open`'s `width` becomes the top panel's `preferredWidth`, which `StackPanelControl.Measure` takes as a
+  floor, so a caption wider than the dropdown widens the menu instead of overflowing it. `centered` sets the top panel's
+  `ContextMenuControl.centered`, which `Row.Arrange` reads to center the caption; the dropdown passes it, nothing else
+  does. Submenus take neither.
 
 **The tab actions lost their parameter because the new format binds zero-argument `Action`s only.**
 `ResolveAttributes` makes an `Action` delegate by name, which throws on a `(VulkanControl)` method. The old binder

@@ -22,11 +22,11 @@ namespace ArctisAurora.Core.UI
         private const string document = "settings";
         private const uint windowWidth = 720;
         private const uint windowHeight = 480;
-        private const string keybindsCategory = "Keybinds";
+        internal const string keybindsCategory = "Keybinds";
 
         // layout
         private const int rowHeight = 26;
-        private const int labelWidth = 230;
+        private const int labelWidth = 170;
         private const int editorWidth = 220;
         private const int categoryWidth = 144;
 
@@ -44,14 +44,19 @@ namespace ArctisAurora.Core.UI
                 return;
             }
 
+            Diagnostics.Profiling.Zone.Start("Settings.CreateWindow");
             RenderWindow window = Engine.OpenMenuWindow(windowName, windowWidth, windowHeight, true);
+            Diagnostics.Profiling.Zone.End("Settings.CreateWindow");
 
+            Diagnostics.Profiling.Zone.Start("Settings.Parse");
             WindowRoot root = (WindowRoot)Control.ParseXML(document);
             window.ui.uiRoot = root;
+            Diagnostics.Profiling.Zone.End("Settings.Parse");
 
             StackPanelControl categories = (StackPanelControl)root.FindByName("Categories");
             _rows = (StackPanelControl)root.FindByName("Rows");
 
+            Diagnostics.Profiling.Zone.Start("Settings.Categories");
             foreach (string category in Categories())
             {
                 string named = category;
@@ -59,19 +64,23 @@ namespace ArctisAurora.Core.UI
                 button.horizontalPosition = 0f;
                 categories.AddChild(button);
             }
+            Diagnostics.Profiling.Zone.End("Settings.Categories");
 
-            window.os.Resize(windowWidth, windowHeight);
             root.FitTo(new Extent2D(windowWidth, windowHeight));
 
+            Diagnostics.Profiling.Zone.Start("Settings.ShowCategory");
             ShowCategory(FirstCategory());
+            Diagnostics.Profiling.Zone.End("Settings.ShowCategory");
 
             AGlfwWindow._glfw.GetWindowPos(source.os.handle, out int sx, out int sy);
             AGlfwWindow._glfw.GetWindowSize(source.os.handle, out int sw, out int sh);
             window.os.SetPosition(sx + (sw - (int)windowWidth) / 2, sy + (sh - (int)windowHeight) / 2);
 
+            Diagnostics.Profiling.Zone.Start("Settings.Show");
             window.os.Show();
             window.os.Focus();
             window.os.SeedIsInWindow();
+            Diagnostics.Profiling.Zone.End("Settings.Show");
         }
 
         [A_XSDActionDependency("Settings.Open", "UI", "Opens the settings screen over the window that asked")]
@@ -97,7 +106,7 @@ namespace ArctisAurora.Core.UI
         private static string NameOf(Type type) =>
             type.GetCustomAttribute<A_XSDTypeAttribute>(false)?.Name ?? type.Name;
 
-        private static void ShowCategory(string category)
+        internal static void ShowCategory(string category)
         {
             foreach (Entity child in _rows.children.ToArray())
                 child.Destroy();
