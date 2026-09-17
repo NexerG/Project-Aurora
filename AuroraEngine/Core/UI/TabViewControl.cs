@@ -20,21 +20,21 @@ namespace ArctisAurora.Core.UI
 
         // strip palette
         [A_XSDElementProperty("TabColorHex", "UI", "Ground of an inactive tab.")]
-        public string tabColorHex = "#2A2A2A";
+        public string? tabColorHex;
         [A_XSDElementProperty("ActiveTabColorHex", "UI", "Ground of the active tab.")]
-        public string activeTabColorHex = "#1E1E1E";
+        public string? activeTabColorHex;
         [A_XSDElementProperty("TabHoverColorHex", "UI", "Ground of a hovered inactive tab.")]
-        public string tabHoverColorHex = "#3A3A3A";
+        public string? tabHoverColorHex;
         [A_XSDElementProperty("TabInkColorHex", "UI", "Color of a tab's caption and close mark.")]
-        public string tabInkColorHex = "#FFFFFF";
+        public string? tabInkColorHex;
 
         // carried onto the splitter of any pane split off this one, and onto that pane in turn
         [A_XSDElementProperty("GripColorHex", "UI", "Ground of the splitter between panes.")]
-        public string gripColorHex = "#2A2A2A";
+        public string? gripColorHex;
         [A_XSDElementProperty("GripHoverColorHex", "UI", "Ground of a hovered pane splitter.")]
-        public string gripHoverColorHex = "#3D3D3D";
+        public string? gripHoverColorHex;
         [A_XSDElementProperty("GripPressColorHex", "UI", "Ground of a held pane splitter.")]
-        public string gripPressColorHex = "#4A4A4A";
+        public string? gripPressColorHex;
 
         // tear-off
         [A_XSDElementProperty("TearOffDocument", "UI", "UI document a tab dragged out of every window opens in.")]
@@ -523,14 +523,17 @@ namespace ArctisAurora.Core.UI
         }
 
         // The caption for one tab, with the strip button a derivative may bind gestures on.
-        protected virtual Control BuildCaption(TabItemControl item, TabStripButtonControl tab) =>
-            new LabelControl
+        protected virtual Control BuildCaption(TabItemControl item, TabStripButtonControl tab)
+        {
+            LabelControl caption = new LabelControl
             {
-                colorHex = tabInkColorHex,
                 text = item.header,
                 fontSize = captionSize,
                 horizontalPosition = 0f
             };
+            caption.PaintOr(tabInkColorHex, PaletteRole.Ink);
+            return caption;
+        }
 
         private Control BuildCloseButton(TabItemControl item)
         {
@@ -541,7 +544,9 @@ namespace ArctisAurora.Core.UI
                 hoverColorHex = closeHoverColorHex,
                 pressColorHex = closePressColorHex
             };
-            close.AddChild(new LabelControl { colorHex = tabInkColorHex, text = closeCaption, fontSize = closeCaptionSize });
+            LabelControl mark = new LabelControl { text = closeCaption, fontSize = closeCaptionSize };
+            mark.PaintOr(tabInkColorHex, PaletteRole.Ink);
+            close.AddChild(mark);
             close.RegisterOnRelease(e => { CloseTab(item); return true; });
             return close;
         }
@@ -568,12 +573,14 @@ namespace ArctisAurora.Core.UI
             int i = 0;
             foreach (TabItemControl item in Items)
             {
-                string hex = ReferenceEquals(item, activeItem) ? activeTabColorHex : tabColorHex;
+                bool active = ReferenceEquals(item, activeItem);
+                string? hex = active ? activeTabColorHex : tabColorHex;
+                PaletteRole ground = active ? PaletteRole.Ground : PaletteRole.Surface;
                 if (i < strip.children.Count && strip.children[i] is ButtonControl tab)
                 {
-                    tab.colorHex = hex;
+                    tab.PaintOr(hex, ground);
                     ButtonControl close = CloseButtonOf(tab);
-                    if (close != null) close.colorHex = hex;
+                    close?.PaintOr(hex, ground);
                 }
                 i++;
             }

@@ -52,7 +52,7 @@ namespace ArctisAurora.Core.UI
                                 : isItalic ? FontStyle.Italic : FontStyle.Regular;
 
             if (strikethrough.HasValue) span.strikethrough = strikethrough.Value;
-            if (colorHex != null) span.colorHex = colorHex;
+            if (colorHex != null) span.colorHex = colorHex.Length == 0 ? null : colorHex;
             if (fontSize.HasValue)
             {
                 span.fontSizeAuthored = true;
@@ -70,7 +70,7 @@ namespace ArctisAurora.Core.UI
             (bold.HasValue && bold != span.IsBold)
             || (italic.HasValue && italic != span.IsItalic)
             || (strikethrough.HasValue && strikethrough != span.strikethrough)
-            || (colorHex != null && colorHex != span.colorHex)
+            || (colorHex != null && (colorHex.Length == 0 ? null : colorHex) != span.colorHex)
             || (fontSize.HasValue && fontSize != span.fontSize);
     }
 
@@ -89,7 +89,7 @@ namespace ArctisAurora.Core.UI
             bold = armed.bold ?? span.IsBold;
             italic = armed.italic ?? span.IsItalic;
             strikethrough = armed.strikethrough ?? span.strikethrough;
-            colorHex = armed.colorHex ?? span.colorHex ?? block.colorHex;
+            colorHex = armed.colorHex == null ? span.colorHex : armed.colorHex.Length == 0 ? null : armed.colorHex;
             fontSize = armed.fontSize ?? (span.fontSize > 0 ? span.fontSize : block.fontSize);
         }
     }
@@ -100,8 +100,8 @@ namespace ArctisAurora.Core.UI
         public float blockSpacing;
 
         // caret and highlight paint, assigned by the editor before either is built
-        public string caretColorHex = "#FFFFFF";
-        public string selectionColorHex = "#264F78";
+        public string? caretColorHex;
+        public string? selectionColorHex;
 
         // the model these blocks came from; the file is written from its block list
         internal RichTextDocument document = null!;
@@ -143,7 +143,8 @@ namespace ArctisAurora.Core.UI
 
             if (caret == null)
             {
-                caret = new CaretControl { colorHex = caretColorHex, hitTestable = false };
+                caret = new CaretControl { hitTestable = false };
+                caret.PaintOr(caretColorHex, PaletteRole.Ink);
                 AddChild(caret);
             }
             caret.Focus();
@@ -421,11 +422,8 @@ namespace ArctisAurora.Core.UI
         {
             while (highlights.Count <= index)
             {
-                PanelControl box = new PanelControl
-                {
-                    colorHex = selectionColorHex,
-                    hitTestable = false
-                };
+                PanelControl box = new PanelControl { hitTestable = false };
+                box.PaintOr(selectionColorHex, PaletteRole.Line);
                 box.parent = this;
                 children.Insert(highlights.Count, box);
                 highlights.Add(box);

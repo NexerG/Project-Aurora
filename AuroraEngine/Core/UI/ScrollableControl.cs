@@ -25,19 +25,19 @@ namespace ArctisAurora.Core.UI
 
         // thumb palette
         [A_XSDElementProperty("ThumbColorHex", "UI", "Ground of a scroll thumb at rest.")]
-        public string thumbColorHex
+        public string? thumbColorHex
         {
             get => field;
             set
             {
                 field = value;
-                if (verticalThumb != null) verticalThumb.colorHex = value;
-                if (horizontalThumb != null) horizontalThumb.colorHex = value;
+                verticalThumb?.PaintOr(value, PaletteRole.Line);
+                horizontalThumb?.PaintOr(value, PaletteRole.Line);
             }
-        } = "#3A3A3A";
+        }
 
         [A_XSDElementProperty("ThumbHoverColorHex", "UI", "Ground of a hovered scroll thumb.")]
-        public string thumbHoverColorHex
+        public string? thumbHoverColorHex
         {
             get => field;
             set
@@ -46,10 +46,10 @@ namespace ArctisAurora.Core.UI
                 if (verticalThumb != null) verticalThumb.hoverColorHex = value;
                 if (horizontalThumb != null) horizontalThumb.hoverColorHex = value;
             }
-        } = "#4E4E4E";
+        }
 
         [A_XSDElementProperty("ThumbPressColorHex", "UI", "Ground of a held scroll thumb.")]
-        public string thumbPressColorHex
+        public string? thumbPressColorHex
         {
             get => field;
             set
@@ -58,7 +58,7 @@ namespace ArctisAurora.Core.UI
                 if (verticalThumb != null) verticalThumb.pressColorHex = value;
                 if (horizontalThumb != null) horizontalThumb.pressColorHex = value;
             }
-        } = "#5E5E5E";
+        }
         #endregion
 
         #region state
@@ -251,9 +251,9 @@ namespace ArctisAurora.Core.UI
             {
                 parent = this,
                 hoverColorHex = thumbHoverColorHex,
-                pressColorHex = thumbPressColorHex,
-                colorHex = thumbColorHex
+                pressColorHex = thumbPressColorHex
             };
+            thumb.PaintOr(thumbColorHex, PaletteRole.Line);
             children.Add(thumb);
             return thumb;
         }

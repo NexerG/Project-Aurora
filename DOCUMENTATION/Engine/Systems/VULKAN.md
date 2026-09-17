@@ -86,6 +86,37 @@ To create it you have to give it the feature set the rendering modules will be u
 
 `Swapchain`
 The swapchain simply put is a few images that the Renderer targets it's final image to. It is done this way so the display image doesn't corrupt and display half of the rendered image. One image is for display - another is to render to. Can be more than 2 images. Think of it as a ring. One is being prepared another is being draw into.
+A resize rebuilds it, because the images are sized when the swapchain is created and on Windows they must match the window exactly. The new swapchain is created with the old one passed in as `OldSwapchain`, and only then are the old image views and the retired swapchain destroyed - that lets the driver keep its connection to the display instead of tearing it down and building it again, which on an AMD integrated GPU took a rebuild from about 120 ms to 17 ms. The surface's capabilities are asked for on every rebuild, since they carry the window's current size, but its format and present-mode lists are asked for once and kept on the window.
+
+```
+Renderer.RecreateSwapchain(window)
+	wait for the device to go idle
+	if the window is minimized
+		return
+	destroy every module's and the compositor's output images
+	keep the old swapchain and its image views
+	CreateSwapchain(window), handing it the old swapchain
+	destroy the old image views and the retired swapchain
+	if the image count changed
+		resize everything indexed by swapchain image
+	create the output images at the new size
+	rewrite the compositor's descriptors
+	mark every module and the compositor dirty
+```
+
+What triggers a rebuild is decided right after present. A driver can report the resize before GLFW's resize callback raises the window's flag, so the flag often arrives for a size the swapchain was already rebuilt to - on an NVIDIA card that was every second rebuild while dragging. A settings change such as VSync raises a separate flag, because it keeps the size but still needs the rebuild.
+
+```
+after present in Renderer.Draw(window)
+	read the window's resize flag and its rebuild-request flag
+	if present said out-of-date or suboptimal, or either flag is up
+		clear both flags
+		if present succeeded, nothing was requested, and the surface's size already equals the swapchain's
+			skip the rebuild
+		else
+			RecreateSwapchain(window)
+			log the reason and the old and new size
+```
 
 `Command Pool`
 Command pool is just an interface for the CPU to allocate commands to the GPU. A middle man between command buffers and the `Physical Device`. Now note that these pools are per queue since they are not thread safe. One Command Pool - One type of Queue.

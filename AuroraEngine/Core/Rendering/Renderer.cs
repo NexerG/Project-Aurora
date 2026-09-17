@@ -676,15 +676,29 @@ namespace ArctisAurora.EngineWork.Rendering
                 Math.Clamp(_window.Height, capabilities.MinImageExtent.Height, capabilities.MaxImageExtent.Height));
         }
 
+        // True when a rebuild now would produce the extent the swapchain already has.
+        private bool SwapchainMatchesSurface(RenderWindow window)
+        {
+            window.os.driverSurface.GetPhysicalDeviceSurfaceCapabilities(gpu, window.os.surface, out SurfaceCapabilitiesKHR _capabilities);
+            Extent2D _extent = ChooseSwapchainExtent(ref _capabilities, window);
+            return _extent.Width == window.swapchainExtent.Width && _extent.Height == window.swapchainExtent.Height;
+        }
+
         internal void CreateSwapchain(RenderWindow window)
         {
-            SwapChainSupportDetails _support = GetSupportDetails(ref gpu, ref window.os.driverSurface, ref window.os.surface);
-            window.surfaceFormat = GetSwapchainSurfaceFormat(_support.Formats);
-            PresentModeKHR _presentMode = GetPresentMode(_support.PresentModes);
+            Profiling.Zone.Start("Swapchain.QuerySupport");
+            Profiling.Zone.Start("Swapchain.QueryCapabilities");
+            window.os.driverSurface.GetPhysicalDeviceSurfaceCapabilities(gpu, window.os.surface, out SurfaceCapabilitiesKHR _capabilities);
+            Profiling.Zone.End("Swapchain.QueryCapabilities");
+            window.surfaceFormats ??= GetSurfaceFormats(ref gpu, ref window.os.driverSurface, ref window.os.surface);
+            window.presentModes ??= GetPresentModes(ref gpu, ref window.os.driverSurface, ref window.os.surface);
+            Profiling.Zone.End("Swapchain.QuerySupport");
+            window.surfaceFormat = GetSwapchainSurfaceFormat(window.surfaceFormats);
+            PresentModeKHR _presentMode = GetPresentMode(window.presentModes);
 
             var _queueFamilyIndices = stackalloc[] { (uint)queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit), (uint)queueAllocator.presentFamilyIndex };
-            uint _imageCount = _support.Capabilities.MinImageCount + 1;
-            window.swapchainExtent = ChooseSwapchainExtent(ref _support.Capabilities, window);
+            uint _imageCount = _capabilities.MinImageCount + 1;
+            window.swapchainExtent = ChooseSwapchainExtent(ref _capabilities, window);
             SwapchainCreateInfoKHR _swapchainCreateInfo = new SwapchainCreateInfoKHR()
             {
                 SType = StructureType.SwapchainCreateInfoKhr,
@@ -699,19 +713,23 @@ namespace ArctisAurora.EngineWork.Rendering
                 ImageSharingMode = SharingMode.Exclusive,
                 PresentMode = _presentMode,
                 Clipped = true,
-                OldSwapchain = default,
+                OldSwapchain = window.swapchain,
                 CompositeAlpha = CompositeAlphaFlagsKHR.OpaqueBitKhr,
-                PreTransform = _support.Capabilities.CurrentTransform,
+                PreTransform = _capabilities.CurrentTransform,
                 QueueFamilyIndexCount = 2,
                 PQueueFamilyIndices = _queueFamilyIndices,
             };
 
+            Profiling.Zone.Start("Swapchain.GetExtension");
             if (!vk.TryGetDeviceExtension(instance, logicalDevice, out window.swapchainKHR))
             {
                 throw new Exception("VK_KHR_swapchain extension not found on the device");
             }
+            Profiling.Zone.End("Swapchain.GetExtension");
 
+            Profiling.Zone.Start("Swapchain.CreateKHR");
             Result r = window.swapchainKHR!.CreateSwapchain(logicalDevice, ref _swapchainCreateInfo, null, out window.swapchain);
+            Profiling.Zone.End("Swapchain.CreateKHR");
             if (r != Result.Success)
             {
                 throw new Exception("Failed to create swapchain " + r);
@@ -719,19 +737,23 @@ namespace ArctisAurora.EngineWork.Rendering
             // The driver decides how many images it hands back, so this is read rather than assumed —
             // every per-image array in the window and its modules is sized off it.
             uint _swapchainImageCount = 0;
+            Profiling.Zone.Start("Swapchain.GetImages");
             window.swapchainKHR.GetSwapchainImages(logicalDevice, window.swapchain, &_swapchainImageCount, null);
             window.swapchainImages = new Image[_swapchainImageCount];
             fixed (Image* _imagePtr = window.swapchainImages)
             {
                 window.swapchainKHR.GetSwapchainImages(logicalDevice, window.swapchain, &_swapchainImageCount, _imagePtr);
             }
+            Profiling.Zone.End("Swapchain.GetImages");
             window.imageCount = _swapchainImageCount;
 
             window.swapchainImageViews = new ImageView[_swapchainImageCount];
+            Profiling.Zone.Start("Swapchain.ImageViews");
             for (int i = 0; i < window.swapchainImages.Length; i++)
             {
                 AVulkanBufferHandler.CreateImageView(vk, ref logicalDevice, ref window.swapchainImages[i], ref window.swapchainImageViews[i], window.surfaceFormat.Format, ImageAspectFlags.ColorBit);
             }
+            Profiling.Zone.End("Swapchain.ImageViews");
         }
 
         // Raises the flag the render thread already watches, rather than tearing the swapchain down
@@ -742,7 +764,7 @@ namespace ArctisAurora.EngineWork.Rendering
             Log.Info($"swapchain rebuild requested by a setting across {Engine.windows.Count} window(s)");
 
             foreach (RenderWindow window in Engine.windows.Values)
-                window.os.frameBufferResized = true;
+                window.rebuildRequested = true;
         }
 
         // Rebuilds the swapchain and every window-sized resource after a resize. Pipelines use
@@ -773,18 +795,24 @@ namespace ArctisAurora.EngineWork.Rendering
             window.compositor.DestroySizeDependentResources();
             Profiling.Zone.End("Swapchain.DestroyOutputs");
 
-            // tear down the swapchain image views and the swapchain itself
-            Profiling.Zone.Start("Swapchain.Destroy");
-            for (int i = 0; i < window.swapchainImageViews.Length; i++)
-                vk.DestroyImageView(logicalDevice, window.swapchainImageViews[i], null);
-            window.swapchainKHR.DestroySwapchain(logicalDevice, window.swapchain, null);
-            Profiling.Zone.End("Swapchain.Destroy");
-
             // recreate the swapchain at the new size
+            SwapchainKHR oldSwapchain = window.swapchain;
+            ImageView[] oldImageViews = window.swapchainImageViews;
             uint previousImageCount = window.imageCount;
             Profiling.Zone.Start("Swapchain.Create");
             CreateSwapchain(window);
             Profiling.Zone.End("Swapchain.Create");
+
+            // tear down the swapchain image views and the swapchain itself
+            Profiling.Zone.Start("Swapchain.Destroy");
+            Profiling.Zone.Start("Swapchain.DestroyViews");
+            for (int i = 0; i < oldImageViews.Length; i++)
+                vk.DestroyImageView(logicalDevice, oldImageViews[i], null);
+            Profiling.Zone.End("Swapchain.DestroyViews");
+            Profiling.Zone.Start("Swapchain.DestroyKHR");
+            window.swapchainKHR.DestroySwapchain(logicalDevice, oldSwapchain, null);
+            Profiling.Zone.End("Swapchain.DestroyKHR");
+            Profiling.Zone.End("Swapchain.Destroy");
 
             // A present-mode change can hand back a different number of images, and every per-image
             // array in the window and its modules was sized to the old count.
@@ -926,8 +954,9 @@ namespace ArctisAurora.EngineWork.Rendering
             // update renderer if needed before draw
             if (r == Result.ErrorOutOfDateKhr)
             {
-                Log.Info($"rebuilding swapchain — acquire returned out-of-date");
+                Extent2D previous = window.swapchainExtent;
                 RecreateSwapchain(window);
+                Log.Info($"rebuilt swapchain — acquire returned out-of-date, {previous.Width}x{previous.Height} → {window.swapchainExtent.Width}x{window.swapchainExtent.Height}");
                 return;
             }
             else if (r != Result.Success && r != Result.SuboptimalKhr)
@@ -1051,11 +1080,22 @@ namespace ArctisAurora.EngineWork.Rendering
             Profiling.Zone.Start("Draw.Present");
             r = window.swapchainKHR.QueuePresent(presentQueue, ref _presentInfo);
             Profiling.Zone.End("Draw.Present");
-            if (r == Result.ErrorOutOfDateKhr || r == Result.SuboptimalKhr || window.os.frameBufferResized)
+            bool resized = window.os.frameBufferResized;
+            bool requested = window.rebuildRequested;
+            if (r == Result.ErrorOutOfDateKhr || r == Result.SuboptimalKhr || resized || requested)
             {
-                Log.Info($"rebuilding swapchain — {(window.os.frameBufferResized ? "resize or request" : $"present returned {r}")}");
+                Extent2D previous = window.swapchainExtent;
                 window.os.frameBufferResized = false;
-                RecreateSwapchain(window);
+                window.rebuildRequested = false;
+                if (r == Result.Success && !requested && SwapchainMatchesSurface(window))
+                {
+                    Log.Debug($"skipped swapchain rebuild — resize, already {previous.Width}x{previous.Height}");
+                }
+                else
+                {
+                    RecreateSwapchain(window);
+                    Log.Info($"rebuilt swapchain — {(requested ? "request" : r != Result.Success ? $"present returned {r}" : "resize")}, {previous.Width}x{previous.Height} → {window.swapchainExtent.Width}x{window.swapchainExtent.Height}");
+                }
             }
             else if (r != Result.Success)
             {

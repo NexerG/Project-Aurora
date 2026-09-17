@@ -30,22 +30,22 @@ namespace ArctisAurora.Core.UI
 
         // row palette — a derivative populates in its constructor, so these repaint what is already there
         [A_XSDElementProperty("RowColorHex", "UI", "Ground of a row at rest.")]
-        public string rowColorHex { get => field; set { field = value; RestyleRows(); } } = "#171717";
+        public string? rowColorHex { get => field; set { field = value; RestyleRows(); } }
 
         [A_XSDElementProperty("RowHoverColorHex", "UI", "Ground of a hovered row.")]
-        public string rowHoverColorHex { get => field; set { field = value; RestyleRows(); } } = "#232323";
+        public string? rowHoverColorHex { get => field; set { field = value; RestyleRows(); } }
 
         [A_XSDElementProperty("RowPressColorHex", "UI", "Ground of a held row.")]
-        public string rowPressColorHex { get => field; set { field = value; RestyleRows(); } } = "#2D2D2D";
+        public string? rowPressColorHex { get => field; set { field = value; RestyleRows(); } }
 
         [A_XSDElementProperty("FolderColorHex", "UI", "Text color of a folder row.")]
-        public string folderColorHex { get => field; set { field = value; RestyleRows(); } } = "#8A8A8A";
+        public string? folderColorHex { get => field; set { field = value; RestyleRows(); } }
 
         [A_XSDElementProperty("FileColorHex", "UI", "Text color of a file row.")]
-        public string fileColorHex { get => field; set { field = value; RestyleRows(); } } = "#D4D4D4";
+        public string? fileColorHex { get => field; set { field = value; RestyleRows(); } }
 
         [A_XSDElementProperty("RowFieldColorHex", "UI", "Ground of a row's name while it is being renamed.")]
-        public string rowFieldColorHex { get => field; set { field = value; RestyleRows(); } } = "#2D2D2D";
+        public string? rowFieldColorHex { get => field; set { field = value; RestyleRows(); } }
         #endregion
 
         private readonly StackPanelControl rows = new StackPanelControl();
@@ -118,17 +118,17 @@ namespace ArctisAurora.Core.UI
                 text = expander,
                 fontSize = rowFontSize,
                 preferredWidth = gutterWidth,
-                horizontalPosition = 0f,
-                colorHex = folderColorHex
+                horizontalPosition = 0f
             };
+            gutter.PaintOr(folderColorHex, PaletteRole.MutedInk);
 
             EditableLabelControl name = new EditableLabelControl
             {
                 text = DisplayName(file),
                 fontSize = rowFontSize,
-                textColorHex = file.type == FileObject.FileType.Directory ? folderColorHex : fileColorHex,
                 fieldColorHex = rowFieldColorHex
             };
+            PaintName(name, file);
 
             StackPanelControl content = new StackPanelControl
             {
@@ -152,12 +152,12 @@ namespace ArctisAurora.Core.UI
                 horizontalAlignment = HorizontalAlignment.Stretch,
                 margin = new Thickness(0, 0, 0, depth * indent),
                 padding = new Thickness(0, 0, 0, rowInset),
-                colorHex = rowColorHex,
                 hoverColorHex = rowHoverColorHex,
                 pressColorHex = rowPressColorHex,
                 contextMenu = rowMenu,
                 stopsContextMenu = rowMenu != null
             };
+            row.PaintOr(rowColorHex, PaletteRole.Clear);
             row.AddChild(content);
             row.RegisterOnRelease(_ => { activate(); return true; });
 
@@ -173,17 +173,23 @@ namespace ArctisAurora.Core.UI
             {
                 if (child is not FileRowControl row) continue;
 
-                row.colorHex = rowColorHex;
+                row.PaintOr(rowColorHex, PaletteRole.Clear);
                 row.hoverColorHex = rowHoverColorHex;
                 row.pressColorHex = rowPressColorHex;
 
-                row.label.textColorHex = row.file.type == FileObject.FileType.Directory ? folderColorHex : fileColorHex;
+                PaintName(row.label, row.file);
                 row.label.fieldColorHex = rowFieldColorHex;
 
                 if (row.children.Count > 0 && row.children[0] is Control content
                     && content.children.Count > 0 && content.children[0] is LabelControl gutter)
-                    gutter.colorHex = folderColorHex;
+                    gutter.PaintOr(folderColorHex, PaletteRole.MutedInk);
             }
+        }
+
+        private void PaintName(EditableLabelControl name, FileObject file)
+        {
+            if (file.type == FileObject.FileType.Directory) name.PaintText(folderColorHex, PaletteRole.MutedInk);
+            else name.PaintText(fileColorHex, PaletteRole.Ink);
         }
     }
 }

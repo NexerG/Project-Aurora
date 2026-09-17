@@ -294,6 +294,7 @@
       <xs:enumeration value="Surface" />
       <xs:enumeration value="Chrome" />
       <xs:enumeration value="Field" />
+      <xs:enumeration value="SubField" />
       <xs:enumeration value="Line" />
       <xs:enumeration value="Accent" />
       <xs:enumeration value="Danger" />
@@ -307,6 +308,7 @@
     <xs:attribute name="Surface" type="xs:string" />
     <xs:attribute name="Chrome" type="xs:string" />
     <xs:attribute name="Field" type="xs:string" />
+    <xs:attribute name="SubField" type="xs:string" />
     <xs:attribute name="Line" type="xs:string" />
     <xs:attribute name="Accent" type="xs:string" />
     <xs:attribute name="Danger" type="xs:string" />

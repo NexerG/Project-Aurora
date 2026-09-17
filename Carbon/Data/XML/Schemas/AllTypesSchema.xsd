@@ -12,6 +12,7 @@
       <xs:enumeration value="SessionScope" />
       <xs:enumeration value="Session" />
       <xs:enumeration value="DragGhost" />
+      <xs:enumeration value="Palette" />
       <xs:enumeration value="UI" />
       <xs:enumeration value="SettingScope" />
       <xs:enumeration value="Setting" />

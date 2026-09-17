@@ -22,6 +22,9 @@ namespace ArctisAurora.EngineWork.Rendering
         internal KhrSwapchain swapchainKHR = null!;
         internal Extent2D swapchainExtent;
         internal SurfaceFormatKHR surfaceFormat;
+        internal SurfaceFormatKHR[]? surfaceFormats;
+        internal PresentModeKHR[]? presentModes;
+        internal volatile bool rebuildRequested;
         internal Image[] swapchainImages = null!;
         internal ImageView[] swapchainImageViews = null!;
         internal uint imageCount;

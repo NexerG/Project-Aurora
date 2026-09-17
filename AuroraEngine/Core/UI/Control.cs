@@ -342,6 +342,22 @@ namespace ArctisAurora.Core.UI
             }
         } = "";
 
+        // Paints an authored hex, or the role when there is none.
+        public void PaintOr(string? hex, PaletteRole fallback)
+        {
+            if (hex != null)
+            {
+                colorHex = hex;
+                return;
+            }
+
+            colorAuthored = false;
+            role = fallback;
+        }
+
+        // Paints like source: its authored hex, or its role.
+        public void CopyPaint(Control source) => PaintOr(source.colorAuthored ? source.colorHex : null, source.role);
+
         // Writes the word this control paints with.
         protected virtual void SetPaint(uint paint) => visual.paint = paint;
 

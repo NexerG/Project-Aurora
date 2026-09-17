@@ -7,18 +7,15 @@ namespace ArctisAurora.Core.UI
     [A_XSDType("EditableTabs", "UI")]
     public class EditableTabsControl : TabViewControl
     {
-        private const string captionFieldColorHex = "#3A3A3A";
-
         protected override Control BuildCaption(TabItemControl item, TabStripButtonControl tab)
         {
             EditableLabelControl caption = new EditableLabelControl
             {
-                textColorHex = tabInkColorHex,
                 text = item.header,
                 fontSize = captionSize,
-                horizontalPosition = 0f,
-                fieldColorHex = captionFieldColorHex
+                horizontalPosition = 0f
             };
+            caption.PaintText(tabInkColorHex, PaletteRole.Ink);
 
             tab.RegisterOnTap(e =>
             {

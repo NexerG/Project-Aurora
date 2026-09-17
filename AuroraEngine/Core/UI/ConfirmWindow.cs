@@ -12,13 +12,6 @@ namespace ArctisAurora.Core.UI
         private const uint windowWidth = 380;
         private const uint windowHeight = 100;
 
-        // palette, matching the app chrome
-        private const string groundHex = "#252525";
-        private const string promptHex = "#CCCCCC";
-        private const string buttonHex = "#3A3A3A";
-        private const string buttonHoverHex = "#4A4A4A";
-        private const string buttonPressHex = "#2A2A2A";
-
         private static RenderWindow _window = null!;
         private static RenderWindow? _source;
         private static LabelControl _message = null!;
@@ -98,7 +91,7 @@ namespace ArctisAurora.Core.UI
         {
             PanelControl ground = new PanelControl
             {
-                colorHex = groundHex,
+                role = PaletteRole.Surface,
                 horizontalAlignment = HorizontalAlignment.Stretch,
                 verticalAlignment = VerticalAlignment.Stretch
             };
@@ -116,7 +109,6 @@ namespace ArctisAurora.Core.UI
             _message = new LabelControl
             {
                 fontSize = 15,
-                colorHex = promptHex,
                 preferredHeight = 20,
                 horizontalPosition = 0f
             };
@@ -147,12 +139,10 @@ namespace ArctisAurora.Core.UI
             {
                 preferredWidth = 90,
                 preferredHeight = 30,
-                colorHex = buttonHex,
-                hoverColorHex = buttonHoverHex,
-                pressColorHex = buttonPressHex,
+                role = PaletteRole.Chrome,
                 cornerRadius = new CornerRadii(4)
             };
-            button.AddChild(new LabelControl { text = caption, fontSize = 14, colorHex = promptHex });
+            button.AddChild(new LabelControl { text = caption, fontSize = 14, role = PaletteRole.MutedInk });
             button.RegisterOnRelease(_ => { action(); return true; });
             return button;
         }

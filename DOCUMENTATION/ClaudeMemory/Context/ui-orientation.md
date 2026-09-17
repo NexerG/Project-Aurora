@@ -34,7 +34,7 @@ One tree node. Layout state is its `UIElements` pool row (`arrange` → `Arrange
 | region | holds |
 |---|---|
 | `authored layout` | the inherited XML sizing attrs (see XML authoring); `SetSize`, `SetWidth`, `SetHeight`, `IsWidthStar`, `IsHeightStar` |
-| `paint` | colour, alpha, corner radii, edge, gradient; `kind`, `sampler`, `SetUVRect`; palette — `role`, `paletteName`, `ownPalette`, `palette`, `groundBelow`, `colorAuthored`; virtual `SetPaint`, `ApplyRole`; `RolePaint`, `InheritPaint`, `RepaintChildren` |
+| `paint` | colour, alpha, corner radii, edge, gradient; `kind`, `sampler`, `SetUVRect`; palette — `role`, `paletteName`, `ownPalette`, `palette`, `groundBelow`, `colorAuthored`; `PaintOr`, `CopyPaint`; virtual `SetPaint`, `ApplyRole`; `RolePaint`, `InheritPaint`, `RepaintChildren` |
 | `layout state` | `arrangedRect`, `DesiredSize`, `ClipRect`; flags `isMeasureDirty`, `isArrangeDirty`, `hidden`; `InvalidateLayout`, `InvalidateArrange`, `Hide`, `Show` |
 | `layout (two-pass)` | `Measure`, `Arrange`, `WriteArranged` (clip and palette inheritance), `ArrangeByAlignment`, `RefreshSubtreeCache`, `Emit` |
 | `pointer` | `onEnter`…`onScroll` + `RegisterOnX` + virtual `OnPointerX`; `hitTestable`; `ActiveContextTarget`, `takesActiveControl`; `contextMenu`, `stopsContextMenu`; drag: `draggable`, `StartDrag`, `onDrag`, `onDragStop`, `DraggingOverStart`/`DraggingOver`/`DraggingOverEnd`, `FinishDrag`, `DraggedOutOfWindow`/`DraggedIntoWindow`, `ChildDraggedOut` |
@@ -81,7 +81,7 @@ once per frame (`DataPool.Rewind`), filled by `Control.Emit` / `TextRunControl.W
 Why: [[ui-quads-pool]], [[ui-draw-list]], [[ui-draw-list-publish]].
 
 ### Palettes — static, not a control
-Loads `Palettes/*.palette.xml` (`LoadPalettes`, bootstrap), `Get(name)`, `Default`; owns the paint table
+Loads `Palettes/*.palette.xml` (`LoadPalettes`, bootstrap), `Get(name)`, `Default` (named by `UISettings.palette`); owns the paint table
 (`Table`, replaced whole). Paint words: `Inline`, `IsInline`, `ColorOf`. Derived words: `Surface`, `Ink`, `Step`;
 `Contrast`. Types beside it: `PaletteDefinition` `<Palette>`, `PaletteRole`. The GPU copy is
 `UIEngineModule.MirrorPaints`, set 1 binding 4.

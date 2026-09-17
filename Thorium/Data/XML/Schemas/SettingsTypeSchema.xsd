@@ -21,6 +21,7 @@
     <xs:choice>
       <xs:element name="Vault" type="types:Vault" />
       <xs:element name="DragGhost" type="types:DragGhost" />
+      <xs:element name="Palette" type="types:Palette" />
       <xs:element name="LogConsole" type="types:LogConsole" />
       <xs:element name="LogFile" type="types:LogFile" />
       <xs:element name="LogRecorder" type="types:LogRecorder" />
@@ -150,6 +151,15 @@
   <xs:complexType name="DragGhost">
     <xs:sequence />
     <xs:attributeGroup ref="types:DragGhost.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="Palette.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Name" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="Palette" type="types:Palette" />
+  <xs:complexType name="Palette">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Palette.Attributes" />
   </xs:complexType>
   <xs:element name="UI" type="types:UI" />
   <xs:complexType name="UI">

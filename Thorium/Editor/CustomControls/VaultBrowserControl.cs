@@ -23,13 +23,6 @@ namespace Thorium.Editor.CustomControls
         private const string folderMenu = "vault-folder";
         private const string noteMenu = "vault-note";
 
-        // matching the DocumentEditor attributes in Workspace.ui.xml
-        private const string caretHex = "#23221E";
-        private const string selectionHex = "#D7D5CD";
-        private const string thumbHex = "#D7D5CD";
-        private const string thumbHoverHex = "#C9C6BC";
-        private const string thumbPressHex = "#BAB7AC";
-
         public VaultBrowserControl()
         {
             contextMenu = vaultMenu;
@@ -233,14 +226,7 @@ namespace Thorium.Editor.CustomControls
         // built, so the caption can come from the note's own name.
         internal static TabItemControl BuildTab(string notePath)
         {
-            DocumentEditorControl editor = new DocumentEditorControl
-            {
-                caretColorHex = caretHex,
-                selectionColorHex = selectionHex,
-                thumbColorHex = thumbHex,
-                thumbHoverColorHex = thumbHoverHex,
-                thumbPressColorHex = thumbPressHex
-            };
+            DocumentEditorControl editor = new DocumentEditorControl();
             editor.LoadPath(notePath);
             editor.onNamed = name => RenameNote(editor.session.path, name);
 

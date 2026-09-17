@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<WindowRoot Width="520" Height="400" WindowingMode="WindowSize" Autoscaling="false" ScalingAxis="Vertical" Palette="thorium-light">
+<WindowRoot Width="520" Height="400" WindowingMode="WindowSize" Autoscaling="false" ScalingAxis="Vertical">
 
 	<WindowFrame Role="Surface">
 	<StackPanel Orientation="Vertical">
@@ -19,8 +19,7 @@
 		</TitleBar>
 
 		<StackPanel Orientation="Vertical" HeightStar="1" Padding="12" Spacing="8">
-			<Scrollable HeightStar="1"
-							ThumbColorHex="#D7D5CD" ThumbHoverColorHex="#C9C6BC" ThumbPressColorHex="#BAB7AC">
+			<Scrollable HeightStar="1">
 				<StackPanel Name="Rows" Orientation="Vertical" Spacing="6"/>
 			</Scrollable>
 

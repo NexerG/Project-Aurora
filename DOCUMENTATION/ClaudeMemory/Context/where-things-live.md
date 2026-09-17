@@ -29,7 +29,7 @@ XML element, entry points, regions. The rows below answer "which types own this 
 
 | Concept | Code | Data | Note |
 |---|---|---|---|
-| the theme, palette, automatic colours, dark/light text on a panel | `UI.Palettes` (`LoadPalettes`, `Get`, `Default`, `Surface`, `Ink`, `Step`, `Inline`), `UI.PaletteDefinition`, `UI.PaletteRole`; `UI.Control` — `role`, `paletteName`, `InheritPaint`, `RepaintChildren` | `*/Data/XML/Documents/Palettes/*.palette.xml`; `*.ui.xml` attrs `Palette`, `Role` | [[ui-palettes]] |
+| the theme, palette, automatic colours, dark/light text on a panel, which palette the app uses | `UI.Palettes` (`LoadPalettes`, `Get`, `Default`, `Surface`, `Ink`, `Step`, `Inline`), `UI.PaletteDefinition`, `UI.PaletteRole`, `UI.PaletteSetting` (`UISettings.palette`); `UI.Control` — `role`, `paletteName`, `PaintOr`, `CopyPaint`, `InheritPaint`, `RepaintChildren`; `TextBoxControl.PaintText`, `EditableLabelControl.PaintText` | `*/Data/XML/Documents/Palettes/*.palette.xml`; `*/Data/XML/Settings/UI.settings.xml` (`<UI><Palette Name>`); `*.ui.xml` attrs `Palette`, `Role` | [[ui-palettes]] |
 | an authored control colour | `UI.Control` — `colorHex`, `edgeColorHex`, `EnumColorToHex`, `HexToRGB` | `*/Data/XML/Documents/UI/*.ui.xml` attrs `ColorHex`, `ControlColor`, `EdgeColorHex` | [[control-edge-and-outline]], [[ui-palettes]] |
 | a quad's colour on the GPU — paint words, the paint table | `UI.VulkanControl` (`paint`, `alpha`, `edgePaint`); `UI.Palettes.Table`; `Rendering.Modules.UIEngineModule.MirrorPaints`; `Shaders/UIEngine/UIEngine.vert` `resolvePaint` | — | [[ui-palettes]] |
 | gradients | `UI.Gradients`; `UI.Control.gradient` | `Thorium/Data/XML/Documents/Gradients.gradients.xml` | [[ui-gradients]] |
@@ -118,7 +118,7 @@ XML element, entry points, regions. The rows below answer "which types own this 
 | entity create / destroy | `Registry.EntityRegistry`; `Core.Engine.Interpolate` | `EntityRegistry.entities.xml` | [[entity-lifecycle-queues]] |
 | which columns an entity has; an entity's position/scale | `ECS.EngineEntity.Entity` (`PoolName`, `AllocatePooledData`, `AllocateIn`, `FreePooledData`), `TransformEntity` | `AuroraEngine/Data/XML/Documents/Pools.pools.xml` | [[entity-transform-split]] |
 | logging | `Diag.LogChannel`, `LogLevel`, `LoggingSettings`; `Diag.Sinks.*` | `Bootstrap.bootstrap.xml`, `Shutdown.shutdown.xml` | [[engine-logging]] |
-| profiling — timing a tick phase, counting calls | `Diag.Profiling` (`Zone.Start`/`End`/`Increment`, `Report`); zones in `Core.Engine.MainTick`, `Threading.RenderSystem`; draw and swapchain-rebuild zones in `Render.Renderer` (`Draw`, `RecreateSwapchain`); layout zones in `UI.UIEngine.ResolveLayout`, `UI.DocumentControl`, `UI.TextRunControl`, `UI.DocumentEditorControl` | — | [[engine-profiling]] |
+| profiling — timing a tick phase, counting calls | `Diag.Profiling` (`Zone.Start`/`End`/`Increment`, `Report`); zones in `Core.Engine.MainTick`, `Threading.RenderSystem`; draw and swapchain-rebuild zones in `Render.Renderer` (`Draw`, `RecreateSwapchain`, `CreateSwapchain`); layout zones in `UI.UIEngine.ResolveLayout`, `UI.DocumentControl`, `UI.TextRunControl`, `UI.DocumentEditorControl` | — | [[engine-profiling]] |
 | frame capture — every span of every frame, to a file | `Diag.Profiling.Frame`, `Diag.FrameSpool`, `ProfilingSettings`; frame edges in `Threading.ThreadedSystem.Loop`; `Diag.Profiling.CaptureUntilFlush`; `Diag.Profiling.Flush` waits for every thread's last batch at shutdown | `Bootstrap.bootstrap.xml`, `Shutdown.shutdown.xml` | [[engine-profiling]] |
 | profiling a launch — `--profile[=N]`, or `Mode="Boot"` | `Diag.Profiling.ArmBoot` (called from `Core.Engine.Init`), `Diag.CaptureMode`; phase frame + step zones in `Core.Bootstrapper.RunPhase` | `*/Data/XML/Settings/` (`<Profiling><ProfilingCapture Mode="Boot"/>`) | [[engine-profiling]] §13 |
 | profiling data pools — items, capacity, memory per frame; `--profile-pools` | `Diag.Profiling.Frame.Pool` (called from `Data.DataManager.FrameEdge`), `Data.DataPool.ReservedBytes`, `Diag.ProfilingCaptureSetting.pools`; `Diag.FrameSpool.WriteFrame` (`<P>`) | `*/Data/XML/Settings/` (`<Profiling><ProfilingCapture Pools="true"/>`) | [[engine-profiling]] §14 |
@@ -177,11 +177,11 @@ XML element, entry points, regions. The rows below answer "which types own this 
 
 ## Facts that cost time to rediscover
 
-- **Palettes exist, but only slice 1 of 3 has landed.** A control with no `ColorHex` paints from its
-  `Role` against the nearest `Palette` above it; an authored `ColorHex` — including a hex default set
-  in a control's constructor — wins. Most composite controls and most `*.ui.xml` still author every
-  colour, so "change the app's theme" is still mostly editing attributes; Thorium's `Vaults.ui.xml` is
-  the one palette-driven window. See [[ui-palettes]] § Known gaps.
+- **Thorium is palette-driven; Carbon and the engine's `Settings.ui.xml` are not.** A control with no
+  `ColorHex` paints from its `Role` against the nearest `Palette` above it, else the app palette named by
+  `<UI><Palette Name>`; an authored `ColorHex` wins. A composite's `*ColorHex` attribute left out means
+  "palette". Changing Thorium's theme is `thorium-light.palette.xml`; Carbon still authors every colour.
+  See [[ui-palettes]] § Known gaps.
   `ControlColor` names only the 16 enum values in `EnumColorToHex`; everything else is `ColorHex`.
 - **Data XML files carry their kind in the filename** — `Bootstrap.bootstrap.xml`, not `Bootstrap.xml`.
   Notes written before that landed still use the short name. See [[xml-type-suffix]].

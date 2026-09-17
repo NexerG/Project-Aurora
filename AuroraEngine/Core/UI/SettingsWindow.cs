@@ -30,13 +30,6 @@ namespace ArctisAurora.Core.UI
         private const int editorWidth = 220;
         private const int categoryWidth = 144;
 
-        // palette, matching the app chrome
-        private const string labelHex = "#CCCCCC";
-        private const string fieldGroundHex = "#1B1B1B";
-        private const string buttonHex = "#3A3A3A";
-        private const string buttonHoverHex = "#4A4A4A";
-        private const string buttonPressHex = "#2A2A2A";
-
         private static StackPanelControl _rows = null!;
 
         public static unsafe void Open(RenderWindow source)
@@ -161,7 +154,6 @@ namespace ArctisAurora.Core.UI
             {
                 text = caption,
                 fontSize = 14,
-                colorHex = labelHex,
                 preferredWidth = labelWidth,
                 horizontalPosition = 0f
             });
@@ -183,8 +175,7 @@ namespace ArctisAurora.Core.UI
             {
                 CheckBoxControl box = new CheckBoxControl
                 {
-                    colorHex = fieldGroundHex,
-                    hoverColorHex = buttonHoverHex,
+                    role = PaletteRole.SubField,
                     isChecked = (bool)current
                 };
                 box.onChanged = value => XmlReflection.SetMember(member, setting, value);
@@ -199,9 +190,7 @@ namespace ArctisAurora.Core.UI
                 {
                     preferredWidth = editorWidth,
                     preferredHeight = rowHeight,
-                    colorHex = fieldGroundHex,
-                    hoverColorHex = buttonHoverHex,
-                    pressColorHex = buttonPressHex,
+                    role = PaletteRole.SubField,
                     cornerRadius = new CornerRadii(3),
                     options = Enum.GetNames(domain),
                     selected = current?.ToString() ?? ""
@@ -214,8 +203,7 @@ namespace ArctisAurora.Core.UI
             {
                 preferredWidth = editorWidth,
                 preferredHeight = rowHeight,
-                colorHex = fieldGroundHex,
-                textColorHex = "#EAEAEA",
+                role = PaletteRole.SubField,
                 fontSize = 14,
                 padding = new Thickness(0, 6, 0, 8),
                 text = current?.ToString() ?? ""
@@ -246,7 +234,7 @@ namespace ArctisAurora.Core.UI
                 {
                     text = KeyCaptureControl.Describe(bind.trigger, modifiers),
                     fontSize = 14,
-                    colorHex = "#6E6E6E",
+                    role = PaletteRole.MutedInk,
                     preferredWidth = editorWidth,
                     horizontalPosition = 0f
                 };
@@ -255,9 +243,7 @@ namespace ArctisAurora.Core.UI
             {
                 preferredWidth = editorWidth,
                 preferredHeight = rowHeight,
-                colorHex = fieldGroundHex,
-                hoverColorHex = buttonHoverHex,
-                pressColorHex = buttonPressHex,
+                role = PaletteRole.SubField,
                 cornerRadius = new CornerRadii(3)
             };
             capture.SetCombo(bind.trigger, modifiers);
@@ -280,12 +266,10 @@ namespace ArctisAurora.Core.UI
             {
                 preferredWidth = width,
                 preferredHeight = 26,
-                colorHex = buttonHex,
-                hoverColorHex = buttonHoverHex,
-                pressColorHex = buttonPressHex,
+                role = PaletteRole.Chrome,
                 cornerRadius = new CornerRadii(4)
             };
-            button.AddChild(new LabelControl { text = caption, fontSize = 14, colorHex = labelHex });
+            button.AddChild(new LabelControl { text = caption, fontSize = 14, role = PaletteRole.MutedInk });
             button.RegisterOnRelease(_ => { action(); return true; });
             return button;
         }

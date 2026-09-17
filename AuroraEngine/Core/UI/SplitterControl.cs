@@ -20,9 +20,7 @@ namespace ArctisAurora.Core.UI
 
         public SplitterControl()
         {
-            hoverColorHex = "#3D3D3D";
-            pressColorHex = "#4A4A4A";
-            colorHex = "#2A2A2A";
+            role = PaletteRole.Line;
         }
 
         public override bool OnPointerEnter(PointerEvent e)

@@ -7,13 +7,6 @@ namespace ArctisAurora.Core.UI
     // One panel of an open context menu, built from its entries. Never authored, so untagged.
     public class ContextMenuControl : StackPanelControl
     {
-        // palette
-        private const string panelColorHex = "#FFFFFF";
-        private const string panelEdgeColorHex = "#DCDAD3";
-        private const string rowHoverColorHex = "#EAE8E2";
-        private const string rowPressColorHex = "#E3E1D9";
-        private const string inkColorHex = "#34322D";
-        private const string lineColorHex = "#E6E4DE";
         private const int captionSize = 13;
 
         // placement — position is in the origin window's design space, even when hosted in its own
@@ -27,9 +20,8 @@ namespace ArctisAurora.Core.UI
             this.depth = depth;
             orientation = Orientation.Vertical;
             padding = new Thickness(4f);
-            colorHex = panelColorHex;
+            role = PaletteRole.Ground;
             cornerRadius = new CornerRadii(6f);
-            edgeColorHex = panelEdgeColorHex;
             edgeThickness = 1f;
             stopsContextMenu = true;
 
@@ -44,13 +36,20 @@ namespace ArctisAurora.Core.UI
             base.Arrange(new LayoutRect(at.X, at.Y, DesiredSize.X, DesiredSize.Y));
         }
 
+        // The edge takes the palette's Line alongside the panel's own role.
+        protected override void ApplyRole(PaletteDefinition scheme, uint ground)
+        {
+            base.ApplyRole(scheme, ground);
+            visual.edgePaint = Palettes.Surface(scheme, PaletteRole.Line);
+        }
+
         private static Control Line() => new PanelControl
         {
             preferredWidth = 1f,
             preferredHeight = 1f,
             horizontalAlignment = HorizontalAlignment.Stretch,
             margin = new Thickness(4f, 0f, 4f, 0f),
-            colorHex = lineColorHex
+            role = PaletteRole.Line
         };
 
         // A button or submenu entry: its caption, and an arrow flush right when it opens a submenu.
@@ -67,16 +66,13 @@ namespace ArctisAurora.Core.UI
                 this.entry = entry;
                 padding = new Thickness(4f, 10f, 4f, 10f);
                 cornerRadius = new CornerRadii(4f);
-                hoverColorHex = rowHoverColorHex;
-                pressColorHex = rowPressColorHex;
-                colorHex = panelColorHex;
 
                 string text = entry is ContextMenuSubmenu submenu ? submenu.text : ((ContextMenuButton)entry).text;
-                caption = new LabelControl { text = text, fontSize = captionSize, colorHex = inkColorHex };
+                caption = new LabelControl { text = text, fontSize = captionSize };
                 AddChild(caption);
 
                 if (entry is not ContextMenuSubmenu) return;
-                arrow = new LabelControl { text = "›", fontSize = captionSize, colorHex = inkColorHex };
+                arrow = new LabelControl { text = "›", fontSize = captionSize };
                 AddChild(arrow);
             }
 
