@@ -123,7 +123,11 @@ namespace ArctisAurora.EngineWork.Rendering
                 throw new Exception("Failed to create the context menu window");
 
             RoundCorners();
-            if (withChrome) AllowSnapping();
+            if (withChrome)
+            {
+                AllowSnapping();
+                SetResizeCallback(WindwoResizeCallback);
+            }
             UpdateWindowSize(ref windowSize);
         }
 
@@ -219,6 +223,15 @@ namespace ArctisAurora.EngineWork.Rendering
         // HWND_TOP, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE
         private static readonly IntPtr hwndTop = IntPtr.Zero;
         private const uint raiseFlags = 0x0001 | 0x0002 | 0x0010;
+
+        // Moves and sizes in one call.
+        internal void SetBounds(int x, int y, int width, int height)
+        {
+            SetWindowPos(Hwnd, IntPtr.Zero, x, y, width, height, boundsFlags);
+        }
+
+        // SWP_NOZORDER | SWP_NOACTIVATE
+        private const uint boundsFlags = 0x0004 | 0x0010;
 
         [DllImport("user32.dll")]
         private static extern bool SetWindowPos(IntPtr hwnd, IntPtr insertAfter, int x, int y, int cx, int cy, uint flags);

@@ -14,6 +14,7 @@ namespace ArctisAurora.Core.UI
         public Vector2 position;
         public RenderWindow? window;
         public Row? opener;
+        public bool centered;
 
         public ContextMenuControl(List<ContextMenuEntry> entries, int depth)
         {
@@ -105,7 +106,8 @@ namespace ArctisAurora.Core.UI
                 LayoutRect inner = finalRect.Shrink(padding);
 
                 Vector2 c = caption.DesiredSize;
-                caption.Arrange(new LayoutRect(inner.x, inner.y + (inner.height - c.Y) * 0.5f, c.X, c.Y));
+                float cx = ((ContextMenuControl)parent).centered ? inner.x + (inner.width - c.X) * 0.5f : inner.x;
+                caption.Arrange(new LayoutRect(cx, inner.y + (inner.height - c.Y) * 0.5f, c.X, c.Y));
 
                 if (arrow != null)
                 {

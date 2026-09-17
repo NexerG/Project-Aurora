@@ -76,7 +76,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // Opens a menu of entries on a control, at a point in its window's design space.
-        public static void Open(List<ContextMenuEntry> entries, Control on, Vector2 point)
+        public static void Open(List<ContextMenuEntry> entries, Control on, Vector2 point, float width = 0f, bool centered = false)
         {
             Close();
             if (entries.Count == 0) return;
@@ -86,7 +86,7 @@ namespace ArctisAurora.Core.UI
 
             _origin = window;
             target = on;
-            Host(new ContextMenuControl(entries, 0) { position = point });
+            Host(new ContextMenuControl(entries, 0) { position = point, preferredWidth = width, centered = centered });
         }
 
         public static void Close() => CloseFrom(0);

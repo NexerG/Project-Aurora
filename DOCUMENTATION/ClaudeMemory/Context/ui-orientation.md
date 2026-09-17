@@ -111,7 +111,7 @@ Why: [[ui-palettes]].
   hit-tested. Press jumps, drag follows (`Pick`); `onChanged(float)` fires on the gesture only, not on a
   `value` set. XML `Value`, `TrackHeight`, `ThumbWidth`, `TrackColorHex`, `ThumbColorHex`. No old counterpart.
 - **DropdownControl** `<Dropdown>` · ButtonControl — caption, `options`, `onPicked`, `selected`; a
-  left release opens `options` as a menu under it. `options` is code-only. Old `DropdownControl`.
+  left release opens `options` as a menu under it, no narrower than itself, captions centered. `options` is code-only. Old `DropdownControl`.
 - **KeyCaptureControl** `<KeyCapture>` · ButtonControl — shows a combo (`SetCombo`, static
   `Describe`); a left release hands the next key to `InputHandler.Capture`; `OnDestroy` cancels a live capture,
   or every keybind stays swallowed. Old `KeyCaptureControl`.

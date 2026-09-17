@@ -172,7 +172,7 @@ namespace ArctisAurora.Core.UI
 
             if (window.isInWindow) SolveHover(point, delta, root);
 
-            if (ownsDrag) SolveDragWindow(window);
+            if (ownsDrag && dragging.parent is not WindowFrameControl) SolveDragWindow(window);
 
             KeyStateEntry lmb = InputHandler.instance.keyTracker.GetState(Keys.MouseLeft);
             KeyStateEntry rmb = InputHandler.instance.keyTracker.GetState(Keys.MouseRight);

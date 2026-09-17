@@ -418,7 +418,11 @@ Typing and a window resize on a 1,000,000-character note, recorded into the same
 | 30 | `Profiling.CaptureUntilFlush()` (was `Capture(240)` until 2026-09-17, §16) |
 | 31–150 | one char into `InputHandler.charInputReadQueue`, then `TextInputActions.Write()`; zone `Scenario.Type` |
 | 151–270 | `glfwSetWindowSize` on the primary window, 8 px narrower a tick for 60 ticks, then back; zone `Scenario.Resize` |
-| 271 | logs the final length and window size, `Engine.Post(Shutdown.Request)` |
+| 271 | `SettingsWindow.Open(Engine.primary)`, then `ShowCategory(keybindsCategory)` (added 2026-09-17) |
+| 272–301 | settle — the settings window's GPU side is built on the render thread |
+| 302–421 | `glfwSetWindowSize` on the settings window, 8 px wider a tick for 60 ticks, then back; zone `Scenario.ResizeSettings` |
+| 422–1321 | hold — nothing scripted; room for an external real-pointer drag of the settings window's edge |
+| 1322 | logs the final length and window size, `Engine.Post(Shutdown.Request)` |
 
 - Captures and the log land where the host's normally do — both resolve against the write root's parent.
 
@@ -446,8 +450,9 @@ which Carbon's default `CaptureRoot` never lists. A host with no write root (the
 / `MarkDirty` a key press does. The char is queued after `ActivateKeybinds` and drained immediately, so the real
 bind never sees it.
 
-**Resizing is `glfwSetWindowSize`, the call `WindowFrameControl` makes on an edge drag.** Not `SetWindowPos`
-from another process — `aurora-verify`'s 65535 trap. The size callback fires inside the call, `WindowRoot.FitTo`
+**Resizing is `glfwSetWindowSize`, which `WindowFrameControl` made on an edge drag until 2026-09-17** (now one
+in-process Win32 `SetWindowPos` through `AGlfwWindow.SetBounds`). Not `SetWindowPos` from another process —
+`aurora-verify`'s 65535 trap. The size callback fires inside the call, `WindowRoot.FitTo`
 marks the root dirty, and that tick's `ResolveLayout` rewraps every block because `_wrapWidth` changed.
 
 **The swap waits for tick 2 (user, 2026-09-14).** Swapped in `OnStart` (tick 1), the host's shell was destroyed
