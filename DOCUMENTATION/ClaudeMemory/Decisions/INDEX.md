@@ -17,7 +17,7 @@ Standing constraints (ECS storage, Vulkan internals, physics, XSD-not-JSON) are 
 | [[control-edge-and-outline]] | two strokes, because there are two distance fields to stroke | `VulkanControl`, `UI.vert`/`UI.frag` |
 | [[ui-clipping]] | the clip rect rides in the control's pool row; the fragment shader discards against it | `VulkanControl`, `WindowControl`, `UI.frag` |
 | [[ui-gradients]] | gradients are a shared table indexed per control, procedural, no texture; slot 0 reserved | `Gradients`, `VulkanControl`, `MCUI`, `UIModule` |
-| [[ui-palettes]] | **PARTIAL** (slice 1 of 3) — colour is a palette role; a row carries a paint word (table slot or inline `0xRRGGBB`); ink by contrast, hover/press/muted calculated; authored `ColorHex` wins; inherited in `WriteArranged` like the clip | `Palettes`, `PaletteDefinition`, `PaletteRole`, `Control.role`, `Control.InheritPaint`, `VulkanControl.paint`, `UIEngineModule.MirrorPaints` |
+| [[ui-palettes]] | **PARTIAL** (slice 1, Thorium's slices 2–3) — colour is a palette role; a row carries a paint word (table slot or inline `0xRRGGBB`); ink by contrast, hover/press/muted calculated; authored `ColorHex` wins; inherited in `WriteArranged` like the clip; the app palette is the `<UI><Palette>` setting; composite `*ColorHex` null = palette; `SubField` for fields on panels | `Palettes`, `PaletteDefinition`, `PaletteRole`, `PaletteSetting`, `Control.role`, `Control.PaintOr`, `Control.CopyPaint`, `Control.InheritPaint`, `VulkanControl.paint`, `UIEngineModule.MirrorPaints` |
 | [[window-chrome-and-label]] | the title bar is ordinary controls; text on a button needed a non-input label | `WindowActions`, `LabelControl` |
 | [[window-frame-resize]] | the resize border is a control's padding, not an engine special case | `WindowFrameControl` |
 | [[atlas-is-unorm-not-srgb]] | a distance field is not a colour, so font atlases upload as UNORM | `TextureAsset`, `FontAsset`, `AVulkanBufferHandler` |
@@ -118,7 +118,7 @@ Standing constraints (ECS storage, Vulkan internals, physics, XSD-not-JSON) are 
 
 | Note | Settles | Key symbols |
 |---|---|---|
-| [[render-window-owns-the-swapchain]] | a window owns its swapchain, sync and modules; the renderer keeps only the device | `RenderWindow`, `Renderer`, `AGlfwWindow` |
+| [[render-window-owns-the-swapchain]] | a window owns its swapchain, sync and modules; the renderer keeps only the device; surface formats and present modes are cached per window; a rebuild passes the old swapchain; a resize the swapchain already matches skips its rebuild, and settings requests have their own flag | `RenderWindow`, `Renderer`, `AGlfwWindow`, `AVulkanHelper.GetSurfaceFormats`, `Renderer.RecreateSwapchain`, `Renderer.SwapchainMatchesSurface`, `RenderWindow.rebuildRequested` |
 | [[swapchain-extent-is-the-truth]] | GPU-side sizes come from `Renderer.swapchainExtent`, never `Engine.window.windowSize` | `Renderer`, `RenderingModule`, `UIModule` |
 | [[dynamic-rendering]] | dynamic rendering replaces render passes and framebuffers | `Renderer`, `RenderingModule`, `CompositorModule` |
 | [[gpu-global-frame-data]] | the renderer owns a global frame-data set at set 0; modules keep their own from set 1 | `Renderer`, `UIModule`, `MCUI`, `UI.vert` |

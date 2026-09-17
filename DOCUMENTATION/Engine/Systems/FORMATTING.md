@@ -51,7 +51,7 @@ The line box is deliberately left on the family's regular metrics. A line is as 
 
 `ApplyStyleBetween` is the only thing that restyles text. It splits the range's ends out of whatever runs hold them, applies the change to every run between, and folds back together whatever the change made identical — so a document does not accumulate a run boundary per edit.
 
-A `StyleDelta` is a set of nullable members, and a null member is one the change does not speak to. That is what lets bold over a multicoloured selection keep every colour in it.
+A `StyleDelta` is a set of nullable members, and a null member is one the change does not speak to. That is what lets bold over a multicoloured selection keep every colour in it. An empty colour is different from a null one: it clears the colour, so the text goes back to the palette's ink. That is what the colour dropdown's "Default" does, and it is why a note never stores the default text colour — a block has no colour of its own, and a run saved with the pre-palette ink `#2C2B26` loads without it.
 
 Inside a block the range is addressed by character offset rather than by run index, because a split renumbers every run after it and the merge renumbers them back. The text itself never moves, which is what makes an offset stable and a recorded address replayable.
 

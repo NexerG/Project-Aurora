@@ -34,22 +34,23 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("TextColorHex", "UI", "Colour of the text, in both halves.")]
-        public string textColorHex
+        public string? textColorHex
         {
             get => label.colorHex;
-            set { label.colorHex = value; box.textColorHex = value; }
+            set => PaintText(value, PaletteRole.Ink);
         }
 
         [A_XSDElementProperty("FieldColorHex", "UI", "Ground of the field while an edit is running.")]
-        public string fieldColorHex
+        public string? fieldColorHex
         {
             get => box.colorHex;
-            set => box.colorHex = value;
+            set => box.PaintOr(value, PaletteRole.SubField);
         }
 
         public EditableLabelControl()
         {
             alpha = 0f;
+            box.role = PaletteRole.SubField;
 
             base.AddChild(label);
             base.AddChild(box);
@@ -58,6 +59,13 @@ namespace ArctisAurora.Core.UI
             box.onCommit = Committed;
             box.onCancel = End;
             box.onBlur = () => { if (isEditing) box.Commit(); };
+        }
+
+        // Paints both halves' text an authored hex, or the role when there is none.
+        public void PaintText(string? hex, PaletteRole fallback)
+        {
+            label.PaintOr(hex, fallback);
+            box.PaintText(hex, fallback);
         }
 
         // A decoration: whatever hosts it takes the context, so a press on the caption and a release

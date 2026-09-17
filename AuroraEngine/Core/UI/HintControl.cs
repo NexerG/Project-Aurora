@@ -6,7 +6,7 @@ namespace ArctisAurora.Core.UI
     {
         public HintControl()
         {
-            colorHex = "#4C8DFF";
+            role = PaletteRole.Accent;
             alpha = 0.35f;
         }
     }

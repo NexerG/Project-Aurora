@@ -10,7 +10,7 @@ namespace ArctisAurora.Core.UI
     public enum PaletteRole
     {
         None, Clear,
-        Ground, Surface, Chrome, Field, Line, Accent, Danger,
+        Ground, Surface, Chrome, Field, SubField, Line, Accent, Danger,
         Ink, MutedInk
     }
 
@@ -29,6 +29,8 @@ namespace ArctisAurora.Core.UI
         public string chrome = "";
         [A_XSDElementProperty("Field", "UI", "Input boxes, as a hex code.")]
         public string field = "";
+        [A_XSDElementProperty("SubField", "UI", "Input boxes that sit on a panel or a field, as a hex code.")]
+        public string subField = "";
         [A_XSDElementProperty("Line", "UI", "Separators, splitters and borders, as a hex code.")]
         public string line = "";
         [A_XSDElementProperty("Accent", "UI", "Highlights and active state, as a hex code.")]
@@ -61,7 +63,7 @@ namespace ArctisAurora.Core.UI
         public const uint inlineBit = 0x80000000;
 
         // block layout: surfaces × states, ink and muted ink per surface, then the two raw inks
-        private const uint surfaceCount = 7;
+        private const uint surfaceCount = 8;
         private const uint stateCount = 3;
         private const uint inkBase = surfaceCount * stateCount;
         private const uint rawInkBase = inkBase + surfaceCount * 2;
@@ -103,9 +105,10 @@ namespace ArctisAurora.Core.UI
                 blocks.Add(palette);
             }
 
-            if (!byName.TryGetValue("default", out PaletteDefinition fallback))
+            string chosen = SettingsRegistry.Get<UISettings>().palette.name;
+            if (!byName.TryGetValue(chosen, out PaletteDefinition fallback))
             {
-                Log.Error($"no palette named 'default' — a tree that names no palette has nothing to paint with.");
+                Log.Error($"no palette named '{chosen}' — a tree that names no palette has nothing to paint with.");
                 return false;
             }
 
@@ -218,6 +221,7 @@ namespace ArctisAurora.Core.UI
                 surface = Required(element, "Surface"),
                 chrome = Required(element, "Chrome"),
                 field = Required(element, "Field"),
+                subField = Required(element, "SubField"),
                 line = Required(element, "Line"),
                 accent = Required(element, "Accent"),
                 danger = Required(element, "Danger"),
@@ -248,8 +252,8 @@ namespace ArctisAurora.Core.UI
             Vector3[] surfaces =
             {
                 Control.HexToRGB(palette.ground), Control.HexToRGB(palette.surface), Control.HexToRGB(palette.chrome),
-                Control.HexToRGB(palette.field), Control.HexToRGB(palette.line), Control.HexToRGB(palette.accent),
-                Control.HexToRGB(palette.danger)
+                Control.HexToRGB(palette.field), Control.HexToRGB(palette.subField), Control.HexToRGB(palette.line),
+                Control.HexToRGB(palette.accent), Control.HexToRGB(palette.danger)
             };
 
             foreach (Vector3 color in surfaces)

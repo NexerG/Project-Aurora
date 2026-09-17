@@ -13,22 +13,22 @@ namespace ArctisAurora.Core.UI
     {
         // palette
         [A_XSDElementProperty("HoverColorHex", "UI", "Ground of a bar button while hovered.")]
-        public string hoverHex { get => field; set { field = value; ApplyPalette(); } } = "#2A2A2A";
+        public string? hoverHex { get => field; set { field = value; ApplyPalette(); } }
 
         [A_XSDElementProperty("PressColorHex", "UI", "Ground of a bar button while held.")]
-        public string pressHex { get => field; set { field = value; ApplyPalette(); } } = "#3A3A3A";
+        public string? pressHex { get => field; set { field = value; ApplyPalette(); } }
 
         [A_XSDElementProperty("IdleInkColorHex", "UI", "Color of a bar glyph that is not lit.")]
-        public string idleInkHex { get => field; set { field = value; ApplyPalette(); } } = "#9D9D9D";
+        public string? idleInkHex { get => field; set { field = value; ApplyPalette(); } }
 
         [A_XSDElementProperty("ActiveInkColorHex", "UI", "Color of a bar glyph the caret's span carries.")]
-        public string activeInkHex { get => field; set { field = value; ApplyPalette(); } } = "#6C9BE0";
+        public string? activeInkHex { get => field; set { field = value; ApplyPalette(); } }
 
         [A_XSDElementProperty("SeparatorColorHex", "UI", "Color of the rules between bar groups.")]
-        public string separatorHex { get => field; set { field = value; ApplyPalette(); } } = "#2F2F2F";
+        public string? separatorHex { get => field; set { field = value; ApplyPalette(); } }
 
         [A_XSDElementProperty("FieldColorHex", "UI", "Ground of the px field.")]
-        public string fieldHex { get => field; set { field = value; ApplyPalette(); } } = "#252525";
+        public string? fieldHex { get => field; set { field = value; ApplyPalette(); } }
 
         // The bar's own ground is what a button rests at, so it repaints the parts the way the rest
         // of the palette does.
@@ -66,7 +66,7 @@ namespace ArctisAurora.Core.UI
         // again rather than pinning a hex into the file.
         private static readonly (string caption, string hex)[] colorOptions =
         {
-            ("Default", "#2C2B26"),
+            ("Default", ""),
             ("Gray", "#808080"),
             ("Red", "#E06C75"),
             ("Orange", "#D19A66"),
@@ -100,7 +100,8 @@ namespace ArctisAurora.Core.UI
         private bool? shownBold;
         private bool? shownItalic;
         private TextStyleType? shownStyling;
-        private string shownColor;
+        private string? shownColor;
+        private PaletteRole? shownInk;
         private int? shownPx;
 
         public override bool takesActiveControl => false;
@@ -118,11 +119,11 @@ namespace ArctisAurora.Core.UI
             AddChild(IconButton(italicInk, _ => TextInputActions.Italic()));
             AddChild(Separator());
 
-            stylingCaption = Caption(stylingOptions[0].caption, idleInkHex);
+            stylingCaption = Caption(stylingOptions[0].caption);
             AddChild(CaptionButton(stylingCaption, 124, OpenStyling));
             AddChild(Separator());
 
-            colorInk = Caption("A", idleInkHex);
+            colorInk = Caption("A");
             AddChild(CaptionButton(colorInk, 52, OpenColors));
             AddChild(Separator());
 
@@ -131,10 +132,9 @@ namespace ArctisAurora.Core.UI
                 preferredWidth = 40,
                 preferredHeight = 20,
                 fontSize = captionSize,
-                textColorHex = idleInkHex,
-                caretColorHex = "#000000",
-                colorHex = fieldHex
+                role = PaletteRole.Field
             };
+            pxField.PaintText(null, PaletteRole.MutedInk);
             pxField.pressed = CapturePx;
             pxField.onCommit = ApplyPx;
             pxField.onCancel = RevertPx;
@@ -166,11 +166,13 @@ namespace ArctisAurora.Core.UI
                 stylingCaption.text = CaptionFor(styling);
             }
 
-            string color = source?.colorHex ?? idleInkHex;
-            if (shownColor != color)
+            string? color = source.HasValue ? source.Value.colorHex : idleInkHex;
+            PaletteRole ink = source.HasValue ? PaletteRole.Ink : PaletteRole.MutedInk;
+            if (shownColor != color || shownInk != ink)
             {
                 shownColor = color;
-                Paint(colorInk, color);
+                shownInk = ink;
+                Paint(colorInk, color, ink);
             }
 
             // never while it is being typed into, or the reflection would fight the keystrokes
@@ -238,7 +240,7 @@ namespace ArctisAurora.Core.UI
             if (shown == on) return;
 
             shown = on;
-            ink.colorHex = on ? activeInkHex : idleInkHex;
+            ink.PaintOr(on ? activeInkHex : idleInkHex, on ? PaletteRole.Accent : PaletteRole.MutedInk);
         }
 
         #region ---- menus ----
@@ -299,10 +301,10 @@ namespace ArctisAurora.Core.UI
             {
                 preferredWidth = width,
                 preferredHeight = barHeight,
-                colorHex = colorHex,
                 hoverColorHex = hoverHex,
                 pressColorHex = pressHex
             };
+            button.PaintOr(colorAuthored ? colorHex : null, PaletteRole.Clear);
             button.pressed = onToolPress;
             return button;
         }
@@ -338,10 +340,10 @@ namespace ArctisAurora.Core.UI
 
         // The parts inside a button are decoration: hit-testable they would answer the press, and a
         // row resolves the active context to itself rather than to the button that owns it.
-        private static LabelControl Caption(string text, string hex) => new LabelControl
+        private static LabelControl Caption(string text) => new LabelControl
         {
             fontSize = captionSize,
-            colorHex = hex,
+            role = PaletteRole.MutedInk,
             hitTestable = false,
             text = text
         };
@@ -354,21 +356,20 @@ namespace ArctisAurora.Core.UI
             preferredHeight = iconSize,
             hitTestable = false,
             horizontalPosition = 0.5f,
-            verticalPosition = 0.5f,
-            colorHex = idleInkHex
+            verticalPosition = 0.5f
         };
 
         private PanelControl Separator() => new PanelControl
         {
             preferredWidth = 1,
             preferredHeight = barHeight,
-            colorHex = separatorHex
+            role = PaletteRole.Line
         };
 
         // A label's colour reaches its glyphs when its runs are built, which is a measure away.
-        private static void Paint(LabelControl label, string hex)
+        private static void Paint(LabelControl label, string? hex, PaletteRole fallback)
         {
-            label.colorHex = hex;
+            label.PaintOr(hex, fallback);
             label.InvalidateLayout();
         }
 
@@ -380,17 +381,17 @@ namespace ArctisAurora.Core.UI
                 switch (child)
                 {
                     case PxBox box:
-                        box.colorHex = fieldHex;
-                        box.textColorHex = idleInkHex;
+                        box.PaintOr(fieldHex, PaletteRole.Field);
+                        box.PaintText(idleInkHex, PaletteRole.MutedInk);
                         break;
                     case ToolButton button:
-                        button.colorHex = colorHex;
+                        button.PaintOr(colorAuthored ? colorHex : null, PaletteRole.Clear);
                         button.hoverColorHex = hoverHex;
                         button.pressColorHex = pressHex;
                         InkTree(button);
                         break;
                     case PanelControl separator:
-                        separator.colorHex = separatorHex;
+                        separator.PaintOr(separatorHex, PaletteRole.Line);
                         break;
                 }
             }
@@ -398,7 +399,7 @@ namespace ArctisAurora.Core.UI
             // The lit ones repaint from OnTick, which only writes when its cache moved.
             shownBold = null;
             shownItalic = null;
-            shownColor = null;
+            shownInk = null;
         }
 
         private void InkTree(Control control)
@@ -407,8 +408,8 @@ namespace ArctisAurora.Core.UI
             {
                 if (child is not Control visual) continue;
 
-                if (visual is IconControl) visual.colorHex = idleInkHex;
-                else if (visual is LabelControl label) Paint(label, idleInkHex);
+                if (visual is IconControl) visual.PaintOr(idleInkHex, PaletteRole.MutedInk);
+                else if (visual is LabelControl label) Paint(label, idleInkHex, PaletteRole.MutedInk);
 
                 InkTree(visual);
             }

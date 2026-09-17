@@ -19,7 +19,7 @@ namespace ArctisAurora.EngineWork.Rendering
         internal WindowHandle* handle;
         internal SurfaceKHR surface;
         internal KhrSurface driverSurface = null!;
-        internal bool frameBufferResized = false;
+        internal volatile bool frameBufferResized = false;
         internal Extent2D windowSize;
 
         // One cursor per shape for the whole process — GLFW creates cursors against the library and

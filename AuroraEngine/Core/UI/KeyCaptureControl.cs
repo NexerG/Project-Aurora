@@ -10,13 +10,11 @@ namespace ArctisAurora.Core.UI
     {
         // caption
         private const int captionSize = 13;
-        private const string captionColorHex = "#E6E6E6";
         private const string listeningCaption = "press a key...";
 
         private readonly LabelControl label = new LabelControl
         {
-            fontSize = captionSize,
-            colorHex = captionColorHex
+            fontSize = captionSize
         };
 
         public Action<Keys, List<Keys>>? onCaptured;

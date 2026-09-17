@@ -15,18 +15,18 @@ namespace ArctisAurora.Core.UI
         public DocumentEditSession session { get; private set; }
 
         [A_XSDElementProperty("CaretColorHex", "UI", "Color of the insertion caret.")]
-        public string caretColorHex
+        public string? caretColorHex
         {
             get => field;
             set { field = value; if (content != null) content.caretColorHex = value; }
-        } = "#FFFFFF";
+        }
 
         [A_XSDElementProperty("SelectionColorHex", "UI", "Ground of the selection highlight behind the text.")]
-        public string selectionColorHex
+        public string? selectionColorHex
         {
             get => field;
             set { field = value; if (content != null) content.selectionColorHex = value; }
-        } = "#264F78";
+        }
 
         private const float autoScrollRate = 0.25f;
 

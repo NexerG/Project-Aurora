@@ -1,4 +1,5 @@
-﻿using ArctisAurora.Core.Registry;
+﻿using ArctisAurora.Core.Diagnostics;
+using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork.Rendering.RendererTypes;
 using Silk.NET.Vulkan;
 using Silk.NET.Vulkan.Extensions.KHR;
@@ -90,35 +91,54 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
         {
             var _details = new SwapChainSupportDetails();
 
+            Profiling.Zone.Start("Swapchain.QueryCapabilities");
             _driverSurface!.GetPhysicalDeviceSurfaceCapabilities(gpu, _surface, out _details.Capabilities);
+            Profiling.Zone.End("Swapchain.QueryCapabilities");
 
-            //surface formats
+            _details.Formats = GetSurfaceFormats(ref gpu, ref _driverSurface, ref _surface);
+            _details.PresentModes = GetPresentModes(ref gpu, ref _driverSurface, ref _surface);
+
+            return _details;
+        }
+
+        internal static SurfaceFormatKHR[] GetSurfaceFormats(ref PhysicalDevice gpu, ref KhrSurface _driverSurface, ref SurfaceKHR _surface)
+        {
+            Profiling.Zone.Start("Swapchain.QueryFormats");
+            SurfaceFormatKHR[] _formats;
             uint _formatCount = 0;
             _driverSurface.GetPhysicalDeviceSurfaceFormats(gpu, _surface, ref _formatCount, null);
             if (_formatCount != 0)
             {
-                _details.Formats = new SurfaceFormatKHR[_formatCount];
-                fixed (SurfaceFormatKHR* _fPtr = _details.Formats)
+                _formats = new SurfaceFormatKHR[_formatCount];
+                fixed (SurfaceFormatKHR* _fPtr = _formats)
                 {
                     _driverSurface.GetPhysicalDeviceSurfaceFormats(gpu, _surface, ref _formatCount, _fPtr);
                 }
             }
-            else _details.Formats = Array.Empty<SurfaceFormatKHR>();
+            else _formats = Array.Empty<SurfaceFormatKHR>();
+            Profiling.Zone.End("Swapchain.QueryFormats");
 
-            //present modes
+            return _formats;
+        }
+
+        internal static PresentModeKHR[] GetPresentModes(ref PhysicalDevice gpu, ref KhrSurface _driverSurface, ref SurfaceKHR _surface)
+        {
+            Profiling.Zone.Start("Swapchain.QueryPresentModes");
+            PresentModeKHR[] _presentModes;
             uint _presentModeCount = 0;
             _driverSurface.GetPhysicalDeviceSurfacePresentModes(gpu, _surface, ref _presentModeCount, null);
             if (_presentModeCount != 0)
             {
-                _details.PresentModes = new PresentModeKHR[_presentModeCount];
-                fixed (PresentModeKHR* _formatsPtr = _details.PresentModes)
+                _presentModes = new PresentModeKHR[_presentModeCount];
+                fixed (PresentModeKHR* _formatsPtr = _presentModes)
                 {
                     _driverSurface.GetPhysicalDeviceSurfacePresentModes(gpu, _surface, ref _presentModeCount, _formatsPtr);
                 }
             }
-            else _details.PresentModes = Array.Empty<PresentModeKHR>();
+            else _presentModes = Array.Empty<PresentModeKHR>();
+            Profiling.Zone.End("Swapchain.QueryPresentModes");
 
-            return _details;
+            return _presentModes;
         }
 
         internal static PresentModeKHR GetPresentMode(IReadOnlyList<PresentModeKHR> _presentModes)

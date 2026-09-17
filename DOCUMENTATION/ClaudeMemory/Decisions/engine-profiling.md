@@ -503,7 +503,7 @@ The final shape (swap on tick 2, write root beside the host's), one run:
 
 **Date:** 2026-09-17
 **Scope:** `Profiling` — `Flush`, `CaptureUntilFlush`, `Frame.Release`, `Frame.Hand`, `Frame.Open`;
-`ProfileScenario.OnTick`; `Renderer` — `Draw`, `RecreateSwapchain`.
+`ProfileScenario.OnTick`; `Renderer` — `Draw`, `RecreateSwapchain`, `CreateSwapchain`.
 
 Asked for to find out why a window resize on an integrated GPU draws stretched frames.
 
@@ -514,7 +514,12 @@ Asked for to find out why a window resize on an integrated GPU draws stretched f
 - **Zones in `Renderer.RecreateSwapchain`:** `Swapchain.Recreate` over the method (closed before the minimized
   `return` too), children `Swapchain.WaitIdle`, `.DestroyOutputs`, `.Destroy`, `.Create`, `.ResizePerImage`
   (only when the image count changed), `.CreateOutputs`, `.Descriptors`. Both call sites (after acquire, after
-  present) are covered by being inside the method.
+  present) are covered by being inside the method. `.Destroy` splits into `.DestroyViews` and `.DestroyKHR`.
+- **Zones in `Renderer.CreateSwapchain`**, nesting under `Swapchain.Create` on a rebuild and standing alone on a
+  window's first creation: `Swapchain.QuerySupport` (`GetSupportDetails`), `.GetExtension`
+  (`TryGetDeviceExtension`), `.CreateKHR`, `.GetImages` (both calls), `.ImageViews`.
+- **Zones in `AVulkanHelper`:** `Swapchain.QueryCapabilities` (in `GetSupportDetails` and inline in
+  `CreateSwapchain`), `.QueryFormats` (`GetSurfaceFormats`), `.QueryPresentModes` (`GetPresentModes`).
 - **`Profiling.CaptureUntilFlush()`** — the `Continuous` branch of `Configure` as a call: `BeginSession("Burst",
   0)`, `_sessionFrames = -1`. `ProfileScenario` tick 30 calls it instead of `Capture(240)`.
 - **`_heldBatches`** — `Interlocked` count of batches taken from a lane and not yet handed; incremented in
@@ -554,7 +559,13 @@ main's tick and main's loop exits after it.
 - **A thread that takes a batch just after the wait saw zero loses that frame.** It began after the capture
   ended.
 - **`Flush` blocks main for up to one render tick** — 102 ms on the iGPU mid-rebuild, 28 ms on the RTX.
-- `Swapchain.Create` is not split (`vkCreateSwapchainKHR` / `GetSwapchainImages` / image views).
+- **The iGPU's rebuild is two driver calls.** `vkCreateSwapchainKHR` 92 ms and `vkDestroySwapchainKHR` 20 ms on
+  the AMD Radeon, against 0.7 / 0.6 ms on the RTX. `CreateSwapchain` passes `OldSwapchain = default` and
+  `RecreateSwapchain` destroyed before creating, so no driver resource was reused. **Tested 2026-09-17:**
+  handing the old swapchain over cut them to 13.6 / 0.11 ms — see [[render-window-owns-the-swapchain]] §8.
+- **`VK_EXT_swapchain_maintenance1` / `VK_EXT_surface_maintenance1` (and the `KHR_` forms)** would allow an
+  oversized swapchain presented one-to-one — no rebuild while dragging. The RTX driver exposes them; the AMD
+  Radeon driver (26.6.1) does not.
 
 ### Verified
 
@@ -570,6 +581,23 @@ off, the iGPU selected with `VK_LOADER_DRIVERS_SELECT=*amd*`:
 | RTX rebuild tick | 6.3 ms: `Recreate` 5.3 — `Create` 3.3, `DestroyOutputs` 0.72, `Destroy` 0.63, `CreateOutputs` 0.39; `Draw.Present` 0.86 |
 | iGPU typing tick | `Draw` 2.05 ms, of which `Draw.Wait` 1.85 |
 | iGPU resize | every render tick is a rebuild — 0 plain ticks in the resize half |
+
+Second pass with the `CreateSwapchain` and `.Destroy` children, same setup, one run per GPU:
+
+| Case | Result |
+|---|---|
+| iGPU rebuild tick (12) | `Recreate` 113.0 ms — `Create` 92.3 (`CreateKHR` 92.2, `QuerySupport` 0.08, `GetExtension` 0.07, `GetImages` 0.02, `ImageViews` 0.004), `Destroy` 19.8 (`DestroyKHR` 19.8, `DestroyViews` 0.002) |
+| RTX rebuild tick (219) | `Recreate` 5.1 ms — `Create` 3.2 (`QuerySupport` 2.4, `CreateKHR` 0.74, `GetExtension` 0.02), `Destroy` 0.61 (`DestroyKHR` 0.61) |
+| children | add up to their parent within 0.03 ms on both |
+
+Third pass — the query split, then each change of [[render-window-owns-the-swapchain]] §7–§8 on its own run:
+
+| Case | iGPU (rebuild ticks) | RTX (rebuild ticks) |
+|---|---|---|
+| split | `QuerySupport` 0.09 ms (`QueryCapabilities` 0.04, `QueryFormats` 0.04, `QueryPresentModes` 0.001) | `QuerySupport` 2.52 ms (`QueryFormats` 2.52, `QueryCapabilities` 0.002, `QueryPresentModes` 0.001) |
+| + format/mode cache | `QuerySupport` 0.04; `Recreate` 121.0 | `QuerySupport` 0.003; `Recreate` 5.43 → 2.88, `RenderTick` 4.1 |
+| + old swapchain | `RenderTick` 123.1 → 17.2, `CreateKHR` 97.6 → 13.6, `DestroyKHR` 21.4 → 0.11; rebuilds in the resize 11 → 84 | `RenderTick` 4.1 → 3.8, `Recreate` 2.48, `DestroyKHR` 0.66 → 0.07, `CreateKHR` 0.94 → 1.07 |
+| validation on | no new message; rebuilds 86 | no new message; rebuilds 219 |
 
 ## Left standing
 

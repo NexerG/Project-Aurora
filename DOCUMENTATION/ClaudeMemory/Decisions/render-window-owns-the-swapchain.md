@@ -123,6 +123,79 @@ GLFW documents its window queries as main-thread only, and [[window-frame-resize
 real latent violation left unfixed. It now reads the size the main thread's resize callback published
 into `os.windowSize`, which is the only writer.
 
+### 7. Surface formats and present modes are queried once per window (user, 2026-09-17)
+
+- `RenderWindow.surfaceFormats` / `presentModes`, filled by `??=` in `Renderer.CreateSwapchain` through
+  `AVulkanHelper.GetSurfaceFormats` / `GetPresentModes` (split out of `GetSupportDetails`, which still composes
+  them for the old `Swapchain` path).
+- **Measured:** `vkGetPhysicalDeviceSurfaceFormatsKHR` was 2.52 ms of every RTX rebuild (0.04 ms on the AMD
+  iGPU); capabilities 0.002 ms, present modes 0.001 ms.
+- **Capabilities stay per rebuild.** On Win32 `currentExtent` is the live window size and the extent must equal
+  it — the one value a resize changes. `os.windowSize` is main's clock; see [[swapchain-extent-is-the-truth]].
+- **The present-mode list is cached, not the chosen mode** — the VSync setting re-chooses it on
+  `RequestSwapchainRebuild`.
+- **The lists die with the window**, which is also when its surface is destroyed.
+
+### 8. A rebuild hands the old swapchain to its replacement (user, 2026-09-17)
+
+- `RecreateSwapchain` keeps `window.swapchain` and `swapchainImageViews` in locals, calls `CreateSwapchain`,
+  then destroys the old views and the retired swapchain. `CreateSwapchain` passes `OldSwapchain =
+  window.swapchain`, which is the null handle on a window's first creation.
+- **Measured on the AMD Radeon iGPU:** `vkCreateSwapchainKHR` 97.6 → 13.6 ms, `vkDestroySwapchainKHR` 21.4 →
+  0.11 ms, a rebuild tick 123 → 17 ms — 84 rebuilds in the scenario's resize instead of 11, so far fewer
+  stale-size frames get stretched by the compositor. RTX: destroy 0.66 → 0.07 ms, create unchanged (~1 ms).
+- **Why it helps:** destroy-then-create makes the driver disconnect the surface from its present path and
+  build it again. A retired swapchain lets it carry that over and allocate only the new-size images. The spec
+  permits the reuse; it does not promise it.
+- `DeviceWaitIdle` still runs first, so nothing in flight touches the retired swapchain's images.
+- **Validation clean** on both GPUs with the scenario's resize.
+
+### Consequences to hold on to (§7–§8)
+- **A surface's formats could change under a cached list** — moving to an HDR display is the plausible case.
+  The format chosen is `R8G8B8A8Unorm` / sRGB-nonlinear, which stays available; untested.
+- ~~**Most RTX resize steps rebuild twice**~~ — confirmed and fixed 2026-09-17, see §9.
+
+### 9. A resize the swapchain already matches does not rebuild it (user, 2026-09-17)
+
+- **The double rebuild, measured:** with each rebuild logging `old → new` extent, the RTX scenario rebuilt 231
+  times for 120 resize steps. All 111 `ErrorOutOfDateKhr` rebuilds were followed one render tick later by a
+  `frameBufferResized` rebuild that kept the size. The driver reports the resize before GLFW's callback raises
+  the flag, so the flag arrives for a size already built. The AMD iGPU never did it — 0 same-size rebuilds.
+- **`RenderWindow.rebuildRequested`** (`volatile`) is the settings path: `Renderer.RequestSwapchainRebuild` sets
+  it instead of `frameBufferResized`. **Rejected:** keeping one flag — a VSync change keeps the extent and still
+  needs a rebuild for the present mode, so an extent check on a shared flag would silently drop it.
+- **`AGlfwWindow.frameBufferResized`** is now `volatile`; the resize callback and the set-size call still raise
+  it. The legacy renderers read it unchanged.
+- **Present branch of `Renderer.Draw`:** read both flags, clear both, then — if present returned `Success`,
+  nothing was requested, and `Renderer.SwapchainMatchesSurface(window)` (capabilities → `ChooseSwapchainExtent` →
+  compare with `swapchainExtent`) holds — log `skipped swapchain rebuild` at `Debug` and do not rebuild.
+  `ErrorOutOfDateKhr`, `SuboptimalKhr`, a request or a size mismatch rebuild as before. The acquire path does not
+  read the flags, so it cannot double up.
+- **The race is closed by ordering, not by `Interlocked`.** A flag is cleared before the capabilities query, and
+  the OS window has already changed size by the time its callback raises a flag. So a raise lost between read
+  and clear belongs to a size the query then sees; a raise after the clear is handled next tick and skipped if
+  nothing changed. **Rejected:** `Interlocked` int flags — the ordering already covers it, and ints would change
+  the type the legacy renderers read.
+- **The rebuild log line** moved after the rebuild: `rebuilt swapchain — {request | present returned X | resize},
+  W×H → W×H`.
+- **Correction, from the new reason text:** on a resize the AMD driver's presents return `SuboptimalKhr`, not
+  `Success`. The old line printed `resize or request` whenever the flag was up, which hid the result.
+
+### Consequences to hold on to (§9)
+- **A request is never skipped**, and neither is any present result other than `Success`.
+- **A skipped resize costs one capabilities query** — 0.003 ms on the RTX.
+- **VSync switching through `rebuildRequested` is NOT GUI-verified.**
+
+### Verified (§9)
+
+| Case | RTX | AMD iGPU |
+|---|---|---|
+| before, extents logged | 231 rebuilds: 111 out-of-date + 111 same-size flag + 9 flag that changed size | 86 rebuilds, 0 same-size |
+| after | 120 rebuilds (119 out-of-date, 1 resize), 107 skipped, 0 same-size | 84 rebuilds (84 `SuboptimalKhr`), 0 skipped |
+| final extent | last rebuild → 1280x720 = the scenario's final window | last rebuild → 1280x720 |
+| validation on | no new message; 120 rebuilds, 115 skipped | no new swapchain message; one `VUID-VkDescriptorBufferInfo-range-00342` from `UIEngineModule.UpdateDescriptorSets` at render tick 6, before any rebuild — not on this path, not seen in the previous validation run |
+| builds | Debug, Release with `DEBUG` — 0 errors, no `CS0420` | |
+
 ## Deliberately not done in this slice
 
 - **Per-window instance ranges.** `MCUI` still draws `0 .. pool.Count`, so a second window would draw

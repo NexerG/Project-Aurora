@@ -102,8 +102,10 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 	- [ ] **a pool growth between `MirrorDrawList`'s two `Backing<T>()` reads mis-sizes the control mirror (2026-09-16)** — geometry mirror sized from the new array, control mirror from the old, capacity recorded as new and never re-checked, so the next copy writes past it. Pre-existing; more frequent with `UIQuads`' +512 growth → `ui-quads-pool`
 	- [ ] reduce `ControlGeometry`'s matrix from `mat4` to `mat4x3` for data space and transfer optimisation
 	- [x] **UI palettes, slice 1 of 3 (2026-09-17)** — landed, See `ClaudeMemory/Decisions/ui-palettes.md`
-		- [ ] **slice 2 — composite controls onto roles** — ~60 `*ColorHex` attributes and ~134 C# hex literals (toolbar, file browser, tabs, thumbs, menus, dialogs, Settings, text box, slider, Carbon); agree a role-mapping table first, then a mechanical sweep. Includes `BlockControl.SplitAt` copying `colorHex` → `ui-palettes` § Known gaps
-		- [ ] **slice 3 — strip colours from the remaining `*.ui.xml`** — Thorium `UI`/`Settings`/`TabWindow`/`Workspace`/`TabPane`, engine `Settings`, Carbon `UI`; only `Vaults.ui.xml` is palette-driven → `ui-palettes` § Known gaps
+		- [ ] **slice 2, what is left** — `SliderControl`, Carbon's custom controls, `ButtonControl`'s `#8C8C8C` None fallback, tab close-hover reds, the toolbar's seven fixed swatches (Yellow low-contrast on light). Thorium's composites landed 2026-09-17 → `ui-palettes` § Known gaps
+		- [ ] **slice 3, what is left** — engine `Settings.ui.xml`, Carbon `UI.ui.xml`; Thorium's six are stripped → `ui-palettes` § Known gaps
+		- [ ] **text box selection is invisible on `SubField`** — `Line` `#E6E4DE` on `#EAE8E2`, 4 levels in thorium-light (new-note dialog, Settings fields, rename fields); needs a role decision → `ui-palettes` § Known gaps
+		- [ ] **Thorium palette parts NOT GUI-verified** — rename fields, confirm dialog, torn-off tab window, split pane, block split at Enter, "Default" swatch clearing, `#2C2B26` migration → `ui-palettes` § Known gaps
 		- [ ] **palette resolution on a runtime `Role`/`Palette` change, a reparented control and the drag ghost is NOT GUI-verified** → `ui-palettes` § Known gaps
 - [ ] fix resolution stuff associated with DPI and stuff. use `glfwGetMonitorContentScale` *(non-essential)*
 

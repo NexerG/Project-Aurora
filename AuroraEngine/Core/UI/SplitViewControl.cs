@@ -116,7 +116,7 @@ namespace ArctisAurora.Core.UI
             pane.name = source.name;
             pane.tabHeight = source.tabHeight;
             pane.tabWidth = source.tabWidth;
-            pane.colorHex = source.colorHex;
+            pane.CopyPaint(source);
             pane.tabColorHex = source.tabColorHex;
             pane.activeTabColorHex = source.activeTabColorHex;
             pane.tabHoverColorHex = source.tabHoverColorHex;
@@ -137,10 +137,10 @@ namespace ArctisAurora.Core.UI
         {
             SplitterControl grip = new SplitterControl
             {
-                colorHex = source.gripColorHex,
                 hoverColorHex = source.gripHoverColorHex,
                 pressColorHex = source.gripPressColorHex
             };
+            grip.PaintOr(source.gripColorHex, PaletteRole.Line);
             if (vertical) grip.preferredHeight = gripThickness;
             else grip.preferredWidth = gripThickness;
             return grip;

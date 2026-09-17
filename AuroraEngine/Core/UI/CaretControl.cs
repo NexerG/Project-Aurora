@@ -15,7 +15,7 @@ namespace ArctisAurora.Core.UI
 
         public CaretControl()
         {
-            colorHex = "#FFFFFF";
+            role = PaletteRole.Ink;
         }
 
         public override void OnTick()

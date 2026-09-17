@@ -62,10 +62,8 @@ namespace ArctisAurora.Core.UI
     {
         public TextStyleType stylingType = TextStyleType.Text;
 
-        public BlockControl()
-        {
-            colorHex = "#2C2B26";
-        }
+        // pre-palette block ink, dropped from runs at load
+        private const string legacyInkHex = "#2C2B26";
 
         // Pressing a block focuses the editor above it, never the block itself.
         public override Control? ActiveContextTarget() => (parent as Control)?.ActiveContextTarget();
@@ -99,7 +97,7 @@ namespace ArctisAurora.Core.UI
             {
                 count = slice.Length,
                 style = run.Style,
-                colorHex = run.colorHex,
+                colorHex = string.Equals(run.colorHex, legacyInkHex, StringComparison.OrdinalIgnoreCase) ? null : run.colorHex,
                 fontName = run.fontName,
                 fontSize = run.fontSizeAuthored ? run.fontSize : 0,
                 gradient = run.gradient,
@@ -158,11 +156,11 @@ namespace ArctisAurora.Core.UI
             BlockControl tail = new BlockControl
             {
                 stylingType = stylingType,
-                colorHex = colorHex,
                 fontName = fontName,
                 fontSize = fontSize,
                 lineHeight = lineHeight
             };
+            tail.CopyPaint(this);
 
             int index = SplitSpanAt(offset);
             tail.spans.Clear();

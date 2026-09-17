@@ -3,7 +3,7 @@
 		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 		 xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../../Schemas/UITypeSchema.xsd"
 		 Name="default"
-		 Ground="#1E1E1E" Surface="#171717" Chrome="#252525" Field="#252525" Line="#2F2F2F"
+		 Ground="#1E1E1E" Surface="#171717" Chrome="#252525" Field="#252525" SubField="#1B1B1B" Line="#2F2F2F"
 		 Accent="#6C9BE0" Danger="#C42B1E"
 		 DarkInk="#1E1E1E" LightInk="#FFFFFF"
 		 Step="0.04" Muted="0.45"/>

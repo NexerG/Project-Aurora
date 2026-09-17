@@ -6,11 +6,9 @@ namespace ArctisAurora.Core.UI
     [A_XSDType("CheckBox", "UI")]
     public class CheckBoxControl : ButtonControl
     {
-        private const string markColorHex = "#D8D8D8";
-
         private readonly PanelControl mark = new PanelControl
         {
-            colorHex = markColorHex,
+            role = PaletteRole.Ink,
             preferredWidth = 10,
             preferredHeight = 10,
             cornerRadius = new CornerRadii(2),

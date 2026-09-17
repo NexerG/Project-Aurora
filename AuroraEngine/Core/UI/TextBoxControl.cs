@@ -51,24 +51,24 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("TextColorHex", "UI", "Colour of the text.")]
-        public string textColorHex
+        public string? textColorHex
         {
             get => line.colorHex;
-            set => line.colorHex = value;
+            set => PaintText(value, PaletteRole.Ink);
         }
 
         [A_XSDElementProperty("SelectionColorHex", "UI", "Ground of the selected range.")]
-        public string selectionColorHex
+        public string? selectionColorHex
         {
             get => selection.colorHex;
-            set => selection.colorHex = value;
+            set => selection.PaintOr(value, PaletteRole.Line);
         }
 
         [A_XSDElementProperty("CaretColorHex", "UI", "Colour of the insertion point.")]
-        public string caretColorHex
+        public string? caretColorHex
         {
             get => caret.colorHex;
-            set => caret.colorHex = value;
+            set => caret.PaintOr(value, PaletteRole.Ink);
         }
 
         public TextBoxControl()
@@ -76,7 +76,7 @@ namespace ArctisAurora.Core.UI
             clipOutOfBounds = true;
 
             selection.hitTestable = false;
-            selection.colorHex = "#3B6EA5";
+            selection.role = PaletteRole.Line;
             caret.hitTestable = false;
 
             base.AddChild(selection);
@@ -85,6 +85,9 @@ namespace ArctisAurora.Core.UI
 
             caret.Blur();
         }
+
+        // Paints the text an authored hex, or the role when there is none.
+        public void PaintText(string? hex, PaletteRole fallback) => line.PaintOr(hex, fallback);
 
         // A box is its three parts; nothing is authored inside it.
         public override void AddChild(Entity entity) =>

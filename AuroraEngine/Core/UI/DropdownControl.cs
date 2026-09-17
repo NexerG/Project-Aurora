@@ -9,12 +9,10 @@ namespace ArctisAurora.Core.UI
     {
         // caption
         private const int captionSize = 13;
-        private const string captionColorHex = "#E6E6E6";
 
         private readonly LabelControl label = new LabelControl
         {
-            fontSize = captionSize,
-            colorHex = captionColorHex
+            fontSize = captionSize
         };
 
         public IReadOnlyList<string> options = Array.Empty<string>();
