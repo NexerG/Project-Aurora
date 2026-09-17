@@ -53,6 +53,10 @@ namespace ArctisAurora.Core.UI
         // Vault, project folder or whatever else the derivative lists.
         protected FileObject? root;
 
+        // the highlighted entry and its accent
+        private string? currentPath;
+        private const float accentWidth = 3f;
+
         protected abstract string RootPath { get; }
 
         protected abstract void PopulateRows();
@@ -157,7 +161,7 @@ namespace ArctisAurora.Core.UI
                 contextMenu = rowMenu,
                 stopsContextMenu = rowMenu != null
             };
-            row.PaintOr(rowColorHex, PaletteRole.Clear);
+            PaintRow(row);
             row.AddChild(content);
             row.RegisterOnRelease(_ => { activate(); return true; });
 
@@ -173,7 +177,7 @@ namespace ArctisAurora.Core.UI
             {
                 if (child is not FileRowControl row) continue;
 
-                row.PaintOr(rowColorHex, PaletteRole.Clear);
+                PaintRow(row);
                 row.hoverColorHex = rowHoverColorHex;
                 row.pressColorHex = rowPressColorHex;
 
@@ -184,6 +188,23 @@ namespace ArctisAurora.Core.UI
                     && content.children.Count > 0 && content.children[0] is LabelControl gutter)
                     gutter.PaintOr(folderColorHex, PaletteRole.MutedInk);
             }
+        }
+
+        // Highlights the row for path, or none.
+        public void SetCurrent(string? path)
+        {
+            if (string.Equals(currentPath, path, StringComparison.OrdinalIgnoreCase)) return;
+            currentPath = path;
+
+            foreach (Entity child in rows.children)
+                if (child is FileRowControl row) PaintRow(row);
+        }
+
+        private void PaintRow(FileRowControl row)
+        {
+            bool current = currentPath != null && string.Equals(row.file.path, currentPath, StringComparison.OrdinalIgnoreCase);
+            row.PaintOr(current ? null : rowColorHex, current ? PaletteRole.SubField : PaletteRole.Clear);
+            row.edgeThickness = current ? new Thickness(0f, 0f, 0f, accentWidth) : Thickness.Zero;
         }
 
         private void PaintName(EditableLabelControl name, FileObject file)

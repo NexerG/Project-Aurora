@@ -312,6 +312,7 @@
     <xs:attribute name="Line" type="xs:string" />
     <xs:attribute name="Accent" type="xs:string" />
     <xs:attribute name="Danger" type="xs:string" />
+    <xs:attribute name="EdgeAccent" type="xs:string" />
     <xs:attribute name="DarkInk" type="xs:string" />
     <xs:attribute name="LightInk" type="xs:string" />
     <xs:attribute name="Step" type="xs:float" />

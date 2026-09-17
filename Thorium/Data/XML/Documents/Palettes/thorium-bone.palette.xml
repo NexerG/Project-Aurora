@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Palette xmlns="http://arctisaurora/AuroraUITypes"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../../Schemas/UITypeSchema.xsd"
+		 Name="thorium-bone"
+		 Ground="#FAFBF7" Surface="#F1F3EC" Chrome="#EAECE5" Field="#F1F3EC" SubField="#E7EAE0" Line="#E4E7DD"
+		 Accent="#5E8C6A" Danger="#C42B1E"
+		 DarkInk="#2B2F26" LightInk="#FAFBF7"
+		 Step="0.04" Muted="0.25"/>

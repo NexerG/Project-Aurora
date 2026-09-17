@@ -283,18 +283,20 @@ namespace ArctisAurora.Core.UI
             set
             {
                 field = value;
+                edgeColorAuthored = true;
                 visual.edgePaint = Palettes.Inline(value);
             }
         } = "#000000";
+        private bool edgeColorAuthored;
 
-        [A_XSDElementProperty("EdgeThickness", "UI", "Border width in design-space pixels, drawn inward from the control's edge. Zero draws none.")]
-        public float edgeThickness
+        [A_XSDElementProperty("EdgeThickness", "UI", "Border widths in design-space pixels, drawn inward from each side. Zero draws none.")]
+        public Thickness edgeThickness
         {
             get => field;
             set
             {
                 field = value;
-                visual.edgeThickness = value;
+                visual.edgeThickness = new Vector4(value.top, value.right, value.bottom, value.left);
             }
         }
 
@@ -385,6 +387,7 @@ namespace ArctisAurora.Core.UI
             Control? p = parent as Control;
             palette = ownPalette ?? p?.palette ?? Palettes.Default;
             uint ground = GroundBehind();
+            if (!edgeColorAuthored) visual.edgePaint = Palettes.EdgeAccent(palette);
             if (!colorAuthored) ApplyRole(palette, ground);
 
             uint below = GroundBelow(ground);

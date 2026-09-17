@@ -23,7 +23,7 @@ namespace ArctisAurora.Core.UI
             padding = new Thickness(4f);
             role = PaletteRole.Ground;
             cornerRadius = new CornerRadii(6f);
-            edgeThickness = 1f;
+            edgeThickness = new Thickness(1f);
             stopsContextMenu = true;
 
             foreach (ContextMenuEntry entry in entries)

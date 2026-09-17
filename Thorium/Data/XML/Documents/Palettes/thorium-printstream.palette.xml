@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Palette xmlns="http://arctisaurora/AuroraUITypes"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../../Schemas/UITypeSchema.xsd"
+		 Name="thorium-printstream"
+		 Ground="#FFFFFF" Surface="#FFFFFF" Chrome="#FFFFFF" Field="#FFFFFF" SubField="#F6F6F6" Line="#E4E4E4"
+		 Accent="#8A5CD1" Danger="#C42B1E"
+		 DarkInk="#0A0A0A" LightInk="#FFFFFF"
+		 Step="0.04" Muted="0.41"/>

@@ -89,6 +89,16 @@ get the hex form only. A border colour is picked to sit against a specific groun
 hex is for; sixteen named constants would be authored roughly never. Trivial to add later — the
 setter is four lines and `EnumColorToHex` already exists.
 
+### 7. Per-side widths, coloured by the palette's `EdgeAccent` (2026-09-17)
+
+Superseded parts of §5/§6 on the new stack (`Core.UI.VulkanControl`, `Shaders/UIEngine`):
+- `Control.edgeThickness` is a `Thickness` (top, right, bottom, left); `EdgeThickness="2"` or `"2,0,0,0"`. Row `edgeThickness` float → `vec4`, 76 → 88 bytes.
+- Box band = outer coverage minus a box shrunk by each side's width, corner radii `max(r − widest, 0)`. A glyph bands by the widest side.
+- An unauthored edge paints `Palettes.EdgeAccent(palette)` in `InheritPaint`; `EdgeColorHex` wins. `ContextMenuControl.ApplyRole` still overrides with `Line`.
+- Accent bars are edges, not child panels (user, 2026-09-17): active tab (`TabViewControl.ApplyTabColors`, 2px top, also on its close button so that ground does not cover it), current sidebar row (`FileBrowserControl.SetCurrent`, `SubField` + 3px left).
+- Rejected: a child panel per bar — an extra quad each, restructured tab/row trees, a 1px caption shift. Cost taken: shader change in four trees; a future gradient bar needs an edge gradient index.
+- **GUI-verified** in Thorium (thorium-light): top edge on each pane's active tab, `SubField` + accent edge on SampleNote following focus between panes, context menu border intact. **NOT verified:** dark palettes, torn-off windows, rename re-follow.
+
 ## Verified
 
 - `Unsafe.SizeOf<ControlData>()` == 100, field offsets as listed above (probe against the built

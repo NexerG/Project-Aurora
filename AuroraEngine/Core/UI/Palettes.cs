@@ -37,6 +37,8 @@ namespace ArctisAurora.Core.UI
         public string accent = "";
         [A_XSDElementProperty("Danger", "UI", "Destructive actions, as a hex code.")]
         public string danger = "";
+        [A_XSDElementProperty("EdgeAccent", "UI", "Control edges, as a hex code. Accent when left out.")]
+        public string edgeAccent = "";
 
         // text
         [A_XSDElementProperty("DarkInk", "UI", "Text on light backgrounds, as a hex code.")]
@@ -62,12 +64,13 @@ namespace ArctisAurora.Core.UI
 
         public const uint inlineBit = 0x80000000;
 
-        // block layout: surfaces × states, ink and muted ink per surface, then the two raw inks
+        // block layout: surfaces × states, ink and muted ink per surface, the two raw inks, then the edge accent
         private const uint surfaceCount = 8;
         private const uint stateCount = 3;
         private const uint inkBase = surfaceCount * stateCount;
         private const uint rawInkBase = inkBase + surfaceCount * 2;
-        private const uint blockSize = rawInkBase + 2;
+        private const uint edgeAccentSlot = rawInkBase + 2;
+        private const uint blockSize = edgeAccentSlot + 1;
 
         private static readonly Dictionary<string, PaletteDefinition> byName =
             new Dictionary<string, PaletteDefinition>(StringComparer.OrdinalIgnoreCase);
@@ -79,7 +82,10 @@ namespace ArctisAurora.Core.UI
         // Replaced whole on load, never written in place.
         public static Vector4[] Table => Volatile.Read(ref table);
 
-        public static PaletteDefinition Default { get; private set; } = null!;
+        public static PaletteDefinition Default { get; internal set; } = null!;
+
+        // Loaded palette names, in load order.
+        public static IReadOnlyList<string> Names => blocks.Select(palette => palette.name).ToArray();
 
         // An empty name is no palette. An unknown name is an authoring error, not a fallback.
         public static PaletteDefinition? Get(string name)
@@ -147,6 +153,9 @@ namespace ArctisAurora.Core.UI
         // A surface role's slot: state 0 rest, 1 hover, 2 press.
         public static uint Surface(PaletteDefinition palette, PaletteRole role, uint state = 0)
             => palette.firstSlot + (uint)(role - PaletteRole.Ground) * stateCount + state;
+
+        // The slot every unauthored edge paints with.
+        public static uint EdgeAccent(PaletteDefinition palette) => palette.firstSlot + edgeAccentSlot;
 
         // Text on a ground. A surface of this palette has its ink baked; any other ground picks between
         // the palette's two inks here and mixes a muted one inline.
@@ -225,6 +234,7 @@ namespace ArctisAurora.Core.UI
                 line = Required(element, "Line"),
                 accent = Required(element, "Accent"),
                 danger = Required(element, "Danger"),
+                edgeAccent = element.Attribute("EdgeAccent")?.Value ?? "",
                 darkInk = Required(element, "DarkInk"),
                 lightInk = Required(element, "LightInk")
             };
@@ -272,6 +282,7 @@ namespace ArctisAurora.Core.UI
 
             built.Add(new Vector4(dark, 1f));
             built.Add(new Vector4(light, 1f));
+            built.Add(new Vector4(Control.HexToRGB(string.IsNullOrEmpty(palette.edgeAccent) ? palette.accent : palette.edgeAccent), 1f));
         }
         #endregion
     }

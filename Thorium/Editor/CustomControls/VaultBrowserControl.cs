@@ -27,7 +27,30 @@ namespace Thorium.Editor.CustomControls
         {
             contextMenu = vaultMenu;
             Rebuild();
+            Context.changed += OnContextChanged;
+            TabViewControl.activeChanged += OnActiveTabChanged;
         }
+
+        public override void OnDestroy()
+        {
+            Context.changed -= OnContextChanged;
+            TabViewControl.activeChanged -= OnActiveTabChanged;
+            base.OnDestroy();
+        }
+
+        #region ---- current note ----
+        private void OnContextChanged(string name, object? value)
+        {
+            if (name == tabsContext) FollowFocusedTab();
+        }
+
+        private void OnActiveTabChanged(TabViewControl view)
+        {
+            if (ReferenceEquals(view, FocusedTabs())) FollowFocusedTab();
+        }
+
+        private void FollowFocusedTab() => SetCurrent(FocusedTabs()?.activeItem?.name);
+        #endregion
 
         protected override string RootPath =>
             KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
@@ -164,7 +187,9 @@ namespace Thorium.Editor.CustomControls
                 view.Retitle(item, name);
             }
 
-            (Engine.primary.ui.uiRoot.FindByName(browserName) as VaultBrowserControl)?.Rebuild();
+            VaultBrowserControl? browser = Engine.primary.ui.uiRoot.FindByName(browserName) as VaultBrowserControl;
+            browser?.Rebuild();
+            browser?.FollowFocusedTab();
         }
 
         // Focuses the note wherever it is already open, and only opens a tab when it is not.

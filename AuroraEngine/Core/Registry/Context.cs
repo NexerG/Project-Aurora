@@ -45,11 +45,15 @@ namespace ArctisAurora.Core.Registry
         public static T? Get<T>(string name) where T : class =>
             activeContexts.TryGetValue(name, out var entry) ? (entry as ContextEntry)?.Get() as T : null;
 
+        // Raised after a context is set, with its name and new value.
+        public static event Action<string, object?>? changed;
+
         public static void Set(string name, object? value)
         {
             if (activeContexts.TryGetValue(name, out var entry))
             {
                 (entry as ContextEntry).set(value);
+                changed?.Invoke(name, value);
                 Derive(name, value);
             }
         }

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Palette xmlns="http://arctisaurora/AuroraUITypes"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../../Schemas/UITypeSchema.xsd"
+		 Name="thorium-cyberpunk"
+		 Ground="#120C1F" Surface="#0D0918" Chrome="#08060F" Field="#0D0918" SubField="#1A1229" Line="#221838"
+		 Accent="#22E0E0" Danger="#FF2D95"
+		 DarkInk="#120C1F" LightInk="#E8E4F5"
+		 Step="0.04" Muted="0.41"/>

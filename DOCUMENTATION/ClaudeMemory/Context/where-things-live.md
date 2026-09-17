@@ -29,8 +29,9 @@ XML element, entry points, regions. The rows below answer "which types own this 
 
 | Concept | Code | Data | Note |
 |---|---|---|---|
-| the theme, palette, automatic colours, dark/light text on a panel, which palette the app uses | `UI.Palettes` (`LoadPalettes`, `Get`, `Default`, `Surface`, `Ink`, `Step`, `Inline`), `UI.PaletteDefinition`, `UI.PaletteRole`, `UI.PaletteSetting` (`UISettings.palette`); `UI.Control` — `role`, `paletteName`, `PaintOr`, `CopyPaint`, `InheritPaint`, `RepaintChildren`; `TextBoxControl.PaintText`, `EditableLabelControl.PaintText` | `*/Data/XML/Documents/Palettes/*.palette.xml`; `*/Data/XML/Settings/UI.settings.xml` (`<UI><Palette Name>`); `*.ui.xml` attrs `Palette`, `Role` | [[ui-palettes]] |
+| the theme, palette, automatic colours, dark/light text on a panel, which palette the app uses | `UI.Palettes` (`LoadPalettes`, `Get`, `Names`, `Default`, `Surface`, `Ink`, `Step`, `Inline`), `UI.PaletteDefinition`, `UI.PaletteRole`, `UI.PaletteSetting` (`UISettings.palette`); `UI.Control` — `role`, `paletteName`, `PaintOr`, `CopyPaint`, `InheritPaint`, `RepaintChildren`; `TextBoxControl.PaintText`, `EditableLabelControl.PaintText` | `*/Data/XML/Documents/Palettes/*.palette.xml`; `*/Data/XML/Settings/UI.settings.xml` (`<UI><Palette Name>`); `*.ui.xml` attrs `Palette`, `Role` | [[ui-palettes]] |
 | an authored control colour | `UI.Control` — `colorHex`, `edgeColorHex`, `EnumColorToHex`, `HexToRGB` | `*/Data/XML/Documents/UI/*.ui.xml` attrs `ColorHex`, `ControlColor`, `EdgeColorHex` | [[control-edge-and-outline]], [[ui-palettes]] |
+| a border, an edge, accent bars — the active tab's top bar, the highlighted sidebar row, the edge colour | `UI.Control` — `edgeThickness` (`Thickness`, per side), `edgeColorHex`; `UI.Palettes.EdgeAccent`; `UI.TabViewControl` (`ApplyTabColors`, `activeChanged`); `UI.FileBrowserControl.SetCurrent`; `Thorium.Editor.CustomControls.VaultBrowserControl` (`FollowFocusedTab`); `Registry.Context.changed` | `*.palette.xml` attr `EdgeAccent`; `*.ui.xml` attrs `EdgeThickness`, `EdgeColorHex`; `Thorium/Data/XML/Documents/UI/UI.ui.xml` title-bar mark | [[control-edge-and-outline]], [[ui-palettes]] |
 | a quad's colour on the GPU — paint words, the paint table | `UI.VulkanControl` (`paint`, `alpha`, `edgePaint`); `UI.Palettes.Table`; `Rendering.Modules.UIEngineModule.MirrorPaints`; `Shaders/UIEngine/UIEngine.vert` `resolvePaint` | — | [[ui-palettes]] |
 | gradients | `UI.Gradients`; `UI.Control.gradient` | `Thorium/Data/XML/Documents/Gradients.gradients.xml` | [[ui-gradients]] |
 | corner rounding, edge + outline strokes | `UI.Control`, `VulkanControl`; `Shaders/UIEngine/UIEngine.frag` | — | [[control-edge-and-outline]] |
@@ -180,7 +181,7 @@ XML element, entry points, regions. The rows below answer "which types own this 
 - **Thorium is palette-driven; Carbon and the engine's `Settings.ui.xml` are not.** A control with no
   `ColorHex` paints from its `Role` against the nearest `Palette` above it, else the app palette named by
   `<UI><Palette Name>`; an authored `ColorHex` wins. A composite's `*ColorHex` attribute left out means
-  "palette". Changing Thorium's theme is `thorium-light.palette.xml`; Carbon still authors every colour.
+  "palette". Thorium ships 12 `thorium-*` palettes, picked live in Settings › UI; Carbon still authors every colour.
   See [[ui-palettes]] § Known gaps.
   `ControlColor` names only the 16 enum values in `EnumColorToHex`; everything else is `ColorHex`.
 - **Data XML files carry their kind in the filename** — `Bootstrap.bootstrap.xml`, not `Bootstrap.xml`.

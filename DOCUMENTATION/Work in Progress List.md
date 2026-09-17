@@ -106,6 +106,8 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] **slice 3, what is left** — engine `Settings.ui.xml`, Carbon `UI.ui.xml`; Thorium's six are stripped → `ui-palettes` § Known gaps
 		- [ ] **text box selection is invisible on `SubField`** — `Line` `#E6E4DE` on `#EAE8E2`, 4 levels in thorium-light (new-note dialog, Settings fields, rename fields); needs a role decision → `ui-palettes` § Known gaps
 		- [ ] **Thorium palette parts NOT GUI-verified** — rename fields, confirm dialog, torn-off tab window, split pane, block split at Enter, "Default" swatch clearing, `#2C2B26` migration → `ui-palettes` § Known gaps
+		- [ ] **Thorium's 11 canvas palettes + live Settings palette dropdown NOT GUI-verified** — boots with 13 palettes loaded; dropdown, live switch and on-screen colours unchecked → `ui-palettes` § Thorium's palette set
+		- [ ] **gradients do not follow the palette** — Thorium's `titlebar`/`accent` stay light on dark palettes; deferred → `ui-palettes` § Known gaps
 		- [ ] **palette resolution on a runtime `Role`/`Palette` change, a reparented control and the drag ghost is NOT GUI-verified** → `ui-palettes` § Known gaps
 - [ ] fix resolution stuff associated with DPI and stuff. use `glfwGetMonitorContentScale` *(non-essential)*
 

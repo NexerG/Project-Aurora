@@ -293,7 +293,7 @@ namespace ArctisAurora.Core.UI
         public Vector4 cornerRadius;
         // stroke, in design pixels — against the MSDF silhouette on MTSDFControl, the rounded box otherwise
         public uint edgePaint;
-        public float edgeThickness;
+        public Vector4 edgeThickness;
         public uint gradientIndex;
     }
 }

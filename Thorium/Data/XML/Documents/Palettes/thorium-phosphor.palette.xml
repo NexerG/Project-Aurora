@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Palette xmlns="http://arctisaurora/AuroraUITypes"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../../Schemas/UITypeSchema.xsd"
+		 Name="thorium-phosphor"
+		 Ground="#0D1711" Surface="#0A120D" Chrome="#050A07" Field="#0A120D" SubField="#111E17" Line="#18261D"
+		 Accent="#3DE07A" Danger="#C42B1E"
+		 DarkInk="#0D1711" LightInk="#D6E8DC"
+		 Step="0.04" Muted="0.42"/>

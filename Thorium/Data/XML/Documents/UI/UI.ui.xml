@@ -7,6 +7,7 @@
 	<StackPanel Orientation="Vertical">
 
 		<TitleBar Orientation="Horizontal" Height="32" Gradient="titlebar" ContextMenu="title-bar" StopsContextMenu="true">
+			<Panel Width="3" Height="14" Margin="0,0,0,12" VerticalAlignment="Center" Role="Accent"/>
 			<MenuButton Width="72" Height="32" ContextMenu="thorium">
 				<Label Text="Thorium" FontSize="13" HorizontalPos="0.5" VerticalPos="0.5" Role="MutedInk"/>
 			</MenuButton>

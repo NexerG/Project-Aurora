@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Palette xmlns="http://arctisaurora/AuroraUITypes"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../../Schemas/UITypeSchema.xsd"
+		 Name="thorium-violet"
+		 Ground="#FBFBFC" Surface="#F1F1F4" Chrome="#EAEAEE" Field="#F1F1F4" SubField="#E9E9EE" Line="#E5E5EB"
+		 Accent="#7A57C2" Danger="#C42B1E"
+		 DarkInk="#2A2A31" LightInk="#FBFBFC"
+		 Step="0.04" Muted="0.25"/>
