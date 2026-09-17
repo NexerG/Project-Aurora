@@ -70,6 +70,12 @@ namespace ArctisAurora.Core.UI
 
         public TabItemControl? activeItem { get; private set; }
 
+        // Raised when any view's active tab changes.
+        public static event Action<TabViewControl>? activeChanged;
+
+        // active tab accent
+        private const float accentWidth = 2f;
+
         public int ItemCount
         {
             get
@@ -123,6 +129,7 @@ namespace ArctisAurora.Core.UI
 
             RebuildStrip();
             if (activeItem == null && next != null) SetActive(next);
+            if (wasActive && activeItem == null) activeChanged?.Invoke(this);
             InvalidateLayout();
 
             CloseIfEmptied();
@@ -284,6 +291,7 @@ namespace ArctisAurora.Core.UI
 
             ApplyTabColors();
             InvalidateLayout();
+            activeChanged?.Invoke(this);
         }
 
         // Writes an edited note, then tears the whole subtree down — the strip button with it. An
@@ -367,11 +375,13 @@ namespace ArctisAurora.Core.UI
             if (item == null || !children.Contains(item)) return;
 
             TabItemControl next = Neighbour(item);
-            if (ReferenceEquals(item, activeItem)) activeItem = null;
+            bool wasActive = ReferenceEquals(item, activeItem);
+            if (wasActive) activeItem = null;
             item.Destroy();
 
             RebuildStrip();
             if (activeItem == null && next != null) SetActive(next);
+            if (wasActive && activeItem == null) activeChanged?.Invoke(this);
             InvalidateLayout();
 
             CloseIfEmptied();
@@ -576,11 +586,14 @@ namespace ArctisAurora.Core.UI
                 bool active = ReferenceEquals(item, activeItem);
                 string? hex = active ? activeTabColorHex : tabColorHex;
                 PaletteRole ground = active ? PaletteRole.Ground : PaletteRole.Surface;
+                Thickness accent = active ? new Thickness(accentWidth, 0f, 0f, 0f) : Thickness.Zero;
                 if (i < strip.children.Count && strip.children[i] is ButtonControl tab)
                 {
                     tab.PaintOr(hex, ground);
+                    tab.edgeThickness = accent;
                     ButtonControl close = CloseButtonOf(tab);
                     close?.PaintOr(hex, ground);
+                    if (close != null) close.edgeThickness = accent;
                 }
                 i++;
             }

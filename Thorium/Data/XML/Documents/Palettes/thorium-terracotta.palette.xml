@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Palette xmlns="http://arctisaurora/AuroraUITypes"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../../Schemas/UITypeSchema.xsd"
+		 Name="thorium-terracotta"
+		 Ground="#FBFBFB" Surface="#F1F1F1" Chrome="#EAEAEA" Field="#F1F1F1" SubField="#E9E9E9" Line="#E5E5E5"
+		 Accent="#B5502B" Danger="#C42B1E"
+		 DarkInk="#2B2B2B" LightInk="#FBFBFB"
+		 Step="0.04" Muted="0.25"/>

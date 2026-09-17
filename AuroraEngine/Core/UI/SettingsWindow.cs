@@ -208,6 +208,27 @@ namespace ArctisAurora.Core.UI
                 return dropdown;
             }
 
+            if (setting is PaletteSetting paletteSetting)
+            {
+                DropdownControl dropdown = new DropdownControl
+                {
+                    preferredWidth = editorWidth,
+                    preferredHeight = rowHeight,
+                    role = PaletteRole.SubField,
+                    cornerRadius = new CornerRadii(3),
+                    options = Palettes.Names,
+                    selected = paletteSetting.name
+                };
+                dropdown.onPicked = value =>
+                {
+                    paletteSetting.name = value;
+                    Palettes.Default = Palettes.Get(value)!;
+                    foreach (RenderWindow window in Engine.windows.Values)
+                        window.ui.uiRoot?.InvalidateArrange();
+                };
+                return dropdown;
+            }
+
             TextBoxControl field = new TextBoxControl
             {
                 preferredWidth = editorWidth,

@@ -363,7 +363,7 @@ namespace ArctisAurora.Core.UI
             v.textureIndex = font.textureAsset.textureIndex;
             v.cornerRadius = Vector4.Zero;
             v.edgePaint = 0;
-            v.edgeThickness = 0f;
+            v.edgeThickness = Vector4.Zero;
             v.gradientIndex = gradientIndex;
 
             return m.advanceWidth * size;

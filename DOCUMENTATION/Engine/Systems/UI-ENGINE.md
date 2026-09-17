@@ -59,6 +59,18 @@ Neither had a single consumer anywhere in the engine — no control set either p
 
 They collapsed into one `edge` pair whose meaning the kind selects: on an `MTSDFControl` it strokes the glyph silhouette, on anything else it bands the rounded box, and it is design pixels in both cases so a themed two-pixel border means the same thing on a letter and on a panel. What is lost is a control carrying both at once, which the icon control documented and nothing used.
 
+The edge's thickness is set per side, top, right, bottom and left, so one control can carry a bar along a single side. The box is shrunk by each side's width and the edge is whatever lies between the two, while a letter takes the widest side because its outline has no sides. Unless a control authors its own edge colour, the edge paints with the palette's `EdgeAccent`, which falls back to `Accent` when a palette leaves it out. The accent bars are edges for that reason: the active tab carries a two-pixel top edge, and the sidebar row of the note open in the focused pane carries a three-pixel left edge on a `SubField` ground, so neither adds a control to the tree.
+
+```
+FollowFocusedTab()
+	view = the ActiveTabViewer context, when it lives in the primary window
+	SetCurrent(view's active tab name)
+		for each row
+			current = row's path equals the tab's path
+			ground = current ? SubField : the row's own colour
+			edge = current ? left 3px : none
+```
+
 ## One sampler slot, read three ways
 
 A drawn row names at most one texture and one rectangle within it, and what that texture *means* is decided by the row's kind rather than by a separate field for each use.
@@ -91,7 +103,7 @@ The ramp replaces the fill rather than tinting it, so a control with both a pict
 
 A control does not have to say what colour it is. It names a role — `Ground`, `Surface`, `Chrome`, `Field`, `SubField`, `Line`, `Accent`, `Danger`, `Ink`, `MutedInk`, or `Clear` to paint nothing — and the nearest palette above it says what that role looks like. Most controls already have a sensible role by default: a panel or container is `Clear`, text and the caret are `Ink`, an icon is `MutedInk`, a window frame is `Ground`, a title bar is `Chrome`, a splitter is `Line`. `Field` is an input on the window's ground; `SubField` is an input that sits on a panel or another field, where a `Field` the same colour as the panel would disappear.
 
-A palette is one file under `Palettes/`, twelve values: eight surface colours, a dark and a light text colour, how far a hover or press step moves a colour, and how far muted text fades into what is behind it. Every mount contributes, so the engine ships `default` and an app adds its own; an app file with the same name replaces the engine's. Which one the app paints with is a setting, `<UI><Palette Name="…"/>`, read once at boot — Thorium's names `thorium-light`. Any control can name another palette with `Palette="name"` for everything below it.
+A palette is one file under `Palettes/`, twelve values: eight surface colours, a dark and a light text colour, how far a hover or press step moves a colour, and how far muted text fades into what is behind it. Every mount contributes, so the engine ships `default` and an app adds its own; an app file with the same name replaces the engine's. Which one the app paints with is a setting, `<UI><Palette Name="…"/>` — Thorium's names `thorium-light`, one of twelve it ships. The Settings window offers every loaded palette in a dropdown, and a pick applies at once: it replaces the default palette and re-arranges every window's root, so each control re-resolves its role against the new palette. Any control can name another palette with `Palette="name"` for everything below it.
 
 Composite controls — the document toolbar, the file browser, tab views, scroll thumbs, the document editor's caret and selection, text boxes, context menus, dialogs and the Settings window — paint their parts from roles too. Each colour attribute they expose (`TabColorHex`, `ThumbColorHex`, `IdleInkColorHex`, …) is optional: left out, the part takes its role; given, it wins, the same as `ColorHex`. In code the same choice is `PaintOr(hex, role)`, and a copy made from another control — a split-off pane, the second half of a block split at Enter — takes its paint with `CopyPaint(source)`.
 

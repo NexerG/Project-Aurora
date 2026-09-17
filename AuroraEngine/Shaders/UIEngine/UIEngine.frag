@@ -29,7 +29,7 @@ layout(location = 3) in flat vec2 fragHalfExtent;
 layout(location = 4) in flat vec4 fragRadius;
 layout(location = 5) in flat vec4 fragTint;
 layout(location = 6) in flat vec3 fragEdgeColor;
-layout(location = 7) in flat float fragEdgeThickness;
+layout(location = 7) in flat vec4 fragEdgeThickness;
 layout(location = 8) in vec2 fragUV;
 layout(location = 9) in flat uint fragTextureIndex;
 layout(location = 10) in flat uint fragType;
@@ -159,13 +159,22 @@ void main()
     }
 
     // edge — the outermost band of the silhouette, carrying its own coverage
-    if (fragEdgeThickness > 0.0f)
+    // widths are top, right, bottom, left; a glyph takes the widest
+    vec4 widths = fragEdgeThickness;
+    float widest = max(max(widths.x, widths.y), max(widths.z, widths.w));
+    if (widest > 0.0f)
     {
-        float thickness = fragType == MTSDF_CONTROL
-            ? fragEdgeThickness / max(fwidth(fragPos.x), 1e-6f)
-            : fragEdgeThickness;
+        float inner;
+        if (fragType == MTSDF_CONTROL)
+            inner = (dist - widest / max(fwidth(fragPos.x), 1e-6f)) / aa;
+        else
+        {
+            vec2 innerCentre = vec2(widths.w - widths.y, widths.x - widths.z) * 0.5f;
+            vec2 innerHalf = max(fragHalfExtent - vec2(widths.w + widths.y, widths.x + widths.z) * 0.5f, vec2(0.0f));
+            inner = -sdRoundBox(fragLocal - innerCentre, innerHalf, max(fragRadius - widest, vec4(0.0f))) / aa;
+        }
 
-        float band = opacity - clamp((dist - thickness) / aa + 0.5f, 0.0f, 1.0f);
+        float band = opacity - clamp(inner + 0.5f, 0.0f, 1.0f);
         color = mix(color, fragEdgeColor, band);
         opacity = max(opacity, band);
     }

@@ -42,11 +42,11 @@ struct VulkanControl
     uint textureIndex;
     vec4 cornerRadius;
     uint edgePaint;
-    float edgeThickness;
+    vec4 edgeThickness;
     uint gradientIndex;
 };
 
-// 76-byte stride, same reasoning as above
+// 88-byte stride, same reasoning as above
 layout(set = 1, binding = 2, scalar) readonly buffer ControlBuffer {
     VulkanControl rows[];
 } CTRL;
@@ -71,7 +71,7 @@ layout(location = 3) out flat vec2 fragHalfExtent;
 layout(location = 4) out flat vec4 fragRadius;
 layout(location = 5) out flat vec4 fragTint;
 layout(location = 6) out flat vec3 fragEdgeColor;
-layout(location = 7) out flat float fragEdgeThickness;
+layout(location = 7) out flat vec4 fragEdgeThickness;
 layout(location = 8) out vec2 fragUV;
 layout(location = 9) out flat uint fragTextureIndex;
 layout(location = 10) out flat uint fragType;

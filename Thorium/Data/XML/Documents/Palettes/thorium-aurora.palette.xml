@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Palette xmlns="http://arctisaurora/AuroraUITypes"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../../Schemas/UITypeSchema.xsd"
+		 Name="thorium-aurora"
+		 Ground="#171E29" Surface="#121823" Chrome="#0E131B" Field="#121823" SubField="#1A2231" Line="#202A38"
+		 Accent="#4F9BE0" Danger="#C42B1E"
+		 DarkInk="#171E29" LightInk="#DDE3EC"
+		 Step="0.04" Muted="0.33"/>

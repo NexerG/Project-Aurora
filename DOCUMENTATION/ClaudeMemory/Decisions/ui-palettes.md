@@ -13,9 +13,10 @@ Slice 1 of 3, then slices 2 and 3 for everything Thorium shows (same day). What 
   - slot 0 is transparent black, so a zeroed row paints nothing
 - **Paint table on the GPU.** Set 1 binding 4 `PaintBuffer`, vertex stage. `UIEngineModule.MirrorPaints` keeps one host-visible mapped buffer per swapchain image and rewrites it when `Palettes.Table` is a different array (reference identity is the version). The table is replaced whole on load, never written in place.
 - **Palettes.** One `<Palette>` per `XML/Documents/Palettes/*.palette.xml`, unioned across mounts (`VirtualFileSystem.EnumerateAll`); a same-named file in an app replaces the engine's. Bootstrap step `Palettes.LoadPalettes`, after `Gradients.LoadGradients`.
-  - authored: `Ground Surface Chrome Field SubField Line Accent Danger` (surfaces), `DarkInk LightInk`, `Step`, `Muted` — 12 values, all required except `Step`/`Muted`
-  - baked per palette, a 42-slot block: 8 surfaces × rest/hover/press, ink + muted ink per surface, the two raw inks
-- **The app's palette is a setting.** `UISettings.palette` (`PaletteSetting`, `<UI><Palette Name="…"/>`, default `default`) names `Palettes.Default`. `Settings.LoadAll` is step 1 of bootstrap, so `LoadPalettes` just reads it; boot halts when no loaded palette has that name. Read once — a change in the Settings window applies on the next launch. Thorium's `UI.settings.xml` names `thorium-light`.
+  - authored: `Ground Surface Chrome Field SubField Line Accent Danger` (surfaces), `DarkInk LightInk`, `Step`, `Muted`, `EdgeAccent` — all required except `Step`/`Muted`/`EdgeAccent`
+  - baked per palette, a 43-slot block: 8 surfaces × rest/hover/press, ink + muted ink per surface, the two raw inks, the edge accent (`EdgeAccent`, else `Accent`)
+- **Edges belong to the palette** (variant A, user 2026-09-17). Every unauthored edge paints `Palettes.EdgeAccent`; no per-control edge role. Optional so existing palette files load unchanged. See [[control-edge-and-outline]] §7.
+- **The app's palette is a setting.** `UISettings.palette` (`PaletteSetting`, `<UI><Palette Name="…"/>`, default `default`) names `Palettes.Default`. `Settings.LoadAll` is step 1 of bootstrap, so `LoadPalettes` just reads it; boot halts when no loaded palette has that name. Thorium's `UI.settings.xml` names `thorium-light`.
 - **Derivation.** Text colour = whichever of `DarkInk`/`LightInk` has the higher WCAG contrast against the ground. Muted = ink blended toward the ground by `Muted`. Hover/press = colour blended toward its ink by `Step` × 1 / × 2.
 - **Slot rule.** A derived colour is a slot only when every input is a slot of that palette. Ink on another palette's surface or on an inline ground picks the raw ink slot; muted ink or a stepped inline colour is computed on the CPU and written inline.
 - **Roles.** `Control.role` (`Role=`): `None` (no palette), `Clear` (paints nothing, ground passes through), the 8 surfaces, `Ink`, `MutedInk`. Defaults: `PanelControl`, `ContainerControl`, `ButtonControl` → `Clear`; `TextRunControl` → `Ink`; `IconControl` → `MutedInk`; `WindowFrameControl` → `Ground`; `TitleBarControl` → `Chrome`; `SplitterControl` → `Line`; `CaretControl` → `Ink`; `HintControl` → `Accent`; `ContextMenuControl` → `Ground`; everything else `None`.
@@ -52,6 +53,30 @@ Slice 1 of 3, then slices 2 and 3 for everything Thorium shows (same day). What 
 | active toolbar ink, drop hint | `Accent` |
 | text, captions, caret, checkbox mark | `Ink` |
 
+## Thorium's palette set and live switching (2026-09-17)
+
+- **11 more Thorium palettes**, transcribed from the "Periodic Shell Refresh" canvas (page 5). `thorium-light` is P7a Bone · Iron.
+
+| `Name` | Canvas | Ground / Surface / Chrome / SubField / Line | Accent | Danger | Dark / Light ink | Muted |
+|---|---|---|---|---|---|---|
+| `thorium-aurora` | Refreshed (direction A) | 171E29 / 121823 / 0E131B / 1A2231 / 202A38 | 4F9BE0 | C42B1E | 171E29 / DDE3EC | 0.33 |
+| `thorium-cyberpunk` | P1 | 120C1F / 0D0918 / 08060F / 1A1229 / 221838 | 22E0E0 | FF2D95 | 120C1F / E8E4F5 | 0.41 |
+| `thorium-yellow` | P2 | FFFDF7 / F7F2E2 / EFE7CE / F1EAD3 / E9E1CA | F0B400 | C42B1E | 2A2519 / FFFDF7 | 0.23 |
+| `thorium-printstream` | P3 | FFFFFF / FFFFFF / FFFFFF / F6F6F6 / E4E4E4 | 8A5CD1 | C42B1E | 0A0A0A / FFFFFF | 0.41 |
+| `thorium-phosphor` | P4 | 0D1711 / 0A120D / 050A07 / 111E17 / 18261D | 3DE07A | C42B1E | 0D1711 / D6E8DC | 0.42 |
+| `thorium-glacier` | P5 | 2C333D / 272D36 / 22272E / 2E3641 / 38404B | 88C0D0 | C42B1E | 2C333D / D8DEE9 | 0.33 |
+| `thorium-oxblood` | P6 | 211114 / 1A0D0F / 12090A / 241315 / 33191D | E0384E | C42B1E | 211114 / EFE0E0 | 0.38 |
+| `thorium-bone` | P7 | FAFBF7 / F1F3EC / EAECE5 / E7EAE0 / E4E7DD | 5E8C6A | C42B1E | 2B2F26 / FAFBF7 | 0.25 |
+| `thorium-void` | P8 | 000000 / 000000 / 000000 / 141414 / 1F1F1F | FF2E2E | C42B1E | 000000 / E4E4E4 | 0.39 |
+| `thorium-violet` | P7b | FBFBFC / F1F1F4 / EAEAEE / E9E9EE / E5E5EB | 7A57C2 | C42B1E | 2A2A31 / FBFBFC | 0.25 |
+| `thorium-terracotta` | P7c | FBFBFB / F1F1F1 / EAEAEA / E9E9E9 / E5E5E5 | B5502B | C42B1E | 2B2B2B / FBFBFB | 0.25 |
+
+- **Mapping, as thorium-light maps Iron:** Ground = editor, Surface = sidebar, Chrome = title bar, Field = Surface, SubField = hovered row, Line = splitter hairline, Accent = selected-row bar. Dark palettes: LightInk = body text, DarkInk = Ground; light palettes the reverse. `Muted` fitted so ink blended toward Ground lands on the canvas's menu captions (Iron fits 0.21 against the real 0.24). `Step` 0.04 throughout.
+- **Not on the canvas:** cyberpunk `SubField` (no hovered-row fill drawn); printstream `Line` (canvas splitter is black); printstream `Accent` (canvas is a holo gradient); void `SubField` (its faintest rule).
+- **Left out:** "Today" (the engine's `default`), and page 3's rejected directions Ink & Amber and Slate Signal.
+- **`Palettes.Names`** — loaded names in load order. **`Palettes.Default` setter is `internal`.**
+- **Settings › UI › Palette is a `DropdownControl`** over `Palettes.Names` (`SettingsWindow.Editor`, `setting is PaletteSetting` branch). A pick sets the setting, sets `Palettes.Default`, and calls `InvalidateArrange` on every `Engine.windows` root — the change applies live.
+
 ## Why these choices
 
 **One `uint` holds either a palette slot or the authored colour itself.**
@@ -84,6 +109,15 @@ Two earlier designs were rejected by the user. A per-frame check in `UIEngine.Co
 **A control that names a palette does not paint its `Ground`.** (user, 2026-09-17)
 Naming a palette only changes which palette applies below. Consequence: text in a region of palette B sitting on palette A's surface picks B's raw ink on the CPU; it will not re-flip on its own if A's values change later.
 
+**A palette pick applies live, through a root arrange.** (user, 2026-09-17)
+Every palette is already baked into the paint table, so only `Palettes.Default` moves; re-arranging each window root re-runs `InheritPaint` down every tree, the same channel attach and show use. Rejected: next-launch only. Rejected: `RepaintChildren` / `PushPaint` from the roots — it stops at a child whose ground did not move (an authored opaque panel), leaving its descendants on the old palette.
+
+**Danger stays `#C42B1E` where the accent is red.** (user, 2026-09-17)
+Oxblood and Void spend red on identity; the close button and Delete keep the shared danger red regardless.
+
+**Printstream's accent is `#8A5CD1`.** (user, 2026-09-17)
+The canvas's holo midpoint `#B39CFF` is 2.3:1 on white, too faint for active toolbar ink and the drop hint. `#8A5CD1` is the far stop of the engine's accent gradient, 4.6:1. Yellow keeps the canvas's `#F0B400`.
+
 **Animation is skipped for now.** (user, 2026-09-17)
 The shape leaves room for it: a shared animation (theme crossfade) would write table slots, a per-control one (hover ease) would write that control's inline word. See [../Context/ui-animation-plan.md](../Context/ui-animation-plan.md).
 
@@ -92,7 +126,9 @@ The shape leaves room for it: a shared animation (theme crossfade) would write t
 - **A selection inside a `SubField` text box is invisible** — `Line` `#E6E4DE` on `SubField` `#EAE8E2`, 4 levels (thorium-light; seen selecting "Untitled" in the new-note dialog). The document editor's selection on `Ground` is fine. Needs a decision.
 - **Slice 2, what is left:** `SliderControl` (Carbon only, authored there), Carbon's custom controls, `ButtonControl`'s `#8C8C8C` fallback for a `None` role, `TabViewControl`'s red close-hover consts, the toolbar's seven fixed swatches (One Dark values; Yellow is low-contrast on a light ground).
 - **Slice 3, what is left:** engine `Settings.ui.xml`, Carbon `UI.ui.xml`. Gradient stops stay authored hex.
-- A palette change in the Settings window applies on the next launch.
+- **Gradients do not follow the palette.** Thorium's `titlebar` and `accent` gradients are Iron's light hex, so every dark palette keeps a light title bar and H1 ramp. Deferred (user, 2026-09-17).
+- `thorium-yellow`'s `F0B400` accent is low-contrast as ink on its light ground.
+- **Palette set, verified:** builds clean; Thorium boots and logs `loaded 13 palette(s) into 547 paint slots`, errors unchanged. **NOT verified:** the dropdown, the live switch, any of the 11 palettes on screen.
 - A subtree's own `Palette=` does not reach a context menu or window opened from it in a window of its own — those take `Palettes.Default`.
 - Contrast against a gradient or image ground uses the control's own paint word, not what is drawn.
 - A button's text colour is keyed to its ground's role, not its state; a mid-tone at the contrast crossover could get low-contrast ink on press.
