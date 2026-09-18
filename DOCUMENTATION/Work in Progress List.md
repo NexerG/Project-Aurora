@@ -24,7 +24,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 - [ ] **ticking should be a group, not a flag** — `Engine.Interpolate` iterates *every* entity and virtual-calls `OnTick` on the tickable ones, and `Control : Entity` has now put every UI element in that loop. At the plan's 1M-element target that is ~1M iterations per tick to find the few controls animating. `EntityRegistry` already has groups; an entity that needs ticking joins `"Tickable"` and the loop iterates that instead. Raised and parked (user, 2026-09-06) — will not measure at today's ~1,418 controls. See `ClaudeMemory/Decisions/entity-tick-group.md`
 - [ ] **`_components` and `children` are allocated on every entity whether used or not** — 32 B each, 64 B per entity, ~64 MB at 1M. User chose to leave both eager (2026-09-06); `_components` is read at 13 sites all inside `Entity`, `children` at 136 sites across 37 files, most of them in the UI stack being deleted
 - [ ] **`DataPool` has no `Write<T>(handle, value)`** — assign plus `MarkContentDirty` in one call. Every caller hand-rolls it
-- [ ] **decide what Alt+F4 does.** Nothing polls `WindowShouldClose` and no GLFW close callback is registered, so the OS close request is ignored outright today. Leading option (user, 2026-08-21): **intercept it and let it do nothing**, the way Valve's games do. Alternatives are routing it through `Shutdown.Request()` like the X button, or quitting outright. Worth deciding alongside whether the taskbar close and Alt+F4 should differ
+- [x] **decide what Alt+F4 does.** Decided 2026-09-18: routed like the X button — a GLFW close callback posts `WindowActions.Close(owner)`, so the primary goes through `Shutdown.Request()` and any other window settles alone. Alt+F4, taskbar close and `taskkill` without `/F` all behave the same. Ghost and plain context-menu windows still ignore it
 - [x] **session restore (2026-08-31)** — landed, See `ClaudeMemory/Decisions/session-restore.md`
 	- [ ] **the primary window's rect is applied after `Engine.Init` returns**, so it shows at the `GraphicsSettings` size for the ~800ms of bootstrap and then jumps. `SettingsRegistry.LoadAll` is the first bootstrap step and `InitWindowing` follows it, so nothing can read the session earlier. Fix is either creating the primary hidden and showing it after restore, or sourcing the scope key from somewhere available before `LoadAll`
 	- [ ] **switching vaults does not capture the vault being left** — `VaultsWindow.Switch` closes every tab and writes the setting, and capture only ever runs at shutdown, so switching away and quitting elsewhere loses the old vault's arrangement. Fix is a `SessionLayout.Capture()` in `Switch` before `CloseTabs`, against the outgoing scope. Related and pre-existing: `Switch` only closes tabs in `Engine.primary`, so a torn-off window keeps notes from the vault that was left and capture then files them under the new vault's key
@@ -43,6 +43,9 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] create language packs?
 	- [ ] editor
 		- [ ] Markdown insertions
+		- [ ] **GUI-verify `.md` notes and lists** — open, edit, save a Markdown note; dots/checkboxes in the indent, wrapping inside it, checkbox click + undo, `- `/`[ ] ` conversion, Enter/Backspace on items, Tab/Shift+Tab → `note-file-formats`
+		- [ ] numbered lists — a list item is points or numbers (`1.` is literal text today) (user, 2026-09-17) → `note-file-formats`
+		- [ ] a custom note format of Thorium's own, beside `.md` (user, 2026-09-17) → `note-file-formats`
 		- [ ] glyph ceiling — every character is a `GlyphControl`, always (~56.7k on the 400-block note, past `UIModule`'s 50,000 cap). Accepted knowingly. **The UI data/visualization split does not fix this** — one control per element means the count is unchanged; the two share a cause but are separate problems. Escape hatch that does not change the design: a run holds `text` + its `BlockLayout` with no glyph children and calls `SyncGlyphs()` when visible
 		- [ ] P4 — selection + Ctrl+B/I run split/merge
 			- [x] **Ctrl+B/I over the range, and the format bar (2026-08-30)** — landed, See `ClaudeMemory/Decisions/document-format-bar.md`
@@ -106,8 +109,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] **slice 3, what is left** — engine `Settings.ui.xml`, Carbon `UI.ui.xml`; Thorium's six are stripped → `ui-palettes` § Known gaps
 		- [ ] **text box selection is invisible on `SubField`** — `Line` `#E6E4DE` on `#EAE8E2`, 4 levels in thorium-light (new-note dialog, Settings fields, rename fields); needs a role decision → `ui-palettes` § Known gaps
 		- [ ] **Thorium palette parts NOT GUI-verified** — rename fields, confirm dialog, torn-off tab window, split pane, block split at Enter, "Default" swatch clearing, `#2C2B26` migration → `ui-palettes` § Known gaps
-		- [ ] **Thorium's 11 canvas palettes + live Settings palette dropdown NOT GUI-verified** — boots with 13 palettes loaded; dropdown, live switch and on-screen colours unchecked → `ui-palettes` § Thorium's palette set
-		- [ ] **gradients do not follow the palette** — Thorium's `titlebar`/`accent` stay light on dark palettes; deferred → `ui-palettes` § Known gaps
+		- [ ] **10 of Thorium's 11 canvas palettes NOT GUI-verified on screen** — dropdown and live switch verified on thorium-void 2026-09-18; the rest unchecked → `ui-palettes` § Thorium's palette set
 		- [ ] **palette resolution on a runtime `Role`/`Palette` change, a reparented control and the drag ghost is NOT GUI-verified** → `ui-palettes` § Known gaps
 - [ ] fix resolution stuff associated with DPI and stuff. use `glfwGetMonitorContentScale` *(non-essential)*
 

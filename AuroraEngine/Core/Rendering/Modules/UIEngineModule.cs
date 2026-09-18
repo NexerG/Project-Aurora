@@ -59,7 +59,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         {
             new List<ShaderStageFlags>{
                 ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit,
-                ShaderStageFlags.FragmentBit, ShaderStageFlags.VertexBit
+                ShaderStageFlags.FragmentBit, ShaderStageFlags.VertexBit | ShaderStageFlags.FragmentBit
             },
             new List<ShaderStageFlags>{
                 ShaderStageFlags.FragmentBit

@@ -405,6 +405,8 @@ returns that halt a phase.
   still exits — otherwise one broken handler makes it unquittable
 - `Window.Close` on `Engine.primary` calls `Shutdown.Request()`; any other window settles its own
   notes through `NoteActions.SettleWindow` and closes alone
+- The OS close request (Alt+F4, taskbar, `WM_CLOSE`) takes the same `Window.Close` path, posted from
+  a GLFW close callback; ghost and plain context-menu windows ignore it
 - **Do not** put a prompt in a `Commit` step — nothing there can suspend or refuse
 
 #### Rendering — Key Facts

@@ -22,6 +22,9 @@ namespace ArctisAurora.Core.UI
     public sealed class BlockSnapshot
     {
         public TextStyleType stylingType;
+        public ListKind listKind;
+        public int listLevel;
+        public bool isChecked;
         public string text = string.Empty;
         public readonly List<StyleSpan> spans = new List<StyleSpan>();
     }
@@ -150,5 +153,27 @@ namespace ArctisAurora.Core.UI
         public void Undo() => document.InsertFragment(from, fragment);
 
         public void Redo() => document.DeleteBetween(from, to);
+    }
+
+    // Blocks rewritten in place — list kind, nesting, a tick. Both directions are snapshots.
+    public sealed class BlockStateEdit : IEditRecord
+    {
+        private readonly DocumentControl document;
+        private readonly int firstBlock;
+        private readonly List<BlockSnapshot> before;
+        private readonly List<BlockSnapshot> after;
+
+        public BlockStateEdit(DocumentControl document, int firstBlock,
+            List<BlockSnapshot> before, List<BlockSnapshot> after)
+        {
+            this.document = document;
+            this.firstBlock = firstBlock;
+            this.before = before;
+            this.after = after;
+        }
+
+        public void Undo() => document.RestoreBlocks(firstBlock, before);
+
+        public void Redo() => document.RestoreBlocks(firstBlock, after);
     }
 }

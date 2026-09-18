@@ -85,10 +85,22 @@ the application impossible to quit. **Worth revisiting** — it means a failed s
 `NoteActions` and both entry points share `FirstUnnamed`/`SaveEditedIn` — the shutdown step scopes
 them to every window, `SettleWindow` to one.
 
+### 7. The OS close request is the X button (2026-09-18)
+
+Alt+F4, taskbar Close and `taskkill` without `/F` all arrive as `WM_CLOSE`, which GLFW swallows
+into its should-close flag plus the close callback. `AGlfwWindow` registers that callback on the
+primary, on app windows and on chrome menu windows, and it does
+`Engine.Post(() => WindowActions.Close(owner))` — the same `Window.Close` path as the drawn X.
+- Posted, not called: GLFW fires it inside `PollEvents`, and `Shutdown.Request` may open a prompt.
+  `DrainPosted` runs right after `PollEvents` on the same tick.
+- Ghost window and plain context menus get no callback — closing them would tear down a window
+  `ContextMenus` still holds. Alt+F4 there stays ignored.
+- The should-close flag is never cleared; nothing reads it.
+- Rejected: intercept and ignore (the earlier leading option), and quitting outright (skips the
+  unsaved-notes prompts).
+
 ## Known gaps
 
-- Alt+F4 still does nothing. Deliberately left — the decision is its own WiP item, leading option
-  being to intercept and ignore it, as Valve's games do (user, 2026-08-21).
 - Session restore is not here. A `Commit` step can capture it; the restore side, and who wins between
   a restored layout and the panes `UI.xml` authors, is a separate slice.
 - `Engine.CloseWindow(primary)` is still reachable directly and skips the whole sequence.

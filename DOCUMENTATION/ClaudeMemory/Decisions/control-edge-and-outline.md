@@ -94,8 +94,8 @@ setter is four lines and `EnumColorToHex` already exists.
 Superseded parts of §5/§6 on the new stack (`Core.UI.VulkanControl`, `Shaders/UIEngine`):
 - `Control.edgeThickness` is a `Thickness` (top, right, bottom, left); `EdgeThickness="2"` or `"2,0,0,0"`. Row `edgeThickness` float → `vec4`, 76 → 88 bytes.
 - Box band = outer coverage minus a box shrunk by each side's width, corner radii `max(r − widest, 0)`. A glyph bands by the widest side.
-- An unauthored edge paints `Palettes.EdgeAccent(palette)` in `InheritPaint`; `EdgeColorHex` wins. `ContextMenuControl.ApplyRole` still overrides with `Line`.
-- Accent bars are edges, not child panels (user, 2026-09-17): active tab (`TabViewControl.ApplyTabColors`, 2px top, also on its close button so that ground does not cover it), current sidebar row (`FileBrowserControl.SetCurrent`, `SubField` + 3px left).
+- An unauthored edge paints `Palettes.EdgeAccent(palette)` in `InheritPaint`, or its `edgeRole` surface when one is set (2026-09-18); `EdgeColorHex` wins. `ContextMenuControl.ApplyRole` still overrides with `Line`.
+- Accent bars are edges, not child panels (user, 2026-09-17): active tab (`TabViewControl.ApplyTabColors`, top, also on its close button so that ground does not cover it), current sidebar row (`FileBrowserControl.SetCurrent`, `SubField` + left). Widths come from the palette through `AccentRole` since 2026-09-18 — see [[ui-palette-shape]].
 - Rejected: a child panel per bar — an extra quad each, restructured tab/row trees, a 1px caption shift. Cost taken: shader change in four trees; a future gradient bar needs an edge gradient index.
 - **GUI-verified** in Thorium (thorium-light): top edge on each pane's active tab, `SubField` + accent edge on SampleNote following focus between panes, context menu border intact. **NOT verified:** dark palettes, torn-off windows, rename re-follow.
 

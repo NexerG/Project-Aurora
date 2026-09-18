@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.UI;
 using Silk.NET.Core.Native;
 using Silk.NET.GLFW;
 using System.Runtime.InteropServices;
@@ -59,6 +60,7 @@ namespace ArctisAurora.EngineWork.Rendering
             AllowSnapping();
             UpdateWindowSize(ref windowSize);
             SetResizeCallback(WindwoResizeCallback);
+            SetCloseCallback(WindowCloseCallback);
         }
 
         // A window opened after boot: plain windowed at the size it was constructed with, wherever it
@@ -80,6 +82,7 @@ namespace ArctisAurora.EngineWork.Rendering
             _glfw.SetWindowPos(handle, x, y);
             UpdateWindowSize(ref windowSize);
             SetResizeCallback(WindwoResizeCallback);
+            SetCloseCallback(WindowCloseCallback);
             SeedIsInWindow();
         }
 
@@ -127,22 +130,30 @@ namespace ArctisAurora.EngineWork.Rendering
             {
                 AllowSnapping();
                 SetResizeCallback(WindwoResizeCallback);
+                SetCloseCallback(WindowCloseCallback);
             }
             UpdateWindowSize(ref windowSize);
         }
 
         // DWM rounds and clips the window at composition, so an undecorated window opts in the same
         // way a decorated one does and the swapchain is untouched.
-        private void RoundCorners()
+        internal void RoundCorners()
         {
-            int preference = roundedCorners;
+            int preference = Core.UI.Palettes.Default.windowCorners switch
+            {
+                Core.UI.WindowCorners.Square => squareCorners,
+                Core.UI.WindowCorners.Small => smallCorners,
+                _ => roundedCorners
+            };
             IntPtr window = new GlfwNativeWindow(_glfw, handle).Win32!.Value.Hwnd;
             DwmSetWindowAttribute(window, cornerPreference, ref preference, sizeof(int));
         }
 
-        // DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND
+        // DWMWA_WINDOW_CORNER_PREFERENCE and its DWMWCP_DONOTROUND, DWMWCP_ROUND, DWMWCP_ROUNDSMALL
         private const int cornerPreference = 33;
+        private const int squareCorners = 1;
         private const int roundedCorners = 2;
+        private const int smallCorners = 3;
 
         [DllImport("dwmapi.dll")]
         private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attribute, ref int value, int size);
@@ -469,6 +480,11 @@ namespace ArctisAurora.EngineWork.Rendering
             _glfw.SetWindowSizeCallback(handle, callback);
         }
 
+        internal void SetCloseCallback(WindowCloseCallback callback)
+        {
+            _glfw.SetWindowCloseCallback(handle, callback);
+        }
+
         internal void SetCursorPosCallback(CursorPosCallback callback)
         {
             _glfw.SetCursorPosCallback(handle, callback);
@@ -527,6 +543,12 @@ namespace ArctisAurora.EngineWork.Rendering
             windowSize = new Extent2D((uint)fbWidth, (uint)fbHeight);
 
             owner.ui.uiRoot?.FitTo(windowSize);
+        }
+
+        // OS close request (Alt+F4, taskbar, WM_CLOSE) takes the Window.Close path.
+        private void WindowCloseCallback(WindowHandle* window)
+        {
+            Engine.Post(() => WindowActions.Close(owner));
         }
     }
 }

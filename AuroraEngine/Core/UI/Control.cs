@@ -289,6 +289,58 @@ namespace ArctisAurora.Core.UI
         } = "#000000";
         private bool edgeColorAuthored;
 
+        // palette-resolved shape for controls built in code
+        public CornerRole cornerRole
+        {
+            get => field;
+            set
+            {
+                field = value;
+                ApplyShape();
+            }
+        }
+
+        public AccentRole accentRole
+        {
+            get => field;
+            set
+            {
+                if (value == AccentRole.None && field != AccentRole.None) edgeThickness = Thickness.Zero;
+                field = value;
+                ApplyShape();
+            }
+        }
+
+        // Sets the corners and accent bar the palette gives the shape roles.
+        private void ApplyShape()
+        {
+            PaletteDefinition scheme = palette ?? Palettes.Default;
+
+            if (cornerRole != CornerRole.None)
+                cornerRadius = cornerRole switch
+                {
+                    CornerRole.Row => new CornerRadii(scheme.rowRadius),
+                    CornerRole.Tab => new CornerRadii(scheme.tabRadius, 0f),
+                    CornerRole.TabEnd => new CornerRadii(0f, scheme.tabRadius, 0f, 0f),
+                    CornerRole.Control => new CornerRadii(scheme.controlRadius),
+                    _ => new CornerRadii(scheme.popupRadius)
+                };
+
+            if (accentRole == AccentRole.Row) edgeThickness = new Thickness(0f, 0f, 0f, scheme.rowAccentWidth);
+            else if (accentRole == AccentRole.Tab) edgeThickness = new Thickness(scheme.tabAccentWidth, 0f, 0f, 0f);
+        }
+
+        [A_XSDElementProperty("EdgeRole", "UI", "The palette surface colour this control's edges paint with. EdgeColorHex wins over it; EdgeAccent when left out.")]
+        public PaletteRole edgeRole
+        {
+            get => field;
+            set
+            {
+                field = value;
+                InvalidateArrange();
+            }
+        }
+
         [A_XSDElementProperty("EdgeThickness", "UI", "Border widths in design-space pixels, drawn inward from each side. Zero draws none.")]
         public Thickness edgeThickness
         {
@@ -340,9 +392,12 @@ namespace ArctisAurora.Core.UI
             set
             {
                 field = value;
-                visual.gradientIndex = Gradients.IndexOf(value);
+                gradientId = Gradients.IndexOf(value);
+                visual.gradientIndex = Gradients.Word(gradientId, palette ?? Palettes.Default);
             }
         } = "";
+
+        protected uint gradientId;
 
         // Paints an authored hex, or the role when there is none.
         public void PaintOr(string? hex, PaletteRole fallback)
@@ -387,7 +442,12 @@ namespace ArctisAurora.Core.UI
             Control? p = parent as Control;
             palette = ownPalette ?? p?.palette ?? Palettes.Default;
             uint ground = GroundBehind();
-            if (!edgeColorAuthored) visual.edgePaint = Palettes.EdgeAccent(palette);
+            if (!edgeColorAuthored)
+                visual.edgePaint = edgeRole >= PaletteRole.Ground && edgeRole <= PaletteRole.Danger
+                    ? Palettes.Surface(palette, edgeRole)
+                    : Palettes.EdgeAccent(palette);
+            ApplyShape();
+            visual.gradientIndex = Gradients.Word(gradientId, palette);
             if (!colorAuthored) ApplyRole(palette, ground);
 
             uint below = GroundBelow(ground);

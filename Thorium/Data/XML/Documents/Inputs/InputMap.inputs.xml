@@ -30,6 +30,15 @@
 		<Repeat />
 	</Keybind>
 
+	<Keybind Trigger="Tab" Action="Text.Outdent">
+		<Modifier Key="LeftShift" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Tab" Action="Text.Indent">
+		<Press />
+	</Keybind>
+
 	<Keybind Trigger="Escape" Action="Text.Cancel">
 		<Press />
 	</Keybind>

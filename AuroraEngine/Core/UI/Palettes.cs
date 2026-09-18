@@ -14,6 +14,24 @@ namespace ArctisAurora.Core.UI
         Ink, MutedInk
     }
 
+    // Which palette radius a code-built control takes. TabEnd rounds only the top right.
+    public enum CornerRole
+    {
+        None, Row, Tab, TabEnd, Control, Popup
+    }
+
+    // Which palette accent bar a code-built control draws: Row on the left, Tab on the top.
+    public enum AccentRole
+    {
+        None, Row, Tab
+    }
+
+    [A_XSDType("WindowCorners", "UI")]
+    public enum WindowCorners
+    {
+        Round, Small, Square
+    }
+
     [A_XSDType("Palette", "UI")]
     public class PaletteDefinition
     {
@@ -52,6 +70,22 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("Muted", "UI", "How far muted text blends toward the colour behind it, 0 to 1.")]
         public float muted = 0.24f;
 
+        // shape
+        [A_XSDElementProperty("RowRadius", "UI", "Corner radius of list and browser rows, in design-space pixels.")]
+        public float rowRadius = 0f;
+        [A_XSDElementProperty("TabRadius", "UI", "Top corner radius of tabs, in design-space pixels.")]
+        public float tabRadius = 0f;
+        [A_XSDElementProperty("ControlRadius", "UI", "Corner radius of buttons, fields and dropdowns built in code, in design-space pixels.")]
+        public float controlRadius = 4f;
+        [A_XSDElementProperty("PopupRadius", "UI", "Corner radius of context menus, in design-space pixels.")]
+        public float popupRadius = 6f;
+        [A_XSDElementProperty("RowAccentWidth", "UI", "Width of the accent bar on the current row, in design-space pixels.")]
+        public float rowAccentWidth = 3f;
+        [A_XSDElementProperty("TabAccentWidth", "UI", "Width of the accent bar on the active tab, in design-space pixels.")]
+        public float tabAccentWidth = 2f;
+        [A_XSDElementProperty("WindowCorners", "UI", "How the OS rounds the window's corners.")]
+        public WindowCorners windowCorners = WindowCorners.Round;
+
         // first slot of this palette's block in the paint table
         internal uint firstSlot;
     }
@@ -64,13 +98,15 @@ namespace ArctisAurora.Core.UI
 
         public const uint inlineBit = 0x80000000;
 
-        // block layout: surfaces × states, ink and muted ink per surface, the two raw inks, then the edge accent
+        // block layout: surfaces × states, ink and muted ink per surface, the two raw inks, the edge accent,
+        // then the ground's ink stepped once
         private const uint surfaceCount = 8;
         private const uint stateCount = 3;
         private const uint inkBase = surfaceCount * stateCount;
         private const uint rawInkBase = inkBase + surfaceCount * 2;
         private const uint edgeAccentSlot = rawInkBase + 2;
-        private const uint blockSize = edgeAccentSlot + 1;
+        private const uint inkStepSlot = edgeAccentSlot + 1;
+        private const uint blockSize = inkStepSlot + 1;
 
         private static readonly Dictionary<string, PaletteDefinition> byName =
             new Dictionary<string, PaletteDefinition>(StringComparer.OrdinalIgnoreCase);
@@ -156,6 +192,17 @@ namespace ArctisAurora.Core.UI
 
         // The slot every unauthored edge paints with.
         public static uint EdgeAccent(PaletteDefinition palette) => palette.firstSlot + edgeAccentSlot;
+
+        // A gradient stop's role as offsets inside any palette block: its colour, and that colour stepped once.
+        public static (uint rest, uint stepped) RoleOffsets(PaletteRole role)
+        {
+            if (role == PaletteRole.Ink) return (inkBase, inkStepSlot);
+            if (role < PaletteRole.Ground || role > PaletteRole.Danger)
+                throw new Exception($"A gradient stop cannot take role {role}; only surfaces and Ink.");
+
+            uint rest = (uint)(role - PaletteRole.Ground) * stateCount;
+            return (rest, rest + 1);
+        }
 
         // Text on a ground. A surface of this palette has its ink baked; any other ground picks between
         // the palette's two inks here and mixes a muted one inline.
@@ -244,7 +291,22 @@ namespace ArctisAurora.Core.UI
             string muted = element.Attribute("Muted")?.Value;
             if (!string.IsNullOrEmpty(muted)) palette.muted = float.Parse(muted, CultureInfo.InvariantCulture);
 
+            palette.rowRadius = Optional(element, "RowRadius", palette.rowRadius);
+            palette.tabRadius = Optional(element, "TabRadius", palette.tabRadius);
+            palette.controlRadius = Optional(element, "ControlRadius", palette.controlRadius);
+            palette.popupRadius = Optional(element, "PopupRadius", palette.popupRadius);
+            palette.rowAccentWidth = Optional(element, "RowAccentWidth", palette.rowAccentWidth);
+            palette.tabAccentWidth = Optional(element, "TabAccentWidth", palette.tabAccentWidth);
+            string corners = element.Attribute("WindowCorners")?.Value;
+            if (!string.IsNullOrEmpty(corners)) palette.windowCorners = Enum.Parse<WindowCorners>(corners);
+
             return palette;
+        }
+
+        private static float Optional(XElement element, string attribute, float fallback)
+        {
+            string value = element.Attribute(attribute)?.Value;
+            return string.IsNullOrEmpty(value) ? fallback : float.Parse(value, CultureInfo.InvariantCulture);
         }
 
         private static string Required(XElement element, string attribute)
@@ -283,6 +345,10 @@ namespace ArctisAurora.Core.UI
             built.Add(new Vector4(dark, 1f));
             built.Add(new Vector4(light, 1f));
             built.Add(new Vector4(Control.HexToRGB(string.IsNullOrEmpty(palette.edgeAccent) ? palette.accent : palette.edgeAccent), 1f));
+
+            Vector3 groundInk = Contrast(dark, surfaces[0]) >= Contrast(light, surfaces[0]) ? dark : light;
+            Vector3 otherInk = Contrast(dark, groundInk) >= Contrast(light, groundInk) ? dark : light;
+            built.Add(new Vector4(Vector3.Lerp(groundInk, otherInk, palette.step), 1f));
         }
         #endregion
     }

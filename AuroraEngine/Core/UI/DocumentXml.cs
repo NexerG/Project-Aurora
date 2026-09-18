@@ -16,11 +16,12 @@ namespace ArctisAurora.Core.UI
     public static class DocumentXml
     {
         #region ---- parse ----
-        public static RichTextDocument Load(string path)
-        {
-            XElement root = XDocument.Load(path).Root
-                ?? throw new Exception($"Note '{path}' is empty.");
+        public static RichTextDocument Load(string path) =>
+            Parse(XDocument.Load(path).Root ?? throw new Exception($"Note '{path}' is empty."));
 
+        // Builds a note from a <Document> tree, whichever file format produced it.
+        public static RichTextDocument Parse(XElement root)
+        {
             RichTextDocument document = new RichTextDocument();
             XmlReflection.ApplyAttributes(root, document);
 
@@ -47,7 +48,7 @@ namespace ArctisAurora.Core.UI
             }
         }
 
-        // A block carries one attribute of its own; everything else about it is its runs. Read by
+        // A block carries few attributes of its own; everything else about it is its runs. Read by
         // name rather than through ApplyAttributes, which would also apply every control attribute
         // the block inherits and a note has no business carrying.
         private static BlockControl ReadBlock(XElement element)
@@ -57,6 +58,12 @@ namespace ArctisAurora.Core.UI
             XAttribute styling = element.Attribute("StylingType");
             if (styling != null && Enum.TryParse(styling.Value, true, out TextStyleType type))
                 block.stylingType = type;
+
+            XAttribute list = element.Attribute("List");
+            if (list != null && Enum.TryParse(list.Value, true, out ListKind kind))
+                block.listKind = kind;
+            block.listLevel = (int?)element.Attribute("Level") ?? 0;
+            block.isChecked = (bool?)element.Attribute("Checked") ?? false;
 
             foreach (XElement child in element.Elements())
             {
@@ -76,24 +83,7 @@ namespace ArctisAurora.Core.UI
         public static void Save(RichTextDocument document, string path)
         {
             XNamespace ns = XSDGenerator.NamespaceFor("UI");
-            XElement root = WriteScalars(ns + "Document", document);
-
-            XElement layout = WriteScalars(ns + "DocumentLayout", document.layout);
-            foreach (TextStyle style in document.layout.textStyles)
-                layout.Add(WriteScalars(ns + "TextStyle", style));
-            if (layout.HasAttributes || layout.HasElements) root.Add(layout);
-
-            foreach (BlockControl block in document.blocks)
-            {
-                XElement element = new XElement(ns + "Block");
-                if (block.stylingType != TextStyleType.Text)
-                    element.SetAttributeValue("StylingType", block.stylingType.ToString());
-
-                foreach (Run run in block.Runs())
-                    element.Add(WriteScalars(ns + "Run", run));
-
-                root.Add(element);
-            }
+            XElement root = ToXml(document);
 
             string dir = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(dir))
@@ -109,6 +99,38 @@ namespace ArctisAurora.Core.UI
             root.SetAttributeValue(xsi + "schemaLocation", $"{ns.NamespaceName} {relative}");
 
             new XDocument(new XDeclaration("1.0", "utf-8", null), root).Save(path);
+        }
+
+        // The note as a <Document> tree, for any file format to write out.
+        public static XElement ToXml(RichTextDocument document)
+        {
+            XNamespace ns = XSDGenerator.NamespaceFor("UI");
+            XElement root = WriteScalars(ns + "Document", document);
+
+            XElement layout = WriteScalars(ns + "DocumentLayout", document.layout);
+            foreach (TextStyle style in document.layout.textStyles)
+                layout.Add(WriteScalars(ns + "TextStyle", style));
+            if (layout.HasAttributes || layout.HasElements) root.Add(layout);
+
+            foreach (BlockControl block in document.blocks)
+            {
+                XElement element = new XElement(ns + "Block");
+                if (block.stylingType != TextStyleType.Text)
+                    element.SetAttributeValue("StylingType", block.stylingType.ToString());
+                if (block.listKind != ListKind.None)
+                    element.SetAttributeValue("List", block.listKind.ToString());
+                if (block.listLevel > 0)
+                    element.SetAttributeValue("Level", block.listLevel);
+                if (block.isChecked)
+                    element.SetAttributeValue("Checked", "true");
+
+                foreach (Run run in block.Runs())
+                    element.Add(WriteScalars(ns + "Run", run));
+
+                root.Add(element);
+            }
+
+            return root;
         }
 
         // Only what differs from a fresh instance, mirroring the reader: absent attribute -> default.

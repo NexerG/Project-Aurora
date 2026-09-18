@@ -9,7 +9,7 @@ the current description of this area. L1/L2/P3 below are kept as history and are
 no longer describe the code.
 
 ## Confirmed decisions
-- **Note format:** engine **XML** (not markdown, not JSON), via `[A_XSDType]`/`[A_XSDElementProperty]`.
+- ~~**Note format:** engine **XML** (not markdown, not JSON), via `[A_XSDType]`/`[A_XSDElementProperty]`.~~ — **SUPERSEDED 2026-09-17.** `.xml`, `.md` and `.txt`, each read into the XML tree in memory. See [[note-file-formats]].
 - **Editing UX:** live-preview WYSIWYG; edits hit a **working copy**; **Ctrl+S** commits + writes XML.
 - **Architecture:** plain-data **document model = source of truth**; control tree is a **view**.
 - **Scope now:** offline desktop only. Online multi-editor / browser are later (model/view split chosen to allow a CRDT layer later).

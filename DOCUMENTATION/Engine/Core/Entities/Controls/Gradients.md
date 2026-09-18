@@ -19,7 +19,7 @@ Type:
 Attributes:
 Namespace: ArctisAurora.Core.UI
 SourceFile: AuroraEngine/Core/UI/Gradients.cs
-VerifiedAgainst: 2026-08-22
+VerifiedAgainst: 2026-09-18
 ---
 ## Description
 
@@ -58,6 +58,25 @@ Any control names one through `Gradient`, and it ramps in place of that control'
 
 A stop's `Alpha` multiplies the coverage the control already has, so a ramp ending at `Alpha="0"` fades out rather than fading to black.
 
+## Following the palette
+
+A stop can name a palette role instead of a colour, and then it takes that colour from whichever palette the control resolves against. The same `titlebar` is light on a light palette and black on a dark one, and switching the app's palette recolours it live.
+
+```xml
+<Gradient Name="titlebar" Angle="90">
+  <Stop Role="Chrome" Shade="-1" Pos="0"/>
+  <Stop Role="Chrome" Pos="1"/>
+</Gradient>
+```
+
+`Role` is one of the eight surfaces, or `Ink` for the text colour on the palette's ground. A stop names `Color` or `Role`, never both — both is an authoring error and stops the boot.
+
+`Shade` moves the colour by palette steps, the same steps a button takes on hover. `1` is the hover colour, `2` the press colour, fractions sit between. Positive moves toward the text colour that contrasts with it, negative moves away, so the direction flips on its own between light and dark palettes. The result is clamped, so a surface that is already black or white cannot go further and a negative shade on it comes out flat.
+
+A gradient is still one row whatever the number of palettes. The row holds the role as a position inside a palette's block of paint colours, and the control's gradient word carries which palette's block to read, so the shader looks the colour up per pixel. Fifty gradients across thirty palettes is fifty rows, not fifteen hundred.
+
+Hex stops are unchanged and ignore the palette.
+
 ## What it does not do
 
 A gradient recolours; it does not paint. It appears exactly where `ColorHex` appears, which means a container masked invisible shows nothing — see [[Vulkan Control]] on masks.
@@ -80,6 +99,7 @@ A gradient does not cross runs. A heading built from two runs gets two ramps.
 | `Count` | property | Rows in the table, including the reserved row 0. |
 | `Table` | property | The baked rows, uploaded once by the UI mesh component. |
 | `IndexOf(name)` | method | Row for a name. Empty gives 0; unknown throws. |
+| `Word(id, palette)` | method | What a control writes to its row: the palette's first paint slot in the high 16 bits, the gradient row in the low. Row 0 gives 0. |
 | `LoadGradients()` | action | Bootstrap step. Parses the file and bakes every row. |
 
 ## Pseudocode
@@ -99,7 +119,26 @@ Bake:
 	turn the angle into a unit direction, so the shader only ever does a dot product
 	carry the centre and the kind across as they were authored
 	for each stop
-		resolve its hex to rgb, pair it with its alpha and its position
+		if it names a role
+			store the role's slot and its hover slot, as offsets inside any palette's block, and its shade
+		else
+			store its hex as an inline paint word
+		carry its alpha and its position across
+```
+
+```
+Stop colour, in the shader:
+	if the stop is inline
+		unpack the hex
+	else
+		base is the palette block the control's word carries
+		mix the role's colour toward its hover colour by the shade, and clamp
+```
+
+```
+A control's gradient:
+	naming a gradient remembers its row
+	every time the control inherits its palette, the word is rebuilt against that palette
 ```
 
 Related: [[Vulkan Control]], [[Context Menu]]
