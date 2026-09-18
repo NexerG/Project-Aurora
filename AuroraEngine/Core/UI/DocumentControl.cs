@@ -451,6 +451,7 @@ namespace ArctisAurora.Core.UI
             DeleteSelection();
 
             if (caretBlock == null) return;
+            if (caretBlock.Length == 0 && ClearListAtCaret()) return;
             SplitBlockAt(AddressOf(caretBlock, caretOffset));
         }
 
@@ -486,6 +487,12 @@ namespace ArctisAurora.Core.UI
 
             SetCaret(block, at.offset + 1);
 
+            if (c == ' ' && TypeListPrefix(block, at.block, at.offset + 1))
+            {
+                pending = armed;
+                return;
+            }
+
             if (!armed.Changes(block.StyleAt(at.offset + 1))) return;
 
             ApplyStyleTo(at, new DocumentAddress(at.block, at.offset + 1), armed);
@@ -518,6 +525,95 @@ namespace ArctisAurora.Core.UI
                 if (child is BlockControl block) blocks.Add(block);
 
             return blocks;
+        }
+        #endregion
+
+        #region ---- lists ----
+        // "- " at a block's start makes a bullet; "[ ] " or "[x] " at a bullet's start makes a task.
+        private bool TypeListPrefix(BlockControl block, int index, int typedEnd)
+        {
+            if (block.stylingType == TextStyleType.Code) return false;
+
+            string head = (block.text ?? string.Empty)[..typedEnd];
+            ListKind kind;
+            if (block.listKind == ListKind.None && head == "- ") kind = ListKind.Bullet;
+            else if (block.listKind == ListKind.Bullet && (head == "[ ] " || head == "[x] ")) kind = ListKind.Task;
+            else return false;
+
+            DocumentAddress start = new DocumentAddress(index, 0);
+            undo?.Push(new TextEdit(this, start, head, false));
+            RemoveText(start, head.Length);
+
+            SetBlockList(index, b =>
+            {
+                b.listKind = kind;
+                b.isChecked = head == "[x] ";
+            });
+            return true;
+        }
+
+        // Turns the caret's list item back into a plain block, when the caret sits at its start.
+        internal bool ClearListAtCaret()
+        {
+            if (caretBlock == null || HasSelection || caretOffset != 0 || caretBlock.listKind == ListKind.None)
+                return false;
+
+            SetBlockList(Blocks().IndexOf(caretBlock), b =>
+            {
+                b.listKind = ListKind.None;
+                b.listLevel = 0;
+                b.isChecked = false;
+            });
+            return true;
+        }
+
+        // Nests or un-nests the list items the range touches, never deeper than one past the item above.
+        internal bool ShiftListLevel(int delta)
+        {
+            if (caretBlock == null) return false;
+
+            int first, last;
+            if (OrderedSelection(out DocumentAddress from, out DocumentAddress to))
+            {
+                first = from.block;
+                last = to.block;
+            }
+            else first = last = Blocks().IndexOf(caretBlock);
+
+            if (first < 0 || last < 0) return false;
+
+            List<BlockControl> blocks = Blocks();
+            List<BlockSnapshot> before = SnapshotBlocks(first, last);
+            bool changed = false;
+
+            for (int b = first; b <= last && b < blocks.Count; b++)
+            {
+                BlockControl block = blocks[b];
+                if (block.listKind == ListKind.None) continue;
+
+                int deepest = b > 0 && blocks[b - 1].listKind != ListKind.None ? blocks[b - 1].listLevel + 1 : 0;
+                int level = delta > 0 ? Math.Min(block.listLevel + 1, deepest) : block.listLevel - 1;
+                if (level < 0 || (delta > 0 && level <= block.listLevel)) continue;
+
+                block.listLevel = level;
+                block.ApplyLayout(document.layout);
+                changed = true;
+            }
+
+            if (changed) undo?.Push(new BlockStateEdit(this, first, before, SnapshotBlocks(first, last)));
+            return changed;
+        }
+
+        // One block's list state rewritten as one undoable record.
+        internal void SetBlockList(int index, Action<BlockControl> change)
+        {
+            List<BlockControl> blocks = Blocks();
+            if (index < 0 || index >= blocks.Count) return;
+
+            List<BlockSnapshot> before = SnapshotBlocks(index, index);
+            change(blocks[index]);
+            blocks[index].ApplyLayout(document.layout);
+            undo?.Push(new BlockStateEdit(this, index, before, SnapshotBlocks(index, index)));
         }
         #endregion
 

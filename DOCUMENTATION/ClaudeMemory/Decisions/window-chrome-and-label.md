@@ -24,7 +24,8 @@ no app-side input code — the same shape as `TextInputActions`.
 `Thorium.Decorations.ExitApplication` still does. Nothing polls GLFW's `WindowShouldClose`, so the
 close flag is not an option. `Stop()` was the risk — it stops three threads synchronised by
 `AutoResetEvent` pairs and could have deadlocked instead of exiting; it was tested by clicking, and
-the process exits.
+the process exits. Since 2026-09-18 a GLFW close callback routes the OS close request into
+`Window.Close` too — see [[shutdown-sequence]] decision 7.
 
 ### 2. `TextInputControl` silently eats every click, so button captions needed `LabelControl`
 

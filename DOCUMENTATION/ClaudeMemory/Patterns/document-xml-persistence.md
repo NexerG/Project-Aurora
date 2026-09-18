@@ -10,6 +10,11 @@ Two unrelated "serialization" paths exist in the engine — do not confuse them:
 `Serializer.SerializeAll/SerializeAttributed` write **bytes**, not XML. The note format is engine
 XML, so notes go through `DocumentXml`, never `Serializer`.
 
+**Since 2026-09-17 the XML is also an in-memory form.** `.md` and `.txt` notes are read by
+`MarkdownFormat`/`PlainTextFormat` into the same `<Document>` tree and handed to `DocumentXml.Parse`;
+saving runs `DocumentXml.ToXml` and the format writes it back. `RichTextDocument.Load`/`Save` pick the
+path by extension. See [[note-file-formats]].
+
 ## How DocumentXml works (reuse this pattern for new XML-data types)
 Attribute-driven reflection, same shape as `VulkanControl.ParseXML`:
 - element name → `Type` via `AnyXMLType.FindType` (matches `[A_XSDType].Name`).

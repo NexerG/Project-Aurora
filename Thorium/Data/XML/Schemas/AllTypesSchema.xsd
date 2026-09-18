@@ -76,6 +76,7 @@
       <xs:enumeration value="Label" />
       <xs:enumeration value="MenuButton" />
       <xs:enumeration value="PaletteRole" />
+      <xs:enumeration value="WindowCorners" />
       <xs:enumeration value="Palette" />
       <xs:enumeration value="Panel" />
       <xs:enumeration value="Document" />

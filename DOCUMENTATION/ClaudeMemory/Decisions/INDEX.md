@@ -15,8 +15,9 @@ Standing constraints (ECS storage, Vulkan internals, physics, XSD-not-JSON) are 
 | Note | Settles | Key symbols |
 |---|---|---|
 | [[control-edge-and-outline]] | two strokes, because there are two distance fields to stroke; edges are per-side (`Thickness`), coloured by the palette's `EdgeAccent`; accent bars on the active tab and current sidebar row are edges | `VulkanControl`, `Control.edgeThickness`, `Palettes.EdgeAccent`, `TabViewControl.activeChanged`, `FileBrowserControl.SetCurrent`, `UIEngine.vert`/`UIEngine.frag` |
+| [[ui-palette-shape]] | a palette carries shape too — row/tab/control/popup radii, row/tab accent widths, DWM window corners; code-built controls take a C#-only `CornerRole`/`AccentRole` resolved in `InheritPaint` so a live switch reshapes; `EdgeRole` paints an edge by surface role; no XML token references, no shadows | `PaletteDefinition`, `CornerRole`, `AccentRole`, `WindowCorners`, `Control.ApplyShape`, `Control.edgeRole`, `AGlfwWindow.RoundCorners` |
 | [[ui-clipping]] | the clip rect rides in the control's pool row; the fragment shader discards against it | `VulkanControl`, `WindowControl`, `UI.frag` |
-| [[ui-gradients]] | gradients are a shared table indexed per control, procedural, no texture; slot 0 reserved | `Gradients`, `VulkanControl`, `MCUI`, `UIModule` |
+| [[ui-gradients]] | gradients are a shared table indexed per control, procedural, no texture; slot 0 reserved; a stop can name a palette `Role` + `Shade`, resolved per fragment through the paint table, one row per gradient whatever the palette count | `Gradients` (`Word`), `GpuGradientStop`, `Palettes.RoleOffsets`, `Control.gradientId`, `VulkanControl`, `UIEngineModule` |
 | [[ui-palettes]] | **PARTIAL** (slice 1, Thorium's slices 2–3) — colour is a palette role; a row carries a paint word (table slot or inline `0xRRGGBB`); ink by contrast, hover/press/muted calculated; authored `ColorHex` wins; inherited in `WriteArranged` like the clip; the app palette is the `<UI><Palette>` setting, switched live from a Settings dropdown; Thorium's 12 palettes; composite `*ColorHex` null = palette; `SubField` for fields on panels; optional `EdgeAccent` colours every unauthored edge | `Palettes`, `PaletteDefinition`, `PaletteRole`, `PaletteSetting`, `Control.role`, `Control.PaintOr`, `Control.CopyPaint`, `Control.InheritPaint`, `VulkanControl.paint`, `UIEngineModule.MirrorPaints` |
 | [[window-chrome-and-label]] | the title bar is ordinary controls; text on a button needed a non-input label | `WindowActions`, `LabelControl` |
 | [[window-frame-resize]] | the resize border is a control's padding, not an engine special case | `WindowFrameControl` |
@@ -71,6 +72,7 @@ Standing constraints (ECS storage, Vulkan internals, physics, XSD-not-JSON) are 
 | [[document-structural-editing]] | deletion is one range operation and Enter is its inverse | `DocumentControl`, `DocumentEditorControl`, `TextRun` |
 | [[document-undo]] | undo is inverse data records; redo replays the forward operation | `UndoStack`, `EditStep`, `IEditRecord`, `…Document.Edits` |
 | [[note-naming-and-text-field]] | a note carries its own name; the engine grew a text field to ask for one | `NoteNameWindow`, `TextBoxControl`, `RichTextDocument` |
+| [[note-file-formats]] | a note is `.xml`, `.md` or `.txt`; formats read to an in-memory `<Document>` tree that `DocumentXml.Parse` builds; Markdown subset, escape-only-when-needed writer; bullets and clickable tasks as block state with snapshot undo | `RichTextDocument.Load`, `DocumentXml.Parse`/`ToXml`, `MarkdownFormat`, `PlainTextFormat`, `ListKind`, `BlockStateEdit`, `DocumentControl.ShiftListLevel` |
 
 ## Input
 

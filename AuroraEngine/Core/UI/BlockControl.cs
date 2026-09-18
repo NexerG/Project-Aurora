@@ -1,8 +1,16 @@
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Filing;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
+    public enum ListKind
+    {
+        None,
+        Bullet,
+        Task
+    }
+
     // A run as a note file writes it: one styled slice of a block's text. It exists at load and save
     // only — in the tree a run is a StyleSpan on the block that holds it.
     [A_XSDType("Run", "UI")]
@@ -62,6 +70,15 @@ namespace ArctisAurora.Core.UI
     {
         public TextStyleType stylingType = TextStyleType.Text;
 
+        // list item state
+        public ListKind listKind;
+        public int listLevel;
+        public bool isChecked;
+
+        // bullet dot or checkbox, in the indent
+        private Control? marker;
+        private float listIndent;
+
         // pre-palette block ink, dropped from runs at load
         private const string legacyInkHex = "#2C2B26";
 
@@ -75,6 +92,12 @@ namespace ArctisAurora.Core.UI
             lineHeight = layout.lineHeight;
             fontSize = layout.FontSizeFor(stylingType);
 
+            listIndent = layout.listIndent;
+            Thickness inset = padding;
+            inset.left = listKind == ListKind.None ? 0f : (listLevel + 1) * listIndent;
+            padding = inset;
+            SyncMarker();
+
             for (int i = 0; i < spans.Count; i++)
             {
                 StyleSpan span = spans[i];
@@ -86,6 +109,64 @@ namespace ArctisAurora.Core.UI
             }
 
             InvalidateLayout();
+        }
+
+        // Wraps inside the indent.
+        public override Vector2 Measure(Vector2 availableSize)
+        {
+            Vector2 desired = base.Measure(new Vector2(MathF.Max(0f, availableSize.X - padding.left), availableSize.Y));
+            marker?.Measure(availableSize);
+            return desired;
+        }
+
+        // Places the marker in the indent, centred on the first line.
+        public override void Arrange(LayoutRect finalRect)
+        {
+            base.Arrange(finalRect);
+            if (marker == null || Lines == null || Lines.Count == 0) return;
+
+            TextLine first = Lines[0];
+            Vector2 size = marker.DesiredSize;
+            float x = TextOrigin.X - listIndent + (listIndent - size.X) * 0.5f;
+            float y = TextOrigin.Y + first.top + (first.height - size.Y) * 0.5f;
+            marker.Arrange(new LayoutRect(x, y, size.X, size.Y));
+        }
+
+        // Builds, swaps or drops the marker to match the list kind.
+        private void SyncMarker()
+        {
+            bool fits = listKind switch
+            {
+                ListKind.Task => marker is CheckBoxControl,
+                ListKind.Bullet => marker != null && marker is not CheckBoxControl,
+                _ => marker == null
+            };
+
+            if (!fits)
+            {
+                marker?.Destroy();
+                marker = listKind switch
+                {
+                    ListKind.Task => new CheckBoxControl
+                    {
+                        role = PaletteRole.SubField,
+                        onChanged = value => (parent?.parent as DocumentEditorControl)?.SetChecked(this, value)
+                    },
+                    ListKind.Bullet => new PanelControl
+                    {
+                        role = PaletteRole.Ink,
+                        preferredWidth = 6,
+                        preferredHeight = 6,
+                        cornerRadius = new CornerRadii(3),
+                        hitTestable = false
+                    },
+                    _ => null
+                };
+                if (marker != null) AddChild(marker);
+                InvalidateLayout();
+            }
+
+            if (marker is CheckBoxControl box) box.isChecked = isChecked;
         }
 
         // Load: the run's text joins the block's string and its style becomes the next span.
@@ -156,6 +237,8 @@ namespace ArctisAurora.Core.UI
             BlockControl tail = new BlockControl
             {
                 stylingType = stylingType,
+                listKind = listKind,
+                listLevel = listLevel,
                 fontName = fontName,
                 fontSize = fontSize,
                 lineHeight = lineHeight
@@ -192,6 +275,9 @@ namespace ArctisAurora.Core.UI
             BlockSnapshot snapshot = new BlockSnapshot
             {
                 stylingType = stylingType,
+                listKind = listKind,
+                listLevel = listLevel,
+                isChecked = isChecked,
                 text = (text ?? string.Empty)[from..to]
             };
 
@@ -232,6 +318,9 @@ namespace ArctisAurora.Core.UI
         public void Restore(BlockSnapshot snapshot)
         {
             stylingType = snapshot.stylingType;
+            listKind = snapshot.listKind;
+            listLevel = snapshot.listLevel;
+            isChecked = snapshot.isChecked;
             spans.Clear();
             spans.AddRange(snapshot.spans);
             text = snapshot.text;

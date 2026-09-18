@@ -24,6 +24,12 @@ namespace ArctisAurora.Core.UI
 
         [A_XSDElementProperty("Pos", "UI", "Where on the ramp this stop sits, 0 to 1.")]
         public float position = 0f;
+
+        [A_XSDElementProperty("Role", "UI", "Palette role this stop takes its colour from, in place of Color. A surface or Ink.")]
+        public PaletteRole role = PaletteRole.None;
+
+        [A_XSDElementProperty("Shade", "UI", "Palette steps a Role stop moves toward its text colour; negative moves away.")]
+        public float shade = 0f;
     }
 
     [A_XSDType("Gradient", "UI", typeof(GradientStopDefinition))]
@@ -54,7 +60,11 @@ namespace ArctisAurora.Core.UI
     [StructLayout(LayoutKind.Sequential)]
     public struct GpuGradientStop
     {
-        public Vector4 color;
+        // rest is an inline paint word or an offset into the palette block; stepped is that offset stepped once
+        public uint rest;
+        public uint stepped;
+        public float shade;
+        public float alpha;
         public float position;
     }
 
@@ -101,6 +111,9 @@ namespace ArctisAurora.Core.UI
             throw new Exception($"Gradient '{name}' is not defined in Gradients.gradients.xml.");
         }
 
+        // The word a row carries: the palette's first slot high, the gradient id low.
+        public static uint Word(uint id, PaletteDefinition? palette) => id == 0 ? 0 : palette!.firstSlot << 16 | id;
+
         [A_XSDActionDependency("Gradients.LoadGradients", "Bootstrap")]
         public static bool LoadGradients()
         {
@@ -137,12 +150,21 @@ namespace ArctisAurora.Core.UI
             };
 
             foreach (XElement stopElement in element.Elements())
+            {
+                string color = stopElement.Attribute("Color")?.Value;
+                string role = stopElement.Attribute("Role")?.Value;
+                if (color != null && role != null)
+                    throw new Exception($"Gradient '{definition.name}' has a stop with both Color and Role.");
+
                 definition.stops.Add(new GradientStopDefinition
                 {
-                    colorHex = stopElement.Attribute("Color")?.Value ?? "#FFFFFF",
+                    colorHex = color ?? "#FFFFFF",
                     alpha = Read(stopElement, "Alpha", 1f),
-                    position = Read(stopElement, "Pos", 0f)
+                    position = Read(stopElement, "Pos", 0f),
+                    role = role == null ? PaletteRole.None : Enum.Parse<PaletteRole>(role, true),
+                    shade = Read(stopElement, "Shade", 0f)
                 });
+            }
 
             if (definition.stops.Count == 0)
                 throw new Exception($"Gradient '{definition.name}' declares no stops.");
@@ -174,9 +196,15 @@ namespace ArctisAurora.Core.UI
             for (int i = 0; i < definition.stops.Count; i++)
             {
                 GradientStopDefinition stop = definition.stops[i];
+                (uint rest, uint stepped) = stop.role == PaletteRole.None
+                    ? (Palettes.Inline(stop.colorHex), 0u)
+                    : Palettes.RoleOffsets(stop.role);
                 gradient.stops[i] = new GpuGradientStop
                 {
-                    color = new Vector4(Control.HexToRGB(stop.colorHex), stop.alpha),
+                    rest = rest,
+                    stepped = stepped,
+                    shade = stop.shade,
+                    alpha = stop.alpha,
                     position = stop.position
                 };
             }

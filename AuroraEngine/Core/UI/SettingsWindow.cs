@@ -200,7 +200,7 @@ namespace ArctisAurora.Core.UI
                     preferredWidth = editorWidth,
                     preferredHeight = rowHeight,
                     role = PaletteRole.SubField,
-                    cornerRadius = new CornerRadii(3),
+                    cornerRole = CornerRole.Control,
                     options = Enum.GetNames(domain),
                     selected = current?.ToString() ?? ""
                 };
@@ -215,7 +215,7 @@ namespace ArctisAurora.Core.UI
                     preferredWidth = editorWidth,
                     preferredHeight = rowHeight,
                     role = PaletteRole.SubField,
-                    cornerRadius = new CornerRadii(3),
+                    cornerRole = CornerRole.Control,
                     options = Palettes.Names,
                     selected = paletteSetting.name
                 };
@@ -224,7 +224,10 @@ namespace ArctisAurora.Core.UI
                     paletteSetting.name = value;
                     Palettes.Default = Palettes.Get(value)!;
                     foreach (RenderWindow window in Engine.windows.Values)
+                    {
+                        window.os.RoundCorners();
                         window.ui.uiRoot?.InvalidateArrange();
+                    }
                 };
                 return dropdown;
             }
@@ -274,7 +277,7 @@ namespace ArctisAurora.Core.UI
                 preferredWidth = editorWidth,
                 preferredHeight = rowHeight,
                 role = PaletteRole.SubField,
-                cornerRadius = new CornerRadii(3)
+                cornerRole = CornerRole.Control
             };
             capture.SetCombo(bind.trigger, modifiers);
             capture.onCaptured = (trigger, held) =>
@@ -297,7 +300,7 @@ namespace ArctisAurora.Core.UI
                 preferredWidth = width,
                 preferredHeight = 26,
                 role = PaletteRole.Chrome,
-                cornerRadius = new CornerRadii(4)
+                cornerRole = CornerRole.Control
             };
             button.AddChild(new LabelControl { text = caption, fontSize = 14, role = PaletteRole.MutedInk });
             button.RegisterOnRelease(_ => { action(); return true; });

@@ -53,9 +53,8 @@ namespace ArctisAurora.Core.UI
         // Vault, project folder or whatever else the derivative lists.
         protected FileObject? root;
 
-        // the highlighted entry and its accent
+        // the highlighted entry
         private string? currentPath;
-        private const float accentWidth = 3f;
 
         protected abstract string RootPath { get; }
 
@@ -154,8 +153,10 @@ namespace ArctisAurora.Core.UI
                 label = name,
                 preferredHeight = rowHeight,
                 horizontalAlignment = HorizontalAlignment.Stretch,
+                clipOutOfBounds = true,
                 margin = new Thickness(0, 0, 0, depth * indent),
                 padding = new Thickness(0, 0, 0, rowInset),
+                cornerRole = CornerRole.Row,
                 hoverColorHex = rowHoverColorHex,
                 pressColorHex = rowPressColorHex,
                 contextMenu = rowMenu,
@@ -204,7 +205,7 @@ namespace ArctisAurora.Core.UI
         {
             bool current = currentPath != null && string.Equals(row.file.path, currentPath, StringComparison.OrdinalIgnoreCase);
             row.PaintOr(current ? null : rowColorHex, current ? PaletteRole.SubField : PaletteRole.Clear);
-            row.edgeThickness = current ? new Thickness(0f, 0f, 0f, accentWidth) : Thickness.Zero;
+            row.accentRole = current ? AccentRole.Row : AccentRole.None;
         }
 
         private void PaintName(EditableLabelControl name, FileObject file)

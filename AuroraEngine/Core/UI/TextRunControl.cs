@@ -180,7 +180,7 @@ namespace ArctisAurora.Core.UI
                 _runs.Add(new TextMeasurer.Run(s, 0, s.Length, fontName, _fontAsset.atlasMetaData, fontSize, style));
                 _runPaints.Add(_paint);
                 _runFonts.Add(_fontAsset);
-                _runGradients.Add(visual.gradientIndex);
+                _runGradients.Add(gradientId);
                 return;
             }
 
@@ -200,7 +200,7 @@ namespace ArctisAurora.Core.UI
                 _runPaints.Add(spans[i].colorHex == null ? _paint : Palettes.Inline(spans[i].colorHex));
                 _runFonts.Add(font);
                 _runGradients.Add(spans[i].gradient == null
-                    ? visual.gradientIndex : Gradients.IndexOf(spans[i].gradient));
+                    ? gradientId : Gradients.IndexOf(spans[i].gradient));
                 start += count;
             }
         }
@@ -278,7 +278,7 @@ namespace ArctisAurora.Core.UI
                     uint paint = _runPaints[segment.runIndex];
                     TextMeasurer.Run run = _runs[segment.runIndex];
                     FontAsset font = _runFonts[segment.runIndex];
-                    uint gradientIndex = _runGradients[segment.runIndex];
+                    uint gradientIndex = Gradients.Word(_runGradients[segment.runIndex], palette ?? Palettes.Default);
 
                     for (int k = 0; k < segment.charCount; k++)
                     {

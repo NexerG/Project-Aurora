@@ -45,6 +45,11 @@ namespace ArctisAurora.Core.UI
             RenderWindow window = Acting();
             if (window == null) return;
 
+            Close(window);
+        }
+
+        internal static void Close(RenderWindow window)
+        {
             if (window == Engine.primary)
             {
                 Shutdown.Request();

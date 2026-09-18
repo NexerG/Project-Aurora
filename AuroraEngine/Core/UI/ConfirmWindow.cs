@@ -140,7 +140,7 @@ namespace ArctisAurora.Core.UI
                 preferredWidth = 90,
                 preferredHeight = 30,
                 role = PaletteRole.Chrome,
-                cornerRadius = new CornerRadii(4)
+                cornerRole = CornerRole.Control
             };
             button.AddChild(new LabelControl { text = caption, fontSize = 14, role = PaletteRole.MutedInk });
             button.RegisterOnRelease(_ => { action(); return true; });

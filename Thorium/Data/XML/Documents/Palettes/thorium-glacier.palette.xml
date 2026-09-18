@@ -6,4 +6,5 @@
 		 Ground="#2C333D" Surface="#272D36" Chrome="#22272E" Field="#272D36" SubField="#2E3641" Line="#38404B"
 		 Accent="#88C0D0" Danger="#C42B1E"
 		 DarkInk="#2C333D" LightInk="#D8DEE9"
-		 Step="0.04" Muted="0.33"/>
+		 Step="0.04" Muted="0.33"
+		 RowRadius="4"/>

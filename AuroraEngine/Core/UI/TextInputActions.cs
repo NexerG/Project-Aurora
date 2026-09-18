@@ -90,6 +90,12 @@ namespace ArctisAurora.Core.UI
         [A_XSDActionDependency("Text.Italic", "Input", "Toggles italic over the selection, or for what is typed next")]
         public static void Italic() => Toggle(style => new StyleDelta(italic: !style.italic));
 
+        [A_XSDActionDependency("Text.Indent", "Input", "Nests the list items under the caret one level deeper")]
+        public static void Indent() => Editor()?.ShiftListLevel(1);
+
+        [A_XSDActionDependency("Text.Outdent", "Input", "Moves the list items under the caret one level out")]
+        public static void Outdent() => Editor()?.ShiftListLevel(-1);
+
         // The state comes off the caret's style, so a toggle is what that is not.
         private static void Toggle(Func<CaretStyle, StyleDelta> nextDelta)
         {

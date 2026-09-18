@@ -12,7 +12,7 @@ Type:
   - Public
 ---
 ## Description
-The note document model for the Thorium (Obsidian-style) editor. It is the source of truth for a note and also its on-disk format, serialized as engine XML (not markdown, not JSON).
+The note document model for the Thorium (Obsidian-style) editor. It is the source of truth for a note. On disk a note is `.xml`, `.md` or `.txt`; whichever it is, it is read into the engine's `<Document>` XML tree in memory and built from that — see [[#File formats]].
 
 The model / view split it was designed around **is not what shipped**: blocks and runs are themselves `VulkanControl`s, so the model *is* the control tree and editing mutates it directly. That is the P0 decision — blocks are controls so the engine's UI layout lays a document out for free — and everything downstream follows from it, including why [[#Edit session — `DocumentEditSession`]] is not a working copy and why the whole UI is scheduled to split into data and visualization once Thorium and the profiler are up. The separation the online multi-editor goal wants is therefore still owed, and arrives with that split rather than here.
 
@@ -27,6 +27,72 @@ A document is a flat list of blocks; a block of flowing text holds a list of inl
 - `Clone()` on the document / blocks / inlines is a deep copy. It was written for the working copy the editor was going to edit before a save; that is not what the edit session does, so its only callers now are `DocumentLayout.Clone` and whatever wants an independent copy of a note.
 
 Planned (not yet in code): `TextRun` gains `FontSize` (0 = inherit block default), `Underline` and a highlight color — mixed fonts/sizes word-by-word are just adjacent runs, with `StyleEquals` merging same-styled neighbours on edit. New blocks arrive via the same free round-trip: `CodeBlock` (Language attribute, monospace, no wrap; syntax coloring is computed at view time and never persisted) and `TableBlock` → `TableRow` → `TableCell` where a cell holds `List<Block>` (nested blocks; MVP fixed/star columns, no merges).
+
+## File formats
+A note file is text in one of three formats, and none of them builds the editor directly. `MarkdownFormat` and `PlainTextFormat` only turn text into the `<Document>`/`<Block>`/`<Run>` tree and back; `DocumentXml.Parse` is the one thing that turns a tree into blocks, whichever file it came from. An `.xml` note is that tree already, so it goes straight to `DocumentXml`.
+
+The file name becomes the note's `Name` for `.md` and `.txt`, so those notes never ask to be named. New notes from the vault browser are `.md`; a duplicate or a rename keeps the extension it had. Colour, gradient, font and size have nowhere to go in Markdown and are not written — the palette colours a Markdown note.
+
+#### Load (path)
+switch on the extension of `path`
+	`.md` → `DocumentXml.Parse` (`MarkdownFormat.Read` (file text, file name))
+	`.txt` → `DocumentXml.Parse` (`PlainTextFormat.Read` (file text, file name))
+	otherwise → `DocumentXml.Load` (`path`)
+
+#### Save (path)
+switch on the extension of `path`
+	`.md` → write `MarkdownFormat.Write` (`DocumentXml.ToXml` (this))
+	`.txt` → write `PlainTextFormat.Write` (`DocumentXml.ToXml` (this))
+	otherwise → `DocumentXml.Save` (this, `path`)
+
+### Markdown
+One source line is one block. `#` to `######` are headings, `> ` is a quote, lines inside a fence are `Code` blocks, `- ` is a bullet and `- [ ] ` / `- [x] ` a task. Inside a line `**bold**`, `*italic*` or `_italic_`, `~~struck~~` and `` `code` `` become runs. Everything else — numbered lists, links, tables, HTML, frontmatter — stays literal text and is written back as it was.
+
+#### Write Inline (runs)
+`plain` = the runs with their markers and no escapes
+if reading `plain` back gives the same text and styles
+	return `plain`
+return the runs with `\` before every literal `` \ ` * _ ~ ``
+
+#### List Level (indent)
+`width` = indent width, a tab counting 4
+drop open item widths wider than `width`
+if the last open width equals `width`
+	return its depth
+push `width`
+return the new depth
+
+A first save normalizes a few things: `_i_` becomes `*i*`, `[X]` becomes `[x]`, list indents become one tab per level, a fence loses its language, `Comment` blocks become plain lines and line endings become LF.
+
+## Lists
+A list item is block state, not a block type: `listKind` (`None`, `Bullet`, `Task`), `listLevel` and `isChecked` on `BlockControl`, written as `List`, `Level` and `Checked` on `<Block>`. `ApplyLayout` indents the text by `(level + 1) × ListIndent` and keeps one marker child in that indent — a small dot, or a checkbox that can be clicked. A split copies the kind and level to the new block and leaves it unchecked, so Enter continues a list.
+
+Every list change is one `BlockStateEdit`, the block snapshotted before and after, so undo and redo restore it whole.
+
+#### Type Char (c) — the list part
+if `c` is a space and the block is not code
+	if the block is not a list and its text so far is `- `
+		remove `- ` and make it a bullet
+	if the block is a bullet and its text so far is `[ ] ` or `[x] `
+		remove it and make it a task, checked for `[x] `
+
+#### Split Block — on an empty item
+if the caret's block is an empty list item
+	clear its kind, level and tick instead of splitting
+
+#### Backspace — at an item's start
+if nothing is selected, the caret is at offset 0 and the block is a list item
+	clear its kind, level and tick instead of deleting
+
+#### Shift List Level (delta)
+for each list item the selection touches, in order
+	`deepest` = the item above's level + 1, or 0 when the item above is not a list item
+	`level` = delta > 0 ? min (level + 1, `deepest`) : level − 1
+	skip if `level` < 0, or if indenting would not go deeper
+	set the level and re-apply layout
+record one `BlockStateEdit` if anything changed
+
+Tab and Shift+Tab are `Text.Indent` and `Text.Outdent` in Thorium's input map.
 
 ## Persistence — `DocumentXml`
 Load and save are attribute-driven reflection (the same pattern as [[Vulkan Control]] `ParseXML`), so new blocks / inlines / run styles round-trip automatically once they carry the attributes. NOTE: the binary [[Serializer]] is unrelated — notes are XML, never routed through `Serializer`.
@@ -263,4 +329,4 @@ What the format bar reflects is the *resolved* style — a `CaretStyle` of the c
 - P4 steps 1 and 2 complete: selection renders and is GUI-verified apart from drag auto-scroll, which the sample note is too short to exercise; deletion over a range, Backspace, Delete and Enter are bound and boot-verified but **not** GUI-verified. Step 3, Ctrl+B/I run split/merge, is next — `Bold` and `Italic` are still read by nothing.
 - Undo and select-all do not exist, which deletion is the first feature to make matter: a mis-aimed delete is recoverable only by reloading the note.
 - P5 complete: `Thorium` is a two-pane shell, a `VaultBrowser` listing a vault folder beside the editor, and `LoadPath` has a real caller at last. The vault is a settings path; the browser, being app rather than engine, lives in `Thorium` and is described in `DOCUMENTATION/ClaudeMemory/Decisions/vault-browser-and-shell.md`. Switching notes saves the one being left, since nothing tracks dirtiness and nothing can undo.
-- Lists, quotes, dividers, wiki-links, inline code: not yet — added as the editor grows. Code blocks and tables are scheduled (B1/B2). L2 is dropped, L3 (paged mode) is unaffected — see [[Document Layout Engine#Status]]. Revised phase order: `DOCUMENTATION/ClaudeMemory/Context/thorium-editor-architecture.md`.
+- Bullet and task lists with nesting landed 2026-09-17, with `.md` and `.txt` notes — builds and boots, NOT GUI-verified. Numbered lists, dividers and wiki-links: not yet — added as the editor grows. Code blocks and tables are scheduled (B1/B2). L2 is dropped, L3 (paged mode) is unaffected — see [[Document Layout Engine#Status]]. Revised phase order: `DOCUMENTATION/ClaudeMemory/Context/thorium-editor-architecture.md`.

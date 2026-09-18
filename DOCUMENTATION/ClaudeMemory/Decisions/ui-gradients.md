@@ -118,6 +118,26 @@ places, and each one silently loses a gradient if missed:
 In all three the gradient is assigned **before** `text`, because the `text` setter is what builds the
 glyphs and `SyncGlyphs` pushes the gradient into each new one.
 
+### 8. Stops follow the palette through role offsets, one row per gradient (2026-09-18)
+
+- `<Stop Role="…" Shade="…"/>` in place of `Color`. `Role` = the 8 surfaces or `Ink` (ink on the palette's `Ground`); both `Color` and `Role` throws at load.
+- `Shade` = palette `Step`s toward the ink that contrasts with the colour, the hover/press rule; negative moves away, result clamped 0..1.
+- `GpuGradientStop` `{vec4 color; float pos}` → `{uint rest; uint stepped; float shade; float alpha; float pos}`, still 20 B, gradient still 184 B.
+  - hex stop: `rest` = inline paint word (`Palettes.Inline`), `stepped` unused
+  - role stop: `rest`/`stepped` = `Palettes.RoleOffsets(role)` — offsets inside **any** palette block, not slots
+- Row word: `Gradients.Word(id, palette)` = `palette.firstSlot << 16 | id`. `Control.gradientId` holds the id; `InheritPaint` rebuilds the word, so a live palette switch moves it. `TextRunControl._runGradients` holds ids and builds the word at emit.
+- `UIEngine.frag` `stopColor`: `mix(PAINT[base+rest], PAINT[base+stepped], shade)`. `PaintBuffer` (set 1 binding 4) is now `Vertex|Fragment`.
+- Palette block 43 → 44 slots: `inkStepSlot`, the ground's ink stepped once toward the other ink — the only role target not already baked.
+- Bootstrap order unchanged: role offsets are constants, so `LoadGradients` needs no palette.
+
+**`lerp(base, ink, step·shade) == lerp(base, hover, shade)`.** Hover is already a baked slot, so the shader needs neither `Step` nor the ink pick, and the row carries nothing palette-specific.
+
+**One row per gradient, not per palette.** (user, 2026-09-18) Rejected: baking gradients × palettes at load — 50 × 30 = 1500 rows / ~276 KB, growing with both. Rejected: lazy interning of used (gradient, palette) pairs — needs the per-image re-upload path the user deferred. Cost of the choice: two paint reads per role stop per gradient fragment, and a shader change.
+
+**`Shade` is in palette steps, not an absolute mix toward a named target.** Rejected `Mix="0.1" Toward="Ground"`: it neither flips direction between light and dark palettes nor scales with `Step`, so each gradient would need tuning per palette.
+
+Limits: `firstSlot` and gradient id are 16 bits each (~1480 palettes, 65535 gradients); unchecked.
+
 ## Verified
 
 - `Unsafe.SizeOf<ControlData>()` == 136 with fields at 0/32/48/52/68/84/96/100/112/**116**/**120**;
@@ -136,6 +156,7 @@ glyphs and `SyncGlyphs` pushes the gradient into each new one.
   the title bar ramps `#1E1E1E` → `#141414` top to bottom where it is exposed (the middle is flat
   because the spacer `<Panel>` paints over it). Radial: peaks `#2A4663` at centre and falls off on
   both axes, elliptical, alpha-faded.
+- **§8, GUI-verified in Thorium (2026-09-18).** `spirv-dis` stop offsets 0/4/8/12/16, stride 20/184; solution builds clean, no warning in touched files; four shader trees byte-identical. thorium-light: title bar `#F2F1EC` → `#EBEAE5` top to bottom, H1 `#373530` at the column edge darkening to `#2C2A25` at ~58% — both as predicted. Switched live to thorium-void through Settings › UI: title bar flat `#000000` (negative shade clamps), H1 `#E0E0E0` → `#EDEDED` over the same span, as predicted.
 
 ## Still open
 
@@ -149,6 +170,8 @@ glyphs and `SyncGlyphs` pushes the gradient into each new one.
 - **A gradient cannot span more than one run.** A heading of two runs gets two ramps. The generic fix
   is a `GradientSpace="Self|Inherit"` on `VulkanControl` letting the `arrangedRect` setter take the
   parent's rect — about five lines, deliberately not built without a use for it.
+- **A role stop takes surfaces and `Ink` only** — no `MutedInk`, no ink on a non-`Ground` surface. On a
+  pure black or white surface a negative `Shade` clamps flat (thorium-void's title bar has no ramp).
 - **Angle is design-space**, so a host on `Autoscaling="true"` gets a gradient that scales with
   the design box. Correct, but untested — Thorium does not autoscale.
 

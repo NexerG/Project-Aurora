@@ -2,9 +2,13 @@
 #extension GL_EXT_nonuniform_qualifier : enable
 #extension GL_EXT_scalar_block_layout : enable
 
+// rest is an inline paint word or an offset into the palette block; stepped is that offset stepped once
 struct GradientStop
 {
-    vec4 color;
+    uint rest;
+    uint stepped;
+    float shade;
+    float alpha;
     float pos;
 };
 
@@ -21,6 +25,11 @@ struct Gradient
 layout(set = 1, binding = 3, scalar) readonly buffer GradientBuffer {
     Gradient gradients[];
 } GB;
+
+// the palette slots a role stop indexes
+layout(set = 1, binding = 4, scalar) readonly buffer PaintBuffer {
+    vec4 paints[];
+} PAINT;
 
 layout(location = 0) in vec2 fragPos;
 layout(location = 1) in flat vec4 fragClip;
@@ -53,11 +62,24 @@ float median(float r, float g, float b) {
     return max(min(r, g), min(max(r, g), b));
 }
 
-// Ramps a gradient across rect, in the same design space as p. Linear spans the rect corner to
-// corner along its direction; radial is an ellipse reaching the farthest corner.
-vec4 sampleGradient(uint index, vec2 p, vec4 rect)
+// A stop's colour: inline, or its role in the palette block at base, shaded toward the stepped slot.
+vec4 stopColor(GradientStop s, uint base)
 {
-    Gradient g = GB.gradients[index];
+    vec3 rgb;
+    if ((s.rest & 0x80000000u) != 0u)
+        rgb = vec3(float((s.rest >> 16) & 0xFFu), float((s.rest >> 8) & 0xFFu), float(s.rest & 0xFFu)) / 255.0f;
+    else
+        rgb = clamp(mix(PAINT.paints[base + s.rest].rgb, PAINT.paints[base + s.stepped].rgb, s.shade), 0.0f, 1.0f);
+    return vec4(rgb, s.alpha);
+}
+
+// Ramps a gradient across rect, in the same design space as p. Linear spans the rect corner to
+// corner along its direction; radial is an ellipse reaching the farthest corner. word is the
+// palette's first slot high, the gradient id low.
+vec4 sampleGradient(uint word, vec2 p, vec4 rect)
+{
+    Gradient g = GB.gradients[word & 0xFFFFu];
+    uint base = word >> 16;
     vec2 extent = max((rect.zw - rect.xy) * 0.5f, vec2(1e-5f));
     vec2 local = p - (rect.xy + rect.zw) * 0.5f;
 
@@ -74,12 +96,12 @@ vec4 sampleGradient(uint index, vec2 p, vec4 rect)
     }
     t = clamp(t, 0.0f, 1.0f);
 
-    vec4 color = g.stops[0].color;
+    vec4 color = stopColor(g.stops[0], base);
     for (uint i = 1u; i < g.stopCount; ++i)
     {
         float from = g.stops[i - 1u].pos;
         float to = g.stops[i].pos;
-        color = mix(color, g.stops[i].color, clamp((t - from) / max(to - from, 1e-5f), 0.0f, 1.0f));
+        color = mix(color, stopColor(g.stops[i], base), clamp((t - from) / max(to - from, 1e-5f), 0.0f, 1.0f));
     }
     return color;
 }

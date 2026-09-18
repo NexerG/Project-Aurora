@@ -18,9 +18,25 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("DocumentLayout", "UI", "Layout parameters for this note.")]
         public DocumentLayout layout = new DocumentLayout();
 
-        public static RichTextDocument ParseXML(string path) => DocumentXml.Load(path);
+        // note file extensions the editor opens
+        public static readonly string[] extensions = { ".xml", ".md", ".txt" };
 
-        public void Save(string path) => DocumentXml.Save(this, path);
+        public static RichTextDocument Load(string path) => Path.GetExtension(path).ToLowerInvariant() switch
+        {
+            ".md" => DocumentXml.Parse(MarkdownFormat.Read(File.ReadAllText(path), Path.GetFileNameWithoutExtension(path))),
+            ".txt" => DocumentXml.Parse(PlainTextFormat.Read(File.ReadAllText(path), Path.GetFileNameWithoutExtension(path))),
+            _ => DocumentXml.Load(path)
+        };
+
+        public void Save(string path)
+        {
+            switch (Path.GetExtension(path).ToLowerInvariant())
+            {
+                case ".md": File.WriteAllText(path, MarkdownFormat.Write(DocumentXml.ToXml(this))); break;
+                case ".txt": File.WriteAllText(path, PlainTextFormat.Write(DocumentXml.ToXml(this))); break;
+                default: DocumentXml.Save(this, path); break;
+            }
+        }
     }
 
     // One open note: the document the editor is showing and the file it came from.
@@ -112,6 +128,9 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("BlockSpacing", "UI", "Vertical gap between blocks in pixels.")]
         public float blockSpacing { get; set; } = 8f;
 
+        [A_XSDElementProperty("ListIndent", "UI", "Horizontal space per list level in pixels.")]
+        public float listIndent { get; set; } = 24f;
+
         // Empty means inherit: a note that declares no styles of its own uses the editor's. Declaring
         // even one replaces the whole set, so a note's heading scheme is read as written rather than
         // merged level-by-level with defaults it cannot see.
@@ -146,7 +165,8 @@ namespace ArctisAurora.Core.UI
             DocumentLayout copy = new DocumentLayout
             {
                 lineHeight = lineHeight,
-                blockSpacing = blockSpacing
+                blockSpacing = blockSpacing,
+                listIndent = listIndent
             };
             foreach (TextStyle style in textStyles)
                 copy.textStyles.Add(style.Clone());

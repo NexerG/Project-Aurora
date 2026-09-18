@@ -22,7 +22,7 @@ namespace ArctisAurora.Core.UI
             orientation = Orientation.Vertical;
             padding = new Thickness(4f);
             role = PaletteRole.Ground;
-            cornerRadius = new CornerRadii(6f);
+            cornerRole = CornerRole.Popup;
             edgeThickness = new Thickness(1f);
             stopsContextMenu = true;
 

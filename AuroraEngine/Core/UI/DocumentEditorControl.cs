@@ -60,7 +60,7 @@ namespace ArctisAurora.Core.UI
         public void LoadPath(string nameOrPath)
         {
             string path = Path.GetFullPath(Path.IsPathRooted(nameOrPath) ? nameOrPath : Paths.Doc(nameOrPath));
-            RichTextDocument document = RichTextDocument.ParseXML(path);
+            RichTextDocument document = RichTextDocument.Load(path);
 
             session = new DocumentEditSession(document, path);
             LoadDocument(document);
@@ -199,6 +199,25 @@ namespace ArctisAurora.Core.UI
 
             using (BeginStep("Paragraph style"))
                 if (content.SetBlockStyling(type)) MarkDirty();
+        }
+
+        public void SetChecked(BlockControl block, bool value)
+        {
+            int index = content?.Blocks().IndexOf(block) ?? -1;
+            if (index < 0) return;
+
+            using (BeginStep("Check"))
+                content.SetBlockList(index, b => b.isChecked = value);
+            MarkDirty();
+        }
+
+        // Positive nests, negative un-nests.
+        public void ShiftListLevel(int delta)
+        {
+            if (content == null) return;
+
+            using (BeginStep(delta > 0 ? "Indent" : "Outdent"))
+                if (content.ShiftListLevel(delta)) MarkDirty();
         }
         #endregion
 
@@ -339,6 +358,12 @@ namespace ArctisAurora.Core.UI
 
             using (BeginStep(move == CaretMove.Left ? "Backspace" : "Delete"))
             {
+                if (move == CaretMove.Left && content.ClearListAtCaret())
+                {
+                    MarkDirty();
+                    return;
+                }
+
                 if (!content.HasSelection) MoveCaret(move, true);
                 if (content.DeleteSelection()) MarkDirty();
             }

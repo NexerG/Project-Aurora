@@ -82,11 +82,6 @@ namespace ArctisAurora.Core.UI
         public bool CanScrollHorizontal => scrollDirection == ScrollDirection.Horizontal || scrollDirection == ScrollDirection.Both;
         public bool CanScrollVertical => scrollDirection == ScrollDirection.Vertical || scrollDirection == ScrollDirection.Both;
 
-        // Reserved down the right edge and along the bottom. Always reserved when the axis can
-        // scroll, so that showing a thumb never re-wraps the content that decides whether it shows.
-        private float gutterRight => CanScrollVertical ? barWidth + barInset * 2f : 0f;
-        private float gutterBottom => CanScrollHorizontal ? barWidth + barInset * 2f : 0f;
-
         // How far each thumb can slide, in pixels. Zero on an axis whose content fits.
         public Vector2 ThumbTravel { get; private set; }
 
@@ -126,8 +121,8 @@ namespace ArctisAurora.Core.UI
             float w = a.preferredWidth > 0 ? a.preferredWidth : MathF.Max(a.minWidth, availableSize.X);
             float h = a.preferredHeight > 0 ? a.preferredHeight : MathF.Max(a.minHeight, availableSize.Y);
 
-            float innerW = MathF.Max(0, w - a.padding.totalHorizontal - gutterRight);
-            float innerH = MathF.Max(0, h - a.padding.totalVertical - gutterBottom);
+            float innerW = MathF.Max(0, w - a.padding.totalHorizontal);
+            float innerH = MathF.Max(0, h - a.padding.totalVertical);
 
             if (Content is Control child)
             {
@@ -154,8 +149,6 @@ namespace ArctisAurora.Core.UI
             WriteArranged(finalRect);
 
             LayoutRect inner = finalRect.Shrink(arrange.padding);
-            inner.width = MathF.Max(0, inner.width - gutterRight);
-            inner.height = MathF.Max(0, inner.height - gutterBottom);
             viewportSize = new Vector2(inner.width, inner.height);
 
             ClampScrollOffset();
@@ -173,7 +166,7 @@ namespace ArctisAurora.Core.UI
             SetFlag(ArrangeFlags.ArrangeDirty, false);
         }
 
-        // Each thumb sits in its own gutter and is hidden while its axis fits, which takes it out of
+        // Each thumb overlays the content's edge and is hidden while its axis fits, which takes it out of
         // the draw and out of the hit-test.
         private void ArrangeThumbs(LayoutRect finalRect, LayoutRect inner)
         {

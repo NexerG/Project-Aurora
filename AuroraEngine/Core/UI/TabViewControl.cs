@@ -73,9 +73,6 @@ namespace ArctisAurora.Core.UI
         // Raised when any view's active tab changes.
         public static event Action<TabViewControl>? activeChanged;
 
-        // active tab accent
-        private const float accentWidth = 2f;
-
         public int ItemCount
         {
             get
@@ -500,6 +497,7 @@ namespace ArctisAurora.Core.UI
             {
                 preferredWidth = tabWidth,
                 preferredHeight = tabHeight,
+                cornerRole = CornerRole.Tab,
                 hoverColorHex = tabHoverColorHex,
                 pressColorHex = tabHoverColorHex,
                 item = item,
@@ -551,6 +549,7 @@ namespace ArctisAurora.Core.UI
             {
                 preferredWidth = closeWidth,
                 preferredHeight = tabHeight,
+                cornerRole = CornerRole.TabEnd,
                 hoverColorHex = closeHoverColorHex,
                 pressColorHex = closePressColorHex
             };
@@ -586,14 +585,14 @@ namespace ArctisAurora.Core.UI
                 bool active = ReferenceEquals(item, activeItem);
                 string? hex = active ? activeTabColorHex : tabColorHex;
                 PaletteRole ground = active ? PaletteRole.Ground : PaletteRole.Surface;
-                Thickness accent = active ? new Thickness(accentWidth, 0f, 0f, 0f) : Thickness.Zero;
+                AccentRole accent = active ? AccentRole.Tab : AccentRole.None;
                 if (i < strip.children.Count && strip.children[i] is ButtonControl tab)
                 {
                     tab.PaintOr(hex, ground);
-                    tab.edgeThickness = accent;
+                    tab.accentRole = accent;
                     ButtonControl close = CloseButtonOf(tab);
                     close?.PaintOr(hex, ground);
-                    if (close != null) close.edgeThickness = accent;
+                    if (close != null) close.accentRole = accent;
                 }
                 i++;
             }

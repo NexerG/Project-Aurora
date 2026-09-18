@@ -100,6 +100,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/LabelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MenuButtonControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MenuScreen.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteActions.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteFormats.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteNameWindow.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Palettes.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PanelControl.cs

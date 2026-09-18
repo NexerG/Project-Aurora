@@ -34,7 +34,7 @@ One tree node. Layout state is its `UIElements` pool row (`arrange` → `Arrange
 | region | holds |
 |---|---|
 | `authored layout` | the inherited XML sizing attrs (see XML authoring); `SetSize`, `SetWidth`, `SetHeight`, `IsWidthStar`, `IsHeightStar` |
-| `paint` | colour, alpha, corner radii, edge, gradient; `kind`, `sampler`, `SetUVRect`; palette — `role`, `paletteName`, `ownPalette`, `palette`, `groundBelow`, `colorAuthored`; `PaintOr`, `CopyPaint`; virtual `SetPaint`, `ApplyRole`; `RolePaint`, `InheritPaint`, `RepaintChildren` |
+| `paint` | colour, alpha, corner radii, edge, gradient (`gradientId`, word rebuilt in `InheritPaint`); `kind`, `sampler`, `SetUVRect`; palette — `role`, `paletteName`, `ownPalette`, `palette`, `groundBelow`, `colorAuthored`; `PaintOr`, `CopyPaint`; virtual `SetPaint`, `ApplyRole`; `RolePaint`, `InheritPaint`, `RepaintChildren`; shape — `edgeRole`, C#-only `cornerRole`/`accentRole`, `ApplyShape` (from the setters and `InheritPaint`) |
 | `layout state` | `arrangedRect`, `DesiredSize`, `ClipRect`; flags `isMeasureDirty`, `isArrangeDirty`, `hidden`; `InvalidateLayout`, `InvalidateArrange`, `Hide`, `Show` |
 | `layout (two-pass)` | `Measure`, `Arrange`, `WriteArranged` (clip and palette inheritance), `ArrangeByAlignment`, `RefreshSubtreeCache`, `Emit` |
 | `pointer` | `onEnter`…`onScroll` + `RegisterOnX` + virtual `OnPointerX`; `hitTestable`; `ActiveContextTarget`, `takesActiveControl`; `contextMenu`, `stopsContextMenu`; drag: `draggable`, `StartDrag`, `onDrag`, `onDragStop`, `DraggingOverStart`/`DraggingOver`/`DraggingOverEnd`, `FinishDrag`, `DraggedOutOfWindow`/`DraggedIntoWindow`, `ChildDraggedOut` |
@@ -83,8 +83,8 @@ Why: [[ui-quads-pool]], [[ui-draw-list]], [[ui-draw-list-publish]].
 ### Palettes — static, not a control
 Loads `Palettes/*.palette.xml` (`LoadPalettes`, bootstrap), `Get(name)`, `Default` (named by `UISettings.palette`); owns the paint table
 (`Table`, replaced whole). Paint words: `Inline`, `IsInline`, `ColorOf`. Derived words: `Surface`, `Ink`, `Step`;
-`Contrast`. Types beside it: `PaletteDefinition` `<Palette>`, `PaletteRole`. The GPU copy is
-`UIEngineModule.MirrorPaints`, set 1 binding 4.
+`Contrast`; `RoleOffsets` for gradient role stops. Types beside it: `PaletteDefinition` `<Palette>`, `PaletteRole`. The GPU copy is
+`UIEngineModule.MirrorPaints`, set 1 binding 4, read by both stages.
 Why: [[ui-palettes]].
 
 ### UIData — value types
@@ -143,7 +143,9 @@ Why: [[ui-palettes]].
 ## Documents
 
 - **BlockControl** (no XML) · TextRunControl — one block of a note: the paragraph's string with its runs as
-  spans. `stylingType`, `ApplyLayout(DocumentLayout)`, `AppendRun`, `Runs()`. Region `text and spans`:
+  spans. `stylingType`, `listKind`/`listLevel`/`isChecked`, `ApplyLayout(DocumentLayout)` (list indent as
+  `padding.left`, marker sync), `Measure` (wraps inside the indent), `Arrange` (places the dot or
+  `CheckBoxControl` marker child), `AppendRun`, `Runs()`. Region `text and spans`:
   `InsertText`, `RemoveText`, `SplitAt`, `AppendBlock`, `Snapshot`/`SliceSnapshot`/`Restore`/`From`,
   `InsertSlice`/`AppendSlice`, `StyleAt`, `StyleRange`, `SplitSpanAt`, `MergeSpans`. A boundary belongs to the
   span **after** it. Replaces `Block`/`ContentBlock` + `TextRun`.
@@ -154,14 +156,15 @@ Why: [[ui-palettes]].
   (`SetCaret`, `CollapseSelection`, `GlyphPressed`, `OnPointerTap`), `caret navigation` (`CaretPoint`,
   `CaretAtPoint`, `CaretOffText`, `AdjacentBlock`), `selection` (`SelectWord`, `SelectAll`,
   `OrderedSelection`, highlights inserted at the **head** of `children` so they paint behind the text),
-  `editing` (`DeleteSelection`, `SplitBlock`, `TypeChar`, `Blocks`), `styling` (`StyleSource`,
+  `editing` (`DeleteSelection`, `SplitBlock`, `TypeChar`, `Blocks`), `lists` (`TypeListPrefix`,
+  `ClearListAtCaret`, `ShiftListLevel`, `SetBlockList`), `styling` (`StyleSource`,
   `CaretBlockStyling`, `ApplyStyle`, `ArmStyle`, `ApplyStyleTo`/`ApplyStyleBetween`, `SetBlockStyling`,
   `SnapshotBlocks`, `RestoreBlocks`), `addressing` (`AddressOf`, `Resolve`, `CaretTo`) and `undo primitives`
   (`InsertText`, `RemoveText`, `DeleteBetween`, `InsertFragment`, `JoinBlockWithNext`). Also declares
   `CaretSlot`, `StyleDelta` and `CaretStyle`. Old `DocumentControl`.
 - **DocumentEditorControl** `<DocumentEditor>` · ScrollableControl, `IContext` — one open note.
   `Source`/`LoadPath`/`LoadDocument`, `Save`, `needsNaming`, `FocusCaret`; regions `styling` (forwards under a
-  `BeginStep`), `selection` (`SelectLine`, `BeginSelectionDrag`, `OnDrag` + autoscroll), `caret movement`
+  `BeginStep`; also `SetChecked`, `ShiftListLevel`), `selection` (`SelectLine`, `BeginSelectionDrag`, `OnDrag` + autoscroll), `caret movement`
   (`MoveCaret`), `editing` (`Backspace`, `Delete`, `SplitBlock`, `TypeChar`), `history`
   (`BeginStep`/`Undo`/`Redo`/`MarkDirty`), `focus`. `Arrange` scrolls to the caret and **must never exit with
   the arrange flag set**. XML adds `CaretColorHex`, `SelectionColorHex` to the scrollable's. Old
@@ -172,14 +175,17 @@ Why: [[ui-palettes]].
   `PxBox` (the one part that does take the focus; captures the range on its press). XML `HoverColorHex`,
   `PressColorHex`, `IdleInkColorHex`, `ActiveInkColorHex`, `SeparatorColorHex`, `FieldColorHex`. Old
   `DocumentToolbarControl`, [[document-format-bar]], [[armed-style-at-the-caret]] (old).
-- **RichTextDocument** `<Document>` — the model: `blocks`, `name`, `layout`; `ParseXML`, `Save`.
-  **DocumentEditSession** — the open file: `path`, `undo`, `isDirty`, `MarkDirty`, `Repath`, `Save`.
-- **DocumentXml** — load and save of the note file format; the block level is written by hand. Since 6d
-  no XSD type declares `"Document"`/`"Block"`/`"Run"`, so a note's `schemaLocation` validates nothing.
-  [../Patterns/document-xml-persistence.md](../Patterns/document-xml-persistence.md)
+- **RichTextDocument** `<Document>` — the model: `blocks`, `name`, `layout`; `extensions`, `Load`, `Save`
+  (switch on the extension). **DocumentEditSession** — the open file: `path`, `undo`, `isDirty`, `MarkDirty`,
+  `Repath`, `Save`.
+- **DocumentXml** — `Load`/`Parse(XElement)` build blocks from a `<Document>` tree, `ToXml`/`Save` write one;
+  the block level is written by hand. Since 6d no XSD type declares `"Document"`/`"Block"`/`"Run"`, so a
+  note's `schemaLocation` validates nothing. [../Patterns/document-xml-persistence.md](../Patterns/document-xml-persistence.md)
+- **NoteFormats.cs** — `MarkdownFormat` and `PlainTextFormat`: `Read(text, name) → XElement`,
+  `Write(XElement) → string`. Regions `read`, `write`. [[note-file-formats]]
 - **DocumentEdits.cs** — `DocumentAddress` (`(block, offset)`), `BlockSnapshot`,
   `DocumentFragment`, and the records `TextEdit`, `SplitEdit`, `DeleteRangeEdit`,
-  `StyleRangeEdit`. Undo currency is snapshots and fragments, never control references — undo rebuilds
+  `StyleRangeEdit`, `BlockStateEdit`. Undo currency is snapshots and fragments, never control references — undo rebuilds
   blocks. Why: [[ui-engine-stack]] § landing 6c.
 
 ## Layout containers
@@ -193,7 +199,8 @@ Why: [[ui-palettes]].
   `Grid.Row`/`Grid.Column`. Child elements `<RowDefinition Height SizeMode GapAfter>`,
   `<ColumnDefinition Width SizeMode GapAfter>`; `SizeMode` is `Fixed`/`Auto`/`Star`. Old `GridListControl`.
 - **ScrollableControl** `<Scrollable>` (0–1 child) · ContainerControl — scrolls its child; one thumb
-  per axis, appended last so hit-test reaches them first. Regions `properties`, `state`, `layout`,
+  per axis, appended last so hit-test reaches them first; no gutter — thumbs overlay the content's
+  edge. Regions `properties`, `state`, `layout`,
   `scrolling`: `OnScrollInput`, `OnPointerScroll`, `SetScrollOffset`/`GetScrollOffset`, `ScrollIntoView`. XML
   `ScrollDirection`, `ScrollSensitivity`, `Overscroll`, `ThumbColorHex`, `ThumbHoverColorHex`,
   `ThumbPressColorHex`. Old `ScrollableControl`, [[scrollbar-thumb]], [[scroll-overscroll]] (old).
