@@ -364,10 +364,8 @@ namespace ArctisAurora.Core.Data
 
         // Runs between frames. Order matters: remove dead, then resequence survivors.
         //
-        // Guarded like a write because it is one — compaction moves pool memory. Note this makes
-        // DataManager.FrameEdge()'s flat loop over every pool a latent problem: it runs from
-        // MainTick, so the day a pool is owned by Physics this throws. That loop needs to become
-        // per-system before that happens. Both pools are Main-owned today, so it cannot fire yet.
+        // Guarded like a write because it is one — compaction moves pool memory. Each owner runs
+        // its own pools' edges through DataManager.FrameEdge(owner).
         public void FrameEdge()
         {
             AssertOwner(nameof(FrameEdge));

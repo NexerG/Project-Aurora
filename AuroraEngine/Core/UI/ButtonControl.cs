@@ -1,4 +1,6 @@
+using ArctisAurora.Core.Animation;
 using ArctisAurora.Core.Registry;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -16,6 +18,12 @@ namespace ArctisAurora.Core.UI
         private bool hovered;
         private bool pressed;
 
+        // the interaction signal and the spring on state that follows it, with the feel it was made with
+        private SignalHandle _stateSignal = SignalHandle.None;
+        private AnimationHandle _stateSpring = AnimationHandle.None;
+        private float _springFrequency;
+        private float _springDamping;
+
         // The authored colour, not the shown one — the state picks which of the three is painted.
         public override string colorHex
         {
@@ -25,26 +33,45 @@ namespace ArctisAurora.Core.UI
                 base.colorHex = value;
                 restColorHex = value;
                 restPaint = Palettes.Inline(value);
-                ApplyState();
+                PaintState();
+            }
+        }
+
+        // 0 rest, 1 hover, 2 press, eased between by the state spring.
+        [A_Animatable]
+        public float state
+        {
+            get => field;
+            set
+            {
+                field = value;
+                PaintState();
             }
         }
 
         public ButtonControl()
         {
-            ApplyState();
+            PaintState();
         }
 
         protected override void ApplyRole(PaletteDefinition scheme, uint ground)
         {
             if (role == PaletteRole.None) return;
             restPaint = RolePaint(scheme, ground);
-            ApplyState();
+            if (_stateSpring != AnimationHandle.None
+                && (_springFrequency != scheme.stateFrequency || _springDamping != scheme.stateDamping))
+            {
+                Animations.Stop(_stateSpring);
+                _stateSpring = AnimationHandle.None;
+                EnsureSpring();
+            }
+            PaintState();
         }
 
         public override bool OnPointerEnter(PointerEvent e)
         {
             hovered = true;
-            ApplyState();
+            Signal();
             base.OnPointerEnter(e);
             return true;
         }
@@ -53,7 +80,7 @@ namespace ArctisAurora.Core.UI
         {
             hovered = false;
             pressed = false;
-            ApplyState();
+            Signal();
             base.OnPointerExit(e);
             return true;
         }
@@ -61,7 +88,7 @@ namespace ArctisAurora.Core.UI
         public override bool OnPointerPress(PointerEvent e)
         {
             pressed = true;
-            ApplyState();
+            Signal();
             base.OnPointerPress(e);
             return true;
         }
@@ -69,22 +96,61 @@ namespace ArctisAurora.Core.UI
         public override bool OnPointerRelease(PointerEvent e)
         {
             pressed = false;
-            ApplyState();
+            Signal();
             if (e.button == PointerEvent.leftButton) base.OnPointerRelease(e);
             return true;
         }
 
-        // An authored state colour wins; an authored rest falls back to itself, a palette rest steps.
-        private void ApplyState()
+        public override void OnDestroy()
         {
-            string? stateHex = pressed ? pressColorHex ?? hoverColorHex : hovered ? hoverColorHex : null;
-            bool fromPalette = restColorHex == null && palette != null && role != PaletteRole.None;
-            uint state = pressed ? 2u : hovered ? 1u : 0u;
+            Animations.Stop(_stateSpring);
+            Signals.Release(_stateSignal);
+            base.OnDestroy();
+        }
 
-            SetPaint(stateHex != null ? Palettes.Inline(stateHex)
-                   : fromPalette ? Palettes.Step(palette!, restPaint, state)
-                   : restPaint);
-            visual.alpha = fromPalette && role == PaletteRole.Clear && state == 0 ? 0f : alpha;
+        // Points the state signal at the current interaction.
+        private void Signal()
+        {
+            EnsureSpring();
+            Signals.Set(_stateSignal, new Vector4(pressed ? 2f : hovered ? 1f : 0f, 0f, 0f, 0f));
+        }
+
+        private void EnsureSpring()
+        {
+            if (_stateSignal == SignalHandle.None) _stateSignal = Signals.Create();
+            if (_stateSpring != AnimationHandle.None) return;
+
+            PaletteDefinition feel = palette ?? Palettes.Default;
+            _springFrequency = feel.stateFrequency;
+            _springDamping = feel.stateDamping;
+            _stateSpring = Animations.Spring(this, nameof(state), _springFrequency, _springDamping, _stateSignal);
+        }
+
+        // Paints the current state. A palette surface blends on the GPU; anything else is mixed here.
+        private void PaintState()
+        {
+            bool fromPalette = restColorHex == null && palette != null && role != PaletteRole.None;
+            float s = Math.Clamp(state, 0f, 2f);
+
+            if (s == 0f || (fromPalette && hoverColorHex == null && pressColorHex == null && Palettes.IsSurfaceRest(restPaint)))
+            {
+                SetPaint(restPaint);
+                visual.state = s;
+            }
+            else
+            {
+                Vector3 rest = Palettes.ColorOf(restPaint);
+                Vector3 hover = hoverColorHex != null ? Control.HexToRGB(hoverColorHex)
+                              : fromPalette ? Palettes.ColorOf(Palettes.Step(palette!, restPaint, 1)) : rest;
+                string? pressHex = pressColorHex ?? hoverColorHex;
+                Vector3 press = pressHex != null ? Control.HexToRGB(pressHex)
+                              : fromPalette ? Palettes.ColorOf(Palettes.Step(palette!, restPaint, 2)) : rest;
+
+                SetPaint(Palettes.Inline(s <= 1f ? Vector3.Lerp(rest, hover, s) : Vector3.Lerp(hover, press, s - 1f)));
+                visual.state = 0f;
+            }
+
+            visual.alpha = fromPalette && role == PaletteRole.Clear ? alpha * Math.Min(s, 1f) : alpha;
             RepaintChildren();
         }
     }

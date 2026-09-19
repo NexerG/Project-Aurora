@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Data;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using System.Numerics;
@@ -25,7 +26,7 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("Pos", "UI", "Where on the ramp this stop sits, 0 to 1.")]
         public float position = 0f;
 
-        [A_XSDElementProperty("Role", "UI", "Palette role this stop takes its colour from, in place of Color. A surface or Ink.")]
+        [A_XSDElementProperty("Role", "UI", "Palette role this stop takes its colour from, in place of Color. A surface, Ink or MutedInk.")]
         public PaletteRole role = PaletteRole.None;
 
         [A_XSDElementProperty("Shade", "UI", "Palette steps a Role stop moves toward its text colour; negative moves away.")]
@@ -74,7 +75,7 @@ namespace ArctisAurora.Core.UI
         private GpuGradientStop _element0;
     }
 
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential), A_XSDType("GpuGradient", "DataPools")]
     public struct GpuGradient
     {
         // direction is the baked unit vector of Angle; center is normalised across the rect
@@ -94,14 +95,10 @@ namespace ArctisAurora.Core.UI
 
         public const int MaxStops = 8;
 
-        // Slot 0 is reserved and never named, so a zeroed ControlData row is gradient-free.
-        private static readonly List<GpuGradient> table = new List<GpuGradient> { default };
+        // the gradient table; slot 0 is reserved and never named, so a zeroed paint word is gradient-free
+        public static DataPool Pool { get; private set; } = null!;
         private static readonly Dictionary<string, uint> indices =
             new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
-
-        public static int Count => table.Count;
-
-        public static GpuGradient[] Table => table.ToArray();
 
         // An unnamed gradient is index 0. An unknown name is an authoring error, not a fallback.
         public static uint IndexOf(string name)
@@ -111,13 +108,16 @@ namespace ArctisAurora.Core.UI
             throw new Exception($"Gradient '{name}' is not defined in Gradients.gradients.xml.");
         }
 
-        // The word a row carries: the palette's first slot high, the gradient id low.
-        public static uint Word(uint id, PaletteDefinition? palette) => id == 0 ? 0 : palette!.firstSlot << 16 | id;
+        // The paint word a row carries: gradientBit, the palette's first slot, then the gradient id.
+        public static uint Word(uint id, PaletteDefinition? palette) => id == 0 ? 0 : Palettes.gradientBit | palette!.firstSlot << 14 | id;
 
         [A_XSDActionDependency("Gradients.LoadGradients", "Bootstrap")]
         public static bool LoadGradients()
         {
-            table.RemoveRange(1, table.Count - 1);
+            Pool = DataManager.Get("Gradients");
+            Pool.Rewind();
+            int reserved = Pool.Append();
+            Pool.GetSpan<GpuGradient>()[reserved] = default;
             indices.Clear();
 
             // Hosts with no gradients of their own ship no file at all.
@@ -131,8 +131,9 @@ namespace ArctisAurora.Core.UI
             foreach (XElement element in root.Elements())
             {
                 GradientDefinition definition = ParseGradient(element);
-                indices[definition.name] = (uint)table.Count;
-                table.Add(Bake(definition));
+                int row = Pool.Append();
+                indices[definition.name] = (uint)row;
+                Pool.GetSpan<GpuGradient>()[row] = Bake(definition);
             }
 
             return true;

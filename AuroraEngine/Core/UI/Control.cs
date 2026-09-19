@@ -1,7 +1,9 @@
+using ArctisAurora.Core.Animation;
 using ArctisAurora.Core.Data;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
+using ArctisAurora.EngineWork;
 using System.Numerics;
 
 namespace ArctisAurora.Core.UI
@@ -45,6 +47,7 @@ namespace ArctisAurora.Core.UI
 
         #region ---- authored layout ----
         [A_XSDElementProperty("Width", "UI", "Width in pixels. 0 = auto.")]
+        [A_Animatable]
         public float preferredWidth
         {
             get => arrange.preferredWidth;
@@ -52,6 +55,7 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("Height", "UI", "Height in pixels. 0 = auto.")]
+        [A_Animatable]
         public float preferredHeight
         {
             get => arrange.preferredHeight;
@@ -59,6 +63,7 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("MinWidth", "UI", "Minimum width in pixels.")]
+        [A_Animatable]
         public float minWidth
         {
             get => arrange.minWidth;
@@ -66,6 +71,7 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("MinHeight", "UI", "Minimum height in pixels.")]
+        [A_Animatable]
         public float minHeight
         {
             get => arrange.minHeight;
@@ -120,6 +126,7 @@ namespace ArctisAurora.Core.UI
         public virtual void SetHeight(float y) => height = y;
 
         [A_XSDElementProperty("Margin", "UI", "Space outside the control in pixels.")]
+        [A_Animatable]
         public Thickness margin
         {
             get => arrange.margin;
@@ -127,6 +134,7 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("Padding", "UI", "Space inside the control in pixels.")]
+        [A_Animatable]
         public Thickness padding
         {
             get => arrange.padding;
@@ -148,6 +156,7 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("HorizontalPos", "UI", "Position within the parent, [0;1]. Works with non-container controls.")]
+        [A_Animatable]
         public float horizontalPosition
         {
             get => arrange.horizontalPosition;
@@ -155,6 +164,7 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("VerticalPos", "UI", "Position within the parent, [0;1]. Works with non-container controls.")]
+        [A_Animatable]
         public float verticalPosition
         {
             get => arrange.verticalPosition;
@@ -214,6 +224,7 @@ namespace ArctisAurora.Core.UI
         } = "#FFFFFF";
 
         [A_XSDElementProperty("Alpha", "UI", "Opacity of the control, 0 to 1. Multiplies the coverage its mask already carries.")]
+        [A_Animatable]
         public virtual float alpha
         {
             get => field;
@@ -342,6 +353,7 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("EdgeThickness", "UI", "Border widths in design-space pixels, drawn inward from each side. Zero draws none.")]
+        [A_Animatable]
         public Thickness edgeThickness
         {
             get => field;
@@ -393,11 +405,135 @@ namespace ArctisAurora.Core.UI
             {
                 field = value;
                 gradientId = Gradients.IndexOf(value);
-                visual.gradientIndex = Gradients.Word(gradientId, palette ?? Palettes.Default);
+                gradientWord = Gradients.Word(gradientId, palette ?? Palettes.Default);
             }
         } = "";
 
+        [A_XSDElementProperty("EdgeGradient", "UI", "Name of a gradient in Gradients.gradients.xml, ramped across this control's rect in place of its edge colour.")]
+        public string edgeGradient
+        {
+            get => field;
+            set
+            {
+                field = value;
+                edgeGradientId = Gradients.IndexOf(value);
+                edgeGradientWord = Gradients.Word(edgeGradientId, palette ?? Palettes.Default);
+            }
+        } = "";
+
+        [A_XSDElementProperty("Effect", "UI", "Name of an effect in Effects.effects.xml, played on this control from when it is set.")]
+        public string effect
+        {
+            get => field;
+            set
+            {
+                field = value;
+                visual.effect = Effects.IndexOf(value);
+                RestartEffect();
+            }
+        } = "";
+
+        // Replays the effect from the current engine time.
+        public void RestartEffect() => visual.effectStart = (float)Engine.totalTime;
+
+        [A_XSDElementProperty("Clip", "UI", "Name of a clip in Animations/*.anim.xml, played once when this control starts, or at once when set on a started control.")]
+        public string clip
+        {
+            get => field;
+            set
+            {
+                field = value;
+                StopClip(ref _clipRun);
+                if (_begun) PlayClip();
+            }
+        } = "";
+
+        [A_XSDElementProperty("HoverClip", "UI", "Name of a clip in Animations/*.anim.xml, played while the pointer is over this control and run back when it leaves.")]
+        public string hoverClip
+        {
+            get => field;
+            set
+            {
+                field = value;
+                StopClip(ref _hoverRun);
+            }
+        } = "";
+
+        [A_XSDElementProperty("PressClip", "UI", "Name of a clip in Animations/*.anim.xml, played while this control is pressed and run back when it is released.")]
+        public string pressClip
+        {
+            get => field;
+            set
+            {
+                field = value;
+                StopClip(ref _pressRun);
+            }
+        } = "";
+
+        [A_XSDElementProperty("StateBinding", "UI", "Name of a binding in Animations/*.anim.xml that eases this control between rest, hover and press.")]
+        public string stateBinding
+        {
+            get => field;
+            set
+            {
+                field = value;
+                _binding?.Detach();
+                _binding = null;
+            }
+        } = "";
+
+        // clip runs, the state binding, and the interaction they follow
+        private bool _begun;
+        private AnimationHandle[] _clipRun = Array.Empty<AnimationHandle>();
+        private AnimationHandle[] _hoverRun = Array.Empty<AnimationHandle>();
+        private AnimationHandle[] _pressRun = Array.Empty<AnimationHandle>();
+        private StateBinding? _binding;
+        private bool _pointerOver;
+        private bool _pointerDown;
+
+        public override void OnStart()
+        {
+            base.OnStart();
+            _begun = true;
+            PlayClip();
+        }
+
+        private void PlayClip()
+        {
+            if (!string.IsNullOrEmpty(clip)) _clipRun = Animations.Play(this, clip, false);
+        }
+
+        // Runs a clip forward, playing it first when it is not running.
+        private void RunClip(string name, ref AnimationHandle[] run)
+        {
+            if (string.IsNullOrEmpty(name)) return;
+            if (run.Length == 0) run = Animations.Play(this, name, true);
+            else Animations.Direct(run, true);
+        }
+
+        private static void StopClip(ref AnimationHandle[] run)
+        {
+            foreach (AnimationHandle handle in run) Animations.Stop(handle);
+            run = Array.Empty<AnimationHandle>();
+        }
+
+        // Points the state binding at the current interaction, attaching it on first use.
+        private void Interacted()
+        {
+            if (string.IsNullOrEmpty(stateBinding)) return;
+            if (_binding == null)
+            {
+                PaletteDefinition feel = palette ?? Palettes.Default;
+                _binding = StateBinding.Attach(this, AnimationLibrary.Binding(stateBinding), feel.stateFrequency, feel.stateDamping);
+            }
+            _binding.Set(_pointerOver, _pointerDown);
+        }
+
+        // gradient ids and the paint words Emit puts on the row in place of visual's
         protected uint gradientId;
+        private uint gradientWord;
+        private uint edgeGradientId;
+        private uint edgeGradientWord;
 
         // Paints an authored hex, or the role when there is none.
         public void PaintOr(string? hex, PaletteRole fallback)
@@ -447,7 +583,8 @@ namespace ArctisAurora.Core.UI
                     ? Palettes.Surface(palette, edgeRole)
                     : Palettes.EdgeAccent(palette);
             ApplyShape();
-            visual.gradientIndex = Gradients.Word(gradientId, palette);
+            gradientWord = Gradients.Word(gradientId, palette);
+            edgeGradientWord = Gradients.Word(edgeGradientId, palette);
             if (!colorAuthored) ApplyRole(palette, ground);
 
             uint below = GroundBelow(ground);
@@ -695,7 +832,10 @@ namespace ArctisAurora.Core.UI
             g.clip = new Vector4(c.x, c.y, c.Right, c.Bottom);
             g.gradientRect = new Vector4(r.x, r.y, r.Right, r.Bottom);
 
-            quads.GetSpan<VulkanControl>()[row] = _visual;
+            ref VulkanControl v = ref quads.GetSpan<VulkanControl>()[row];
+            v = _visual;
+            if (gradientWord != 0) v.paint = gradientWord;
+            if (edgeGradientWord != 0) v.edgePaint = edgeGradientWord;
         }
         #endregion
 
@@ -726,15 +866,37 @@ namespace ArctisAurora.Core.UI
         public Func<PointerEvent, bool>? onScroll;
         public void RegisterOnScroll(Func<PointerEvent, bool> handler) => onScroll = handler;
 
-        public virtual bool OnPointerEnter(PointerEvent e) => onEnter?.Invoke(e) ?? false;
-        public virtual bool OnPointerExit(PointerEvent e) => onExit?.Invoke(e) ?? false;
+        public virtual bool OnPointerEnter(PointerEvent e)
+        {
+            _pointerOver = true;
+            RunClip(hoverClip, ref _hoverRun);
+            Interacted();
+            return onEnter?.Invoke(e) ?? false;
+        }
+        public virtual bool OnPointerExit(PointerEvent e)
+        {
+            _pointerOver = false;
+            _pointerDown = false;
+            Animations.Direct(_hoverRun, false);
+            Interacted();
+            return onExit?.Invoke(e) ?? false;
+        }
         public virtual bool OnPointerMove(PointerEvent e) => onMove?.Invoke(e) ?? false;
         public virtual bool OnPointerPress(PointerEvent e)
         {
+            _pointerDown = true;
+            RunClip(pressClip, ref _pressRun);
+            Interacted();
             if (draggable && e.button == PointerEvent.leftButton) StartDrag();
             return onPress?.Invoke(e) ?? false;
         }
-        public virtual bool OnPointerRelease(PointerEvent e) => onRelease?.Invoke(e) ?? false;
+        public virtual bool OnPointerRelease(PointerEvent e)
+        {
+            _pointerDown = false;
+            Animations.Direct(_pressRun, false);
+            Interacted();
+            return onRelease?.Invoke(e) ?? false;
+        }
         public virtual bool OnPointerTap(PointerEvent e) => onTap?.Invoke(e) ?? false;
 
         // The wheel, carried in PointerEvent.delta. Walks up like every other phase.
@@ -831,6 +993,11 @@ namespace ArctisAurora.Core.UI
 
         public override void OnDestroy()
         {
+            StopClip(ref _clipRun);
+            StopClip(ref _hoverRun);
+            StopClip(ref _pressRun);
+            _binding?.Detach();
+            _binding = null;
             base.OnDestroy();
             UIEngine.Forget(this);
         }

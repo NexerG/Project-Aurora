@@ -31,6 +31,12 @@
     <xs:attribute name="EdgeRole" type="UI:PaletteRole" />
     <xs:attribute name="EdgeThickness" type="xs:string" />
     <xs:attribute name="Gradient" type="xs:string" />
+    <xs:attribute name="EdgeGradient" type="xs:string" />
+    <xs:attribute name="Effect" type="xs:string" />
+    <xs:attribute name="Clip" type="xs:string" />
+    <xs:attribute name="HoverClip" type="xs:string" />
+    <xs:attribute name="PressClip" type="xs:string" />
+    <xs:attribute name="StateBinding" type="xs:string" />
     <xs:attribute name="onEnter" type="actions:UI" />
     <xs:attribute name="onExit" type="actions:UI" />
     <xs:attribute name="onMove" type="actions:UI" />

@@ -294,6 +294,10 @@ namespace ArctisAurora.Core.UI
         // stroke, in design pixels — against the MSDF silhouette on MTSDFControl, the rounded box otherwise
         public uint edgePaint;
         public Vector4 edgeThickness;
-        public uint gradientIndex;
+        // 0 rest, 1 hover, 2 press; blends a surface rest slot toward its next two slots
+        public float state;
+        // Effects table row and the engine time it started at
+        public uint effect;
+        public float effectStart;
     }
 }

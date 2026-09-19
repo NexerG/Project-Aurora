@@ -34,7 +34,7 @@ One tree node. Layout state is its `UIElements` pool row (`arrange` → `Arrange
 | region | holds |
 |---|---|
 | `authored layout` | the inherited XML sizing attrs (see XML authoring); `SetSize`, `SetWidth`, `SetHeight`, `IsWidthStar`, `IsHeightStar` |
-| `paint` | colour, alpha, corner radii, edge, gradient (`gradientId`, word rebuilt in `InheritPaint`); `kind`, `sampler`, `SetUVRect`; palette — `role`, `paletteName`, `ownPalette`, `palette`, `groundBelow`, `colorAuthored`; `PaintOr`, `CopyPaint`; virtual `SetPaint`, `ApplyRole`; `RolePaint`, `InheritPaint`, `RepaintChildren`; shape — `edgeRole`, C#-only `cornerRole`/`accentRole`, `ApplyShape` (from the setters and `InheritPaint`) |
+| `paint` | colour, alpha, corner radii, edge, gradient (`gradientId`, word rebuilt in `InheritPaint`); `kind`, `sampler`, `SetUVRect`; palette — `role`, `paletteName`, `ownPalette`, `palette`, `groundBelow`, `colorAuthored`; `PaintOr`, `CopyPaint`; virtual `SetPaint`, `ApplyRole`; `RolePaint`, `InheritPaint`, `RepaintChildren`; shape — `edgeRole`, C#-only `cornerRole`/`accentRole`, `ApplyShape` (from the setters and `InheritPaint`); animation — `effect`/`RestartEffect`, `clip` (played in `OnStart`), `hoverClip`, `pressClip`, `stateBinding`, `RunClip`, `StopClip`, `Interacted` (hooks in the base `OnPointerEnter/Exit/Press/Release`, cleanup in `OnDestroy`) |
 | `layout state` | `arrangedRect`, `DesiredSize`, `ClipRect`; flags `isMeasureDirty`, `isArrangeDirty`, `hidden`; `InvalidateLayout`, `InvalidateArrange`, `Hide`, `Show` |
 | `layout (two-pass)` | `Measure`, `Arrange`, `WriteArranged` (clip and palette inheritance), `ArrangeByAlignment`, `RefreshSubtreeCache`, `Emit` |
 | `pointer` | `onEnter`…`onScroll` + `RegisterOnX` + virtual `OnPointerX`; `hitTestable`; `ActiveContextTarget`, `takesActiveControl`; `contextMenu`, `stopsContextMenu`; drag: `draggable`, `StartDrag`, `onDrag`, `onDragStop`, `DraggingOverStart`/`DraggingOver`/`DraggingOverEnd`, `FinishDrag`, `DraggedOutOfWindow`/`DraggedIntoWindow`, `ChildDraggedOut` |
@@ -82,9 +82,9 @@ Why: [[ui-quads-pool]], [[ui-draw-list]], [[ui-draw-list-publish]].
 
 ### Palettes — static, not a control
 Loads `Palettes/*.palette.xml` (`LoadPalettes`, bootstrap), `Get(name)`, `Default` (named by `UISettings.palette`); owns the paint table
-(`Table`, replaced whole). Paint words: `Inline`, `IsInline`, `ColorOf`. Derived words: `Surface`, `Ink`, `Step`;
+(`Paints` pool, `GpuPaint`). Paint words: `Inline`, `IsInline`, `ColorOf`. Derived words: `Surface`, `Ink`, `Step`;
 `Contrast`; `RoleOffsets` for gradient role stops. Types beside it: `PaletteDefinition` `<Palette>`, `PaletteRole`. The GPU copy is
-`UIEngineModule.MirrorPaints`, set 1 binding 4, read by both stages.
+`UIEngineModule.TableMirror<GpuPaint>`, set 1 binding 4, read by both stages.
 Why: [[ui-palettes]].
 
 ### UIData — value types

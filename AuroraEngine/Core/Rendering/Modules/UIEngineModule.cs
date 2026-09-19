@@ -23,7 +23,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override ERendererStage RendererStage => ERendererStage.UI;
 
         internal override uint[][] descriptorMaxCounts => new uint[][] {
-            new uint[] { 1, 1, 1, 1, 1 },             // set 1: camera UBO, geometry SSBO, control SSBO, gradient SSBO, paint SSBO
+            new uint[] { 1, 1, 1, 1, 1, 1 },          // set 1: camera UBO, geometry SSBO, control SSBO, gradient SSBO, paint SSBO, effect SSBO
             new uint[] { TextureAsset.MaxTextures }   // set 2: one sampler per distinct texture
         };
 
@@ -49,7 +49,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         {
             new List<DescriptorType> {
                 DescriptorType.UniformBuffer, DescriptorType.StorageBuffer, DescriptorType.StorageBuffer,
-                DescriptorType.StorageBuffer, DescriptorType.StorageBuffer
+                DescriptorType.StorageBuffer, DescriptorType.StorageBuffer, DescriptorType.StorageBuffer
             },
             new List<DescriptorType> {
                 DescriptorType.CombinedImageSampler
@@ -59,7 +59,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         {
             new List<ShaderStageFlags>{
                 ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit, ShaderStageFlags.VertexBit,
-                ShaderStageFlags.FragmentBit, ShaderStageFlags.VertexBit | ShaderStageFlags.FragmentBit
+                ShaderStageFlags.FragmentBit, ShaderStageFlags.VertexBit | ShaderStageFlags.FragmentBit, ShaderStageFlags.VertexBit
             },
             new List<ShaderStageFlags>{
                 ShaderStageFlags.FragmentBit
@@ -68,7 +68,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override DescriptorBindingFlags[][] descriptorBindingFlags => [
             [
                 DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.None,
-                DescriptorBindingFlags.None, DescriptorBindingFlags.None
+                DescriptorBindingFlags.None, DescriptorBindingFlags.None, DescriptorBindingFlags.None
             ],
             [
                 DescriptorBindingFlags.VariableDescriptorCountBit | DescriptorBindingFlags.PartiallyBoundBit
@@ -90,16 +90,10 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         private nint[] _controlMapped = null!;
         private int[] _mirrorCapacity = null!;
 
-        // Per-image mirrors of Palettes.Table, rewritten when the published table is a different array.
-        private Silk.NET.Vulkan.Buffer[] _paintBuffers = null!;
-        private DeviceMemory[] _paintMemories = null!;
-        private nint[] _paintMapped = null!;
-        private Vector4[]?[] _paintWritten = null!;
-
-        // One table for the whole process, uploaded once — never destroyed with a window, or the
-        // windows that outlive it would keep a dangling descriptor.
-        private static Silk.NET.Vulkan.Buffer _gradientBuffer;
-        private static DeviceMemory _gradientMemory;
+        // per-image mirrors of the paint and gradient pools
+        private readonly TableMirror<GpuPaint> _paints = new TableMirror<GpuPaint>();
+        private readonly TableMirror<GpuGradient> _gradients = new TableMirror<GpuGradient>();
+        private readonly TableMirror<GpuEffect> _effects = new TableMirror<GpuEffect>();
 
         private int[] _frameBuiltCapacity = null!;
         private int[] _frameTableVersion = null!;
@@ -159,10 +153,9 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             _controlMapped = new nint[window.imageCount];
             _mirrorCapacity = new int[window.imageCount];
             Array.Fill(_mirrorCapacity, -1);
-            _paintBuffers = new Silk.NET.Vulkan.Buffer[window.imageCount];
-            _paintMemories = new DeviceMemory[window.imageCount];
-            _paintMapped = new nint[window.imageCount];
-            _paintWritten = new Vector4[]?[window.imageCount];
+            _paints.Resize((int)window.imageCount);
+            _gradients.Resize((int)window.imageCount);
+            _effects.Resize((int)window.imageCount);
         }
 
         internal override void PrepareObjects()
@@ -170,17 +163,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             Renderer.renderer.CreateCommandPool((uint)Renderer.queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit), out moduleCommandPool, CommandPoolCreateFlags.ResetCommandBufferBit);
             RegisterVulkanQueue(Renderer.queueAllocator, Renderer.vk, ref Renderer.logicalDevice);
             _quad = AssetRegistries.GetRegistryByValueType<string, AVulkanMesh>(typeof(AVulkanMesh))["uidefault"];
-            CreateGradientTable();
             PrepareCamera();
-        }
-
-        // Slot 0 is always present, so the buffer is never zero-sized even with no gradients authored.
-        private static void CreateGradientTable()
-        {
-            if (_gradientBuffer.Handle != default) return;
-
-            GpuGradient[] gradients = Gradients.Table;
-            AVulkanBufferHandler.CreateBuffer(ref gradients, ref Renderer.transferQueue, ref Renderer.transferCommandPool, ref _gradientBuffer, ref _gradientMemory, BufferUsageFlags.StorageBufferBit);
         }
 
         internal override void PrepareCamera()
@@ -196,7 +179,9 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override void UpdateModule(int currentFrame)
         {
             MirrorDrawList(currentFrame);
-            MirrorPaints(currentFrame);
+            if (_paints.Sync(Palettes.Paints, currentFrame)) _frameBuiltCapacity[currentFrame] = -1;
+            if (_gradients.Sync(Gradients.Pool, currentFrame)) _frameBuiltCapacity[currentFrame] = -1;
+            if (_effects.Sync(Effects.Pool, currentFrame)) _frameBuiltCapacity[currentFrame] = -1;
 
             if (_frameBuiltCapacity[currentFrame] != _mirrorCapacity[currentFrame])
             {
@@ -248,47 +233,15 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             AVulkanBufferHandler.WriteMappedRange(_controlMapped[currentFrame], controls, _drawFirst, _drawCount);
         }
 
-        // Copies the paint table into the image's mirror when a new one was published. A mirror of another
-        // size is replaced, and the descriptor rebuild that follows points the set at it.
-        private void MirrorPaints(int currentFrame)
-        {
-            Vector4[] paints = Palettes.Table;
-            if (_paintWritten[currentFrame] == paints) return;
-
-            if (_paintWritten[currentFrame]?.Length != paints.Length)
-            {
-                DestroyPaintMirror(currentFrame);
-                AVulkanBufferHandler.CreateMappedBuffer((ulong)(sizeof(Vector4) * paints.Length), ref _paintBuffers[currentFrame], ref _paintMemories[currentFrame], out _paintMapped[currentFrame], AVulkanBufferHandler.storageBufferFlags);
-                _frameBuiltCapacity[currentFrame] = -1;
-            }
-
-            AVulkanBufferHandler.WriteMappedRange(_paintMapped[currentFrame], paints, 0, paints.Length);
-            _paintWritten[currentFrame] = paints;
-        }
-
         private void DestroyMirrors()
         {
+            _paints.DestroyAll();
+            _gradients.DestroyAll();
+            _effects.DestroyAll();
             if (_geometryBuffers == null) return;
 
             for (int i = 0; i < _geometryBuffers.Length; i++)
-            {
                 DestroyMirror(i);
-                DestroyPaintMirror(i);
-            }
-        }
-
-        private void DestroyPaintMirror(int image)
-        {
-            if (_paintBuffers[image].Handle == default) return;
-
-            Renderer.vk.UnmapMemory(Renderer.logicalDevice, _paintMemories[image]);
-            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _paintBuffers[image], null);
-            Renderer.vk.FreeMemory(Renderer.logicalDevice, _paintMemories[image], null);
-
-            _paintBuffers[image] = default;
-            _paintMemories[image] = default;
-            _paintMapped[image] = 0;
-            _paintWritten[image] = null;
         }
 
         // Frees one image's pair of mirrors.
@@ -331,7 +284,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 new DescriptorPoolSize()
                 {
                     Type = DescriptorType.StorageBuffer,
-                    DescriptorCount = 4
+                    DescriptorCount = 5
                 },
                 new DescriptorPoolSize()
                 {
@@ -367,7 +320,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal override void UpdateDescriptorSets(int currentFrame, int entityCount)
         {
-            if (_mirrorCapacity[currentFrame] < 0 || _paintWritten[currentFrame] == null) return;
+            if (_mirrorCapacity[currentFrame] < 0 || _paints.CapacityAt(currentFrame) < 0 || _gradients.CapacityAt(currentFrame) < 0
+                || _effects.CapacityAt(currentFrame) < 0) return;
 
             DescriptorBufferInfo cameraInfo = new DescriptorBufferInfo()
             {
@@ -389,15 +343,21 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             };
             DescriptorBufferInfo gradientInfo = new DescriptorBufferInfo()
             {
-                Buffer = _gradientBuffer,
+                Buffer = _gradients.BufferAt(currentFrame),
                 Offset = 0,
-                Range = (ulong)(Unsafe.SizeOf<GpuGradient>() * Gradients.Count)
+                Range = (ulong)(Unsafe.SizeOf<GpuGradient>() * _gradients.CapacityAt(currentFrame))
             };
             DescriptorBufferInfo paintInfo = new DescriptorBufferInfo()
             {
-                Buffer = _paintBuffers[currentFrame],
+                Buffer = _paints.BufferAt(currentFrame),
                 Offset = 0,
-                Range = (ulong)(Unsafe.SizeOf<Vector4>() * _paintWritten[currentFrame]!.Length)
+                Range = (ulong)(Unsafe.SizeOf<GpuPaint>() * _paints.CapacityAt(currentFrame))
+            };
+            DescriptorBufferInfo effectInfo = new DescriptorBufferInfo()
+            {
+                Buffer = _effects.BufferAt(currentFrame),
+                Offset = 0,
+                Range = (ulong)(Unsafe.SizeOf<GpuEffect>() * _effects.CapacityAt(currentFrame))
             };
             WriteDescriptorSet[] writes = new WriteDescriptorSet[]
             {
@@ -450,6 +410,16 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                     DstArrayElement = 0,
                     DescriptorType = DescriptorType.StorageBuffer,
                     PBufferInfo = &paintInfo
+                },
+                new WriteDescriptorSet
+                {
+                    SType = StructureType.WriteDescriptorSet,
+                    DstSet = frameResources[currentFrame].sets[0],
+                    DstBinding = 5,
+                    DescriptorCount = 1,
+                    DstArrayElement = 0,
+                    DescriptorType = DescriptorType.StorageBuffer,
+                    PBufferInfo = &effectInfo
                 }
             };
             fixed (WriteDescriptorSet* writesPtr = writes)
@@ -782,6 +752,71 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
             if (Renderer.vk.EndCommandBuffer(commandBuffers[currentFrame]) != Result.Success)
                 throw new Exception("Failed to record command buffer");
+        }
+
+        // Per-image mirrors of one handle-less pool column, patched by dirty range.
+        private sealed class TableMirror<T> where T : unmanaged
+        {
+            private Silk.NET.Vulkan.Buffer[] _buffers = null!;
+            private DeviceMemory[] _memories = null!;
+            private nint[] _mapped = null!;
+            private int[] _capacity = null!;
+            private ulong[] _since = null!;
+
+            public Silk.NET.Vulkan.Buffer BufferAt(int image) => _buffers[image];
+            public int CapacityAt(int image) => _capacity[image];
+
+            public void Resize(int imageCount)
+            {
+                _buffers = new Silk.NET.Vulkan.Buffer[imageCount];
+                _memories = new DeviceMemory[imageCount];
+                _mapped = new nint[imageCount];
+                _capacity = new int[imageCount];
+                Array.Fill(_capacity, -1);
+                _since = new ulong[imageCount];
+            }
+
+            // Copies what changed since this image last synced. True when the buffer was replaced.
+            public bool Sync(DataPool pool, int image)
+            {
+                T[] data = pool.Backing<T>();
+                if (_capacity[image] != data.Length)
+                {
+                    Destroy(image);
+                    AVulkanBufferHandler.CreateMappedBuffer((ulong)(sizeof(T) * data.Length), ref _buffers[image], ref _memories[image], out _mapped[image], AVulkanBufferHandler.storageBufferFlags);
+                    _capacity[image] = data.Length;
+                    _since[image] = pool.ContentVersion;
+                    AVulkanBufferHandler.WriteMappedRange(_mapped[image], data, 0, Math.Min(pool.Count, data.Length));
+                    return true;
+                }
+
+                if (pool.TryGetDirtyRange(_since[image], out int min, out int max, out ulong current))
+                    AVulkanBufferHandler.WriteMappedRange(_mapped[image], data, min, Math.Min(max, data.Length - 1) - min + 1);
+                _since[image] = current;
+                return false;
+            }
+
+            public void DestroyAll()
+            {
+                if (_buffers == null) return;
+
+                for (int i = 0; i < _buffers.Length; i++)
+                    Destroy(i);
+            }
+
+            private void Destroy(int image)
+            {
+                if (_buffers[image].Handle == default) return;
+
+                Renderer.vk.UnmapMemory(Renderer.logicalDevice, _memories[image]);
+                Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _buffers[image], null);
+                Renderer.vk.FreeMemory(Renderer.logicalDevice, _memories[image], null);
+
+                _buffers[image] = default;
+                _memories[image] = default;
+                _mapped[image] = 0;
+                _capacity[image] = -1;
+            }
         }
     }
 }

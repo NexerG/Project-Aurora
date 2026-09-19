@@ -69,16 +69,6 @@
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>
         <xs:restriction base="xs:string">
-          <xs:enumeration value="Gradients.LoadGradients" />
-          <xs:enumeration value="Palettes.LoadPalettes" />
-          <xs:enumeration value="Context.LoadContexts" />
-          <xs:enumeration value="Context.LoadDeclared" />
-          <xs:enumeration value="EntityRegistry.ParseXML" />
-          <xs:enumeration value="Settings.LoadAll" />
-          <xs:enumeration value="AssetImporter.RunImports" />
-          <xs:enumeration value="Logging.Configure" />
-          <xs:enumeration value="Profiling.Configure" />
-          <xs:enumeration value="DataManager.ParseXML" />
           <xs:enumeration value="Engine.SystemSetup" />
           <xs:enumeration value="Engine.InitWindowing" />
           <xs:enumeration value="Renderer.InitRenderer" />
@@ -94,6 +84,27 @@
           <xs:enumeration value="AssetRegistries.PrepareDefaultAssets" />
           <xs:enumeration value="AssetRegistries.PreloadAssets" />
           <xs:enumeration value="AssetRegistries.PrepareAllAssets" />
+          <xs:enumeration value="Effects.LoadEffects" />
+          <xs:enumeration value="Gradients.LoadGradients" />
+          <xs:enumeration value="Palettes.LoadPalettes" />
+          <xs:enumeration value="Context.LoadContexts" />
+          <xs:enumeration value="Context.LoadDeclared" />
+          <xs:enumeration value="EntityRegistry.ParseXML" />
+          <xs:enumeration value="Settings.LoadAll" />
+          <xs:enumeration value="AssetImporter.RunImports" />
+          <xs:enumeration value="Logging.Configure" />
+          <xs:enumeration value="Profiling.Configure" />
+          <xs:enumeration value="DataManager.ParseXML" />
+          <xs:enumeration value="AnimationLibrary.LoadAnimations" />
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
+  <xs:simpleType name="Settings">
+    <xs:union memberTypes="actions:Any">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="Renderer.RequestSwapchainRebuild" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>
@@ -117,15 +128,6 @@
       <xs:simpleType>
         <xs:restriction base="xs:string">
           <xs:enumeration value="UI.ElementOrder" />
-        </xs:restriction>
-      </xs:simpleType>
-    </xs:union>
-  </xs:simpleType>
-  <xs:simpleType name="Settings">
-    <xs:union memberTypes="actions:Any">
-      <xs:simpleType>
-        <xs:restriction base="xs:string">
-          <xs:enumeration value="Renderer.RequestSwapchainRebuild" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>

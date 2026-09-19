@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Animation;
 using ArctisAurora.Core.Data;
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Threading;
@@ -64,6 +65,7 @@ namespace ArctisAurora.EngineWork
         internal static MainSystem mainSystem = null!;
         internal static PhysicsSystem physicsSystem = null!;
         internal static RenderSystem renderSystem = null!;
+        internal static AnimationSystem animationSystem = null!;
 
         public bool running => mainSystem != null && mainSystem.Running;
 
@@ -103,6 +105,7 @@ namespace ArctisAurora.EngineWork
             mainSystem = new MainSystem();
             physicsSystem = new PhysicsSystem();
             renderSystem = new RenderSystem();
+            animationSystem = new AnimationSystem();
 
             // Pools were parsed during bootstrap and only know their owner by name; bind them now
             // that the systems exist, then wire the lanes between them. Both have to happen before
@@ -112,6 +115,7 @@ namespace ArctisAurora.EngineWork
 
             physicsSystem.Start();
             renderSystem.Start();
+            animationSystem.Start();
 
             if(startImmediately)
             {
@@ -303,7 +307,7 @@ namespace ArctisAurora.EngineWork
             // MOVES pool memory, and the render thread is no longer parked while it runs — the
             // address-stable storage rework is what makes this safe.
             Profiling.Zone.Start("FrameEdge");
-            DataManager.FrameEdge();
+            DataManager.FrameEdge(mainSystem);
             Profiling.Zone.End("FrameEdge");
 
             // Dense indices have settled, so each window module can be told the range it draws.
@@ -383,6 +387,7 @@ namespace ArctisAurora.EngineWork
             mainSystem?.Stop();
             physicsSystem?.Stop();
             renderSystem?.Stop();
+            animationSystem?.Stop();
         }
     }
 }

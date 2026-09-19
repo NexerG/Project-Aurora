@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using ArctisAurora.Core.Data;
 using ArctisAurora.Core.Data.Commands;
 using ArctisAurora.Core.Diagnostics;
@@ -94,6 +95,19 @@ namespace ArctisAurora.Core.Threading
             if (!lane.TryWritePayload(value, out int offset)) return false;
 
             return lane.TryEnqueue(SystemCommand.SetOne(target, columnId, offset, producer.SystemId));
+        }
+
+        // Queues a message for target's OnPost. False on backpressure, or when not called from another system.
+        public static bool Post<T>(ThreadedSystem target, ushort kind, in T message) where T : unmanaged
+        {
+            ThreadedSystem? producer = _current;
+            if (producer == null) return false;
+
+            CommandLane? lane = producer._outbox[target.SystemId];
+            if (lane == null || !lane.HasSpace) return false;
+            if (!lane.TryWritePayload(message, out int offset)) return false;
+
+            return lane.TryEnqueue(SystemCommand.Post(kind, offset, Unsafe.SizeOf<T>(), producer.SystemId));
         }
 
         private volatile bool _running;
@@ -193,6 +207,9 @@ namespace ArctisAurora.Core.Threading
         protected virtual void OnStart() { }
         protected virtual void OnStop() { }
 
+        // A message another system posted here, applied during Drain.
+        protected virtual void OnPost(ushort kind, ReadOnlySpan<byte> payload) { }
+
         // Apply everything queued for the tables this system owns. Never capped: a full drain
         // settles at the producer/consumer rate ratio, whereas a per-tick cap turns that into a
         // queue that grows forever once the producer outpaces it.
@@ -207,7 +224,13 @@ namespace ArctisAurora.Core.Threading
                 if (from == to) continue;
 
                 for (long seq = from; seq < to; seq++)
-                    CommandApplier.Apply(lane.At(seq), lane.Arena);
+                {
+                    ref readonly SystemCommand cmd = ref lane.At(seq);
+                    if (cmd.Op == CommandOp.Post)
+                        OnPost(cmd.ColumnId, lane.Arena.ReadBytes(cmd.ArenaOffset, cmd.Count));
+                    else
+                        CommandApplier.Apply(cmd, lane.Arena);
+                }
 
                 lane.EndDrain(to, arenaTo);
             }

@@ -136,7 +136,19 @@ glyphs and `SyncGlyphs` pushes the gradient into each new one.
 
 **`Shade` is in palette steps, not an absolute mix toward a named target.** Rejected `Mix="0.1" Toward="Ground"`: it neither flips direction between light and dark palettes nor scales with `Step`, so each gradient would need tuning per palette.
 
-Limits: `firstSlot` and gradient id are 16 bits each (~1480 palettes, 65535 gradients); unchecked.
+Limits: `firstSlot` and gradient id are 16 bits each (~1480 palettes, 65535 gradients); unchecked. Superseded by §9.
+
+### 9. A gradient is a paint word; edges take one too (2026-09-18)
+
+Slice 1 of [../Context/animation-plan.md](../Context/animation-plan.md).
+
+- **Paint word, three forms:** `1x` inline `0xRRGGBB`; `01` gradient (`Palettes.gradientBit`) — bits 29..14 the palette's `firstSlot`, bits 13..0 the id; `00` slot. `Gradients.Word` builds it.
+- **`VulkanControl.gradientIndex` is gone**, row 88 → 84 B. The shader tests `isGradient(paint)` for the fill and `isGradient(edgePaint)` for the edge; `resolvePaint` returns white for a gradient word in the vertex stage.
+- **Substituted at emit, not stored in `visual`.** `Control` keeps `gradientWord` / `edgeGradientWord` beside `visual` and `Emit` overwrites the row's `paint` / `edgePaint` with them. `visual.paint` stays the role paint, because `GroundBelow` hands it to the children as the ground their ink contrasts against. `TextRunControl` picks the word per run at emit.
+- **`EdgeGradient=`** on any control, ramped across the same `gradientRect`. The edge takes the ramp's rgb; its alpha scales the band.
+- **Role stops take `MutedInk`** — offset `inkBase + 1`, stepped = rest, so `Shade` has no effect on it.
+
+Limits now: gradient id 14 bits (16383), `firstSlot` 16 bits; unchecked.
 
 ## Verified
 
@@ -157,16 +169,15 @@ Limits: `firstSlot` and gradient id are 16 bits each (~1480 palettes, 65535 grad
   because the spacer `<Panel>` paints over it). Radial: peaks `#2A4663` at centre and falls off on
   both axes, elliptical, alpha-faded.
 - **§8, GUI-verified in Thorium (2026-09-18).** `spirv-dis` stop offsets 0/4/8/12/16, stride 20/184; solution builds clean, no warning in touched files; four shader trees byte-identical. thorium-light: title bar `#F2F1EC` → `#EBEAE5` top to bottom, H1 `#373530` at the column edge darkening to `#2C2A25` at ~58% — both as predicted. Switched live to thorium-void through Settings › UI: title bar flat `#000000` (negative shade clamps), H1 `#E0E0E0` → `#EDEDED` over the same span, as predicted.
+- **§9, GUI-verified in Thorium on thorium-void (2026-09-18).** Solution builds clean, no new warning in touched files; `spirv-dis` `VulkanControl` offsets 0/4/36/40/44/48/64/68, `ArrayStride 84` (C# size computed from `Pack=1`, not probed); four shader trees byte-identical. Full-window capture before vs after: identical except the OS-rounded bottom corners. Temporary `EdgeGradient` (8 px bottom edge, `#FF0000` → `MutedInk` stop) on the title bar: `#FF0000` → `#C54646` at the midpoint → `#8B8B8B`, the predicted muted ink; probe XML reverted. **NOT verified:** a light palette, `Shade` on an edge gradient, a gradient text run on another palette.
 
 ## Still open
 
-- **No gradient on the edge or the outline.** Both would be another index each; nothing structural
-  stops it.
+- **No gradient on the outline** (the edge takes one since §9).
 - **No per-state gradients.** `ButtonControl` has `HoverColorHex`/`PressColorHex` with no gradient
   twin, so a gradient button does not respond to hover.
-- **The table is built once and never updated.** Animating a gradient, or editing one at runtime,
-  needs the buffer re-uploaded — `MCUI.CreateGradientTable` is the only writer, so it is a dirty flag
-  away, but nothing is wired.
+- ~~The table is built once and never updated~~ — the `Gradients` pool since 2026-09-19, see [[ui-palettes]] § Paint and gradient tables are pools. Nothing writes it at runtime yet.
+- Per-state gradients are slice 5 of [../Context/animation-plan.md](../Context/animation-plan.md).
 - **A gradient cannot span more than one run.** A heading of two runs gets two ramps. The generic fix
   is a `GradientSpace="Self|Inherit"` on `VulkanControl` letting the `arrangedRect` setter take the
   parent's rect — about five lines, deliberately not built without a use for it.

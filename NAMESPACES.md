@@ -1,6 +1,15 @@
 ﻿_Build -> _Build/Program.cs
 ArctisAurora -> AuroraEngine/Program.cs
 ArctisAurora.Core -> AuroraEngine/Core/Game.cs
+ArctisAurora.Core.Animation -> AuroraEngine/Core/Animation/A_Animatable.cs
+ArctisAurora.Core.Animation -> AuroraEngine/Core/Animation/AnimationData.cs
+ArctisAurora.Core.Animation -> AuroraEngine/Core/Animation/AnimationLibrary.cs
+ArctisAurora.Core.Animation -> AuroraEngine/Core/Animation/Animations.cs
+ArctisAurora.Core.Animation -> AuroraEngine/Core/Animation/AnimationSystem.cs
+ArctisAurora.Core.Animation -> AuroraEngine/Core/Animation/Curve.cs
+ArctisAurora.Core.Animation -> AuroraEngine/Core/Animation/Signals.cs
+ArctisAurora.Core.Animation -> AuroraEngine/Core/Animation/Spring.cs
+ArctisAurora.Core.Animation -> AuroraEngine/Core/Animation/StateBinding.cs
 ArctisAurora.Core.Data -> AuroraEngine/Core/Data/DataManager.cs
 ArctisAurora.Core.Data -> AuroraEngine/Core/Data/DataPool.cs
 ArctisAurora.Core.Data -> AuroraEngine/Core/Data/PoolColumn.cs
@@ -88,6 +97,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DragGhost.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DropdownControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/EditableLabelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/EditableTabsControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Effects.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FileBrowserControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FileRowControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FileTreeControl.cs

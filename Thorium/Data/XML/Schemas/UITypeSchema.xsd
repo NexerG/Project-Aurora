@@ -4,7 +4,7 @@
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:import schemaLocation="EntityRegistryTypeSchema.xsd" namespace="http://arctisaurora/AuroraEntityRegistryTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:GradientKind types:GridSizeMode types:PaletteRole types:WindowCorners types:TextStyleType types:ScrollDirection types:Orientation" />
+    <xs:union memberTypes="types:EffectLoop types:GradientKind types:GridSizeMode types:PaletteRole types:WindowCorners types:TextStyleType types:ScrollDirection types:Orientation" />
   </xs:simpleType>
   <xs:attributeGroup name="VaultBrowser.Attributes">
     <xs:attributeGroup ref="types:Scrollable.Attributes" />
@@ -34,6 +34,7 @@
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="xs:string" />
     <xs:attribute name="Gradient" type="xs:string" />
+    <xs:attribute name="Effect" type="xs:string" />
     <xs:attribute name="FontName" type="xs:string" />
     <xs:attribute name="FontSize" type="xs:int" />
     <xs:attribute name="FontSizeAuthored" type="xs:boolean" />
@@ -155,6 +156,49 @@
   <xs:complexType name="EditableTabs">
     <xs:sequence />
     <xs:attributeGroup ref="types:TabView.Attributes" />
+  </xs:complexType>
+  <xs:simpleType name="EffectLoop">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Once" />
+      <xs:enumeration value="Loop" />
+      <xs:enumeration value="PingPong" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="Effect.Attributes">
+    <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="Duration" type="xs:float" />
+    <xs:attribute name="Loop" type="types:EffectLoop" />
+    <xs:attribute name="Stagger" type="xs:float" />
+    <xs:attribute name="Ease" type="xs:string" />
+    <xs:attribute name="X1" type="xs:float" />
+    <xs:attribute name="Y1" type="xs:float" />
+    <xs:attribute name="X2" type="xs:float" />
+    <xs:attribute name="Y2" type="xs:float" />
+    <xs:attribute name="Steps" type="xs:int" />
+    <xs:attribute name="OffsetFrom" type="xs:string" />
+    <xs:attribute name="OffsetTo" type="xs:string" />
+    <xs:attribute name="ScaleFrom" type="xs:float" />
+    <xs:attribute name="ScaleTo" type="xs:float" />
+    <xs:attribute name="RotateFrom" type="xs:float" />
+    <xs:attribute name="RotateTo" type="xs:float" />
+    <xs:attribute name="AlphaFrom" type="xs:float" />
+    <xs:attribute name="AlphaTo" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="Effect" type="types:Effect" />
+  <xs:complexType name="Effect">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Effect.Attributes" />
+  </xs:complexType>
+  <xs:element name="Effects" type="types:Effects" />
+  <xs:group name="EffectDefinition.Children">
+    <xs:choice>
+      <xs:element name="Effect" type="types:Effect" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="Effects">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:EffectDefinition.Children" />
+    </xs:sequence>
   </xs:complexType>
   <xs:element name="FileRow" type="types:FileRow" />
   <xs:complexType name="FileRow">
@@ -333,6 +377,9 @@
     <xs:attribute name="RowAccentWidth" type="xs:float" />
     <xs:attribute name="TabAccentWidth" type="xs:float" />
     <xs:attribute name="WindowCorners" type="types:WindowCorners" />
+    <xs:attribute name="StateFrequency" type="xs:float" />
+    <xs:attribute name="StateDamping" type="xs:float" />
+    <xs:attribute name="ThemeFade" type="xs:float" />
   </xs:attributeGroup>
   <xs:element name="Palette" type="types:Palette" />
   <xs:complexType name="Palette">

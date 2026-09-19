@@ -93,7 +93,7 @@ The mask is applied last, after the stroke. A masked control is one silhouette, 
 
 ## Gradients
 
-A control can name a gradient instead of a flat colour, and the ramp is evaluated per pixel from a table uploaded once at startup rather than carried on the row — the row holds only which row of that table it wants, and the rectangle the ramp spans.
+A control can name a gradient instead of a flat colour, and the ramp is evaluated per pixel from a shared table rather than carried on the row — the row's paint word names which row of that table it wants, and the geometry holds the rectangle the ramp spans. The table is the `Gradients` data pool, copied to the GPU by dirty range, so a gradient can change at runtime.
 
 That rectangle is separate from the control's own box on purpose. Every glyph of a paragraph is its own drawn row, so a ramp measured against each row's box would restart on every letter; measured against a rectangle handed down from above, one ramp runs across the whole run.
 
@@ -448,6 +448,8 @@ Parse(element)
 ```
 
 The last branch is what lets a document carry things that are not controls at all — a list of gradient stops, a set of column definitions — without the parser knowing any of their names.
+
+Motion is named the same way. `Clip` plays a keyframed clip once when the control starts, `HoverClip` and `PressClip` run a clip forward while the control is hovered or pressed and back again afterwards, and `StateBinding` eases properties between rest, hover and press values; all of them name entries in `Animations/*.anim.xml`, described in [[ANIMATION]].
 
 ## Context menus
 
