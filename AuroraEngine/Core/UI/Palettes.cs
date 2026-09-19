@@ -1,11 +1,20 @@
+using ArctisAurora.Core.Data;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using System.Globalization;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Xml.Linq;
 
 namespace ArctisAurora.Core.UI
 {
+    // One paint table slot on the GPU.
+    [StructLayout(LayoutKind.Sequential), A_XSDType("GpuPaint", "DataPools")]
+    public struct GpuPaint
+    {
+        public Vector4 color;
+    }
+
     [A_XSDType("PaletteRole", "UI")]
     public enum PaletteRole
     {
@@ -85,18 +94,25 @@ namespace ArctisAurora.Core.UI
         public float tabAccentWidth = 2f;
         [A_XSDElementProperty("WindowCorners", "UI", "How the OS rounds the window's corners.")]
         public WindowCorners windowCorners = WindowCorners.Round;
+        [A_XSDElementProperty("StateFrequency", "UI", "How fast hover and press states ease, in Hz.")]
+        public float stateFrequency = 6f;
+        [A_XSDElementProperty("StateDamping", "UI", "How hover and press states settle: 1 settles without overshoot, below 1 bounces.")]
+        public float stateDamping = 1f;
+        [A_XSDElementProperty("ThemeFade", "UI", "Seconds the app takes to fade into this palette when it is picked.")]
+        public float themeFade = 0.3f;
 
         // first slot of this palette's block in the paint table
         internal uint firstSlot;
     }
 
     // Loaded palettes and the paint table their colours live in. A paint word is a slot in that table,
-    // or an 0xRRGGBB colour with inlineBit set.
+    // an 0xRRGGBB colour with inlineBit set, or a gradient with gradientBit set.
     public static class Palettes
     {
         private static readonly Diagnostics.LogChannel Log = Diagnostics.LogChannel.For("UI");
 
         public const uint inlineBit = 0x80000000;
+        public const uint gradientBit = 0x40000000;
 
         // block layout: surfaces × states, ink and muted ink per surface, the two raw inks, the edge accent,
         // then the ground's ink stepped once
@@ -106,17 +122,18 @@ namespace ArctisAurora.Core.UI
         private const uint rawInkBase = inkBase + surfaceCount * 2;
         private const uint edgeAccentSlot = rawInkBase + 2;
         private const uint inkStepSlot = edgeAccentSlot + 1;
-        private const uint blockSize = inkStepSlot + 1;
+        internal const uint blockSize = inkStepSlot + 1;
 
         private static readonly Dictionary<string, PaletteDefinition> byName =
             new Dictionary<string, PaletteDefinition>(StringComparer.OrdinalIgnoreCase);
         private static readonly List<PaletteDefinition> blocks = new List<PaletteDefinition>();
 
-        // slot 0 is transparent black, so a zeroed row paints nothing
-        private static Vector4[] table = { Vector4.Zero };
+        // the paint table; slot 0 is transparent black, so a zeroed row paints nothing
+        public static DataPool Paints { get; private set; } = null!;
 
-        // Replaced whole on load, never written in place.
-        public static Vector4[] Table => Volatile.Read(ref table);
+        // the table's load-time colours, which main-thread decisions read instead of the animated pool
+        private static Vector4[] baked = Array.Empty<Vector4>();
+        private static readonly List<Vector4> baking = new List<Vector4>();
 
         public static PaletteDefinition Default { get; internal set; } = null!;
 
@@ -136,13 +153,16 @@ namespace ArctisAurora.Core.UI
         {
             byName.Clear();
             blocks.Clear();
-            List<Vector4> built = new List<Vector4> { Vector4.Zero };
+            Paints = DataManager.Get("Paints");
+            Paints.Rewind();
+            baking.Clear();
+            Put(Vector4.Zero);
 
             foreach (string file in VirtualFileSystem.EnumerateAll("XML/Documents/Palettes", "*.palette.xml"))
             {
                 PaletteDefinition palette = Parse(XElement.Load(file));
-                palette.firstSlot = (uint)built.Count;
-                Bake(palette, built);
+                palette.firstSlot = (uint)Paints.Count;
+                Bake(palette);
                 byName[palette.name] = palette;
                 blocks.Add(palette);
             }
@@ -155,8 +175,8 @@ namespace ArctisAurora.Core.UI
             }
 
             Default = fallback;
-            Volatile.Write(ref table, built.ToArray());
-            Log.Debug($"loaded {blocks.Count} palette(s) into {built.Count} paint slots.");
+            baked = baking.ToArray();
+            Log.Debug($"loaded {blocks.Count} palette(s) into {Paints.Count} paint slots.");
             return true;
         }
 
@@ -179,9 +199,9 @@ namespace ArctisAurora.Core.UI
             if (IsInline(paint))
                 return new Vector3((paint >> 16) & 0xFF, (paint >> 8) & 0xFF, paint & 0xFF) / 255f;
 
-            Vector4[] current = Table;
-            if (paint >= current.Length) return Vector3.Zero;
-            return new Vector3(current[paint].X, current[paint].Y, current[paint].Z);
+            if (paint >= baked.Length) return Vector3.Zero;
+            Vector4 color = baked[paint];
+            return new Vector3(color.X, color.Y, color.Z);
         }
         #endregion
 
@@ -197,8 +217,9 @@ namespace ArctisAurora.Core.UI
         public static (uint rest, uint stepped) RoleOffsets(PaletteRole role)
         {
             if (role == PaletteRole.Ink) return (inkBase, inkStepSlot);
+            if (role == PaletteRole.MutedInk) return (inkBase + 1, inkBase + 1);
             if (role < PaletteRole.Ground || role > PaletteRole.Danger)
-                throw new Exception($"A gradient stop cannot take role {role}; only surfaces and Ink.");
+                throw new Exception($"A gradient stop cannot take role {role}; only surfaces, Ink and MutedInk.");
 
             uint rest = (uint)(role - PaletteRole.Ground) * stateCount;
             return (rest, rest + 1);
@@ -223,13 +244,17 @@ namespace ArctisAurora.Core.UI
         public static uint Step(PaletteDefinition palette, uint rest, uint state)
         {
             if (state == 0) return rest;
-            if (TryBlock(rest, out _, out uint offset) && offset < inkBase && offset % stateCount == 0)
+            if (IsSurfaceRest(rest))
                 return rest + state;
 
             Vector3 color = ColorOf(rest);
             Vector3 ink = ColorOf(palette.firstSlot + rawInkBase + (PicksDark(palette, color) ? 0u : 1u));
             return Inline(Vector3.Lerp(color, ink, palette.step * state));
         }
+
+        // A surface's rest slot, whose hover and press slots follow it.
+        public static bool IsSurfaceRest(uint paint)
+            => TryBlock(paint, out _, out uint offset) && offset < inkBase && offset % stateCount == 0;
 
         // WCAG contrast ratio, 1 to 21.
         public static float Contrast(Vector3 a, Vector3 b)
@@ -241,9 +266,8 @@ namespace ArctisAurora.Core.UI
 
         private static bool PicksDark(PaletteDefinition palette, Vector3 back)
         {
-            Vector4[] current = Table;
-            Vector4 dark = current[palette.firstSlot + rawInkBase];
-            Vector4 light = current[palette.firstSlot + rawInkBase + 1];
+            Vector4 dark = baked[palette.firstSlot + rawInkBase];
+            Vector4 light = baked[palette.firstSlot + rawInkBase + 1];
             return Contrast(new Vector3(dark.X, dark.Y, dark.Z), back) >= Contrast(new Vector3(light.X, light.Y, light.Z), back);
         }
 
@@ -297,6 +321,9 @@ namespace ArctisAurora.Core.UI
             palette.popupRadius = Optional(element, "PopupRadius", palette.popupRadius);
             palette.rowAccentWidth = Optional(element, "RowAccentWidth", palette.rowAccentWidth);
             palette.tabAccentWidth = Optional(element, "TabAccentWidth", palette.tabAccentWidth);
+            palette.stateFrequency = Optional(element, "StateFrequency", palette.stateFrequency);
+            palette.stateDamping = Optional(element, "StateDamping", palette.stateDamping);
+            palette.themeFade = Optional(element, "ThemeFade", palette.themeFade);
             string corners = element.Attribute("WindowCorners")?.Value;
             if (!string.IsNullOrEmpty(corners)) palette.windowCorners = Enum.Parse<WindowCorners>(corners);
 
@@ -317,7 +344,15 @@ namespace ArctisAurora.Core.UI
             return value;
         }
 
-        private static void Bake(PaletteDefinition palette, List<Vector4> built)
+        // Appends one slot to the paint table.
+        private static void Put(Vector4 color)
+        {
+            int row = Paints.Append();
+            Paints.GetSpan<GpuPaint>()[row].color = color;
+            baking.Add(color);
+        }
+
+        private static void Bake(PaletteDefinition palette)
         {
             Vector3 dark = Control.HexToRGB(palette.darkInk);
             Vector3 light = Control.HexToRGB(palette.lightInk);
@@ -332,23 +367,23 @@ namespace ArctisAurora.Core.UI
             {
                 Vector3 ink = Contrast(dark, color) >= Contrast(light, color) ? dark : light;
                 for (uint state = 0; state < stateCount; state++)
-                    built.Add(new Vector4(Vector3.Lerp(color, ink, palette.step * state), 1f));
+                    Put(new Vector4(Vector3.Lerp(color, ink, palette.step * state), 1f));
             }
 
             foreach (Vector3 color in surfaces)
             {
                 Vector3 ink = Contrast(dark, color) >= Contrast(light, color) ? dark : light;
-                built.Add(new Vector4(ink, 1f));
-                built.Add(new Vector4(Vector3.Lerp(ink, color, palette.muted), 1f));
+                Put(new Vector4(ink, 1f));
+                Put(new Vector4(Vector3.Lerp(ink, color, palette.muted), 1f));
             }
 
-            built.Add(new Vector4(dark, 1f));
-            built.Add(new Vector4(light, 1f));
-            built.Add(new Vector4(Control.HexToRGB(string.IsNullOrEmpty(palette.edgeAccent) ? palette.accent : palette.edgeAccent), 1f));
+            Put(new Vector4(dark, 1f));
+            Put(new Vector4(light, 1f));
+            Put(new Vector4(Control.HexToRGB(string.IsNullOrEmpty(palette.edgeAccent) ? palette.accent : palette.edgeAccent), 1f));
 
             Vector3 groundInk = Contrast(dark, surfaces[0]) >= Contrast(light, surfaces[0]) ? dark : light;
             Vector3 otherInk = Contrast(dark, groundInk) >= Contrast(light, groundInk) ? dark : light;
-            built.Add(new Vector4(Vector3.Lerp(groundInk, otherInk, palette.step), 1f));
+            Put(new Vector4(Vector3.Lerp(groundInk, otherInk, palette.step), 1f));
         }
         #endregion
     }

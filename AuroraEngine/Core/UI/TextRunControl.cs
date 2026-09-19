@@ -21,6 +21,7 @@ namespace ArctisAurora.Core.UI
         public string fontName;
         public int fontSize;
         public string gradient;
+        public string effect;
 
         // carried, never drawn
         public bool strikethrough;
@@ -51,11 +52,12 @@ namespace ArctisAurora.Core.UI
         private BlockLayout _layout;
         private float _wrapWidth;
 
-        // one entry per span, rebuilt each measure; LineSegment.runIndex indexes all four
+        // one entry per span, rebuilt each measure; LineSegment.runIndex indexes all of them
         private readonly List<TextMeasurer.Run> _runs = new List<TextMeasurer.Run>();
         private readonly List<uint> _runPaints = new List<uint>();
         private readonly List<FontAsset> _runFonts = new List<FontAsset>();
         private readonly List<uint> _runGradients = new List<uint>();
+        private readonly List<uint> _runEffects = new List<uint>();
 
         // where the first line's pen starts, in design space
         private Vector2 _origin;
@@ -173,6 +175,7 @@ namespace ArctisAurora.Core.UI
             _runPaints.Clear();
             _runFonts.Clear();
             _runGradients.Clear();
+            _runEffects.Clear();
 
             string s = text ?? string.Empty;
             if (spans.Count == 0)
@@ -181,6 +184,7 @@ namespace ArctisAurora.Core.UI
                 _runPaints.Add(_paint);
                 _runFonts.Add(_fontAsset);
                 _runGradients.Add(gradientId);
+                _runEffects.Add(visual.effect);
                 return;
             }
 
@@ -201,6 +205,7 @@ namespace ArctisAurora.Core.UI
                 _runFonts.Add(font);
                 _runGradients.Add(spans[i].gradient == null
                     ? gradientId : Gradients.IndexOf(spans[i].gradient));
+                _runEffects.Add(spans[i].effect == null ? visual.effect : Effects.IndexOf(spans[i].effect));
                 start += count;
             }
         }
@@ -275,17 +280,22 @@ namespace ArctisAurora.Core.UI
 
                 foreach (LineSegment segment in line.segments)
                 {
-                    uint paint = _runPaints[segment.runIndex];
+                    uint runGradient = _runGradients[segment.runIndex];
+                    uint paint = runGradient != 0
+                        ? Gradients.Word(runGradient, palette ?? Palettes.Default)
+                        : _runPaints[segment.runIndex];
                     TextMeasurer.Run run = _runs[segment.runIndex];
                     FontAsset font = _runFonts[segment.runIndex];
-                    uint gradientIndex = Gradients.Word(_runGradients[segment.runIndex], palette ?? Palettes.Default);
+                    uint effect = _runEffects[segment.runIndex];
+                    float stagger = Effects.Stagger(effect);
 
                     for (int k = 0; k < segment.charCount; k++)
                     {
                         int index = segment.charStart + k;
                         if (index >= s.Length) break;
 
-                        pen += WriteGlyph(quads, s[index], run.style, paint, font, run.fontSize, gradientIndex,
+                        float effectStart = visual.effectStart + (index - run.charStart) * stagger;
+                        pen += WriteGlyph(quads, s[index], run.style, paint, font, run.fontSize, effect, effectStart,
                                           pen, baselineY, z, clip, gradientRect);
                     }
                 }
@@ -296,7 +306,7 @@ namespace ArctisAurora.Core.UI
         // advance. Cell geometry is GlyphControl's, which is also what FontAssetGlyphMetrics
         // reproduces — three copies of it would drift.
         private float WriteGlyph(DataPool quads, char character, FontStyle glyphStyle, uint paint,
-                                 FontAsset font, int size, uint gradientIndex,
+                                 FontAsset font, int size, uint effect, float effectStart,
                                  float penX, float baselineY, float z,
                                  Vector4 clip, Vector4 gradientRect)
         {
@@ -364,7 +374,9 @@ namespace ArctisAurora.Core.UI
             v.cornerRadius = Vector4.Zero;
             v.edgePaint = 0;
             v.edgeThickness = Vector4.Zero;
-            v.gradientIndex = gradientIndex;
+            v.state = 0f;
+            v.effect = effect;
+            v.effectStart = effectStart;
 
             return m.advanceWidth * size;
         }

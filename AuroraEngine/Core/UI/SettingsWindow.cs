@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Animation;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
@@ -222,12 +223,19 @@ namespace ArctisAurora.Core.UI
                 dropdown.onPicked = value =>
                 {
                     paletteSetting.name = value;
-                    Palettes.Default = Palettes.Get(value)!;
-                    foreach (RenderWindow window in Engine.windows.Values)
+                    PaletteDefinition from = Palettes.Default;
+                    PaletteDefinition to = Palettes.Get(value)!;
+                    if (to == from) return;
+
+                    Animations.FadeSlots(from.firstSlot, to.firstSlot, (int)Palettes.blockSize, to.themeFade, Curve.Ease(EaseKind.CubicInOut), () =>
                     {
-                        window.os.RoundCorners();
-                        window.ui.uiRoot?.InvalidateArrange();
-                    }
+                        Palettes.Default = to;
+                        foreach (RenderWindow window in Engine.windows.Values)
+                        {
+                            window.os.RoundCorners();
+                            window.ui.uiRoot?.InvalidateArrange();
+                        }
+                    });
                 };
                 return dropdown;
             }

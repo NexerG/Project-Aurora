@@ -636,8 +636,8 @@ from XML today, and `contextMenus` is read by `ContextMenus.Compose`, which is s
 - **No `IconControl` or `ImageControl` C# subclass.** The kinds are reached through `Control.kind` +
   `sampler` + `SetUVRect`; the atlas cell arithmetic is duplicated between `TextRunControl.WriteGlyph`, the
   outgoing `IconControl.Rebind` and `UIEngine.SetIconCell`. The landing-6 port is what collapses it.
-- **`Gradients.Table` is uploaded once and never re-uploaded**, same gap [[ui-gradients]] records; the new
-  module's writer is `UIEngineModule.CreateGradientTable`.
+- ~~**`Gradients.Table` is uploaded once and never re-uploaded**~~ — the `Gradients` pool since 2026-09-19,
+  see [[ui-palettes]] § Paint and gradient tables are pools.
 - `_gradientBuffer` is never destroyed — process lifetime, matching `MCUI`.
 - `TextRunControl.spans` is a public `List<StyleSpan>` mutated through `SetSpans`, which re-measures wholesale.
   Nothing edits one span in place yet.

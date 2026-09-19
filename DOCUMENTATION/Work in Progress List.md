@@ -75,8 +75,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] simple color — the format bar's colour dropdown applies one to the selection through `StyleDelta`; picking an entry is not GUI-verified, and there is no custom-colour entry
 		- [x] **gradient (2026-08-22)** — landed, See `ClaudeMemory/Decisions/ui-gradients.md`
 			- [ ] a gradient cannot cross runs — a heading built from two runs gets two ramps. `GradientSpace="Self|Inherit"` on `VulkanControl`, letting the `arrangedRect` setter take the parent's rect, is the ~5-line generic fix; not built without a use for it
-			- [ ] the table uploads once and is never rewritten, so a gradient cannot animate or be edited at runtime. `MCUI.CreateGradientTable` is the only writer — a dirty flag away
-			- [ ] no gradient on the edge, the outline, or a button's hover/press colour
+			- [ ] no gradient on the outline or a button's hover/press colour (edge landed 2026-09-18, `ui-gradients` §9)
 		- [ ] alignment — needs a block-level line-width pass that has not existed since the L2 revert: runs measure themselves, so no run knows the width of a visual line it shares. Priced separately, deferred (user, 2026-08-30)
 		- [ ] horizontal lines (honestly its just a panel)
 		- [ ] tables
@@ -91,7 +90,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 	- [ ] `UI.frag` MSDF-decodes every control, including plain panels sampling the `invisible` mask. A per-control flag or a second pipeline once `textureIndex` exists
 	- [x] **a stack clamps its children in Arrange (2026-08-29)** — landed, See `ClaudeMemory/Decisions/stack-panel-arrange-clamp.md`
 		- [ ] **`Measure` still reports the absurd number upward.** A `ScrollableControl` wrapping a stack that holds an unsized child stores `contentSize = MaxValue` and computes a nonsense scroll range from it — the clamp fixes what is drawn, not what is reported. Siblings after the offender also collapse to zero, which is the honest consequence rather than a repair for authoring an unsized child in a bounded stack. **Old stack only** — `ScrollableControl` guards it past a `float.MaxValue * 0.5f` sentinel (2026-09-08)
-	- [ ] **UI animation driver — nothing in the UI can change over time on its own.** No per-frame ticker a control can register a value with; gradients, position/size and colour all want one, and overscroll's rubber-band was rejected for its absence. See `ClaudeMemory/Context/ui-animation-plan.md`
+	- [ ] **animation system — nothing can change over time on its own (plan agreed 2026-09-18).** One procedural core for UI and game on its own thread; palettes and gradients merge into one paint word and become its data; springs take interaction and physics impulses. See `ClaudeMemory/Context/animation-plan.md`
 	- [ ] **an in-engine file browser, to retire the OS folder dialog (2026-08-30)** — `FolderPicker` is Win32 `IFileOpenDialog` on an STA thread, the first hard blocker under the engine's own portability. See `ClaudeMemory/Context/file-chooser-plan.md`
 	- [ ] control frustum culling — engine-wide cull of off-screen controls; note it cuts *draw* work only, so it is not an answer to the glyph ceiling — culled controls keep their entity and their pool row
 	- [ ] **UI data/visualization split (2026-08-17)** — most of the UI becomes data, controls become visualization; sequenced after Thorium v1 and the profiler. See `ClaudeMemory/Decisions/ui-data-control-split.md`
@@ -133,7 +132,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 
 ---
 # PHASE C — Animation core + AuroraMotion (~Sep–Dec 2026)
-- [ ] Animation/evaluation core — keyframes + curves (reuse bezier math), property tracks bound to ECS component fields via `[A_XSDElementProperty]` + stable IDs, clips, evaluation clock; the foundation procedural ops plug into
+- Animation/evaluation core — folded into the animation system (user, 2026-09-18). See `ClaudeMemory/Context/animation-plan.md`
 - [ ] Procedural geometry/SDF evaluation — XML-declared operation chain (XSD types as ops) driven by the evaluation core; geometry-nodes-like workflow without a node-graph UI
 	- [ ] XML material directed acyclic graph (DAG) *(shares design with the procedural op chain)*
 - [ ] XML scene format — finish scene load/save as XSD/XML; binary `Serializer` stays for blobs only

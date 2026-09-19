@@ -46,6 +46,9 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("Gradient", "UI", "Name of a gradient ramped across the run in place of its color.")]
         public string gradient { get; set; }
 
+        [A_XSDElementProperty("Effect", "UI", "Name of an effect played across the run's letters.")]
+        public string effect { get; set; }
+
         [A_XSDElementProperty("FontName", "UI", "Font family; absent takes the block's.")]
         public string fontName { get; set; }
 
@@ -182,10 +185,12 @@ namespace ArctisAurora.Core.UI
                 fontName = run.fontName,
                 fontSize = run.fontSizeAuthored ? run.fontSize : 0,
                 gradient = run.gradient,
+                effect = run.effect,
                 strikethrough = run.strikethrough,
                 stylingType = run.stylingType,
                 fontSizeAuthored = run.fontSizeAuthored
             });
+            if (run.effect != null) RestartEffect();
 
             text += slice;
         }
@@ -448,6 +453,7 @@ namespace ArctisAurora.Core.UI
             a.style == b.style
             && a.colorHex == b.colorHex
             && a.gradient == b.gradient
+            && a.effect == b.effect
             && a.fontName == b.fontName
             && a.fontSize == b.fontSize
             && a.strikethrough == b.strikethrough
@@ -479,6 +485,7 @@ namespace ArctisAurora.Core.UI
                     strikethrough = span.strikethrough,
                     colorHex = span.colorHex,
                     gradient = span.gradient,
+                    effect = span.effect,
                     fontName = span.fontName,
                     fontSize = span.fontSizeAuthored ? span.fontSize : 0,
                     fontSizeAuthored = span.fontSizeAuthored,

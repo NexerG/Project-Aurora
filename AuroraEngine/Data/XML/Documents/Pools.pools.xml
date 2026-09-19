@@ -15,4 +15,28 @@
 		<Component Type="TransformData"/>
 	</Pool>
 
+	<Pool Name="Paints" System="Animation" Capacity="1024" Ordered="false" Growth="Additive" GrowthValue="512">
+		<Component Type="GpuPaint"/>
+	</Pool>
+
+	<Pool Name="Gradients" System="Main" Capacity="32" Ordered="false" Growth="Additive" GrowthValue="32">
+		<Component Type="GpuGradient"/>
+	</Pool>
+
+	<Pool Name="Effects" System="Main" Capacity="32" Ordered="false" Growth="Additive" GrowthValue="32">
+		<Component Type="GpuEffect"/>
+	</Pool>
+
+	<Pool Name="Animations" System="Animation" Capacity="256" Ordered="false" Growth="Additive" GrowthValue="256">
+		<Component Type="AnimationTrack"/>
+	</Pool>
+
+	<Pool Name="Signals" System="Animation" Capacity="64" Ordered="false" Growth="Additive" GrowthValue="64">
+		<Component Type="SignalValue"/>
+	</Pool>
+
+	<Pool Name="Keyframes" System="Animation" Capacity="256" Ordered="false" Growth="Additive" GrowthValue="256">
+		<Component Type="Keyframe"/>
+	</Pool>
+
 </EnginePools>

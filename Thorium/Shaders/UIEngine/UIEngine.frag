@@ -42,8 +42,9 @@ layout(location = 7) in flat vec4 fragEdgeThickness;
 layout(location = 8) in vec2 fragUV;
 layout(location = 9) in flat uint fragTextureIndex;
 layout(location = 10) in flat uint fragType;
-layout(location = 11) in flat uint fragGradientIndex;
+layout(location = 11) in flat uint fragPaint;
 layout(location = 12) in flat vec4 fragGradientRect;
+layout(location = 13) in flat uint fragEdgePaint;
 
 layout(location = 0) out vec4 outColor;
 
@@ -57,6 +58,11 @@ const uint IMAGE_CONTROL = 2u;
 
 // VulkanControl.noTexture
 const uint NO_TEXTURE = 0xFFFFFFFFu;
+
+bool isGradient(uint word)
+{
+    return (word & 0xC0000000u) == 0x40000000u;
+}
 
 float median(float r, float g, float b) {
     return max(min(r, g), min(max(r, g), b));
@@ -74,12 +80,12 @@ vec4 stopColor(GradientStop s, uint base)
 }
 
 // Ramps a gradient across rect, in the same design space as p. Linear spans the rect corner to
-// corner along its direction; radial is an ellipse reaching the farthest corner. word is the
-// palette's first slot high, the gradient id low.
+// corner along its direction; radial is an ellipse reaching the farthest corner. word is a gradient
+// paint word: the palette's first slot in bits 29..14, the gradient id below.
 vec4 sampleGradient(uint word, vec2 p, vec4 rect)
 {
-    Gradient g = GB.gradients[word & 0xFFFFu];
-    uint base = word >> 16;
+    Gradient g = GB.gradients[word & 0x3FFFu];
+    uint base = (word >> 14) & 0xFFFFu;
     vec2 extent = max((rect.zw - rect.xy) * 0.5f, vec2(1e-5f));
     vec2 local = p - (rect.xy + rect.zw) * 0.5f;
 
@@ -173,9 +179,9 @@ void main()
     }
 
     // gradient — replaces the fill, so the edge still bands over it
-    if (fragGradientIndex > 0u)
+    if (isGradient(fragPaint))
     {
-        vec4 ramp = sampleGradient(fragGradientIndex, fragPos, fragGradientRect);
+        vec4 ramp = sampleGradient(fragPaint, fragPos, fragGradientRect);
         color = ramp.rgb;
         alpha *= ramp.a;
     }
@@ -197,7 +203,14 @@ void main()
         }
 
         float band = opacity - clamp(inner + 0.5f, 0.0f, 1.0f);
-        color = mix(color, fragEdgeColor, band);
+        vec3 edgeColor = fragEdgeColor;
+        if (isGradient(fragEdgePaint))
+        {
+            vec4 ramp = sampleGradient(fragEdgePaint, fragPos, fragGradientRect);
+            edgeColor = ramp.rgb;
+            band *= ramp.a;
+        }
+        color = mix(color, edgeColor, band);
         opacity = max(opacity, band);
     }
 

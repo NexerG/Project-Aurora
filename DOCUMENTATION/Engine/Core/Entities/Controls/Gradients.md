@@ -69,7 +69,7 @@ A stop can name a palette role instead of a colour, and then it takes that colou
 </Gradient>
 ```
 
-`Role` is one of the eight surfaces, or `Ink` for the text colour on the palette's ground. A stop names `Color` or `Role`, never both — both is an authoring error and stops the boot.
+`Role` is one of the eight surfaces, `Ink` for the text colour on the palette's ground, or `MutedInk` for the muted text colour there, which `Shade` does not move. A stop names `Color` or `Role`, never both — both is an authoring error and stops the boot.
 
 `Shade` moves the colour by palette steps, the same steps a button takes on hover. `1` is the hover colour, `2` the press colour, fractions sit between. Positive moves toward the text colour that contrasts with it, negative moves away, so the direction flips on its own between light and dark palettes. The result is clamped, so a surface that is already black or white cannot go further and a negative shade on it comes out flat.
 
@@ -81,7 +81,7 @@ Hex stops are unchanged and ignore the palette.
 
 A gradient recolours; it does not paint. It appears exactly where `ColorHex` appears, which means a container masked invisible shows nothing — see [[Vulkan Control]] on masks.
 
-The edge and the outline take their own hex colours and are not gradientable. Neither is a button's hover or press colour, so a gradient button keeps its ramp through both states.
+The edge takes a gradient of its own through `EdgeGradient`, ramped across the same rect as the fill; the ramp's alpha fades the edge band. The outline is not gradientable, and neither is a button's hover or press colour, so a gradient button keeps its ramp through both states.
 
 ## Text
 
@@ -97,9 +97,9 @@ A gradient does not cross runs. A heading built from two runs gets two ramps.
 | --- | --- | --- |
 | `MaxStops` | const | Stops one gradient may declare. Eight. |
 | `Count` | property | Rows in the table, including the reserved row 0. |
-| `Table` | property | The baked rows, uploaded once by the UI mesh component. |
+| `Pool` | property | The `Gradients` data pool holding the baked rows; the UI module copies what changed to the GPU each frame. |
 | `IndexOf(name)` | method | Row for a name. Empty gives 0; unknown throws. |
-| `Word(id, palette)` | method | What a control writes to its row: the palette's first paint slot in the high 16 bits, the gradient row in the low. Row 0 gives 0. |
+| `Word(id, palette)` | method | The gradient paint word a control puts on its row at emit, in place of its fill or edge colour: the gradient bit, the palette's first paint slot in bits 29 to 14, the gradient row below. Row 0 gives 0. |
 | `LoadGradients()` | action | Bootstrap step. Parses the file and bakes every row. |
 
 ## Pseudocode

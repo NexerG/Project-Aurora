@@ -11,6 +11,7 @@ Slice 1 of 3, then slices 2 and 3 for everything Thorium shows (same day). What 
   - top bit set → low 24 bits are `0xRRGGBB`, inline (`Palettes.Inline`)
   - top bit clear → slot in the paint table (`Palettes.Table`, `vec4[]`)
   - slot 0 is transparent black, so a zeroed row paints nothing
+  - since 2026-09-18 a third form, `01` = gradient (`Palettes.gradientBit`), put on the row at emit only — see [[ui-gradients]] §9
 - **Paint table on the GPU.** Set 1 binding 4 `PaintBuffer`, vertex stage. `UIEngineModule.MirrorPaints` keeps one host-visible mapped buffer per swapchain image and rewrites it when `Palettes.Table` is a different array (reference identity is the version). The table is replaced whole on load, never written in place.
 - **Palettes.** One `<Palette>` per `XML/Documents/Palettes/*.palette.xml`, unioned across mounts (`VirtualFileSystem.EnumerateAll`); a same-named file in an app replaces the engine's. Bootstrap step `Palettes.LoadPalettes`, after `Gradients.LoadGradients`.
   - authored: `Ground Surface Chrome Field SubField Line Accent Danger` (surfaces), `DarkInk LightInk`, `Step`, `Muted`, `EdgeAccent` — all required except `Step`/`Muted`/`EdgeAccent`
@@ -78,6 +79,20 @@ Slice 1 of 3, then slices 2 and 3 for everything Thorium shows (same day). What 
 - **Settings › UI › Palette is a `DropdownControl`** over `Palettes.Names` (`SettingsWindow.Editor`, `setting is PaletteSetting` branch). A pick sets the setting, sets `Palettes.Default`, and calls `InvalidateArrange` on every `Engine.windows` root — the change applies live. Since 2026-09-18 it also re-applies each window's `RoundCorners`.
 - **A palette also carries shape** (radii, accent widths, window corners) since 2026-09-18 — see [[ui-palette-shape]].
 
+## Paint and gradient tables are pools (2026-09-19)
+
+Slice 2 of [../Context/animation-plan.md](../Context/animation-plan.md).
+
+- **Two handle-less pools in `Pools.pools.xml`:** `Paints` (`GpuPaint { Vector4 color }`, 1024 +512) and `Gradients` (`GpuGradient`, 32 +32), both `System="Main"` until the animation system takes them. Row index = slot / gradient id; `Append` only, never freed, so rows never move.
+- **`Palettes.Table` → `Palettes.Paints`**, `Gradients.Table`/`Count` → `Gradients.Pool`. `LoadPalettes`/`LoadGradients` `Rewind` and `Append`; `Palettes.Put` appends one slot and `Bake` fills through it. `ColorOf`/`PicksDark` read `GetSpan`, owner-asserted to Main.
+- **A runtime write is a column write plus `MarkRangeDirty`.** It reaches the GPU after the next `FrameEdge` publishes the generation.
+- **`UIEngineModule.TableMirror<T>`** — per image: mapped buffer, capacity, `since` generation. `Sync` recreates the buffer when the pool's backing length changes (returns true, the module rebuilds that image's descriptors) and otherwise writes the range `TryGetDirtyRange(since)` reports. One instance each for paints and gradients; replaces `MirrorPaints`, the reference-identity version, and the static `DEVICE_LOCAL` gradient buffer.
+- Descriptor ranges are capacity × stride, as the quads mirror already does.
+
+**Why a pool, not the replace-whole array.** The replaced array could only change wholesale and versioned by reference; an animated slot needs an in-place write that every image picks up once. Pool generations and dirty ranges already are that, with no second mechanism.
+
+**Accepted race.** The renderer copies `Backing` while the owner may write, as with `UIQuads`; a row changed mid-copy can tear for one frame. Fixed by the address-stable storage rework, not here.
+
 ## Why these choices
 
 **One `uint` holds either a palette slot or the authored colour itself.**
@@ -120,7 +135,35 @@ Oxblood and Void spend red on identity; the close button and Delete keep the sha
 The canvas's holo midpoint `#B39CFF` is 2.3:1 on white, too faint for active toolbar ink and the drop hint. `#8A5CD1` is the far stop of the engine's accent gradient, 4.6:1. Yellow keeps the canvas's `#F0B400`.
 
 **Animation is skipped for now.** (user, 2026-09-17)
-The shape leaves room for it: a shared animation (theme crossfade) would write table slots, a per-control one (hover ease) would write that control's inline word. See [../Context/ui-animation-plan.md](../Context/ui-animation-plan.md).
+The shape leaves room for it: a shared animation (theme crossfade) would write table slots, a per-control one (hover ease) would write that control's inline word. Superseded by [../Context/animation-plan.md](../Context/animation-plan.md) (2026-09-18): state becomes a continuous float blended in the shader.
+
+## Continuous state (2026-09-19)
+
+Slice 5 of [../Context/animation-plan.md](../Context/animation-plan.md).
+
+- **`VulkanControl.state`** (float, 0 rest / 1 hover / 2 press), row 84 → 88 B. `UIEngine.vert` `resolveStatePaint`: a slot word with `state > 0` mixes toward `slot+1` over 0–1 and `slot+2` over 1–2. The CPU writes `state > 0` only when `Palettes.IsSurfaceRest(paint)`, so the shader knows nothing of the block layout. `TextRunControl.WriteGlyph` writes 0 (glyph rows are appended uncleared).
+- **`ButtonControl.state`** (`[A_Animatable]`, code-only — found by the C# name fallback) is driven by a spring following the button's own `Signals.Create()` signal, created on the first pointer event. Enter/exit/press/release `Signals.Set(pressed ? 2 : hovered ? 1 : 0)`. `OnDestroy` stops the spring and releases the signal.
+- **`PaintState`**, replacing the instant `ApplyState`: a palette surface rest with no authored state hex → rest paint + `visual.state` (GPU). Anything else — authored `HoverColorHex`/`PressColorHex`, an authored or inline rest, ink on a foreign ground — lerps rest → hover → press on the CPU in sRGB and writes an inline word; `state = 0` writes the rest paint itself. Fallbacks unchanged: press → hover hex → palette step → rest. A `Clear` palette rest has alpha `alpha × min(state, 1)`.
+- **Spring feel is the palette's:** optional `StateFrequency` (Hz, default 6) and `StateDamping` (default 1) on `<Palette>`. `ApplyRole` restarts a button's spring when its palette's feel differs from the one it was made with.
+- All nine `ButtonControl` subclasses (menu and context rows, file rows, tab strip, toolbar, dropdown, checkbox, key capture, scroll thumb) inherit it.
+
+**The shader blends only true neighbours.** Rejected: carrying hover and press words on every row (+12 B, glyph rows included) to make every case a GPU mix. Authored state colours are inline already, so the CPU lerp loses no palette-following.
+
+**Feel lives on the palette** (user, 2026-09-19). Rejected: constants on `ButtonControl`; per-button XML attributes.
+
+## Theme crossfade (2026-09-19)
+
+Slice 6 of [../Context/animation-plan.md](../Context/animation-plan.md).
+
+- **`Paints` is owned by Animation** (`System="Animation"`); `Gradients` stays on Main until something animates it. Bootstrap still fills `Paints` (no system is running).
+- **Main reads `Palettes.baked`**, the load-time colours, never the pool: `ColorOf` and `PicksDark` (so `Ink`, `Step`, `ButtonControl`'s CPU lerp). Contrast and ink decisions never see a mid-fade value or a pool Main does not own.
+- **Only the new palette's block fades.** `Animations.FadeSlots(fromFirst, toFirst, count, seconds, curve, onSeeded)` → `AnimationOp.FadeSlots`. Animation copies the source block's *displayed* colours into the target block's slots, then tweens each back to where it was headed — its value, or the target of a fade already running on it — so a pick mid-fade continues from what is on screen. Fades are a private list on the Animation thread, not a pool.
+- **The switch waits for the seed.** Animation posts `FadeSeeded` (kind `fadeSeededKind`); `MainSystem.OnPost` → `Animations.OnFadeSeeded` runs `onSeeded`, which sets `Default`, re-rounds and re-arranges every window. An unsent acknowledgement is re-posted each tick; a refused request runs `onSeeded` at once.
+- **`ThemeFade`** — optional seconds on `<Palette>` (default 0.3), read from the palette being picked; curve `CubicInOut`. `SettingsWindow` › Palette `onPicked` is the only switch site; picking the current palette does nothing.
+
+**Why the new block, not a shared "live" block.** Every word already points at a palette's own block, and the switch already re-points them; fading the destination needs no new indirection and gradient role stops follow for free. Rejected: switching first and fading after — one frame of the new theme would render before the seed lands (user chose the acknowledgement over accepting that flash).
+
+**Why a baked copy.** With the pool on another thread, Main's owner-asserted reads would fail, and even `Backing` reads would feed mid-fade colours into contrast decisions.
 
 ## Known gaps
 
@@ -128,11 +171,17 @@ The shape leaves room for it: a shared animation (theme crossfade) would write t
 - **Slice 2, what is left:** `SliderControl` (Carbon only, authored there), Carbon's custom controls, `ButtonControl`'s `#8C8C8C` fallback for a `None` role, `TabViewControl`'s red close-hover consts, the toolbar's seven fixed swatches (One Dark values; Yellow is low-contrast on a light ground).
 - **Slice 3, what is left:** engine `Settings.ui.xml`, Carbon `UI.ui.xml`. Gradient stops follow the palette through `Role` since 2026-09-18, see [[ui-gradients]] §8.
 - `thorium-yellow`'s `F0B400` accent is low-contrast as ink on its light ground.
+- **Continuous state, GUI-verified on thorium-void (2026-09-19):** builds clean; `spirv-dis` `state` at 84, stride 88; four shader trees identical; at rest pixel-identical to the pools capture except the OS corners. With a temporary `StateFrequency="0.5"` (reverted): file row (GPU path) `#000000` → `#030303` → `#070707` → `#090909`, back to `#000000` on leave; close button (CPU path, authored red) `#410E0A` → `#A8251A` → `#C02A1E` → `#C42B1E` and back. At the default feel a hover lands on `#090909` within 1 s. **NOT verified:** press (state 2), a live palette switch restarting springs, a light palette, `Clear` alpha on a non-surface ground.
+- A gradient button still ignores hover: `state` only blends slot words, not gradient words.
+- **Theme crossfade, GUI-verified (2026-09-19):** builds clean; no owner assert from this change. Temporary probe (reverted) running `onPicked`'s code void → light with a 3 s fade: editor ground `#000000` → `#010101` → `#2C2C2C` → `#BAB9B7` → `#F7F6F4` → `#FBFAF8` (thorium-light `Ground` exactly), sidebar ends `#F2F1ED` (`Surface`), title bar gradient follows; log shows the switch 6 ms after the request. At rest pixel-identical to the continuous-state capture. **NOT verified:** that no single flash frame renders (captures are ~0.7 s apart), a pick mid-fade, the Settings dropdown itself.
+- **Mid-fade contrast dips** between a dark and a light palette: ink and ground cross. Inherent to a crossfade.
+- **Snaps, does not fade:** inline colours derived from a palette — muted ink on a foreign ground, stepped inline colours, ink on a non-slot ground.
+- **Pools, GUI-verified on thorium-void (2026-09-19):** builds clean, no new warning in touched files; boot logs `loaded 13 palette(s) into 573 paint slots` (13 × 44 + 1); full window pixel-identical to the pre-change capture except the OS-rounded corners. Temporary Main-thread probe 3 s after boot wrote void's `Ground` rest slot `#FF0000` and `accent` stop 0 inline `#00FF00`: editor ground `#FF0000`, H1 start `#03FF03`; unchanged after maximise + restore (mirror rebuild); probe reverted. `GpuPaint` = 16 B by layout, not probed.
 - **Palette set, verified:** builds clean; Thorium boots and logs `loaded 13 palette(s) into 547 paint slots`, errors unchanged. The dropdown and the live switch to thorium-void are GUI-verified (2026-09-18, main window and the Settings window both repaint). **NOT verified:** the other 10 palettes on screen.
 - A subtree's own `Palette=` does not reach a context menu or window opened from it in a window of its own — those take `Palettes.Default`.
 - Contrast against a gradient or image ground uses the control's own paint word, not what is drawn.
 - A button's text colour is keyed to its ground's role, not its state; a mid-tone at the contrast crossover could get low-contrast ink on press.
-- Gradients still upload once through `CreateBuffer`; moving them onto the per-image path stays a separate item (user, 2026-09-17).
+- ~~Gradients still upload once through `CreateBuffer`~~ — both tables are pools on the per-image path since 2026-09-19, see § Paint and gradient tables are pools.
 - Inline colours are 8-bit per channel — identical to hex today, but a long animated fade on a dark colour could band.
 - **Verified, slice 1:** builds clean. Step 1 pixel-diffed against pre-change captures — Thorium main window, its menu, Vaults, Carbon idle and with a capture loaded: identical except the 1px OS border. Palette math in a scratch harness (the planned `AuroraTesting` project does not exist). After roles: Thorium main and menu still identical; Vaults within 12 levels per channel; close-button hover turns its icon light and returns on leave; minimise hover steps to `#E4E3DE`; Settings shows only its authored colours; a temporary nested `Palette="default"` recoloured only its row.
 - **Verified, Thorium:** builds clean; Thorium boots with the same 7 errors as before the change. Captured before and after, pixels sampled against the predicted values, all matching: main window (ground, title-bar gradient, sidebar, splitters, thumb, folder/file/note/menu ink), menu with a hovered row, Settings (Thorium, UI with the Palette row reading `thorium-light`, Logging with dropdowns, text fields and a checkbox), Vaults, the new-note dialog; hover on a tab `#F3F2F0`, a sidebar row `#EAE9E5`, a toolbar button `#F3F2F0`, minimise `#E4E3DE`. Carbon pixel-identical inside the window border.

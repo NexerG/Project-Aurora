@@ -299,31 +299,37 @@ ECS design is still being settled — avoid refactoring the entity/component mod
 | Threading | 🔧 In progress | Basic threading, design not finalised |
 
 #### Engine Loop & Threading — Key Facts
-- **3 threads:** main thread (engine tick), physics thread, render thread
-- Threads are synchronised with `AutoResetEvent` pairs — not locks or mutexes:
-  - `t_physics_start` / `t_physics_end` — main signals physics, waits for it to finish
-  - `t_render_start` / `t_render_end` — main waits for render to finish, then signals it
-- **Main thread tick order:**
-  1. `PollEvents` → `ActivateKeybinds` → `HandleUI`
-  2. Signal physics → wait for physics done
-  3. `Interpolate()` — entity lifecycle + `OnTick()` + dirty entity updates
-  4. Wait for render done → signal render
+- **4 threads, each a `ThreadedSystem`:** `MainSystem` (120 Hz, runs on the bootstrapping thread via
+  `Adopt()` because GLFW needs it), `PhysicsSystem` (32 ms), `RenderSystem` (unpaced; present/vsync throttle it),
+  `AnimationSystem` (120 Hz) — see `ClaudeMemory/Decisions/animation-core.md` and `Context/animation-plan.md`
+- **Threads never wait on each other.** The `AutoResetEvent` handshake is gone. Every tick is
+  `Drain()` → `Tick()` → `Publish()`, bracketed by a volatile epoch read/write. Render only parks at
+  startup until main's epoch leaves 0
+- **One owner per table.** A system writes its own pools in place; anything else reaches them as a
+  command through `ThreadedSystem.Send`, applied at the owner's `Drain()`. Consumers learn of changes by
+  polling pool versions (`PoolCursor`), not by subscription. `ThreadedSystem.Post` messages another system
+  itself (its `OnPost`), on the same lanes. Each system runs `DataManager.FrameEdge(owner)` for its own pools
+- **Main tick order (`Engine.MainTick`):**
+  1. `PollEvents` → reap closed windows, drain posted work → `ActivateKeybinds` → `HandleUI` per window
+     → `DragGhost.Follow`, `ContextMenus.Tick`
+  2. `Interpolate()` — entity lifecycle queues, `OnTick()`, `UIEngine.ResolveLayout()`
+  3. `DataManager.FrameEdge(mainSystem)` — destroy drain, compaction, version publish across Main's pools
+  4. `UIEngine.BuildDrawLists()` — publishes each window's `UIQuads` range to the renderer
 - **`Interpolate()`** is where entity logic runs — not a physics/render thread concern:
-  - Drains `onStartEntities` and `onDestroyEntities` queues each tick
-  - Calls `OnTick()` on all entities
-  - Processes `entitiesToUpdate` (dirty list) under a lock, then calls `renderer.UpdateModules()`
-- **Physics thread** is mostly a stub — 32ms sleep, placeholder for future work
-- **Bootstrap is two-stage** via `Bootstrapper`:
-  - `PreGPUAPI` — registries, serializable types
-  - `PostGPUAPI` — default assets, pipelines, descriptors, sync objects
-- `inputHandler` is bootstrapped in PreGPUAPI via InputHandler.Bootstrap()
+  - `EntityRegistry.ProcessStarts` / `ProcessDestroys` / `ProcessEnableChanges`
+  - Calls `OnTick()` on tickable entities
+- **Physics thread** is a stub — an empty `Tick()`, placeholder for future work
+- **Bootstrap is one ordered XML phase** — see Bootstrapper below. Pre-renderer steps: settings, logging,
+  pools, inputs, gradients, palettes, systems, windowing, registries; then the renderer; then contexts,
+  default assets, pipelines, descriptors, sync objects
+- `Engine.inputHandler` is assigned by the `InputHandler.LoadInputs` bootstrap step
 - `doubleClickTime = 250ms` is a global engine constant
 - **Do not** move entity logic into the render or physics threads
 - **Physics thread design is unsettled** — don't suggest physics system changes without asking
 
 #### Input System — Key Facts
-- `InputHandler` is a singleton (`InputHandler.instance`) bootstrapped at `PreGPUAPI`
-  via `InputHandler.Bootstrap()` — this is also where `Engine.inputHandler` is assigned,
+- `InputHandler` is a singleton (`InputHandler.instance`) set up by the pre-renderer bootstrap
+  step `InputHandler.LoadInputs` — this is also where `Engine.inputHandler` is assigned,
   so it is never null by the time `Init()` runs
 - **Keybinds are XML-driven** — loaded from all `*.xml` files in `Paths.XMLDOCUMENTS_INPUTS`;
   actions are resolved by scanning `[A_XSDActionDependency]` methods across all assemblies
@@ -450,8 +456,8 @@ The full Vulkan pipeline is working and rendering UI:
   for engine-specific types
 - Retrieval API: `GetAsset<T>(name)`, `GetRegistryByValueType<K,V>()`,
   `GetRegistryByName<K,V>()`
-- Bootstrap is **two-stage**: `PreGPUAPI` parses XML + registers serializable types;
-  `PostGPUAPI` loads default assets (meshes, fonts, textures, styles)
+- Bootstrap steps: pre-renderer `AssetRegistries.InstantiateRegistries` + `RegisterSerializableTypes`;
+  post-renderer `PrepareDefaultAssets`, `PreloadAssets`, `PrepareAllAssets` (meshes, fonts, textures, styles)
 - Assets derive from abstract `Asset` with `LoadAsset()` and `LoadDefault()`
 - Serializable types are auto-discovered via `[Serializable]` attribute + reflection,
   stored as `Dictionary<uint, Type>` with hashed IDs

@@ -91,11 +91,13 @@ namespace ArctisAurora.Core.Data
             }
         }
 
-        public static void FrameEdge()
+        // Runs the frame edge of every pool owner owns.
+        public static void FrameEdge(ThreadedSystem owner)
         {
             for (int i = 0; i < _pools.Count; i++)
             {
                 DataPool pool = _pools[i];
+                if (pool.OwnerSystemId != owner.SystemId) continue;
                 pool.FrameEdge();
                 Profiling.Frame.Pool(pool.Name, pool.Count, pool.Capacity, pool.ReservedBytes);
             }

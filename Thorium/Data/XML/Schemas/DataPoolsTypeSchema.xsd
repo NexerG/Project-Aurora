@@ -5,6 +5,18 @@
   <xs:simpleType name="DataPools">
     <xs:union memberTypes="types:PoolGrowthType" />
   </xs:simpleType>
+  <xs:element name="GpuEffect" type="types:GpuEffect" />
+  <xs:complexType name="GpuEffect">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="GpuGradient" type="types:GpuGradient" />
+  <xs:complexType name="GpuGradient">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="GpuPaint" type="types:GpuPaint" />
+  <xs:complexType name="GpuPaint">
+    <xs:sequence />
+  </xs:complexType>
   <xs:element name="ArrangeData" type="types:ArrangeData" />
   <xs:complexType name="ArrangeData">
     <xs:sequence />
@@ -63,6 +75,18 @@
   </xs:complexType>
   <xs:element name="TransformData" type="types:TransformData" />
   <xs:complexType name="TransformData">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="Keyframe" type="types:Keyframe" />
+  <xs:complexType name="Keyframe">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="SignalValue" type="types:SignalValue" />
+  <xs:complexType name="SignalValue">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="AnimationTrack" type="types:AnimationTrack" />
+  <xs:complexType name="AnimationTrack">
     <xs:sequence />
   </xs:complexType>
 </xs:schema>

@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
+using ArctisAurora.Core.Animation;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
 
@@ -37,6 +39,14 @@ namespace ArctisAurora.Core.Threading
             Engine.totalTime += Engine.deltaTime.TotalSeconds;
 
             Engine.engineInstance.MainTick();
+        }
+
+        protected override void OnPost(ushort kind, ReadOnlySpan<byte> payload)
+        {
+            if (kind == AnimationSystem.valueKind)
+                Animations.OnValue(MemoryMarshal.Read<AnimationValue>(payload));
+            else if (kind == AnimationSystem.fadeSeededKind)
+                Animations.OnFadeSeeded(MemoryMarshal.Read<FadeSeeded>(payload));
         }
     }
 }

@@ -25,6 +25,8 @@ namespace ArctisAurora.Core.Data.Commands
         // Lifecycle. Neither carries a payload.
         Allocate,
         Free,
+        // A message to the owning system itself. ColumnId is the kind, Count the payload size in bytes.
+        Post,
     }
 
     // One message from a system to the thread that owns a data table. 24 bytes, unmanaged, so a
@@ -112,6 +114,18 @@ namespace ArctisAurora.Core.Data.Commands
             Count = 1,
             ArenaOffset = -1,
             Op = CommandOp.Free,
+            Producer = producer,
+        };
+
+        public static SystemCommand Post(ushort kind, int arenaOffset, int size, byte producer) => new SystemCommand
+        {
+            PoolId = 0,
+            ColumnId = kind,
+            StableId = -1,
+            Version = 0,
+            Count = size,
+            ArenaOffset = arenaOffset,
+            Op = CommandOp.Post,
             Producer = producer,
         };
 

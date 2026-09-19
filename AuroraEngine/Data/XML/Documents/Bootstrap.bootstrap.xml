@@ -12,6 +12,8 @@
 		<Step Action="InputHandler.LoadInputs"/>
 		<Step Action="Gradients.LoadGradients"/>
 		<Step Action="Palettes.LoadPalettes"/>
+		<Step Action="Effects.LoadEffects"/>
+		<Step Action="AnimationLibrary.LoadAnimations"/>
 		<Step Action="Engine.SystemSetup"/>
 		<Step Action="Engine.InitWindowing"/>
 		<Step Action="AssetRegistries.InstantiateRegistries"/>
