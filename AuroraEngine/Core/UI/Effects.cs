@@ -86,7 +86,7 @@ namespace ArctisAurora.Core.UI
         public Vector4 bezier;
     }
 
-    // Named effects authored in Effects.effects.xml, a table the vertex shader evaluates against engine time.
+    // Named effects authored in Effects/*.effects.xml, a table the vertex shader evaluates against engine time.
     public static class Effects
     {
         private static readonly Diagnostics.LogChannel Log = Diagnostics.LogChannel.For("UI");
@@ -101,7 +101,7 @@ namespace ArctisAurora.Core.UI
         {
             if (string.IsNullOrEmpty(name)) return 0;
             if (indices.TryGetValue(name, out uint index)) return index;
-            throw new Exception($"Effect '{name}' is not defined in Effects.effects.xml.");
+            throw new Exception($"Effect '{name}' is not defined in any Effects/*.effects.xml.");
         }
 
         // Seconds between consecutive glyphs of a run under this effect.
@@ -116,19 +116,18 @@ namespace ArctisAurora.Core.UI
             Pool.GetSpan<GpuEffect>()[reserved] = default;
             indices.Clear();
 
-            if (!VirtualFileSystem.TryResolveFile("XML/Documents/Effects.effects.xml", out string path))
+            foreach (string path in VirtualFileSystem.EnumerateAll("XML/Documents/Effects", "*.effects.xml"))
             {
-                Log.Debug($"no Effects.effects.xml found — no effects loaded.");
-                return true;
+                foreach (XElement element in XElement.Load(path).Elements())
+                {
+                    EffectDefinition definition = Parse(element);
+                    int row = Pool.Append();
+                    indices[definition.name] = (uint)row;
+                    Pool.GetSpan<GpuEffect>()[row] = Bake(definition);
+                }
             }
 
-            foreach (XElement element in XElement.Load(path).Elements())
-            {
-                EffectDefinition definition = Parse(element);
-                int row = Pool.Append();
-                indices[definition.name] = (uint)row;
-                Pool.GetSpan<GpuEffect>()[row] = Bake(definition);
-            }
+            Log.Debug($"loaded {indices.Count} effect(s).");
             return true;
         }
 

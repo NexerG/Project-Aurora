@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Effects xmlns="http://arctisaurora/AuroraUITypes"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../../Schemas/UITypeSchema.xsd" >
+
+	<Effect Name="expander-open" Duration="0.18" Ease="CubicOut" RotateFrom="-90" RotateTo="0"/>
+	<Effect Name="expander-close" Duration="0.14" Ease="CubicOut" RotateFrom="90" RotateTo="0"/>
+
+</Effects>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Animations xmlns="http://arctisaurora/AuroraAnimationTypes"
+			xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+			xsi:schemaLocation="http://arctisaurora/AuroraAnimationTypes ../../Schemas/AnimationTypeSchema.xsd" >
+
+	<Clip Name="underline">
+		<Track Property="EdgeThickness">
+			<Key Time="0" Value="0,0,0,0" Ease="CubicOut"/>
+			<Key Time="0.15" Value="0,0,2,0"/>
+		</Track>
+	</Clip>
+
+	<Clip Name="menu-open">
+		<Track Property="reveal">
+			<Key Time="0" Value="0" Ease="CubicOut"/>
+			<Key Time="0.16" Value="1"/>
+		</Track>
+	</Clip>
+
+	<!-- profiling: the animation profile scenario -->
+	<Clip Name="profile-state" Loop="PingPong">
+		<Track Property="state">
+			<Key Time="0" Value="0" Ease="CubicInOut"/>
+			<Key Time="1" Value="2"/>
+		</Track>
+	</Clip>
+
+	<Clip Name="profile-margin" Loop="PingPong">
+		<Track Property="Margin">
+			<Key Time="0" Value="0,0,0,0" Ease="CubicInOut"/>
+			<Key Time="1" Value="0,0,0,4"/>
+		</Track>
+	</Clip>
+
+	<Binding Name="menu-row">
+		<BindingTrack Property="EdgeThickness" Rest="0,0,0,0" Hover="0,0,0,2" Press="0,0,0,3"/>
+		<BindingTrack Property="Padding" Rest="4,10,4,10" Hover="4,10,4,14"/>
+	</Binding>
+
+</Animations>

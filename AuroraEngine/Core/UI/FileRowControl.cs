@@ -12,5 +12,6 @@ namespace ArctisAurora.Core.UI
         public FileObject file = null!;
         public FileBrowserControl browser = null!;
         internal EditableLabelControl label = null!;
+        internal LabelControl gutter = null!;
     }
 }

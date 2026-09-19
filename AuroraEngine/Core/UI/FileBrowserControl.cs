@@ -114,7 +114,7 @@ namespace ArctisAurora.Core.UI
 
         // A row is a button over an expander gutter and the entry's name. The gutter is kept on a
         // file row so its name lines up with the folder names around it.
-        protected void AddRow(FileObject file, int depth, string expander, Action activate)
+        protected FileRowControl AddRow(FileObject file, int depth, string expander, Action activate)
         {
             LabelControl gutter = new LabelControl
             {
@@ -151,6 +151,7 @@ namespace ArctisAurora.Core.UI
                 file = file,
                 browser = this,
                 label = name,
+                gutter = gutter,
                 preferredHeight = rowHeight,
                 horizontalAlignment = HorizontalAlignment.Stretch,
                 clipOutOfBounds = true,
@@ -167,6 +168,7 @@ namespace ArctisAurora.Core.UI
             row.RegisterOnRelease(_ => { activate(); return true; });
 
             rows.AddChild(row);
+            return row;
         }
 
         // Repaints rows the constructor already built, because the host's attributes arrive after it.

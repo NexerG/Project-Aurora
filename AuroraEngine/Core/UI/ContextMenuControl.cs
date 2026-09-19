@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Animation;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.EngineWork.Rendering;
 using System.Numerics;
@@ -16,9 +17,22 @@ namespace ArctisAurora.Core.UI
         public Row? opener;
         public bool centered;
 
+        // 0 hidden above its anchor, 1 fully slid out
+        [A_Animatable]
+        public float reveal
+        {
+            get => field;
+            set
+            {
+                field = value;
+                InvalidateArrange();
+            }
+        }
+
         public ContextMenuControl(List<ContextMenuEntry> entries, int depth)
         {
             this.depth = depth;
+            clip = "menu-open";
             orientation = Orientation.Vertical;
             padding = new Thickness(4f);
             role = PaletteRole.Ground;
@@ -30,11 +44,13 @@ namespace ArctisAurora.Core.UI
                 AddChild(entry is ContextMenuLine ? Line() : new Row(entry));
         }
 
-        // At its own position and size, whatever box the root offers.
+        // At its own position and size, whatever box the root offers, slid up by the unrevealed part and cut at its anchor.
         public override void Arrange(LayoutRect finalRect)
         {
             Vector2 at = window != null ? Vector2.Zero : position;
-            base.Arrange(new LayoutRect(at.X, at.Y, DesiredSize.X, DesiredSize.Y));
+            float offset = DesiredSize.Y * (1f - Math.Clamp(reveal, 0f, 1f));
+            base.Arrange(new LayoutRect(at.X, at.Y - offset, DesiredSize.X, DesiredSize.Y));
+            ClipSubtree(this, new LayoutRect(at.X, at.Y, DesiredSize.X, DesiredSize.Y - offset));
         }
 
         // The edge takes the palette's Line alongside the panel's own role.
@@ -67,6 +83,8 @@ namespace ArctisAurora.Core.UI
                 this.entry = entry;
                 padding = new Thickness(4f, 10f, 4f, 10f);
                 cornerRadius = new CornerRadii(4f);
+                stateBinding = "menu-row";
+                edgeRole = PaletteRole.Accent;
 
                 string text = entry is ContextMenuSubmenu submenu ? submenu.text : ((ContextMenuButton)entry).text;
                 caption = new LabelControl { text = text, fontSize = captionSize };

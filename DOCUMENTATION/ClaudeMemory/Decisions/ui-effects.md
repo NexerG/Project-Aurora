@@ -7,7 +7,7 @@ Slice 7 of [../Context/animation-plan.md](../Context/animation-plan.md).
 
 ## What changed
 
-- **`Effects.effects.xml`**, optional per host like gradients: `<Effect Name Duration Loop Stagger Ease [X1 Y1 X2 Y2 | Steps] OffsetFrom OffsetTo ScaleFrom ScaleTo RotateFrom RotateTo AlphaFrom AlphaTo/>`. `Loop` = `Once` (holds the end) / `Loop` / `PingPong`; `Ease` = any `EaseKind`; offsets `"x,y"` design px; rotation degrees (baked to radians). Every channel defaults to no change.
+- **`Effects/*.effects.xml`** across every data mount (2026-09-19, was one `Effects.effects.xml` that a host's copy shadowed — engine code needed its own names: `FileTreeControl`'s expander turns in the engine's `UI.effects.xml`). Same file name in two mounts still shadows, as `*.anim.xml`: `<Effect Name Duration Loop Stagger Ease [X1 Y1 X2 Y2 | Steps] OffsetFrom OffsetTo ScaleFrom ScaleTo RotateFrom RotateTo AlphaFrom AlphaTo/>`. `Loop` = `Once` (holds the end) / `Loop` / `PingPong`; `Ease` = any `EaseKind`; offsets `"x,y"` design px; rotation degrees (baked to radians). Every channel defaults to no change.
 - **Table.** Pool `Effects` (`System="Main"`, 32 +32, `GpuEffect`, 76 B), slot 0 reserved. Bootstrap step `Effects.LoadEffects` after `Palettes.LoadPalettes`. `IndexOf(name)` throws on an unknown name; `Stagger(id)`. Mirrored per image by `UIEngineModule.TableMirror<GpuEffect>` at set 1 binding 5, vertex stage.
 - **Row.** `VulkanControl` + `uint effect`, `float effectStart`, 88 → 96 B.
 - **Shader.** `UIEngine.vert`: progress `(engine.totalTime − effectStart) / Duration` (clamped at 0 before the start) → loop mode → `ease()`, a GLSL port of `Curve.Evaluate` (same families, bezier by bisection, steps). Scale and rotation about the quad centre, then the offset; alpha multiplies the tint. `fragLocal`/`fragHalfExtent` stay in the quad's own frame, scaled — the SDF rotates with it. Clip is applied after, in the moved position.
@@ -33,7 +33,7 @@ Slice 7 of [../Context/animation-plan.md](../Context/animation-plan.md).
 - The engine clock is a `float` on the GPU: after ~24 h of uptime its step is ~8 ms.
 - No colour channel; no effect on the edge band separately.
 - `Back`/`Elastic` `InOut` differ slightly from easings.net, as on the CPU ([[animation-core]]).
-- Thorium ships no `Effects.effects.xml`, and no toolbar control picks an effect.
+- No toolbar control picks an effect.
 
 ## Verified (2026-09-19)
 

@@ -256,7 +256,9 @@ Why: [[ui-palettes]].
   `RowInset`, `GutterWidth`, `RowFontSize`, `RowColorHex`, `RowHoverColorHex`, `RowPressColorHex`,
   `FolderColorHex`, `FileColorHex`, `RowFieldColorHex`. Old `FileBrowserControl`, [[file-browser-tree]] (old).
 - **FileTreeControl** abstract · FileBrowserControl — folders expand in place: `PopulateRows`,
-  `Expand`. Old `FileTreeControl`.
+  `Expand`, `Toggle`. Opened rows tween `Height` 0 → `rowHeight` (`Track`); `Collapse` tweens them to 0
+  and rebuilds on the last one's `onDone`. `listed` = rows with depth; `turning` puts an `expander-*`
+  effect on the toggled folder's `gutter`. Old `FileTreeControl`.
 - **FileRowControl** `<FileRow>` · ButtonControl — one file or folder row. Old `FileRowControl`.
 
 ## Context menus
@@ -267,8 +269,9 @@ Why: [[ui-palettes]].
   `Tick`. Hosted as the root's last child when it fits, its own window when not. Regions `menus`,
   `open and close`, `input`. Why: [[context-menus]].
 - **ContextMenuControl** (no XML) · StackPanelControl — one menu panel at a `depth`; a nested
-  `Row` : ButtonControl per entry (enter → `Entered` opens a submenu, release → `Clicked`). Old
-  `ContextMenuControl`.
+  `Row` : ButtonControl per entry (enter → `Entered` opens a submenu, release → `Clicked`; binding
+  `menu-row`). `reveal` (0–1, clip `menu-open`) slides it down: `Arrange` shifts it up and `ClipSubtree`s
+  it at its anchor. Old `ContextMenuControl`.
 - **ContextMenuEntries** — the menu document: root `<ContextMenu>` (`ContextMenu`); entries
   (`ContextMenuEntry`) `<ContextButton Text Action>` (`ContextMenuButton`), `<ContextLine>`
   (`ContextMenuLine`), `<ContextSubmenu Text>` (`ContextMenuSubmenu`).

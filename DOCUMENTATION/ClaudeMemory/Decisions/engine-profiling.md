@@ -604,6 +604,49 @@ Third pass — the query split, then each change of [[render-window-owns-the-swa
 | + old swapchain | `RenderTick` 123.1 → 17.2, `CreateKHR` 97.6 → 13.6, `DestroyKHR` 21.4 → 0.11; rebuilds in the resize 11 → 84 | `RenderTick` 4.1 → 3.8, `Recreate` 2.48, `DestroyKHR` 0.66 → 0.07, `CreateKHR` 0.94 → 1.07 |
 | validation on | no new message; rebuilds 86 | no new message; rebuilds 219 |
 
+## 17. The animation system gets a stress mode on the same scenario (user, 2026-09-19)
+
+**Date:** 2026-09-19
+**Scope:** `ProfileScenario` (`Arm`, `RunAnimation`, `BuildGrid`, `Ramp`, `StopHandles`, `Hold`); zones in `AnimationSystem.Tick`/`OnPost`, `MainSystem.OnPost`, `Animations.OnValue`/`Send`; engine `Animations/UI.anim.xml`.
+
+### What changed
+- `--profile-scenario=animation` — a mode on `ProfileScenario`, not a second class (user). Plain `--profile-scenario` is unchanged. `Arm` passes the mode to a private ctor; the mode runs as an `IEnumerator<int>` advanced once per `OnTick`.
+- Zones: `Anim.Step` (track loop), `Anim.Fades` (`StepFades`) on Animation; `Anim.OnValue` around each applied value on Main. Counters: `Anim.Request` (Animation `OnPost`), `Anim.Stepped`, `Anim.ValuePosted`/`Anim.ValueRefused` (per track per tick), `Anim.ValueApplied` (past the stale check), `Anim.RequestDropped` (`Send` refused). Track total is the `Animations` pool's item count under `--profile-pools`, not a counter.
+- Clips `profile-state` (`state` 0 → 2) and `profile-margin` (`Margin` left 0 → 4), 1 s `PingPong` `CubicInOut`, in the engine's `UI.anim.xml` (user: data over 30 s tweens).
+- Timeline: settle 30 ticks → `CaptureUntilFlush` → one fade → per N in `{100, 1000, 5000, 20000}`:
+
+| Stage | Zone | Does |
+|---|---|---|
+| fade (once) | `Scenario.FadeStart`, `Scenario.Fade` | `FadeSlots(0, 0, int.MaxValue)` — every paint slot fades to itself; 240-tick hold |
+| build | `Scenario.Build` | `BuildGrid(N)`: vertical stack of horizontal rows of 100 `ButtonControl`s, 16 px; destroys the previous grid |
+| a. burst | `Scenario.Burst`, `Scenario.BurstHold` | N `Tween`s on `state` in one tick; 240-tick hold |
+| b. clip, no layout | `Scenario.StateRamp`, `Scenario.StateHold` | `Play("profile-state")` ramped; hold; stop |
+| c. clip, layout | `Scenario.MarginRamp`, `Scenario.MarginHold` | `Play("profile-margin")` ramped; hold; stop |
+| d. fan-out | `Scenario.SpringRamp`, `Scenario.SpringHold` | N springs on `state` following one `Signals.Create()`, flipped 0 ↔ 2 every 60 ticks |
+| e. stop | `Scenario.StopAll` | `StopAll` on the first 1,000 buttons, 250 a tick |
+| teardown | `Scenario.Teardown` | `BuildGrid(0)`; 30-tick hold |
+
+- Ramps start ≤ 1,000 a tick and resume at the first refusal. Stops go through kept handles, 250 a tick, with no zone. After the last N: `Shutdown.Request`.
+
+### Why these choices
+
+**Steady stages ramp because the request lane holds 682, not 1,024.** A burst past that drops, and so does a steady stage started the same way. That leaves only ~682 tracks running, not N. Only stage a bursts, because measuring the drop is the point.
+
+**`StopAll` is sampled, not run on every control.** It scans every binding, so running it on all N at 200k is ~4×10¹⁰ comparisons. A fixed sample of 1,000 still shows the cost per call growing with N.
+
+**Stops go 250 a tick with no refusal check.** `Stop` releases on Main even when its request is dropped. The track keeps posting stale values that eat into the value lane. A quarter of the lane leaves room for Animation to tick once per four Main ticks.
+
+**200k was in the ladder and came out (user).** Main ran at ~10 Hz there, so one run would take well over 5 minutes. It got through build, burst and the state clip, and part of the margin clip, before it was closed.
+
+### Consequences to hold on to
+- Ladder sizes are total controls in the tree. Every stage except the burst runs all N tracks, but at most ~1,024 values reach Main per tick. The measurement is both the thread cost and that cap.
+- Zones only mark the stage on Main. The animation thread's frames are placed in a stage by timestamp.
+- The capture is ~250 MB at `MaxFileMB` 64 and rolls across five session folders (`-2` … `-5`).
+
+### Verified (2026-09-19)
+- Builds clean. **Run to completion through 20k**, then 200k was stopped through `CloseMainWindow` → shutdown flushed. Read with a scratch C# script over the XML, not Carbon. Every new zone and counter is present. Results are in [[animation-core]] § Measured at scale.
+- **NOT GUI-verified** — nobody watched the grid.
+
 ## Left standing
 
 - **GPU is out entirely** (user, 2026-09-02). Frame times can be read back from a `VkQueryPool`, and

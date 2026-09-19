@@ -16,6 +16,7 @@ namespace ArctisAurora.Core.Animation
             public AnimatableProperty property = null!;
             public uint generation;
             public bool live;
+            public Action? onDone;
         }
 
         // track id -> binding; ids are reused through free
@@ -53,9 +54,10 @@ namespace ArctisAurora.Core.Animation
         }
 
         // Eases target's property from its current value to to. Returns None when the request was refused.
-        public static AnimationHandle Tween(object target, string property, Vector4 to, float seconds, Curve curve)
+        public static AnimationHandle Tween(object target, string property, Vector4 to, float seconds, Curve curve, Action? onDone = null)
         {
             int id = Bind(target, property, out Binding binding);
+            binding.onDone = onDone;
             AnimationRequest request = new AnimationRequest
             {
                 op = AnimationOp.Tween,
@@ -147,10 +149,23 @@ namespace ArctisAurora.Core.Animation
         internal static void OnValue(in AnimationValue value)
         {
             if (!IsLive(value.track, value.generation)) return;
+            Profiling.Zone.Increment("Anim.ValueApplied");
             Binding binding = bindings[value.track];
 
             binding.property.set(binding.target, value.value);
-            if (value.done) Release(value.track);
+            if (!value.done) return;
+
+            Action? onDone = binding.onDone;
+            Release(value.track);
+            onDone?.Invoke();
+        }
+
+        // Stops every track animating target.
+        public static void StopAll(object target)
+        {
+            for (int id = 0; id < bindings.Count; id++)
+                if (bindings[id].live && ReferenceEquals(bindings[id].target, target))
+                    Stop(new AnimationHandle(id, bindings[id].generation));
         }
 
         private static AnimationHandle Started(int id, in AnimationRequest request)
@@ -183,6 +198,7 @@ namespace ArctisAurora.Core.Animation
             Binding binding = bindings[id];
             binding.live = false;
             binding.target = null!;
+            binding.onDone = null;
             free.Push(id);
         }
 
@@ -192,6 +208,7 @@ namespace ArctisAurora.Core.Animation
         internal static bool Send(in AnimationRequest request)
         {
             if (ThreadedSystem.Post(Engine.animationSystem, AnimationSystem.requestKind, request)) return true;
+            Profiling.Zone.Increment("Anim.RequestDropped");
             Log.Warn($"request {request.op} for track {request.track} dropped — the lane to the animation system is full.");
             return false;
         }
