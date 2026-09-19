@@ -73,6 +73,16 @@ A `<Binding>` in the same files says what a control's properties should be at re
 
 A control names a binding with `StateBinding`. On the first pointer event it attaches a `StateBinding`, which is the button's mechanism made general: it owns a signal set to 0, 1 or 2 by the pointer and a spring on its own `state` that follows it, and every time `state` changes it blends each property between its rest, hover and press values and writes the result. A spring that overshoots carries the property past those values, which is where the bounce comes from.
 
+### What ships
+
+The engine's `Animations/UI.anim.xml` holds what any host can name: the `underline` hover clip, which grows a two-pixel bottom edge, and the `menu-row` binding, which every context-menu row carries in code — an accent bar on the row's left edge and a small nudge of its caption on hover. Thorium's own `Thorium.anim.xml` adds `accent-grow`, which draws the title-bar accent bar in when a window opens, and `chrome-press`, a bottom edge that steps up on hover and press for the Save and Add-vault buttons. Thorium's `Effects/Thorium.effects.xml` holds `title-in`, which lifts and fades a window title's letters in one after another. The engine's `Effects/UI.effects.xml` holds `expander-open` and `expander-close`, which turn a file tree's folder arrow as the folder opens and closes: the new arrow starts pointing the way the old one did and rotates to rest. A binding or clip named in engine code must live in the engine's file, since a name no loaded file defines throws when it is first used.
+
+A context menu slides down out of the line it opens from. Its panel has a `reveal` value from 0 to 1, driven by the engine's `menu-open` clip; the panel is laid out at full size but pushed up by the part not yet revealed, and everything above its anchor is clipped away, so its border and rows move down together. Closing is instant.
+
+Folders in a file tree open and close with their rows. Opening a folder rebuilds the list and grows each newly shown row from zero height to the row height, so the rows below slide down. Closing shrinks the folder's rows to zero and rebuilds the list once the last one finishes, which is what `Tween`'s `onDone` is for. Clicking again while a folder is closing finishes the close at once.
+
+`Animations.StopAll(target)` stops every track on an object; `Control.OnDestroy` calls it, so a tween started from code never writes into a control that has been destroyed.
+
 ### Curves
 
 Linear; Sine, Quad, Cubic, Quart, Quint, Expo, Circ, Back, Elastic and Bounce, each as In, Out and InOut; a CSS-style cubic bezier; and a step count. Out and InOut are built from each family's In, so Back and Elastic InOut differ slightly from tables that tune them separately.
@@ -112,6 +122,10 @@ Main, at the start of its tick
 `Alpha` on a container fades only the container's own fill, not what is inside it; opacity is per quad and is not inherited.
 
 Every call on `Animations` must come from the main thread. Nothing can be posted during bootstrap, which is why a control's `Clip` waits for `OnStart` rather than playing when the XML sets it.
+
+The lanes between main and the animation thread set hard limits per tick. Only 682 animations can be started in one tick; the rest are refused with a warning. Only about 1,024 values reach main per tick; past that the extra tracks quietly skip a tick, so with thousands running each one updates less often. Measured with `--profile-scenario=animation`, see `ClaudeMemory/Decisions/animation-core.md` § Measured at scale.
+
+`StopAll` looks through every binding ever made, and every control calls it when it is destroyed, so destroying a large tree after many animations is slow. That is the likely reason tearing down 20,000 buttons took over two seconds; it has not been isolated.
 
 Hover is one control at a time and bubbles to parents, so a `HoverClip` or `StateBinding` on a panel goes back to rest while the pointer is over a child that handles the event itself, such as a button.
 

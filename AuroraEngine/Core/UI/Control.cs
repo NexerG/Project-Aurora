@@ -421,7 +421,7 @@ namespace ArctisAurora.Core.UI
             }
         } = "";
 
-        [A_XSDElementProperty("Effect", "UI", "Name of an effect in Effects.effects.xml, played on this control from when it is set.")]
+        [A_XSDElementProperty("Effect", "UI", "Name of an effect in Effects/*.effects.xml, played on this control from when it is set.")]
         public string effect
         {
             get => field;
@@ -706,6 +706,15 @@ namespace ArctisAurora.Core.UI
             foreach (Entity child in control.children)
                 if (child is Control childControl)
                     CollapseClip(childControl);
+        }
+
+        // Narrows the clip of a control and everything under it to rect.
+        protected static void ClipSubtree(Control control, LayoutRect rect)
+        {
+            control.ClipRect = LayoutRect.Intersect(control.ClipRect, rect);
+            foreach (Entity child in control.children)
+                if (child is Control childControl)
+                    ClipSubtree(childControl, rect);
         }
         #endregion
 
@@ -998,6 +1007,7 @@ namespace ArctisAurora.Core.UI
             StopClip(ref _pressRun);
             _binding?.Detach();
             _binding = null;
+            Animations.StopAll(this);
             base.OnDestroy();
             UIEngine.Forget(this);
         }

@@ -9,7 +9,7 @@ using ArctisAurora.EngineWork.Rendering.Modules;
 using System.Numerics;
 using Silk.NET.Vulkan;
 using System.Diagnostics;
-
+    
 namespace ArctisAurora.Core.UI
 {
     // Entry point of the UI, on the main thread.

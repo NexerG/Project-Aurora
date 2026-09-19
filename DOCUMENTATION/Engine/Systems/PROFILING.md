@@ -170,6 +170,30 @@ The tree waits until tick 2 so the application's own tree has been laid out once
 
 In the file, frames carrying `Scenario.Type` are the typing half and frames carrying `Scenario.Resize` are the resize half. Each resize frame rewraps every paragraph inside `ResolveLayout`. A run counts toward `Keep` like any other capture, so it prunes the oldest session. The editor has no file behind it, so no undo records are made, which a real keystroke would pay for. See `ClaudeMemory/Decisions/engine-profiling.md` §15.
 
+### The animation scenario
+`--profile-scenario=animation` stress-tests the animation system instead: grids of 100, 1,000, 5,000 and 20,000 buttons, each put through the same stages, in one capture.
+
+```
+Thorium.exe --profile-scenario=animation
+```
+
+```
+RunAnimation()
+	wait 30 ticks, then Profiling.CaptureUntilFlush()
+	fade every paint slot once, then hold
+	for each grid size N
+		replace the window's tree with N buttons in rows of 100, destroying the last grid
+		burst: start N tweens in one tick, then hold
+		start the looping profile-state clip on every button, 1,000 a tick, then hold, then stop them
+		start the looping profile-margin clip the same way, then hold, then stop them
+		start N springs following one signal, then flip the signal every 60 ticks while holding
+		StopAll on the first 1,000 buttons, 250 a tick, then stop the rest
+		tear the grid down
+	post Shutdown.Request
+```
+
+Every stage marks the main thread's frames with a `Scenario.*` zone, so a stage can be picked out of the capture. The animation thread reports `Anim.Step` and `Anim.Fades`, and counts tracks stepped, values posted, values refused and requests received. Main reports `Anim.OnValue` and counts values applied and requests dropped. Starts are spread over ticks because the lane from main to animation holds only 682 requests; only the burst goes over on purpose, to measure the drop. The two clips differ only in what they move: `state` repaints a button, `Margin` makes layout run, so comparing them separates the cost of animating from the cost of layout. See `ClaudeMemory/Decisions/engine-profiling.md` §17 for the design, and `animation-core.md` for what the first run measured.
+
 ### The frame file
 One file per thread, `Profiling/<yyyyMMdd-HHmmss>/<thread>.frames.xml`.
 

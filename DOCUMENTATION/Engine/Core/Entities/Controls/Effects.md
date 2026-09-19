@@ -24,7 +24,7 @@ VerifiedAgainst: 2026-09-19
 ---
 ## Overview
 
-An effect is a small animation the graphics card plays by itself: a wave through a heading, letters sliding up and fading in one after another, a panel that pulses. It is written once in `Effects.effects.xml` under a name and then used anywhere, the same way a gradient is — a control takes `Effect="wave"`, and a run of text in a note takes `Effect="wave"` too.
+An effect is a small animation the graphics card plays by itself: a wave through a heading, letters sliding up and fading in one after another, a panel that pulses. It is written once in an `Effects/*.effects.xml` file — the engine's own or the app's, all of them are read — under a name and then used anywhere, the same way a gradient is — a control takes `Effect="wave"`, and a run of text in a note takes `Effect="wave"` too.
 
 Nothing on the CPU steps an effect. Each drawn quad carries which effect it plays and the time it started, and the vertex shader works out where the quad should be at the current engine time. That is what makes it affordable on every letter of a document.
 
@@ -53,7 +53,7 @@ An effect starts when it is given to a control, or when a note loads a run that 
 
 | Member | Kind | What it does |
 | --- | --- | --- |
-| `LoadEffects()` | bootstrap step | Reads `Effects.effects.xml` if the app has one and fills the effect table. |
+| `LoadEffects()` | bootstrap step | Reads every `Effects/*.effects.xml` the engine and the app carry and fills the effect table. |
 | `IndexOf(name)` | method | The table row for a name; no name is row 0, which plays nothing; an unknown name is an error. |
 | `Stagger(id)` | method | The seconds between letters for that effect. |
 | `Pool` | property | The `Effects` data pool; the UI module copies it to the GPU. |

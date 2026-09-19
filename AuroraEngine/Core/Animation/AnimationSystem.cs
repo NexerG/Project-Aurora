@@ -1,4 +1,5 @@
 using ArctisAurora.Core.Data;
+using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Threading;
 using ArctisAurora.Core.UI;
@@ -55,6 +56,7 @@ namespace ArctisAurora.Core.Animation
         protected override void OnPost(ushort kind, ReadOnlySpan<byte> payload)
         {
             if (kind != requestKind) return;
+            Profiling.Zone.Increment("Anim.Request");
 
             AnimationRequest request = MemoryMarshal.Read<AnimationRequest>(payload);
             if (request.op == AnimationOp.SetSignal)
@@ -154,6 +156,7 @@ namespace ArctisAurora.Core.Animation
             Span<SignalValue> signals = _signals.GetSpan<SignalValue>();
             ReadOnlySpan<Keyframe> keys = _keys.GetSpan<Keyframe>();
             int min = int.MaxValue, max = -1;
+            Profiling.Zone.Start("Anim.Step");
             for (int i = 0; i < tracks.Length; i++)
             {
                 ref AnimationTrack track = ref tracks[i];
@@ -164,6 +167,7 @@ namespace ArctisAurora.Core.Animation
                     track.sleeping = false;
                 }
                 if (track.sleeping) continue;
+                Profiling.Zone.Increment("Anim.Stepped");
 
                 bool done;
                 if (track.driver == AnimationDriver.Tween)
@@ -209,7 +213,9 @@ namespace ArctisAurora.Core.Animation
                     value = track.value,
                     done = done && finishes
                 };
-                if (Post(Engine.mainSystem, valueKind, message) && done)
+                bool posted = Post(Engine.mainSystem, valueKind, message);
+                Profiling.Zone.Increment(posted ? "Anim.ValuePosted" : "Anim.ValueRefused");
+                if (posted && done)
                 {
                     if (finishes) track.driver = AnimationDriver.None;
                     else track.sleeping = true;
@@ -219,8 +225,12 @@ namespace ArctisAurora.Core.Animation
                 max = i;
             }
 
+            Profiling.Zone.End("Anim.Step");
+
             if (max >= 0) _tracks.MarkRangeDirty(min, max);
+            Profiling.Zone.Start("Anim.Fades");
             StepFades(dt);
+            Profiling.Zone.End("Anim.Fades");
             for (int i = _unsentSeeded.Count - 1; i >= 0; i--)
                 if (Post(Engine.mainSystem, fadeSeededKind, new FadeSeeded { request = _unsentSeeded[i] }))
                     _unsentSeeded.RemoveAt(i);

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using ArctisAurora.Core.Animation;
+using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
 
@@ -44,7 +45,11 @@ namespace ArctisAurora.Core.Threading
         protected override void OnPost(ushort kind, ReadOnlySpan<byte> payload)
         {
             if (kind == AnimationSystem.valueKind)
+            {
+                Profiling.Zone.Start("Anim.OnValue");
                 Animations.OnValue(MemoryMarshal.Read<AnimationValue>(payload));
+                Profiling.Zone.End("Anim.OnValue");
+            }
             else if (kind == AnimationSystem.fadeSeededKind)
                 Animations.OnFadeSeeded(MemoryMarshal.Read<FadeSeeded>(payload));
         }
