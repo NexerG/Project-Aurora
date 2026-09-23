@@ -5,8 +5,11 @@ namespace ArctisAurora.Core.Threading
     [A_XSDType("Step", "Systems")]
     public class FrameStepDefinition
     {
-        [A_XSDElementProperty("System", "Systems")]
-        public string system { get; set; } = string.Empty;
+        [A_XSDElementProperty("Action", "Systems")]
+        public string action { get; set; } = string.Empty;
+
+        [A_XSDElementProperty("Edge", "Systems")]
+        public string edge { get; set; } = string.Empty;
 
         [A_XSDElementProperty("Pinned", "Systems")]
         public bool pinned { get; set; }

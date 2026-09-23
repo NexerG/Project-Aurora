@@ -1,7 +1,7 @@
 # Decision — systems are steps of one frame graph, placed into stages by the columns they touch
 
-**Date:** 2026-09-23
-**Scope:** `ArctisAurora.Core.Threading` — `FrameScheduler`, `FrameStep`, `FrameGraphDefinition`, `FrameStepDefinition`, `DedicatedDefinition`, `ThreadingSettings`, `ThreadsSetting`, `FrameCapSetting`, `ThreadedSystem` (`Step`, `StartScheduled`, `StopScheduled`, `WaitOut`, `Dedicated`, `Period`), `MainSystem`; `ArctisAurora.Core.Data` — `DataPool` (`AssertAccess`), `DataManager` (`FrameEdge()`, `ResolveComponent`), `PoolDefinition`; `ArctisAurora.Core.Diagnostics` — `Profiling.Frame.Begin(owner, frameIndex)`; `Engine`; data `AuroraEngine/Data/XML/Documents/Frame.frame.xml`, `Pools.pools.xml`
+**Date:** 2026-09-23 (step 1), 2026-09-23 (step 2 — § Step 2 below)
+**Scope:** `ArctisAurora.Core.Threading` — `FrameScheduler` (`FindActions`, `Build`, `Wire`, `Reaches`), `FrameStep`, `FrameGraphDefinition`, `FrameStepDefinition`, `DedicatedDefinition`, `ThreadingSettings`, `ThreadsSetting`, `FrameCapSetting`, `ThreadedSystem` (`RunStep`, `EndFrame`, `StartScheduled`, `StopScheduled`, `WaitOut`, `Dedicated`, `Period`), `MainSystem`, `PhysicsSystem`; `ArctisAurora.Core.Data` — `DataPool` (`AssertAccess`, `ElementBytes`), `IPoolColumn.ElementBytes`, `DataManager` (`ResolveComponent`), `PoolDefinition`; `ArctisAurora.Core.Animation` — `AnimationSystem`, `Animations` (`Write`, `ApplyValues`), `A_Animatable`, `AnimatableProperty`, `AnimationValue`; `ArctisAurora.Core.Diagnostics` — `Profiling.Frame.Begin(owner, frameIndex)`; `Engine` (`Input`, `Interpolate`); data `AuroraEngine/Data/XML/Documents/Frame.frame.xml`, `Pools.pools.xml`
 
 Step 1 of [../Context/frame-scheduler-plan.md](../Context/frame-scheduler-plan.md). Supersedes the free-running thread per system of [[cross-system-change-notification]] and pool ownership of [[ecs-rework-data-pools]].
 
@@ -76,5 +76,57 @@ Step 1 of [../Context/frame-scheduler-plan.md](../Context/frame-scheduler-plan.m
 - **Carbon's frame strip stacks 24 lane labels on one another.** Worker lanes load, gaps and all, and the timeline draws them.
 - **A burst capture dropped 327 Main frames** at uncapped rates.
 - **Verified:** builds clean; Thorium and Carbon boot; GUI — Thorium draws and the sidebar hover highlights; Thorium and Carbon shut down through the close button; `Threads=1`; `MaxFps`; a loop refuses to start; an undeclared write throws on frame 0. **NOT verified:** the dirty-note prompt's cancel/confirm; dt after a title-bar drag.
+
+## Step 2 — sub-steps, frame edges, lanes deleted, animation writes in place (2026-09-23)
+
+### What changed
+- **A step names an action, not a system.** `<Step Action="Main.Input" …/>` resolves to an instance method tagged `[A_XSDActionDependency(name, "Frame")]` on a `ThreadedSystem` subclass, bound to that system (`FrameScheduler.FindActions`); the declaring system is the step's `System`. `System=` survives only on `<Dedicated>`, which names a whole thread-owning system.
+- **Frame edges are steps:** `<Step Edge="Pool"/>` writes every column of that pool and runs `DataPool.FrameEdge`; `System` is null. A `Step` has exactly one of `Action`/`Edge` (load error otherwise). Edges are `Step` attributes, not an `<Edge>` element, because the generated schema is an `xs:sequence` — a separate element could not sit between steps.
+- **Load errors:** unknown action or pool, the same action or edge listed twice, an action of a Dedicated system, a Frame action declared twice. A system with no step and not Dedicated logs a Warn.
+- **Same-system rule live in `Wire`:** after the data waits, two steps of one system that do not already reach each other (`Reaches`, transitive) get a wait, later-listed on earlier-listed; the `Loop` message labels it `same system`.
+- **`Engine.MainTick` split** into Main actions on `MainSystem`: `Main.Input` (dt, `Engine.Input` — poll, reap, posted work, keybinds, `HandleUI`, drag ghost, context menus), `Main.Logic` (`Engine.Interpolate` — lifecycle + `OnTick`), `Main.Apply` (`Animations.ApplyValues`), `Main.Layout` (`UIEngine.ResolveLayout`, zone `ResolveLayout` kept), `Main.DrawLists` (`UIEngine.BuildDrawLists`). Zones `MainTick`, `Interpolate`, `FrameEdge`, `RefreshWindowRanges` are gone — `Step.<Action>` per step. Physics: `Physics.Step` (`PhysicsSystem.Simulate`, empty). Animation: `Animation.Step` (`AnimationSystem.Advance`).
+- **Graph today** (`Frame.frame.xml`), 7 stages: `Main.Input` → `Main.Logic` → `Animation.Step` ‖ `Physics.Step` → `Main.Apply` → `Main.Layout` → edges of `UIElements UIQuads Entities Gradients Effects Paints` → `Main.DrawLists`. Every Main step declares step 1's Main set plus `Animations Paints`; only Input and Logic add `Signals`. Physics declares `Entities.TransformData` so it runs after entity logic in the same frame.
+- **Pinned:** Input (GLFW), Logic (entity `OnTick` is arbitrary code — the profiling scenario calls `glfwSetWindowSize` from it), Apply (`onDone` callbacks and setters). Layout and DrawLists reach no GLFW today; pinned because every Main step already waits for the one before, so a worker would only add a handoff. All edges unpinned, `UIElements` included — its sort walks the control tree, which nothing else touches in that stage.
+- **Command lanes deleted:** `ArctisAurora.Core.Data.Commands` (`CommandLane`, `CommandArena`, `SystemCommand`, `CommandApplier`); `ThreadedSystem` `_inbox`/`_outbox`/`BuildLanes`/`Post`/`OnPost`/`Drain`/`Publish`; `IPoolColumn.WriteBytes`/`FillBytes`/`CopyWithin` (replaced by `ElementBytes`); `DataManager.FrameEdge()`; `FrameStep.WritesAll`. `SystemId` stays — the log stamps it.
+- **`ThreadedSystem`:** `Tick` is `virtual`, run only by a Dedicated `Loop` via a private `Step`. Graph steps run through `RunStep(Action)` (sets `Current`, sums step time); `FrameScheduler.Run` calls `EndFrame()` on every scheduled system after the last stage — epoch +1 and `LastTickMs` = that frame's summed step time, only if a step ran. `RenderSystem.OnStart` still waits for Main's epoch to leave 0 (after the first full frame).
+- **Pool stats** (`Profiling.Frame.Pool`) are reported for every pool at frame end on Main's lane, not per edge — pools without an edge still report.
+- **Animation requests are direct writes** by the calling Main step — see [[animation-core]] § Step 2 of the frame scheduler.
+
+### Why these choices
+
+**No mailbox (user accepted, overriding the earlier "flag on `DataPool`" answer).** With `Animation.Step` between `Main.Logic` and `Main.Apply`, the graph orders Main's writes into `Animations`/`Signals`/`Paints` exactly as it orders Animation's writes into `UIElements`. A mailbox's one-frame delay broke stop-then-set once animation writes rows in place: a `Stop` in `Main.Input` would reach Animation next frame, so this frame's step overwrote a value Main had just set, then stopped and left its own. Cost: a step after `Animation.Step` cannot write `Signals` — it is a loop (load error). Nothing does today. A mailbox comes back only if one ever must.
+
+**Edges only where they do work (user).** An edge frees/compacts (`UIElements`, `Entities`), sorts (`UIElements`), or publishes a generation a consumer polls (`UIQuads`, `Gradients`, `Effects`, `Paints` — the renderer's mirrors). `Animations`, `Signals`, `Keyframes`, `AnimationValues` do none of these. An edge for every pool would add three stages, and the `Signals` edge (a writer `Animation.Step` must read after) would push Physics into a stage apart from Animation.
+
+**Epoch once per frame, time summed (user, option A).** Every reader — `RenderSystem`'s start gate, the log stamp, `GpuEngineStats` — means "the system's frame"; per-step epochs would change the shader-visible stats layout.
+
+**`System=` deleted from `Step` (user).** One way to name a step, the same `Action` mechanism `Bootstrap.xml` and `Shutdown.xml` use, category `Frame`.
+
+**Main.Logic before Physics (user).** Entity ticks that move or push entities must reach physics in the same frame, not the next physics tick.
+
+### Measured (2026-09-23, Debug, zones on, 24 logical cores, RTX, uncapped)
+`--profile-scenario=animation`, per frame (mean), against step 1's table above.
+
+| | 1k | 5k | 20k |
+|---|---|---|---|
+| `Anim.Step`, state hold | 0.49 | 0.91 | 3.55 ms |
+| `Anim.Step`, margin hold (in-place writes) | 0.24 | 1.22 | 4.97 ms |
+| Main steps + edges, state hold | 0.80 | 2.19 | 5.33 ms |
+| Main steps + edges, margin hold | 2.06 | 10.47 | 38.68 ms |
+| `ResolveLayout`, margin hold | 1.55 | 7.92 | 31.67 ms |
+| `Main.Apply`, state / margin hold | 0.51 / 0.23 | 0.90 / 1.21 | 3.74 / 5.22 ms |
+| teardown frame | — | — | 1,719 ms |
+
+- **Values applied = tracks stepped on every frame at every size** (20,000 at 20k); step 1 applied at most ~1,024 a tick and dropped the rest, and its `MainTick` zone excluded the drain. So the state-hold Main row is not a regression of the same work: Main now applies every value (~0.19 µs each, setter path; ~0.26 µs, in-place path's `InvalidateLayout`).
+- **Scheduler overhead** (frame − Main-run steps − barrier wait): mean 19.5 µs, p50 17.6, p99 39.2 — up from 4 / 14 µs. 7 stages instead of 1, per-frame `EndFrame` + pool stats, and a `SemaphoreSlim` release for each unpinned stage while workers are parked. Not tuned.
+- **Barrier wait** p50 0.003 ms, p99 0.106 ms (was p99 2.8 ms) — Animation no longer overlaps the whole of Main.
+- `Threads=1` + `MaxFps=120`, idle: 0.44 cores (step 1: 0.37).
+
+### Known gaps
+- **Scheduler overhead ~20 µs a frame** — see Measured; the unpinned lone stages (Animation ‖ Physics, the edges) wake parked workers every frame.
+- **`Main.Apply` per value costs ~0.2–0.26 µs**, including a `Profiling.Zone.Increment` per value; at 20k that is 4–5 ms on Main.
+- **22 capture batches lost at shutdown** — `Profiling.Flush` warns that parked workers never hand their last batch (seen before step 2 too).
+- **Decision notes older than this one name `MainTick`** — read it as the Main steps above.
+- **Verified:** builds clean; Thorium boots and prints the 7 stages; GUI — file-tree expand/collapse (in-place `Height`, `Collapsed` via `onDone`), a collapse interrupted by a re-expand ends at full heights, hover highlight, context menu slides open, palette switch crossfades (sidebar sampled 0→5→37→159→223→255 over ~300 ms, no early jump), Settings and Thorium close through their X; `Threads=1` + `MaxFps=120` same visuals; Carbon boots, opens a capture, closes; a loop, a duplicate action and an undeclared `Signals` write each fail as designed. **NOT verified:** the dirty-note prompt's cancel/confirm; dt after a title-bar drag; AuroraEditor not run (its generated schemas are stale until it is).
 
 Related: [[cross-system-change-notification]], [[ecs-rework-data-pools]], [[animation-core]], [[engine-profiling]], [[engine-logging]], [[settings-registry]]

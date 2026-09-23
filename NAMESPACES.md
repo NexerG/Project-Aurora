@@ -16,10 +16,6 @@ ArctisAurora.Core.Data -> AuroraEngine/Core/Data/PoolColumn.cs
 ArctisAurora.Core.Data -> AuroraEngine/Core/Data/PoolCursor.cs
 ArctisAurora.Core.Data -> AuroraEngine/Core/Data/PoolDefinition.cs
 ArctisAurora.Core.Data -> AuroraEngine/Core/Data/TransformData.cs
-ArctisAurora.Core.Data.Commands -> AuroraEngine/Core/Data/Commands/CommandApplier.cs
-ArctisAurora.Core.Data.Commands -> AuroraEngine/Core/Data/Commands/CommandArena.cs
-ArctisAurora.Core.Data.Commands -> AuroraEngine/Core/Data/Commands/CommandLane.cs
-ArctisAurora.Core.Data.Commands -> AuroraEngine/Core/Data/Commands/SystemCommand.cs
 ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/FrameCaptureReader.cs
 ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/FrameSpool.cs
 ArctisAurora.Core.Diagnostics -> AuroraEngine/Core/Diagnostics/LogChannel.cs

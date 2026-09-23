@@ -1,9 +1,21 @@
-# Decision — animation runs on its own thread, steered by posted requests, results posted back
+# Decision — animation is its own system, steered by requests Main writes, values applied by Main (posted until 2026-09-23)
 
 **Date:** 2026-09-19
 **Scope:** `ArctisAurora.Core.Animation` — `AnimationSystem`, `Animations`, `Curve`, `EaseKind`, `Spring`, `AnimationTrack`, `AnimationRequest`, `AnimationValue`, `A_Animatable`, `AnimatableProperty`, `AnimationLibrary`, `ClipDefinition`, `BindingDefinition`, `Keyframe`, `ClipLoop`, `StateBinding`; `ArctisAurora.Core.UI` — `Control` (`clip`, `hoverClip`, `pressClip`, `stateBinding`); `ArctisAurora.Core.Threading` — `ThreadedSystem` (`Post`, `OnPost`, `Drain`), `MainSystem.OnPost`; `ArctisAurora.Core.Data` — `DataManager.FrameEdge(owner)`, `Commands.CommandOp.Post`, `SystemCommand.Post`; `Engine`; `UI.Control`; data `AuroraEngine/Data/XML/Documents/Pools.pools.xml`
 
 Slice 3 of [../Context/animation-plan.md](../Context/animation-plan.md).
+
+## Step 2 of the frame scheduler — requests written in place, values read from a pool (2026-09-23)
+Supersedes every `Post`/`OnPost`/lane path below, the push-vs-pull choice, `FadeSeeded`, and the 682-start / ~1,024-value ceilings. See [[frame-scheduler]] § Step 2.
+- **Requests are direct writes.** `Animations.Write(in AnimationRequest)` (was `Send`) applies the request to the pools on the spot, from whichever Main step calls it — the body of the old `AnimationSystem.OnPost`, moved. The step must declare `Animations` (and `Signals` for `Signals.Set`, `Paints` for `FadeSlots`); the graph orders it against `Animation.Step`. A `Stop` lands the same frame. `Write` cannot refuse, so `Tween`/`Spring`/`Play` never return `None`/empty for backpressure — the refusal branches are gone (call-site `None` checks in `FileTreeControl` and `ProfileScenario` are now unreachable, left in place).
+- **Requests during bootstrap now apply** — before, no sending system existed and `Post` refused them silently.
+- **Values go through pool `AnimationValues`** (`AnimationValue` column, handle-less, 256 + 256). `Animation.Step` rewinds it and appends one row per stepped track; `Main.Apply` reads it (`Animations.ApplyValues`, via `Backing`) the same frame and calls `OnValue` per row. No cap: values applied = tracks stepped on every frame at 20k.
+- **Pool-stored properties are written in place.** `[A_Animatable(typeof(ArrangeData), nameof(ArrangeData.preferredWidth), nameof(InvalidateLayout))]`: `AnimatableProperty` resolves the field's offset (`Marshal.OffsetOf`, guarded by a marshal-vs-managed size check) and width (1/2/4 floats), and compiles the `changed` call. Starting a track stores `target` (`Entity.dataHandle`), `column`, `offset`, `width` in `AnimationTrack`; `Animation.Step` writes the value through `DataPool.ElementBytes` (empty when the handle is stale — the write is skipped). `OnValue` then calls `changed` (the invalidation) instead of the setter. Today: `Control` `Width Height MinWidth MinHeight Margin Padding` (→ `InvalidateLayout`), `HorizontalPos VerticalPos` (→ `InvalidateArrange`); `Animation.Step` declares `UIElements.ArrangeData`.
+- **Mark dirty now, invalidate at the end (user).** The value row is the dirty mark; the invalidation runs once per changed row in `Main.Apply`, before `Main.Layout`. Animation does not set the row's own `ArrangeFlags` — `InvalidateLayout` returns early on an already-dirty row and could then never propagate. Removing the invalidation later means layout finds changed rows itself and the `changed` argument goes.
+- **Setter path stays** for properties that are plain fields: `Control.alpha`, `Control.edgeThickness`, `ButtonControl.state`, `ContextMenuControl.reveal`, `StateBinding.state`. Moving them into pools is its own change.
+- **Slot fades seed on Main.** `FadeSlots` → `Write` → `AnimationSystem.SeedFade` (now internal) copies the colours and queues the fades, then `FadeSlots` runs `onSeeded` on the spot. `FadeSeeded`, `pendingFades`, `OnFadeSeeded`, `_unsentSeeded` are deleted. The `_fades` list is shared C# state, ordered only because every caller and `Animation.Step` declare `Paints`.
+- **`Animation.Step` reads `Signals` and `Keyframes` through `Backing`** — `GetSpan` asserts a write.
+- **Entity transforms are not animatable yet.** The mechanism is generic (any `Entity` pool column); the day an entity property is tagged, `Animation.Step` gains `Entities.TransformData` and the Animation-vs-Physics order on shared entities must be decided.
 
 ## What changed
 
@@ -117,6 +129,6 @@ Slice 3 of [../Context/animation-plan.md](../Context/animation-plan.md).
 - **`StopAll` is O(bindings) per call.** `Control.OnDestroy` calls it, so destroying a subtree is O(subtree × bindings). The teardown hitch fits that: ~5.5 ns per comparison at both 5k × ~5k and 20k × ~21k. This is the likely cause, **not isolated** (no zone inside `OnDestroy`). `bindings` never shrinks, so after one large burst every later destroy pays its high-water mark.
 - **Slot fade over every paint slot is negligible.** The Animation frame mean was 0.04 ms.
 - `Interpolate` with no layout work: 1.65 ms at 20k controls, 12.5 ms at 200k. This is the entity tick loop, i.e. [[entity-tick-group]] measured.
-- Today's UI runs tens of tracks and everything stays well under a millisecond. The first real-use limit is the 682 start ceiling, e.g. a folder of more than 682 rows expanding in one tick.
+- Today's UI runs tens of tracks and everything stays well under a millisecond. The first real-use limit is the 682 start ceiling, e.g. a folder of more than 682 rows expanding in one tick. **Both ceilings are gone since 2026-09-23** — see § Step 2 of the frame scheduler and [[frame-scheduler]] § Step 2 Measured.
 
 Related: [[ui-palettes]], [[ui-gradients]], [[ecs-rework-data-pools]], [[cross-system-change-notification]], [[entity-tick-group]], [[engine-profiling]]

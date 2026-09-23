@@ -200,8 +200,7 @@ namespace ArctisAurora.Core.Data
 
         public ushort ColumnId<T>() where T : struct => _columnIds[typeof(T)];
 
-        // Dense index for a handle, or -1 if stale. Lets a command enqueued several ticks ago be
-        // dropped rather than written over whoever holds the slot now.
+        // Dense index for a handle, or -1 if stale.
         public int DenseOf(DataHandle h) => Alive(h) ? _slots[h.StableId] : -1;
 
         public Span<T> GetSpan<T>() where T : struct
@@ -215,6 +214,14 @@ namespace ArctisAurora.Core.Data
             AssertAccess(Bit<T>(), true, nameof(GetRef));
             int dense = _slots[h.StableId];
             return ref ((PoolColumn<T>)_columns[typeof(T)]).data[dense];
+        }
+
+        // One row of a column as raw bytes, empty when the handle is stale.
+        public Span<byte> ElementBytes(ushort column, DataHandle h)
+        {
+            AssertAccess(1UL << column, true, nameof(ElementBytes));
+            int dense = DenseOf(h);
+            return dense < 0 ? Span<byte>.Empty : _columnsByIndex[column].ElementBytes(dense);
         }
 
         private T[] Column<T>() where T : struct => ((PoolColumn<T>)_columns[typeof(T)]).data;

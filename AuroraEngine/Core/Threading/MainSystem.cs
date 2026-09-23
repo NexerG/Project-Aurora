@@ -1,13 +1,13 @@
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using ArctisAurora.Core.Animation;
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
 
 namespace ArctisAurora.Core.Threading
 {
-    // Input, UI and entity logic. A Pinned step, because GLFW requires PollEvents on the thread that
+    // Input, UI and entity logic. Pinned steps, because GLFW requires PollEvents on the thread that
     // created the window.
     //
     // The tick body still lives on Engine, which owns the registries and handlers it touches. This
@@ -21,7 +21,8 @@ namespace ArctisAurora.Core.Threading
         // window drag — starts from a zero delta instead of charging the whole stall to it.
         internal void ResyncClock() => _lastTick = 0;
 
-        protected override void Tick()
+        [A_XSDActionDependency("Main.Input", "Frame")]
+        private void Input()
         {
             // Tick to tick, and deliberately not LastTickMs: that is sampled before the pacing
             // sleep, so it measures the work a tick did rather than the time that passed — at 120Hz
@@ -36,19 +37,24 @@ namespace ArctisAurora.Core.Threading
 
             Engine.totalTime += Engine.deltaTime.TotalSeconds;
 
-            Engine.engineInstance.MainTick();
+            Engine.engineInstance.Input();
         }
 
-        protected override void OnPost(ushort kind, ReadOnlySpan<byte> payload)
+        [A_XSDActionDependency("Main.Logic", "Frame")]
+        private void Logic() => Engine.engineInstance.Interpolate();
+
+        [A_XSDActionDependency("Main.Apply", "Frame")]
+        private void Apply() => Animations.ApplyValues();
+
+        [A_XSDActionDependency("Main.Layout", "Frame")]
+        private void Layout()
         {
-            if (kind == AnimationSystem.valueKind)
-            {
-                Profiling.Zone.Start("Anim.OnValue");
-                Animations.OnValue(MemoryMarshal.Read<AnimationValue>(payload));
-                Profiling.Zone.End("Anim.OnValue");
-            }
-            else if (kind == AnimationSystem.fadeSeededKind)
-                Animations.OnFadeSeeded(MemoryMarshal.Read<FadeSeeded>(payload));
+            Profiling.Zone.Start("ResolveLayout");
+            UIEngine.ResolveLayout();
+            Profiling.Zone.End("ResolveLayout");
         }
+
+        [A_XSDActionDependency("Main.DrawLists", "Frame")]
+        private void DrawLists() => UIEngine.BuildDrawLists();
     }
 }

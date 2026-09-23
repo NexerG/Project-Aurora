@@ -132,4 +132,19 @@
       </xs:simpleType>
     </xs:union>
   </xs:simpleType>
+  <xs:simpleType name="Frame">
+    <xs:union memberTypes="actions:Any">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="Main.Input" />
+          <xs:enumeration value="Main.Logic" />
+          <xs:enumeration value="Main.Apply" />
+          <xs:enumeration value="Main.Layout" />
+          <xs:enumeration value="Main.DrawLists" />
+          <xs:enumeration value="Physics.Step" />
+          <xs:enumeration value="Animation.Step" />
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
 </xsd:schema>

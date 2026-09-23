@@ -14,11 +14,16 @@ region map both fail. Note links name one `§`: `grep -n '^## '` the note and re
 
 ## A frame, main thread
 
-1. `InputHandler.ActivateKeybinds` — keybind actions run here, F10 `UI.DumpTree` among them.
-2. `Engine.HandleUI` → `UIEngine.Poll(window)`, per window — hover, press, release, drag, scroll → `Dispatch`.
-3. `DragGhost.Follow`, `ContextMenus.Tick`.
-4. `Engine.Interpolate` → `UIEngine.ResolveLayout` — measure + arrange each dirty root.
-5. `DataManager.FrameEdge`, then `UIEngine.BuildDrawLists` — rewind `UIQuads`, DFS each window's root (a drag
+Steps of `Frame.frame.xml`, in order — [[frame-scheduler]] § Step 2.
+
+1. `Main.Input` (`Engine.Input`): `InputHandler.ActivateKeybinds` — keybind actions run here, F10 `UI.DumpTree`
+   among them; `Engine.HandleUI` → `UIEngine.Poll(window)`, per window — hover, press, release, drag, scroll →
+   `Dispatch`; `DragGhost.Follow`, `ContextMenus.Tick`.
+2. `Main.Logic` (`Engine.Interpolate`) — entity lifecycle and `OnTick`. Then `Animation.Step` on a worker: writes
+   pool-stored animated properties (`Width`, `Margin`, …) straight into `ArrangeData`.
+3. `Main.Apply` (`Animations.ApplyValues`) — setter-path values applied, in-place ones invalidated.
+4. `Main.Layout` → `UIEngine.ResolveLayout` — measure + arrange each dirty root.
+5. Pool edges, then `Main.DrawLists` → `UIEngine.BuildDrawLists` — rewind `UIQuads`, DFS each window's root (a drag
    ghost's `rangeRoot` instead), `Control.Emit(z)` the visible ones into the pool, publish the window's range.
 6. Render thread: `Render.Modules.UIEngineModule` mirrors its `UIQuads` range and draws —
    `*/Shaders/UIEngine/UIEngine.vert|frag`, four copies (`shader-pipeline` skill).

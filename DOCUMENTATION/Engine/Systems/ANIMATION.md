@@ -15,11 +15,11 @@ Implementors:
   - "[[ANIMATION]]"
 Namespace: ArctisAurora.Core.Animation
 SourceFiles: AuroraEngine/Core/Animation/*.cs
-VerifiedAgainst: 2026-09-19
+VerifiedAgainst: 2026-09-23
 ---
 ## Overview
 
-Animation is a step of the frame graph (see [[THREADING]]), running beside main and physics on whichever worker claims it. Main asks for an animation, the animation step advances it every frame, and each new value is sent back to main, which writes it into the property through its ordinary setter — so an animated width lays out and an animated alpha repaints exactly as if code had set them by hand.
+Animation is a step of the frame graph (see [[THREADING]]), running beside physics on whichever worker claims it, after main's input and entity logic and before main applies values and lays out. Main asks for an animation, the animation step advances it every frame, and main applies each new value the same frame. A property stored in a data pool — a control's width, height, margin, padding or position — is written straight into its row by the animation step, and main only marks the control for layout; any other property, such as alpha, goes through its ordinary setter on main. Either way an animated width lays out and an animated alpha repaints exactly as if code had set them by hand.
 
 Three kinds of motion exist today; the third, keyframed clips authored in XML, is under Clips below. A tween eases from where a property is now to a target over a fixed time, along a curve. A spring rests at the property's current value and chases whatever target it is given next, with a frequency and a damping ratio; a damping ratio of 1 settles as fast as possible without overshooting, below 1 it bounces, above 1 it creeps.
 
@@ -31,7 +31,7 @@ This is the first slice of a larger plan in which palettes, gradients and all st
 
 `Animations` is the main-thread side. `Tween(target, property, to, seconds, curve)` starts a tween, `Spring(target, property, frequency, damping)` starts a spring, `Retarget(handle, to)` gives a spring (or a running tween) a new target, and `Stop(handle)` ends it. Starting returns an `AnimationHandle`; once that animation has finished or been stopped, the handle quietly does nothing. The property is named by its XML attribute name, `Width` or `Alpha`, and must be marked `[A_Animatable]`. Every value travels as a `Vector4`; a `float` uses the first component, a `Thickness` all four in top, right, bottom, left order.
 
-The first time a property is animated, its getter and setter are compiled once and kept, so later animations of the same property cost no reflection.
+The first time a property is animated, its getter and setter are compiled once and kept, so later animations of the same property cost no reflection. A property that lives in a data pool says where, as `[A_Animatable(typeof(ArrangeData), nameof(ArrangeData.preferredWidth), nameof(InvalidateLayout))]`: the column, the field inside it, and the method main calls after the value has been written. The field's offset and size are worked out once too.
 
 ### Track ids
 
@@ -39,13 +39,13 @@ Main hands out the track ids. Each id carries a generation that goes up every ti
 
 ### The animation thread
 
-`AnimationSystem` keeps one row per track in the `Animations` data pool. Each tick it advances every track that is running, and sends that track's new value to main. A spring that has settled goes to sleep and costs nothing until it is retargeted.
+`AnimationSystem` keeps one row per track in the `Animations` data pool. Each frame it advances every track that is running, writes the value into the property's pool row when the property has one, and adds a row to the `AnimationValues` pool either way. A spring that has settled goes to sleep and costs nothing until it is retargeted. A track whose control has been freed skips the write.
 
-If the message lane to main is full, the value is simply sent again next tick; a finishing animation only retires once its final value has actually been sent.
+### How requests and values move
 
-### Messages between threads
+Nothing is sent between threads. A request — start, retarget, stop, set a signal, fade the palette — is written into the animation pools on the spot by the main step that makes it, and the frame graph orders that step against the animation step, so a stop takes effect the same frame. Values travel back through the `AnimationValues` pool, which the main step `Main.Apply` reads right after the animation step and before layout: it calls the setter of an ordinary property, or the after-write method of a pool-stored one, and releases a finished tween's id. There is no limit on how many requests or values a frame carries.
 
-Requests and values ride the same per-pair lanes that already carry data-pool commands. A lane message addressed to a system rather than to a pool column is a post: the receiving system handles it at the start of its tick, before any of its own work. Main receives values there, which is before input, entity ticks and layout.
+A main step that makes a request lists the animation pools it writes; setting a signal is only allowed before the animation step, because the animation step reads signals and a later writer would make a loop.
 
 ### Signals
 
@@ -57,7 +57,7 @@ Every button eases between rest, hover and press instead of snapping. A button o
 
 ### Theme fades
 
-Picking a palette in Settings fades the whole app into it rather than snapping. The paint table belongs to the animation thread: it copies the colours currently on screen into the new palette's slots, then eases each slot back to its real colour over the new palette's `ThemeFade` seconds. Main switches every control over to the new palette only once those first colours are in place, so no frame of the new theme shows before the fade begins. Main's own colour decisions — which text colour contrasts with a panel — read the palettes' load-time colours and never a colour mid-fade.
+Picking a palette in Settings fades the whole app into it rather than snapping. When the palette is picked, main copies the colours currently on screen into the new palette's slots, switches every control over to the new palette, and hands the fades to the animation step, which eases each slot back to its real colour over the new palette's `ThemeFade` seconds. Because the copy happens before the switch, no frame of the new theme shows before the fade begins. Main's own colour decisions — which text colour contrasts with a panel — read the palettes' load-time colours and never a colour mid-fade.
 
 ### Clips
 
@@ -93,10 +93,12 @@ Linear; Sine, Quad, Cubic, Quart, Quint, Expo, Circ, Back, Elastic and Bounce, e
 Animations.Tween(target, property, to, seconds, curve)
 	id = a free id, generation + 1
 	from = the property's current value
-	post a Tween request to the animation thread
+	write the track row: tween, from, to, curve, duration
+	if the property lives in a pool
+		point the track at the control's row, column, field offset and size
 
-AnimationSystem, every tick
-	apply every posted request to its track row
+Animation.Step, every frame
+	empty AnimationValues
 	for each running track
 		tween: value = from → to along the curve at elapsed / duration
 		spring: step toward the target; asleep once settled
@@ -107,21 +109,28 @@ AnimationSystem, every tick
 				elapsed = elapsed + dt, wrapped by the clip's Loop
 			value = the keys either side of elapsed, eased by the earlier key's curve
 			at an end: asleep if held, otherwise done
-		post the value to main
-	close the frame for the animation thread's own pools
+		if the track points at a pool row, and the row is still alive
+			write the value into the field
+		add the value to AnimationValues
+	step the palette fades
 
-Main, at the start of its tick
-	for each posted value
+Main.Apply, the same frame
+	for each row in AnimationValues
 		skip it if its id was released or its generation is old
-		set the property
-		release the id when a tween reports done
+		if the property lives in a pool
+			call its after-write method, such as InvalidateLayout
+		else
+			set the property
+		release the id and run its onDone when a tween reports done
 ```
 
 ## Gotchas
 
 `Alpha` on a container fades only the container's own fill, not what is inside it; opacity is per quad and is not inherited.
 
-Every call on `Animations` must come from the main thread. Nothing can be posted during bootstrap, which is why a control's `Clip` waits for `OnStart` rather than playing when the XML sets it.
+Every call on `Animations` must come from a main step that lists the animation pools it writes, or from bootstrap, before the frame graph starts. Requests made during bootstrap take effect; a control's `Clip` still plays from `OnStart`, which is where it was put when bootstrap requests were dropped.
+
+Properties that are plain fields rather than pool fields — alpha, border thickness, a button's `state`, a menu's `reveal` — still go through their setters on main, one call per value per frame.
 
 The lanes between main and the animation thread set hard limits per tick. Only 682 animations can be started in one tick; the rest are refused with a warning. Only about 1,024 values reach main per tick; past that the extra tracks quietly skip a tick, so with thousands running each one updates less often. Measured with `--profile-scenario=animation`, see `ClaudeMemory/Decisions/animation-core.md` § Measured at scale.
 

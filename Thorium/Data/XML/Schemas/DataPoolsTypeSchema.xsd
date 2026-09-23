@@ -88,4 +88,8 @@
   <xs:complexType name="AnimationTrack">
     <xs:sequence />
   </xs:complexType>
+  <xs:element name="AnimationValue" type="types:AnimationValue" />
+  <xs:complexType name="AnimationValue">
+    <xs:sequence />
+  </xs:complexType>
 </xs:schema>

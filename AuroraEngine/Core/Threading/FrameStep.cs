@@ -3,7 +3,7 @@ using ArctisAurora.Core.Diagnostics;
 
 namespace ArctisAurora.Core.Threading
 {
-    // One Step of Frame.frame.xml: a system's tick, where it may run, and the columns it touches.
+    // One Step of Frame.frame.xml: an action or a pool's edge, where it may run, and the columns it touches.
     public sealed class FrameStep
     {
         [ThreadStatic] private static FrameStep? _current;
@@ -11,10 +11,12 @@ namespace ArctisAurora.Core.Threading
         // The step running on the calling thread, or null outside one.
         public static FrameStep? Current => _current;
 
-        public ThreadedSystem System { get; }
+        public string Name { get; }
+
+        // the system the action belongs to, null for a frame edge
+        public ThreadedSystem? System { get; }
         public bool Pinned { get; }
         public int Stage { get; internal set; }
-        public string Name => System.Name;
 
         // column bits, indexed by pool id
         internal readonly ulong[] reads;
@@ -25,25 +27,26 @@ namespace ArctisAurora.Core.Threading
 
         internal bool due;
         private double _owedMs;
+        private readonly Action _body;
         private readonly string _zone;
 
-        internal FrameStep(ThreadedSystem system, bool pinned, ulong[] reads, ulong[] writes)
+        internal FrameStep(string name, ThreadedSystem? system, Action body, bool pinned, ulong[] reads, ulong[] writes)
         {
+            Name = name;
             System = system;
+            _body = body;
             Pinned = pinned;
             this.reads = reads;
             this.writes = writes;
-            _zone = "Step." + system.Name;
+            _zone = "Step." + name;
         }
-
-        public bool WritesAll(DataPool pool) => writes[pool.Id] == AllColumns(pool);
 
         internal static ulong AllColumns(DataPool pool) => pool.ColumnCount >= 64 ? ulong.MaxValue : (1UL << pool.ColumnCount) - 1;
 
-        // True once the system's period has come round; a system without one runs every frame.
+        // True once the system's period has come round; a step without one runs every frame.
         internal bool Due(double dtMs)
         {
-            double period = System.Period;
+            double period = System?.Period ?? 0;
             if (period <= 0) return true;
 
             _owedMs += dtMs;
@@ -58,7 +61,8 @@ namespace ArctisAurora.Core.Threading
             FrameStep? previous = _current;
             _current = this;
             Profiling.Zone.Start(_zone);
-            System.Step();
+            if (System != null) System.RunStep(_body);
+            else _body();
             Profiling.Zone.End(_zone);
             _current = previous;
         }
