@@ -41,7 +41,6 @@ namespace ArctisAurora.Core.Data
             foreach (XElement poolElem in root.Elements(ns + "Pool"))
             {
                 string name = poolElem.Attribute("Name").Value;
-                string system = poolElem.Attribute("System")?.Value ?? string.Empty;
                 int capacity = int.Parse(poolElem.Attribute("Capacity").Value);
                 bool ordered = bool.Parse(poolElem.Attribute("Ordered")?.Value ?? "false");
                 string sortAction = poolElem.Attribute("SortAction")?.Value;
@@ -52,15 +51,13 @@ namespace ArctisAurora.Core.Data
                 foreach (XElement compElem in poolElem.Elements(ns + "Component"))
                 {
                     string typeName = compElem.Attribute("Type").Value;
-                    Type t = AnyXMLType.typeMap.TryGetValue(typeName, out Type mapped)
-                        ? mapped
-                        : AnyXMLType.FindType(typeName);
+                    Type? t = ResolveComponent(typeName);
                     if (t == null)
                         throw new Exception($"[DataManager] Pool '{name}' component type '{typeName}' not found.");
                     componentTypes.Add(t);
                 }
 
-                DataPool pool = new((ushort)_pools.Count, name, system, capacity, ordered, growth, growthValue, componentTypes);
+                DataPool pool = new((ushort)_pools.Count, name, capacity, ordered, growth, growthValue, componentTypes);
                 if (!string.IsNullOrEmpty(sortAction))
                     pool.SortProvider = ResolveSortProvider(sortAction);
 
@@ -74,30 +71,18 @@ namespace ArctisAurora.Core.Data
             _byName[pool.Name] = pool;
         }
 
-        // Bind each pool to the system named by its Pools.pools.xml System attribute. Runs after Engine
-        // constructs the systems, since pools are parsed during bootstrap and the systems do not
-        // exist yet at that point. Fails loudly: a pool naming a system that was never created is
-        // a pool nobody may legally write, which is a silent data race waiting to happen.
-        public static void ResolveOwners()
+        // A component type as Pools.pools.xml and Frame.frame.xml name it.
+        internal static Type? ResolveComponent(string typeName)
+            => AnyXMLType.typeMap.TryGetValue(typeName, out Type? mapped) ? mapped : AnyXMLType.FindType(typeName);
+
+        // Runs the frame edge of every pool the running step writes in full.
+        public static void FrameEdge()
         {
+            FrameStep step = FrameStep.Current!;
             for (int i = 0; i < _pools.Count; i++)
             {
                 DataPool pool = _pools[i];
-                if (string.IsNullOrEmpty(pool.OwnerName))
-                    throw new Exception($"[DataManager] Pool '{pool.Name}' has no System attribute in Pools.pools.xml — every pool needs exactly one owning system.");
-
-                ThreadedSystem owner = ThreadedSystem.Find(pool.OwnerName) ?? throw new Exception($"[DataManager] Pool '{pool.Name}' names system '{pool.OwnerName}', which does not exist.");
-                pool.SetOwnerSystemId(owner.SystemId);
-            }
-        }
-
-        // Runs the frame edge of every pool owner owns.
-        public static void FrameEdge(ThreadedSystem owner)
-        {
-            for (int i = 0; i < _pools.Count; i++)
-            {
-                DataPool pool = _pools[i];
-                if (pool.OwnerSystemId != owner.SystemId) continue;
+                if (!step.WritesAll(pool)) continue;
                 pool.FrameEdge();
                 Profiling.Frame.Pool(pool.Name, pool.Count, pool.Capacity, pool.ReservedBytes);
             }

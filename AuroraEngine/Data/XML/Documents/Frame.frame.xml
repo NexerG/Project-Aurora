@@ -1,0 +1,11 @@
+<FrameGraph xmlns="http://arctisaurora/AuroraSystemsTypes"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://arctisaurora/AuroraSystemsTypes ../Schemas/SystemsTypeSchema.xsd">
+
+	<Dedicated System="Render"/>
+
+	<Step System="Main" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects"/>
+	<Step System="Animation" Writes="Paints Animations Signals Keyframes"/>
+	<Step System="Physics"/>
+
+</FrameGraph>

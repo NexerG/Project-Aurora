@@ -19,7 +19,7 @@ VerifiedAgainst: 2026-09-19
 ---
 ## Overview
 
-Animation runs on a thread of its own, beside main, physics and render. Main asks for an animation, the animation thread steps it every tick, and each new value is sent back to main, which writes it into the property through its ordinary setter — so an animated width lays out and an animated alpha repaints exactly as if code had set them by hand.
+Animation is a step of the frame graph (see [[THREADING]]), running beside main and physics on whichever worker claims it. Main asks for an animation, the animation step advances it every frame, and each new value is sent back to main, which writes it into the property through its ordinary setter — so an animated width lays out and an animated alpha repaints exactly as if code had set them by hand.
 
 Three kinds of motion exist today; the third, keyframed clips authored in XML, is under Clips below. A tween eases from where a property is now to a target over a fixed time, along a curve. A spring rests at the property's current value and chases whatever target it is given next, with a frequency and a damping ratio; a damping ratio of 1 settles as fast as possible without overshooting, below 1 it bounces, above 1 it creeps.
 

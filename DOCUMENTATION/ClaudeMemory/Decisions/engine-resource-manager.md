@@ -109,7 +109,7 @@ buys nothing and costs both. `DataPool` growth stays as-is; the GPU arena is its
 ### 6. It is a `ThreadedSystem`, not a static with locks
 
 - loads/unloads arrive as commands on its `CommandLane` — main and render threads enqueue, the
-  manager owns the mutation. Same single-writer rule `DataPool.AssertOwner` already enforces.
+  manager owns the mutation. Same rule `DataPool.AssertAccess` enforces per declared column (lanes are going — [[frame-scheduler]]).
 - structural work at `FrameEdge`, alongside `DataManager.FrameEdge()`.
 - **deferred GPU deletion centralises here.** `UIModule.deferredDeletions` is the per-module version
   of this today; modules should stop each carrying their own.

@@ -110,6 +110,8 @@ Design rationale lives in [[cross-system-change-notification]]; this is the code
   tables in place). `BuildLanes()` wires all ordered pairs, called from `Engine.Init()` right after
   `DataManager.ResolveOwners()` and before any `Start()`. `Send<T>(handle, columnId, value)`
   enqueues a `SetOne`; returns false on backpressure rather than blocking or dropping silently.
+  **REVISED 2026-09-23:** `ResolveOwners` and `Send` are deleted, pools have no owner, and lanes
+  carry only `Post` until they go too — [[frame-scheduler]].
 - **Scope note: infrastructure only — NO consumer was rewired.** UIModule still uses its ad-hoc
   `_frameWrittenControls[]` / `_frameBuiltCapacity[]` high-water marks (which are dense-space and
   will break when compaction actually runs), and the lanes have **no producer**: physics is a stub
@@ -309,8 +311,9 @@ The last per-control GPU resource is gone; both UI columns are now whole-pool mi
   diff, so it is not a pooling bug. Most likely the fragment shader runs MSDF median/opacity math
   on every control, not just glyphs, so a plain control's mask collapses its alpha. Belongs to the
   WIP item "UI → fix up UI shaders (samplers, transparency)".
-- **`DataManager.FrameEdge()` is still a flat loop over every pool from `MainTick`** — throws the
-  day a pool is owned by Physics. Needs to become per-system. Cannot fire today (both pools Main).
+- ~~**`DataManager.FrameEdge()` is still a flat loop over every pool from `MainTick`** — throws the
+  day a pool is owned by Physics. Needs to become per-system. Cannot fire today (both pools Main).~~
+  SUPERSEDED 2026-09-23 — it runs the pools the running step writes in full ([[frame-scheduler]]).
 - Schema location issue (engine XML docs reference empty `AuroraEngine/Data/XML/Schemas`; XSDGenerator writes schemas to the running app's folder) — pre-existing, DEFERRED, user aware.
 
 ## Original design (settled 2026-07-17) — unchanged below

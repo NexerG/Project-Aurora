@@ -25,6 +25,9 @@
       <xs:enumeration value="DragGhost" />
       <xs:enumeration value="Palette" />
       <xs:enumeration value="UI" />
+      <xs:enumeration value="Threads" />
+      <xs:enumeration value="FrameCap" />
+      <xs:enumeration value="Threading" />
       <xs:enumeration value="SettingScope" />
       <xs:enumeration value="Setting" />
       <xs:enumeration value="SettingCategory" />
@@ -188,6 +191,9 @@
   </xs:simpleType>
   <xs:simpleType name="Systems">
     <xs:restriction base="xs:string">
+      <xs:enumeration value="Step" />
+      <xs:enumeration value="Dedicated" />
+      <xs:enumeration value="FrameGraph" />
       <xs:enumeration value="Main" />
       <xs:enumeration value="Physics" />
       <xs:enumeration value="Render" />

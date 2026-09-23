@@ -64,7 +64,9 @@ interactive and physical motion.
 ## C — threading and data ownership (F5)
 
 The animation system is its own `ThreadedSystem`. It does not reach into other systems' tables; it owns a
-defined set of inputs and outputs.
+defined set of inputs and outputs. **REVISED 2026-09-23:** it is a step of the frame graph, not a thread, and
+its inputs and outputs are the columns its step declares; lanes give way to mailbox pools and values are read
+directly by a Main step — [frame-scheduler-plan.md](frame-scheduler-plan.md).
 
 **Inputs — pushed to it.**
 - `Signals` pool, Animation-owned. Main writes `hover`/`press`/`focus` through a lane; Physics writes contacts and

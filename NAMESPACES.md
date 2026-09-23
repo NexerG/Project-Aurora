@@ -72,10 +72,14 @@ ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/TextureAs
 ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/UIDocumentAsset.cs
 ArctisAurora.Core.Rendering.Helpers -> AuroraEngine/Core/Rendering/Helpers/QueueAllocator.cs
 ArctisAurora.Core.Rendering.Modules -> AuroraEngine/Core/Rendering/Modules/CompositorModule.cs
+ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/FrameGraph.cs
+ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/FrameScheduler.cs
+ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/FrameStep.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/MainSystem.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/PhysicsSystem.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/RenderSystem.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/ThreadedSystem.cs
+ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/ThreadingSettings.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/BlockControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ButtonControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/CaretControl.cs
@@ -155,7 +159,6 @@ ArctisAurora.EngineWork -> AuroraEngine/Core/Engine.cs
 ArctisAurora.EngineWork -> AuroraEngine/Core/InputBindingSettings.cs
 ArctisAurora.EngineWork -> AuroraEngine/Core/InputHandler.cs
 ArctisAurora.EngineWork -> AuroraEngine/Core/InputSettings.cs
-ArctisAurora.EngineWork -> AuroraEngine/Core/JobSystem.cs
 ArctisAurora.EngineWork -> AuroraEngine/Core/Shutdown.cs
 ArctisAurora.EngineWork.ComponentBehaviour -> AuroraEngine/Core/ECS/EntityComponent.cs
 ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan -> AuroraEngine/Core/ECS/RenderingComponents/Vulkan/LightsourceComponent.cs

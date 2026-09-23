@@ -17,6 +17,8 @@ System.Exception: [DataPool] 'UIElements' is owned by 'Main' but GetRef was call
 margins, alignment. The old `VulkanControl.arrangedRect` was a plain field, which is why the ported line never
 asserted there.
 
+**Since 2026-09-23** the check is `DataPool.AssertAccess` ([[frame-scheduler]]): a Dedicated thread may call the read entry points (`Backing`, `CopyTo`, `CopyRange`, `OwnerAt`) but never a write one, and `GetRef` is a write one — so this still throws.
+
 **The rule:** anything the render thread needs from a control is copied into a plain field on the module, on the
 main thread. The ghost's box is `UIEngineModule.rangeRect`, built in `DragGhost.Show` before the ghost is
 shown and cleared in `Hide`; the camera reads only that. `visual` is a plain field; there is no `geometry` since

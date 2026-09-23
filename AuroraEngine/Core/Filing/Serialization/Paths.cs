@@ -25,6 +25,7 @@ namespace ArctisAurora.Core.Filing.Serialization
         // instead of assuming it sits next to the app's own files.
         public static readonly string BOOTSTRAP = Doc("Bootstrap.bootstrap.xml");
         public static readonly string SHUTDOWN = Doc("Shutdown.shutdown.xml");
+        public static readonly string FRAME = Doc("Frame.frame.xml");
 
         // Resolve a document under Data/XML/Documents across all mounts (app first, engine fallback).
         public static string Doc(string name) => VirtualFileSystem.ResolveFile("XML/Documents/" + name);
