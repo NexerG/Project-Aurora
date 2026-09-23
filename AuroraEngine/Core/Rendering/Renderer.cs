@@ -971,12 +971,12 @@ namespace ArctisAurora.EngineWork.Rendering
             // update modules if needed
             for (int i = 0; i < window.modules.Length; i++)
             {
+                window.modules[i].UpdateFrameData((int)imageIndex);
                 if (window.modules[i].isDirty[imageIndex] || window.modules[i].HasPendingWork((int)imageIndex))
                 {
                     Log.Every(1000).Hot($"module {i} re-recording image {imageIndex} — dirty {window.modules[i].isDirty[imageIndex]}, pending {window.modules[i].HasPendingWork((int)imageIndex)}");
                     window.modules[i].UpdateModule((int)imageIndex);
                 }
-                window.modules[i].UpdateFrameData((int)imageIndex);
             }
             if (window.compositor.isDirty[imageIndex])
             {
@@ -992,58 +992,47 @@ namespace ArctisAurora.EngineWork.Rendering
                 SType = StructureType.SubmitInfo
             };
 
-            CommandBuffer[] moduleCBs = new CommandBuffer[window.modules.Length];
+            CommandBuffer* moduleCBs = stackalloc CommandBuffer[window.modules.Length];
             for (int i = 0; i < window.modules.Length; i++)
                 moduleCBs[i] = window.modules[i].commandBuffers[imageIndex];
 
-            var semaphoreImageAvailable = stackalloc[] { window.imageAvailableSemaphores[window.currentFrame] };
-            var semaphoreStage = stackalloc[] { PipelineStageFlags.ColorAttachmentOutputBit };
             var semaphoreSignalModulesFinished = stackalloc[] { window.timelineSemaphore };
-            ulong waitValueModulesFinished = waitValue + 2;
             ulong signalValueModulesFinished = waitValue + 3;
 
             TimelineSemaphoreSubmitInfo tssInfoModules = new TimelineSemaphoreSubmitInfo()
             {
                 SType = StructureType.TimelineSemaphoreSubmitInfo,
-                WaitSemaphoreValueCount = 1,
-                PWaitSemaphoreValues = &waitValueModulesFinished,
                 SignalSemaphoreValueCount = 1,
                 PSignalSemaphoreValues = &signalValueModulesFinished,
             };
 
-            fixed (CommandBuffer* moduleCBsPtr = moduleCBs)
+            SubmitInfo modulesSubmit = new SubmitInfo()
             {
-                SubmitInfo modulesSubmit = new SubmitInfo()
-                {
-                    SType = StructureType.SubmitInfo,
-                    WaitSemaphoreCount = 1,
-                    PWaitSemaphores = semaphoreImageAvailable,
-                    PWaitDstStageMask = semaphoreStage,
-                    CommandBufferCount = (uint)window.modules.Length,
-                    PCommandBuffers = moduleCBsPtr,
-                    SignalSemaphoreCount = 1,
-                    PSignalSemaphores = semaphoreSignalModulesFinished,
-                    PNext = &tssInfoModules
-                };
-                //vk.ResetFences(logicalDevice, 1, ref inFlightFences[currentFrame]);
-                if (vk.QueueSubmit(compositeQueue, 1, ref modulesSubmit, default /*inFlightFences[currentFrame]*/) != Result.Success)
-                    throw new Exception("Failed to submit module command buffers");
-            }
+                SType = StructureType.SubmitInfo,
+                CommandBufferCount = (uint)window.modules.Length,
+                PCommandBuffers = moduleCBs,
+                SignalSemaphoreCount = 1,
+                PSignalSemaphores = semaphoreSignalModulesFinished,
+                PNext = &tssInfoModules
+            };
 
-            // compositor submit and wait
+            // compositor batch
             CommandBuffer compositorCB = window.compositor.commandBuffers[imageIndex];
-            var waitSemaphoreModulesFinished = stackalloc[] { window.timelineSemaphore };
-            var waitStageCompositor = stackalloc[] { PipelineStageFlags.FragmentShaderBit };
+            var waitSemaphoresCompositor = stackalloc[] { window.timelineSemaphore, window.imageAvailableSemaphores[window.currentFrame] };
+            var waitStagesCompositor = stackalloc[] { PipelineStageFlags.FragmentShaderBit, PipelineStageFlags.ColorAttachmentOutputBit };
             var signalSemaphoreRenderFinished = stackalloc[] { window.renderFinishedSemaphores[imageIndex], window.timelineSemaphore };
 
+            ulong* waitValsCompositor = stackalloc ulong[2];
+            waitValsCompositor[0] = signalValueModulesFinished;     // timeline
+            waitValsCompositor[1] = 0;                              // binary — ignored
             ulong* signalValsCompositor = stackalloc ulong[2];
             signalValsCompositor[0] = 0;                    // binary — ignored
             signalValsCompositor[1] = waitValue + 4;        // timeline
             TimelineSemaphoreSubmitInfo tssInfoCompositor = new TimelineSemaphoreSubmitInfo()
             {
                 SType = StructureType.TimelineSemaphoreSubmitInfo,
-                WaitSemaphoreValueCount = 1,
-                PWaitSemaphoreValues = &signalValueModulesFinished,
+                WaitSemaphoreValueCount = 2,
+                PWaitSemaphoreValues = waitValsCompositor,
                 SignalSemaphoreValueCount = 2,
                 PSignalSemaphoreValues = signalValsCompositor,
             };
@@ -1051,17 +1040,20 @@ namespace ArctisAurora.EngineWork.Rendering
             SubmitInfo compositorSubmit = new SubmitInfo()
             {
                 SType = StructureType.SubmitInfo,
-                WaitSemaphoreCount = 1,
-                PWaitSemaphores = waitSemaphoreModulesFinished,
-                PWaitDstStageMask = waitStageCompositor,
+                WaitSemaphoreCount = 2,
+                PWaitSemaphores = waitSemaphoresCompositor,
+                PWaitDstStageMask = waitStagesCompositor,
                 CommandBufferCount = 1,
                 PCommandBuffers = &compositorCB,
                 SignalSemaphoreCount = 2,
                 PSignalSemaphores = signalSemaphoreRenderFinished,
                 PNext = &tssInfoCompositor
             };
-            if (vk.QueueSubmit(compositeQueue, 1, ref compositorSubmit, default) != Result.Success)
-                throw new Exception("Failed to submit compositor command buffer");
+
+            var submits = stackalloc[] { modulesSubmit, compositorSubmit };
+            //vk.ResetFences(logicalDevice, 1, ref inFlightFences[currentFrame]);
+            if (vk.QueueSubmit(compositeQueue, 2, submits, default /*inFlightFences[currentFrame]*/) != Result.Success)
+                throw new Exception("Failed to submit frame");
             Profiling.Zone.End("Draw.Submit");
 
 

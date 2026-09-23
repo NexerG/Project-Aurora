@@ -80,15 +80,19 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         private AVulkanMesh _quad = null!;
 
-        // Per-image mirrors of the two GPU columns, patched in place through the mapped pointer and
-        // recreated only when the pool grows.
+        // Per-image mirrors of this window's range of the two GPU columns and its indirect draw,
+        // recreated only when the range outgrows them.
         private Silk.NET.Vulkan.Buffer[] _geometryBuffers = null!;
         private DeviceMemory[] _geometryMemories = null!;
         private nint[] _geometryMapped = null!;
         private Silk.NET.Vulkan.Buffer[] _controlBuffers = null!;
         private DeviceMemory[] _controlMemories = null!;
         private nint[] _controlMapped = null!;
+        private Silk.NET.Vulkan.Buffer[] _indirectBuffers = null!;
+        private DeviceMemory[] _indirectMemories = null!;
+        private nint[] _indirectMapped = null!;
         private int[] _mirrorCapacity = null!;
+        private const int minMirrorRows = 256;
 
         // per-image mirrors of the paint and gradient pools
         private readonly TableMirror<GpuPaint> _paints = new TableMirror<GpuPaint>();
@@ -106,8 +110,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal Control? rangeRoot;
         internal LayoutRect? rangeRect;
 
-        // What the last MirrorDrawList copied, and so what the record that follows it may draw.
-        private int _drawFirst;
+        // What the last MirrorDrawList copied.
         private int _drawCount;
 
         private WindowRoot _uiRoot;
@@ -124,9 +127,9 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             }
         }
 
-        // The list is rebuilt every frame, so every frame is pending. A dirty flag on the rebuild is
-        // what gives this an answer worth asking.
-        internal override bool HasPendingWork(int frame) => true;
+        // Pending when this image's sets predate its mirrors or the texture table.
+        internal override bool HasPendingWork(int frame)
+            => _frameBuiltCapacity[frame] != _mirrorCapacity[frame] || _frameTableVersion[frame] != TextureAsset.TableVersion;
 
         // Composited over UIModule while both stacks run.
         public UIEngineModule()
@@ -151,6 +154,9 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             _controlBuffers = new Silk.NET.Vulkan.Buffer[window.imageCount];
             _controlMemories = new DeviceMemory[window.imageCount];
             _controlMapped = new nint[window.imageCount];
+            _indirectBuffers = new Silk.NET.Vulkan.Buffer[window.imageCount];
+            _indirectMemories = new DeviceMemory[window.imageCount];
+            _indirectMapped = new nint[window.imageCount];
             _mirrorCapacity = new int[window.imageCount];
             Array.Fill(_mirrorCapacity, -1);
             _paints.Resize((int)window.imageCount);
@@ -174,15 +180,14 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         internal override void UpdateFrameData(int imageIndex)
         {
             camera.UpdateCameraMatrix(window.swapchainExtent, (uint)imageIndex);
+            MirrorDrawList(imageIndex);
+            if (_paints.Sync(Palettes.Paints, imageIndex)) _frameBuiltCapacity[imageIndex] = -1;
+            if (_gradients.Sync(Gradients.Pool, imageIndex)) _frameBuiltCapacity[imageIndex] = -1;
+            if (_effects.Sync(Effects.Pool, imageIndex)) _frameBuiltCapacity[imageIndex] = -1;
         }
 
         internal override void UpdateModule(int currentFrame)
         {
-            MirrorDrawList(currentFrame);
-            if (_paints.Sync(Palettes.Paints, currentFrame)) _frameBuiltCapacity[currentFrame] = -1;
-            if (_gradients.Sync(Gradients.Pool, currentFrame)) _frameBuiltCapacity[currentFrame] = -1;
-            if (_effects.Sync(Effects.Pool, currentFrame)) _frameBuiltCapacity[currentFrame] = -1;
-
             if (_frameBuiltCapacity[currentFrame] != _mirrorCapacity[currentFrame])
             {
                 CreateDescriptorPool(currentFrame, 0);
@@ -213,24 +218,29 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             ControlGeometry[] geometry = quads.Backing<ControlGeometry>();
             VulkanControl[] controls = quads.Backing<VulkanControl>();
             long range = Volatile.Read(ref _quadRange);
-            _drawFirst = (int)(range >> 32);
-            _drawCount = Math.Clamp((int)range, 0, Math.Max(0, geometry.Length - _drawFirst));
+            int first = (int)(range >> 32);
+            _drawCount = Math.Clamp((int)range, 0, Math.Max(0, geometry.Length - first));
 
-            if (_mirrorCapacity[currentFrame] != geometry.Length)
+            if (_drawCount > _mirrorCapacity[currentFrame])
             {
                 DestroyMirror(currentFrame);
 
-                ulong geometrySize = (ulong)(sizeof(ControlGeometry) * geometry.Length);
-                ulong controlSize = (ulong)(sizeof(VulkanControl) * controls.Length);
+                int capacity = Math.Max(minMirrorRows, (int)BitOperations.RoundUpToPowerOf2((uint)_drawCount));
+                ulong geometrySize = (ulong)(sizeof(ControlGeometry) * capacity);
+                ulong controlSize = (ulong)(sizeof(VulkanControl) * capacity);
                 AVulkanBufferHandler.CreateMappedBuffer(geometrySize, ref _geometryBuffers[currentFrame], ref _geometryMemories[currentFrame], out _geometryMapped[currentFrame], AVulkanBufferHandler.storageBufferFlags);
                 AVulkanBufferHandler.CreateMappedBuffer(controlSize, ref _controlBuffers[currentFrame], ref _controlMemories[currentFrame], out _controlMapped[currentFrame], AVulkanBufferHandler.storageBufferFlags);
-                _mirrorCapacity[currentFrame] = geometry.Length;
+                AVulkanBufferHandler.CreateMappedBuffer((ulong)sizeof(DrawIndexedIndirectCommand), ref _indirectBuffers[currentFrame], ref _indirectMemories[currentFrame], out _indirectMapped[currentFrame], BufferUsageFlags.IndirectBufferBit);
+                _mirrorCapacity[currentFrame] = capacity;
             }
 
-            if (_drawCount == 0) return;
-
-            AVulkanBufferHandler.WriteMappedRange(_geometryMapped[currentFrame], geometry, _drawFirst, _drawCount);
-            AVulkanBufferHandler.WriteMappedRange(_controlMapped[currentFrame], controls, _drawFirst, _drawCount);
+            AVulkanBufferHandler.WriteMappedRange(_geometryMapped[currentFrame], 0, geometry, first, _drawCount);
+            AVulkanBufferHandler.WriteMappedRange(_controlMapped[currentFrame], 0, controls, first, _drawCount);
+            Unsafe.Write((void*)_indirectMapped[currentFrame], new DrawIndexedIndirectCommand
+            {
+                IndexCount = (uint)_quad.indices.Length,
+                InstanceCount = (uint)_drawCount
+            });
         }
 
         private void DestroyMirrors()
@@ -244,7 +254,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 DestroyMirror(i);
         }
 
-        // Frees one image's pair of mirrors.
+        // Frees one image's mirrors and its indirect draw.
         private void DestroyMirror(int image)
         {
             if (_geometryBuffers[image].Handle == default) return;
@@ -257,12 +267,19 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _controlBuffers[image], null);
             Renderer.vk.FreeMemory(Renderer.logicalDevice, _controlMemories[image], null);
 
+            Renderer.vk.UnmapMemory(Renderer.logicalDevice, _indirectMemories[image]);
+            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _indirectBuffers[image], null);
+            Renderer.vk.FreeMemory(Renderer.logicalDevice, _indirectMemories[image], null);
+
             _geometryBuffers[image] = default;
             _geometryMemories[image] = default;
             _geometryMapped[image] = 0;
             _controlBuffers[image] = default;
             _controlMemories[image] = default;
             _controlMapped[image] = 0;
+            _indirectBuffers[image] = default;
+            _indirectMemories[image] = default;
+            _indirectMapped[image] = 0;
             _mirrorCapacity[image] = -1;
         }
 
@@ -722,7 +739,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
             Renderer.vk.CmdBeginRendering(commandBuffers[currentFrame], &renderingInfo);
 
-            if (_drawCount > 0 && frameResources[currentFrame] != null && frameResources[currentFrame].sets != null)
+            if (frameResources[currentFrame] != null && frameResources[currentFrame].sets != null)
             {
                 Renderer.vk.CmdBindPipeline(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipeline);
                 Renderer.vk.CmdBindDescriptorSets(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipelineLayout, 0, 1, Renderer.globalSets[currentFrame], 0, null);
@@ -732,15 +749,12 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 Renderer.vk.CmdSetViewport(commandBuffers[currentFrame], 0, 1, &viewport);
                 Renderer.vk.CmdSetScissor(commandBuffers[currentFrame], 0, 1, &scissor);
 
-                ulong[] offsets = new ulong[] { 0 };
-                fixed (ulong* offsetsPtr = offsets)
-                {
-                    Renderer.vk.CmdBindVertexBuffers(commandBuffers[currentFrame], 0, 1, ref _quad.vertexBuffer, offsetsPtr);
-                }
+                ulong offset = 0;
+                Renderer.vk.CmdBindVertexBuffers(commandBuffers[currentFrame], 0, 1, ref _quad.vertexBuffer, &offset);
                 Renderer.vk.CmdBindIndexBuffer(commandBuffers[currentFrame], _quad.indexBuffer, 0, IndexType.Uint32);
                 Renderer.vk.CmdBindDescriptorSets(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipelineLayout, 1, 1, frameResources[currentFrame].sets[0], 0, null);
                 Renderer.vk.CmdBindDescriptorSets(commandBuffers[currentFrame], PipelineBindPoint.Graphics, pipelineLayout, 2, 1, frameResources[currentFrame].sets[1], 0, null);
-                Renderer.vk.CmdDrawIndexed(commandBuffers[currentFrame], (uint)_quad.indices.Length, (uint)_drawCount, 0, 0, (uint)_drawFirst);
+                Renderer.vk.CmdDrawIndexedIndirect(commandBuffers[currentFrame], _indirectBuffers[currentFrame], 0, 1, (uint)sizeof(DrawIndexedIndirectCommand));
             }
 
             Renderer.vk.CmdEndRendering(commandBuffers[currentFrame]);

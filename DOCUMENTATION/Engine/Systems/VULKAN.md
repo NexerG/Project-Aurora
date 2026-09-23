@@ -118,6 +118,21 @@ after present in Renderer.Draw(window)
 			log the reason and the old and new size
 ```
 
+`Frame Submit`
+A frame goes to the GPU as one submit carrying two batches: the modules, then the compositor. The modules draw only into their own images, so they wait on nothing - only the compositor, which writes the swapchain image, waits for that image to be acquired, and for the modules through the window's timeline semaphore. What stops a module overwriting an image the GPU is still reading is the wait at the top of `Draw`: the acquire cannot hand back the previous frame's image, so an image was last used two frames ago at the latest, and that frame is exactly what the timeline wait has already seen finish.
+
+```
+Renderer.Draw(window)
+	wait on the timeline for the frame two back
+	acquire the next swapchain image
+	write the global frame data, then each module's
+	re-record every module or compositor that is dirty or has pending work
+	submit once
+		the modules' command buffers, signalling the timeline
+		the compositor's, waiting on that signal and on the acquire, signalling the timeline and render-finished
+	present, waiting on render-finished
+```
+
 `Command Pool`
 Command pool is just an interface for the CPU to allocate commands to the GPU. A middle man between command buffers and the `Physical Device`. Now note that these pools are per queue since they are not thread safe. One Command Pool - One type of Queue.
 

@@ -67,6 +67,8 @@ controls that did clip clipped to nothing.
 
 One line. Nothing observable changed before this slice because nothing read the value.
 
+(2026-09-23: `clipOutOfBounds` is now on by default on the new stack's `Control` — [[ui-clip-by-default]].)
+
 ### 6. The hit-test rejects the whole subtree, not just the control
 
 `VulkanControl.HitTest` existed with **zero callers**. `FindDeepestValid` now returns `null` when the

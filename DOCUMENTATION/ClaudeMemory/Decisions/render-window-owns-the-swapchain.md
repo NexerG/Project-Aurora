@@ -147,7 +147,8 @@ into `os.windowSize`, which is the only writer.
 - **Why it helps:** destroy-then-create makes the driver disconnect the surface from its present path and
   build it again. A retired swapchain lets it carry that over and allocate only the new-size images. The spec
   permits the reuse; it does not promise it.
-- `DeviceWaitIdle` still runs first, so nothing in flight touches the retired swapchain's images.
+- `DeviceWaitIdle` still runs first, so nothing in flight touches the retired swapchain's images. A per-window
+  timeline wait was tried in its place and rejected, §10.
 - **Validation clean** on both GPUs with the scenario's resize.
 
 ### Consequences to hold on to (§7–§8)
@@ -195,6 +196,42 @@ into `os.windowSize`, which is the only writer.
 | final extent | last rebuild → 1280x720 = the scenario's final window | last rebuild → 1280x720 |
 | validation on | no new message; 120 rebuilds, 115 skipped | no new swapchain message; one `VUID-VkDescriptorBufferInfo-range-00342` from `UIEngineModule.UpdateDescriptorSets` at render tick 6, before any rebuild — not on this path, not seen in the previous validation run |
 | builds | Debug, Release with `DEBUG` — 0 errors, no `CS0420` | |
+
+### 10. Modules do not wait on the acquire; one submit per frame (user, 2026-09-23)
+
+- **`Renderer.Draw` makes one `vkQueueSubmit` with two batches.** Modules: no waits; signal the timeline at
+  `waitValue + 3`. Compositor: waits the timeline at `waitValue + 3` (`FragmentShader`) and
+  `imageAvailableSemaphores[currentFrame]` (`ColorAttachmentOutput`, the stage its `Undefined →
+  ColorAttachmentOptimal` barrier starts from); signals `renderFinishedSemaphores[imageIndex]` and the timeline at
+  `waitValue + 4`, as before. `moduleCBs` is `stackalloc`, not a per-frame array.
+- **Why:** the modules draw only into their own output images, so waiting on the swapchain image held their work
+  behind the presentation engine for nothing.
+- **What keeps image *i*'s module resources free now** (output image, mirrors, descriptor sets, command buffer):
+  at frame N the acquire cannot return N−1's image — it is queued or on screen in every present mode — so *i* was
+  last used at N−2 or earlier, and the timeline wait at the top of `Draw` has already seen N−2 finish. This
+  replaces the acquire → present → module-submit chain [[mapped-streaming-buffers]] §8 used to cite.
+- **Compositor descriptors are written only by `CompositorModule.Init` and `Renderer.RecreateSwapchain`.**
+  `CompositorModule.UpdateModule` only re-records. Every path that dirties the compositor writes all images' sets
+  first. **Rejected:** dropping the loop in `RecreateSwapchain` instead — the image-count path records every image
+  at once (`commandBuffers == null`), so the others would be recorded against views the rebuild just destroyed.
+- **Rejected: a per-window timeline wait in place of `DeviceWaitIdle` in `RecreateSwapchain`.** Tried with a
+  `RenderWindow.submittedValue` recorded at submit. The first rebuild at boot raised
+  `VUID-vkDestroySwapchainKHR-swapchain-01282` — the retired swapchain still in use by the queue. The timeline
+  covers the frame's submits, not the `vkQueuePresentKHR` behind them; without `VK_EXT_swapchain_maintenance1`
+  (the AMD driver lacks it) only an idle queue retires a present. `vkQueueWaitIdle(presentQueue)` is the graphics
+  queue every window submits to when the families match, so it spares nothing. The stall it was meant to spare
+  other windows measured 0.16 ms ([[engine-profiling]] iGPU rebuild tick).
+
+### Known gaps (§10)
+- **`CompositorModule` has no `RebindImageCount` override** — `frameResources` keeps the old image count, so an
+  image-count increase indexes past it. Pre-existing.
+- **`UIEngineModule.RebindImageCount` replaces `frameResources` without destroying the old pools.** Pre-existing.
+
+### Verified (§10)
+- Builds clean. Thorium on the default device (NVIDIA ICD not hidden) with sync validation on: ~3 min of frames,
+  then 5 `MoveWindow` resizes — no renderer validation message (the pre-existing texture-upload
+  `TransitionImageLayout` stage-mask errors are unchanged). Captures show the UI drawn, and drawn at the new size.
+- **NOT GUI-verified:** menus, the drag ghost, a second window, the iGPU.
 
 ## Deliberately not done in this slice
 

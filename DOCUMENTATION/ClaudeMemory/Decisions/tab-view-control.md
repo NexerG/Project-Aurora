@@ -30,7 +30,8 @@ have hit a hidden tab. Negative extents make `Right`/`Bottom` less than `x`/`y`,
 satisfies.
 
 **Rejected: arranging inactive items off-screen.** It needs no engine code at all — a child inherits
-its parent's clip verbatim unless it sets `clipOutOfBounds`, so an item arranged outside the TabView
+its parent's clip verbatim unless it sets `clipOutOfBounds` (on by default since 2026-09-23,
+[[ui-clip-by-default]]), so an item arranged outside the TabView
 is discarded by the inherited clip, and `SolvePositions`' quad test rejects it for input. It was
 rejected on cost: it re-arranges every hidden subtree on every layout pass, so one hidden 400-block
 note is ~56k `Arrange` calls per window resize, against a single walk per switch.

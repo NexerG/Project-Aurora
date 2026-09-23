@@ -305,7 +305,8 @@ whole-window opacity. `glfwSetWindowOpacity` does the job and is runtime-settabl
   buffer, and nothing marked the module dirty when it changed. For ordinary windows the range only ever
   moved when the pool moved — which dirties the cursor anyway — so it never bit; a ghost's range moves
   with no pool version behind it, and the preview rendered its clear colour. `RefreshWindowRanges` now
-  flags `isDirty` on any module whose range actually changed.
+  flags `isDirty` on any module whose range actually changed. (2026-09-23: no longer — the range rides
+  in a mapped indirect buffer, not the recording; [[mapped-streaming-buffers]] §9.)
 - **GLFW window hints are sticky.** The ghost sets `Visible=false`, `Floating`, `FocusOnShow=false`, and
   every window created afterwards inherited them — torn-off windows were being created *invisible*.
   Every `Create*Window` now calls `DefaultWindowHints()` first.

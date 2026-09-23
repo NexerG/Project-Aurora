@@ -139,10 +139,11 @@ frees only that pair and it is recreated at the new size; `UpdateModule` then re
 descriptor pool and sets through the existing `_frameBuiltCapacity[i]` check. Other images keep
 their old-size pair, sets and command buffer — consistent with each other — until they come round.
 
-Why no explicit wait is needed: an image is only re-acquirable after its previous
-`vkQueuePresentKHR` was processed, and that present waits on `renderFinishedSemaphores[i]`, signalled
-by the compositor submit, which itself waits on the module submit. So on `AcquireNextImage` returning
-*i*, nothing on the GPU still reads image *i*'s buffers, pool or command buffer.
+Why no explicit wait is needed: at frame N the acquire cannot return N−1's image, so image *i* was
+last used at N−2 or earlier, and `Draw`'s timeline wait has already seen N−2 finish. Nothing on the
+GPU still reads image *i*'s buffers, pool or command buffer. (Until 2026-09-23 this cited the acquire
+→ present → module-submit chain; the module batch no longer waits on the acquire —
+[[render-window-owns-the-swapchain]] §10.)
 
 **Rejected: an explicit per-image timeline value** (`ulong[]` on `RenderWindow`, recorded at submit,
 waited on before `UpdateModule`). It restates what acquire already guarantees; kept in reserve if
@@ -156,6 +157,37 @@ staying at the old length when the image count changes.
 Boot-verified on Thorium with sync validation on (1279 quads at boot → capacity 2048): no validation
 output after the first draw, clean teardown. Regrowth of an already-built image under load was not
 exercised.
+
+### 9. The UI draw is indirect; its command buffer records once per image (user, 2026-09-23)
+
+- **The count streams, the record stays.** `UIEngineModule.WriteCommandBuffer` draws with
+  `CmdDrawIndexedIndirect` from `_indirectBuffers[i]`, a mapped 20 B `DrawIndexedIndirectCommand` per
+  image. `MirrorDrawList` writes it every frame, count 0 included. Before, the range was baked into
+  `CmdDrawIndexed`, so `HasPendingWork` answered `true` and every image re-recorded every frame.
+- **`HasPendingWork`** is now `_frameBuiltCapacity[i] != _mirrorCapacity[i] || _frameTableVersion[i] !=
+  TextureAsset.TableVersion` — the two cases that write descriptors, and a descriptor write needs a
+  re-record. `isDirty` still covers resize.
+- **Rows land at slot 0, so the draw starts at instance 0.** `MirrorDrawList` copies the window's range
+  `[first, first + count)` to the head of the mirrors. `gl_InstanceIndex` only indexes rows in
+  `UIEngine.vert`, and `firstInstance = 0` needs no `drawIndirectFirstInstance` feature.
+- **Mirrors are sized to the window's range, not the pool** — grow when the count exceeds them, to
+  `Max(minMirrorRows = 256, RoundUpToPowerOf2(count))`, never shrink. Before, every window kept per-image
+  mirrors at the whole pool's capacity and every pool growth reallocated all of them. The indirect buffer
+  is created and freed with the pair (`DestroyMirror`), so a growth's re-record picks up all three.
+- **`UpdateFrameData` now does the per-frame copying** — camera, `MirrorDrawList`, and the three
+  `TableMirror.Sync` calls (paints, gradients, effects) — and `Renderer.Draw` calls it **before** the
+  dirty/pending check, so a growth this frame is rebuilt and re-recorded before the submit.
+  `UpdateModule` only rebuilds descriptors and records.
+- **`AVulkanBufferHandler.WriteMappedRange` gained a destination overload**
+  `(mapped, destination, data, start, count)`; the old signature forwards `destination = start`.
+  **Rejected:** changing the old signature to write at the head — `TableMirror.Sync` patches dirty ranges
+  in place through it.
+- The recorded vertex-buffer offset is a local, not a per-record `new ulong[]`.
+
+**Verified (§9):** builds clean; Thorium with sync validation on — boot, scrolling the 200k-char note
+(scrolled text drawn), a context menu (whole), 5 `MoveWindow` resizes (drawn at the new size); no
+validation message after the render thread started. The re-record rate itself was not measured.
+**NOT GUI-verified:** drag ghost, a second window, palette/gradient/effect table growth, iGPU.
 
 ## What came out
 
