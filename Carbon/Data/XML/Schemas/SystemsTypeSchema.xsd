@@ -14,4 +14,8 @@
   <xs:complexType name="Render">
     <xs:sequence />
   </xs:complexType>
+  <xs:element name="Animation" type="types:Animation" />
+  <xs:complexType name="Animation">
+    <xs:sequence />
+  </xs:complexType>
 </xs:schema>

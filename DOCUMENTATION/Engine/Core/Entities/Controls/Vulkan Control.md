@@ -73,7 +73,7 @@ A plain `VulkanControl` holds **one** child; use a container ([[StackPanel]], Gr
 [A_XSDElementProperty("DockMode","UI")]      public DockMode dockMode;
 [A_XSDElementProperty("Grid.Column","UI")]   public int gridColumn;
 [A_XSDElementProperty("Grid.Row","UI")]      public int gridRow;
-[A_XSDElementProperty("ClipToBounds","UI")]  public bool clipOutOfBounds = false;
+[A_XSDElementProperty("ClipToBounds","UI")]  public bool clipOutOfBounds = true;
 ```
 Setting `width`/`height`/`preferred*`/`margin`/`padding` calls `InvalidateLayout()`.
 

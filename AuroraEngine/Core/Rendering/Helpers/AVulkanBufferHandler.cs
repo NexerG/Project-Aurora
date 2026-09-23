@@ -374,9 +374,13 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
         // Copies elements [start, start + count) into the same slots of a mapped buffer. Forward writes only:
         // the target may be write-combined, where reading back costs orders of magnitude.
         internal static void WriteMappedRange<T>(nint mapped, T[] data, int start, int count) where T : unmanaged
+            => WriteMappedRange(mapped, start, data, start, count);
+
+        // Copies elements [start, start + count) into slots [destination, destination + count).
+        internal static void WriteMappedRange<T>(nint mapped, int destination, T[] data, int start, int count) where T : unmanaged
         {
             if (count <= 0) return;
-            Span<T> _dst = new Span<T>((void*)(mapped + (nint)(start * sizeof(T))), count);
+            Span<T> _dst = new Span<T>((void*)(mapped + (nint)(destination * sizeof(T))), count);
             data.AsSpan(start, count).CopyTo(_dst);
         }
 

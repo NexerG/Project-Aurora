@@ -165,7 +165,7 @@ This costs the full shader for fragments that end up invisible, and the bill is 
 
 Layout is the two-pass shape the old stack used, carried over unchanged in behaviour and moved onto the pooled arrange row. Measure asks an element how big it wants to be given a box; arrange tells it the rectangle it actually got. A plain control handles a single child, offering it the box minus its own padding and then, if it has no size of its own, shrinking to fit what the child asked for.
 
-Arrange is where an element becomes something drawable. It writes the rectangle into its arrange row, bakes a scale-and-translate matrix into its geometry row at one depth step nearer the camera than its parent, and settles its clip rectangle — inheriting the parent's, or intersecting it with its own rectangle when the element clips.
+Arrange is where an element becomes something drawable. It writes the rectangle into its arrange row, bakes a scale-and-translate matrix into its geometry row at one depth step nearer the camera than its parent, and settles its clip rectangle — inheriting the parent's, or intersecting it with its own rectangle when the element clips, which every element does unless it sets `ClipToBounds` to false.
 
 Nothing lays out every frame. Changing an authored property marks the element dirty and walks up the tree marking ancestors, stopping at the first one already dirty, and registers the topmost newly dirtied element as a root. The tick then resolves each root once.
 
@@ -259,22 +259,19 @@ Mirroring the window's rows to the GPU:
 MirrorDrawList(image)
 	read the pool's two arrays and this window's published range into locals, once
 	clamp the count so the range fits the arrays
-	if the pool's capacity changed since the last mirror
-		wait for the device to go idle
-		destroy the old buffers
-		for each swapchain image
-			create a mapped buffer for the geometry array
-			create a mapped buffer for the paint array
+	if the count outgrows this image's buffers
+		destroy this image's buffers
+		create mapped geometry and paint buffers for the next power of two rows, at least 256
+		create a mapped buffer holding one indirect draw
 		remember the new capacity
-	if the count is zero
-		return
-	copy the window's geometry rows into this image's buffer, at the same offsets
-	copy the window's paint rows into this image's buffer, at the same offsets
+	copy the window's geometry rows into this image's buffer, from row zero
+	copy the window's paint rows into this image's buffer, from row zero
+	write the quad's index count and the window's row count into the indirect buffer
 ```
 
-The draw then starts at the window's first row instead of at zero, so the shader's instance index still lands on the right row and the shader did not have to change.
+The rows land at the head of the buffer, so the draw starts at instance zero and the shader's instance index is the row. The count reaches the GPU through the indirect buffer rather than through the recorded draw, so each image's command buffer is recorded once and a new range never needs a re-record - only a buffer growth or a changed texture table does, because those rewrite descriptors.
 
-The arrays and the range are read once and only once, because the main thread is refilling the pool while this runs and a growth swaps both arrays out from under a second read. The range captured here is also what the recording that follows draws, so an image never draws a newer range against an older buffer.
+The arrays and the range are read once and only once, because the main thread is refilling the pool while this runs and a growth swaps both arrays out from under a second read. The count written to the indirect buffer is the one this copy used, so an image never draws a newer range against an older buffer.
 
 The range the render thread reads is not the pool's count. The pool's count is the cursor the walk rewinds and advances; each window's first row and row count are handed over once, packed into a single value, after that window's walk has finished. Until then the render thread keeps drawing the previous frame's range, so it can never see a window that is half built, or a first row from one frame paired with a count from another.
 

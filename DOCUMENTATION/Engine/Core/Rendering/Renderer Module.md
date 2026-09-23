@@ -74,7 +74,7 @@ internal FrameResources[] frameResources;       // descriptor pool + sets, one p
 %% Grouped by responsibility; access shown inline. %%
 
 ### Lifecycle (driven by the renderer)
-The renderer calls these in order during bootstrap: `PrepareObjects` â†’ `CreateOutputImages` â†’ `CreatePipeline`. Each frame, if the module's `isDirty[image]` is set or `HasPendingWork(image)` reports work the module found by polling, the renderer calls `UpdateModule`, which re-records via `WriteCommandBuffers`. `UpdateFrameData` runs every frame regardless, after the renderer has published its own global buffers for that image.
+The renderer calls these in order during bootstrap: `PrepareObjects` â†’ `CreateOutputImages` â†’ `CreatePipeline`. Each frame the renderer first calls `UpdateFrameData`, after it has published its own global buffers for that image; then, if the module's `isDirty[image]` is set or `HasPendingWork(image)` reports work the module found by polling, it calls `UpdateModule`, which re-records via `WriteCommandBuffers`. The order matters: anything `UpdateFrameData` grows this frame is rebuilt and re-recorded before the submit.
 
 ### Descriptors
 `CreateDescriptorSetLayout` (virtual) builds the layouts from the declarative `descriptorTypes` / `shaderStages` / `descriptorBindingFlags` arrays; `AllocateDescriptorSets` handles the variable-count last binding (bindless arrays). Concrete modules fill them in `UpdateDescriptorSets`.

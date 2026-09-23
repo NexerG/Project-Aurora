@@ -343,7 +343,6 @@ namespace ArctisAurora.Core.Rendering.Modules
 
         internal override void UpdateModule(int currentFrame)
         {
-            UpdateDescriptorSets(currentFrame, 0);
             WriteCommandBuffers(currentFrame);
         }
 
@@ -387,9 +386,8 @@ namespace ArctisAurora.Core.Rendering.Modules
             if (Renderer.vk.BeginCommandBuffer(commandBuffers[index], ref beginInfo) != Result.Success)
                 throw new Exception("Failed to begin compositor command buffer");
 
-            // Was the render pass's InitialLayout=Undefined plus its EXTERNAL->0 dependency. The acquire
-            // is already ordered ahead of this by the module submit's imageAvailable wait and the timeline
-            // semaphore between the two submits, so this barrier only has to do the layout transition.
+            // Was the render pass's InitialLayout=Undefined plus its EXTERNAL->0 dependency. This submit
+            // waits on imageAvailable at this stage, so this barrier only has to do the layout transition.
             ImageBarrier(commandBuffers[index], window.swapchainImages[index],
                 ImageLayout.Undefined, ImageLayout.ColorAttachmentOptimal,
                 PipelineStageFlags.ColorAttachmentOutputBit, PipelineStageFlags.ColorAttachmentOutputBit,

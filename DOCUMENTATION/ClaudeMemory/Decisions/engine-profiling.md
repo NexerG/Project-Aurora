@@ -514,7 +514,7 @@ Asked for to find out why a window resize on an integrated GPU draws stretched f
 
 ### What changed
 - **Zones in `Renderer.Draw`:** `Draw.Wait` (timeline `WaitSemaphores`), `Draw.Acquire`, `Draw.Update` (global
-  buffers + module/compositor re-record), `Draw.Submit` (both submits), `Draw.Present`. They nest under
+  buffers + module/compositor re-record), `Draw.Submit` (the one submit), `Draw.Present`. They nest under
   `RenderSystem.Tick`'s `Draw`.
 - **Zones in `Renderer.RecreateSwapchain`:** `Swapchain.Recreate` over the method (closed before the minimized
   `return` too), children `Swapchain.WaitIdle`, `.DestroyOutputs`, `.Destroy`, `.Create`, `.ResizePerImage`

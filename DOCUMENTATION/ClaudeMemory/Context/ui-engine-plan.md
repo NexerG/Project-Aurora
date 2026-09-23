@@ -689,7 +689,8 @@ that goes out** now the base is frozen — exact old→new text per class, one a
   landed as part of [[ui-draw-list]]: a run emits only the lines meeting its clip. 342 characters in a
   40 px clipped box emit 141 quads.
 - **Rebuild the draw list on change rather than every frame** — agreed, deliberately deferred so the
-  concept is easier to watch running. One flag, and `HasPendingWork` stops answering `true`.
+  concept is easier to watch running. `HasPendingWork` already stopped answering `true` (2026-09-23,
+  [[mapped-streaming-buffers]] §9); a rebuild flag now saves the walk and the per-frame mirror copy.
 
 ## How to run and verify
 

@@ -39,7 +39,7 @@ namespace ArctisAurora.Core.UI
             a.verticalPosition = 0.5f;
             a.horizontalAlignment = (byte)HorizontalAlignment.Left;
             a.verticalAlignment = (byte)VerticalAlignment.Top;
-            a.flags = (byte)(ArrangeFlags.MeasureDirty | ArrangeFlags.ArrangeDirty);
+            a.flags = (byte)(ArrangeFlags.Clip | ArrangeFlags.MeasureDirty | ArrangeFlags.ArrangeDirty);
 
             ClipRect = LayoutRect.Infinite;
             UIEngine.RegisterDirtyRoot(this);
@@ -192,7 +192,7 @@ namespace ArctisAurora.Core.UI
             set { arrange.gridRow = value; InvalidateLayout(); }
         }
 
-        [A_XSDElementProperty("ClipToBounds", "UI", "Will not render or hit-test children outside bounds.")]
+        [A_XSDElementProperty("ClipToBounds", "UI", "On by default. Will not render or hit-test children outside bounds.")]
         public bool clipOutOfBounds
         {
             get => HasFlag(ArrangeFlags.Clip);

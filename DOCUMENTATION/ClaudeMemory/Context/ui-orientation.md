@@ -131,7 +131,7 @@ Why: [[ui-palettes]].
   returns the last `desired` while the run is clean and its wrap width unchanged** — anything `BuildRuns` reads
   must invalidate layout, which is why `colorHex` does. Why: [[ui-engine-stack]] § landing 4, § landing 6c.
 - **LabelControl** `<Label>` · TextRunControl — read-only text, one line: overrides `Wraps` false, so
-  overflow runs past the box unless `ClipToBounds`. Old `LabelControl`.
+  overflow is cut at the box unless `ClipToBounds="false"`. Old `LabelControl`.
 - **TextBoxControl** `<TextBox>` · ContainerControl, `IContext` — single-line field with caret and
   selection. `Focus`, `SelectAll`, `WriteChar`, `Backspace`, `Delete`, `MoveCaret`, `Commit`, `Cancel`,
   `OnContextAdded`/`OnContextRemoved`; nested `FieldLine` carries the run. XML `Text`, `FontSize`,

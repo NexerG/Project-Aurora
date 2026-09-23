@@ -49,3 +49,4 @@ The conceptual, read-end-to-end docs. Begin at the system, drill into its classe
 
 ## Conventions
 - [[Attributes & Conventions]] — engine attributes, `d_*` tags, `Status` values, bootstrap step names
+- [[SIMD & Data Layout]] — when data stays AoS, when it becomes SoA for the math, and the rules for math-heavy loops
