@@ -76,6 +76,8 @@ subscribers, or something else.
   rather than a broker. Do not push it into the data layer.
 
 ## Ownership enforcement (DONE 2026-07-27)
+**REPLACED 2026-09-23** — pools have no owner. `DataPool.AssertAccess` checks the running step's declared columns, reads included, and systems meet at a frame barrier rather than running free — [[frame-scheduler]]. Below is the original.
+
 `DataPool.AssertOwner(op)`, `[Conditional("DEBUG")]`, throws when `ThreadedSystem.Current.SystemId
 != OwnerSystemId`. Guards the write-capable entry points: `GetSpan`, `GetRef`, `CopyFrom`,
 `UpdateRange`, `Allocate`, `Free`, `MarkContentDirty`, `MarkRangeDirty`, `MarkOrderDirty`,

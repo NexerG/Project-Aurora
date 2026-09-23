@@ -23,8 +23,6 @@ namespace ArctisAurora.Core.Animation
         private const float restDistance = 1e-3f;
         private const float restSpeed = 1e-3f;
 
-        protected override double TargetPeriodMs => 1000.0 / 120.0;
-
         private struct SlotFade
         {
             public int slot;
@@ -234,7 +232,7 @@ namespace ArctisAurora.Core.Animation
             for (int i = _unsentSeeded.Count - 1; i >= 0; i--)
                 if (Post(Engine.mainSystem, fadeSeededKind, new FadeSeeded { request = _unsentSeeded[i] }))
                     _unsentSeeded.RemoveAt(i);
-            DataManager.FrameEdge(this);
+            DataManager.FrameEdge();
         }
 
         // Writes the source slots' shown colours into the target slots and fades each back to where it was headed.

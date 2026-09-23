@@ -18,7 +18,7 @@ Additional top-level items not in the table:
 
 ## Engine internal layout (under `AuroraEngine/Core`)
 
-- `Core/` — `Engine.cs`, `Bootstrapper.cs`, `InputHandler.cs`, `JobSystem.cs`, `AuroraScene.cs`.
+- `Core/` — `Engine.cs`, `Bootstrapper.cs`, `InputHandler.cs`, `AuroraScene.cs`.
 - `Core/ECS/` — entities + components (`EngineEntity/`, `RenderingComponents/`).
 - `Core/Registry/` — `AssetRegistries.cs`, `EntityRegistry.cs`, `XSDGenerator.cs`, `Assets/`.
 - `Core/Rendering/` — Vulkan renderer, modules, pipelines, mesh subcomponents.

@@ -52,7 +52,6 @@ namespace ArctisAurora.EngineWork
 
         internal static Renderer renderer = null!;
         internal static InputHandler inputHandler = null!;
-        //internal static JobSystem jobSystem;
         internal static AssetRegistries assetRegistry = new AssetRegistries();
         internal static EntityRegistry entityManager = null!;
 
@@ -60,8 +59,7 @@ namespace ArctisAurora.EngineWork
         internal static List<Entity> entities = null!;
         internal static List<Entity> entitiesOnDestroy = null!;
 
-        // threading — main, physics and render each run free at their own rate and never wait on
-        // one another. Each owns its loop, its pacing and its epoch; see ThreadedSystem.
+        // systems — stepped by FrameScheduler from Frame.frame.xml, or Dedicated on a thread of their own
         internal static MainSystem mainSystem = null!;
         internal static PhysicsSystem physicsSystem = null!;
         internal static RenderSystem renderSystem = null!;
@@ -107,15 +105,11 @@ namespace ArctisAurora.EngineWork
             renderSystem = new RenderSystem();
             animationSystem = new AnimationSystem();
 
-            // Pools were parsed during bootstrap and only know their owner by name; bind them now
-            // that the systems exist, then wire the lanes between them. Both have to happen before
-            // anything starts — a running system drains its inbox on its first tick.
-            DataManager.ResolveOwners();
+            // Lanes are wired before anything starts — a running system drains its inbox on its first tick.
             ThreadedSystem.BuildLanes();
 
-            physicsSystem.Start();
-            renderSystem.Start();
-            animationSystem.Start();
+            FrameScheduler.Load(Paths.FRAME);
+            FrameScheduler.Start();
 
             if(startImmediately)
             {
@@ -267,7 +261,7 @@ namespace ArctisAurora.EngineWork
 
         // Blocks on the calling thread — main cannot be handed a spawned thread, GLFW requires
         // PollEvents on the one that created the window.
-        public void Run() => mainSystem.Adopt();
+        public void Run() => FrameScheduler.Run();
 
         // One main tick. MainSystem drives this; the body stays here because it touches the
         // registries, input handler and UI state that Engine owns.
@@ -307,7 +301,7 @@ namespace ArctisAurora.EngineWork
             // MOVES pool memory, and the render thread is no longer parked while it runs — the
             // address-stable storage rework is what makes this safe.
             Profiling.Zone.Start("FrameEdge");
-            DataManager.FrameEdge(mainSystem);
+            DataManager.FrameEdge();
             Profiling.Zone.End("FrameEdge");
 
             // Dense indices have settled, so each window module can be told the range it draws.
@@ -384,6 +378,7 @@ namespace ArctisAurora.EngineWork
 
         public void Stop()
         {
+            FrameScheduler.Stop();
             mainSystem?.Stop();
             physicsSystem?.Stop();
             renderSystem?.Stop();

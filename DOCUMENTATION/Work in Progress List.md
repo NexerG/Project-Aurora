@@ -131,7 +131,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 - [ ] no hot-reload — nothing re-reads a document when the file on disk changes
 - [ ] **the editor renders all text as solid blobs** — layout is right, blob widths track caption lengths, so it is the editor's atlas or its `.spv`, not the layout. It baked its fonts fresh this session. No before-picture exists to compare against, since nothing in its old UI drew any text
 - [ ] **no per-channel level overrides.** `SettingCategory` resolves children by name against its `Setting` fields, so a repeated `<Channel Name= Level=/>` overwrites one instance. Fits as a sibling `<LogChannels>` group on the non-category `ISettingsGroup` path, which already handles child lists
-- [ ] **`ThreadedSystem.Send` backpressure is still silent** — four `false` returns are four dropped writes, unlogged. Zero callers today, so nothing was wired; do it when ECS systems start cross-writing
+- [ ] **frame scheduler — every system a step of one graph, every core used (plan agreed 2026-09-23).** Step 1 landed (graph, per-column access check, `Threads`/`MaxFps`); next: mailbox pools and sub-steps, which delete the lanes and lift animation's 682/1,024 ceilings. See `ClaudeMemory/Context/frame-scheduler-plan.md`
 - [ ] **log viewer in Thorium — planned 2026-08-22, not started.** One `LogViewControl` with two feeds: a live `MemorySink` ring and the tail of a log file. See `ClaudeMemory/Context/log-viewer-plan.md`
 
 ---

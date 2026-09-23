@@ -202,22 +202,22 @@ namespace ArctisAurora.Core.Diagnostics
         {
             // Opens the recording window for one tick of the calling thread, on a lane named for its owner.
             [Conditional("DEBUG"), Conditional("PROFILE")]
-            public static void Begin(string? owner = null)
+            public static void Begin(string? owner = null, long frameIndex = -1)
             {
                 if (!enabled) return;
 
                 Tables tables = _tables ??= new Tables();
-                Open(tables, owner);
+                Open(tables, owner, frameIndex);
 
                 tables.frameStart = Stopwatch.GetTimestamp();
                 tables.frameBytesStart = GC.GetAllocatedBytesForCurrentThread();
             }
 
             // Picks the lane and the batch this frame records into.
-            private static void Open(Tables tables, string? owner)
+            private static void Open(Tables tables, string? owner, long frameIndex)
             {
                 ThreadedSystem? system = ThreadedSystem.Current;
-                tables.frameIndex = system != null ? system.Epoch : tables.frameIndex + 1;
+                tables.frameIndex = frameIndex >= 0 ? frameIndex : system != null ? system.Epoch : tables.frameIndex + 1;
 
                 int session = Volatile.Read(ref _session);
                 if (tables.session != session)

@@ -171,8 +171,8 @@ escape byte sits in the source file.
   sibling `<LogChannels>` group — asked, not built.
 - **The log file has no BOM.** It is UTF-8 and reads correctly in `cat`, Notepad and PowerShell 7;
   Windows PowerShell 5.1's `Get-Content` misreads em dashes as ANSI. Not worth a BOM unprompted.
-- **`ThreadedSystem.Send` backpressure is still silent.** Four `false` returns are four dropped
-  writes. It has **zero callers** today, so nothing was wired.
+- ~~**`ThreadedSystem.Send` backpressure is still silent.** Four `false` returns are four dropped
+  writes. It has **zero callers** today, so nothing was wired.~~ MOOT 2026-09-23 — `Send` is deleted ([[frame-scheduler]]).
 - `LogLane` reports records dropped to a full ring as a synthetic line, so the loss is never silent.
 
 Related: [[shutdown-sequence]], [[ecs-rework-data-pools]], [[settings-categories]],

@@ -24,14 +24,6 @@ namespace ArctisAurora.Core.Data
         public string Name { get; }
         public bool Ordered { get; }
 
-        // Owning system, named in Pools.pools.xml. OwnerSystemId is filled in once the systems exist
-        // (DataManager.ResolveOwners) — pools are parsed at bootstrap, before Engine constructs
-        // them, so the name is the only thing available at parse time. Zero means unresolved.
-        public string OwnerName { get; }
-        public byte OwnerSystemId { get; private set; }
-
-        internal void SetOwnerSystemId(byte systemId) => OwnerSystemId = systemId;
-
         private readonly PoolGrowthType _growthMode;
         private readonly int _growthValue;
 
@@ -138,12 +130,11 @@ namespace ArctisAurora.Core.Data
         // Resolved from the pool's SortAction, or set directly (tests / systems).
         public Func<DataPool, IReadOnlyList<int>>? SortProvider { get; set; }
 
-        public DataPool(ushort id, string name, string ownerName, int capacity, bool ordered, PoolGrowthType growthMode, int growthValue, IEnumerable<Type> componentTypes)
+        public DataPool(ushort id, string name, int capacity, bool ordered, PoolGrowthType growthMode, int growthValue, IEnumerable<Type> componentTypes)
         {
             if (capacity < 1) capacity = 1;
             Id = id;
             Name = name;
-            OwnerName = ownerName;
             Ordered = ordered;
             _growthMode = growthMode;
             _growthValue = growthValue < 1 ? 1 : growthValue;
@@ -176,26 +167,28 @@ namespace ArctisAurora.Core.Data
             _columnsByIndex = columnOrder.ToArray();
         }
 
-        // Single-writer enforcement. Pools.pools.xml names one owning system per pool; everything else
-        // has to go through that system's command lane. Nothing enforced that until now — GetSpan
-        // is public, hands out a mutable Span, to any thread — so the rule lived entirely in
-        // comments and was already being broken.
-        //
-        // DEBUG only: this turns a data race into a startup exception, which is the whole point.
-        // In release the calls compile away.
-        //
-        // Two deliberate holes. Current is null outside a system loop, which covers all of
-        // bootstrap — single-threaded there, nothing to catch, and controls are parsed from XML
-        // long before any thread starts. OwnerSystemId is 0 until DataManager.ResolveOwners runs.
+        // DEBUG only: a step touching columns it did not declare in Frame.frame.xml throws. need is the
+        // column bits the call touches, 0 for any column. Outside a step nothing is checked, except
+        // that a dedicated thread never writes.
         [Conditional("DEBUG")]
-        private void AssertOwner(string op)
+        private void AssertAccess(ulong need, bool write, string op)
         {
-            ThreadedSystem current = ThreadedSystem.Current;
-            if (current == null || OwnerSystemId == 0) return;
-            if (current.SystemId == OwnerSystemId) return;
+            FrameStep? step = FrameStep.Current;
+            if (step == null)
+            {
+                ThreadedSystem? current = ThreadedSystem.Current;
+                if (write && current != null && current.Dedicated)
+                    throw new Exception($"[DataPool] {op} writes '{Name}' from dedicated '{current.Name}' — a dedicated thread only reads pools.");
+                return;
+            }
 
-            throw new Exception($"[DataPool] '{Name}' is owned by '{OwnerName}' but {op} was called from system '{current.Name}'. Send a command to the owner instead, or change the System attribute in Pools.pools.xml.");
+            ulong have = write ? step.writes[Id] : step.reads[Id] | step.writes[Id];
+            if (need == 0 ? have != 0 : (have & need) == need) return;
+
+            throw new Exception($"[DataPool] {op} on '{Name}' from step '{step.Name}', which does not list it in Frame.frame.xml {(write ? "Writes" : "Reads")}.");
         }
+
+        private ulong Bit<T>() where T : struct => 1UL << _columnIds[typeof(T)];
 
         public bool HasComponent(Type t) => _columns.ContainsKey(t);
 
@@ -213,13 +206,13 @@ namespace ArctisAurora.Core.Data
 
         public Span<T> GetSpan<T>() where T : struct
         {
-            AssertOwner(nameof(GetSpan));
+            AssertAccess(Bit<T>(), true, nameof(GetSpan));
             return ((PoolColumn<T>)_columns[typeof(T)]).data.AsSpan(0, _count);
         }
 
         public ref T GetRef<T>(DataHandle h) where T : struct
         {
-            AssertOwner(nameof(GetRef));
+            AssertAccess(Bit<T>(), true, nameof(GetRef));
             int dense = _slots[h.StableId];
             return ref ((PoolColumn<T>)_columns[typeof(T)]).data[dense];
         }
@@ -231,35 +224,44 @@ namespace ArctisAurora.Core.Data
         // renderer mirrors this straight to a GPU buffer, so it must stay in dense order — read
         // only, never structurally mutated by the caller.
         //
-        // Deliberately NOT AssertOwner'd: this and CopyTo/CopyRange/OwnerAt are the sanctioned
-        // cross-thread reads, which is how the render thread gets at a Main-owned pool at all. C#
-        // cannot hand out a read-only T[], so "read only" here is still convention — but a reader
-        // that writes through it is a different mistake from one that calls a write API.
-        public T[] Backing<T>() where T : struct => Column<T>();
+        // Checked as a read: this and CopyTo/CopyRange/OwnerAt are the reads a dedicated thread may
+        // make, which is how the render thread gets at the pools at all. C# cannot hand out a
+        // read-only T[], so "read only" here is still convention.
+        public T[] Backing<T>() where T : struct
+        {
+            AssertAccess(Bit<T>(), false, nameof(Backing));
+            return Column<T>();
+        }
 
         // ---- bulk data transfer (per component type) ----
 
         // Copy this pool's full live data for component T out into dest (dest.Length >= Count).
         public void CopyTo<T>(Span<T> dest) where T : struct
-            => GetSpan<T>().CopyTo(dest);
+        {
+            AssertAccess(Bit<T>(), false, nameof(CopyTo));
+            Column<T>().AsSpan(0, _count).CopyTo(dest);
+        }
 
         // Copy an external array into component T's dense storage from index 0, and dirty it.
         // A raw data refresh — Count is unchanged (lifecycle stays with Allocate/Free).
         public void CopyFrom<T>(ReadOnlySpan<T> src) where T : struct
         {
-            AssertOwner(nameof(CopyFrom));
+            AssertAccess(Bit<T>(), true, nameof(CopyFrom));
             src.CopyTo(Column<T>().AsSpan(0, src.Length));
             MarkRangeDirty(0, src.Length - 1);
         }
 
         // Copy a dense range [from, to] (inclusive) of component T out into dest.
         public void CopyRange<T>(int from, int to, Span<T> dest) where T : struct
-            => Column<T>().AsSpan(from, to - from + 1).CopyTo(dest);
+        {
+            AssertAccess(Bit<T>(), false, nameof(CopyRange));
+            Column<T>().AsSpan(from, to - from + 1).CopyTo(dest);
+        }
 
         // Overwrite a dense range [from, to] (inclusive) of component T from src, and dirty it.
         public void UpdateRange<T>(int from, int to, ReadOnlySpan<T> src) where T : struct
         {
-            AssertOwner(nameof(UpdateRange));
+            AssertAccess(Bit<T>(), true, nameof(UpdateRange));
             int len = to - from + 1;
             src.Slice(0, len).CopyTo(Column<T>().AsSpan(from, len));
             MarkRangeDirty(from, to);
@@ -271,11 +273,15 @@ namespace ArctisAurora.Core.Data
                && _versions[h.StableId] == h.Version
                && _slots[h.StableId] >= 0;
 
-        public object OwnerAt(int denseIndex) => _owners[denseIndex];
+        public object OwnerAt(int denseIndex)
+        {
+            AssertAccess(0, false, nameof(OwnerAt));
+            return _owners[denseIndex];
+        }
 
         public DataHandle Allocate(object owner = null)
         {
-            AssertOwner(nameof(Allocate));
+            AssertAccess(FrameStep.AllColumns(this), true, nameof(Allocate));
             if (_count >= _capacity)
                 Grow();
 
@@ -298,14 +304,14 @@ namespace ArctisAurora.Core.Data
         // Empties a handle-less pool.
         public void Rewind()
         {
-            AssertOwner(nameof(Rewind));
+            AssertAccess(FrameStep.AllColumns(this), true, nameof(Rewind));
             _count = 0;
         }
 
         // Appends an uncleared row to a handle-less pool and returns its dense index.
         public int Append()
         {
-            AssertOwner(nameof(Append));
+            AssertAccess(FrameStep.AllColumns(this), true, nameof(Append));
             if (_count >= _capacity)
                 Grow();
 
@@ -319,7 +325,7 @@ namespace ArctisAurora.Core.Data
         // it. A repeat or stale Free is a no-op.
         public void Free(DataHandle h)
         {
-            AssertOwner(nameof(Free));
+            AssertAccess(FrameStep.AllColumns(this), true, nameof(Free));
             if (!Alive(h)) return;
             _pendingFree.Add(h.StableId);
         }
@@ -327,7 +333,7 @@ namespace ArctisAurora.Core.Data
         // Expand the dirty range to include this element (dense index resolved from the handle).
         public void MarkContentDirty(DataHandle h)
         {
-            AssertOwner(nameof(MarkContentDirty));
+            AssertAccess(0, true, nameof(MarkContentDirty));
             int dense = _slots[h.StableId];
             if (dense < 0) return;
             if (dense < _dirtyMin) _dirtyMin = dense;
@@ -344,14 +350,14 @@ namespace ArctisAurora.Core.Data
         // Expand the dirty range to cover the dense range [from, to] (inclusive).
         public void MarkRangeDirty(int from, int to)
         {
-            AssertOwner(nameof(MarkRangeDirty));
+            AssertAccess(0, true, nameof(MarkRangeDirty));
             if (from < _dirtyMin) _dirtyMin = from;
             if (to > _dirtyMax) _dirtyMax = to;
         }
 
         public void MarkOrderDirty()
         {
-            AssertOwner(nameof(MarkOrderDirty));
+            AssertAccess(0, true, nameof(MarkOrderDirty));
             _orderDirty = true;
         }
 
@@ -364,11 +370,10 @@ namespace ArctisAurora.Core.Data
 
         // Runs between frames. Order matters: remove dead, then resequence survivors.
         //
-        // Guarded like a write because it is one — compaction moves pool memory. Each owner runs
-        // its own pools' edges through DataManager.FrameEdge(owner).
+        // Guarded like a write of every column because it is one — compaction moves pool memory.
         public void FrameEdge()
         {
-            AssertOwner(nameof(FrameEdge));
+            AssertAccess(FrameStep.AllColumns(this), true, nameof(FrameEdge));
             if (_pendingFree.Count > 0)
             {
                 if (Ordered) CompactOrdered();

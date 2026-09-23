@@ -7,17 +7,14 @@ using ArctisAurora.EngineWork;
 
 namespace ArctisAurora.Core.Threading
 {
-    // Input, UI and entity logic. Runs on the thread that bootstrapped the engine rather than a
-    // spawned one, because GLFW requires PollEvents on the thread that created the window — so this
-    // system is always started with Adopt(), never Start().
+    // Input, UI and entity logic. A Pinned step, because GLFW requires PollEvents on the thread that
+    // created the window.
     //
     // The tick body still lives on Engine, which owns the registries and handlers it touches. This
     // class owns the loop discipline, not the work.
     [A_XSDType("Main", "Systems")]
     public sealed class MainSystem : ThreadedSystem
     {
-        protected override double TargetPeriodMs => 1000.0 / 120.0;
-
         private long _lastTick;
 
         // Drops the baseline, so the tick after something that parked main for seconds — a native

@@ -20,13 +20,6 @@
   <xs:group name="Setting.Children">
     <xs:choice>
       <xs:element name="CaptureRoot" type="types:CaptureRoot" />
-      <xs:element name="DragGhost" type="types:DragGhost" />
-      <xs:element name="Palette" type="types:Palette" />
-      <xs:element name="LogConsole" type="types:LogConsole" />
-      <xs:element name="LogFile" type="types:LogFile" />
-      <xs:element name="LogRecorder" type="types:LogRecorder" />
-      <xs:element name="ProfilingReport" type="types:ProfilingReport" />
-      <xs:element name="ProfilingCapture" type="types:ProfilingCapture" />
       <xs:element name="DoubleClick" type="types:DoubleClick" />
       <xs:element name="KeyRepeat" type="types:KeyRepeat" />
       <xs:element name="Device" type="types:Device" />
@@ -34,9 +27,121 @@
       <xs:element name="WindowSetting" type="types:WindowSetting" />
       <xs:element name="VSync" type="types:VSync" />
       <xs:element name="Validation" type="types:Validation" />
+      <xs:element name="DragGhost" type="types:DragGhost" />
+      <xs:element name="Palette" type="types:Palette" />
+      <xs:element name="Threads" type="types:Threads" />
+      <xs:element name="FrameCap" type="types:FrameCap" />
+      <xs:element name="LogConsole" type="types:LogConsole" />
+      <xs:element name="LogFile" type="types:LogFile" />
+      <xs:element name="LogRecorder" type="types:LogRecorder" />
+      <xs:element name="ProfilingReport" type="types:ProfilingReport" />
+      <xs:element name="ProfilingCapture" type="types:ProfilingCapture" />
     </xs:choice>
   </xs:group>
   <xs:complexType name="Carbon">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:attributeGroup name="Bind.Attributes">
+    <xs:attribute name="Action" type="xs:string" />
+    <xs:attribute name="Trigger" type="Input:Keys" />
+    <xs:attribute name="Modifiers" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="Bind" type="types:Bind" />
+  <xs:complexType name="Bind">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Bind.Attributes" />
+  </xs:complexType>
+  <xs:element name="InputBindings" type="types:InputBindings" />
+  <xs:group name="KeybindOverride.Children">
+    <xs:choice>
+      <xs:element name="Bind" type="types:Bind" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="InputBindings">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:KeybindOverride.Children" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:attributeGroup name="DoubleClick.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Timeout" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="DoubleClick" type="types:DoubleClick" />
+  <xs:complexType name="DoubleClick">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:DoubleClick.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="KeyRepeat.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Delay" type="xs:float" />
+    <xs:attribute name="Rate" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="KeyRepeat" type="types:KeyRepeat" />
+  <xs:complexType name="KeyRepeat">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:KeyRepeat.Attributes" />
+  </xs:complexType>
+  <xs:element name="Input" type="types:Input" />
+  <xs:complexType name="Input">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:attributeGroup name="Device.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Name" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="Device" type="types:Device" />
+  <xs:complexType name="Device">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Device.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="Monitor.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Name" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="Monitor" type="types:Monitor" />
+  <xs:complexType name="Monitor">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Monitor.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="WindowSetting.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Mode" type="types:WindowMode" />
+    <xs:attribute name="Width" type="xs:unsignedInt" />
+    <xs:attribute name="Height" type="xs:unsignedInt" />
+  </xs:attributeGroup>
+  <xs:element name="WindowSetting" type="types:WindowSetting" />
+  <xs:complexType name="WindowSetting">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:WindowSetting.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="VSync.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="On" type="xs:boolean" />
+  </xs:attributeGroup>
+  <xs:element name="VSync" type="types:VSync" />
+  <xs:complexType name="VSync">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:VSync.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="Validation.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Enabled" type="xs:boolean" />
+    <xs:attribute name="Synchronization" type="xs:boolean" />
+    <xs:attribute name="BestPractices" type="xs:boolean" />
+    <xs:attribute name="GpuAssisted" type="xs:boolean" />
+    <xs:attribute name="MinLevel" type="types:LogLevel" />
+  </xs:attributeGroup>
+  <xs:element name="Validation" type="types:Validation" />
+  <xs:complexType name="Validation">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Validation.Attributes" />
+  </xs:complexType>
+  <xs:element name="Graphics" type="types:Graphics" />
+  <xs:complexType name="Graphics">
     <xs:sequence>
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
     </xs:sequence>
@@ -148,6 +253,30 @@
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
     </xs:sequence>
   </xs:complexType>
+  <xs:attributeGroup name="Threads.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Count" type="xs:int" />
+  </xs:attributeGroup>
+  <xs:element name="Threads" type="types:Threads" />
+  <xs:complexType name="Threads">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Threads.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="FrameCap.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="MaxFps" type="xs:int" />
+  </xs:attributeGroup>
+  <xs:element name="FrameCap" type="types:FrameCap" />
+  <xs:complexType name="FrameCap">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:FrameCap.Attributes" />
+  </xs:complexType>
+  <xs:element name="Threading" type="types:Threading" />
+  <xs:complexType name="Threading">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
+    </xs:sequence>
+  </xs:complexType>
   <xs:simpleType name="SettingScope">
     <xs:restriction base="xs:string">
       <xs:enumeration value="App" />
@@ -162,14 +291,15 @@
   <xs:group name="ISettingsGroup.Children">
     <xs:choice>
       <xs:element name="Carbon" type="types:Carbon" />
-      <xs:element name="DocumentSettings" type="types:DocumentSettings" />
-      <xs:element name="Session" type="types:Session" />
-      <xs:element name="UI" type="types:UI" />
-      <xs:element name="Logging" type="types:Logging" />
-      <xs:element name="Profiling" type="types:Profiling" />
       <xs:element name="InputBindings" type="types:InputBindings" />
       <xs:element name="Input" type="types:Input" />
       <xs:element name="Graphics" type="types:Graphics" />
+      <xs:element name="DocumentSettings" type="types:DocumentSettings" />
+      <xs:element name="Session" type="types:Session" />
+      <xs:element name="UI" type="types:UI" />
+      <xs:element name="Threading" type="types:Threading" />
+      <xs:element name="Logging" type="types:Logging" />
+      <xs:element name="Profiling" type="types:Profiling" />
     </xs:choice>
   </xs:group>
   <xs:complexType name="UserSettings">
@@ -263,109 +393,6 @@
   </xs:complexType>
   <xs:element name="Profiling" type="types:Profiling" />
   <xs:complexType name="Profiling">
-    <xs:sequence>
-      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
-    </xs:sequence>
-  </xs:complexType>
-  <xs:attributeGroup name="Bind.Attributes">
-    <xs:attribute name="Action" type="xs:string" />
-    <xs:attribute name="Trigger" type="Input:Keys" />
-    <xs:attribute name="Modifiers" type="xs:string" />
-  </xs:attributeGroup>
-  <xs:element name="Bind" type="types:Bind" />
-  <xs:complexType name="Bind">
-    <xs:sequence />
-    <xs:attributeGroup ref="types:Bind.Attributes" />
-  </xs:complexType>
-  <xs:element name="InputBindings" type="types:InputBindings" />
-  <xs:group name="KeybindOverride.Children">
-    <xs:choice>
-      <xs:element name="Bind" type="types:Bind" />
-    </xs:choice>
-  </xs:group>
-  <xs:complexType name="InputBindings">
-    <xs:sequence>
-      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:KeybindOverride.Children" />
-    </xs:sequence>
-  </xs:complexType>
-  <xs:attributeGroup name="DoubleClick.Attributes">
-    <xs:attributeGroup ref="types:Setting.Attributes" />
-    <xs:attribute name="Timeout" type="xs:float" />
-  </xs:attributeGroup>
-  <xs:element name="DoubleClick" type="types:DoubleClick" />
-  <xs:complexType name="DoubleClick">
-    <xs:sequence />
-    <xs:attributeGroup ref="types:DoubleClick.Attributes" />
-  </xs:complexType>
-  <xs:attributeGroup name="KeyRepeat.Attributes">
-    <xs:attributeGroup ref="types:Setting.Attributes" />
-    <xs:attribute name="Delay" type="xs:float" />
-    <xs:attribute name="Rate" type="xs:float" />
-  </xs:attributeGroup>
-  <xs:element name="KeyRepeat" type="types:KeyRepeat" />
-  <xs:complexType name="KeyRepeat">
-    <xs:sequence />
-    <xs:attributeGroup ref="types:KeyRepeat.Attributes" />
-  </xs:complexType>
-  <xs:element name="Input" type="types:Input" />
-  <xs:complexType name="Input">
-    <xs:sequence>
-      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
-    </xs:sequence>
-  </xs:complexType>
-  <xs:attributeGroup name="Device.Attributes">
-    <xs:attributeGroup ref="types:Setting.Attributes" />
-    <xs:attribute name="Name" type="xs:string" />
-  </xs:attributeGroup>
-  <xs:element name="Device" type="types:Device" />
-  <xs:complexType name="Device">
-    <xs:sequence />
-    <xs:attributeGroup ref="types:Device.Attributes" />
-  </xs:complexType>
-  <xs:attributeGroup name="Monitor.Attributes">
-    <xs:attributeGroup ref="types:Setting.Attributes" />
-    <xs:attribute name="Name" type="xs:string" />
-  </xs:attributeGroup>
-  <xs:element name="Monitor" type="types:Monitor" />
-  <xs:complexType name="Monitor">
-    <xs:sequence />
-    <xs:attributeGroup ref="types:Monitor.Attributes" />
-  </xs:complexType>
-  <xs:attributeGroup name="WindowSetting.Attributes">
-    <xs:attributeGroup ref="types:Setting.Attributes" />
-    <xs:attribute name="Mode" type="types:WindowMode" />
-    <xs:attribute name="Width" type="xs:unsignedInt" />
-    <xs:attribute name="Height" type="xs:unsignedInt" />
-  </xs:attributeGroup>
-  <xs:element name="WindowSetting" type="types:WindowSetting" />
-  <xs:complexType name="WindowSetting">
-    <xs:sequence />
-    <xs:attributeGroup ref="types:WindowSetting.Attributes" />
-  </xs:complexType>
-  <xs:attributeGroup name="VSync.Attributes">
-    <xs:attributeGroup ref="types:Setting.Attributes" />
-    <xs:attribute name="On" type="xs:boolean" />
-  </xs:attributeGroup>
-  <xs:element name="VSync" type="types:VSync" />
-  <xs:complexType name="VSync">
-    <xs:sequence />
-    <xs:attributeGroup ref="types:VSync.Attributes" />
-  </xs:complexType>
-  <xs:attributeGroup name="Validation.Attributes">
-    <xs:attributeGroup ref="types:Setting.Attributes" />
-    <xs:attribute name="Enabled" type="xs:boolean" />
-    <xs:attribute name="Synchronization" type="xs:boolean" />
-    <xs:attribute name="BestPractices" type="xs:boolean" />
-    <xs:attribute name="GpuAssisted" type="xs:boolean" />
-    <xs:attribute name="MinLevel" type="types:LogLevel" />
-  </xs:attributeGroup>
-  <xs:element name="Validation" type="types:Validation" />
-  <xs:complexType name="Validation">
-    <xs:sequence />
-    <xs:attributeGroup ref="types:Validation.Attributes" />
-  </xs:complexType>
-  <xs:element name="Graphics" type="types:Graphics" />
-  <xs:complexType name="Graphics">
     <xs:sequence>
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
     </xs:sequence>

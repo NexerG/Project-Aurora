@@ -155,7 +155,7 @@ Slice 5 of [../Context/animation-plan.md](../Context/animation-plan.md).
 
 Slice 6 of [../Context/animation-plan.md](../Context/animation-plan.md).
 
-- **`Paints` is owned by Animation** (`System="Animation"`); `Gradients` stays on Main until something animates it. Bootstrap still fills `Paints` (no system is running).
+- **`Paints` is owned by Animation** (`System="Animation"`); `Gradients` stays on Main until something animates it. Bootstrap still fills `Paints` (no system is running). **REVISED 2026-09-23:** no pool has an owner; the Animation step declares `Writes="Paints"` in `Frame.frame.xml` — [[frame-scheduler]].
 - **Main reads `Palettes.baked`**, the load-time colours, never the pool: `ColorOf` and `PicksDark` (so `Ink`, `Step`, `ButtonControl`'s CPU lerp). Contrast and ink decisions never see a mid-fade value or a pool Main does not own.
 - **Only the new palette's block fades.** `Animations.FadeSlots(fromFirst, toFirst, count, seconds, curve, onSeeded)` → `AnimationOp.FadeSlots`. Animation copies the source block's *displayed* colours into the target block's slots, then tweens each back to where it was headed — its value, or the target of a fade already running on it — so a pick mid-fade continues from what is on screen. Fades are a private list on the Animation thread, not a pool.
 - **The switch waits for the seed.** Animation posts `FadeSeeded` (kind `fadeSeededKind`); `MainSystem.OnPost` → `Animations.OnFadeSeeded` runs `onSeeded`, which sets `Default`, re-rounds and re-arranges every window. An unsent acknowledgement is re-posted each tick; a refused request runs `onSeeded` at once.

@@ -177,6 +177,8 @@ through `Profiling.Flush`, the `Commit` step before `Logging.Flush`.
 
 ## 11. Frame edges live in `ThreadedSystem.Loop`, not at the call sites (user, 2026-09-02)
 
+**REVISED 2026-09-23:** only Dedicated threads keep `Loop`. `FrameScheduler.Run` brackets the main thread's frame (lane `Main`); a worker opens a `Worker N` frame on its first step of a frame; both use `FrameScheduler.Frame` as `<F I>` — [[frame-scheduler]].
+
 `Frame.Begin` runs before `Drain()` and `Frame.End` after `Publish()`, and `Report()` moved there
 from `Engine.MainTick` / `RenderSystem.Tick`. So `<F D>` is the real tick wall time — the same number
 as `LastTickMs` — and the gap between it and the root zone's end is time the thread spent parked,
@@ -281,7 +283,7 @@ it throws away the only thing the frame view adds — every step on one timeline
 
 ### A thread that gains a system identity moves lane
 
-The boot frame runs on the main thread before `mainSystem.Adopt()`, so `ThreadedSystem.Current` is
+The boot frame runs on the main thread before the frame loop starts, so `ThreadedSystem.Current` is
 null and `Frame.Begin` took its `t{managedThreadId}` fallback. `Tables.lane` is built once and cached,
 so **the main thread's real frames would then have landed in `t1.frames.xml`** and no `Main.frames.xml`
 would have existed at all. `Frame.Begin` now compares the lane's name against the owner every frame
