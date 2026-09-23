@@ -78,7 +78,7 @@ Log.Once().Warn($"descriptor pool at {used}/{cap}");
 Without this, one bad state inside the render loop writes a hundred and forty lines a second and the log stops being readable.
 
 ### Lanes
-Each engine thread owns a `LogLane` — a ring of fixed-size records plus a byte arena for their text, with one volatile store in each direction. It is the same shape as `CommandLane` and `CommandArena` in the [[ECS]] command system, and for the same reason: one writer and one reader per ring means an enqueue is a store and a cursor bump rather than a contended compare-and-swap. It is a deliberate copy rather than a reuse, because the command system logs and a diagnostics namespace that depended on it would close the loop.
+Each engine thread owns a `LogLane` — a ring of fixed-size records plus a byte arena for their text, with one volatile store in each direction. One writer and one reader per ring means an enqueue is a store and a cursor bump rather than a contended compare-and-swap. It began as a copy of the engine's command lanes; those are gone, and the log lanes are now the only lanes in the engine.
 
 Threads that are not one of the engine's systems share a single lane behind a lock, which in practice means GLFW callbacks and the Vulkan validation callback.
 

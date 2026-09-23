@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Data;
 using ArctisAurora.Core.Registry;
 using System.Numerics;
 using System.Runtime.InteropServices;
@@ -68,11 +69,16 @@ namespace ArctisAurora.Core.Animation
         public ClipLoop loop;
         public sbyte direction;
         public bool hold;
+        // pool row the value is written into, width 0 for none
+        public DataHandle target;
+        public ushort column;
+        public ushort offset;
+        public byte width;
     }
 
     // Main to Animation: start, retarget or stop a track; set a signal (track is the signal id); fade
-    // count paint slots from track, seeded from source (generation is then the request id); or play
-    // count keys from source, turned later by Direction.
+    // count paint slots from track, seeded from source; or play count keys from source, turned later
+    // by Direction.
     [StructLayout(LayoutKind.Sequential)]
     public struct AnimationRequest
     {
@@ -93,15 +99,8 @@ namespace ArctisAurora.Core.Animation
         public bool hold;
     }
 
-    // Animation to Main: a slot fade has written its first colours.
-    [StructLayout(LayoutKind.Sequential)]
-    public struct FadeSeeded
-    {
-        public uint request;
-    }
-
     // Animation to Main: a track's value this tick.
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential), A_XSDType("AnimationValue", "DataPools")]
     public struct AnimationValue
     {
         public int track;

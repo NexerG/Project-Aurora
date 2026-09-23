@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Xml.Linq;
 using ArctisAurora.Core.Data;
@@ -59,30 +60,37 @@ namespace ArctisAurora.Core.Threading
         {
             XElement root = XElement.Load(path);
             XNamespace ns = root.GetDefaultNamespace();
-            HashSet<ThreadedSystem> listed = new();
 
             foreach (XElement element in root.Elements(ns + "Dedicated"))
             {
-                ThreadedSystem system = Resolve(element, listed);
+                string name = element.Attribute("System")?.Value ?? string.Empty;
+                ThreadedSystem system = ThreadedSystem.Find(name) ?? throw new Exception($"[FrameScheduler] '{name}' is not a system.");
                 if (system is MainSystem)
                     throw new Exception($"[FrameScheduler] Main cannot be Dedicated — GLFW needs it on the main thread, as a Pinned step.");
+                if (system.Dedicated)
+                    throw new Exception($"[FrameScheduler] {name} is listed as Dedicated twice.");
 
                 system.Dedicated = true;
                 _dedicated.Add(system);
             }
 
+            Dictionary<string, (ThreadedSystem system, Action body)> actions = FindActions();
+            HashSet<string> listed = new();
             List<FrameStep> steps = new();
             foreach (XElement element in root.Elements(ns + "Step"))
             {
-                ThreadedSystem system = Resolve(element, listed);
-                bool pinned = bool.Parse(element.Attribute("Pinned")?.Value ?? "false");
-                steps.Add(new FrameStep(system, pinned, Access(element, "Reads", system), Access(element, "Writes", system)));
-                _scheduled.Add(system);
+                FrameStep step = Build(element, actions);
+                if (!listed.Add(step.Name))
+                    throw new Exception($"[FrameScheduler] {step.Name} is listed twice in Frame.frame.xml.");
+
+                steps.Add(step);
+                if (step.System != null && !_scheduled.Contains(step.System))
+                    _scheduled.Add(step.System);
             }
 
             foreach (ThreadedSystem system in ThreadedSystem.All)
-                if (!listed.Contains(system))
-                    Log.Warn($"{system.Name} is neither a Step nor Dedicated in Frame.frame.xml, so it never runs");
+                if (!system.Dedicated && !_scheduled.Contains(system))
+                    Log.Warn($"{system.Name} has no Step and is not Dedicated in Frame.frame.xml, so it never runs");
 
             Wire(steps);
             _stages = Place(steps);
@@ -96,17 +104,52 @@ namespace ArctisAurora.Core.Threading
             _queue = new FrameStep[widest];
         }
 
-        private static ThreadedSystem Resolve(XElement element, HashSet<ThreadedSystem> listed)
+        // Every [A_XSDActionDependency(name, "Frame")] method of a system, bound to that system.
+        private static Dictionary<string, (ThreadedSystem system, Action body)> FindActions()
         {
-            string name = element.Attribute("System")?.Value ?? string.Empty;
-            ThreadedSystem system = ThreadedSystem.Find(name) ?? throw new Exception($"[FrameScheduler] '{name}' is not a system.");
-            if (!listed.Add(system))
-                throw new Exception($"[FrameScheduler] {name} is listed twice in Frame.frame.xml — a system is one Step or Dedicated.");
-            return system;
+            Dictionary<string, (ThreadedSystem, Action)> actions = new();
+            foreach (ThreadedSystem system in ThreadedSystem.All)
+            {
+                foreach (MethodInfo method in system.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+                {
+                    A_XSDActionDependencyAttribute? attr = method.GetCustomAttribute<A_XSDActionDependencyAttribute>();
+                    if (attr == null || attr.Category != "Frame") continue;
+                    if (!actions.TryAdd(attr.Name, (system, method.CreateDelegate<Action>(system))))
+                        throw new Exception($"[FrameScheduler] Frame action '{attr.Name}' is declared twice.");
+                }
+            }
+            return actions;
+        }
+
+        // A Step element as an action of a system, or as the frame edge of a pool.
+        private static FrameStep Build(XElement element, Dictionary<string, (ThreadedSystem system, Action body)> actions)
+        {
+            string action = element.Attribute("Action")?.Value ?? string.Empty;
+            string edge = element.Attribute("Edge")?.Value ?? string.Empty;
+            bool pinned = bool.Parse(element.Attribute("Pinned")?.Value ?? "false");
+            if (action.Length > 0 == edge.Length > 0)
+                throw new Exception($"[FrameScheduler] a Step names either an Action or an Edge: '{element}'.");
+
+            if (edge.Length > 0)
+            {
+                if (!DataManager.TryGet(edge, out DataPool pool))
+                    throw new Exception($"[FrameScheduler] Edge names pool '{edge}', which does not exist.");
+
+                ulong[] writes = new ulong[DataManager.Pools.Count];
+                writes[pool.Id] = FrameStep.AllColumns(pool);
+                return new FrameStep("Edge." + edge, null, pool.FrameEdge, pinned, new ulong[writes.Length], writes);
+            }
+
+            if (!actions.TryGetValue(action, out (ThreadedSystem system, Action body) found))
+                throw new Exception($"[FrameScheduler] '{action}' is not a Frame action.");
+            if (found.system.Dedicated)
+                throw new Exception($"[FrameScheduler] {action} belongs to {found.system.Name}, which is Dedicated and runs its own loop.");
+
+            return new FrameStep(action, found.system, found.body, pinned, Access(element, "Reads", action), Access(element, "Writes", action));
         }
 
         // Column bits per pool id, from a list such as "UIElements Entities.TransformData".
-        private static ulong[] Access(XElement element, string attribute, ThreadedSystem system)
+        private static ulong[] Access(XElement element, string attribute, string step)
         {
             ulong[] masks = new ulong[DataManager.Pools.Count];
             string list = element.Attribute(attribute)?.Value ?? string.Empty;
@@ -116,7 +159,7 @@ namespace ArctisAurora.Core.Threading
                 int dot = entry.IndexOf('.');
                 string poolName = dot < 0 ? entry : entry.Substring(0, dot);
                 if (!DataManager.TryGet(poolName, out DataPool pool))
-                    throw new Exception($"[FrameScheduler] {system.Name} {attribute} names pool '{poolName}', which does not exist.");
+                    throw new Exception($"[FrameScheduler] {step} {attribute} names pool '{poolName}', which does not exist.");
 
                 if (dot < 0)
                 {
@@ -126,7 +169,7 @@ namespace ArctisAurora.Core.Threading
 
                 Type? column = DataManager.ResolveComponent(entry.Substring(dot + 1));
                 if (column == null || !pool.HasComponent(column))
-                    throw new Exception($"[FrameScheduler] {system.Name} {attribute} names '{entry}', which is not a column of {poolName}.");
+                    throw new Exception($"[FrameScheduler] {step} {attribute} names '{entry}', which is not a column of {poolName}.");
                 masks[pool.Id] |= 1UL << pool.ColumnId(column);
             }
             return masks;
@@ -152,6 +195,34 @@ namespace ArctisAurora.Core.Threading
                     }
                 }
             }
+
+            // steps of one system never overlap: unordered pairs go in list order
+            for (int i = 0; i < steps.Count; i++)
+            {
+                for (int j = 0; j < i; j++)
+                {
+                    if (steps[i].System == null || steps[i].System != steps[j].System) continue;
+                    if (Reaches(steps[i], steps[j]) || Reaches(steps[j], steps[i])) continue;
+                    steps[i].waits.Add((steps[j], "same system"));
+                }
+            }
+        }
+
+        // True when from waits for to, directly or through other steps.
+        private static bool Reaches(FrameStep from, FrameStep to)
+        {
+            Stack<FrameStep> open = new();
+            HashSet<FrameStep> seen = new();
+            open.Push(from);
+            while (open.Count > 0)
+            {
+                foreach ((FrameStep next, string _) in open.Pop().waits)
+                {
+                    if (next == to) return true;
+                    if (seen.Add(next)) open.Push(next);
+                }
+            }
+            return false;
         }
 
         // Each step lands one stage after the latest step it waits for.
@@ -266,6 +337,12 @@ namespace ArctisAurora.Core.Threading
                     Profiling.Frame.Begin("Main", Frame);
                     for (int s = 0; s < _stages.Length; s++)
                         RunStage(_stages[s], dtMs);
+                    for (int i = 0; i < _scheduled.Count; i++)
+                        _scheduled[i].EndFrame();
+
+                    IReadOnlyList<DataPool> pools = DataManager.Pools;
+                    for (int i = 0; i < pools.Count; i++)
+                        Profiling.Frame.Pool(pools[i].Name, pools[i].Count, pools[i].Capacity, pools[i].ReservedBytes);
                     Profiling.Frame.End();
                     Profiling.Report();
 

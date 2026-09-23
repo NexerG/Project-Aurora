@@ -39,4 +39,8 @@
 		<Component Type="Keyframe"/>
 	</Pool>
 
+	<Pool Name="AnimationValues" Capacity="256" Ordered="false" Growth="Additive" GrowthValue="256">
+		<Component Type="AnimationValue"/>
+	</Pool>
+
 </EnginePools>

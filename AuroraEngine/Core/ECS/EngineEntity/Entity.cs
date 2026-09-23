@@ -115,7 +115,7 @@ namespace ArctisAurora.Core.ECS.EngineEntity
 
         // Tear this entity (and its whole subtree) down. Deferred: the subtree is enqueued now
         // and actually unregistered + pool-freed at the next frame boundary (EntityRegistry.
-        // ProcessDestroys -> DataManager.FrameEdge), so it is safe to call from inside OnTick or
+        // ProcessDestroys -> the pool's Edge step), so it is safe to call from inside OnTick or
         // an input handler without mutating the live iteration lists or moving pool memory.
         public void Destroy()
         {

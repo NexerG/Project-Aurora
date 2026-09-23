@@ -4,8 +4,20 @@
 
 	<Dedicated System="Render"/>
 
-	<Step System="Main" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects"/>
-	<Step System="Animation" Writes="Paints Animations Signals Keyframes"/>
-	<Step System="Physics"/>
+	<Step Action="Main.Input" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints Signals"/>
+	<Step Action="Main.Logic" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints Signals"/>
+	<Step Action="Animation.Step" Reads="Signals Keyframes" Writes="Animations Paints AnimationValues UIElements.ArrangeData"/>
+	<Step Action="Physics.Step" Writes="Entities.TransformData"/>
+	<Step Action="Main.Apply" Pinned="true" Reads="AnimationValues" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints"/>
+	<Step Action="Main.Layout" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints"/>
+
+	<Step Edge="UIElements"/>
+	<Step Edge="UIQuads"/>
+	<Step Edge="Entities"/>
+	<Step Edge="Gradients"/>
+	<Step Edge="Effects"/>
+	<Step Edge="Paints"/>
+
+	<Step Action="Main.DrawLists" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints"/>
 
 </FrameGraph>

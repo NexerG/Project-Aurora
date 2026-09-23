@@ -112,6 +112,9 @@ Design rationale lives in [[cross-system-change-notification]]; this is the code
   enqueues a `SetOne`; returns false on backpressure rather than blocking or dropping silently.
   **REVISED 2026-09-23:** `ResolveOwners` and `Send` are deleted, pools have no owner, and lanes
   carry only `Post` until they go too — [[frame-scheduler]].
+  **DELETED 2026-09-23 (frame-scheduler step 2):** `Core.Data.Commands` is gone — `CommandLane`,
+  `CommandArena`, `SystemCommand`, `CommandApplier`, `Post`/`OnPost`, and `IPoolColumn`'s byte writers.
+  Systems meet through pools the graph orders — [[frame-scheduler]] § Step 2.
 - **Scope note: infrastructure only — NO consumer was rewired.** UIModule still uses its ad-hoc
   `_frameWrittenControls[]` / `_frameBuiltCapacity[]` high-water marks (which are dense-space and
   will break when compaction actually runs), and the lanes have **no producer**: physics is a stub

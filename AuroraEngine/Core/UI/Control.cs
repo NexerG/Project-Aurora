@@ -47,7 +47,7 @@ namespace ArctisAurora.Core.UI
 
         #region ---- authored layout ----
         [A_XSDElementProperty("Width", "UI", "Width in pixels. 0 = auto.")]
-        [A_Animatable]
+        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.preferredWidth), nameof(InvalidateLayout))]
         public float preferredWidth
         {
             get => arrange.preferredWidth;
@@ -55,7 +55,7 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("Height", "UI", "Height in pixels. 0 = auto.")]
-        [A_Animatable]
+        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.preferredHeight), nameof(InvalidateLayout))]
         public float preferredHeight
         {
             get => arrange.preferredHeight;
@@ -63,7 +63,7 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("MinWidth", "UI", "Minimum width in pixels.")]
-        [A_Animatable]
+        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.minWidth), nameof(InvalidateLayout))]
         public float minWidth
         {
             get => arrange.minWidth;
@@ -71,7 +71,7 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("MinHeight", "UI", "Minimum height in pixels.")]
-        [A_Animatable]
+        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.minHeight), nameof(InvalidateLayout))]
         public float minHeight
         {
             get => arrange.minHeight;
@@ -126,7 +126,7 @@ namespace ArctisAurora.Core.UI
         public virtual void SetHeight(float y) => height = y;
 
         [A_XSDElementProperty("Margin", "UI", "Space outside the control in pixels.")]
-        [A_Animatable]
+        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.margin), nameof(InvalidateLayout))]
         public Thickness margin
         {
             get => arrange.margin;
@@ -134,7 +134,7 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("Padding", "UI", "Space inside the control in pixels.")]
-        [A_Animatable]
+        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.padding), nameof(InvalidateLayout))]
         public Thickness padding
         {
             get => arrange.padding;
@@ -156,7 +156,7 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("HorizontalPos", "UI", "Position within the parent, [0;1]. Works with non-container controls.")]
-        [A_Animatable]
+        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.horizontalPosition), nameof(InvalidateArrange))]
         public float horizontalPosition
         {
             get => arrange.horizontalPosition;
@@ -164,7 +164,7 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("VerticalPos", "UI", "Position within the parent, [0;1]. Works with non-container controls.")]
-        [A_Animatable]
+        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.verticalPosition), nameof(InvalidateArrange))]
         public float verticalPosition
         {
             get => arrange.verticalPosition;

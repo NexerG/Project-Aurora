@@ -1,6 +1,5 @@
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Registry;
-using ArctisAurora.Core.Threading;
 using ArctisAurora.Core.Filing.Serialization;
 using System.Reflection;
 using System.Xml.Linq;
@@ -10,8 +9,7 @@ namespace ArctisAurora.Core.Data
     public readonly record struct DataHandle(ushort PoolId, int StableId, int Version);
 
     // Static owner of all data pools. Pools are declared in Pools.pools.xml and composed from
-    // C#-defined component structs at bootstrap. Lookup by name or by id; FrameEdge drains
-    // structural changes across every pool between frames.
+    // C#-defined component structs at bootstrap. Lookup by name or by id.
     public static class DataManager
     {
         private static readonly LogChannel Log = LogChannel.For("Data");
@@ -74,19 +72,6 @@ namespace ArctisAurora.Core.Data
         // A component type as Pools.pools.xml and Frame.frame.xml name it.
         internal static Type? ResolveComponent(string typeName)
             => AnyXMLType.typeMap.TryGetValue(typeName, out Type? mapped) ? mapped : AnyXMLType.FindType(typeName);
-
-        // Runs the frame edge of every pool the running step writes in full.
-        public static void FrameEdge()
-        {
-            FrameStep step = FrameStep.Current!;
-            for (int i = 0; i < _pools.Count; i++)
-            {
-                DataPool pool = _pools[i];
-                if (!step.WritesAll(pool)) continue;
-                pool.FrameEdge();
-                Profiling.Frame.Pool(pool.Name, pool.Count, pool.Capacity, pool.ReservedBytes);
-            }
-        }
 
         // Binds a "PoolSort" action name to a static IReadOnlyList<int> Method(DataPool).
         // Returns null if none is registered yet (e.g. before the UI sort provider exists).

@@ -9,7 +9,7 @@ namespace ArctisAurora.Core.Diagnostics
 {
     // The drain. One background thread gathers every lane, merges the records by timestamp, formats
     // them once as UTF-8 and feeds the sinks. It is a plain thread and not a ThreadedSystem: it owns
-    // no pools, so a SystemId and a set of command lanes would be six lanes it never reads.
+    // no pools and runs no frame steps.
     //
     // Self-starting, because XSDGenerator.GenerateXSD runs before Engine.Init and logs. Until
     // Logging.Configure lands, the console prints at a fixed default and everything is also held so

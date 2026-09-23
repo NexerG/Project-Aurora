@@ -105,9 +105,6 @@ namespace ArctisAurora.EngineWork
             renderSystem = new RenderSystem();
             animationSystem = new AnimationSystem();
 
-            // Lanes are wired before anything starts — a running system drains its inbox on its first tick.
-            ThreadedSystem.BuildLanes();
-
             FrameScheduler.Load(Paths.FRAME);
             FrameScheduler.Start();
 
@@ -263,12 +260,10 @@ namespace ArctisAurora.EngineWork
         // PollEvents on the one that created the window.
         public void Run() => FrameScheduler.Run();
 
-        // One main tick. MainSystem drives this; the body stays here because it touches the
+        // The Main.Input step. MainSystem drives this; the body stays here because it touches the
         // registries, input handler and UI state that Engine owns.
-        internal void MainTick()
+        internal void Input()
         {
-            Profiling.Zone.Start("MainTick");
-
             Profiling.Zone.Start("PollEvents");
             AGlfwWindow._glfw.PollEvents();
             Profiling.Zone.End("PollEvents");
@@ -291,25 +286,6 @@ namespace ArctisAurora.EngineWork
             DragGhost.Follow();
             ContextMenus.Tick();
             Profiling.Zone.End("HandleUI");
-
-            // here should go entity updates &/or interpolation
-            Profiling.Zone.Start("Interpolate");
-            Interpolate();
-            Profiling.Zone.End("Interpolate");
-
-            // Drain queued destroys -> compact -> resequence across every data pool. This still
-            // MOVES pool memory, and the render thread is no longer parked while it runs — the
-            // address-stable storage rework is what makes this safe.
-            Profiling.Zone.Start("FrameEdge");
-            DataManager.FrameEdge();
-            Profiling.Zone.End("FrameEdge");
-
-            // Dense indices have settled, so each window module can be told the range it draws.
-            Profiling.Zone.Start("RefreshWindowRanges");
-            UIEngine.BuildDrawLists();
-            Profiling.Zone.End("RefreshWindowRanges");
-
-            Profiling.Zone.End("MainTick");
         }
 
         private void HandleUI(RenderWindow window)
@@ -319,7 +295,7 @@ namespace ArctisAurora.EngineWork
             UIEngine.Poll(window);
         }
 
-        private void Interpolate()
+        internal void Interpolate()
         {
             // have we caught up?
             if (isCaughtUp)
@@ -352,10 +328,6 @@ namespace ArctisAurora.EngineWork
 
                 entity.OnTick();
             }
-
-            Profiling.Zone.Start("ResolveLayout");
-            UIEngine.ResolveLayout();
-            Profiling.Zone.End("ResolveLayout");
 
             /*if(EntityRegistry.entitiesToUpdate.Count > 0)
             {

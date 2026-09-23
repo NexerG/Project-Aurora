@@ -54,6 +54,8 @@ bump. A shared inbox would have three threads CAS on one cache line.
 It is a **copy, not a reference**. `CommandApplier`, `DataPool` and `DataManager` all log, so a
 diagnostics namespace depending on `Core.Data.Commands` would close the loop. The duplication is
 ~80 lines and deliberate.
+**2026-09-23:** `Core.Data.Commands` is deleted ([[frame-scheduler]] § Step 2), so `LogLane` is now the
+only lane; the design above stands on its own.
 
 Threads that are not a `ThreadedSystem` (GLFW callbacks, importer tasks, the validation callback)
 share one lane behind a `Lock`. In practice that is 1 shared + 3 system lanes, forever.

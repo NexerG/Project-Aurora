@@ -21,12 +21,8 @@ namespace ArctisAurora.Core.Diagnostics
         public int length;
     }
 
-    // One thread's outbound log queue: a ring of records plus a byte arena holding their text.
-    //
-    // Structurally the same as CommandLane and CommandArena in Core.Data.Commands — a fixed
-    // power-of-two ring, four cursors, one volatile store each way. It is a copy rather than a
-    // reference because CommandApplier, DataPool and DataManager all log, and a diagnostics
-    // namespace that depends on the command system would close that loop.
+    // One thread's outbound log queue: a ring of records plus a byte arena holding their text — a
+    // fixed power-of-two ring, four cursors, one volatile store each way.
     //
     // Single producer, single consumer, and that is load-bearing: the owning thread is the only
     // writer, the spool thread is the only reader.

@@ -14,14 +14,10 @@ namespace ArctisAurora.Core.Data
         void Clear(int dense);                  // dense[i] = default
         void Permute(int[] destToSrc, int count); // new[i] = old[destToSrc[i]] for i in [0,count)
 
-        // Byte-level writes, for applying a drained SystemCommand whose payload sits in a producer's
-        // arena as raw bytes. The drain loop knows the column id but not T, and bytes keep it that
-        // way — a generic dispatch table keyed on column type buys nothing when the payload is
-        // already untyped.
         int ElementSize { get; }
-        void WriteBytes(int dense, int count, ReadOnlySpan<byte> src); // src holds count elements
-        void FillBytes(int dense, int count, ReadOnlySpan<byte> src);  // src holds one element
-        void CopyWithin(int destDense, int srcDense, int count);
+
+        // One element as raw bytes, for writing a field at a known offset.
+        Span<byte> ElementBytes(int dense);
     }
 
     public sealed class PoolColumn<T> : IPoolColumn where T : struct
@@ -51,14 +47,7 @@ namespace ArctisAurora.Core.Data
 
         public int ElementSize => Unsafe.SizeOf<T>();
 
-        public void WriteBytes(int dense, int count, ReadOnlySpan<byte> src)
-            => MemoryMarshal.Cast<byte, T>(src).Slice(0, count).CopyTo(data.AsSpan(dense, count));
-
-        public void FillBytes(int dense, int count, ReadOnlySpan<byte> src)
-            => data.AsSpan(dense, count).Fill(MemoryMarshal.Cast<byte, T>(src)[0]);
-
-        public void CopyWithin(int destDense, int srcDense, int count)
-            => Array.Copy(data, srcDense, data, destDense, count);
+        public Span<byte> ElementBytes(int dense) => MemoryMarshal.AsBytes(data.AsSpan(dense, 1));
 
         public void Permute(int[] destToSrc, int count)
         {

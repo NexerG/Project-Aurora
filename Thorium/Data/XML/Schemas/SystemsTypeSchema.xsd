@@ -3,7 +3,8 @@
   <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:attributeGroup name="Step.Attributes">
-    <xs:attribute name="System" type="xs:string" />
+    <xs:attribute name="Action" type="xs:string" />
+    <xs:attribute name="Edge" type="xs:string" />
     <xs:attribute name="Pinned" type="xs:boolean" />
     <xs:attribute name="Reads" type="xs:string" />
     <xs:attribute name="Writes" type="xs:string" />

@@ -3,22 +3,16 @@ using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Threading;
 using ArctisAurora.Core.UI;
-using ArctisAurora.EngineWork;
 using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
 
 namespace ArctisAurora.Core.Animation
 {
-    // Steps every active track and posts its value to the thread that owns the target.
+    // Steps every active track into its pool row and the value list Main applies.
     [A_XSDType("Animation", "Systems")]
     public sealed class AnimationSystem : ThreadedSystem
     {
-        // Post kinds
-        public const ushort requestKind = 1;
-        public const ushort valueKind = 2;
-        public const ushort fadeSeededKind = 3;
-
         // spring rest thresholds
         private const float restDistance = 1e-3f;
         private const float restSpeed = 1e-3f;
@@ -37,11 +31,11 @@ namespace ArctisAurora.Core.Animation
         private DataPool _signals = null!;
         private DataPool _paints = null!;
         private DataPool _keys = null!;
+        private DataPool _values = null!;
         private long _lastTick;
 
-        // paint slots mid-fade, and seeded acknowledgements still to post
+        // paint slots mid-fade
         private readonly List<SlotFade> _fades = new List<SlotFade>();
-        private readonly List<uint> _unsentSeeded = new List<uint>();
 
         protected override void OnStart()
         {
@@ -49,110 +43,20 @@ namespace ArctisAurora.Core.Animation
             _signals = DataManager.Get("Signals");
             _paints = DataManager.Get("Paints");
             _keys = DataManager.Get("Keyframes");
+            _values = DataManager.Get("AnimationValues");
         }
 
-        protected override void OnPost(ushort kind, ReadOnlySpan<byte> payload)
-        {
-            if (kind != requestKind) return;
-            Profiling.Zone.Increment("Anim.Request");
-
-            AnimationRequest request = MemoryMarshal.Read<AnimationRequest>(payload);
-            if (request.op == AnimationOp.SetSignal)
-            {
-                while (_signals.Count <= request.track)
-                {
-                    int slot = _signals.Append();
-                    _signals.GetSpan<SignalValue>()[slot] = default;
-                }
-                _signals.GetSpan<SignalValue>()[request.track].value = request.to;
-                _signals.MarkRangeDirty(request.track, request.track);
-                return;
-            }
-            if (request.op == AnimationOp.FadeSlots)
-            {
-                SeedFade(request);
-                return;
-            }
-
-            while (_tracks.Count <= request.track)
-            {
-                int row = _tracks.Append();
-                _tracks.GetSpan<AnimationTrack>()[row] = default;
-            }
-
-            ref AnimationTrack track = ref _tracks.GetSpan<AnimationTrack>()[request.track];
-            switch (request.op)
-            {
-                case AnimationOp.Tween:
-                    track = new AnimationTrack
-                    {
-                        driver = AnimationDriver.Tween,
-                        generation = request.generation,
-                        follow = -1,
-                        curve = request.curve,
-                        from = request.from,
-                        to = request.to,
-                        value = request.from,
-                        duration = request.duration
-                    };
-                    break;
-                case AnimationOp.Spring:
-                    track = new AnimationTrack
-                    {
-                        driver = AnimationDriver.Spring,
-                        sleeping = true,
-                        generation = request.generation,
-                        follow = request.follow,
-                        to = request.from,
-                        value = request.from,
-                        frequency = request.frequency,
-                        damping = request.damping
-                    };
-                    break;
-                case AnimationOp.Keyframes:
-                    track = new AnimationTrack
-                    {
-                        driver = AnimationDriver.Keyframes,
-                        generation = request.generation,
-                        follow = -1,
-                        duration = request.duration,
-                        firstKey = request.source,
-                        keyCount = request.count,
-                        loop = request.loop,
-                        direction = 1,
-                        hold = request.hold
-                    };
-                    break;
-                case AnimationOp.Direction:
-                    if (track.generation != request.generation || track.driver != AnimationDriver.Keyframes) return;
-                    if (request.direction < 0 && track.direction > 0)
-                        track.elapsed = AnimationLibrary.LocalTime(track.elapsed, track.duration, track.loop);
-                    track.direction = request.direction;
-                    track.sleeping = false;
-                    break;
-                case AnimationOp.Retarget:
-                    if (track.generation != request.generation) return;
-                    track.from = track.value;
-                    track.to = request.to;
-                    track.elapsed = 0f;
-                    track.sleeping = false;
-                    break;
-                case AnimationOp.Stop:
-                    if (track.generation == request.generation) track.driver = AnimationDriver.None;
-                    break;
-            }
-            _tracks.MarkRangeDirty(request.track, request.track);
-        }
-
-        protected override void Tick()
+        [A_XSDActionDependency("Animation.Step", "Frame")]
+        private void Advance()
         {
             long now = Stopwatch.GetTimestamp();
             float dt = _lastTick == 0 ? 0f : (float)((now - _lastTick) / (double)Stopwatch.Frequency);
             _lastTick = now;
 
+            _values.Rewind();
             Span<AnimationTrack> tracks = _tracks.GetSpan<AnimationTrack>();
-            Span<SignalValue> signals = _signals.GetSpan<SignalValue>();
-            ReadOnlySpan<Keyframe> keys = _keys.GetSpan<Keyframe>();
+            ReadOnlySpan<SignalValue> signals = _signals.Backing<SignalValue>().AsSpan(0, _signals.Count);
+            ReadOnlySpan<Keyframe> keys = _keys.Backing<Keyframe>().AsSpan(0, _keys.Count);
             int min = int.MaxValue, max = -1;
             Profiling.Zone.Start("Anim.Step");
             for (int i = 0; i < tracks.Length; i++)
@@ -203,17 +107,18 @@ namespace ArctisAurora.Core.Animation
                     }
                 }
 
+                if (track.width > 0) WriteTarget(track);
+
                 bool finishes = track.driver == AnimationDriver.Tween || (track.driver == AnimationDriver.Keyframes && !track.hold);
-                AnimationValue message = new AnimationValue
+                int row = _values.Append();
+                _values.GetSpan<AnimationValue>()[row] = new AnimationValue
                 {
                     track = i,
                     generation = track.generation,
                     value = track.value,
                     done = done && finishes
                 };
-                bool posted = Post(Engine.mainSystem, valueKind, message);
-                Profiling.Zone.Increment(posted ? "Anim.ValuePosted" : "Anim.ValueRefused");
-                if (posted && done)
+                if (done)
                 {
                     if (finishes) track.driver = AnimationDriver.None;
                     else track.sleeping = true;
@@ -229,14 +134,23 @@ namespace ArctisAurora.Core.Animation
             Profiling.Zone.Start("Anim.Fades");
             StepFades(dt);
             Profiling.Zone.End("Anim.Fades");
-            for (int i = _unsentSeeded.Count - 1; i >= 0; i--)
-                if (Post(Engine.mainSystem, fadeSeededKind, new FadeSeeded { request = _unsentSeeded[i] }))
-                    _unsentSeeded.RemoveAt(i);
-            DataManager.FrameEdge();
+        }
+
+        // Writes a track's value into the pool row its property is stored in.
+        private static void WriteTarget(in AnimationTrack track)
+        {
+            Span<byte> row = DataManager.Get(track.target.PoolId).ElementBytes(track.column, track.target);
+            if (row.IsEmpty) return;
+
+            Span<byte> field = row.Slice(track.offset);
+            Vector4 value = track.value;
+            if (track.width == 1) MemoryMarshal.Write(field, in value.X);
+            else if (track.width == 2) MemoryMarshal.Write(field, new Vector2(value.X, value.Y));
+            else MemoryMarshal.Write(field, in value);
         }
 
         // Writes the source slots' shown colours into the target slots and fades each back to where it was headed.
-        private void SeedFade(in AnimationRequest request)
+        internal void SeedFade(in AnimationRequest request)
         {
             Span<GpuPaint> paints = _paints.GetSpan<GpuPaint>();
             int count = Math.Min(request.count, Math.Min(paints.Length - request.track, paints.Length - request.source));
@@ -257,7 +171,6 @@ namespace ArctisAurora.Core.Animation
             }
 
             if (count > 0) _paints.MarkRangeDirty(request.track, request.track + count - 1);
-            _unsentSeeded.Add(request.generation);
         }
 
         private void StepFades(float dt)

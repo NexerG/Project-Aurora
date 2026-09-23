@@ -1,14 +1,21 @@
+using ArctisAurora.Core.Data;
 using ArctisAurora.Core.Diagnostics;
-using ArctisAurora.Core.Threading;
+using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.EngineWork;
 using System.Numerics;
 
 namespace ArctisAurora.Core.Animation
 {
-    // Starts and steers animations from the main thread, and applies the values they post back.
+    // Starts and steers animations from the main thread, and applies the values they step.
     public static class Animations
     {
-        private static readonly LogChannel Log = LogChannel.For("Animation");
+        private static DataPool? _tracks;
+        private static DataPool? _signals;
+        private static DataPool? _values;
+
+        private static DataPool Tracks => _tracks ??= DataManager.Get("Animations");
+        private static DataPool SignalPool => _signals ??= DataManager.Get("Signals");
+        private static DataPool Values => _values ??= DataManager.Get("AnimationValues");
 
         private sealed class Binding
         {
@@ -23,37 +30,22 @@ namespace ArctisAurora.Core.Animation
         private static readonly List<Binding> bindings = new List<Binding>();
         private static readonly Stack<int> free = new Stack<int>();
 
-        // slot fades waiting for their seeded acknowledgement
-        private static readonly Dictionary<uint, Action> pendingFades = new Dictionary<uint, Action>();
-        private static uint nextFade;
-
         // Fades count paint slots from toFirst, starting from the colours shown at fromFirst; onSeeded runs once they are written.
         public static void FadeSlots(uint fromFirst, uint toFirst, int count, float seconds, Curve curve, Action onSeeded)
         {
-            uint request = ++nextFade;
-            pendingFades[request] = onSeeded;
-            AnimationRequest fade = new AnimationRequest
+            Write(new AnimationRequest
             {
                 op = AnimationOp.FadeSlots,
                 track = (int)toFirst,
                 source = (int)fromFirst,
                 count = count,
-                generation = request,
                 duration = seconds,
                 curve = curve
-            };
-            if (Send(fade)) return;
-
-            pendingFades.Remove(request);
+            });
             onSeeded();
         }
 
-        internal static void OnFadeSeeded(in FadeSeeded seeded)
-        {
-            if (pendingFades.Remove(seeded.request, out Action? onSeeded)) onSeeded();
-        }
-
-        // Eases target's property from its current value to to. Returns None when the request was refused.
+        // Eases target's property from its current value to to.
         public static AnimationHandle Tween(object target, string property, Vector4 to, float seconds, Curve curve, Action? onDone = null)
         {
             int id = Bind(target, property, out Binding binding);
@@ -71,7 +63,7 @@ namespace ArctisAurora.Core.Animation
             return Started(id, request);
         }
 
-        // A spring resting at target's current value; Retarget moves it. Returns None when the request was refused.
+        // A spring resting at target's current value; Retarget moves it.
         public static AnimationHandle Spring(object target, string property, float frequency, float damping)
             => Spring(target, property, frequency, damping, SignalHandle.None);
 
@@ -92,7 +84,7 @@ namespace ArctisAurora.Core.Animation
             return Started(id, request);
         }
 
-        // Plays a clip on target, one handle per clip track; hold keeps each alive at either end. Empty when refused.
+        // Plays a clip on target, one handle per clip track; hold keeps each alive at either end.
         public static AnimationHandle[] Play(object target, string clip, bool hold)
         {
             ClipDefinition definition = AnimationLibrary.Clip(clip);
@@ -113,10 +105,6 @@ namespace ArctisAurora.Core.Animation
                     hold = hold
                 };
                 handles[i] = Started(id, request);
-                if (handles[i] != AnimationHandle.None) continue;
-
-                for (int j = 0; j < i; j++) Stop(handles[j]);
-                return Array.Empty<AnimationHandle>();
             }
             return handles;
         }
@@ -127,7 +115,7 @@ namespace ArctisAurora.Core.Animation
             foreach (AnimationHandle handle in handles)
             {
                 if (!IsLive(handle.id, handle.generation)) continue;
-                Send(new AnimationRequest { op = AnimationOp.Direction, track = handle.id, generation = handle.generation, direction = (sbyte)(forward ? 1 : -1) });
+                Write(new AnimationRequest { op = AnimationOp.Direction, track = handle.id, generation = handle.generation, direction = (sbyte)(forward ? 1 : -1) });
             }
         }
 
@@ -135,24 +123,34 @@ namespace ArctisAurora.Core.Animation
         public static void Retarget(AnimationHandle handle, Vector4 to)
         {
             if (!IsLive(handle.id, handle.generation)) return;
-            Send(new AnimationRequest { op = AnimationOp.Retarget, track = handle.id, generation = handle.generation, to = to });
+            Write(new AnimationRequest { op = AnimationOp.Retarget, track = handle.id, generation = handle.generation, to = to });
         }
 
         public static void Stop(AnimationHandle handle)
         {
             if (!IsLive(handle.id, handle.generation)) return;
-            Send(new AnimationRequest { op = AnimationOp.Stop, track = handle.id, generation = handle.generation });
+            Write(new AnimationRequest { op = AnimationOp.Stop, track = handle.id, generation = handle.generation });
             Release(handle.id);
         }
 
-        // Applies a posted value when its track is still the one bound to that id.
-        internal static void OnValue(in AnimationValue value)
+        // Applies every value Animation stepped this frame.
+        internal static void ApplyValues()
+        {
+            DataPool pool = Values;
+            ReadOnlySpan<AnimationValue> values = pool.Backing<AnimationValue>().AsSpan(0, pool.Count);
+            for (int i = 0; i < values.Length; i++)
+                OnValue(values[i]);
+        }
+
+        // Applies a stepped value when its track is still the one bound to that id.
+        private static void OnValue(in AnimationValue value)
         {
             if (!IsLive(value.track, value.generation)) return;
             Profiling.Zone.Increment("Anim.ValueApplied");
             Binding binding = bindings[value.track];
 
-            binding.property.set(binding.target, value.value);
+            if (binding.property.changed == null) binding.property.set(binding.target, value.value);
+            else binding.property.changed(binding.target);
             if (!value.done) return;
 
             Action? onDone = binding.onDone;
@@ -170,9 +168,8 @@ namespace ArctisAurora.Core.Animation
 
         private static AnimationHandle Started(int id, in AnimationRequest request)
         {
-            if (Send(request)) return new AnimationHandle(id, request.generation);
-            Release(id);
-            return AnimationHandle.None;
+            Write(request);
+            return new AnimationHandle(id, request.generation);
         }
 
         private static int Bind(object target, string property, out Binding binding)
@@ -205,12 +202,113 @@ namespace ArctisAurora.Core.Animation
         private static bool IsLive(int id, uint generation)
             => id >= 0 && id < bindings.Count && bindings[id].live && bindings[id].generation == generation;
 
-        internal static bool Send(in AnimationRequest request)
+        // Applies a request to the animation pools on the spot.
+        internal static void Write(in AnimationRequest request)
         {
-            if (ThreadedSystem.Post(Engine.animationSystem, AnimationSystem.requestKind, request)) return true;
-            Profiling.Zone.Increment("Anim.RequestDropped");
-            Log.Warn($"request {request.op} for track {request.track} dropped — the lane to the animation system is full.");
-            return false;
+            Profiling.Zone.Increment("Anim.Request");
+            if (request.op == AnimationOp.SetSignal)
+            {
+                DataPool signals = SignalPool;
+                while (signals.Count <= request.track)
+                {
+                    int slot = signals.Append();
+                    signals.GetSpan<SignalValue>()[slot] = default;
+                }
+                signals.GetSpan<SignalValue>()[request.track].value = request.to;
+                signals.MarkRangeDirty(request.track, request.track);
+                return;
+            }
+            if (request.op == AnimationOp.FadeSlots)
+            {
+                Engine.animationSystem.SeedFade(request);
+                return;
+            }
+
+            DataPool tracks = Tracks;
+            while (tracks.Count <= request.track)
+            {
+                int row = tracks.Append();
+                tracks.GetSpan<AnimationTrack>()[row] = default;
+            }
+
+            ref AnimationTrack track = ref tracks.GetSpan<AnimationTrack>()[request.track];
+            switch (request.op)
+            {
+                case AnimationOp.Tween:
+                    track = new AnimationTrack
+                    {
+                        driver = AnimationDriver.Tween,
+                        generation = request.generation,
+                        follow = -1,
+                        curve = request.curve,
+                        from = request.from,
+                        to = request.to,
+                        value = request.from,
+                        duration = request.duration
+                    };
+                    Target(ref track, bindings[request.track]);
+                    break;
+                case AnimationOp.Spring:
+                    track = new AnimationTrack
+                    {
+                        driver = AnimationDriver.Spring,
+                        sleeping = true,
+                        generation = request.generation,
+                        follow = request.follow,
+                        to = request.from,
+                        value = request.from,
+                        frequency = request.frequency,
+                        damping = request.damping
+                    };
+                    Target(ref track, bindings[request.track]);
+                    break;
+                case AnimationOp.Keyframes:
+                    track = new AnimationTrack
+                    {
+                        driver = AnimationDriver.Keyframes,
+                        generation = request.generation,
+                        follow = -1,
+                        duration = request.duration,
+                        firstKey = request.source,
+                        keyCount = request.count,
+                        loop = request.loop,
+                        direction = 1,
+                        hold = request.hold
+                    };
+                    Target(ref track, bindings[request.track]);
+                    break;
+                case AnimationOp.Direction:
+                    if (track.generation != request.generation || track.driver != AnimationDriver.Keyframes) return;
+                    if (request.direction < 0 && track.direction > 0)
+                        track.elapsed = AnimationLibrary.LocalTime(track.elapsed, track.duration, track.loop);
+                    track.direction = request.direction;
+                    track.sleeping = false;
+                    break;
+                case AnimationOp.Retarget:
+                    if (track.generation != request.generation) return;
+                    track.from = track.value;
+                    track.to = request.to;
+                    track.elapsed = 0f;
+                    track.sleeping = false;
+                    break;
+                case AnimationOp.Stop:
+                    if (track.generation == request.generation) track.driver = AnimationDriver.None;
+                    break;
+            }
+            tracks.MarkRangeDirty(request.track, request.track);
+        }
+
+        // Points a started track at the pool row its property is stored in.
+        private static void Target(ref AnimationTrack track, Binding binding)
+        {
+            AnimatableProperty property = binding.property;
+            if (property.column == null) return;
+
+            Entity entity = (Entity)binding.target;
+            track.target = entity.dataHandle;
+            track.column = entity.Pool.ColumnId(property.column);
+            track.offset = property.offset;
+            track.width = property.width;
         }
     }
 }

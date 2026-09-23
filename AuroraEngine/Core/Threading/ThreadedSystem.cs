@@ -1,15 +1,13 @@
 using System.Diagnostics;
 using System.Reflection;
-using System.Runtime.CompilerServices;
-using ArctisAurora.Core.Data.Commands;
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Registry;
 
 namespace ArctisAurora.Core.Threading
 {
 
-    // One engine system and the fixed order of work it does every tick: drain, Tick, publish. It runs
-    // as a Step of Frame.frame.xml's graph or, listed as Dedicated, on a thread of its own.
+    // One engine system. Its tagged methods run as Steps of Frame.frame.xml's graph or, listed as
+    // Dedicated, its Tick runs on a thread of its own.
     public abstract class ThreadedSystem
     {
         private static readonly LogChannel Log = LogChannel.For("Threading");
@@ -23,7 +21,7 @@ namespace ArctisAurora.Core.Threading
 
         public static IReadOnlyList<ThreadedSystem> All => _all;
 
-        // Join key for Frame.frame.xml — a Step's or Dedicated's System attribute names one of these.
+        // Join key for Frame.frame.xml — a Dedicated's System attribute names one of these.
         public static ThreadedSystem? Find(string name)
         {
             for (int i = 0; i < _all.Count; i++)
@@ -33,9 +31,7 @@ namespace ArctisAurora.Core.Threading
 
         public string Name { get; }
 
-        // Stamped into SystemCommand.Producer, so a command that faults on apply names its sender.
-        // Assigned from construction order the same way DataManager assigns pool ids from parse
-        // order — nothing in C# declares the mapping. Zero is left free to mean "no system".
+        // Stamped on log records. Assigned from construction order; zero means "no system".
         public byte SystemId { get; }
 
         public Thread? Worker { get; private set; }
@@ -43,55 +39,16 @@ namespace ArctisAurora.Core.Threading
         // Set by FrameScheduler for a system listed as Dedicated.
         public bool Dedicated { get; internal set; }
 
-        // Lanes indexed by the other system's id: _inbox[p] carries p's commands here, _outbox[o]
-        // carries ours to o. Null at the own-id slot — a system writes its own tables in place.
-        private CommandLane?[] _inbox = Array.Empty<CommandLane?>();
-        private CommandLane?[] _outbox = Array.Empty<CommandLane?>();
-
-        // Wire every ordered pair of systems. Call once, after all systems are constructed and
-        // before any starts.
-        public static void BuildLanes(int commandCapacity = 1024, int arenaBytes = 64 * 1024)
-        {
-            int n = _all.Count + 1;   // ids are 1-based; index 0 is the "no system" hole
-
-            for (int i = 0; i < _all.Count; i++)
-            {
-                _all[i]._inbox = new CommandLane?[n];
-                _all[i]._outbox = new CommandLane?[n];
-            }
-
-            foreach (ThreadedSystem producer in _all)
-            {
-                foreach (ThreadedSystem owner in _all)
-                {
-                    if (ReferenceEquals(producer, owner)) continue;
-
-                    CommandLane lane = new(producer.SystemId, owner.SystemId, commandCapacity, arenaBytes);
-                    producer._outbox[owner.SystemId] = lane;
-                    owner._inbox[producer.SystemId] = lane;
-                }
-            }
-        }
-
-        // Queues a message for target's OnPost. False on backpressure, or when not called from another system.
-        public static bool Post<T>(ThreadedSystem target, ushort kind, in T message) where T : unmanaged
-        {
-            ThreadedSystem? producer = _current;
-            if (producer == null) return false;
-
-            CommandLane? lane = producer._outbox[target.SystemId];
-            if (lane == null || !lane.HasSpace) return false;
-            if (!lane.TryWritePayload(message, out int offset)) return false;
-
-            return lane.TryEnqueue(SystemCommand.Post(kind, offset, Unsafe.SizeOf<T>(), producer.SystemId));
-        }
-
         private volatile bool _running;
         private int _epoch;
         private double _lastTickMs;
 
-        // Wall time the last completed tick took, including drain and publish but excluding the
-        // pacing sleep. This is the per-thread tick rate counter, and main feeds it to deltaTime.
+        // this frame's step time, and whether any step ran
+        private double _frameMs;
+        private bool _ranThisFrame;
+
+        // Wall time of the last tick, or of a graph system's steps in the last frame it ran, excluding
+        // the pacing sleep. This is the per-thread tick rate counter, and main feeds it to deltaTime.
         public double LastTickMs => Volatile.Read(ref _lastTickMs);
 
         // Bumped once per completed tick, published with release semantics: a reader that has seen
@@ -124,7 +81,7 @@ namespace ArctisAurora.Core.Threading
             Worker.Start();
         }
 
-        // Runs as a step of the frame graph; FrameScheduler ticks it through Step().
+        // Runs as steps of the frame graph; FrameScheduler runs them through RunStep.
         internal void StartScheduled()
         {
             _running = true;
@@ -145,8 +102,8 @@ namespace ArctisAurora.Core.Threading
 
         public void Join() => Worker?.Join();
 
-        // One tick: queued commands in, the system's own work, its commands out.
-        internal void Step()
+        // One tick of a dedicated system.
+        private void Step()
         {
             ThreadedSystem? previous = _current;
             _current = this;
@@ -154,13 +111,36 @@ namespace ArctisAurora.Core.Threading
 
             Volatile.Read(ref _epoch);
 
-            Drain();
             Tick();
-            Publish();
 
             Volatile.Write(ref _epoch, _epoch + 1);
             Volatile.Write(ref _lastTickMs, ElapsedMs(tickStart));
             _current = previous;
+        }
+
+        // Runs one of this system's frame steps on the calling thread.
+        internal void RunStep(Action body)
+        {
+            ThreadedSystem? previous = _current;
+            _current = this;
+            long start = Stopwatch.GetTimestamp();
+
+            body();
+
+            _frameMs += ElapsedMs(start);
+            _ranThisFrame = true;
+            _current = previous;
+        }
+
+        // Publishes the frame's step time and epoch, when any step ran.
+        internal void EndFrame()
+        {
+            if (!_ranThisFrame) return;
+
+            Volatile.Write(ref _lastTickMs, _frameMs);
+            Volatile.Write(ref _epoch, _epoch + 1);
+            _frameMs = 0;
+            _ranThisFrame = false;
         }
 
         private void Loop()
@@ -197,46 +177,9 @@ namespace ArctisAurora.Core.Threading
             }
         }
 
-        protected abstract void Tick();
+        protected virtual void Tick() { }
         protected virtual void OnStart() { }
         protected virtual void OnStop() { }
-
-        // A message another system posted here, applied during Drain.
-        protected virtual void OnPost(ushort kind, ReadOnlySpan<byte> payload) { }
-
-        // Apply everything queued for this system. Never capped: a full drain
-        // settles at the producer/consumer rate ratio, whereas a per-tick cap turns that into a
-        // queue that grows forever once the producer outpaces it.
-        private void Drain()
-        {
-            for (int i = 0; i < _inbox.Length; i++)
-            {
-                CommandLane? lane = _inbox[i];
-                if (lane == null) continue;
-
-                lane.BeginDrain(out long from, out long to, out long arenaTo);
-                if (from == to) continue;
-
-                for (long seq = from; seq < to; seq++)
-                {
-                    ref readonly SystemCommand cmd = ref lane.At(seq);
-                    if (cmd.Op == CommandOp.Post)
-                        OnPost(cmd.ColumnId, lane.Arena.ReadBytes(cmd.ArenaOffset, cmd.Count));
-                    else
-                        CommandApplier.Apply(cmd, lane.Arena);
-                }
-
-                lane.EndDrain(to, arenaTo);
-            }
-        }
-
-        // Flush outbound lanes, so a tick's commands become visible as one batch. Publishing per
-        // enqueue would let an owner drain half a tick's writes.
-        private void Publish()
-        {
-            for (int i = 0; i < _outbox.Length; i++)
-                _outbox[i]?.Commit();
-        }
 
         // Sleeps out the rest of a period, spinning the last two milliseconds.
         internal static void WaitOut(long since, double periodMs)

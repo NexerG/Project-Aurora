@@ -50,7 +50,7 @@ namespace ArctisAurora.Core.Animation
         public static void Set(SignalHandle handle, Vector4 value)
         {
             if (!IsLive(handle)) return;
-            Animations.Send(new AnimationRequest { op = AnimationOp.SetSignal, track = handle.id, to = value });
+            Animations.Write(new AnimationRequest { op = AnimationOp.SetSignal, track = handle.id, to = value });
         }
 
         public static void Release(SignalHandle handle)
