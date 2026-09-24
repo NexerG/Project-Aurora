@@ -27,11 +27,15 @@
 					<StackPanel Name="Rows" Orientation="Vertical" Spacing="6"/>
 				</Scrollable>
 
-				<StackPanel Orientation="Horizontal" Height="30">
+				<StackPanel Orientation="Horizontal" Height="30" Spacing="8">
 					<Panel WidthStar="1" Height="30"/>
 					<Button Width="90" Height="30" Role="Chrome"
 								CornerRadius="4" StateBinding="chrome-press" EdgeRole="Accent" onRelease="Settings.Save">
 						<Label Text="Save" FontSize="14" Role="MutedInk"/>
+					</Button>
+					<Button Name="Apply" Width="90" Height="30" Role="Chrome"
+								CornerRadius="4" StateBinding="chrome-press" EdgeRole="Accent" onRelease="Settings.Apply">
+						<Label Text="Apply" FontSize="14" Role="MutedInk"/>
 					</Button>
 				</StackPanel>
 			</StackPanel>

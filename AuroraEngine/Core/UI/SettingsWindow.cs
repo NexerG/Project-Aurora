@@ -32,6 +32,8 @@ namespace ArctisAurora.Core.UI
         private const int categoryWidth = 144;
 
         private static StackPanelControl _rows = null!;
+        private static ButtonControl? _apply;
+        private static bool _keybindsMoved;
 
         public static unsafe void Open(RenderWindow source)
         {
@@ -56,6 +58,8 @@ namespace ArctisAurora.Core.UI
 
             StackPanelControl categories = (StackPanelControl)root.FindByName("Categories");
             _rows = (StackPanelControl)root.FindByName("Rows");
+            _apply = root.FindByName("Apply") as ButtonControl;
+            RefreshApply();
 
             Diagnostics.Profiling.Zone.Start("Settings.Categories");
             foreach (string category in Categories())
@@ -89,8 +93,29 @@ namespace ArctisAurora.Core.UI
 
         // Saving is what applies — the rows already hold the new values, so this is where OnChanged
         // fires and the user's file is written.
-        [A_XSDActionDependency("Settings.Save", "UI", "Applies and writes the settings screen")]
-        public static void Save() => SettingsRegistry.Commit();
+        [A_XSDActionDependency("Settings.Save", "UI", "Applies and writes the settings screen, then closes it")]
+        public static void Save()
+        {
+            RenderWindow window = UIActions.Invoking();
+            Commit();
+            if (window != null) WindowActions.Close(window);
+        }
+
+        [A_XSDActionDependency("Settings.Apply", "UI", "Applies and writes the settings screen, keeping it open")]
+        public static void Apply() => Commit();
+
+        private static void Commit()
+        {
+            SettingsRegistry.Commit();
+            _keybindsMoved = false;
+            RefreshApply();
+        }
+
+        // Greys Apply when nothing moved since the last commit.
+        private static void RefreshApply()
+        {
+            if (_apply != null) _apply.enabled = _keybindsMoved || SettingsRegistry.Pending();
+        }
 
         #region ---- rows ----
         private static IEnumerable<string> Categories()
@@ -188,7 +213,11 @@ namespace ArctisAurora.Core.UI
                     role = PaletteRole.SubField,
                     isChecked = (bool)current
                 };
-                box.onChanged = value => XmlReflection.SetMember(member, setting, value);
+                box.onChanged = value =>
+                {
+                    XmlReflection.SetMember(member, setting, value);
+                    RefreshApply();
+                };
                 return box;
             }
 
@@ -205,7 +234,11 @@ namespace ArctisAurora.Core.UI
                     options = Enum.GetNames(domain),
                     selected = current?.ToString() ?? ""
                 };
-                dropdown.onPicked = value => XmlReflection.SetMember(member, setting, Enum.Parse(memberType, value));
+                dropdown.onPicked = value =>
+                {
+                    XmlReflection.SetMember(member, setting, Enum.Parse(memberType, value));
+                    RefreshApply();
+                };
                 return dropdown;
             }
 
@@ -223,6 +256,7 @@ namespace ArctisAurora.Core.UI
                 dropdown.onPicked = value =>
                 {
                     paletteSetting.name = value;
+                    RefreshApply();
                     PaletteDefinition from = Palettes.Default;
                     PaletteDefinition to = Palettes.Get(value)!;
                     if (to == from) return;
@@ -261,6 +295,7 @@ namespace ArctisAurora.Core.UI
                     Log.Warn($"'{text}' is not a valid {memberType.Name} — keeping {XmlReflection.GetMember(member, setting)}.");
                     field.text = XmlReflection.GetMember(member, setting)?.ToString() ?? "";
                 }
+                RefreshApply();
             };
             return field;
         }
@@ -297,6 +332,8 @@ namespace ArctisAurora.Core.UI
                     return;
                 }
                 SettingsRegistry.Get<InputBindings>().Remember(bind.actionName, trigger, bound);
+                _keybindsMoved = true;
+                RefreshApply();
             };
             return capture;
         }

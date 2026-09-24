@@ -109,6 +109,7 @@ XML element, entry points, regions. The rows below answer "which types own this 
 | importing source assets | `Filing.AssetImporter`, `MeshImporter`; `ImportSet`, `FontImport`, `IconImport` (in `ImportManifest.cs`) | `*.import.xml`, `*.imports.xml` | [[asset-manifest-and-import]], [[asset-pipeline-bake]] |
 | UI documents as assets | `Assets.UIDocumentAsset`; `UI.Control.ParseXML` | `*/Data/XML/Documents/UI/*.ui.xml` | [[ui-document-registry]] |
 | settings and their cascade | `Registry.SettingsRegistry`, `Setting`, `SettingScope`, `SettingCategory`, `UserSettingsFile` | `*/Data/XML/Settings/*.settings.xml` | [[settings-registry]], [[settings-categories]] |
+| settings screen Save / Apply, greyed Apply, disabled buttons | `UI.SettingsWindow` (`Save`, `Apply`, `RefreshApply`, `_keybindsMoved`), `Registry.SettingsRegistry.Pending`, `UI.ButtonControl.enabled` | `*/Data/XML/Documents/UI/Settings.ui.xml` (`Name="Apply"`), `*.ui.xml` attr `Enabled` | [[settings-categories]] |
 | paths, virtual file system | `Filing.Paths`, `VirtualFileSystem` | — | [[asset-manifest-and-import]] |
 | XSD schema generation | `Registry.XSDGenerator`; `AnyXMLType` | `*/Data/XML/Schemas/` | [[xsd-generator-cross-category]] |
 | data pools (the ECS rework) | `Data.DataManager`, `DataPool`, `PoolColumn`, `TransformData` | `AuroraEngine/Data/XML/Documents/Pools.pools.xml` | [[ecs-rework-data-pools]], [[cross-system-change-notification]] |
