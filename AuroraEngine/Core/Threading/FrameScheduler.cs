@@ -44,6 +44,16 @@ namespace ArctisAurora.Core.Threading
 
         public static long Frame => Volatile.Read(ref _frame);
 
+        internal static int WorkerCount => _workers.Length;
+
+        // Wakes up to count parked workers.
+        internal static void Wake(int count)
+        {
+            int parked = Volatile.Read(ref _counters.parked);
+            if (count > 0 && parked > 0)
+                _wake.Release(Math.Min(count, parked));
+        }
+
         // Period the frame cap asks for, 0 when uncapped.
         public static double CapPeriodMs
         {
@@ -429,25 +439,35 @@ namespace ArctisAurora.Core.Threading
             long idleSince = Stopwatch.GetTimestamp();
             long openFrame = -1;
 
+            void OpenLane()
+            {
+                long frame = Frame;
+                if (frame == openFrame) return;
+                if (openFrame >= 0)
+                {
+                    Profiling.Frame.End();
+                    Profiling.Report();
+                }
+                Profiling.Frame.Begin(lane, frame);
+                openFrame = frame;
+            }
+
             try
             {
                 while (_running)
                 {
+                    if (Jobs.Join())
+                    {
+                        OpenLane();
+                        Jobs.Help();
+                        idleSince = Stopwatch.GetTimestamp();
+                        continue;
+                    }
+
                     FrameStep? step = Claim();
                     if (step != null)
                     {
-                        long frame = Frame;
-                        if (frame != openFrame)
-                        {
-                            if (openFrame >= 0)
-                            {
-                                Profiling.Frame.End();
-                                Profiling.Report();
-                            }
-                            Profiling.Frame.Begin(lane, frame);
-                            openFrame = frame;
-                        }
-
+                        OpenLane();
                         step.Run();
                         Interlocked.Decrement(ref _counters.remaining);
                         idleSince = Stopwatch.GetTimestamp();
@@ -461,7 +481,7 @@ namespace ArctisAurora.Core.Threading
                     }
 
                     Interlocked.Increment(ref _counters.parked);
-                    if (!Claimable())
+                    if (!Claimable() && !Jobs.Claimable)
                         _wake.Wait();
                     Interlocked.Decrement(ref _counters.parked);
                     idleSince = Stopwatch.GetTimestamp();

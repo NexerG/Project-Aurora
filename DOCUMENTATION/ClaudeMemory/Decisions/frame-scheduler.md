@@ -129,4 +129,44 @@ Step 1 of [../Context/frame-scheduler-plan.md](../Context/frame-scheduler-plan.m
 - **Decision notes older than this one name `MainTick`** — read it as the Main steps above.
 - **Verified:** builds clean; Thorium boots and prints the 7 stages; GUI — file-tree expand/collapse (in-place `Height`, `Collapsed` via `onDone`), a collapse interrupted by a re-expand ends at full heights, hover highlight, context menu slides open, palette switch crossfades (sidebar sampled 0→5→37→159→223→255 over ~300 ms, no early jump), Settings and Thorium close through their X; `Threads=1` + `MaxFps=120` same visuals; Carbon boots, opens a capture, closes; a loop, a duplicate action and an undeclared `Signals` write each fail as designed. **NOT verified:** the dirty-note prompt's cancel/confirm; dt after a title-bar drag; AuroraEditor not run (its generated schemas are stale until it is).
 
-Related: [[cross-system-change-notification]], [[ecs-rework-data-pools]], [[animation-core]], [[engine-profiling]], [[engine-logging]], [[settings-registry]]
+## Step 3 — `Jobs.For`, Animation's rows across workers (2026-09-24)
+
+### What changed
+- New `Threading.Jobs`: `IJobFor.Execute(start, end)`, `Jobs.For(count, rowBytes, kernel)`, `Jobs.Chunk(rowBytes)` (~16 KB of rows, whole 64-byte lines), `Jobs.InChunk`.
+- Threads used = `min(chunk count, workers + 1)`; one chunk, `Threads=1`, or a second concurrent `For` runs every chunk inline on the caller.
+- Chunk claim word (`chunks << 32 | next`) + `remaining` + `joined` in their own padded `Jobs` counters; `FrameScheduler.Work` tries `Jobs.Join`/`Help` before stage claims and does not park while chunks are claimable; `FrameScheduler.Wake`/`WorkerCount` added.
+- A worker running a chunk borrows the caller's step (`FrameStep.SetCurrent`), so `AssertAccess` applies; helper time shows as zone `Jobs.Chunk` on its lane.
+- DEBUG: `For` inside a chunk throws; `DataPool.AssertStructural` (`Allocate`, `Append`, `Free`, `Rewind`, `FrameEdge`) throws inside a chunk.
+- `AnimationSystem` is its own `IJobFor`: chunks step drivers, write their own `Animations` rows and in-place targets, record a per-track outcome byte and per-chunk min/max/count (16 ints apart). `Anim.Emit` (serial) appends `AnimationValues` in track order in one block, retires finished tracks, marks the dirty range.
+- `Profiling.Zone.Increment(name, amount)`; `Anim.Stepped` counted once a frame from the chunk sums.
+- **One live track per property (pulled from [[animation-in-place-plan]] A8).** `Animations.Bind` stops a live track on the same `(target, C# property name)` (`byProperty`, cleared in `Release`); `AnimatableProperty.name` makes the XML and C# names one key. A replaced track's `onDone` does not run. `Animations.IsLive(handle)` is public; `ButtonControl.EnsureSpring` recreates its state spring once a tween or clip on `state` replaced it.
+
+### Why these choices
+**Chunk size from the row size, thread count from the chunk count (user, 2026-09-24).** A job with work for 6 threads takes 6; 1k tracks run on ~5 helpers, 20k on ~14.
+**Retire and append stay serial.** Appends are not thread-safe; retiring in the same pass keeps value order and `done` identical to a serial step.
+**Replace, not fight (user, 2026-09-24).** Two chunks writing one field make the winner vary by thread timing; before step 3 two tracks already fought each frame. Rejected: a DEBUG assert only; replacing tweens and clips but not springs (springs would still race); for the button, anything but recreating the spring (a kept handle to a replaced spring silenced hover for good).
+**A second `For` while one runs goes inline, not queued.** One chunk slot keeps the claim to a single word; only Animation calls `For` today.
+
+### Measured (2026-09-24, Debug, zones on, 16 logical cores, 14 workers, uncapped)
+`--profile-scenario=animation`, hold phases, mean ms.
+
+| | 1k | 5k | 20k |
+|---|---|---|---|
+| `Anim.Step`, state hold (step 2: 0.49 / 0.91 / 3.55 on 24 cores) | 0.14 | 0.45 | 1.48 |
+| `Anim.Step`, margin hold (step 2: 0.24 / 1.22 / 4.97) | 0.17 | 0.57 | 1.83 |
+| of which `Anim.Emit` (serial), state / margin | 0.08 / 0.07 | 0.30 / 0.30 | 1.10 / 1.11 |
+| helper lanes per frame, state hold | 4.9 | 9.0 | 13.8 |
+
+- The parallel pass at 20k is 0.4–0.7 ms; the serial `AnimationValues` append is most of what is left. It goes away with `Main.Apply` ([[animation-in-place-plan]]).
+- Appending one block instead of `Append` + `GetSpan` per row halved `Anim.Emit` (2.4 → 1.1 ms at 20k).
+- **Determinism:** with `dt` fixed at 1/120 (scratch, reverted), a checksum over every `Animations` row every 200 frames matched on all 24 samples between `Threads=1` (0 workers) and auto (14 workers).
+
+### Known gaps
+- `Anim.Step` at 20k is 1.4–1.8 ms, not under 1 ms — the serial emit.
+- `MarkRangeDirty`/`MarkContentDirty` are not refused inside a chunk; they are not thread-safe.
+- A second `For` in the same stage runs inline, unparallelised.
+- `Control.RunClip` keeps held hover/press clip handles like the button did: a clip replaced by another track on the same property is never replayed (`Direct` on dead handles does nothing). No authored UI has both today (only `HoverClip="underline"`).
+- The replace path itself is not exercised by the scenario or checked by hand.
+- Not verified: scheduler overhead since step 3; the DEBUG asserts triggered on purpose; Thorium by hand (the scenario ran start to finish and exited normally).
+
+Related: [[cross-system-change-notification]], [[ecs-rework-data-pools]], [[animation-core]], [[engine-profiling]], [[engine-logging]], [[settings-registry]], [[animation-in-place-plan]]

@@ -165,9 +165,9 @@ namespace ArctisAurora.Core.Diagnostics
                 if (elapsed > zone.maxTicks) zone.maxTicks = elapsed;
             }
 
-            // Counts one call against the innermost open zone, without reading the clock.
+            // Counts amount against the innermost open zone, without reading the clock.
             [Conditional("DEBUG"), Conditional("PROFILE")]
-            public static void Increment(string name)
+            public static void Increment(string name, long amount = 1)
             {
                 if (!enabled) return;
 
@@ -175,13 +175,13 @@ namespace ArctisAurora.Core.Diagnostics
                 string zone = tables.stackDepth > 0 ? tables.stack[tables.stackDepth - 1] : rootZone;
 
                 ref long count = ref CollectionsMarshal.GetValueRefOrAddDefault(tables.counters, (zone, name), out _);
-                count++;
+                count += amount;
 
                 if (!tables.capturing) return;
 
                 int span = tables.stackDepth > 0 ? tables.records[tables.stackDepth - 1] : -1;
                 ref long frameCount = ref CollectionsMarshal.GetValueRefOrAddDefault(tables.frameCounters, (span, name), out _);
-                frameCount++;
+                frameCount += amount;
             }
 
             [Conditional("DEBUG")]

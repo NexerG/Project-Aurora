@@ -71,6 +71,7 @@ ArctisAurora.Core.Rendering.Modules -> AuroraEngine/Core/Rendering/Modules/Compo
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/FrameGraph.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/FrameScheduler.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/FrameStep.cs
+ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/Jobs.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/MainSystem.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/PhysicsSystem.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/RenderSystem.cs

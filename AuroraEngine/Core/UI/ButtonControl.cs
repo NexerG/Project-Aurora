@@ -149,7 +149,7 @@ namespace ArctisAurora.Core.UI
         private void EnsureSpring()
         {
             if (_stateSignal == SignalHandle.None) _stateSignal = Signals.Create();
-            if (_stateSpring != AnimationHandle.None) return;
+            if (Animations.IsLive(_stateSpring)) return;
 
             PaletteDefinition feel = palette ?? Palettes.Default;
             _springFrequency = feel.stateFrequency;

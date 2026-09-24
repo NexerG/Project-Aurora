@@ -188,6 +188,15 @@ namespace ArctisAurora.Core.Data
             throw new Exception($"[DataPool] {op} on '{Name}' from step '{step.Name}', which does not list it in Frame.frame.xml {(write ? "Writes" : "Reads")}.");
         }
 
+        // DEBUG only: a structural write, checked as a write of every column and refused inside a Jobs.For chunk.
+        [Conditional("DEBUG")]
+        private void AssertStructural(string op)
+        {
+            if (Jobs.InChunk)
+                throw new Exception($"[DataPool] {op} on '{Name}' inside a Jobs.For chunk — structural writes are not thread-safe.");
+            AssertAccess(FrameStep.AllColumns(this), true, op);
+        }
+
         private ulong Bit<T>() where T : struct => 1UL << _columnIds[typeof(T)];
 
         public bool HasComponent(Type t) => _columns.ContainsKey(t);
@@ -288,7 +297,7 @@ namespace ArctisAurora.Core.Data
 
         public DataHandle Allocate(object owner = null)
         {
-            AssertAccess(FrameStep.AllColumns(this), true, nameof(Allocate));
+            AssertStructural(nameof(Allocate));
             if (_count >= _capacity)
                 Grow();
 
@@ -311,14 +320,14 @@ namespace ArctisAurora.Core.Data
         // Empties a handle-less pool.
         public void Rewind()
         {
-            AssertAccess(FrameStep.AllColumns(this), true, nameof(Rewind));
+            AssertStructural(nameof(Rewind));
             _count = 0;
         }
 
         // Appends an uncleared row to a handle-less pool and returns its dense index.
         public int Append()
         {
-            AssertAccess(FrameStep.AllColumns(this), true, nameof(Append));
+            AssertStructural(nameof(Append));
             if (_count >= _capacity)
                 Grow();
 
@@ -332,7 +341,7 @@ namespace ArctisAurora.Core.Data
         // it. A repeat or stale Free is a no-op.
         public void Free(DataHandle h)
         {
-            AssertAccess(FrameStep.AllColumns(this), true, nameof(Free));
+            AssertStructural(nameof(Free));
             if (!Alive(h)) return;
             _pendingFree.Add(h.StableId);
         }
@@ -380,7 +389,7 @@ namespace ArctisAurora.Core.Data
         // Guarded like a write of every column because it is one — compaction moves pool memory.
         public void FrameEdge()
         {
-            AssertAccess(FrameStep.AllColumns(this), true, nameof(FrameEdge));
+            AssertStructural(nameof(FrameEdge));
             if (_pendingFree.Count > 0)
             {
                 if (Ordered) CompactOrdered();
