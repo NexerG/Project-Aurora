@@ -142,20 +142,43 @@ A step is claimed by swapping the hand-out word forward by one. The count sits i
 ```
 Work():
 	while running:
-		if a step can be claimed:
+		if a Jobs.For has chunks left and room for another thread:
+			run its chunks until none are left
+		else if a step can be claimed:
 			run it
 			mark it finished
 		else if idle for less than 50 µs:
 			spin
 		else:
-			park until the main thread wakes it
+			park until the main thread or a Jobs.For wakes it
 ```
+
+## Splitting one step across threads
+
+A step whose work is one long loop over rows can hand that loop to idle threads with `Jobs.For(count, rowBytes, kernel)`. The kernel is an object the system keeps, with one method `Execute(start, end)`, so a call allocates nothing. The rows are cut into chunks of about 16 KB, rounded to whole 64-byte cache lines, and the job takes only as many threads as it has chunks — a loop with work for 6 threads uses 6, and the threads it leaves alone keep claiming other steps. Main steps do not call it: their bodies walk C# objects, not pool rows.
+
+```
+For(count, rowBytes, kernel):
+	chunk = rows per ~16 KB of rowBytes, in whole cache lines
+	threads = min(chunk count, workers + 1)
+	if threads is 1, or another For is running:
+		run every chunk here, in order
+		return
+	publish the chunk word: chunk count and next chunk
+	wake threads - 1 parked workers, at most
+	claim and run chunks here too
+	wait until every chunk is finished
+```
+
+A worker running a chunk borrows the calling step, so the pool access check still applies to it. In a Debug build a `For` inside a chunk throws, and so does any structural write — `Allocate`, `Append`, `Free`, `Rewind`, `FrameEdge` — because those are not thread-safe. With `Threads=1` every chunk runs on the caller in order, so the results are the same as with any other thread count.
+
+Animation is the first user. Its chunks step each track's driver and write the track's own row and its in-place target; then one serial pass appends the stepped values in track order and retires finished tracks.
 
 Running a step sets which step and which system are running on that thread, calls the action (or the pool's edge), and adds its time to the system's frame. A system's epoch and last tick time change once per frame, after the last stage, so everything that reads them — the render thread's start gate, the log stamp, the shader stats — still means "that system's frame". Only a dedicated system has a `Tick`, called by its own loop. Systems send each other nothing: they meet in pools, and the waits order who goes first. Nothing in a frame allocates.
 
 ## Who may touch a pool
 
-In a Debug build every pool entry point checks the step running on the calling thread. `GetSpan`, `GetRef`, `ElementBytes`, `CopyFrom` and `UpdateRange` write one column; `Allocate`, `Free`, `Rewind`, `Append` and `FrameEdge` write every column; the dirty marks write some column; `Backing`, `CopyTo`, `CopyRange` and `OwnerAt` read one. A step that touches a column it did not list throws on the spot, naming the pool, the call and the step. Outside a step nothing is checked, except that a dedicated thread may only read — this is how the render thread reaches the pools at all.
+In a Debug build every pool entry point checks the step running on the calling thread. `GetSpan`, `GetRef`, `ElementBytes`, `CopyFrom` and `UpdateRange` write one column; `Allocate`, `Free`, `Rewind`, `Append` and `FrameEdge` write every column and are refused inside a `Jobs.For` chunk; the dirty marks write some column; `Backing`, `CopyTo`, `CopyRange` and `OwnerAt` read one. A step that touches a column it did not list throws on the spot, naming the pool, the call and the step. Outside a step nothing is checked, except that a dedicated thread may only read — this is how the render thread reaches the pools at all.
 
 A pool's frame edge is a step of its own, placed after every step that writes the pool, so compaction never moves memory under a step that is using it.
 

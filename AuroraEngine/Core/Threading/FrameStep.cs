@@ -11,6 +11,9 @@ namespace ArctisAurora.Core.Threading
         // The step running on the calling thread, or null outside one.
         public static FrameStep? Current => _current;
 
+        // Lends a step to a thread running one of its Jobs.For chunks.
+        internal static void SetCurrent(FrameStep? step) => _current = step;
+
         public string Name { get; }
 
         // the system the action belongs to, null for a frame edge

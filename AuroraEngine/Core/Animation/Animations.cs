@@ -30,6 +30,9 @@ namespace ArctisAurora.Core.Animation
         private static readonly List<Binding> bindings = new List<Binding>();
         private static readonly Stack<int> free = new Stack<int>();
 
+        // (target, C# property name) -> the live track id driving it
+        private static readonly Dictionary<(object, string), int> byProperty = new();
+
         // Fades count paint slots from toFirst, starting from the colours shown at fromFirst; onSeeded runs once they are written.
         public static void FadeSlots(uint fromFirst, uint toFirst, int count, float seconds, Curve curve, Action onSeeded)
         {
@@ -172,8 +175,13 @@ namespace ArctisAurora.Core.Animation
             return new AnimationHandle(id, request.generation);
         }
 
+        // Replaces any live track on the same property of the same target.
         private static int Bind(object target, string property, out Binding binding)
         {
+            AnimatableProperty resolved = AnimatableProperty.Of(target.GetType(), property);
+            if (byProperty.TryGetValue((target, resolved.name), out int existing))
+                Stop(new AnimationHandle(existing, bindings[existing].generation));
+
             int id;
             if (free.Count > 0) id = free.Pop();
             else
@@ -184,20 +192,25 @@ namespace ArctisAurora.Core.Animation
 
             binding = bindings[id];
             binding.target = target;
-            binding.property = AnimatableProperty.Of(target.GetType(), property);
+            binding.property = resolved;
             binding.generation++;
             binding.live = true;
+            byProperty[(target, resolved.name)] = id;
             return id;
         }
 
         private static void Release(int id)
         {
             Binding binding = bindings[id];
+            byProperty.Remove((binding.target, binding.property.name));
             binding.live = false;
             binding.target = null!;
             binding.onDone = null;
             free.Push(id);
         }
+
+        // False once the animation has finished, been stopped or been replaced.
+        public static bool IsLive(AnimationHandle handle) => IsLive(handle.id, handle.generation);
 
         private static bool IsLive(int id, uint generation)
             => id >= 0 && id < bindings.Count && bindings[id].live && bindings[id].generation == generation;

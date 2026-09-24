@@ -33,6 +33,8 @@ namespace ArctisAurora.Core.Animation
     {
         private static readonly Dictionary<(Type, string), AnimatableProperty> cache = new();
 
+        // C# property name, the same whichever name resolved it
+        public readonly string name;
         public readonly Func<object, Vector4> get;
         public readonly Action<object, Vector4> set;
 
@@ -42,8 +44,9 @@ namespace ArctisAurora.Core.Animation
         public readonly byte width;
         public readonly Action<object>? changed;
 
-        private AnimatableProperty(Func<object, Vector4> get, Action<object, Vector4> set, Type? column, ushort offset, byte width, Action<object>? changed)
+        private AnimatableProperty(string name, Func<object, Vector4> get, Action<object, Vector4> set, Type? column, ushort offset, byte width, Action<object>? changed)
         {
+            this.name = name;
             this.get = get;
             this.set = set;
             this.column = column;
@@ -74,7 +77,7 @@ namespace ArctisAurora.Core.Animation
             if (attribute.column != null)
                 (offset, width, changed) = InPlace(type, property, attribute);
 
-            AnimatableProperty built = new AnimatableProperty(
+            AnimatableProperty built = new AnimatableProperty(property.Name,
                 Expression.Lambda<Func<object, Vector4>>(ToVector(member), target).Compile(),
                 Expression.Lambda<Action<object, Vector4>>(Expression.Assign(member, FromVector(value, property.PropertyType)), target, value).Compile(),
                 attribute.column, offset, width, changed);

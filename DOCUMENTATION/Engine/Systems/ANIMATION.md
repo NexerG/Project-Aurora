@@ -29,7 +29,7 @@ This is the first slice of a larger plan in which palettes, gradients and all st
 
 ### Asking for an animation
 
-`Animations` is the main-thread side. `Tween(target, property, to, seconds, curve)` starts a tween, `Spring(target, property, frequency, damping)` starts a spring, `Retarget(handle, to)` gives a spring (or a running tween) a new target, and `Stop(handle)` ends it. Starting returns an `AnimationHandle`; once that animation has finished or been stopped, the handle quietly does nothing. The property is named by its XML attribute name, `Width` or `Alpha`, and must be marked `[A_Animatable]`. Every value travels as a `Vector4`; a `float` uses the first component, a `Thickness` all four in top, right, bottom, left order.
+`Animations` is the main-thread side. `Tween(target, property, to, seconds, curve)` starts a tween, `Spring(target, property, frequency, damping)` starts a spring, `Retarget(handle, to)` gives a spring (or a running tween) a new target, and `Stop(handle)` ends it. Starting returns an `AnimationHandle`; once that animation has finished, been stopped or been replaced, the handle quietly does nothing, and `Animations.IsLive(handle)` says so. A property runs one animation at a time: starting a tween, spring or clip track on a property that is already animating stops the old one first, and the old one's `onDone` never runs. The property is named by its XML attribute name, `Width` or `Alpha`, and must be marked `[A_Animatable]`. Every value travels as a `Vector4`; a `float` uses the first component, a `Thickness` all four in top, right, bottom, left order.
 
 The first time a property is animated, its getter and setter are compiled once and kept, so later animations of the same property cost no reflection. A property that lives in a data pool says where, as `[A_Animatable(typeof(ArrangeData), nameof(ArrangeData.preferredWidth), nameof(InvalidateLayout))]`: the column, the field inside it, and the method main calls after the value has been written. The field's offset and size are worked out once too.
 
@@ -53,7 +53,7 @@ A signal is a value that springs follow. `Signals.Create()` makes an anonymous o
 
 ### Buttons
 
-Every button eases between rest, hover and press instead of snapping. A button owns a signal set to 0, 1 or 2 by the pointer, and a spring on its `state` follows it. When the button's colour is one of the palette's surfaces, the shader blends between the three baked shades by that number, so the colour keeps following the palette mid-fade; an authored hover or press colour is blended on the main thread instead. How fast and how bouncy the fade is comes from the palette's `StateFrequency` and `StateDamping`.
+Every button eases between rest, hover and press instead of snapping. A button owns a signal set to 0, 1 or 2 by the pointer, and a spring on its `state` follows it. When the button's colour is one of the palette's surfaces, the shader blends between the three baked shades by that number, so the colour keeps following the palette mid-fade; an authored hover or press colour is blended on the main thread instead. How fast and how bouncy the fade is comes from the palette's `StateFrequency` and `StateDamping`. A tween or clip on `state` replaces the spring; the next pointer change starts a new one from wherever `state` was left.
 
 ### Theme fades
 

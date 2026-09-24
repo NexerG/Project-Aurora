@@ -25,7 +25,7 @@
 ## Steps
 - [x] 1. Scheduler, frame graph, per-column access check, settings, worker profiling lanes; each system one step; lanes unchanged (2026-09-23) — [[frame-scheduler]]
 - [x] 2. Sub-steps, frame-edge steps, lanes deleted, animation writes in place, no mailbox (2026-09-23) — [[frame-scheduler]] § Step 2
-- [ ] 3. `Jobs.For` — one step's rows split across workers; Animation first — below
+- [x] 3. `Jobs.For` — one step's rows split across workers; Animation first (2026-09-24) — [[frame-scheduler]] § Step 3
 - [ ] 4. SoA + SIMD for animation tracks — below
 
 ## Step 2 — landed 2026-09-23
@@ -43,7 +43,7 @@ See [[frame-scheduler]] § Step 2. Departures from the brief that stood here, ea
 - `Threads=1`: `For` runs the whole range inline, so results are identical by construction.
 - Cache rules: chunk boundaries rounded to whole 64-byte lines of the column written; per-chunk dirty min/max into a padded per-chunk array, merged after the join; no shared counter inside the loop; profiling counters summed per chunk.
 - Animation: `AnimationSystem` keeps a step kernel over `Animations` rows; a chunk writes only its rows (`value`, `velocity`, `elapsed`, `sleeping`, `driver`) and its tracks' in-place targets (distinct rows — two tracks on one field of one row is the one hazard to rule out), and marks rows to emit; a serial pass afterwards appends the `AnimationValues` rows (appends are not thread-safe) and retires finished tracks.
-- **Forks:** the chunk size — fixed per call site, or derived from the element size by a helper; the thread cap — per call site or derived; whether Main steps may call `For` (their bodies are tree-walking OO, so probably not yet); whether `Main.Apply` (~0.2–0.26 µs a value, 4–5 ms at 20k) is next after Animation.
+- **Settled (user, 2026-09-24):** chunk size derived from the element size by a helper; thread count derived from the chunk count — a job with work for 6 threads takes 6; Main steps do not call `For`; `Main.Apply` is not parallelised but deleted, as a separate rework → [[animation-in-place-plan]].
 - **Verification:** build; scenario → `Anim.Step` at 20k well under 1 ms, per-track values identical between `Threads=1` and auto (a scratch checksum over `Animations` after N frames, reverted); scheduler overhead still microseconds; Thorium visuals unchanged.
 
 ## Step 4 — SoA + SIMD for animation tracks
