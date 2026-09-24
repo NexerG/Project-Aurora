@@ -154,6 +154,25 @@ leaf. Now that `Setting` is an abstract base with `IsAbstract = true`, it is the
 Concrete categories still re-declare `AllowedChildren = typeof(Setting)` themselves —
 `GenerateTypesPerCategory` reads the attribute with `inherit: false`, same as every UI container.
 
+### 10. Save closes, Apply stays, Apply greys when clean (user, 2026-09-19)
+
+- `Settings.Save` = `Commit()` then `WindowActions.Close` on the invoking window. `Settings.Apply` =
+  `Commit()` and the window stays. Both are `Commit` — Apply writes the file too, classic Windows
+  Apply, not "apply without persisting".
+- "Clean" = `SettingsRegistry.Pending()` is false **and** no keybind was captured since the last
+  commit. `Pending()` is `MarkApplied`'s diff without the recording. Keybinds need the screen-local
+  `SettingsWindow._keybindsMoved` because `InputBindings` is a plain `ISettingsGroup`, not a
+  `SettingCategory`, and a rebind is live the moment it is captured.
+- Value comparison, not a dirty flag: editing back to the committed value greys Apply again.
+  Keybinds are the exception (flag) — rebinding back stays lit.
+- Refreshed from every editor callback. A textbox counts on commit, not per keystroke.
+- Grey is `ButtonControl.enabled` (XML `Enabled`), a generic engine feature: disabled swallows
+  enter/press/release (no spring, no action) and sets every child `Control`'s alpha to 0.4, including
+  children added later. **Rejected: dimming only the settings label** — the button still animated on
+  hover.
+- Closing with the title-bar X still discards nothing (decision 7), so reopening after an X shows
+  Apply lit, and `Settings.SaveAll` in `Shutdown.xml` persists the edits at exit anyway.
+
 ## Verified
 
 Running `Thorium` (engine manifest + Thorium's `Graphics.xml` + a seeded write root), harness in
@@ -179,7 +198,7 @@ Running `Thorium` (engine manifest + Thorium's `Graphics.xml` + a seeded write r
 
 ## Still open
 
-- **`Commit()` has no caller in the app** — there is still no settings screen.
+- Decision 10 (Save/Apply) is built but not run.
 - **No Cancel, and no working copy.** Decision 7; the fix is known and deliberately unbuilt.
 - **Nothing re-reads a setting after the system consumed it.** `Device`, `Monitor` and `Window` are
   read once during bootstrap; only `VSync` has a live path, because only the swapchain can be rebuilt.

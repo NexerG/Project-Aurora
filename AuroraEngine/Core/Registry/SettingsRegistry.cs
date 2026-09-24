@@ -123,6 +123,22 @@ namespace ArctisAurora.Core.Registry
             SaveAll();
         }
 
+        // Whether any setting moved since the last Apply, without recording it.
+        public static bool Pending()
+        {
+            foreach (ISettingsGroup group in groups.Values)
+            {
+                if (group is not SettingCategory category) continue;
+
+                foreach (Setting setting in category.settings)
+                    foreach (MemberInfo member in Setting.ValueMembers(setting.GetType()))
+                        if (!setting.applied.TryGetValue(member, out object previous)
+                            || !Equals(XmlReflection.GetMember(member, setting), previous))
+                            return true;
+            }
+            return false;
+        }
+
         // Records what a setting holds now, and reports whether any of it moved since the last Apply.
         private static bool MarkApplied(Setting setting)
         {

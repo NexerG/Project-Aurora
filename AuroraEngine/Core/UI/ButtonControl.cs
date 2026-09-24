@@ -1,4 +1,5 @@
 using ArctisAurora.Core.Animation;
+using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using System.Numerics;
 
@@ -23,6 +24,27 @@ namespace ArctisAurora.Core.UI
         private AnimationHandle _stateSpring = AnimationHandle.None;
         private float _springFrequency;
         private float _springDamping;
+
+        private const float disabledAlpha = 0.4f;
+
+        // Disabled swallows the pointer and dims the content.
+        [A_XSDElementProperty("Enabled", "UI", "Whether the button responds to the pointer. A disabled button dims its content.")]
+        public bool enabled
+        {
+            get => field;
+            set
+            {
+                field = value;
+                if (!value && (hovered || pressed))
+                {
+                    hovered = false;
+                    pressed = false;
+                    Signal();
+                }
+                foreach (Entity e in children)
+                    if (e is Control child) child.alpha = value ? 1f : disabledAlpha;
+            }
+        } = true;
 
         // The authored colour, not the shown one — the state picks which of the three is painted.
         public override string colorHex
@@ -68,8 +90,15 @@ namespace ArctisAurora.Core.UI
             PaintState();
         }
 
+        public override void AddChild(Entity entity)
+        {
+            base.AddChild(entity);
+            if (!enabled && entity is Control child) child.alpha = disabledAlpha;
+        }
+
         public override bool OnPointerEnter(PointerEvent e)
         {
+            if (!enabled) return true;
             hovered = true;
             Signal();
             base.OnPointerEnter(e);
@@ -87,6 +116,7 @@ namespace ArctisAurora.Core.UI
 
         public override bool OnPointerPress(PointerEvent e)
         {
+            if (!enabled) return true;
             pressed = true;
             Signal();
             base.OnPointerPress(e);
@@ -95,6 +125,7 @@ namespace ArctisAurora.Core.UI
 
         public override bool OnPointerRelease(PointerEvent e)
         {
+            if (!enabled) return true;
             pressed = false;
             Signal();
             if (e.button == PointerEvent.leftButton) base.OnPointerRelease(e);
