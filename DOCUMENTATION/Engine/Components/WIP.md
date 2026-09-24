@@ -39,7 +39,7 @@ The base class for **components** attached to an [[Entity]] â€” the object-
 | --- | --- | --- |
 | `OnStart()` | virtual | Runs when the component is created in the world. |
 | `OnEnable()` / `OnDisable()` | virtual | Runs when the component is enabled / disabled. |
-| `OnTick()` | virtual | Runs every engine tick. |
+| `OnTick()` | virtual | Runs every engine tick while its entity is on the tick list (`Entity.SetTicking`). |
 | `OnDestroy()` | virtual | Runs when the component is destroyed. |
 | `OnInvalidate()` | virtual | Runs when the component is invalidated. |
 

@@ -123,7 +123,8 @@ Why: [[ui-palettes]].
 - **HintControl** (no XML) · PanelControl — translucent wash; the tab view's drop preview. Old `HintControl`.
 - **IconControl** `<Icon>` · Control — one cell of an icon set's MTSDF atlas, by set and name
   (private `Rebind`). XML `Set`, `Icon`. Old `IconControl`.
-- **CaretControl** (no XML) · Control — blinking insertion bar. `OnTick`, `Focus`, `Blur`. Old
+- **CaretControl** (no XML) · Control — blinking insertion bar. `OnTick`; `Focus` opts in to ticking,
+  `Blur` out ([[entity-tick-group]]). Old
   `CaretControl`, [[caret-blink-and-focus]] (old).
 
 ## Text
@@ -176,7 +177,7 @@ Why: [[ui-palettes]].
   `DocumentEditorControl`.
 - **DocumentToolbarControl** `<DocumentToolbar>` · StackPanelControl — the format bar for whichever
   note holds the caret; resolves it per press through `TextInputActions.Editor()` and takes no active
-  control. `OnTick` reflects bold/italic/styling/colour/size; nested `ToolButton` (acts on press) and
+  control. `OnTick` (opted in at construction) reflects bold/italic/styling/colour/size; nested `ToolButton` (acts on press) and
   `PxBox` (the one part that does take the focus; captures the range on its press). XML `HoverColorHex`,
   `PressColorHex`, `IdleInkColorHex`, `ActiveInkColorHex`, `SeparatorColorHex`, `FieldColorHex`. Old
   `DocumentToolbarControl`, [[document-format-bar]], [[armed-style-at-the-caret]] (old).

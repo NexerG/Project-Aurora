@@ -16,6 +16,7 @@ namespace ArctisAurora.Core.UI
         public CaretControl()
         {
             role = PaletteRole.Ink;
+            SetTicking(true);
         }
 
         public override void OnTick()
@@ -33,12 +34,14 @@ namespace ArctisAurora.Core.UI
             focused = true;
             phase = 0.0;
             SetAlpha(1f);
+            SetTicking(true);
         }
 
         internal void Blur()
         {
             focused = false;
             SetAlpha(0f);
+            SetTicking(false);
         }
 
         private void SetAlpha(float value)

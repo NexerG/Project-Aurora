@@ -54,9 +54,9 @@ single-pool case costs 8 B and makes the free generic.
 
 ## Known gaps
 
-- **`Control` now joins the entity lifecycle.** It gets `EnqueueStart`, lands in the `"Entities"` group, and is
-  iterated by `Engine.Interpolate`'s tick loop. Intended — animation is to run on `OnTick` plus components —
-  but it is what makes [[entity-tick-group]] necessary.
+- **`Control` now joins the entity lifecycle.** It gets `EnqueueStart` (it overrides `OnStart`). Since
+  2026-09-24 it ticks only if it opts in with `SetTicking`, and the `"Entities"` group is gone — see
+  [[entity-tick-group]].
 - **`Control` inherits `children` as `List<Entity>`**, so tree walks cast. Required, not preference:
   `Entity.Destroy()`'s `EnqueueSubtree` walks that list, and a shadowed typed list would silently orphan
   subtrees.

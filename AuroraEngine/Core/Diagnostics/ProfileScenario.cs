@@ -55,6 +55,7 @@ namespace ArctisAurora.Core.Diagnostics
         private ProfileScenario(bool animation)
         {
             if (animation) this.animation = RunAnimation();
+            SetTicking(true);
         }
 
         public static void Arm()

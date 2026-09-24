@@ -125,6 +125,30 @@ namespace ArctisAurora.Core.Registry
         public static void EnqueueDestroy(Entity entity) => _toDestroy.Push(entity);
         public static void EnqueueEnableChange(Entity entity) => _enableChanges.Enqueue(entity);
 
+        // the tick list, packed; Entity.tickSlot indexes it
+        private static Entity[] _ticking = new Entity[64];
+        private static int _tickingCount;
+
+        // Adds an entity to the tick list, or swap-removes it.
+        internal static void SetTicking(Entity entity, bool ticking)
+        {
+            if (ticking == (entity.tickSlot >= 0)) return;
+
+            if (ticking)
+            {
+                if (_tickingCount == _ticking.Length) Array.Resize(ref _ticking, _ticking.Length * 2);
+                entity.tickSlot = _tickingCount;
+                _ticking[_tickingCount++] = entity;
+                return;
+            }
+
+            Entity last = _ticking[--_tickingCount];
+            _ticking[entity.tickSlot] = last;
+            last.tickSlot = entity.tickSlot;
+            _ticking[_tickingCount] = null!;
+            entity.tickSlot = -1;
+        }
+
         // Creation order, so a parent starts before the children it built.
         public static void ProcessStarts()
         {
@@ -141,6 +165,7 @@ namespace ArctisAurora.Core.Registry
             {
                 Entity entity = _toDestroy.Pop();
                 Unregister(entity);
+                SetTicking(entity, false);
                 entity.OnDestroy();
                 entity.FreePooledData();
             }
@@ -151,6 +176,19 @@ namespace ArctisAurora.Core.Registry
         {
             while (_enableChanges.Count > 0)
                 _enableChanges.Dequeue().ApplyEnableChange();
+        }
+
+        // Runs OnTick over the tick list.
+        public static void ProcessTicks()
+        {
+            Entity[] ticking = _ticking;
+            for (int i = 0, count = _tickingCount; i < count; i++)
+            {
+                Entity entity = ticking[i];
+                if (!entity.tickable) continue;
+
+                entity.OnTick();
+            }
         }
 
         public static void AddToGroup(string groupName, object item)
