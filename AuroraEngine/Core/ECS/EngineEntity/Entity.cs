@@ -6,6 +6,7 @@ using ArctisAurora.EngineWork.ComponentBehaviour;
 using ArctisAurora.EngineWork.ECS.RenderingComponents.Vulkan;
 using ArctisAurora.EngineWork.Rendering;
 using ArctisAurora.EngineWork.Rendering.MeshSubComponents;
+using System.Reflection;
 
 namespace ArctisAurora.Core.ECS.EngineEntity
 {
@@ -140,16 +141,18 @@ namespace ArctisAurora.Core.ECS.EngineEntity
         public Entity()
         {
             AllocatePooledData();
-            EntityRegistry.AddToGroup("Entities", this);
-            EntityRegistry.EnqueueStart(this);
+            _hooks = HooksOf(GetType(), typeof(Entity));
+            if ((_hooks & Hooks.Start) != 0) EntityRegistry.EnqueueStart(this);
+            else AfterStart();
         }
 
         public Entity(string name)
         {
             this.name = name;
             AllocatePooledData();
-            EntityRegistry.AddToGroup("Entities", this);
-            EntityRegistry.EnqueueStart(this);
+            _hooks = HooksOf(GetType(), typeof(Entity));
+            if ((_hooks & Hooks.Start) != 0) EntityRegistry.EnqueueStart(this);
+            else AfterStart();
         }
 
         #region ---- lifecycle ----
@@ -161,27 +164,50 @@ namespace ArctisAurora.Core.ECS.EngineEntity
         [NonSerializable]
         private bool _enableQueued = false;
 
+        // which callbacks get queued, and tick list membership
+        [Flags]
+        private enum Hooks : byte { None = 0, Start = 1, Enable = 2 }
+        [NonSerializable]
+        private Hooks _hooks;
+        [NonSerializable]
+        private bool _wantsTick;
+        [NonSerializable]
+        internal int tickSlot = -1;
+        private static readonly Dictionary<Type, Hooks> _hooksByType = new Dictionary<Type, Hooks>();
+
         internal bool tickable => _notifiedEnabled && !_destroyed;
 
-        // Runs the queued OnStart once, then queues the entity's first enable notification.
+        // Runs the queued OnStart once, then settles the entity's first enable notification.
         internal void BeginLife()
         {
             if (_started || _destroyed) return;
 
             _started = true;
             OnStart();
-            QueueEnableChange();
+            AfterStart();
         }
 
-        // Fires OnEnable/OnDisable only when the flag actually moved since the last notification.
+        // Queues the first enable notification, or settles it when nothing would receive it.
+        private void AfterStart()
+        {
+            _started = true;
+            if ((_hooks & Hooks.Enable) != 0 || _wantsTick) QueueEnableChange();
+            else _notifiedEnabled = enabled;
+        }
+
+        // Notifies an enable flip since the last notification, then syncs tick membership.
         internal void ApplyEnableChange()
         {
             _enableQueued = false;
-            if (_destroyed || !_started || enabled == _notifiedEnabled) return;
+            if (_destroyed || !_started) return;
 
-            _notifiedEnabled = enabled;
-            if (_notifiedEnabled) OnEnable();
-            else OnDisable();
+            if (enabled != _notifiedEnabled)
+            {
+                _notifiedEnabled = enabled;
+                if (_notifiedEnabled) OnEnable();
+                else OnDisable();
+            }
+            EntityRegistry.SetTicking(this, _wantsTick && _notifiedEnabled);
         }
 
         private void QueueEnableChange()
@@ -200,6 +226,20 @@ namespace ArctisAurora.Core.ECS.EngineEntity
             component.started = true;
             component.OnStart();
         }
+
+        // Lifecycle callbacks a type overrides below root, cached per type.
+        private static Hooks HooksOf(Type type, Type root)
+        {
+            if (_hooksByType.TryGetValue(type, out Hooks hooks)) return hooks;
+
+            if (Overrides(type, root, nameof(OnStart))) hooks |= Hooks.Start;
+            if (Overrides(type, root, nameof(OnEnable)) || Overrides(type, root, nameof(OnDisable))) hooks |= Hooks.Enable;
+            _hooksByType[type] = hooks;
+            return hooks;
+        }
+
+        private static bool Overrides(Type type, Type root, string method) =>
+            type.GetMethod(method, BindingFlags.Public | BindingFlags.Instance, Type.EmptyTypes)!.DeclaringType != root;
         #endregion
 
         public virtual void OnStart()
@@ -251,6 +291,15 @@ namespace ArctisAurora.Core.ECS.EngineEntity
             QueueEnableChange();
         }
 
+        // Opts in or out of OnTick; applied at the next lifecycle drain.
+        public void SetTicking(bool ticking)
+        {
+            if (_wantsTick == ticking) return;
+
+            _wantsTick = ticking;
+            if (_started) QueueEnableChange();
+        }
+
         public EntComp CreateComponent<EntComp>() where EntComp : EntityComponent, new()
         {
             EntComp component;
@@ -291,6 +340,7 @@ namespace ArctisAurora.Core.ECS.EngineEntity
                 _components.Add(component);
                 component.parent = this;
                 StartComponent(component);
+                _hooks |= HooksOf(component.GetType(), typeof(EntityComponent));
                 return component;
             }
             else return null;

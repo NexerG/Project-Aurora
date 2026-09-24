@@ -78,8 +78,9 @@ Settled. Do not re-litigate without asking.
   `rowHeight`, `indent`, and `AddRow` building `LabelControl`s with their own `controlColorHex`.
   `LogViewControl` is a sibling of it, not a subclass; `FileBrowserControl` is filesystem-specific.
 
-- **`Entity.OnTick()` is virtual** (`Core/ECS/EngineEntity/Entity.cs:211`) and runs from
-  `Engine.Interpolate()` inside `MainTick`. A control can poll there. `ContextMenus.Tick()` is the
+- **`Entity.OnTick()` is virtual** and runs from `EntityRegistry.ProcessTicks()` inside
+  `Engine.Interpolate()`, only for entities that called `SetTicking(true)` ([[entity-tick-group]]). A control
+  can poll there once it opts in. `ContextMenus.Tick()` is the
   precedent for a per-frame UI hook.
 
 - **A custom Thorium control is:** subclass a container, add `[A_XSDType("Name", "UI")]`, declare it

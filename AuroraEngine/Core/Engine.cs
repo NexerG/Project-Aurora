@@ -56,7 +56,6 @@ namespace ArctisAurora.EngineWork
         internal static EntityRegistry entityManager = null!;
 
         // quick access
-        internal static List<Entity> entities = null!;
         internal static List<Entity> entitiesOnDestroy = null!;
 
         // systems — stepped by FrameScheduler from Frame.frame.xml, or Dedicated on a thread of their own
@@ -119,7 +118,6 @@ namespace ArctisAurora.EngineWork
         public static bool SetupSystems()
         {
             entityManager = EntityRegistry.manager;
-            entities = EntityRegistry.GetGroup("Entities").As<Entity>();
             return true;
         }
 
@@ -319,15 +317,7 @@ namespace ArctisAurora.EngineWork
                 EntityRegistry.ClearOnDestroy();
             }*/
 
-            // Count is captured up front so an entity created in OnTick waits for the next tick,
-            // and the guard covers one destroyed later in this same loop.
-            for (int i = 0, count = entities.Count; i < count; i++)
-            {
-                Entity entity = entities[i];
-                if (!entity.tickable) continue;
-
-                entity.OnTick();
-            }
+            EntityRegistry.ProcessTicks();
 
             /*if(EntityRegistry.entitiesToUpdate.Count > 0)
             {

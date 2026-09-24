@@ -33,9 +33,13 @@ top of `Interpolate`: `ProcessStarts` → `ProcessDestroys` → `ProcessEnableCh
 
 | Queue | Container | Fed by | Order it produces |
 |-------|-----------|--------|-------------------|
-| `_toStart` | `Queue<Entity>` | `Entity` ctor → `EnqueueStart` | creation order — a parent starts before children it built |
+| `_toStart` | `Queue<Entity>` | `Entity` ctor → `EnqueueStart`, only if the type overrides `OnStart` | creation order — a parent starts before children it built |
 | `_toDestroy` | `Stack<Entity>` | `Destroy()` → `EnqueueSubtree` → `EnqueueDestroy` | reverse pre-order — every descendant tears down before its ancestor |
-| `_enableChanges` | `Queue<Entity>` | `IsEnabled` / `BeginLife` → `EnqueueEnableChange` | flip order |
+| `_enableChanges` | `Queue<Entity>` | `IsEnabled` / `SetTicking` / `AfterStart` → `EnqueueEnableChange` | flip order |
+
+Since 2026-09-24 an entity enters only the queues whose callbacks it has — a type without an `OnStart`
+override skips `_toStart`, and the first enable notification is settled without a queue visit when nothing
+would receive it. See [[entity-tick-group]].
 
 **Popping, not snapshot-and-clear, is the whole point.** No enumerator is held and no per-drain array
 is allocated, so work pushed *during* a drain is picked up by the same drain. That is what makes
@@ -59,6 +63,8 @@ start.
 - `_notifiedEnabled` — the state the entity was last *notified* about, distinct from `enabled`.
 - `_enableQueued` — at most one pending entry per entity, cleared at the top of the drain so a flip
   inside `OnEnable` re-queues.
+- `_hooks`, `_wantsTick`, `tickSlot` (2026-09-24) — which queues the entity enters, whether it asked to
+  tick, its index in the tick list. Also `[NonSerializable]`. See [[entity-tick-group]].
 
 All four are `[NonSerializable]`. The serializer is opt-**out**
 (`GetFields(Public | NonPublic | Instance)`, skip `[NonSerializable]`), so an unmarked `_started`
@@ -74,26 +80,28 @@ invariant *`OnTick` only ever runs between an `OnEnable` and its `OnDisable`*:
 - Disable during the tick loop → the entity still ticks that pass, then next tick the transition
   drain (which runs before the loop) fires `OnDisable` and the gate closes. One tick of latency,
   never a torn pair.
-- Born disabled → `BeginLife` runs `OnStart`, queues, drain finds `false == false` → started, never
-  enabled, never ticked. Correct without a special case.
-- Entity created during `ProcessEnableChanges` (after `ProcessStarts` already ran) → it is in
-  `Entities` and inside the tick loop's captured count, but `_notifiedEnabled` is false, so the gate
-  skips it. **The flag gate, not the phase order, is what prevents a tick-before-start.**
+- Born disabled → `OnStart` runs, the first notification finds (or settles) `false == false` → started,
+  never enabled, never ticked. Correct without a special case.
+- Entity created during `ProcessEnableChanges` (after `ProcessStarts` already ran) → it is not in the tick
+  list until its own `ApplyEnableChange`, which needs `_started`. A type overriding `OnStart` waits for the
+  next start drain; one without starts in its constructor and, if it opted in, can join and tick in the same
+  pass — still after its `OnEnable`. **Membership, set only in `ApplyEnableChange`, is what prevents a
+  tick-before-start.**
 
 ## Tick loop
 
-`for (int i = 0, count = entities.Count; i < count; i++)`, not `foreach` and not `ToArray()`. The
-captured count means an entity created in an `OnTick` waits for the next tick; growth past `count` is
-safe because `List<T>`'s indexer has no version check. Safe against shrink only because `Unregister`
-is called from `ProcessDestroys` alone and `RemoveFromGroup` has no callers — if either changes, this
-loop needs revisiting.
+`EntityRegistry.ProcessTicks` walks the tick list — `for (int i = 0, count = _tickingCount; i < count;
+i++)` — not every entity; the `Entities` group it used to walk is gone ([[entity-tick-group]]). The captured
+count means an entity joining mid-loop would wait for the next tick. Safe against shrink only because
+`EntityRegistry.SetTicking` is called from `ApplyEnableChange` and `ProcessDestroys` alone — if that changes,
+this loop needs revisiting.
 
 ## Rejected / not done
 
 - **Deferring registration into the `Entities`/`Controls` groups** along with the start callback.
   `VulkanControl`'s ctor registers into `Controls` and the renderer picks the control up from there,
   so deferring registration would put a one-frame delay on every control appearing. Only the
-  *callback* is deferred; visibility stays immediate.
+  *callback* is deferred; visibility stays immediate. (`Entities` itself was deleted 2026-09-24.)
 - **Guarding the unbounded drain.** An `OnStart` that unconditionally creates an entity hangs the
   tick instead of throwing. Self-inflicted and obvious; not worth a depth counter.
 - **`OnDisable` before `OnDestroy`.** Unity-style symmetry; not asked for, not built. A destroyed

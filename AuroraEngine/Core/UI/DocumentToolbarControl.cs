@@ -108,6 +108,7 @@ namespace ArctisAurora.Core.UI
 
         public DocumentToolbarControl()
         {
+            SetTicking(true);
             orientation = Orientation.Horizontal;
             Spacing = 2f;
             preferredHeight = barHeight;
