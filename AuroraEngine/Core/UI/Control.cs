@@ -726,11 +726,12 @@ namespace ArctisAurora.Core.UI
         // Records an arranged rect and inherits or intersects the clip.
         protected void WriteArranged(LayoutRect finalRect)
         {
-            arrange.arranged = finalRect;
+            ref ArrangeData a = ref arrange;
+            a.arranged = finalRect;
 
             Control parentControl = parent as Control;
-            ClipRect = parentControl == null ? finalRect
-                : clipOutOfBounds ? LayoutRect.Intersect(finalRect, parentControl.ClipRect)
+            a.clip = parentControl == null ? finalRect
+                : ((ArrangeFlags)a.flags & ArrangeFlags.Clip) != 0 ? LayoutRect.Intersect(finalRect, parentControl.ClipRect)
                 : parentControl.ClipRect;
         }
 

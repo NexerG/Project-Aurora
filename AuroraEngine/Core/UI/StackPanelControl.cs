@@ -65,14 +65,16 @@ namespace ArctisAurora.Core.UI
             // Pass 1 — measure non-star children, accumulate star weights.
             foreach (Entity e in children)
             {
-                if (e is not Control child || child.hidden) continue;
+                if (e is not Control child) continue;
+                ref ArrangeData ca = ref child.arrange;
+                if (((ArrangeFlags)ca.flags & ArrangeFlags.Hidden) != 0) continue;
                 childCount++;
 
-                bool isStar = orientation == Orientation.Vertical ? child.IsHeightStar : child.IsWidthStar;
+                bool isStar = orientation == Orientation.Vertical ? ca.heightStar > 0f : ca.widthStar > 0f;
                 if (isStar)
                 {
                     // Cross size comes from pass 2, at the real main-axis allocation.
-                    totalStarWeight += orientation == Orientation.Vertical ? child.heightStar : child.widthStar;
+                    totalStarWeight += orientation == Orientation.Vertical ? ca.heightStar : ca.widthStar;
                 }
                 else
                 {
@@ -80,14 +82,15 @@ namespace ArctisAurora.Core.UI
                         ? new Vector2(inner.width, float.MaxValue)
                         : new Vector2(float.MaxValue, inner.height);
 
+                    Thickness margin = ca.margin;
                     Vector2 desired = child.Measure(offer);
 
                     float childMain = orientation == Orientation.Vertical
-                        ? desired.Y + child.margin.totalVertical
-                        : desired.X + child.margin.totalHorizontal;
+                        ? desired.Y + margin.totalVertical
+                        : desired.X + margin.totalHorizontal;
                     float childCross = orientation == Orientation.Vertical
-                        ? desired.X + child.margin.totalHorizontal
-                        : desired.Y + child.margin.totalVertical;
+                        ? desired.X + margin.totalHorizontal
+                        : desired.Y + margin.totalVertical;
 
                     totalMain += childMain;
                     maxCross = MathF.Max(maxCross, childCross);
@@ -106,27 +109,30 @@ namespace ArctisAurora.Core.UI
 
                 foreach (Entity e in children)
                 {
-                    if (e is not Control child || child.hidden) continue;
-                    bool isStar = orientation == Orientation.Vertical ? child.IsHeightStar : child.IsWidthStar;
+                    if (e is not Control child) continue;
+                    ref ArrangeData ca = ref child.arrange;
+                    if (((ArrangeFlags)ca.flags & ArrangeFlags.Hidden) != 0) continue;
+                    bool isStar = orientation == Orientation.Vertical ? ca.heightStar > 0f : ca.widthStar > 0f;
                     if (!isStar) continue;
 
-                    float starMain = (orientation == Orientation.Vertical ? child.heightStar : child.widthStar) * starUnit;
-                    starMain = MathF.Max(starMain, orientation == Orientation.Vertical ? child.minHeight : child.minWidth);
+                    float starMain = (orientation == Orientation.Vertical ? ca.heightStar : ca.widthStar) * starUnit;
+                    starMain = MathF.Max(starMain, orientation == Orientation.Vertical ? ca.minHeight : ca.minWidth);
 
                     Vector2 starOffer = orientation == Orientation.Vertical
                         ? new Vector2(inner.width, starMain)
                         : new Vector2(starMain, inner.height);
 
+                    Thickness margin = ca.margin;
                     Vector2 desired = child.Measure(starOffer);
 
                     float childCross = orientation == Orientation.Vertical
-                        ? desired.X + child.margin.totalHorizontal
-                        : desired.Y + child.margin.totalVertical;
+                        ? desired.X + margin.totalHorizontal
+                        : desired.Y + margin.totalVertical;
                     maxCross = MathF.Max(maxCross, childCross);
 
                     totalMain += starMain + (orientation == Orientation.Vertical
-                        ? child.margin.totalVertical
-                        : child.margin.totalHorizontal);
+                        ? margin.totalVertical
+                        : margin.totalHorizontal);
                 }
             }
 
@@ -158,15 +164,17 @@ namespace ArctisAurora.Core.UI
 
             foreach (Entity e in children)
             {
-                if (e is not Control child || child.hidden) continue;
+                if (e is not Control child) continue;
+                ref ArrangeData ca = ref child.arrange;
+                if (((ArrangeFlags)ca.flags & ArrangeFlags.Hidden) != 0) continue;
                 childCount++;
-                bool isStar = orientation == Orientation.Vertical ? child.IsHeightStar : child.IsWidthStar;
+                bool isStar = orientation == Orientation.Vertical ? ca.heightStar > 0f : ca.widthStar > 0f;
                 if (isStar)
-                    totalStarWeight += orientation == Orientation.Vertical ? child.heightStar : child.widthStar;
+                    totalStarWeight += orientation == Orientation.Vertical ? ca.heightStar : ca.widthStar;
                 else
                     totalFixed += orientation == Orientation.Vertical
-                        ? child.DesiredSize.Y + child.margin.totalVertical
-                        : child.DesiredSize.X + child.margin.totalHorizontal;
+                        ? ca.desired.Y + ca.margin.totalVertical
+                        : ca.desired.X + ca.margin.totalHorizontal;
             }
 
             if (childCount > 1)
@@ -181,64 +189,67 @@ namespace ArctisAurora.Core.UI
 
             foreach (Entity e in children)
             {
-                if (e is not Control child || child.hidden) continue;
+                if (e is not Control child) continue;
+                ref ArrangeData ca = ref child.arrange;
+                if (((ArrangeFlags)ca.flags & ArrangeFlags.Hidden) != 0) continue;
 
                 if (!first) cursor += Spacing;
                 first = false;
 
-                bool isStar = orientation == Orientation.Vertical ? child.IsHeightStar : child.IsWidthStar;
+                bool isStar = orientation == Orientation.Vertical ? ca.heightStar > 0f : ca.widthStar > 0f;
+                Thickness margin = ca.margin;
 
                 if (orientation == Orientation.Vertical)
                 {
                     // Auto (preferredWidth 0) or Stretch fills the cross axis, anything else is
                     // clamped to it. Measure offers a loose size and Arrange tightens, so an
                     // unclamped DesiredSize overflows the panel.
-                    float availCrossW = inner.width - child.margin.totalHorizontal;
-                    float childW = child.preferredWidth == 0 || child.horizontalAlignment == HorizontalAlignment.Stretch
+                    float availCrossW = inner.width - margin.totalHorizontal;
+                    float childW = ca.preferredWidth == 0 || (HorizontalAlignment)ca.horizontalAlignment == HorizontalAlignment.Stretch
                         ? availCrossW
-                        : MathF.Min(child.DesiredSize.X, availCrossW);
-                    float childX = child.horizontalAlignment switch
+                        : MathF.Min(ca.desired.X, availCrossW);
+                    float childX = (HorizontalAlignment)ca.horizontalAlignment switch
                     {
-                        HorizontalAlignment.Left => inner.x + child.margin.left,
-                        HorizontalAlignment.Right => inner.x + child.margin.left + (availCrossW - childW),
-                        HorizontalAlignment.Center => inner.x + child.margin.left + (availCrossW - childW) * 0.5f,
-                        _ => inner.x + child.margin.left,
+                        HorizontalAlignment.Left => inner.x + margin.left,
+                        HorizontalAlignment.Right => inner.x + margin.left + (availCrossW - childW),
+                        HorizontalAlignment.Center => inner.x + margin.left + (availCrossW - childW) * 0.5f,
+                        _ => inner.x + margin.left,
                     };
 
                     // clamped to what is left of the panel: an unsized child measures the whole offer
                     float childH = isStar
-                        ? child.heightStar * starUnit - child.margin.totalVertical
-                        : child.DesiredSize.Y;
-                    childH = Math.Clamp(childH, 0, MathF.Max(0, inner.Bottom - cursor - child.margin.totalVertical));
-                    if (isStar) childH = MathF.Max(childH, child.minHeight);
+                        ? ca.heightStar * starUnit - margin.totalVertical
+                        : ca.desired.Y;
+                    childH = Math.Clamp(childH, 0, MathF.Max(0, inner.Bottom - cursor - margin.totalVertical));
+                    if (isStar) childH = MathF.Max(childH, ca.minHeight);
 
-                    float childY = cursor + child.margin.top;
+                    float childY = cursor + margin.top;
                     child.Arrange(new LayoutRect(childX, childY, childW, childH));
-                    cursor += childH + child.margin.totalVertical;
+                    cursor += childH + margin.totalVertical;
                 }
                 else
                 {
-                    float availCrossH = inner.height - child.margin.totalVertical;
-                    float childH = child.preferredHeight == 0 || child.verticalAlignment == VerticalAlignment.Stretch
+                    float availCrossH = inner.height - margin.totalVertical;
+                    float childH = ca.preferredHeight == 0 || (VerticalAlignment)ca.verticalAlignment == VerticalAlignment.Stretch
                         ? availCrossH
-                        : MathF.Min(child.DesiredSize.Y, availCrossH);
-                    float childY = child.verticalAlignment switch
+                        : MathF.Min(ca.desired.Y, availCrossH);
+                    float childY = (VerticalAlignment)ca.verticalAlignment switch
                     {
-                        VerticalAlignment.Top => inner.y + child.margin.top,
-                        VerticalAlignment.Bottom => inner.y + child.margin.top + (availCrossH - childH),
-                        VerticalAlignment.Center => inner.y + child.margin.top + (availCrossH - childH) * 0.5f,
-                        _ => inner.y + child.margin.top,
+                        VerticalAlignment.Top => inner.y + margin.top,
+                        VerticalAlignment.Bottom => inner.y + margin.top + (availCrossH - childH),
+                        VerticalAlignment.Center => inner.y + margin.top + (availCrossH - childH) * 0.5f,
+                        _ => inner.y + margin.top,
                     };
 
                     float childW = isStar
-                        ? child.widthStar * starUnit - child.margin.totalHorizontal
-                        : child.DesiredSize.X;
-                    childW = Math.Clamp(childW, 0, MathF.Max(0, inner.Right - cursor - child.margin.totalHorizontal));
-                    if (isStar) childW = MathF.Max(childW, child.minWidth);
+                        ? ca.widthStar * starUnit - margin.totalHorizontal
+                        : ca.desired.X;
+                    childW = Math.Clamp(childW, 0, MathF.Max(0, inner.Right - cursor - margin.totalHorizontal));
+                    if (isStar) childW = MathF.Max(childW, ca.minWidth);
 
-                    float childX = cursor + child.margin.left;
+                    float childX = cursor + margin.left;
                     child.Arrange(new LayoutRect(childX, childY, childW, childH));
-                    cursor += childW + child.margin.totalHorizontal;
+                    cursor += childW + margin.totalHorizontal;
                 }
             }
 

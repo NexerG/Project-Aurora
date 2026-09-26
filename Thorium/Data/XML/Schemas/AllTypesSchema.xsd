@@ -186,6 +186,10 @@
       <xs:enumeration value="Keyframe" />
       <xs:enumeration value="SignalValue" />
       <xs:enumeration value="AnimationTrack" />
+      <xs:enumeration value="TweenParams" />
+      <xs:enumeration value="KeyParams" />
+      <xs:enumeration value="SpringParams" />
+      <xs:enumeration value="TrackCold" />
       <xs:enumeration value="DirtyLayout" />
       <xs:enumeration value="FinishedTrack" />
     </xs:restriction>

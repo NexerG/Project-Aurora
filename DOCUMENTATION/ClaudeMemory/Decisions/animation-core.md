@@ -5,6 +5,42 @@
 
 Slice 3 of [../Context/animation-plan.md](../Context/animation-plan.md).
 
+## Track split into a hot row and per-driver columns (2026-09-26)
+- **`AnimationTrack` is the 64-B row every step reads:** `driver sleeping mapped changed width loop direction hold`, `column offset`, `follow`, `target`, `elapsed`, `value`, `to`. The rest are columns of the `Animations` pool at the same row: `TweenParams` (`duration from curve`, 44 B), `KeyParams` (`duration firstKey keyCount`, 12 B), `SpringParams` (`velocity frequency damping`, 24 B), `TrackCold` (`generation`, `rest hover press`, 52 B).
+- `Start` writes the hot row and `TrackCold.generation`; `Tween` / `Play` / `Spring` write their driver's params row after it, the mapped `Spring` also `TrackCold.rest/hover/press`. `Direct` reads `KeyParams.duration`, `Retarget` writes `TweenParams.from`. A row's other drivers' params stay unwritten and unread.
+- `Execute` takes one span per column and reads its driver's row by ref; `WriteTarget(track, cold, i)` reads `TrackCold` only when `mapped`; a finishing track reads `TrackCold.generation`.
+- **Why: on 15 threads `Execute` is bandwidth-bound.** The prefetcher streams the whole 192–196-B row whatever the code reads. A scratch loop over 200k tracks with the real types: full row 12.8 ns/track; hot + params 6.9 (clips) / 8.0 (springs); one thread ~25 ns either way.
+- **Rejected: reordering fields inside one struct** (tried, measured, replaced). 196 → 192 B, hot fields first: no better for clips, springs 22% worse over 3 runs, reproduced single-threaded in the scratch loop (23.0 → 25.5 ns) — it split the spring's contiguous `to value velocity frequency damping` across lines.
+- **Rejected: one union params column** (user, fork F1 → per-driver columns): overlaid types, and clips would stream 44 B of params instead of 12.
+
+| 200k `Anim.Step`, ms/frame, Release+PROFILE | 196-B row (§ `Emit` folded) | reordered 192 B, 3 runs | split, 2 runs |
+|---|---|---|---|
+| state hold | 2.53 | 2.62–2.95 | 1.55–1.59 |
+| margin hold | 3.61 | 3.68–3.95 | 2.82–2.87 |
+| spring hold | 2.56 | 3.13–3.15 | 1.84–1.89 |
+| `StopAll` | 2.48 | 2.86–3.01 | 1.70–1.85 |
+
+- State-hold frame 3.45 → 2.27–2.34 ms.
+- ETW CPU sampling (Visual Studio collector, 4 kHz, whole run): `Execute` 132,720 → 80,955 samples; its own code 101,697 → 54,886; `Spring.Step` + `ucrtbase` math ~16k → ~19k, now ~24% of `Execute`.
+- **Verified:** Debug and Release+PROFILE builds; sizes 64 / 44 / 12 / 24 / 52 B; Debug animation (200k) and document scenarios exit 0, no asserts; `--profile-pools` counts as in § `Emit` folded; grid dump identical but for the button under the real cursor. **NOT GUI-verified** (user, fork F2): hover / press colours (mapped springs → `TrackCold`), held clips reversing (`Direct` → `KeyParams.duration`), `Retarget`. Incidental: the button under the cursor dumped `Alpha="1"` in two runs, as before the split.
+- Generated `DataPoolsTypeSchema.xsd` files gain the four types on the next boot.
+
+## `Emit` folded into the chunks (2026-09-26)
+- **`Execute` decides each track's outcome while its row is in cache.** A layout change goes to `_dirtyRows[start + n]`, a finishing tween / non-held clip gets `driver = None` and a `FinishedTrack` in `_doneRows[start + n]`, a done or stopped track gets `sleeping = true`, and a running track's id is written back into `awake` at the front of the chunk's own range (writes never pass reads; a chunk touches only `[start, end)`). Per-chunk kept / dirty / done counts join min / max / stepped in `_stats`. `_outcome` is gone.
+- **`Emit` is a stitch.** One slice copy per chunk of kept ids, dirty rows and done rows, in chunk order — the awake, `LayoutDirty` and `AnimationDone` orders are what the serial pass produced. Pool appends stay out of the chunks (`AssertStructural` refuses them there): `DataPool.Append(int count)` reserves all of a frame's rows at once.
+- **Why:** `Emit` walked all 200k rows again on one thread for `driver`, `hold` and `changed` — two more cache lines per track, just written by other cores; 70% of its samples were those reads.
+
+| 200k, ms/frame, Release+PROFILE | `Anim.Step` before → after | `Anim.Emit` before → after | frame before → after |
+|---|---|---|---|
+| state hold | 5.13 → 2.53 | 2.72 → 0.07 | 5.66 → 3.45 |
+| margin hold | 6.66 → 3.61 | 3.91 → 0.69 | 53.5 → 50.3 |
+| spring hold | 4.66 → 2.56 | 2.50 → 0.06 | 5.32 → 3.38 |
+| `StopAll` | 4.82 → 2.48 | 2.41 → 0.06 | 5.59 → 3.45 |
+
+- `Execute`'s own share barely moved (state 2.41 → 2.46 ms): the outcome work is nearly free once the row is loaded. Margin `Emit` is the 200k `DirtyLayout` copy.
+- **Verified:** Debug and Release+PROFILE builds; Debug animation (200k) and document scenarios exit 0, no access or structural asserts; `--profile-pools`: 200,000 `AnimationDone` rows in the burst frame and 0 stepped the frame after (compaction), 200,000 stepped every state / margin hold frame, 1,000 in the sparse stage, margin `Main.Layout` unchanged (the dirty rows arrive). **NOT GUI-verified:** hover / press, menu slide, file-tree collapse via `onDone`.
+- `DrawLists` went 0.47 → 0.85 ms in the state hold (0.5 → 0.7 in spring / `StopAll`) — one run each, not explained.
+
 ## Drained pools — layout dirtying and `onDone`; `Main.Apply` gone (2026-09-26)
 A5–A7 of [[animation-in-place-plan]]. Supersedes § Step 2's `AnimationValues` pool, `OnValue` and "invalidate at the end" in `Main.Apply`; § Awake list's "appends values" and the `AnimationValue.value` line.
 - **`A_Animatable(column, field, LayoutChange changed = None)`.** `LayoutChange { None, Measure, Arrange }` replaces the method name; `InPlace` compiles nothing. `Start` copies it into `AnimationTrack.changed`. `Control` `Width Height MinWidth MinHeight Margin Padding` → `Measure`; `HorizontalPos VerticalPos`, `ContextMenuControl.reveal` → `Arrange`.
@@ -15,7 +51,7 @@ A5–A7 of [[animation-in-place-plan]]. Supersedes § Step 2's `AnimationValues`
 - **Each consumer rewinds its own pool**, so a row lives from the append to the next drain: `LayoutDirty` within the frame, `AnimationDone` across one frame boundary.
 
 **Known gaps**
-- **Not measured** (user: no profiling) — `Emit` now appends only dirty and done rows instead of a value per stepped track.
+- **Measured** → § Measured at 200k (2026-09-26) — `Emit` now appends only dirty and done rows instead of a value per stepped track.
 - `LayoutDirty` and `AnimationDone` have no edge step either ([[pool-shrink]] § Known gaps).
 - **Verified**: Debug build clean; `--profile-scenario=animation` (ladder to 20k, margin and state tweens, clips, springs) ran to exit 0 with no `AssertAccess` hit; boot errors only the known sampler + barrier set. **NOT GUI-verified**: file-tree collapse and `Collapsed` via `onDone`, menu slide, theme crossfade, press colours, state bindings.
 
@@ -52,7 +88,7 @@ A1–A3 of [[animation-in-place-plan]]. Supersedes § Step 2's "setter path stay
 **The button blend stays on the CPU (fork 3 → b, user).** Paint-at-draw already ran `PaintState` for every drawn palette button every frame, so moving it to `Emit` adds work only for authored-colour buttons off rest. The shader route would have put hover/press words on every quad row, glyphs included — what [[ui-palettes]] rejected on 2026-09-19.
 
 **Known gaps**
-- **Not measured** (user): every `visual` access is a `Dictionary<Type>` pool lookup, as `arrange` already was — ~4–5 per drawn control per frame; `UIElements` rows +96 B (the `Control` object −96 B), and resequencing moves the column.
+- **Not measured** (user): every `visual` access is a pool column lookup, as `arrange` already was — ~4–5 per drawn control per frame (an array index since 2026-09-26, [[ecs-rework-data-pools]] § Column keys; `DrawLists` 0.80 → 0.45 ms at 200k); `UIElements` rows +96 B (the `Control` object −96 B), and resequencing moves the column.
 - A hovered button with authored state colours hands its children its rest colour as ground for ink contrast, not the blended one; palette buttons already did.
 - `visual` read on a destroyed control after its row is freed throws or reads another row — as `arrange` already did.
 - `ApplyShape` rewrites `edgeThickness` every drawn frame on `accentRole` controls (`TabViewControl` tabs, `FileBrowserControl` rows), so an edge animation there loses — before and after.
@@ -206,16 +242,24 @@ Supersedes every `Post`/`OnPost`/lane path below, the push-vs-pull choice, `Fade
 - **After the fixes** (`byTarget`, one `Increment`, scenario batches scaled to N — ~20 ticks a ramp, ~80 a stop pass): 176 s at 200k, run 3.2 min; teardown 78 s in one frame; `StopAll` stage 230 → 35 ms a frame.
 - **Verified:** scenario ran to completion at 20k and 200k, exit 0. **NOT verified:** `StopAll` from real UI (file-tree collapse, destroy mid-animation) by hand.
 
-## Measured at 200k (2026-09-25, Release+PROFILE, after the tick list and pool doubling)
+## Measured at 200k (2026-09-26, Release+PROFILE, in place)
 
-| 200k, ms/frame | Frame | `Anim.Step` (`Emit`) | `Main.Apply` | `Main.Layout` (measure / arrange / subtree) | `DrawLists` |
-|---|---|---|---|---|---|
-| state hold | 25.0 | 3.7 (2.5) | 20.6 | — | 0.6 |
-| margin hold | 118 | 4.9 (2.5) | 19.8 | 92.5 (23 / 53 / 16) | 0.7 |
-| spring hold | 7.3 | 1.5 (0.6) | 5.1 | — | 0.7 |
+Ladder `{ 200000 }`, build `02b2214`. Mean ms per frame over each 240-tick hold; "was" is the same script on the 09-25 build before the in-place landing.
 
-- Run 1:02 (optimized Debug 1:48, before 3.2 min). Teardown worst frame 49 ms (was 78 s) — [[entity-tick-group]].
-- **Burst worst frame 4,658 → 192 ms.** It was 200k `Tween`s 3.65 s + first `Emit` 937 ms, both additive +256 pool growth → [[pool-shrink]].
-- **Layout is ~0.46 µs per control on a full relayout**; every `arrange` access is a `Dictionary<Type>` column lookup, and `Measure`/`Arrange` recurse into clean children. 1M in 1 ms is ~1 ns per control — not reachable by relayout; see the WIP layout entry.
+| 200k, ms/frame | Frame (was) | `Anim.Step` (`Emit`) | `Main.Layout` (measure / arrange / subtree) | `DrawLists` |
+|---|---|---|---|---|
+| state hold | 6.1 (25.0) | 5.2 (2.8) | — | 0.8 |
+| margin hold | 106 (135) | 7.1 (4.4) | 98.3 (19 / 51 / 12.5) | 0.7 |
+| sparse margin hold | 83.9 (108) | 0.07 | 83.0 (19 / 51 / 12.6) | 0.7 |
+| spring hold | 4.9 (7.3) | 4.1 (2.1) | — | 0.8 |
+| `StopAll` | 5.9 (24.3) | 4.8 (2.4) | — | 0.8 |
+
+- **`Main.Apply`'s 20–24 ms is gone; `Anim.Step` gained 1.4–2.6 ms** writing values in place. `Emit` is still serial (its per-track pass moved into the chunks the same day — § `Emit` folded into the chunks).
+- **`DrainLayoutDirty` is ~16 ms of `ResolveLayout` at margin hold** — by difference, it has no zone; 0.35 ms at 1,000 rows, ~80 ns a row.
+- Build frame 1,156 ms: `Scenario.Build` 575, first `ResolveLayout` 535 (arrange 309, measure 120). Scenario 62 s. With `DOTNET_TieredCompilation=0` they are 373 and 143 — the first layout is mostly tier-0 JIT.
+- **Kept from 2026-09-25, not beaten:** teardown worst frame 49 ms (was 78 s) — [[entity-tick-group]]; this run 175 ms, the 09-25 script run 177.
+- **Kept from 2026-09-25, not beaten:** burst worst frame 4,658 → 192 ms. It was 200k `Tween`s 3.65 s + first `Emit` 937 ms, both additive +256 pool growth → [[pool-shrink]]. This run 403 ms, 387 of it the `Tween` calls; the 09-25 script run 439.
+- **Column keys and the stack's single row read (same day):** margin hold 106 → 50 ms, sparse 84 → 31 — [[layout-dod-plan]] § Baseline.
+- **Layout is ~0.15 µs per control on a full relayout** (was ~0.41 while every `arrange` access was a `Dictionary<Type>` column lookup), and `Measure`/`Arrange` recurse into clean children. 1M in 1 ms is ~1 ns per control — not reachable by relayout; see the WIP layout entry.
 
 Related: [[ui-palettes]], [[ui-gradients]], [[ecs-rework-data-pools]], [[cross-system-change-notification]], [[entity-tick-group]], [[engine-profiling]]

@@ -289,6 +289,14 @@ The last per-control GPU resource is gone; both UI columns are now whole-pool mi
 - **Verified pixel-identical.** Built a worktree at `a2f07f3`, ran both, screenshotted the 1280x720
   window: 0 differing pixels of 230,400 sampled, max channel delta 0.
 
+## Column keys — a typed column without a `Dictionary<Type>` (2026-09-26)
+- `ColumnKeys.Of(Type)` hands out a process-wide dense index per column type (under a lock, on first use); `ColumnKey<T>.index` holds it as a `static readonly int`, which tier-1 JIT treats as a constant.
+- The pool ctor builds `_byKey` (column) and `_idByKey` (column id) indexed by that key. `GetRef`, `GetSpan`, `Column<T>` (so `Backing`, `CopyTo`, `CopyFrom`, `CopyRange`, `UpdateRange`), `Bit<T>` and `ColumnId<T>()` index them. `_columns` / `_columnIds` stay for `HasComponent(Type)`, `ColumnId(Type)` and the whole-pool loops.
+- **Why:** every `Control.arrange` / `visual` / `node` access was a `Dictionary<Type, IPoolColumn>.FindValue` — 14% of `ResolveLayout`'s samples at 200k, 10–16 per child in `StackPanelControl.ArrangeCore`; also one per appended row in `AnimationSystem.Emit`.
+- Rejected: a static column cache per control type (fixes `Control` only); `Unsafe.As` for the cast — `PoolColumn<T>` is sealed, so the checked cast is already an inline method-table compare. The `IsInstanceOfClass` in the same profile was `e is Control` in the child loops, not this cast.
+- **Measured** (Release+PROFILE, 200k): margin-hold frame 115 → 58 ms, `Layout.Arrange` 54.8 → 14.7 — full table in [[layout-dod-plan]] § Baseline.
+- **Consequences:** `GetRef<T>`/`GetSpan<T>` on a pool without that column throw `NullReferenceException` or `IndexOutOfRangeException`, not `KeyNotFoundException`. `ColumnId<T>()` and `Bit<T>` return 0 for such a `T` — `ColumnId<T>()` has no callers; `Bit<T>` is DEBUG-only and its call then throws in `Column<T>`.
+
 ## NOT yet done (remaining Phase 2/3)
 - **Reparenting has no API to hook.** `MarkTreeOrderDirty` covers inserts; there is no
   `SetParent`/`Reparent`/bring-to-front method in the tree today, so "move subtree to end of

@@ -38,7 +38,7 @@ namespace ArctisAurora.Core.Diagnostics
         private int settingsHeight;
 
         // animation mode: grid sizes, grid shape, and timeline in main ticks
-        private static readonly int[] ladder = { 100, 1000, 5000, 20000 };
+        private static readonly int[] ladder = { 200000 };
         private const int rowLength = 100;
         private const float buttonSize = 16f;
         private const int startBatch = 1000;

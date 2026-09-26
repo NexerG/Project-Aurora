@@ -18,12 +18,8 @@ namespace ArctisAurora.Core.Animation
         private const float restDistance = 1e-3f;
         private const float restSpeed = 1e-3f;
 
-        // per-chunk stats, one cache line apart: min row, max row, tracks stepped
+        // per-chunk stats, one cache line apart: min row, max row, stepped, kept, dirty, done
         private const int statStride = 16;
-
-        // track outcomes, 0 untouched
-        private const byte stepped = 1;
-        private const byte finished = 2;
 
         private struct SlotFade
         {
@@ -50,7 +46,8 @@ namespace ArctisAurora.Core.Animation
         private Keyframe[] _keyRows = Array.Empty<Keyframe>();
         private int _keyCount;
         private int _chunkRows;
-        private byte[] _outcome = Array.Empty<byte>();
+        private DirtyLayout[] _dirtyRows = Array.Empty<DirtyLayout>();
+        private FinishedTrack[] _doneRows = Array.Empty<FinishedTrack>();
         private int[] _stats = Array.Empty<int>();
 
         // paint slots mid-fade
@@ -83,7 +80,11 @@ namespace ArctisAurora.Core.Animation
             int rowBytes = Unsafe.SizeOf<AnimationTrack>();
             _chunkRows = Jobs.Chunk(rowBytes);
             int chunks = (count + _chunkRows - 1) / _chunkRows;
-            if (_outcome.Length < count) _outcome = new byte[Math.Max(count, _outcome.Length * 2)];
+            if (_dirtyRows.Length < count)
+            {
+                _dirtyRows = new DirtyLayout[Math.Max(count, _dirtyRows.Length * 2)];
+                _doneRows = new FinishedTrack[_dirtyRows.Length];
+            }
             if (_stats.Length < chunks * statStride) _stats = new int[Math.Max(chunks, _stats.Length / statStride * 2) * statStride];
 
             Profiling.Zone.Start("Anim.Step");
@@ -99,33 +100,43 @@ namespace ArctisAurora.Core.Animation
             Profiling.Zone.End("Anim.Fades");
         }
 
-        // Steps awake list entries [start, end) and their in-place targets; Emit reads what each one did.
+        // Steps awake list entries [start, end) and their in-place targets, keeping the running ones at the front of the range; Emit joins the chunks.
         void IJobFor.Execute(int start, int end)
         {
             Span<AnimationTrack> tracks = _tracks.GetSpan<AnimationTrack>();
-            ReadOnlySpan<int> awake = Animations.Awake;
+            ReadOnlySpan<TweenParams> tweens = _tracks.GetSpan<TweenParams>();
+            ReadOnlySpan<KeyParams> clips = _tracks.GetSpan<KeyParams>();
+            Span<SpringParams> springs = _tracks.GetSpan<SpringParams>();
+            ReadOnlySpan<TrackCold> cold = _tracks.GetSpan<TrackCold>();
+            Span<int> awake = Animations.Awake;
             ReadOnlySpan<SignalValue> signals = _signalRows.AsSpan(0, _signalCount);
             ReadOnlySpan<Keyframe> keys = _keyRows.AsSpan(0, _keyCount);
             float dt = _dt;
-            int min = int.MaxValue, max = -1, count = 0;
+            int min = int.MaxValue, max = -1, count = 0, kept = 0, dirtyCount = 0, doneCount = 0;
             for (int k = start; k < end; k++)
             {
                 int i = awake[k];
                 ref AnimationTrack track = ref tracks[i];
-                if (track.driver == AnimationDriver.None) continue;
+                if (track.driver == AnimationDriver.None)
+                {
+                    track.sleeping = true;
+                    continue;
+                }
                 if (track.follow >= 0 && track.follow < signals.Length) track.to = signals[track.follow].value;
                 count++;
 
                 bool done;
                 if (track.driver == AnimationDriver.Tween)
                 {
+                    ref readonly TweenParams tween = ref tweens[i];
                     track.elapsed += dt;
-                    float t = track.duration > 0f ? track.elapsed / track.duration : 1f;
-                    track.value = Vector4.Lerp(track.from, track.to, Curve.Evaluate(track.curve, t));
+                    float t = tween.duration > 0f ? track.elapsed / tween.duration : 1f;
+                    track.value = Vector4.Lerp(tween.from, track.to, Curve.Evaluate(tween.curve, t));
                     done = t >= 1f;
                 }
                 else if (track.driver == AnimationDriver.Keyframes)
                 {
+                    ref readonly KeyParams clip = ref clips[i];
                     float local;
                     if (track.direction < 0)
                     {
@@ -136,25 +147,37 @@ namespace ArctisAurora.Core.Animation
                     else
                     {
                         track.elapsed += dt;
-                        local = AnimationLibrary.LocalTime(track.elapsed, track.duration, track.loop);
-                        done = track.loop == ClipLoop.Once && track.elapsed >= track.duration;
+                        local = AnimationLibrary.LocalTime(track.elapsed, clip.duration, track.loop);
+                        done = track.loop == ClipLoop.Once && track.elapsed >= clip.duration;
                     }
-                    track.value = AnimationLibrary.Sample(keys, track.firstKey, track.keyCount, local);
+                    track.value = AnimationLibrary.Sample(keys, clip.firstKey, clip.keyCount, local);
                 }
                 else
                 {
-                    Spring.Step(ref track.value, ref track.velocity, track.to, track.frequency, track.damping, dt);
-                    done = (track.value - track.to).Length() < restDistance && track.velocity.Length() < restSpeed;
+                    ref SpringParams spring = ref springs[i];
+                    Spring.Step(ref track.value, ref spring.velocity, track.to, spring.frequency, spring.damping, dt);
+                    done = (track.value - track.to).Length() < restDistance && spring.velocity.Length() < restSpeed;
                     if (done)
                     {
                         track.value = track.to;
-                        track.velocity = Vector4.Zero;
+                        spring.velocity = Vector4.Zero;
                     }
                 }
 
-                WriteTarget(track);
+                WriteTarget(track, cold, i);
 
-                _outcome[k] = done ? finished : stepped;
+                if (track.changed != LayoutChange.None)
+                    _dirtyRows[start + dirtyCount++] = new DirtyLayout { target = track.target, change = track.changed };
+                if (!done) awake[start + kept++] = i;
+                else
+                {
+                    if (track.driver == AnimationDriver.Tween || (track.driver == AnimationDriver.Keyframes && !track.hold))
+                    {
+                        track.driver = AnimationDriver.None;
+                        _doneRows[start + doneCount++] = new FinishedTrack { track = i, generation = cold[i].generation };
+                    }
+                    track.sleeping = true;
+                }
                 if (i < min) min = i;
                 if (i > max) max = i;
             }
@@ -163,54 +186,42 @@ namespace ArctisAurora.Core.Animation
             _stats[stat] = min;
             _stats[stat + 1] = max;
             _stats[stat + 2] = count;
+            _stats[stat + 3] = kept;
+            _stats[stat + 4] = dirtyCount;
+            _stats[stat + 5] = doneCount;
         }
 
-        // Lists layout changes and finished tracks, and drops done tracks from the awake list; returns how many stepped.
+        // Joins the chunks' kept tracks into the awake list and appends their layout changes and finished tracks; returns how many stepped.
         private long Emit(int chunks)
         {
-            int total = 0, min = int.MaxValue, max = -1;
+            int total = 0, min = int.MaxValue, max = -1, dirtyCount = 0, doneCount = 0;
             for (int c = 0; c < chunks; c++)
             {
                 int stat = c * statStride;
                 total += _stats[stat + 2];
+                dirtyCount += _stats[stat + 4];
+                doneCount += _stats[stat + 5];
                 if (_stats[stat + 1] < 0) continue;
                 if (_stats[stat] < min) min = _stats[stat];
                 if (_stats[stat + 1] > max) max = _stats[stat + 1];
             }
 
-            Span<AnimationTrack> tracks = _tracks.GetSpan<AnimationTrack>();
+            int dirtyRow = dirtyCount > 0 ? _dirty.Append(dirtyCount) : 0;
+            int doneRow = doneCount > 0 ? _done.Append(doneCount) : 0;
+            Span<DirtyLayout> dirty = _dirty.GetSpan<DirtyLayout>();
+            Span<FinishedTrack> done = _done.GetSpan<FinishedTrack>();
             Span<int> awake = Animations.Awake;
             int kept = 0;
-            for (int k = 0; k < awake.Length; k++)
+            for (int c = 0; c < chunks; c++)
             {
-                int i = awake[k];
-                byte outcome = _outcome[k];
-                _outcome[k] = 0;
-
-                ref AnimationTrack track = ref tracks[i];
-                if (outcome != 0)
-                {
-                    if (track.changed != LayoutChange.None)
-                    {
-                        int row = _dirty.Append();
-                        _dirty.GetSpan<DirtyLayout>()[row] = new DirtyLayout { target = track.target, change = track.changed };
-                    }
-
-                    bool done = outcome == finished;
-                    bool finishes = track.driver == AnimationDriver.Tween || (track.driver == AnimationDriver.Keyframes && !track.hold);
-                    if (!done)
-                    {
-                        awake[kept++] = i;
-                        continue;
-                    }
-                    if (finishes)
-                    {
-                        track.driver = AnimationDriver.None;
-                        int row = _done.Append();
-                        _done.GetSpan<FinishedTrack>()[row] = new FinishedTrack { track = i, generation = track.generation };
-                    }
-                }
-                track.sleeping = true;
+                int stat = c * statStride;
+                int start = c * _chunkRows;
+                awake.Slice(start, _stats[stat + 3]).CopyTo(awake.Slice(kept));
+                kept += _stats[stat + 3];
+                _dirtyRows.AsSpan(start, _stats[stat + 4]).CopyTo(dirty.Slice(dirtyRow));
+                dirtyRow += _stats[stat + 4];
+                _doneRows.AsSpan(start, _stats[stat + 5]).CopyTo(done.Slice(doneRow));
+                doneRow += _stats[stat + 5];
             }
             Animations.KeepAwake(kept);
 
@@ -219,7 +230,7 @@ namespace ArctisAurora.Core.Animation
         }
 
         // Writes a track's value into the pool row its property is stored in.
-        private static void WriteTarget(in AnimationTrack track)
+        private static void WriteTarget(in AnimationTrack track, ReadOnlySpan<TrackCold> cold, int i)
         {
             Span<byte> row = DataManager.Get(track.target.PoolId).ElementBytes(track.column, track.target);
             if (row.IsEmpty) return;
@@ -227,7 +238,10 @@ namespace ArctisAurora.Core.Animation
             Span<byte> field = row.Slice(track.offset);
             Vector4 value = track.value;
             if (track.mapped)
-                value = value.X <= 1f ? Vector4.Lerp(track.rest, track.hover, value.X) : Vector4.Lerp(track.hover, track.press, value.X - 1f);
+            {
+                ref readonly TrackCold c = ref cold[i];
+                value = value.X <= 1f ? Vector4.Lerp(c.rest, c.hover, value.X) : Vector4.Lerp(c.hover, c.press, value.X - 1f);
+            }
             if (track.width == 1) MemoryMarshal.Write(field, in value.X);
             else if (track.width == 2) MemoryMarshal.Write(field, new Vector2(value.X, value.Y));
             else MemoryMarshal.Write(field, in value);

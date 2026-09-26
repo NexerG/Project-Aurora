@@ -2,7 +2,7 @@
 
 **Status:** AGREED 2026-09-25. Steps 0–3 landed 2026-09-25; step 4 (the walks) not yet approved as a build. Decisions A–D and the step-1 forks settled (below). Supersedes the L1/L2 items of 2026-09-25. Cold boot: [[layout-dod-handoff]].
 
-**Why:** layout is ~0.46 µs per control on a full relayout because it walks the object tree (`children` lists, virtual calls, a `Dictionary<Type>` column lookup per `arrange` access, 10–15 per child), and its cost follows the tree, not the changes — 1,000 animated buttons cost what 200,000 do (Baseline). Target: sparse changes at 1M under 1 ms of layout; a full 1M relayout ~20–40 ms single-threaded (estimate, bandwidth-bound).
+**Why:** layout is ~0.46 µs per control on a full relayout because it walks the object tree (`children` lists, virtual calls, a `Dictionary<Type>` column lookup per `arrange` access, 10–15 per child — the lookup is an array index since 2026-09-26, § Baseline), and its cost follows the tree, not the changes — 1,000 animated buttons cost what 200,000 do (Baseline). Target: sparse changes at 1M under 1 ms of layout; a full 1M relayout ~20–40 ms single-threaded (estimate, bandwidth-bound).
 
 ## Shape
 - `UIElements` rows are in tree pre-order (`UIEngine.ElementOrder`); a subtree is the row range `[i, i + count)`.
@@ -38,6 +38,23 @@
 | 1M sparse hold (1,000 animate) | 463.2 | 117.8 | 263.8 | 81.1 | 465.6 |
 - 1M ran as a scratch cut (build, sparse, teardown) to fit the 3-minute cap: build frame 3.1 s, teardown worst frame 273 ms.
 - The 200k margin hold was 92.5 ms on 2026-09-24 (ladder `{ 20000, 200000 }`); this run is `{ 200000 }` alone — compare within a run.
+
+### Column keys and the stack's single row read (2026-09-26, Release+PROFILE, `{ 200000 }`, `--dump-tree`)
+`DataPool` finds a typed column by `ColumnKey<T>.index` ([[ecs-rework-data-pools]] § Column keys); `StackPanelControl.MeasureCore`/`ArrangeCore` read each child's `ArrangeData` through one `ref`, taking `margin` into a local before `child.Measure`/`Arrange` (a row created during layout can grow the pool and move the array); `Control.WriteArranged` likewise. Build `02b2214` + in-place animation.
+
+| 200k, ms/frame | before | column keys | + single read |
+|---|---|---|---|
+| margin hold frame | 115.1 | 57.6 | 50.0 |
+| margin `Main.Layout` | 106.9 | 50.7 | 43.0 |
+| margin measure / arrange / subtree | 20.3 / 54.8 / 13.4 | 10.6 / 14.7 / 10.0 | 9.8 / 11.0 / 9.6 |
+| sparse hold frame | 90.4 | 35.8 | 31.0 |
+| sparse `Main.Layout` | 89.4 | 35.3 | 30.5 |
+| margin `Anim.Emit` | 4.66 | 3.72 | 3.65 |
+| scenario (s) | 67.3 | 34.9 | 31.1 |
+
+- Tree dumps `grid-200000`, `open`, `typed` byte-identical to before; `settings` differs only in the caret's blink `Alpha`.
+- `dotnet-trace`, `ResolveLayout` samples 32,859 → 12,919. After: arrange 31%, measure 27%, `RefreshSubtreeCache` 26%, `DrainLayoutDirty` 16% (~12.6 ms at margin hold, by difference — it has no zone).
+- Full relayout ~0.15 µs per control (measure + arrange + subtree 30.4 ms / 200k), was ~0.44.
 
 ## Verified / not
 - Verified: builds (Debug, Release+PROFILE); tree dumps as above; a Release capture of the document scenario window draws palette-painted text.
