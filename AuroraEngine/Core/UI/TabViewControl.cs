@@ -108,7 +108,8 @@ namespace ArctisAurora.Core.UI
             base.AddChild(item);
             if (activeItem != null) item.Hide();
 
-            RebuildStrip();
+            strip.AddChild(BuildTab(item));
+            ApplyTabColors();
             if (activeItem == null) SetActive(item);
         }
 
@@ -124,7 +125,8 @@ namespace ArctisAurora.Core.UI
             TabItemControl next = wasActive ? Neighbour(item) : activeItem;
             if (wasActive) activeItem = null;
 
-            RebuildStrip();
+            ButtonOf(item)?.Destroy();
+            ApplyTabColors();
             if (activeItem == null && next != null) SetActive(next);
             if (wasActive && activeItem == null) activeChanged?.Invoke(this);
             InvalidateLayout();
@@ -376,7 +378,8 @@ namespace ArctisAurora.Core.UI
             if (wasActive) activeItem = null;
             item.Destroy();
 
-            RebuildStrip();
+            ButtonOf(item)?.Destroy();
+            ApplyTabColors();
             if (activeItem == null && next != null) SetActive(next);
             if (wasActive && activeItem == null) activeChanged?.Invoke(this);
             InvalidateLayout();
@@ -418,13 +421,14 @@ namespace ArctisAurora.Core.UI
         }
 
         #region ---- open notes ----
-        // Recaptions one tab; the strip is drawn from the headers, so it is rebuilt with it.
+        // Recaptions one tab and its strip caption.
         public void Retitle(TabItemControl item, string header)
         {
             if (item == null) return;
 
             item.header = header;
-            RebuildStrip();
+            TabStripButtonControl button = ButtonOf(item);
+            if (button != null) SetCaption(CaptionOf(button), header);
         }
 
         public static DocumentEditorControl EditorOf(TabItemControl item) =>
@@ -478,15 +482,13 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- strip ----
-        private void RebuildStrip()
+        // The strip button standing for one tab.
+        private TabStripButtonControl ButtonOf(TabItemControl item)
         {
-            foreach (Entity button in strip.children.ToArray())
-                button.Destroy();
-
-            foreach (TabItemControl item in Items)
-                strip.AddChild(BuildTab(item));
-
-            ApplyTabColors();
+            foreach (Entity e in strip.children)
+                if (e is TabStripButtonControl button && ReferenceEquals(button.item, item))
+                    return button;
+            return null;
         }
 
         // The row tiles the tab exactly and the wrapper carries the caption inset, so no container
@@ -541,6 +543,12 @@ namespace ArctisAurora.Core.UI
             };
             caption.PaintOr(tabInkColorHex, PaletteRole.Ink);
             return caption;
+        }
+
+        // Rewrites a caption BuildCaption made.
+        protected virtual void SetCaption(Control caption, string header)
+        {
+            if (caption is LabelControl label) label.text = header;
         }
 
         private Control BuildCloseButton(TabItemControl item)
@@ -603,10 +611,16 @@ namespace ArctisAurora.Core.UI
             tab.children.Count > 0 && tab.children[0] is Control row && row.children.Count > 1
                 ? row.children[1] as ButtonControl
                 : null;
+
+        private static Control CaptionOf(Control tab) =>
+            tab.children.Count > 0 && tab.children[0] is Control row && row.children.Count > 0
+            && row.children[0] is Control wrapper && wrapper.children.Count > 0
+                ? wrapper.children[0] as Control
+                : null;
         #endregion
 
         #region ---- layout ----
-        public override Vector2 Measure(Vector2 availableSize)
+        protected override Vector2 MeasureCore(Vector2 availableSize)
         {
             float w = preferredWidth > 0 ? preferredWidth : MathF.Max(minWidth, availableSize.X);
             float h = preferredHeight > 0 ? preferredHeight : MathF.Max(minHeight, availableSize.Y);
@@ -623,7 +637,7 @@ namespace ArctisAurora.Core.UI
             return arrange.desired;
         }
 
-        public override void Arrange(LayoutRect finalRect)
+        protected override void ArrangeCore(LayoutRect finalRect)
         {
             WriteArranged(finalRect);
 

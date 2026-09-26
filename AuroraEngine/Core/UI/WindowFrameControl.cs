@@ -31,7 +31,7 @@ namespace ArctisAurora.Core.UI
 
         private bool IsGrip(Control control) => Array.IndexOf(grips, control) >= 0;
 
-        public override Vector2 Measure(Vector2 availableSize)
+        protected override Vector2 MeasureCore(Vector2 availableSize)
         {
             LayoutRect inner = new LayoutRect(0, 0, availableSize.X, availableSize.Y)
                 .Shrink(arrange.padding);
@@ -45,7 +45,7 @@ namespace ArctisAurora.Core.UI
             return arrange.desired;
         }
 
-        public override void Arrange(LayoutRect finalRect)
+        protected override void ArrangeCore(LayoutRect finalRect)
         {
             WriteArranged(finalRect);
             EnsureGrips();

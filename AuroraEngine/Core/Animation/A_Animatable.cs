@@ -9,18 +9,22 @@ using System.Runtime.InteropServices;
 
 namespace ArctisAurora.Core.Animation
 {
+    // What layout re-runs after an animated write.
+    public enum LayoutChange : byte
+    {
+        None, Measure, Arrange
+    }
+
     // Marks a property an animation may drive.
     [AttributeUsage(AttributeTargets.Property)]
     public sealed class A_Animatable : Attribute
     {
-        public readonly Type? column;
-        public readonly string? field;
-        public readonly string? changed;
+        public readonly Type column;
+        public readonly string field;
+        public readonly LayoutChange changed;
 
-        public A_Animatable() { }
-
-        // A property stored in field of a pool column: written in place, then changed runs on Main.
-        public A_Animatable(Type column, string field, string changed)
+        // A property stored in field of a pool column: written in place, then changed marks layout dirty.
+        public A_Animatable(Type column, string field, LayoutChange changed = LayoutChange.None)
         {
             this.column = column;
             this.field = field;
@@ -28,7 +32,7 @@ namespace ArctisAurora.Core.Animation
         }
     }
 
-    // A compiled getter and setter pair for one animatable property, carried as a Vector4.
+    // A compiled getter for one animatable property, carried as a Vector4.
     internal sealed class AnimatableProperty
     {
         private static readonly Dictionary<(Type, string), AnimatableProperty> cache = new();
@@ -36,19 +40,17 @@ namespace ArctisAurora.Core.Animation
         // C# property name, the same whichever name resolved it
         public readonly string name;
         public readonly Func<object, Vector4> get;
-        public readonly Action<object, Vector4> set;
 
-        // pool field written in place, width 0 for a setter-only property
-        public readonly Type? column;
+        // pool field written in place
+        public readonly Type column;
         public readonly ushort offset;
         public readonly byte width;
-        public readonly Action<object>? changed;
+        public readonly LayoutChange changed;
 
-        private AnimatableProperty(string name, Func<object, Vector4> get, Action<object, Vector4> set, Type? column, ushort offset, byte width, Action<object>? changed)
+        private AnimatableProperty(string name, Func<object, Vector4> get, Type column, ushort offset, byte width, LayoutChange changed)
         {
             this.name = name;
             this.get = get;
-            this.set = set;
             this.column = column;
             this.offset = offset;
             this.width = width;
@@ -67,29 +69,23 @@ namespace ArctisAurora.Core.Animation
                 ?? throw new Exception($"{type.Name} has no animatable property '{name}'.");
 
             ParameterExpression target = Expression.Parameter(typeof(object));
-            ParameterExpression value = Expression.Parameter(typeof(Vector4));
             MemberExpression member = Expression.Property(Expression.Convert(target, property.DeclaringType!), property);
 
             A_Animatable attribute = property.GetCustomAttribute<A_Animatable>()!;
-            ushort offset = 0;
-            byte width = 0;
-            Action<object>? changed = null;
-            if (attribute.column != null)
-                (offset, width, changed) = InPlace(type, property, attribute);
+            (ushort offset, byte width) = InPlace(type, property, attribute);
 
             AnimatableProperty built = new AnimatableProperty(property.Name,
                 Expression.Lambda<Func<object, Vector4>>(ToVector(member), target).Compile(),
-                Expression.Lambda<Action<object, Vector4>>(Expression.Assign(member, FromVector(value, property.PropertyType)), target, value).Compile(),
-                attribute.column, offset, width, changed);
+                attribute.column, offset, width, attribute.changed);
             cache[(type, name)] = built;
             return built;
         }
 
-        // Where a pool-stored property sits in its column row, and the call that follows a write.
-        private static (ushort, byte, Action<object>) InPlace(Type type, PropertyInfo property, A_Animatable attribute)
+        // Where a pool-stored property sits in its column row.
+        private static (ushort, byte) InPlace(Type type, PropertyInfo property, A_Animatable attribute)
         {
-            Type column = attribute.column!;
-            FieldInfo field = column.GetField(attribute.field!) ?? throw new Exception($"{column.Name} has no field '{attribute.field}'.");
+            Type column = attribute.column;
+            FieldInfo field = column.GetField(attribute.field) ?? throw new Exception($"{column.Name} has no field '{attribute.field}'.");
             if (!typeof(Entity).IsAssignableFrom(type))
                 throw new Exception($"{type.Name}.{property.Name} is stored in {column.Name}, but {type.Name} is not an Entity with a pool row.");
             if (field.FieldType != property.PropertyType)
@@ -99,13 +95,9 @@ namespace ArctisAurora.Core.Animation
             if (Marshal.SizeOf(column) != managedSize)
                 throw new Exception($"{column.Name} marshals to a different size than it has in memory, so its field offsets cannot be trusted.");
 
-            Type owner = property.DeclaringType!;
-            MethodInfo method = owner.GetMethod(attribute.changed!, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, Type.EmptyTypes)
-                ?? throw new Exception($"{owner.Name} has no parameterless method '{attribute.changed}'.");
-            ParameterExpression target = Expression.Parameter(typeof(object));
-            Action<object> changed = Expression.Lambda<Action<object>>(Expression.Call(Expression.Convert(target, owner), method), target).Compile();
-
-            return ((ushort)Marshal.OffsetOf(column, field.Name), (byte)(Marshal.SizeOf(field.FieldType) / sizeof(float)), changed);
+            ushort offset = (ushort)Marshal.OffsetOf(column, field.Name);
+            byte width = (byte)(Marshal.SizeOf(field.FieldType) / sizeof(float));
+            return (offset, width);
         }
 
         private static Expression ToVector(Expression e)
@@ -120,18 +112,6 @@ namespace ArctisAurora.Core.Animation
             if (e.Type == typeof(Thickness))
                 return Expression.New(four, Expression.Field(e, "top"), Expression.Field(e, "right"), Expression.Field(e, "bottom"), Expression.Field(e, "left"));
             throw new Exception($"{e.Type.Name} cannot be animated.");
-        }
-
-        private static Expression FromVector(Expression v, Type type)
-        {
-            MemberExpression x = Expression.Field(v, "X"), y = Expression.Field(v, "Y"), z = Expression.Field(v, "Z"), w = Expression.Field(v, "W");
-
-            if (type == typeof(float)) return x;
-            if (type == typeof(Vector2)) return Expression.New(typeof(Vector2).GetConstructor(new[] { typeof(float), typeof(float) })!, x, y);
-            if (type == typeof(Vector4)) return v;
-            if (type == typeof(Thickness))
-                return Expression.New(typeof(Thickness).GetConstructor(new[] { typeof(float), typeof(float), typeof(float), typeof(float) })!, x, y, z, w);
-            throw new Exception($"{type.Name} cannot be animated.");
         }
     }
 }

@@ -50,7 +50,7 @@ Step 1 of [../Context/frame-scheduler-plan.md](../Context/frame-scheduler-plan.m
 **Spin 50 µs, then park.** Waking a parked thread costs tens of µs, and a frame has several stages; at 300 fps that is budget-sized.
 
 ## Measured (2026-09-23, Debug, zones on, 24 logical cores, RTX, uncapped)
-`--profile-scenario=animation`, per tick, against [[animation-core]] § Measured at scale. That table was taken at 6726940; this one is at ca9965b plus this change, and the UI path changed in between, so the drops are not credited to the scheduler — the claim is no regression.
+**Unoptimized Debug JIT, ~5× slow** — [[profiling-unoptimized-jit]]; compare only within this note's Debug tables. `--profile-scenario=animation`, per tick, against [[animation-core]] § Measured at scale. That table was taken at 6726940; this one is at ca9965b plus this change, and the UI path changed in between, so the drops are not credited to the scheduler — the claim is no regression.
 
 | | 1k | 5k | 20k |
 |---|---|---|---|
@@ -85,7 +85,7 @@ Step 1 of [../Context/frame-scheduler-plan.md](../Context/frame-scheduler-plan.m
 - **Load errors:** unknown action or pool, the same action or edge listed twice, an action of a Dedicated system, a Frame action declared twice. A system with no step and not Dedicated logs a Warn.
 - **Same-system rule live in `Wire`:** after the data waits, two steps of one system that do not already reach each other (`Reaches`, transitive) get a wait, later-listed on earlier-listed; the `Loop` message labels it `same system`.
 - **`Engine.MainTick` split** into Main actions on `MainSystem`: `Main.Input` (dt, `Engine.Input` — poll, reap, posted work, keybinds, `HandleUI`, drag ghost, context menus), `Main.Logic` (`Engine.Interpolate` — lifecycle + `OnTick`), `Main.Apply` (`Animations.ApplyValues`), `Main.Layout` (`UIEngine.ResolveLayout`, zone `ResolveLayout` kept), `Main.DrawLists` (`UIEngine.BuildDrawLists`). Zones `MainTick`, `Interpolate`, `FrameEdge`, `RefreshWindowRanges` are gone — `Step.<Action>` per step. Physics: `Physics.Step` (`PhysicsSystem.Simulate`, empty). Animation: `Animation.Step` (`AnimationSystem.Advance`).
-- **Graph today** (`Frame.frame.xml`), 7 stages: `Main.Input` → `Main.Logic` → `Animation.Step` ‖ `Physics.Step` → `Main.Apply` → `Main.Layout` → edges of `UIElements UIQuads Entities Gradients Effects Paints` → `Main.DrawLists`. Every Main step declares step 1's Main set plus `Animations Paints`; only Input and Logic add `Signals`. Physics declares `Entities.TransformData` so it runs after entity logic in the same frame.
+- **Graph today** (`Frame.frame.xml`), 7 stages: `Main.Input` → `Main.Logic` → `Animation.Step` ‖ `Physics.Step` → `Edge.UIElements` → `Main.Layout` → edges of `UIQuads Entities Gradients Effects Paints` → `Main.DrawLists` (`Main.Apply` deleted 2026-09-26, [[animation-core]] § Drained pools). Every Main step declares step 1's Main set plus `Animations Paints`; only Input and Logic add `Signals`; Logic adds `AnimationDone`, Layout `LayoutDirty`. Physics declares `Entities.TransformData` so it runs after entity logic in the same frame.
 - **Pinned:** Input (GLFW), Logic (entity `OnTick` is arbitrary code — the profiling scenario calls `glfwSetWindowSize` from it), Apply (`onDone` callbacks and setters). Layout and DrawLists reach no GLFW today; pinned because every Main step already waits for the one before, so a worker would only add a handoff. All edges unpinned, `UIElements` included — its sort walks the control tree, which nothing else touches in that stage.
 - **Command lanes deleted:** `ArctisAurora.Core.Data.Commands` (`CommandLane`, `CommandArena`, `SystemCommand`, `CommandApplier`); `ThreadedSystem` `_inbox`/`_outbox`/`BuildLanes`/`Post`/`OnPost`/`Drain`/`Publish`; `IPoolColumn.WriteBytes`/`FillBytes`/`CopyWithin` (replaced by `ElementBytes`); `DataManager.FrameEdge()`; `FrameStep.WritesAll`. `SystemId` stays — the log stamps it.
 - **`ThreadedSystem`:** `Tick` is `virtual`, run only by a Dedicated `Loop` via a private `Step`. Graph steps run through `RunStep(Action)` (sets `Current`, sums step time); `FrameScheduler.Run` calls `EndFrame()` on every scheduled system after the last stage — epoch +1 and `LastTickMs` = that frame's summed step time, only if a step ran. `RenderSystem.OnStart` still waits for Main's epoch to leave 0 (after the first full frame).
@@ -105,7 +105,7 @@ Step 1 of [../Context/frame-scheduler-plan.md](../Context/frame-scheduler-plan.m
 **Main.Logic before Physics (user).** Entity ticks that move or push entities must reach physics in the same frame, not the next physics tick.
 
 ### Measured (2026-09-23, Debug, zones on, 24 logical cores, RTX, uncapped)
-`--profile-scenario=animation`, per frame (mean), against step 1's table above.
+**Unoptimized Debug JIT** — [[profiling-unoptimized-jit]]. `--profile-scenario=animation`, per frame (mean), against step 1's table above.
 
 | | 1k | 5k | 20k |
 |---|---|---|---|
@@ -124,7 +124,7 @@ Step 1 of [../Context/frame-scheduler-plan.md](../Context/frame-scheduler-plan.m
 
 ### Known gaps
 - **Scheduler overhead ~20 µs a frame** — see Measured; the unpinned lone stages (Animation ‖ Physics, the edges) wake parked workers every frame.
-- **`Main.Apply` per value costs ~0.2–0.26 µs**, including a `Profiling.Zone.Increment` per value; at 20k that is 4–5 ms on Main.
+- **`Main.Apply` per value costs ~0.2–0.26 µs** (Debug JIT); at 20k that is 4–5 ms on Main. The per-value `Profiling.Zone.Increment` is one per frame since 2026-09-24.
 - **22 capture batches lost at shutdown** — `Profiling.Flush` warns that parked workers never hand their last batch (seen before step 2 too).
 - **Decision notes older than this one name `MainTick`** — read it as the Main steps above.
 - **Verified:** builds clean; Thorium boots and prints the 7 stages; GUI — file-tree expand/collapse (in-place `Height`, `Collapsed` via `onDone`), a collapse interrupted by a re-expand ends at full heights, hover highlight, context menu slides open, palette switch crossfades (sidebar sampled 0→5→37→159→223→255 over ~300 ms, no early jump), Settings and Thorium close through their X; `Threads=1` + `MaxFps=120` same visuals; Carbon boots, opens a capture, closes; a loop, a duplicate action and an undeclared `Signals` write each fail as designed. **NOT verified:** the dirty-note prompt's cancel/confirm; dt after a title-bar drag; AuroraEditor not run (its generated schemas are stale until it is).
@@ -148,7 +148,7 @@ Step 1 of [../Context/frame-scheduler-plan.md](../Context/frame-scheduler-plan.m
 **A second `For` while one runs goes inline, not queued.** One chunk slot keeps the claim to a single word; only Animation calls `For` today.
 
 ### Measured (2026-09-24, Debug, zones on, 16 logical cores, 14 workers, uncapped)
-`--profile-scenario=animation`, hold phases, mean ms.
+**Unoptimized Debug JIT** — [[profiling-unoptimized-jit]]; the optimized figures are § Step 4.0. `--profile-scenario=animation`, hold phases, mean ms.
 
 | | 1k | 5k | 20k |
 |---|---|---|---|
@@ -162,11 +162,27 @@ Step 1 of [../Context/frame-scheduler-plan.md](../Context/frame-scheduler-plan.m
 - **Determinism:** with `dt` fixed at 1/120 (scratch, reverted), a checksum over every `Animations` row every 200 frames matched on all 24 samples between `Threads=1` (0 workers) and auto (14 workers).
 
 ### Known gaps
-- `Anim.Step` at 20k is 1.4–1.8 ms, not under 1 ms — the serial emit.
+- ~~`Anim.Step` at 20k is 1.4–1.8 ms, not under 1 ms~~ — **retracted 2026-09-24:** unoptimized Debug JIT; optimized it is 0.24–0.51 ms with 14 workers (§ Step 4.0).
 - `MarkRangeDirty`/`MarkContentDirty` are not refused inside a chunk; they are not thread-safe.
 - A second `For` in the same stage runs inline, unparallelised.
 - `Control.RunClip` keeps held hover/press clip handles like the button did: a clip replaced by another track on the same property is never replayed (`Direct` on dead handles does nothing). No authored UI has both today (only `HoverClip="underline"`).
 - The replace path itself is not exercised by the scenario or checked by hand.
 - Not verified: scheduler overhead since step 3; the DEBUG asserts triggered on purpose; Thorium by hand (the scenario ran start to finish and exited normally).
+
+## Step 4.0 — where the kernel's time goes, optimized (2026-09-24)
+`-p:Optimize=true --no-incremental` (DEBUG asserts on), 16 logical cores, 20k, mean ms over each hold. 4.1–4.3 (column split, per-driver loops, SIMD) not started; the user has not chosen whether to go on.
+
+| 20k | `Threads=1` step / emit | auto step / emit | kernel, auto |
+|---|---|---|---|
+| burst (tween) | 0.30 / 0.15 | 0.24 / 0.15 | 0.09 |
+| state clip | 0.55 / 0.20 | 0.37 / 0.23 | 0.14 |
+| margin clip (in-place writes) | 0.80 / 0.23 | 0.51 / 0.29 | 0.22 |
+| spring | 0.50 / 0.19 | 0.38 / 0.24 | 0.14 |
+
+- **Under 1 ms already, on one thread too.** The Debug tables above overstate everything ~5×.
+- **Little left to vectorise:** the parallel kernel is 0.09–0.22 ms wall; a perfect 2× saves ~0.1 ms. Emit is the larger half and leaves with `Main.Apply`.
+- `WriteTarget` (in-place writes) is ~0.14 ms of the `Threads=1` margin kernel (scratch run with it skipped, reverted); per-driver math is 15–20 ns a track.
+- Per-track math is already 4-wide: `Vector4` maps to `Vector128`. Across-track SIMD would only reach the scalar parts — curve evaluation, spring exp/sin/cos.
+- At 200k see [[animation-core]] § Measured at 200k.
 
 Related: [[cross-system-change-notification]], [[ecs-rework-data-pools]], [[animation-core]], [[engine-profiling]], [[engine-logging]], [[settings-registry]], [[animation-in-place-plan]]

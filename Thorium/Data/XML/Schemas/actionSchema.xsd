@@ -139,7 +139,6 @@
         <xs:restriction base="xs:string">
           <xs:enumeration value="Main.Input" />
           <xs:enumeration value="Main.Logic" />
-          <xs:enumeration value="Main.Apply" />
           <xs:enumeration value="Main.Layout" />
           <xs:enumeration value="Main.DrawLists" />
           <xs:enumeration value="Physics.Step" />

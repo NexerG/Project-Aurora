@@ -4,9 +4,11 @@
 
 	<Pool Name="UIElements" Capacity="1024" Ordered="true" SortAction="UI.ElementOrder" Growth="Multiplicative" GrowthValue="2">
 		<Component Type="ArrangeData"/>
+		<Component Type="LayoutNode"/>
+		<Component Type="VulkanControl"/>
 	</Pool>
 
-	<Pool Name="UIQuads" Capacity="1024" Ordered="false" Growth="Additive" GrowthValue="512">
+	<Pool Name="UIQuads" Capacity="1024" Ordered="false" Growth="Multiplicative" GrowthValue="2">
 		<Component Type="ControlGeometry"/>
 		<Component Type="VulkanControl"/>
 	</Pool>
@@ -15,7 +17,7 @@
 		<Component Type="TransformData"/>
 	</Pool>
 
-	<Pool Name="Paints" Capacity="1024" Ordered="false" Growth="Additive" GrowthValue="512">
+	<Pool Name="Paints" Capacity="1024" Ordered="false" Growth="Multiplicative" GrowthValue="2">
 		<Component Type="GpuPaint"/>
 	</Pool>
 
@@ -27,20 +29,24 @@
 		<Component Type="GpuEffect"/>
 	</Pool>
 
-	<Pool Name="Animations" Capacity="256" Ordered="false" Growth="Additive" GrowthValue="256">
+	<Pool Name="Animations" Capacity="256" Ordered="false" Growth="Multiplicative" GrowthValue="2">
 		<Component Type="AnimationTrack"/>
 	</Pool>
 
-	<Pool Name="Signals" Capacity="64" Ordered="false" Growth="Additive" GrowthValue="64">
+	<Pool Name="Signals" Capacity="64" Ordered="false" Growth="Multiplicative" GrowthValue="2">
 		<Component Type="SignalValue"/>
 	</Pool>
 
-	<Pool Name="Keyframes" Capacity="256" Ordered="false" Growth="Additive" GrowthValue="256">
+	<Pool Name="Keyframes" Capacity="256" Ordered="false" Growth="Multiplicative" GrowthValue="2">
 		<Component Type="Keyframe"/>
 	</Pool>
 
-	<Pool Name="AnimationValues" Capacity="256" Ordered="false" Growth="Additive" GrowthValue="256">
-		<Component Type="AnimationValue"/>
+	<Pool Name="LayoutDirty" Capacity="256" Ordered="false" Growth="Multiplicative" GrowthValue="2">
+		<Component Type="DirtyLayout"/>
+	</Pool>
+
+	<Pool Name="AnimationDone" Capacity="64" Ordered="false" Growth="Multiplicative" GrowthValue="2">
+		<Component Type="FinishedTrack"/>
 	</Pool>
 
 </EnginePools>

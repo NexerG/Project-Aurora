@@ -123,11 +123,16 @@ namespace ArctisAurora.Core.ECS.EngineEntity
             if (_destroyed) return;
             if (parent != null)
             {
+                Entity detachedFrom = parent;
                 parent.children.Remove(this);   // detach the subtree root from the live tree
                 parent = null;
+                detachedFrom.OnChildDetached(this);
             }
             EnqueueSubtree(this);
         }
+
+        // Runs on the parent once Destroy has taken child out of its children.
+        protected virtual void OnChildDetached(Entity child) { }
 
         private static void EnqueueSubtree(Entity entity)
         {
@@ -176,6 +181,7 @@ namespace ArctisAurora.Core.ECS.EngineEntity
         private static readonly Dictionary<Type, Hooks> _hooksByType = new Dictionary<Type, Hooks>();
 
         internal bool tickable => _notifiedEnabled && !_destroyed;
+        internal bool destroyed => _destroyed;
 
         // Runs the queued OnStart once, then settles the entity's first enable notification.
         internal void BeginLife()

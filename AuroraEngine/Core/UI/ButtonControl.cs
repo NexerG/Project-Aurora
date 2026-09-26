@@ -55,25 +55,20 @@ namespace ArctisAurora.Core.UI
                 base.colorHex = value;
                 restColorHex = value;
                 restPaint = Palettes.Inline(value);
-                PaintState();
             }
         }
 
         // 0 rest, 1 hover, 2 press, eased between by the state spring.
-        [A_Animatable]
+        [A_Animatable(typeof(VulkanControl), nameof(VulkanControl.state))]
         public float state
         {
-            get => field;
-            set
-            {
-                field = value;
-                PaintState();
-            }
+            get => visual.state;
+            set => visual.state = value;
         }
 
         public ButtonControl()
         {
-            PaintState();
+            SetPaint(restPaint);
         }
 
         protected override void ApplyRole(PaletteDefinition scheme, uint ground)
@@ -87,7 +82,7 @@ namespace ArctisAurora.Core.UI
                 _stateSpring = AnimationHandle.None;
                 EnsureSpring();
             }
-            PaintState();
+            SetPaint(restPaint);
         }
 
         public override void AddChild(Entity entity)
@@ -158,15 +153,15 @@ namespace ArctisAurora.Core.UI
         }
 
         // Paints the current state. A palette surface blends on the GPU; anything else is mixed here.
-        private void PaintState()
+        internal override void PaintRow(ref VulkanControl row)
         {
             bool fromPalette = restColorHex == null && palette != null && role != PaletteRole.None;
-            float s = Math.Clamp(state, 0f, 2f);
+            float s = Math.Clamp(row.state, 0f, 2f);
 
             if (s == 0f || (fromPalette && hoverColorHex == null && pressColorHex == null && Palettes.IsSurfaceRest(restPaint)))
             {
-                SetPaint(restPaint);
-                visual.state = s;
+                row.paint = restPaint;
+                row.state = s;
             }
             else
             {
@@ -177,12 +172,11 @@ namespace ArctisAurora.Core.UI
                 Vector3 press = pressHex != null ? Control.HexToRGB(pressHex)
                               : fromPalette ? Palettes.ColorOf(Palettes.Step(palette!, restPaint, 2)) : rest;
 
-                SetPaint(Palettes.Inline(s <= 1f ? Vector3.Lerp(rest, hover, s) : Vector3.Lerp(hover, press, s - 1f)));
-                visual.state = 0f;
+                row.paint = Palettes.Inline(s <= 1f ? Vector3.Lerp(rest, hover, s) : Vector3.Lerp(hover, press, s - 1f));
+                row.state = 0f;
             }
 
-            visual.alpha = fromPalette && role == PaletteRole.Clear ? alpha * Math.Min(s, 1f) : alpha;
-            RepaintChildren();
+            if (fromPalette && role == PaletteRole.Clear) row.alpha *= Math.Min(s, 1f);
         }
     }
 }

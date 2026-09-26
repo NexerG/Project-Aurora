@@ -90,7 +90,7 @@ Fix the caret drifting after a wrapped line
 
 **Never add `Co-Authored-By`, `Generated with`, or any other trailer or attribution line.** Your default
 instructions tell you to append one to every commit. That instruction does not apply in this repo and
-CLAUDE.md §9 overrides it. Four commits have already shipped with it by mistake.
+CLAUDE.md §9 overrides it.
 
 ## Pre-commit check
 

@@ -52,12 +52,11 @@ An action is a method of a system tagged `[A_XSDActionDependency("Main.Input", "
 <FrameGraph xmlns="http://arctisaurora/AuroraSystemsTypes">
 	<Dedicated System="Render"/>
 	<Step Action="Main.Input" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints Signals"/>
-	<Step Action="Main.Logic" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints Signals"/>
-	<Step Action="Animation.Step" Reads="Signals Keyframes" Writes="Animations Paints AnimationValues UIElements.ArrangeData"/>
+	<Step Action="Main.Logic" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints Signals AnimationDone"/>
+	<Step Action="Animation.Step" Reads="Signals Keyframes" Writes="Animations Paints UIElements.ArrangeData UIElements.VulkanControl LayoutDirty AnimationDone"/>
 	<Step Action="Physics.Step" Writes="Entities.TransformData"/>
-	<Step Action="Main.Apply" Pinned="true" Reads="AnimationValues" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints"/>
-	<Step Action="Main.Layout" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints"/>
 	<Step Edge="UIElements"/>
+	<Step Action="Main.Layout" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints LayoutDirty"/>
 	<Step Edge="UIQuads"/>
 	<Step Edge="Entities"/>
 	<Step Edge="Gradients"/>
@@ -67,7 +66,7 @@ An action is a method of a system tagged `[A_XSDActionDependency("Main.Input", "
 </FrameGraph>
 ```
 
-The main thread's work is five steps: input, entity logic, applying animation values, layout, and building the draw lists. Input, logic and apply are pinned because they reach GLFW — directly, or through game code and animation callbacks that may; layout and draw lists reach none today but gain nothing from moving, since each main step already waits for the one before it. Entity logic comes before physics, so an entity moved or pushed in its tick reaches physics the same frame; physics lists the transform column for that reason alone.
+The main thread's work is four steps: input, entity logic, layout, and building the draw lists. Input and logic are pinned because they reach GLFW — directly, or through game code and animation callbacks that may, which logic runs first for the animations that finished the frame before; layout and draw lists reach none today but gain nothing from moving, since each main step already waits for the one before it. Entity logic comes before physics, so an entity moved or pushed in its tick reaches physics the same frame; physics lists the transform column for that reason alone.
 
 Only pools whose edge does work get one: pools that free or sort rows, and pools the renderer copies to the GPU. The animation pools have none. Pool sizes still reach the profiler, reported for every pool at the end of the frame.
 
@@ -102,9 +101,9 @@ Place(steps):
 
 Two steps of one system never run at the same time, even when their data would allow it, because a system's private fields are invisible to the column check. The extra wait is only added where it cannot create a loop.
 
-A loop is a mistake in the XML and stops the engine at startup, with a message such as `Animation.Step waits for Main.Apply (Signals.SignalValue) → Main.Apply waits for Animation.Step (UIElements.ArrangeData)`. That one is what happens if a main step after the animation step is allowed to set a signal. Two systems that really need each other's data would read one side through a mailbox pool holding last frame's copy; none exists, because ordering the writes has been enough so far.
+A loop is a mistake in the XML and stops the engine at startup, with a message such as `Animation.Step waits for Main.Layout (Signals.SignalValue) → Main.Layout waits for Animation.Step (UIElements.ArrangeData)`. That one is what happens if a main step after the animation step is allowed to set a signal. Two systems that really need each other's data would read one side through a mailbox pool holding last frame's copy; none exists, because ordering the writes has been enough so far.
 
-The startup log prints the stages, for example `stage 3: Animation.Step, Physics.Step` and `stage 4: Main.Apply (main thread)`.
+The startup log prints the stages, for example `stage 3: Animation.Step, Physics.Step` and `stage 5: Main.Layout (main thread)`.
 
 ## Running a frame
 

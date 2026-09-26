@@ -26,7 +26,7 @@ walk, the cull and painter order are unchanged. **Replaces** the `DrawList` mech
   `WriteArranged` only records the rect and derives the clip. `ClipRect` no longer mirrors anywhere.
 - **z comes from the walk.** `Collect(root, Control.rootDepth)`; a child gets `z + depthStep`.
   `TextRunControl.Emit(z)` puts glyphs at `z + depthStep`, as before.
-- **`visual` stays a plain field** and is copied whole into the row.
+- **`visual` stays stored** and is copied whole into the row — a plain field until 2026-09-25, a `UIElements` column since, with `PaintRow` run on the copy ([[animation-core]] § In place).
 - **`UIEngineModule.MirrorDrawList`** reads `Quads.Backing<T>()` and the range once, clamps count to the geometry
   array, copies `[first, first + count)` to the **same offsets** in its mirrors (`WriteMappedRange` writes at the source
   offset). The draw passes `first` as `firstInstance`; `gl_InstanceIndex` includes it, so no shader change. Mirrors
@@ -76,7 +76,7 @@ Storing it adds a field to `ArrangeData` for what the walk already knows. A drag
 | Parsed paint values as separate fields on `Control` | the same bytes as the struct, more code |
 | A pool per window | runtime registration, no unregister |
 | z as an `ArrangeData` field | a pooled field for a value the walk has |
-| Multiplicative growth | user chose additive, 512 |
+| Multiplicative growth | user chose additive, 512 — **reversed 2026-09-25**, doubles and shrinks → [[pool-shrink]] |
 | Copy the range to mirror offset 0, draw from instance 0 | `WriteMappedRange` writes at the source offset; `firstInstance` needs no helper change |
 
 ## Measured (2026-09-16, Thorium `--profile-scenario --profile-pools`)

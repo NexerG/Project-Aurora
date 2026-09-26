@@ -63,7 +63,6 @@ namespace ArctisAurora.Core.UI
         private Vector2 _origin;
 
         private uint _paint = Palettes.Inline(Vector3.One);
-        private float _alpha = 1f;
 
         // authored text
         public readonly List<StyleSpan> spans = new List<StyleSpan>();
@@ -139,16 +138,6 @@ namespace ArctisAurora.Core.UI
                     _runPaints[i] = paint;
         }
 
-        public override float alpha
-        {
-            get => _alpha;
-            set
-            {
-                _alpha = value;
-                InvalidateArrange();
-            }
-        }
-
         // Replaces the span list and re-measures.
         public void SetSpans(params StyleSpan[] value)
         {
@@ -210,7 +199,7 @@ namespace ArctisAurora.Core.UI
             }
         }
 
-        public override Vector2 Measure(Vector2 availableSize)
+        protected override Vector2 MeasureCore(Vector2 availableSize)
         {
             metrics ??= new FontAssetGlyphMetrics();
 
@@ -238,7 +227,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // Places the text block. The glyphs are cut at emit, against the clip of the moment.
-        public override void Arrange(LayoutRect finalRect)
+        protected override void ArrangeCore(LayoutRect finalRect)
         {
             WriteArranged(finalRect);
             SetFlag(ArrangeFlags.ArrangeDirty, false);
@@ -268,6 +257,8 @@ namespace ArctisAurora.Core.UI
             Vector4 gradientRect = new Vector4(arranged.x, arranged.y, arranged.Right, arranged.Bottom);
             DataPool quads = UIEngine.Quads;
             string s = text ?? string.Empty;
+            float started = visual.effectStart;
+            float alpha = this.alpha;
 
             foreach (TextLine line in _layout.lines)
             {
@@ -294,8 +285,8 @@ namespace ArctisAurora.Core.UI
                         int index = segment.charStart + k;
                         if (index >= s.Length) break;
 
-                        float effectStart = visual.effectStart + (index - run.charStart) * stagger;
-                        pen += WriteGlyph(quads, s[index], run.style, paint, font, run.fontSize, effect, effectStart,
+                        float effectStart = started + (index - run.charStart) * stagger;
+                        pen += WriteGlyph(quads, s[index], run.style, paint, alpha, font, run.fontSize, effect, effectStart,
                                           pen, baselineY, z, clip, gradientRect);
                     }
                 }
@@ -305,7 +296,7 @@ namespace ArctisAurora.Core.UI
         // Cuts one glyph's quad out of the atlas and writes both of its columns, returning the pen
         // advance. Cell geometry is GlyphControl's, which is also what FontAssetGlyphMetrics
         // reproduces — three copies of it would drift.
-        private float WriteGlyph(DataPool quads, char character, FontStyle glyphStyle, uint paint,
+        private float WriteGlyph(DataPool quads, char character, FontStyle glyphStyle, uint paint, float alpha,
                                  FontAsset font, int size, uint effect, float effectStart,
                                  float penX, float baselineY, float z,
                                  Vector4 clip, Vector4 gradientRect)
@@ -369,11 +360,11 @@ namespace ArctisAurora.Core.UI
             v.uvs.uv3 = new Vector2(u0, v1);
             v.uvs.uv4 = new Vector2(u1, v0);
             v.paint = paint;
-            v.alpha = _alpha;
+            v.alpha = alpha;
             v.textureIndex = font.textureAsset.textureIndex;
             v.cornerRadius = Vector4.Zero;
             v.edgePaint = 0;
-            v.edgeThickness = Vector4.Zero;
+            v.edgeThickness = Thickness.Zero;
             v.state = 0f;
             v.effect = effect;
             v.effectStart = effectStart;

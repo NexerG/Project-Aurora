@@ -10,11 +10,6 @@ namespace ArctisAurora.Core.Animation
         None, Tween, Spring, Keyframes
     }
 
-    public enum AnimationOp : byte
-    {
-        Tween, Spring, Retarget, Stop, SetSignal, FadeSlots, Keyframes, Direction
-    }
-
     // One key of a clip track: the value at time, eased toward the next key by curve.
     [StructLayout(LayoutKind.Sequential), A_XSDType("Keyframe", "DataPools")]
     public struct Keyframe
@@ -49,6 +44,7 @@ namespace ArctisAurora.Core.Animation
     {
         public AnimationDriver driver;
         public bool sleeping;
+        public bool mapped;
         public uint generation;
         // signal id a spring takes its target from, -1 for none
         public int follow;
@@ -63,49 +59,37 @@ namespace ArctisAurora.Core.Animation
         // spring
         public float frequency;
         public float damping;
+        // mapped spring: what value.X of 0, 1 and 2 writes
+        public Vector4 rest;
+        public Vector4 hover;
+        public Vector4 press;
         // keyframes
         public int firstKey;
         public int keyCount;
         public ClipLoop loop;
         public sbyte direction;
         public bool hold;
-        // pool row the value is written into, width 0 for none
+        // pool row the value is written into
         public DataHandle target;
         public ushort column;
         public ushort offset;
         public byte width;
+        public LayoutChange changed;
     }
 
-    // Main to Animation: start, retarget or stop a track; set a signal (track is the signal id); fade
-    // count paint slots from track, seeded from source; or play count keys from source, turned later
-    // by Direction.
-    [StructLayout(LayoutKind.Sequential)]
-    public struct AnimationRequest
+    // Animation to layout: a control whose animated write needs a re-measure or re-arrange.
+    [StructLayout(LayoutKind.Sequential), A_XSDType("DirtyLayout", "DataPools")]
+    public struct DirtyLayout
     {
-        public AnimationOp op;
-        public int track;
-        public uint generation;
-        public int follow;
-        public int source;
-        public int count;
-        public Curve curve;
-        public Vector4 from;
-        public Vector4 to;
-        public float duration;
-        public float frequency;
-        public float damping;
-        public ClipLoop loop;
-        public sbyte direction;
-        public bool hold;
+        public DataHandle target;
+        public LayoutChange change;
     }
 
-    // Animation to Main: a track's value this tick.
-    [StructLayout(LayoutKind.Sequential), A_XSDType("AnimationValue", "DataPools")]
-    public struct AnimationValue
+    // Animation to Main: a track that finished.
+    [StructLayout(LayoutKind.Sequential), A_XSDType("FinishedTrack", "DataPools")]
+    public struct FinishedTrack
     {
         public int track;
         public uint generation;
-        public Vector4 value;
-        public bool done;
     }
 }

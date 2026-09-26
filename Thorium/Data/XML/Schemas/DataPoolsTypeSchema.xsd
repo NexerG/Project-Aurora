@@ -21,6 +21,10 @@
   <xs:complexType name="ArrangeData">
     <xs:sequence />
   </xs:complexType>
+  <xs:element name="LayoutNode" type="types:LayoutNode" />
+  <xs:complexType name="LayoutNode">
+    <xs:sequence />
+  </xs:complexType>
   <xs:element name="ControlGeometry" type="types:ControlGeometry" />
   <xs:complexType name="ControlGeometry">
     <xs:sequence />
@@ -88,8 +92,12 @@
   <xs:complexType name="AnimationTrack">
     <xs:sequence />
   </xs:complexType>
-  <xs:element name="AnimationValue" type="types:AnimationValue" />
-  <xs:complexType name="AnimationValue">
+  <xs:element name="DirtyLayout" type="types:DirtyLayout" />
+  <xs:complexType name="DirtyLayout">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="FinishedTrack" type="types:FinishedTrack" />
+  <xs:complexType name="FinishedTrack">
     <xs:sequence />
   </xs:complexType>
 </xs:schema>

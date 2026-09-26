@@ -19,13 +19,14 @@ Steps of `Frame.frame.xml`, in order — [[frame-scheduler]] § Step 2.
 1. `Main.Input` (`Engine.Input`): `InputHandler.ActivateKeybinds` — keybind actions run here, F10 `UI.DumpTree`
    among them; `Engine.HandleUI` → `UIEngine.Poll(window)`, per window — hover, press, release, drag, scroll →
    `Dispatch`; `DragGhost.Follow`, `ContextMenus.Tick`.
-2. `Main.Logic` (`Engine.Interpolate`) — entity lifecycle and `OnTick`. Then `Animation.Step` on a worker: writes
-   pool-stored animated properties (`Width`, `Margin`, …) straight into `ArrangeData`.
-3. `Main.Apply` (`Animations.ApplyValues`) — setter-path values applied, in-place ones invalidated.
-4. `Main.Layout` → `UIEngine.ResolveLayout` — measure + arrange each dirty root.
-5. Pool edges, then `Main.DrawLists` → `UIEngine.BuildDrawLists` — rewind `UIQuads`, DFS each window's root (a drag
+2. `Main.Logic` — `Animations.DrainDone` (last frame's finished tracks: release, `onDone`), then `Engine.Interpolate`
+   — entity lifecycle and `OnTick`. Then `Animation.Step` on a worker: writes pool-stored animated properties
+   (`Width`, `Margin`, …) straight into `ArrangeData`, appending `LayoutDirty` rows.
+3. `Main.Layout` → `UIEngine.ResolveLayout` — `DrainLayoutDirty` invalidates the animated controls, then
+   measure + arrange each dirty root.
+4. Pool edges, then `Main.DrawLists` → `UIEngine.BuildDrawLists` — rewind `UIQuads`, DFS each window's root (a drag
    ghost's `rangeRoot` instead), `Control.Emit(z)` the visible ones into the pool, publish the window's range.
-6. Render thread: `Render.Modules.UIEngineModule` mirrors its `UIQuads` range and draws —
+5. Render thread: `Render.Modules.UIEngineModule` mirrors its `UIQuads` range and draws —
    `*/Shaders/UIEngine/UIEngine.vert|frag`, four copies (`shader-pipeline` skill).
 
 Why: [[ui-draw-list]] § What changed, [[ui-quads-pool]]; [[ui-engine-stack]] § Vocabulary.
@@ -33,17 +34,19 @@ Why: [[ui-draw-list]] § What changed, [[ui-quads-pool]]; [[ui-engine-stack]] §
 ## Core
 
 ### Control — abstract `<Control>` · `ECS.EngineEntity.Entity` · partial with ControlXml
-One tree node. Layout state is its `UIElements` pool row (`arrange` → `ArrangeData`); paint is a plain field
-(`visual` → `VulkanControl`); `ControlGeometry` is built in `Emit`. A plain `Control` takes one child.
+One tree node. Layout state is its `UIElements` pool row (`arrange` → `ArrangeData`, `node` → `LayoutNode`); paint
+is on the same row (`visual` → `VulkanControl`), resolved as it is drawn and finished per drawn row by `PaintRow`;
+`ControlGeometry` is built in `Emit`. A plain
+`Control` takes one child.
 
 | region | holds |
 |---|---|
 | `authored layout` | the inherited XML sizing attrs (see XML authoring); `SetSize`, `SetWidth`, `SetHeight`, `IsWidthStar`, `IsHeightStar` |
-| `paint` | colour, alpha, corner radii, edge, gradient (`gradientId`, word rebuilt in `InheritPaint`); `kind`, `sampler`, `SetUVRect`; palette — `role`, `paletteName`, `ownPalette`, `palette`, `groundBelow`, `colorAuthored`; `PaintOr`, `CopyPaint`; virtual `SetPaint`, `ApplyRole`; `RolePaint`, `InheritPaint`, `RepaintChildren`; shape — `edgeRole`, C#-only `cornerRole`/`accentRole`, `ApplyShape` (from the setters and `InheritPaint`); animation — `effect`/`RestartEffect`, `clip` (played in `OnStart`), `hoverClip`, `pressClip`, `stateBinding`, `RunClip`, `StopClip`, `Interacted` (hooks in the base `OnPointerEnter/Exit/Press/Release`, cleanup in `OnDestroy`) |
+| `paint` | colour, alpha, corner radii, edge, gradient (`gradientId`, word rebuilt in `InheritPaint`); `kind`, `sampler`, `SetUVRect`; palette — `role`, `paletteName`, `ownPalette`, `palette`, `groundBelow`, `colorAuthored`; `PaintOr`, `CopyPaint`; virtual `SetPaint`, `ApplyRole`, `PaintRow` (the drawn row — Clear gate, button state); `RolePaint`, `InheritPaint` (called by `UIEngine.Collect` each frame); shape — `edgeRole`, C#-only `cornerRole`/`accentRole`, `ApplyShape` (from the setters and `InheritPaint`); animation — `effect`/`RestartEffect`, `clip` (played in `OnStart`), `hoverClip`, `pressClip`, `stateBinding`, `RunClip`, `StopClip`, `Interacted` (hooks in the base `OnPointerEnter/Exit/Press/Release`, cleanup in `OnDestroy`) |
 | `layout state` | `arrangedRect`, `DesiredSize`, `ClipRect`; flags `isMeasureDirty`, `isArrangeDirty`, `hidden`; `InvalidateLayout`, `InvalidateArrange`, `Hide`, `Show` |
-| `layout (two-pass)` | `Measure`, `Arrange`, `WriteArranged` (clip and palette inheritance), `ArrangeByAlignment`, `RefreshSubtreeCache`, `Emit` |
+| `layout (two-pass)` | `Measure`, `Arrange` (non-virtual entries), `MeasureCore`, `ArrangeCore` (what a control with its own layout overrides), `WriteArranged` (clip inheritance), `ArrangeByAlignment`, `RefreshSubtreeCache`, `Emit` |
 | `pointer` | `onEnter`…`onScroll` + `RegisterOnX` + virtual `OnPointerX`; `hitTestable`; `ActiveContextTarget`, `takesActiveControl`; `contextMenu`, `stopsContextMenu`; drag: `draggable`, `StartDrag`, `onDrag`, `onDragStop`, `DraggingOverStart`/`DraggingOver`/`DraggingOverEnd`, `FinishDrag`, `DraggedOutOfWindow`/`DraggedIntoWindow`, `ChildDraggedOut` |
-| `tree` | `AddChild` (throws on a second child), `RemoveChild`, `FindByName`, `MarkTreeOrderDirty` |
+| `tree` | `AddChild` (throws on a second child), `RemoveChild`, `OnChildDetached` (a child destroyed while attached — marks order dirty, invalidates layout), `FindByName`, `MarkTreeOrderDirty` |
 
 Static, outside regions: `EnumColorToHex`, `HexToRGB`.
 Why: [[ui-engine-stack]] § landing 2, § landing 3, § landing 6a, § The active context is a question, § The drag gap;
@@ -107,8 +110,8 @@ Why: [[ui-palettes]].
 ## Primitives
 
 - **PanelControl** `<Panel>` · Control — coloured box, at most one child. Old `PanelControl`.
-- **ButtonControl** `<Button>` · PanelControl — panel with hover/press colours.
-  `OnPointerEnter/Exit/Press/Release`. XML `HoverColorHex`, `PressColorHex`. Old `ButtonControl`,
+- **ButtonControl** `<Button>` · PanelControl — panel with hover/press colours; `state` (spring, in place on
+  `visual.state`) is painted by the `PaintRow` override. `OnPointerEnter/Exit/Press/Release`. XML `HoverColorHex`, `PressColorHex`. Old `ButtonControl`,
   [[button-states-and-hover-bubbling]] (old).
 - **CheckBoxControl** `<CheckBox>` · ButtonControl — 18×18 box, a 10×10 mark panel that is not
   hit-tested. `isChecked`, `onChanged(bool)`; a left release toggles. Old `CheckBoxControl`.
@@ -132,8 +135,8 @@ Why: [[ui-palettes]].
 - **TextRunControl** abstract `<TextRun>` · Control — a paragraph as one control, a GPU quad per visible
   glyph. `spans` of `StyleSpan` (`count`, `style`, `colorHex`, `fontName`, `fontSize`, `gradient`,
   `strikethrough`, `stylingType`, `fontSizeAuthored`, `IsBold`/`IsItalic`), `SetSpans`, `style`, `lineHeight`.
-  Regions `layout` (`Measure`, `Arrange`, `Emit`) and `caret geometry` (`IndexAt`, `CaretAt`, `TextOrigin`,
-  `Length`, `Lines`). `OnPointerPress` → `IGlyphPressTarget`. XML `Text`, `FontSize`, `FontName`. **`Measure`
+  Regions `layout` (`MeasureCore`, `ArrangeCore`, `Emit`) and `caret geometry` (`IndexAt`, `CaretAt`, `TextOrigin`,
+  `Length`, `Lines`). `OnPointerPress` → `IGlyphPressTarget`. XML `Text`, `FontSize`, `FontName`. **`MeasureCore`
   returns the last `desired` while the run is clean and its wrap width unchanged** — anything `BuildRuns` reads
   must invalidate layout, which is why `colorHex` does. Why: [[ui-engine-stack]] § landing 4, § landing 6c.
 - **LabelControl** `<Label>` · TextRunControl — read-only text, one line: overrides `Wraps` false, so
@@ -150,7 +153,7 @@ Why: [[ui-palettes]].
 
 - **BlockControl** (no XML) · TextRunControl — one block of a note: the paragraph's string with its runs as
   spans. `stylingType`, `listKind`/`listLevel`/`isChecked`, `ApplyLayout(DocumentLayout)` (list indent as
-  `padding.left`, marker sync), `Measure` (wraps inside the indent), `Arrange` (places the dot or
+  `padding.left`, marker sync), `MeasureCore` (wraps inside the indent), `ArrangeCore` (places the dot or
   `CheckBoxControl` marker child), `AppendRun`, `Runs()`. Region `text and spans`:
   `InsertText`, `RemoveText`, `SplitAt`, `AppendBlock`, `Snapshot`/`SliceSnapshot`/`Restore`/`From`,
   `InsertSlice`/`AppendSlice`, `StyleAt`, `StyleRange`, `SplitSpanAt`, `MergeSpans`. A boundary belongs to the
@@ -172,7 +175,7 @@ Why: [[ui-palettes]].
   `Source`/`LoadPath`/`LoadDocument`, `Save`, `needsNaming`, `FocusCaret`; regions `styling` (forwards under a
   `BeginStep`; also `SetChecked`, `ShiftListLevel`), `selection` (`SelectLine`, `BeginSelectionDrag`, `OnDrag` + autoscroll), `caret movement`
   (`MoveCaret`), `editing` (`Backspace`, `Delete`, `SplitBlock`, `TypeChar`), `history`
-  (`BeginStep`/`Undo`/`Redo`/`MarkDirty`), `focus`. `Arrange` scrolls to the caret and **must never exit with
+  (`BeginStep`/`Undo`/`Redo`/`MarkDirty`), `focus`. `ArrangeCore` scrolls to the caret and **must never exit with
   the arrange flag set**. XML adds `CaretColorHex`, `SelectionColorHex` to the scrollable's. Old
   `DocumentEditorControl`.
 - **DocumentToolbarControl** `<DocumentToolbar>` · StackPanelControl — the format bar for whichever
@@ -197,7 +200,8 @@ Why: [[ui-palettes]].
 ## Layout containers
 
 - **StackPanelControl** `<StackPanel>` · ContainerControl — children in a row or column; star children
-  split what is left by weight; a `hidden` child gets no slot and no spacing. XML `Orientation`, `Spacing`. Old `StackPanelControl`,
+  split what is left by weight; a `hidden` child gets no slot and no spacing. XML `Orientation`, `Spacing` — properties
+  mirrored into the row's `LayoutNode` (`axis`, `spacing`), invalidating layout. Old `StackPanelControl`,
   [[stack-panel-arrange-clamp]] (old).
 - **DockingControl** `<Dock>` · ContainerControl — children docked by their `DockMode`. XML
   `LastChildFill`. Old `DockingControl`.
@@ -242,7 +246,7 @@ Why: [[ui-palettes]].
 ## Window chrome and shell
 
 - **WindowFrameControl** `<WindowFrame>` · ContainerControl — resize grips on an undecorated window's
-  edges, with cursor shapes. `Measure`, `Arrange`; private `EnsureGrips`, `BeginResize`, `ApplyResize`. Old
+  edges, with cursor shapes. `MeasureCore`, `ArrangeCore`; private `EnsureGrips`, `BeginResize`, `ApplyResize`. Old
   `WindowFrameControl`, [[window-frame-resize]] (old).
 - **TitleBarControl** `<TitleBar>` · StackPanelControl — a left press hands the window to the OS
   caption-drag loop (`os.DragByCaption`); `Pump` keeps layout and draw lists running inside it. Old
@@ -276,7 +280,7 @@ Why: [[ui-palettes]].
   `open and close`, `input`. Why: [[context-menus]].
 - **ContextMenuControl** (no XML) · StackPanelControl — one menu panel at a `depth`; a nested
   `Row` : ButtonControl per entry (enter → `Entered` opens a submenu, release → `Clicked`; binding
-  `menu-row`). `reveal` (0–1, clip `menu-open`) slides it down: `Arrange` shifts it up and `ClipSubtree`s
+  `menu-row`). `reveal` (0–1, `ArrangeData.reveal`, clip `menu-open`) slides it down: `ArrangeCore` shifts it up and `ClipSubtree`s
   it at its anchor. Old `ContextMenuControl`.
 - **ContextMenuEntries** — the menu document: root `<ContextMenu>` (`ContextMenu`); entries
   (`ContextMenuEntry`) `<ContextButton Text Action>` (`ContextMenuButton`), `<ContextLine>`

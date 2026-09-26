@@ -83,9 +83,9 @@ namespace ArctisAurora.Core.UI
 
         // The root measures at the box it was fitted to. preferredWidth/Height are the design size
         // ViewportSize reads, not a cap the tree inherits.
-        public override Vector2 Measure(Vector2 availableSize)
+        protected override Vector2 MeasureCore(Vector2 availableSize)
         {
-            if (windowingMode == WindowingMode.KeepLocal) return base.Measure(availableSize);
+            if (windowingMode == WindowingMode.KeepLocal) return base.MeasureCore(availableSize);
 
             Thickness pad = arrange.padding;
             Vector2 inner = new Vector2(
@@ -101,7 +101,7 @@ namespace ArctisAurora.Core.UI
             return availableSize;
         }
 
-        public override void Arrange(LayoutRect finalRect)
+        protected override void ArrangeCore(LayoutRect finalRect)
         {
             WriteArranged(finalRect);
 

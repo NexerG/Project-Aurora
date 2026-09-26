@@ -94,7 +94,7 @@ namespace ArctisAurora.Core.UI
                 columnDefinitions.Add(new ColumnDefinition { sizeMode = GridSizeMode.Star, value = 1 });
         }
 
-        public override Vector2 Measure(Vector2 availableSize)
+        protected override Vector2 MeasureCore(Vector2 availableSize)
         {
             EnsureDefaults();
 
@@ -167,7 +167,7 @@ namespace ArctisAurora.Core.UI
             return arrange.desired;
         }
 
-        public override void Arrange(LayoutRect finalRect)
+        protected override void ArrangeCore(LayoutRect finalRect)
         {
             EnsureDefaults();
             WriteArranged(finalRect);

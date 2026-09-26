@@ -226,7 +226,7 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- layout ----
-        public override Vector2 Measure(Vector2 availableSize)
+        protected override Vector2 MeasureCore(Vector2 availableSize)
         {
             float w = preferredWidth > 0 ? preferredWidth : MathF.Max(minWidth, availableSize.X);
             float h = preferredHeight > 0 ? preferredHeight : MathF.Max(minHeight, availableSize.Y);
@@ -238,7 +238,7 @@ namespace ArctisAurora.Core.UI
             return arrange.desired;
         }
 
-        public override void Arrange(LayoutRect finalRect)
+        protected override void ArrangeCore(LayoutRect finalRect)
         {
             WriteArranged(finalRect);
 

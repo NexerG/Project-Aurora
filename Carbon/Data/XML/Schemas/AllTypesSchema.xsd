@@ -177,6 +177,7 @@
       <xs:enumeration value="GpuGradient" />
       <xs:enumeration value="GpuPaint" />
       <xs:enumeration value="ArrangeData" />
+      <xs:enumeration value="LayoutNode" />
       <xs:enumeration value="ControlGeometry" />
       <xs:enumeration value="VulkanControl" />
       <xs:enumeration value="PoolGrowthType" />

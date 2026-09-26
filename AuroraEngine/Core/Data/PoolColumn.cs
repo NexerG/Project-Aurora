@@ -36,7 +36,7 @@ namespace ArctisAurora.Core.Data
         public void Grow(int newCapacity)
         {
             T[] bigger = new T[newCapacity];
-            Array.Copy(data, bigger, data.Length);
+            Array.Copy(data, bigger, Math.Min(data.Length, newCapacity));
             data = bigger;
             _scratch = new T[newCapacity];
         }

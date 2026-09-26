@@ -26,6 +26,11 @@ namespace ArctisAurora.Core.UI
             return caption;
         }
 
+        protected override void SetCaption(Control caption, string header)
+        {
+            if (caption is EditableLabelControl label) label.text = header;
+        }
+
         protected internal override TabViewControl NewOfSameKind() => new EditableTabsControl();
 
         private static void BeginRename(TabItemControl item, EditableLabelControl caption)

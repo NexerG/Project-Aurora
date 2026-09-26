@@ -119,6 +119,7 @@
   </xs:complexType>
   <xs:attributeGroup name="Button.Attributes">
     <xs:attributeGroup ref="EntityRegistry:Control.Attributes" />
+    <xs:attribute name="Enabled" type="xs:boolean" />
     <xs:attribute name="HoverColorHex" type="xs:string" />
     <xs:attribute name="PressColorHex" type="xs:string" />
   </xs:attributeGroup>

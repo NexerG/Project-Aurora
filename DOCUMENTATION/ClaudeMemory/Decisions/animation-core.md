@@ -1,9 +1,62 @@
-# Decision — animation is its own system, steered by requests Main writes, values applied by Main (posted until 2026-09-23)
+# Decision — animation is its own system, steered by track rows Main writes and wakes, values written in place (applied by Main until 2026-09-26, posted until 2026-09-23)
 
 **Date:** 2026-09-19
-**Scope:** `ArctisAurora.Core.Animation` — `AnimationSystem`, `Animations`, `Curve`, `EaseKind`, `Spring`, `AnimationTrack`, `AnimationRequest`, `AnimationValue`, `A_Animatable`, `AnimatableProperty`, `AnimationLibrary`, `ClipDefinition`, `BindingDefinition`, `Keyframe`, `ClipLoop`, `StateBinding`; `ArctisAurora.Core.UI` — `Control` (`clip`, `hoverClip`, `pressClip`, `stateBinding`); `ArctisAurora.Core.Threading` — `ThreadedSystem` (`Post`, `OnPost`, `Drain`), `MainSystem.OnPost`; `ArctisAurora.Core.Data` — `DataManager.FrameEdge(owner)`, `Commands.CommandOp.Post`, `SystemCommand.Post`; `Engine`; `UI.Control`; data `AuroraEngine/Data/XML/Documents/Pools.pools.xml`
+**Scope:** `ArctisAurora.Core.Animation` — `AnimationSystem`, `Animations`, `Curve`, `EaseKind`, `Spring`, `AnimationTrack`, `DirtyLayout`, `FinishedTrack`, `LayoutChange`, `A_Animatable`, `AnimatableProperty`, `AnimationLibrary`, `ClipDefinition`, `BindingDefinition`, `Keyframe`, `ClipLoop`, `StateBinding`, `Signals`; `ArctisAurora.Core.UI` — `Control` (`clip`, `hoverClip`, `pressClip`, `stateBinding`, `visual`, `alpha`, `edgeThickness`, `PaintRow`), `ButtonControl` (`state`, `PaintRow`), `ContextMenuControl` (`reveal`), `ArrangeData`, `TextRunControl`, `VulkanControl`, `UITreeDump`, `UIEngine.ResolveLayout`; `ArctisAurora.Core.Threading` — `ThreadedSystem` (`Post`, `OnPost`, `Drain`), `MainSystem.Logic`; `ArctisAurora.Core.Data` — `DataManager.FrameEdge(owner)`, `Commands.CommandOp.Post`, `SystemCommand.Post`; `Engine`; `UI.Control`; data `AuroraEngine/Data/XML/Documents/Pools.pools.xml`
 
 Slice 3 of [../Context/animation-plan.md](../Context/animation-plan.md).
+
+## Drained pools — layout dirtying and `onDone`; `Main.Apply` gone (2026-09-26)
+A5–A7 of [[animation-in-place-plan]]. Supersedes § Step 2's `AnimationValues` pool, `OnValue` and "invalidate at the end" in `Main.Apply`; § Awake list's "appends values" and the `AnimationValue.value` line.
+- **`A_Animatable(column, field, LayoutChange changed = None)`.** `LayoutChange { None, Measure, Arrange }` replaces the method name; `InPlace` compiles nothing. `Start` copies it into `AnimationTrack.changed`. `Control` `Width Height MinWidth MinHeight Margin Padding` → `Measure`; `HorizontalPos VerticalPos`, `ContextMenuControl.reveal` → `Arrange`.
+- **`LayoutDirty` pool** (`DirtyLayout { DataHandle target; LayoutChange change }`, handle-less). `Emit` appends one row per stepped track with `changed != None`, finishing steps included. `UIEngine.ResolveLayout` drains it first (`DrainLayoutDirty`: `UIElements.DenseOf` → `OwnerAt`, skips dead handles and destroyed controls, then `InvalidateLayout`/`InvalidateArrange`) and rewinds it. The layout algorithm is unchanged; duplicate rows cost the invalidation's early return.
+- **`AnimationDone` pool** (`FinishedTrack { int track; uint generation }`, handle-less). `Emit` appends where a tween or non-held clip finishes. `Animations.DrainDone` runs first in `Main.Logic`: `IsLive` → `Release` → `onDone`, then rewinds. **`onDone` fires the frame after the final value**, since `Main.Logic` precedes `Animation.Step`. A replaced or stopped track fails `IsLive` and its `onDone` never runs, as before.
+- **Deleted:** `Main.Apply` (action and step), `Animations.ApplyValues`/`OnValue`/`Values`, `AnimationValue`, pool `AnimationValues`, the `Anim.ValueApplied` counter.
+- **Graph:** `Main.Logic` += `AnimationDone`; `Animation.Step` writes `Animations Paints UIElements.ArrangeData UIElements.VulkanControl LayoutDirty AnimationDone`; `Main.Layout` += `LayoutDirty`. Still 7 stages — `Edge.UIElements` takes `Main.Apply`'s place.
+- **Each consumer rewinds its own pool**, so a row lives from the append to the next drain: `LayoutDirty` within the frame, `AnimationDone` across one frame boundary.
+
+**Known gaps**
+- **Not measured** (user: no profiling) — `Emit` now appends only dirty and done rows instead of a value per stepped track.
+- `LayoutDirty` and `AnimationDone` have no edge step either ([[pool-shrink]] § Known gaps).
+- **Verified**: Debug build clean; `--profile-scenario=animation` (ladder to 20k, margin and state tweens, clips, springs) ran to exit 0 with no `AssertAccess` hit; boot errors only the known sampler + barrier set. **NOT GUI-verified**: file-tree collapse and `Collapsed` via `onDone`, menu slide, theme crossfade, press colours, state bindings.
+
+## Awake list — calls write and wake track rows; state bindings and `reveal` in place (2026-09-25)
+A4 of [[animation-in-place-plan]], grown by two forks (user). Supersedes § Step 2's `Animations.Write(in AnimationRequest)` and "setter path stays", and § In place's "still on the setter path".
+- **No request struct.** `AnimationRequest`, `AnimationOp` and `Write`'s switch are gone. `Tween`/`Spring`/`Play` build an `AnimationTrack` and `Start` it (`Row(id)` appends up to the id, new rows asleep; `Start` stamps generation and target). `Retarget`/`Direct` edit the row through `Row` and wake it; `Stop` sets `driver = None`. The row-side generation checks went — `IsLive` on Main guarantees them now that writes are immediate. `Signals.Set` writes its own row; `FadeSlots` calls `AnimationSystem.SeedFade(source, first, count, duration, curve)`. `Anim.Request` still counts each track write, signal set and fade.
+- **Awake list (physics-style sleep).** `Animations.Awake` holds the ids the step visits; a row's `sleeping` is false exactly while its id is on it. `Wake(id)` pushes a sleeping track; `Start` keeps the row's list membership across the overwrite, so a stopped id reused the same frame is not pushed twice. `Animation.Step` runs `Jobs.For` over the list, not the rows; `Emit` walks it serially, appends values, retires finished tracks and compacts it (`KeepAwake`). A settled spring or a held clip at an end drops off and costs nothing until woken.
+- **Waking.** Tweens and clips wake at start; a spring starts asleep unless its signal already differs from its value (`Signals.Differs`), the old scan's rule. `Retarget`, `Direct` and a changed `Signals.Set` wake; a `Set` to the same value wakes nothing. Followers: `Animations.followers` (signal id → `HashSet` of track ids, so `Release` is O(1)), kept by `Start`/`Release` through `Binding.follow`. An awake follower still reads its signal every step.
+- **State bindings are mapped springs.** `StateBinding` holds a signal and one `Animations.Spring(target, property, …, follow, rest, hover, press)` per `BindingTrack`. A mapped track springs `s = value.X` over 0/1/2 and `WriteTarget` writes `s ≤ 1 ? lerp(rest, hover, s) : lerp(hover, press, s − 1)` — the old `Apply()`. Its `AnimationValue.value` carries `s`; only `changed` reads the row.
+- **`reveal` is `ArrangeData.reveal`**, tagged `[A_Animatable(typeof(ArrangeData), nameof(ArrangeData.reveal), nameof(InvalidateArrange))]`; `ContextMenuControl.ArrangeCore` reads it through the getter. Rows are zeroed on `Allocate`, so it starts at 0.
+- **Every animatable property is pool-stored (fork b).** `A_Animatable()` is gone, `column`/`field` non-nullable; `AnimatableProperty` is `get` plus the field (`set`, `FromVector` gone); `OnValue` only calls `changed`; `WriteTarget` has no `width > 0` guard.
+- **Rows:** `AnimationTrack` +48 B (`mapped` sits in existing padding); `ArrangeData` +4 B.
+
+**Why the awake list over keeping the scan (user chose B over A).** The scan visited every row up to the high-water mark of track ids ([[pool-shrink]] § Known gaps), sleeping or stopped; the list costs what moves. Every hovered button and bound control holds a spring that sleeps most of its life. Not renamed to `awake`: `sleeping` already meant "not stepped" and only needed new rows appended asleep.
+
+**Known gaps**
+- **Binding springs are bound to `(control, property)`**, so `StopAll(control)` or a later tween/clip on a bound property stops them for good; `StateBinding` does not re-spring (`ButtonControl.EnsureSpring` does). No current control hits it.
+- **Value order is wake order, not track order**, so `OnValue`'s `changed`/`onDone` calls follow it.
+- **The awake list is plain C# state**, ordered only because every caller and `Animation.Step` declare `Animations` (as `_fades` with `Paints`); DEBUG `AssertAccess` does not see it.
+- A signal set and set back within one frame wakes its followers for one step; the scan would not have.
+- `Animations.Retarget` has no caller.
+- **Not measured** (no profiling asked): list vs scan; the 200k tables below predate it.
+- **Verified**: build clean; `--profile-scenario=animation` (ladder to 20k) ran to exit 0; Thorium boot-verified with a clean shutdown. **NOT GUI-verified** (user skipped): binding hover/press, menu slide-open, hover clips, file-tree tweens, theme fade.
+
+## In place — `visual` a `UIElements` column; alpha, edge, button state (2026-09-25)
+A1–A3 of [[animation-in-place-plan]]. Supersedes § Step 2's "setter path stays" for `Control.alpha`, `Control.edgeThickness`, `ButtonControl.state`; still on the setter path: `ContextMenuControl.reveal`, `StateBinding.state` (both moved in A4, § Awake list).
+- **`VulkanControl` is a `UIElements` column.** `Control.visual` is `Pool.GetRef<VulkanControl>(dataHandle)`; the `_visual` field is gone. `Emit` copies it into the `UIQuads` row, then runs `PaintRow(ref row)` on the copy, before the gradient words.
+- **`[A_Animatable(column, field)]`** — `changed` is optional; `InPlace` compiles no call without it. `OnValue` calls the setter only when `width == 0`, else `changed` if there is one.
+- **In place on `VulkanControl`:** `Control.alpha`, `Control.edgeThickness`, `ButtonControl.state`. `VulkanControl.edgeThickness` is a `Thickness` (was `Vector4` — same 16 B and order, the shader still reads a `vec4`), because `InPlace` requires the property's type. `Animation.Step` declares `UIElements.VulkanControl`.
+- **The column holds what was authored or animated; the drawn row is derived.** `Control.PaintRow` zeroes an unauthored Clear role's alpha (was the `alpha` setter, `colorHex`, `ApplyRole`). `ButtonControl.PaintRow` is the old `PaintState` on the row: rest paint + raw `s` for a palette surface rest (GPU blend), a CPU lerp and `state = 0` otherwise, `alpha × min(s, 1)` for a Clear palette button. `ApplyRole` and the constructor write `restPaint` to the column.
+- **`TextRunControl`'s `alpha` override removed** — it kept `_alpha` apart from the column, so an in-place write would have bypassed it. Glyphs take the column's alpha, read once per `Emit`, as is `effectStart`.
+- **`UITreeDump` dumps `visual` passed through `PaintRow`**, so its `Paint`/`Alpha` stay what is drawn.
+
+**The button blend stays on the CPU (fork 3 → b, user).** Paint-at-draw already ran `PaintState` for every drawn palette button every frame, so moving it to `Emit` adds work only for authored-colour buttons off rest. The shader route would have put hover/press words on every quad row, glyphs included — what [[ui-palettes]] rejected on 2026-09-19.
+
+**Known gaps**
+- **Not measured** (user): every `visual` access is a `Dictionary<Type>` pool lookup, as `arrange` already was — ~4–5 per drawn control per frame; `UIElements` rows +96 B (the `Control` object −96 B), and resequencing moves the column.
+- A hovered button with authored state colours hands its children its rest colour as ground for ink contrast, not the blended one; palette buttons already did.
+- `visual` read on a destroyed control after its row is freed throws or reads another row — as `arrange` already did.
+- `ApplyShape` rewrites `edgeThickness` every drawn frame on `accentRole` controls (`TabViewControl` tabs, `FileBrowserControl` rows), so an edge animation there loses — before and after.
+- **Verified**: Debug build clean; Thorium and Carbon boot-verified. **GUI-verified** (Thorium, capture): menu-button hover fade, its `underline` clip in place and its reversal; `menu-row` binding (edge bar, padding) and its return to rest; a toolbar Clear button's hover (pixel diff); tab and window close red hover (CPU lerp); `Add vault` Chrome GPU blend + `chrome-press` edge; the caret blink (`alpha` setter). **NOT GUI-verified**: press colours in detail, theme crossfade, disabled-button dimming, profile scenarios and the tree-dump compare (not run).
 
 ## Step 2 of the frame scheduler — requests written in place, values read from a pool (2026-09-23)
 Supersedes every `Post`/`OnPost`/lane path below, the push-vs-pull choice, `FadeSeeded`, and the 682-start / ~1,024-value ceilings. See [[frame-scheduler]] § Step 2.
@@ -26,7 +79,7 @@ Supersedes every `Post`/`OnPost`/lane path below, the push-vs-pull choice, `Fade
 - **Main → Animation:** `AnimationRequest` (`Tween`, `Spring`, `Retarget`, `Stop`), post kind `AnimationSystem.requestKind`.
 - **Animation → Main:** `AnimationValue` (track, generation, value, done), post kind `valueKind`, one per active track per tick. `MainSystem.OnPost` → `Animations.OnValue` → the property setter, during Main's `Drain` — before input, `OnTick` and `ResolveLayout`.
 - **Ids and bindings live on Main** (`Animations`): a free list of ids, each with target, `AnimatableProperty` and a generation bumped per start. A value whose generation does not match is dropped, so a recycled id never takes the old track's value. A tween's `done` frees its id after the final value applies. `Stop` frees at once.
-- **API (Main thread only):** `Tween(target, property, Vector4 to, seconds, Curve, Action? onDone)` (`onDone` runs once after the final value applies; never on `Stop`), `StopAll(target)` (called from `Control.OnDestroy`, so no ad-hoc tween writes into a destroyed control), `Spring(target, property, frequency, damping)` (rests at the current value), `Retarget(handle, Vector4)`, `Stop(handle)`. Start returns an `AnimationHandle(id, generation)`, `AnimationHandle.None` when the post was refused; a handle whose generation no longer matches is ignored (user, 2026-09-19 — rejected: a bare int id, which a finished tween's reuse made unsafe).
+- **API (Main thread only):** `Tween(target, property, Vector4 to, seconds, Curve, Action? onDone)` (`onDone` runs once after the final value applies; never on `Stop`), `StopAll(target)` (called from `Control.OnDestroy`, so no ad-hoc tween writes into a destroyed control; looks up only that target's tracks through `byTarget`, 2026-09-24), `Spring(target, property, frequency, damping)` (rests at the current value), `Retarget(handle, Vector4)`, `Stop(handle)`. Start returns an `AnimationHandle(id, generation)`, `AnimationHandle.None` when the post was refused; a handle whose generation no longer matches is ignored (user, 2026-09-19 — rejected: a bare int id, which a finished tween's reuse made unsafe).
 - **Drivers.** Tween: `Lerp(from, to, Curve.Evaluate(curve, elapsed / duration))`, done at 1. Spring: `Spring.Step`, exact damped-oscillator solution (under, critical within 1e-4, over), dt-independent; settles under 1e-3 distance and speed, snaps to target and sleeps until retargeted — it does not finish, so its id stays valid.
 - **Backpressure.** A value post that fails leaves the track as it was; a finishing tween or settling spring retires only after its final post succeeds, so the last value is re-sent next tick rather than lost.
 - **Curves.** `EaseKind`: `Linear`; `Sine Quad Cubic Quart Quint Expo Circ Back Elastic Bounce` × `In Out InOut`; `CubicBezier` (Newton, bisection fallback); `Steps` (jump-end). `Out(t) = 1 − In(1 − t)`, `InOut` mirrors `In` — one formula per family.
@@ -126,9 +179,43 @@ Supersedes every `Post`/`OnPost`/lane path below, the push-vs-pull choice, `Fade
 - **~0.34 µs per stepped track**, so the thread holds 120 Hz to ~24k active tracks. At 200k (partial run) it was 66 ms (15 Hz).
 - **Applying a value costs ~0.55 µs.** It is never the bottleneck.
 - **Layout cost follows the tree, not the changes.** ~1,000 margins change a tick at every size, and `ResolveLayout` still grows 2.3 → 11.6 → 49 ms. Each invalidation climbs to the root stack, and that re-arranges every row. This is a layout issue that animation exposes.
-- **`StopAll` is O(bindings) per call.** `Control.OnDestroy` calls it, so destroying a subtree is O(subtree × bindings). The teardown hitch fits that: ~5.5 ns per comparison at both 5k × ~5k and 20k × ~21k. This is the likely cause, **not isolated** (no zone inside `OnDestroy`). `bindings` never shrinks, so after one large burst every later destroy pays its high-water mark.
+- **`StopAll` was O(bindings) per call** — closed 2026-09-24: `Animations.byTarget` (target → live track ids, kept in `Bind`/`Release`) makes it O(that target's tracks). 200k teardown 267 s → 78 s; the rest was entity-group removal, closed 2026-09-24 by the tick list → [[entity-tick-group]]. See § Measured at 200k.
 - **Slot fade over every paint slot is negligible.** The Animation frame mean was 0.04 ms.
 - `Interpolate` with no layout work: 1.65 ms at 20k controls, 12.5 ms at 200k. This is the entity tick loop, i.e. [[entity-tick-group]] measured.
 - Today's UI runs tens of tracks and everything stays well under a millisecond. The first real-use limit is the 682 start ceiling, e.g. a folder of more than 682 rows expanding in one tick. **Both ceilings are gone since 2026-09-23** — see § Step 2 of the frame scheduler and [[frame-scheduler]] § Step 2 Measured.
+- **The table above is unoptimized Debug JIT** — see [[profiling-unoptimized-jit]]; § Measured at 200k is not.
+
+## Measured at 200k (2026-09-24, optimized JIT)
+
+`--profile-scenario=animation` with a scratch ladder `{ 20000, 200000 }`, `dotnet build -p:Optimize=true --no-incremental` (DEBUG and its asserts still on), 16 logical cores. Mean ms per frame over each 240-tick hold.
+
+| 200k, `Threads=1` → auto | Frame | `Anim.Step` | `Anim.Emit` | `Main.Apply` | `Main.Layout` | `Main.Logic` |
+|---|---|---|---|---|---|---|
+| burst (tween) | 23.4 / 23.5 | 4.7 / 4.4 | 3.8 / 3.8 | 0.2 | — | 17.7 (tweens finishing, `onDone`) |
+| state clip | 48.4 / 46.0 | 7.5 / 4.4 | 2.9 / 3.2 | 36.9 | — | 3.4 |
+| margin clip | 253.9 / 238.3 | 9.7 / 5.5 | 2.8 / 3.2 | 45.1 | 195.1 | 3.2 |
+| spring | 10.7 / 10.2 | 2.0 / 1.2 | 0.4 / 0.4 | 4.7 | — | 3.2 |
+
+- **Animation itself is the small part.** The margin frame is layout 195 (arrange 101, measure 41, `SubtreeCache` 24, `VerifyCache` 29 — `[Conditional("DEBUG")]`), `Main.Apply` 45, `Anim.Step` 10.
+- **The run took 10.5 min, 612 s of it at 200k, and 475 s was not animating:** teardown 267 s (30 frames, 8.9 s each, all `Main.Logic`) and stopping handles 209 s (2,401 frames at 250 a tick, layout still running).
+- **Teardown was two quadratics.** `StopAll` per destroyed control over every binding (fixed, `byTarget`), and `EntityGroup.Remove` → `List.Remove` over 200k entities per destroy — one 78 s frame here; closed 2026-09-24, the `"Entities"` list is deleted → [[entity-tick-group]].
+- **The tick loop was 3.3 ms a frame at 200k** with nothing ticking — every entity visited for its `tickable` flag; since 2026-09-24 only opted-in entities are walked → [[entity-tick-group]].
+- **`Main.Apply` ~0.19 µs per value.** One `Profiling.Zone.Increment` per value (two string-tuple dictionary lookups) was part of it; it is now one per frame: state hold 37.6 → 23.2 ms, margin 45 → 30 ms.
+- **Emit does not parallelise** (~3 ms serial at 200k), so `Anim.Step` only goes 7.5 → 4.4 ms from 1 to 14 workers. Leaves with `Main.Apply` ([[animation-in-place-plan]]).
+- **Render redraws unpaced while Main has nothing new** — ~3,500 frames a second against Main's 4. The Render lane is 275k frames per 64 MB capture file, so a 200k capture rolls across eight folders.
+- **After the fixes** (`byTarget`, one `Increment`, scenario batches scaled to N — ~20 ticks a ramp, ~80 a stop pass): 176 s at 200k, run 3.2 min; teardown 78 s in one frame; `StopAll` stage 230 → 35 ms a frame.
+- **Verified:** scenario ran to completion at 20k and 200k, exit 0. **NOT verified:** `StopAll` from real UI (file-tree collapse, destroy mid-animation) by hand.
+
+## Measured at 200k (2026-09-25, Release+PROFILE, after the tick list and pool doubling)
+
+| 200k, ms/frame | Frame | `Anim.Step` (`Emit`) | `Main.Apply` | `Main.Layout` (measure / arrange / subtree) | `DrawLists` |
+|---|---|---|---|---|---|
+| state hold | 25.0 | 3.7 (2.5) | 20.6 | — | 0.6 |
+| margin hold | 118 | 4.9 (2.5) | 19.8 | 92.5 (23 / 53 / 16) | 0.7 |
+| spring hold | 7.3 | 1.5 (0.6) | 5.1 | — | 0.7 |
+
+- Run 1:02 (optimized Debug 1:48, before 3.2 min). Teardown worst frame 49 ms (was 78 s) — [[entity-tick-group]].
+- **Burst worst frame 4,658 → 192 ms.** It was 200k `Tween`s 3.65 s + first `Emit` 937 ms, both additive +256 pool growth → [[pool-shrink]].
+- **Layout is ~0.46 µs per control on a full relayout**; every `arrange` access is a `Dictionary<Type>` column lookup, and `Measure`/`Arrange` recurse into clean children. 1M in 1 ms is ~1 ns per control — not reachable by relayout; see the WIP layout entry.
 
 Related: [[ui-palettes]], [[ui-gradients]], [[ecs-rework-data-pools]], [[cross-system-change-notification]], [[entity-tick-group]], [[engine-profiling]]

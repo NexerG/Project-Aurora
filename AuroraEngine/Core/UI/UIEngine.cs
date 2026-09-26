@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Animation;
 using ArctisAurora.Core.Data;
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.ECS.EngineEntity;
@@ -19,9 +20,11 @@ namespace ArctisAurora.Core.UI
 
         private static DataPool _elements;
         private static DataPool _quads;
+        private static DataPool _layoutDirty;
 
         public static DataPool Elements => _elements ??= DataManager.Get("UIElements");
         public static DataPool Quads => _quads ??= DataManager.Get("UIQuads");
+        private static DataPool LayoutDirty => _layoutDirty ??= DataManager.Get("LayoutDirty");
 
         #region ---- layout ----
         private static readonly HashSet<Control> _dirtyRoots = new HashSet<Control>();
@@ -31,6 +34,8 @@ namespace ArctisAurora.Core.UI
         // Measures and arranges every dirty subtree, then refreshes its collision caches.
         public static void ResolveLayout()
         {
+            DrainLayoutDirty();
+            LayoutEngine.BuildStructure();
             if (_dirtyRoots.Count == 0) return;
 
             Control[] roots = new Control[_dirtyRoots.Count];
@@ -42,7 +47,7 @@ namespace ArctisAurora.Core.UI
                 // A control with an owner is not a root. Every control registers itself when it is
                 // constructed, before it is attached; resolving one of those here measures it at
                 // infinity and arranges it at the origin, behind the owner that lays it out.
-                if (root.parent is Control) continue;
+                if (root.parent is Control || root.destroyed) continue;
 
                 Profiling.Zone.Increment("Root");
 
@@ -83,6 +88,26 @@ namespace ArctisAurora.Core.UI
                 VerifySubtreeCache(root);
                 Profiling.Zone.End("Layout.VerifyCache");
             }
+        }
+
+        // Invalidates the controls Animation wrote this frame.
+        private static void DrainLayoutDirty()
+        {
+            DataPool pool = LayoutDirty;
+            int count = pool.Count;
+            if (count == 0) return;
+
+            DataPool elements = Elements;
+            DirtyLayout[] rows = pool.Backing<DirtyLayout>();
+            for (int i = 0; i < count; i++)
+            {
+                int dense = elements.DenseOf(rows[i].target);
+                if (dense < 0 || elements.OwnerAt(dense) is not Control control || control.destroyed) continue;
+
+                if (rows[i].change == LayoutChange.Measure) control.InvalidateLayout();
+                else control.InvalidateArrange();
+            }
+            pool.Rewind();
         }
 
         // Recomputes the caches independently and reports a mismatch. The maintained values are the
@@ -620,6 +645,7 @@ namespace ArctisAurora.Core.UI
             ref ArrangeData a = ref control.arrange;
             if (!a.subtreeBounds.Overlaps(a.clip)) return 0;
 
+            control.InheritPaint();
             control.Emit(z);
             if (a.arranged.width < detailCullSize || a.arranged.height < detailCullSize) return 1;
 

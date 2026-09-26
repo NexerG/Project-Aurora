@@ -36,10 +36,17 @@ namespace ArctisAurora.Core.Data
         private object[] _owners;  // dense index -> proxy back-reference (managed sidecar)
         private int[] _permuteScratch;    // resequence scratch
         private object[] _ownersScratch;
-        private readonly Stack<int> _freeIds = new();
+        private readonly PriorityQueue<int, int> _freeIds = new(); // lowest stableId first
         private int _highStableId; // next never-issued stableId
         private int _count;
         private int _capacity;
+        private readonly int _initialCapacity;
+        private int _versionFloor = 1;
+
+        // shrink window
+        public const double ShrinkAfterSeconds = 2.0;
+        private long _lowSince;
+        private int _lowPeak;
         private readonly int _slotBytes;
 
         private readonly HashSet<int> _pendingFree = new();
@@ -83,7 +90,7 @@ namespace ArctisAurora.Core.Data
         //
         // A bitset would be a quarter the size but cannot see ABA: free slot 5 and reallocate it
         // before the next frame edge and the bit reads 1 both times while the occupant changed. Not
-        // a corner case — _freeIds is LIFO, so a just-freed slot is the first one reissued. The
+        // a corner case — _freeIds hands out the lowest id, so a freed low slot is reissued next. The
         // version makes that show up as a destroy plus a create, which is what it is.
         private int[] _publishedSlotVersion;
 
@@ -139,6 +146,7 @@ namespace ArctisAurora.Core.Data
             _growthMode = growthMode;
             _growthValue = growthValue < 1 ? 1 : growthValue;
             _capacity = capacity;
+            _initialCapacity = capacity;
 
             _slots = new int[capacity];
             _backMap = new int[capacity];
@@ -217,6 +225,7 @@ namespace ArctisAurora.Core.Data
             AssertAccess(Bit<T>(), true, nameof(GetSpan));
             return ((PoolColumn<T>)_columns[typeof(T)]).data.AsSpan(0, _count);
         }
+
 
         public ref T GetRef<T>(DataHandle h) where T : struct
         {
@@ -301,7 +310,7 @@ namespace ArctisAurora.Core.Data
             if (_count >= _capacity)
                 Grow();
 
-            int stableId = _freeIds.Count > 0 ? _freeIds.Pop() : _highStableId++;
+            int stableId = _freeIds.Count > 0 ? _freeIds.Dequeue() : _highStableId++;
             int dense = _count++;
             foreach (IPoolColumn col in _columnsByIndex)
                 col.Clear(dense);
@@ -417,6 +426,7 @@ namespace ArctisAurora.Core.Data
                 _orderPending = true;
             }
 
+            TryShrink();
             PublishGeneration();
         }
 
@@ -459,7 +469,7 @@ namespace ArctisAurora.Core.Data
             _versions[stableId]++;   // invalidates every outstanding handle to this slot
             _slots[stableId] = -1;
             _structuralPending = true;
-            _freeIds.Push(stableId);
+            _freeIds.Enqueue(stableId, stableId);
         }
 
         // Order-preserving batch compaction: one forward sweep, write cursor trails read.
@@ -571,7 +581,56 @@ namespace ArctisAurora.Core.Data
                 ? _capacity * _growthValue
                 : _capacity + _growthValue;
             if (newCap <= _capacity) newCap = _capacity + 1;
+            Resize(newCap);
+        }
 
+        // Halves capacity once the pool has stayed at most a quarter full for ShrinkAfterSeconds.
+        private void TryShrink()
+        {
+            if (_capacity <= _initialCapacity || _count * 4 > _capacity)
+            {
+                _lowSince = 0;
+                return;
+            }
+
+            long now = Stopwatch.GetTimestamp();
+            if (_lowSince == 0)
+            {
+                _lowSince = now;
+                _lowPeak = _count;
+                return;
+            }
+            _lowPeak = Math.Max(_lowPeak, _count);
+            if (Stopwatch.GetElapsedTime(_lowSince, now).TotalSeconds < ShrinkAfterSeconds) return;
+            _lowSince = 0;
+
+            int highestLive = -1;
+            for (int i = 0; i < _count; i++)
+                highestLive = Math.Max(highestLive, _backMap[i]);
+
+            int bound = Math.Max(_initialCapacity, Math.Max(2 * _lowPeak, highestLive + 1));
+            int newCap = _capacity;
+            while (newCap / 2 >= bound)
+                newCap /= 2;
+            if (newCap == _capacity) return;
+
+            for (int i = newCap; i < _capacity; i++)
+                _versionFloor = Math.Max(_versionFloor, _versions[i] + 1);
+
+            List<int> kept = new List<int>();
+            foreach ((int id, int _) in _freeIds.UnorderedItems)
+                if (id < newCap) kept.Add(id);
+            _freeIds.Clear();
+            foreach (int id in kept)
+                _freeIds.Enqueue(id, id);
+            _highStableId = Math.Min(_highStableId, newCap);
+
+            Resize(newCap);
+        }
+
+        // Reallocates every capacity-sized array; a slot issued past the old capacity starts at the version floor.
+        private void Resize(int newCap)
+        {
             foreach (IPoolColumn col in _columns.Values)
                 col.Grow(newCap);
 
@@ -583,7 +642,7 @@ namespace ArctisAurora.Core.Data
             int old = _versions.Length;
             Array.Resize(ref _versions, newCap);
             for (int i = old; i < newCap; i++)
-                _versions[i] = 1;
+                _versions[i] = _versionFloor;
 
             _structuralPending = true;   // consumers size their own tables off the published one
 

@@ -17,15 +17,38 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region properties
-        // settings
+        // settings, mirrored into the row's LayoutNode
         [A_XSDElementProperty("Orientation", "UI", "")]
-        public Orientation orientation = Orientation.Vertical;
+        public Orientation orientation
+        {
+            get => field;
+            set
+            {
+                field = value;
+                node.axis = (byte)value;
+                InvalidateLayout();
+            }
+        }
 
         [A_XSDElementProperty("Spacing", "UI", "Space between children in pixels.")]
-        public float Spacing = 0f;
+        public float Spacing
+        {
+            get => field;
+            set
+            {
+                field = value;
+                node.spacing = value;
+                InvalidateLayout();
+            }
+        }
         #endregion
 
-        public override Vector2 Measure(Vector2 availableSize)
+        public StackPanelControl()
+        {
+            orientation = Orientation.Vertical;
+        }
+
+        protected override Vector2 MeasureCore(Vector2 availableSize)
         {
             // A pinned axis is the box the children divide, not the offer that came in.
             float boxWidth = preferredWidth > 0 ? preferredWidth : availableSize.X;
@@ -122,7 +145,7 @@ namespace ArctisAurora.Core.UI
             return arrange.desired;
         }
 
-        public override void Arrange(LayoutRect finalRect)
+        protected override void ArrangeCore(LayoutRect finalRect)
         {
             WriteArranged(finalRect);
 

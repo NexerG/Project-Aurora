@@ -894,7 +894,7 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- layout ----
-        public override Vector2 Measure(Vector2 availableSize)
+        protected override Vector2 MeasureCore(Vector2 availableSize)
         {
             float height = 0f;
             int blocks = 0;
@@ -920,7 +920,7 @@ namespace ArctisAurora.Core.UI
             return arrange.desired;
         }
 
-        public override void Arrange(LayoutRect finalRect)
+        protected override void ArrangeCore(LayoutRect finalRect)
         {
             WriteArranged(finalRect);
 

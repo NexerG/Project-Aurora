@@ -1,7 +1,7 @@
 # Decision — a control's colour comes from a palette role, carried as a paint word
 
 **Date:** 2026-09-17
-**Scope:** `ArctisAurora.Core.UI` — `Palettes`, `PaletteDefinition`, `PaletteRole`, `PaletteSetting`, `UISettings`, `Control` (paint region, `WriteArranged`), `ButtonControl`, `TextRunControl`, `VulkanControl`, the composite controls under § Thorium on the palette; `ArctisAurora.EngineWork.Rendering.Modules.UIEngineModule`; `Shaders/UIEngine/UIEngine.vert`; data `*/Data/XML/Documents/Palettes/*.palette.xml`, `Thorium/Data/XML/Settings/UI.settings.xml`
+**Scope:** `ArctisAurora.Core.UI` — `Palettes`, `PaletteDefinition`, `PaletteRole`, `PaletteSetting`, `UISettings`, `Control` (paint region, `InheritPaint`), `UIEngine.Collect`, `ButtonControl`, `TextRunControl`, `VulkanControl`, the composite controls under § Thorium on the palette; `ArctisAurora.EngineWork.Rendering.Modules.UIEngineModule`; `Shaders/UIEngine/UIEngine.vert`; data `*/Data/XML/Documents/Palettes/*.palette.xml`, `Thorium/Data/XML/Settings/UI.settings.xml`
 
 Slice 1 of 3, then slices 2 and 3 for everything Thorium shows (same day). What is left of them is under Known gaps.
 
@@ -23,9 +23,9 @@ Slice 1 of 3, then slices 2 and 3 for everything Thorium shows (same day). What 
 - **Roles.** `Control.role` (`Role=`): `None` (no palette), `Clear` (paints nothing, ground passes through), the 8 surfaces, `Ink`, `MutedInk`. Defaults: `PanelControl`, `ContainerControl`, `ButtonControl` → `Clear`; `TextRunControl` → `Ink`; `IconControl` → `MutedInk`; `WindowFrameControl` → `Ground`; `TitleBarControl` → `Chrome`; `SplitterControl` → `Line`; `CaretControl` → `Ink`; `HintControl` → `Accent`; `ContextMenuControl` → `Ground`; everything else `None`.
 - **Authored wins.** The `colorHex` setter marks the control authored; resolution never repaints it.
 - **Palette reference.** `Control.paletteName` (`Palette=`), nearest ancestor wins, `Palettes.Default` when none. Naming a palette does not paint a ground.
-- **Resolution is inherited in `WriteArranged`, like the clip.** `InheritPaint` takes `palette` and `groundBelow` from the parent (a root sits on its palette's `Ground`), paints the role, stores both. A control is always arranged before it is drawn, and attach, move and show all end in an arrange.
-  - `Role` / `Palette` set at runtime → `InvalidateArrange`, as alignment does
-  - paint that moves outside layout (button state, `ColorHex` or `Alpha` at runtime) → `RepaintChildren`, the `CollapseClip` of colour; skipped while arrange-dirty, stops at a child whose ground did not move
+- **Resolution happens as a control is drawn (since 2026-09-25; was `WriteArranged`).** `UIEngine.Collect` calls `InheritPaint` just before `Emit`, every frame, for every control it reaches; pre-order, so the parent is resolved first. `InheritPaint` takes `palette` and `groundBelow` from the parent (a root sits on its palette's `Ground`), paints the role, stores both.
+  - nothing invalidates paint: `Role` / `Palette` / `EdgeRole` at runtime, button state, `ColorHex` or `Alpha`, a reparent, a palette switch — all show next frame. `RepaintChildren`/`PushPaint` and the repaint-only `InvalidateArrange` calls are deleted
+  - a control `Collect` does not reach (off screen, hidden, under a detail-culled parent) keeps its last resolved paint — never resolved if never drawn. Nothing but the draw reads paint (`HitsNode` reads `clip`/`arranged`)
   - ground = the control's paint when it is an opaque plain panel (`alpha > 0`, `PanelControl` kind, no sampler); otherwise its parent's
 - **`ButtonControl`.** Authored state hex wins; an authored rest keeps today's fallback chain; a palette rest steps. A `Clear` rest has alpha 0 until hovered.
 - **`TextRunControl`.** `_runColors` → `_runPaints` (`List<uint>`). A palette repaint patches the entries whose span has no colour, without a re-measure.
@@ -119,13 +119,15 @@ Copying `colorHex` from an unauthored source reads the base default `#FFFFFF` an
 **Uncoloured containers default to `Clear`.** (user, 2026-09-16)
 It is where most of the attribute saving comes from — authors repeated the parent's `ColorHex` on every structural container. The one visible change found: Carbon's Scale slider no longer paints an opaque `#FFFFFF` box behind itself.
 
-**Resolution rides `WriteArranged` because the clip already does.**
+**Resolution runs at draw, unconditionally (user, 2026-09-25).** Supersedes the next paragraph. Arrange stopped touching paint so a data-oriented layout pass never has to touch a control object ([[layout-dod-plan]] step 2). Rejected: a `PaintDirty` flag plus a paint pass over dirty subtrees — every setter feeding `InheritPaint` would have to mark it, and a missed one stops updating. The rejected stamp check below failed because it was conditional; this one has no stamp, so a reparent resolves against the new parent on its next draw. Cost is per drawn control per frame: 5–10 µs a frame in the document view, +0.1 ms on a grid of ~3.6k drawn buttons (Release+PROFILE).
+
+**Resolution rode `WriteArranged` because the clip already does (superseded 2026-09-25).**
 Two earlier designs were rejected by the user. A per-frame check in `UIEngine.Collect` using stamps misses a reparent — a moved control's stamp is newer than its new parent's. Remembering the palette and ground each control resolved against fixed that, as did stamps plus invalidation in `AddChild`, but attach has ~10 direct `children`/`parent` write sites and neither fix read as intuitive. The lifetime already has an inherited channel that every attach, move and show reaches: `WriteArranged` inherits the clip, and `Hide` pushes the clip down directly through `CollapseClip`. Colour took the same two paths, so `Collect` is untouched and the drag ghost needs nothing.
 
 **A control that names a palette does not paint its `Ground`.** (user, 2026-09-17)
 Naming a palette only changes which palette applies below. Consequence: text in a region of palette B sitting on palette A's surface picks B's raw ink on the CPU; it will not re-flip on its own if A's values change later.
 
-**A palette pick applies live, through a root arrange.** (user, 2026-09-17)
+**A palette pick applies live, through a root arrange.** (user, 2026-09-17) — since 2026-09-25 it applies on the next draw with no arrange; `SettingsWindow` only re-rounds the window corners.
 Every palette is already baked into the paint table, so only `Palettes.Default` moves; re-arranging each window root re-runs `InheritPaint` down every tree, the same channel attach and show use. Rejected: next-launch only. Rejected: `RepaintChildren` / `PushPaint` from the roots — it stops at a child whose ground did not move (an authored opaque panel), leaving its descendants on the old palette.
 
 **Danger stays `#C42B1E` where the accent is red.** (user, 2026-09-17)
@@ -146,8 +148,9 @@ Slice 5 of [../Context/animation-plan.md](../Context/animation-plan.md).
 - **`PaintState`**, replacing the instant `ApplyState`: a palette surface rest with no authored state hex → rest paint + `visual.state` (GPU). Anything else — authored `HoverColorHex`/`PressColorHex`, an authored or inline rest, ink on a foreign ground — lerps rest → hover → press on the CPU in sRGB and writes an inline word; `state = 0` writes the rest paint itself. Fallbacks unchanged: press → hover hex → palette step → rest. A `Clear` palette rest has alpha `alpha × min(state, 1)`.
 - **Spring feel is the palette's:** optional `StateFrequency` (Hz, default 6) and `StateDamping` (default 1) on `<Palette>`. `ApplyRole` restarts a button's spring when its palette's feel differs from the one it was made with.
 - All nine `ButtonControl` subclasses (menu and context rows, file rows, tab strip, toolbar, dropdown, checkbox, key capture, scroll thumb) inherit it.
+- **Since 2026-09-25 the spring writes `state` in place and `PaintState` is `ButtonControl.PaintRow`** — same branches, run by `Emit` on the drawn row. The `UIElements` column keeps the rest paint, the raw `state` and the unscaled alpha; the row gets `state = 0` for a CPU lerp and the Clear-scaled alpha → [[animation-core]] § In place.
 
-**The shader blends only true neighbours.** Rejected: carrying hover and press words on every row (+12 B, glyph rows included) to make every case a GPU mix. Authored state colours are inline already, so the CPU lerp loses no palette-following.
+**The shader blends only true neighbours.** Rejected: carrying hover and press words on every row (+12 B, glyph rows included) to make every case a GPU mix. Authored state colours are inline already, so the CPU lerp loses no palette-following. Rejected again 2026-09-25 as fork 3 of [[animation-in-place-plan]].
 
 **Feel lives on the palette** (user, 2026-09-19). Rejected: constants on `ButtonControl`; per-button XML attributes.
 

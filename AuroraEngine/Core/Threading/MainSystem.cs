@@ -41,10 +41,11 @@ namespace ArctisAurora.Core.Threading
         }
 
         [A_XSDActionDependency("Main.Logic", "Frame")]
-        private void Logic() => Engine.engineInstance.Interpolate();
-
-        [A_XSDActionDependency("Main.Apply", "Frame")]
-        private void Apply() => Animations.ApplyValues();
+        private void Logic()
+        {
+            Animations.DrainDone();
+            Engine.engineInstance.Interpolate();
+        }
 
         [A_XSDActionDependency("Main.Layout", "Frame")]
         private void Layout()
