@@ -62,16 +62,15 @@ namespace ArctisAurora.Core.Animation
             int id = Bind(target, property, out Binding binding);
             binding.onDone = onDone;
             Vector4 from = binding.property.get(target);
-            return Start(id, binding, new AnimationTrack
+            AnimationHandle handle = Start(id, binding, new AnimationTrack
             {
                 driver = AnimationDriver.Tween,
                 follow = -1,
-                curve = curve,
-                from = from,
                 to = to,
-                value = from,
-                duration = seconds
+                value = from
             }, true);
+            Tracks.GetSpan<TweenParams>()[id] = new TweenParams { duration = seconds, from = from, curve = curve };
+            return handle;
         }
 
         // A spring resting at target's current value; Retarget moves it.
@@ -83,32 +82,33 @@ namespace ArctisAurora.Core.Animation
         {
             int id = Bind(target, property, out Binding binding);
             Vector4 from = binding.property.get(target);
-            return Start(id, binding, new AnimationTrack
+            AnimationHandle handle = Start(id, binding, new AnimationTrack
             {
                 driver = AnimationDriver.Spring,
                 follow = follow.id,
                 to = from,
-                value = from,
-                frequency = frequency,
-                damping = damping
+                value = from
             }, Signals.Differs(follow, from));
+            Tracks.GetSpan<SpringParams>()[id] = new SpringParams { frequency = frequency, damping = damping };
+            return handle;
         }
 
         // A spring on follow's state, 0 rest, 1 hover, 2 press, writing the value between them into property.
         public static AnimationHandle Spring(object target, string property, float frequency, float damping, SignalHandle follow, Vector4 rest, Vector4 hover, Vector4 press)
         {
             int id = Bind(target, property, out Binding binding);
-            return Start(id, binding, new AnimationTrack
+            AnimationHandle handle = Start(id, binding, new AnimationTrack
             {
                 driver = AnimationDriver.Spring,
                 mapped = true,
-                follow = follow.id,
-                frequency = frequency,
-                damping = damping,
-                rest = rest,
-                hover = hover,
-                press = press
+                follow = follow.id
             }, Signals.Differs(follow, Vector4.Zero));
+            Tracks.GetSpan<SpringParams>()[id] = new SpringParams { frequency = frequency, damping = damping };
+            ref TrackCold cold = ref Tracks.GetSpan<TrackCold>()[id];
+            cold.rest = rest;
+            cold.hover = hover;
+            cold.press = press;
+            return handle;
         }
 
         // Plays a clip on target, one handle per clip track; hold keeps each alive at either end.
@@ -124,13 +124,11 @@ namespace ArctisAurora.Core.Animation
                 {
                     driver = AnimationDriver.Keyframes,
                     follow = -1,
-                    duration = definition.duration,
-                    firstKey = track.firstKey,
-                    keyCount = track.keyCount,
                     loop = definition.loop,
                     direction = 1,
                     hold = hold
                 }, true);
+                Tracks.GetSpan<KeyParams>()[id] = new KeyParams { duration = definition.duration, firstKey = track.firstKey, keyCount = track.keyCount };
             }
             return handles;
         }
@@ -145,7 +143,7 @@ namespace ArctisAurora.Core.Animation
                 ref AnimationTrack track = ref Row(handle.id);
                 if (track.driver != AnimationDriver.Keyframes) continue;
                 if (direction < 0 && track.direction > 0)
-                    track.elapsed = AnimationLibrary.LocalTime(track.elapsed, track.duration, track.loop);
+                    track.elapsed = AnimationLibrary.LocalTime(track.elapsed, Tracks.GetSpan<KeyParams>()[handle.id].duration, track.loop);
                 track.direction = direction;
                 Wake(handle.id);
             }
@@ -156,7 +154,7 @@ namespace ArctisAurora.Core.Animation
         {
             if (!IsLive(handle.id, handle.generation)) return;
             ref AnimationTrack track = ref Row(handle.id);
-            track.from = track.value;
+            Tracks.GetSpan<TweenParams>()[handle.id].from = track.value;
             track.to = to;
             track.elapsed = 0f;
             Wake(handle.id);
@@ -204,7 +202,7 @@ namespace ArctisAurora.Core.Animation
             bool sleeping = track.sleeping;
             track = started;
             track.sleeping = sleeping;
-            track.generation = binding.generation;
+            Tracks.GetSpan<TrackCold>()[id].generation = binding.generation;
 
             Entity entity = (Entity)binding.target;
             track.target = entity.dataHandle;

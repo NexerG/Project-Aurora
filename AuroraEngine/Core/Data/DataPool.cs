@@ -30,7 +30,10 @@ namespace ArctisAurora.Core.Data
         private readonly Dictionary<Type, IPoolColumn> _columns = new();
         private readonly Dictionary<Type, ushort> _columnIds = new();
         private readonly IPoolColumn[] _columnsByIndex;
-        private int[] _slots;      // stableId -> dense index (-1 if free)
+        // columns and column ids by ColumnKey<T>.index
+        private readonly IPoolColumn[] _byKey;
+        private readonly ushort[] _idByKey;
+        private int[] _slots;     // stableId -> dense index (-1 if free)
         private int[] _backMap;    // dense index -> stableId
         private int[] _versions;   // stableId -> version (>= 1 for a live/recyclable slot)
         private object[] _owners;  // dense index -> proxy back-reference (managed sidecar)
@@ -173,6 +176,18 @@ namespace ArctisAurora.Core.Data
                 _slotBytes += column.ElementSize;
             }
             _columnsByIndex = columnOrder.ToArray();
+
+            int keyCount = 0;
+            foreach (IPoolColumn col in _columnsByIndex)
+                keyCount = Math.Max(keyCount, ColumnKeys.Of(col.ElementType) + 1);
+            _byKey = new IPoolColumn[keyCount];
+            _idByKey = new ushort[keyCount];
+            for (ushort column = 0; column < _columnsByIndex.Length; column++)
+            {
+                int key = ColumnKeys.Of(_columnsByIndex[column].ElementType);
+                _byKey[key] = _columnsByIndex[column];
+                _idByKey[key] = column;
+            }
         }
 
         // DEBUG only: a step touching columns it did not declare in Frame.frame.xml throws. need is the
@@ -205,7 +220,7 @@ namespace ArctisAurora.Core.Data
             AssertAccess(FrameStep.AllColumns(this), true, op);
         }
 
-        private ulong Bit<T>() where T : struct => 1UL << _columnIds[typeof(T)];
+        private ulong Bit<T>() where T : struct => 1UL << _idByKey[ColumnKey<T>.index];
 
         public bool HasComponent(Type t) => _columns.ContainsKey(t);
 
@@ -215,7 +230,7 @@ namespace ArctisAurora.Core.Data
 
         public ushort ColumnId(Type t) => _columnIds[t];
 
-        public ushort ColumnId<T>() where T : struct => _columnIds[typeof(T)];
+        public ushort ColumnId<T>() where T : struct => _idByKey[ColumnKey<T>.index];
 
         // Dense index for a handle, or -1 if stale.
         public int DenseOf(DataHandle h) => Alive(h) ? _slots[h.StableId] : -1;
@@ -223,7 +238,7 @@ namespace ArctisAurora.Core.Data
         public Span<T> GetSpan<T>() where T : struct
         {
             AssertAccess(Bit<T>(), true, nameof(GetSpan));
-            return ((PoolColumn<T>)_columns[typeof(T)]).data.AsSpan(0, _count);
+            return ((PoolColumn<T>)_byKey[ColumnKey<T>.index]).data.AsSpan(0, _count);
         }
 
 
@@ -231,7 +246,7 @@ namespace ArctisAurora.Core.Data
         {
             AssertAccess(Bit<T>(), true, nameof(GetRef));
             int dense = _slots[h.StableId];
-            return ref ((PoolColumn<T>)_columns[typeof(T)]).data[dense];
+            return ref ((PoolColumn<T>)_byKey[ColumnKey<T>.index]).data[dense];
         }
 
         // One row of a column as raw bytes, empty when the handle is stale.
@@ -242,7 +257,7 @@ namespace ArctisAurora.Core.Data
             return dense < 0 ? Span<byte>.Empty : _columnsByIndex[column].ElementBytes(dense);
         }
 
-        private T[] Column<T>() where T : struct => ((PoolColumn<T>)_columns[typeof(T)]).data;
+        private T[] Column<T>() where T : struct => ((PoolColumn<T>)_byKey[ColumnKey<T>.index]).data;
 
         // The full backing array for component T (length Capacity), for a bulk GPU upload sized
         // to the pool's capacity. Only dense [0,Count) is live; the tail is unused slack. The
@@ -344,6 +359,20 @@ namespace ArctisAurora.Core.Data
             if (dense < _dirtyMin) _dirtyMin = dense;
             if (dense > _dirtyMax) _dirtyMax = dense;
             return dense;
+        }
+
+        // Appends count uncleared rows to a handle-less pool and returns the first one's dense index.
+        public int Append(int count)
+        {
+            AssertStructural(nameof(Append));
+            while (_count + count > _capacity)
+                Grow();
+
+            int first = _count;
+            _count += count;
+            if (first < _dirtyMin) _dirtyMin = first;
+            if (_count - 1 > _dirtyMax) _dirtyMax = _count - 1;
+            return first;
         }
 
         // Deferred: enqueue only. The slot stays alive (handle valid) until FrameEdge drains
@@ -650,5 +679,25 @@ namespace ArctisAurora.Core.Data
             StructuralDirty = true;   // buffer reallocated — full re-upload + descriptor rebuild
             MarkAllDirty();
         }
+    }
+
+    // A process-wide dense index per column type.
+    internal static class ColumnKeys
+    {
+        private static readonly Dictionary<Type, int> _keys = new();
+
+        public static int Of(Type t)
+        {
+            lock (_keys)
+            {
+                if (!_keys.TryGetValue(t, out int key)) _keys[t] = key = _keys.Count;
+                return key;
+            }
+        }
+    }
+
+    internal static class ColumnKey<T> where T : struct
+    {
+        public static readonly int index = ColumnKeys.Of(typeof(T));
     }
 }

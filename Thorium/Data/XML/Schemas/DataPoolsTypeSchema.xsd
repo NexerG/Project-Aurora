@@ -92,6 +92,22 @@
   <xs:complexType name="AnimationTrack">
     <xs:sequence />
   </xs:complexType>
+  <xs:element name="TweenParams" type="types:TweenParams" />
+  <xs:complexType name="TweenParams">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="KeyParams" type="types:KeyParams" />
+  <xs:complexType name="KeyParams">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="SpringParams" type="types:SpringParams" />
+  <xs:complexType name="SpringParams">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="TrackCold" type="types:TrackCold" />
+  <xs:complexType name="TrackCold">
+    <xs:sequence />
+  </xs:complexType>
   <xs:element name="DirtyLayout" type="types:DirtyLayout" />
   <xs:complexType name="DirtyLayout">
     <xs:sequence />

@@ -31,6 +31,10 @@
 
 	<Pool Name="Animations" Capacity="256" Ordered="false" Growth="Multiplicative" GrowthValue="2">
 		<Component Type="AnimationTrack"/>
+		<Component Type="TweenParams"/>
+		<Component Type="KeyParams"/>
+		<Component Type="SpringParams"/>
+		<Component Type="TrackCold"/>
 	</Pool>
 
 	<Pool Name="Signals" Capacity="64" Ordered="false" Growth="Multiplicative" GrowthValue="2">
