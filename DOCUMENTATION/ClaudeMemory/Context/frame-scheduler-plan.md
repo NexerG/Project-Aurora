@@ -1,14 +1,14 @@
 # Frame scheduler — every system a step of one graph, every core used
 
-**Status:** AGREED 2026-09-23 (design and step order). Steps 1 and 2 landed 2026-09-23 — [[frame-scheduler]]. Steps 3–4 are open.
+**Status:** AGREED 2026-09-23 (design and step order). Steps 1 and 2 landed 2026-09-23, step 3 on 2026-09-24 — [[frame-scheduler]]. Step 4: 4.0 measured, 4.1–4.3 undecided.
 **Rule:** each step gets its own plan, approved before code (CLAUDE.md §2). This file is the brief for writing that plan, not a licence to skip it. Forks listed under a step are the user's to decide.
 **Goal:** uncapped frame rates, capped only by setting — a Tarkov-class game at ~300 fps (3.3 ms) on the user's PC. Frames must not allocate, and the main-thread-only chain has to fit the budget by itself. A system slow on one core is optimised before threads are considered (`Threads=1` exists for that).
 
 ## Cold boot — where things stand after step 2
 - **Read first:** [[frame-scheduler]] (step 1 and § Step 2 — what landed, measurements, gaps), [[animation-core]] § Step 2 of the frame scheduler, then the vault page `Engine/Systems/THREADING.md`.
 - **Code** (`ArctisAurora.Core.Threading`, paths via `NAMESPACES.md`): `FrameScheduler` (`Load`, `FindActions`, `Build`, `Access`, `Wire`, `Reaches`, `Place`, `Start`, `Run`, `RunStage`, `Claim`, `Work`, `Stop`), `FrameStep` (`Name`, `System` — null for an edge, `reads`/`writes` column masks per pool id, `waits`, `Due`, `Run`, `Current`), `FrameGraph.cs` (XSD definitions), `ThreadingSettings`, `ThreadedSystem` (`RunStep`, `EndFrame`, `StartScheduled`, `WaitOut`, `Dedicated`, `Period`; `Tick` only for Dedicated), `MainSystem` (actions `Input Logic Apply Layout DrawLists`), `PhysicsSystem.Simulate`, `AnimationSystem.Advance`. `DataPool.AssertAccess`, `DataPool.ElementBytes` in `ArctisAurora.Core.Data`.
-- **Data:** `AuroraEngine/Data/XML/Documents/Frame.frame.xml` — Render dedicated; 7 stages: `Main.Input` → `Main.Logic` → `Animation.Step` ‖ `Physics.Step` → `Main.Apply` → `Main.Layout` → edges of `UIElements UIQuads Entities Gradients Effects Paints` → `Main.DrawLists`.
-- **No lanes.** Main writes animation requests into `Animations`/`Signals`/`Paints` directly; `Animation.Step` writes pool-stored targets in place and appends `AnimationValues`; `Main.Apply` applies them the same frame.
+- **Data:** `AuroraEngine/Data/XML/Documents/Frame.frame.xml` — Render dedicated; 7 stages: `Main.Input` → `Main.Logic` → `Animation.Step` ‖ `Physics.Step` → `Edge.UIElements` → `Main.Layout` → edges of `UIQuads Entities Gradients Effects Paints` → `Main.DrawLists`.
+- **No lanes.** Main writes animation requests into `Animations`/`Signals`/`Paints` directly; `Animation.Step` writes pool-stored targets in place and appends `LayoutDirty` (drained by `Main.Layout`) and `AnimationDone` (drained by the next `Main.Logic`). `Main.Apply` deleted 2026-09-26 — [[animation-in-place-plan]].
 
 ## Settled (user, 2026-09-23)
 - A frame is ordered stages; steps in a stage run together; any free thread takes the next step; Dedicated systems keep a thread and core of their own, also under `Threads=1`.
@@ -26,7 +26,7 @@
 - [x] 1. Scheduler, frame graph, per-column access check, settings, worker profiling lanes; each system one step; lanes unchanged (2026-09-23) — [[frame-scheduler]]
 - [x] 2. Sub-steps, frame-edge steps, lanes deleted, animation writes in place, no mailbox (2026-09-23) — [[frame-scheduler]] § Step 2
 - [x] 3. `Jobs.For` — one step's rows split across workers; Animation first (2026-09-24) — [[frame-scheduler]] § Step 3
-- [ ] 4. SoA + SIMD for animation tracks — below
+- [ ] 4. SoA + SIMD for animation tracks — below; 4.0 measured (2026-09-24), 4.1–4.3 undecided
 
 ## Step 2 — landed 2026-09-23
 See [[frame-scheduler]] § Step 2. Departures from the brief that stood here, each agreed before code: no mailbox pools (direct writes, above); `<Step Edge="Pool"/>` instead of an `<Edge>` element (the generated schema is an `xs:sequence`); edges only on the six pools whose edge does work, pool stats reported at frame end; `Main.Logic` before `Physics.Step`; animation values written in place for pool-stored properties, `FadeSeeded` gone because Main seeds fades itself.
@@ -50,6 +50,8 @@ See [[frame-scheduler]] § Step 2. Departures from the brief that stood here, ea
 - Runs regardless of step 3's capture (user, 2026-09-23).
 - `AnimationTrack` is one wide struct (now also carrying the in-place target), and the step branches per driver. Split hot fields into columns, keep a dense list per driver so the tween loop is branch-free, then evaluate curves with `Vector128`/`Vector256` over floats.
 - Measure before and after on the same scenario.
+- **Plan agreed 2026-09-24** (user: per-chunk index lists, tolerance checksum): 4.0 measure → 4.1 split `AnimationTrack` into columns (`TrackHead`, `TrackMotion`, `TrackGoal`, `TrackTime`, `TrackClip`, `TrackTarget`) → 4.2 per-chunk `stackalloc` index lists per driver → 4.3 SIMD across tracks where 4.0 says it pays (springs via `Vector128/256.Exp/Sin/Cos`, tweens grouped by `EaseKind`).
+- **4.0 result (2026-09-24): stopped at the gate.** Optimized, `Anim.Step` at 20k is already 0.24–0.51 ms; the parallel kernel is 0.09–0.22 ms wall, so 4.1–4.3 would save ~0.1 ms. The user has not chosen between stopping, 4.1+4.2 only, or all of it → [[frame-scheduler]] § Step 4.0.
 
 ## Later, not ordered
 - **Generated entity steps (user, 2026-09-23).** A source generator reads the game's entity types and logic, follows each tick method and what it calls, and records which pools and columns it reads and writes. It emits frame steps with those reads and writes, and the scheduler places them exactly like authored steps — by the columns they touch, not by list position — so entity logic that does not clash runs in parallel with the rest of the logic instead of queuing in `Main.Logic`. Whatever the generator cannot prove stays in `Main.Logic`: GLFW or OS calls (pinned), reflection, virtual calls into code it cannot see. The DEBUG access check validates the generated reads and writes at runtime, like authored ones. **Open:** what counts as one step (an entity type, a component, a method); whether stages are rebuilt at runtime as entity types appear and disappear; how a main-thread-only call is detected. **Flag:** needs `Microsoft.CodeAnalysis.CSharp` (a new NuGet dependency) in a separate analyzer project.
@@ -62,6 +64,7 @@ See [[frame-scheduler]] § Step 2. Departures from the brief that stood here, ea
 - **Scheduler overhead** — ~20 µs a frame after step 2 (7 stages; a `SemaphoreSlim` release per unpinned stage while workers are parked). Per-step waits above would also cut it.
 
 ## How to verify here (learned in steps 1–2)
+- **Timings: `dotnet build … -p:Optimize=true --no-incremental`**, then rebuild plain Debug with `--no-incremental` afterwards — Debug JIT is unoptimized and ~5× slow, and an incremental build ignores the property change → [[profiling-unoptimized-jit]].
 - Build: `dotnet build AuroraEngine/ArctisAurora.sln 2>&1 | grep -E "error|Build succeeded|Build FAILED"`.
 - Run Thorium from its output folder — `Thorium/bin/Debug/net10.0-windows10.0.22621.0/Thorium.exe` with that folder as the working directory; the startup log prints the stages and worker count. `aurora-verify` has capture and input.
 - Close through the window's own X (client ~1375,15 on a 1399-wide window) to run the real shutdown; `CloseMainWindow` does not close Thorium.

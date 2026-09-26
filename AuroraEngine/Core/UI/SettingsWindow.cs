@@ -265,10 +265,7 @@ namespace ArctisAurora.Core.UI
                     {
                         Palettes.Default = to;
                         foreach (RenderWindow window in Engine.windows.Values)
-                        {
                             window.os.RoundCorners();
-                            window.ui.uiRoot?.InvalidateArrange();
-                        }
                     });
                 };
                 return dropdown;

@@ -409,9 +409,9 @@ namespace ArctisAurora.Core.UI
         // the arrange flag set. InvalidateArrange bails the moment it meets a control already dirty
         // — and from in here every ancestor is still mid-Arrange — so a flag left set makes the
         // editor permanently dirty and every later invalidate from it is silently dropped.
-        public override void Arrange(LayoutRect finalRect)
+        protected override void ArrangeCore(LayoutRect finalRect)
         {
-            base.Arrange(finalRect);
+            base.ArrangeCore(finalRect);
 
             if (!scrollToCaretPending || content == null) return;
             scrollToCaretPending = false;
@@ -424,7 +424,7 @@ namespace ArctisAurora.Core.UI
             if (GetScrollOffset() != before)
             {
                 Profiling.Zone.Start("Editor.Rearrange");
-                base.Arrange(finalRect);
+                base.ArrangeCore(finalRect);
                 Profiling.Zone.End("Editor.Rearrange");
             }
             else SetFlag(ArrangeFlags.ArrangeDirty, false);

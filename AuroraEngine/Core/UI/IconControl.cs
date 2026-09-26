@@ -66,7 +66,7 @@ namespace ArctisAurora.Core.UI
 
         // Width/Height are the artwork, not the cell. The bake pads every cell by an eighth of its
         // inner size per side, and TextMeasurer.CellScale is that same margin undone.
-        public override Vector2 Measure(Vector2 availableSize)
+        protected override Vector2 MeasureCore(Vector2 availableSize)
         {
             float w = (preferredWidth > 0 ? preferredWidth : defaultSize) * TextMeasurer.CellScale;
             float h = (preferredHeight > 0 ? preferredHeight : defaultSize) * TextMeasurer.CellScale;

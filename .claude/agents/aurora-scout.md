@@ -26,7 +26,7 @@ Each rung is cheaper than the one below. Do not skip to a full-tree grep because
 **Rungs 1–3 are grep targets, never read targets.** `INDEX.md` is 13 KB, `where-things-live.md` is 20 KB,
 `NAMESPACES.md` is 19.5 KB. Reading any of them whole spends more than the answer is worth.
 
-Method list for one class — verified on the largest UI class, 47 KB in, ~40 lines out:
+Method list for one class — ~40 lines out for a 1,000+ line file:
 
 ```bash
 grep -nE '(public|private|internal|protected).*\(.*\)\s*$' path/to/File.cs

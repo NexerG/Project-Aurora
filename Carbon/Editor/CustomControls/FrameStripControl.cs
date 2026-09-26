@@ -254,9 +254,9 @@ namespace Carbon.Editor.CustomControls
         private float LaneHeight(LayoutRect inner) =>
             (inner.height - laneSpacing * MathF.Max(0, _lanes.Count - 1)) / MathF.Max(1, _lanes.Count);
 
-        public override Vector2 Measure(Vector2 availableSize)
+        protected override Vector2 MeasureCore(Vector2 availableSize)
         {
-            Vector2 size = base.Measure(availableSize);
+            Vector2 size = base.MeasureCore(availableSize);
 
             foreach (Entity child in children)
                 if (child is Control control) control.Measure(size);
@@ -264,9 +264,9 @@ namespace Carbon.Editor.CustomControls
             return size;
         }
 
-        public override void Arrange(LayoutRect finalRect)
+        protected override void ArrangeCore(LayoutRect finalRect)
         {
-            base.Arrange(finalRect);
+            base.ArrangeCore(finalRect);
 
             LayoutRect inner = finalRect.Shrink(padding);
             float laneHeight = LaneHeight(inner);

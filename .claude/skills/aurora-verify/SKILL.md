@@ -5,8 +5,8 @@ description: Verify a change to Aurora and work out which verification claim is 
 
 # Verifying a change
 
-There is no automated test suite. The user tests manually, and the test/profiling platform is scheduled after
-the text editor's first version. So the only honest claim is the one matching what was actually done, and the
+There is no automated test suite; the user tests by hand. `--profile-scenario` drives typing, resize and
+animation but asserts nothing. So the only honest claim is the one matching what was actually done, and the
 words below are the ones the WIP list already uses.
 
 ## The ladder — claim the rung you reached, not the one above
@@ -72,10 +72,6 @@ exe: every window's tree with arranged `X Y W H`, desired `W H`, `Hidden`. Thori
 the control in question; never read it whole. With the root unscaled a rect is client pixels, i.e. directly a
 `-Region` — grep the control, then crop the capture to it. F10 needs the window focused: click an empty pane
 first (a title-bar click enters the OS drag loop).
-
-Corollary: **a new container in a draw path needs its `maskAsset` checked.** The default paints; opting out is
-explicit and per-control (`WindowControl`, `TextControl`, `TextBlockControl`, `DocumentEditorControl`,
-`DocumentControl` all set `"invisible"`).
 
 ## Synthetic input
 

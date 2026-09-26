@@ -540,9 +540,9 @@ namespace Carbon.Editor.CustomControls
         #region ---- layout ----
         private float PlotWidth() => MathF.Max(1, arrangedRect.width - padding.totalHorizontal - labelWidth);
 
-        public override Vector2 Measure(Vector2 availableSize)
+        protected override Vector2 MeasureCore(Vector2 availableSize)
         {
-            Vector2 size = base.Measure(availableSize);
+            Vector2 size = base.MeasureCore(availableSize);
 
             foreach (Entity child in children)
                 if (child is Control control && !control.hidden) control.Measure(size);
@@ -550,9 +550,9 @@ namespace Carbon.Editor.CustomControls
             return size;
         }
 
-        public override void Arrange(LayoutRect finalRect)
+        protected override void ArrangeCore(LayoutRect finalRect)
         {
-            base.Arrange(finalRect);
+            base.ArrangeCore(finalRect);
 
             LayoutRect inner = finalRect.Shrink(padding);
             float plotX = inner.x + labelWidth;

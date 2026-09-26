@@ -52,7 +52,7 @@ namespace ArctisAurora.Core.UI
             InvalidateLayout();
         }
 
-        public override Vector2 Measure(Vector2 availableSize)
+        protected override Vector2 MeasureCore(Vector2 availableSize)
         {
             Vector2 c = label.Measure(availableSize);
             Vector2 a = chevron.Measure(availableSize);
@@ -65,7 +65,7 @@ namespace ArctisAurora.Core.UI
             return arrange.desired;
         }
 
-        public override void Arrange(LayoutRect finalRect)
+        protected override void ArrangeCore(LayoutRect finalRect)
         {
             WriteArranged(finalRect);
             LayoutRect inner = finalRect.Shrink(padding);

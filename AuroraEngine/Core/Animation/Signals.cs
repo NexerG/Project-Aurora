@@ -1,3 +1,5 @@
+using ArctisAurora.Core.Data;
+using ArctisAurora.Core.Diagnostics;
 using System.Numerics;
 
 namespace ArctisAurora.Core.Animation
@@ -16,6 +18,9 @@ namespace ArctisAurora.Core.Animation
         private static readonly List<Entry> entries = new List<Entry>();
         private static readonly Stack<int> free = new Stack<int>();
         private static readonly Dictionary<string, SignalHandle> byName = new Dictionary<string, SignalHandle>();
+
+        private static DataPool? _pool;
+        private static DataPool Pool => _pool ??= DataManager.Get("Signals");
 
         public static SignalHandle Create()
         {
@@ -47,11 +52,28 @@ namespace ArctisAurora.Core.Animation
             return handle;
         }
 
+        // Writes the value and wakes the tracks following it when it changed.
         public static void Set(SignalHandle handle, Vector4 value)
         {
             if (!IsLive(handle)) return;
-            Animations.Write(new AnimationRequest { op = AnimationOp.SetSignal, track = handle.id, to = value });
+            Profiling.Zone.Increment("Anim.Request");
+            DataPool pool = Pool;
+            while (pool.Count <= handle.id)
+            {
+                int slot = pool.Append();
+                pool.GetSpan<SignalValue>()[slot] = default;
+            }
+
+            ref SignalValue row = ref pool.GetSpan<SignalValue>()[handle.id];
+            if (row.value == value) return;
+            row.value = value;
+            pool.MarkRangeDirty(handle.id, handle.id);
+            Animations.WakeFollowers(handle.id);
         }
+
+        // Whether a live signal holds something other than value.
+        internal static bool Differs(SignalHandle handle, Vector4 value)
+            => IsLive(handle) && Pool.Backing<SignalValue>()[handle.id].value != value;
 
         public static void Release(SignalHandle handle)
         {

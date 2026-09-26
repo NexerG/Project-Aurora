@@ -18,13 +18,13 @@ namespace ArctisAurora.Core.UI
         public bool centered;
 
         // 0 hidden above its anchor, 1 fully slid out
-        [A_Animatable]
+        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.reveal), LayoutChange.Arrange)]
         public float reveal
         {
-            get => field;
+            get => arrange.reveal;
             set
             {
-                field = value;
+                arrange.reveal = value;
                 InvalidateArrange();
             }
         }
@@ -45,11 +45,11 @@ namespace ArctisAurora.Core.UI
         }
 
         // At its own position and size, whatever box the root offers, slid up by the unrevealed part and cut at its anchor.
-        public override void Arrange(LayoutRect finalRect)
+        protected override void ArrangeCore(LayoutRect finalRect)
         {
             Vector2 at = window != null ? Vector2.Zero : position;
             float offset = DesiredSize.Y * (1f - Math.Clamp(reveal, 0f, 1f));
-            base.Arrange(new LayoutRect(at.X, at.Y - offset, DesiredSize.X, DesiredSize.Y));
+            base.ArrangeCore(new LayoutRect(at.X, at.Y - offset, DesiredSize.X, DesiredSize.Y));
             ClipSubtree(this, new LayoutRect(at.X, at.Y, DesiredSize.X, DesiredSize.Y - offset));
         }
 
@@ -105,7 +105,7 @@ namespace ArctisAurora.Core.UI
                 InvalidateLayout();
             }
 
-            public override Vector2 Measure(Vector2 availableSize)
+            protected override Vector2 MeasureCore(Vector2 availableSize)
             {
                 Vector2 c = caption.Measure(availableSize);
                 Vector2 a = arrow?.Measure(availableSize) ?? Vector2.Zero;
@@ -118,7 +118,7 @@ namespace ArctisAurora.Core.UI
                 return arrange.desired;
             }
 
-            public override void Arrange(LayoutRect finalRect)
+            protected override void ArrangeCore(LayoutRect finalRect)
             {
                 WriteArranged(finalRect);
                 LayoutRect inner = finalRect.Shrink(padding);

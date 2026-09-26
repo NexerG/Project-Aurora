@@ -20,11 +20,9 @@ namespace ArctisAurora.Core.UI
 
         protected override string PoolName => "UIElements";
 
-        // the control's own paint, copied into UIQuads by Emit
-        private VulkanControl _visual;
-
         public ref ArrangeData arrange => ref Pool.GetRef<ArrangeData>(dataHandle);
-        public ref VulkanControl visual => ref _visual;
+        internal ref LayoutNode node => ref Pool.GetRef<LayoutNode>(dataHandle);
+        public ref VulkanControl visual => ref Pool.GetRef<VulkanControl>(dataHandle);
 
         public Control()
         {
@@ -47,7 +45,7 @@ namespace ArctisAurora.Core.UI
 
         #region ---- authored layout ----
         [A_XSDElementProperty("Width", "UI", "Width in pixels. 0 = auto.")]
-        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.preferredWidth), nameof(InvalidateLayout))]
+        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.preferredWidth), LayoutChange.Measure)]
         public float preferredWidth
         {
             get => arrange.preferredWidth;
@@ -55,7 +53,7 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("Height", "UI", "Height in pixels. 0 = auto.")]
-        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.preferredHeight), nameof(InvalidateLayout))]
+        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.preferredHeight), LayoutChange.Measure)]
         public float preferredHeight
         {
             get => arrange.preferredHeight;
@@ -63,7 +61,7 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("MinWidth", "UI", "Minimum width in pixels.")]
-        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.minWidth), nameof(InvalidateLayout))]
+        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.minWidth), LayoutChange.Measure)]
         public float minWidth
         {
             get => arrange.minWidth;
@@ -71,7 +69,7 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("MinHeight", "UI", "Minimum height in pixels.")]
-        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.minHeight), nameof(InvalidateLayout))]
+        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.minHeight), LayoutChange.Measure)]
         public float minHeight
         {
             get => arrange.minHeight;
@@ -126,7 +124,7 @@ namespace ArctisAurora.Core.UI
         public virtual void SetHeight(float y) => height = y;
 
         [A_XSDElementProperty("Margin", "UI", "Space outside the control in pixels.")]
-        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.margin), nameof(InvalidateLayout))]
+        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.margin), LayoutChange.Measure)]
         public Thickness margin
         {
             get => arrange.margin;
@@ -134,7 +132,7 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("Padding", "UI", "Space inside the control in pixels.")]
-        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.padding), nameof(InvalidateLayout))]
+        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.padding), LayoutChange.Measure)]
         public Thickness padding
         {
             get => arrange.padding;
@@ -156,7 +154,7 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("HorizontalPos", "UI", "Position within the parent, [0;1]. Works with non-container controls.")]
-        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.horizontalPosition), nameof(InvalidateArrange))]
+        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.horizontalPosition), LayoutChange.Arrange)]
         public float horizontalPosition
         {
             get => arrange.horizontalPosition;
@@ -164,7 +162,7 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDElementProperty("VerticalPos", "UI", "Position within the parent, [0;1]. Works with non-container controls.")]
-        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.verticalPosition), nameof(InvalidateArrange))]
+        [A_Animatable(typeof(ArrangeData), nameof(ArrangeData.verticalPosition), LayoutChange.Arrange)]
         public float verticalPosition
         {
             get => arrange.verticalPosition;
@@ -218,23 +216,16 @@ namespace ArctisAurora.Core.UI
                 field = value;
                 colorAuthored = true;
                 SetPaint(Palettes.Inline(value));
-                visual.alpha = alpha;
-                RepaintChildren();
             }
         } = "#FFFFFF";
 
         [A_XSDElementProperty("Alpha", "UI", "Opacity of the control, 0 to 1. Multiplies the coverage its mask already carries.")]
-        [A_Animatable]
+        [A_Animatable(typeof(VulkanControl), nameof(VulkanControl.alpha))]
         public virtual float alpha
         {
-            get => field;
-            set
-            {
-                field = value;
-                visual.alpha = role == PaletteRole.Clear && !colorAuthored ? 0f : value;
-                RepaintChildren();
-            }
-        } = 1f;
+            get => visual.alpha;
+            set => visual.alpha = value;
+        }
 
         [A_XSDElementProperty("Role", "UI", "The palette colour this control paints with. ColorHex wins over it.")]
         public PaletteRole role
@@ -243,7 +234,6 @@ namespace ArctisAurora.Core.UI
             set
             {
                 field = value;
-                InvalidateArrange();
             }
         }
 
@@ -255,11 +245,10 @@ namespace ArctisAurora.Core.UI
             {
                 field = value;
                 ownPalette = Palettes.Get(value);
-                InvalidateArrange();
             }
         } = "";
 
-        // palette inheritance, resolved in WriteArranged like the clip
+        // palette inheritance, resolved as the control is drawn
         internal PaletteDefinition? ownPalette;
         internal PaletteDefinition? palette;
         internal uint groundBelow;
@@ -348,20 +337,15 @@ namespace ArctisAurora.Core.UI
             set
             {
                 field = value;
-                InvalidateArrange();
             }
         }
 
         [A_XSDElementProperty("EdgeThickness", "UI", "Border widths in design-space pixels, drawn inward from each side. Zero draws none.")]
-        [A_Animatable]
+        [A_Animatable(typeof(VulkanControl), nameof(VulkanControl.edgeThickness))]
         public Thickness edgeThickness
         {
-            get => field;
-            set
-            {
-                field = value;
-                visual.edgeThickness = new Vector4(value.top, value.right, value.bottom, value.left);
-            }
+            get => visual.edgeThickness;
+            set => visual.edgeThickness = value;
         }
 
         // Which of the three quad kinds this control draws, and so what its sampler means.
@@ -568,12 +552,16 @@ namespace ArctisAurora.Core.UI
         {
             if (role == PaletteRole.None) return;
             SetPaint(RolePaint(scheme, ground));
-            visual.alpha = role == PaletteRole.Clear ? 0f : alpha;
         }
 
-        // Takes the palette and ground from the parent and paints the role against them. Returns whether
-        // the ground left for the children moved.
-        internal bool InheritPaint()
+        // Finishes the row Emit copied from visual.
+        internal virtual void PaintRow(ref VulkanControl row)
+        {
+            if (role == PaletteRole.Clear && !colorAuthored) row.alpha = 0f;
+        }
+
+        // Takes the palette and ground from the parent and paints the role against them.
+        internal void InheritPaint()
         {
             Control? p = parent as Control;
             palette = ownPalette ?? p?.palette ?? Palettes.Default;
@@ -586,30 +574,7 @@ namespace ArctisAurora.Core.UI
             gradientWord = Gradients.Word(gradientId, palette);
             edgeGradientWord = Gradients.Word(edgeGradientId, palette);
             if (!colorAuthored) ApplyRole(palette, ground);
-
-            uint below = GroundBelow(ground);
-            bool moved = below != groundBelow;
-            groundBelow = below;
-            return moved;
-        }
-
-        // Repaints the children after this control's paint moved outside layout — CollapseClip's twin.
-        // A pending arrange repaints them anyway.
-        protected void RepaintChildren()
-        {
-            if (palette == null || isArrangeDirty) return;
-
-            uint below = GroundBelow(GroundBehind());
-            if (below == groundBelow) return;
-            groundBelow = below;
-            PushPaint(this);
-        }
-
-        private static void PushPaint(Control control)
-        {
-            foreach (Entity e in control.children)
-                if (e is Control child && child.palette != null && child.InheritPaint())
-                    PushPaint(child);
+            groundBelow = GroundBelow(ground);
         }
 
         // The ground under this control: its parent's, or its palette's Ground at a root.
@@ -719,7 +684,12 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- layout (two-pass) ----
-        public virtual Vector2 Measure(Vector2 availableSize)
+        public Vector2 Measure(Vector2 availableSize) => MeasureCore(availableSize);
+
+        public void Arrange(LayoutRect finalRect) => ArrangeCore(finalRect);
+
+        // What a control with its own layout overrides.
+        protected virtual Vector2 MeasureCore(Vector2 availableSize)
         {
             ref ArrangeData a = ref arrange;
             float w = a.preferredWidth > 0 ? a.preferredWidth : MathF.Max(a.minWidth, availableSize.X);
@@ -737,7 +707,7 @@ namespace ArctisAurora.Core.UI
             return arrange.desired;
         }
 
-        public virtual void Arrange(LayoutRect finalRect)
+        protected virtual void ArrangeCore(LayoutRect finalRect)
         {
             WriteArranged(finalRect);
             if (children.Count == 1 && children[0] is Control child)
@@ -753,7 +723,7 @@ namespace ArctisAurora.Core.UI
             SetFlag(ArrangeFlags.ArrangeDirty, false);
         }
 
-        // Records an arranged rect, inherits or intersects the clip, and inherits the palette.
+        // Records an arranged rect and inherits or intersects the clip.
         protected void WriteArranged(LayoutRect finalRect)
         {
             arrange.arranged = finalRect;
@@ -762,8 +732,6 @@ namespace ArctisAurora.Core.UI
             ClipRect = parentControl == null ? finalRect
                 : clipOutOfBounds ? LayoutRect.Intersect(finalRect, parentControl.ClipRect)
                 : parentControl.ClipRect;
-
-            InheritPaint();
         }
 
         // Places one child in a box by its own alignment, stretching it on either axis that asks.
@@ -842,7 +810,8 @@ namespace ArctisAurora.Core.UI
             g.gradientRect = new Vector4(r.x, r.y, r.Right, r.Bottom);
 
             ref VulkanControl v = ref quads.GetSpan<VulkanControl>()[row];
-            v = _visual;
+            v = visual;
+            PaintRow(ref v);
             if (gradientWord != 0) v.paint = gradientWord;
             if (edgeGradientWord != 0) v.edgePaint = edgeGradientWord;
         }
@@ -989,6 +958,12 @@ namespace ArctisAurora.Core.UI
         public override void RemoveChild(Entity entity)
         {
             base.RemoveChild(entity);
+            MarkTreeOrderDirty();
+            InvalidateLayout();
+        }
+
+        protected override void OnChildDetached(Entity child)
+        {
             MarkTreeOrderDirty();
             InvalidateLayout();
         }

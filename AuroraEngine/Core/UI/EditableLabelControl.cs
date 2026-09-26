@@ -113,7 +113,7 @@ namespace ArctisAurora.Core.UI
         private Control Visible => isEditing ? box : label;
 
         #region ---- layout ----
-        public override Vector2 Measure(Vector2 availableSize)
+        protected override Vector2 MeasureCore(Vector2 availableSize)
         {
             Vector2 desired = Visible.Measure(new Vector2(
                 MathF.Max(0, availableSize.X - padding.totalHorizontal),
@@ -127,7 +127,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // Only the shown part is arranged; the hidden one keeps the collapsed clip Hide() gave it.
-        public override void Arrange(LayoutRect finalRect)
+        protected override void ArrangeCore(LayoutRect finalRect)
         {
             WriteArranged(finalRect);
             Visible.Arrange(finalRect.Shrink(padding));

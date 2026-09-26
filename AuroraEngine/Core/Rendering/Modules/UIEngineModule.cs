@@ -7,6 +7,7 @@ using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using Silk.NET.Core.Native;
 using Silk.NET.Vulkan;
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using ImageLayout = Silk.NET.Vulkan.ImageLayout;
@@ -93,6 +94,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         private nint[] _indirectMapped = null!;
         private int[] _mirrorCapacity = null!;
         private const int minMirrorRows = 256;
+        private long[] _mirrorLowSince = null!;
+        private int[] _mirrorLowPeak = null!;
 
         // per-image mirrors of the paint and gradient pools
         private readonly TableMirror<GpuPaint> _paints = new TableMirror<GpuPaint>();
@@ -159,6 +162,8 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             _indirectMapped = new nint[window.imageCount];
             _mirrorCapacity = new int[window.imageCount];
             Array.Fill(_mirrorCapacity, -1);
+            _mirrorLowSince = new long[window.imageCount];
+            _mirrorLowPeak = new int[window.imageCount];
             _paints.Resize((int)window.imageCount);
             _gradients.Resize((int)window.imageCount);
             _effects.Resize((int)window.imageCount);
@@ -221,11 +226,13 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             int first = (int)(range >> 32);
             _drawCount = Math.Clamp((int)range, 0, Math.Max(0, geometry.Length - first));
 
-            if (_drawCount > _mirrorCapacity[currentFrame])
+            bool shrink = MirrorTooBig(currentFrame);
+            if (_drawCount > _mirrorCapacity[currentFrame] || shrink)
             {
                 DestroyMirror(currentFrame);
 
-                int capacity = Math.Max(minMirrorRows, (int)BitOperations.RoundUpToPowerOf2((uint)_drawCount));
+                int rows = shrink ? Math.Max(_drawCount, 2 * _mirrorLowPeak[currentFrame]) : _drawCount;
+                int capacity = Math.Max(minMirrorRows, (int)BitOperations.RoundUpToPowerOf2((uint)rows));
                 ulong geometrySize = (ulong)(sizeof(ControlGeometry) * capacity);
                 ulong controlSize = (ulong)(sizeof(VulkanControl) * capacity);
                 AVulkanBufferHandler.CreateMappedBuffer(geometrySize, ref _geometryBuffers[currentFrame], ref _geometryMemories[currentFrame], out _geometryMapped[currentFrame], AVulkanBufferHandler.storageBufferFlags);
@@ -241,6 +248,28 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
                 IndexCount = (uint)_quad.indices.Length,
                 InstanceCount = (uint)_drawCount
             });
+        }
+
+        // True once an image's draw count has stayed at most a quarter of its mirror for DataPool.ShrinkAfterSeconds.
+        private bool MirrorTooBig(int image)
+        {
+            if (_mirrorCapacity[image] <= minMirrorRows || _drawCount * 4 > _mirrorCapacity[image])
+            {
+                _mirrorLowSince[image] = 0;
+                return false;
+            }
+
+            long now = Stopwatch.GetTimestamp();
+            if (_mirrorLowSince[image] == 0)
+            {
+                _mirrorLowSince[image] = now;
+                _mirrorLowPeak[image] = _drawCount;
+                return false;
+            }
+            _mirrorLowPeak[image] = Math.Max(_mirrorLowPeak[image], _drawCount);
+            if (Stopwatch.GetElapsedTime(_mirrorLowSince[image], now).TotalSeconds < DataPool.ShrinkAfterSeconds) return false;
+            _mirrorLowSince[image] = 0;
+            return true;
         }
 
         private void DestroyMirrors()

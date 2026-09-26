@@ -1,6 +1,6 @@
 ---
 name: aurora-orient
-description: Find your way around Aurora without spending the session's context on orientation. Use at the start of any change, whenever you are about to read an index, a large source file, the WIP list, or a build log — the four files CLAUDE.md tells you to start from are 84 KB together and every one of them is a grep target, not a read target.
+description: Find your way around Aurora without spending the session's context on orientation. Use at the start of any change, whenever you are about to read an index, a large source file, the WIP list, or a build log — the index files CLAUDE.md tells you to start from total over 100 KB, and every one of them is a grep target, not a read target.
 ---
 
 # Orienting cheaply
@@ -11,15 +11,14 @@ cost of a read is its size times the turns remaining — not its size once. This
 
 ## What the orientation files actually cost
 
-| File | Size | ≈tokens | Treat as |
-|---|---|---|---|
-| `DOCUMENTATION/Work in Progress List.md` | 33 KB | ~8k | readable whole, but see below |
-| `CLAUDE.md` | 31 KB | ~8k | already in context, free |
-| `Context/where-things-live.md` | 20 KB | ~5k | **grep only** |
-| `NAMESPACES.md` | 19.5 KB | ~5k | **grep only** |
-| `Decisions/INDEX.md` | 13 KB | ~3.3k | **grep only** |
+| File | Treat as |
+|---|---|
+| `DOCUMENTATION/Work in Progress List.md` | one phase at a time, below |
+| `CLAUDE.md` | already in context, free |
+| `Context/where-things-live.md`, `NAMESPACES.md`, `Decisions/INDEX.md` | **grep only** |
 
-Reading all four on a first pass costs ~21k before any analysis. Grepping them costs ~1k.
+Each index is tens of KB and growing (`wc -c` for today's sizes); reading them costs ~25k tokens before
+any analysis, grepping them ~1k.
 
 ## The chain
 
@@ -27,7 +26,7 @@ Stop at the first rung that answers. Do not skip to a whole-tree grep.
 
 | # | Question | Where | How |
 |---|---|---|---|
-| 1 | which decision settles this? | `Decisions/INDEX.md` | grep — 70 rows, each names its Key symbols |
+| 1 | which decision settles this? | `Decisions/INDEX.md` | grep — one row per note, each names its Key symbols |
 | 2 | where does this concept live? | `Context/where-things-live.md` | grep the concept |
 | 3 | which file holds the symbol? | `NAMESPACES.md` | grep the namespace |
 | 4 | what methods does the class have? | the file | method grep, below |
@@ -36,8 +35,8 @@ Stop at the first rung that answers. Do not skip to a whole-tree grep.
 A row in `INDEX.md` that does not match the task means that note does not need opening. That is what the
 "Settles" column is for.
 
-**There is no method index and there should not be one.** It is a grep, verified on the largest UI class —
-`VulkanControl.cs`, 1194 lines / 47 KB in, ~40 lines out, 80× cheaper and it cannot go stale:
+**There is no method index and there should not be one.** It is a grep — on a large class, ~40 lines
+out for a 1,000+ line file, and it cannot go stale:
 
 ```bash
 grep -nE '(public|private|internal|protected).*\(.*\)\s*$' path/to/File.cs
@@ -76,13 +75,12 @@ on a guess" means do not guess about the lines you are changing — not read 1,2
 
 ## The WIP list
 
-**33 KB and 202 open items, as of 2026-09-08.** It was 187 KB — 81% of it completed work — until the landed
-entries moved to `DOCUMENTATION/Changelog.md` and the multi-part plans to `ClaudeMemory/Context/*-plan.md`.
-At this size reading it whole is a fair ~8k, but one phase is usually all you want:
+Landed entries live in `DOCUMENTATION/Changelog.md` and multi-part plans in `ClaudeMemory/Context/*-plan.md`,
+so the list is open work only. One phase is usually all you want:
 
 ```bash
 grep -n '^# ' "DOCUMENTATION/Work in Progress List.md"          # phase line numbers
-sed -n '5,186p' "DOCUMENTATION/Work in Progress List.md" | grep '\[ \]'   # Phase A, open only
+sed -n 'START,ENDp' "DOCUMENTATION/Work in Progress List.md" | grep '\[ \]'   # one phase, open only
 ```
 
 Tripwire, one call, ~20 tokens — if this is over 40 KB the file needs curating (see `aurora-docs`):

@@ -133,6 +133,8 @@ The test: if the comment explains *why*, it belongs in ClaudeMemory, not the fil
 **Terse plus caveats. No recap.**
 
 - Default reply: a line or two of what changed, then genuine caveats as bullets. Nothing else.
+- This governs the final reply only. During long work (builds, runs, multi-step edits), a short line
+  on what you're doing now is wanted — silence for minutes reads as stuck.
 - **Never** restate the plan, walk through code that's already in the diff, explain what the change
   "unlocks", or append next steps that weren't asked for.
 - Caveats are only things that bite: assumptions made, signatures changed, scope left out, things
@@ -219,11 +221,11 @@ sight? Then send it. Otherwise do it yourself.
 The test: is a tracked file about to change? Then an edit tool is what changes it.
 
 This project is a C# game engine called Aurora using Silk.NET/Vulkan/GLFW.
-Always check CLAUDE.md and NAMESPACES.md before suggesting new code.
+Before suggesting new code, locate it through the §2 chain (`where-things-live.md` → `INDEX.md` → grep `NAMESPACES.md`).
 Current focus is in "DOCUMENTATION/Work in Progress List.md".
-Use deep thinking for architectural problems. Explain architectural decisions - why one way and not another - when asked for the reasoning; see §7 for when to volunteer it and §6 for where it gets written down.
-When given to generate code DO NOT copy the whole file. Only write what (or if needs to be added where) needs to be changed and with what new code. When creating new classes write them out in entirety (without includes). Skip includes unless they're from a new nuget package.
-If can use xml - use xml. NO JSON or other similar formats.
+Explain architectural decisions - why one way and not another - when asked for the reasoning; see §7 for when to volunteer it and §6 for where it gets written down.
+When showing code in a reply, show only what changes and where it goes, not the whole file. A new class is written out in full, without usings unless they come from a new NuGet package.
+Data and config files are XML, because the XSD layer generates and validates their schemas; don't introduce JSON or another format.
 When creating new logic or systems update DOCUMENTATION/ClaudeMemory/* and DOCUMENTATION/Engine*
 
 ## Solution Structure
@@ -234,9 +236,8 @@ Abstract names below map to real top-level folders. Source of truth for code loc
 |------|-------------|-------------------|---------|--------|
 | `Engine` | `AuroraEngine` | `ArctisAurora.*` (`Core`, `EngineWork`) | Core game engine — lives in `AuroraEngine/` under `Core/`; no separate Engine project. Folder renamed from `ParticleSimulator` (2026-07); assembly/root namespace still `ArctisAurora`. | Active |
 | `Editor` | `AuroraEditor` | `AuroraEditor.*` | Visual editor; consumer of the Engine | Early stage |
-| `TextEditor` | `Thorium` | `Thorium`, `Thorium.Editor.*` | Obsidian/Notion-style note app; host that boots the Engine. Folder/namespaces renamed from `Periodic` (2026-08) | Planning |
+| `TextEditor` | `Thorium` | `Thorium`, `Thorium.Editor.*` | Obsidian/Notion-style note app; host that boots the Engine. Folder/namespaces renamed from `Periodic` (2026-08) | Active |
 | `Viewer` | `Carbon` | `Carbon`, `Carbon.Editor.*` | Profiler frame-capture viewer; host that boots the Engine. Reads `*.frames.xml` written by `FrameSpool` | Active |
-| — | `AuroraTesting` | — | Test project | — |
 | — | `_Build` | `_Build` | Tooling; `GenerateNamespaces.cmd` regenerates `NAMESPACES.md` | — |
 
 ## Memory
@@ -299,25 +300,18 @@ ECS design is still being settled — avoid refactoring the entity/component mod
 | Threading | 🔧 In progress | Basic threading, design not finalised |
 
 #### Engine Loop & Threading — Key Facts
-- **4 threads, each a `ThreadedSystem`:** `MainSystem` (120 Hz, runs on the bootstrapping thread via
-  `Adopt()` because GLFW needs it), `PhysicsSystem` (32 ms), `RenderSystem` (unpaced; present/vsync throttle it),
-  `AnimationSystem` (120 Hz) — see `ClaudeMemory/Decisions/animation-core.md` and `Context/animation-plan.md`
-- **Threads never wait on each other.** The `AutoResetEvent` handshake is gone. Every tick is
-  `Drain()` → `Tick()` → `Publish()`, bracketed by a volatile epoch read/write. Render only parks at
-  startup until main's epoch leaves 0
-- **One owner per table.** A system writes its own pools in place; anything else reaches them as a
-  command through `ThreadedSystem.Send`, applied at the owner's `Drain()`. Consumers learn of changes by
-  polling pool versions (`PoolCursor`), not by subscription. `ThreadedSystem.Post` messages another system
-  itself (its `OnPost`), on the same lanes. Each system runs `DataManager.FrameEdge(owner)` for its own pools
-- **Main tick order (`Engine.MainTick`):**
-  1. `PollEvents` → reap closed windows, drain posted work → `ActivateKeybinds` → `HandleUI` per window
-     → `DragGhost.Follow`, `ContextMenus.Tick`
-  2. `Interpolate()` — entity lifecycle queues, `OnTick()`, `UIEngine.ResolveLayout()`
-  3. `DataManager.FrameEdge(mainSystem)` — destroy drain, compaction, version publish across Main's pools
-  4. `UIEngine.BuildDrawLists()` — publishes each window's `UIQuads` range to the renderer
-- **`Interpolate()`** is where entity logic runs — not a physics/render thread concern:
-  - `EntityRegistry.ProcessStarts` / `ProcessDestroys` / `ProcessEnableChanges`
-  - Calls `OnTick()` on tickable entities
+- **Systems are steps of one frame graph** (`Threading.FrameScheduler`, data in `Frame.frame.xml`). A step
+  names an action (`[A_XSDActionDependency(name, "Frame")]`) and the pool columns it reads and writes; stages
+  are computed from those lists, and unpinned steps run on worker threads. `Render` is the one `<Dedicated>`
+  thread. Frame rate is uncapped unless `<FrameCap MaxFps>` sets one — see `ClaudeMemory/Decisions/frame-scheduler.md`
+- **Pools have no owner thread.** A step may touch only the columns it declares (DEBUG `DataPool.AssertAccess`);
+  `<Step Edge="Pool"/>` runs that pool's `FrameEdge`. Consumers poll pool versions (`PoolCursor`)
+- **Main's steps, in order:** `Main.Input` (poll, reap, posted work, keybinds, `HandleUI`, drag ghost, context
+  menus) → `Main.Logic` (`Animations.DrainDone` — last frame's `onDone`; then `Engine.Interpolate` — lifecycle
+  queues, `OnTick` on the opt-in tick list) → `Animation.Step` ‖ `Physics.Step` → `Edge.UIElements` →
+  `Main.Layout` (`UIEngine.ResolveLayout`, which drains `LayoutDirty` first) → pool edges → `Main.DrawLists`.
+  Main's steps are pinned to the main thread because GLFW needs it
+- **Entities tick only when opted in** — `Entity.SetTicking(true)`; see `Decisions/entity-tick-group.md`
 - **Physics thread** is a stub — an empty `Tick()`, placeholder for future work
 - **Bootstrap is one ordered XML phase** — see Bootstrapper below. Pre-renderer steps: settings, logging,
   pools, inputs, gradients, palettes, systems, windowing, registries; then the renderer; then contexts,
@@ -382,8 +376,8 @@ attribute any more; both were replaced by declared phases in `Bootstrap.xml`.
   `[CallerLineNumber]`. Use them for anything inside the frame loop
 - **Do NOT log per frame.** `LastTickMs` and `GpuEngineStats` already exist and go to the shaders —
   that is telemetry, not logging
-- **One SPSC lane per thread**, a copy of `CommandLane`/`CommandArena`. `Core.Diagnostics` must
-  **never** reference `Core.Data.Commands` — `CommandApplier`, `DataPool` and `DataManager` all log
+- **One SPSC lane per thread** (`LogLane`). `Core.Diagnostics` must not reference `Core.Data` —
+  `DataPool` and `DataManager` log, so the dependency only runs one way
 - **The drain is a plain background thread, not a `ThreadedSystem`** — it owns no pools. Do not
   convert it
 - **Self-starting**, because `XSDGenerator` logs before `Engine.Init`. `Logging.Configure` is step 2
@@ -513,20 +507,17 @@ Early stage. Core editor shell is being set up.
 - [Add: docking, panels, tool windows — describe once they exist]
 
 #### What Claude Should Know
-- Editor-specific code lives here; Engine internals are in Engine/CLAUDE.md
+- Editor-specific code lives here; Engine internals are described in the Engine section above
 - Don't duplicate engine logic in the editor — extend via engine APIs
 
 ### TextEditor — Context File
 Obsidian/Notion-style note-taking and document app.
 
 #### Status
-Planning phase.
+Working note app: vaults, a rich-text document editor with undo, notes on disk as XML, Markdown or plain text.
 
 #### Goals
 - Rich text editing
-- [Add: linked notes, graph view, tags, blocks — whatever you plan]
-- [Add: file format — markdown? proprietary?]
 
 #### Architecture Notes
-- [Does this use the Engine renderer, or its own UI stack?]
-- [Desktop app? Embedded? Cross-platform target?]
+- Renders through the Engine's Vulkan UI stack (`ArctisAurora.Core.UI`); no UI of its own

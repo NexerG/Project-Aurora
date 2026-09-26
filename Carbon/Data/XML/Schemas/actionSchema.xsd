@@ -18,6 +18,7 @@
           <xs:enumeration value="Carbon.SwapStrips" />
           <xs:enumeration value="Settings.Open" />
           <xs:enumeration value="Settings.Save" />
+          <xs:enumeration value="Settings.Apply" />
           <xs:enumeration value="Tab.Close" />
           <xs:enumeration value="Tab.CloseOthers" />
           <xs:enumeration value="Tab.CloseRight" />

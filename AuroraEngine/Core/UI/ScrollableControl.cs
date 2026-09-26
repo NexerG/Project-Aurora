@@ -115,7 +115,7 @@ namespace ArctisAurora.Core.UI
         }
 
         #region layout
-        public override Vector2 Measure(Vector2 availableSize)
+        protected override Vector2 MeasureCore(Vector2 availableSize)
         {
             ref ArrangeData a = ref arrange;
             float w = a.preferredWidth > 0 ? a.preferredWidth : MathF.Max(a.minWidth, availableSize.X);
@@ -144,7 +144,7 @@ namespace ArctisAurora.Core.UI
         private static float Usable(float desired, float viewport) =>
             float.IsFinite(desired) && desired < unmeasurable ? desired : viewport;
 
-        public override void Arrange(LayoutRect finalRect)
+        protected override void ArrangeCore(LayoutRect finalRect)
         {
             WriteArranged(finalRect);
 

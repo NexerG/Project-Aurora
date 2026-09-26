@@ -108,6 +108,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/HintControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/IconControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/KeyCaptureControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/LabelControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/LayoutEngine.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MenuButtonControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MenuScreen.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteActions.cs

@@ -21,6 +21,10 @@
   <xs:complexType name="ArrangeData">
     <xs:sequence />
   </xs:complexType>
+  <xs:element name="LayoutNode" type="types:LayoutNode" />
+  <xs:complexType name="LayoutNode">
+    <xs:sequence />
+  </xs:complexType>
   <xs:element name="ControlGeometry" type="types:ControlGeometry" />
   <xs:complexType name="ControlGeometry">
     <xs:sequence />

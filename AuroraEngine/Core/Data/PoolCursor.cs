@@ -96,9 +96,9 @@ namespace ArctisAurora.Core.Data
             _created.Clear();
             _destroyed.Clear();
 
-            for (int sid = 0; sid < live.Length; sid++)
+            for (int sid = 0; sid < _provisioned.Length; sid++)
             {
-                int theirs = live[sid];
+                int theirs = sid < live.Length ? live[sid] : 0;
                 int mine = _provisioned[sid];
                 if (mine == theirs) continue;
 

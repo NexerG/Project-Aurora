@@ -985,6 +985,7 @@ namespace ArctisAurora.Core.Registry
 
         private static void WriteSchema(XmlSchema schema, string fileName)
         {
+            Directory.CreateDirectory(Paths.XMLSCHEMAS);
             string path = Path.Combine(Paths.XMLSCHEMAS, fileName);
             using var writer = XmlWriter.Create(path, settings);
             schema.Write(writer);

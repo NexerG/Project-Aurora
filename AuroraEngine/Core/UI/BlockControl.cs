@@ -115,17 +115,17 @@ namespace ArctisAurora.Core.UI
         }
 
         // Wraps inside the indent.
-        public override Vector2 Measure(Vector2 availableSize)
+        protected override Vector2 MeasureCore(Vector2 availableSize)
         {
-            Vector2 desired = base.Measure(new Vector2(MathF.Max(0f, availableSize.X - padding.left), availableSize.Y));
+            Vector2 desired = base.MeasureCore(new Vector2(MathF.Max(0f, availableSize.X - padding.left), availableSize.Y));
             marker?.Measure(availableSize);
             return desired;
         }
 
         // Places the marker in the indent, centred on the first line.
-        public override void Arrange(LayoutRect finalRect)
+        protected override void ArrangeCore(LayoutRect finalRect)
         {
-            base.Arrange(finalRect);
+            base.ArrangeCore(finalRect);
             if (marker == null || Lines == null || Lines.Count == 0) return;
 
             TextLine first = Lines[0];

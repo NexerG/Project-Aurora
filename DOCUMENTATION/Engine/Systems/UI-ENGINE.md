@@ -47,9 +47,9 @@ The kinds are `MTSDFControl` for anything drawn from a distance field, `PanelCon
 
 `VulkanControl` is paint: the kind, the texture coordinates, a paint word and an opacity, the texture index, the corner radii, a stroke paint word and width, and a gradient index. It is 76 bytes.
 
-The layout struct lives in a pool, because layout reads it in tree order and wants it packed. The two GPU structs are not kept per element at all. Every frame they are written fresh into a second pool, `UIQuads`, one row per quad that is actually on screen — so an element that is not visible is never asked for them.
+The layout struct lives in a pool, because layout reads it in tree order and wants it packed. What the GPU reads is not kept per element. Every frame both GPU structs are written fresh into a second pool, `UIQuads`, one row per quad that is actually on screen — so an element that is not visible is never asked for them.
 
-Geometry is not stored anywhere, because everything it holds already is: the matrix comes from the arranged rectangle and a depth the walk hands down, the clip is the clip, and the gradient rectangle is the arranged rectangle. Paint is kept on the element as a plain `visual` field, because it is the parsed form of what was authored — hex colours already turned into numbers, a gradient name already turned into an index, texture coordinates that exist nowhere else — and parsing those again for every visible control every frame would be the expensive way to arrive at the same bytes.
+Geometry is not stored anywhere, because everything it holds already is: the matrix comes from the arranged rectangle and a depth the walk hands down, the clip is the clip, and the gradient rectangle is the arranged rectangle. Paint is kept per element, as a second column of the element's `UIElements` row (`visual`), because it is the parsed form of what was authored — hex colours already turned into numbers, a gradient name already turned into an index, texture coordinates that exist nowhere else — and parsing those again for every visible control every frame would be the expensive way to arrive at the same bytes. Being a pool column also lets the animation step write opacity, border thickness and a button's state straight into it. Each frame the element's paint is copied into its `UIQuads` row and finished there by `PaintRow`: a `Clear` control without a colour of its own is drawn invisible, and a button turns its state into a colour.
 
 ## Why the stroke is one pair and not two
 
@@ -103,9 +103,9 @@ The ramp replaces the fill rather than tinting it, so a control with both a pict
 
 A control does not have to say what colour it is. It names a role — `Ground`, `Surface`, `Chrome`, `Field`, `SubField`, `Line`, `Accent`, `Danger`, `Ink`, `MutedInk`, or `Clear` to paint nothing — and the nearest palette above it says what that role looks like. Most controls already have a sensible role by default: a panel or container is `Clear`, text and the caret are `Ink`, an icon is `MutedInk`, a window frame is `Ground`, a title bar is `Chrome`, a splitter is `Line`. `Field` is an input on the window's ground; `SubField` is an input that sits on a panel or another field, where a `Field` the same colour as the panel would disappear.
 
-A palette is one file under `Palettes/`, twelve values: eight surface colours, a dark and a light text colour, how far a hover or press step moves a colour, and how far muted text fades into what is behind it. Every mount contributes, so the engine ships `default` and an app adds its own; an app file with the same name replaces the engine's. Which one the app paints with is a setting, `<UI><Palette Name="…"/>` — Thorium's names `thorium-light`, one of twelve it ships. The Settings window offers every loaded palette in a dropdown, and a pick applies at once: it replaces the default palette and re-arranges every window's root, so each control re-resolves its role against the new palette. Any control can name another palette with `Palette="name"` for everything below it.
+A palette is one file under `Palettes/`, twelve values: eight surface colours, a dark and a light text colour, how far a hover or press step moves a colour, and how far muted text fades into what is behind it. Every mount contributes, so the engine ships `default` and an app adds its own; an app file with the same name replaces the engine's. Which one the app paints with is a setting, `<UI><Palette Name="…"/>` — Thorium's names `thorium-light`, one of twelve it ships. The Settings window offers every loaded palette in a dropdown, and a pick applies at once: it replaces the default palette, and since every drawn control resolves its role each frame, the next frame draws against the new palette. Any control can name another palette with `Palette="name"` for everything below it.
 
-A palette also carries shape, all of it optional: how round browser rows, tabs, code-built buttons and fields, and context menus are (`RowRadius`, `TabRadius`, `ControlRadius`, `PopupRadius`), how thick the row and tab accent bars are (`RowAccentWidth`, `TabAccentWidth`), and whether the operating system rounds the window's corners (`WindowCorners`: `Round`, `Small` or `Square`). Only controls built in code read these, through a corner role and an accent role that are resolved when the control is arranged, so a palette switch reshapes them the same way it recolours them. A control written in XML keeps whatever `CornerRadius` it authors. Switching palettes also re-applies each window's corner rounding.
+A palette also carries shape, all of it optional: how round browser rows, tabs, code-built buttons and fields, and context menus are (`RowRadius`, `TabRadius`, `ControlRadius`, `PopupRadius`), how thick the row and tab accent bars are (`RowAccentWidth`, `TabAccentWidth`), and whether the operating system rounds the window's corners (`WindowCorners`: `Round`, `Small` or `Square`). Only controls built in code read these, through a corner role and an accent role that are resolved when the control is drawn, so a palette switch reshapes them the same way it recolours them. A control written in XML keeps whatever `CornerRadius` it authors. Switching palettes also re-applies each window's corner rounding.
 
 ```
 apply shape
@@ -126,7 +126,7 @@ An authored colour always wins. `ColorHex` on a control, in XML or in code, opts
 
 Every row carries its colour as a single 32-bit paint word. With the top bit set the low three bytes are the colour itself, which is exactly what a hex code holds; without it the word is a slot in a shared paint table, one block of slots per palette, which the vertex shader reads from a buffer the UI module mirrors per swapchain image. An authored colour never takes a slot, and a palette colour changes in one place rather than on every row that uses it.
 
-Colour is resolved the way the clip is. When a control is arranged it takes the palette and the ground from its parent and paints its role against them, and since attaching, moving and showing a control all end in an arrange, a control is never drawn unresolved. A colour that changes without a layout — a button's hover — pushes the new ground down to its children directly, the same way hiding a control pushes its collapsed clip down.
+Colour is resolved as a control is drawn. The draw-list walk visits every parent before its children, so each control it reaches takes the palette and the ground from its parent and paints its role against them just before its quads are written. Nothing marks a colour as changed: a new palette, a role set at runtime, a button's hover or a control moved to another parent all show on the next frame, because every drawn control is resolved every frame. A control the walk does not reach — off screen, hidden, or under a detail-culled parent — is not resolved, and is not drawn either.
 
 ```
 InheritPaint()
@@ -135,16 +135,6 @@ InheritPaint()
 	if the colour is not authored
 		paint the role against palette and ground
 	ground below = this control's paint if it is an opaque plain panel, else ground
-
-RepaintChildren()
-	if never resolved, or an arrange is pending
-		return
-	recompute ground below
-	if it did not move
-		return
-	for each child
-		if the child's InheritPaint moved its own ground below
-			repaint that child's children
 ```
 
 ## Depth
@@ -219,6 +209,7 @@ Collect(control, depth)
 		return
 	if the subtree's bounds do not overlap the clip it inherited
 		return
+	InheritPaint()
 	ask the control to emit its quads at this depth
 	if the control's rectangle is narrower or shorter than the detail cull size
 		return
@@ -235,7 +226,7 @@ Emit(control, depth)
 	copy the control's paint into the row
 ```
 
-The pool's rows have no handles. Nothing refers to a quad from one frame to the next, so the pool is only ever rewound and appended to. When an append finds it full it grows by 512 rows, as `Pools.pools.xml` declares, and it never shrinks.
+The pool's rows have no handles. Nothing refers to a quad from one frame to the next, so the pool is only ever rewound and appended to. When an append finds it full it doubles, as `Pools.pools.xml` declares. Once it has stayed at most a quarter full for two seconds it halves again, like every pool, so a burst of quads does not hold its memory forever.
 
 Both prunes read rectangles the layout pass already maintains. The subtree test is sound because a child's clip is always a subset of its parent's — arrange either inherits it or intersects it, never widens it — and the chain terminates at the window root's own rectangle. So "off the screen" and "outside some ancestor's clip" are one test, not two, and a scrolled document costs what is visible rather than what it contains.
 
@@ -259,9 +250,9 @@ Mirroring the window's rows to the GPU:
 MirrorDrawList(image)
 	read the pool's two arrays and this window's published range into locals, once
 	clamp the count so the range fits the arrays
-	if the count outgrows this image's buffers
+	if the count outgrows this image's buffers, or has stayed at most a quarter of them for two seconds
 		destroy this image's buffers
-		create mapped geometry and paint buffers for the next power of two rows, at least 256
+		create mapped geometry and paint buffers for the next power of two rows (twice the recent peak when shrinking), at least 256
 		create a mapped buffer holding one indirect draw
 		remember the new capacity
 	copy the window's geometry rows into this image's buffer, from row zero

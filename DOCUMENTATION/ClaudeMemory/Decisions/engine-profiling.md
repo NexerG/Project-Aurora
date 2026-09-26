@@ -613,7 +613,7 @@ Third pass — the query split, then each change of [[render-window-owns-the-swa
 
 ### What changed
 - `--profile-scenario=animation` — a mode on `ProfileScenario`, not a second class (user). Plain `--profile-scenario` is unchanged. `Arm` passes the mode to a private ctor; the mode runs as an `IEnumerator<int>` advanced once per `OnTick`.
-- Zones: `Anim.Step` (track loop), `Anim.Fades` (`StepFades`) on Animation; `Anim.OnValue` around each applied value on Main. Counters: `Anim.Request` (Animation `OnPost`), `Anim.Stepped`, `Anim.ValuePosted`/`Anim.ValueRefused` (per track per tick), `Anim.ValueApplied` (past the stale check), `Anim.RequestDropped` (`Send` refused). Track total is the `Animations` pool's item count under `--profile-pools`, not a counter.
+- Zones: `Anim.Step` (track loop), `Anim.Fades` (`StepFades`) on Animation; `Anim.OnValue` around each applied value on Main. Counters: `Anim.Request` (each track write, signal set and fade on Main — `Animations.Row`, `Signals.Set`, `FadeSlots`), `Anim.Stepped`, `Anim.ValuePosted`/`Anim.ValueRefused` (per track per tick), `Anim.ValueApplied` (past the stale check), `Anim.RequestDropped` (`Send` refused). Track total is the `Animations` pool's item count under `--profile-pools`, not a counter.
 - Clips `profile-state` (`state` 0 → 2) and `profile-margin` (`Margin` left 0 → 4), 1 s `PingPong` `CubicInOut`, in the engine's `UI.anim.xml` (user: data over 30 s tweens).
 - Timeline: settle 30 ticks → `CaptureUntilFlush` → one fade → per N in `{100, 1000, 5000, 20000}`:
 
@@ -628,22 +628,26 @@ Third pass — the query split, then each change of [[render-window-owns-the-swa
 | e. stop | `Scenario.StopAll` | `StopAll` on the first 1,000 buttons, 250 a tick |
 | teardown | `Scenario.Teardown` | `BuildGrid(0)`; 30-tick hold |
 
-- Ramps start ≤ 1,000 a tick and resume at the first refusal. Stops go through kept handles, 250 a tick, with no zone. After the last N: `Shutdown.Request`.
+- Ramps start `max(1,000, N / rampTicks)` a tick (`rampTicks` 20) and resume at the first refusal. Stops go through kept handles, `max(250, handles / stopTicks)` a tick (`stopTicks` 80), with no zone. Up to 20k both match the old fixed 1,000 / 250 (2026-09-24). After the last N: `Shutdown.Request`.
 
 ### Why these choices
 
 **Steady stages ramp because the request lane holds 682, not 1,024.** A burst past that drops, and so does a steady stage started the same way. That leaves only ~682 tracks running, not N. Only stage a bursts, because measuring the drop is the point.
 
-**`StopAll` is sampled, not run on every control.** It scans every binding, so running it on all N at 200k is ~4×10¹⁰ comparisons. A fixed sample of 1,000 still shows the cost per call growing with N.
+**`StopAll` is sampled, not run on every control.** It scanned every binding, so running it on all N at 200k was ~4×10¹⁰ comparisons. A fixed sample of 1,000 still shows the cost per call growing with N. **Since 2026-09-24** `StopAll` is indexed (`Animations.byTarget`); the sample stays so the stage is comparable.
 
 **Stops go 250 a tick with no refusal check.** `Stop` releases on Main even when its request is dropped. The track keeps posting stale values that eat into the value lane. A quarter of the lane leaves room for Animation to tick once per four Main ticks.
 
-**200k was in the ladder and came out (user).** Main ran at ~10 Hz there, so one run would take well over 5 minutes. It got through build, burst and the state clip, and part of the margin clip, before it was closed.
+**200k was in the ladder and came out (user).** Main ran at ~10 Hz there, so one run would take well over 5 minutes. It got through build, burst and the state clip, and part of the margin clip, before it was closed. **2026-09-24:** a scratch `{ 20000, 200000 }` ladder ran to completion in 10.5 min, 475 s of it teardown and stop pacing; after `byTarget` and batches scaled to N it is 3.2 min — [[animation-core]] § Measured at 200k. The ladder still ends at 20k.
+
+**Batches scale with N, not the lane (2026-09-24).** The 682 / 1,024 lanes are gone since [[frame-scheduler]] step 2, so the fixed 1,000 / 250 had no reason left; at 200k they made a ramp 200 ticks and a stop pass 800.
+
+**Sparse margin stage and `--dump-tree` (2026-09-25).** `Scenario.SparseMarginStart`/`SparseMarginHold`: `profile-margin` on every N/1000th button (`sparseCount`), started in one tick — 1,000 changes in an N-control tree, what a layout that follows changes rather than the tree is measured by. `--dump-tree` writes `UITreeDump.Dump(label)` at settled points (`open`, `typed`, `settings`; `grid-N`) — the layout oracle for [[layout-dod-plan]]; byte-identical across two runs of one build.
 
 ### Consequences to hold on to
 - Ladder sizes are total controls in the tree. Every stage except the burst runs all N tracks, but at most ~1,024 values reach Main per tick. The measurement is both the thread cost and that cap.
 - Zones only mark the stage on Main. The animation thread's frames are placed in a stage by timestamp.
-- The capture is ~250 MB at `MaxFileMB` 64 and rolls across five session folders (`-2` … `-5`).
+- The capture is ~250 MB at `MaxFileMB` 64 and rolls across five session folders (`-2` … `-5`). Most of it is the Render lane: render redraws unpaced (~3,500 frames a second at 200k against Main's 4), so a 200k run rolls across eight.
 
 ### Verified (2026-09-19)
 - Builds clean. **Run to completion through 20k**, then 200k was stopped through `CloseMainWindow` → shutdown flushed. Read with a scratch C# script over the XML, not Carbon. Every new zone and counter is present. Results are in [[animation-core]] § Measured at scale.

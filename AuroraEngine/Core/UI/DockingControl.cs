@@ -18,7 +18,7 @@ namespace ArctisAurora.Core.UI
         public Control? right;
         public Control? center;
 
-        public override Vector2 Measure(Vector2 availableSize)
+        protected override Vector2 MeasureCore(Vector2 availableSize)
         {
             float w = preferredWidth > 0 ? preferredWidth : availableSize.X;
             float h = preferredHeight > 0 ? preferredHeight : availableSize.Y;
@@ -97,7 +97,7 @@ namespace ArctisAurora.Core.UI
             return arrange.desired;
         }
 
-        public override void Arrange(LayoutRect finalRect)
+        protected override void ArrangeCore(LayoutRect finalRect)
         {
             WriteArranged(finalRect);
 

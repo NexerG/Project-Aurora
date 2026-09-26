@@ -43,7 +43,10 @@ namespace ArctisAurora.Core.Diagnostics
         private const float buttonSize = 16f;
         private const int startBatch = 1000;
         private const int stopBatch = 250;
+        private const int rampTicks = 20;
+        private const int stopTicks = 80;
         private const int stopAllSample = 1000;
+        private const int sparseCount = 1000;
         private const int animHoldTicks = 240;
         private const int flipTicks = 60;
 
@@ -52,9 +55,13 @@ namespace ArctisAurora.Core.Diagnostics
         private readonly List<AnimationHandle> handles = new List<AnimationHandle>();
         private WindowRoot? grid;
 
-        private ProfileScenario(bool animation)
+        // --dump-tree: writes the laid-out tree at settled points, for comparing layout between builds
+        private readonly bool dumpTree;
+
+        private ProfileScenario(bool animation, bool dumpTree)
         {
             if (animation) this.animation = RunAnimation();
+            this.dumpTree = dumpTree;
             SetTicking(true);
         }
 
@@ -63,11 +70,12 @@ namespace ArctisAurora.Core.Diagnostics
             string[] args = Environment.GetCommandLineArgs();
             bool animation = Array.IndexOf(args, "--profile-scenario=animation") >= 0;
             if (!animation && Array.IndexOf(args, "--profile-scenario") < 0) return;
+            bool dumpTree = Array.IndexOf(args, "--dump-tree") >= 0;
 
             string? hostRoot = SettingsRegistry.WriteRoot;
             if (hostRoot != null)
                 SettingsRegistry.SetWriteRoot(Path.Combine(Directory.GetParent(hostRoot)!.FullName, "ProfileScenario"));
-            Engine.Post(() => new ProfileScenario(animation));
+            Engine.Post(() => new ProfileScenario(animation, dumpTree));
         }
 
         // Replaces the primary window's tree with an editor holding the generated note.
@@ -123,12 +131,14 @@ namespace ArctisAurora.Core.Diagnostics
 
             if (tick == settleTicks)
             {
+                if (dumpTree) UITreeDump.Dump("open");
                 Profiling.CaptureUntilFlush();
                 return;
             }
 
             int step = tick - settleTicks;
             if (step <= 0) return;
+            if (dumpTree && step == typeTicks + 1) UITreeDump.Dump("typed");
 
             if (step <= typeTicks)
             {
@@ -163,6 +173,7 @@ namespace ArctisAurora.Core.Diagnostics
             }
             else if (step == typeTicks + resizeTicks + 1 + settingsSettleTicks + settingsResizeTicks + settingsHoldTicks + 1)
             {
+                if (dumpTree) UITreeDump.Dump("settings");
                 AGlfwWindow._glfw.GetWindowSize(Engine.primary.os.handle, out int width, out int height);
                 Log.Info($"scenario done — {document.blocks.Sum(b => b.Length)} chars, window {width}x{height}");
                 Engine.Post(Shutdown.Request);
@@ -189,6 +200,7 @@ namespace ArctisAurora.Core.Diagnostics
                 BuildGrid(count);
                 Profiling.Zone.End("Scenario.Build");
                 foreach (int t in Hold("Scenario.Settle", settleTicks)) yield return t;
+                if (dumpTree) UITreeDump.Dump($"grid-{count}");
 
                 Profiling.Zone.Start("Scenario.Burst");
                 foreach (ButtonControl button in buttons)
@@ -202,6 +214,13 @@ namespace ArctisAurora.Core.Diagnostics
 
                 foreach (int t in Ramp("Scenario.MarginRamp", b => Keep(Animations.Play(b, "profile-margin", false)))) yield return t;
                 foreach (int t in Hold("Scenario.MarginHold", animHoldTicks)) yield return t;
+                foreach (int t in StopHandles()) yield return t;
+
+                int stride = Math.Max(1, buttons.Count / sparseCount);
+                Profiling.Zone.Start("Scenario.SparseMarginStart");
+                for (int i = 0; i < buttons.Count; i += stride) Keep(Animations.Play(buttons[i], "profile-margin", false));
+                Profiling.Zone.End("Scenario.SparseMarginStart");
+                foreach (int t in Hold("Scenario.SparseMarginHold", animHoldTicks)) yield return t;
                 foreach (int t in StopHandles()) yield return t;
 
                 SignalHandle signal = Signals.Create();
@@ -259,26 +278,28 @@ namespace ArctisAurora.Core.Diagnostics
             previous?.Destroy();
         }
 
-        // Starts at most startBatch buttons a tick, resuming at the first one the request lane refused.
+        // Starts buttons over rampTicks ticks, resuming at the first one the request lane refused.
         private IEnumerable<int> Ramp(string zone, Func<ButtonControl, bool> start)
         {
             int next = 0;
+            int batch = Math.Max(startBatch, buttons.Count / rampTicks);
             while (next < buttons.Count)
             {
                 Profiling.Zone.Start(zone);
-                int end = Math.Min(next + startBatch, buttons.Count);
+                int end = Math.Min(next + batch, buttons.Count);
                 while (next < end && start(buttons[next])) next++;
                 Profiling.Zone.End(zone);
                 yield return 0;
             }
         }
 
-        // Stops the kept handles, stopBatch a tick.
+        // Stops kept handles over stopTicks ticks.
         private IEnumerable<int> StopHandles()
         {
-            for (int i = 0; i < handles.Count; i += stopBatch)
+            int batch = Math.Max(stopBatch, handles.Count / stopTicks);
+            for (int i = 0; i < handles.Count; i += batch)
             {
-                for (int j = i; j < Math.Min(i + stopBatch, handles.Count); j++) Animations.Stop(handles[j]);
+                for (int j = i; j < Math.Min(i + batch, handles.Count); j++) Animations.Stop(handles[j]);
                 yield return 0;
             }
             handles.Clear();

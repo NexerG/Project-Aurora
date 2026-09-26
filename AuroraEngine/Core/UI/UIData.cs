@@ -40,6 +40,14 @@ namespace ArctisAurora.Core.UI
         ArrangeDirty = 8
     }
 
+    // LayoutNode.kind: laid out through its own MeasureCore/ArrangeCore, or flattened into the layout walk.
+    public enum LayoutNodeKind : byte
+    {
+        Custom,
+        Single,
+        Stack
+    }
+
     public struct LayoutRect
     {
         public float x;
@@ -258,6 +266,9 @@ namespace ArctisAurora.Core.UI
         public short gridColumn;
         public short gridRow;
 
+        // context menu slide: fraction of its desired height shown
+        public float reveal;
+
         // arrange output
         public LayoutRect arranged;
         public LayoutRect clip;
@@ -266,6 +277,20 @@ namespace ArctisAurora.Core.UI
         // collision and insert caches
         public LayoutRect subtreeBounds;
         public int subtreeCount;
+    }
+
+    // A UIElements row's place in the tree and how it lays out. The subtree is the rows [row, row + count).
+    [StructLayout(LayoutKind.Sequential), A_XSDType("LayoutNode", "DataPools")]
+    public struct LayoutNode
+    {
+        // tree range; count 0 = not sequenced yet
+        public int parent;
+        public int count;
+
+        // layout
+        public LayoutNodeKind kind;
+        public byte axis;
+        public float spacing;
     }
 
     // Arrange's GPU-side output, one row per drawn quad.
@@ -293,7 +318,7 @@ namespace ArctisAurora.Core.UI
         public Vector4 cornerRadius;
         // stroke, in design pixels — against the MSDF silhouette on MTSDFControl, the rounded box otherwise
         public uint edgePaint;
-        public Vector4 edgeThickness;
+        public Thickness edgeThickness;
         // 0 rest, 1 hover, 2 press; blends a surface rest slot toward its next two slots
         public float state;
         // Effects table row and the engine time it started at
