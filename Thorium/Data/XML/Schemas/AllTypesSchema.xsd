@@ -70,6 +70,7 @@
       <xs:enumeration value="EffectLoop" />
       <xs:enumeration value="Effect" />
       <xs:enumeration value="Effects" />
+      <xs:enumeration value="Expander" />
       <xs:enumeration value="FileRow" />
       <xs:enumeration value="GradientKind" />
       <xs:enumeration value="Stop" />
@@ -211,6 +212,12 @@
       <xs:enumeration value="Animation" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:simpleType name="Test">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Test" />
+      <xs:enumeration value="TestSuite" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:simpleType name="Context">
     <xs:restriction base="xs:string">
       <xs:enumeration value="ActiveContext" />
@@ -239,7 +246,7 @@
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Uncategorized">
-    <xs:union memberTypes="types:Settings types:UI types:Bootstrap types:Input types:Shutdown types:AssetRegistry types:EntityRegistry types:DataPools types:Systems types:Context types:Rendering types:Animation">
+    <xs:union memberTypes="types:Settings types:UI types:Bootstrap types:Input types:Shutdown types:AssetRegistry types:EntityRegistry types:DataPools types:Systems types:Test types:Context types:Rendering types:Animation">
       <xs:simpleType>
         <xs:restriction base="xs:string">
           <xs:enumeration value="xs:string" />

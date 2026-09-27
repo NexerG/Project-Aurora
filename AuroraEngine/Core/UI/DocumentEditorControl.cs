@@ -30,9 +30,12 @@ namespace ArctisAurora.Core.UI
             set { field = value; if (content != null) content.selectionColorHex = value; }
         }
 
+        private static readonly LogChannel Log = LogChannel.For("UI");
+
         private const float autoScrollRate = 0.25f;
 
         private DocumentControl content;
+        private NotePropertiesControl? properties;
 
         // honoured at the end of Arrange, once every block has this frame's lines
         private bool scrollToCaretPending;
@@ -89,14 +92,29 @@ namespace ArctisAurora.Core.UI
             };
             AddChild(content);
 
+            string extension = Path.GetExtension(session?.path ?? string.Empty).ToLowerInvariant();
+            properties = extension is ".md" or ".xml" ? new NotePropertiesControl(this, extension == ".md") : null;
+            if (properties != null)
+            {
+                ExpanderControl expander = new ExpanderControl();
+                expander.AddChild(properties);
+                content.header = expander;
+            }
+
             foreach (BlockControl block in document.blocks)
             {
                 block.ApplyLayout(document.layout);
                 content.AddChild(block);
             }
+
+            ApplyPalette();
         }
 
-        public void Save() => session?.Save();
+        public void Save()
+        {
+            session?.Save();
+            properties?.Refresh();
+        }
 
         // Naming an unnamed note is a rename — the host follows the name onto the file, onto every
         // tab holding the note and onto its own list. Null when nothing owns the note that way.
@@ -111,7 +129,7 @@ namespace ArctisAurora.Core.UI
 
             if (!needsNaming)
             {
-                session.Save();
+                Save();
                 onSaved?.Invoke();
                 return;
             }
@@ -129,7 +147,7 @@ namespace ArctisAurora.Core.UI
                 name =>
                 {
                     session.document.name = name;
-                    session.Save();
+                    Save();
                     onNamed?.Invoke(name);
                     onSaved?.Invoke();
                 },
@@ -236,6 +254,50 @@ namespace ArctisAurora.Core.UI
             content.InvalidateLayout();
             MarkDirty();
             RequestScrollToCaret();
+        }
+
+        // The note's own palette, or the app's when it names none. Not undoable.
+        public void SetPalette(string? name)
+        {
+            if (activeDocument == null) return;
+
+            activeDocument.palette = name;
+            ApplyPalette();
+            MarkDirty();
+        }
+
+        // Points the editor at the note's palette and paints that palette's ground.
+        private void ApplyPalette()
+        {
+            string? name = activeDocument.palette;
+            bool known = name != null && Palettes.Names.Contains(name);
+            if (name != null && !known) Log.Warn($"Note palette '{name}' is not defined; showing the app's.");
+
+            paletteName = known ? name! : "";
+            role = known ? PaletteRole.Ground : PaletteRole.Clear;
+            alpha = known ? 1f : 0f;
+        }
+
+        // The note's layout values. Not undoable.
+        public void SetLayout(DocumentLayout layout)
+        {
+            if (content == null) return;
+
+            activeDocument.layout = layout;
+            content.blockSpacing = layout.blockSpacing;
+            foreach (BlockControl block in activeDocument.blocks)
+                block.ApplyLayout(layout);
+            content.InvalidateLayout();
+            MarkDirty();
+        }
+
+        // One frontmatter key of a Markdown note, removed when value is null. Not undoable.
+        public void SetFrontmatterValue(string key, string? value)
+        {
+            if (activeDocument == null) return;
+
+            activeDocument.frontmatter = Frontmatter.Set(activeDocument.frontmatter, key, value);
+            MarkDirty();
         }
 
         // The document zoom setting, clamped; 1 is 100%.

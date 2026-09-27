@@ -201,6 +201,15 @@
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:EffectDefinition.Children" />
     </xs:sequence>
   </xs:complexType>
+  <xs:attributeGroup name="Expander.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:Control.Attributes" />
+    <xs:attribute name="Expanded" type="xs:boolean" />
+  </xs:attributeGroup>
+  <xs:element name="Expander" type="types:Expander" />
+  <xs:complexType name="Expander">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Expander.Attributes" />
+  </xs:complexType>
   <xs:element name="FileRow" type="types:FileRow" />
   <xs:complexType name="FileRow">
     <xs:sequence />
@@ -394,6 +403,10 @@
   </xs:complexType>
   <xs:attributeGroup name="Document.Attributes">
     <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="Palette" type="xs:string" />
+    <xs:attribute name="Created" type="xs:string" />
+    <xs:attribute name="Modified" type="xs:string" />
+    <xs:attribute name="Frontmatter" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="Document" type="types:Document" />
   <xs:complexType name="Document">

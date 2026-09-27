@@ -60,8 +60,8 @@ namespace ArctisAurora.Core.Threading
             // the tap window all count real seconds.
             long now = Stopwatch.GetTimestamp();
 
-            Engine.deltaTime = _lastTick == 0
-                ? TimeSpan.Zero
+            Engine.deltaTime = Engine.fixedStep > 0 ? TimeSpan.FromSeconds(Engine.fixedStep)
+                : _lastTick == 0 ? TimeSpan.Zero
                 : TimeSpan.FromSeconds((now - _lastTick) / (double)Stopwatch.Frequency);
             _lastTick = now;
 

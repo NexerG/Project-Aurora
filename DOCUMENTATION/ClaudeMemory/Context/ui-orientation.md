@@ -122,6 +122,11 @@ Why: [[ui-palettes]].
   `value` set. XML `Value`, `TrackHeight`, `ThumbWidth`, `TrackColorHex`, `ThumbColorHex`. No old counterpart.
 - **DropdownControl** `<Dropdown>` · ButtonControl — caption, `options`, `onPicked`, `selected`; a
   left release opens `options` as a menu under it, no narrower than itself, captions centered. `options` is code-only. Old `DropdownControl`.
+- **ExpanderControl** `<Expander>` · ContainerControl — two `Line` rules and a round grip split in half; the first
+  authored child is the content, slid open between the halves. `reveal` (animatable `ArrangeData.reveal`, Measure),
+  `expanded` (XML `Expanded`, jumps), `Toggle` (tweens `reveal` and crossfades the arrows). Nested `Viewport` (clips,
+  holds the content against the lower rule), `Half` (24×12 clip) over `Circle` (24×24 button, acts on press, takes no
+  active control). No old counterpart. [[note-properties]]
 - **KeyCaptureControl** `<KeyCapture>` · ButtonControl — shows a combo (`SetCombo`, static
   `Describe`); a left release hands the next key to `InputHandler.Capture`; `OnDestroy` cancels a live capture,
   or every keybind stays swallowed. Old `KeyCaptureControl`.
@@ -173,10 +178,12 @@ Why: [[ui-palettes]].
   `CaretBlockStyling`, `ApplyStyle`, `ArmStyle`, `ApplyStyleTo`/`ApplyStyleBetween`, `SetBlockStyling`,
   `SnapshotBlocks`, `RestoreBlocks`), `addressing` (`AddressOf`, `Resolve`, `CaretTo`) and `undo primitives`
   (`InsertText`, `RemoveText`, `DeleteBetween`, `InsertFragment`, `JoinBlockWithNext`). Also declares
-  `CaretSlot`, `StyleDelta`, `CaretStyle` and `PageBands`. Old `DocumentControl`. [[document-pages]]
+  `CaretSlot`, `StyleDelta`, `CaretStyle` and `PageBands`. `header` — one control at the top margin of page 1,
+  `Paginate` starts below it. Old `DocumentControl`. [[document-pages]], [[note-properties]]
 - **DocumentEditorControl** `<DocumentEditor>` · ScrollableControl, `IContext` — one open note.
-  `Source`/`LoadPath`/`LoadDocument`, `Save`, `needsNaming`, `FocusCaret`; regions `styling` (forwards under a
-  `BeginStep`; also `SetChecked`, `ShiftListLevel`, `Page`/`SetPage`), `selection` (`SelectLine`, `BeginSelectionDrag`, `OnDrag` + autoscroll), `caret movement`
+  `Source`/`LoadPath`/`LoadDocument` (builds the properties header for `.md`/`.xml`), `Save` (refreshes it),
+  `needsNaming`, `FocusCaret`; regions `styling` (forwards under a `BeginStep`; also `SetChecked`, `ShiftListLevel`,
+  `Page`/`SetPage`, and the non-undoable `SetPalette`/`ApplyPalette`, `SetLayout`, `SetFrontmatterValue`), `selection` (`SelectLine`, `BeginSelectionDrag`, `OnDrag` + autoscroll), `caret movement`
   (`MoveCaret`), `editing` (`Backspace`, `Delete`, `SplitBlock`, `TypeChar`), `history`
   (`BeginStep`/`Undo`/`Redo`/`MarkDirty`), `focus`. `ArrangeCore` scrolls to the caret and **must never exit with
   the arrange flag set**. XML adds `CaretColorHex`, `SelectionColorHex` to the scrollable's. Old
@@ -187,9 +194,14 @@ Why: [[ui-palettes]].
   `PxBox` (the one part that does take the focus; captures the range on its press). XML `HoverColorHex`,
   `PressColorHex`, `IdleInkColorHex`, `ActiveInkColorHex`, `SeparatorColorHex`, `FieldColorHex`. Old
   `DocumentToolbarControl`, [[document-format-bar]], [[armed-style-at-the-caret]] (old).
-- **RichTextDocument** `<Document>` — the model: `blocks`, `name`, `layout`; `extensions`, `Load`, `Save`
-  (switch on the extension). **DocumentEditSession** — the open file: `path`, `undo`, `isDirty`, `MarkDirty`,
-  `Repath`, `Save`.
+- **RichTextDocument** `<Document>` — the model: `blocks`, `name`, `layout`, `palette`, `created`, `modified`,
+  `frontmatter`; `extensions`, `Load` (fills `created` from disk), `Save` (switch on the extension), `Stamp`.
+  **DocumentEditSession** — the open file: `path`, `undo`, `isDirty`, `MarkDirty`, `Repath`, `Save` (stamps
+  `modified` when dirty).
+- **NotePropertiesControl** (no XML) · StackPanelControl — the header's rows: dates, palette dropdown, layout
+  fields, a Markdown note's other frontmatter keys. `Refresh`; swallows presses and taps; takes no active control.
+  [[note-properties]]
+- **Frontmatter** (static) — `Split`, `Entries` (`Entry`: key, value, editable, line, count), `Get`, `Set`.
 - **DocumentXml** — `Load`/`Parse(XElement)` build blocks from a `<Document>` tree, `ToXml`/`Save` write one;
   the block level is written by hand. Since 6d no XSD type declares `"Document"`/`"Block"`/`"Run"`, so a
   note's `schemaLocation` validates nothing. [../Patterns/document-xml-persistence.md](../Patterns/document-xml-persistence.md)

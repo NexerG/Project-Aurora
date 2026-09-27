@@ -29,7 +29,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 	- [ ] **switching vaults does not capture the vault being left** — `VaultsWindow.Switch` closes every tab and writes the setting, and capture only ever runs at shutdown, so switching away and quitting elsewhere loses the old vault's arrangement. Fix is a `SessionLayout.Capture()` in `Switch` before `CloseTabs`, against the outgoing scope. Related and pre-existing: `Switch` only closes tabs in `Engine.primary`, so a torn-off window keeps notes from the vault that was left and capture then files them under the new vault's key
 	- [ ] caret position, scroll offset and selection are not recorded, only the ordered tab paths and the active one; an iconified window comes back normal; a window whose every recorded note was deleted comes back as an empty pane rather than not at all
 - [ ] bootstrap and shutdown steps report success unconditionally — the `bool` is wired end to end but no step actually detects its own failure yet
-- [ ] Test/profiling platform — built **on the UI**, scheduled **after the text editor's first version**: GC/allocation, execution time, and general "does it work" checks. Dogfoods the UI while doubling as the profiler. Engine work stays manually GUI-verified until then. (Supersedes the headless `AuroraTesting` console runner.)
+- [ ] **Test framework — `--test` runs XML suites inside the host, exit code = failures (2026-09-27)** — slice 1 landed: runner, `Check`, fixed clock, Boot, `results.xml`; Carbon view, input helpers, perf and golden-image checks open. Boot fails today on 3 pre-existing error sources. See `ClaudeMemory/Context/test-framework-plan.md`
 - [ ] UI collision
 	- [ ] add handle states - game, ui etc
 	- [ ] Update engine class so the mouse inputs are handled in input handler
@@ -45,6 +45,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] **GUI-verify `.md` notes and lists** — open, edit, save a Markdown note; dots/checkboxes in the indent, wrapping inside it, checkbox click + undo, `- `/`[ ] ` conversion, Enter/Backspace on items, Tab/Shift+Tab → `note-file-formats`
 		- [ ] numbered lists — a list item is points or numbers (`1.` is literal text today) (user, 2026-09-17) → `note-file-formats`
 		- [ ] a custom note format of Thorium's own, beside `.md` (user, 2026-09-17) → `note-file-formats`
+		- [ ] **text boxes in the note's properties header take no press** — `TextRunControl` hands the press to the nearest `IGlyphPressTarget`, now `DocumentControl`, so layout and frontmatter fields cannot be edited in the GUI; one-line fix in `TextBoxControl.FieldLine` proposed → `note-properties`
 		- [ ] glyph ceiling — every character is a `GlyphControl`, always (~56.7k on the 400-block note, past `UIModule`'s 50,000 cap). Accepted knowingly. **The UI data/visualization split does not fix this** — one control per element means the count is unchanged; the two share a cause but are separate problems. Escape hatch that does not change the design: a run holds `text` + its `BlockLayout` with no glyph children and calls `SyncGlyphs()` when visible
 		- [ ] P4 — selection + Ctrl+B/I run split/merge
 			- [x] **Ctrl+B/I over the range, and the format bar (2026-08-30)** — landed, See `ClaudeMemory/Decisions/document-format-bar.md`

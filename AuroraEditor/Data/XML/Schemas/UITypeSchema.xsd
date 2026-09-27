@@ -4,7 +4,7 @@
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:import schemaLocation="EntityRegistryTypeSchema.xsd" namespace="http://arctisaurora/AuroraEntityRegistryTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:GradientKind types:GridSizeMode types:TextStyleType types:ScrollDirection types:Orientation" />
+    <xs:union memberTypes="types:EffectLoop types:GradientKind types:GridSizeMode types:PaletteRole types:WindowCorners types:TextStyleType types:PageMode types:PageSize types:ScrollDirection types:Orientation" />
   </xs:simpleType>
   <xs:attributeGroup name="Run.Attributes">
     <xs:attribute name="Text" type="xs:string" />
@@ -14,6 +14,7 @@
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="xs:string" />
     <xs:attribute name="Gradient" type="xs:string" />
+    <xs:attribute name="Effect" type="xs:string" />
     <xs:attribute name="FontName" type="xs:string" />
     <xs:attribute name="FontSize" type="xs:int" />
     <xs:attribute name="FontSizeAuthored" type="xs:boolean" />
@@ -26,6 +27,7 @@
   </xs:complexType>
   <xs:attributeGroup name="Button.Attributes">
     <xs:attributeGroup ref="EntityRegistry:Control.Attributes" />
+    <xs:attribute name="Enabled" type="xs:boolean" />
     <xs:attribute name="HoverColorHex" type="xs:string" />
     <xs:attribute name="PressColorHex" type="xs:string" />
   </xs:attributeGroup>
@@ -136,6 +138,58 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:TabView.Attributes" />
   </xs:complexType>
+  <xs:simpleType name="EffectLoop">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Once" />
+      <xs:enumeration value="Loop" />
+      <xs:enumeration value="PingPong" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="Effect.Attributes">
+    <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="Duration" type="xs:float" />
+    <xs:attribute name="Loop" type="types:EffectLoop" />
+    <xs:attribute name="Stagger" type="xs:float" />
+    <xs:attribute name="Ease" type="xs:string" />
+    <xs:attribute name="X1" type="xs:float" />
+    <xs:attribute name="Y1" type="xs:float" />
+    <xs:attribute name="X2" type="xs:float" />
+    <xs:attribute name="Y2" type="xs:float" />
+    <xs:attribute name="Steps" type="xs:int" />
+    <xs:attribute name="OffsetFrom" type="xs:string" />
+    <xs:attribute name="OffsetTo" type="xs:string" />
+    <xs:attribute name="ScaleFrom" type="xs:float" />
+    <xs:attribute name="ScaleTo" type="xs:float" />
+    <xs:attribute name="RotateFrom" type="xs:float" />
+    <xs:attribute name="RotateTo" type="xs:float" />
+    <xs:attribute name="AlphaFrom" type="xs:float" />
+    <xs:attribute name="AlphaTo" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="Effect" type="types:Effect" />
+  <xs:complexType name="Effect">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Effect.Attributes" />
+  </xs:complexType>
+  <xs:element name="Effects" type="types:Effects" />
+  <xs:group name="EffectDefinition.Children">
+    <xs:choice>
+      <xs:element name="Effect" type="types:Effect" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="Effects">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:EffectDefinition.Children" />
+    </xs:sequence>
+  </xs:complexType>
+  <xs:attributeGroup name="Expander.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:Control.Attributes" />
+    <xs:attribute name="Expanded" type="xs:boolean" />
+  </xs:attributeGroup>
+  <xs:element name="Expander" type="types:Expander" />
+  <xs:complexType name="Expander">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Expander.Attributes" />
+  </xs:complexType>
   <xs:element name="FileRow" type="types:FileRow" />
   <xs:complexType name="FileRow">
     <xs:sequence />
@@ -151,6 +205,8 @@
     <xs:attribute name="Color" type="xs:string" />
     <xs:attribute name="Alpha" type="xs:float" />
     <xs:attribute name="Pos" type="xs:float" />
+    <xs:attribute name="Role" type="types:PaletteRole" />
+    <xs:attribute name="Shade" type="xs:float" />
   </xs:attributeGroup>
   <xs:element name="Stop" type="types:Stop" />
   <xs:complexType name="Stop">
@@ -266,6 +322,60 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:Button.Attributes" />
   </xs:complexType>
+  <xs:simpleType name="PaletteRole">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="None" />
+      <xs:enumeration value="Clear" />
+      <xs:enumeration value="Ground" />
+      <xs:enumeration value="Surface" />
+      <xs:enumeration value="Chrome" />
+      <xs:enumeration value="Field" />
+      <xs:enumeration value="SubField" />
+      <xs:enumeration value="Line" />
+      <xs:enumeration value="Accent" />
+      <xs:enumeration value="Danger" />
+      <xs:enumeration value="Ink" />
+      <xs:enumeration value="MutedInk" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="WindowCorners">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Round" />
+      <xs:enumeration value="Small" />
+      <xs:enumeration value="Square" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="Palette.Attributes">
+    <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="Ground" type="xs:string" />
+    <xs:attribute name="Surface" type="xs:string" />
+    <xs:attribute name="Chrome" type="xs:string" />
+    <xs:attribute name="Field" type="xs:string" />
+    <xs:attribute name="SubField" type="xs:string" />
+    <xs:attribute name="Line" type="xs:string" />
+    <xs:attribute name="Accent" type="xs:string" />
+    <xs:attribute name="Danger" type="xs:string" />
+    <xs:attribute name="EdgeAccent" type="xs:string" />
+    <xs:attribute name="DarkInk" type="xs:string" />
+    <xs:attribute name="LightInk" type="xs:string" />
+    <xs:attribute name="Step" type="xs:float" />
+    <xs:attribute name="Muted" type="xs:float" />
+    <xs:attribute name="RowRadius" type="xs:float" />
+    <xs:attribute name="TabRadius" type="xs:float" />
+    <xs:attribute name="ControlRadius" type="xs:float" />
+    <xs:attribute name="PopupRadius" type="xs:float" />
+    <xs:attribute name="RowAccentWidth" type="xs:float" />
+    <xs:attribute name="TabAccentWidth" type="xs:float" />
+    <xs:attribute name="WindowCorners" type="types:WindowCorners" />
+    <xs:attribute name="StateFrequency" type="xs:float" />
+    <xs:attribute name="StateDamping" type="xs:float" />
+    <xs:attribute name="ThemeFade" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="Palette" type="types:Palette" />
+  <xs:complexType name="Palette">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Palette.Attributes" />
+  </xs:complexType>
   <xs:element name="Panel" type="types:Panel" />
   <xs:complexType name="Panel">
     <xs:sequence />
@@ -273,6 +383,10 @@
   </xs:complexType>
   <xs:attributeGroup name="Document.Attributes">
     <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="Palette" type="xs:string" />
+    <xs:attribute name="Created" type="xs:string" />
+    <xs:attribute name="Modified" type="xs:string" />
+    <xs:attribute name="Frontmatter" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="Document" type="types:Document" />
   <xs:complexType name="Document">
@@ -312,6 +426,7 @@
   <xs:attributeGroup name="DocumentLayout.Attributes">
     <xs:attribute name="LineHeight" type="xs:float" />
     <xs:attribute name="BlockSpacing" type="xs:float" />
+    <xs:attribute name="ListIndent" type="xs:float" />
   </xs:attributeGroup>
   <xs:element name="DocumentLayout" type="types:DocumentLayout" />
   <xs:complexType name="DocumentLayout">
@@ -321,8 +436,54 @@
           <xs:documentation>Per-type text styles; empty inherits the editor's.</xs:documentation>
         </xs:annotation>
       </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="Page" type="types:Page">
+        <xs:annotation>
+          <xs:documentation>Page format; absent inherits the editor's.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
     </xs:sequence>
     <xs:attributeGroup ref="types:DocumentLayout.Attributes" />
+  </xs:complexType>
+  <xs:simpleType name="PageMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Paged" />
+      <xs:enumeration value="Pageless" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="PageSize">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="A0" />
+      <xs:enumeration value="A1" />
+      <xs:enumeration value="A2" />
+      <xs:enumeration value="A3" />
+      <xs:enumeration value="A4" />
+      <xs:enumeration value="A5" />
+      <xs:enumeration value="A6" />
+      <xs:enumeration value="B4" />
+      <xs:enumeration value="B5" />
+      <xs:enumeration value="Letter" />
+      <xs:enumeration value="Legal" />
+      <xs:enumeration value="Tabloid" />
+      <xs:enumeration value="Executive" />
+      <xs:enumeration value="Custom" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="Page.Attributes">
+    <xs:attribute name="Mode" type="types:PageMode" />
+    <xs:attribute name="Size" type="types:PageSize" />
+    <xs:attribute name="Landscape" type="xs:boolean" />
+    <xs:attribute name="Width" type="xs:float" />
+    <xs:attribute name="Height" type="xs:float" />
+    <xs:attribute name="MarginTop" type="xs:float" />
+    <xs:attribute name="MarginBottom" type="xs:float" />
+    <xs:attribute name="MarginLeft" type="xs:float" />
+    <xs:attribute name="MarginRight" type="xs:float" />
+    <xs:attribute name="Gap" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="Page" type="types:Page" />
+  <xs:complexType name="Page">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Page.Attributes" />
   </xs:complexType>
   <xs:simpleType name="ScrollDirection">
     <xs:restriction base="xs:string">

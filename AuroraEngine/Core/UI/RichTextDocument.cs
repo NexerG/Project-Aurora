@@ -1,5 +1,6 @@
 using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.Registry;
+using System.Globalization;
 using System.Numerics;
 
 namespace ArctisAurora.Core.UI
@@ -19,15 +20,38 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("DocumentLayout", "UI", "Layout parameters for this note.")]
         public DocumentLayout layout = new DocumentLayout();
 
+        // note properties
+        [A_XSDElementProperty("Palette", "UI", "Palette the note is shown in. Absent means the app's.")]
+        public string? palette;
+
+        [A_XSDElementProperty("Created", "UI", "When the note was created, ISO 8601.")]
+        public string? created;
+
+        [A_XSDElementProperty("Modified", "UI", "When the note was last saved with changes, ISO 8601.")]
+        public string? modified;
+
+        [A_XSDElementProperty("Frontmatter", "UI", "A Markdown note's metadata block as written, delimiter lines included.")]
+        public string? frontmatter;
+
         // note file extensions the editor opens
         public static readonly string[] extensions = { ".xml", ".md", ".txt" };
 
-        public static RichTextDocument Load(string path) => Path.GetExtension(path).ToLowerInvariant() switch
+        public static RichTextDocument Load(string path)
         {
-            ".md" => DocumentXml.Parse(MarkdownFormat.Read(File.ReadAllText(path), Path.GetFileNameWithoutExtension(path))),
-            ".txt" => DocumentXml.Parse(PlainTextFormat.Read(File.ReadAllText(path), Path.GetFileNameWithoutExtension(path))),
-            _ => DocumentXml.Load(path)
-        };
+            RichTextDocument document = Path.GetExtension(path).ToLowerInvariant() switch
+            {
+                ".md" => DocumentXml.Parse(MarkdownFormat.Read(File.ReadAllText(path), Path.GetFileNameWithoutExtension(path))),
+                ".txt" => DocumentXml.Parse(PlainTextFormat.Read(File.ReadAllText(path), Path.GetFileNameWithoutExtension(path))),
+                _ => DocumentXml.Load(path)
+            };
+
+            document.created ??= Stamp(File.GetCreationTime(path));
+            return document;
+        }
+
+        // A local time as the properties store it.
+        public static string Stamp(DateTime time) =>
+            new DateTimeOffset(time).ToString("yyyy-MM-ddTHH:mm:sszzz", CultureInfo.InvariantCulture);
 
         public void Save(string path)
         {
@@ -66,6 +90,7 @@ namespace ArctisAurora.Core.UI
 
         public void Save()
         {
+            if (isDirty) document.modified = RichTextDocument.Stamp(DateTime.Now);
             document.Save(path);
             isDirty = false;
         }

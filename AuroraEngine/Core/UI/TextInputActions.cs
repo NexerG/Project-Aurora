@@ -153,13 +153,16 @@ namespace ArctisAurora.Core.UI
             Box()?.MoveCaret(move, InputHandler.instance.IsModifierDown(InputModifier.Extend));
         }
 
-        // Nearest document editor at or above whatever the new stack last made active.
+        // Nearest editor at or above the active control; none past an editing field.
         internal static DocumentEditorControl Editor()
         {
             for (ArctisAurora.Core.UI.Control control = UIEngine.activeControl;
                  control != null;
                  control = control.parent as ArctisAurora.Core.UI.Control)
+            {
+                if (control is TextBoxControl { isEditing: true }) return null;
                 if (control is DocumentEditorControl editor) return editor;
+            }
 
             return null;
         }
