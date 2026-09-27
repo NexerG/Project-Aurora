@@ -23,7 +23,7 @@ namespace ArctisAurora.Core.UI
         public static RichTextDocument Parse(XElement root)
         {
             RichTextDocument document = new RichTextDocument();
-            XmlReflection.ApplyAttributes(root, document);
+            XmlReflection.ApplyAttributes(root, document, tolerant: true);
 
             foreach (XElement element in root.Elements())
                 switch (element.Name.LocalName)
@@ -38,19 +38,19 @@ namespace ArctisAurora.Core.UI
 
         private static void ReadLayout(XElement element, DocumentLayout layout)
         {
-            XmlReflection.ApplyAttributes(element, layout);
+            XmlReflection.ApplyAttributes(element, layout, tolerant: true);
 
             foreach (XElement child in element.Elements())
             {
                 if (child.Name.LocalName == "Page")
                 {
                     layout.page = new PageLayout();
-                    XmlReflection.ApplyAttributes(child, layout.page);
+                    XmlReflection.ApplyAttributes(child, layout.page, tolerant: true);
                     continue;
                 }
 
                 TextStyle style = new TextStyle();
-                XmlReflection.ApplyAttributes(child, style);
+                XmlReflection.ApplyAttributes(child, style, tolerant: true);
                 layout.textStyles.Add(style);
             }
         }
@@ -75,7 +75,7 @@ namespace ArctisAurora.Core.UI
             foreach (XElement child in element.Elements())
             {
                 Run run = new Run();
-                XmlReflection.ApplyAttributes(child, run);
+                XmlReflection.ApplyAttributes(child, run, tolerant: true);
                 block.AppendRun(run);
             }
 

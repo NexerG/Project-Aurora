@@ -5,6 +5,7 @@ using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Threading;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing.Serialization;
+using ArctisAurora.Core.Testing;
 using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork.Registry;
 using ArctisAurora.EngineWork.Rendering;
@@ -73,6 +74,8 @@ namespace ArctisAurora.EngineWork
         public static TimeSpan deltaTime;
         private static DateTime lastFrameTime = DateTime.Now;
         public static double totalTime = 0;
+        // seconds per tick while the clock is fixed, 0 for real time
+        public static double fixedStep;
         //private DateTime lastFrameTime = DateTime.Now;
 
         public Engine()
@@ -96,6 +99,7 @@ namespace ArctisAurora.EngineWork
             Bootstrapper.Load(Paths.BOOTSTRAP);
             Profiling.ArmBoot();
             ProfileScenario.Arm();
+            TestRunner.Arm();
             Bootstrapper.RunPhase("Bootstrap");
             Shutdown.Load(Paths.SHUTDOWN);
 
@@ -239,6 +243,8 @@ namespace ArctisAurora.EngineWork
 
         private static void WireInput(RenderWindow window)
         {
+            if (TestRunner.active) return;
+
             window.os.SetCursorPosCallback(inputHandler.ProcessMouseMove);
             window.os.SetMouseButtonCallback(inputHandler.ProcessMouseClick);
             window.os.SetKeyCallback(inputHandler.ProcessKeyboard);

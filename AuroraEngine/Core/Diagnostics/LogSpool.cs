@@ -52,6 +52,9 @@ namespace ArctisAurora.Core.Diagnostics
         // below what anything prints, so those lines still have to be formatted.
         internal static LogLevel floor = LogLevel.Trace;
 
+        // Error and Fatal records written since launch
+        internal static int errorCount;
+
         // spill buffer
         private static byte[] _spill = new byte[64 * 1024];
         private static int _spillPos;
@@ -99,6 +102,8 @@ namespace ArctisAurora.Core.Diagnostics
 
         internal static void Write(LogChannel channel, LogLevel level, string file, int line, ReadOnlySpan<byte> text)
         {
+            if (level >= LogLevel.Error) Interlocked.Increment(ref errorCount);
+
             ThreadedSystem? system = ThreadedSystem.Current;
 
             LogRecord record = new LogRecord

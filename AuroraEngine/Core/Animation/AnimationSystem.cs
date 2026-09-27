@@ -3,6 +3,7 @@ using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Threading;
 using ArctisAurora.Core.UI;
+using ArctisAurora.EngineWork;
 using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
@@ -70,7 +71,8 @@ namespace ArctisAurora.Core.Animation
         private void Advance()
         {
             long now = Stopwatch.GetTimestamp();
-            float dt = _lastTick == 0 || FrameScheduler.Resumed ? 0f : (float)((now - _lastTick) / (double)Stopwatch.Frequency);
+            float dt = Engine.fixedStep > 0 ? (float)Engine.fixedStep
+                : _lastTick == 0 || FrameScheduler.Resumed ? 0f : (float)((now - _lastTick) / (double)Stopwatch.Frequency);
             _lastTick = now;
 
             _dt = dt;

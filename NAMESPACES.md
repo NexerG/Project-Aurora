@@ -68,6 +68,8 @@ ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/TextureAs
 ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/UIDocumentAsset.cs
 ArctisAurora.Core.Rendering.Helpers -> AuroraEngine/Core/Rendering/Helpers/QueueAllocator.cs
 ArctisAurora.Core.Rendering.Modules -> AuroraEngine/Core/Rendering/Modules/CompositorModule.cs
+ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/TestContext.cs
+ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/TestRunner.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/FrameGraph.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/FrameScheduler.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/FrameStep.cs
@@ -99,9 +101,11 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DropdownControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/EditableLabelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/EditableTabsControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Effects.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ExpanderControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FileBrowserControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FileRowControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FileTreeControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Frontmatter.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Gradients.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/GridListControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/HintControl.cs
@@ -114,6 +118,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MenuScreen.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteActions.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteFormats.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteNameWindow.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NotePropertiesControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Palettes.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PanelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PointerEvent.cs
@@ -190,6 +195,7 @@ ArctisAurora.Properties { -> AuroraEngine/Properties/Resources.Designer.cs
 ArctisAurora.Simulators -> AuroraEngine/Simulators/Simulator_DEPRECATED.cs
 ArctisAurora.Simulators.ParticleTypes -> AuroraEngine/Simulators/ParticleTypes/Particle2D.cs
 ArctisAurora.Simulators.Vulkan -> AuroraEngine/Simulators/Vulkan/Simulator3D.cs
+ArctisAurora.Tests -> AuroraEngine/Tests/LayoutTests.cs
 AuroraEditor -> AuroraEditor/Editor.cs
 AuroraEditor.EditorProgram.Components -> AuroraEditor/EditorProgram/Components/AsmTestComp.cs
 AuroraEditor.EditorProgram.UIFunctions -> AuroraEditor/EditorProgram/UIFunctions/Decorations.cs

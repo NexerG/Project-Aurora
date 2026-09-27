@@ -46,7 +46,7 @@ switch on the extension of `path`
 	otherwise → `DocumentXml.Save` (this, `path`)
 
 ### Markdown
-One source line is one block. `#` to `######` are headings, `> ` is a quote, lines inside a fence are `Code` blocks, `- ` is a bullet and `- [ ] ` / `- [x] ` a task. Inside a line `**bold**`, `*italic*` or `_italic_`, `~~struck~~` and `` `code` `` become runs. Everything else — numbered lists, links, tables, HTML, frontmatter — stays literal text and is written back as it was.
+One source line is one block. `#` to `######` are headings, `> ` is a quote, lines inside a fence are `Code` blocks, `- ` is a bullet and `- [ ] ` / `- [x] ` a task. Inside a line `**bold**`, `*italic*` or `_italic_`, `~~struck~~` and `` `code` `` become runs. A frontmatter block at the top is read as note properties — see [[#Properties]]. Everything else — numbered lists, links, tables, HTML — stays literal text and is written back as it was.
 
 #### Write Inline (runs)
 `plain` = the runs with their markers and no escapes
@@ -63,6 +63,32 @@ push `width`
 return the new depth
 
 A first save normalizes a few things: `_i_` becomes `*i*`, `[X]` becomes `[x]`, list indents become one tab per level, a fence loses its language, `Comment` blocks become plain lines and line endings become LF.
+
+## Properties
+A note carries a palette of its own, the time it was created and the time it was last saved with changes. An `.xml` note keeps them as `Palette`, `Created` and `Modified` attributes on `<Document>`. A Markdown note keeps them in its frontmatter: a YAML block between `---` lines or a TOML block between `+++` lines at the very top of the file.
+
+The frontmatter block is kept whole, exactly as written, so tags, aliases, comments and key order survive a save. Only the keys the note owns are read and written — `Palette`, `Created`, `Modified`, `LineHeight`, `BlockSpacing`, `ListIndent` and the page keys `PageMode`, `PageSize`, `Landscape`, `PageWidth`, `PageHeight`, `MarginTop`, `MarginBottom`, `MarginLeft`, `MarginRight`, `PageGap`. They become the same attributes an `.xml` note has on `<Document>`, `<DocumentLayout>` and `<Page>`, so a Markdown note gets the per-note layout and page an `.xml` note has. Key names match case-insensitively and an existing line keeps its casing.
+
+`Created` is filled from the file's creation time on disk when a note has none, and `Modified` is stamped whenever an edited note is saved, so every saved Markdown note ends up with a frontmatter block. Dates are ISO 8601 with the local offset.
+
+The properties are shown at the top of the first page in an [[Expander]]: the dates, a palette dropdown, the layout values and, for Markdown, every other frontmatter key — editable when it is a one-line value, read-only when it is a list or a nested value. Picking a palette repaints that note only; a palette name that does not exist logs a warning and the note shows the app's palette.
+
+#### Read Properties (block)
+for each owned key
+	`value` = the key's one-line value in `block`, or nothing
+	if `value`
+		set the matching attribute on `<Document>`, `<DocumentLayout>` or `<Page>`, creating the element
+
+#### Merge Properties (block, tree)
+for each owned key
+	`value` = the matching attribute in `tree`, or nothing
+	if `block` has the key
+		if its value equals `value` → leave the line
+		else if `value` → replace the key's line(s) with one line
+		else → remove the key's line(s)
+	else if `value`
+		insert a line before the closing delimiter, or before the first TOML table
+if there was no block and a value was written, the block is a new YAML one
 
 ## Lists
 A list item is block state, not a block type: `listKind` (`None`, `Bullet`, `Task`), `listLevel` and `isChecked` on `BlockControl`, written as `List`, `Level` and `Checked` on `<Block>`. `ApplyLayout` indents the text by `(level + 1) × ListIndent` and keeps one marker child in that indent — a small dot, or a checkbox that can be clicked. A split copies the kind and level to the new block and leaves it unchecked, so Enter continues a list.

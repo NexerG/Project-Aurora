@@ -44,7 +44,8 @@ Supersedes the "Note format: engine XML (not markdown, not JSON)" line in
 | fenced lines | `Code` blocks; fences regenerated, info string lost |
 | `- ` / `- [ ] ` / `- [x] ` (indent → level) | `List=Bullet/Task`, `Level`, `Checked` |
 | `**b**` `*i*` `_i_` `~~s~~` `` `c` `` | `Bold` / `Italic` / `Strikethrough` runs, `StylingType=Code` run |
-| everything else (numbered lists, links, tables, HTML, frontmatter) | literal text |
+| `---`/`+++` block at line 0 (since 2026-09-27) | `Frontmatter` attribute + owned keys — see [[note-properties]] |
+| everything else (numbered lists, links, tables, HTML) | literal text |
 
 ## Why these choices
 
@@ -96,4 +97,4 @@ inverse, the same argument `StyleRangeEdit` makes.
 - A double-click on a checkbox bubbles a 2-tap to `DocumentControl` and selects a word.
 - Only Thorium's `InputMap.inputs.xml` binds Tab — it is the only host with `Text.*` binds.
 
-Related: [[document-undo]], [[text-styling-types]], [[xml-save-skips-defaults]], [[vault-browser-and-shell]], [[ui-palettes]]
+Related: [[document-undo]], [[text-styling-types]], [[xml-save-skips-defaults]], [[vault-browser-and-shell]], [[ui-palettes]], [[note-properties]]

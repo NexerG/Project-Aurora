@@ -5,9 +5,10 @@ description: Verify a change to Aurora and work out which verification claim is 
 
 # Verifying a change
 
-There is no automated test suite; the user tests by hand. `--profile-scenario` drives typing, resize and
-animation but asserts nothing. So the only honest claim is the one matching what was actually done, and the
-words below are the ones the WIP list already uses.
+`<Host>.exe --test` runs the test suites inside the host and exits with the failure count; whatever no test
+covers is still tested by hand. `--profile-scenario` drives typing, resize and animation but asserts nothing.
+So the only honest claim is the one matching what was actually done, and the words below are the ones the WIP
+list already uses.
 
 ## The ladder — claim the rung you reached, not the one above
 
@@ -15,6 +16,7 @@ words below are the ones the WIP list already uses.
 |---|---|---|
 | **builds clean** / **compile-verified** | it compiles | `dotnet build` |
 | **boot-verified** | the app started and got through bootstrap | launch it, watch for the throw |
+| **test-verified** | named tests covering the change passed under `--test` | `Thorium.exe --test[=<Suite>]` from its bin folder; a logic check, not a visual one |
 | **GUI-verified** | someone looked at the window and saw the behaviour | capture, or the user looked |
 | **NOT GUI-verified** | the honest default | say it out loud |
 

@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:types="http://arctisaurora/AuroraTestTypes" xmlns:actions="http://arctisaurora/ActionDependencies" xmlns:allTypes="http://arctisaurora/AuroraTypes" elementFormDefault="qualified" targetNamespace="http://arctisaurora/AuroraTestTypes" xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:import schemaLocation="actionSchema.xsd" namespace="http://arctisaurora/ActionDependencies" />
+  <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
+  <xs:attributeGroup name="Test.Attributes">
+    <xs:attribute name="Action" type="actions:Test" />
+    <xs:attribute name="Timeout" type="xs:int" />
+  </xs:attributeGroup>
+  <xs:element name="Test" type="types:Test" />
+  <xs:complexType name="Test">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Test.Attributes" />
+  </xs:complexType>
+  <xs:element name="TestSuite" type="types:TestSuite" />
+  <xs:complexType name="TestSuite">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Test" type="types:Test">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

@@ -144,6 +144,19 @@ namespace ArctisAurora.Core.UI
         private int pageCount;
         private float pageHeight;
 
+        // A control above the first block on the first page, assigned by the editor.
+        public Control? header
+        {
+            get => field;
+            set
+            {
+                if (field != null) field.Destroy();
+                field = value;
+                if (value != null) AddChild(value);
+            }
+        }
+        private float headerHeight;
+
         // caret and highlight paint, assigned by the editor before either is built
         public string? caretColorHex;
         public string? selectionColorHex;
@@ -950,7 +963,7 @@ namespace ArctisAurora.Core.UI
             blockTops.Clear();
             blockHeights.Clear();
 
-            float y = top;
+            float y = top + headerHeight;
             foreach (Entity child in children)
             {
                 if (child is not BlockControl block) continue;
@@ -1022,6 +1035,8 @@ namespace ArctisAurora.Core.UI
             }
             Profiling.Zone.End("Document.MeasureBlocks");
 
+            headerHeight = header?.Measure(new Vector2(textWidth, float.MaxValue)).Y ?? 0f;
+
             Profiling.Zone.Start("Document.Paginate");
             float height = Paginate(paper);
             Profiling.Zone.End("Document.Paginate");
@@ -1048,6 +1063,7 @@ namespace ArctisAurora.Core.UI
             float textWidth = MathF.Max(0f, paper.X - Mm(page.marginLeft + page.marginRight));
 
             ArrangePages(x, inner.y, paper.X);
+            header?.Arrange(new LayoutRect(textX, inner.y + Mm(page.marginTop), textWidth, headerHeight));
 
             Profiling.Zone.Start("Document.ArrangeBlocks");
             int index = 0;

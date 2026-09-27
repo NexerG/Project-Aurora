@@ -14,13 +14,45 @@ namespace ArctisAurora.Core.UI
         private const string fence = "```";
         private const string quote = "> ";
 
-        private const string escapable = "\\`*_~#>-[]";
+        private const string escapable = "\\`*_~#>-+[]";
+
+        // frontmatter key -> the tree attribute it stands for, on <Document>, <DocumentLayout> or <Page>
+        private static readonly (string key, string element, string attribute)[] properties =
+        {
+            ("Palette", "Document", "Palette"),
+            ("Created", "Document", "Created"),
+            ("Modified", "Document", "Modified"),
+            ("LineHeight", "DocumentLayout", "LineHeight"),
+            ("BlockSpacing", "DocumentLayout", "BlockSpacing"),
+            ("ListIndent", "DocumentLayout", "ListIndent"),
+            ("PageMode", "Page", "Mode"),
+            ("PageSize", "Page", "Size"),
+            ("Landscape", "Page", "Landscape"),
+            ("PageWidth", "Page", "Width"),
+            ("PageHeight", "Page", "Height"),
+            ("MarginTop", "Page", "MarginTop"),
+            ("MarginBottom", "Page", "MarginBottom"),
+            ("MarginLeft", "Page", "MarginLeft"),
+            ("MarginRight", "Page", "MarginRight"),
+            ("PageGap", "Page", "Gap")
+        };
+
+        // Whether a frontmatter key is one the note reads into its own properties.
+        public static bool IsProperty(string key) =>
+            properties.Any(p => string.Equals(p.key, key, StringComparison.OrdinalIgnoreCase));
 
         #region ---- read ----
         public static XElement Read(string text, string name)
         {
             XElement root = new XElement("Document", new XAttribute("Name", name));
             List<int> listWidths = new List<int>();
+
+            if (Frontmatter.Split(text, out string front, out string body))
+            {
+                root.SetAttributeValue("Frontmatter", front);
+                ReadProperties(root, front);
+                text = body;
+            }
             bool inFence = false;
 
             foreach (string raw in text.Split('\n'))
@@ -65,6 +97,29 @@ namespace ArctisAurora.Core.UI
             }
 
             return root;
+        }
+
+        private static void ReadProperties(XElement root, string block)
+        {
+            foreach ((string key, string element, string attribute) in properties)
+            {
+                string? value = Frontmatter.Get(block, key);
+                if (value != null) PropertyHolder(root, element, true)!.SetAttributeValue(attribute, value);
+            }
+        }
+
+        // The element a property lives on, made on the way when create is set.
+        private static XElement? PropertyHolder(XElement root, string element, bool create)
+        {
+            if (element == "Document") return root;
+
+            XElement? layout = root.Elements().FirstOrDefault(e => e.Name.LocalName == "DocumentLayout");
+            if (layout == null && create) root.AddFirst(layout = new XElement("DocumentLayout"));
+            if (layout == null || element == "DocumentLayout") return layout;
+
+            XElement? page = layout.Elements().FirstOrDefault(e => e.Name.LocalName == "Page");
+            if (page == null && create) layout.Add(page = new XElement("Page"));
+            return page;
         }
 
         // Nesting depth from the indent, relative to the list items above it.
@@ -195,6 +250,14 @@ namespace ArctisAurora.Core.UI
             }
 
             if (inFence) lines.Add(fence);
+
+            string? front = (string?)document.Attribute("Frontmatter");
+            foreach ((string key, string element, string attribute) in properties)
+                front = Frontmatter.Set(front, key, (string?)PropertyHolder(document, element, false)?.Attribute(attribute));
+
+            if (front != null) lines.Insert(0, front);
+            else if (lines.Count > 0 && (lines[0] == "---" || lines[0] == "+++")) lines[0] = "\\" + lines[0];
+
             return string.Join("\n", lines);
         }
 
