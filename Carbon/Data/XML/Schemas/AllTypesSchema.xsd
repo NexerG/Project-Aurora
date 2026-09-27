@@ -24,9 +24,12 @@
       <xs:enumeration value="Session" />
       <xs:enumeration value="DragGhost" />
       <xs:enumeration value="Palette" />
+      <xs:enumeration value="Zoom" />
+      <xs:enumeration value="DocumentZoom" />
       <xs:enumeration value="UI" />
       <xs:enumeration value="Threads" />
       <xs:enumeration value="FrameCap" />
+      <xs:enumeration value="Idle" />
       <xs:enumeration value="Threading" />
       <xs:enumeration value="SettingScope" />
       <xs:enumeration value="Setting" />
@@ -91,6 +94,9 @@
       <xs:enumeration value="TextStyleType" />
       <xs:enumeration value="TextStyle" />
       <xs:enumeration value="DocumentLayout" />
+      <xs:enumeration value="PageMode" />
+      <xs:enumeration value="PageSize" />
+      <xs:enumeration value="Page" />
       <xs:enumeration value="ScrollDirection" />
       <xs:enumeration value="Scrollable" />
       <xs:enumeration value="Slider" />
@@ -188,7 +194,12 @@
       <xs:enumeration value="Keyframe" />
       <xs:enumeration value="SignalValue" />
       <xs:enumeration value="AnimationTrack" />
-      <xs:enumeration value="AnimationValue" />
+      <xs:enumeration value="TweenParams" />
+      <xs:enumeration value="KeyParams" />
+      <xs:enumeration value="SpringParams" />
+      <xs:enumeration value="TrackCold" />
+      <xs:enumeration value="DirtyLayout" />
+      <xs:enumeration value="FinishedTrack" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Systems">

@@ -71,7 +71,7 @@ Step 1 of [../Context/frame-scheduler-plan.md](../Context/frame-scheduler-plan.m
 - **A native window drag pauses animation and physics too** — the modal loop blocks main inside its step; render keeps drawing.
 - **The theme crossfade steps at the frame rate**, where it had its own 120 Hz.
 - **An uncapped graph can outrun render** and compute frames nobody sees — the one-frame-ahead limit comes with the render copy stage.
-- **Thorium idles at ~2 cores** uncapped; `MaxFps` caps it.
+- **Thorium idles at ~2 cores** uncapped; `MaxFps` caps it. Since 2026-09-27 Thorium caps at 120 and waits on events when idle — [[idle-frames]].
 - **Pacing requests no timer resolution.** Accurate here (119.8 of 120); unverified elsewhere.
 - **Carbon's frame strip stacks 24 lane labels on one another.** Worker lanes load, gaps and all, and the timeline draws them.
 - **A burst capture dropped 327 Main frames** at uncapped rates.

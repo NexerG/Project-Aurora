@@ -29,8 +29,11 @@
       <xs:element name="Validation" type="types:Validation" />
       <xs:element name="DragGhost" type="types:DragGhost" />
       <xs:element name="Palette" type="types:Palette" />
+      <xs:element name="Zoom" type="types:Zoom" />
+      <xs:element name="DocumentZoom" type="types:DocumentZoom" />
       <xs:element name="Threads" type="types:Threads" />
       <xs:element name="FrameCap" type="types:FrameCap" />
+      <xs:element name="Idle" type="types:Idle" />
       <xs:element name="LogConsole" type="types:LogConsole" />
       <xs:element name="LogFile" type="types:LogFile" />
       <xs:element name="LogRecorder" type="types:LogRecorder" />
@@ -266,6 +269,24 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:Palette.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="Zoom.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Percent" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="Zoom" type="types:Zoom" />
+  <xs:complexType name="Zoom">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Zoom.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="DocumentZoom.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Percent" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="DocumentZoom" type="types:DocumentZoom" />
+  <xs:complexType name="DocumentZoom">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:DocumentZoom.Attributes" />
+  </xs:complexType>
   <xs:element name="UI" type="types:UI" />
   <xs:complexType name="UI">
     <xs:sequence>
@@ -289,6 +310,15 @@
   <xs:complexType name="FrameCap">
     <xs:sequence />
     <xs:attributeGroup ref="types:FrameCap.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="Idle.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Wait" type="xs:boolean" />
+  </xs:attributeGroup>
+  <xs:element name="Idle" type="types:Idle" />
+  <xs:complexType name="Idle">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Idle.Attributes" />
   </xs:complexType>
   <xs:element name="Threading" type="types:Threading" />
   <xs:complexType name="Threading">

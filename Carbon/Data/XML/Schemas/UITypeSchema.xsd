@@ -4,7 +4,7 @@
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:import schemaLocation="EntityRegistryTypeSchema.xsd" namespace="http://arctisaurora/AuroraEntityRegistryTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:SpanChartMode types:EffectLoop types:GradientKind types:GridSizeMode types:PaletteRole types:WindowCorners types:TextStyleType types:ScrollDirection types:Orientation" />
+    <xs:union memberTypes="types:SpanChartMode types:EffectLoop types:GradientKind types:GridSizeMode types:PaletteRole types:WindowCorners types:TextStyleType types:PageMode types:PageSize types:ScrollDirection types:Orientation" />
   </xs:simpleType>
   <xs:attributeGroup name="FrameStrip.Attributes">
     <xs:attributeGroup ref="EntityRegistry:Control.Attributes" />
@@ -515,8 +515,54 @@
           <xs:documentation>Per-type text styles; empty inherits the editor's.</xs:documentation>
         </xs:annotation>
       </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="Page" type="types:Page">
+        <xs:annotation>
+          <xs:documentation>Page format; absent inherits the editor's.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
     </xs:sequence>
     <xs:attributeGroup ref="types:DocumentLayout.Attributes" />
+  </xs:complexType>
+  <xs:simpleType name="PageMode">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Paged" />
+      <xs:enumeration value="Pageless" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="PageSize">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="A0" />
+      <xs:enumeration value="A1" />
+      <xs:enumeration value="A2" />
+      <xs:enumeration value="A3" />
+      <xs:enumeration value="A4" />
+      <xs:enumeration value="A5" />
+      <xs:enumeration value="A6" />
+      <xs:enumeration value="B4" />
+      <xs:enumeration value="B5" />
+      <xs:enumeration value="Letter" />
+      <xs:enumeration value="Legal" />
+      <xs:enumeration value="Tabloid" />
+      <xs:enumeration value="Executive" />
+      <xs:enumeration value="Custom" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="Page.Attributes">
+    <xs:attribute name="Mode" type="types:PageMode" />
+    <xs:attribute name="Size" type="types:PageSize" />
+    <xs:attribute name="Landscape" type="xs:boolean" />
+    <xs:attribute name="Width" type="xs:float" />
+    <xs:attribute name="Height" type="xs:float" />
+    <xs:attribute name="MarginTop" type="xs:float" />
+    <xs:attribute name="MarginBottom" type="xs:float" />
+    <xs:attribute name="MarginLeft" type="xs:float" />
+    <xs:attribute name="MarginRight" type="xs:float" />
+    <xs:attribute name="Gap" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="Page" type="types:Page" />
+  <xs:complexType name="Page">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Page.Attributes" />
   </xs:complexType>
   <xs:simpleType name="ScrollDirection">
     <xs:restriction base="xs:string">

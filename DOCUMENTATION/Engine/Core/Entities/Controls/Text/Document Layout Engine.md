@@ -134,7 +134,29 @@ The buffer of one viewport either side is load-bearing rather than slack. `Destr
 **The view is no longer the binding constraint, and the remaining one is not a drawing problem.** Every character exists as a [[GlyphControl]] the instant a note is *parsed*: blocks and runs are controls, so assigning a run's text runs `SyncGlyphs` at load. Virtualizing the view removed the second, parallel set of glyphs it used to build for itself — a note cost two full copies and now costs the model plus a viewport — but the model's own copy is untouched and is fixed before the view is consulted. On that 400-block note the total sits past the 50,000-slot descriptor array on the strength of the model alone. Making the document model plain data is the precondition for moving it; culling off-screen controls does not substitute, since culled entities keep their pool rows and their slots.
 
 ## Paged vs pageless
-A mode on the engine — the [[Rich Text Document]] model never knows about pages. Pageless: one column at min(viewport, max content width), blocks stacked, extent = `blockTops` last entry. Paged: a paginator pass deals cached lines onto pages of fixed content height (so paragraphs split across breaks) and the view draws page-background panels with gaps between them.
+Landed 2026-09-27, without the cache. A note is always laid out on paper: its `DocumentLayout` carries a `<Page>` (a `PageLayout`) naming `Paged` or `Pageless`, a paper size (A0–A6, B4, B5, Letter, Legal, Tabloid, Executive or Custom in millimetres), orientation, margins and the gap between pages. A note without one uses the editor-wide page from `DocumentSettings`, which is A4 portrait with 1-inch margins. There is no mode that fills the viewport, because a note that takes whatever width it is given would break a later pin board that shows several notes side by side.
+Text is measured at the paper width minus the side margins. After every block is measured, `DocumentControl` walks them top to bottom and each block restacks its own measured lines: a line that would cross the bottom of a page's text area moves to the top of the next page's text area, so a paragraph splits across a break. Because the caret, hit-testing, selection and drawing all read those same line tops, they follow the break without knowing pages exist. Pageless is the same pass with a text area that never ends: one page as wide as the paper and as tall as the content.
+The pages themselves are plain panels drawn behind the highlights and the text. They are centred when the pane is wider than the paper, and the editor scrolls sideways when it is narrower. The format bar's page button switches mode, size and orientation for the open note, and an `.xml` note saves its choice. See `ClaudeMemory/Decisions/document-pages.md`.
+
+#### Paginate (paper)
+	top = margin top; text area = paper height − margins (unbounded when pageless); stride = paper height + gap
+	y = top
+	for each block
+		if not the first block: y += block spacing
+		y = push(y, first line's height)            — the whole block moves if its first line would cross
+		for each line of the block
+			y = push(y, line height)
+			line.top = y − block top
+			y += line height
+		record block top and height
+	paged: page count = page y ends on + 1; pageless: one page, height max(paper, y + bottom margin)
+
+#### Push (y, span height)
+	band top = the text-area top of the page y falls on
+	if y is above it: return band top
+	if the span fits before the band's end: return y
+	if the span is taller than a whole text area and starts inside it: return y
+	return next page's band top
 
 ## Memory budget (100 pages ≈ 300k chars)
 

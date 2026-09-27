@@ -119,9 +119,14 @@ Run():
 			if any of its steps ran this frame:
 				last tick time = the sum of its steps' times
 				epoch += 1
+		tell render a new frame is ready
 		report every pool's size to the profiler
 		frame += 1
-		wait out the rest of the frame cap, if one is set
+		if idle waiting is on and nothing is pending:
+			block on OS events, or until the earliest requested wake time
+			mark the next frame as resumed
+		else:
+			wait out the rest of the frame cap, if one is set
 
 RunStage(stage):
 	for each step in stage:
@@ -181,14 +186,46 @@ In a Debug build every pool entry point checks the step running on the calling t
 
 A pool's frame edge is a step of its own, placed after every step that writes the pool, so compaction never moves memory under a step that is using it.
 
+## Idle frames
+
+With `Idle Wait` on, an app that has nothing to do stops running frames and waits for the OS to hand it an event, the way a desktop app does. Whatever ends the wait gets one whole frame, so input needs no special handling; the question at the end of every frame is only whether the next one must run now.
+
+```
+Pending(wakeAt):
+	if a frame has reached wakeAt:
+		forget wakeAt
+	return any animation track is awake
+		or AnimationDone or LayoutDirty has rows
+		or posted work is queued
+		or a key or mouse button is down
+		or wakeAt has already passed
+```
+
+Anything that changes on its own time asks for a frame with `FrameScheduler.RequestFrameAt(totalTime)`; the earliest request wins. The caret asks for its next blink, and a control or text run with a GPU effect asks for the moment the effect ends. `Engine.Post` wakes the wait too, so work posted from another thread is never stranded.
+
+Render draws once per frame main finishes, whether idle waiting is on or not, and blocks in between. A frame only counts as drawn once every visible window has presented it; a pass that only built a new window's GPU objects, or that rebuilt a stale swapchain instead of presenting, runs again straight away.
+
+The first frame after a wait steps animation with a zero delta, so a track started by the input that ended a ten-second wait does not jump ten seconds. Main's own clock keeps real time, because the caret and GPU effects count real seconds.
+
+```
+RenderSystem.Tick():
+	while main's epoch is the one last drawn:
+		wait for main to finish a frame
+	for each window:
+		close, build or draw it
+	if every visible window presented:
+		remember this epoch as drawn
+```
+
 ## Settings
 
-The `Threading` settings group has two settings, both per user.
+The `Threading` settings group has three settings, all per user.
 
 | Setting | Values |
 |---|---|
 | `Threads Count` | `0` uses every logical core the dedicated threads leave; `1` runs the whole graph in order on the main thread; any other number uses that many threads, main included. Read at startup. |
 | `FrameCap MaxFps` | `0` is uncapped; anything else caps the graph and every dedicated thread. Read every frame. |
+| `Idle Wait` | `false` by default; `true` waits for OS events whenever nothing is pending (see Idle frames). Thorium and Carbon turn it on; Thorium also caps at 120. Read every frame. |
 
 With `Threads` at 1 the dedicated threads still keep their own cores; only the graph becomes linear. That mode exists for profiling: a system that is slow on one core is fixed before threads are considered. The cap sleeps in 1 ms steps until 2 ms remain, then spins.
 
@@ -200,7 +237,8 @@ The main thread's frames land in the `Main` lane and each worker's in `Worker N`
 
 - Physics runs at most once per frame, so below about 31 fps it slows with the frame.
 - Dragging a window by its native title bar blocks the main thread inside its step, so the whole graph pauses; render keeps drawing.
-- Uncapped is the default, so an idle app keeps two cores busy — the main loop and render. Set `MaxFps` if that is unwanted.
+- Uncapped is the default, so an idle app keeps two cores busy — the main loop and render. Set `MaxFps`, or turn on `Idle Wait`, if that is unwanted.
+- With `Idle Wait` on, a ticking entity does not keep frames coming; something that changes over time has to ask with `RequestFrameAt`, or it freezes until the next input. A looping GPU effect has no end to ask for, so it freezes too.
 - The graph can run ahead of render and compute frames nobody sees, until render reads from a copy made at the end of each frame.
 - A main step after `Animation.Step` cannot set a signal — that is a loop, and the engine refuses to start.
 - The scheduler costs about 20 µs a frame with seven stages, mostly waking parked workers for the stages that have work for them.

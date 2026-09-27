@@ -94,10 +94,55 @@ namespace ArctisAurora.Core.UI
         }
     }
 
+    // Each page's text area, repeating every stride down the document.
+    public readonly struct PageBands
+    {
+        public readonly float top;
+        public readonly float height;
+        public readonly float stride;
+
+        internal const float tolerance = 0.5f;
+
+        public PageBands(float top, float height, float stride)
+        {
+            this.top = top;
+            this.height = height;
+            this.stride = stride;
+        }
+
+        // Page a y falls on, counting the margins and gap below a text area as its page.
+        public int PageOf(float y) => Math.Max(0, (int)MathF.Floor((y - top) / stride));
+
+        // A span that would cross its text area's bottom moves to the next page's top.
+        public float Push(float y, float spanHeight)
+        {
+            float bandTop = top + PageOf(y) * stride;
+            if (y < bandTop) return bandTop;
+
+            float bandEnd = bandTop + height;
+            if (y + spanHeight <= bandEnd + tolerance) return y;
+            if (spanHeight > height && y < bandEnd) return y;
+            return bandTop + stride;
+        }
+    }
+
     // The note's content area: blocks stacked top to bottom, with the caret over them.
     public class DocumentControl : ContainerControl, IGlyphPressTarget
     {
         public float blockSpacing;
+
+        // page format, assigned by the editor before the first measure
+        public PageLayout page = new PageLayout();
+
+        // document zoom, assigned by the editor; 1 is 100%
+        public float zoom = 1f;
+
+        // page panels at the head of children, and where the last paginate put each block
+        private readonly List<PanelControl> pages = new List<PanelControl>();
+        private readonly List<float> blockTops = new List<float>();
+        private readonly List<float> blockHeights = new List<float>();
+        private int pageCount;
+        private float pageHeight;
 
         // caret and highlight paint, assigned by the editor before either is built
         public string? caretColorHex;
@@ -425,7 +470,7 @@ namespace ArctisAurora.Core.UI
                 PanelControl box = new PanelControl { hitTestable = false };
                 box.PaintOr(selectionColorHex, PaletteRole.Line);
                 box.parent = this;
-                children.Insert(highlights.Count, box);
+                children.Insert(pages.Count + highlights.Count, box);
                 highlights.Add(box);
                 MarkTreeOrderDirty();
             }
@@ -893,29 +938,101 @@ namespace ArctisAurora.Core.UI
         }
         #endregion
 
+        #region ---- pages ----
+        // Places every block down the pages and returns the document's height.
+        private float Paginate(Vector2 paper)
+        {
+            float top = Mm(page.marginTop);
+            float bottom = Mm(page.marginBottom);
+            bool paged = page.mode == PageMode.Paged;
+            PageBands bands = new PageBands(top, paged ? paper.Y - top - bottom : float.PositiveInfinity, paper.Y + page.gap * zoom);
+
+            blockTops.Clear();
+            blockHeights.Clear();
+
+            float y = top;
+            foreach (Entity child in children)
+            {
+                if (child is not BlockControl block) continue;
+
+                if (blockTops.Count > 0) y += blockSpacing * zoom;
+
+                IReadOnlyList<TextLine> lines = block.Lines;
+                if (lines != null && lines.Count > 0) y = bands.Push(y, lines[0].height);
+
+                float height = block.Paginate(y, bands);
+                blockTops.Add(y);
+                blockHeights.Add(height);
+                y += height;
+            }
+
+            if (!paged)
+            {
+                pageCount = 1;
+                pageHeight = MathF.Max(paper.Y, y + bottom);
+                return pageHeight;
+            }
+
+            pageCount = bands.PageOf(y - PageBands.tolerance) + 1;
+            pageHeight = paper.Y;
+            return pageCount * paper.Y + (pageCount - 1) * page.gap * zoom;
+        }
+
+        // Millimetres on the page to design pixels at the current zoom.
+        private float Mm(float mm) => mm * PageLayout.PxPerMm * zoom;
+
+        // Page panels live at the head of the child list, behind the highlights and the text.
+        private void ArrangePages(float x, float y, float width)
+        {
+            while (pages.Count < pageCount)
+            {
+                PanelControl sheet = new PanelControl
+                {
+                    hitTestable = false,
+                    edgeRole = PaletteRole.Line,
+                    edgeThickness = new Thickness(1f)
+                };
+                sheet.PaintOr(null, PaletteRole.Surface);
+                sheet.parent = this;
+                children.Insert(pages.Count, sheet);
+                pages.Add(sheet);
+                MarkTreeOrderDirty();
+            }
+
+            for (int i = 0; i < pages.Count; i++)
+                pages[i].Arrange(i < pageCount
+                    ? new LayoutRect(x, y + i * (pageHeight + page.gap * zoom), width, pageHeight)
+                    : new LayoutRect(x, y, 0f, 0f));
+        }
+        #endregion
+
         #region ---- layout ----
         protected override Vector2 MeasureCore(Vector2 availableSize)
         {
-            float height = 0f;
-            int blocks = 0;
+            Vector2 paper = page.SizePx() * zoom;
+            float textWidth = MathF.Max(0f, paper.X - Mm(page.marginLeft + page.marginRight));
 
             Profiling.Zone.Start("Document.MeasureBlocks");
             foreach (Entity child in children)
             {
                 if (child is not BlockControl block) continue;
 
-                height += block.Measure(new Vector2(availableSize.X, float.MaxValue)).Y;
-                blocks++;
+                block.SetZoom(zoom);
+                block.Measure(new Vector2(textWidth, float.MaxValue));
             }
             Profiling.Zone.End("Document.MeasureBlocks");
 
-            if (blocks > 1) height += blockSpacing * (blocks - 1);
+            Profiling.Zone.Start("Document.Paginate");
+            float height = Paginate(paper);
+            Profiling.Zone.End("Document.Paginate");
 
             caret?.Measure(availableSize);
             foreach (PanelControl box in highlights)
                 box.Measure(availableSize);
+            foreach (PanelControl sheet in pages)
+                sheet.Measure(availableSize);
 
-            arrange.desired = new Vector2(availableSize.X, height);
+            arrange.desired = new Vector2(paper.X, height);
             SetFlag(ArrangeFlags.MeasureDirty, false);
             return arrange.desired;
         }
@@ -925,15 +1042,21 @@ namespace ArctisAurora.Core.UI
             WriteArranged(finalRect);
 
             LayoutRect inner = finalRect.Shrink(arrange.padding);
-            float y = inner.y;
+            Vector2 paper = page.SizePx() * zoom;
+            float x = inner.x + MathF.Max(0f, (inner.width - paper.X) * 0.5f);
+            float textX = x + Mm(page.marginLeft);
+            float textWidth = MathF.Max(0f, paper.X - Mm(page.marginLeft + page.marginRight));
+
+            ArrangePages(x, inner.y, paper.X);
 
             Profiling.Zone.Start("Document.ArrangeBlocks");
+            int index = 0;
             foreach (Entity child in children)
             {
-                if (child is not BlockControl block) continue;
+                if (child is not BlockControl block || index >= blockTops.Count) continue;
 
-                block.Arrange(new LayoutRect(inner.x, y, inner.width, block.DesiredSize.Y));
-                y += block.DesiredSize.Y + blockSpacing;
+                block.Arrange(new LayoutRect(textX, inner.y + blockTops[index], textWidth, blockHeights[index]));
+                index++;
             }
             Profiling.Zone.End("Document.ArrangeBlocks");
 

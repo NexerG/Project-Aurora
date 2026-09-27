@@ -249,8 +249,8 @@ for the decision to accept them and the escape hatch if they bite.
   persisted): model + layout + view.
 - **B2** — `TableBlock` → `TableRow` → `TableCell` (cell holds `List<Block>`, nested blocks;
   MVP fixed/star columns, no merges): model + layout + view.
-- **L3** — paged mode: paginator assigns cached lines to fixed-height pages (blocks split across
-  breaks); view draws page-background panels + gaps.
+- **L3 — done (2026-09-27).** Paged/pageless on paper (A4 default, no viewport-wide mode); the
+  paginator rewrites each block's own `TextLine.top`s, not a cache. See [[document-pages]].
 - **P5 — done (2026-08-17).** `VaultBrowserControl` in Thorium + a 2-pane `UI.xml`. The vault is a
   `<Vault Path="Notes"/>` setting on a `Thorium` category; notes live in `Thorium/Data/Notes`, not
   in the engine-config `Data/XML/Documents`. Rows are a flat indented list, not a collapsible tree.

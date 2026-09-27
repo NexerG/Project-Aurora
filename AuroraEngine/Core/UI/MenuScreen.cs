@@ -22,17 +22,19 @@ namespace ArctisAurora.Core.UI
                 return null;
             }
 
-            RenderWindow window = Engine.OpenMenuWindow(name, width, height, true);
+            uint pixelWidth = UIScaling.ToPixels(source, width);
+            uint pixelHeight = UIScaling.ToPixels(source, height);
+            RenderWindow window = Engine.OpenMenuWindow(name, pixelWidth, pixelHeight, true);
 
             WindowRoot root = (WindowRoot)Control.ParseXML(document);
             window.ui.uiRoot = root;
 
-            window.os.Resize(width, height);
-            root.FitTo(new Extent2D(width, height));
+            window.os.Resize(pixelWidth, pixelHeight);
+            root.FitTo(window.os.windowSize);
 
             AGlfwWindow._glfw.GetWindowPos(source.os.handle, out int sx, out int sy);
             AGlfwWindow._glfw.GetWindowSize(source.os.handle, out int sw, out int sh);
-            window.os.SetPosition(sx + (sw - (int)width) / 2, sy + (sh - (int)height) / 2);
+            window.os.SetPosition(sx + (sw - (int)pixelWidth) / 2, sy + (sh - (int)pixelHeight) / 2);
 
             window.os.Show();
             window.os.Focus();

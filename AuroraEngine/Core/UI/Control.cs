@@ -3,6 +3,7 @@ using ArctisAurora.Core.Data;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
+using ArctisAurora.Core.Threading;
 using ArctisAurora.EngineWork;
 using System.Numerics;
 
@@ -418,7 +419,11 @@ namespace ArctisAurora.Core.UI
         } = "";
 
         // Replays the effect from the current engine time.
-        public void RestartEffect() => visual.effectStart = (float)Engine.totalTime;
+        public void RestartEffect()
+        {
+            visual.effectStart = (float)Engine.totalTime;
+            FrameScheduler.RequestFrameAt(Engine.totalTime + Effects.Duration(visual.effect));
+        }
 
         [A_XSDElementProperty("Clip", "UI", "Name of a clip in Animations/*.anim.xml, played once when this control starts, or at once when set on a started control.")]
         public string clip

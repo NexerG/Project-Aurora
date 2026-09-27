@@ -70,7 +70,7 @@ namespace ArctisAurora.Core.Animation
         private void Advance()
         {
             long now = Stopwatch.GetTimestamp();
-            float dt = _lastTick == 0 ? 0f : (float)((now - _lastTick) / (double)Stopwatch.Frequency);
+            float dt = _lastTick == 0 || FrameScheduler.Resumed ? 0f : (float)((now - _lastTick) / (double)Stopwatch.Frequency);
             _lastTick = now;
 
             _dt = dt;

@@ -18,10 +18,19 @@ namespace ArctisAurora.Core.Threading
         public int maxFps { get; set; } = 0;
     }
 
+    // Waits for OS events instead of running frames while nothing is pending.
+    [A_XSDType("Idle", "Settings")]
+    public class IdleSetting : Setting
+    {
+        [A_XSDElementProperty("Wait", "Settings")]
+        public bool wait { get; set; } = false;
+    }
+
     [A_XSDType("Threading", "Settings", AllowedChildren = typeof(Setting))]
     public class ThreadingSettings : SettingCategory
     {
         public readonly ThreadsSetting threads = new ThreadsSetting();
         public readonly FrameCapSetting frameCap = new FrameCapSetting();
+        public readonly IdleSetting idle = new IdleSetting();
     }
 }

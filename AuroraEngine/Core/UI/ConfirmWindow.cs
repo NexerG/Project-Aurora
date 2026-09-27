@@ -33,9 +33,14 @@ namespace ArctisAurora.Core.UI
             _onCancel = onCancel;
             _message.text = message ?? string.Empty;
 
+            uint width = UIScaling.ToPixels(source, windowWidth);
+            uint height = UIScaling.ToPixels(source, windowHeight);
+            _window.os.Resize(width, height);
+            UIScaling.Apply(_window);
+
             AGlfwWindow._glfw.GetWindowPos(source.os.handle, out int sx, out int sy);
             AGlfwWindow._glfw.GetWindowSize(source.os.handle, out int sw, out int sh);
-            _window.os.SetPosition(sx + (sw - (int)windowWidth) / 2, sy + (sh - (int)windowHeight) / 2);
+            _window.os.SetPosition(sx + (sw - (int)width) / 2, sy + (sh - (int)height) / 2);
 
             _window.os.Show();
             _window.os.Focus();
@@ -82,9 +87,6 @@ namespace ArctisAurora.Core.UI
             WindowRoot root = new WindowRoot();
             root.AddChild(Content());
             _window.ui.uiRoot = root;
-
-            _window.os.Resize(windowWidth, windowHeight);
-            root.FitTo(new Extent2D(windowWidth, windowHeight));
         }
 
         private static Control Content()

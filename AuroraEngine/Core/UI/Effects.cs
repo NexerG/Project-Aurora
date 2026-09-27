@@ -107,6 +107,9 @@ namespace ArctisAurora.Core.UI
         // Seconds between consecutive glyphs of a run under this effect.
         public static float Stagger(uint id) => id == 0 ? 0f : Pool.GetSpan<GpuEffect>()[(int)id].stagger;
 
+        // Seconds one pass of this effect takes.
+        public static float Duration(uint id) => id == 0 ? 0f : Pool.GetSpan<GpuEffect>()[(int)id].duration;
+
         [A_XSDActionDependency("Effects.LoadEffects", "Bootstrap")]
         public static bool LoadEffects()
         {

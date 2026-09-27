@@ -28,6 +28,12 @@ namespace ArctisAurora.Core.Threading
         // workers
         private static Thread[] _workers = Array.Empty<Thread>();
         private static readonly SemaphoreSlim _wake = new SemaphoreSlim(0);
+
+        // idle waiting
+        private static MainSystem? _main;
+        private static double _wakeAt = double.PositiveInfinity;
+        private static readonly AutoResetEvent _produced = new AutoResetEvent(false);
+
         private static volatile bool _running;
         private static long _frame;
 
@@ -53,6 +59,18 @@ namespace ArctisAurora.Core.Threading
             if (count > 0 && parked > 0)
                 _wake.Release(Math.Min(count, parked));
         }
+
+        // True for the frame that follows an idle wait.
+        public static bool Resumed { get; private set; }
+
+        // Asks for a frame no later than totalTime, in Engine.totalTime seconds. Main thread only.
+        public static void RequestFrameAt(double totalTime)
+        {
+            if (totalTime < _wakeAt) _wakeAt = totalTime;
+        }
+
+        // Blocks until main finishes another frame.
+        internal static void WaitForFrame() => _produced.WaitOne();
 
         // Period the frame cap asks for, 0 when uncapped.
         public static double CapPeriodMs
@@ -334,6 +352,7 @@ namespace ArctisAurora.Core.Threading
         {
             foreach (ThreadedSystem system in _scheduled)
                 system.StartScheduled();
+            _main = _scheduled.OfType<MainSystem>().FirstOrDefault();
 
             try
             {
@@ -349,6 +368,7 @@ namespace ArctisAurora.Core.Threading
                         RunStage(_stages[s], dtMs);
                     for (int i = 0; i < _scheduled.Count; i++)
                         _scheduled[i].EndFrame();
+                    _produced.Set();
 
                     IReadOnlyList<DataPool> pools = DataManager.Pools;
                     for (int i = 0; i < pools.Count; i++)
@@ -357,7 +377,14 @@ namespace ArctisAurora.Core.Threading
                     Profiling.Report();
 
                     Volatile.Write(ref _frame, _frame + 1);
-                    ThreadedSystem.WaitOut(frameStart, CapPeriodMs);
+                    Resumed = false;
+                    if (_running && _settings.idle.wait && _main != null && !_main.Pending(ref _wakeAt))
+                    {
+                        _main.IdleWait(_wakeAt);
+                        Resumed = true;
+                    }
+                    else
+                        ThreadedSystem.WaitOut(frameStart, CapPeriodMs);
                 }
             }
             catch (Exception exception)
@@ -369,6 +396,7 @@ namespace ArctisAurora.Core.Threading
 
             foreach (ThreadedSystem system in _scheduled)
                 system.StopScheduled();
+            _produced.Set();
         }
 
         public static void Stop()

@@ -1,6 +1,7 @@
 using ArctisAurora.Core.Animation;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Threading;
 using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
@@ -116,6 +117,7 @@ namespace ArctisAurora.Core.Diagnostics
         {
             base.OnTick();
             tick++;
+            FrameScheduler.RequestFrameAt(Engine.totalTime + 0.001);
 
             if (animation != null)
             {

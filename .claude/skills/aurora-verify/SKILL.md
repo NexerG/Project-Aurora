@@ -70,7 +70,8 @@ happen. Do not reuse the word for a proxy.
 **F10 writes that dump for the new stack** — `UI.UITreeDump` (`UI.DumpTree`) → `uitree.xml` beside the
 exe: every window's tree with arranged `X Y W H`, desired `W H`, `Hidden`. Thorium's is ~17 KB, so grep it for
 the control in question; never read it whole. With the root unscaled a rect is client pixels, i.e. directly a
-`-Region` — grep the control, then crop the capture to it. F10 needs the window focused: click an empty pane
+`-Region` — grep the control, then crop the capture to it. Rects are design units: at a UI zoom or display
+scale other than 100% (`WindowRoot.scale`), multiply by that scale to get client pixels. F10 needs the window focused: click an empty pane
 first (a title-bar click enters the OS drag loop).
 
 ## Synthetic input

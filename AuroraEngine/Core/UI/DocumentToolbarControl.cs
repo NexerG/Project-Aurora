@@ -81,6 +81,7 @@ namespace ArctisAurora.Core.UI
         private readonly LabelControl stylingCaption;
         private readonly LabelControl colorInk;
         private readonly PxBox pxField;
+        private readonly LabelControl pageCaption;
 
         // The last editor that held the caret. Only the px field uses it: a field has to take the
         // active control to be typed into, which is the one thing the rest of the bar avoids, so the
@@ -103,6 +104,7 @@ namespace ArctisAurora.Core.UI
         private string? shownColor;
         private PaletteRole? shownInk;
         private int? shownPx;
+        private (PageMode, PageSize, bool)? shownPage;
 
         public override bool takesActiveControl => false;
 
@@ -141,6 +143,10 @@ namespace ArctisAurora.Core.UI
             pxField.onCancel = RevertPx;
             pxField.onBlur = AbandonPx;
             AddChild(pxField);
+            AddChild(Separator());
+
+            pageCaption = Caption("A4");
+            AddChild(CaptionButton(pageCaption, 88, OpenPage));
         }
 
         // Reflects the span the selection starts in. Cheap enough to poll: four comparisons, and a
@@ -182,6 +188,16 @@ namespace ArctisAurora.Core.UI
             {
                 shownPx = px;
                 pxField.text = px > 0 ? px.ToString() : string.Empty;
+            }
+
+            PageLayout? page = editor?.Page;
+            (PageMode, PageSize, bool)? format = page == null ? null : (page.mode, page.size, page.landscape);
+            if (shownPage != format)
+            {
+                shownPage = format;
+                pageCaption.text = page == null ? string.Empty
+                    : page.mode == PageMode.Pageless ? "Pageless"
+                    : page.landscape ? $"{page.size} L" : page.size.ToString();
             }
         }
 
@@ -281,6 +297,44 @@ namespace ArctisAurora.Core.UI
 
             Drop(owner, entries);
         }
+
+        private static void OpenPage(ToolButton owner)
+        {
+            DocumentEditorControl editor = TextInputActions.Editor();
+            PageLayout? current = editor?.Page;
+            if (current == null) return;
+
+            List<ContextMenuEntry> entries = new List<ContextMenuEntry>
+            {
+                PageEntry(editor, current, "Paged", page => page.mode = PageMode.Paged),
+                PageEntry(editor, current, "Pageless", page => page.mode = PageMode.Pageless),
+                new ContextMenuLine()
+            };
+
+            foreach (PageSize size in Enum.GetValues<PageSize>())
+            {
+                if (size == PageSize.Custom) continue;
+
+                PageSize picked = size;
+                entries.Add(PageEntry(editor, current, size.ToString(), page => page.size = picked));
+            }
+
+            entries.Add(new ContextMenuLine());
+            entries.Add(PageEntry(editor, current, current.landscape ? "Portrait" : "Landscape",
+                page => page.landscape = !page.landscape));
+
+            Drop(owner, entries);
+        }
+
+        // Changes a copy, so an inherited editor-wide page is never written through.
+        private static ContextMenuButton PageEntry(DocumentEditorControl editor, PageLayout current, string caption,
+            Action<PageLayout> change) => new ContextMenuButton(caption, () =>
+            {
+                PageLayout page = current.Clone();
+                change(page);
+                editor.SetPage(page);
+                editor.FocusCaret();
+            });
 
         private static void Drop(ToolButton owner, List<ContextMenuEntry> entries) =>
             ContextMenus.Open(entries, owner,

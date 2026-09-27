@@ -125,7 +125,9 @@ namespace ArctisAurora.EngineWork
         public static bool InitWindowing()
         {
             GraphicsSettings settings = SettingsRegistry.Get<GraphicsSettings>();
-            RenderWindow window = new RenderWindow(settings.window.width, settings.window.height);
+            float scale = AGlfwWindow.PrimaryContentScale() * UIScaling.Zoom;
+            RenderWindow window = new RenderWindow((uint)MathF.Ceiling(settings.window.width * scale),
+                                                   (uint)MathF.Ceiling(settings.window.height * scale));
             primary = window;
             Publish(mainWindow, window);
 
@@ -199,7 +201,13 @@ namespace ArctisAurora.EngineWork
         }
 
         // Queues work for the next main tick, from any thread.
-        public static void Post(Action work) => _posted.Enqueue(work);
+        public static void Post(Action work)
+        {
+            _posted.Enqueue(work);
+            AGlfwWindow._glfw?.PostEmptyEvent();
+        }
+
+        internal static bool HasPosted => !_posted.IsEmpty;
 
         private static void DrainPosted()
         {

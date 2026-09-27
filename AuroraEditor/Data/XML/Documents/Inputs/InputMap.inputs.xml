@@ -5,5 +5,20 @@
 
 	<Keybind Button="Escape" Action="ExitApplication" State="Pressed"/>
 	<Keybind Button="Backspace" Action="ExitApplication" State="Pressed"/>
+
+	<Keybind Trigger="Equal" Action="UI.ZoomIn">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Minus" Action="UI.ZoomOut">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Num0" Action="UI.ZoomReset">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
 	
 </KeybindMap>

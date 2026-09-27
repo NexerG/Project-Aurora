@@ -32,6 +32,9 @@
           <xs:enumeration value="Text.CaretLineEnd" />
           <xs:enumeration value="Text.CaretPageUp" />
           <xs:enumeration value="Text.CaretPageDown" />
+          <xs:enumeration value="UI.ZoomIn" />
+          <xs:enumeration value="UI.ZoomOut" />
+          <xs:enumeration value="UI.ZoomReset" />
           <xs:enumeration value="UI.DumpTree" />
           <xs:enumeration value="Profiling.Capture" />
         </xs:restriction>
@@ -75,6 +78,7 @@
           <xs:enumeration value="Renderer.InitRenderer" />
           <xs:enumeration value="Renderer.PreInitialize" />
           <xs:enumeration value="InputHandler.LoadInputs" />
+          <xs:enumeration value="Glfw.Init" />
           <xs:enumeration value="Renderer.Initialize" />
           <xs:enumeration value="Renderer.PrepareDescriptors" />
           <xs:enumeration value="Renderer.SetupObjects" />
@@ -106,6 +110,8 @@
       <xs:simpleType>
         <xs:restriction base="xs:string">
           <xs:enumeration value="Renderer.RequestSwapchainRebuild" />
+          <xs:enumeration value="Document.Rezoom" />
+          <xs:enumeration value="UI.Rescale" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>

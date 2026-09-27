@@ -4,6 +4,7 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.Filing;
+using ArctisAurora.Core.Threading;
 using ArctisAurora.EngineWork.Registry;
 using System.Numerics;
 
@@ -68,6 +69,9 @@ namespace ArctisAurora.Core.UI
         public readonly List<StyleSpan> spans = new List<StyleSpan>();
         public FontStyle style = FontStyle.Regular;
         public float lineHeight = 1.5f;
+
+        // multiplies every font size at layout; the authored sizes are untouched
+        internal float textZoom = 1f;
 
         protected virtual bool Wraps => true;
 
@@ -169,7 +173,7 @@ namespace ArctisAurora.Core.UI
             string s = text ?? string.Empty;
             if (spans.Count == 0)
             {
-                _runs.Add(new TextMeasurer.Run(s, 0, s.Length, fontName, _fontAsset.atlasMetaData, fontSize, style));
+                _runs.Add(new TextMeasurer.Run(s, 0, s.Length, fontName, _fontAsset.atlasMetaData, Zoomed(fontSize), style));
                 _runPaints.Add(_paint);
                 _runFonts.Add(_fontAsset);
                 _runGradients.Add(gradientId);
@@ -189,7 +193,7 @@ namespace ArctisAurora.Core.UI
                 int spanSize = spans[i].fontSize > 0 ? spans[i].fontSize : fontSize;
                 FontAsset font = spans[i].fontName == null ? _fontAsset : ResolveFont(spanFont);
 
-                _runs.Add(new TextMeasurer.Run(s, start, count, spanFont, font.atlasMetaData, spanSize, spans[i].style));
+                _runs.Add(new TextMeasurer.Run(s, start, count, spanFont, font.atlasMetaData, Zoomed(spanSize), spans[i].style));
                 _runPaints.Add(spans[i].colorHex == null ? _paint : Palettes.Inline(spans[i].colorHex));
                 _runFonts.Add(font);
                 _runGradients.Add(spans[i].gradient == null
@@ -198,6 +202,8 @@ namespace ArctisAurora.Core.UI
                 start += count;
             }
         }
+
+        private int Zoomed(int size) => textZoom == 1f ? size : Math.Max(1, (int)MathF.Round(size * textZoom));
 
         protected override Vector2 MeasureCore(Vector2 availableSize)
         {
@@ -289,6 +295,9 @@ namespace ArctisAurora.Core.UI
                         pen += WriteGlyph(quads, s[index], run.style, paint, alpha, font, run.fontSize, effect, effectStart,
                                           pen, baselineY, z, clip, gradientRect);
                     }
+
+                    if (effect != 0)
+                        FrameScheduler.RequestFrameAt(started + (segment.charStart + segment.charCount - run.charStart) * stagger + Effects.Duration(effect));
                 }
             }
         }
@@ -446,6 +455,21 @@ namespace ArctisAurora.Core.UI
         public IReadOnlyList<TextLine> Lines => _layout?.lines;
 
         public int Length => (text ?? string.Empty).Length;
+
+        // Re-stacks the lines from blockTop, pushing each across page breaks; returns the height.
+        internal float Paginate(float blockTop, PageBands bands)
+        {
+            if (_layout == null) return 0f;
+
+            float y = blockTop;
+            foreach (TextLine line in _layout.lines)
+            {
+                y = bands.Push(y, line.height);
+                line.top = y - blockTop;
+                y += line.height;
+            }
+            return y - blockTop;
+        }
 
         // Lowest line not past y; clamps at both ends.
         private int LineAt(float y)

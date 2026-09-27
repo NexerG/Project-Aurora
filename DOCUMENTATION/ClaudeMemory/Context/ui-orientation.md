@@ -76,7 +76,8 @@ No bootstrap step: each host sets `Engine.primary.ui.uiRoot` from `Control.Parse
 ### WindowRoot — `<WindowRoot>` · Control
 A window's root, transparent; `RenderWindow.ui.uiRoot`. Fits the tree to the window: `FitTo`,
 `ViewportSize`, `ToDesignSpace`; fields `windowingMode` (`KeepLocal`/`WindowSize`), `autoscaling`,
-`scalingAxis`. Unscaled, design space is window pixels.
+`scalingAxis`, `scale` (window pixels per design unit = display scale × UI zoom, set by `UIScaling`). At
+scale 1, design space is window pixels. [[ui-scaling]]
 
 ### ContainerControl — `<Container>` · Control
 Many children, both alignments default to `Stretch`. Base of every multi-child control.
@@ -114,7 +115,8 @@ Why: [[ui-palettes]].
   `visual.state`) is painted by the `PaintRow` override. `OnPointerEnter/Exit/Press/Release`. XML `HoverColorHex`, `PressColorHex`. Old `ButtonControl`,
   [[button-states-and-hover-bubbling]] (old).
 - **CheckBoxControl** `<CheckBox>` · ButtonControl — 18×18 box, a 10×10 mark panel that is not
-  hit-tested. `isChecked`, `onChanged(bool)`; a left release toggles. Old `CheckBoxControl`.
+  hit-tested. `isChecked`, `onChanged(bool)`; a left release toggles; `SetScale(float)` sizes box and mark
+  (document zoom). Old `CheckBoxControl`.
 - **SliderControl** `<Slider>` · ContainerControl — `value` 0–1, a track and a thumb panel, neither
   hit-tested. Press jumps, drag follows (`Pick`); `onChanged(float)` fires on the gesture only, not on a
   `value` set. XML `Value`, `TrackHeight`, `ThumbWidth`, `TrackColorHex`, `ThumbColorHex`. No old counterpart.
@@ -164,23 +166,24 @@ Why: [[ui-palettes]].
 - **DocumentControl** (no XML) · ContainerControl, `IGlyphPressTarget` — the content area. Regions `caret`
   (`SetCaret`, `CollapseSelection`, `GlyphPressed`, `OnPointerTap`), `caret navigation` (`CaretPoint`,
   `CaretAtPoint`, `CaretOffText`, `AdjacentBlock`), `selection` (`SelectWord`, `SelectAll`,
-  `OrderedSelection`, highlights inserted at the **head** of `children` so they paint behind the text),
+  `OrderedSelection`, highlights inserted at the **head** of `children`, after the page panels, so they paint behind the text),
+  `pages` (`page`, `zoom`, `Paginate` — blocks laid on paper and line tops rewritten, `ArrangePages` — page panels at the very head, `Mm`),
   `editing` (`DeleteSelection`, `SplitBlock`, `TypeChar`, `Blocks`), `lists` (`TypeListPrefix`,
   `ClearListAtCaret`, `ShiftListLevel`, `SetBlockList`), `styling` (`StyleSource`,
   `CaretBlockStyling`, `ApplyStyle`, `ArmStyle`, `ApplyStyleTo`/`ApplyStyleBetween`, `SetBlockStyling`,
   `SnapshotBlocks`, `RestoreBlocks`), `addressing` (`AddressOf`, `Resolve`, `CaretTo`) and `undo primitives`
   (`InsertText`, `RemoveText`, `DeleteBetween`, `InsertFragment`, `JoinBlockWithNext`). Also declares
-  `CaretSlot`, `StyleDelta` and `CaretStyle`. Old `DocumentControl`.
+  `CaretSlot`, `StyleDelta`, `CaretStyle` and `PageBands`. Old `DocumentControl`. [[document-pages]]
 - **DocumentEditorControl** `<DocumentEditor>` · ScrollableControl, `IContext` — one open note.
   `Source`/`LoadPath`/`LoadDocument`, `Save`, `needsNaming`, `FocusCaret`; regions `styling` (forwards under a
-  `BeginStep`; also `SetChecked`, `ShiftListLevel`), `selection` (`SelectLine`, `BeginSelectionDrag`, `OnDrag` + autoscroll), `caret movement`
+  `BeginStep`; also `SetChecked`, `ShiftListLevel`, `Page`/`SetPage`), `selection` (`SelectLine`, `BeginSelectionDrag`, `OnDrag` + autoscroll), `caret movement`
   (`MoveCaret`), `editing` (`Backspace`, `Delete`, `SplitBlock`, `TypeChar`), `history`
   (`BeginStep`/`Undo`/`Redo`/`MarkDirty`), `focus`. `ArrangeCore` scrolls to the caret and **must never exit with
   the arrange flag set**. XML adds `CaretColorHex`, `SelectionColorHex` to the scrollable's. Old
   `DocumentEditorControl`.
 - **DocumentToolbarControl** `<DocumentToolbar>` · StackPanelControl — the format bar for whichever
   note holds the caret; resolves it per press through `TextInputActions.Editor()` and takes no active
-  control. `OnTick` (opted in at construction) reflects bold/italic/styling/colour/size; nested `ToolButton` (acts on press) and
+  control. `OnTick` (opted in at construction) reflects bold/italic/styling/colour/size/page format; `OpenPage` is the page menu; nested `ToolButton` (acts on press) and
   `PxBox` (the one part that does take the focus; captures the range on its press). XML `HoverColorHex`,
   `PressColorHex`, `IdleInkColorHex`, `ActiveInkColorHex`, `SeparatorColorHex`, `FieldColorHex`. Old
   `DocumentToolbarControl`, [[document-format-bar]], [[armed-style-at-the-caret]] (old).

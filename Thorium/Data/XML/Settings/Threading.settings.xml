@@ -5,6 +5,7 @@
 
   <Threading>
     <FrameCap MaxFps="120"/>
+    <Idle Wait="true"/>
   </Threading>
 
 </UserSettings>
