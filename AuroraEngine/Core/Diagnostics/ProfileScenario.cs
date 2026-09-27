@@ -63,6 +63,7 @@ namespace ArctisAurora.Core.Diagnostics
         {
             if (animation) this.animation = RunAnimation();
             this.dumpTree = dumpTree;
+            SettingsRegistry.Get<ThreadingSettings>().idle.wait = false;
             SetTicking(true);
         }
 
@@ -117,7 +118,6 @@ namespace ArctisAurora.Core.Diagnostics
         {
             base.OnTick();
             tick++;
-            FrameScheduler.RequestFrameAt(Engine.totalTime + 0.001);
 
             if (animation != null)
             {

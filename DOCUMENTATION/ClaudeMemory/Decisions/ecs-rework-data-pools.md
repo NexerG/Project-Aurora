@@ -298,25 +298,24 @@ The last per-control GPU resource is gone; both UI columns are now whole-pool mi
 - **Consequences:** `GetRef<T>`/`GetSpan<T>` on a pool without that column throw `NullReferenceException` or `IndexOutOfRangeException`, not `KeyNotFoundException`. `ColumnId<T>()` and `Bit<T>` return 0 for such a `T` — `ColumnId<T>()` has no callers; `Bit<T>` is DEBUG-only and its call then throws in `Column<T>`.
 
 ## NOT yet done (remaining Phase 2/3)
-- **Reparenting has no API to hook.** `MarkTreeOrderDirty` covers inserts; there is no
-  `SetParent`/`Reparent`/bring-to-front method in the tree today, so "move subtree to end of
-  parent's children list + orderDirty" (locked design, below) is unimplemented. Any such method
-  MUST call `MarkTreeOrderDirty` — nothing enforces it.
-- **Text deletion is unreachable, so the glyph-removal path is only verified via `DestroySelf`.**
-  `TextInputControl.Backspace()/DeleteAt()` have no callers and plain Backspace is unbound in
-  `Thorium`'s `InputMap.xml` (Ctrl+Backspace → `ExitApplication`). `SyncGlyphs`' shrink branch is
-  therefore correct-by-inspection but not exercised in the running app yet.
-- **`Entity.SetPosition/SetScale/SetRotation/SetTransform` still bypass `CommitTransform`** — they
-  mark dirty without baking, which on a control leaves a stale matrix. Still zero callers
-  repo-wide (see fifth slice); the trap is unchanged.
-- ~~**`Entity.OnDestroy()` has a pre-existing modify-during-iteration bug** (`foreach _components`
-  + `Remove`).~~ FIXED. `OnDestroy` was fixed by the lifecycle-queue pass (2026-08-21) — the
-  `_components.Clear()` moved out of the loop. `RemoveComponent<T>` kept the same shape until
-  2026-08-29 and is now an index loop; it never actually threw, because its `break` meant
-  `MoveNext` was never called again, and it has no callers. `RemoveComponent` now returns the
-  component it removed rather than always `null` — it still runs **no teardown** on it
-  (`OnDestroy` uncalled, `parent` left dangling), which is the real remaining hole.
-  `VulkanControl.OnDestroy` overrides `OnDestroy` and calls `base` first.
+- ~~**Reparenting has no API to hook.**~~ CLOSED (checked 2026-09-27). `Entity.SetParent` detaches
+  through the old parent's `RemoveChild` and attaches through the new parent's `AddChild`; on a
+  `Control` both call `MarkTreeOrderDirty`. Still no bring-to-front / sibling-reorder method — none
+  is asked for.
+- ~~**Text deletion is unreachable**~~ OBSOLETE (2026-09-27). `SyncGlyphs` went with the old stack;
+  Backspace is bound to `Text.Backspace`.
+- ~~**`SetPosition/SetScale/SetRotation/SetTransform` bypass `CommitTransform`**~~ OBSOLETE
+  (2026-09-27). `CommitTransform` is gone and controls are not `TransformEntity`
+  ([[entity-transform-split]]); the setters mark the row dirty, `SetTransform` through
+  `DataPool.Write<T>`.
+- ~~**`Entity.OnDestroy()` modify-during-iteration; `RemoveComponent` runs no teardown.**~~ FIXED.
+  `OnDestroy` since 2026-08-21; `RemoveComponent<T>` since 2026-09-27 calls the removed
+  component's `OnDestroy` and nulls its `parent`. It does not recompute the entity's `_hooks`
+  bits (a stale bit only keeps the entity on the start/enable queues), and removing a component
+  from inside a component's `OnTick` throws — `OnTick` is a `foreach`, same as `CreateComponent`.
+  No callers; correct by inspection.
+- **`DataPool.Write<T>(handle, value)`** (2026-09-27) — assign plus `MarkContentDirty`. One caller
+  (`TransformEntity.SetTransform`); field-level setters still write through `GetRef` and mark.
 - **The `ColorHex` tint does not render** — `Thorium`'s window declares `ColorHex="#1f6331"` but
   draws as #0D0D0D. PRE-EXISTING, confirmed identical before and after the eighth slice by pixel
   diff, so it is not a pooling bug. Most likely the fragment shader runs MSDF median/opacity math

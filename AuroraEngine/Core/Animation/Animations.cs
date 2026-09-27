@@ -27,7 +27,7 @@ namespace ArctisAurora.Core.Animation
 
         // track id -> binding; ids are reused through free
         private static readonly List<Binding> bindings = new List<Binding>();
-        private static readonly Stack<int> free = new Stack<int>();
+        private static readonly PriorityQueue<int, int> free = new PriorityQueue<int, int>();
 
         // (target, C# property name) -> the live track id driving it
         private static readonly Dictionary<(object, string), int> byProperty = new();
@@ -230,7 +230,7 @@ namespace ArctisAurora.Core.Animation
                 Stop(new AnimationHandle(existing, bindings[existing].generation));
 
             int id;
-            if (free.Count > 0) id = free.Pop();
+            if (free.Count > 0) id = free.Dequeue();
             else
             {
                 id = bindings.Count;
@@ -265,7 +265,14 @@ namespace ArctisAurora.Core.Animation
             binding.live = false;
             binding.target = null!;
             binding.onDone = null;
-            free.Push(id);
+            free.Enqueue(id, id);
+
+            DataPool tracks = Tracks;
+            Span<AnimationTrack> rows = tracks.GetSpan<AnimationTrack>();
+            int count = tracks.Count;
+            while (count > 0 && !bindings[count - 1].live && rows[count - 1].sleeping)
+                count--;
+            if (count < tracks.Count) tracks.Truncate(count);
         }
 
         // False once the animation has finished, been stopped or been replaced.

@@ -168,6 +168,30 @@ This is what sets the engine's hardware floor: roughly NVIDIA Maxwell (2014), AM
 
 ### Data Buffering
 
+#### Texture uploads
+A texture is written by the transfer queue and read by the graphics queue, and on most GPUs those are two different queue families. An image created `Exclusive` belongs to one family at a time, so the upload has to hand it over: the transfer queue *releases* it and the graphics queue *acquires* it, each with a barrier naming both families and the same layout change. The release rides in the upload's own command buffer; the acquire is recorded by the render thread, because only the render thread may submit to the graphics queue. When the two families are the same there is nothing to hand over, and the upload ends with an ordinary barrier instead.
+
+`UploadTexture(image, staging, width, height, queue, pool)`
+- lock the transfer command lock
+	- begin a one-time command buffer
+	- barrier: Undefined → TransferDst
+	- copy staging buffer → image
+	- if transfer family ≠ graphics family
+		- release barrier: TransferDst → ShaderReadOnly, transfer family → graphics family
+	- else
+		- barrier: TransferDst → ShaderReadOnly, visible to fragment shader reads
+	- submit, wait for the transfer queue to go idle
+- if the families differ, `Renderer.QueueAcquire(image)`
+
+`Renderer.RecordAcquires(window)` — called in `Draw` after the modules update, before the submit
+- swap the pending list out under its lock
+- if empty, record nothing
+- for each image
+	- acquire barrier: TransferDst → ShaderReadOnly, transfer family → graphics family, visible to fragment shader reads
+- record all of them into this window's acquire buffer for the current frame slot
+- that buffer goes first in the frame's module batch
+
+The release is ordered before the acquire by the host: the upload waits for its queue to go idle before it queues the acquire, and the frame that records it is submitted afterwards. Buffers uploaded through the transfer queue do not do this hand-over yet.
 
 ### Descriptors
 Descriptors are how shaders access resources. A descriptor is essentially a pointer that tells the GPU where to find a buffer, texture, or sampler. The CPU side prepares these pointers, groups them into sets, and binds them before draw calls so the shader knows what data to read.

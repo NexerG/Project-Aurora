@@ -5,6 +5,7 @@ using System.Xml.Linq;
 using ArctisAurora.Core.Data;
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.EngineWork;
 
 namespace ArctisAurora.Core.Threading
 {
@@ -66,6 +67,7 @@ namespace ArctisAurora.Core.Threading
         // Asks for a frame no later than totalTime, in Engine.totalTime seconds. Main thread only.
         public static void RequestFrameAt(double totalTime)
         {
+            if (totalTime <= Engine.totalTime) return;
             if (totalTime < _wakeAt) _wakeAt = totalTime;
         }
 

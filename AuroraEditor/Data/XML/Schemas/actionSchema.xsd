@@ -43,6 +43,16 @@
       </xs:simpleType>
     </xs:union>
   </xs:simpleType>
+  <xs:simpleType name="Test">
+    <xs:union memberTypes="actions:Any">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="Layout.StackPanelArranges" />
+          <xs:enumeration value="Layout.StarChildCrossSize" />
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
   <xs:simpleType name="Bootstrap">
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>

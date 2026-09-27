@@ -35,5 +35,5 @@ What works: `SetWindowPos(hwnd, HWND_TOPMOST, …, 0x43)`, capture, then `HWND_N
 input for interaction: `SetCursorPos` + `mouse_event`, and `[System.Windows.Forms.SendKeys]` for
 characters.
 
-Launch note: `Paths.GetPath` resolves `..\..\..` against the **process working directory**, so the
-exe only starts from its own output folder. `dotnet run` from the repo root looks in `C:\Data\`.
+Launch note: since 2026-09-27 paths resolve against the exe's own folder, so the exe starts from any working
+directory. Before that, `Paths.GetPath` used the process working directory and `dotnet run` looked in `C:\Data\`.

@@ -182,7 +182,7 @@ Running a step sets which step and which system are running on that thread, call
 
 ## Who may touch a pool
 
-In a Debug build every pool entry point checks the step running on the calling thread. `GetSpan`, `GetRef`, `ElementBytes`, `CopyFrom` and `UpdateRange` write one column; `Allocate`, `Free`, `Rewind`, `Append` and `FrameEdge` write every column and are refused inside a `Jobs.For` chunk; the dirty marks write some column; `Backing`, `CopyTo`, `CopyRange` and `OwnerAt` read one. A step that touches a column it did not list throws on the spot, naming the pool, the call and the step. Outside a step nothing is checked, except that a dedicated thread may only read — this is how the render thread reaches the pools at all.
+In a Debug build every pool entry point checks the step running on the calling thread. `GetSpan`, `GetRef`, `Write`, `ElementBytes`, `CopyFrom` and `UpdateRange` write one column; `Allocate`, `Free`, `Rewind`, `Truncate`, `Append` and `FrameEdge` write every column and are refused inside a `Jobs.For` chunk; the dirty marks write some column; `Backing`, `CopyTo`, `CopyRange` and `OwnerAt` read one. A step that touches a column it did not list throws on the spot, naming the pool, the call and the step. Outside a step nothing is checked, except that a dedicated thread may only read — this is how the render thread reaches the pools at all.
 
 A pool's frame edge is a step of its own, placed after every step that writes the pool, so compaction never moves memory under a step that is using it.
 

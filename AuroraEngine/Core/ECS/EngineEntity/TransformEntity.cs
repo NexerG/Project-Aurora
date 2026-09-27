@@ -43,8 +43,7 @@ namespace ArctisAurora.Core.ECS.EngineEntity
 
         public void SetTransform(TransformData value)
         {
-            transform = value;
-            Pool.MarkContentDirty(dataHandle);
+            Pool.Write(dataHandle, value);
         }
     }
 }

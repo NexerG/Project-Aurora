@@ -8,7 +8,7 @@ description: Verify a change to Aurora and work out which verification claim is 
 `<Host>.exe --test` runs the test suites inside the host and exits with the failure count; whatever no test
 covers is still tested by hand. `--profile-scenario` drives typing, resize and animation but asserts nothing.
 So the only honest claim is the one matching what was actually done, and the words below are the ones the WIP
-list already uses.
+list already uses. Running and writing tests, and poking a running app with `--send`, are `aurora-test`.
 
 ## The ladder — claim the rung you reached, not the one above
 
@@ -16,7 +16,7 @@ list already uses.
 |---|---|---|
 | **builds clean** / **compile-verified** | it compiles | `dotnet build` |
 | **boot-verified** | the app started and got through bootstrap | launch it, watch for the throw |
-| **test-verified** | named tests covering the change passed under `--test` | `Thorium.exe --test[=<Suite>]` from its bin folder; a logic check, not a visual one |
+| **test-verified** | named tests covering the change passed under `--test` | `<Host>.exe --test[=<Suite>]` (`aurora-test`); a logic check, not a visual one |
 | **GUI-verified** | someone looked at the window and saw the behaviour | capture, or the user looked |
 | **NOT GUI-verified** | the honest default | say it out loud |
 
@@ -37,9 +37,8 @@ Nothing in the build compiles or validates shaders — a `.spv` change is invisi
 
 ## Launching
 
-`Paths.GetPath` resolves `..\..\..` against the **process working directory**, so the exe only starts
-correctly from its own output folder. `dotnet run` from the repo root sends it looking in `C:\Data\` and it
-fails in a way that looks like missing assets.
+Paths resolve against the exe's own folder (`AppContext.BaseDirectory`) since 2026-09-27, so the exe starts
+from any working directory, `dotnet run` included.
 
 Three hosts boot the engine, each with its own `Data/` beside its exe, so "the app" means naming one:
 `Thorium/bin/Debug/net10.0-windows10.0.22621.0/Thorium.exe`, and the same path shape for `Carbon.exe` and
@@ -74,9 +73,14 @@ exe: every window's tree with arranged `X Y W H`, desired `W H`, `Hidden`. Thori
 the control in question; never read it whole. With the root unscaled a rect is client pixels, i.e. directly a
 `-Region` — grep the control, then crop the capture to it. Rects are design units: at a UI zoom or display
 scale other than 100% (`WindowRoot.scale`), multiply by that scale to get client pixels. F10 needs the window focused: click an empty pane
-first (a title-bar click enters the OS drag loop).
+first (a title-bar click enters the OS drag loop) — or skip the keypress: `Thorium.exe --send UI.DumpTree` against
+the running app writes the same file.
 
 ## Synthetic input
+
+Reach for it last. A dump or an action in a running app is a `--send`; behaviour is a test — both run inside the
+engine, so none of the traps below apply (`aurora-test`). OS input is left for what only a real keypress or pointer
+shows: a keybind's wiring, a hover, a drag.
 
 `SetCursorPos` + `mouse_event` for the pointer, `[System.Windows.Forms.SendKeys]` for characters.
 

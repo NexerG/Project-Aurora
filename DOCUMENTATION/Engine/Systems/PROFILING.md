@@ -145,7 +145,7 @@ Thorium/bin/Release/<tfm>/Thorium.exe --profile-scenario=animation
 One number to read carefully: `--profile=N` is N frames **per thread**, and on the main thread the bootstrap frame is one of them. A 120-frame capture writes 1 boot frame and 119 main frames, against a full 120 each from render and physics.
 
 ### A scenario
-`--profile-scenario` records typing and a window resize on a 1,000,000-character note in one capture, with nobody at the keyboard, and quits when it is done.
+`--profile-scenario` records typing and a window resize on a 1,000,000-character note in one capture, with nobody at the keyboard, and quits when it is done. Both scenarios turn the host's idle wait off for the run, so frames keep coming without input.
 
 ```
 Thorium.exe --profile-scenario

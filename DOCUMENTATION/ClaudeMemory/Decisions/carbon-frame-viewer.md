@@ -361,10 +361,10 @@ session opened on left the readout empty.
 - **A child its parent skips can stay `MeasureDirty` forever, and then `Show()` lays nothing out.**
   `InvalidateLayout` returns at the first already-dirty control, so a strip dirtied by `SetSession` while
   hidden made `Show()` register no dirty root. `Show()` now clears `MeasureDirty` before invalidating.
-- **Debug paths resolve against the working directory.** `Paths.GetPath` returns
-  `Path.GetFullPath(Path.Combine("..","..","..", path))`, so an app must be launched from its own
-  `bin/Debug/<tfm>/`. `dotnet run` sets the repo root instead and boot dies at `XSDGenerator` with
-  `DirectoryNotFoundException: D:\Data\XML\Schemas\…`. Visual Studio gets this right by default.
+- **Debug paths resolved against the working directory — until 2026-09-27.** `Paths.GetPath` returned
+  `Path.GetFullPath(Path.Combine("..","..","..", path))`, so an app had to be launched from its own
+  `bin/Debug/<tfm>/`; `dotnet run` died at `XSDGenerator` with `DirectoryNotFoundException: D:\Data\XML\Schemas\…`.
+  It now joins onto `AppContext.BaseDirectory`, so any working directory works.
 - **`Shaders/` is per application by the same rule** — `UIModule` reads
   `"../../../Shaders/UIRasterizer/UI.vert.spv"` and `RenderWindow` builds a `CompositorModule`
   unconditionally, so Carbon needs four `.spv` copies. **That makes four copies of the UI shaders,

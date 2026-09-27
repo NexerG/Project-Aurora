@@ -66,7 +66,7 @@ See [[frame-scheduler]] § Step 2. Departures from the brief that stood here, ea
 ## How to verify here (learned in steps 1–2)
 - **Timings: `dotnet build … -p:Optimize=true --no-incremental`**, then rebuild plain Debug with `--no-incremental` afterwards — Debug JIT is unoptimized and ~5× slow, and an incremental build ignores the property change → [[profiling-unoptimized-jit]].
 - Build: `dotnet build AuroraEngine/ArctisAurora.sln 2>&1 | grep -E "error|Build succeeded|Build FAILED"`.
-- Run Thorium from its output folder — `Thorium/bin/Debug/net10.0-windows10.0.22621.0/Thorium.exe` with that folder as the working directory; the startup log prints the stages and worker count. `aurora-verify` has capture and input.
+- Run `Thorium/bin/Debug/net10.0-windows10.0.22621.0/Thorium.exe` — from any working directory since 2026-09-27; the startup log prints the stages and worker count. `aurora-verify` has capture and input.
 - Close through the window's own X (client ~1375,15 on a 1399-wide window) to run the real shutdown; `CloseMainWindow` does not close Thorium.
 - Settings to try a mode: `%APPDATA%\Thorium\Settings\UserSettings.settings.xml`, add `<Threading><Threads Count="1"/><FrameCap MaxFps="120"/></Threading>`. Back it up first and restore it byte-for-byte after.
 - Graph override without touching the repo: in Debug the app's `Data` is mounted before the engine's, so `Thorium/Data/XML/Documents/Frame.frame.xml` overrides the engine copy. Delete it after.

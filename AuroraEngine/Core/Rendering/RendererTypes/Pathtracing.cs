@@ -1143,7 +1143,7 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
 
         private byte[] ReadFile(string FileName)
         {
-            byte[] contents = File.ReadAllBytes(FileName);
+            byte[] contents = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, FileName));
             return contents;
         }
     }
