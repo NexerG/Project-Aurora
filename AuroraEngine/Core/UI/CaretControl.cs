@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Threading;
 using ArctisAurora.EngineWork;
 
 namespace ArctisAurora.Core.UI
@@ -26,6 +27,7 @@ namespace ArctisAurora.Core.UI
 
             phase += Engine.deltaTime.TotalSeconds;
             SetAlpha(phase % (blinkInterval * 2.0) < blinkInterval ? 1f : 0f);
+            FrameScheduler.RequestFrameAt(Engine.totalTime + blinkInterval - phase % blinkInterval);
         }
 
         // Shows the caret solid, from the top of the cycle.

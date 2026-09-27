@@ -42,6 +42,13 @@ namespace ArctisAurora.Core.UI
 
             foreach (XElement child in element.Elements())
             {
+                if (child.Name.LocalName == "Page")
+                {
+                    layout.page = new PageLayout();
+                    XmlReflection.ApplyAttributes(child, layout.page);
+                    continue;
+                }
+
                 TextStyle style = new TextStyle();
                 XmlReflection.ApplyAttributes(child, style);
                 layout.textStyles.Add(style);
@@ -110,6 +117,8 @@ namespace ArctisAurora.Core.UI
             XElement layout = WriteScalars(ns + "DocumentLayout", document.layout);
             foreach (TextStyle style in document.layout.textStyles)
                 layout.Add(WriteScalars(ns + "TextStyle", style));
+            if (document.layout.page != null)
+                layout.Add(WriteScalars(ns + "Page", document.layout.page));
             if (layout.HasAttributes || layout.HasElements) root.Add(layout);
 
             foreach (BlockControl block in document.blocks)

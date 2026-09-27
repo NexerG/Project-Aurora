@@ -1,5 +1,6 @@
 using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.Registry;
+using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
@@ -137,6 +138,14 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("TextStyle", "UI", "Per-type text styles; empty inherits the editor's.")]
         public List<TextStyle> textStyles = new List<TextStyle>();
 
+        [A_XSDElementProperty("Page", "UI", "Page format; absent inherits the editor's.")]
+        public PageLayout? page;
+
+        private static readonly PageLayout fallbackPage = new PageLayout();
+
+        // The page this layout resolves to.
+        public PageLayout Page => page ?? Defaults.page ?? fallbackPage;
+
         // Resolved here rather than in the view so the measurer and the controls drawn from it cannot
         // disagree about how big a heading is.
         public int FontSizeFor(TextStyleType type)
@@ -166,12 +175,95 @@ namespace ArctisAurora.Core.UI
             {
                 lineHeight = lineHeight,
                 blockSpacing = blockSpacing,
-                listIndent = listIndent
+                listIndent = listIndent,
+                page = page?.Clone()
             };
             foreach (TextStyle style in textStyles)
                 copy.textStyles.Add(style.Clone());
             return copy;
         }
+    }
+
+    [A_XSDType("PageMode", "UI")]
+    public enum PageMode
+    {
+        Paged,
+        Pageless
+    }
+
+    [A_XSDType("PageSize", "UI")]
+    public enum PageSize
+    {
+        A0, A1, A2, A3, A4, A5, A6,
+        B4, B5,
+        Letter, Legal, Tabloid, Executive,
+        Custom
+    }
+
+    // Page format, in millimetres; drawn at 96 px per inch.
+    [A_XSDType("Page", "UI")]
+    public class PageLayout
+    {
+        public const float PxPerMm = 96f / 25.4f;
+
+        [A_XSDElementProperty("Mode", "UI", "Paged breaks the note into pages; Pageless is one page of unbounded height.")]
+        public PageMode mode { get; set; } = PageMode.Paged;
+
+        [A_XSDElementProperty("Size", "UI", "Paper size; Custom reads Width and Height.")]
+        public PageSize size { get; set; } = PageSize.A4;
+
+        [A_XSDElementProperty("Landscape", "UI", "Swaps the paper's width and height.")]
+        public bool landscape { get; set; }
+
+        // custom paper, mm
+        [A_XSDElementProperty("Width", "UI", "Paper width in millimetres when Size is Custom.")]
+        public float width { get; set; } = 210f;
+
+        [A_XSDElementProperty("Height", "UI", "Paper height in millimetres when Size is Custom.")]
+        public float height { get; set; } = 297f;
+
+        // margins, mm
+        [A_XSDElementProperty("MarginTop", "UI", "Top margin in millimetres.")]
+        public float marginTop { get; set; } = 25.4f;
+
+        [A_XSDElementProperty("MarginBottom", "UI", "Bottom margin in millimetres.")]
+        public float marginBottom { get; set; } = 25.4f;
+
+        [A_XSDElementProperty("MarginLeft", "UI", "Left margin in millimetres.")]
+        public float marginLeft { get; set; } = 25.4f;
+
+        [A_XSDElementProperty("MarginRight", "UI", "Right margin in millimetres.")]
+        public float marginRight { get; set; } = 25.4f;
+
+        [A_XSDElementProperty("Gap", "UI", "Space between pages in pixels.")]
+        public float gap { get; set; } = 16f;
+
+        // Paper size in pixels, orientation applied.
+        public Vector2 SizePx()
+        {
+            Vector2 mm = size switch
+            {
+                PageSize.A0 => new Vector2(841f, 1189f),
+                PageSize.A1 => new Vector2(594f, 841f),
+                PageSize.A2 => new Vector2(420f, 594f),
+                PageSize.A3 => new Vector2(297f, 420f),
+                PageSize.A4 => new Vector2(210f, 297f),
+                PageSize.A5 => new Vector2(148f, 210f),
+                PageSize.A6 => new Vector2(105f, 148f),
+                PageSize.B4 => new Vector2(250f, 353f),
+                PageSize.B5 => new Vector2(176f, 250f),
+                PageSize.Letter => new Vector2(215.9f, 279.4f),
+                PageSize.Legal => new Vector2(215.9f, 355.6f),
+                PageSize.Tabloid => new Vector2(279.4f, 431.8f),
+                PageSize.Executive => new Vector2(184.15f, 266.7f),
+                _ => new Vector2(width, height)
+            };
+
+            if (landscape) mm = new Vector2(mm.Y, mm.X);
+            return mm * PxPerMm;
+        }
+
+        public PageLayout Clone() => (PageLayout)MemberwiseClone();
     }
 
     // Editor-wide document defaults as a settings group, so the styles scheme cascades across mounts

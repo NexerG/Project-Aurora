@@ -1,7 +1,9 @@
 using ArctisAurora.Core.Diagnostics;
+using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using System.Numerics;
 
@@ -37,7 +39,7 @@ namespace ArctisAurora.Core.UI
 
         public DocumentEditorControl()
         {
-            scrollDirection = ScrollDirection.Vertical;
+            scrollDirection = ScrollDirection.Both;
             overscroll = 0.5f;
             alpha = 0f;
         }
@@ -77,6 +79,8 @@ namespace ArctisAurora.Core.UI
             content = new DocumentControl
             {
                 blockSpacing = document.layout.blockSpacing,
+                page = document.layout.Page,
+                zoom = DocumentZoom,
                 document = document,
                 caretColorHex = caretColorHex,
                 selectionColorHex = selectionColorHex,
@@ -218,6 +222,47 @@ namespace ArctisAurora.Core.UI
 
             using (BeginStep(delta > 0 ? "Indent" : "Outdent"))
                 if (content.ShiftListLevel(delta)) MarkDirty();
+        }
+
+        // The note's page format. Not undoable.
+        public PageLayout? Page => activeDocument?.layout.Page;
+
+        public void SetPage(PageLayout page)
+        {
+            if (content == null) return;
+
+            activeDocument.layout.page = page;
+            content.page = page;
+            content.InvalidateLayout();
+            MarkDirty();
+            RequestScrollToCaret();
+        }
+
+        // The document zoom setting, clamped; 1 is 100%.
+        private static float DocumentZoom =>
+            Math.Clamp(SettingsRegistry.Get<UISettings>().documentZoom.percent, 25f, 400f) / 100f;
+
+        [A_XSDActionDependency("Document.Rezoom", "Settings", "Re-lays every open note at the document zoom")]
+        public static void Rezoom()
+        {
+            foreach (RenderWindow window in Engine.windows.Values)
+                if (window.ui?.uiRoot is Control root) Rezoom(root);
+        }
+
+        private static void Rezoom(Control control)
+        {
+            if (control is DocumentEditorControl editor)
+            {
+                if (editor.content == null) return;
+
+                editor.content.zoom = DocumentZoom;
+                editor.content.InvalidateLayout();
+                editor.RequestScrollToCaret();
+                return;
+            }
+
+            foreach (Entity child in control.children)
+                if (child is Control next) Rezoom(next);
         }
         #endregion
 

@@ -9,9 +9,6 @@ namespace ArctisAurora.Core.UI
         private readonly PanelControl mark = new PanelControl
         {
             role = PaletteRole.Ink,
-            preferredWidth = 10,
-            preferredHeight = 10,
-            cornerRadius = new CornerRadii(2),
             hitTestable = false
         };
 
@@ -31,12 +28,22 @@ namespace ArctisAurora.Core.UI
 
         public CheckBoxControl()
         {
-            preferredWidth = 18;
-            preferredHeight = 18;
-            cornerRadius = new CornerRadii(3);
+            SetScale(1f);
 
             AddChild(mark);
             mark.Hide();
+        }
+
+        // Sizes the box and its mark; 1 is the default size.
+        public void SetScale(float scale)
+        {
+            preferredWidth = 18 * scale;
+            preferredHeight = 18 * scale;
+            cornerRadius = new CornerRadii(3 * scale);
+
+            mark.preferredWidth = 10 * scale;
+            mark.preferredHeight = 10 * scale;
+            mark.cornerRadius = new CornerRadii(2 * scale);
         }
 
         public override bool OnPointerRelease(PointerEvent e)

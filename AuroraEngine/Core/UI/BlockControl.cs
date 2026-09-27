@@ -81,6 +81,7 @@ namespace ArctisAurora.Core.UI
         // bullet dot or checkbox, in the indent
         private Control? marker;
         private float listIndent;
+        private const float bulletSize = 6f;
 
         // pre-palette block ink, dropped from runs at load
         private const string legacyInkHex = "#2C2B26";
@@ -96,9 +97,7 @@ namespace ArctisAurora.Core.UI
             fontSize = layout.FontSizeFor(stylingType);
 
             listIndent = layout.listIndent;
-            Thickness inset = padding;
-            inset.left = listKind == ListKind.None ? 0f : (listLevel + 1) * listIndent;
-            padding = inset;
+            ApplyInset();
             SyncMarker();
 
             for (int i = 0; i < spans.Count; i++)
@@ -112,6 +111,38 @@ namespace ArctisAurora.Core.UI
             }
 
             InvalidateLayout();
+        }
+
+        // Scales the type, the list indent and the marker for a document zoom.
+        internal void SetZoom(float zoom)
+        {
+            if (textZoom == zoom) return;
+
+            textZoom = zoom;
+            ApplyInset();
+            SizeMarker();
+            InvalidateLayout();
+        }
+
+        private void ApplyInset()
+        {
+            Thickness inset = padding;
+            inset.left = listKind == ListKind.None ? 0f : (listLevel + 1) * listIndent * textZoom;
+            padding = inset;
+        }
+
+        private void SizeMarker()
+        {
+            if (marker is CheckBoxControl box)
+            {
+                box.SetScale(textZoom);
+                return;
+            }
+            if (marker is not PanelControl) return;
+
+            marker.preferredWidth = bulletSize * textZoom;
+            marker.preferredHeight = bulletSize * textZoom;
+            marker.cornerRadius = new CornerRadii(bulletSize * textZoom * 0.5f);
         }
 
         // Wraps inside the indent.
@@ -130,7 +161,8 @@ namespace ArctisAurora.Core.UI
 
             TextLine first = Lines[0];
             Vector2 size = marker.DesiredSize;
-            float x = TextOrigin.X - listIndent + (listIndent - size.X) * 0.5f;
+            float indent = listIndent * textZoom;
+            float x = TextOrigin.X - indent + (indent - size.X) * 0.5f;
             float y = TextOrigin.Y + first.top + (first.height - size.Y) * 0.5f;
             marker.Arrange(new LayoutRect(x, y, size.X, size.Y));
         }
@@ -158,13 +190,11 @@ namespace ArctisAurora.Core.UI
                     ListKind.Bullet => new PanelControl
                     {
                         role = PaletteRole.Ink,
-                        preferredWidth = 6,
-                        preferredHeight = 6,
-                        cornerRadius = new CornerRadii(3),
                         hitTestable = false
                     },
                     _ => null
                 };
+                SizeMarker();
                 if (marker != null) AddChild(marker);
                 InvalidateLayout();
             }

@@ -24,6 +24,8 @@
       <UI:TextStyle Type="Code" FontSize="16" />
       <UI:TextStyle Type="Quote" FontSize="18" />
 
+      <UI:Page Mode="Paged" Size="A4" />
+
     </UI:DocumentLayout>
   </DocumentSettings>
 

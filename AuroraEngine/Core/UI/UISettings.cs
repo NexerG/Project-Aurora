@@ -16,10 +16,26 @@ namespace ArctisAurora.Core.UI
         public string name { get; set; } = "default";
     }
 
+    [A_XSDType("Zoom", "Settings")]
+    public class ZoomSetting : Setting
+    {
+        [A_XSDElementProperty("Percent", "Settings", "Size of the whole UI on top of the display scale, 50 to 300.")]
+        public float percent { get; set; } = 100f;
+    }
+
+    [A_XSDType("DocumentZoom", "Settings")]
+    public class DocumentZoomSetting : Setting
+    {
+        [A_XSDElementProperty("Percent", "Settings", "Size of a note's page and text, 25 to 400.")]
+        public float percent { get; set; } = 100f;
+    }
+
     [A_XSDType("UI", "Settings", AllowedChildren = typeof(Setting))]
     public class UISettings : SettingCategory
     {
         public readonly DragGhostSetting dragGhost = new DragGhostSetting();
         public readonly PaletteSetting palette = new PaletteSetting();
+        public readonly ZoomSetting zoom = new ZoomSetting { onChanged = "UI.Rescale" };
+        public readonly DocumentZoomSetting documentZoom = new DocumentZoomSetting { onChanged = "Document.Rezoom" };
     }
 }

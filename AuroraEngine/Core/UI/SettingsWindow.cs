@@ -48,7 +48,9 @@ namespace ArctisAurora.Core.UI
             }
 
             Diagnostics.Profiling.Zone.Start("Settings.CreateWindow");
-            RenderWindow window = Engine.OpenMenuWindow(windowName, windowWidth, windowHeight, true);
+            uint width = UIScaling.ToPixels(source, windowWidth);
+            uint height = UIScaling.ToPixels(source, windowHeight);
+            RenderWindow window = Engine.OpenMenuWindow(windowName, width, height, true);
             Diagnostics.Profiling.Zone.End("Settings.CreateWindow");
 
             Diagnostics.Profiling.Zone.Start("Settings.Parse");
@@ -71,7 +73,7 @@ namespace ArctisAurora.Core.UI
             }
             Diagnostics.Profiling.Zone.End("Settings.Categories");
 
-            root.FitTo(new Extent2D(windowWidth, windowHeight));
+            root.FitTo(window.os.windowSize);
 
             Diagnostics.Profiling.Zone.Start("Settings.ShowCategory");
             ShowCategory(FirstCategory());
@@ -79,7 +81,7 @@ namespace ArctisAurora.Core.UI
 
             AGlfwWindow._glfw.GetWindowPos(source.os.handle, out int sx, out int sy);
             AGlfwWindow._glfw.GetWindowSize(source.os.handle, out int sw, out int sh);
-            window.os.SetPosition(sx + (sw - (int)windowWidth) / 2, sy + (sh - (int)windowHeight) / 2);
+            window.os.SetPosition(sx + (sw - (int)width) / 2, sy + (sh - (int)height) / 2);
 
             Diagnostics.Profiling.Zone.Start("Settings.Show");
             window.os.Show();

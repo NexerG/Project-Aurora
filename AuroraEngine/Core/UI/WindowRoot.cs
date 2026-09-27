@@ -25,6 +25,9 @@ namespace ArctisAurora.Core.UI
         public bool autoscaling = false;
         public ScalingAxis scalingAxis = ScalingAxis.Vertical;
 
+        // window pixels per design unit when the content does not autoscale
+        public float scale = 1f;
+
         // A root is structural. Until the sampler set lands there is no invisible mask to opt out
         // with, so it stays transparent instead — an opaque root covers the whole window.
         public WindowRoot()
@@ -38,7 +41,7 @@ namespace ArctisAurora.Core.UI
         {
             if (!autoscaling || windowingMode == WindowingMode.KeepLocal
                 || preferredWidth <= 0 || preferredHeight <= 0)
-                return new Vector2(window.Width, window.Height);
+                return new Vector2(window.Width, window.Height) / scale;
 
             switch (scalingAxis)
             {

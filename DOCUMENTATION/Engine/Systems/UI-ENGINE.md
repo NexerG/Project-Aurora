@@ -188,6 +188,10 @@ The root also owns the box the whole tree is laid out in. By default that box is
 
 A resize refits the root, which re-lays the tree and moves the camera's projection box to match.
 
+The root also carries a scale: how many window pixels one design unit takes. It is the monitor's display scale (the OS setting GLFW reports as the window's content scale) times the user's UI zoom (`<UI><Zoom Percent>`, Ctrl+= / Ctrl+− / Ctrl+0), and the box is the window's pixels divided by it. So on a 150% display, or at 150% zoom, the same tree lays out in a smaller box and every control, font and border is drawn one and a half times larger. Text stays sharp because it is drawn from a distance field. A window opened from a design size, such as a dialog, a menu or a torn-off tab, converts that size to pixels first with the scale of the window that opened it. A window moved to a monitor with a different scale gets a callback and refits. See `ClaudeMemory/Decisions/ui-scaling.md`.
+
+Document zoom (`<UI><DocumentZoom Percent>`) is separate and does not go through the root. A note re-lays its page and text at the zoomed sizes (paper, margins, font sizes, spacing, list indent), so it grows while the rest of the window stays put.
+
 > A root has no appearance of its own. Until masks arrive it opts out of drawing by being fully transparent — an opaque root is a full-window quad that hides everything the old stack composited underneath.
 
 ## The draw list

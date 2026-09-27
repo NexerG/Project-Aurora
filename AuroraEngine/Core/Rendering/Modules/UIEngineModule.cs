@@ -126,7 +126,10 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             {
                 _uiRoot?.Destroy();
                 _uiRoot = value;
-                value?.FitTo(window.os.windowSize);
+                if (value == null) return;
+
+                value.scale = UIScaling.For(window);
+                value.FitTo(window.os.windowSize);
             }
         }
 

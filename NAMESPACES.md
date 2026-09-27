@@ -138,6 +138,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TitleBarControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UIActions.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UIData.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UIEngine.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UIScaling.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UISettings.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/UITreeDump.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ViewActions.cs

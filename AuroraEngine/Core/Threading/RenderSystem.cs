@@ -10,6 +10,9 @@ namespace ArctisAurora.Core.Threading
     [A_XSDType("Render", "Systems")]
     public sealed class RenderSystem : ThreadedSystem
     {
+        // main's epoch last drawn
+        private int _drawn;
+
         // Startup gate only: park until main has completed one tick, so the first Draw() never runs
         // against a frame that has never been ticked. Main's epoch is published with release
         // semantics, so seeing it move guarantees everything that tick wrote is visible here.
@@ -23,6 +26,11 @@ namespace ArctisAurora.Core.Threading
         // that uses them. Main only ever makes and unmakes the OS window and flags this side.
         protected override void Tick()
         {
+            int epoch;
+            while ((epoch = Engine.mainSystem.Epoch) == _drawn && Running)
+                FrameScheduler.WaitForFrame();
+            bool presented = true;
+
             Profiling.Zone.Start("RenderTick");
 
             foreach (RenderWindow window in Engine.windows.Values)
@@ -46,14 +54,19 @@ namespace ArctisAurora.Core.Threading
                 {
                     window.CreateGpuResources();
                     window.gpuReady = true;
+                    presented = false;
                     continue;
                 }
 
+                ulong before = window.frameCounter;
                 Profiling.Zone.Start("Draw");
                 Engine.renderer.Draw(window);
                 Profiling.Zone.End("Draw");
+                if (window.frameCounter == before && window.os.windowSize.Width != 0 && window.os.windowSize.Height != 0)
+                    presented = false;
             }
 
+            if (presented) _drawn = epoch;
             Profiling.Zone.End("RenderTick");
         }
     }

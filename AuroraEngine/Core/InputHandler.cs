@@ -77,6 +77,16 @@ namespace ArctisAurora.EngineWork
             return false;
         }
 
+        public bool AnyDown
+        {
+            get
+            {
+                foreach (KeyStateEntry entry in _states.Values)
+                    if (entry.isDown) return true;
+                return false;
+            }
+        }
+
         public double HoldDuration(Keys key)
         {
             if (_states.TryGetValue(key, out KeyStateEntry entry) && entry.isDown)

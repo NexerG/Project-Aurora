@@ -133,7 +133,8 @@ namespace ArctisAurora.Core.UI
         private static unsafe void HostInWindow(ContextMenuControl panel, Vector2 size, Vector2 viewport)
         {
             RenderWindow window = Engine.OpenMenuWindow($"context-menu-{_windowSerial++}",
-                                                        (uint)MathF.Ceiling(size.X), (uint)MathF.Ceiling(size.Y));
+                                                        UIScaling.ToPixels(_origin!, (uint)MathF.Ceiling(size.X)),
+                                                        UIScaling.ToPixels(_origin!, (uint)MathF.Ceiling(size.Y)));
             panel.window = window;
 
             WindowRoot root = new WindowRoot();

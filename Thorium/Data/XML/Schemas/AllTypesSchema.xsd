@@ -26,9 +26,12 @@
       <xs:enumeration value="Session" />
       <xs:enumeration value="DragGhost" />
       <xs:enumeration value="Palette" />
+      <xs:enumeration value="Zoom" />
+      <xs:enumeration value="DocumentZoom" />
       <xs:enumeration value="UI" />
       <xs:enumeration value="Threads" />
       <xs:enumeration value="FrameCap" />
+      <xs:enumeration value="Idle" />
       <xs:enumeration value="Threading" />
       <xs:enumeration value="SettingScope" />
       <xs:enumeration value="Setting" />
@@ -89,6 +92,9 @@
       <xs:enumeration value="TextStyleType" />
       <xs:enumeration value="TextStyle" />
       <xs:enumeration value="DocumentLayout" />
+      <xs:enumeration value="PageMode" />
+      <xs:enumeration value="PageSize" />
+      <xs:enumeration value="Page" />
       <xs:enumeration value="ScrollDirection" />
       <xs:enumeration value="Scrollable" />
       <xs:enumeration value="Slider" />

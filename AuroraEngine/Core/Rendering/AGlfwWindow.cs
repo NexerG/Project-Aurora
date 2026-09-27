@@ -23,6 +23,9 @@ namespace ArctisAurora.EngineWork.Rendering
         internal volatile bool frameBufferResized = false;
         internal Extent2D windowSize;
 
+        // the OS display scale of the monitor the window is on
+        internal float contentScale = 1f;
+
         // One cursor per shape for the whole process — GLFW creates cursors against the library and
         // only applies them per window, and the hover paths ask for a shape far more often than the
         // shape changes.
@@ -30,18 +33,42 @@ namespace ArctisAurora.EngineWork.Rendering
 
         internal readonly RenderWindow owner;
 
+        // GLFW entry points Silk.NET does not bind
+        private static delegate* unmanaged[Cdecl]<WindowHandle*, float*, float*, void> _getWindowContentScale;
+        private static delegate* unmanaged[Cdecl]<WindowHandle*, delegate* unmanaged[Cdecl]<WindowHandle*, float, float, void>, IntPtr> _setWindowContentScaleCallback;
+
         internal AGlfwWindow(uint width, uint height, RenderWindow owner)
         {
-            _glfw = Glfw.GetApi();
             windowSize = new Extent2D(width, height);
             this.owner = owner;
         }
 
+        [A_XSDActionDependency("Glfw.Init", "Bootstrap")]
+        internal static bool InitGlfw()
+        {
+            _glfw = Glfw.GetApi();
+            if (!_glfw.Init())
+            {
+                Log.Fatal($"GLFW failed to initialize.");
+                return false;
+            }
+
+            _getWindowContentScale = (delegate* unmanaged[Cdecl]<WindowHandle*, float*, float*, void>)
+                _glfw.Context.GetProcAddress("glfwGetWindowContentScale");
+            _setWindowContentScaleCallback = (delegate* unmanaged[Cdecl]<WindowHandle*, delegate* unmanaged[Cdecl]<WindowHandle*, float, float, void>, IntPtr>)
+                _glfw.Context.GetProcAddress("glfwSetWindowContentScaleCallback");
+            return true;
+        }
+
+        // The display scale of the primary monitor.
+        internal static float PrimaryContentScale()
+        {
+            _glfw.GetMonitorContentScale(_glfw.GetPrimaryMonitor(), out float scale, out _);
+            return scale;
+        }
+
         internal void CreateWindow()
         {
-            if (!_glfw.Init())
-                throw new Exception("Failed to initialize GLFW");
-
             // hints are sticky until reset, and the ghost window sets several this one must not keep
             _glfw.DefaultWindowHints();
             _glfw.WindowHint(WindowHintClientApi.ClientApi, ClientApi.NoApi);
@@ -51,16 +78,14 @@ namespace ArctisAurora.EngineWork.Rendering
             handle = CreateForMode(SettingsRegistry.Get<GraphicsSettings>());
 
             if (handle == null)
-            {
-                _glfw.Terminate();
                 throw new Exception("Failed to create window");
-            }
 
             RoundCorners();
             AllowSnapping();
             UpdateWindowSize(ref windowSize);
             SetResizeCallback(WindwoResizeCallback);
             SetCloseCallback(WindowCloseCallback);
+            TrackContentScale();
         }
 
         // A window opened after boot: plain windowed at the size it was constructed with, wherever it
@@ -83,6 +108,7 @@ namespace ArctisAurora.EngineWork.Rendering
             UpdateWindowSize(ref windowSize);
             SetResizeCallback(WindwoResizeCallback);
             SetCloseCallback(WindowCloseCallback);
+            TrackContentScale();
             SeedIsInWindow();
         }
 
@@ -105,6 +131,7 @@ namespace ArctisAurora.EngineWork.Rendering
 
             RoundCorners();
             UpdateWindowSize(ref windowSize);
+            ReadContentScale();
         }
 
         // Floats over its parent and takes focus, so a dismissal has something to leave. Starts
@@ -133,6 +160,21 @@ namespace ArctisAurora.EngineWork.Rendering
                 SetCloseCallback(WindowCloseCallback);
             }
             UpdateWindowSize(ref windowSize);
+            TrackContentScale();
+        }
+
+        // Reads the display scale and follows it across monitors.
+        private void TrackContentScale()
+        {
+            ReadContentScale();
+            _setWindowContentScaleCallback(handle, &OnContentScale);
+        }
+
+        private void ReadContentScale()
+        {
+            float x, y;
+            _getWindowContentScale(handle, &x, &y);
+            contentScale = x;
         }
 
         // DWM rounds and clips the window at composition, so an undecorated window opts in the same
@@ -543,6 +585,19 @@ namespace ArctisAurora.EngineWork.Rendering
             windowSize = new Extent2D((uint)fbWidth, (uint)fbHeight);
 
             owner.ui.uiRoot?.FitTo(windowSize);
+        }
+
+        [UnmanagedCallersOnly(CallConvs = new[] { typeof(System.Runtime.CompilerServices.CallConvCdecl) })]
+        private static void OnContentScale(WindowHandle* window, float xScale, float yScale)
+        {
+            foreach (RenderWindow open in Engine.windows.Values)
+            {
+                if (open.os.handle != window) continue;
+
+                open.os.contentScale = xScale;
+                Engine.Post(() => UIScaling.Apply(open));
+                return;
+            }
         }
 
         // OS close request (Alt+F4, taskbar, WM_CLOSE) takes the Window.Close path.

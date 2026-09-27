@@ -256,7 +256,8 @@ namespace ArctisAurora.Core.UI
             RenderWindow source = UIEngine.WindowOf(this);
             AGlfwWindow._glfw.GetWindowPos(source.os.handle, out int wx, out int wy);
 
-            RenderWindow torn = Engine.OpenWindow($"tab-{++_tornWindows}", tearOffWidth, tearOffHeight,
+            RenderWindow torn = Engine.OpenWindow($"tab-{++_tornWindows}",
+                UIScaling.ToPixels(source, tearOffWidth), UIScaling.ToPixels(source, tearOffHeight),
                 wx + (int)source.mousePos.X, wy + (int)source.mousePos.Y);
             torn.uiDocument = tearOffDocument;
             WindowRoot root = (WindowRoot)ParseXML(tearOffDocument);
