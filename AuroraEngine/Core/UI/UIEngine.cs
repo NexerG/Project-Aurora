@@ -31,11 +31,14 @@ namespace ArctisAurora.Core.UI
 
         public static void RegisterDirtyRoot(Control control) => _dirtyRoots.Add(control);
 
-        // Measures and arranges every dirty subtree, then refreshes its collision caches.
+        // Measures and arranges every dirty subtree.
         public static void ResolveLayout()
         {
-            DrainLayoutDirty();
             LayoutEngine.BuildStructure();
+            DrainLayoutDirty();
+            foreach (RenderWindow window in Engine.windows.Values)
+                if (window.ui?.uiRoot is WindowRoot windowRoot && (windowRoot.isMeasureDirty || windowRoot.isArrangeDirty))
+                    _dirtyRoots.Add(windowRoot);
             if (_dirtyRoots.Count == 0) return;
 
             Control[] roots = new Control[_dirtyRoots.Count];
@@ -80,23 +83,22 @@ namespace ArctisAurora.Core.UI
                     Profiling.Zone.End("Layout.Arrange");
                 }
 
-                Profiling.Zone.Start("Layout.SubtreeCache");
-                root.RefreshSubtreeCache();
-                Profiling.Zone.End("Layout.SubtreeCache");
-
                 Profiling.Zone.Start("Layout.VerifyCache");
                 VerifySubtreeCache(root);
                 Profiling.Zone.End("Layout.VerifyCache");
             }
+
+            LayoutEngine.VerifyLayout(roots);
         }
 
-        // Invalidates the controls Animation wrote this frame.
+        // Invalidates the controls Animation wrote this frame and could not mark itself.
         private static void DrainLayoutDirty()
         {
             DataPool pool = LayoutDirty;
             int count = pool.Count;
             if (count == 0) return;
 
+            Profiling.Zone.Start("Layout.Drain");
             DataPool elements = Elements;
             DirtyLayout[] rows = pool.Backing<DirtyLayout>();
             for (int i = 0; i < count; i++)
@@ -108,6 +110,7 @@ namespace ArctisAurora.Core.UI
                 else control.InvalidateArrange();
             }
             pool.Rewind();
+            Profiling.Zone.End("Layout.Drain");
         }
 
         // Recomputes the caches independently and reports a mismatch. The maintained values are the
@@ -116,7 +119,6 @@ namespace ArctisAurora.Core.UI
         private static void VerifySubtreeCache(Control control)
         {
             LayoutRect bounds = control.arrangedRect;
-            int count = 1;
 
             foreach (Entity e in control.children)
             {
@@ -124,12 +126,9 @@ namespace ArctisAurora.Core.UI
 
                 VerifySubtreeCache(child);
                 bounds = LayoutRect.Union(bounds, child.arrange.subtreeBounds);
-                count += child.arrange.subtreeCount;
             }
 
             ref ArrangeData a = ref control.arrange;
-            if (a.subtreeCount != count)
-                Log.Error($"'{control.name}' subtreeCount {a.subtreeCount} != recomputed {count}");
             if (a.subtreeBounds.x != bounds.x || a.subtreeBounds.y != bounds.y
                 || a.subtreeBounds.width != bounds.width || a.subtreeBounds.height != bounds.height)
                 Log.Error($"'{control.name}' subtreeBounds ({a.subtreeBounds.x}, {a.subtreeBounds.y}, " +

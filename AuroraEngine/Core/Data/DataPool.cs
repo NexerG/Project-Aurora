@@ -105,6 +105,7 @@ namespace ArctisAurora.Core.Data
         // StructuralVersion (the live set changing) so a plain Allocate can still take the cheap
         // append path; folded together, every added control would force a full descriptor rebuild.
         public ulong OrderVersion => Volatile.Read(ref _orderVersion);
+        public bool OrderDirty => _orderDirty;
 
         // Immutable snapshot of slot occupancy as of StructuralVersion. Index is stableId.
         public int[] PublishedSlotVersion => Volatile.Read(ref _publishedSlotVersion);

@@ -37,7 +37,8 @@ namespace ArctisAurora.Core.UI
         Clip = 1,
         Hidden = 2,
         MeasureDirty = 4,
-        ArrangeDirty = 8
+        ArrangeDirty = 8,
+        Remeasured = 16
     }
 
     // LayoutNode.kind: laid out through its own MeasureCore/ArrangeCore, or flattened into the layout walk.
@@ -273,10 +274,10 @@ namespace ArctisAurora.Core.UI
         public LayoutRect arranged;
         public LayoutRect clip;
         public Vector2 desired;
+        public Vector2 measuredOffer;
 
-        // collision and insert caches
+        // collision cache
         public LayoutRect subtreeBounds;
-        public int subtreeCount;
     }
 
     // A UIElements row's place in the tree and how it lays out. The subtree is the rows [row, row + count).

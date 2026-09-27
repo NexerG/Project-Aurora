@@ -6,7 +6,7 @@
 
 	<Step Action="Main.Input" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints Signals"/>
 	<Step Action="Main.Logic" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints Signals AnimationDone"/>
-	<Step Action="Animation.Step" Reads="Signals Keyframes" Writes="Animations Paints UIElements.ArrangeData UIElements.VulkanControl LayoutDirty AnimationDone"/>
+	<Step Action="Animation.Step" Reads="Signals Keyframes" Writes="Animations Paints UIElements.ArrangeData UIElements.LayoutNode UIElements.VulkanControl LayoutDirty AnimationDone"/>
 	<Step Action="Physics.Step" Writes="Entities.TransformData"/>
 	<Step Edge="UIElements"/>
 	<Step Action="Main.Layout" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints LayoutDirty"/>

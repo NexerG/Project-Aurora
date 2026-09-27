@@ -1,14 +1,16 @@
+using ArctisAurora.Core.Animation;
 using ArctisAurora.Core.Data;
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 using System.Diagnostics;
+using System.Numerics;
 using System.Reflection;
 
 namespace ArctisAurora.Core.UI
 {
-    // UIElements rows as tree ranges: each row's parent, subtree size and layout kind.
+    // UIElements rows as tree ranges: each row's parent, subtree size and layout kind; measure and arrange walk them.
     public static class LayoutEngine
     {
         private static readonly LogChannel Log = LogChannel.For("Layout");
@@ -16,7 +18,475 @@ namespace ArctisAurora.Core.UI
         // the pool order the structure describes
         private static ulong _builtOrder = ulong.MaxValue;
 
+        // DEBUG: VerifyLayout's pass without skips
+        private static bool _noSkip;
+
         private static readonly Dictionary<Type, LayoutNodeKind> _kinds = new Dictionary<Type, LayoutNodeKind>();
+
+        // The rows still describe the tree: built for this order, nothing re-parented since.
+        internal static bool StructureCurrent => Current(UIEngine.Elements);
+
+        private static bool Current(DataPool pool) => _builtOrder == pool.OrderVersion && !pool.OrderDirty;
+
+        #region ---- measure and arrange ----
+        // A row's children: its range while the structure is current, the object's list otherwise.
+        private struct ChildCursor
+        {
+            private readonly List<Entity>? _list;
+            private readonly int _end;
+            private int _next;
+
+            public ChildCursor(int row, int count)
+            {
+                _list = null;
+                _next = row + 1;
+                _end = row + count;
+            }
+
+            public ChildCursor(List<Entity> list)
+            {
+                _list = list;
+                _next = 0;
+                _end = 0;
+            }
+
+            public bool Next(LayoutNode[] nodes, DataPool pool, out int row, out Control? control)
+            {
+                if (_list == null)
+                {
+                    control = null;
+                    row = _next;
+                    if (row >= _end) return false;
+                    _next += nodes[row].count;
+                    return true;
+                }
+
+                while (_next < _list.Count)
+                {
+                    if (_list[_next++] is Control child)
+                    {
+                        control = child;
+                        row = pool.DenseOf(child.dataHandle);
+                        return true;
+                    }
+                }
+                control = null;
+                row = -1;
+                return false;
+            }
+        }
+
+        private static ChildCursor ChildrenOf(DataPool pool, int row, Control? control, bool ranged, LayoutNode[] nodes)
+            => ranged ? new ChildCursor(row, nodes[row].count) : new ChildCursor((control ?? (Control)pool.OwnerAt(row)).children);
+
+        // Measures a control, or returns what it last measured when nothing changed.
+        public static Vector2 Measure(Control control, Vector2 offer)
+        {
+            DataPool pool = UIEngine.Elements;
+            return MeasureRow(pool, pool.DenseOf(control.dataHandle), control, offer);
+        }
+
+        // Arranges a control, or leaves its subtree when nothing changed.
+        public static void Arrange(Control control, LayoutRect rect)
+        {
+            DataPool pool = UIEngine.Elements;
+            int parent = control.parent is Control owner ? pool.DenseOf(owner.dataHandle) : -1;
+            ArrangeRow(pool, pool.DenseOf(control.dataHandle), control, rect, parent);
+        }
+
+        // The measure a control's own MeasureCore falls back to: stack or single child.
+        internal static Vector2 MeasureOwn(Control control, Vector2 offer)
+        {
+            DataPool pool = UIEngine.Elements;
+            int row = pool.DenseOf(control.dataHandle);
+            bool ranged = Current(pool) && pool.Backing<LayoutNode>()[row].count > 0;
+            return control is StackPanelControl
+                ? MeasureStack(pool, row, control, offer, ranged)
+                : MeasureSingle(pool, row, control, offer, ranged);
+        }
+
+        // Arranges a control's children the way its own ArrangeCore falls back to.
+        internal static void ArrangeOwn(Control control, LayoutRect rect)
+        {
+            DataPool pool = UIEngine.Elements;
+            int row = pool.DenseOf(control.dataHandle);
+            bool ranged = Current(pool) && pool.Backing<LayoutNode>()[row].count > 0;
+            if (control is StackPanelControl) ArrangeStack(pool, row, control, rect, ranged);
+            else ArrangeSingle(pool, row, control, rect, ranged);
+        }
+
+        internal static LayoutRect ClipOf(LayoutRect rect, bool hasParent, LayoutRect parentClip, byte flags)
+            => !hasParent ? rect
+             : ((ArrangeFlags)flags & ArrangeFlags.Clip) != 0 ? LayoutRect.Intersect(rect, parentClip)
+             : parentClip;
+
+        private static bool Same(in LayoutRect a, in LayoutRect b)
+            => a.x == b.x && a.y == b.y && a.width == b.width && a.height == b.height;
+
+        private static bool Empty(in LayoutRect r) => r.width <= 0 || r.height <= 0;
+
+        private static Vector2 MeasureRow(DataPool pool, int row, Control? control, Vector2 offer)
+        {
+            ref ArrangeData a = ref pool.GetSpan<ArrangeData>()[row];
+            if (!_noSkip && ((ArrangeFlags)a.flags & ArrangeFlags.MeasureDirty) == 0 && a.measuredOffer == offer)
+                return a.desired;
+
+            LayoutNode[] nodes = pool.Backing<LayoutNode>();
+            bool ranged = Current(pool) && nodes[row].count > 0;
+            LayoutNodeKind kind = ranged ? nodes[row].kind : LayoutNodeKind.Custom;
+            Vector2 desired = kind switch
+            {
+                LayoutNodeKind.Stack => MeasureStack(pool, row, control, offer, true),
+                LayoutNodeKind.Single => MeasureSingle(pool, row, control, offer, true),
+                _ => (control ?? (Control)pool.OwnerAt(row)).CallMeasureCore(offer),
+            };
+
+            ref ArrangeData b = ref pool.GetSpan<ArrangeData>()[row];
+            b.measuredOffer = offer;
+            b.flags = (byte)(((ArrangeFlags)b.flags & ~ArrangeFlags.MeasureDirty) | ArrangeFlags.Remeasured);
+            return desired;
+        }
+
+        private static void ArrangeRow(DataPool pool, int row, Control? control, LayoutRect rect, int parent)
+        {
+            Span<ArrangeData> arrange = pool.GetSpan<ArrangeData>();
+            ref ArrangeData a = ref arrange[row];
+            LayoutRect clip = ClipOf(rect, parent >= 0, parent >= 0 ? arrange[parent].clip : default, a.flags);
+            if (!_noSkip && ((ArrangeFlags)a.flags & (ArrangeFlags.ArrangeDirty | ArrangeFlags.Remeasured)) == 0
+                && Same(a.arranged, rect) && Same(a.clip, clip))
+                return;
+
+            LayoutNode[] nodes = pool.Backing<LayoutNode>();
+            bool ranged = Current(pool) && nodes[row].count > 0;
+            LayoutNodeKind kind = ranged ? nodes[row].kind : LayoutNodeKind.Custom;
+            if (kind == LayoutNodeKind.Custom)
+            {
+                control ??= (Control)pool.OwnerAt(row);
+                control.CallArrangeCore(rect);
+            }
+            else
+            {
+                a.arranged = rect;
+                a.clip = clip;
+                if (kind == LayoutNodeKind.Stack) ArrangeStack(pool, row, control, rect, true);
+                else ArrangeSingle(pool, row, control, rect, true);
+            }
+
+            arrange = pool.GetSpan<ArrangeData>();
+            LayoutRect bounds = arrange[row].arranged;
+            ChildCursor children = kind == LayoutNodeKind.Custom ? new ChildCursor(control!.children) : new ChildCursor(row, nodes[row].count);
+            while (children.Next(nodes, pool, out int child, out _))
+                bounds = LayoutRect.Union(bounds, arrange[child].subtreeBounds);
+
+            ref ArrangeData b = ref arrange[row];
+            b.subtreeBounds = bounds;
+            b.flags = (byte)((ArrangeFlags)b.flags & ~(ArrangeFlags.ArrangeDirty | ArrangeFlags.Remeasured));
+        }
+
+        // The one child a single-child control lays out, if it has exactly one.
+        private static bool OnlyChild(DataPool pool, int row, Control? control, bool ranged, out int child, out Control? childControl)
+        {
+            childControl = null;
+            if (ranged)
+            {
+                LayoutNode[] nodes = pool.Backing<LayoutNode>();
+                int count = nodes[row].count;
+                child = row + 1;
+                return count > 1 && 1 + nodes[child].count == count;
+            }
+
+            List<Entity> children = (control ?? (Control)pool.OwnerAt(row)).children;
+            if (children.Count == 1 && children[0] is Control only)
+            {
+                childControl = only;
+                child = pool.DenseOf(only.dataHandle);
+                return true;
+            }
+            child = -1;
+            return false;
+        }
+
+        private static Vector2 MeasureSingle(DataPool pool, int row, Control? control, Vector2 offer, bool ranged)
+        {
+            ArrangeData a = pool.GetSpan<ArrangeData>()[row];
+            float w = a.preferredWidth > 0 ? a.preferredWidth : MathF.Max(a.minWidth, offer.X);
+            float h = a.preferredHeight > 0 ? a.preferredHeight : MathF.Max(a.minHeight, offer.Y);
+            if (OnlyChild(pool, row, control, ranged, out int child, out Control? childControl))
+            {
+                Vector2 childDesired = MeasureRow(pool, child, childControl, new Vector2(
+                    MathF.Max(0, w - a.padding.totalHorizontal),
+                    MathF.Max(0, h - a.padding.totalVertical)));
+                if (a.preferredWidth == 0) w = childDesired.X + a.padding.totalHorizontal;
+                if (a.preferredHeight == 0) h = childDesired.Y + a.padding.totalVertical;
+            }
+
+            Vector2 desired = new Vector2(w, h);
+            pool.GetSpan<ArrangeData>()[row].desired = desired;
+            return desired;
+        }
+
+        private static void ArrangeSingle(DataPool pool, int row, Control? control, LayoutRect rect, bool ranged)
+        {
+            if (!OnlyChild(pool, row, control, ranged, out int child, out Control? childControl)) return;
+
+            Span<ArrangeData> arrange = pool.GetSpan<ArrangeData>();
+            LayoutRect inner = rect.Shrink(arrange[row].padding);
+            ref ArrangeData ca = ref arrange[child];
+            LayoutRect childRect = inner.Shrink(ca.margin);
+            float cx = childRect.x + (childRect.width - ca.desired.X) * ca.horizontalPosition;
+            float cy = childRect.y + (childRect.height - ca.desired.Y) * ca.verticalPosition;
+            ArrangeRow(pool, child, childControl, new LayoutRect(cx, cy, ca.desired.X, ca.desired.Y), row);
+        }
+
+        private static Vector2 MeasureStack(DataPool pool, int row, Control? control, Vector2 offer, bool ranged)
+        {
+            LayoutNode[] nodes = pool.Backing<LayoutNode>();
+            bool vertical = nodes[row].axis == (byte)StackPanelControl.Orientation.Vertical;
+            float spacing = nodes[row].spacing;
+
+            Span<ArrangeData> arrange = pool.GetSpan<ArrangeData>();
+            float preferredWidth = arrange[row].preferredWidth;
+            float preferredHeight = arrange[row].preferredHeight;
+            Thickness padding = arrange[row].padding;
+
+            // A pinned axis is the box the children divide, not the offer that came in.
+            float boxWidth = preferredWidth > 0 ? preferredWidth : offer.X;
+            float boxHeight = preferredHeight > 0 ? preferredHeight : offer.Y;
+            LayoutRect inner = new LayoutRect(0, 0, boxWidth, boxHeight).Shrink(padding);
+
+            float totalMain = 0f;
+            float maxCross = 0f;
+            int childCount = 0;
+            float totalStarWeight = 0f;
+
+            // Pass 1 — measure non-star children, accumulate star weights.
+            ChildCursor children = ChildrenOf(pool, row, control, ranged, nodes);
+            while (children.Next(nodes, pool, out int child, out Control? childControl))
+            {
+                ref ArrangeData ca = ref arrange[child];
+                if (((ArrangeFlags)ca.flags & ArrangeFlags.Hidden) != 0) continue;
+                childCount++;
+
+                float star = vertical ? ca.heightStar : ca.widthStar;
+                if (star > 0f)
+                {
+                    totalStarWeight += star;
+                    continue;
+                }
+
+                Thickness margin = ca.margin;
+                Vector2 desired = MeasureRow(pool, child, childControl, vertical
+                    ? new Vector2(inner.width, float.MaxValue)
+                    : new Vector2(float.MaxValue, inner.height));
+                arrange = pool.GetSpan<ArrangeData>();
+
+                totalMain += vertical ? desired.Y + margin.totalVertical : desired.X + margin.totalHorizontal;
+                maxCross = MathF.Max(maxCross, vertical ? desired.X + margin.totalHorizontal : desired.Y + margin.totalVertical);
+            }
+
+            if (childCount > 1)
+                totalMain += spacing * (childCount - 1);
+
+            // Pass 2 — if there are star children, distribute the remaining main-axis space.
+            if (totalStarWeight > 0f)
+            {
+                float availMain = vertical ? inner.height : inner.width;
+                float remaining = MathF.Max(0, availMain - totalMain);
+                float starUnit = remaining / totalStarWeight;
+
+                children = ChildrenOf(pool, row, control, ranged, nodes);
+                while (children.Next(nodes, pool, out int child, out Control? childControl))
+                {
+                    ref ArrangeData ca = ref arrange[child];
+                    if (((ArrangeFlags)ca.flags & ArrangeFlags.Hidden) != 0) continue;
+                    float star = vertical ? ca.heightStar : ca.widthStar;
+                    if (star <= 0f) continue;
+
+                    float starMain = MathF.Max(star * starUnit, vertical ? ca.minHeight : ca.minWidth);
+                    Thickness margin = ca.margin;
+                    Vector2 desired = MeasureRow(pool, child, childControl, vertical
+                        ? new Vector2(inner.width, starMain)
+                        : new Vector2(starMain, inner.height));
+                    arrange = pool.GetSpan<ArrangeData>();
+
+                    maxCross = MathF.Max(maxCross, vertical ? desired.X + margin.totalHorizontal : desired.Y + margin.totalVertical);
+                    totalMain += starMain + (vertical ? margin.totalVertical : margin.totalHorizontal);
+                }
+            }
+
+            float w = vertical ? maxCross + padding.totalHorizontal : totalMain + padding.totalHorizontal;
+            float h = vertical ? totalMain + padding.totalVertical : maxCross + padding.totalVertical;
+            if (preferredWidth > 0) w = MathF.Max(w, preferredWidth);
+            if (preferredHeight > 0) h = MathF.Max(h, preferredHeight);
+
+            Vector2 result = new Vector2(w, h);
+            arrange[row].desired = result;
+            return result;
+        }
+
+        private static void ArrangeStack(DataPool pool, int row, Control? control, LayoutRect rect, bool ranged)
+        {
+            LayoutNode[] nodes = pool.Backing<LayoutNode>();
+            bool vertical = nodes[row].axis == (byte)StackPanelControl.Orientation.Vertical;
+            float spacing = nodes[row].spacing;
+
+            Span<ArrangeData> arrange = pool.GetSpan<ArrangeData>();
+            LayoutRect inner = rect.Shrink(arrange[row].padding);
+
+            // Recompute star allocation against the real final size.
+            float totalFixed = 0f;
+            float totalStarWeight = 0f;
+            int childCount = 0;
+
+            ChildCursor children = ChildrenOf(pool, row, control, ranged, nodes);
+            while (children.Next(nodes, pool, out int child, out _))
+            {
+                ref ArrangeData ca = ref arrange[child];
+                if (((ArrangeFlags)ca.flags & ArrangeFlags.Hidden) != 0) continue;
+                childCount++;
+                float star = vertical ? ca.heightStar : ca.widthStar;
+                if (star > 0f)
+                    totalStarWeight += star;
+                else
+                    totalFixed += vertical
+                        ? ca.desired.Y + ca.margin.totalVertical
+                        : ca.desired.X + ca.margin.totalHorizontal;
+            }
+
+            if (childCount > 1)
+                totalFixed += spacing * (childCount - 1);
+
+            float availMain = vertical ? inner.height : inner.width;
+            float starPool = totalStarWeight > 0f ? MathF.Max(0, availMain - totalFixed) : 0f;
+            float starUnit = totalStarWeight > 0f ? starPool / totalStarWeight : 0f;
+
+            float cursor = vertical ? inner.y : inner.x;
+            bool first = true;
+
+            children = ChildrenOf(pool, row, control, ranged, nodes);
+            while (children.Next(nodes, pool, out int child, out Control? childControl))
+            {
+                ref ArrangeData ca = ref arrange[child];
+                if (((ArrangeFlags)ca.flags & ArrangeFlags.Hidden) != 0) continue;
+
+                if (!first) cursor += spacing;
+                first = false;
+
+                bool isStar = vertical ? ca.heightStar > 0f : ca.widthStar > 0f;
+                Thickness margin = ca.margin;
+                LayoutRect childRect;
+
+                if (vertical)
+                {
+                    // Auto (preferredWidth 0) or Stretch fills the cross axis, anything else is
+                    // clamped to it. Measure offers a loose size and Arrange tightens, so an
+                    // unclamped DesiredSize overflows the panel.
+                    float availCrossW = inner.width - margin.totalHorizontal;
+                    float childW = ca.preferredWidth == 0 || (HorizontalAlignment)ca.horizontalAlignment == HorizontalAlignment.Stretch
+                        ? availCrossW
+                        : MathF.Min(ca.desired.X, availCrossW);
+                    float childX = (HorizontalAlignment)ca.horizontalAlignment switch
+                    {
+                        HorizontalAlignment.Left => inner.x + margin.left,
+                        HorizontalAlignment.Right => inner.x + margin.left + (availCrossW - childW),
+                        HorizontalAlignment.Center => inner.x + margin.left + (availCrossW - childW) * 0.5f,
+                        _ => inner.x + margin.left,
+                    };
+
+                    // clamped to what is left of the panel: an unsized child measures the whole offer
+                    float childH = isStar
+                        ? ca.heightStar * starUnit - margin.totalVertical
+                        : ca.desired.Y;
+                    childH = Math.Clamp(childH, 0, MathF.Max(0, inner.Bottom - cursor - margin.totalVertical));
+                    if (isStar) childH = MathF.Max(childH, ca.minHeight);
+
+                    childRect = new LayoutRect(childX, cursor + margin.top, childW, childH);
+                    cursor += childH + margin.totalVertical;
+                }
+                else
+                {
+                    float availCrossH = inner.height - margin.totalVertical;
+                    float childH = ca.preferredHeight == 0 || (VerticalAlignment)ca.verticalAlignment == VerticalAlignment.Stretch
+                        ? availCrossH
+                        : MathF.Min(ca.desired.Y, availCrossH);
+                    float childY = (VerticalAlignment)ca.verticalAlignment switch
+                    {
+                        VerticalAlignment.Top => inner.y + margin.top,
+                        VerticalAlignment.Bottom => inner.y + margin.top + (availCrossH - childH),
+                        VerticalAlignment.Center => inner.y + margin.top + (availCrossH - childH) * 0.5f,
+                        _ => inner.y + margin.top,
+                    };
+
+                    float childW = isStar
+                        ? ca.widthStar * starUnit - margin.totalHorizontal
+                        : ca.desired.X;
+                    childW = Math.Clamp(childW, 0, MathF.Max(0, inner.Right - cursor - margin.totalHorizontal));
+                    if (isStar) childW = MathF.Max(childW, ca.minWidth);
+
+                    childRect = new LayoutRect(cursor + margin.left, childY, childW, childH);
+                    cursor += childW + margin.totalHorizontal;
+                }
+
+                ArrangeRow(pool, child, childControl, childRect, row);
+                arrange = pool.GetSpan<ArrangeData>();
+            }
+        }
+
+        // Sets a row's dirty flags and its parents' until one already has them; safe from several animation chunks at once.
+        internal static void MarkDirty(Span<ArrangeData> arrange, ReadOnlySpan<LayoutNode> nodes, int row, LayoutChange change)
+        {
+            byte test = (byte)(change == LayoutChange.Measure ? ArrangeFlags.MeasureDirty : ArrangeFlags.ArrangeDirty);
+            byte bits = (byte)(change == LayoutChange.Measure ? ArrangeFlags.MeasureDirty | ArrangeFlags.ArrangeDirty : ArrangeFlags.ArrangeDirty);
+            for (int r = row; r >= 0; r = nodes[r].parent)
+            {
+                ref byte flags = ref arrange[r].flags;
+                byte seen = Volatile.Read(ref flags);
+                while (true)
+                {
+                    if ((seen & test) != 0) return;
+                    byte prev = Interlocked.CompareExchange(ref flags, (byte)(seen | bits), seen);
+                    if (prev == seen) break;
+                    seen = prev;
+                }
+            }
+        }
+
+        // DEBUG: lays the same roots out again without skips, logs the rows that differ, then puts the skipped result back.
+        [Conditional("DEBUG")]
+        internal static void VerifyLayout(Control[] roots)
+        {
+            DataPool pool = UIEngine.Elements;
+            ArrangeData[] kept = pool.GetSpan<ArrangeData>().ToArray();
+
+            _noSkip = true;
+            foreach (Control root in roots)
+            {
+                if (root.parent is Control || root.destroyed) continue;
+                ArrangeData a = kept[pool.DenseOf(root.dataHandle)];
+                Measure(root, a.measuredOffer);
+                Arrange(root, a.arranged);
+            }
+            _noSkip = false;
+
+            Span<ArrangeData> now = pool.GetSpan<ArrangeData>();
+            int stale = 0;
+            for (int i = 0; i < kept.Length; i++)
+            {
+                ref ArrangeData k = ref kept[i];
+                ref ArrangeData n = ref now[i];
+                string? field = k.desired != n.desired ? "desired"
+                    : !Same(k.arranged, n.arranged) ? "arranged"
+                    : !Same(k.clip, n.clip) && !(Empty(k.clip) && Empty(n.clip)) ? "clip"
+                    : !Same(k.subtreeBounds, n.subtreeBounds) ? "subtreeBounds"
+                    : null;
+                if (field == null || stale++ >= 8) continue;
+                Control? control = pool.OwnerAt(i) as Control;
+                Log.Error($"skipped layout left '{control?.name}' ({control?.GetType().Name}) row {i} {field} stale");
+            }
+            if (stale > 8) Log.Error($"skipped layout left {stale} rows stale");
+            kept.CopyTo(now);
+        }
+        #endregion
 
         // Rewrites parent, count and kind for every row a window's tree reaches, once per order change.
         internal static void BuildStructure()
