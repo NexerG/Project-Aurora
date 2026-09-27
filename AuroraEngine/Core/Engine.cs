@@ -1,5 +1,6 @@
 ﻿using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Animation;
+using ArctisAurora.Core.Commands;
 using ArctisAurora.Core.Data;
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.Threading;
@@ -80,6 +81,9 @@ namespace ArctisAurora.EngineWork
 
         public Engine()
         {
+            string? send = CommandConsole.ArgumentAfter("--send");
+            if (send != null) Environment.Exit(CommandPipe.Send(send));
+
             engineInstance = this;
             Log.Info($"starting main thread at OS id {GetCurrentThreadId()}");
         }
@@ -100,6 +104,7 @@ namespace ArctisAurora.EngineWork
             Profiling.ArmBoot();
             ProfileScenario.Arm();
             TestRunner.Arm();
+            CommandConsole.Arm();
             Bootstrapper.RunPhase("Bootstrap");
             Shutdown.Load(Paths.SHUTDOWN);
 

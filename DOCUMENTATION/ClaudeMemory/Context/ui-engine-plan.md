@@ -694,7 +694,7 @@ that goes out** now the base is frozen — exact old→new text per class, one a
 
 ## How to run and verify
 
-Launch from the exe's own folder — `Paths.GetPath` resolves `..\..\..` against the process working directory:
+Launch the exe from any working directory — paths resolve against the exe's own folder since 2026-09-27:
 
 ```
 Thorium/bin/Debug/net10.0-windows10.0.22621.0/Thorium.exe

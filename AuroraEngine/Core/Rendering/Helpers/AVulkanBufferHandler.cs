@@ -39,9 +39,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 
             CreateImage((uint)_image.Width, (uint)_image.Height, imageFormat, ImageTiling.Optimal, ImageUsageFlags.TransferDstBit | ImageUsageFlags.SampledBit, MemoryPropertyFlags.DeviceLocalBit, ref _textureImage, ref _textureBufferMemory);
 
-            TransitionImageLayout(_textureImage, ImageLayout.Undefined, ImageLayout.TransferDstOptimal, ref queue, ref cPool);
-            CopyBufferToImage(ref _stagingBuffer, ref queue, ref cPool, _textureImage, (uint)_image.Width, (uint)_image.Height);
-            TransitionImageLayout(_textureImage, ImageLayout.TransferDstOptimal, ImageLayout.ShaderReadOnlyOptimal, ref queue, ref cPool);
+            UploadTexture(_textureImage, _stagingBuffer, (uint)_image.Width, (uint)_image.Height, ref queue, ref cPool);
 
             Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
             Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
@@ -63,86 +61,65 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 
             CreateImage((uint)_image.Width, (uint)_image.Height, imageFormat, ImageTiling.Optimal, ImageUsageFlags.TransferDstBit | ImageUsageFlags.SampledBit, MemoryPropertyFlags.DeviceLocalBit, ref _textureImage, ref _textureBufferMemory);
 
-            TransitionImageLayout(_textureImage, ImageLayout.Undefined, ImageLayout.TransferDstOptimal, ref queue, ref cPool);
-            CopyBufferToImage(ref _stagingBuffer, ref queue, ref cPool, _textureImage, (uint)_image.Width, (uint)_image.Height);
-            TransitionImageLayout(_textureImage, ImageLayout.TransferDstOptimal, ImageLayout.ShaderReadOnlyOptimal, ref queue, ref cPool);
+            UploadTexture(_textureImage, _stagingBuffer, (uint)_image.Width, (uint)_image.Height, ref queue, ref cPool);
 
             Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
             Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
         }
 
-        private static void CopyBufferToImage(ref Buffer _buffer, ref Queue queue, ref CommandPool cPool, Silk.NET.Vulkan.Image _image, uint _width, uint _height)
+        // Copies staging into a fresh image and releases it to the graphics family, in one submit.
+        private static void UploadTexture(Silk.NET.Vulkan.Image _image, Buffer _staging, uint _width, uint _height, ref Queue queue, ref CommandPool cPool)
         {
-            CommandBuffer _commandBuffer = BeginSingleTimeCommands(ref cPool);
+            uint transferFamily = (uint)Renderer.queueAllocator.GetFamilyIndex(QueueFlags.TransferBit);
+            uint graphicsFamily = (uint)Renderer.queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit);
+            bool handOff = transferFamily != graphicsFamily;
 
-            BufferImageCopy _bufferImageCopy = new BufferImageCopy()
+            lock (Renderer.transferCommandLock)
             {
-                BufferOffset = 0,
-                BufferRowLength = 0,
-                BufferImageHeight = 0,
-                ImageSubresource =
-            {
-                AspectMask = ImageAspectFlags.ColorBit,
-                MipLevel = 0,
-                BaseArrayLayer = 0,
-                LayerCount = 1,
-            },
-                ImageOffset = new Offset3D(0, 0, 0),
-                ImageExtent = new Extent3D(_width, _height, 1),
+                CommandBuffer _commandBuffer = BeginSingleTimeCommands(ref cPool);
 
-            };
-
-            Renderer.vk!.CmdCopyBufferToImage(_commandBuffer, _buffer, _image, ImageLayout.TransferDstOptimal, 1, ref _bufferImageCopy);
-            EndSingleTimeCommands(ref _commandBuffer, ref queue, ref cPool);
-        }
-
-        private static void TransitionImageLayout(Silk.NET.Vulkan.Image _image, ImageLayout _oldLayout, ImageLayout _newLayout, ref Queue queue, ref CommandPool cPool)
-        {
-            CommandBuffer _commandBuffer = BeginSingleTimeCommands(ref cPool);
-
-            ImageMemoryBarrier _barrier = new()
-            {
-                SType = StructureType.ImageMemoryBarrier,
-                OldLayout = _oldLayout,
-                NewLayout = _newLayout,
-                SrcQueueFamilyIndex = Vk.QueueFamilyIgnored,
-                DstQueueFamilyIndex = Vk.QueueFamilyIgnored,
-                Image = _image,
-                SubresourceRange =
+                ImageMemoryBarrier _toTransfer = new()
                 {
-                    AspectMask = ImageAspectFlags.ColorBit,
-                    BaseMipLevel = 0,
-                    LevelCount = 1,
-                    BaseArrayLayer = 0,
-                    LayerCount = 1,
-                }
-            };
-            PipelineStageFlags sourceStage;
-            PipelineStageFlags destinationStage;
+                    SType = StructureType.ImageMemoryBarrier,
+                    OldLayout = ImageLayout.Undefined,
+                    NewLayout = ImageLayout.TransferDstOptimal,
+                    SrcQueueFamilyIndex = Vk.QueueFamilyIgnored,
+                    DstQueueFamilyIndex = Vk.QueueFamilyIgnored,
+                    SrcAccessMask = 0,
+                    DstAccessMask = AccessFlags.TransferWriteBit,
+                    Image = _image,
+                    SubresourceRange = new ImageSubresourceRange(ImageAspectFlags.ColorBit, 0, 1, 0, 1)
+                };
+                Renderer.vk!.CmdPipelineBarrier(_commandBuffer, PipelineStageFlags.TopOfPipeBit, PipelineStageFlags.TransferBit, 0, 0, null, 0, null, 1, ref _toTransfer);
 
-            if (_oldLayout == ImageLayout.Undefined && _newLayout == ImageLayout.TransferDstOptimal)
-            {
-                _barrier.SrcAccessMask = 0;
-                _barrier.DstAccessMask = AccessFlags.TransferWriteBit;
+                BufferImageCopy _bufferImageCopy = new BufferImageCopy()
+                {
+                    ImageSubresource = new ImageSubresourceLayers(ImageAspectFlags.ColorBit, 0, 0, 1),
+                    ImageOffset = new Offset3D(0, 0, 0),
+                    ImageExtent = new Extent3D(_width, _height, 1),
+                };
+                Renderer.vk!.CmdCopyBufferToImage(_commandBuffer, _staging, _image, ImageLayout.TransferDstOptimal, 1, ref _bufferImageCopy);
 
-                sourceStage = PipelineStageFlags.TopOfPipeBit;
-                destinationStage = PipelineStageFlags.TransferBit;
+                ImageMemoryBarrier _toShader = new()
+                {
+                    SType = StructureType.ImageMemoryBarrier,
+                    OldLayout = ImageLayout.TransferDstOptimal,
+                    NewLayout = ImageLayout.ShaderReadOnlyOptimal,
+                    SrcQueueFamilyIndex = handOff ? transferFamily : Vk.QueueFamilyIgnored,
+                    DstQueueFamilyIndex = handOff ? graphicsFamily : Vk.QueueFamilyIgnored,
+                    SrcAccessMask = AccessFlags.TransferWriteBit,
+                    DstAccessMask = handOff ? 0 : AccessFlags.ShaderReadBit,
+                    Image = _image,
+                    SubresourceRange = new ImageSubresourceRange(ImageAspectFlags.ColorBit, 0, 1, 0, 1)
+                };
+                PipelineStageFlags dstStage = handOff ? PipelineStageFlags.BottomOfPipeBit : PipelineStageFlags.FragmentShaderBit;
+                Renderer.vk!.CmdPipelineBarrier(_commandBuffer, PipelineStageFlags.TransferBit, dstStage, 0, 0, null, 0, null, 1, ref _toShader);
+
+                EndSingleTimeCommands(ref _commandBuffer, ref queue, ref cPool);
             }
-            else if (_oldLayout == ImageLayout.TransferDstOptimal && _newLayout == ImageLayout.ShaderReadOnlyOptimal)
-            {
-                _barrier.SrcAccessMask = AccessFlags.TransferWriteBit;
-                _barrier.DstAccessMask = AccessFlags.ShaderReadBit;
 
-                sourceStage = PipelineStageFlags.TransferBit;
-                destinationStage = PipelineStageFlags.AllCommandsBit;
-            }
-            else
-            {
-                throw new Exception("unsupported layout transition!");
-            }
-
-            Renderer.vk!.CmdPipelineBarrier(_commandBuffer, sourceStage, destinationStage, 0, 0, null, 0, null, 1, ref _barrier);
-            EndSingleTimeCommands(ref _commandBuffer, ref queue, ref cPool);
+            if (handOff)
+                Renderer.QueueAcquire(_image);
         }
 
         internal static void CreateImage(uint _width, uint _height, Format _format, ImageTiling _tiling, ImageUsageFlags _usage, MemoryPropertyFlags _properties, ref Silk.NET.Vulkan.Image _im, ref DeviceMemory _devMemory)

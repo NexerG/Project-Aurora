@@ -338,5 +338,10 @@ Why: [[ui-palettes]].
 ## Looking at it
 
 - **F10** → `UITreeDump` (`UI.DumpTree`) → `uitree.xml` beside the exe: every window's tree, arranged and
-  desired sizes, `Hidden`. Grep it, don't read it.
+  desired sizes, `Hidden`. Grep it, don't read it. Against a running host with no keypress:
+  `<Host>.exe --send UI.DumpTree`.
+- **ConsoleControl** (no XML) · StackPanelControl — the Ctrl+` command console: a `ScrollableControl` of
+  `LabelControl` rows over a `TextBoxControl`. `Toggle` (action `Console.Toggle`) hosts it as the primary root's
+  last child and focuses the input; `Submit` runs a line through `Commands.CommandConsole`; `AddRow` keeps 200.
+  [[dev-console]]
 - Screenshots: `aurora-verify`'s `capture.ps1`, cropped to the rect the dump gave.

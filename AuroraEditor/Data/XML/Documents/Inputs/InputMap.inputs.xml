@@ -20,5 +20,10 @@
 		<Modifier Key="LeftControl" />
 		<Press />
 	</Keybind>
-	
+
+	<Keybind Trigger="GraveAccent" Action="Console.Toggle">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
 </KeybindMap>

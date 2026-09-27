@@ -1791,7 +1791,7 @@ namespace ArctisAurora.EngineWork.Rendering.RendererTypes
 
         private ShaderModule LoadShader(string path)
         {
-            byte[] code = File.ReadAllBytes(path);
+            byte[] code = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, path));
             fixed (byte* codePtr = code)
             {
                 ShaderModuleCreateInfo createInfo = new ShaderModuleCreateInfo

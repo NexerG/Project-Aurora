@@ -34,6 +34,7 @@ namespace ArctisAurora.EngineWork.Rendering
         internal Semaphore[] renderFinishedSemaphores = null!;
         internal Semaphore[] modulesFinishedSemaphores = null!;
         internal Semaphore timelineSemaphore;
+        internal CommandBuffer[] acquireCommandBuffers = null!;
         internal ulong frameCounter;
         internal int currentFrame;
 

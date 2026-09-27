@@ -453,6 +453,8 @@ namespace ArctisAurora.Core.ECS.EngineEntity
                 if (_components[i] is not EntComp match) continue;
 
                 _components.RemoveAt(i);
+                match.OnDestroy();
+                match.parent = null;
                 return match;
             }
             return null;

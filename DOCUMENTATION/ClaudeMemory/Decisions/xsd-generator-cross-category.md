@@ -42,7 +42,8 @@ They remain `types:`-prefixed and dangling exactly as before.
 ## Verification (2026-07-30)
 Throwaway harness (scratchpad, outside the repo): redirect `Paths.XMLSCHEMAS` to a scratch dir by
 setting the CWD before `Paths` static-initializes, run `GenerateXSD()`, then compile every emitted
-`.xsd` standalone in its own `XmlSchemaSet`.
+`.xsd` standalone in its own `XmlSchemaSet`. (Setting the CWD no longer moves `Paths` since 2026-09-27 — it
+resolves against the exe's own folder.)
 - **The repo currently contains no cross-category reference** — the fix emitted zero foreign imports
   against real types, and every category schema already compiled. The bug was **latent, not active**;
   this is preventative. (Contradicts the pre-fix claim here that no schema compiled — that was true

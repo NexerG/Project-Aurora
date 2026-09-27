@@ -154,7 +154,7 @@ New `Decisions/layout-dod.md` + INDEX row; [[layout-dod-plan]] (step 4 ticked, r
 
 ## Reproducing
 - **Build:** Debug `dotnet build AuroraEngine/ArctisAurora.sln`; Release+PROFILE `dotnet build AuroraEngine/ArctisAurora.sln -c Release "-p:DefineConstants=TRACE%3BPROFILE"`.
-- **Run** `Thorium/bin/<Debug|Release>/net10.0-windows10.0.22621.0/Thorium.exe` with that folder as cwd — never `dotnet run`. Cap every run at 3 minutes (user).
+- **Run** `Thorium/bin/<Debug|Release>/net10.0-windows10.0.22621.0/Thorium.exe` — any working directory since 2026-09-27. Cap every run at 3 minutes (user).
   - `--profile-scenario`: a note of 1,000 blocks × 1,000 chars — open, type, resize, settings; dumps `open`, `typed`, `settings`.
   - `--profile-scenario=animation`: ladder `{ 100, 1000, 5000, 20000 }` under one capture; dumps `grid-<N>` after each build settles.
   - `--dump-tree` → `uitree-<label>.xml` beside the exe; `--profile-pools` → each pool's rows and bytes per frame in the capture.

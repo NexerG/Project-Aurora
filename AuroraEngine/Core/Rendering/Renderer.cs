@@ -56,6 +56,11 @@ namespace ArctisAurora.EngineWork.Rendering
         internal CommandBuffer[] transferCommandBuffers = null!;
         internal static CommandPool transferCommandPool;
 
+        // images released by the transfer family, awaiting their graphics acquire
+        private static readonly object acquireLock = new object();
+        private static List<Image> pendingAcquires = new List<Image>();
+        private static List<Image> recordingAcquires = new List<Image>();
+
         // Frame sync, the swapchain and the modules all live on RenderWindow — one set per OS window.
         // The timeline semaphore value is (frameCounter - MAX_FRAMES_IN_FLIGHT) * 2 + 2; modules
         // signal at +1, the compositor at +2.
@@ -366,6 +371,20 @@ namespace ArctisAurora.EngineWork.Rendering
 
             if (vk.CreateSemaphore(logicalDevice, ref semCI, null, out window.timelineSemaphore) != Result.Success)
                 throw new Exception("Failed to create frame timeline semaphore");
+
+            window.acquireCommandBuffers = new CommandBuffer[MAX_FRAMES_IN_FLIGHT];
+            CommandBufferAllocateInfo acquireAlloc = new CommandBufferAllocateInfo()
+            {
+                SType = StructureType.CommandBufferAllocateInfo,
+                CommandPool = compositeCommandPool,
+                Level = CommandBufferLevel.Primary,
+                CommandBufferCount = MAX_FRAMES_IN_FLIGHT
+            };
+            fixed (CommandBuffer* acquirePtr = window.acquireCommandBuffers)
+            {
+                if (vk.AllocateCommandBuffers(logicalDevice, ref acquireAlloc, acquirePtr) != Result.Success)
+                    throw new Exception("Failed to allocate acquire command buffers");
+            }
         }
 
         private void CreateVulkanInstance()
@@ -865,6 +884,8 @@ namespace ArctisAurora.EngineWork.Rendering
             for (int i = 0; i < window.modulesFinishedSemaphores.Length; i++)
                 vk.DestroySemaphore(logicalDevice, window.modulesFinishedSemaphores[i], null);
             vk.DestroySemaphore(logicalDevice, window.timelineSemaphore, null);
+            fixed (CommandBuffer* acquirePtr = window.acquireCommandBuffers)
+                vk.FreeCommandBuffers(logicalDevice, compositeCommandPool, (uint)window.acquireCommandBuffers.Length, acquirePtr);
         }
 
         public void CreateCommandPool(uint qfIndex, out CommandPool pool, CommandPoolCreateFlags flags)
@@ -923,6 +944,54 @@ namespace ArctisAurora.EngineWork.Rendering
             {
                 modules[i].CreateDescriptorSetLayout();
             }
+        }
+
+        // Queues an image the transfer family released for its graphics acquire.
+        internal static void QueueAcquire(Image image)
+        {
+            lock (acquireLock)
+                pendingAcquires.Add(image);
+        }
+
+        // Records the queued acquires into this frame slot's prologue buffer.
+        private void RecordAcquires(RenderWindow window, out bool recorded)
+        {
+            lock (acquireLock)
+                (pendingAcquires, recordingAcquires) = (recordingAcquires, pendingAcquires);
+
+            recorded = recordingAcquires.Count > 0;
+            if (!recorded) return;
+
+            uint transferFamily = (uint)queueAllocator.GetFamilyIndex(QueueFlags.TransferBit);
+            uint graphicsFamily = (uint)queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit);
+            ImageMemoryBarrier* barriers = stackalloc ImageMemoryBarrier[recordingAcquires.Count];
+            for (int i = 0; i < recordingAcquires.Count; i++)
+            {
+                barriers[i] = new ImageMemoryBarrier()
+                {
+                    SType = StructureType.ImageMemoryBarrier,
+                    OldLayout = ImageLayout.TransferDstOptimal,
+                    NewLayout = ImageLayout.ShaderReadOnlyOptimal,
+                    SrcQueueFamilyIndex = transferFamily,
+                    DstQueueFamilyIndex = graphicsFamily,
+                    SrcAccessMask = 0,
+                    DstAccessMask = AccessFlags.ShaderReadBit,
+                    Image = recordingAcquires[i],
+                    SubresourceRange = new ImageSubresourceRange(ImageAspectFlags.ColorBit, 0, 1, 0, 1)
+                };
+            }
+
+            CommandBuffer cb = window.acquireCommandBuffers[window.currentFrame];
+            CommandBufferBeginInfo beginInfo = new CommandBufferBeginInfo()
+            {
+                SType = StructureType.CommandBufferBeginInfo,
+                Flags = CommandBufferUsageFlags.OneTimeSubmitBit
+            };
+            vk.BeginCommandBuffer(cb, ref beginInfo);
+            vk.CmdPipelineBarrier(cb, PipelineStageFlags.TopOfPipeBit, PipelineStageFlags.FragmentShaderBit, 0, 0, null, 0, null, (uint)recordingAcquires.Count, barriers);
+            vk.EndCommandBuffer(cb);
+
+            recordingAcquires.Clear();
         }
 
         internal void Draw(RenderWindow window)
@@ -992,9 +1061,13 @@ namespace ArctisAurora.EngineWork.Rendering
                 SType = StructureType.SubmitInfo
             };
 
-            CommandBuffer* moduleCBs = stackalloc CommandBuffer[window.modules.Length];
+            RecordAcquires(window, out bool acquires);
+            int prologue = acquires ? 1 : 0;
+            CommandBuffer* moduleCBs = stackalloc CommandBuffer[window.modules.Length + prologue];
+            if (acquires)
+                moduleCBs[0] = window.acquireCommandBuffers[window.currentFrame];
             for (int i = 0; i < window.modules.Length; i++)
-                moduleCBs[i] = window.modules[i].commandBuffers[imageIndex];
+                moduleCBs[prologue + i] = window.modules[i].commandBuffers[imageIndex];
 
             var semaphoreSignalModulesFinished = stackalloc[] { window.timelineSemaphore };
             ulong signalValueModulesFinished = waitValue + 3;
@@ -1009,7 +1082,7 @@ namespace ArctisAurora.EngineWork.Rendering
             SubmitInfo modulesSubmit = new SubmitInfo()
             {
                 SType = StructureType.SubmitInfo,
-                CommandBufferCount = (uint)window.modules.Length,
+                CommandBufferCount = (uint)(window.modules.Length + prologue),
                 PCommandBuffers = moduleCBs,
                 SignalSemaphoreCount = 1,
                 PSignalSemaphores = semaphoreSignalModulesFinished,

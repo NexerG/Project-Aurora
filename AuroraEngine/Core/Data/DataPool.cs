@@ -250,6 +250,13 @@ namespace ArctisAurora.Core.Data
             return ref ((PoolColumn<T>)_byKey[ColumnKey<T>.index]).data[dense];
         }
 
+        // Assigns one row of a column and marks it dirty.
+        public void Write<T>(DataHandle h, in T value) where T : struct
+        {
+            GetRef<T>(h) = value;
+            MarkContentDirty(h);
+        }
+
         // One row of a column as raw bytes, empty when the handle is stale.
         public Span<byte> ElementBytes(ushort column, DataHandle h)
         {
@@ -347,6 +354,13 @@ namespace ArctisAurora.Core.Data
         {
             AssertStructural(nameof(Rewind));
             _count = 0;
+        }
+
+        // Drops a handle-less pool's rows from count on.
+        public void Truncate(int count)
+        {
+            AssertStructural(nameof(Truncate));
+            _count = count;
         }
 
         // Appends an uncleared row to a handle-less pool and returns its dense index.

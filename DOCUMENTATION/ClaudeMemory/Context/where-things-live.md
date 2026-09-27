@@ -12,6 +12,7 @@ Namespace shorthands used in the tables:
 
 | Short | Full |
 |---|---|
+| `Commands` | `ArctisAurora.Core.Commands` — the console's command table, its sources and the command pipe |
 | `Core` | `ArctisAurora.EngineWork` — `Engine`, `Bootstrapper`, `Shutdown`, `InputHandler` |
 | `Data` | `ArctisAurora.Core.Data` (+ `.Commands`) |
 | `Diag` | `ArctisAurora.Core.Diagnostics` (+ `.Sinks`) |
@@ -145,6 +146,8 @@ XML element, entry points, regions. The rows below answer "which types own this 
 | running the tests, automated tests, test runner, launch and check, pass/fail, `--test`, `--test=<Suite>`, exit code, results file, Boot check | `Testing.TestRunner` (`Arm` called from `Core.Engine.Init`; nested `Session` runs Boot, then each queued test); `Core.Engine.WireInput` (not wired under `--test`); `Diag.LogSpool.errorCount` | `*/Data/XML/Documents/Tests/<Suite>.tests.xml`; writes `%APPDATA%\<Host>\Tests\<yyyyMMdd-HHmmss>\results.xml` | [[engine-testing]], `test-framework-plan` |
 | writing a test, a test suite, a fixture, a check | `[A_XSDActionDependency(name, "Test")]` static `IEnumerator<int>(Testing.TestContext)` methods (`Show`, `Check`; `yield return n` waits n ticks); engine tests in `ArctisAurora.Tests` (`LayoutTests`) | `*/Data/XML/Documents/Tests/<Suite>.tests.xml` (`<Test Action= Timeout=ms>`) | [[engine-testing]] |
 | fixed clock, deterministic time, test clock | `Core.Engine.fixedStep`, read by `Threading.MainSystem` (`Main.Input`) and `Animation.AnimationSystem` (`Advance`) | — | [[engine-testing]] |
+| console commands, poking a running app, `--send`, `--exec`, the command pipe, `Help`, `Quit`, `Wait`, typing a command into the console window | `Commands.CommandConsole` (`Arm` called from `Core.Engine.Init`; `Execute`, `Build`, `TryConvert`; actions `Help`, `Quit`), `Commands.CommandPipe` (`Serve`, `Send`); `--send` is checked in the `Core.Engine` constructor | any `[A_XSDActionDependency]` in `Input`/`UI`/`Any`/`Console` | [[dev-console]] |
+| the in-app console, Ctrl+`, console overlay | `UI.ConsoleControl` (`Toggle` = action `Console.Toggle`, `Submit`, `AddRow`) | `*/Data/XML/Documents/Inputs/InputMap.inputs.xml` (`GraveAccent` + `LeftControl`) | [[dev-console]] |
 
 ## Rendering
 
@@ -174,6 +177,7 @@ XML element, entry points, regions. The rows below answer "which types own this 
 | compositing several modules into one window | `Core.Rendering.Modules.CompositorModule`; `compositorOrder` on `Render.Modules.RenderingModule` | — | [[ui-engine-stack]] |
 | new UI shaders | `*/Shaders/UIEngine/UIEngine.vert`, `UIEngine.frag` — four copies | — | `shader-pipeline` skill |
 | buffers, GPU memory | `Render.Helpers.AVulkanBufferHandler` | — | [[mapped-streaming-buffers]], [[engine-resource-manager]] |
+| texture upload, transfer queue, queue family ownership, release/acquire barriers | `Render.Helpers.AVulkanBufferHandler.UploadTexture`; `Render.Renderer` (`QueueAcquire`, `RecordAcquires`, `transferCommandLock`); `Render.RenderWindow.acquireCommandBuffers` | — | [[texture-queue-ownership]] |
 | graphics settings | `Render.GraphicsSettings`, `DisplayNames` | `Thorium/Data/XML/Settings/Graphics.settings.xml` | [[settings-categories]] |
 
 ## Thorium (the host app)
@@ -212,9 +216,9 @@ XML element, entry points, regions. The rows below answer "which types own this 
   `.spv` must stay byte-identical across them. Edit the `AuroraEngine` copy; the `shader-pipeline`
   skill owns the procedure. Carbon carries only the four the UI path loads (`UIEngine/UIEngine.*` and
   `Modules/Compositor/compositor.*`), because it never constructs another renderer type.
-- **An app is launched from its own `bin/Debug/<tfm>/`, not by `dotnet run`.** `Paths.GetPath`
-  resolves `../../../Data` against the *working directory*, so the wrong one kills boot at
-  `XSDGenerator`. Same rule puts `Shaders/` in every app.
+- **Paths resolve against the exe's folder, not the working directory (since 2026-09-27).** `Paths.GetPath` and
+  the four shader readers join `../../../` onto `AppContext.BaseDirectory`, so an app starts from any working
+  directory, `dotnet run` included. Same rule puts `Shaders/` in every app.
 - **`Thorium` was `Periodic`; `AuroraEngine` was `ParticleSimulator`.** Older notes, commits and plan
   files use the old names. See [project-map.md](project-map.md).
 - **Set 0 belongs to the renderer**, not to a module — a module's own descriptor sets start at 1.

@@ -72,7 +72,7 @@ namespace ArctisAurora.Core.Filing.Serialization
         private static string GetPath(string path)
         {
             if (Engine.isDebug)
-                return Path.GetFullPath(Path.Combine("..", "..", "..", path));
+                return Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", path));
 
             return Path.Combine(AppContext.BaseDirectory, path);
         }

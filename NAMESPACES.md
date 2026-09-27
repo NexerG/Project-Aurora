@@ -10,6 +10,8 @@ ArctisAurora.Core.Animation -> AuroraEngine/Core/Animation/Curve.cs
 ArctisAurora.Core.Animation -> AuroraEngine/Core/Animation/Signals.cs
 ArctisAurora.Core.Animation -> AuroraEngine/Core/Animation/Spring.cs
 ArctisAurora.Core.Animation -> AuroraEngine/Core/Animation/StateBinding.cs
+ArctisAurora.Core.Commands -> AuroraEngine/Core/Commands/CommandConsole.cs
+ArctisAurora.Core.Commands -> AuroraEngine/Core/Commands/CommandPipe.cs
 ArctisAurora.Core.Data -> AuroraEngine/Core/Data/DataManager.cs
 ArctisAurora.Core.Data -> AuroraEngine/Core/Data/DataPool.cs
 ArctisAurora.Core.Data -> AuroraEngine/Core/Data/PoolColumn.cs
@@ -84,6 +86,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ButtonControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/CaretControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/CheckBoxControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ConfirmWindow.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ConsoleControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ContainerControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ContextMenuControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ContextMenuEntries.cs
@@ -195,6 +198,8 @@ ArctisAurora.Properties { -> AuroraEngine/Properties/Resources.Designer.cs
 ArctisAurora.Simulators -> AuroraEngine/Simulators/Simulator_DEPRECATED.cs
 ArctisAurora.Simulators.ParticleTypes -> AuroraEngine/Simulators/ParticleTypes/Particle2D.cs
 ArctisAurora.Simulators.Vulkan -> AuroraEngine/Simulators/Vulkan/Simulator3D.cs
+ArctisAurora.Tests -> AuroraEngine/Tests/CommandTests.cs
+ArctisAurora.Tests -> AuroraEngine/Tests/ConsoleTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/LayoutTests.cs
 AuroraEditor -> AuroraEditor/Editor.cs
 AuroraEditor.EditorProgram.Components -> AuroraEditor/EditorProgram/Components/AsmTestComp.cs
