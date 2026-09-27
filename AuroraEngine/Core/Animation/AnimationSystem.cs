@@ -37,6 +37,7 @@ namespace ArctisAurora.Core.Animation
         private DataPool _keys = null!;
         private DataPool _dirty = null!;
         private DataPool _done = null!;
+        private DataPool _elements = null!;
         private long _lastTick;
 
         // one Advance's parallel pass
@@ -46,6 +47,7 @@ namespace ArctisAurora.Core.Animation
         private Keyframe[] _keyRows = Array.Empty<Keyframe>();
         private int _keyCount;
         private int _chunkRows;
+        private bool _layoutRows;
         private DirtyLayout[] _dirtyRows = Array.Empty<DirtyLayout>();
         private FinishedTrack[] _doneRows = Array.Empty<FinishedTrack>();
         private int[] _stats = Array.Empty<int>();
@@ -61,6 +63,7 @@ namespace ArctisAurora.Core.Animation
             _keys = DataManager.Get("Keyframes");
             _dirty = DataManager.Get("LayoutDirty");
             _done = DataManager.Get("AnimationDone");
+            _elements = DataManager.Get("UIElements");
         }
 
         [A_XSDActionDependency("Animation.Step", "Frame")]
@@ -75,6 +78,7 @@ namespace ArctisAurora.Core.Animation
             _signalCount = _signals.Count;
             _keyRows = _keys.Backing<Keyframe>();
             _keyCount = _keys.Count;
+            _layoutRows = LayoutEngine.StructureCurrent;
 
             int count = Animations.Awake.Length;
             int rowBytes = Unsafe.SizeOf<AnimationTrack>();
@@ -111,6 +115,9 @@ namespace ArctisAurora.Core.Animation
             Span<int> awake = Animations.Awake;
             ReadOnlySpan<SignalValue> signals = _signalRows.AsSpan(0, _signalCount);
             ReadOnlySpan<Keyframe> keys = _keyRows.AsSpan(0, _keyCount);
+            bool layoutRows = _layoutRows;
+            Span<ArrangeData> layout = layoutRows ? _elements.GetSpan<ArrangeData>() : default;
+            ReadOnlySpan<LayoutNode> nodes = layoutRows ? _elements.Backing<LayoutNode>() : default;
             float dt = _dt;
             int min = int.MaxValue, max = -1, count = 0, kept = 0, dirtyCount = 0, doneCount = 0;
             for (int k = start; k < end; k++)
@@ -167,7 +174,11 @@ namespace ArctisAurora.Core.Animation
                 WriteTarget(track, cold, i);
 
                 if (track.changed != LayoutChange.None)
-                    _dirtyRows[start + dirtyCount++] = new DirtyLayout { target = track.target, change = track.changed };
+                {
+                    int row = layoutRows ? _elements.DenseOf(track.target) : -1;
+                    if (row >= 0 && nodes[row].count > 0) LayoutEngine.MarkDirty(layout, nodes, row, track.changed);
+                    else _dirtyRows[start + dirtyCount++] = new DirtyLayout { target = track.target, change = track.changed };
+                }
                 if (!done) awake[start + kept++] = i;
                 else
                 {

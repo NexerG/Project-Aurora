@@ -654,6 +654,7 @@ namespace ArctisAurora.Core.UI
             if (hidden) return;
             SetFlag(ArrangeFlags.Hidden, true);
             CollapseClip(this);
+            (parent as Control)?.InvalidateLayout();
         }
 
         // The next Arrange rewrites the subtree's clips.
@@ -684,55 +685,32 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- layout (two-pass) ----
-        public Vector2 Measure(Vector2 availableSize) => MeasureCore(availableSize);
+        public Vector2 Measure(Vector2 availableSize) => LayoutEngine.Measure(this, availableSize);
 
-        public void Arrange(LayoutRect finalRect) => ArrangeCore(finalRect);
+        public void Arrange(LayoutRect finalRect) => LayoutEngine.Arrange(this, finalRect);
+
+        internal Vector2 CallMeasureCore(Vector2 offer) => MeasureCore(offer);
+
+        internal void CallArrangeCore(LayoutRect rect) => ArrangeCore(rect);
 
         // What a control with its own layout overrides.
-        protected virtual Vector2 MeasureCore(Vector2 availableSize)
-        {
-            ref ArrangeData a = ref arrange;
-            float w = a.preferredWidth > 0 ? a.preferredWidth : MathF.Max(a.minWidth, availableSize.X);
-            float h = a.preferredHeight > 0 ? a.preferredHeight : MathF.Max(a.minHeight, availableSize.Y);
-            if (children.Count == 1 && children[0] is Control childControl)
-            {
-                Vector2 childDesired = childControl.Measure(new Vector2(
-                    MathF.Max(0, w - a.padding.totalHorizontal),
-                    MathF.Max(0, h - a.padding.totalVertical)));
-                if (a.preferredWidth == 0) w = childDesired.X + a.padding.totalHorizontal;
-                if (a.preferredHeight == 0) h = childDesired.Y + a.padding.totalVertical;
-            }
-            arrange.desired = new Vector2(w, h);
-            SetFlag(ArrangeFlags.MeasureDirty, false);
-            return arrange.desired;
-        }
+        protected virtual Vector2 MeasureCore(Vector2 availableSize) => LayoutEngine.MeasureOwn(this, availableSize);
 
         protected virtual void ArrangeCore(LayoutRect finalRect)
         {
             WriteArranged(finalRect);
-            if (children.Count == 1 && children[0] is Control child)
-            {
-                ref ArrangeData a = ref arrange;
-                LayoutRect innerRect = finalRect.Shrink(a.padding);
-                LayoutRect childRect = innerRect.Shrink(child.arrange.margin);
-                ref ArrangeData ca = ref child.arrange;
-                float cx = childRect.x + (childRect.width - ca.desired.X) * ca.horizontalPosition;
-                float cy = childRect.y + (childRect.height - ca.desired.Y) * ca.verticalPosition;
-                child.Arrange(new LayoutRect(cx, cy, ca.desired.X, ca.desired.Y));
-            }
-            SetFlag(ArrangeFlags.ArrangeDirty, false);
+            LayoutEngine.ArrangeOwn(this, finalRect);
         }
 
         // Records an arranged rect and inherits or intersects the clip.
         protected void WriteArranged(LayoutRect finalRect)
         {
+            Control parentControl = parent as Control;
+            LayoutRect parentClip = parentControl == null ? default : parentControl.ClipRect;
+
             ref ArrangeData a = ref arrange;
             a.arranged = finalRect;
-
-            Control parentControl = parent as Control;
-            a.clip = parentControl == null ? finalRect
-                : ((ArrangeFlags)a.flags & ArrangeFlags.Clip) != 0 ? LayoutRect.Intersect(finalRect, parentControl.ClipRect)
-                : parentControl.ClipRect;
+            a.clip = LayoutEngine.ClipOf(finalRect, parentControl != null, parentClip, a.flags);
         }
 
         // Places one child in a box by its own alignment, stretching it on either axis that asks.
@@ -767,28 +745,6 @@ namespace ArctisAurora.Core.UI
             };
 
             child.Arrange(new LayoutRect(childX, childY, childW, childH));
-        }
-
-        // Union of this subtree's arranged rects, and how many controls it holds. Written by the pass
-        // UIEngine runs after Arrange, so no override has to remember to maintain them.
-        internal void RefreshSubtreeCache()
-        {
-            LayoutRect bounds = arrange.arranged;
-            int count = 1;
-
-            foreach (Entity e in children)
-            {
-                if (e is not Control child) continue;
-
-                child.RefreshSubtreeCache();
-                ref ArrangeData ca = ref child.arrange;
-                bounds = LayoutRect.Union(bounds, ca.subtreeBounds);
-                count += ca.subtreeCount;
-            }
-
-            ref ArrangeData a = ref arrange;
-            a.subtreeBounds = bounds;
-            a.subtreeCount = count;
         }
 
         // Appends this control's quads to UIQuads. A control off its own clip emits
