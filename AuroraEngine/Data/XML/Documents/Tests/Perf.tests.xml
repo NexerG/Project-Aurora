@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<TestSuite xmlns="http://arctisaurora/AuroraTestTypes"
+		  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		  xsi:schemaLocation="http://arctisaurora/AuroraTestTypes ../../Schemas/TestTypeSchema.xsd" >
+	<Test Action="Perf.RelayoutLabels">
+		<Budget Zone="Step.Main.Layout" P95="3" Max="25" AllocKB="1"/>
+	</Test>
+</TestSuite>

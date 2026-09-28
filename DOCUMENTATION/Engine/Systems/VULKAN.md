@@ -79,6 +79,13 @@ Just logic to ping the Vulkan API instance to tell us how many Vulkan compatible
 
 `Queue Allocator`
 My own setup logic to allocate queues to rendering modules and other bits of the rendering. It has handles queues for stuff like graphics, compute, transfer (buffer and data transfer between CPU and GPU (discrete))
+Each role gets a family and a queue index inside it. Graphics takes index 0 of its family. Transfer takes the family with the fewest extra capabilities, which on a desktop GPU is a dedicated transfer family; when it lands on the graphics family (most mobile GPUs expose one universal family) it takes index 1 if the family has a second queue, and shares index 0 otherwise. Present takes index 0 of the first family that can present to the window. The logical device then creates, per distinct family, as many queues as the highest index handed out there needs. When transfer ends up on the same `VkQueue` as graphics or present, the frame's submit and present take the transfer command lock, because a queue can only be submitted to by one thread at a time.
+
+`CreateLogicalDevice` queue setup
+- families = distinct of { graphics family, transfer family, present family }
+- for each family
+	- one queue create info, queue count = `QueueCountFor(family)`, every priority 1.0
+- `graphicsQueueLock` = transfer command lock if `TransferSharesQueue`, else its own lock
 
 `Logical Device`
 The logical device is the API interface between the GPU and the CPU. It is responsible for API calls that are associated with rendering sequence (descriptors, command/image/frame buffers). If it's some sort of data that will be used in rendering or associated with rendering objects it passes through the logical device.
@@ -183,15 +190,31 @@ A texture is written by the transfer queue and read by the graphics queue, and o
 	- submit, wait for the transfer queue to go idle
 - if the families differ, `Renderer.QueueAcquire(image)`
 
+#### Buffer uploads
+Buffers staged into device-local memory (`CreateBuffer`, `UpdateBuffer` — meshes, the UI quad) go through the same hand-over, with a buffer barrier instead of an image one and no layout change. An update overwrites the whole buffer, so it needs no transfer back from graphics first: a family may take ownership of a resource without a transfer when it does not need the old contents.
+
+`CopyBuffer(source, destination, size, queue, pool)`
+- lock the transfer command lock
+	- begin a one-time command buffer
+	- copy source → destination
+	- if transfer family ≠ graphics family
+		- release barrier: transfer family → graphics family
+	- else
+		- barrier: transfer write → vertex, index, uniform and shader reads
+	- submit, wait for the transfer queue to go idle
+- if the families differ, `Renderer.QueueAcquire(destination)`
+
 `Renderer.RecordAcquires(window)` — called in `Draw` after the modules update, before the submit
-- swap the pending list out under its lock
-- if empty, record nothing
+- swap both pending lists (images, buffers) out under their lock
+- if both are empty, record nothing
+- for each buffer
+	- acquire barrier: transfer family → graphics family, visible to vertex, index, uniform and shader reads
 - for each image
 	- acquire barrier: TransferDst → ShaderReadOnly, transfer family → graphics family, visible to fragment shader reads
-- record all of them into this window's acquire buffer for the current frame slot
+- record all of them in one pipeline barrier into this window's acquire buffer for the current frame slot
 - that buffer goes first in the frame's module batch
 
-The release is ordered before the acquire by the host: the upload waits for its queue to go idle before it queues the acquire, and the frame that records it is submitted afterwards. Buffers uploaded through the transfer queue do not do this hand-over yet.
+The release is ordered before the acquire by the host: the upload waits for its queue to go idle before it queues the acquire, and the frame that records it is submitted afterwards.
 
 ### Descriptors
 Descriptors are how shaders access resources. A descriptor is essentially a pointer that tells the GPU where to find a buffer, texture, or sampler. The CPU side prepares these pointers, groups them into sets, and binds them before draw calls so the shader knows what data to read.

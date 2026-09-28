@@ -185,6 +185,7 @@ namespace ArctisAurora.Core.Diagnostics
         private static readonly List<CaptureBatch> _pending = new List<CaptureBatch>();
         private static readonly Lock _queue = new Lock();
         private static readonly AutoResetEvent _wake = new AutoResetEvent(false);
+        private static int _writing;
 
         // the session and its open files, held by whoever writes or replaces them
         private static readonly Lock _files = new Lock();
@@ -228,8 +229,8 @@ namespace ArctisAurora.Core.Diagnostics
         }
 
         // Closes whatever the previous session left open and arms a new folder, created lazily by
-        // the first batch that arrives.
-        internal static void BeginSession(string mode, int requested)
+        // the first batch that arrives — or directory, used as given.
+        internal static void BeginSession(string mode, int requested, string? directory = null)
         {
             EnsureStarted();
 
@@ -237,9 +238,28 @@ namespace ArctisAurora.Core.Diagnostics
             {
                 CloseWriters();
                 _sessionDir = null;
+                if (directory != null)
+                {
+                    Directory.CreateDirectory(directory);
+                    _sessionDir = directory;
+                }
                 _sessionStarted = DateTime.Now;
                 _mode = mode;
                 _requested = requested;
+            }
+        }
+
+        // Closes the session's files once nothing is queued or being written; false while something is.
+        internal static bool TryEndSession()
+        {
+            lock (_files)
+            {
+                lock (_queue)
+                    if (_pending.Count > 0 || _writing > 0) return false;
+
+                CloseWriters();
+                _sessionDir = null;
+                return true;
             }
         }
 
@@ -295,6 +315,7 @@ namespace ArctisAurora.Core.Diagnostics
                     if (_pending.Count == 0) return;
                     batch = _pending[0];
                     _pending.RemoveAt(0);
+                    _writing++;
                 }
 
                 lock (_files)
@@ -312,6 +333,7 @@ namespace ArctisAurora.Core.Diagnostics
                 }
 
                 batch.lane.Return(batch);
+                lock (_queue) _writing--;
             }
         }
 

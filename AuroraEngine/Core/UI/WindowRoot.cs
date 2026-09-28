@@ -84,6 +84,16 @@ namespace ArctisAurora.Core.UI
                                        windowPoint.Y * box.Y / window.Height);
         }
 
+        // The inverse of ToDesignSpace.
+        public Vector2 ToWindowSpace(Vector2 designPoint, Extent2D window)
+        {
+            if (window.Width == 0 || window.Height == 0) return designPoint;
+
+            Vector2 box = ViewportSize(window);
+            return new Vector2(designPoint.X * window.Width / box.X,
+                               designPoint.Y * window.Height / box.Y);
+        }
+
         // The root measures at the box it was fitted to. preferredWidth/Height are the design size
         // ViewportSize reads, not a cap the tree inherits.
         protected override Vector2 MeasureCore(Vector2 availableSize)

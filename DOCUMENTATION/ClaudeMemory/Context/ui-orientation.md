@@ -75,7 +75,7 @@ No bootstrap step: each host sets `Engine.primary.ui.uiRoot` from `Control.Parse
 
 ### WindowRoot — `<WindowRoot>` · Control
 A window's root, transparent; `RenderWindow.ui.uiRoot`. Fits the tree to the window: `FitTo`,
-`ViewportSize`, `ToDesignSpace`; fields `windowingMode` (`KeepLocal`/`WindowSize`), `autoscaling`,
+`ViewportSize`, `ToDesignSpace`, `ToWindowSpace` (its inverse); fields `windowingMode` (`KeepLocal`/`WindowSize`), `autoscaling`,
 `scalingAxis`, `scale` (window pixels per design unit = display scale × UI zoom, set by `UIScaling`). At
 scale 1, design space is window pixels. [[ui-scaling]]
 
@@ -329,6 +329,11 @@ Why: [[ui-palettes]].
   thread, peak per bar; `OnPointerPress` maps the point to a bar, `onFrameSelected`.
 - `…SessionListControl` `<SessionList>` · ScrollableControl — capture session folders; `Load`,
   `onSessionLoaded`.
+- `…TestRunListControl` `<TestRunList>` · ScrollableControl — test run folders under `TestRoot`; `Load`,
+  `onRunLoaded`.
+- `…TestResultsControl` `<TestResults>` · ScrollableControl — one run's tests and failures; `ShowRun`,
+  `onOpenCapture` (a failed measured test's button); a `Fail`/`New` shot's golden/actual/diff as `ImageControl`
+  panels (`ShotWidth`, V flipped with `SetUVRect(0,1,1,0)`), textures cached per path.
 - `…SpanChartControl` `<SpanChart Mode>` · ContainerControl — flame chart / timeline; `OnPointerScroll`
   zooms, `OnPointerPress` + `OnDrag` pan; nested `ChartScrollThumbControl`.
 - `…ZoneTableControl` `<ZoneTable>` · ScrollableControl — zone statistics per thread; `SetSession`,

@@ -77,6 +77,8 @@ namespace ArctisAurora.EngineWork
         public static double totalTime = 0;
         // seconds per tick while the clock is fixed, 0 for real time
         public static double fixedStep;
+        // the fixed clock stands still while set
+        public static bool clockHeld;
         //private DateTime lastFrameTime = DateTime.Now;
 
         public Engine()
@@ -134,7 +136,7 @@ namespace ArctisAurora.EngineWork
         public static bool InitWindowing()
         {
             GraphicsSettings settings = SettingsRegistry.Get<GraphicsSettings>();
-            float scale = AGlfwWindow.PrimaryContentScale() * UIScaling.Zoom;
+            float scale = (TestRunner.active ? 1f : AGlfwWindow.PrimaryContentScale()) * UIScaling.Zoom;
             RenderWindow window = new RenderWindow((uint)MathF.Ceiling(settings.window.width * scale),
                                                    (uint)MathF.Ceiling(settings.window.height * scale));
             primary = window;

@@ -486,6 +486,7 @@ namespace ArctisAurora.Core.UI
                 children.Insert(pages.Count + highlights.Count, box);
                 highlights.Add(box);
                 MarkTreeOrderDirty();
+                box.Measure(arrange.measuredOffer);
             }
             return highlights[index];
         }
@@ -995,7 +996,7 @@ namespace ArctisAurora.Core.UI
         private float Mm(float mm) => mm * PageLayout.PxPerMm * zoom;
 
         // Page panels live at the head of the child list, behind the highlights and the text.
-        private void ArrangePages(float x, float y, float width)
+        private void EnsurePages()
         {
             while (pages.Count < pageCount)
             {
@@ -1011,7 +1012,10 @@ namespace ArctisAurora.Core.UI
                 pages.Add(sheet);
                 MarkTreeOrderDirty();
             }
+        }
 
+        private void ArrangePages(float x, float y, float width)
+        {
             for (int i = 0; i < pages.Count; i++)
                 pages[i].Arrange(i < pageCount
                     ? new LayoutRect(x, y + i * (pageHeight + page.gap * zoom), width, pageHeight)
@@ -1041,6 +1045,7 @@ namespace ArctisAurora.Core.UI
             float height = Paginate(paper);
             Profiling.Zone.End("Document.Paginate");
 
+            EnsurePages();
             caret?.Measure(availableSize);
             foreach (PanelControl box in highlights)
                 box.Measure(availableSize);

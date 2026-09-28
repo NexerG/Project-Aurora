@@ -402,8 +402,13 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
             Renderer.vk.BindBufferMemory(Renderer.logicalDevice, _buffer, _bufferMemory, 0);
         }
 
+        // Copies staging into a device buffer and releases it to the graphics family, in one submit.
         private static void CopyBuffer(ref Buffer _sourceBuffer, ref Buffer _dstBuffer, ulong bufferSize, ref Queue queue, ref CommandPool commandPool)
         {
+            uint transferFamily = (uint)Renderer.queueAllocator.GetFamilyIndex(QueueFlags.TransferBit);
+            uint graphicsFamily = (uint)Renderer.queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit);
+            bool handOff = transferFamily != graphicsFamily;
+
             lock (Renderer.transferCommandLock)
             {
                 CommandBufferAllocateInfo _allocInfo = new CommandBufferAllocateInfo()
@@ -428,6 +433,21 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
                     Size = bufferSize
                 };
                 Renderer.vk.CmdCopyBuffer(_localCommandBuffer, _sourceBuffer, _dstBuffer, 1, ref _copyRegion);
+
+                BufferMemoryBarrier _toRead = new()
+                {
+                    SType = StructureType.BufferMemoryBarrier,
+                    SrcQueueFamilyIndex = handOff ? transferFamily : Vk.QueueFamilyIgnored,
+                    DstQueueFamilyIndex = handOff ? graphicsFamily : Vk.QueueFamilyIgnored,
+                    SrcAccessMask = AccessFlags.TransferWriteBit,
+                    DstAccessMask = handOff ? 0 : Renderer.bufferReadAccess,
+                    Buffer = _dstBuffer,
+                    Offset = 0,
+                    Size = Vk.WholeSize
+                };
+                PipelineStageFlags dstStage = handOff ? PipelineStageFlags.BottomOfPipeBit : Renderer.bufferReadStages;
+                Renderer.vk.CmdPipelineBarrier(_localCommandBuffer, PipelineStageFlags.TransferBit, dstStage, 0, 0, null, 1, ref _toRead, 0, null);
+
                 Renderer.vk.EndCommandBuffer(_localCommandBuffer);
 
                 SubmitInfo _subInfo = new SubmitInfo()
@@ -446,6 +466,9 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
                 }
                 Renderer.vk.FreeCommandBuffers(Renderer.logicalDevice, commandPool, 1, ref _localCommandBuffer);
             }
+
+            if (handOff)
+                Renderer.QueueAcquire(_dstBuffer);
         }
 
         internal static uint FindMemoryType(uint _typeFilter, MemoryPropertyFlags _preferred, MemoryPropertyFlags _required)

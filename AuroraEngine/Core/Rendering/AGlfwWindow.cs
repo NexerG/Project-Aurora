@@ -1,4 +1,5 @@
 ﻿using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Testing;
 using ArctisAurora.Core.UI;
 using Silk.NET.Core.Native;
 using Silk.NET.GLFW;
@@ -504,6 +505,11 @@ namespace ArctisAurora.EngineWork.Rendering
         // would never learn it has it.
         internal void SeedIsInWindow()
         {
+            if (TestRunner.active)
+            {
+                owner.isInWindow = false;
+                return;
+            }
             owner.isInWindow = _glfw.GetWindowAttrib(handle, WindowAttributeGetter.Hovered);
         }
 

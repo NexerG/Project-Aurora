@@ -345,6 +345,46 @@ block read `UIElements 328.0KB / items 98-1219, last 1219, capacity 2048`, and a
 `UIControls 0/1024 260.0KB    UIElements 809/1024 164.0KB    Entities 0/1024 60.0KB`. The Bootstrap frame the
 session opened on left the readout empty.
 
+### 17. Test runs are a second view behind a Captures | Tests switch (user, 2026-09-27)
+
+Slice 2 of `test-framework-plan`. Scope: `ArctisAurora.Core.Testing.TestResultsReader` (`Enumerate`, `Load`;
+`TestRunInfo`, `TestRun`, `TestResult`, `TestFailure`); `Carbon.TestRootSetting`; `Carbon.Editor.CarbonActions`
+(`ShowCaptures`, `ShowTests`, `Switch`); `TestRunListControl`, `TestResultsControl`; Carbon `UI.ui.xml`.
+- Two buttons top of the left column. `Switch` `Hide()`s one pair and `Show()`s the other: `CaptureSide` (Load
+  XML, baseline buttons, `Sessions`, `Zones`) + `CaptureView` (the whole right column) against `TestSide`
+  (`<TestRunList>`) + `TestView` (`<TestResults>`). `Carbon.Wire` starts on Captures.
+- `<TestRunList>` lists run folders under `<Carbon><TestRoot Path>` (default `%APPDATA%\Thorium\Tests`), newest
+  first: name, host, build, `N passed, M failed[, K skipped]` (`FailColorHex` when M > 0). A click `Load`s the
+  folder and fires `onRunLoaded` → `TestResultsControl.ShowRun`.
+- `<TestResults>`: a heading, a `PASS`/`FAIL`/`SKIP` line per test with `Suite/Name (ticks)`, and one indented
+  line per failure — message, then `File.cs:line`.
+- The reader sits beside the writer (§2's rule). It counts `Result="Skipped"`, reads `Reason` (shown under a `SKIP`
+  line) and resolves `Capture` against the run folder.
+- Slice 4: a **failed** test with a `Capture` gets an `Open capture` button (`ButtonHeight`, `Button*ColorHex`);
+  `onOpenCapture` → `Carbon.Wire` switches to Captures and `SessionListControl.Load`s that folder. Pinning a baseline
+  against it is the ordinary Pin-as-baseline flow; no baseline is kept per test.
+- Slice 5 (2026-09-28): under a `Fail` or `New` shot, a strip of `<shot> — golden` / `actual` / `diff` columns
+  (`ShotWidth`, default 240) — a `PanelControl` with `kind = ImageControl`, `sampler` = the PNG uploaded through
+  `TextureAsset.LoadFile(path, R8G8B8A8Unorm)` (Unorm: the bytes are already what the swapchain held), size from
+  `Image.Identify`, V flipped by `SetUVRect(0, 1, 1, 0)` (the default UVs are the bottom-up atlas convention).
+  Textures are cached per path; a missing file or a full 256-slot table shows `missing <file>` instead. The header
+  and `<TestRunList>` rows count `new`. No approve button (user, 2026-09-28).
+- No run button — Carbon only shows results (standing decision in `test-framework-plan`).
+
+**Rejected: `TabView`.** It is the document tab system — tabs close, tear off and split, so a Captures tab
+could be closed or dragged out of the window. **Rejected: a second window.** More to open for one list.
+**Rejected: enumerating every host's `Tests` folder** — one path, mirroring `CaptureRoot`, points at any host.
+
+**Verified, console only (2026-09-27):** `--send Carbon.ShowTests` then `UI.DumpTree` — `CaptureSide`/
+`CaptureView` `Hidden="true"`, `TestSide` 404×636 and `TestView` 855×688 laid out, 17 run rows for 17 Thorium run
+folders; `Carbon.ShowCaptures` reverses all four. No new errors; `%APPDATA%\Carbon\Settings` unchanged.
+**Test-verified (slice 4, throwaway Carbon test):** `t.Click` on the newest run row → `t.Click` on Open capture →
+`Sessions.Loaded` is the capture, `CaptureView` shown. **NOT GUI-verified** — nobody has looked at `ShowRun`'s lines.
+**Shot-verified (slice 5, throwaway Carbon test taking a `Golden` of its own window):** a failing run's strip shows
+actual and diff side by side, the right way up after the V flip, and `missing …` for a deleted golden. That is a
+readback of Carbon's own frame, not a person looking at the window. Textures are never freed — slots leak per
+distinct image viewed in a session.
+
 ## Facts that were expensive to establish
 
 - **A `widthStar` `LabelControl` inside a horizontal `StackPanel` is measured at width 0 and wraps to
