@@ -28,7 +28,10 @@ namespace ArctisAurora.Core.Threading
         {
             int epoch;
             while ((epoch = Engine.mainSystem.Epoch) == _drawn && Running)
+            {
                 FrameScheduler.WaitForFrame();
+                Profiling.Frame.Settle();
+            }
             bool presented = true;
 
             Profiling.Zone.Start("RenderTick");

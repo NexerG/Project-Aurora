@@ -226,15 +226,17 @@ One file per thread, `Profiling/<yyyyMMdd-HHmmss>/<thread>.frames.xml`.
 
 Three consequences worth holding on to. The nesting of the elements is the nesting of the zones, so the file **is** the flame chart and nothing has to be reconstructed. `T` is process-wide, so two threads' files stack on one timeline without a correlation id — the render thread's wait sits directly under whatever main was doing. And the gap between `D` and the root span's `E` is time the thread spent parked, which draws itself.
 
-A file whose process died has no closing `</FrameCapture>`. That is deliberate — the last partial batch of a crashed run is worthless, so a reader is expected to tolerate the truncation. A clean exit closes it through `Profiling.Flush`, the shutdown step before `Logging.Flush`, which first waits for every thread to hand over the frames it is still holding — each one does at its next frame edge, and main, which is running the step, hands its own over directly.
+A file whose process died has no closing `</FrameCapture>`. That is deliberate — the last partial batch of a crashed run is worthless, so a reader is expected to tolerate the truncation. A clean exit closes it through `Profiling.Flush`, the shutdown step before `Logging.Flush`, which first waits for every thread to hand over the frames it is still holding. A thread that is running hands its batch at its next frame edge; main, which is running the step, hands its own over directly; and parked workers and a render thread waiting for main's next frame are woken to hand theirs, repeatedly, because one wake does not reach every parked worker.
 
 ```
 Profiling.Flush()
 	end the capture
 	hand the calling thread's batch to the spool, dropping the frame it is in the middle of
-	wait until no thread holds a batch, for at most 2 seconds
-		if it timed out
-			warn how many batches were lost
+	while a thread holds a batch, for at most 2 seconds:
+		wake every parked worker and the render thread's frame wait
+		sleep 1 ms
+	if a batch is still held:
+		warn how many batches were lost
 	stop the spool, which writes what is left and closes every file
 ```
 

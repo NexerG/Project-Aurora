@@ -55,20 +55,20 @@ An action is a method of a system tagged `[A_XSDActionDependency("Main.Input", "
 	<Step Action="Main.Logic" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints Signals AnimationDone"/>
 	<Step Action="Animation.Step" Reads="Signals Keyframes" Writes="Animations Paints UIElements.ArrangeData UIElements.VulkanControl LayoutDirty AnimationDone"/>
 	<Step Action="Physics.Step" Writes="Entities.TransformData"/>
-	<Step Edge="UIElements"/>
+	<Step Edge="UIElements" Pinned="true"/>
 	<Step Action="Main.Layout" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints LayoutDirty"/>
-	<Step Edge="UIQuads"/>
-	<Step Edge="Entities"/>
-	<Step Edge="Gradients"/>
-	<Step Edge="Effects"/>
-	<Step Edge="Paints"/>
+	<Step Edge="UIQuads" Pinned="true"/>
+	<Step Edge="Entities" Pinned="true"/>
+	<Step Edge="Gradients" Pinned="true"/>
+	<Step Edge="Effects" Pinned="true"/>
+	<Step Edge="Paints" Pinned="true"/>
 	<Step Action="Main.DrawLists" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints"/>
 </FrameGraph>
 ```
 
 The main thread's work is four steps: input, entity logic, layout, and building the draw lists. Input and logic are pinned because they reach GLFW — directly, or through game code and animation callbacks that may, which logic runs first for the animations that finished the frame before; layout and draw lists reach none today but gain nothing from moving, since each main step already waits for the one before it. Entity logic comes before physics, so an entity moved or pushed in its tick reaches physics the same frame; physics lists the transform column for that reason alone.
 
-Only pools whose edge does work get one: pools that free or sort rows, and pools the renderer copies to the GPU. The animation pools have none. Pool sizes still reach the profiler, reported for every pool at the end of the frame.
+Only pools whose edge does work get one: pools that free or sort rows, and pools the renderer copies to the GPU. The animation pools have none. Pool sizes still reach the profiler, reported for every pool at the end of the frame. Edges are pinned: each costs about a microsecond, less than waking a worker to run it.
 
 Main cannot be dedicated, a dedicated system cannot also have steps, and the same action or edge may appear only once. A system with no step that is not dedicated never runs, and the log says so at startup.
 
@@ -134,7 +134,10 @@ RunStage(stage):
 		if due and not pinned:
 			put it in the hand-out list
 	publish the hand-out list as one word: count and next index
-	wake as many parked workers as there are steps, at most
+	if a pinned step is due:
+		wake as many parked workers as there are steps, at most
+	else:
+		wake one fewer, because the main thread claims one itself
 	for each pinned due step:
 		run it on the main thread
 	while steps are still unfinished:
@@ -154,6 +157,9 @@ Work():
 		else if idle for less than 50 µs:
 			spin
 		else:
+			count itself parked
+			if the profiler's capture changed since its last frame:
+				hand over the batch it holds
 			park until the main thread or a Jobs.For wakes it
 ```
 
@@ -241,5 +247,5 @@ The main thread's frames land in the `Main` lane and each worker's in `Worker N`
 - With `Idle Wait` on, a ticking entity does not keep frames coming; something that changes over time has to ask with `RequestFrameAt`, or it freezes until the next input. A looping GPU effect has no end to ask for, so it freezes too.
 - The graph can run ahead of render and compute frames nobody sees, until render reads from a copy made at the end of each frame.
 - A main step after `Animation.Step` cannot set a signal — that is a loop, and the engine refuses to start.
-- The scheduler costs about 20 µs a frame with seven stages, mostly waking parked workers for the stages that have work for them.
+- The scheduler costs about 15 µs a frame with seven stages (Release). A stage wakes a worker only for a step the main thread cannot take itself, so edges never run beside one another.
 - What comes next — splitting one step's rows across threads, and letting independent work skip the stage barrier — is in `ClaudeMemory/Context/frame-scheduler-plan.md`.

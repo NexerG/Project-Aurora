@@ -123,9 +123,9 @@ Step 1 of [../Context/frame-scheduler-plan.md](../Context/frame-scheduler-plan.m
 - `Threads=1` + `MaxFps=120`, idle: 0.44 cores (step 1: 0.37).
 
 ### Known gaps
-- **Scheduler overhead ~20 µs a frame** — see Measured; the unpinned lone stages (Animation ‖ Physics, the edges) wake parked workers every frame.
+- ~~**Scheduler overhead ~20 µs a frame**~~ — **closed 2026-09-28**, § Step 5.
 - **`Main.Apply` per value costs ~0.2–0.26 µs** (Debug JIT); at 20k that is 4–5 ms on Main. The per-value `Profiling.Zone.Increment` is one per frame since 2026-09-24.
-- **22 capture batches lost at shutdown** — `Profiling.Flush` warns that parked workers never hand their last batch (seen before step 2 too).
+- ~~**22 capture batches lost at shutdown**~~ — **closed 2026-09-28**, § Step 5. It was every worker plus Render, not workers alone.
 - **Decision notes older than this one name `MainTick`** — read it as the Main steps above.
 - **Verified:** builds clean; Thorium boots and prints the 7 stages; GUI — file-tree expand/collapse (in-place `Height`, `Collapsed` via `onDone`), a collapse interrupted by a re-expand ends at full heights, hover highlight, context menu slides open, palette switch crossfades (sidebar sampled 0→5→37→159→223→255 over ~300 ms, no early jump), Settings and Thorium close through their X; `Threads=1` + `MaxFps=120` same visuals; Carbon boots, opens a capture, closes; a loop, a duplicate action and an undeclared `Signals` write each fail as designed. **NOT verified:** the dirty-note prompt's cancel/confirm; dt after a title-bar drag; AuroraEditor not run (its generated schemas are stale until it is).
 
@@ -184,5 +184,44 @@ Step 1 of [../Context/frame-scheduler-plan.md](../Context/frame-scheduler-plan.m
 - `WriteTarget` (in-place writes) is ~0.14 ms of the `Threads=1` margin kernel (scratch run with it skipped, reverted); per-driver math is 15–20 ns a track.
 - Per-track math is already 4-wide: `Vector4` maps to `Vector128`. Across-track SIMD would only reach the scalar parts — curve evaluation, spring exp/sin/cos.
 - At 200k see [[animation-core]] § Measured at 200k.
+
+## Step 5 — fewer worker wakes, parked threads hand their capture batch (2026-09-28)
+
+### What changed
+- **Edges are pinned:** every `<Step Edge=…/>` in `Frame.frame.xml` carries `Pinned="true"`; the edge stages wake no worker.
+- **`RunStage` wakes one fewer worker when main has no pinned step due in the stage** — main claims one step itself. `Wake(mainBusy ? count : count - 1)`. Animation ‖ Physics wakes nobody, or one worker on a frame Physics is due.
+- **`Profiling.Frame.Settle()`** — hands the calling thread's batch (via `Release`) when its capture changed since its last frame. Called by `FrameScheduler.Work` right after a worker counts itself parked, and by `RenderSystem.Tick` after each `WaitForFrame`.
+- **`FrameScheduler.WakeWaiting()`** — `Wake(workers)` + `_produced.Set()`, so every parked worker and render's frame wait come round to `Settle`.
+- **`Profiling.Flush`** calls `WakeWaiting` every 1 ms until `_heldBatches` is 0 or `flushWaitMs` passes (was `SpinWait.SpinUntil`). **`TryFinishCapture`** calls it and returns false while batches are held.
+
+### Why these choices
+
+**A wake bought nothing.** Main claimed every step it woke workers for: it ran `Animation.Step` on 1800 of 1800 scenario frames, and an edge costs ~1 µs against a wake's several. The 7-edge stage alone released 7 permits a frame. With `Threads=1` the overhead was 12 µs p50 — the rest was the semaphore.
+**Rejected:** chained wakes (one per stage, a claiming worker wakes the next) — still ≥1 kernel wake per unpinned stage, 3 a frame. Per-step waits (plan, Later) — the architecture change, deferred by the user until the threading design is revisited with generated steps.
+
+**Losses were every thread that waits inside the scheduler, not a slow thread.** `Flush` runs inside main's frame; parked workers are never woken, and Render waits for main's next frame inside its own open profiling frame. 15 lost on 16 cores = 14 workers + Render; `Threads=1` lost 1 (Render).
+
+**The wake repeats because `SemaphoreSlim` lets a new waiter barge.** One `Release(14)` with 14 parked left 2–10 workers asleep: the first woken spun 50 µs, re-parked and took a second permit (one worker settled four times in a run). The retry sits on the capture-end paths only; the spare permits it leaves cost a few spurious wakes then.
+**Rejected:** a broadcast wake (generation counter + `Monitor.PulseAll`) replacing the semaphore — it rewrites the parking hot path, deferred with the rest of the threading design.
+
+**Settle sits after the parked increment, before the sleep.** `Flush` bumps `_session` then reads `parked`; the worker bumps `parked` then reads `_session`. Both are full fences, so either the worker sees the new session or `Flush` sees it parked and wakes it.
+
+### Measured (2026-09-28, Release+PROFILE, 16 logical cores, 14 workers, `--profile-scenario=animation`, 3 runs each, frames ≥ 100)
+Overhead = Main's frame − its top-level spans (scratch reader); barrier wait = `Scheduler.Barrier` minus the steps main ran in it.
+
+| | before | after |
+|---|---|---|
+| overhead p50 / p95 | 51.3–53.0 / 100–117 µs | 14.7–15.3 / 24.3–26.4 µs |
+| barrier wait p50 / p95 | 3.1–3.2 / 6.3–6.8 µs | 1.2–1.3 / 2.4 µs |
+| Main frame p50 / p95 | 2.58–2.79 / 13.7–14.1 ms | 2.46–2.60 / 13.7–13.9 ms |
+| `Anim.Step` p50 / p95 | 0.57–0.69 / 2.51–2.58 ms | 0.60–0.66 / 2.57–2.66 ms |
+| batches lost at shutdown | 15, 15, 15 | 0 in 5 runs (with the retry) |
+
+- Step 2's "~20 µs" was Debug; optimized, the overhead was 51 µs p50 before this step.
+
+### Known gaps
+- **Edges no longer run in parallel.** Cheap today; a heavy edge would sit on main.
+- **Workers still spin 50 µs after waking with nothing to do.**
+- **Verified:** Release+PROFILE and Debug build clean; scenario 5× auto, 1× `Threads=1`, 1× Debug (DEBUG access checks on) — no lost batch, every lane's file closed; `--test=Perf` passes, its capture closing through `TryFinishCapture`. **NOT verified:** Thorium by hand.
 
 Related: [[cross-system-change-notification]], [[ecs-rework-data-pools]], [[animation-core]], [[engine-profiling]], [[engine-logging]], [[settings-registry]], [[animation-in-place-plan]]

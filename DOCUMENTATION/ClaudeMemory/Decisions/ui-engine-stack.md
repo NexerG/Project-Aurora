@@ -647,6 +647,8 @@ from XML today, and `contextMenus` is read by `ContextMenus.Compose`, which is s
 - **Only `WindowRoot` and `ContainerControl` hold siblings**, and neither lays more than one child out —
   `WindowRoot` aligns them all in its own box, `ContainerControl` inherits the one-child `Measure`/`Arrange`.
   A container that arranges a list is a 6b subclass.
+  **By design (user, 2026-09-28):** `WindowRoot` holds exactly one child; `ContainerControl` is a base class
+  for containers and is never used live. Neither is a gap.
 - `ArrangeData.width` / `height` back `Control.width`/`height`/`size`, which exist for the subclasses that
   call them and are read by nothing in the layout math — that uses `preferredWidth`/`preferredHeight`.
 - Cumulative child offsets (the drop-targeting cache) are deferred to the landing that reads them.
