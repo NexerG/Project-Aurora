@@ -555,6 +555,8 @@ their tail at every exit.
 hands its batch at its next frame edge — within one tick. Joining the systems would have meant moving
 `Profiling.Flush` out of `Shutdown.shutdown.xml` to after `Engine.Stop`, and after `Logging.Flush`. The
 counter is the first shared state on the recording path (§5), but it moves once per batch, not per zone.
+**Superseded 2026-09-28:** since the frame scheduler, parked workers and render's frame wait do *not* keep
+ticking through `Commit`. `Flush` now wakes them until every batch is handed — [[frame-scheduler]] § Step 5.
 
 **Main hands its own batch rather than waiting for a frame edge it will never reach.** `Flush` runs inside
 main's tick and main's loop exits after it.

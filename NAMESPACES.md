@@ -70,6 +70,7 @@ ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/TextureAs
 ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/UIDocumentAsset.cs
 ArctisAurora.Core.Rendering.Helpers -> AuroraEngine/Core/Rendering/Helpers/QueueAllocator.cs
 ArctisAurora.Core.Rendering.Modules -> AuroraEngine/Core/Rendering/Modules/CompositorModule.cs
+ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/ScreenReadback.cs
 ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/TestContext.cs
 ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/TestResultsReader.cs
 ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/TestRunner.cs
@@ -204,6 +205,7 @@ ArctisAurora.Tests -> AuroraEngine/Tests/ConsoleTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/InputTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/LayoutTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/PerfTests.cs
+ArctisAurora.Tests -> AuroraEngine/Tests/VisualTests.cs
 AuroraEditor -> AuroraEditor/Editor.cs
 AuroraEditor.EditorProgram.Components -> AuroraEditor/EditorProgram/Components/AsmTestComp.cs
 AuroraEditor.EditorProgram.UIFunctions -> AuroraEditor/EditorProgram/UIFunctions/Decorations.cs

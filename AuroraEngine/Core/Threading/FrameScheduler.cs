@@ -61,6 +61,13 @@ namespace ArctisAurora.Core.Threading
                 _wake.Release(Math.Min(count, parked));
         }
 
+        // Wakes every parked worker and the render thread's frame wait.
+        internal static void WakeWaiting()
+        {
+            Wake(_workers.Length);
+            _produced.Set();
+        }
+
         // True for the frame that follows an idle wait.
         public static bool Resumed { get; private set; }
 
@@ -410,19 +417,20 @@ namespace ArctisAurora.Core.Threading
         private static void RunStage(FrameStep[] stage, double dtMs)
         {
             int count = 0;
+            bool mainBusy = false;
             for (int i = 0; i < stage.Length; i++)
             {
                 FrameStep step = stage[i];
                 step.due = step.Due(dtMs);
                 if (step.due && !step.Pinned)
                     _queue[count++] = step;
+                else if (step.due)
+                    mainBusy = true;
             }
 
             Volatile.Write(ref _counters.remaining, count);
             Interlocked.Exchange(ref _counters.claim, (long)count << 32);
-            int parked = Volatile.Read(ref _counters.parked);
-            if (count > 0 && parked > 0)
-                _wake.Release(Math.Min(count, parked));
+            Wake(mainBusy ? count : count - 1);
 
             for (int i = 0; i < stage.Length; i++)
                 if (stage[i].due && stage[i].Pinned)
@@ -511,6 +519,7 @@ namespace ArctisAurora.Core.Threading
                     }
 
                     Interlocked.Increment(ref _counters.parked);
+                    Profiling.Frame.Settle();
                     if (!Claimable() && !Jobs.Claimable)
                         _wake.Wait();
                     Interlocked.Decrement(ref _counters.parked);

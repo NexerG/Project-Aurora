@@ -324,6 +324,13 @@ namespace ArctisAurora.Core.Diagnostics
                 Hand(tables, true);
             }
 
+            // Hands the calling thread's batch over if its capture changed since its last frame.
+            internal static void Settle()
+            {
+                Tables? tables = _tables;
+                if (tables != null && tables.session != Volatile.Read(ref _session)) Release();
+            }
+
             private static void Hand(Tables tables, bool last)
             {
                 if (tables.batch == null) return;
@@ -372,8 +379,15 @@ namespace ArctisAurora.Core.Diagnostics
         }
 
         // True once every batch is handed and written, and the capture's files are closed.
-        internal static bool TryFinishCapture() =>
-            Volatile.Read(ref _heldBatches) == 0 && FrameSpool.TryEndSession();
+        internal static bool TryFinishCapture()
+        {
+            if (Volatile.Read(ref _heldBatches) > 0)
+            {
+                FrameScheduler.WakeWaiting();
+                return false;
+            }
+            return FrameSpool.TryEndSession();
+        }
 
         // whether this build records frames at all
 #if DEBUG || PROFILE
@@ -444,7 +458,13 @@ namespace ArctisAurora.Core.Diagnostics
             Interlocked.Increment(ref _session);
 
             Frame.Release();
-            if (!SpinWait.SpinUntil(() => Volatile.Read(ref _heldBatches) == 0, flushWaitMs))
+            long deadline = Stopwatch.GetTimestamp() + flushWaitMs * Stopwatch.Frequency / 1000;
+            while (Volatile.Read(ref _heldBatches) > 0 && Stopwatch.GetTimestamp() < deadline)
+            {
+                FrameScheduler.WakeWaiting();
+                Thread.Sleep(1);
+            }
+            if (Volatile.Read(ref _heldBatches) > 0)
                 Log.Warn($"{Volatile.Read(ref _heldBatches)} capture batch(es) not handed within {flushWaitMs}ms — their frames are lost");
 
             FrameSpool.Flush();

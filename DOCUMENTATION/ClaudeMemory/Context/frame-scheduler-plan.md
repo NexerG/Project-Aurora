@@ -61,7 +61,7 @@ See [[frame-scheduler]] § Step 2. Departures from the brief that stood here, ea
 - **Physics substeps**, so physics keeps its rate below ~31 fps.
 - **Timer resolution for the cap** (`timeBeginPeriod` on Windows) if `WaitOut` overshoots on another machine.
 - **Carbon's frame strip** for many lanes — 24 labels stack on one another today.
-- **Scheduler overhead** — ~20 µs a frame after step 2 (7 stages; a `SemaphoreSlim` release per unpinned stage while workers are parked). Per-step waits above would also cut it.
+- ~~**Scheduler overhead**~~ — **closed 2026-09-28** by pinning edges and waking one fewer worker ([[frame-scheduler]] § Step 5); ~15 µs p50 Release. Per-step waits and a broadcast wake in place of the `SemaphoreSlim` wait for the threading redesign (user).
 
 ## How to verify here (learned in steps 1–2)
 - **Timings: `dotnet build … -p:Optimize=true --no-incremental`**, then rebuild plain Debug with `--no-incremental` afterwards — Debug JIT is unoptimized and ~5× slow, and an incremental build ignores the property change → [[profiling-unoptimized-jit]].
