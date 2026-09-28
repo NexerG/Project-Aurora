@@ -13,6 +13,7 @@
           <xs:enumeration value="ExitApplication" />
           <xs:enumeration value="DummyHover" />
           <xs:enumeration value="DummyKeyPress" />
+          <xs:enumeration value="Console.Toggle" />
           <xs:enumeration value="Text.Write" />
           <xs:enumeration value="Text.Backspace" />
           <xs:enumeration value="Text.Delete" />
@@ -47,6 +48,11 @@
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>
         <xs:restriction base="xs:string">
+          <xs:enumeration value="Commands.HelpListsCommands" />
+          <xs:enumeration value="Commands.UnknownIsAnError" />
+          <xs:enumeration value="Commands.ArgumentsConvert" />
+          <xs:enumeration value="Commands.WaitResumesOnTime" />
+          <xs:enumeration value="Console.ToggleAndAnswer" />
           <xs:enumeration value="Layout.StackPanelArranges" />
           <xs:enumeration value="Layout.StarChildCrossSize" />
         </xs:restriction>
@@ -154,6 +160,16 @@
           <xs:enumeration value="Main.DrawLists" />
           <xs:enumeration value="Physics.Step" />
           <xs:enumeration value="Animation.Step" />
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
+  <xs:simpleType name="Console">
+    <xs:union memberTypes="actions:Any">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="Help" />
+          <xs:enumeration value="Quit" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>

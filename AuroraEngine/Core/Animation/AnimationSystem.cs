@@ -71,7 +71,7 @@ namespace ArctisAurora.Core.Animation
         private void Advance()
         {
             long now = Stopwatch.GetTimestamp();
-            float dt = Engine.fixedStep > 0 ? (float)Engine.fixedStep
+            float dt = Engine.fixedStep > 0 ? (Engine.clockHeld ? 0f : (float)Engine.fixedStep)
                 : _lastTick == 0 || FrameScheduler.Resumed ? 0f : (float)((now - _lastTick) / (double)Stopwatch.Frequency);
             _lastTick = now;
 

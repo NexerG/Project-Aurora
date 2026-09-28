@@ -46,6 +46,16 @@ namespace Carbon
                 (LabelControl)root.FindByName("Pools"));
 
             sessions.onSessionLoaded = Comparison.Load;
+
+            TestResultsControl results = (TestResultsControl)root.FindByName("TestView");
+            ((TestRunListControl)root.FindByName("TestSide")).onRunLoaded = results.ShowRun;
+            results.onOpenCapture = directory =>
+            {
+                CarbonActions.Switch(true);
+                sessions.Load(directory);
+            };
+
+            CarbonActions.Switch(true);
         }
     }
 }

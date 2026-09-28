@@ -75,6 +75,44 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:SpanChart.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="TestResults.Attributes">
+    <xs:attributeGroup ref="types:Scrollable.Attributes" />
+    <xs:attribute name="TestHeight" type="xs:int" />
+    <xs:attribute name="FailureHeight" type="xs:int" />
+    <xs:attribute name="Indent" type="xs:float" />
+    <xs:attribute name="ButtonHeight" type="xs:int" />
+    <xs:attribute name="ShotWidth" type="xs:float" />
+    <xs:attribute name="HeaderColorHex" type="xs:string" />
+    <xs:attribute name="PassColorHex" type="xs:string" />
+    <xs:attribute name="FailColorHex" type="xs:string" />
+    <xs:attribute name="SkipColorHex" type="xs:string" />
+    <xs:attribute name="DetailColorHex" type="xs:string" />
+    <xs:attribute name="ButtonColorHex" type="xs:string" />
+    <xs:attribute name="ButtonHoverColorHex" type="xs:string" />
+    <xs:attribute name="ButtonPressColorHex" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="TestResults" type="types:TestResults" />
+  <xs:complexType name="TestResults">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:TestResults.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="TestRunList.Attributes">
+    <xs:attributeGroup ref="types:Scrollable.Attributes" />
+    <xs:attribute name="RowHeight" type="xs:int" />
+    <xs:attribute name="RowSpacing" type="xs:float" />
+    <xs:attribute name="RowColorHex" type="xs:string" />
+    <xs:attribute name="RowHoverColorHex" type="xs:string" />
+    <xs:attribute name="RowPressColorHex" type="xs:string" />
+    <xs:attribute name="NameColorHex" type="xs:string" />
+    <xs:attribute name="SelectedColorHex" type="xs:string" />
+    <xs:attribute name="DetailColorHex" type="xs:string" />
+    <xs:attribute name="FailColorHex" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="TestRunList" type="types:TestRunList" />
+  <xs:complexType name="TestRunList">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:TestRunList.Attributes" />
+  </xs:complexType>
   <xs:attributeGroup name="ZoneTable.Attributes">
     <xs:attributeGroup ref="types:Scrollable.Attributes" />
     <xs:attribute name="RowSpacing" type="xs:float" />

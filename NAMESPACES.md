@@ -71,6 +71,7 @@ ArctisAurora.Core.Registry.Assets -> AuroraEngine/Core/Registry/Assets/UIDocumen
 ArctisAurora.Core.Rendering.Helpers -> AuroraEngine/Core/Rendering/Helpers/QueueAllocator.cs
 ArctisAurora.Core.Rendering.Modules -> AuroraEngine/Core/Rendering/Modules/CompositorModule.cs
 ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/TestContext.cs
+ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/TestResultsReader.cs
 ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/TestRunner.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/FrameGraph.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/FrameScheduler.cs
@@ -200,7 +201,9 @@ ArctisAurora.Simulators.ParticleTypes -> AuroraEngine/Simulators/ParticleTypes/P
 ArctisAurora.Simulators.Vulkan -> AuroraEngine/Simulators/Vulkan/Simulator3D.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/CommandTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/ConsoleTests.cs
+ArctisAurora.Tests -> AuroraEngine/Tests/InputTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/LayoutTests.cs
+ArctisAurora.Tests -> AuroraEngine/Tests/PerfTests.cs
 AuroraEditor -> AuroraEditor/Editor.cs
 AuroraEditor.EditorProgram.Components -> AuroraEditor/EditorProgram/Components/AsmTestComp.cs
 AuroraEditor.EditorProgram.UIFunctions -> AuroraEditor/EditorProgram/UIFunctions/Decorations.cs
@@ -212,9 +215,12 @@ Carbon.Editor -> Carbon/Editor/Decorations.cs
 Carbon.Editor.CustomControls -> Carbon/Editor/CustomControls/FrameStripControl.cs
 Carbon.Editor.CustomControls -> Carbon/Editor/CustomControls/SessionListControl.cs
 Carbon.Editor.CustomControls -> Carbon/Editor/CustomControls/SpanChartControl.cs
+Carbon.Editor.CustomControls -> Carbon/Editor/CustomControls/TestResultsControl.cs
+Carbon.Editor.CustomControls -> Carbon/Editor/CustomControls/TestRunListControl.cs
 Carbon.Editor.CustomControls -> Carbon/Editor/CustomControls/ZoneTableControl.cs
 Thorium -> Thorium/Thorium.cs
 Thorium -> Thorium/ThoriumSettings.cs
 Thorium.Editor -> Thorium/Editor/Decorations.cs
 Thorium.Editor -> Thorium/Editor/VaultsWindow.cs
 Thorium.Editor.CustomControls -> Thorium/Editor/CustomControls/VaultBrowserControl.cs
+Thorium.Tests -> Thorium/Tests/TextInputTests.cs

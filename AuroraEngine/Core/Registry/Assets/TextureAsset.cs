@@ -49,7 +49,7 @@ namespace ArctisAurora.Core.Registry.Assets
 
         // Uploads an image and claims a bindless table slot, without taking a registry name.
         // Non-colour images (distance fields) must pass a UNORM format.
-        internal void LoadFile(string path, Format format = Format.R8G8B8A8Srgb)
+        public void LoadFile(string path, Format format = Format.R8G8B8A8Srgb)
         {
             if (!File.Exists(path))
                 throw new Exception("Texture not found: " + path);

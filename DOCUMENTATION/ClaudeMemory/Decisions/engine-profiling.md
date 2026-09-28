@@ -653,6 +653,32 @@ Third pass — the query split, then each change of [[render-window-owns-the-swa
 - Builds clean. **Run to completion through 20k**, then 200k was stopped through `CloseMainWindow` → shutdown flushed. Read with a scratch C# script over the XML, not Carbon. Every new zone and counter is present. Results are in [[animation-core]] § Measured at scale.
 - **NOT GUI-verified** — nobody watched the grid.
 
+## 18. A test captures into its own folder and ends the capture without stopping the spool (2026-09-27)
+
+Slice 4 of `test-framework-plan`; the test side is [[engine-testing]] § Slice 4.
+
+### What changed
+- `FrameSpool.BeginSession(mode, requested, directory = null)` — a given `directory` is created and used as the
+  session folder: no `Prune`, no timestamp folder.
+- `FrameSpool.TryEndSession()` — under `_files` then `_queue`: false while `_pending` holds a batch or `_writing > 0`;
+  else closes every writer and clears `_sessionDir`. `_writing` is counted under `_queue` around each `WriteBatch`.
+- `Profiling.CaptureInto(directory)` (continuous, mode `Burst`), `EndCapture()` (`_sessionFrames = 0` + new session
+  number), `TryFinishCapture()` (`_heldBatches == 0 && FrameSpool.TryEndSession()`), `compiledIn` (`DEBUG || PROFILE`).
+
+### Why these choices
+**`EndCapture` is not `Flush`.** `Flush` joins the spool thread, which never restarts; a run holds several captures.
+**The spool closes the writers itself.** A lane whose last full batch was handed at `Frame.End` has no batch when the
+session number changes, so no `last` batch ever arrives and its writer would stay open — 1 in `framesPerBatch` odds
+per thread. Closing on "nothing queued, nothing being written, nothing held" covers it.
+**`_writing`, not just `_pending`.** `DrainOnce` releases `_queue` before taking `_files`; a batch in that gap is in
+neither, and writing it after the session closed would open a writer in the Profiling root and `Prune` the user's
+captures.
+
+### Consequences to hold on to
+- Every thread that joined hands its batch at its **next** frame, so a parked thread holds `TryFinishCapture` false;
+  under `--test` nothing parks (idle wait off). The test's timeout is the bound.
+- `MaxFileMB` rolling still clears `_sessionDir`, so a capture past 64 MB per thread continues in the Profiling root.
+
 ## Left standing
 
 - **GPU is out entirely** (user, 2026-09-02). Frame times can be read back from a `VkQueryPool`, and

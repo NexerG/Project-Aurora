@@ -1,5 +1,6 @@
 using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
 using Carbon.Editor.CustomControls;
 
@@ -9,6 +10,10 @@ namespace Carbon.Editor
     {
         // control names in UI.ui.xml
         private const string sessionsName = "Sessions";
+        private const string captureSideName = "CaptureSide";
+        private const string captureViewName = "CaptureView";
+        private const string testSideName = "TestSide";
+        private const string testViewName = "TestView";
 
         [A_XSDActionDependency("Carbon.LoadCapture", "UI", "Picks a capture folder and reads every thread file in it")]
         public static void LoadCapture()
@@ -49,6 +54,41 @@ namespace Carbon.Editor
         public static void SwapStrips()
         {
             Comparison.Swap();
+        }
+
+        [A_XSDActionDependency("Carbon.ShowCaptures", "UI", "Shows the capture list and charts in place of the test runs")]
+        public static void ShowCaptures()
+        {
+            Switch(true);
+        }
+
+        [A_XSDActionDependency("Carbon.ShowTests", "UI", "Shows the test runs in place of the capture list and charts")]
+        public static void ShowTests()
+        {
+            Switch(false);
+        }
+
+        // Shows one view's two halves and hides the other's.
+        internal static void Switch(bool captures)
+        {
+            WindowRoot root = Engine.primary.ui.uiRoot;
+            Control captureSide = root.FindByName(captureSideName), captureView = root.FindByName(captureViewName);
+            Control testSide = root.FindByName(testSideName), testView = root.FindByName(testViewName);
+
+            if (captures)
+            {
+                testSide.Hide();
+                testView.Hide();
+                captureSide.Show();
+                captureView.Show();
+            }
+            else
+            {
+                captureSide.Hide();
+                captureView.Hide();
+                testSide.Show();
+                testView.Show();
+            }
         }
     }
 }

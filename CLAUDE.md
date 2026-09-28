@@ -220,6 +220,13 @@ sight? Then send it. Otherwise do it yourself.
 
 The test: is a tracked file about to change? Then an edit tool is what changes it.
 
+## 12. Validation Errors
+
+**A `[Vulkan]` log line stops the work. Report it, suggest a fix, wait.**
+
+- Any run that logs a `[Vulkan]` line: stop and tell me the line, what triggered it, and a suggested fix.
+- Don't implement the fix until I say go - even when it looks trivial or sits in code you just wrote.
+
 This project is a C# game engine called Aurora using Silk.NET/Vulkan/GLFW.
 Before suggesting new code, locate it through the §2 chain (`where-things-live.md` → `INDEX.md` → grep `NAMESPACES.md`).
 Current focus is in "DOCUMENTATION/Work in Progress List.md".

@@ -11,9 +11,19 @@ namespace Carbon
         public string Resolved => Environment.ExpandEnvironmentVariables(path);
     }
 
+    [A_XSDType("TestRoot", "Settings")]
+    public class TestRootSetting : Setting
+    {
+        [A_XSDElementProperty("Path", "Settings", "Folder holding test run folders. Environment variables are expanded; the default is where a Thorium --test run lands.")]
+        public string path { get; set; } = @"%APPDATA%\Thorium\Tests";
+
+        public string Resolved => Environment.ExpandEnvironmentVariables(path);
+    }
+
     [A_XSDType("Carbon", "Settings", AllowedChildren = typeof(Setting))]
     public class CarbonSettings : SettingCategory
     {
         public readonly CaptureRootSetting captureRoot = new CaptureRootSetting();
+        public readonly TestRootSetting testRoot = new TestRootSetting();
     }
 }

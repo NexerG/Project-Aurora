@@ -16,10 +16,20 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:CaptureRoot.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="TestRoot.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Path" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="TestRoot" type="types:TestRoot" />
+  <xs:complexType name="TestRoot">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:TestRoot.Attributes" />
+  </xs:complexType>
   <xs:element name="Carbon" type="types:Carbon" />
   <xs:group name="Setting.Children">
     <xs:choice>
       <xs:element name="CaptureRoot" type="types:CaptureRoot" />
+      <xs:element name="TestRoot" type="types:TestRoot" />
       <xs:element name="DoubleClick" type="types:DoubleClick" />
       <xs:element name="KeyRepeat" type="types:KeyRepeat" />
       <xs:element name="Device" type="types:Device" />

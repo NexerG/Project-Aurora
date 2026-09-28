@@ -67,6 +67,41 @@ A suite lists its tests in order, one file per suite, and the file's name is the
 
 `Timeout` is in milliseconds of test time and defaults to 10000. Engine tests live in the engine and run in any host; a host's own tests live in that host and its `Data` folder.
 
+## Playing input
+
+No window hears the OS during a run, so a test plays its own input. Each helper queues a gesture and returns how many ticks it takes, which is what the test yields:
+
+```csharp
+yield return t.Click(button);
+yield return t.Type("Hi 5!");
+yield return t.Key(Keys.GraveAccent, Keys.LeftControl);
+yield return t.Drag(splitter, new Vector2(300f, 40f));
+```
+
+The runner plays one step a tick, from the test's own tick, so each step is handled by the next tick's input pass — the same tick an OS callback would have reached. When the helper's ticks are up, the whole gesture has been handled.
+
+| Helper | Steps, one per tick |
+|---|---|
+| `MoveTo(control)` / `MoveTo(window, point)` | the pointer moves to the control's centre, or a design-space point |
+| `Click(control, button)` | move, button down, button up |
+| `Drag(control, to, steps)` | move, left down, `steps` moves to `to`, left up |
+| `Key(key, modifiers)` | modifiers down, key down, key up, modifiers up |
+| `Type(text)` | per character: its key down with the character, then its key up |
+
+```
+Point(control)
+	window = the window the control is drawn in
+	centre = the middle of the control's arranged rect
+	if the hit-test at centre is not the control or inside it
+		record a failure naming what it hit
+	every window's isInWindow = (it is this window)
+	move the pointer to centre, converted to window pixels by ToWindowSpace
+```
+
+Pointer moves and characters go through the same handlers the OS callbacks call. Keys and mouse buttons go straight into the key tracker as engine `Keys`, because the keyboard handler only translates a GLFW key and enqueues it. `Type` presses the real key for letters, digits and space and `AnySymbol` for anything else, which is what makes an `AnySymbol` keybind fire. Keybinds are host data, so a test that needs one belongs to a host that binds it — typing into a text box is a Thorium test because only Thorium binds `AnySymbol` to `Text.Write`.
+
+A window's `isInWindow` starts false under `--test` and only the helpers set it, so the user's own mouse over the window never reaches a run.
+
 ## What fails a test
 
 - a `Check` that came out false
@@ -123,9 +158,110 @@ Session tick
   </Test>
   <Test Suite="Layout" Name="Layout.StackPanelArranges" Result="Pass" Ticks="3" />
   <Test Suite="Layout" Name="Layout.StarChildCrossSize" Result="Pass" Ticks="3" />
+  <Test Suite="Perf" Name="Perf.RelayoutLabels" Result="Skipped" Ticks="154" Reason="unoptimized JIT" />
 </TestRun>
 ```
 
-## Not built yet
+A measured test also carries `Capture="Perf.RelayoutLabels"`, the folder its frame capture was written to, relative to the run folder. `Skipped` and `New` do not count towards the exit code, and the summary line reads `N passed, M failed, K skipped, J new`. A test that took golden shots carries one `<Shot Name Result Golden Actual Diff/>` per shot: `Golden` is the full path of the PNG it was compared with, `Actual` and `Diff` are relative to the run folder and present only when written.
 
-A Tests view in Carbon that reads these results, pointer and keyboard helpers for tests, performance checks against budgets and baselines, and golden-image checks. The plan is in `ClaudeMemory/Context/test-framework-plan.md`.
+## Measuring performance
+
+A test measures itself by bracketing the frames it cares about. Everything before `StartMeasure` is warm-up, and the test keeps driving its own work while the capture records:
+
+```csharp
+t.StartMeasure();
+for (int i = 0; i < 120; i++)
+{
+    column.preferredWidth = 400f + i % 2;
+    yield return 1;
+}
+yield return t.EndMeasure();
+```
+
+The suite gives the test its budgets, one per zone. A limit left out is not checked:
+
+```xml
+<Test Action="Perf.RelayoutLabels">
+	<Budget Zone="Step.Main.Layout" Thread="Main" P95="3" Max="25" AllocKB="1"/>
+</Test>
+```
+
+```
+StartMeasure
+	if this is a Debug build
+		skip — unoptimized JIT
+	else if the profiler is not compiled in
+		skip — profiler not compiled in
+	else
+		capture every thread's frames into <run>\<test name>\
+
+EndMeasure
+	stop the capture
+	hold the test until every thread has handed its frames and the files are closed
+
+when the test ends
+	if it measured
+		for each budget
+			find the budget's thread in the capture
+			for each frame the zone ran in
+				add up the zone's time and allocation in that frame
+			fail on any of p50, p95, max over its limit, or the worst frame's allocation over AllocKB
+			fail if the thread or the zone is not in the capture
+	else if it has budgets and was not skipped
+		fail — it measured nothing
+```
+
+Only a Release build with `PROFILE` defined measures anything, because the profiler compiles away in plain Release and a Debug build's numbers are not worth a budget:
+
+```
+dotnet build Thorium/Thorium.csproj -c Release -p:DefineConstants="TRACE%3BPROFILE"
+Thorium/bin/Release/net10.0-windows10.0.22621.0/Thorium.exe --test=Perf
+```
+
+The capture goes into the run's own folder, never the host's `Profiling` folder, so a test run never prunes the user's captures. A single run's `max` can swing by several milliseconds on the same build, so `Max` budgets want generous headroom. `--profile-scenario` stays a separate tool for long exploratory captures.
+
+## Viewing results in Carbon
+
+Carbon's left column opens with a `Captures | Tests` switch. `Tests` swaps the capture list and charts for a list of run folders under `<Carbon><TestRoot Path>`, which defaults to `%APPDATA%\Thorium\Tests`; point it at another host's `Tests` folder to see that host's runs. Carbon never starts a run — runs are launched by hand and Carbon reads the folders when it opens.
+
+`TestResultsReader` is the reader, and it lives in the engine beside the runner that writes the file:
+
+```
+Enumerate(root)
+	for each folder under root
+		Load(folder) — skipped when it has no readable results.xml
+	sort newest first
+
+Load(folder)
+	read results.xml
+	for each <Test>
+		collect its <Failure> children
+		count it as passed, skipped or failed by Result
+```
+
+Clicking a run shows a heading with the counts, one `PASS`, `FAIL`, `SKIP` or `NEW` line per test with its tick count, and under a test that did not pass one indented line per failure, ending in the file and line that recorded it. A skipped test shows its reason. A failed test that measured gets an `Open capture` button, which switches to Captures and loads its capture there; pin another capture as the baseline to compare against it. A shot that failed or is new gets a strip of images under its test: the golden, the actual frame and the diff, side by side.
+
+## Golden images
+
+A test can check what is on screen. `yield return t.Golden("Default", control)` reads the primary window back from the swapchain - after the compositor, so it is exactly what would be presented - crops it to the control, and compares it with a PNG stored next to the suite file, in `Goldens/<Action>.<Shot>.png`. Leave the control out to take the whole window.
+
+```
+t.Golden(shot, region)
+	hold the test clock
+	ask the render thread for the next frame drawn after this tick
+	the runner holds the test until the pixels arrive
+	crop to the region's rect
+	if there is no golden
+		write <Shot>.actual.png into the test's folder; the shot is New
+	else if every pixel matches
+		the shot passes
+	else
+		write <Shot>.actual.png and <Shot>.diff.png; the test fails with how many pixels differ
+	release the clock
+```
+
+The compare is exact. Goldens belong to the machine that approved them. A run also pins the display scale to 1, so the window and every golden are the same size whatever monitor the app opens on.
+
+A golden nobody has looked at proves nothing, so a missing one does not pass: the test reports `New`, which is neither a pass nor a failure and stays out of the exit code. Look at the `actual.png` - in Carbon, or in the run folder - and when it is right, run again with `--test-approve`, which writes every missing or mismatched golden and marks the shot `Approved`. Approve from a Debug build: Debug reads `Data` from the source tree, and Release reads the copy in `bin`.
+
+The clock is held while the frame is read back, because the render thread draws whatever time it finds when it gets there. With the clock still, any frame drawn after the request is the same frame. The readback itself is one extra command buffer that rides in the compositor's batch: it moves the presented image to a copy layout, copies it into a host-visible buffer, and moves it back before present. The swapchain can be read only because a test run creates it with `TransferSrc`, which a normal launch does not.

@@ -2,6 +2,7 @@
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Rendering.Helpers;
 using ArctisAurora.Core.Rendering.Modules;
+using ArctisAurora.Core.Testing;
 using ArctisAurora.EngineWork.Rendering.Helpers;
 using ArctisAurora.EngineWork.Rendering.Modules;
 using Silk.NET.Core;
@@ -50,16 +51,21 @@ namespace ArctisAurora.EngineWork.Rendering
         internal static Queue presentQueue;                     // present surface queue
         internal static Queue compositeQueue;                   // graphics queue
         internal static CommandPool compositeCommandPool;
+        internal static object graphicsQueueLock = null!;       // transferCommandLock when transfer shares the queue
 
         internal static readonly object transferCommandLock = new object();
         internal static Queue transferQueue;                    // for buffer transfers
         internal CommandBuffer[] transferCommandBuffers = null!;
         internal static CommandPool transferCommandPool;
 
-        // images released by the transfer family, awaiting their graphics acquire
+        // images and buffers released by the transfer family, awaiting their graphics acquire
         private static readonly object acquireLock = new object();
         private static List<Image> pendingAcquires = new List<Image>();
         private static List<Image> recordingAcquires = new List<Image>();
+        private static List<Buffer> pendingBufferAcquires = new List<Buffer>();
+        private static List<Buffer> recordingBufferAcquires = new List<Buffer>();
+        internal const AccessFlags bufferReadAccess = AccessFlags.VertexAttributeReadBit | AccessFlags.IndexReadBit | AccessFlags.UniformReadBit | AccessFlags.ShaderReadBit;
+        internal const PipelineStageFlags bufferReadStages = PipelineStageFlags.VertexInputBit | PipelineStageFlags.VertexShaderBit | PipelineStageFlags.FragmentShaderBit;
 
         // Frame sync, the swapchain and the modules all live on RenderWindow — one set per OS window.
         // The timeline semaphore value is (frameCounter - MAX_FRAMES_IN_FLIGHT) * 2 + 2; modules
@@ -152,6 +158,7 @@ namespace ArctisAurora.EngineWork.Rendering
             compositeQueue = queueAllocator.AllocateQueue(vk, logicalDevice, QueueFlags.GraphicsBit);
             presentQueue = queueAllocator.AllocatePresentQueue(vk, logicalDevice);
             transferQueue = queueAllocator.AllocateQueue(vk, logicalDevice, QueueFlags.TransferBit);
+            graphicsQueueLock = queueAllocator.TransferSharesQueue ? transferCommandLock : new object();
 
             renderer.CreateSwapchain(window);
             for (int i = 0; i < window.modules.Length; i++)
@@ -635,28 +642,32 @@ namespace ArctisAurora.EngineWork.Rendering
             nint ppEnabledExtensions = Marshal.AllocHGlobal(nint.Size * enabledExtensions.Length);
             Marshal.Copy(enabledExtensions, 0, ppEnabledExtensions, enabledExtensions.Length);
 
-            float queuePriority = 1.0f;
-            DeviceQueueCreateInfo graphicsQueue = new DeviceQueueCreateInfo
+            uint[] families = new[]
             {
-                SType = StructureType.DeviceQueueCreateInfo,
-                QueueFamilyIndex = (uint)queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit),
-                QueueCount = 1,
-                PQueuePriorities = &queuePriority
-            };
-            DeviceQueueCreateInfo transferQueue = new DeviceQueueCreateInfo
+                (uint)queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit),
+                (uint)queueAllocator.GetFamilyIndex(QueueFlags.TransferBit),
+                (uint)queueAllocator.presentFamilyIndex
+            }.Distinct().ToArray();
+            int maxQueues = (int)families.Max(queueAllocator.QueueCountFor);
+            float* queuePriorities = stackalloc float[maxQueues];
+            new Span<float>(queuePriorities, maxQueues).Fill(1.0f);
+            DeviceQueueCreateInfo* queues = stackalloc DeviceQueueCreateInfo[families.Length];
+            for (int i = 0; i < families.Length; i++)
             {
-                SType = StructureType.DeviceQueueCreateInfo,
-                QueueFamilyIndex = (uint)queueAllocator.GetFamilyIndex(QueueFlags.TransferBit),
-                QueueCount = 1,
-                PQueuePriorities = &queuePriority
-            };
-            var queues = stackalloc[] { graphicsQueue, transferQueue };
+                queues[i] = new DeviceQueueCreateInfo
+                {
+                    SType = StructureType.DeviceQueueCreateInfo,
+                    QueueFamilyIndex = families[i],
+                    QueueCount = queueAllocator.QueueCountFor(families[i]),
+                    PQueuePriorities = queuePriorities
+                };
+            }
 
 
             DeviceCreateInfo createInfo = new DeviceCreateInfo
             {
                 SType = StructureType.DeviceCreateInfo,
-                QueueCreateInfoCount = 2,
+                QueueCreateInfoCount = (uint)families.Length,
                 PQueueCreateInfos = queues,
 
                 EnabledExtensionCount = (uint)enabledExtensions.Length,
@@ -728,7 +739,8 @@ namespace ArctisAurora.EngineWork.Rendering
                 ImageColorSpace = window.surfaceFormat.ColorSpace,
                 ImageExtent = window.swapchainExtent,
                 ImageArrayLayers = 1,
-                ImageUsage = ImageUsageFlags.ColorAttachmentBit | ImageUsageFlags.TransferDstBit,
+                ImageUsage = ImageUsageFlags.ColorAttachmentBit | ImageUsageFlags.TransferDstBit
+                    | (TestRunner.active ? ImageUsageFlags.TransferSrcBit : 0),
                 ImageSharingMode = SharingMode.Exclusive,
                 PresentMode = _presentMode,
                 Clipped = true,
@@ -953,17 +965,43 @@ namespace ArctisAurora.EngineWork.Rendering
                 pendingAcquires.Add(image);
         }
 
+        // Queues a buffer the transfer family released for its graphics acquire.
+        internal static void QueueAcquire(Buffer buffer)
+        {
+            lock (acquireLock)
+                pendingBufferAcquires.Add(buffer);
+        }
+
         // Records the queued acquires into this frame slot's prologue buffer.
         private void RecordAcquires(RenderWindow window, out bool recorded)
         {
             lock (acquireLock)
+            {
                 (pendingAcquires, recordingAcquires) = (recordingAcquires, pendingAcquires);
+                (pendingBufferAcquires, recordingBufferAcquires) = (recordingBufferAcquires, pendingBufferAcquires);
+            }
 
-            recorded = recordingAcquires.Count > 0;
+            recorded = recordingAcquires.Count > 0 || recordingBufferAcquires.Count > 0;
             if (!recorded) return;
 
             uint transferFamily = (uint)queueAllocator.GetFamilyIndex(QueueFlags.TransferBit);
             uint graphicsFamily = (uint)queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit);
+            BufferMemoryBarrier* bufferBarriers = stackalloc BufferMemoryBarrier[recordingBufferAcquires.Count];
+            for (int i = 0; i < recordingBufferAcquires.Count; i++)
+            {
+                bufferBarriers[i] = new BufferMemoryBarrier()
+                {
+                    SType = StructureType.BufferMemoryBarrier,
+                    SrcQueueFamilyIndex = transferFamily,
+                    DstQueueFamilyIndex = graphicsFamily,
+                    SrcAccessMask = 0,
+                    DstAccessMask = bufferReadAccess,
+                    Buffer = recordingBufferAcquires[i],
+                    Offset = 0,
+                    Size = Vk.WholeSize
+                };
+            }
+
             ImageMemoryBarrier* barriers = stackalloc ImageMemoryBarrier[recordingAcquires.Count];
             for (int i = 0; i < recordingAcquires.Count; i++)
             {
@@ -988,10 +1026,11 @@ namespace ArctisAurora.EngineWork.Rendering
                 Flags = CommandBufferUsageFlags.OneTimeSubmitBit
             };
             vk.BeginCommandBuffer(cb, ref beginInfo);
-            vk.CmdPipelineBarrier(cb, PipelineStageFlags.TopOfPipeBit, PipelineStageFlags.FragmentShaderBit, 0, 0, null, 0, null, (uint)recordingAcquires.Count, barriers);
+            vk.CmdPipelineBarrier(cb, PipelineStageFlags.TopOfPipeBit, PipelineStageFlags.FragmentShaderBit | bufferReadStages, 0, 0, null, (uint)recordingBufferAcquires.Count, bufferBarriers, (uint)recordingAcquires.Count, barriers);
             vk.EndCommandBuffer(cb);
 
             recordingAcquires.Clear();
+            recordingBufferAcquires.Clear();
         }
 
         internal void Draw(RenderWindow window)
@@ -1090,7 +1129,8 @@ namespace ArctisAurora.EngineWork.Rendering
             };
 
             // compositor batch
-            CommandBuffer compositorCB = window.compositor.commandBuffers[imageIndex];
+            bool readback = ScreenReadback.Record(window, imageIndex, out CommandBuffer readbackCB);
+            var compositorCBs = stackalloc[] { window.compositor.commandBuffers[imageIndex], readbackCB };
             var waitSemaphoresCompositor = stackalloc[] { window.timelineSemaphore, window.imageAvailableSemaphores[window.currentFrame] };
             var waitStagesCompositor = stackalloc[] { PipelineStageFlags.FragmentShaderBit, PipelineStageFlags.ColorAttachmentOutputBit };
             var signalSemaphoreRenderFinished = stackalloc[] { window.renderFinishedSemaphores[imageIndex], window.timelineSemaphore };
@@ -1116,8 +1156,8 @@ namespace ArctisAurora.EngineWork.Rendering
                 WaitSemaphoreCount = 2,
                 PWaitSemaphores = waitSemaphoresCompositor,
                 PWaitDstStageMask = waitStagesCompositor,
-                CommandBufferCount = 1,
-                PCommandBuffers = &compositorCB,
+                CommandBufferCount = readback ? 2u : 1u,
+                PCommandBuffers = compositorCBs,
                 SignalSemaphoreCount = 2,
                 PSignalSemaphores = signalSemaphoreRenderFinished,
                 PNext = &tssInfoCompositor
@@ -1125,7 +1165,10 @@ namespace ArctisAurora.EngineWork.Rendering
 
             var submits = stackalloc[] { modulesSubmit, compositorSubmit };
             //vk.ResetFences(logicalDevice, 1, ref inFlightFences[currentFrame]);
-            if (vk.QueueSubmit(compositeQueue, 2, submits, default /*inFlightFences[currentFrame]*/) != Result.Success)
+            Result submitted;
+            lock (graphicsQueueLock)
+                submitted = vk.QueueSubmit(compositeQueue, 2, submits, default /*inFlightFences[currentFrame]*/);
+            if (submitted != Result.Success)
                 throw new Exception("Failed to submit frame");
             Profiling.Zone.End("Draw.Submit");
 
@@ -1143,8 +1186,10 @@ namespace ArctisAurora.EngineWork.Rendering
                 PImageIndices = &imageIndex
             };
             Profiling.Zone.Start("Draw.Present");
-            r = window.swapchainKHR.QueuePresent(presentQueue, ref _presentInfo);
+            lock (graphicsQueueLock)
+                r = window.swapchainKHR.QueuePresent(presentQueue, ref _presentInfo);
             Profiling.Zone.End("Draw.Present");
+            if (readback) ScreenReadback.Complete(window, waitValue + 4);
             bool resized = window.os.frameBufferResized;
             bool requested = window.rebuildRequested;
             if (r == Result.ErrorOutOfDateKhr || r == Result.SuboptimalKhr || resized || requested)

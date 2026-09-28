@@ -6,6 +6,27 @@
       <xs:enumeration value="View.SplitDown" />
     </xs:restriction>
   </xs:simpleType>
+  <xs:simpleType name="Test">
+    <xs:union memberTypes="actions:Any">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="TextInput.TypeWritesText" />
+          <xs:enumeration value="Commands.HelpListsCommands" />
+          <xs:enumeration value="Commands.UnknownIsAnError" />
+          <xs:enumeration value="Commands.ArgumentsConvert" />
+          <xs:enumeration value="Commands.WaitResumesOnTime" />
+          <xs:enumeration value="Console.ToggleAndAnswer" />
+          <xs:enumeration value="Input.ClickFiresRelease" />
+          <xs:enumeration value="Input.KeyWithModifierFiresKeybind" />
+          <xs:enumeration value="Input.DragMovesSplitter" />
+          <xs:enumeration value="Layout.StackPanelArranges" />
+          <xs:enumeration value="Layout.StarChildCrossSize" />
+          <xs:enumeration value="Perf.RelayoutLabels" />
+          <xs:enumeration value="Visual.PanelAndLabel" />
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
   <xs:simpleType name="Input">
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>
@@ -66,21 +87,6 @@
           <xs:enumeration value="Window.Minimize" />
           <xs:enumeration value="Window.MaximizeRestore" />
           <xs:enumeration value="Window.Close" />
-        </xs:restriction>
-      </xs:simpleType>
-    </xs:union>
-  </xs:simpleType>
-  <xs:simpleType name="Test">
-    <xs:union memberTypes="actions:Any">
-      <xs:simpleType>
-        <xs:restriction base="xs:string">
-          <xs:enumeration value="Commands.HelpListsCommands" />
-          <xs:enumeration value="Commands.UnknownIsAnError" />
-          <xs:enumeration value="Commands.ArgumentsConvert" />
-          <xs:enumeration value="Commands.WaitResumesOnTime" />
-          <xs:enumeration value="Console.ToggleAndAnswer" />
-          <xs:enumeration value="Layout.StackPanelArranges" />
-          <xs:enumeration value="Layout.StarChildCrossSize" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>

@@ -16,6 +16,8 @@
           <xs:enumeration value="Carbon.SlideLeft" />
           <xs:enumeration value="Carbon.SlideRight" />
           <xs:enumeration value="Carbon.SwapStrips" />
+          <xs:enumeration value="Carbon.ShowCaptures" />
+          <xs:enumeration value="Carbon.ShowTests" />
           <xs:enumeration value="Settings.Open" />
           <xs:enumeration value="Settings.Save" />
           <xs:enumeration value="Settings.Apply" />
@@ -78,8 +80,13 @@
           <xs:enumeration value="Commands.ArgumentsConvert" />
           <xs:enumeration value="Commands.WaitResumesOnTime" />
           <xs:enumeration value="Console.ToggleAndAnswer" />
+          <xs:enumeration value="Input.ClickFiresRelease" />
+          <xs:enumeration value="Input.KeyWithModifierFiresKeybind" />
+          <xs:enumeration value="Input.DragMovesSplitter" />
           <xs:enumeration value="Layout.StackPanelArranges" />
           <xs:enumeration value="Layout.StarChildCrossSize" />
+          <xs:enumeration value="Perf.RelayoutLabels" />
+          <xs:enumeration value="Visual.PanelAndLabel" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>

@@ -1,6 +1,6 @@
-# Test framework — agreed plan, slice 1 landed
+# Test framework — agreed plan, all five slices landed
 
-**Agreed:** 2026-09-25, amended 2026-09-27. **Slice 1 landed 2026-09-27**; slices 2–5 not started.
+**Agreed:** 2026-09-25, amended 2026-09-27. **Slices 1–4 landed 2026-09-27, slice 5 2026-09-28 — plan complete.**
 **What it reads:** [../Decisions/engine-testing.md](../Decisions/engine-testing.md) (what landed and why),
 [../Decisions/engine-profiling.md](../Decisions/engine-profiling.md) (captures, `ProfileScenario`),
 [../Decisions/carbon-frame-viewer.md](../Decisions/carbon-frame-viewer.md).
@@ -33,15 +33,34 @@ Settled. Do not re-litigate without asking.
 | # | Slice | Status |
 |---|---|---|
 | 1 | Runner, XML suites, `Check`, fixed clock, OS input unwired, Boot, `results.xml`, exit code | **landed 2026-09-27** |
-| 2 | Carbon Tests view — lists runs from a host's `Tests` folder; per-test pass/fail, failure text and source line; the results reader sits beside the writer (the `FrameCaptureReader` precedent). No run button | not started |
-| 3 | Input helpers — `MoveTo`, `Click(control)`, `Drag`, `Key(key, mods)`, `Type(text)` through the `InputHandler` handlers `WireInput` would have bound; the runner owns `isInWindow` | not started |
-| 4 | Perf — `Measure(warmup, frames)` under `Profiling.CaptureUntilFlush`; p50/p95/max/alloc per zone via `FrameCaptureReader`; budgets in the suite XML and/or an approved baseline XML; a Debug build reports `Skipped — unoptimized JIT`; Carbon opens a failure against its baseline; decide whether `--profile-scenario` becomes `--test=Perf.*` | not started |
-| 5 | Visual — swapchain readback under `--test`; golden PNGs compared with ImageSharp (already referenced); `actual.png` + `diff.png`; `--test-approve`; a new golden reports `New`, not `Pass`, until looked at; Carbon shows golden/actual/diff side by side | not started |
+| 2 | Carbon Tests view — lists runs from a host's `Tests` folder; per-test pass/fail, failure text and source line; the results reader sits beside the writer (the `FrameCaptureReader` precedent). No run button | **landed 2026-09-27** — [[carbon-frame-viewer]] §17 |
+| 3 | Input helpers — `MoveTo`, `Click(control)`, `Drag`, `Key(key, mods)`, `Type(text)` through the `InputHandler` handlers `WireInput` would have bound; the runner owns `isInWindow` | **landed 2026-09-27** — [[engine-testing]] § Slice 3 |
+| 4 | Perf — `Measure(warmup, frames)` under `Profiling.CaptureUntilFlush`; p50/p95/max/alloc per zone via `FrameCaptureReader`; budgets in the suite XML and/or an approved baseline XML; a Debug build reports `Skipped — unoptimized JIT`; Carbon opens a failure against its baseline; decide whether `--profile-scenario` becomes `--test=Perf.*` | **landed 2026-09-27** as `StartMeasure`/`EndMeasure`, suite-XML budgets only — [[engine-testing]] § Slice 4 |
+| 5 | Visual — swapchain readback under `--test`; golden PNGs compared with ImageSharp (already referenced); `actual.png` + `diff.png`; `--test-approve`; a new golden reports `New`, not `Pass`, until looked at; Carbon shows golden/actual/diff side by side | **landed 2026-09-28** — scale 1 under `--test`, exact compare, crop to a control, CLI-only approve — [[engine-testing]] § Slice 5 |
+
+## Slice 3–4 shape, agreed (user, 2026-09-27 — recommended on every fork)
+
+- **Helpers queue a scripted gesture and return its tick count**: `yield return t.Click(button);`. The runner
+  feeds one step per tick from `Session.OnTick` (`Main.Logic`), so it lands in the next tick's `Main.Input`.
+- `Click` = move → down → up → settle, and fails if `UIEngine.HitTest` at the point is not the control or inside
+  it. `Key` = mods down → key → key up → mods up. `Type` = per char key down + `ProcessCharInput`, then key up.
+- **Keys and mouse buttons go straight to `keyTracker.EnqueueEvent` with engine `Keys`**; move, char and scroll
+  through their handlers. Rejected: a reverse `MapKey` table (~120 entries) to call `ProcessKeyboard`.
+- `Type` presses the real key for letters, digits and space, **`Keys.AnySymbol` itself** for anything else.
+- New `WindowRoot.ToWindowSpace` (inverse of `ToDesignSpace`); `SeedIsInWindow` sets `false` under `--test`.
+- `Type` test lives in Thorium — `AnySymbol → Text.Write` is bound only in Thorium's `InputMap`.
+- **Perf: `StartMeasure()` / `EndMeasure()`** — the test drives its own per-tick work between them; warm-up is
+  running it before `StartMeasure`. Capture goes to `<run>\<Suite.Name>\` via a `directory` on
+  `FrameSpool.BeginSession` (no `Prune`), ended by a non-terminal `Profiling.EndCapture`.
+- **Budgets in the suite XML only** (`<Budget Zone Thread P50 P95 Max AllocKB/>`); no baseline capture yet.
+- **`Skipped`** for Debug and for Release without `PROFILE`; not counted in the exit code. Measuring build:
+  `dotnet build -c Release -p:DefineConstants="TRACE;PROFILE"` — no `Profile` configuration.
+- **`--profile-scenario` stays separate** — exploratory, no pass/fail; `--test=` has no wildcard.
 
 ## Facts established while designing
 - `ProfileScenario` is the template: a ticking `Entity` driving the editor from inside `Main.Logic`.
-- Swapchain images are created `ColorAttachment | TransferDst` in two places (`Swapchain`, `Renderer`); slice 5 has to
-  find which is live.
+- Swapchain images are created `ColorAttachment | TransferDst` in two places (`Swapchain`, `Renderer`); the live one
+  is `Renderer.CreateSwapchain` — `Swapchain` serves only the legacy `RendererTypes`.
 - `Engine.WireInput` binds six callbacks — `ProcessMouseMove`, `ProcessMouseClick`, `ProcessKeyboard`,
   `ProcessCharInput`, `RenderWindow.MouseCrossedBorder`, `ProcessScrollWheel` — slice 3's injection points.
   `AGlfwWindow.SeedIsInWindow` reads OS hover at window creation, outside them.

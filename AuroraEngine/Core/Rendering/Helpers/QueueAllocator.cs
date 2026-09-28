@@ -16,6 +16,7 @@ namespace ArctisAurora.Core.Rendering.Helpers
     {
         public QueueFamilyProperties[] properties; 
         private Dictionary<QueueFlags, QueueCapability> _capabilities = new Dictionary<QueueFlags, QueueCapability>();
+        private Dictionary<QueueFlags, int> _queueIndex = new Dictionary<QueueFlags, int>();
         public int presentFamilyIndex = -1;
 
         public QueueAllocator(Vk vk, ref PhysicalDevice gpu)
@@ -64,6 +65,12 @@ namespace ArctisAurora.Core.Rendering.Helpers
 
             if (presentFamilyIndex == -1)
                 throw new Exception("No queue family supports presentation to the window surface");
+
+            // queue index per role
+            int graphics = GetFamilyIndex(QueueFlags.GraphicsBit);
+            int transfer = GetFamilyIndex(QueueFlags.TransferBit);
+            _queueIndex[QueueFlags.GraphicsBit] = 0;
+            _queueIndex[QueueFlags.TransferBit] = transfer == graphics && properties[transfer].QueueCount > 1 ? 1 : 0;
         }
 
         private QueueCapability Get(QueueFlags flag)
@@ -83,13 +90,32 @@ namespace ArctisAurora.Core.Rendering.Helpers
 
         public bool CanConcurrent(QueueFlags flag) => Get(flag).count > 1;
 
+        // Queues the device creates in a family: one past the highest index handed out there.
+        public uint QueueCountFor(uint family)
+        {
+            int count = 1;
+            foreach (KeyValuePair<QueueFlags, int> slot in _queueIndex)
+                if (GetFamilyIndex(slot.Key) == family)
+                    count = Math.Max(count, slot.Value + 1);
+            return (uint)count;
+        }
+
+        // True when the transfer queue is the same VkQueue as the graphics or present queue.
+        public bool TransferSharesQueue
+        {
+            get
+            {
+                int transfer = GetFamilyIndex(QueueFlags.TransferBit);
+                return _queueIndex[QueueFlags.TransferBit] == 0 && (transfer == GetFamilyIndex(QueueFlags.GraphicsBit) || transfer == presentFamilyIndex);
+            }
+        }
+
         public Queue AllocateQueue(Vk vk, Device device, QueueFlags flag)
         {
             QueueCapability cap = Get(flag);
             if (cap.familyIndex == -1)
                 throw new Exception($"No queue available for flag: {flag}");
-            vk.GetDeviceQueue(device, (uint)cap.familyIndex, (uint)cap.defaultIndex, out Queue queue);
-            cap.defaultIndex++;
+            vk.GetDeviceQueue(device, (uint)cap.familyIndex, (uint)_queueIndex.GetValueOrDefault(flag), out Queue queue);
             return queue;
         }
 

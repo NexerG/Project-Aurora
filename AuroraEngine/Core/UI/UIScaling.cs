@@ -1,4 +1,5 @@
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Testing;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
 
@@ -14,7 +15,7 @@ namespace ArctisAurora.Core.UI
 
         public static float Zoom => Math.Clamp(SettingsRegistry.Get<UISettings>().zoom.percent, minZoom, maxZoom) / 100f;
 
-        public static float For(RenderWindow window) => window.os.contentScale * Zoom;
+        public static float For(RenderWindow window) => (TestRunner.active ? 1f : window.os.contentScale) * Zoom;
 
         // A design size in the pixels a window opened from source needs.
         public static uint ToPixels(RenderWindow source, uint design) => (uint)MathF.Ceiling(design * For(source));

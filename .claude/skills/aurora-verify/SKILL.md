@@ -1,6 +1,6 @@
 ---
 name: aurora-verify
-description: Verify a change to Aurora and work out which verification claim is honest. Use before reporting a change as done or working, before calling something an engine defect, and whenever driving the app with synthetic input or screen capture — the capture and input paths here have both produced false results before.
+description: Verify a change to Aurora and work out which verification claim is honest (builds clean, test-, golden-, shot- or GUI-verified). Use before reporting a change as done or working, before calling something an engine defect, whenever a golden image or readback PNG is offered as evidence, and whenever driving the app with synthetic input or screen capture — the capture and input paths here have both produced false results before.
 ---
 
 # Verifying a change
@@ -17,11 +17,20 @@ list already uses. Running and writing tests, and poking a running app with `--s
 | **builds clean** / **compile-verified** | it compiles | `dotnet build` |
 | **boot-verified** | the app started and got through bootstrap | launch it, watch for the throw |
 | **test-verified** | named tests covering the change passed under `--test` | `<Host>.exe --test[=<Suite>]` (`aurora-test`); a logic check, not a visual one |
+| **golden-verified** | a `t.Golden` shot matched, pixel for pixel, a golden a person approved | `--test` (`aurora-test` § Golden images); only as good as the approval |
+| **shot-verified** | you looked at a readback PNG of the presented frame yourself | a throwaway `t.Golden` test, Read its `actual.png` (`aurora-test`) |
 | **GUI-verified** | someone looked at the window and saw the behaviour | capture, or the user looked |
 | **NOT GUI-verified** | the honest default | say it out loud |
 
 `NOT GUI-verified` is not a failure state and is written all over the WIP list. Claiming a rung you did not
 reach is the failure state.
+
+Performance is a separate axis: a timing claim names its build, run count and tool, and follows `aurora-perf`.
+
+**A readback is not GUI-verified.** It proves what the swapchain held under a test run — fixed clock, display
+scale 1, no OS input, no idle waiting — not what the user sees with real input, DPI and window chrome. Write
+`golden-verified` or `shot-verified`, and still `NOT GUI-verified` next to it. A golden you approved in the same
+change is `shot-verified`, not `golden-verified`: the approval is the thing being checked.
 
 Bootstrap gives one check for free: an action name in `AuroraEngine/Data/XML/Documents/Bootstrap.bootstrap.xml`
 or a host's `Data/XML/Documents/Inputs/InputMap.inputs.xml` that resolves to nothing throws at
@@ -45,6 +54,11 @@ Three hosts boot the engine, each with its own `Data/` beside its exe, so "the a
 `AuroraEditor.exe`. `ArctisAurora.exe` sits in those folders too — it is the engine assembly, not the host.
 
 ## Capture
+
+**Try the readback first.** If a test can set the scene up, `t.Golden("Window")` in a throwaway test gives the
+presented frame as a PNG from inside the process, with none of the traps below (`aurora-test` § Looking at what the
+app draws). `capture.ps1` is for what a test cannot show: a normally launched app, idle and wake behaviour, OS window
+chrome, the real display scale, and secondary windows.
 
 Three things that do not work, so they are not worth retrying:
 

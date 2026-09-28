@@ -356,6 +356,32 @@ namespace ArctisAurora.Core.Diagnostics
             Interlocked.Increment(ref _session);
         }
 
+        // Records every frame of every thread into directory until EndCapture.
+        internal static void CaptureInto(string directory)
+        {
+            FrameSpool.BeginSession("Burst", 0, directory);
+            _sessionFrames = -1;
+            Interlocked.Increment(ref _session);
+        }
+
+        // Stops recording; every thread hands its batch at its next frame. The spool keeps running.
+        internal static void EndCapture()
+        {
+            _sessionFrames = 0;
+            Interlocked.Increment(ref _session);
+        }
+
+        // True once every batch is handed and written, and the capture's files are closed.
+        internal static bool TryFinishCapture() =>
+            Volatile.Read(ref _heldBatches) == 0 && FrameSpool.TryEndSession();
+
+        // whether this build records frames at all
+#if DEBUG || PROFILE
+        internal const bool compiledIn = true;
+#else
+        internal const bool compiledIn = false;
+#endif
+
         // Opens a boot capture when --profile or --profile=N is on the command line. Runs before the
         // bootstrap phase, which is the only way the phase itself lands in one.
         public static bool ArmBoot()

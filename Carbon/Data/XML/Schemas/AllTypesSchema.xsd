@@ -4,6 +4,7 @@
   <xs:simpleType name="Settings">
     <xs:restriction base="xs:string">
       <xs:enumeration value="CaptureRoot" />
+      <xs:enumeration value="TestRoot" />
       <xs:enumeration value="Carbon" />
       <xs:enumeration value="Bind" />
       <xs:enumeration value="InputBindings" />
@@ -53,6 +54,8 @@
       <xs:enumeration value="SessionList" />
       <xs:enumeration value="SpanChartMode" />
       <xs:enumeration value="SpanChart" />
+      <xs:enumeration value="TestResults" />
+      <xs:enumeration value="TestRunList" />
       <xs:enumeration value="ZoneTable" />
       <xs:enumeration value="Run" />
       <xs:enumeration value="Button" />
@@ -217,6 +220,7 @@
   <xs:simpleType name="Test">
     <xs:restriction base="xs:string">
       <xs:enumeration value="Test" />
+      <xs:enumeration value="Budget" />
       <xs:enumeration value="TestSuite" />
     </xs:restriction>
   </xs:simpleType>

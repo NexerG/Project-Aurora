@@ -38,6 +38,14 @@ namespace ArctisAurora.EngineWork.Rendering
         internal ulong frameCounter;
         internal int currentFrame;
 
+        // test readback — main asks, the render thread fills
+        internal volatile bool readbackRequested;
+        internal int readbackEpoch;
+        internal volatile byte[]? readbackPixels;
+        internal uint readbackWidth;
+        internal uint readbackHeight;
+        internal Format readbackFormat;
+
         // rendering
         internal RenderingModule[] modules;
         internal CompositorModule compositor = null!;

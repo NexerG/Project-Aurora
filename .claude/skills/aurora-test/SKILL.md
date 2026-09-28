@@ -1,6 +1,6 @@
 ---
 name: aurora-test
-description: Run, write and read Aurora's in-engine tests, and drive a running app through its console instead of synthetic OS input. Use when a change needs checking, when writing a test or a suite, when a --test run fails and you need to know why, and whenever you would otherwise reach for SetCursorPos, keybd_event, SendKeys or capture.ps1 to poke the app.
+description: Run, write and read Aurora's in-engine tests — logic checks, input, and golden-image (screenshot) checks — and drive a running app through its console instead of synthetic OS input. Use when a change needs checking, when writing a test or a suite, when a --test run fails or reports NEW and you need to know why, when a visual change needs a golden or you want to see what the app draws, and whenever you would otherwise reach for SetCursorPos, keybd_event, SendKeys or capture.ps1 to poke or look at the app.
 ---
 
 # Testing Aurora from inside the engine
@@ -10,10 +10,13 @@ Two tools replace driving the app from outside:
 | Need | Tool |
 |---|---|
 | a pass/fail answer about behaviour | a test, run with `--test` |
+| a pass/fail answer about what is drawn | a test ending in `t.Golden`, run with `--test` |
+| a picture of what the app draws, for you to look at | a throwaway test ending in `t.Golden("Window")` |
 | state from a running app, or one action in it | a console command, sent with `--send` |
 
-Both run inside the engine, so none of `aurora-verify`'s synthetic-input traps apply. A passing test earns
-**test-verified** on `aurora-verify`'s ladder — a logic check, never a visual one.
+All of them run inside the engine, so none of `aurora-verify`'s synthetic-input or capture traps apply. A passing
+test earns **test-verified** on `aurora-verify`'s ladder, a passing golden **golden-verified**, and a readback PNG
+you looked at yourself **shot-verified**.
 
 ## Running tests
 
@@ -22,11 +25,13 @@ Thorium/bin/Debug/net10.0-windows10.0.22621.0/Thorium.exe --test > <scratchpad>/
 ```
 
 - Any working directory works. `--test=<Suite>` runs one suite. The app exits by itself; the exit code is the number
-  of failed entries.
-- `grep -aE '\[Test\]' run.txt` — one `PASS`/`FAIL` line per test, then `N passed, M failed — <results.xml>`.
+  of failed entries. Add `--test-approve` to write missing or mismatched goldens (see Golden images).
+- `grep -aE '\[Test\]' run.txt` — one `PASS`/`FAIL`/`SKIP`/`NEW` line per test (`APPROVED <path>` per golden
+  written), then `N passed, M failed, K skipped, J new — <results.xml>`. `SKIP` and `NEW` are not in the exit code.
   Don't read the whole log.
 - `results.xml` lands in `%APPDATA%\<Host>\Tests\<yyyyMMdd-HHmmss>\`: `<Test Suite Name Result Ticks>`, with
-  `<Failure Message File Line>` children.
+  `<Failure Message File Line>` and `<Shot Name Result Golden Actual Diff>` children. A shot's PNGs are in
+  `<run>\<Action>\`.
 - **Boot** is always first: the host's own UI runs 60 ticks, and Boot fails on any `Error`/`Fatal` logged since
   launch. It fails today on pre-existing errors (WIP list). A change caused a Boot failure only if the error *kinds*
   changed — group them and compare with a run from before the change:
@@ -35,9 +40,10 @@ Thorium/bin/Debug/net10.0-windows10.0.22621.0/Thorium.exe --test > <scratchpad>/
   grep stops matching partway through.
 - Engine suites run in every host; a host's own suites only in that host.
 
-A run changes the app, on purpose: the clock is fixed at 1/60 s a tick, no window gets OS mouse or keyboard
-callbacks, idle waiting is off, and settings come from an emptied `%APPDATA%\<Host>\TestSettings` — the user's
-settings, layout and vault list are never touched.
+A run changes the app, on purpose: the clock is fixed at 1/60 s a tick, the display scale is 1 whatever the monitor,
+no window gets OS mouse or keyboard callbacks, idle waiting is off, the swapchain is created readable
+(`TransferSrc`), and settings come from an emptied `%APPDATA%\<Host>\TestSettings` — the user's settings, layout and
+vault list are never touched.
 
 ## Writing a test
 
@@ -60,6 +66,11 @@ private static IEnumerator<int> StarChildCrossSize(TestContext t)
 - `t.Check(bool, "…")` records its file:line on failure and carries on. Word the message as the expectation.
 - A test also fails on an exception (throw site reported), a timeout, or any `Error`/`Fatal` logged while it ran.
   Console `error:` answers and the runner's own lines log at `Warn`, so they never count.
+- Input: `yield return t.Click(control)` / `t.Drag(control, toDesignPoint)` / `t.Key(Keys.S, Keys.LeftControl)` /
+  `t.Type("text")` / `t.MoveTo(control)`. Each returns the ticks its gesture takes; when the yield returns it has
+  been handled. `Click`/`MoveTo`/`Drag` fail the test if the control's centre hits something else. Keybinds are
+  host data — a test needing one (`AnySymbol → Text.Write` for typing) belongs to a host that binds it.
+- Perf tests (`StartMeasure`/`EndMeasure`, `<Budget>`) and everything about measuring: `aurora-perf`.
 - List it in a suite — one file per suite, the file name is the suite name:
 
 ```xml
@@ -72,11 +83,47 @@ private static IEnumerator<int> StarChildCrossSize(TestContext t)
 `Timeout` is milliseconds of test-clock time, default 10000. A suite line naming no test fails, and so does
 `--test=<Suite>` naming no suite. New file → `_Build/GenerateNamespaces.cmd`.
 
+## Golden images
+
+```csharp
+t.Show(panel);
+yield return 2;
+yield return t.Golden("Default", panel);   // leave the control out for the whole window
+```
+
+- `t.Golden(shot, control)` holds the test clock, reads the primary window back from the swapchain (after the
+  compositor, before present), crops to the control's rect and compares **exactly** with
+  `<suite file's folder>/Goldens/<Action>.<Shot>.png` — engine suites' goldens sit in `AuroraEngine/Data/…/Tests/Goldens/`.
+- No golden → the test reports `NEW` and writes `<run>\<Action>\<Shot>.actual.png` only. **Read that PNG** (the Read
+  tool shows images) and check it is what the fixture should draw, then run again with `--test --test-approve` from a
+  **Debug** build — Debug resolves `Data` to the source tree, Release to its `bin` copy. Commit the golden PNG.
+- A mismatch fails with `N px differ, max channel delta d` (or `size WxH, golden WxH`) and writes `actual.png` and
+  `diff.png` — the golden greyed, differing pixels red. Read the diff before deciding the golden is stale; approve only
+  a change you meant.
+- Goldens belong to the machine and GPU that approved them; the scale is pinned to 1, so monitor DPI does not matter.
+- Several shots in one test need distinct names. Settle first: two ticks after `Show`, and let any animation finish —
+  the clock is held only while the readback is pending.
+- Carbon's Tests view shows a failed or new shot's golden, actual and diff side by side.
+
+## Looking at what the app draws
+
+For anything a test can set up, a throwaway test is the camera — in-process, so no foreground lock, focus theft or
+DPI crop to get wrong. Show the fixture (or leave the host's own tree and drive it — `CarbonActions.ShowTests()`,
+a `Load(folder)`, clicks), then end with `yield return t.Golden("Window");`. The run reports `NEW`; Read
+`<run>\<Action>\Window.actual.png`. Delete the throwaway test and suite afterwards. What a test cannot show — a normally
+launched app, idle/wake behaviour, OS window chrome, the real display scale, secondary windows — is still
+`aurora-verify`'s `capture.ps1`.
+
 Traps:
 - **Build fixtures in code.** A `*.ui.xml` loads by name through the asset registry; there is no fixture loader.
 - **Idle behaviour cannot be tested.** Idle waiting is off under `--test`, so wake and idle bugs only show against a
   normally launched app.
 - **A test that hangs inside one tick hangs the process** — the timeout counts ticks, not wall time.
+- **A readback costs ticks against `Timeout`** — main runs unpaced while it waits: 4 ticks in Thorium, 121 in Carbon.
+- **A throwaway golden lives twice.** The build copies `Data` into `bin/…/Data`, and a rebuild does not delete the
+  copy; remove a throwaway PNG (or suite) from both, or the next run still finds it.
+- **Only the primary window is read back.** A shot of a menu or torn-off tab window is not possible yet.
+- **Glyphs the UI font lacks draw as blanks** (`Δ`, `—`) — keep test and failure text ASCII if Carbon should show it.
 - **Changing the runner itself?** Write throwaway tests that fail each way — false check, exception, timeout, logged
   error, unknown name — run them, then delete them. A runner that passes everything is the failure to rule out.
 
