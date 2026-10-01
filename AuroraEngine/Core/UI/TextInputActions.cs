@@ -1,6 +1,8 @@
 using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace ArctisAurora.Core.UI
 {
@@ -26,6 +28,7 @@ namespace ArctisAurora.Core.UI
         bool Copy();
         bool Cut();
         bool Paste(string text);
+        bool PasteImage(Image<Rgba32> image);
     }
 
     // Keybind actions for text editing. They live in the engine rather than in a host so an
@@ -93,9 +96,15 @@ namespace ArctisAurora.Core.UI
         public static void Paste()
         {
             string? text = ClipboardText.Get();
-            if (string.IsNullOrEmpty(text)) return;
+            if (!string.IsNullOrEmpty(text))
+            {
+                ToClipboardTarget(target => target.Paste(text));
+                return;
+            }
 
-            ToClipboardTarget(target => target.Paste(text));
+            if (!ClipboardImage.TryGet(out Image<Rgba32>? image)) return;
+            using (image)
+                ToClipboardTarget(target => target.PasteImage(image));
         }
 
         // Walks up from the active control until a target handles the request.
@@ -167,6 +176,32 @@ namespace ArctisAurora.Core.UI
 
         [A_XSDActionDependency("List.UpperRoman", "Input", "Numbers the caret's list level I, II, III")]
         public static void MarkUpperRoman() => Editor()?.SetListMarker(ListMarker.UpperRoman);
+        #endregion
+
+        #region ---- picture wrap ----
+        [A_XSDActionDependency("Picture.WrapInline", "Input", "Puts the selected picture in line with the text")]
+        public static void WrapInline() => Editor()?.SetPictureWrap(PictureWrap.Inline);
+
+        [A_XSDActionDependency("Picture.WrapSquare", "Input", "Wraps text around the selected picture's box")]
+        public static void WrapSquare() => Editor()?.SetPictureWrap(PictureWrap.Square);
+
+        [A_XSDActionDependency("Picture.WrapTight", "Input", "Wraps text around the selected picture's opaque outline")]
+        public static void WrapTight() => Editor()?.SetPictureWrap(PictureWrap.Tight);
+
+        [A_XSDActionDependency("Picture.WrapTopAndBottom", "Input", "Keeps text above and below the selected picture only")]
+        public static void WrapTopAndBottom() => Editor()?.SetPictureWrap(PictureWrap.TopAndBottom);
+
+        [A_XSDActionDependency("Picture.WrapBehind", "Input", "Puts the selected picture behind the text")]
+        public static void WrapBehind() => Editor()?.SetPictureWrap(PictureWrap.Behind);
+
+        [A_XSDActionDependency("Picture.WrapInFront", "Input", "Puts the selected picture in front of the text")]
+        public static void WrapInFront() => Editor()?.SetPictureWrap(PictureWrap.InFront);
+
+        [A_XSDActionDependency("Picture.CollideBox", "Input", "Wraps text around the turned picture's bounding box")]
+        public static void CollideBox() => Editor()?.SetPictureCollision(PictureCollision.Box);
+
+        [A_XSDActionDependency("Picture.CollideShape", "Input", "Wraps text around the turned picture's own shape")]
+        public static void CollideShape() => Editor()?.SetPictureCollision(PictureCollision.Shape);
         #endregion
 
         [A_XSDActionDependency("Text.Indent", "Input", "Nests the list items under the caret one level deeper")]

@@ -1,6 +1,9 @@
+using ArctisAurora.Core.Animation;
 using ArctisAurora.Core.Data;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.EngineWork;
+using ArctisAurora.EngineWork.Rendering;
 using System.Globalization;
 using System.Numerics;
 using System.Runtime.InteropServices;
@@ -114,6 +117,9 @@ namespace ArctisAurora.Core.UI
         public const uint inlineBit = 0x80000000;
         public const uint gradientBit = 0x40000000;
 
+        // no fill at all; the edge still draws
+        public const uint clear = inlineBit | gradientBit;
+
         // block layout: surfaces × states, ink and muted ink per surface, the two raw inks, the edge accent,
         // then the ground's ink stepped once
         private const uint surfaceCount = 8;
@@ -146,6 +152,28 @@ namespace ArctisAurora.Core.UI
             if (string.IsNullOrEmpty(name)) return null;
             if (byName.TryGetValue(name, out PaletteDefinition palette)) return palette;
             throw new Exception($"Palette '{name}' is not defined in any Palettes/*.palette.xml.");
+        }
+
+        // Crossfades the app to a palette, then makes it the default and re-rounds every window.
+        public static void Switch(PaletteDefinition to)
+        {
+            PaletteDefinition from = Default;
+            if (to == from) return;
+
+            Animations.FadeSlots(from.firstSlot, to.firstSlot, (int)blockSize, to.themeFade, Curve.Ease(EaseKind.CubicInOut), () =>
+            {
+                Default = to;
+                foreach (RenderWindow window in Engine.windows.Values)
+                    window.os.RoundCorners();
+            });
+        }
+
+        [A_XSDActionDependency("Palettes.Set", "Console")]
+        private static string Set(string name)
+        {
+            if (!byName.TryGetValue(name, out PaletteDefinition palette)) return $"error: no palette named {name}";
+            Switch(palette);
+            return "ok";
         }
 
         [A_XSDActionDependency("Palettes.LoadPalettes", "Bootstrap")]

@@ -43,9 +43,9 @@ is on the same row (`visual` → `VulkanControl`), resolved as it is drawn and f
 |---|---|
 | `authored layout` | the inherited XML sizing attrs (see XML authoring); `SetSize`, `SetWidth`, `SetHeight`, `IsWidthStar`, `IsHeightStar` |
 | `paint` | colour, alpha, corner radii, edge, gradient (`gradientId`, word rebuilt in `InheritPaint`); `kind`, `sampler`, `SetUVRect`; palette — `role`, `paletteName`, `ownPalette`, `palette`, `groundBelow`, `colorAuthored`; `PaintOr`, `CopyPaint`; virtual `SetPaint`, `ApplyRole`, `PaintRow` (the drawn row — Clear gate, button state); `RolePaint`, `InheritPaint` (called by `UIEngine.Collect` each frame); shape — `edgeRole`, C#-only `cornerRole`/`accentRole`, `ApplyShape` (from the setters and `InheritPaint`); animation — `effect`/`RestartEffect`, `clip` (played in `OnStart`), `hoverClip`, `pressClip`, `stateBinding`, `RunClip`, `StopClip`, `Interacted` (hooks in the base `OnPointerEnter/Exit/Press/Release`, cleanup in `OnDestroy`) |
-| `layout state` | `arrangedRect`, `DesiredSize`, `ClipRect`; flags `isMeasureDirty`, `isArrangeDirty`, `hidden`; `InvalidateLayout`, `InvalidateArrange`, `Hide`, `Show` |
+| `layout state` | `arrangedRect`, `DesiredSize`, `ClipRect`; `rotation` (`Quaternion` about the centre — sets `ArrangeFlags.Rotated`; emit, clip, subtree bounds and hit-test turn with it, [[note-images]]); flags `isMeasureDirty`, `isArrangeDirty`, `hidden`; `InvalidateLayout`, `InvalidateArrange`, `Hide`, `Show` |
 | `layout (two-pass)` | `Measure`, `Arrange` (non-virtual entries), `MeasureCore`, `ArrangeCore` (what a control with its own layout overrides), `WriteArranged` (clip inheritance), `ArrangeByAlignment`, `RefreshSubtreeCache`, `Emit` |
-| `pointer` | `onEnter`…`onScroll` + `RegisterOnX` + virtual `OnPointerX`; `hitTestable`; `ActiveContextTarget`, `takesActiveControl`; `contextMenu`, `stopsContextMenu`; drag: `draggable`, `StartDrag`, `onDrag`, `onDragStop`, `DraggingOverStart`/`DraggingOver`/`DraggingOverEnd`, `FinishDrag`, `DraggedOutOfWindow`/`DraggedIntoWindow`, `ChildDraggedOut` |
+| `pointer` | `onEnter`…`onScroll` + `RegisterOnX` + virtual `OnPointerX`; `hitTestable`; `HitsShape` (unturned point, default true); `ActiveContextTarget`, `takesActiveControl`; `contextMenu`, `stopsContextMenu`; drag: `draggable`, `StartDrag`, `onDrag`, `onDragStop`, `DraggingOverStart`/`DraggingOver`/`DraggingOverEnd`, `FinishDrag`, `DraggedOutOfWindow`/`DraggedIntoWindow`, `ChildDraggedOut` |
 | `tree` | `AddChild` (throws on a second child), `RemoveChild`, `OnChildDetached` (a child destroyed while attached — marks order dirty, invalidates layout), `FindByName`, `MarkTreeOrderDirty` |
 
 Static, outside regions: `EnumColorToHex`, `HexToRGB`.
@@ -145,7 +145,11 @@ Why: [[ui-palettes]].
 
 - **TextRunControl** abstract `<TextRun>` · Control — a paragraph as one control, a GPU quad per visible
   glyph. `spans` of `StyleSpan` (`count`, `style`, `colorHex`, `fontName`, `fontSize`, `gradient`,
-  `strikethrough`, `underline`, `highlightHex`, `stylingType`, `fontSizeAuthored`, `IsBold`/`IsItalic`), `SetSpans`, `style`, `lineHeight`.
+  `strikethrough`, `underline`, `highlightHex`, `stylingType`, `fontSizeAuthored`, `IsBold`/`IsItalic`; picture:
+  `imageSource`, `imageWidth`, `imageHeight`, `imageRotation`, `collision`, `Rotation`, `IsPicture`, `AsText`), `SetSpans`, `style`, `lineHeight`. A picture
+  span draws one image quad (`PictureSize`, `WriteImage` — turned, centred in its turned box); `PictureAt`, `PictureBox` (the line box), `PictureFrame` (drawn rect + turn); a press on a picture calls
+  `IGlyphPressTarget.PicturePressed(run, index, button)` instead of `GlyphPressed`; `LayoutAround(slots)` re-lays
+  lines around floats (`laidAround`), `PictureSizeAt`; every line geometry use adds `TextLine.left` [[note-images]].
   `kind` is `MTSDFControl`, so its children get the ground under it, not its ink. `Emit` writes a segment's
   highlight (`WriteHighlight`, gapped over `selectedFrom/To`) before its glyphs and underline/strike (`WriteRect`)
   after. [[text-decorations-and-colour]].
@@ -174,17 +178,26 @@ Why: [[ui-palettes]].
   declares `ListMarker` and `ListMarkers` (`Format`, `ShapeIcon`, `IsNumbered`) [[list-markers]]. Region `text and spans`:
   `InsertText`, `RemoveText`, `SplitAt`, `AppendBlock`, `Snapshot`/`SliceSnapshot`/`Restore`/`From`,
   `InsertSlice`/`AppendSlice`, `StyleAt`, `StyleRange`, `SplitSpanAt`, `MergeSpans`. A boundary belongs to the
-  span **after** it. Replaces `Block`/`ContentBlock` + `TextRun`.
+  span **after** it — except a picture span, which never grows: `TextSpanBeside`. `PictureChar` is U+FFFC;
+  `SetPicture`.
+  Replaces `Block`/`ContentBlock` + `TextRun`.
 - **Run** `<Run>` — a run as the file writes it; exists at load and save only. `Text`, `Bold`, `Italic`,
   `Strikethrough`, `Underline`, `ColorHex`, `HighlightHex`, `ControlColor`, `Gradient`, `FontName`, `FontSize`, `FontSizeAuthored`,
-  `StylingType`.
+  `StylingType`, `Image`, `Width`, `Height`.
 - **DocumentControl** (no XML) · ContainerControl, `IGlyphPressTarget` — the content area. Regions `caret`
   (`SetCaret`, `CollapseSelection`, `GlyphPressed`/`OnPointerPress` → `PressAt`, `OnPointerTap`), `caret navigation` (`CaretPoint`,
   `CaretAtPoint`, `CaretOffText`, `AdjacentBlock`), `selection` (`SelectWord`, `SelectAll`,
   `OrderedSelection`, `Select`, `InSelection`, `SelectedFragment`, `CopySelection`), `text drag` (`BeginTextDrag`,
-  `TextDragSource`, `ShowDropAt`/`HideDrop` — `dropCaret` is also the drag token; [[text-drag-and-drop]]), highlights inserted at the **head** of `children`, after the page panels, so they paint behind the text),
-  `pages` (`page`, `zoom`, `Paginate` — blocks laid on paper and line tops rewritten, `ArrangePages` — page panels at the very head, `Mm`),
-  `editing` (`DeleteSelection(restoreSelection)`, `PasteText`, `InsertAt`, `DropSelection`, `Insert`, `FragmentFromText`, `ForDestination` — [[text-clipboard]]; `SplitBlock`, `TypeChar`, `Blocks` — flat, table cells included; `TableViewport`,
+  `TextDragSource`, `ShowDropAt`/`HideDrop` — `dropCaret` is also the drag token; [[text-drag-and-drop]]), `pictures`
+  (`PicturePressed`, `SelectedPicture`, `PictureFrame` (rect + quaternion), `ArrangePictureFrame` — frame and handles turned
+  with the picture, `Begin/Resize/EndPictureResize`, `Begin/Rotate/EndPictureRotate`, `SetPicture`, `SetPictureWrap`,
+  `SetPictureCollision`, `MinPictureY`, nested public `PictureHandle` (`Side`) and `PictureRotator` (edge-only ring,
+  band `HitsShape`); frame, ring, then handles collected after the caret) and
+  `floating pictures` (`RegisterFloats`, `WrapsAround`, `FloatSlots : ILineSlots` with `Outline`/`TurnedSpan`, `SyncFloatViews`,
+  `ArrangeFloats`, `Begin/Move/EndPictureMove`, `PlaceFloat`, `AnchorFor`, nested public `FloatingPicture` — press selects, press on
+  the selected one drags; behind views before the blocks in `children`, front ones after — [[note-images]]), highlights inserted at the **head** of `children`, after the page panels, so they paint behind the text),
+  `pages` (`page`, `zoom`, `Paginate` — blocks laid on paper and line tops rewritten, paragraphs a float reaches laid around it, `ArrangePages` — page panels at the very head, `Mm`),
+  `editing` (`DeleteSelection(restoreSelection)`, `PasteText`, `PasteImage`, `InsertAt`, `DropSelection`, `Insert`, `FragmentFromText`, `ForDestination` — [[text-clipboard]]; `SplitBlock`, `TypeChar`, `Blocks` — flat, table cells included; `TableViewport`,
   `OneContainer`), `lists` (`TypeListPrefix`,
   `SetListMarker`, `ListsChanged`, `RenumberLists` — run from `MeasureCore` when `listsDirty`,
   `ClearListAtCaret`, `ShiftListLevel`, `SetBlockList`), `styling` (`StyleSource`, `DisarmStyle`, `KeepDeletedStyle`,
@@ -206,7 +219,7 @@ Why: [[ui-palettes]].
   `needsNaming`, `FocusCaret`; regions `styling` (forwards under a `BeginStep`; also `SetChecked`, `ShiftListLevel`,
   `Page`/`SetPage`, and the non-undoable `SetPalette`/`ApplyPalette`, `SetLayout`, `SetFrontmatterValue`), `selection` (`SelectLine`, `BeginSelectionDrag`, `OnDrag` + autoscroll), `caret movement`
   (`MoveCaret`, `MoveWord`, `MoveToEnd`), `editing` (`Backspace(word)`, `Delete(word)`, `SplitBlock`, `TypeChar`),
-  `clipboard` (`Copy`, `Cut`, `Paste`), `text drop` (`DraggingOver*`, `FinishDrag`), `history`
+  `clipboard` (`Copy`, `Cut`, `Paste`, `PasteImage` — saves `attachments/`, `.txt` refuses), `text drop` (`DraggingOver*`, `FinishDrag`), `history`
   (`BeginStep`/`Undo`/`Redo`/`MarkDirty`), `focus`. `ArrangeCore` scrolls to the caret and **must never exit with
   the arrange flag set**. XML adds `CaretColorHex`, `SelectionColorHex` to the scrollable's. Old
   `DocumentEditorControl`.
@@ -232,7 +245,7 @@ Why: [[ui-palettes]].
   `Write(XElement) → string`. Regions `read`, `write`. [[note-file-formats]]
 - **DocumentEdits.cs** — `DocumentAddress` (`(block, offset)`), `BlockSnapshot`,
   `DocumentFragment`, and the records `TextEdit`, `SplitEdit`, `DeleteRangeEdit`,
-  `StyleRangeEdit`, `BlockStateEdit`. Undo currency is snapshots and fragments, never control references — undo rebuilds
+  `StyleRangeEdit`, `BlockStateEdit`, `PictureEdit`. Undo currency is snapshots and fragments, never control references — undo rebuilds
   blocks. Why: [[ui-engine-stack]] § landing 6c.
 
 ## Layout containers

@@ -196,18 +196,19 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         internal override void UpdateModule(int currentFrame)
         {
+            int tableVersion = TextureAsset.TableVersion;
             if (_frameBuiltCapacity[currentFrame] != _mirrorCapacity[currentFrame])
             {
                 CreateDescriptorPool(currentFrame, 0);
                 AllocateDescriptorSets(currentFrame);
                 UpdateDescriptorSets(currentFrame, _drawCount);
                 _frameBuiltCapacity[currentFrame] = _mirrorCapacity[currentFrame];
-                _frameTableVersion[currentFrame] = TextureAsset.TableVersion;
+                _frameTableVersion[currentFrame] = tableVersion;
             }
-            else if (_frameTableVersion[currentFrame] != TextureAsset.TableVersion)
+            else if (_frameTableVersion[currentFrame] != tableVersion)
             {
                 WriteTextureTable(currentFrame);
-                _frameTableVersion[currentFrame] = TextureAsset.TableVersion;
+                _frameTableVersion[currentFrame] = tableVersion;
             }
 
             WriteCommandBuffers(currentFrame);

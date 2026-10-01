@@ -17,8 +17,28 @@ namespace ArctisAurora.Core.UI
     public static class DocumentXml
     {
         #region ---- parse ----
-        public static RichTextDocument Load(string path) =>
-            Parse(XDocument.Load(path).Root ?? throw new Exception($"Note '{path}' is empty."));
+        public static RichTextDocument Load(string path)
+        {
+            XElement root = XDocument.Load(path).Root ?? throw new Exception($"Note '{path}' is empty.");
+            ResolvePictures(root, Path.GetDirectoryName(Path.GetFullPath(path))!);
+            return Parse(root);
+        }
+
+        // Picture paths in a note's tree: relative to its folder on disk, absolute in memory.
+        internal static void ResolvePictures(XElement root, string folder)
+        {
+            foreach (XAttribute image in Pictures(root))
+                image.Value = Path.GetFullPath(Path.Combine(folder, image.Value));
+        }
+
+        internal static void RelativePictures(XElement root, string folder)
+        {
+            foreach (XAttribute image in Pictures(root))
+                image.Value = Path.GetRelativePath(folder, image.Value).Replace('\\', '/');
+        }
+
+        private static List<XAttribute> Pictures(XElement root) =>
+            root.Descendants().Where(e => e.Name.LocalName == "Run").Select(e => e.Attribute("Image")).OfType<XAttribute>().ToList();
 
         // Builds a note from a <Document> tree, whichever file format produced it.
         public static RichTextDocument Parse(XElement root)
@@ -131,6 +151,7 @@ namespace ArctisAurora.Core.UI
         {
             XNamespace ns = XSDGenerator.NamespaceFor("UI");
             XElement root = ToXml(document);
+            RelativePictures(root, Path.GetDirectoryName(Path.GetFullPath(path))!);
 
             string dir = Path.GetDirectoryName(path);
             if (!string.IsNullOrEmpty(dir))

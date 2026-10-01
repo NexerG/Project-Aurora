@@ -64,6 +64,12 @@ bool isGradient(uint word)
     return (word & 0xC0000000u) == 0x40000000u;
 }
 
+// both tag bits: no fill, the edge alone
+bool isClear(uint word)
+{
+    return (word & 0xC0000000u) == 0xC0000000u;
+}
+
 float median(float r, float g, float b) {
     return max(min(r, g), min(max(r, g), b));
 }
@@ -210,9 +216,19 @@ void main()
             edgeColor = ramp.rgb;
             band *= ramp.a;
         }
-        color = mix(color, edgeColor, band);
-        opacity = max(opacity, band);
+        if (isClear(fragPaint))
+        {
+            color = edgeColor;
+            opacity = band;
+        }
+        else
+        {
+            color = mix(color, edgeColor, band);
+            opacity = max(opacity, band);
+        }
     }
+    else if (isClear(fragPaint))
+        opacity = 0.0f;
 
     // mask — the last silhouette, so it cuts the edge band along with the fill
     if (fragType == PANEL_CONTROL && fragTextureIndex != NO_TEXTURE)

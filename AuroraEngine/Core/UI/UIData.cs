@@ -38,7 +38,8 @@ namespace ArctisAurora.Core.UI
         Hidden = 2,
         MeasureDirty = 4,
         ArrangeDirty = 8,
-        Remeasured = 16
+        Remeasured = 16,
+        Rotated = 32
     }
 
     // LayoutNode.kind: laid out through its own MeasureCore/ArrangeCore, or flattened into the layout walk.
@@ -103,6 +104,22 @@ namespace ArctisAurora.Core.UI
             float rr = MathF.Max(a.Right, b.Right);
             float rb = MathF.Max(a.Bottom, b.Bottom);
             return new LayoutRect(rx, ry, rr - rx, rb - ry);
+        }
+
+        // The bounding box of this rect turned about its centre.
+        public LayoutRect Turned(Quaternion rotation)
+        {
+            Vector2 half = new Vector2(width, height) * 0.5f;
+            Vector2 extent = Vector2.Max(Vector2.Abs(Vector2.Transform(half, rotation)),
+                                         Vector2.Abs(Vector2.Transform(new Vector2(half.X, -half.Y), rotation)));
+            return new LayoutRect(x + half.X - extent.X, y + half.Y - extent.Y, extent.X * 2f, extent.Y * 2f);
+        }
+
+        // A point brought back from this rect turned about its centre into the rect's own frame.
+        public Vector2 Unturned(Vector2 point, Quaternion rotation)
+        {
+            Vector2 centre = new Vector2(x + width * 0.5f, y + height * 0.5f);
+            return centre + Vector2.Transform(point - centre, Quaternion.Conjugate(rotation));
         }
 
         public static LayoutRect Empty => new LayoutRect(0, 0, 0, 0);

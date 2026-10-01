@@ -5,4 +5,5 @@
 	<Test Action="Layout.StackPanelArranges"/>
 	<Test Action="Layout.StarChildCrossSize"/>
 	<Test Action="Layout.GridAutoRowWrapsAtColumn"/>
+	<Test Action="Layout.RotatedHitTest"/>
 </TestSuite>

@@ -18,4 +18,16 @@
 		<ContextButton Text="i. ii. iii." Action="List.LowerRoman"/>
 		<ContextButton Text="I. II. III." Action="List.UpperRoman"/>
 	</ContextSubmenu>
+	<ContextSubmenu Text="Wrap text">
+		<ContextButton Text="In line with text" Action="Picture.WrapInline"/>
+		<ContextButton Text="Square" Action="Picture.WrapSquare"/>
+		<ContextButton Text="Tight" Action="Picture.WrapTight"/>
+		<ContextButton Text="Top and bottom" Action="Picture.WrapTopAndBottom"/>
+		<ContextButton Text="Behind text" Action="Picture.WrapBehind"/>
+		<ContextButton Text="In front of text" Action="Picture.WrapInFront"/>
+	</ContextSubmenu>
+	<ContextSubmenu Text="Collision">
+		<ContextButton Text="Bounding box" Action="Picture.CollideBox"/>
+		<ContextButton Text="Picture shape" Action="Picture.CollideShape"/>
+	</ContextSubmenu>
 </ContextMenu>

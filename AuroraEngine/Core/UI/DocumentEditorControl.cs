@@ -5,6 +5,8 @@ using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
 using ArctisAurora.EngineWork.Rendering;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 using System.Numerics;
 
 namespace ArctisAurora.Core.UI
@@ -269,6 +271,22 @@ namespace ArctisAurora.Core.UI
 
             using (BeginStep("List marker"))
                 if (content.SetListMarker(marker)) MarkDirty();
+        }
+
+        public void SetPictureWrap(PictureWrap wrap)
+        {
+            if (content == null) return;
+
+            using (BeginStep("Wrap picture"))
+                if (content.SetPictureWrap(wrap)) MarkDirty();
+        }
+
+        public void SetPictureCollision(PictureCollision collision)
+        {
+            if (content == null) return;
+
+            using (BeginStep("Picture collision"))
+                if (content.SetPictureCollision(collision)) MarkDirty();
         }
 
         // The note's page format. Not undoable.
@@ -587,6 +605,33 @@ namespace ArctisAurora.Core.UI
             bool pasted;
             using (BeginStep("Paste"))
                 pasted = content.PasteText(text);
+
+            if (pasted)
+            {
+                MarkDirty();
+                RequestScrollToCaret();
+            }
+            return true;
+        }
+
+        // Saves the picture beside the note under attachments/ and puts it in at the caret.
+        public bool PasteImage(Image<Rgba32> image)
+        {
+            if (content == null || session == null) return false;
+            if (Path.GetExtension(session.path).Equals(".txt", StringComparison.OrdinalIgnoreCase))
+            {
+                Log.Info($"a plain text note cannot hold a picture; paste refused.");
+                return true;
+            }
+
+            string folder = Path.Combine(Path.GetDirectoryName(session.path)!, "attachments");
+            Directory.CreateDirectory(folder);
+            string file = Path.Combine(folder, $"{Path.GetFileNameWithoutExtension(session.path)} {DateTime.Now:yyyyMMdd-HHmmss}.png");
+            image.SaveAsPng(file);
+
+            bool pasted;
+            using (BeginStep("Paste picture"))
+                pasted = content.PasteImage(file);
 
             if (pasted)
             {

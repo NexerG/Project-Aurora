@@ -200,7 +200,7 @@ void main() {
 
     // pixels from the control's centre in design space, where +y is down and corners are named
     vec2 size = vec2(length(model[0].xyz), length(model[1].xyz));
-    fragLocal = tPos.xy - model[3].xy;
+    fragLocal = inPosition.xy * size;
     fragHalfExtent = size * 0.5f;
 
     // effect — scale and rotate about the centre, then offset; the SDF stays in the quad's own frame

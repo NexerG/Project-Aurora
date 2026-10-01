@@ -59,6 +59,10 @@ Every button eases between rest, hover and press instead of snapping. A button o
 
 Picking a palette in Settings fades the whole app into it rather than snapping. When the palette is picked, main copies the colours currently on screen into the new palette's slots, switches every control over to the new palette, and hands the fades to the animation step, which eases each slot back to its real colour over the new palette's `ThemeFade` seconds. Because the copy happens before the switch, no frame of the new theme shows before the fade begins. Main's own colour decisions — which text colour contrasts with a panel — read the palettes' load-time colours and never a colour mid-fade.
 
+The console command `Palettes.Set <name>` runs the same fade without touching the saved setting, so a script or test can switch themes.
+
+While a theme fade is running the app keeps drawing frames instead of waiting for input, so the fade plays to its end even if nothing else moves.
+
 ### Clips
 
 A clip is a keyframed animation written in XML. Every `*.anim.xml` under `XML/Documents/Animations` is read at boot; a `<Clip>` holds one `<Track>` per property, and each track lists `<Key Time Value Ease/>` entries. A key's `Ease` shapes the stretch from that key to the next, as in CSS, and `Value` is one, two or four comma-separated numbers in the same order the property travels as a `Vector4`. A clip lasts as long as its latest key; a shorter track holds its last value until then, so looping tracks stay in step. `Loop` is `Once`, `Loop` or `PingPong`.

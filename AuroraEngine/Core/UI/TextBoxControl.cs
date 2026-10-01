@@ -3,6 +3,8 @@ using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 using System.Numerics;
 using System.Text;
 
@@ -278,6 +280,8 @@ namespace ArctisAurora.Core.UI
             InvalidateLayout();
             return true;
         }
+
+        public bool PasteImage(Image<Rgba32> image) => false;
 
         private string Selected() => line.text[Math.Min(anchor, cursor)..Math.Max(anchor, cursor)];
 

@@ -604,6 +604,20 @@ namespace ArctisAurora.Core.UI
             protected set => arrange.clip = value;
         }
 
+        // Turn about the arranged centre.
+        public Quaternion rotation
+        {
+            get => _rotation;
+            set
+            {
+                if (_rotation == value) return;
+                _rotation = value;
+                SetFlag(ArrangeFlags.Rotated, !value.IsIdentity);
+                InvalidateArrange();
+            }
+        }
+        private Quaternion _rotation = Quaternion.Identity;
+
         public bool isMeasureDirty => HasFlag(ArrangeFlags.MeasureDirty);
         public bool isArrangeDirty => HasFlag(ArrangeFlags.ArrangeDirty);
         public bool hidden => HasFlag(ArrangeFlags.Hidden);
@@ -715,7 +729,7 @@ namespace ArctisAurora.Core.UI
 
             ref ArrangeData a = ref arrange;
             a.arranged = finalRect;
-            a.clip = LayoutEngine.ClipOf(finalRect, parentControl != null, parentClip, a.flags);
+            a.clip = LayoutEngine.ClipOf(_rotation.IsIdentity ? finalRect : finalRect.Turned(_rotation), parentControl != null, parentClip, a.flags);
         }
 
         // Places one child in a box by its own alignment, stretching it on either axis that asks.
@@ -767,6 +781,7 @@ namespace ArctisAurora.Core.UI
 
             ref ControlGeometry g = ref quads.GetSpan<ControlGeometry>()[row];
             g.matrix = Matrix4x4.CreateScale(r.width, r.height, 1f)
+                     * Matrix4x4.CreateFromQuaternion(_rotation)
                      * Matrix4x4.CreateTranslation(r.x + r.width * 0.5f, r.y + r.height * 0.5f, z);
             g.clip = new Vector4(c.x, c.y, c.Right, c.Bottom);
             g.gradientRect = new Vector4(r.x, r.y, r.Right, r.Bottom);
@@ -855,6 +870,9 @@ namespace ArctisAurora.Core.UI
         // Decoration drawn inside a control that owns the interaction — a caret, a selection box.
         // Skipped by the hit-test so it does not swallow the click it sits over.
         public bool hitTestable = true;
+
+        // A point inside the unrotated arranged rect that still misses the control's shape.
+        protected internal virtual bool HitsShape(Vector2 point) => true;
 
         // The control that takes the active context when this one is pressed. Itself by default.
         public virtual Control? ActiveContextTarget() => this;

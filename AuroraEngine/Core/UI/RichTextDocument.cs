@@ -2,6 +2,7 @@ using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.Registry;
 using System.Globalization;
 using System.Numerics;
+using System.Xml.Linq;
 
 namespace ArctisAurora.Core.UI
 {
@@ -40,13 +41,19 @@ namespace ArctisAurora.Core.UI
         {
             RichTextDocument document = Path.GetExtension(path).ToLowerInvariant() switch
             {
-                ".md" => DocumentXml.Parse(MarkdownFormat.Read(File.ReadAllText(path), Path.GetFileNameWithoutExtension(path))),
+                ".md" => DocumentXml.Parse(MarkdownPictures(MarkdownFormat.Read(File.ReadAllText(path), Path.GetFileNameWithoutExtension(path)), path)),
                 ".txt" => DocumentXml.Parse(PlainTextFormat.Read(File.ReadAllText(path), Path.GetFileNameWithoutExtension(path))),
                 _ => DocumentXml.Load(path)
             };
 
             document.created ??= Stamp(File.GetCreationTime(path));
             return document;
+        }
+
+        private static XElement MarkdownPictures(XElement root, string path)
+        {
+            DocumentXml.ResolvePictures(root, Path.GetDirectoryName(Path.GetFullPath(path))!);
+            return root;
         }
 
         // A local time as the properties store it.
@@ -57,7 +64,11 @@ namespace ArctisAurora.Core.UI
         {
             switch (Path.GetExtension(path).ToLowerInvariant())
             {
-                case ".md": File.WriteAllText(path, MarkdownFormat.Write(DocumentXml.ToXml(this))); break;
+                case ".md":
+                    XElement root = DocumentXml.ToXml(this);
+                    DocumentXml.RelativePictures(root, Path.GetDirectoryName(Path.GetFullPath(path))!);
+                    File.WriteAllText(path, MarkdownFormat.Write(root));
+                    break;
                 case ".txt": File.WriteAllText(path, PlainTextFormat.Write(DocumentXml.ToXml(this))); break;
                 default: DocumentXml.Save(this, path); break;
             }
