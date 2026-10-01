@@ -11,6 +11,33 @@
       <xs:simpleType>
         <xs:restriction base="xs:string">
           <xs:enumeration value="TextInput.TypeWritesText" />
+          <xs:enumeration value="TextInput.WordMoves" />
+          <xs:enumeration value="TextInput.UndoReselects" />
+          <xs:enumeration value="TextInput.PasteRoundTrip" />
+          <xs:enumeration value="TextInput.PastePlainLines" />
+          <xs:enumeration value="TextInput.FieldClipboardAndUndo" />
+          <xs:enumeration value="TextInput.DragMovesText" />
+          <xs:enumeration value="TextInput.DragBetweenNotes" />
+          <xs:enumeration value="TextInput.RightModifiers" />
+          <xs:enumeration value="TextInput.StyleSurvivesEnterAndBackspace" />
+          <xs:enumeration value="TextInput.UnderlineToggles" />
+          <xs:enumeration value="TextInput.HighlightApplies" />
+          <xs:enumeration value="TextInput.DecorationsDraw" />
+          <xs:enumeration value="TextInput.ColorPickerPicks" />
+          <xs:enumeration value="TextInput.MarkdownColourRoundTrip" />
+          <xs:enumeration value="TextInput.ListMarkersPerList" />
+          <xs:enumeration value="TextInput.EmptyItemEnterOutdents" />
+          <xs:enumeration value="TextInput.ListMarkersDraw" />
+          <xs:enumeration value="TextInput.TableEnterAddsLine" />
+          <xs:enumeration value="TextInput.TableTabStepsCells" />
+          <xs:enumeration value="TextInput.TableLeftCrossesCells" />
+          <xs:enumeration value="TextInput.TableBackspaceKeepsCells" />
+          <xs:enumeration value="TextInput.TableWideScrolls" />
+          <xs:enumeration value="TextInput.TableXmlRoundTrip" />
+          <xs:enumeration value="TextInput.TableDraws" />
+          <xs:enumeration value="TextInput.TableOverflowDraws" />
+          <xs:enumeration value="TextInput.TableWheelAxes" />
+          <xs:enumeration value="TextInput.TableSplitsAcrossPages" />
           <xs:enumeration value="Commands.HelpListsCommands" />
           <xs:enumeration value="Commands.UnknownIsAnError" />
           <xs:enumeration value="Commands.ArgumentsConvert" />
@@ -21,8 +48,10 @@
           <xs:enumeration value="Input.DragMovesSplitter" />
           <xs:enumeration value="Layout.StackPanelArranges" />
           <xs:enumeration value="Layout.StarChildCrossSize" />
+          <xs:enumeration value="Layout.GridAutoRowWrapsAtColumn" />
           <xs:enumeration value="Perf.RelayoutLabels" />
           <xs:enumeration value="Visual.PanelAndLabel" />
+          <xs:enumeration value="Visual.ImageScaled" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>
@@ -36,10 +65,25 @@
           <xs:enumeration value="Text.Write" />
           <xs:enumeration value="Text.Backspace" />
           <xs:enumeration value="Text.Delete" />
+          <xs:enumeration value="Text.Copy" />
+          <xs:enumeration value="Text.Cut" />
+          <xs:enumeration value="Text.Paste" />
           <xs:enumeration value="Text.NewBlock" />
           <xs:enumeration value="Text.SelectAll" />
           <xs:enumeration value="Text.Bold" />
           <xs:enumeration value="Text.Italic" />
+          <xs:enumeration value="Text.Underline" />
+          <xs:enumeration value="List.Disc" />
+          <xs:enumeration value="List.Circle" />
+          <xs:enumeration value="List.Triangle" />
+          <xs:enumeration value="List.TriangleOutline" />
+          <xs:enumeration value="List.Square" />
+          <xs:enumeration value="List.SquareOutline" />
+          <xs:enumeration value="List.Decimal" />
+          <xs:enumeration value="List.UpperAlpha" />
+          <xs:enumeration value="List.LowerAlpha" />
+          <xs:enumeration value="List.LowerRoman" />
+          <xs:enumeration value="List.UpperRoman" />
           <xs:enumeration value="Text.Indent" />
           <xs:enumeration value="Text.Outdent" />
           <xs:enumeration value="Text.Undo" />

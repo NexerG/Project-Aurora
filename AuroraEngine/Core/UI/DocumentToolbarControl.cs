@@ -76,8 +76,21 @@ namespace ArctisAurora.Core.UI
             ("Purple", "#C678DD")
         };
 
+        private static readonly (string caption, string hex)[] highlightOptions =
+        {
+            ("None", ""),
+            ("Yellow", MarkdownFormat.DefaultHighlightHex),
+            ("Green", "#C8E6A0"),
+            ("Blue", "#B4D7F5"),
+            ("Pink", "#F5C2DC"),
+            ("Orange", "#F7CFA0"),
+            ("Purple", "#D9C4F0")
+        };
+
         private readonly IconControl boldInk;
         private readonly IconControl italicInk;
+        private readonly IconControl underlineInk;
+        private readonly IconControl highlightInk;
         private readonly LabelControl stylingCaption;
         private readonly LabelControl colorInk;
         private readonly PxBox pxField;
@@ -100,6 +113,8 @@ namespace ArctisAurora.Core.UI
         // what the children were last told, so a tick that changes nothing writes nothing
         private bool? shownBold;
         private bool? shownItalic;
+        private bool? shownUnderline;
+        private string? shownHighlight;
         private TextStyleType? shownStyling;
         private string? shownColor;
         private PaletteRole? shownInk;
@@ -120,6 +135,8 @@ namespace ArctisAurora.Core.UI
             italicInk = Ink("italic");
             AddChild(IconButton(boldInk, _ => TextInputActions.Bold()));
             AddChild(IconButton(italicInk, _ => TextInputActions.Italic()));
+            underlineInk = Ink("underline");
+            AddChild(IconButton(underlineInk, _ => TextInputActions.Underline()));
             AddChild(Separator());
 
             stylingCaption = Caption(stylingOptions[0].caption);
@@ -128,6 +145,8 @@ namespace ArctisAurora.Core.UI
 
             colorInk = Caption("A");
             AddChild(CaptionButton(colorInk, 52, OpenColors));
+            highlightInk = Ink("highlight");
+            AddChild(IconButton(highlightInk, OpenHighlights));
             AddChild(Separator());
 
             pxField = new PxBox
@@ -165,6 +184,14 @@ namespace ArctisAurora.Core.UI
 
             Reflect(boldInk, source?.bold == true, ref shownBold);
             Reflect(italicInk, source?.italic == true, ref shownItalic);
+            Reflect(underlineInk, source?.underline == true, ref shownUnderline);
+
+            string? highlight = source?.highlightHex;
+            if (shownHighlight != highlight)
+            {
+                shownHighlight = highlight;
+                highlightInk.PaintOr(highlight ?? idleInkHex, PaletteRole.MutedInk);
+            }
 
             TextStyleType styling = editor?.CaretBlockStyling ?? TextStyleType.Text;
             if (shownStyling != styling)
@@ -295,7 +322,44 @@ namespace ArctisAurora.Core.UI
                 }));
             }
 
+            entries.Add(new ContextMenuLine());
+            entries.Add(new ContextMenuContent(Picker(editor, editor.StyleSource?.colorHex, hex => new StyleDelta(colorHex: hex))));
             Drop(owner, entries);
+        }
+
+        private static void OpenHighlights(ToolButton owner)
+        {
+            DocumentEditorControl editor = TextInputActions.Editor();
+            if (editor == null) return;
+
+            List<ContextMenuEntry> entries = new List<ContextMenuEntry>();
+            foreach ((string caption, string hex) in highlightOptions)
+            {
+                string picked = hex;
+                entries.Add(new ContextMenuButton(caption, () =>
+                {
+                    editor.ApplyStyle(new StyleDelta(highlightHex: picked));
+                    editor.FocusCaret();
+                }));
+            }
+
+            entries.Add(new ContextMenuLine());
+            entries.Add(new ContextMenuContent(Picker(editor, editor.StyleSource?.highlightHex ?? MarkdownFormat.DefaultHighlightHex,
+                hex => new StyleDelta(highlightHex: hex))));
+            Drop(owner, entries);
+        }
+
+        // A picker styling the editor with each pick.
+        private static ColorPickerControl Picker(DocumentEditorControl editor, string? current, Func<string, StyleDelta> delta)
+        {
+            ColorPickerControl picker = new ColorPickerControl { padding = new Thickness(4f) };
+            if (current != null) picker.hex = current;
+            picker.onPicked = hex =>
+            {
+                editor.ApplyStyle(delta(hex));
+                editor.FocusCaret();
+            };
+            return picker;
         }
 
         private static void OpenPage(ToolButton owner)
@@ -454,6 +518,8 @@ namespace ArctisAurora.Core.UI
             // The lit ones repaint from OnTick, which only writes when its cache moved.
             shownBold = null;
             shownItalic = null;
+            shownUnderline = null;
+            shownHighlight = "";
             shownInk = null;
         }
 

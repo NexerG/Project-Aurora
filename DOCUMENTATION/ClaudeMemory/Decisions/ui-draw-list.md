@@ -46,6 +46,13 @@ Two prunes, both against rects the layout pass already maintains:
   child's clip is always a subset of its parent's — `WriteArranged` either inherits it or intersects
   it — and the chain terminates at the window root's own rect, so "off screen" and "outside an
   ancestor's clip" are one test.
+- **Ranged children, added 2026-09-29.** `Collect` walks children through `Control.CollectChildren(z)`
+  (default: every child). `DocumentControl` overrides it to walk only the page sheets and blocks whose
+  band touches its clip — binary search over `blockTops`/`blockHeights`, `blockControls` for the
+  controls — plus highlights, `header` and caret, in child order. A block partly on screen still
+  emits and line-culls itself. 1M-char scenario: same ~1,605 quads; `Step.Main.DrawLists` p95 was
+  not a consistent win (1.86–2.21 → 0.59–1.87 ms, Release+PROFILE, 3 runs each), so the glyph emit,
+  not the 1,000-child loop, dominates it.
 - `Control.Emit` drops a control whose own `arranged` misses its `clip`. Children are still offered
   the walk: the clip is inherited, so theirs may sit somewhere else entirely.
 - `TextRunControl.Emit` skips whole lines outside the clip band and breaks past the bottom. The pen

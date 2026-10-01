@@ -4,7 +4,7 @@
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:import schemaLocation="EntityRegistryTypeSchema.xsd" namespace="http://arctisaurora/AuroraEntityRegistryTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:EffectLoop types:GradientKind types:GridSizeMode types:PaletteRole types:WindowCorners types:TextStyleType types:PageMode types:PageSize types:ScrollDirection types:Orientation" />
+    <xs:union memberTypes="types:ListMarker types:EffectLoop types:GradientKind types:GridSizeMode types:PaletteRole types:WindowCorners types:TextStyleType types:PageMode types:PageSize types:ScrollDirection types:Orientation" />
   </xs:simpleType>
   <xs:attributeGroup name="VaultBrowser.Attributes">
     <xs:attributeGroup ref="types:Scrollable.Attributes" />
@@ -26,11 +26,28 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:VaultBrowser.Attributes" />
   </xs:complexType>
+  <xs:simpleType name="ListMarker">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Disc" />
+      <xs:enumeration value="Circle" />
+      <xs:enumeration value="Triangle" />
+      <xs:enumeration value="TriangleOutline" />
+      <xs:enumeration value="Square" />
+      <xs:enumeration value="SquareOutline" />
+      <xs:enumeration value="Decimal" />
+      <xs:enumeration value="UpperAlpha" />
+      <xs:enumeration value="LowerAlpha" />
+      <xs:enumeration value="LowerRoman" />
+      <xs:enumeration value="UpperRoman" />
+    </xs:restriction>
+  </xs:simpleType>
   <xs:attributeGroup name="Run.Attributes">
     <xs:attribute name="Text" type="xs:string" />
     <xs:attribute name="Bold" type="xs:boolean" />
     <xs:attribute name="Italic" type="xs:boolean" />
     <xs:attribute name="Strikethrough" type="xs:boolean" />
+    <xs:attribute name="Underline" type="xs:boolean" />
+    <xs:attribute name="HighlightHex" type="xs:string" />
     <xs:attribute name="ColorHex" type="xs:string" />
     <xs:attribute name="ControlColor" type="xs:string" />
     <xs:attribute name="Gradient" type="xs:string" />
@@ -60,6 +77,15 @@
   <xs:complexType name="CheckBox">
     <xs:sequence />
     <xs:attributeGroup ref="types:Button.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="ColorPicker.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:Control.Attributes" />
+    <xs:attribute name="Hex" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="ColorPicker" type="types:ColorPicker" />
+  <xs:complexType name="ColorPicker">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:ColorPicker.Attributes" />
   </xs:complexType>
   <xs:element name="Container" type="types:Container" />
   <xs:complexType name="Container">
@@ -327,6 +353,15 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:Icon.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="Image.Attributes">
+    <xs:attributeGroup ref="EntityRegistry:Control.Attributes" />
+    <xs:attribute name="Source" type="xs:string" />
+  </xs:attributeGroup>
+  <xs:element name="Image" type="types:Image" />
+  <xs:complexType name="Image">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:Image.Attributes" />
+  </xs:complexType>
   <xs:element name="KeyCapture" type="types:KeyCapture" />
   <xs:complexType name="KeyCapture">
     <xs:sequence />
@@ -443,6 +478,14 @@
     <xs:sequence />
     <xs:attributeGroup ref="types:TextStyle.Attributes" />
   </xs:complexType>
+  <xs:attributeGroup name="ListLevel.Attributes">
+    <xs:attribute name="Marker" type="types:ListMarker" />
+  </xs:attributeGroup>
+  <xs:element name="ListLevel" type="types:ListLevel" />
+  <xs:complexType name="ListLevel">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:ListLevel.Attributes" />
+  </xs:complexType>
   <xs:attributeGroup name="DocumentLayout.Attributes">
     <xs:attribute name="LineHeight" type="xs:float" />
     <xs:attribute name="BlockSpacing" type="xs:float" />
@@ -459,6 +502,11 @@
       <xs:element minOccurs="0" maxOccurs="1" name="Page" type="types:Page">
         <xs:annotation>
           <xs:documentation>Page format; absent inherits the editor's.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="ListLevel" type="types:ListLevel">
+        <xs:annotation>
+          <xs:documentation>The marker each list level takes by default; empty inherits the editor's.</xs:documentation>
         </xs:annotation>
       </xs:element>
     </xs:sequence>

@@ -77,6 +77,21 @@ default, because a default is the hardcoding this removes. The cost is that a ho
 declares `Extend` loses shift-selection with no diagnostic — the schema enumerating the roles is what
 makes it discoverable.
 
+### 6. A keybind's `<Modifier>` matches either side (user, 2026-09-29)
+
+`<Modifier Key="LeftControl"/>` is satisfied by either Ctrl — `GestureMatcher.Held` checks the key or its
+twin (`Twin`: Control, Shift, Alt, Super, Win pairs). `IsShadowed` uses `Held` for "all held" and
+`SameModifier` for the superset test, so a bind naming `RightControl` (a rebind captured with the right key)
+still shadows a looser `LeftControl` one.
+
+- **Rejected: duplicate every bind per side in XML** — 15 more entries in Thorium alone, and duplicates of one
+  action are the case where `Rebind` makes a bind fire twice (`keybind-intent-plan`)
+- **Rejected: side-free pseudo keys (`Control`, `Shift`)** — explicit, but touches `Keys`, the tracker, capture
+  and its labels, and every input map
+- **Cost:** no bind can require one side any more; none did
+- Test `TextInput.RightModifiers` fails if `IsShadowed` reads raw keys (checked by breaking it). It cannot see
+  `SameModifier`: every shipped bind names the left keys, so the superset test matches on equal keys
+
 ## Verified
 
 - Builds clean.
@@ -90,8 +105,8 @@ makes it discoverable.
 
 ## Still open
 
-- **One member.** `Extend` is the only role. Word-wise motion (Ctrl+Arrow) and delete-word
-  (Ctrl+Backspace) are the obvious next ones and are the reason this is an enum rather than a bool.
+- ~~**One member.**~~ — `Word` (word motion and delete) and `Copy` (a text drop copies) joined
+  `Extend` on 2026-09-29. See [[text-clipboard]], [[text-drag-and-drop]].
 - **The rest of the engine still reads raw keys.** This closes the two text-editing sites only;
   anything else calling `IsKeyDown` with a literal has the same problem.
 

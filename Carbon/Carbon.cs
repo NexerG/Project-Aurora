@@ -14,7 +14,7 @@ namespace Carbon
             XSDGenerator.GenerateXSD();
 
             SettingsRegistry.SetWriteRoot(Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Carbon", "Settings"));
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Arktis", "Carbon", "Settings"));
 
             engine.Init(false);
             InputHandler.SetActiveKeybindGroup("InputMap");

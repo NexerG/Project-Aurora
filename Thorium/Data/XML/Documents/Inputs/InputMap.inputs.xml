@@ -4,11 +4,10 @@
 		  xsi:schemaLocation="http://arctisaurora/AuroraInputTypes ../../Schemas/InputTypeSchema.xsd" >
 	<NamedModifier Modifier="Extend" Key="LeftShift" />
 	<NamedModifier Modifier="Extend" Key="RightShift" />
-
-	<Keybind Trigger="Backspace" Action="ExitApplication">
-		<Modifier Key="LeftControl" />
-		<Press />
-	</Keybind>
+	<NamedModifier Modifier="Word" Key="LeftControl" />
+	<NamedModifier Modifier="Word" Key="RightControl" />
+	<NamedModifier Modifier="Copy" Key="LeftControl" />
+	<NamedModifier Modifier="Copy" Key="RightControl" />
 
 	<Keybind Trigger="AnySymbol" Action="Text.Write">
 		<Continuous />
@@ -64,6 +63,26 @@
 	</Keybind>
 
 	<Keybind Trigger="A" Action="Text.SelectAll">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="U" Action="Text.Underline">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="C" Action="Text.Copy">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="X" Action="Text.Cut">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="V" Action="Text.Paste">
 		<Modifier Key="LeftControl" />
 		<Press />
 	</Keybind>

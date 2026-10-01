@@ -253,7 +253,7 @@ namespace Thorium.Editor.CustomControls
         // built, so the caption can come from the note's own name.
         internal static TabItemControl BuildTab(string notePath)
         {
-            DocumentEditorControl editor = new DocumentEditorControl();
+            DocumentEditorControl editor = new DocumentEditorControl { contextMenu = "note" };
             editor.LoadPath(notePath);
             editor.onNamed = name => RenameNote(editor.session.path, name);
 

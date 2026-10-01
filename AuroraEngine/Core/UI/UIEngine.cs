@@ -637,7 +637,7 @@ namespace ArctisAurora.Core.UI
         // A subtree whose bounds miss the clip it inherited contributes nothing, so the walk stops
         // there — which is what keeps a scrolled document's cost proportional to the visible part.
         // Returns how many controls it reached.
-        private static int Collect(Control control, float z)
+        internal static int Collect(Control control, float z)
         {
             if (control.hidden) return 0;
 
@@ -648,11 +648,7 @@ namespace ArctisAurora.Core.UI
             control.Emit(z);
             if (a.arranged.width < detailCullSize || a.arranged.height < detailCullSize) return 1;
 
-            int walked = 1;
-            foreach (Entity child in control.children)
-                if (child is Control childControl)
-                    walked += Collect(childControl, z + Control.depthStep);
-            return walked;
+            return 1 + control.CollectChildren(z + Control.depthStep);
         }
         #endregion
     }

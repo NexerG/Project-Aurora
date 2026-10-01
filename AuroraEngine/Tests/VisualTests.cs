@@ -1,6 +1,8 @@
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Testing;
 using ArctisAurora.Core.UI;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace ArctisAurora.Tests
 {
@@ -23,6 +25,47 @@ namespace ArctisAurora.Tests
             yield return 2;
 
             yield return t.Golden("Default", panel);
+        }
+
+        [A_XSDActionDependency("Visual.ImageScaled", "Test")]
+        private static IEnumerator<int> ImageScaled(TestContext t)
+        {
+            // fixture: 1 px stripes on the left, a red-to-blue ramp on the right
+            string path = Path.Combine(Path.GetTempPath(), "Aurora.Visual.ImageScaled.png");
+            using (Image<Rgba32> fixture = new Image<Rgba32>(256, 256))
+            {
+                fixture.ProcessPixelRows(rows =>
+                {
+                    for (int y = 0; y < rows.Height; y++)
+                    {
+                        Span<Rgba32> row = rows.GetRowSpan(y);
+                        for (int x = 0; x < 128; x++)
+                            row[x] = x % 2 == 0 ? new Rgba32(0, 0, 0) : new Rgba32(255, 255, 255);
+                        for (int x = 128; x < 256; x++)
+                            row[x] = new Rgba32((byte)(255 - (x - 128) * 2), 0, (byte)((x - 128) * 2));
+                    }
+                });
+                fixture.SaveAsPng(path);
+            }
+
+            StackPanelControl panel = new StackPanelControl
+            {
+                horizontalAlignment = HorizontalAlignment.Left,
+                verticalAlignment = VerticalAlignment.Top
+            };
+            ImageControl full = new ImageControl { source = path, horizontalAlignment = HorizontalAlignment.Left };
+            ImageControl quarter = new ImageControl { source = path, preferredWidth = 64f, horizontalAlignment = HorizontalAlignment.Left };
+            panel.AddChild(full);
+            panel.AddChild(quarter);
+            t.Show(panel);
+            yield return 2;
+
+            t.Check(full.sampler != null && full.sampler == quarter.sampler, "both controls share one texture for the file");
+            t.Check(full.arrangedRect.width == 256f && full.arrangedRect.height == 256f, "unsized, the picture is its native 256x256");
+            t.Check(quarter.arrangedRect.height == 64f, "a 64 px width keeps the square aspect");
+
+            yield return t.Golden("Full", full);
+            yield return t.Golden("Quarter", quarter);
         }
     }
 }

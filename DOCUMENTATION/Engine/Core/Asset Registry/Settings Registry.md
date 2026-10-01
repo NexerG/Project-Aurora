@@ -88,7 +88,7 @@ Merging is **per attribute** for scalars, and recursive into a nested complex me
 
 `SettingsRegistry.SetWriteRoot(path)`, called by the host before `Engine.Init`, names the folder that user settings are read from last and written to. It is deliberately **not** a mount — mounting it would let a stray file there shadow engine assets and not just settings. `Save` throws if it was never set; reads work fine without one.
 
-Thorium uses `%AppData%/Thorium/Settings`.
+Thorium uses `%AppData%/Arktis/Thorium/Settings` and Carbon `%AppData%/Arktis/Carbon/Settings`.
 
 ## Saving
 

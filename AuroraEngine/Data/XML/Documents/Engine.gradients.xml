@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Gradients xmlns="http://arctisaurora/AuroraUITypes"
+		   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		   xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../Schemas/UITypeSchema.xsd" >
+
+	<!-- ColorPickerControl: the hue strip top to bottom, and the two washes over its field -->
+	<Gradient Name="picker-hue" Angle="90">
+		<Stop Color="#FF0000" Pos="0"/>
+		<Stop Color="#FFFF00" Pos="0.1667"/>
+		<Stop Color="#00FF00" Pos="0.3333"/>
+		<Stop Color="#00FFFF" Pos="0.5"/>
+		<Stop Color="#0000FF" Pos="0.6667"/>
+		<Stop Color="#FF00FF" Pos="0.8333"/>
+		<Stop Color="#FF0000" Pos="1"/>
+	</Gradient>
+
+	<Gradient Name="picker-white" Angle="0">
+		<Stop Color="#FFFFFF" Alpha="1" Pos="0"/>
+		<Stop Color="#FFFFFF" Alpha="0" Pos="1"/>
+	</Gradient>
+
+	<Gradient Name="picker-black" Angle="90">
+		<Stop Color="#000000" Alpha="0" Pos="0"/>
+		<Stop Color="#000000" Alpha="1" Pos="1"/>
+	</Gradient>
+
+</Gradients>

@@ -267,12 +267,10 @@ namespace ArctisAurora.Core.UI
         {
             if (onScroll != null) return onScroll.Invoke(e);
 
-            // A wheel with a horizontal axis drives X; a plain wheel drives Y, and falls through to X
-            // on a viewport that only scrolls sideways. GLFW reports +Y for a wheel pushed away,
-            // which moves the content up, so the offset falls.
+            // A wheel's horizontal axis drives X and its vertical axis Y, never the other. GLFW
+            // reports +Y for a wheel pushed away, which moves the content up, so the offset falls.
             if (Moved(-e.delta.X, 0f)) return true;
             if (Moved(0f, -e.delta.Y)) return true;
-            if (Moved(-e.delta.Y, 0f)) return true;
             return false;
         }
 

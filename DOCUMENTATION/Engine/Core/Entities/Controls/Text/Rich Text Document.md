@@ -26,7 +26,7 @@ A document is a flat list of blocks; a block of flowing text holds a list of inl
 - `Block` carries no `[A_XSDType]` so it is never emitted as an element — it is an `AllowedChildren` target the [[XSDGenerator]] scans for concrete blocks; content blocks use `typeof(TextInputControl)` as their inline `AllowedChildren` (expands to the one `[A_XSDType]` subtype, `Run`).
 - `Clone()` on the document / blocks / inlines is a deep copy. It was written for the working copy the editor was going to edit before a save; that is not what the edit session does, so its only callers now are `DocumentLayout.Clone` and whatever wants an independent copy of a note.
 
-Planned (not yet in code): `TextRun` gains `FontSize` (0 = inherit block default), `Underline` and a highlight color — mixed fonts/sizes word-by-word are just adjacent runs, with `StyleEquals` merging same-styled neighbours on edit. New blocks arrive via the same free round-trip: `CodeBlock` (Language attribute, monospace, no wrap; syntax coloring is computed at view time and never persisted) and `TableBlock` → `TableRow` → `TableCell` where a cell holds `List<Block>` (nested blocks; MVP fixed/star columns, no merges).
+Planned (not yet in code): `TextRun` gains `FontSize` (0 = inherit block default), `Underline` and a highlight color — mixed fonts/sizes word-by-word are just adjacent runs, with `StyleEquals` merging same-styled neighbours on edit. New blocks arrive via the same free round-trip: `CodeBlock` (Language attribute, monospace, no wrap; syntax coloring is computed at view time and never persisted). Tables landed in a different shape — see [[#Tables]].
 
 ## File formats
 A note file is text in one of three formats, and none of them builds the editor directly. `MarkdownFormat` and `PlainTextFormat` only turn text into the `<Document>`/`<Block>`/`<Run>` tree and back; `DocumentXml.Parse` is the one thing that turns a tree into blocks, whichever file it came from. An `.xml` note is that tree already, so it goes straight to `DocumentXml`.
@@ -91,20 +91,45 @@ for each owned key
 if there was no block and a value was written, the block is a new YAML one
 
 ## Lists
-A list item is block state, not a block type: `listKind` (`None`, `Bullet`, `Task`), `listLevel` and `isChecked` on `BlockControl`, written as `List`, `Level` and `Checked` on `<Block>`. `ApplyLayout` indents the text by `(level + 1) × ListIndent` and keeps one marker child in that indent — a small dot, or a checkbox that can be clicked. A split copies the kind and level to the new block and leaves it unchecked, so Enter continues a list.
+A list item is block state, not a block type: `listKind` (`None`, `Bullet`, `Task`), `listLevel`, `listMarker` and `isChecked` on `BlockControl`, written as `List`, `Level`, `Marker` and `Checked` on `<Block>`. `ApplyLayout` indents the text by `(level + 1) × ListIndent` and keeps one marker child in that indent. A split copies the kind, level and marker to the new block and leaves it unchecked, so Enter continues a list in the same marker.
+
+### Markers
+Bullets and numbers are one system. A `Bullet` item shows a `ListMarker`: one of six shapes (filled or empty circle, triangle and square) or its number written as `1.`, `A.`, `a.`, `i.` or `I.`. A shape is an `IconControl` from the default icon set, centred in the indent; a number is a `LabelControl` at the block's own font size, right-aligned against the text. Tasks keep their checkbox.
+
+An item that names no marker takes its level's default from the document layout: `<ListLevel Marker="…"/>` entries inside `DocumentLayout`, one per level and cycling past the last. The editor-wide default in `DocumentSettings.settings.xml` is a single filled circle, and like every layout value a note can carry its own.
+
+A marker is chosen per list, not per item. Right-click in the note, then **List marker**, gives every item at the caret's level of the caret's list that marker, as one undo step; a nested level below it and any other list keep theirs.
+
+Numbers are never stored. `RenumberLists` walks the blocks at the next measure after any change to the list structure and hands each item its marker and its number.
+
+#### Renumber Lists
+for each block in reading order
+	if it sits in a different container than the block before, start every count afresh
+	if it is not a list item, clear every count
+	if it is a task, clear the counts at its level and deeper, and continue
+	drop the counts deeper than its level
+	`marker` = its own marker, or its level's default
+	`number` = the count at its level + 1 when that count was for the same marker, otherwise 1
+	show `marker` with `number`
+
+A marker change at a level starts a new count, so a `1.` typed right under a bullet list reads `1.`, not the bullet list's next number.
 
 Every list change is one `BlockStateEdit`, the block snapshotted before and after, so undo and redo restore it whole.
 
 #### Type Char (c) — the list part
 if `c` is a space and the block is not code
 	if the block is not a list and its text so far is `- `
-		remove `- ` and make it a bullet
+		remove `- ` and make it a list item with the default marker
+	if the block is not a list and its text so far is digits then `. ` or `) `
+		remove it and make it a list item numbered `1.`
 	if the block is a bullet and its text so far is `[ ] ` or `[x] `
 		remove it and make it a task, checked for `[x] `
 
 #### Split Block — on an empty item
 if the caret's block is an empty list item
-	clear its kind, level and tick instead of splitting
+	if its level is above 0, outdent it one level
+	otherwise clear its kind, level, marker and tick
+	either way, do not split
 
 #### Backspace — at an item's start
 if nothing is selected, the caret is at offset 0 and the block is a list item
@@ -226,6 +251,20 @@ The caret is `(run, cursorPosition)` — the offset lives on the run, and `Docum
 
 Line start and line end are the **visual** line's, not the paragraph's, which is the only reason the point primitive is needed at all. Page up and down move by one viewport height, which is why they live on the editor rather than on `DocumentControl` — the scroll viewport is the editor's.
 
+### Word by word
+Holding the `Word` [[INPUT#Named modifiers|named modifier]] (Ctrl in Thorium) turns Left and Right into word moves, Home and End into the start and end of the note, and Backspace and Delete into word deletes. The keybinds do not change — `TextInputActions.Move` asks whether the role is held and swaps the move, the same way `Extend` already turns a move into a selection. A word uses the three character classes of [[#Word and line]], so the rule for "what is a word" lives in one place (`TextInputActions.WordEdge`) and double-click, the arrows and the single-line field all agree.
+
+#### Word Edge (text, offset, direction)
+if moving right
+	if the character ahead is not a space, skip every character of its class
+	skip every space
+else
+	skip every space behind
+	skip every character of the class behind
+return where the walk stopped
+
+At a block's edge a word move steps into the neighbouring block exactly as a character move does. A word delete is a word move with extend, then the ordinary range delete — the same "extend, then delete" trick plain Backspace uses — so it needs no deletion code of its own.
+
 Every move *requests* a scroll to the caret rather than performing one, and a move into a different run repoints `UICollisionHandling.activeControl`. That last part is not cosmetic: `Text.Write` drains characters into whatever the collision handler last made active, so a caret that arrowed into a new run without repointing it would type into the run that was clicked.
 
 ## Scrolling to the caret
@@ -339,6 +378,42 @@ Enter's new block takes the old block's styling type rather than resetting to bo
 
 Blocks live in two lists at once — `RichTextDocument.blocks`, which is what a save is written from, and the children of the `DocumentControl`, which is what layout and hit-testing walk. They are the same objects, so every structural edit updates both, which is why the control now holds the document. Rebuilding the model's list from the control tree at save time was the alternative and was rejected: it matches the "the model is the control tree" decision more honestly, but leaves the list silently stale all session for any other reader, and the vault browser and undo are both going to be readers. The duplication is the P0 model-as-controls decision showing through once more, and it goes away with the data/visualization split rather than here.
 
+## Undo puts the selection back
+Undoing a range delete re-inserts the text and then selects it again, with the caret on the end it was on before — a cut, a Delete over a selection or typing over one all come back highlighted. The delete record carries the anchor and caret it was made with. Backspace and Delete with nothing selected also delete through a one-character selection, but that selection was never the user's, so they record the anchor (where the caret really was) as both ends and undo puts back only the caret, on the correct side of the restored character.
+
+## Clipboard
+Ctrl+C, Ctrl+X and Ctrl+V are the `Text.Copy`, `Text.Cut` and `Text.Paste` actions. None of them knows about notes: each walks up from the active control to the first one implementing `IClipboardTarget` and asks it. The note editor and the single-line field are the two that do today, and a field that is not being edited says no so the walk carries on past it. The OS clipboard is read and written as plain text through GLFW (`ClipboardText`); a test run keeps it inside the process so it never overwrites the user's.
+
+A copy puts plain text on the clipboard, one line per block, and also keeps the copied range as a document fragment, formatting and all, inside the engine. A paste compares the clipboard's text with that last copy: if they match, the fragment is pasted, so bold, colours and headings survive anywhere in the same app — another tab, a split, a torn-off window. Anything else is plain text, and each line becomes a paragraph in the style and block kind at the caret.
+
+#### Paste Text (text)
+delete the selection; if it cannot be deleted, stop
+`fragment` = `text` is our last copy ? the copied fragment : paragraphs from `text`
+if `fragment` has several blocks, its last block takes the caret block's kind
+record an insert from the caret to where `fragment` ends
+insert `fragment` at the caret
+place the caret at the end of it
+
+The last-block rule is Word's: the last pasted paragraph has no paragraph end of its own, so it joins the paragraph it lands in and takes that paragraph's heading or list setting. Undo of a paste deletes exactly the inserted range and redo re-inserts it — the insert is the delete's mirror image, and the two share `InsertFragment`. A selection that crosses a table's edge copies (cells come out as paragraphs) but does not cut, since it cannot be deleted either.
+
+The single-line field has its own small history: each change records the field's text, selection and caret before and after, and pasted line breaks become spaces. It starts empty each time the field is focused, committed or cancelled.
+
+## Dragging text
+Pressing inside the selection picks it up instead of moving the caret. While it is dragged, whichever note the pointer is over shows a second caret where the text would land and scrolls when the pointer is past its edge. Releasing inside the same note moves the text as one undo step and leaves it selected; releasing in another note inserts it there and deletes it from the source, each note recording its own half. Holding the `Copy` named modifier (Ctrl) at the release copies instead of moving. Releasing inside the selection itself, or clicking it without dragging, just places the caret.
+
+#### Finish Drag (dragged, point)
+`source` = the note the drag came from; stop if it is not a text drag
+`slot` = the caret slot under `point`
+if `source` is this note
+	under one step: move or copy the selection to `slot`
+	if `slot` was inside the selection, place the caret there
+else
+	under this note's step: insert the source's selection at `slot`, selected
+	unless copying, under the source's step: delete its selection
+take the focus
+
+What the engine drags is the source note's drop marker, not the editor. A drag hides the dragged control from its own hit test so it does not find itself under the pointer; dragging the editor would hide the whole note, and the text could never be dropped back into it. The marker has no children, so hiding it hides nothing else, and the same drop code then serves the same note, another tab and another window.
+
 ## Styling what has not been typed yet
 A style picked with **nothing selected** is armed rather than discarded: bold, italic, a size from the format bar's px field or a colour are held on the `DocumentControl` as a nullable `StyleDelta` and spent on the next character typed. It is one field, `pending`, and it survives only where it was set — every caret move funnels through the three-argument `SetCaret`, which clears it, so clicking or arrowing away drops the arm the way every editor does. The one-argument overload does *not* clear, and that asymmetry is what lets the px field take the active control to be typed into and hand it back through `FocusCaret` without disarming the size it just set.
 
@@ -348,6 +423,62 @@ Spending it needs no machinery of its own. `TypeChar` writes the character into 
 
 What the format bar reflects is the *resolved* style — a `CaretStyle` of the caret's run with the arm laid over it — rather than the run's own, so B lights the moment it is pressed and not only once something has been typed. The alternative shapes were both worse: a detached `TextRun` holding the style would have been an `Entity`, allocating a pool slot and ticking for as long as it was armed, and inserting an empty styled run into the block at arm time collides with `Normalize` walking past zero-length runs, with `MergeRuns` folding it away, and with an unspent arm leaving a stray `<Run />` in the saved note. See `DOCUMENTATION/ClaudeMemory/Decisions/armed-style-at-the-caret.md`.
 
+### Keeping the style through Enter and Backspace
+An arm lasts through typing, Enter, Backspace and Delete, and is dropped by anything that moves the caret somewhere else: an arrow or Home/End key, a click, a double or triple click, select-all, undo and redo, and a paste or drop. Edits move the caret too, which is why the arm is cleared at those navigation entry points rather than in `SetCaret`.
+
+Enter keeps the style because a split that leaves either half empty gives that half the style at the split point, not the block's default — so Enter at the end of bold text starts a bold paragraph. Deleting keeps it because the range delete arms the style of the first character it removed whenever that differs from what the caret would now type; a style picked outright still wins. Backspacing out a whole bold word therefore keeps typing bold, and backspacing the plain letter in front of bold text keeps typing plain.
+
+## Decorations and colour
+A span carries `underline`, `strikethrough` and `highlightHex` beside its colour. None of them is a control: the text run writes them as flat rectangles into the same draw list its glyphs go into. For each segment of a line, the highlight goes in first, behind the glyphs; the underline and the strike line go in after them, in the text's own colour or gradient, sized as fractions of the font size.
+
+#### Emit — one segment
+if the segment is highlighted
+	if a selection covers part of it, write the highlight on either side of the selected characters
+	otherwise write it across the whole segment, line top to line bottom
+write the segment's glyphs
+if underlined, write a bar just below the baseline, as wide as the glyphs advanced
+if struck, write a bar through the middle of the lower-case letters
+
+The selection boxes sit behind the text, so a highlight drawn over them would hide the selection. Instead `ArrangeSelection` tells each selected block which characters are selected, and the highlight leaves those out.
+
+Text colour and highlight each have a dropdown on the format bar: presets, and under them a [[Color Picker Control]]. Ctrl+U toggles underline. In a Markdown note these save the way Obsidian reads them — `<span style="color:#…">`, `==…==` for the default highlight, `<mark style="background:#…">` for any other, `<u>` for underline — and read back from the same forms. See `DOCUMENTATION/ClaudeMemory/Decisions/text-decorations-and-colour.md`.
+
+## Tables
+A table is a `TableControl` sitting in the note's block list beside ordinary blocks, so `RichTextDocument.blocks` holds either kind. It inherits `GridListControl`: the columns are Fixed widths in design pixels scaled by the document zoom, the rows are Auto, and each cell is a vertical `StackPanelControl` of ordinary `BlockControl`s. A cell is a small stack of paragraphs rather than one block with hard line breaks, so Enter in a cell is the same split every paragraph already uses, and undo, joins and styling need nothing new.
+
+Columns may add up to less or more than the page is wide. Every table sits in its own horizontal-only `ScrollableControl`, so a table wider than the page scrolls sideways on its own while the note keeps its width; moving the caret into a hidden column scrolls the table to it. A vertical wheel never scrolls a sideways viewport — it passes through to the note — and a horizontal wheel over the table scrolls the table.
+
+The caret and every edit address a block by its position in `DocumentControl.Blocks()`, and that list now walks into tables: the note's blocks and every cell's blocks, row by row, left to right. Nothing about an address had to change — arrow keys, up and down by position, styling a range and every undo record already worked over that list. Tab and Shift+Tab step to the start of the next or previous cell.
+
+A delete is refused when its range is not all inside one container — the note itself, or one cell. That covers Backspace at a cell's start, Delete at its end, and a selection dragged across a table; the caret stays where it was.
+
+A table splits across pages between rows. A row that would cross a page break is pushed to the next page, and the push is stored as the gap after the row above it, so the grid's own arrangement places it. A row taller than a page is not split and runs across the break.
+
+#### Blocks ()
+for each child of the document
+	if it is a block, add it
+	else if it is a table's viewport, add every cell's blocks in reading order
+
+#### Paginate (top, bands) — a table
+`y` = `top`
+for each row
+	if it is not the first row
+		`pushed` = `bands` push (`y`, row height)
+		gap after the previous row = `pushed` − `y`
+		`y` = `pushed`
+	`y` += row height
+gap after the last row = 0
+return `y` − `top`
+
+#### Arrange Borders ()
+for each cell
+	`box` = the cell's rect with its inset added back
+	line along the top of `box`, and down its left side
+	if the cell is in the last column, line down its right side
+	if no row follows directly below, line along the bottom of `box`
+
+On disk a table is `<Table>` holding `<Column Width>` elements and `<Row>`s of `<Cell>`s, each cell holding `<Block>`s written exactly as the note's own. Tables live only in `.xml` notes; the Markdown and plain-text writers skip them. Nothing in the UI inserts a table yet. See `ClaudeMemory/Decisions/document-tables.md`.
+
 ## Status
 - P0 (model types) and P1 (XML persistence) complete; round-trip verified (in-code build + reload of code-built and hand-authored XML are byte/structurally equal).
 - P3 complete: click→caret, character input, arrow / Home / End / PageUp / PageDown navigation, and Ctrl+S through `DocumentEditSession`. Save verified against the sample note — no run gains a `FontSize`. Navigation itself is compile-verified and pending GUI verification.
@@ -355,4 +486,4 @@ What the format bar reflects is the *resolved* style — a `CaretStyle` of the c
 - P4 steps 1 and 2 complete: selection renders and is GUI-verified apart from drag auto-scroll, which the sample note is too short to exercise; deletion over a range, Backspace, Delete and Enter are bound and boot-verified but **not** GUI-verified. Step 3, Ctrl+B/I run split/merge, is next — `Bold` and `Italic` are still read by nothing.
 - Undo and select-all do not exist, which deletion is the first feature to make matter: a mis-aimed delete is recoverable only by reloading the note.
 - P5 complete: `Thorium` is a two-pane shell, a `VaultBrowser` listing a vault folder beside the editor, and `LoadPath` has a real caller at last. The vault is a settings path; the browser, being app rather than engine, lives in `Thorium` and is described in `DOCUMENTATION/ClaudeMemory/Decisions/vault-browser-and-shell.md`. Switching notes saves the one being left, since nothing tracks dirtiness and nothing can undo.
-- Bullet and task lists with nesting landed 2026-09-17, with `.md` and `.txt` notes — builds and boots, NOT GUI-verified. Numbered lists, dividers and wiki-links: not yet — added as the editor grows. Code blocks and tables are scheduled (B1/B2). L2 is dropped, L3 (paged mode) is unaffected — see [[Document Layout Engine#Status]]. Revised phase order: `DOCUMENTATION/ClaudeMemory/Context/thorium-editor-architecture.md`.
+- Bullet and task lists with nesting landed 2026-09-17, with `.md` and `.txt` notes — builds and boots, NOT GUI-verified. Numbered lists, dividers and wiki-links: not yet — added as the editor grows. Code blocks are scheduled (B1); tables landed 2026-09-29 with no insert UI — see [[#Tables]]. L2 is dropped, L3 (paged mode) is unaffected — see [[Document Layout Engine#Status]]. Revised phase order: `DOCUMENTATION/ClaudeMemory/Context/thorium-editor-architecture.md`.

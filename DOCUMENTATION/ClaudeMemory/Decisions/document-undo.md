@@ -133,21 +133,18 @@ a second.
 
 ## Still open
 
-- **`InsertFragment` has no forward counterpart to cross-check it.** ~50 lines that exist only to be
-  the inverse of `DeleteRange`, exercised by nothing else until paste lands. The cross-block case
-  with a destroyed tail run is where to look first.
+- ~~**`InsertFragment` has no forward counterpart to cross-check it.**~~ — paste and drop are its
+  forward callers since 2026-09-29 (`InsertRangeEdit`); `TextInput.PasteRoundTrip` checks a cross-block
+  paste and its undo byte-for-byte. See [[text-clipboard]].
 - **Holding Backspace is one undo step per repeat firing** — `<Repeat/>` at `KeyRepeat.Rate`, 0.03s,
   so a two-second hold is roughly 60 steps against a 500-step cap. This is what one-press-one-undo
   means, and it is the first thing coalescing would fix. Worth re-checking now that repeat actually
   works — key repeat had never fired at all until 2026-08-23, so this was theoretical.
-- **Undo restores the caret, not the selection.** Undoing a range delete brings the text back with
-  the caret at the start of it. Re-selecting needs an anchor field on `DeleteRangeEdit`. It does now
-  scroll to that caret — see [[document-caret-scrolling]].
-- **Undoing a forward `Delete` leaves the caret after the restored character** rather than before it,
-  because `RunTextEdit` puts the caret at the end of what it re-inserts. Correct for Backspace, one
-  character off for Delete.
-- **No undo in standalone `TextBoxControl`** — the rename field and the note-name prompt keep
-  Escape-to-cancel and nothing else.
+- ~~**Undo restores the caret, not the selection.**~~ — `DeleteRangeEdit` records anchor and caret
+  since 2026-09-29; Backspace/Delete's one-character selection records only the caret, which also fixed
+  the restored caret landing on the wrong side of the character. See [[text-clipboard]].
+- ~~**No undo in standalone `TextBoxControl`**~~ — a `FieldEdit` history since 2026-09-29, see
+  [[text-clipboard]].
 - **`isDirty` is not tied to the stack position**, so undoing back to the saved state still reads as
   edited.
 - **A non-`ContentBlock` block would be rebuilt as a `ContentBlock`.** `ContentBlock` is the only

@@ -96,7 +96,7 @@ skipped: it needs a declared key attribute and nothing wants it yet.
 
 `SettingsRegistry.SetWriteRoot(path)` before `Engine.Init`. That folder is read **last** (above
 every mount) and is the only thing `Save` writes to. Thorium uses
-`%AppData%/Thorium/Settings`; `Save` throws if the root was never set.
+`%AppData%/Arktis/Thorium/Settings`; `Save` throws if the root was never set.
 
 Chosen over "writes target the primary mount" ([[asset-manifest-and-import]] decision 7, which
 still governs *asset import*): a shipped game writing settings next to the exe is per-machine, not

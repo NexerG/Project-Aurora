@@ -102,9 +102,11 @@
   </xs:simpleType>
   <xs:simpleType name="UI">
     <xs:restriction base="xs:string">
+      <xs:enumeration value="ListMarker" />
       <xs:enumeration value="Run" />
       <xs:enumeration value="Button" />
       <xs:enumeration value="CheckBox" />
+      <xs:enumeration value="ColorPicker" />
       <xs:enumeration value="Container" />
       <xs:enumeration value="ContextMenu" />
       <xs:enumeration value="ContextEntry" />
@@ -132,6 +134,7 @@
       <xs:enumeration value="GridCell" />
       <xs:enumeration value="GridList" />
       <xs:enumeration value="Icon" />
+      <xs:enumeration value="Image" />
       <xs:enumeration value="KeyCapture" />
       <xs:enumeration value="Label" />
       <xs:enumeration value="MenuButton" />
@@ -142,6 +145,7 @@
       <xs:enumeration value="Document" />
       <xs:enumeration value="TextStyleType" />
       <xs:enumeration value="TextStyle" />
+      <xs:enumeration value="ListLevel" />
       <xs:enumeration value="DocumentLayout" />
       <xs:enumeration value="PageMode" />
       <xs:enumeration value="PageSize" />
@@ -210,6 +214,7 @@
   <xs:simpleType name="Test">
     <xs:restriction base="xs:string">
       <xs:enumeration value="Test" />
+      <xs:enumeration value="Budget" />
       <xs:enumeration value="TestSuite" />
     </xs:restriction>
   </xs:simpleType>

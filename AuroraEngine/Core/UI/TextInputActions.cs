@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
 
@@ -12,7 +13,19 @@ namespace ArctisAurora.Core.UI
         LineStart,
         LineEnd,
         PageUp,
-        PageDown
+        PageDown,
+        WordLeft,
+        WordRight,
+        DocumentStart,
+        DocumentEnd
+    }
+
+    // A control Ctrl+C/X/V reach. False passes the request on to the control above.
+    public interface IClipboardTarget
+    {
+        bool Copy();
+        bool Cut();
+        bool Paste(string text);
     }
 
     // Keybind actions for text editing. They live in the engine rather than in a host so an
@@ -51,19 +64,47 @@ namespace ArctisAurora.Core.UI
         [A_XSDActionDependency("Text.Backspace", "Input", "Deletes the selection, or the character before the caret")]
         public static void Backspace()
         {
-            DocumentEditorControl next = Editor();
-            if (next != null) { next.Backspace(); return; }
+            bool word = InputHandler.instance.IsModifierDown(InputModifier.Word);
 
-            Box()?.Backspace();
+            DocumentEditorControl next = Editor();
+            if (next != null) { next.Backspace(word); return; }
+
+            Box()?.Backspace(word);
         }
 
         [A_XSDActionDependency("Text.Delete", "Input", "Deletes the selection, or the character after the caret")]
         public static void Delete()
         {
-            DocumentEditorControl next = Editor();
-            if (next != null) { next.Delete(); return; }
+            bool word = InputHandler.instance.IsModifierDown(InputModifier.Word);
 
-            Box()?.Delete();
+            DocumentEditorControl next = Editor();
+            if (next != null) { next.Delete(word); return; }
+
+            Box()?.Delete(word);
+        }
+
+        [A_XSDActionDependency("Text.Copy", "Input", "Copies the selection to the clipboard")]
+        public static void Copy() => ToClipboardTarget(target => target.Copy());
+
+        [A_XSDActionDependency("Text.Cut", "Input", "Moves the selection to the clipboard")]
+        public static void Cut() => ToClipboardTarget(target => target.Cut());
+
+        [A_XSDActionDependency("Text.Paste", "Input", "Inserts the clipboard's text at the caret")]
+        public static void Paste()
+        {
+            string? text = ClipboardText.Get();
+            if (string.IsNullOrEmpty(text)) return;
+
+            ToClipboardTarget(target => target.Paste(text));
+        }
+
+        // Walks up from the active control until a target handles the request.
+        private static void ToClipboardTarget(Func<IClipboardTarget, bool> request)
+        {
+            for (ArctisAurora.Core.UI.Control control = UIEngine.activeControl;
+                 control != null;
+                 control = control.parent as ArctisAurora.Core.UI.Control)
+                if (control is IClipboardTarget target && request(target)) return;
         }
 
         [A_XSDActionDependency("Text.NewBlock", "Input", "Splits the caret's block in two, or commits a standalone field")]
@@ -90,6 +131,44 @@ namespace ArctisAurora.Core.UI
         [A_XSDActionDependency("Text.Italic", "Input", "Toggles italic over the selection, or for what is typed next")]
         public static void Italic() => Toggle(style => new StyleDelta(italic: !style.italic));
 
+        [A_XSDActionDependency("Text.Underline", "Input", "Toggles underline over the selection, or for what is typed next")]
+        public static void Underline() => Toggle(style => new StyleDelta(underline: !style.underline));
+
+        #region ---- list markers ----
+        [A_XSDActionDependency("List.Disc", "Input", "Marks the caret's list level with filled circles")]
+        public static void MarkDisc() => Editor()?.SetListMarker(ListMarker.Disc);
+
+        [A_XSDActionDependency("List.Circle", "Input", "Marks the caret's list level with empty circles")]
+        public static void MarkCircle() => Editor()?.SetListMarker(ListMarker.Circle);
+
+        [A_XSDActionDependency("List.Triangle", "Input", "Marks the caret's list level with filled triangles")]
+        public static void MarkTriangle() => Editor()?.SetListMarker(ListMarker.Triangle);
+
+        [A_XSDActionDependency("List.TriangleOutline", "Input", "Marks the caret's list level with empty triangles")]
+        public static void MarkTriangleOutline() => Editor()?.SetListMarker(ListMarker.TriangleOutline);
+
+        [A_XSDActionDependency("List.Square", "Input", "Marks the caret's list level with filled squares")]
+        public static void MarkSquare() => Editor()?.SetListMarker(ListMarker.Square);
+
+        [A_XSDActionDependency("List.SquareOutline", "Input", "Marks the caret's list level with empty squares")]
+        public static void MarkSquareOutline() => Editor()?.SetListMarker(ListMarker.SquareOutline);
+
+        [A_XSDActionDependency("List.Decimal", "Input", "Numbers the caret's list level 1, 2, 3")]
+        public static void MarkDecimal() => Editor()?.SetListMarker(ListMarker.Decimal);
+
+        [A_XSDActionDependency("List.UpperAlpha", "Input", "Numbers the caret's list level A, B, C")]
+        public static void MarkUpperAlpha() => Editor()?.SetListMarker(ListMarker.UpperAlpha);
+
+        [A_XSDActionDependency("List.LowerAlpha", "Input", "Numbers the caret's list level a, b, c")]
+        public static void MarkLowerAlpha() => Editor()?.SetListMarker(ListMarker.LowerAlpha);
+
+        [A_XSDActionDependency("List.LowerRoman", "Input", "Numbers the caret's list level i, ii, iii")]
+        public static void MarkLowerRoman() => Editor()?.SetListMarker(ListMarker.LowerRoman);
+
+        [A_XSDActionDependency("List.UpperRoman", "Input", "Numbers the caret's list level I, II, III")]
+        public static void MarkUpperRoman() => Editor()?.SetListMarker(ListMarker.UpperRoman);
+        #endregion
+
         [A_XSDActionDependency("Text.Indent", "Input", "Nests the list items under the caret one level deeper")]
         public static void Indent() => Editor()?.ShiftListLevel(1);
 
@@ -105,10 +184,22 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDActionDependency("Text.Undo", "Input", "Reverses the last edit made to the focused note")]
-        public static void Undo() => Editor()?.Undo();
+        public static void Undo()
+        {
+            DocumentEditorControl next = Editor();
+            if (next != null) { next.Undo(); return; }
+
+            Box()?.Undo();
+        }
 
         [A_XSDActionDependency("Text.Redo", "Input", "Reapplies the last edit undone in the focused note")]
-        public static void Redo() => Editor()?.Redo();
+        public static void Redo()
+        {
+            DocumentEditorControl next = Editor();
+            if (next != null) { next.Redo(); return; }
+
+            Box()?.Redo();
+        }
 
         [A_XSDActionDependency("Text.Cancel", "Input", "Abandons the edit in a standalone field and restores what it held")]
         public static void Cancel() => Box()?.Cancel();
@@ -140,18 +231,61 @@ namespace ArctisAurora.Core.UI
         [A_XSDActionDependency("Text.CaretPageDown", "Input")]
         public static void CaretPageDown() => Move(CaretMove.PageDown);
 
-        // The Extend modifier keeps the anchor instead of collapsing it onto the new position.
+        // The Extend modifier keeps the anchor instead of collapsing it onto the new position; the
+        // Word modifier turns character moves into word moves and line ends into document ends.
         private static void Move(CaretMove move)
         {
+            if (InputHandler.instance.IsModifierDown(InputModifier.Word))
+                move = move switch
+                {
+                    CaretMove.Left => CaretMove.WordLeft,
+                    CaretMove.Right => CaretMove.WordRight,
+                    CaretMove.LineStart => CaretMove.DocumentStart,
+                    CaretMove.LineEnd => CaretMove.DocumentEnd,
+                    _ => move
+                };
+
             DocumentEditorControl next = Editor();
             if (next != null)
             {
+                next.DisarmStyle();
                 next.MoveCaret(move, InputHandler.instance.IsModifierDown(InputModifier.Extend));
                 return;
             }
 
             Box()?.MoveCaret(move, InputHandler.instance.IsModifierDown(InputModifier.Extend));
         }
+
+        #region ---- word boundaries ----
+        internal enum CharClass { Space, Word, Symbol }
+
+        internal static CharClass ClassOf(char c) =>
+            char.IsWhiteSpace(c) ? CharClass.Space
+            : char.IsLetterOrDigit(c) || c == '_' ? CharClass.Word
+            : CharClass.Symbol;
+
+        // Where a word move from an offset lands inside one string.
+        internal static int WordEdge(string s, int offset, int direction)
+        {
+            int i = Math.Clamp(offset, 0, s.Length);
+
+            if (direction > 0)
+            {
+                if (i < s.Length && ClassOf(s[i]) is CharClass run && run != CharClass.Space)
+                    while (i < s.Length && ClassOf(s[i]) == run) i++;
+                while (i < s.Length && ClassOf(s[i]) == CharClass.Space) i++;
+                return i;
+            }
+
+            while (i > 0 && ClassOf(s[i - 1]) == CharClass.Space) i--;
+            if (i > 0)
+            {
+                CharClass run = ClassOf(s[i - 1]);
+                while (i > 0 && ClassOf(s[i - 1]) == run) i--;
+            }
+            return i;
+        }
+        #endregion
 
         // Nearest editor at or above the active control; none past an editing field.
         internal static DocumentEditorControl Editor()

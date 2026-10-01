@@ -1,6 +1,7 @@
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Filing;
 using System.Numerics;
+using System.Text;
 
 namespace ArctisAurora.Core.UI
 {
@@ -9,6 +10,74 @@ namespace ArctisAurora.Core.UI
         None,
         Bullet,
         Task
+    }
+
+    // What a list item shows in its indent: a shape, or its number written some way.
+    [A_XSDType("ListMarker", "UI")]
+    public enum ListMarker
+    {
+        Disc,
+        Circle,
+        Triangle,
+        TriangleOutline,
+        Square,
+        SquareOutline,
+        Decimal,
+        UpperAlpha,
+        LowerAlpha,
+        LowerRoman,
+        UpperRoman
+    }
+
+    public static class ListMarkers
+    {
+        public static bool IsNumbered(ListMarker marker) => marker >= ListMarker.Decimal;
+
+        // the default icon set's glyph for a shape marker
+        public static string ShapeIcon(ListMarker marker) => marker switch
+        {
+            ListMarker.Circle => "bullet-circle",
+            ListMarker.Triangle => "bullet-triangle",
+            ListMarker.TriangleOutline => "bullet-triangle-outline",
+            ListMarker.Square => "bullet-square",
+            ListMarker.SquareOutline => "bullet-square-outline",
+            _ => "bullet-disc"
+        };
+
+        // An item's number as its marker writes it, dot included.
+        public static string Format(int number, ListMarker marker) => marker switch
+        {
+            ListMarker.UpperAlpha => Letters(number).ToUpperInvariant() + ".",
+            ListMarker.LowerAlpha => Letters(number) + ".",
+            ListMarker.UpperRoman => Roman(number).ToUpperInvariant() + ".",
+            ListMarker.LowerRoman => Roman(number) + ".",
+            _ => number + "."
+        };
+
+        // a..z, then aa, ab — bijective, so there is no zero letter
+        private static string Letters(int number)
+        {
+            string letters = string.Empty;
+            for (int n = Math.Max(1, number); n > 0; n = (n - 1) / 26)
+                letters = (char)('a' + (n - 1) % 26) + letters;
+            return letters;
+        }
+
+        private static readonly (int value, string numeral)[] numerals =
+        {
+            (1000, "m"), (900, "cm"), (500, "d"), (400, "cd"), (100, "c"), (90, "xc"),
+            (50, "l"), (40, "xl"), (10, "x"), (9, "ix"), (5, "v"), (4, "iv"), (1, "i")
+        };
+
+        private static string Roman(int number)
+        {
+            if (number < 1 || number > 3999) return number.ToString();
+
+            StringBuilder roman = new StringBuilder();
+            foreach ((int value, string numeral) in numerals)
+                for (; number >= value; number -= value) roman.Append(numeral);
+            return roman.ToString();
+        }
     }
 
     // A run as a note file writes it: one styled slice of a block's text. It exists at load and save
@@ -27,6 +96,12 @@ namespace ArctisAurora.Core.UI
 
         [A_XSDElementProperty("Strikethrough", "UI", "Run is struck through.")]
         public bool strikethrough { get; set; }
+
+        [A_XSDElementProperty("Underline", "UI", "Run is underlined.")]
+        public bool underline { get; set; }
+
+        [A_XSDElementProperty("HighlightHex", "UI", "Colour drawn behind the run's text; absent draws none.")]
+        public string highlightHex { get; set; }
 
         [A_XSDElementProperty("ColorHex", "UI", "Run's text color; absent takes the block's.")]
         public string colorHex { get; set; }
@@ -78,10 +153,18 @@ namespace ArctisAurora.Core.UI
         public int listLevel;
         public bool isChecked;
 
-        // bullet dot or checkbox, in the indent
+        // the item's own marker; null takes the layout's for its level
+        public ListMarker? listMarker;
+
+        // what the document resolved for this item: the marker and its number in its list
+        public ListMarker shownMarker { get; internal set; } = ListMarker.Disc;
+        public int listNumber { get; internal set; } = 1;
+
+        // shape, number or checkbox, in the indent
         private Control? marker;
         private float listIndent;
         private const float bulletSize = 6f;
+        private const float numberGap = 6f;
 
         // pre-palette block ink, dropped from runs at load
         private const string legacyInkHex = "#2C2B26";
@@ -99,6 +182,7 @@ namespace ArctisAurora.Core.UI
             listIndent = layout.listIndent;
             ApplyInset();
             SyncMarker();
+            SizeMarker();
 
             for (int i = 0; i < spans.Count; i++)
             {
@@ -138,11 +222,17 @@ namespace ArctisAurora.Core.UI
                 box.SetScale(textZoom);
                 return;
             }
-            if (marker is not PanelControl) return;
+            if (marker is LabelControl number)
+            {
+                number.fontSize = fontSize;
+                number.textZoom = textZoom;
+                number.InvalidateLayout();
+                return;
+            }
+            if (marker == null) return;
 
             marker.preferredWidth = bulletSize * textZoom;
             marker.preferredHeight = bulletSize * textZoom;
-            marker.cornerRadius = new CornerRadii(bulletSize * textZoom * 0.5f);
         }
 
         // Wraps inside the indent.
@@ -162,18 +252,33 @@ namespace ArctisAurora.Core.UI
             TextLine first = Lines[0];
             Vector2 size = marker.DesiredSize;
             float indent = listIndent * textZoom;
-            float x = TextOrigin.X - indent + (indent - size.X) * 0.5f;
+            float x = marker is LabelControl
+                ? TextOrigin.X - numberGap * textZoom - size.X
+                : TextOrigin.X - indent + (indent - size.X) * 0.5f;
             float y = TextOrigin.Y + first.top + (first.height - size.Y) * 0.5f;
             marker.Arrange(new LayoutRect(x, y, size.X, size.Y));
         }
 
-        // Builds, swaps or drops the marker to match the list kind.
+        // The document's resolved marker and number for this item.
+        internal void ShowMarker(ListMarker resolved, int number)
+        {
+            if (shownMarker == resolved && listNumber == number) return;
+
+            shownMarker = resolved;
+            listNumber = number;
+            SyncMarker();
+        }
+
+        // Builds, swaps or drops the marker to match the list kind and resolved marker.
         private void SyncMarker()
         {
+            bool numbered = ListMarkers.IsNumbered(shownMarker);
             bool fits = listKind switch
             {
                 ListKind.Task => marker is CheckBoxControl,
-                ListKind.Bullet => marker != null && marker is not CheckBoxControl,
+                ListKind.Bullet => numbered
+                    ? marker is LabelControl
+                    : marker is IconControl icon && icon.iconName == ListMarkers.ShapeIcon(shownMarker),
                 _ => marker == null
             };
 
@@ -187,8 +292,14 @@ namespace ArctisAurora.Core.UI
                         role = PaletteRole.SubField,
                         onChanged = value => (parent?.parent as DocumentEditorControl)?.SetChecked(this, value)
                     },
-                    ListKind.Bullet => new PanelControl
+                    ListKind.Bullet when numbered => new LabelControl
                     {
+                        role = PaletteRole.Ink,
+                        hitTestable = false
+                    },
+                    ListKind.Bullet => new IconControl
+                    {
+                        iconName = ListMarkers.ShapeIcon(shownMarker),
                         role = PaletteRole.Ink,
                         hitTestable = false
                     },
@@ -200,6 +311,15 @@ namespace ArctisAurora.Core.UI
             }
 
             if (marker is CheckBoxControl box) box.isChecked = isChecked;
+            if (marker is LabelControl label)
+            {
+                string written = ListMarkers.Format(listNumber, shownMarker);
+                if (label.text != written)
+                {
+                    label.text = written;
+                    InvalidateLayout();
+                }
+            }
         }
 
         // Load: the run's text joins the block's string and its style becomes the next span.
@@ -217,6 +337,8 @@ namespace ArctisAurora.Core.UI
                 gradient = run.gradient,
                 effect = run.effect,
                 strikethrough = run.strikethrough,
+                underline = run.underline,
+                highlightHex = run.highlightHex,
                 stylingType = run.stylingType,
                 fontSizeAuthored = run.fontSizeAuthored
             });
@@ -274,11 +396,15 @@ namespace ArctisAurora.Core.UI
                 stylingType = stylingType,
                 listKind = listKind,
                 listLevel = listLevel,
+                listMarker = listMarker,
                 fontName = fontName,
                 fontSize = fontSize,
                 lineHeight = lineHeight
             };
             tail.CopyPaint(this);
+
+            StyleSpan carried = StyleAt(offset);
+            carried.count = 0;
 
             int index = SplitSpanAt(offset);
             tail.spans.Clear();
@@ -289,8 +415,8 @@ namespace ArctisAurora.Core.UI
             tail.text = whole[offset..];
             text = whole[..offset];
 
-            if (spans.Count == 0) spans.Add(new StyleSpan { count = 0, style = style });
-            if (tail.spans.Count == 0) tail.spans.Add(new StyleSpan { count = 0, style = style });
+            if (spans.Count == 0) spans.Add(carried);
+            if (tail.spans.Count == 0) tail.spans.Add(carried);
 
             return tail;
         }
@@ -312,6 +438,7 @@ namespace ArctisAurora.Core.UI
                 stylingType = stylingType,
                 listKind = listKind,
                 listLevel = listLevel,
+                listMarker = listMarker,
                 isChecked = isChecked,
                 text = (text ?? string.Empty)[from..to]
             };
@@ -355,6 +482,7 @@ namespace ArctisAurora.Core.UI
             stylingType = snapshot.stylingType;
             listKind = snapshot.listKind;
             listLevel = snapshot.listLevel;
+            listMarker = snapshot.listMarker;
             isChecked = snapshot.isChecked;
             spans.Clear();
             spans.AddRange(snapshot.spans);
@@ -487,6 +615,8 @@ namespace ArctisAurora.Core.UI
             && a.fontName == b.fontName
             && a.fontSize == b.fontSize
             && a.strikethrough == b.strikethrough
+            && a.underline == b.underline
+            && a.highlightHex == b.highlightHex
             && a.stylingType == b.stylingType
             && a.fontSizeAuthored == b.fontSizeAuthored;
         #endregion
@@ -513,6 +643,8 @@ namespace ArctisAurora.Core.UI
                     bold = span.style == FontStyle.Bold || span.style == FontStyle.BoldItalic,
                     italic = span.style == FontStyle.Italic || span.style == FontStyle.BoldItalic,
                     strikethrough = span.strikethrough,
+                    underline = span.underline,
+                    highlightHex = span.highlightHex,
                     colorHex = span.colorHex,
                     gradient = span.gradient,
                     effect = span.effect,

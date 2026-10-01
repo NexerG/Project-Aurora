@@ -1,3 +1,4 @@
+using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using System.Globalization;
@@ -30,6 +31,7 @@ namespace ArctisAurora.Core.UI
                 {
                     case "DocumentLayout": ReadLayout(element, document.layout); break;
                     case "Block": document.blocks.Add(ReadBlock(element)); break;
+                    case "Table": document.blocks.Add(ReadTable(element)); break;
                     default: throw new Exception($"Unknown document element '{element.Name.LocalName}'.");
                 }
 
@@ -46,6 +48,14 @@ namespace ArctisAurora.Core.UI
                 {
                     layout.page = new PageLayout();
                     XmlReflection.ApplyAttributes(child, layout.page, tolerant: true);
+                    continue;
+                }
+
+                if (child.Name.LocalName == "ListLevel")
+                {
+                    ListLevel level = new ListLevel();
+                    XmlReflection.ApplyAttributes(child, level, tolerant: true);
+                    layout.listLevels.Add(level);
                     continue;
                 }
 
@@ -71,6 +81,9 @@ namespace ArctisAurora.Core.UI
                 block.listKind = kind;
             block.listLevel = (int?)element.Attribute("Level") ?? 0;
             block.isChecked = (bool?)element.Attribute("Checked") ?? false;
+            XAttribute marker = element.Attribute("Marker");
+            if (marker != null && Enum.TryParse(marker.Value, true, out ListMarker style))
+                block.listMarker = style;
 
             foreach (XElement child in element.Elements())
             {
@@ -84,6 +97,33 @@ namespace ArctisAurora.Core.UI
 
             return block;
         }
+
+        // <Column Width>s, then <Row>s of <Cell>s of <Block>s; a row wider than the columns adds columns.
+        private static TableControl ReadTable(XElement element)
+        {
+            List<float> widths = new List<float>();
+            foreach (XElement column in element.Elements().Where(e => e.Name.LocalName == "Column"))
+                widths.Add((float?)column.Attribute("Width") ?? defaultColumnWidth);
+
+            List<List<List<BlockControl>>> rows = new List<List<List<BlockControl>>>();
+            foreach (XElement row in element.Elements().Where(e => e.Name.LocalName == "Row"))
+            {
+                List<List<BlockControl>> cells = new List<List<BlockControl>>();
+                foreach (XElement cell in row.Elements().Where(e => e.Name.LocalName == "Cell"))
+                    cells.Add(cell.Elements().Where(e => e.Name.LocalName == "Block").Select(ReadBlock).ToList());
+
+                while (widths.Count < cells.Count) widths.Add(defaultColumnWidth);
+                rows.Add(cells);
+            }
+
+            TableControl table = new TableControl(widths);
+            foreach (List<List<BlockControl>> cells in rows)
+                table.AddRow(cells);
+
+            return table;
+        }
+
+        private const float defaultColumnWidth = 150f;
         #endregion
 
         #region ---- write ----
@@ -119,27 +159,58 @@ namespace ArctisAurora.Core.UI
                 layout.Add(WriteScalars(ns + "TextStyle", style));
             if (document.layout.page != null)
                 layout.Add(WriteScalars(ns + "Page", document.layout.page));
+            foreach (ListLevel level in document.layout.listLevels)
+                layout.Add(WriteScalars(ns + "ListLevel", level));
             if (layout.HasAttributes || layout.HasElements) root.Add(layout);
 
-            foreach (BlockControl block in document.blocks)
-            {
-                XElement element = new XElement(ns + "Block");
-                if (block.stylingType != TextStyleType.Text)
-                    element.SetAttributeValue("StylingType", block.stylingType.ToString());
-                if (block.listKind != ListKind.None)
-                    element.SetAttributeValue("List", block.listKind.ToString());
-                if (block.listLevel > 0)
-                    element.SetAttributeValue("Level", block.listLevel);
-                if (block.isChecked)
-                    element.SetAttributeValue("Checked", "true");
-
-                foreach (Run run in block.Runs())
-                    element.Add(WriteScalars(ns + "Run", run));
-
-                root.Add(element);
-            }
+            foreach (Control entry in document.blocks)
+                root.Add(entry is TableControl table ? WriteTable(ns, table) : WriteBlock(ns, (BlockControl)entry));
 
             return root;
+        }
+
+        private static XElement WriteBlock(XNamespace ns, BlockControl block)
+        {
+            XElement element = new XElement(ns + "Block");
+            if (block.stylingType != TextStyleType.Text)
+                element.SetAttributeValue("StylingType", block.stylingType.ToString());
+            if (block.listKind != ListKind.None)
+                element.SetAttributeValue("List", block.listKind.ToString());
+            if (block.listLevel > 0)
+                element.SetAttributeValue("Level", block.listLevel);
+            if (block.isChecked)
+                element.SetAttributeValue("Checked", "true");
+            if (block.listMarker.HasValue)
+                element.SetAttributeValue("Marker", block.listMarker.Value.ToString());
+
+            foreach (Run run in block.Runs())
+                element.Add(WriteScalars(ns + "Run", run));
+
+            return element;
+        }
+
+        private static XElement WriteTable(XNamespace ns, TableControl table)
+        {
+            XElement element = new XElement(ns + "Table");
+            foreach (float width in table.widths)
+                element.Add(new XElement(ns + "Column", new XAttribute("Width", Format(width))));
+
+            XElement row = null;
+            foreach (StackPanelControl cell in table.Cells())
+            {
+                if (cell.gridColumn == 0)
+                {
+                    row = new XElement(ns + "Row");
+                    element.Add(row);
+                }
+
+                XElement written = new XElement(ns + "Cell");
+                foreach (Entity entry in cell.children)
+                    if (entry is BlockControl block) written.Add(WriteBlock(ns, block));
+                row.Add(written);
+            }
+
+            return element;
         }
 
         // Only what differs from a fresh instance, mirroring the reader: absent attribute -> default.

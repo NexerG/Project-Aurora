@@ -579,7 +579,9 @@ namespace ArctisAurora.EngineWork
     [A_XSDType("InputModifier", "Input")]
     public enum InputModifier
     {
-        Extend
+        Extend,
+        Word,
+        Copy
     }
 
     [A_XSDType("NamedModifier", "Input", description: "Binds a key to a modifier role the engine queries by name")]
@@ -915,7 +917,7 @@ namespace ArctisAurora.EngineWork
                     bool modsHeld = true;
                     for (int m = 0; m < def.modifiers.Count; m++)
                     {
-                        if (!_tracker.IsDown(def.modifiers[m].key))
+                        if (!Held(def.modifiers[m].key))
                         {
                             modsHeld = false;
                             break;
@@ -1015,7 +1017,7 @@ namespace ArctisAurora.EngineWork
                     bool found = false;
                     for (int n = 0; n < other.modifiers.Count; n++)
                     {
-                        if (other.modifiers[n].key == def.modifiers[m].key)
+                        if (SameModifier(other.modifiers[n].key, def.modifiers[m].key))
                         {
                             found = true;
                             break;
@@ -1029,7 +1031,7 @@ namespace ArctisAurora.EngineWork
                 bool allHeld = true;
                 for (int m = 0; m < other.modifiers.Count; m++)
                 {
-                    if (!_tracker.IsDown(other.modifiers[m].key))
+                    if (!Held(other.modifiers[m].key))
                     {
                         allHeld = false;
                         break;
@@ -1039,6 +1041,26 @@ namespace ArctisAurora.EngineWork
             }
             return false;
         }
+
+        // A keybind modifier is held when either side of it is.
+        private bool Held(Keys key) => _tracker.IsDown(key) || (Twin(key) is Keys twin && _tracker.IsDown(twin));
+
+        private static bool SameModifier(Keys a, Keys b) => a == b || Twin(a) == b;
+
+        private static Keys? Twin(Keys key) => key switch
+        {
+            Keys.LeftControl => Keys.RightControl,
+            Keys.RightControl => Keys.LeftControl,
+            Keys.LeftShift => Keys.RightShift,
+            Keys.RightShift => Keys.LeftShift,
+            Keys.LeftAlt => Keys.RightAlt,
+            Keys.RightAlt => Keys.LeftAlt,
+            Keys.LeftSuper => Keys.RightSuper,
+            Keys.RightSuper => Keys.LeftSuper,
+            Keys.LeftWin => Keys.RightWin,
+            Keys.RightWin => Keys.LeftWin,
+            _ => null
+        };
 
         // Suppress char input when a modified keybind fired this frame
         public bool ShouldSuppressCharInput()

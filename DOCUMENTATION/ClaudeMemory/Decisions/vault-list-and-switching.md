@@ -17,7 +17,7 @@ Extends [[vault-browser-and-shell]], which made *one* vault a setting. This make
 `InputBindings` shape, and it is forced: a `SettingCategory`'s children are one `Setting` each and
 `SettingsRegistry.WriteDiff` walks them as *attributes*. A category structurally cannot hold a list.
 The non-category path already walks `ChildListFields`, so the list persists to
-`%APPDATA%\Thorium\Settings\UserSettings.settings.xml` for free and stays out of the settings
+`%APPDATA%\Arktis\Thorium\Settings\UserSettings.settings.xml` for free and stays out of the settings
 screen's category list — `SettingsWindow.Categories()` yields only `SettingCategory`.
 
 The entry type is `KnownVault`, not `Vault`, because `AnyXMLType.FindType` resolves the *type's*
