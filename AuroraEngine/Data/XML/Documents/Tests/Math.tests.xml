@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<TestSuite xmlns="http://arctisaurora/AuroraTestTypes"
+		  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		  xsi:schemaLocation="http://arctisaurora/AuroraTestTypes ../../Schemas/TestTypeSchema.xsd" >
+	<Test Action="Math.SymbolsInCharset"/>
+	<Test Action="Math.ParseNeverThrows"/>
+	<Test Action="Math.SuperscriptRaises"/>
+	<Test Action="Math.SubscriptBelowBaseline"/>
+	<Test Action="Math.FractionOnAxis"/>
+	<Test Action="Math.BigOpDisplay"/>
+	<Test Action="Math.DelimitersGrow"/>
+	<Test Action="Math.SqrtCoversBody"/>
+	<Test Action="Math.Spacing"/>
+	<Test Action="Math.Classes"/>
+</TestSuite>

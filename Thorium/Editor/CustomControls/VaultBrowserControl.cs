@@ -222,6 +222,48 @@ namespace Thorium.Editor.CustomControls
             if (note != null) Open(note);
         }
 
+        // A [[note]] by name, or a web address handed to the system browser.
+        public static bool OpenLink(string link)
+        {
+            if (link.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || link.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(link) { UseShellExecute = true });
+                return true;
+            }
+
+            if (!link.StartsWith("[[") || !link.EndsWith("]]")) return false;
+
+            string name = link[2..^2].Split('|', '#')[0].Trim().Replace('\\', '/');
+            VaultBrowserControl browser = Browser();
+            string note = browser?.FindNote(browser.root, name);
+            if (note == null) return false;
+
+            Open(note);
+            return true;
+        }
+
+        // The first note whose name, or path ending, matches a link target.
+        private string FindNote(FileObject folder, string name)
+        {
+            if (folder == null) return null;
+
+            foreach (FileObject child in folder.Children)
+            {
+                if (child.type == FileObject.FileType.Directory)
+                {
+                    string found = FindNote(child, name);
+                    if (found != null) return found;
+                    continue;
+                }
+
+                string withoutExtension = Path.ChangeExtension(child.path, null).Replace('\\', '/');
+                if (Accepts(child) && (withoutExtension.EndsWith("/" + name, StringComparison.OrdinalIgnoreCase)
+                                       || child.path.Replace('\\', '/').EndsWith("/" + name, StringComparison.OrdinalIgnoreCase)))
+                    return child.path;
+            }
+            return null;
+        }
+
         // Walks the model rather than the rows, so a collapsed folder's notes still count.
         private string FirstNote(FileObject folder)
         {

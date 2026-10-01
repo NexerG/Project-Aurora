@@ -42,6 +42,7 @@ namespace ArctisAurora.Core.Filing
             List<string> names = new List<string>();
             List<Glyph> icons = new List<Glyph>();
 
+            Diagnostics.Profiling.Zone.Start("Atlas.ReadFaces");
             foreach (string file in svgFiles.OrderBy(Path.GetFileName, StringComparer.Ordinal))
             {
                 if (!SvgPath.TryLoad(file, out Glyph icon, out string reason))
@@ -53,6 +54,7 @@ namespace ArctisAurora.Core.Filing
                 names.Add(Path.GetFileNameWithoutExtension(file));
                 icons.Add(icon);
             }
+            Diagnostics.Profiling.Zone.End("Atlas.ReadFaces");
 
             IconAtlasMetaData meta = new IconAtlasMetaData();
             meta.iconCount = icons.Count;
@@ -62,15 +64,24 @@ namespace ArctisAurora.Core.Filing
 
             string dir = Path.Combine(outputRoot, setName);
             Directory.CreateDirectory(dir);
+            Diagnostics.Profiling.Zone.Start("Atlas.WriteMeta");
             Serializer.SerializeAttributed(meta, Path.Combine(dir, $"{setName}.aid")); // aurora icon data
+            Diagnostics.Profiling.Zone.End("Atlas.WriteMeta");
 
             int iconsPerAxis = Math.Max(1, (int)Math.Ceiling(MathF.Sqrt(icons.Count)));
             Image<Rgba32> atlas = new Image<Rgba32>(perIconSize * iconsPerAxis, perIconSize * iconsPerAxis);
+            Diagnostics.Profiling.Zone.Start("Atlas.Cells");
             for (int i = 0; i < icons.Count; i++)
+            {
                 MTSDFGen.GenerateCell(icons[i], atlas, (i % iconsPerAxis) * perIconSize,
                     (i / iconsPerAxis) * perIconSize, perIconSize, MTSDFGen.PxRange);
+                Diagnostics.Profiling.Zone.Increment("Cell");
+            }
+            Diagnostics.Profiling.Zone.End("Atlas.Cells");
 
+            Diagnostics.Profiling.Zone.Start("Atlas.SavePng");
             atlas.Save(Path.Combine(dir, $"{setName}_atlas.png"));
+            Diagnostics.Profiling.Zone.End("Atlas.SavePng");
             Log.Info($"icon set '{setName}': {icons.Count} icons at {perIconSize}px.");
         }
     }

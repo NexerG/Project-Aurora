@@ -31,6 +31,9 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("Modified", "UI", "When the note was last saved with changes, ISO 8601.")]
         public string? modified;
 
+        [A_XSDElementProperty("ReadOnly", "UI", "Whether the editor refuses changes to the note's text.")]
+        public bool readOnly;
+
         [A_XSDElementProperty("Frontmatter", "UI", "A Markdown note's metadata block as written, delimiter lines included.")]
         public string? frontmatter;
 
@@ -47,6 +50,7 @@ namespace ArctisAurora.Core.UI
             };
 
             document.created ??= Stamp(File.GetCreationTime(path));
+            if (!SettingsRegistry.Get<DocumentSettings>().stampModified) document.modified = Stamp(File.GetLastWriteTime(path));
             return document;
         }
 
@@ -101,8 +105,10 @@ namespace ArctisAurora.Core.UI
 
         public void Save()
         {
-            if (isDirty) document.modified = RichTextDocument.Stamp(DateTime.Now);
+            bool stamp = SettingsRegistry.Get<DocumentSettings>().stampModified;
+            if (isDirty || !stamp) document.modified = stamp ? RichTextDocument.Stamp(DateTime.Now) : null;
             document.Save(path);
+            if (!stamp) document.modified = RichTextDocument.Stamp(File.GetLastWriteTime(path));
             isDirty = false;
         }
     }
@@ -123,7 +129,17 @@ namespace ArctisAurora.Core.UI
         Heading6,
         Comment,
         Code,
-        Quote
+        Quote,
+        Rule
+    }
+
+    // Where a block's lines sit across the text width.
+    [A_XSDType("TextAlignment", "UI")]
+    public enum TextAlignment
+    {
+        Left,
+        Center,
+        Right
     }
 
     // How one styling type is rendered. However many of these a layout carries is the whole scheme,
@@ -137,7 +153,10 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("FontSize", "UI", "Text size in pixels.")]
         public int fontSize { get; set; } = 18;
 
-        public TextStyle Clone() => new TextStyle { type = type, fontSize = fontSize };
+        [A_XSDElementProperty("FontName", "UI", "Font asset this type is set in; absent is the default font.")]
+        public string fontName { get; set; }
+
+        public TextStyle Clone() => new TextStyle { type = type, fontSize = fontSize, fontName = fontName };
     }
 
     [A_XSDType("ListLevel", "UI")]
@@ -218,6 +237,17 @@ namespace ArctisAurora.Core.UI
                     if (IsHeading(styles[i].type)) return styles[i].fontSize;
 
             return fallbackFontSize;
+        }
+
+        // The font a type is set in; null is the default font.
+        public string FontNameFor(TextStyleType type)
+        {
+            if (type == TextStyleType.Inherit) type = TextStyleType.Text;
+
+            List<TextStyle> styles = textStyles.Count > 0 ? textStyles : Defaults.textStyles;
+            foreach (TextStyle style in styles)
+                if (style.type == type) return style.fontName;
+            return null;
         }
 
         private static bool IsHeading(TextStyleType type) =>
@@ -329,5 +359,8 @@ namespace ArctisAurora.Core.UI
     {
         [A_XSDElementProperty("DocumentLayout", "Settings", "Editor-wide layout and text styles.")]
         public DocumentLayout layout { get; set; } = new DocumentLayout();
+
+        [A_XSDElementProperty("StampModified", "Settings", "Whether a save writes Modified into the note; off shows the file's own time.")]
+        public bool stampModified { get; set; } = true;
     }
 }

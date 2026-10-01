@@ -123,25 +123,21 @@ namespace Thorium.Editor
         private static void Switch(string path)
         {
             if (!KnownVaults.SamePath(path, Current()))
-            {
-                SettingsRegistry.Get<ThoriumSettings>().vault.path = path;
-                SettingsRegistry.Commit();
-
-                CloseTabs();
-                VaultBrowserControl browser = Engine.primary.ui.uiRoot.FindByName(browserName) as VaultBrowserControl;
-                browser?.Rebuild();
-                VaultBrowserControl.OpenFirstNote();
-            }
+                NoteActions.SettleAll(() => Enter(path));
 
             if (Engine.windows.TryGetValue(windowName, out RenderWindow window)) Engine.CloseWindow(window);
         }
 
-        // Every note on screen belongs to the vault being left. CloseTab writes each one first.
-        private static void CloseTabs()
+        // Writes the vault and swaps the session to it.
+        private static void Enter(string path)
         {
-            foreach (TabViewControl view in TabViewControl.TabViews(Engine.primary.ui.uiRoot).ToList())
-                foreach (TabItemControl item in view.Items.ToArray())
-                    view.CloseTab(item);
+            SettingsRegistry.Get<ThoriumSettings>().vault.path = path;
+            bool restored = SessionLayout.ChangeScope(KnownVaults.Resolve(path));
+            SettingsRegistry.Commit();
+
+            VaultBrowserControl browser = Engine.primary.ui.uiRoot.FindByName(browserName) as VaultBrowserControl;
+            browser?.Rebuild();
+            if (!restored) VaultBrowserControl.OpenFirstNote();
         }
         #endregion
     }

@@ -144,6 +144,7 @@
       <xs:enumeration value="Panel" />
       <xs:enumeration value="Document" />
       <xs:enumeration value="TextStyleType" />
+      <xs:enumeration value="TextAlignment" />
       <xs:enumeration value="TextStyle" />
       <xs:enumeration value="ListLevel" />
       <xs:enumeration value="DocumentLayout" />
@@ -159,6 +160,8 @@
       <xs:enumeration value="TabItem" />
       <xs:enumeration value="TabView" />
       <xs:enumeration value="TextBox" />
+      <xs:enumeration value="PictureWrap" />
+      <xs:enumeration value="PictureCollision" />
       <xs:enumeration value="TextRun" />
       <xs:enumeration value="TitleBar" />
       <xs:enumeration value="WindowFrame" />

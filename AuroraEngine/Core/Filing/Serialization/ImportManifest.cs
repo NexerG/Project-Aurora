@@ -18,6 +18,10 @@ namespace ArctisAurora.Core.Filing.Serialization
         [A_XSDElementProperty("Source", "AssetRegistry")]
         public string source { get; set; } = string.Empty;
 
+        // index into a .ttc collection; 0 for a single-face file
+        [A_XSDElementProperty("Face", "AssetRegistry")]
+        public int face { get; set; }
+
         // taken as named, unchecked; left empty the importer probes the usual suffixes
         [A_XSDElementProperty("Bold", "AssetRegistry")]
         public string bold { get; set; } = string.Empty;
@@ -66,6 +70,7 @@ namespace ArctisAurora.Core.Filing.Serialization
     public class FontImportStamp
     {
         public string source = string.Empty;
+        public int face;
         public string sourceHash = string.Empty;
         public string boldSource = string.Empty;
         public string italicSource = string.Empty;
@@ -76,6 +81,7 @@ namespace ArctisAurora.Core.Filing.Serialization
 
         public bool Matches(FontImportStamp other) =>
             source == other.source
+            && face == other.face
             && sourceHash == other.sourceHash
             && boldSource == other.boldSource
             && italicSource == other.italicSource

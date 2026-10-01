@@ -171,6 +171,10 @@ namespace ArctisAurora.Core.UI
     public class BlockControl : TextRunControl
     {
         public TextStyleType stylingType = TextStyleType.Text;
+        public TextAlignment alignment;
+
+        // a code block's fence language; null when none was named
+        public string? language;
 
         // list item state
         public ListKind listKind;
@@ -190,6 +194,11 @@ namespace ArctisAurora.Core.UI
         private const float bulletSize = 6f;
         private const float numberGap = 6f;
 
+        // code block and rule geometry
+        private const float codeInset = 10f;
+        private const float ruleWeight = 1f;
+        private DocumentLayout? layout;
+
         // pre-palette block ink, dropped from runs at load
         private const string legacyInkHex = "#2C2B26";
 
@@ -203,8 +212,10 @@ namespace ArctisAurora.Core.UI
         // keeps it — the scheme only fills in sizes nobody chose.
         public void ApplyLayout(DocumentLayout layout)
         {
+            this.layout = layout;
             lineHeight = layout.lineHeight;
             fontSize = layout.FontSizeFor(stylingType);
+            fontName = layout.FontNameFor(stylingType) ?? "default";
 
             listIndent = layout.listIndent;
             ApplyInset();
@@ -238,7 +249,10 @@ namespace ArctisAurora.Core.UI
         private void ApplyInset()
         {
             Thickness inset = padding;
-            inset.left = listKind == ListKind.None ? 0f : (listLevel + 1) * listIndent * textZoom;
+            bool code = stylingType == TextStyleType.Code;
+            inset.left = listKind != ListKind.None ? (listLevel + 1) * listIndent * textZoom
+                       : code ? codeInset * textZoom : 0f;
+            inset.right = code ? codeInset * textZoom : 0f;
             padding = inset;
         }
 
@@ -265,9 +279,42 @@ namespace ArctisAurora.Core.UI
         // Wraps inside the indent.
         protected override Vector2 MeasureCore(Vector2 availableSize)
         {
-            Vector2 desired = base.MeasureCore(new Vector2(MathF.Max(0f, availableSize.X - padding.left), availableSize.Y));
+            Vector2 desired = base.MeasureCore(new Vector2(MathF.Max(0f, availableSize.X - padding.left - padding.right), availableSize.Y));
             marker?.Measure(availableSize);
             return desired;
+        }
+
+        // A span's font: its own, else its styling type's, else the block's.
+        protected override string FontFor(in StyleSpan span) =>
+            span.fontName ?? (span.stylingType == TextStyleType.Inherit ? null : layout?.FontNameFor(span.stylingType)) ?? fontName;
+
+        protected override TextAlignment Alignment => alignment;
+
+        // A code block's ground behind each line, and a rule's line in place of text.
+        internal override void Emit(float z)
+        {
+            LayoutRect a = arrange.arranged;
+            LayoutRect box = arrange.clip;
+            Vector4 clip = new Vector4(box.x, box.y, box.Right, box.Bottom);
+            Vector4 bounds = new Vector4(a.x, a.y, a.Right, a.Bottom);
+
+            if (stylingType == TextStyleType.Rule)
+            {
+                float weight = MathF.Max(1f, ruleWeight * textZoom);
+                float y = Lines is { Count: > 0 } lines ? TextOrigin.Y + lines[0].top + (lines[0].height - weight) * 0.5f : a.y;
+                WriteRect(UIEngine.Quads, a.x, y, a.width, weight, Palettes.Surface(palette ?? Palettes.Default, PaletteRole.Line),
+                          alpha, z, clip, bounds);
+                return;
+            }
+
+            if (stylingType == TextStyleType.Code && Lines != null)
+            {
+                uint ground = Palettes.Surface(palette ?? Palettes.Default, PaletteRole.SubField);
+                foreach (TextLine line in Lines)
+                    WriteRect(UIEngine.Quads, a.x, TextOrigin.Y + line.top, a.width, line.height, ground, alpha, z, clip, bounds);
+            }
+
+            base.Emit(z);
         }
 
         // Places the marker in the indent, centred on the first line.
@@ -431,6 +478,8 @@ namespace ArctisAurora.Core.UI
             BlockControl tail = new BlockControl
             {
                 stylingType = stylingType,
+                alignment = alignment,
+                language = language,
                 listKind = listKind,
                 listLevel = listLevel,
                 listMarker = listMarker,
@@ -473,6 +522,8 @@ namespace ArctisAurora.Core.UI
             BlockSnapshot snapshot = new BlockSnapshot
             {
                 stylingType = stylingType,
+                alignment = alignment,
+                language = language,
                 listKind = listKind,
                 listLevel = listLevel,
                 listMarker = listMarker,
@@ -517,6 +568,8 @@ namespace ArctisAurora.Core.UI
         public void Restore(BlockSnapshot snapshot)
         {
             stylingType = snapshot.stylingType;
+            alignment = snapshot.alignment;
+            language = snapshot.language;
             listKind = snapshot.listKind;
             listLevel = snapshot.listLevel;
             listMarker = snapshot.listMarker;
@@ -524,6 +577,19 @@ namespace ArctisAurora.Core.UI
             spans.Clear();
             spans.AddRange(snapshot.spans);
             text = snapshot.text;
+            InvalidateLayout();
+        }
+
+        // Takes another block's kind and leaves the text alone.
+        internal void TakeKind(BlockSnapshot kind)
+        {
+            stylingType = kind.stylingType;
+            alignment = kind.alignment;
+            language = kind.language;
+            listKind = kind.listKind;
+            listLevel = kind.listLevel;
+            listMarker = kind.listMarker;
+            isChecked = kind.isChecked;
             InvalidateLayout();
         }
 

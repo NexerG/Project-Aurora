@@ -70,6 +70,12 @@ private static IEnumerator<int> StarChildCrossSize(TestContext t)
   `t.Type("text")` / `t.MoveTo(control)`. Each returns the ticks its gesture takes; when the yield returns it has
   been handled. `Click`/`MoveTo`/`Drag` fail the test if the control's centre hits something else. Keybinds are
   host data — a test needing one (`AnySymbol → Text.Write` for typing) belongs to a host that binds it.
+- **A test that edits a note ends with `t.Show(new StackPanelControl())`.** Anything that marks a note dirty
+  (typing, `SetLayout`, `SetReadOnly`, `ShiftListLevel`, …) leaves a session that is edited and has no name, and
+  fixtures load from a temp file that is then deleted. Whichever test runs last leaves its tree in the window. At
+  exit, `Shutdown`'s `Request` phase finds that editor and opens **"Name this note"**, and the `--test` run sits
+  on the prompt and never exits. Which test runs last changes with the suite and with `--test=<Suite>`, so
+  every test that edits a note clears it, not only the one that is last today. This has happened twice.
 - Perf tests (`StartMeasure`/`EndMeasure`, `<Budget>`) and everything about measuring: `aurora-perf`.
 - List it in a suite — one file per suite, the file name is the suite name:
 

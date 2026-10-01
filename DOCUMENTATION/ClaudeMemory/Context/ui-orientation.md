@@ -154,7 +154,9 @@ Why: [[ui-palettes]].
   highlight (`WriteHighlight`, gapped over `selectedFrom/To`) before its glyphs and underline/strike (`WriteRect`)
   after. [[text-decorations-and-colour]].
   Regions `layout` (`MeasureCore`, `ArrangeCore`, `Emit`) and `caret geometry` (`IndexAt`, `CaretAt`, `TextOrigin`,
-  `Length`, `Lines`). `OnPointerPress` → `IGlyphPressTarget`. XML `Text`, `FontSize`, `FontName`. **`MeasureCore`
+  `Length`, `Lines`). `OnPointerPress` → `IGlyphPressTarget`. Virtual `FontFor(span)` and `Alignment`; `Align` shifts
+  each line's `left` across its `TextLine.room` after `MeasureBlock`/`LayoutAround` [[markdown-blocks-and-alignment]].
+  XML `Text`, `FontSize`, `FontName`. **`MeasureCore`
   returns the last `desired` while the run is clean and its wrap width unchanged** — anything `BuildRuns` reads
   must invalidate layout, which is why `colorHex` does. Why: [[ui-engine-stack]] § landing 4, § landing 6c.
 - **LabelControl** `<Label>` · TextRunControl — read-only text, one line: overrides `Wraps` false, so
@@ -162,7 +164,8 @@ Why: [[ui-palettes]].
 - **TextBoxControl** `<TextBox>` · ContainerControl, `IContext`, `IClipboardTarget` — single-line field with caret and
   selection. `Focus`, `SelectAll`, `WriteChar`, `Backspace(word)`, `Delete(word)`, `MoveCaret`, `Commit`, `Cancel`,
   `Undo`/`Redo` (`history` of nested `FieldEdit`, cleared on focus/commit/cancel), `Copy`/`Cut`/`Paste`,
-  `OnContextAdded`/`OnContextRemoved`; nested `FieldLine` carries the run. XML `Text`, `FontSize`,
+  `OnContextAdded`/`OnContextRemoved`; nested `FieldLine` carries the run and lets presses through to the box.
+  XML `Text`, `FontSize`,
   `TextColorHex`, `SelectionColorHex`, `CaretColorHex`. Old `TextBoxControl`, [[note-naming-and-text-field]] (old).
 - **EditableLabelControl** `<EditableLabel>` · ContainerControl — label that swaps to a text field on
   double-click. `BeginEdit`. XML `Text`, `FontSize`, `TextColorHex`, `FieldColorHex`. Old
@@ -179,7 +182,9 @@ Why: [[ui-palettes]].
   `InsertText`, `RemoveText`, `SplitAt`, `AppendBlock`, `Snapshot`/`SliceSnapshot`/`Restore`/`From`,
   `InsertSlice`/`AppendSlice`, `StyleAt`, `StyleRange`, `SplitSpanAt`, `MergeSpans`. A boundary belongs to the
   span **after** it — except a picture span, which never grows: `TextSpanBeside`. `PictureChar` is U+FFFC;
-  `SetPicture`.
+  `SetPicture`. `alignment`, `language` (code fence), `TakeKind`; `ApplyLayout` also sets `fontName` from the style
+  scheme and insets a Code block both sides; `Emit` draws a Code block's `SubField` ground per line, or a `Rule`'s
+  `Line` stroke instead of text; `FontFor` gives a Code span the Code font [[markdown-blocks-and-alignment]].
   Replaces `Block`/`ContentBlock` + `TextRun`.
 - **Run** `<Run>` — a run as the file writes it; exists at load and save only. `Text`, `Bold`, `Italic`,
   `Strikethrough`, `Underline`, `ColorHex`, `HighlightHex`, `ControlColor`, `Gradient`, `FontName`, `FontSize`, `FontSizeAuthored`,
@@ -198,12 +203,13 @@ Why: [[ui-palettes]].
   the selected one drags; behind views before the blocks in `children`, front ones after — [[note-images]]), highlights inserted at the **head** of `children`, after the page panels, so they paint behind the text),
   `pages` (`page`, `zoom`, `Paginate` — blocks laid on paper and line tops rewritten, paragraphs a float reaches laid around it, `ArrangePages` — page panels at the very head, `Mm`),
   `editing` (`DeleteSelection(restoreSelection)`, `PasteText`, `PasteImage`, `InsertAt`, `DropSelection`, `Insert`, `FragmentFromText`, `ForDestination` — [[text-clipboard]]; `SplitBlock`, `TypeChar`, `Blocks` — flat, table cells included; `TableViewport`,
-  `OneContainer`), `lists` (`TypeListPrefix`,
+  `OneContainer`), `markdown` (`TypeMarkdownLine` — ```` ```lang ````/`---` + Enter, `EndCodeBlock`, `LeaveRule`,
+  `InsertRule`, `TypeInlineMarkdown`/`InlineOpener`/`MarkCode`; off when `plainText`), `lists` (`TypeMarkdownPrefix` — also `#`/`> `,
   `SetListMarker`, `ListsChanged`, `RenumberLists` — run from `MeasureCore` when `listsDirty`,
   `ClearListAtCaret`, `ShiftListLevel`, `SetBlockList`), `styling` (`StyleSource`, `DisarmStyle`, `KeepDeletedStyle`,
   `CaretBlockStyling`, `ApplyStyle`, `ArmStyle`, `ApplyStyleTo`/`ApplyStyleBetween`, `SetBlockStyling`,
-  `SnapshotBlocks`, `RestoreBlocks`), `addressing` (`AddressOf`, `Resolve`, `CaretTo`) and `undo primitives`
-  (`InsertText`, `RemoveText`, `DeleteBetween`, `InsertFragment`, `InsertBetween`, `JoinBlockWithNext`). Also declares
+  `CaretBlockAlignment`, `SetBlockAlignment`, `SnapshotBlocks`, `RestoreBlocks`), `addressing` (`AddressOf`, `Resolve`, `CaretTo`) and `undo primitives`
+  (`InsertText`, `RemoveText`, `DeleteBetween` — a rule head takes the tail's kind, `InsertFragment`, `RestoreKind`, `InsertBetween`, `JoinBlockWithNext`). Also declares
   `CaretSlot`, `StyleDelta`, `CaretStyle` and `PageBands`. `header` — one control at the top margin of page 1,
   `Paginate` starts below it. `MeasureCore` skips the blocks while the paper is unchanged, and passes
   `Paginate(paper, from, to)` the changed block range so it resumes and stops early;
@@ -216,8 +222,10 @@ Why: [[ui-palettes]].
   `ScrollableControl` that `DocumentEditorControl.LoadDocument` builds. [[document-tables]]
 - **DocumentEditorControl** `<DocumentEditor>` · ScrollableControl, `IContext`, `IClipboardTarget` — one open note.
   `Source`/`LoadPath`/`LoadDocument` (builds the properties header for `.md`/`.xml`), `Save` (refreshes it),
-  `needsNaming`, `FocusCaret`; regions `styling` (forwards under a `BeginStep`; also `SetChecked`, `ShiftListLevel`,
-  `Page`/`SetPage`, and the non-undoable `SetPalette`/`ApplyPalette`, `SetLayout`, `SetFrontmatterValue`), `selection` (`SelectLine`, `BeginSelectionDrag`, `OnDrag` + autoscroll), `caret movement`
+  `needsNaming`, `FocusCaret`; regions `styling` (forwards under a `BeginStep`; also `SetAlignment` — `.xml` only, `CanAlign`, `InsertRule`, `SetChecked`, `ShiftListLevel`,
+  `Page`/`SetPage`, and the non-undoable `SetPalette`/`ApplyPalette`, `SetLayout`, `SetFrontmatterValue`, `SetReadOnly`;
+  every edit path checks `Writable`), `ViewState`/`RestoreView` (`SessionTab`; scroll applied at the first Arrange through
+  `pendingView`/`ScrollToView`), `selection` (`SelectLine`, `BeginSelectionDrag`, `OnDrag` + autoscroll), `caret movement`
   (`MoveCaret`, `MoveWord`, `MoveToEnd`), `editing` (`Backspace(word)`, `Delete(word)`, `SplitBlock`, `TypeChar`),
   `clipboard` (`Copy`, `Cut`, `Paste`, `PasteImage` — saves `attachments/`, `.txt` refuses), `text drop` (`DraggingOver*`, `FinishDrag`), `history`
   (`BeginStep`/`Undo`/`Redo`/`MarkDirty`), `focus`. `ArrangeCore` scrolls to the caret and **must never exit with
@@ -225,7 +233,8 @@ Why: [[ui-palettes]].
   `DocumentEditorControl`.
 - **DocumentToolbarControl** `<DocumentToolbar>` · StackPanelControl — the format bar for whichever
   note holds the caret; resolves it per press through `TextInputActions.Editor()` and takes no active
-  control. `OnTick` (opted in at construction) reflects bold/italic/underline/highlight/styling/colour/size/page format;
+  control. `OnTick` (opted in at construction) reflects bold/italic/underline/highlight/styling/alignment/colour/size/page format;
+  three alignment `IconButton`s after the styling dropdown, whose "Horizontal line" entry calls `InsertRule`;
   `OpenColors`/`OpenHighlights` drop presets plus a `Picker` (`ColorPickerControl` in a `ContextMenuContent`); `OpenPage` is the page menu; nested `ToolButton` (acts on press) and
   `PxBox` (the one part that does take the focus; captures the range on its press). XML `HoverColorHex`,
   `PressColorHex`, `IdleInkColorHex`, `ActiveInkColorHex`, `SeparatorColorHex`, `FieldColorHex`. Old
@@ -235,9 +244,11 @@ Why: [[ui-palettes]].
   **DocumentEditSession** — the open file: `path`, `undo`, `isDirty`, `MarkDirty`, `Repath`, `Save` (stamps
   `modified` when dirty).
 - **NotePropertiesControl** (no XML) · StackPanelControl — the header's rows: dates, palette dropdown, layout
-  fields, a Markdown note's other frontmatter keys. `Refresh`; swallows presses and taps; takes no active control.
-  [[note-properties]]
-- **Frontmatter** (static) — `Split`, `Entries` (`Entry`: key, value, editable, line, count), `Get`, `Set`.
+  fields, List markers, Read only, a Markdown note's other frontmatter keys (`UserValue`: checkbox for true/false,
+  field + Open for a link via static `openLink`; × `Remove`), and an "Add property" row (`AddProperty`). `Refresh`
+  (posted after add/remove); swallows presses and taps; takes no active control. [[note-properties]]
+- **Frontmatter** (static) — `Split`, `Entries` (`Entry`: key, value, editable, list, line, count), `Get`, `Set`
+  (a block list writes back as one, `ListLines`).
 - **DocumentXml** — `Load`/`Parse(XElement)` build blocks from a `<Document>` tree, `ToXml`/`Save` write one;
   the block level is written by hand. Since 6d no XSD type declares `"Document"`/`"Block"`/`"Run"`, so a
   note's `schemaLocation` validates nothing. [../Patterns/document-xml-persistence.md](../Patterns/document-xml-persistence.md)

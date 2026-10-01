@@ -214,9 +214,22 @@ when the test ends
 Only a Release build with `PROFILE` defined measures anything, because the profiler compiles away in plain Release and a Debug build's numbers are not worth a budget:
 
 ```
-dotnet build Thorium/Thorium.csproj -c Release -p:DefineConstants="TRACE%3BPROFILE"
-Thorium/bin/Release/net10.0-windows10.0.22621.0/Thorium.exe --test=Perf
+_Build/PerfTests.cmd [Host]
 ```
+
+`PerfTests.cmd` builds the solution in Release with `PROFILE` defined, runs `<Host>.exe --test=Perf` from its Release folder, and exits with the run's exit code. The host defaults to Thorium.
+
+The Perf suite's targets, each 30 warm-up ticks then 120 measured ticks:
+
+| Test | Fixture | Work per tick | Budgeted zones |
+|---|---|---|---|
+| `Perf.RelayoutLabels` | 1,000 labels in a column | column width flips 400/401 | `Step.Main.Layout` |
+| `Perf.TypeLargeNote` | 1,000 blocks of 1,000 chars in an editor | one character typed into the first block | `Step.Main.Layout`, `Step.Main.Logic`, `Document.MeasureBlocks` |
+| `Perf.RewrapLargeNote` | the same note | editor width narrows 8 px a tick, then widens back | `Step.Main.Layout`, `Document.MeasureBlocks`, `Text.MeasureBlock` — fails today: the page's paper size sets the text width, so the editor's width never rewraps |
+| `Perf.AnimationBurst` | 5,000 buttons in rows of 100 | one 2 s tween on every button's `state`, started at the first measured tick | `Step.Animation.Step` |
+| `Perf.AnimationLayoutClip` | 5,000 buttons in rows of 100 | `profile-margin` playing on every button, a relayout every tick | `Step.Animation.Step`, `Step.Main.Layout` |
+
+`Step.Animation.Step` is budgeted on Main because the scheduler runs it there while Main is free in its stage; if it moves to a worker the budget fails with the zone never having run.
 
 The capture goes into the run's own folder, never the host's `Profiling` folder, so a test run never prunes the user's captures. A single run's `max` can swing by several milliseconds on the same build, so `Max` budgets want generous headroom. `--profile-scenario` stays a separate tool for long exploratory captures.
 

@@ -14,6 +14,35 @@ namespace ArctisAurora.Core.UI
     {
         [A_XSDElementProperty("Path", "Settings", "Note the tab had open.")]
         public string path { get; set; } = "";
+
+        // where the caret and selection were, by block index; -1 for none
+        [A_XSDElementProperty("CaretBlock", "Settings", "Block the caret was in; -1 when the note had no caret.")]
+        public int caretBlock { get; set; } = -1;
+
+        [A_XSDElementProperty("CaretOffset", "Settings", "Caret offset within its block.")]
+        public int caretOffset { get; set; }
+
+        [A_XSDElementProperty("AnchorBlock", "Settings", "Block the selection started in.")]
+        public int anchorBlock { get; set; } = -1;
+
+        [A_XSDElementProperty("AnchorOffset", "Settings", "Selection start offset within its block.")]
+        public int anchorOffset { get; set; }
+
+        // what sat at the top of the view; -1 for nothing recorded
+        [A_XSDElementProperty("TopBlock", "Settings", "Block whose line was at the top of the view; -1 when not recorded.")]
+        public int topBlock { get; set; } = -1;
+
+        [A_XSDElementProperty("TopOffset", "Settings", "Character in that block whose line was at the top of the view.")]
+        public int topOffset { get; set; }
+
+        [A_XSDElementProperty("TopDelta", "Settings", "Pixels that line sat above the top of the view.")]
+        public float topDelta { get; set; }
+
+        [A_XSDElementProperty("ScrollX", "Settings", "Horizontal scroll offset in pixels.")]
+        public float scrollX { get; set; }
+
+        [A_XSDElementProperty("PropertiesOpen", "Settings", "Whether the note's properties header was expanded.")]
+        public bool propertiesOpen { get; set; }
     }
 
     // A split when it holds panes, a leaf when it holds tabs.
@@ -87,45 +116,72 @@ namespace ArctisAurora.Core.UI
 
         // secondary windows are renamed on restore, so a later tear-off cannot collide with one
         private const string restoredWindow = "session-";
+        private static int restoredCount;
 
         #region ---- restore ----
         // Rebuilds what the last session left in this scope. The primary's tree is already parsed and
         // assigned; every other window is opened here. Falls back to the authored arrangement.
         public static void Restore()
         {
+            if (!Rebuild(true)) WorkspaceControl.In(Engine.primary.ui.uiRoot)?.LoadDefault();
+        }
+
+        // Records this scope, empties every workspace and rebuilds key's, the primary staying where it is.
+        // False when key has nothing recorded, leaving the primary one empty pane.
+        public static bool ChangeScope(string key)
+        {
+            Capture();
+            ClearWorkspaces();
+            scope = key;
+
+            if (Rebuild(false)) return true;
+            WorkspaceControl.In(Engine.primary.ui.uiRoot)?.LoadPane();
+            return false;
+        }
+
+        private static bool Rebuild(bool placePrimary)
+        {
             WorkspaceControl primary = WorkspaceControl.In(Engine.primary.ui.uiRoot);
             SessionScope recorded = SettingsRegistry.Get<SessionLayout>().Recorded(scope);
+            if (recorded == null || recorded.windows.Count == 0) return false;
 
-            if (recorded == null || recorded.windows.Count == 0)
-            {
-                primary?.LoadDefault();
-                return;
-            }
-
-            int opened = 0;
             foreach (SessionWindow record in recorded.windows)
             {
                 if (record.primary)
                 {
                     Fill(primary, record);
-                    Place(Engine.primary, record);
+                    if (placePrimary) Place(Engine.primary, record);
                     continue;
                 }
 
-                OpenRecorded(record, ++opened);
+                OpenRecorded(record);
             }
 
             // GLFW focuses each window as it is created, so the one the user asked for goes last.
             Engine.primary.Focus();
             Log.Info($"restored {recorded.windows.Count} window(s) for '{scope}'");
+            return true;
         }
 
-        private static void OpenRecorded(SessionWindow record, int index)
+        // The primary's workspace emptied and every other window holding one closed.
+        private static void ClearWorkspaces()
+        {
+            foreach (RenderWindow window in Engine.windows.Values.ToList())
+            {
+                if (window.closeRequested || WorkspaceControl.In(window.ui?.uiRoot) is not WorkspaceControl workspace) continue;
+
+                if (window == Engine.primary)
+                    foreach (Entity child in workspace.children.ToList()) child.Destroy();
+                else Engine.CloseWindow(window);
+            }
+        }
+
+        private static void OpenRecorded(SessionWindow record)
         {
             if (string.IsNullOrEmpty(record.document)) return;
 
             (int x, int y) = PositionFor(record);
-            RenderWindow window = Engine.OpenWindow(restoredWindow + index,
+            RenderWindow window = Engine.OpenWindow(restoredWindow + ++restoredCount,
                 (uint)record.width, (uint)record.height, x, y);
 
             window.uiDocument = record.document;
@@ -232,6 +288,7 @@ namespace ArctisAurora.Core.UI
                 TabItemControl tab = tabFactory(path);
                 if (tab == null) continue;
 
+                TabViewControl.EditorOf(tab)?.RestoreView(record.tabs[i]);
                 view.AddChild(tab);
                 if (i == record.active) active = tab;
             }
@@ -324,11 +381,14 @@ namespace ArctisAurora.Core.UI
 
             foreach (TabItemControl item in view.Items)
             {
-                string path = TabViewControl.EditorOf(item)?.session?.path;
+                DocumentEditorControl editor = TabViewControl.EditorOf(item);
+                string path = editor?.session?.path;
                 if (path == null) continue;
 
                 if (ReferenceEquals(item, view.activeItem)) record.active = record.tabs.Count;
-                record.tabs.Add(new SessionTab { path = path });
+                SessionTab tab = editor.ViewState();
+                tab.path = path;
+                record.tabs.Add(tab);
             }
 
             return record;

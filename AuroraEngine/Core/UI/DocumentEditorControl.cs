@@ -41,6 +41,7 @@ namespace ArctisAurora.Core.UI
 
         // honoured at the end of Arrange, once every block has this frame's lines
         private bool scrollToCaretPending;
+        private SessionTab? pendingView;
 
         public DocumentEditorControl()
         {
@@ -94,7 +95,9 @@ namespace ArctisAurora.Core.UI
             };
             AddChild(content);
 
-            string extension = Path.GetExtension(session?.path ?? string.Empty).ToLowerInvariant();
+            string extension = Extension;
+            content.plainText = extension == ".txt";
+            content.readOnly = document.readOnly;
             properties = extension is ".md" or ".xml" ? new NotePropertiesControl(this, extension == ".md") : null;
             if (properties != null)
             {
@@ -175,9 +178,12 @@ namespace ArctisAurora.Core.UI
         // scope discards what is pushed into it.
         public EditScope BeginStep(string label) => session != null ? session.undo.Begin(label) : default;
 
+        // a loaded note that is not marked ReadOnly
+        private bool Writable => content != null && activeDocument?.readOnly != true;
+
         public void Undo()
         {
-            if (session == null || !session.undo.Undo()) return;
+            if (session == null || !Writable || !session.undo.Undo()) return;
 
             content?.DisarmStyle();
             MarkDirty();
@@ -186,7 +192,7 @@ namespace ArctisAurora.Core.UI
 
         public void Redo()
         {
-            if (session == null || !session.undo.Redo()) return;
+            if (session == null || !Writable || !session.undo.Redo()) return;
 
             content?.DisarmStyle();
             MarkDirty();
@@ -202,7 +208,7 @@ namespace ArctisAurora.Core.UI
 
         public void ApplyStyle(StyleDelta delta)
         {
-            if (content == null) return;
+            if (!Writable) return;
 
             using (BeginStep("Formatting"))
                 if (content.ApplyStyle(delta)) MarkDirty();
@@ -224,7 +230,7 @@ namespace ArctisAurora.Core.UI
 
         public void ApplyStyleTo(DocumentAddress from, DocumentAddress to, StyleDelta delta)
         {
-            if (content == null) return;
+            if (!Writable) return;
 
             using (BeginStep("Formatting"))
                 if (content.ApplyStyleTo(from, to, delta)) MarkDirty();
@@ -232,16 +238,40 @@ namespace ArctisAurora.Core.UI
 
         public void SetBlockStyling(TextStyleType type)
         {
-            if (content == null) return;
+            if (!Writable) return;
 
             using (BeginStep("Paragraph style"))
                 if (content.SetBlockStyling(type)) MarkDirty();
         }
 
+        public TextAlignment CaretBlockAlignment => content?.CaretBlockAlignment ?? TextAlignment.Left;
+
+        // Markdown and plain text have no way to write it, so only .xml notes align.
+        public bool CanAlign => content != null && !(Extension is ".md" or ".txt");
+
+        public void SetAlignment(TextAlignment alignment)
+        {
+            if (!CanAlign || !Writable) return;
+
+            using (BeginStep("Alignment"))
+                if (content.SetBlockAlignment(alignment)) MarkDirty();
+        }
+
+        public void InsertRule()
+        {
+            if (!Writable) return;
+
+            using (BeginStep("Horizontal line"))
+                if (content.InsertRule()) MarkDirty();
+            RequestScrollToCaret();
+        }
+
+        private string Extension => Path.GetExtension(session?.path ?? string.Empty).ToLowerInvariant();
+
         public void SetChecked(BlockControl block, bool value)
         {
             int index = content?.Blocks().IndexOf(block) ?? -1;
-            if (index < 0) return;
+            if (index < 0 || !Writable) return;
 
             using (BeginStep("Check"))
                 content.SetBlockList(index, b => b.isChecked = value);
@@ -260,14 +290,15 @@ namespace ArctisAurora.Core.UI
                 RequestScrollToCaret();
                 return;
             }
+            if (!Writable) return;
 
             using (BeginStep(delta > 0 ? "Indent" : "Outdent"))
-                if (content.ShiftListLevel(delta)) MarkDirty();
+                if (content.ShiftCodeIndent(delta) || content.ShiftListLevel(delta)) MarkDirty();
         }
 
         public void SetListMarker(ListMarker marker)
         {
-            if (content == null) return;
+            if (!Writable) return;
 
             using (BeginStep("List marker"))
                 if (content.SetListMarker(marker)) MarkDirty();
@@ -275,7 +306,7 @@ namespace ArctisAurora.Core.UI
 
         public void SetPictureWrap(PictureWrap wrap)
         {
-            if (content == null) return;
+            if (!Writable) return;
 
             using (BeginStep("Wrap picture"))
                 if (content.SetPictureWrap(wrap)) MarkDirty();
@@ -283,7 +314,7 @@ namespace ArctisAurora.Core.UI
 
         public void SetPictureCollision(PictureCollision collision)
         {
-            if (content == null) return;
+            if (!Writable) return;
 
             using (BeginStep("Picture collision"))
                 if (content.SetPictureCollision(collision)) MarkDirty();
@@ -350,6 +381,15 @@ namespace ArctisAurora.Core.UI
             MarkDirty();
         }
 
+        // Whether the note's text refuses changes. Not undoable.
+        public void SetReadOnly(bool value)
+        {
+            if (content == null) return;
+
+            activeDocument.readOnly = content.readOnly = value;
+            MarkDirty();
+        }
+
         // The document zoom setting, clamped; 1 is 100%.
         private static float DocumentZoom =>
             Math.Clamp(SettingsRegistry.Get<UISettings>().documentZoom.percent, 25f, 400f) / 100f;
@@ -385,7 +425,7 @@ namespace ArctisAurora.Core.UI
 
         public bool DeleteSelection()
         {
-            if (content == null || !content.DeleteSelection()) return false;
+            if (!Writable || !content.DeleteSelection()) return false;
 
             MarkDirty();
             return true;
@@ -538,7 +578,7 @@ namespace ArctisAurora.Core.UI
         // follows the same rules the arrow keys already resolve.
         private void DeleteOver(CaretMove move)
         {
-            if (content?.caretBlock == null) return;
+            if (content?.caretBlock == null || !Writable) return;
 
             bool backward = move == CaretMove.Left || move == CaretMove.WordLeft;
             using (BeginStep(backward ? "Backspace" : "Delete"))
@@ -560,7 +600,7 @@ namespace ArctisAurora.Core.UI
 
         public void SplitBlock()
         {
-            if (content == null) return;
+            if (!Writable) return;
 
             using (BeginStep("New paragraph"))
                 content.SplitBlock();
@@ -572,7 +612,9 @@ namespace ArctisAurora.Core.UI
         // One character, recorded against the block it lands in.
         public void TypeChar(char c)
         {
-            content?.TypeChar(c);
+            if (!Writable) return;
+
+            content.TypeChar(c);
             RequestScrollToCaret();
         }
         #endregion
@@ -590,6 +632,7 @@ namespace ArctisAurora.Core.UI
             if (content.SelectedFragment() == null) return true;
 
             content.CopySelection();
+            if (!Writable) return true;
             using (BeginStep("Cut"))
                 content.DeleteSelection();
 
@@ -601,6 +644,7 @@ namespace ArctisAurora.Core.UI
         public bool Paste(string text)
         {
             if (content == null) return false;
+            if (!Writable) return true;
 
             bool pasted;
             using (BeginStep("Paste"))
@@ -618,6 +662,7 @@ namespace ArctisAurora.Core.UI
         public bool PasteImage(Image<Rgba32> image)
         {
             if (content == null || session == null) return false;
+            if (!Writable) return true;
             if (Path.GetExtension(session.path).Equals(".txt", StringComparison.OrdinalIgnoreCase))
             {
                 Log.Info($"a plain text note cannot hold a picture; paste refused.");
@@ -648,7 +693,7 @@ namespace ArctisAurora.Core.UI
         public override bool DraggingOver(Control dragged, Vector2 point)
         {
             DocumentControl source = DocumentControl.TextDragSource(dragged);
-            if (content == null || source == null) return false;
+            if (!Writable || source == null) return false;
 
             source.textDragHovered = true;
             AutoScroll(point);
@@ -666,7 +711,7 @@ namespace ArctisAurora.Core.UI
         public override bool FinishDrag(Control dragged, Vector2 point)
         {
             DocumentControl source = DocumentControl.TextDragSource(dragged);
-            if (source == null || content == null) return false;
+            if (source == null || !Writable) return false;
 
             content.HideDrop();
             if (!content.CaretOffText(point, out BlockControl block, out int offset)) return true;
@@ -725,6 +770,16 @@ namespace ArctisAurora.Core.UI
         {
             base.ArrangeCore(finalRect);
 
+            if (pendingView != null && content != null)
+            {
+                SessionTab view = pendingView;
+                pendingView = null;
+
+                if (ScrollToView(view)) base.ArrangeCore(finalRect);
+                else SetFlag(ArrangeFlags.ArrangeDirty, false);
+                return;
+            }
+
             if (!scrollToCaretPending || content == null) return;
             scrollToCaretPending = false;
 
@@ -758,6 +813,63 @@ namespace ArctisAurora.Core.UI
         {
             scrollToCaretPending = true;
             InvalidateArrange();
+        }
+
+        // Where the reader was: caret, selection, the line at the top of the view, the header.
+        public SessionTab ViewState()
+        {
+            if (pendingView != null) return pendingView;
+
+            SessionTab view = new SessionTab();
+            if (content == null) return view;
+
+            if (content.caretBlock != null)
+            {
+                DocumentAddress caret = content.AddressOf(content.caretBlock, content.caretOffset);
+                DocumentAddress anchor = content.AnchorAddress;
+                (view.caretBlock, view.caretOffset) = (caret.block, caret.offset);
+                (view.anchorBlock, view.anchorOffset) = (anchor.block, anchor.offset);
+            }
+
+            LayoutRect inner = arrangedRect.Shrink(arrange.padding);
+            if (content.CaretAtPoint(inner.x, inner.y, out BlockControl top, out int topOffset))
+            {
+                DocumentAddress at = content.AddressOf(top, topOffset);
+                (view.topBlock, view.topOffset) = (at.block, at.offset);
+                view.topDelta = inner.y - (top.TextOrigin.Y + top.CaretAt(topOffset).top);
+            }
+
+            view.scrollX = GetScrollOffset().X;
+            view.propertiesOpen = content.header is ExpanderControl { expanded: true };
+            return view;
+        }
+
+        // Puts a ViewState back; the scroll waits for the first Arrange that has lines to measure from.
+        public void RestoreView(SessionTab view)
+        {
+            if (content == null) return;
+
+            content.Select(new DocumentAddress(view.anchorBlock, view.anchorOffset),
+                           new DocumentAddress(view.caretBlock, view.caretOffset));
+            if (content.header is ExpanderControl expander) expander.expanded = view.propertiesOpen;
+
+            pendingView = view;
+            InvalidateArrange();
+        }
+
+        private bool ScrollToView(SessionTab view)
+        {
+            Vector2 before = GetScrollOffset();
+            float y = before.Y;
+
+            if (content.Resolve(new DocumentAddress(view.topBlock, view.topOffset), out BlockControl block, out int offset))
+            {
+                float lineTop = block.TextOrigin.Y + block.CaretAt(offset).top;
+                y += lineTop - arrangedRect.Shrink(arrange.padding).y + view.topDelta;
+            }
+
+            SetScrollOffset(new Vector2(view.scrollX, y));
+            return GetScrollOffset() != before;
         }
 
         // The gutter and the editor's own padding, which the content does not cover.

@@ -5,7 +5,7 @@
 (`ListMarkersDraw.Markers`, viewed before approval). **NOT GUI-verified:** the right-click "List marker" submenu.
 **Scope:** `ArctisAurora.Core.UI` — `ListMarker`, `ListMarkers`, `BlockControl` (`listMarker`, `shownMarker`,
 `listNumber`, `ShowMarker`, `SyncMarker`), `ListLevel`, `DocumentLayout.listLevels`/`MarkerFor`, `DocumentControl`
-(`RenumberLists`, `ListsChanged`, `SetListMarker`, `TypeListPrefix`, `SplitBlock`), `DocumentEditorControl.SetListMarker`,
+(`RenumberLists`, `ListsChanged`, `SetListMarker`, `TypeMarkdownPrefix`, `SplitBlock`), `DocumentEditorControl.SetListMarker`,
 `TextInputActions` (`List.*`), `DocumentXml`, `MarkdownFormat`; `Thorium/…/Menus/Note.menu.xml`
 
 ## What changed
@@ -30,6 +30,19 @@
 - XML: `<Block … Marker="UpperRoman">`, `<DocumentLayout><ListLevel Marker/>`. Markdown: numeric markers write
   `N. ` counted per level with the same restart rules; shapes write `- `; `N.`/`N)` read as `Decimal`
 
+- **Letters and numerals in `.md` (2026-10-01), Pandoc `fancy_lists`.** `BlockLine` writes `ListMarkers.Format`
+  (`b.`, `iii.`), with two spaces after a capital and a period, so `A. Smith` stays prose. `MarkdownFormat.Read`
+  matches `lettered` and checks the gap with `LetteredGap`. `LetteredMarker` decides the marker:
+  - alpha continues only when the token is `NextLetters` of the item above at the same level (`PreviousItem`;
+    the token rides an `XElement` annotation);
+  - roman if `IsRoman` (canonical, via `Format`) and it is multi-letter, `i`/`I`, or after a roman item;
+  - otherwise a single letter starts an alpha list;
+  - mixed case is never a list.
+  The writer escapes the delimiter (`a\.`) of a paragraph that would read as a list, and of any uniform-case
+  token straight after a list item. Test: `TextInput.MarkdownFancyLists`
+- **Per-note level defaults in frontmatter:** `ListMarkers: [Decimal, LowerAlpha]` ↔ `<DocumentLayout><ListLevel>`
+  → [[note-properties]]
+
 ## Why these choices
 
 **One kind with a marker, not a `Numbered` kind.** The user asked for the two to merge; everything list-shaped —
@@ -43,8 +56,11 @@ primitive would be one walk per keystroke-path and easy to miss on a new path. C
 `MeasureCore` follows the selection boxes, which are already created at arrange.
 
 ## Known gaps
-- Markdown keeps only digits: a chosen shape or letter/roman style is lost in `.md` (Obsidian has no syntax); an
-  unmarked item writes `- ` even when a note's defaults make that level numeric
+- Markdown has no syntax for shapes: a chosen shape writes `- ` and comes back as the default. An unmarked
+  item writes `- ` even when the note's defaults make that level numeric. Obsidian renders `a.`/`i.` items
+  as paragraphs, not as lists
+- `.md` notes with a paragraph starting `i. `, `a) ` and the like now open as lists
+- A roman number above 3999 writes as digits and reads back as `Decimal`
 - A list always numbers from 1
 - The List marker actions act on the caret, not on the item right-clicked
 - Shape markers are 6 px at 100% zoom

@@ -263,9 +263,9 @@ namespace ArctisAurora.Core.UI
                     : Math.Clamp(spans[i].count, 0, s.Length - start);
                 if (count < 0) count = 0;
 
-                string spanFont = spans[i].fontName ?? fontName;
+                string spanFont = FontFor(spans[i]);
                 int spanSize = spans[i].fontSize > 0 ? spans[i].fontSize : fontSize;
-                FontAsset font = spans[i].fontName == null ? _fontAsset : ResolveFont(spanFont);
+                FontAsset font = spanFont == fontName ? _fontAsset : ResolveFont(spanFont);
 
                 if (spans[i].IsPicture)
                 {
@@ -316,6 +316,38 @@ namespace ArctisAurora.Core.UI
 
         private int Zoomed(int size) => textZoom == 1f ? size : Math.Max(1, (int)MathF.Round(size * textZoom));
 
+        protected virtual string FontFor(in StyleSpan span) => span.fontName ?? fontName;
+
+        protected virtual TextAlignment Alignment => TextAlignment.Left;
+
+        // Shifts each line across its room by the alignment, trailing spaces left hanging.
+        private void Align()
+        {
+            float factor = Alignment switch { TextAlignment.Center => 0.5f, TextAlignment.Right => 1f, _ => 0f };
+            if (factor == 0f || _layout == null) return;
+
+            string s = text ?? string.Empty;
+            foreach (TextLine line in _layout.lines)
+            {
+                float room = line.room > 0f ? line.room : _wrapWidth;
+                if (room == float.MaxValue) continue;
+
+                float pen = 0f, visible = 0f;
+                foreach (LineSegment segment in line.segments)
+                    for (int k = segment.charStart; k < segment.charStart + segment.charCount && k < s.Length; k++)
+                    {
+                        pen += TextMeasurer.MeasureAdvance(s[k], _runs[segment.runIndex], pen);
+                        if (s[k] != ' ' && s[k] != '\t') visible = pen;
+                    }
+
+                line.left += MathF.Max(0f, room - visible) * factor;
+            }
+
+            _layout.width = 0f;
+            foreach (TextLine line in _layout.lines)
+                _layout.width = MathF.Max(_layout.width, line.left + line.width);
+        }
+
         protected override Vector2 MeasureCore(Vector2 availableSize)
         {
             metrics ??= new FontAssetGlyphMetrics();
@@ -335,6 +367,7 @@ namespace ArctisAurora.Core.UI
             laidAround = false;
             Profiling.Zone.End("Text.MeasureBlock");
             _wrapWidth = wrapWidth;
+            Align();
 
             float w = a.preferredWidth > 0 ? a.preferredWidth : _layout.width;
             float h = a.preferredHeight > 0 ? a.preferredHeight : _layout.height;
@@ -351,6 +384,7 @@ namespace ArctisAurora.Core.UI
 
             _layout = TextMeasurer.MeasureBlock(_runs, _wrapWidth, metrics, lineHeight, 0f, slots);
             laidAround = slots != null;
+            Align();
             return _layout.height;
         }
 
@@ -408,6 +442,7 @@ namespace ArctisAurora.Core.UI
 
                 float baselineY = _origin.Y + line.baseline;
                 float pen = _origin.X + line.left;
+                float lineStart = pen;
 
                 foreach (LineSegment segment in line.segments)
                 {
@@ -443,6 +478,11 @@ namespace ArctisAurora.Core.UI
                         if (index >= s.Length) break;
 
                         float effectStart = started + (index - run.charStart) * stagger;
+                        if (s[index] == '\t')
+                        {
+                            pen += TextMeasurer.TabAdvance(run, pen - lineStart);
+                            continue;
+                        }
                         pen += WriteGlyph(quads, s[index], run.style, paint, alpha, font, run.fontSize, effect, effectStart,
                                           pen, baselineY, z, clip, gradientRect);
                     }
@@ -479,7 +519,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // One flat rectangle: a highlight or a text decoration.
-        private static void WriteRect(DataPool quads, float x, float y, float width, float height,
+        protected static void WriteRect(DataPool quads, float x, float y, float width, float height,
                                       uint paint, float alpha, float z, Vector4 clip, Vector4 gradientRect)
         {
             if (width <= 0f || height <= 0f) return;
@@ -623,7 +663,7 @@ namespace ArctisAurora.Core.UI
                 TextMeasurer.Run run = _runs[segment.runIndex];
                 for (int i = 0; i < segment.charCount; i++)
                 {
-                    float advance = TextMeasurer.MeasureAdvance(text[segment.charStart + i], run);
+                    float advance = TextMeasurer.MeasureAdvance(text[segment.charStart + i], run, pen);
                     if (localX < pen + advance * 0.5f) return segment.charStart + i;
                     pen += advance;
                 }
@@ -663,7 +703,7 @@ namespace ArctisAurora.Core.UI
 
                     TextMeasurer.Run run = _runs[segment.runIndex];
                     for (int c = segment.charStart; c < offset; c++)
-                        x += TextMeasurer.MeasureAdvance(text[c], run);
+                        x += TextMeasurer.MeasureAdvance(text[c], run, x - line.left);
 
                     return new CaretGeometry(x, line.top, line.height, line.baseline);
                 }

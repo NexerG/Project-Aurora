@@ -22,6 +22,8 @@ namespace ArctisAurora.Core.UI
     public sealed class BlockSnapshot
     {
         public TextStyleType stylingType;
+        public TextAlignment alignment;
+        public string? language;
         public ListKind listKind;
         public int listLevel;
         public ListMarker? listMarker;
@@ -160,6 +162,7 @@ namespace ArctisAurora.Core.UI
         public void Undo()
         {
             document.InsertFragment(from, fragment);
+            if (fragment.blocks.Count > 1) document.RestoreKind(from, fragment.blocks[0]);
             document.Select(anchor, caret);
         }
 

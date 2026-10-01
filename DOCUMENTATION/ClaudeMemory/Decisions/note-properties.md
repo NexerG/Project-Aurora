@@ -45,6 +45,37 @@
 - **`TextInputActions.Editor()`** returns null when the walk passes an editing `TextBoxControl`, so a field inside a
   note gets the keystrokes instead of the note.
 
+### Second pass (2026-10-01)
+- **Header text boxes take a press:** `TextBoxControl.FieldLine.OnPointerPress` returns false, so the press
+  bubbles from the text run to its box. Test: `TextInput.HeaderFieldTakesPress`
+- **Your own keys are added and removed in the panel:**
+  - the "Add property" row takes a key (no `:`, `=`, `#`, `[`, no owned or existing key) and writes `key:`;
+  - a × on each key calls `SetFrontmatterValue(key, null)`;
+  - both `Engine.Post(Refresh)`, so the field being committed is not destroyed inside its own callback.
+- **A value shows by its shape,** for display only:
+  - `true`/`false` → a `CheckBoxControl`;
+  - `[[Note]]` or `http(s)://` → a field plus an **Open** button calling `NotePropertiesControl.openLink`.
+    Thorium sets that to `VaultBrowserControl.OpenLink`: a `[[name|alias#heading]]` is matched by file name or
+    path ending in the vault tree, a URL goes to the shell;
+  - anything else → a field.
+- **YAML block lists are editable** (`Entry.list`): shown comma-separated, and written back as a block list at
+  the indent the items had (`ListLines`), so tags/aliases keep Obsidian's shape. `YamlValue` quotes a
+  `[[…]]` value, which raw YAML would read as a nested list.
+- **New owned keys:**
+  - `ReadOnly` → `<Document ReadOnly>` (`RichTextDocument.readOnly`). `DocumentEditorControl.Writable` gates
+    every text and structure edit path, undo/redo, paste/cut, drag-in, and picture move/resize/rotate
+    (`DocumentControl.readOnly`). Properties stay editable, so the lock can be turned off. Panel checkbox
+    "Read only" (`SetReadOnly`). Test: `TextInput.ReadOnlyRefusesEdits`;
+  - `ListMarkers` → `<DocumentLayout><ListLevel Marker>` children; inline `[…]`, or bare if the key was
+    written bare. Panel row "List markers" (comma-separated `ListMarker` names, an unknown name is refused).
+- **Demoted:**
+  - `PageGap` is no longer owned; the page gap is app-only (`DocumentControl.PageGap` reads
+    `DocumentLayout.Defaults`), so an `.xml` note's `<Page Gap>` is ignored too;
+  - `PageWidth`/`PageHeight` are written only when `PageSize` is `Custom`.
+- **`DocumentSettings.stampModified`** (`StampModified`, default true): off, a save writes no `Modified`
+  (removing the key) and the panel shows the file's last-write time.
+- Test for the frontmatter half: `TextInput.FrontmatterKeys`
+
 ## Why these choices
 
 **Parsed, not opaque (user, fork F1).** The keys drive the note — palette, layout, page — so `.md` gets the per-note
@@ -69,19 +100,21 @@ a 24×24 `Circle` button offset up or down — no shader change, and the clip al
 text rather than sitting outside the paper.
 
 ## Known gaps
-- **Text boxes in the header do not take a press.** `TextRunControl.OnPointerPress` walks up to the nearest
-  `IGlyphPressTarget`, which is now `DocumentControl`; it consumes the press, so the `TextBoxControl` never starts
-  editing. Line height / block spacing / list indent and editable frontmatter values are therefore not editable in
-  the GUI. Proposed one-line fix in `TextBoxControl.FieldLine` (press returns false) awaiting the user.
+- **Second pass NOT GUI-verified** (add/remove, checkbox, Open, read-only toggle) — test-verified only.
+- **`FontSize` / `CodeFont` keys dropped** (user, 2026-10-01). A note's `<TextStyle>` list replaces the whole
+  scheme, so a single body-size key would have needed per-type merging.
+- An ISO date value in a user key is a plain field; there is no date picker. A multi-link value
+  (`[[a]], [[b]]`) shows no Open button.
 - GUI-verified 2026-09-27 in Thorium: frontmatter hidden from the body, rows listed (block list read-only), unknown
   palette warns and falls back, palette pick repaints only that note and survives a restart, Ctrl+S rewrites only the
   palette line and adds `Created`/`Modified`, `.xml` note gets the three attributes, grip is a circle that splits into
   semicircles with flipped arrows. **The animation itself was not captured mid-motion** — only end states.
-- Palette, layout and frontmatter edits are not undoable; adding or removing keys from the panel is not supported.
+- Palette, layout, read-only and frontmatter edits are not undoable.
 - A duplicated note keeps the source's `Created`; a copied file gets a new one from disk.
 - Normalizations on save: an owned key equal to its default is removed; an edited line loses its trailing comment;
   CRLF inside the block becomes LF.
 - A header taller than a page overflows page 1. Context menus from the note (the palette dropdown) use the app palette.
-- The expander state is not remembered per note.
+- The expander state is remembered per open tab only (`SessionTab.PropertiesOpen`, [[session-restore]]),
+  not per note.
 
 Related: [[note-file-formats]], [[document-pages]], [[ui-palettes]], [[xml-save-skips-defaults]], [[document-format-bar]]

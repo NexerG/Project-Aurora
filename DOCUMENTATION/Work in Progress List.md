@@ -23,8 +23,9 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 - [x] **decide what Alt+F4 does.** Decided 2026-09-18: routed like the X button — a GLFW close callback posts `WindowActions.Close(owner)`, so the primary goes through `Shutdown.Request()` and any other window settles alone. Alt+F4, taskbar close and `taskkill` without `/F` all behave the same. Ghost and plain context-menu windows still ignore it
 - [x] **session restore (2026-08-31)** — landed, See `ClaudeMemory/Decisions/session-restore.md`
 	- [ ] **the primary window's rect is applied after `Engine.Init` returns**, so it shows at the `GraphicsSettings` size for the ~800ms of bootstrap and then jumps. `SettingsRegistry.LoadAll` is the first bootstrap step and `InitWindowing` follows it, so nothing can read the session earlier. Fix is either creating the primary hidden and showing it after restore, or sourcing the scope key from somewhere available before `LoadAll`
-	- [ ] **switching vaults does not capture the vault being left** — `VaultsWindow.Switch` closes every tab and writes the setting, and capture only ever runs at shutdown, so switching away and quitting elsewhere loses the old vault's arrangement. Fix is a `SessionLayout.Capture()` in `Switch` before `CloseTabs`, against the outgoing scope. Related and pre-existing: `Switch` only closes tabs in `Engine.primary`, so a torn-off window keeps notes from the vault that was left and capture then files them under the new vault's key
-	- [ ] caret position, scroll offset and selection are not recorded, only the ordered tab paths and the active one; an iconified window comes back normal; a window whose every recorded note was deleted comes back as an empty pane rather than not at all
+	- [ ] **switching vaults should restore the incoming vault's layout** (approved 2026-10-01) — `Switch` now captures and rescopes but still calls `OpenFirstNote`. Open: torn-off windows of the old vault (`Switch` closes only primary's tabs), the new vault's secondary windows, whether the primary moves → `session-restore`
+	- [ ] **per-tab view state not GUI-verified** — caret, selection, top line and header state across a real quit/relaunch and a vault switch; test-verified only → `session-restore`
+	- [ ] an iconified window comes back normal; a window whose every recorded note was deleted comes back as an empty pane rather than not at all
 - [ ] bootstrap and shutdown steps report success unconditionally — the `bool` is wired end to end but no step actually detects its own failure yet
 - [ ] UI collision
 	- [ ] add handle states - game, ui etc
@@ -37,10 +38,10 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 	- [ ] add the rest of the alphabet (eu languages)
 		- [ ] create language packs?
 	- [ ] editor
-		- [ ] Markdown insertions
 		- [ ] **GUI-verify `.md` notes and lists** — open, edit, save a Markdown note; dots/checkboxes in the indent, wrapping inside it, checkbox click + undo, `- `/`[ ] ` conversion, Enter/Backspace on items, Tab/Shift+Tab → `note-file-formats`
 		- [ ] a custom note format of Thorium's own, beside `.md` (user, 2026-09-17) → `note-file-formats`
-		- [ ] **text boxes in the note's properties header take no press** — `TextRunControl` hands the press to the nearest `IGlyphPressTarget`, now `DocumentControl`, so layout and frontmatter fields cannot be edited in the GUI; one-line fix in `TextBoxControl.FieldLine` proposed → `note-properties`
+		- [ ] **properties panel second pass not GUI-verified** — add/remove a key, true/false checkbox, Open on a `[[link]]`/URL, Read only, List markers; test-verified only → `note-properties`
+		- [ ] **`FontSize` / `CodeFont` frontmatter keys — open fork**: a note's `<TextStyle>` list replaces the whole scheme, so a body-size key needs per-type merging, against `DocumentLayout.textStyles`' rule → `note-properties`
 		- [ ] glyph ceiling — every character is a `GlyphControl`, always (~56.7k on the 400-block note, past `UIModule`'s 50,000 cap). Accepted knowingly. **The UI data/visualization split does not fix this** — one control per element means the count is unchanged; the two share a cause but are separate problems. Escape hatch that does not change the design: a run holds `text` + its `BlockLayout` with no glyph children and calls `SyncGlyphs()` when visible
 		- [ ] P4 — selection + Ctrl+B/I run split/merge
 			- [x] **Ctrl+B/I over the range, and the format bar (2026-08-30)** — landed, See `ClaudeMemory/Decisions/document-format-bar.md`
@@ -52,7 +53,8 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] nothing prompts for a note with no file. `TextBoxControl` has no double-click-select-word and no horizontal scroll past its width — the rename field runs its text under the clip rather than following the caret. A clean note is still rewritten on tab close (byte-identical, but it touches mtime)
 		- [ ] page view polish — first page flush with the pane's top/left, page fill barely differs from the gap, no headers/footers/page numbers, page changes not undoable, Custom size XML-only → `document-pages`
 	- [ ] **UI scaling not verified at a display scale ≠ 100%, or across monitors of different scale** — test machine is one 1920×1080 at 100% → `ui-scaling`
-		- [ ] code blocks (B1 — monospace, no wrap, view-time syntax coloring)
+		- [ ] code blocks, rest of B1 — view-time syntax colouring (the fence `language` is kept for it), no wrap with a sideways scroller → `markdown-blocks-and-alignment`
+		- [ ] **a tab character measures as one space** — fork: fixed four-space width or real tab stops; `TextMeasurer.MeasureAdvance` and `TextRunControl.WriteGlyph` must agree → `markdown-blocks-and-alignment`
 		- [ ] custom expressions (maths)
 	- [ ] **the `"window"` menu is the whole app's fallback** — `UI.xml` names `ContextMenu="window"` on the root `<Window>`, so right-clicking a splitter or the outer panel still offers Minimize/Maximize/Close; `TabWindow.xml` names it nowhere, so a torn-off window offers them *not even on its own title bar*. Fix is moving the attribute onto `<TitleBar>` in both. Deferred 2026-08-20 — the crash is fixed, the placement is a separate call
 	- [ ] no selection highlight; nothing watches the vault folder, so a note added on disk shows up only after a toggle rebuilds; `FileObject.icon` is still set by nothing; clicking a row while renaming commits the edit *and* opens that row's note
@@ -67,17 +69,18 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 	- [ ] Claude, chatgpt, other chatbot integrations.
 	- [ ] text upgrade
 		- [ ] **decorations, colour picker and list markers not GUI-verified** — the colour and highlight dropdowns, the picker inside a menu, Ctrl+U, and right-click → List marker have only run under tests → `text-decorations-and-colour`, `list-markers`
-		- [ ] a list always numbers from 1, and a `.md` note keeps only digits — a chosen shape or letter/roman style is lost there → `list-markers`
+		- [ ] a list always numbers from 1, and a `.md` note loses a chosen shape (letters and numerals now round-trip) → `list-markers`
 		- [x] **gradient (2026-08-22)** — landed, See `ClaudeMemory/Decisions/ui-gradients.md`
 			- [ ] a gradient cannot cross runs — a heading built from two runs gets two ramps. `GradientSpace="Self|Inherit"` on `VulkanControl`, letting the `arrangedRect` setter take the parent's rect, is the ~5-line generic fix; not built without a use for it
 			- [ ] no gradient on the outline or a button's hover/press colour (edge landed 2026-09-18, `ui-gradients` §9)
-		- [ ] alignment — needs a block-level line-width pass that has not existed since the L2 revert: runs measure themselves, so no run knows the width of a visual line it shares. Priced separately, deferred (user, 2026-08-30)
-		- [ ] horizontal lines (honestly its just a panel)
+		- [ ] **Markdown typing, code blocks, rules and alignment NOT GUI-verified (2026-10-01)** — test- and golden-verified only; real typing of the triggers, the toolbar's alignment buttons and "Horizontal line", Ctrl+L/E/R → `markdown-blocks-and-alignment`
+		- [ ] text typed right after an inline `` `code` `` stays code; a drop onto a rule is not redirected; no justify; `.md` writes a rule as `---`, which other readers take as a heading under a text line → `markdown-blocks-and-alignment`
 		- [x] **tables (2026-09-29)** — landed, See `ClaudeMemory/Decisions/document-tables.md`
 			- [ ] no UI inserts a table; the insert slice brings a `TableEdit` record and must refuse or warn on `.md`/`.txt` notes
 			- [ ] row/column insert and delete, column resize drag, Tab past the last cell adding a row
 			- [ ] lists in cells (task checkbox finds its editor through `parent?.parent`)
 			- [ ] typing p95 up ~0.03 ms on the 1M-char scenario — likely `Blocks()` type-testing page panels, not pinned
+		- [ ] **math in notes — LaTeX `$…$` / `$$…$$`, native (2026-10-01)** — M1 font (Cambria Math, `.ttc` faces, `cambria.math.xml`) and M2 parser + layout landed. **Test-verified** (suites `Fonts`, `Math`); nothing drawn yet. M3 model + render + persistence, M4 editing not started → `math-plan`
 		- [ ] **pictures in notes, Word-style (2026-09-29)** — inline, wrap modes + free position, resize handles, Ctrl+V from the clipboard. Stages 1–7 built: textures, `<Image>`, inline pictures, text-first Ctrl+V into `attachments/`, XML + Markdown, resize handles, wrap modes (Square, Tight, Top and bottom, Behind, In front), drag-move with re-anchoring, rotate ring (inline + floats, Square collision Box/Shape). Test- and golden-verified; real Ctrl+V, handle, move and rotate drags and the Wrap/Collision menus NOT GUI-verified → `note-images-plan`	- [ ] cursor change on context
 - [ ] UI
 	- **Standing decision:** glyphs stay full controls with their own mat4 and tint — per-letter colour, rotation and animation are required. Do not propose making them plain data rows

@@ -46,7 +46,22 @@ switch on the extension of `path`
 	otherwise → `DocumentXml.Save` (this, `path`)
 
 ### Markdown
-One source line is one block. `#` to `######` are headings, `> ` is a quote, lines inside a fence are `Code` blocks, `- ` is a bullet and `- [ ] ` / `- [x] ` a task. Inside a line `**bold**`, `*italic*` or `_italic_`, `~~struck~~` and `` `code` `` become runs. A frontmatter block at the top is read as note properties — see [[#Properties]]. Everything else — numbered lists, links, tables, HTML — stays literal text and is written back as it was.
+One source line is one block. `#` to `######` are headings, `> ` is a quote, lines inside a fence are `Code` blocks, `- ` is a bullet and `- [ ] ` / `- [x] ` a task. `1.` and `1)` start numbered items, and `a.`, `A.`, `i.` and `I.` (or with `)`) start lettered and roman ones, the way Pandoc's fancy lists write them; a capital followed by a period needs two spaces after it, so a sentence like `A. Smith wrote` stays a sentence. Inside a line `**bold**`, `*italic*` or `_italic_`, `~~struck~~` and `` `code` `` become runs. A frontmatter block at the top is read as note properties — see [[#Properties]]. Everything else — links, tables, HTML — stays literal text and is written back as it was.
+
+A fence opens on three or more backticks or tildes and closes only on a line of the same character that is at least as long, so a code block can hold a line of three backticks if its fence has four. When a note is written, each fence is made one longer than the longest line of backticks inside it. A fence that never closes runs to the end of the file.
+
+#### Lettered Marker (token, item above)
+if the token mixes capitals and small letters
+	return none
+if the item above at this level is lettered and `token` is the letter after its own
+	return lettered
+if `token` is a proper roman numeral, and it is longer than one letter, or is `i`/`I`, or the item above is roman
+	return roman
+if `token` is one letter
+	return lettered
+return none
+
+A plain paragraph that would read back as one of these items is written with its dot or bracket escaped, `a\. like this`.
 
 #### Write Inline (runs)
 `plain` = the runs with their markers and no escapes
@@ -67,17 +82,22 @@ A first save normalizes a few things: `_i_` becomes `*i*`, `[X]` becomes `[x]`, 
 ## Properties
 A note carries a palette of its own, the time it was created and the time it was last saved with changes. An `.xml` note keeps them as `Palette`, `Created` and `Modified` attributes on `<Document>`. A Markdown note keeps them in its frontmatter: a YAML block between `---` lines or a TOML block between `+++` lines at the very top of the file.
 
-The frontmatter block is kept whole, exactly as written, so tags, aliases, comments and key order survive a save. Only the keys the note owns are read and written — `Palette`, `Created`, `Modified`, `LineHeight`, `BlockSpacing`, `ListIndent` and the page keys `PageMode`, `PageSize`, `Landscape`, `PageWidth`, `PageHeight`, `MarginTop`, `MarginBottom`, `MarginLeft`, `MarginRight`, `PageGap`. They become the same attributes an `.xml` note has on `<Document>`, `<DocumentLayout>` and `<Page>`, so a Markdown note gets the per-note layout and page an `.xml` note has. Key names match case-insensitively and an existing line keeps its casing.
+The frontmatter block is kept whole, exactly as written, so tags, aliases, comments and key order survive a save. Only the keys the note owns are read and written — `Palette`, `Created`, `Modified`, `ReadOnly`, `LineHeight`, `BlockSpacing`, `ListIndent`, `ListMarkers` and the page keys `PageMode`, `PageSize`, `Landscape`, `PageWidth`, `PageHeight`, `MarginTop`, `MarginBottom`, `MarginLeft`, `MarginRight`. `PageWidth` and `PageHeight` are only written when `PageSize` is `Custom`. The space between pages belongs to the app, not to a note, so `PageGap` is just one of your own keys now. They become the same attributes an `.xml` note has on `<Document>`, `<DocumentLayout>` and `<Page>`, so a Markdown note gets the per-note layout and page an `.xml` note has. Key names match case-insensitively and an existing line keeps its casing.
 
-`Created` is filled from the file's creation time on disk when a note has none, and `Modified` is stamped whenever an edited note is saved, so every saved Markdown note ends up with a frontmatter block. Dates are ISO 8601 with the local offset.
+`Created` is filled from the file's creation time on disk when a note has none, and `Modified` is stamped whenever an edited note is saved, so every saved Markdown note ends up with a frontmatter block. Dates are ISO 8601 with the local offset. Turning off `StampModified` in `DocumentSettings` stops a save writing `Modified` at all — the key is taken out — and the panel shows the file's own last-write time instead.
 
-The properties are shown at the top of the first page in an [[Expander]]: the dates, a palette dropdown, the layout values and, for Markdown, every other frontmatter key — editable when it is a one-line value, read-only when it is a list or a nested value. Picking a palette repaints that note only; a palette name that does not exist logs a warning and the note shows the app's palette.
+`ListMarkers` lists the marker each list level takes by default, `[Decimal, LowerAlpha, LowerRoman]`, and is the same thing as the `<ListLevel>` entries an `.xml` note carries. `ReadOnly: true` makes the editor refuse every change to the text — typing, deleting, pasting, dropping, styling, undo and moving pictures — while the properties themselves stay editable, so the lock can be taken off again.
+
+The properties are shown at the top of the first page in an [[Expander]]: the dates, a palette dropdown, the layout values, the list markers, a Read only checkbox and, for Markdown, every other frontmatter key. A value of `true` or `false` shows as a checkbox. A `[[note]]` link or a web address shows as a field with an Open button, which opens the note in a tab or the page in the browser. A list written as `- item` lines is edited as comma-separated text and written back as `- item` lines. A nested value stays read-only. Each of your own keys has a × that removes it, and the last row adds a new one by name. Picking a palette repaints that note only; a palette name that does not exist logs a warning and the note shows the app's palette.
 
 #### Read Properties (block)
 for each owned key
 	`value` = the key's one-line value in `block`, or nothing
 	if `value`
 		set the matching attribute on `<Document>`, `<DocumentLayout>` or `<Page>`, creating the element
+for each marker name in `ListMarkers`
+	if it is a known marker
+		add a `<ListLevel Marker>` to `<DocumentLayout>`
 
 #### Merge Properties (block, tree)
 for each owned key
@@ -134,6 +154,92 @@ if the caret's block is an empty list item
 #### Backspace — at an item's start
 if nothing is selected, the caret is at offset 0 and the block is a list item
 	clear its kind, level and tick instead of deleting
+
+## Markdown as you type
+Markdown typed into a note becomes formatting the moment it is complete, the way Obsidian's live preview does it, and the markers disappear. A prefix at a block's start converts on its space, a closing inline marker converts on the character that closes it, and a whole-line marker converts on Enter. None of it happens inside a code block, on a rule, or in a `.txt` note, which has no way to save the result. Each conversion is part of the keystroke's own undo step, so one Ctrl+Z gives the typed markers back.
+
+#### Type Char (c) — the Markdown part
+if `c` is a space and the block's text so far is `#` to `######` then a space
+	remove it and make the block a heading of that level
+if `c` is a space and the block's text so far is `> `
+	remove it and make the block a quote
+if `c` closes `**`, `*`, `~~` or `` ` `` and an opener of the same marker sits earlier in the block
+	the opener may not be followed by a space and the closer may not follow one
+	a single `*` may not touch another `*`
+	remove both markers
+	make what was between them bold, italic, struck through or inline code
+	arm the style off again, so what is typed next is plain
+
+#### Split Block — a Markdown line
+if the block's whole text is ```` ``` ```` followed by an optional language name
+	clear the text and make the block a code block in that language
+	do not split
+if the block's whole text is three or more of one of `-`, `*` or `_`
+	clear the text and make the block a rule
+	start a paragraph after the rule and put the caret in it
+
+## Code blocks
+A code block is a run of consecutive blocks styled Code, one block per line, which is the shape `.md` notes already read fenced code into. Each block carries the fence's language name, if one was given, and a split hands it on, so Enter inside code continues the same block. The style scheme names the font: `<TextStyle Type="Code" FontName="consola"/>` in `DocumentSettings.settings.xml`, Consolas being baked from the installed system font like Arial is. A Code span inside ordinary text takes the same font. Code is inset ten pixels on both sides and drawn on the palette's sub-field colour, a band the width of the column behind every line; consecutive code blocks are stacked with no block spacing between them, so the run reads as one box and needs no grouping when it crosses a page.
+
+Code still wraps. A wide line breaks onto the next one rather than scrolling sideways, and nothing colours the syntax yet; the language name is kept so that later work has it.
+
+Tab inside code types a real tab character rather than nesting a list. With several code lines selected, Tab puts a tab at the start of each and Shift+Tab takes one off each, as one undo step.
+
+A tab, anywhere in a note, moves the pen to the next tab stop. Stops sit every four space widths of the tab's own font, counted from the start of the line, so a tab after two letters and a tab at the line start both end at the first stop, and a tab that starts exactly on a stop goes on to the next one. Measuring, drawing, caret placement, clicking and alignment all work the advance out from where the tab starts.
+
+#### Tab Advance (run, pen in line)
+`stop` = 4 × the run's space advance
+return `stop` − (pen in line mod `stop`)
+
+#### Shift Code Indent (delta)
+if the caret is not in code
+	return not handled
+if `delta` > 0 and nothing is selected
+	type a tab at the caret
+	return handled
+for each code line from the anchor's block to the caret's block
+	if `delta` > 0
+		put a tab at the start
+	else if the line starts with a tab
+		take it off
+	move the anchor and the caret with it if they are on this line
+select from the anchor to the caret again
+return handled
+
+#### Split Block — the last line of code
+if the block is an empty code line and the next block is not code
+	turn it back into a plain paragraph
+	do not split
+
+## Rules
+A horizontal rule is a block with the `Rule` styling and no text. It measures as one empty line and draws a single line across the column in the palette's line colour instead of glyphs. The caret can stand on it like on an empty paragraph, but nothing can be written into it.
+
+#### Type Char, Paste, Split Block — on a rule
+split the rule at its start
+make the new block after it a plain paragraph and put the caret there
+carry on with the character, the paste or nothing
+
+#### Delete Range (from, to) — when the head is a rule
+merge as usual
+give the merged block the tail's kind
+	so Backspace at the start of the paragraph after a rule deletes the rule, not the paragraph
+undo merges back and then puts the rule's kind back on the head
+
+The styling menu's **Horizontal line** turns an empty caret block into a rule, or adds one after the caret's block when it holds text. In Markdown a rule is written `---`, except as a note's first line, where it is written `***` so it cannot be read back as frontmatter; `---`, `***` and `___` all read as a rule.
+
+## Alignment
+A block is aligned left, centred or right. Alignment does not change how a paragraph breaks into lines; once the lines are measured, each one is slid across the width it is allowed to fill. A line beside a floating picture is only allowed the width the picture leaves free, and the measurer records that width on the line as `room`. Trailing spaces hang past the edge, so a right-aligned line ends at the margin on its last letter. Every place that turns a line into positions — drawing, the caret, presses, the selection and picture boxes — already adds the line's left offset, so none of them changed.
+
+#### Align ()
+`factor` = 0 for left, ½ for centred, 1 for right
+if `factor` is 0, stop
+for each line
+	`room` = the line's room, or the wrap width when it has none
+	if the run does not wrap, skip it
+	`hang` = the width of the spaces and tabs at the line's end
+	add (`room` − (the line's width − `hang`)) × `factor` to the line's left
+
+Ctrl+L, Ctrl+E and Ctrl+R, or the three alignment buttons beside the styling menu, align every block the selection touches, or the caret's block, as one undo step. Alignment is written as `Align` on `<Block>` and only `.xml` notes have it: Markdown has no paragraph alignment, and wrapping a paragraph in HTML would stop Markdown readers formatting what is inside it. Justified text is not supported.
 
 #### Shift List Level (delta)
 for each list item the selection touches, in order
@@ -587,4 +693,4 @@ for each part of the picture — the whole rectangle for Picture shape, each opa
 - P4 steps 1 and 2 complete: selection renders and is GUI-verified apart from drag auto-scroll, which the sample note is too short to exercise; deletion over a range, Backspace, Delete and Enter are bound and boot-verified but **not** GUI-verified. Step 3, Ctrl+B/I run split/merge, is next — `Bold` and `Italic` are still read by nothing.
 - Undo and select-all do not exist, which deletion is the first feature to make matter: a mis-aimed delete is recoverable only by reloading the note.
 - P5 complete: `Thorium` is a two-pane shell, a `VaultBrowser` listing a vault folder beside the editor, and `LoadPath` has a real caller at last. The vault is a settings path; the browser, being app rather than engine, lives in `Thorium` and is described in `DOCUMENTATION/ClaudeMemory/Decisions/vault-browser-and-shell.md`. Switching notes saves the one being left, since nothing tracks dirtiness and nothing can undo.
-- Bullet and task lists with nesting landed 2026-09-17, with `.md` and `.txt` notes — builds and boots, NOT GUI-verified. Numbered lists, dividers and wiki-links: not yet — added as the editor grows. Code blocks are scheduled (B1); tables landed 2026-09-29 with no insert UI — see [[#Tables]]. L2 is dropped, L3 (paged mode) is unaffected — see [[Document Layout Engine#Status]]. Revised phase order: `DOCUMENTATION/ClaudeMemory/Context/thorium-editor-architecture.md`.
+- Bullet and task lists with nesting landed 2026-09-17, with `.md` and `.txt` notes — builds and boots, NOT GUI-verified. Numbered lists landed with list markers; wiki-links: not yet — added as the editor grows. Markdown as you type, code blocks (font, ground, language; no syntax colouring, still wrapped), rules and left/centre/right alignment landed 2026-10-01 — see [[#Markdown as you type]]; tables landed 2026-09-29 with no insert UI — see [[#Tables]]. L2 is dropped, L3 (paged mode) is unaffected — see [[Document Layout Engine#Status]]. Revised phase order: `DOCUMENTATION/ClaudeMemory/Context/thorium-editor-architecture.md`.

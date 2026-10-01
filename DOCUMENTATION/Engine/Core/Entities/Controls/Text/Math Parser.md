@@ -1,0 +1,83 @@
+---
+date: 2026-10-01
+Status: Current
+tags:
+  - d_text
+cssclasses:
+  - Aurora.css
+Linker:
+  - "[[Arctis Aurora]]"
+System:
+Class:
+  - "[[Math Parser]]"
+Parent Class:
+Interfaces:
+Used by:
+  - "[[Math Layout]]"
+Type:
+  - Public
+  - Static
+Attributes:
+Namespace: ArctisAurora.Core.UI
+SourceFile: AuroraEngine/Core/UI/MathParser.cs
+VerifiedAgainst: 2026-10-01
+---
+## Description
+
+Turns the TeX of a math formula — what sits between `$…$` or `$$…$$` in a note — into a tree of math nodes that [[Math Layout]] can place. It reads TeX math mode only: scripts, fractions, roots, `\left…\right`, accents, `\text`, `\mathrm`, `\mathbf`, `\mathbb`, spacing commands, operator names, Greek letters and the symbols listed in `MathSymbols`.
+
+It never throws. Anything it cannot read — an unknown command, an unbalanced brace, a double superscript — turns the whole formula into a single `MathError` that keeps the source, which layout then shows as plain text flagged as an error.
+
+> The parser and layout exist; nothing draws a formula yet, and notes cannot hold one. See `ClaudeMemory/Context/math-plan.md`.
+
+## API summary
+
+| Member | Kind | Summary |
+| --- | --- | --- |
+| `Parse(string tex)` | static | The formula as a `MathList`, or a `MathError` when any part of it cannot be read. |
+
+## Nodes
+
+| Node | Holds |
+| --- | --- |
+| `MathList` | a `{…}` group or the whole formula: a list of nodes |
+| `MathSymbol` | one character, its face, its `MathClass`, and whether it is a big operator that takes limits |
+| `MathText` | `\text` content or an operator name such as `sin` or `lim`, with its class and whether it takes limits |
+| `MathScripts` | a nucleus with a superscript, a subscript, or both |
+| `MathFraction` | numerator, denominator, and the style `\dfrac` or `\tfrac` forces |
+| `MathRadical` | the body and an optional degree |
+| `MathDelimited` | `\left` and `\right` delimiters around a body; `\0` is the empty `.` delimiter |
+| `MathAccent` | an accent character, or a bar, over a body |
+| `MathSpace` | a fixed space in em |
+| `MathError` | the source of a formula that could not be read |
+
+## Methods
+
+### `Parse` *(static)*
+	parse a list until the end of the source
+	if anything failed along the way
+		return a MathError holding the source
+	return the list
+
+### Parsing a list
+	repeat
+		skip whitespace
+		at the end: fine only for the whole formula
+		`}` closes a group, `]` closes a root's degree, `\right` ends a `\left` body
+		otherwise parse one atom with its scripts and add it
+
+### Parsing an atom with scripts
+	parse the atom; a bare `^` or `_` has an empty nucleus
+	while the next character is `^` or `_`
+		a second superscript or second subscript fails the formula
+		parse its argument: a `{…}` group, one command, or one character
+	wrap in MathScripts when any script was read
+
+### Choosing a face
+	inside `\mathbf`: bold
+	outside `\mathrm`, `\mathbf` and `\mathbb`: Latin letters and lowercase Greek are italic
+	everything else: regular
+
+## Related
+- [[Math Layout]] — places the nodes
+- [[Math Constants]] — the font constants layout reads

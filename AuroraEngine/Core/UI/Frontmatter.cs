@@ -12,6 +12,7 @@ namespace ArctisAurora.Core.UI
             public string key;
             public string value;
             public bool editable;
+            public bool list;
             public int line;
             public int count;
         }
@@ -98,7 +99,12 @@ namespace ArctisAurora.Core.UI
                     while (next < end && lines[next].Length > 0 && (char.IsWhiteSpace(lines[next][0]) || lines[next][0] == '-')) next++;
 
                 entry.count = next - i;
-                if (entry.count > 1 || raw.StartsWith('|') || raw.StartsWith('>') || raw.StartsWith('{'))
+                if (!isToml && entry.count > 1 && raw.Length == 0 && lines[(i + 1)..next].All(l => (l.Trim().StartsWith("- ") || l.Trim() == "-") && KeyEnd(l.Trim()[1..]) < 0))
+                {
+                    entry.value = string.Join(", ", lines[(i + 1)..next].Select(l => Scalar(l.Trim()[1..].Trim())));
+                    entry.editable = entry.list = true;
+                }
+                else if (entry.count > 1 || raw.StartsWith('|') || raw.StartsWith('>') || raw.StartsWith('{'))
                     entry.value = string.Join(", ", lines[i..next].Select((l, n) => n == 0 ? raw : l.Trim().TrimStart('-').Trim())
                                                                   .Where(l => l.Length > 0));
                 else
@@ -141,8 +147,11 @@ namespace ArctisAurora.Core.UI
                 if (!string.Equals(entry.key, key, StringComparison.OrdinalIgnoreCase)) continue;
                 if (entry.editable && entry.value == value) return block;
 
+                string itemIndent = entry.list ? lines[entry.line + 1][..lines[entry.line + 1].IndexOf('-')] : "";
                 lines.RemoveRange(entry.line, entry.count);
-                if (value != null) lines.Insert(entry.line, Line(entry.key, value, isToml));
+                if (value != null && entry.list)
+                    lines.InsertRange(entry.line, ListLines(entry.key, value, itemIndent));
+                else if (value != null) lines.Insert(entry.line, Line(entry.key, value, isToml));
                 return string.Join("\n", lines);
             }
 
@@ -194,9 +203,17 @@ namespace ArctisAurora.Core.UI
         private static string Line(string key, string value, bool isToml) =>
             isToml ? $"{key} = {TomlValue(value)}" : value.Length == 0 ? $"{key}:" : $"{key}: {YamlValue(value)}";
 
+        // A YAML block sequence from a comma-separated value, items at the indent the list had.
+        private static IEnumerable<string> ListLines(string key, string value, string indent)
+        {
+            yield return key + ":";
+            foreach (string item in value.Split(',').Select(i => i.Trim()).Where(i => i.Length > 0))
+                yield return indent + "- " + YamlValue(item);
+        }
+
         private static string YamlValue(string value)
         {
-            if (value.StartsWith('[') && value.EndsWith(']')) return value;
+            if (value.StartsWith('[') && value.EndsWith(']') && !value.StartsWith("[[")) return value;
 
             bool plain = value.Trim() == value
                          && "-?:,[]{}#&*!|>'\"%@`".IndexOf(value[0]) < 0
