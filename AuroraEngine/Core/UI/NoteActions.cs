@@ -47,6 +47,19 @@ namespace ArctisAurora.Core.UI
         }
         #endregion
 
+        // Every window settled in turn, then onSettled; cancelling a prompt stops the chain.
+        public static void SettleAll(Action onSettled)
+        {
+            discarded.Clear();
+            SettleNext(Engine.windows.Values.ToList(), 0, onSettled);
+        }
+
+        private static void SettleNext(List<RenderWindow> windows, int index, Action onSettled)
+        {
+            if (index >= windows.Count) { onSettled(); return; }
+            SettleWindow(windows[index], () => SettleNext(windows, index + 1, onSettled));
+        }
+
         #region ---- one window ----
         // Settles a single window and then runs onSettled, for a window closing on its own rather
         // than the application going. Same one-prompt-at-a-time shape as the shutdown step.

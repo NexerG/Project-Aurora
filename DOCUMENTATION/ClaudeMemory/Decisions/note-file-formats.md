@@ -32,7 +32,7 @@ Supersedes the "Note format: engine XML (not markdown, not JSON)" line in
 - Editing: `BlockStateEdit` (before/after snapshots through `RestoreBlocks`) records every list change.
   Enter on an empty item and Backspace at an item's start clear the list (`ClearListAtCaret`);
   typing `- ` at a block start makes a bullet and `[ ] `/`[x] ` at a bullet's start makes a task
-  (`TypeListPrefix`, same undo step as the keystroke); `Text.Indent`/`Text.Outdent` on Tab/Shift+Tab
+  (`TypeMarkdownPrefix`, same undo step as the keystroke); `Text.Indent`/`Text.Outdent` on Tab/Shift+Tab
   (`ShiftListLevel`), never deeper than one past the item above.
 
 ## Markdown subset
@@ -41,7 +41,8 @@ Supersedes the "Note format: engine XML (not markdown, not JSON)" line in
 |---|---|
 | `#`…`######` + space | `StylingType=Heading1..6` |
 | `> ` | `Quote` |
-| fenced lines | `Code` blocks; fences regenerated, info string lost |
+| fenced lines | `Code` blocks, the info string as `Language` (since 2026-10-01); a language change closes and reopens the fence |
+| `---` / `***` / `___` alone on a line (since 2026-10-01) | `StylingType=Rule`, no text; written `---`, or `***` as line 0 |
 | `- ` / `- [ ] ` / `- [x] ` (indent → level) | `List=Bullet/Task`, `Level`, `Checked` |
 | `**b**` `*i*` `_i_` `~~s~~` `` `c` `` | `Bold` / `Italic` / `Strikethrough` runs, `StylingType=Code` run |
 | `---`/`+++` block at line 0 (since 2026-09-27) | `Frontmatter` attribute + owned keys — see [[note-properties]] |

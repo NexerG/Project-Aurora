@@ -12,7 +12,7 @@
 - `DocumentControl.Blocks()` flattens: note blocks and every cell's blocks, in reading order. `DocumentAddress`
   keeps its shape; the flat index covers cells. `CaretAtPoint`/`LastBlock` iterate `Blocks()`.
 - Guards: `DeleteSelection` refuses a range whose blocks do not share one parent (`OneContainer`);
-  `TypeListPrefix` is off in a cell; a refused Backspace/Delete puts the caret back (`DeleteOver`).
+  `TypeMarkdownPrefix` is off in a cell; a refused Backspace/Delete puts the caret back (`DeleteOver`).
 - `InsertBlockAfter` inserts into the cell when `after` lives in one; `RemoveBlock` already worked (`Destroy`).
 - Tab / Shift+Tab in a cell step cells (`TableControl.StepCell`, branch at the top of `ShiftListLevel`).
 - Page splits between rows: `TableControl.Paginate` writes each push into the previous row's `gapAfter`;

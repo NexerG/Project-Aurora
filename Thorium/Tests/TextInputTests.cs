@@ -1,3 +1,4 @@
+using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Testing;
@@ -552,6 +553,562 @@ namespace Thorium.Tests
             yield return 4;
 
             yield return t.Golden("Markers", Content(editor));
+        }
+        #endregion
+
+        #region ---- markdown insertions, code, rules, alignment ----
+        [A_XSDActionDependency("TextInput.MarkdownPrefixes", "Test")]
+        private static IEnumerator<int> MarkdownPrefixes(TestContext t)
+        {
+            DocumentEditorControl editor = ShowParagraphs(t, "");
+            yield return 2;
+
+            yield return t.Type("## Title");
+            BlockControl block = Paragraphs(editor)[0];
+            t.Check(block.stylingType == TextStyleType.Heading2 && block.text == "Title", $"## and a space make a heading 2: {block.stylingType} '{block.text}'");
+
+            for (int i = 0; i < "Title".Length + 1; i++)
+                yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(block.stylingType == TextStyleType.Text && block.text == "##", $"undoing the space gives the markers back: {block.stylingType} '{block.text}'");
+
+            yield return t.Key(Keys.End, Keys.LeftControl);
+            yield return t.Key(Keys.Enter);
+            yield return t.Type("> said");
+            BlockControl quote = Paragraphs(editor)[^1];
+            t.Check(quote.stylingType == TextStyleType.Quote && quote.text == "said", "> and a space make a quote");
+
+            yield return t.Key(Keys.Enter);
+            yield return t.Type("a #b");
+            t.Check(Paragraphs(editor)[^1].text == "a #b", "a # past a block's start is text");
+        }
+
+        [A_XSDActionDependency("TextInput.MarkdownInline", "Test")]
+        private static IEnumerator<int> MarkdownInline(TestContext t)
+        {
+            DocumentEditorControl editor = ShowParagraphs(t, "");
+            yield return 2;
+
+            yield return t.Type("a **b** *i* ~~s~~ `c` d");
+            BlockControl block = Paragraphs(editor)[0];
+            t.Check(block.text == "a b i s c d", $"closing markers drop both markers: '{block.text}'");
+            t.Check(block.StyleAt(2).IsBold && block.StyleAt(4).IsItalic && block.StyleAt(6).strikethrough
+                && block.StyleAt(8).stylingType == TextStyleType.Code, "each pair styles what it closed over");
+            t.Check(!block.StyleAt(3).IsBold && !block.StyleAt(5).IsItalic && !block.StyleAt(7).strikethrough,
+                "what is typed after a closed pair is unstyled");
+
+            yield return t.Key(Keys.Enter);
+            yield return t.Type("2 * 3 * 4 and a*b*c");
+            BlockControl maths = Paragraphs(editor)[^1];
+            t.Check(maths.text == "2 * 3 * 4 and abc" && maths.StyleAt(15).IsItalic && !maths.StyleAt(1).IsItalic,
+                $"a * with a space beside it is not a marker, one inside a word is: '{maths.text}'");
+
+            yield return t.Key(Keys.Enter);
+            yield return t.Type("x **y**");
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(Paragraphs(editor)[^1].text == "x **y*", $"one undo puts the markers back: '{Paragraphs(editor)[^1].text}'");
+        }
+
+        [A_XSDActionDependency("TextInput.CodeBlockEditing", "Test")]
+        private static IEnumerator<int> CodeBlockEditing(TestContext t)
+        {
+            DocumentEditorControl editor = ShowParagraphs(t, "");
+            yield return 2;
+
+            yield return t.Type("```cs");
+            yield return t.Key(Keys.Enter);
+            BlockControl first = Paragraphs(editor)[0];
+            t.Check(first.stylingType == TextStyleType.Code && first.language == "cs" && first.text == "", "```cs and Enter make a cs code block");
+            t.Check(first.fontName == "consola", $"code is set in the monospace font: {first.fontName}");
+
+            yield return t.Type("int x;");
+            yield return t.Key(Keys.Enter);
+            yield return t.Type("x++;");
+            yield return t.Key(Keys.Enter);
+            yield return t.Key(Keys.Enter);
+            yield return t.Type("after");
+            yield return 2;
+
+            List<BlockControl> p = Paragraphs(editor);
+            t.Check(p.Count == 3 && p[1].stylingType == TextStyleType.Code && p[1].language == "cs"
+                && p[2].stylingType == TextStyleType.Text && p[2].text == "after", "Enter on an empty last code line ends the block");
+            t.Check(MathF.Abs(p[1].arrangedRect.y - (p[0].arrangedRect.y + p[0].arrangedRect.height)) < 0.01f,
+                "code lines sit with no gap between them");
+            t.Check(p[2].arrangedRect.y > p[1].arrangedRect.y + p[1].arrangedRect.height + 1f, "text after code keeps its gap");
+
+            string md = MarkdownFormat.Write(DocumentXml.ToXml(editor.session.document));
+            t.Check(md.EndsWith("\n```cs\nint x;\nx++;\n```\nafter"), $"a code run writes as one fence with its language: {md.Replace('\n', '|')}");
+
+            Content(editor).SetCaret(p[0], 0);
+            yield return t.Type("**a** ");
+            t.Check(p[0].text == "**a** int x;", "Markdown is not read inside code");
+        }
+
+        [A_XSDActionDependency("TextInput.RuleEditing", "Test")]
+        private static IEnumerator<int> RuleEditing(TestContext t)
+        {
+            DocumentEditorControl editor = ShowParagraphs(t, "above");
+            DocumentControl content = Content(editor);
+            yield return 2;
+
+            yield return t.Key(Keys.End, Keys.LeftControl);
+            yield return t.Key(Keys.Enter);
+            yield return t.Type("---");
+            yield return t.Key(Keys.Enter);
+            List<BlockControl> p = Paragraphs(editor);
+            t.Check(p.Count == 3 && p[1].stylingType == TextStyleType.Rule && p[1].text == "" && p[2].stylingType == TextStyleType.Text,
+                "--- and Enter make a rule with a paragraph after it");
+            t.Check(ReferenceEquals(content.caretBlock, p[2]), "the caret is in the paragraph after the rule");
+
+            yield return t.Type("below");
+            yield return t.Key(Keys.Home);
+            yield return t.Key(Keys.Backspace);
+            p = Paragraphs(editor);
+            t.Check(p.Count == 2 && p[1].text == "below" && p[1].stylingType == TextStyleType.Text,
+                "Backspace after a rule removes the rule, not the paragraph");
+
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            p = Paragraphs(editor);
+            t.Check(p.Count == 3 && p[1].stylingType == TextStyleType.Rule && p[2].text == "below", "undo puts the rule back");
+
+            content.SetCaret(p[1], 0);
+            yield return t.Type("z");
+            p = Paragraphs(editor);
+            t.Check(p.Count == 4 && p[1].stylingType == TextStyleType.Rule && p[2].text == "z", "typing on a rule starts a paragraph after it");
+
+            content.SetCaret(p[0], 2);
+            editor.InsertRule();
+            p = Paragraphs(editor);
+            t.Check(p.Count == 5 && p[0].text == "above" && p[1].stylingType == TextStyleType.Rule,
+                "the menu entry puts a rule after a block with text");
+        }
+
+        [A_XSDActionDependency("TextInput.MarkdownBlocksRoundTrip", "Test")]
+        private static IEnumerator<int> MarkdownBlocksRoundTrip(TestContext t)
+        {
+            XElement written = new XElement("Document",
+                new XElement("Block", new XAttribute("StylingType", "Rule"), new XElement("Run")),
+                new XElement("Block", new XAttribute("StylingType", "Code"), new XAttribute("Language", "py"), RunX("x = 1")),
+                new XElement("Block", new XAttribute("StylingType", "Code"), RunX("plain")),
+                Block("---"),
+                new XElement("Block", new XAttribute("StylingType", "Rule"), new XElement("Run")));
+
+            string md = MarkdownFormat.Write(written);
+            t.Check(md == "***\n```py\nx = 1\n```\n```\nplain\n```\n\\---\n---", $"rules, fences and a literal --- write as Markdown: {md}");
+
+            List<XElement> back = MarkdownFormat.Read(md, "n").Elements("Block").ToList();
+            t.Check(back.Count == 5 && (string?)back[0].Attribute("StylingType") == "Rule"
+                && (string?)back[1].Attribute("Language") == "py" && back[2].Attribute("Language") == null
+                && back[3].Attribute("StylingType") == null && (string?)back[3].Element("Run")?.Attribute("Text") == "---"
+                && (string?)back[4].Attribute("StylingType") == "Rule", $"and read back as written: {string.Join(" | ", back)}");
+
+            t.Check(PlainTextFormat.Write(written).StartsWith("---\nx = 1"), "plain text writes a rule as ---");
+
+            RichTextDocument document = DocumentXml.Parse(written);
+            string xml = DocumentXml.ToXml(document).ToString();
+            t.Check(xml.Contains("StylingType=\"Rule\"") && xml.Contains("Language=\"py\""), "rules and languages save to XML");
+            DestroyBlocks(document);
+            yield return 0;
+        }
+
+        [A_XSDActionDependency("TextInput.MarkdownFences", "Test")]
+        private static IEnumerator<int> MarkdownFences(TestContext t)
+        {
+            XElement written = new XElement("Document",
+                new XElement("Block", new XAttribute("StylingType", "Code"), RunX("```")),
+                new XElement("Block", new XAttribute("StylingType", "Code"), RunX("x")),
+                Block("~~~"));
+
+            string md = MarkdownFormat.Write(written);
+            t.Check(md.StartsWith("````\n```\nx\n````\n") && !md.Split('\n')[^1].StartsWith("~~~"),
+                $"a fence outgrows the backticks inside it and a literal ~~~ is escaped: {md.Replace('\n', '|')}");
+
+            List<XElement> back = MarkdownFormat.Read(md, "n").Elements("Block").ToList();
+            t.Check(back.Count == 3 && TextOf(back[0]) == "```" && TextOf(back[1]) == "x"
+                && back[2].Attribute("StylingType") == null && TextOf(back[2]) == "~~~", $"and reads back as written: {string.Join(" | ", back)}");
+
+            List<XElement> tilde = MarkdownFormat.Read("~~~py\na\n```\n~~~\nafter", "n").Elements("Block").ToList();
+            t.Check(tilde.Count == 3 && (string?)tilde[0].Attribute("Language") == "py" && TextOf(tilde[1]) == "```"
+                && tilde[2].Attribute("StylingType") == null, "a ~~~ fence holds a ``` line and closes only on ~~~");
+
+            List<XElement> open = MarkdownFormat.Read("```\nnever closed", "n").Elements("Block").ToList();
+            t.Check(open.Count == 1 && (string?)open[0].Attribute("StylingType") == "Code", "an unclosed fence runs to the end");
+            yield return 0;
+        }
+
+        [A_XSDActionDependency("TextInput.CodeBlockTab", "Test")]
+        private static IEnumerator<int> CodeBlockTab(TestContext t)
+        {
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                new XElement("Block", new XAttribute("StylingType", "Code"), RunX("a")),
+                new XElement("Block", new XAttribute("StylingType", "Code"), RunX("b")),
+                Item("first"), Item("item"))));
+            DocumentControl content = Content(editor);
+            List<BlockControl> p = Paragraphs(editor);
+            yield return 2;
+
+            content.SetCaret(p[0], 1);
+            editor.ShiftListLevel(1);
+            t.Check(p[0].text == "a\t" && p[0].listLevel == 0, "Tab in code types a tab at the caret");
+
+            content.SetCaret(p[0], 0);
+            content.SetCaret(p[1], 1, true);
+            editor.ShiftListLevel(1);
+            t.Check(p[0].text == "\ta\t" && p[1].text == "\tb", "Tab over selected code lines puts a tab at the head of each");
+
+            editor.ShiftListLevel(-1);
+            t.Check(p[0].text == "a\t" && p[1].text == "b", "Shift+Tab takes one off each");
+            editor.Undo();
+            t.Check(p[0].text == "\ta\t" && p[1].text == "\tb", "undo puts them back");
+
+            content.SetCaret(p[0], 0);
+            content.SetCaret(p[1], 1, true);
+            editor.ShiftListLevel(-1);
+            editor.ShiftListLevel(-1);
+            t.Check(p[0].text == "a\t" && p[1].text == "b", "Shift+Tab on a line with no leading tab leaves it");
+
+            content.SetCaret(p[3], 0);
+            editor.ShiftListLevel(1);
+            t.Check(p[3].listLevel == 1, "Tab outside code still nests a list item");
+
+            RichTextDocument saved = DocumentXml.Parse(DocumentXml.ToXml(editor.session.document));
+            t.Check(((BlockControl)saved.blocks[0]).text == "a\t", "a tab survives an XML save");
+            DestroyBlocks(saved);
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("TextInput.MarkdownFancyLists", "Test")]
+        private static IEnumerator<int> MarkdownFancyLists(TestContext t)
+        {
+            static XElement Marked(string text, string marker, int level = 0)
+            {
+                XElement item = Item(text, level);
+                item.SetAttributeValue("Marker", marker);
+                return item;
+            }
+
+            XElement written = new XElement("Document",
+                Marked("one", "LowerAlpha"), Marked("two", "LowerAlpha"),
+                Marked("deep", "LowerRoman", 1), Marked("deeper", "LowerRoman", 1),
+                Marked("three", "LowerAlpha"),
+                Block("plain"),
+                Marked("big", "UpperAlpha"), Marked("bigger", "UpperRoman"),
+                Block("a. not a list"), Block("A. Smith"));
+
+            string md = MarkdownFormat.Write(written);
+            t.Check(md == "a. one\nb. two\n\ti. deep\n\tii. deeper\nc. three\nplain\nA.  big\nI.  bigger\na\\. not a list\nA. Smith",
+                $"letters and numerals write as their markers: {md.Replace('\n', '|')}");
+
+            List<XElement> back = MarkdownFormat.Read(md, "n").Elements("Block").ToList();
+            string[] markers = back.Select(b => (string?)b.Attribute("Marker") ?? "-").ToArray();
+            t.Check(string.Join(",", markers) == "LowerAlpha,LowerAlpha,LowerRoman,LowerRoman,LowerAlpha,-,UpperAlpha,UpperRoman,-,-",
+                $"and read back as the same markers: {string.Join(",", markers)}");
+            t.Check(TextOf(back[7]) == "bigger" && TextOf(back[8]) == "a. not a list" && TextOf(back[9]) == "A. Smith"
+                && (int?)back[2].Attribute("Level") == 1, "with their text, levels and the prose left alone");
+
+            List<XElement> prose = MarkdownFormat.Read("etc. and so on\nDr. Who\nvi) six", "n").Elements("Block").ToList();
+            t.Check(prose[0].Attribute("List") == null && prose[1].Attribute("List") == null
+                && (string?)prose[2].Attribute("Marker") == "LowerRoman", "words stay prose, a roman numeral is a list");
+            yield return 0;
+        }
+
+        [A_XSDActionDependency("TextInput.HeaderFieldTakesPress", "Test")]
+        private static IEnumerator<int> HeaderFieldTakesPress(TestContext t)
+        {
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-edit-{Guid.NewGuid():N}.md");
+            File.WriteAllText(path, "---\nauthor: me\n---\nbody");
+            DocumentEditorControl editor = NewEditor();
+            t.Show(editor);
+            editor.LoadPath(path);
+            File.Delete(path);
+            ((ExpanderControl)Content(editor).header!).expanded = true;
+            yield return 2;
+
+            TextBoxControl field = DescendantsOf<TextBoxControl>(Content(editor).header!).First(f => f.text == "me");
+            yield return t.Click(field);
+            t.Check(field.isEditing, "a click on a field in the note's header starts editing it");
+        }
+
+        [A_XSDActionDependency("TextInput.ViewStateRoundTrip", "Test")]
+        private static IEnumerator<int> ViewStateRoundTrip(TestContext t)
+        {
+            string words = string.Join(" ", Enumerable.Repeat("lorem ipsum dolor sit", 12));
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-view-{Guid.NewGuid():N}.xml");
+            RichTextDocument fixture = Paragraphs(Enumerable.Repeat(words, 60).ToArray());
+            DocumentXml.Save(fixture, path);
+            DestroyBlocks(fixture);
+
+            DocumentEditorControl first = NewEditor();
+            t.Show(first);
+            first.LoadPath(path);
+            yield return 2;
+
+            List<BlockControl> p = Paragraphs(first);
+            Content(first).SetCaret(p[30], 5);
+            Content(first).SetCaret(p[31], 12, true);
+            first.SetScrollOffset(new Vector2(0f, 2000f));
+            yield return 2;
+
+            SessionTab saved = first.ViewState();
+            t.Check(saved.topBlock > 0 && saved.caretBlock == 31 && saved.anchorBlock == 30, $"the view records its selection and top line: top {saved.topBlock}");
+
+            DocumentEditorControl second = NewEditor();
+            t.Show(second);
+            second.LoadPath(path);
+            second.RestoreView(saved);
+            yield return 2;
+            File.Delete(path);
+
+            SessionTab back = second.ViewState();
+            t.Check(back.caretBlock == 31 && back.caretOffset == 12 && back.anchorBlock == 30 && back.anchorOffset == 5, "the selection comes back");
+            t.Check(back.topBlock == saved.topBlock && back.topOffset == saved.topOffset && MathF.Abs(back.topDelta - saved.topDelta) < 0.5f,
+                $"the same line is at the top: {back.topBlock}/{back.topOffset}/{back.topDelta} vs {saved.topBlock}/{saved.topOffset}/{saved.topDelta}");
+            t.Check(MathF.Abs(second.GetScrollOffset().Y - 2000f) < 1f, $"at the same scroll: {second.GetScrollOffset().Y}");
+        }
+
+        [A_XSDActionDependency("TextInput.FrontmatterKeys", "Test")]
+        private static IEnumerator<int> FrontmatterKeys(TestContext t)
+        {
+            string block = "---\ntags:\n  - one\n  - two\nrelated: \"[[Other note]]\"\n---";
+            List<Frontmatter.Entry> entries = Frontmatter.Entries(block);
+            t.Check(entries[0].editable && entries[0].list && entries[0].value == "one, two", "a block list reads as an editable list");
+            t.Check(entries[1].value == "[[Other note]]", "a quoted link reads as its text");
+
+            string edited = Frontmatter.Set(block, "tags", "one, three, four")!;
+            t.Check(edited.Contains("tags:\n  - one\n  - three\n  - four\n"), $"an edited block list stays a block list: {edited.Replace('\n', '|')}");
+            t.Check(Frontmatter.Set(block, "related", "[[Third]]")!.Contains("related: \"[[Third]]\""), "a link writes quoted");
+
+            string added = Frontmatter.Set(block, "status", string.Empty)!;
+            t.Check(added.EndsWith("status:\n---"), "a new key goes before the closing line");
+            t.Check(Frontmatter.Set(added, "status", null) == block, "and removing it gives the block back");
+
+            RichTextDocument document = DocumentXml.Parse(MarkdownFormat.Read(
+                "---\nListMarkers: [Decimal, LowerAlpha]\nReadOnly: true\nPageGap: 40\nPageWidth: 100\n---\nbody", "n"));
+            t.Check(document.readOnly && document.layout.listLevels.Count == 2 && document.layout.listLevels[1].marker == ListMarker.LowerAlpha,
+                "ListMarkers and ReadOnly read onto the note");
+
+            string md = MarkdownFormat.Write(DocumentXml.ToXml(document));
+            t.Check(md.Contains("ListMarkers: [Decimal, LowerAlpha]") && md.Contains("ReadOnly: true") && md.Contains("PageGap: 40") && !md.Contains("PageWidth"),
+                $"they write back, PageGap is the user's own key, paper width only rides a Custom size: {md.Replace('\n', '|')}");
+            DestroyBlocks(document);
+            yield return 0;
+        }
+
+        [A_XSDActionDependency("TextInput.TabStops", "Test")]
+        private static IEnumerator<int> TabStops(TestContext t)
+        {
+            static XElement Code(string text) => new XElement("Block", new XAttribute("StylingType", "Code"), RunX(text));
+
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                Code("    x"), Code("\tx"), Code("ab\tx"), Code("abcd\tx"), Code("ab\tcd\tx"))));
+            yield return 2;
+
+            List<BlockControl> p = Paragraphs(editor);
+            float stop = p[0].CaretAt(4).x - p[0].CaretAt(0).x;
+            float[] at =
+            {
+                p[1].CaretAt(1).x - p[1].CaretAt(0).x,
+                p[2].CaretAt(3).x - p[2].CaretAt(0).x,
+                p[3].CaretAt(5).x - p[3].CaretAt(0).x,
+                p[4].CaretAt(6).x - p[4].CaretAt(0).x
+            };
+
+            t.Check(stop > 0f && MathF.Abs(at[0] - stop) < 0.5f, $"a tab at the line start reaches the first stop: {at[0]} vs {stop}");
+            t.Check(MathF.Abs(at[1] - stop) < 0.5f, $"a tab after two letters reaches the same stop: {at[1]}");
+            t.Check(MathF.Abs(at[2] - 2f * stop) < 0.5f, $"a tab starting on a stop moves to the next: {at[2]}");
+            t.Check(MathF.Abs(at[3] - 2f * stop) < 0.5f, $"two tabs on one line each reach their stop: {at[3]}");
+
+            CaretGeometry x = p[2].CaretAt(3);
+            t.Check(p[2].IndexAt(new Vector2(p[2].TextOrigin.X + x.x + 1f, p[2].TextOrigin.Y + x.top + 1f)) == 3,
+                "a click just after the tab lands after it");
+            t.Check(MathF.Abs(p[2].Lines![0].width - (p[2].CaretAt(4).x - p[2].CaretAt(0).x)) < 0.5f, "the line's width counts the tab to its stop");
+        }
+
+        [A_XSDActionDependency("TextInput.SessionScopeSwap", "Test")]
+        private static IEnumerator<int> SessionScopeSwap(TestContext t)
+        {
+            static string TempNote(string text)
+            {
+                string path = Path.Combine(Path.GetTempPath(), $"aurora-scope-{Guid.NewGuid():N}.xml");
+                RichTextDocument note = Paragraphs(text);
+                DocumentXml.Save(note, path);
+                DestroyBlocks(note);
+                return Path.GetFullPath(path);
+            }
+
+            static string OpenPaths(Control root) => string.Join(",", TabViewControl.TabViews(root)
+                .SelectMany(v => v.Items).Select(i => TabViewControl.EditorOf(i)?.session?.path));
+
+            string first = TempNote("first"), second = TempNote("second");
+            string before = SessionLayout.scope;
+            WorkspaceControl workspace = new WorkspaceControl
+            {
+                paneDocument = "tab-pane",
+                defaultDocument = "tab-pane",
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                verticalAlignment = VerticalAlignment.Stretch
+            };
+            t.Show(workspace);
+            SessionLayout.scope = "test-a";
+            workspace.LoadPane()!.AddChild(SessionLayout.tabFactory(first));
+            yield return 2;
+
+            bool restored = SessionLayout.ChangeScope("test-b");
+            yield return 2;
+            t.Check(!restored && workspace.children.Count == 1 && OpenPaths(workspace) == "", "a scope with nothing recorded leaves one empty pane");
+
+            TabViewControl.TabViews(workspace).First().AddChild(SessionLayout.tabFactory(second));
+            yield return 2;
+            restored = SessionLayout.ChangeScope("test-a");
+            yield return 2;
+            t.Check(restored && OpenPaths(workspace) == first, $"going back brings the first scope's tab back: {OpenPaths(workspace)}");
+
+            restored = SessionLayout.ChangeScope("test-b");
+            yield return 2;
+            t.Check(restored && OpenPaths(workspace) == second, $"and the second scope kept its own: {OpenPaths(workspace)}");
+
+            SessionLayout.scope = before;
+            t.Show(new StackPanelControl());
+            File.Delete(first);
+            File.Delete(second);
+        }
+
+        [A_XSDActionDependency("TextInput.ReadOnlyRefusesEdits", "Test")]
+        private static IEnumerator<int> ReadOnlyRefusesEdits(TestContext t)
+        {
+            DocumentEditorControl editor = ShowParagraphs(t, "fixed");
+            yield return 2;
+
+            editor.SetReadOnly(true);
+            Content(editor).SetCaret(Paragraphs(editor)[0], 5);
+            editor.FocusCaret();
+            yield return t.Type("x");
+            yield return t.Key(Keys.Backspace);
+            yield return t.Key(Keys.Enter);
+            t.Check(Paragraphs(editor).Count == 1 && Paragraphs(editor)[0].text == "fixed", "a read-only note takes no typing, deletion or Enter");
+            t.Check(DocumentXml.ToXml(editor.session.document).ToString().Contains("ReadOnly=\"true\""), "ReadOnly saves to XML");
+
+            editor.SetReadOnly(false);
+            yield return t.Type("x");
+            t.Check(Paragraphs(editor)[0].text == "fixedx", "and takes them again once unlocked");
+            t.Show(new StackPanelControl());
+        }
+
+        private static string? TextOf(XElement block) => (string?)block.Element("Run")?.Attribute("Text");
+
+        private static IEnumerable<T> DescendantsOf<T>(Entity root) where T : Entity
+        {
+            foreach (Entity child in root.children)
+            {
+                if (child is T match) yield return match;
+                foreach (T deeper in DescendantsOf<T>(child)) yield return deeper;
+            }
+        }
+
+        [A_XSDActionDependency("TextInput.MarkdownSkipsPlainText", "Test")]
+        private static IEnumerator<int> MarkdownSkipsPlainText(TestContext t)
+        {
+            DocumentEditorControl editor = NewEditor();
+            t.Show(editor);
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-edit-{Guid.NewGuid():N}.txt");
+            File.WriteAllText(path, "");
+            editor.LoadPath(path);
+            File.Delete(path);
+            Content(editor).SetCaret(Paragraphs(editor)[0], 0);
+            editor.FocusCaret();
+            yield return 2;
+
+            yield return t.Type("# x **y** - z");
+            yield return t.Key(Keys.E, Keys.LeftControl);
+            BlockControl block = Paragraphs(editor)[0];
+            t.Check(block.text == "# x **y** - z" && block.stylingType == TextStyleType.Text, "a .txt note takes Markdown as text");
+            t.Check(block.alignment == TextAlignment.Left && !editor.CanAlign, "and does not align");
+        }
+
+        [A_XSDActionDependency("TextInput.AlignLines", "Test")]
+        private static IEnumerator<int> AlignLines(TestContext t)
+        {
+            string words = string.Join(" ", Enumerable.Repeat("lorem ipsum dolor sit", 12));
+            DocumentEditorControl editor = ShowParagraphs(t, words, "short");
+            DocumentControl content = Content(editor);
+            yield return 2;
+
+            List<BlockControl> p = Paragraphs(editor);
+            float wrap = p[0].arrangedRect.width;
+            t.Check(p[0].Lines.All(l => l.left == 0f), "text starts left");
+
+            content.SetCaret(p[1], 0);
+            yield return t.Key(Keys.E, Keys.LeftControl);
+            yield return 2;
+            TextLine single = p[1].Lines[0];
+            t.Check(p[1].alignment == TextAlignment.Center && MathF.Abs(single.left - (wrap - single.width) * 0.5f) < 0.5f,
+                $"Ctrl+E centres the line: left {single.left}, width {single.width}, wrap {wrap}");
+            t.Check(MathF.Abs(p[1].CaretAt(0).x - single.left) < 0.5f, "the caret follows the line");
+
+            yield return t.Key(Keys.A, Keys.LeftControl);
+            yield return t.Key(Keys.R, Keys.LeftControl);
+            yield return 2;
+            t.Check(p[0].alignment == TextAlignment.Right && p[1].alignment == TextAlignment.Right, "Ctrl+R right-aligns every selected block");
+            t.Check(p[0].Lines.All(l => l.left + l.width >= wrap - 0.5f && l.left + l.width <= wrap + 8f) && p[0].Lines[0].left > 0f,
+                "every right-aligned line reaches the right edge, its trailing space hanging past it");
+            TextLine head = p[0].Lines[0];
+            t.Check(p[0].IndexAt(p[0].TextOrigin + new Vector2(head.left + 1f, head.top + head.height * 0.5f)) == 0,
+                "a press at a line's new start hits its first letter");
+
+            string xml = DocumentXml.ToXml(editor.session.document).ToString();
+            t.Check(xml.Contains("Align=\"Right\""), "alignment saves to XML");
+
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(p[0].alignment == TextAlignment.Left && p[1].alignment == TextAlignment.Center, "undo puts the alignments back");
+        }
+
+        [A_XSDActionDependency("TextInput.AlignAroundPicture", "Test")]
+        private static IEnumerator<int> AlignAroundPicture(TestContext t)
+        {
+            string dir = PictureFolder();
+            string path = Path.Combine(dir, "float.png");
+            using (Image<Rgba32> image = new Image<Rgba32>(80, 60, new Rgba32(200, 80, 40))) image.SaveAsPng(path);
+            string words = string.Join(" ", Enumerable.Repeat("lorem ipsum dolor sit", 10));
+
+            XElement block = new XElement("Block", new XAttribute("Align", "Right"), PictureRun(path, ("Wrap", "Square"), ("X", "0")), RunX(words));
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document", block)));
+            yield return 2;
+
+            BlockControl p = Paragraphs(editor)[0];
+            float wrap = p.arrangedRect.width;
+            t.Check(p.Lines.All(l => l.left + l.width >= wrap - 0.5f && l.left + l.width <= wrap + 8f),
+                "right-aligned lines beside the picture still end at the right edge");
+            t.Check(p.Lines.Count > 1 && p.Lines[0].left >= 80f, $"and never start under the picture: {p.Lines[0].left}");
+            t.Check(p.Lines[0].room > 0f && p.Lines[0].room < wrap, $"a line beside the picture has the narrowed room: {p.Lines[0].room}");
+        }
+
+        [A_XSDActionDependency("TextInput.MarkdownBlocksDraw", "Test")]
+        private static IEnumerator<int> MarkdownBlocksDraw(TestContext t)
+        {
+            XElement Code(string text)
+            {
+                XElement code = Block(text);
+                code.SetAttributeValue("StylingType", "Code");
+                return code;
+            }
+            XElement Aligned(string text, string align)
+            {
+                XElement block = Block(text);
+                block.SetAttributeValue("Align", align);
+                return block;
+            }
+
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                Block("Before the code"),
+                Code("for (int i = 0; i < 10; i++)"),
+                Code("    total += i;"),
+                Block("After the code"),
+                new XElement("Block", new XAttribute("StylingType", "Rule"), new XElement("Run")),
+                Aligned("Centred line", "Center"),
+                Aligned("Right line", "Right"),
+                new XElement("Block", RunX("inline "), RunX("code", ("StylingType", "Code")), RunX(" in text")))));
+            yield return 4;
+
+            yield return t.Golden("Blocks", Content(editor));
         }
         #endregion
 

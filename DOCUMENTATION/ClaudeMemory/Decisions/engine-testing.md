@@ -70,6 +70,24 @@ slice 3: `TestContext` input helpers, `UI.WindowRoot.ToWindowSpace`, `AGlfwWindo
   budget `Step.Main.Layout` P95 3 ms, Max 25 ms, AllocKB 1 — set from the first Release+`PROFILE` run.
 - Measuring build: `dotnet build <Host>.csproj -c Release -p:DefineConstants="TRACE%3BPROFILE"` (`%3B` is the `;`).
 
+### Perf targets (2026-10-02)
+- `_Build/PerfTests.cmd [Host]` (default Thorium): solution build Release+`PROFILE`, then `<Host>.exe --test=Perf`
+  from `bin/Release`; exit code passes through.
+- New `ArctisAurora.Tests.PerfTests` targets, all 30 warm-up + 120 measured ticks. Fixtures copied from
+  `ProfileScenario` (`OpenNote`, `ShowGrid`), which stays untouched and separate.
+
+| Test | Work per tick | Budgets (P95 / Max ms, AllocKB) | Measured, Release+PROFILE, 3 runs (p95 / max) |
+|---|---|---|---|
+| `Perf.TypeLargeNote` | 1000×1000-char note, one char via `charInputReadQueue` + `TextInputActions.Write` | `Step.Main.Layout` 2 / 40 / 128; `Step.Main.Logic` 0.5 / 15 / 32; `Document.MeasureBlocks` 0.5 / 20 / 8 | Layout 0.81–0.96 / 15.5–18.9, 88.9 KB; Logic 0.13–0.15 / 0.57–7.2, 18.5 KB; MeasureBlocks 0.16–0.21 / 7.7–8.0, 3.4 KB |
+| `Perf.RewrapLargeNote` | editor `preferredWidth` 800 → 320 → 800, 8 px a tick | placeholders (1000) | **fails**: `Document.MeasureBlocks`/`Text.MeasureBlock` never run — text width is `PageLayout.SizePx().X` minus margins (`DocumentControl.Paginate`), in Paged and Pageless alike; editor width never rewraps |
+| `Perf.AnimationBurst` | 5000 buttons, one 2 s `Tween` on `state` each at the first measured tick | `Step.Animation.Step` 1 / 10 / 1 | 0.24–0.37 / 0.55–0.73, 0 KB |
+| `Perf.AnimationLayoutClip` | 5000 buttons playing `profile-margin` | `Step.Animation.Step` 1 / 10 / 1; `Step.Main.Layout` 1.5 / 10 / 1 | Anim 0.17–0.20 / 0.37–0.44; Layout 0.49 / 0.51–0.56; 0 KB |
+
+- `Step.Animation.Step` is budgeted on `Main`: at 5000 rows the scheduler runs it on Main (120/120 frames). If it
+  moves to a worker the budget fails as "never ran" — `CheckBudgets` reads one thread per budget.
+- Animation tests end with `Animations.StopAll` on every button; note tests end with `t.Show(new StackPanelControl())`.
+- Debug `--test=Perf`: all `SKIP — unoptimized JIT`, ~10 s wall for the whole suite.
+
 ### Slice 5 — goldens (2026-09-28)
 - `yield return t.Golden(shot, region = null)` sets `Engine.clockHeld` and `ScreenReadback.Request(Engine.primary)`
   (`readbackEpoch = mainSystem.Epoch + 1`). `Session.Step` holds the test (timeout still counting) until

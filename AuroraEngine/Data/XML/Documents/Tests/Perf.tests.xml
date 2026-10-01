@@ -5,4 +5,21 @@
 	<Test Action="Perf.RelayoutLabels">
 		<Budget Zone="Step.Main.Layout" P95="3" Max="25" AllocKB="1"/>
 	</Test>
+	<Test Action="Perf.TypeLargeNote">
+		<Budget Zone="Step.Main.Layout" P95="2" Max="40" AllocKB="128"/>
+		<Budget Zone="Step.Main.Logic" P95="0.5" Max="15" AllocKB="32"/>
+		<Budget Zone="Document.MeasureBlocks" P95="0.5" Max="20" AllocKB="8"/>
+	</Test>
+	<Test Action="Perf.RewrapLargeNote">
+		<Budget Zone="Step.Main.Layout" P95="1000" Max="1000" AllocKB="100000"/>
+		<Budget Zone="Document.MeasureBlocks" P95="1000" Max="1000"/>
+		<Budget Zone="Text.MeasureBlock" P95="1000" Max="1000"/>
+	</Test>
+	<Test Action="Perf.AnimationBurst">
+		<Budget Zone="Step.Animation.Step" P95="1" Max="10" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.AnimationLayoutClip">
+		<Budget Zone="Step.Animation.Step" P95="1" Max="10" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="1.5" Max="10" AllocKB="1"/>
+	</Test>
 </TestSuite>

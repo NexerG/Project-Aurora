@@ -61,6 +61,9 @@ namespace ArctisAurora.Core.UI
         // where the line's pen starts, past whatever it wraps around
         public float left;
 
+        // the width the line may fill from left; 0 is the whole wrap width
+        public float room;
+
         public float height => ascent + descent;
         public float baseline => top + ascent;
     }
@@ -169,20 +172,52 @@ namespace ArctisAurora.Core.UI
             public readonly int charIndex;
             public readonly bool breakAfter;
             public readonly bool picture;
+            public readonly bool tab;
             public readonly float advance;
             public readonly float ascent;
             public readonly float descent;
 
-            public PenChar(int runIndex, int charIndex, bool breakAfter, float advance, float ascent, float descent, bool picture = false)
+            public PenChar(int runIndex, int charIndex, bool breakAfter, float advance, float ascent, float descent,
+                           bool picture = false, bool tab = false)
             {
                 this.runIndex = runIndex;
                 this.charIndex = charIndex;
                 this.breakAfter = breakAfter;
                 this.picture = picture;
+                this.tab = tab;
                 this.advance = advance;
                 this.ascent = ascent;
                 this.descent = descent;
             }
+
+            public PenChar WithAdvance(float value) =>
+                new PenChar(runIndex, charIndex, breakAfter, value, ascent, descent, picture, tab);
+        }
+
+        // spaces between tab stops
+        public const int TabStopSpaces = 4;
+
+        // A character's advance at a pen position within its line; only a tab depends on where it starts.
+        public static float MeasureAdvance(char character, in Run run, float penInLine) =>
+            character == '\t' ? TabAdvance(run, penInLine) : MeasureAdvance(character, run);
+
+        // From the pen to the next tab stop, a full stop when the pen sits on one.
+        public static float TabAdvance(in Run run, float penInLine)
+        {
+            float stop = TabStopSpaces * MeasureAdvance(' ', run);
+            if (stop <= 0f) return 0f;
+            return stop - (MathF.Max(0f, penInLine) % stop);
+        }
+
+        // The advance chars[i] takes at penX, stored back when it is a tab.
+        private static float AdvanceAt(PenChar[] chars, int i, float penX, IReadOnlyList<Run> runs)
+        {
+            PenChar c = chars[i];
+            if (!c.tab) return c.advance;
+
+            float advance = TabAdvance(runs[c.runIndex], penX);
+            chars[i] = c.WithAdvance(advance);
+            return advance;
         }
 
         // shared by every measure
@@ -211,6 +246,7 @@ namespace ArctisAurora.Core.UI
 
             for (int i = 0; i < count; i++)
             {
+                AdvanceAt(chars, i, penX, runs);
                 PenChar c = chars[i];
 
                 // A break character is never what pushes a line over: trailing spaces are allowed to
@@ -229,7 +265,9 @@ namespace ArctisAurora.Core.UI
 
                     // Everything between the break and here moves down with the wrapped word.
                     penX = 0f;
-                    for (int j = lineStart; j < i; j++) penX += chars[j].advance;
+                    for (int j = lineStart; j < i; j++) penX += AdvanceAt(chars, j, penX, runs);
+                    AdvanceAt(chars, i, penX, runs);
+                    c = chars[i];
                 }
 
                 penX += c.advance;
@@ -262,13 +300,13 @@ namespace ArctisAurora.Core.UI
             while (lineStart < count)
             {
                 float guess = chars[lineStart].ascent + chars[lineStart].descent;
-                float top = 0f, left = 0f;
+                float top = 0f, left = 0f, right = 0f;
                 int end = lineStart;
 
                 for (int attempt = 0; attempt < 3; attempt++)
                 {
-                    top = slots.Place(layout.height, guess, out left, out float right);
-                    end = FillLine(chars, lineStart, count, right - left, lineStart == 0 ? firstLineOffset : 0f);
+                    top = slots.Place(layout.height, guess, out left, out right);
+                    end = FillLine(chars, lineStart, count, right - left, lineStart == 0 ? firstLineOffset : 0f, runs);
 
                     float ascent = 0f, descent = 0f;
                     for (int i = lineStart; i <= end; i++)
@@ -281,6 +319,7 @@ namespace ArctisAurora.Core.UI
                 }
 
                 AppendLine(layout, chars, lineStart, end, top, left);
+                layout.lines[^1].room = MathF.Max(0f, right - left);
                 lineStart = end + 1;
             }
 
@@ -291,11 +330,12 @@ namespace ArctisAurora.Core.UI
         }
 
         // The last character one line of this width holds, by the same break rules as MeasureBlock.
-        private static int FillLine(PenChar[] chars, int start, int count, float width, float penX)
+        private static int FillLine(PenChar[] chars, int start, int count, float width, float penX, IReadOnlyList<Run> runs)
         {
             int lastBreak = -1;
             for (int i = start; i < count; i++)
             {
+                AdvanceAt(chars, i, penX, runs);
                 PenChar c = chars[i];
                 if ((!c.breakAfter || c.picture) && penX + c.advance > width && i > start)
                     return c.picture || lastBreak < 0 ? i - 1 : lastBreak;
@@ -343,7 +383,7 @@ namespace ArctisAurora.Core.UI
                 {
                     char c = run.text[i];
                     bool breakAfter = c == ' ' || c == '\t';
-                    chars[count++] = new PenChar(r, i, breakAfter, MeasureAdvance(c, run), ascent, descent);
+                    chars[count++] = new PenChar(r, i, breakAfter, MeasureAdvance(c, run), ascent, descent, tab: c == '\t');
                 }
             }
             return count;

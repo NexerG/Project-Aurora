@@ -48,7 +48,29 @@ The consequence worth knowing: the panes and tabs an application authors are its
 | `SessionScope` | `Key`, `SessionWindow` list | one host-defined partition — a vault, in Thorium |
 | `SessionWindow` | `Document`, `Primary`, `X`, `Y`, `Width`, `Height`, `Maximized`, one `SessionPane` | one OS window, its restore rect, and its arrangement |
 | `SessionPane` | `Orientation`, `Size`, `Active`, `SessionTab` list, `SessionPane` list | a split when it holds panes, a leaf when it holds tabs |
-| `SessionTab` | `Path` | one note that was open |
+| `SessionTab` | `Path`, `CaretBlock`, `CaretOffset`, `AnchorBlock`, `AnchorOffset`, `TopBlock`, `TopOffset`, `TopDelta`, `ScrollX`, `PropertiesOpen` | one note that was open, and where the reader was in it |
+
+A tab's view is kept for every tab that is open, whether or not it is the one on top, and for nothing once a tab is closed. The caret and the selection's other end are a block index and an offset. The scroll is not stored as pixels: it is the character whose line was at the top of the view, plus how far that line sat above the top edge, so a note opened at another window width or zoom still comes back at the same place after its lines rewrap. Only the sideways scroll is kept in pixels. `PropertiesOpen` remembers whether the note's properties header was expanded.
+
+```
+View State ()
+    if a restore is still waiting for its first layout -> return that record
+    record the caret and the selection anchor as block index + offset
+    top = the caret slot nearest the viewport's top-left corner
+    record top's block, offset, and how far its line's top sits above the viewport
+    record the sideways scroll and whether the properties header is open
+
+Restore View (record)
+    select from the anchor to the caret
+    open or close the properties header
+    keep the record until the next Arrange
+
+Arrange
+    lay the note out
+    if a record is waiting
+        scroll by (top's line top − viewport top + delta), sideways to the recorded pixels
+        lay out again if that moved anything
+```
 
 `Size` is the fixed main-axis size in pixels and zero means the pane takes the remainder, which is exactly what `Width="525"` and `WidthStar="1"` already produce and what a splitter drag already writes.
 
@@ -177,13 +199,30 @@ A saved rect that no longer lands on any monitor is centred on the primary one a
 
 No monitor name is recorded. Absolute virtual-desktop coordinates already say which screen a window was on for as long as the arrangement holds, and once the fallback is unconditionally the primary screen, a name has no reader.
 
+## Changing scope
+
+Switching vaults in Thorium swaps the whole session. Every open note is settled first, one naming prompt at a time, and cancelling a prompt abandons the switch. Then the vault being left is recorded, the main window's workspace is emptied, every window torn off from that vault is closed, and the new vault's arrangement is built — its torn-off windows reopen where they were when that vault was last left. The main window itself stays where it is. A vault with nothing recorded gets one empty pane and its first note.
+
+```
+Change Scope (key)
+    Capture()
+    empty the primary's workspace
+    close every other window that holds a workspace
+    scope = key
+    if the key has a record
+        rebuild it, leaving the primary's rect alone
+        return true
+    give the primary one empty pane
+    return false
+```
+
+Restored windows are named from a running counter rather than their place in the record. A closed window lingers in the window list until its GPU side is torn down, and a new window under the same name would push it out of the list before it was ever destroyed.
+
 ## Known holes
 
 The primary window's rect is applied after `Engine.Init` returns, so it is visible at the `GraphicsSettings` size for the duration of bootstrap and then jumps. Nothing can read the session earlier — [[SETTINGS]] loads as the first bootstrap step, well after the window is created — so closing this means either creating the primary hidden or finding the scope key somewhere available before that step.
 
-Switching vaults does not capture the vault being left. The arrangement is only ever recorded at shutdown, so switching away and quitting somewhere else loses it.
-
-Caret position, scroll offset and selection are not recorded, only the ordered tab paths and the active one. An iconified window comes back normal; only maximized is carried. A window whose every recorded note has been deleted comes back as an empty pane rather than not at all.
+An iconified window comes back normal; only maximized is carried. A window whose every recorded note has been deleted comes back as an empty pane rather than not at all.
 
 ## Related
 - [[Workspace]] — the control that declares where an arrangement lands and what seeds it

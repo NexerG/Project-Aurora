@@ -126,6 +126,10 @@ private static IEnumerator<int> RelayoutLabels(TestContext t)
 - Set limits from the first Release+`PROFILE` runs with headroom for the `max` swing — budgets are per machine.
 - Debug and plain Release report `SKIP` and stay out of the exit code; only Release+`PROFILE` measures.
 - The capture lands in `<run>\<Action>\`; summarize it like any other, or open it in Carbon from the failed test.
+- `cmd //c "_Build\\PerfTests.cmd [Host]"` builds Release+`PROFILE` and runs `--test=Perf`, exit code = failures.
+  The existing targets and their measured baselines: [[engine-testing]] § Perf targets.
+- `CheckBudgets` reads one thread per budget — an unpinned step (`Step.Animation.Step`) is budgeted where it ran;
+  check the capture's threads before choosing `Thread`.
 
 ## Claims
 

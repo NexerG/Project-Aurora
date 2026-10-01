@@ -93,10 +93,41 @@ namespace ArctisAurora.Core.Generators
                     float py = ((y + 0.5f) / innerSize) * (normH + 2 * spreadV) - spreadV;
                     Vector2 p = new Vector2(px, py);
 
-                    float redDist = Math.Clamp(GetClosestDistanceOfChannel(p, glyph, new Vector3D<int>(1, 0, 0)) * distanceFactor, -1, 1);
-                    float greenDist = Math.Clamp(GetClosestDistanceOfChannel(p, glyph, new Vector3D<int>(0, 1, 0)) * distanceFactor, -1, 1);
-                    float blueDist = Math.Clamp(GetClosestDistanceOfChannel(p, glyph, new Vector3D<int>(0, 0, 1)) * distanceFactor, -1, 1);
-                    float trueDist = Math.Clamp(GetClosestDistanceOfChannel(p, glyph, new Vector3D<int>(1, 1, 1)) * distanceFactor, -1, 1);
+                    float minR = -1, minG = -1, minB = -1, minAll = -1;
+                    if (glyph.edgeContours.Count != 0)
+                    {
+                        minR = float.MaxValue;
+                        minG = float.MaxValue;
+                        minB = float.MaxValue;
+                        for (int contour = 0; contour < glyph.edgeContours.Count; contour++)
+                        {
+                            List<Edge> edges = glyph.edgeContours[contour];
+                            for (int j = 0; j < edges.Count; j++)
+                            {
+                                Vector3D<int> color = edges[j].color;
+                                if (color.X == 0 && color.Y == 0 && color.Z == 0) continue;
+
+                                float dist = ClosestTOnBezier(p, edges[j]);
+                                if (color.X != 0 && dist < minR) minR = dist;
+                                if (color.Y != 0 && dist < minG) minG = dist;
+                                if (color.Z != 0 && dist < minB) minB = dist;
+                            }
+                        }
+                        minAll = MathF.Min(minR, MathF.Min(minG, minB));
+
+                        if (ComputeWindingNumber(p, glyph) == 0)
+                        {
+                            minR = -minR;
+                            minG = -minG;
+                            minB = -minB;
+                            minAll = -minAll;
+                        }
+                    }
+
+                    float redDist = Math.Clamp(minR * distanceFactor, -1, 1);
+                    float greenDist = Math.Clamp(minG * distanceFactor, -1, 1);
+                    float blueDist = Math.Clamp(minB * distanceFactor, -1, 1);
+                    float trueDist = Math.Clamp(minAll * distanceFactor, -1, 1);
 
                     redDist = redDist * 0.5f + 0.5f;
                     greenDist = greenDist * 0.5f + 0.5f;
@@ -106,37 +137,6 @@ namespace ArctisAurora.Core.Generators
                     image[startX + pad + x, startY + pad + y] = new Rgba32(redDist, greenDist, blueDist, trueDist);
                 }
             }
-        }
-
-        public static float GetClosestDistanceOfChannel(Vector2 p, Glyph glyph, Vector3D<int> channel)
-        {
-            if (glyph.edgeContours.Count == 0) return -1;
-
-            float minDist = float.MaxValue;
-            int contourIndex = 0;
-            int edgeIndex = 0;
-            for (int contour = 0; contour < glyph.edgeContours.Count; contour++)
-            {
-                List<Edge> edges = glyph.edgeContours[contour];
-                for (int j = 0; j < edges.Count; j++)
-                {
-                    if (edges[j].color * channel == Vector3D<int>.Zero) continue;
-
-                    float dist = ClosestTOnBezier(p, edges[j]);
-                    if (minDist > dist)
-                    {
-                        minDist = dist;
-                        contourIndex = contour;
-                        edgeIndex = j;
-                    }
-                }
-            }
-
-            bool wn = ComputeWindingNumber(p, glyph) == 0;
-            if (wn)
-                minDist = -minDist;
-
-            return minDist;
         }
 
         private static float ClosestTOnBezier(Vector2 p, Edge edge)
@@ -200,12 +200,12 @@ namespace ArctisAurora.Core.Generators
             return MathF.Sqrt(bestDist);
         }
 
-        private static float[] SolveCubic(float a, float b, float c, float d)
+        private static int SolveCubic(float a, float b, float c, float d, Span<float> roots)
         {
             // Handle degenerate cases
             if (MathF.Abs(a) < 1e-6f)
             {
-                return SolveQuadratic(b, c, d);
+                return SolveQuadratic(b, c, d, roots);
             }
 
             // Normalize
@@ -228,13 +228,16 @@ namespace ArctisAurora.Core.Generators
                 float sqrtDisc = MathF.Sqrt(disc);
                 float u = MathF.Cbrt(-q / 2f + sqrtDisc);
                 float v = MathF.Cbrt(-q / 2f - sqrtDisc);
-                return new float[] { u + v - shift };
+                roots[0] = u + v - shift;
+                return 1;
             }
             else if (MathF.Abs(disc) <= 1e-6f)
             {
                 // Two real roots (one double)
                 float u = MathF.Cbrt(-q / 2f);
-                return new float[] { 2f * u - shift, -u - shift };
+                roots[0] = 2f * u - shift;
+                roots[1] = -u - shift;
+                return 2;
             }
             else
             {
@@ -243,38 +246,36 @@ namespace ArctisAurora.Core.Generators
                 float theta = MathF.Acos(Math.Clamp(-q / (2f * r), -1f, 1f));
                 float m = 2f * MathF.Cbrt(r);
 
-                return new float[]
-                {
-            m * MathF.Cos(theta / 3f) - shift,
-            m * MathF.Cos((theta + 2f * MathF.PI) / 3f) - shift,
-            m * MathF.Cos((theta + 4f * MathF.PI) / 3f) - shift
-                };
+                roots[0] = m * MathF.Cos(theta / 3f) - shift;
+                roots[1] = m * MathF.Cos((theta + 2f * MathF.PI) / 3f) - shift;
+                roots[2] = m * MathF.Cos((theta + 4f * MathF.PI) / 3f) - shift;
+                return 3;
             }
         }
 
-        private static float[] SolveQuadratic(float a, float b, float c)
+        private static int SolveQuadratic(float a, float b, float c, Span<float> roots)
         {
             if (MathF.Abs(a) < 1e-6f)
             {
-                if (MathF.Abs(b) < 1e-6f) return Array.Empty<float>();
-                return new float[] { -c / b };
+                if (MathF.Abs(b) < 1e-6f) return 0;
+                roots[0] = -c / b;
+                return 1;
             }
 
             float disc = b * b - 4f * a * c;
-            if (disc < 0) return Array.Empty<float>();
+            if (disc < 0) return 0;
 
             float sqrtDisc = MathF.Sqrt(disc);
             float inv2a = 1f / (2f * a);
-            return new float[]
-            {
-        (-b + sqrtDisc) * inv2a,
-        (-b - sqrtDisc) * inv2a
-            };
+            roots[0] = (-b + sqrtDisc) * inv2a;
+            roots[1] = (-b - sqrtDisc) * inv2a;
+            return 2;
         }
 
         private static int ComputeWindingNumber(Vector2 p, Glyph glyph)
         {
             int winding = 0;
+            Span<float> roots = stackalloc float[3];
 
             for (int c = 0; c < glyph.edgeContours.Count; c++)
             {
@@ -291,9 +292,9 @@ namespace ArctisAurora.Core.Generators
                     float cy = -3f * edge.p0.Y + 3f * edge.c0.Y;
                     float dy0 = edge.p0.Y - p.Y;
 
-                    float[] roots = SolveCubic(ay, by, cy, dy0);
+                    int rootCount = SolveCubic(ay, by, cy, dy0, roots);
 
-                    for (int i = 0; i < roots.Length; i++)
+                    for (int i = 0; i < rootCount; i++)
                     {
                         float t = roots[i];
                         if (t < 0f || t >= 1f) continue;

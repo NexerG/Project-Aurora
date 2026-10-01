@@ -21,7 +21,7 @@
       <UI:TextStyle Type="Heading6" FontSize="16" />
 
       <UI:TextStyle Type="Comment" FontSize="16" />
-      <UI:TextStyle Type="Code" FontSize="16" />
+      <UI:TextStyle Type="Code" FontSize="16" FontName="consola" />
       <UI:TextStyle Type="Quote" FontSize="18" />
 
       <UI:Page Mode="Paged" Size="A4" />

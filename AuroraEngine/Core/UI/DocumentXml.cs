@@ -96,6 +96,11 @@ namespace ArctisAurora.Core.UI
             if (styling != null && Enum.TryParse(styling.Value, true, out TextStyleType type))
                 block.stylingType = type;
 
+            XAttribute align = element.Attribute("Align");
+            if (align != null && Enum.TryParse(align.Value, true, out TextAlignment alignment))
+                block.alignment = alignment;
+            block.language = (string?)element.Attribute("Language");
+
             XAttribute list = element.Attribute("List");
             if (list != null && Enum.TryParse(list.Value, true, out ListKind kind))
                 block.listKind = kind;
@@ -195,6 +200,10 @@ namespace ArctisAurora.Core.UI
             XElement element = new XElement(ns + "Block");
             if (block.stylingType != TextStyleType.Text)
                 element.SetAttributeValue("StylingType", block.stylingType.ToString());
+            if (block.alignment != TextAlignment.Left)
+                element.SetAttributeValue("Align", block.alignment.ToString());
+            if (!string.IsNullOrEmpty(block.language))
+                element.SetAttributeValue("Language", block.language);
             if (block.listKind != ListKind.None)
                 element.SetAttributeValue("List", block.listKind.ToString());
             if (block.listLevel > 0)

@@ -52,6 +52,9 @@
           <xs:enumeration value="Text.Bold" />
           <xs:enumeration value="Text.Italic" />
           <xs:enumeration value="Text.Underline" />
+          <xs:enumeration value="Text.AlignLeft" />
+          <xs:enumeration value="Text.AlignCenter" />
+          <xs:enumeration value="Text.AlignRight" />
           <xs:enumeration value="List.Disc" />
           <xs:enumeration value="List.Circle" />
           <xs:enumeration value="List.Triangle" />
@@ -63,6 +66,14 @@
           <xs:enumeration value="List.LowerAlpha" />
           <xs:enumeration value="List.LowerRoman" />
           <xs:enumeration value="List.UpperRoman" />
+          <xs:enumeration value="Picture.WrapInline" />
+          <xs:enumeration value="Picture.WrapSquare" />
+          <xs:enumeration value="Picture.WrapTight" />
+          <xs:enumeration value="Picture.WrapTopAndBottom" />
+          <xs:enumeration value="Picture.WrapBehind" />
+          <xs:enumeration value="Picture.WrapInFront" />
+          <xs:enumeration value="Picture.CollideBox" />
+          <xs:enumeration value="Picture.CollideShape" />
           <xs:enumeration value="Text.Indent" />
           <xs:enumeration value="Text.Outdent" />
           <xs:enumeration value="Text.Undo" />
@@ -101,6 +112,7 @@
           <xs:enumeration value="Layout.StackPanelArranges" />
           <xs:enumeration value="Layout.StarChildCrossSize" />
           <xs:enumeration value="Layout.GridAutoRowWrapsAtColumn" />
+          <xs:enumeration value="Layout.RotatedHitTest" />
           <xs:enumeration value="Perf.RelayoutLabels" />
           <xs:enumeration value="Visual.PanelAndLabel" />
           <xs:enumeration value="Visual.ImageScaled" />
@@ -169,6 +181,17 @@
       </xs:simpleType>
     </xs:union>
   </xs:simpleType>
+  <xs:simpleType name="Console">
+    <xs:union memberTypes="actions:Any">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="Palettes.Set" />
+          <xs:enumeration value="Help" />
+          <xs:enumeration value="Quit" />
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
   <xs:simpleType name="PoolSort">
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>
@@ -188,16 +211,6 @@
           <xs:enumeration value="Main.DrawLists" />
           <xs:enumeration value="Physics.Step" />
           <xs:enumeration value="Animation.Step" />
-        </xs:restriction>
-      </xs:simpleType>
-    </xs:union>
-  </xs:simpleType>
-  <xs:simpleType name="Console">
-    <xs:union memberTypes="actions:Any">
-      <xs:simpleType>
-        <xs:restriction base="xs:string">
-          <xs:enumeration value="Help" />
-          <xs:enumeration value="Quit" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>

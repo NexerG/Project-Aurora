@@ -18,6 +18,8 @@ namespace ArctisAurora.Core.UI
         private class FieldLine : TextRunControl
         {
             public override Control? ActiveContextTarget() => (parent as Control)?.ActiveContextTarget();
+
+            public override bool OnPointerPress(PointerEvent e) => false;
         }
 
         // One edit as the field before and after it.

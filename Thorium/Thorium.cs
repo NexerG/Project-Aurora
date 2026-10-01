@@ -26,6 +26,7 @@ namespace Thorium
             // A layout belongs to the vault it was arranged in.
             SessionLayout.scope = KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
             SessionLayout.tabFactory = VaultBrowserControl.BuildTab;
+            NotePropertiesControl.openLink = VaultBrowserControl.OpenLink;
             // prepare level
 
             // One-shot atlas bake — this is the set currently in Data/Fonts/arial.

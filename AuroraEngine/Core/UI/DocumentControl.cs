@@ -7,6 +7,7 @@ using ArctisAurora.EngineWork;
 using Silk.NET.GLFW;
 using System.Numerics;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace ArctisAurora.Core.UI
 {
@@ -155,6 +156,12 @@ namespace ArctisAurora.Core.UI
         // page format, assigned by the editor before the first measure
         public PageLayout page = new PageLayout();
 
+        // refuses picture drags, assigned by the editor
+        public bool readOnly;
+
+        // app-wide space between pages
+        private static float PageGap => DocumentLayout.Defaults.Page.gap;
+
         // document zoom, assigned by the editor; 1 is 100%
         public float zoom = 1f;
 
@@ -190,6 +197,9 @@ namespace ArctisAurora.Core.UI
 
         // the open note's history, assigned by the editor; null until a session exists
         internal UndoStack undo;
+
+        // a .txt note, which takes no Markdown as it is typed
+        internal bool plainText;
 
         private CaretControl caret;
         private readonly List<PanelControl> highlights = new List<PanelControl>();
@@ -506,6 +516,8 @@ namespace ArctisAurora.Core.UI
             return true;
         }
 
+        internal DocumentAddress AnchorAddress => AddressOf(anchor.block, anchor.offset);
+
         // Puts a selection back by address; equal ends leave only a caret.
         internal void Select(DocumentAddress from, DocumentAddress to)
         {
@@ -671,6 +683,7 @@ namespace ArctisAurora.Core.UI
         {
             if (HasSelection && !DeleteSelection()) return false;
             if (caretBlock == null) return false;
+            LeaveRule();
 
             DocumentFragment fragment = text == copiedText && copiedFragment != null
                 ? copiedFragment
@@ -686,6 +699,7 @@ namespace ArctisAurora.Core.UI
         {
             if (HasSelection && !DeleteSelection()) return false;
             if (caretBlock == null) return false;
+            LeaveRule();
 
             StyleSpan span = caretBlock.StyleAt(caretOffset);
             span.count = 1;
@@ -764,6 +778,8 @@ namespace ArctisAurora.Core.UI
                 BlockSnapshot block = new BlockSnapshot
                 {
                     stylingType = at.stylingType,
+                    alignment = at.alignment,
+                    language = at.language,
                     listKind = at.listKind,
                     listLevel = at.listLevel,
                     listMarker = at.listMarker,
@@ -788,6 +804,8 @@ namespace ArctisAurora.Core.UI
             BlockSnapshot landed = new BlockSnapshot
             {
                 stylingType = destination.stylingType,
+                alignment = destination.alignment,
+                language = destination.language,
                 listKind = destination.listKind,
                 listLevel = destination.listLevel,
                 listMarker = destination.listMarker,
@@ -808,12 +826,18 @@ namespace ArctisAurora.Core.UI
             DeleteSelection();
 
             if (caretBlock == null) return;
+            if (caretBlock.stylingType == TextStyleType.Rule)
+            {
+                LeaveRule();
+                return;
+            }
             if (caretBlock.Length == 0 && caretBlock.listKind != ListKind.None)
             {
                 if (caretBlock.listLevel > 0) ShiftListLevel(-1);
                 else ClearListAtCaret();
                 return;
             }
+            if (TypeMarkdownLine() || EndCodeBlock()) return;
             SplitBlockAt(AddressOf(caretBlock, caretOffset));
         }
 
@@ -838,6 +862,7 @@ namespace ArctisAurora.Core.UI
         internal void TypeChar(char c)
         {
             if (caretBlock == null) return;
+            LeaveRule();
 
             BlockControl block = caretBlock;
             DocumentAddress at = AddressOf(block, caretOffset);
@@ -849,9 +874,15 @@ namespace ArctisAurora.Core.UI
 
             SetCaret(block, at.offset + 1);
 
-            if (c == ' ' && TypeListPrefix(block, at.block, at.offset + 1))
+            if (c == ' ' && TypeMarkdownPrefix(block, at.block, at.offset + 1))
             {
                 pending = armed;
+                return;
+            }
+
+            if (TypeInlineMarkdown(block, at.block, at.offset + 1, c, out StyleDelta closed))
+            {
+                pending = armed.With(closed);
                 return;
             }
 
@@ -1108,7 +1139,7 @@ namespace ArctisAurora.Core.UI
         private void BeginPictureResize(Vector2 point)
         {
             resizing = SelectedPicture(out BlockControl block, out int index)
-                && PictureFrame(block, index, out resizeBox, out resizeRotation) && resizeBox.width > 0f && resizeBox.height > 0f;
+                && PictureFrame(block, index, out resizeBox, out resizeRotation) && resizeBox.width > 0f && resizeBox.height > 0f && !readOnly;
             if (!resizing) return;
 
             resizeAt = AddressOf(block, index);
@@ -1226,7 +1257,7 @@ namespace ArctisAurora.Core.UI
         private void BeginPictureRotate(Vector2 point)
         {
             LayoutRect box = LayoutRect.Empty;
-            rotating = SelectedPicture(out BlockControl block, out int index) && PictureFrame(block, index, out box, out _);
+            rotating = SelectedPicture(out BlockControl block, out int index) && PictureFrame(block, index, out box, out _) && !readOnly;
             if (!rotating) return;
 
             rotateAt = AddressOf(block, index);
@@ -1569,7 +1600,7 @@ namespace ArctisAurora.Core.UI
 
         private void BeginPictureMove(Vector2 point)
         {
-            moving = SelectedPicture(out BlockControl block, out int index) && StoredPicture(block, index).IsFloating;
+            moving = SelectedPicture(out BlockControl block, out int index) && StoredPicture(block, index).IsFloating && !readOnly;
             if (!moving) return;
 
             moveAt = AddressOf(block, index);
@@ -1848,13 +1879,260 @@ namespace ArctisAurora.Core.UI
         }
         #endregion
 
-        #region ---- lists ----
-        // "- " at a block's start makes a bullet; "[ ] " or "[x] " at a bullet's start makes a task.
-        private bool TypeListPrefix(BlockControl block, int index, int typedEnd)
+        #region ---- markdown ----
+        // A whole line of "```lang" makes a code block; "---", "***" or "___" makes a rule.
+        private bool TypeMarkdownLine()
         {
-            if (block.stylingType == TextStyleType.Code || block.parent != this) return false;
+            BlockControl block = caretBlock;
+            if (plainText || block.parent != this || block.listKind != ListKind.None
+                || block.stylingType is TextStyleType.Code or TextStyleType.Rule) return false;
+
+            string line = block.text ?? string.Empty;
+            Match fence = fenceLine.Match(line);
+            bool isRule = ruleLine.IsMatch(line);
+            if (!fence.Success && !isRule) return false;
+
+            DocumentAddress start = AddressOf(block, 0);
+            undo?.Push(new TextEdit(this, start, line, false));
+            RemoveText(start, line.Length);
+
+            if (isRule)
+            {
+                SetBlockList(start.block, b => b.stylingType = TextStyleType.Rule);
+                LeaveRule();
+                return true;
+            }
+
+            string language = fence.Groups[1].Value;
+            SetBlockList(start.block, b =>
+            {
+                b.stylingType = TextStyleType.Code;
+                b.language = language.Length > 0 ? language : null;
+            });
+            return true;
+        }
+
+        // Enter on an empty last line of a code block turns that line back into text.
+        private bool EndCodeBlock()
+        {
+            BlockControl block = caretBlock;
+            if (block.stylingType != TextStyleType.Code || block.Length != 0) return false;
+
+            List<BlockControl> blocks = Blocks();
+            int index = blocks.IndexOf(block);
+            if (index + 1 < blocks.Count && blocks[index + 1].stylingType == TextStyleType.Code
+                && blocks[index + 1].parent == block.parent) return false;
+
+            SetBlockList(index, b =>
+            {
+                b.stylingType = TextStyleType.Text;
+                b.language = null;
+            });
+            return true;
+        }
+
+        // Tab in code: a tab at the caret, or one tab more or fewer at the head of every selected line.
+        internal bool ShiftCodeIndent(int delta)
+        {
+            if (caretBlock?.stylingType != TextStyleType.Code) return false;
+
+            DocumentAddress caretAt = AddressOf(caretBlock, caretOffset);
+            if (delta > 0 && !HasSelection)
+            {
+                undo?.Push(new TextEdit(this, caretAt, "\t", true));
+                InsertText(caretAt, "\t");
+                return true;
+            }
+
+            DocumentAddress anchorAt = AddressOf(anchor.block, anchor.offset);
+            List<BlockControl> blocks = Blocks();
+            int step = delta > 0 ? 1 : -1;
+
+            for (int i = Math.Min(anchorAt.block, caretAt.block); i <= Math.Max(anchorAt.block, caretAt.block); i++)
+            {
+                BlockControl block = blocks[i];
+                if (block.stylingType != TextStyleType.Code) continue;
+
+                DocumentAddress head = new DocumentAddress(i, 0);
+                if (step > 0) block.InsertText(0, "\t");
+                else if (block.text.StartsWith('\t')) block.RemoveText(0, 1);
+                else continue;
+                undo?.Push(new TextEdit(this, head, "\t", step > 0));
+
+                if (anchorAt.block == i) anchorAt = new DocumentAddress(i, Math.Max(0, anchorAt.offset + step));
+                if (caretAt.block == i) caretAt = new DocumentAddress(i, Math.Max(0, caretAt.offset + step));
+            }
+
+            Select(anchorAt, caretAt);
+            return true;
+        }
+
+        // Text bound for a rule lands in a new paragraph after it.
+        private void LeaveRule()
+        {
+            if (caretBlock?.stylingType != TextStyleType.Rule) return;
+
+            DocumentAddress at = AddressOf(caretBlock, 0);
+            SplitBlockAt(at);
+            SetBlockList(at.block + 1, b =>
+            {
+                b.stylingType = TextStyleType.Text;
+                b.alignment = TextAlignment.Left;
+            });
+        }
+
+        // An empty caret block becomes a rule, or one goes in after the caret's block; the caret ends on it.
+        public bool InsertRule()
+        {
+            if (caretBlock == null || caretBlock.stylingType == TextStyleType.Rule) return false;
+
+            BlockControl block = caretBlock;
+            int index = Blocks().IndexOf(block);
+            if (block.Length > 0)
+            {
+                SplitBlockAt(AddressOf(block, block.Length));
+                index++;
+            }
+
+            SetBlockList(index, b =>
+            {
+                b.stylingType = TextStyleType.Rule;
+                b.alignment = TextAlignment.Left;
+                b.language = null;
+                b.listKind = ListKind.None;
+                b.listLevel = 0;
+                b.listMarker = null;
+                b.isChecked = false;
+            });
+            SetCaret(Blocks()[index], 0);
+            return true;
+        }
+
+        // A closing "**", "*", "~~" or "`" typed after its opener styles what is between and drops both.
+        private bool TypeInlineMarkdown(BlockControl block, int index, int typedEnd, char c, out StyleDelta closed)
+        {
+            closed = default;
+            if (plainText || block.stylingType is TextStyleType.Code or TextStyleType.Rule) return false;
+            if (c != '*' && c != '~' && c != '`') return false;
+
+            string s = block.text ?? string.Empty;
+            string marker = c switch
+            {
+                '*' => typedEnd >= 2 && s[typedEnd - 2] == '*' ? "**" : "*",
+                '~' => "~~",
+                _ => "`"
+            };
+
+            int open = InlineOpener(s, typedEnd, marker);
+            if (open < 0) return false;
+
+            int contentStart = open + marker.Length;
+            int contentEnd = typedEnd - marker.Length;
+
+            List<BlockSnapshot> before = SnapshotBlocks(index, index);
+            block.RemoveText(contentEnd, marker.Length);
+            block.RemoveText(open, marker.Length);
+            int from = open;
+            int to = contentEnd - marker.Length;
+
+            if (marker == "`") MarkCode(block, from, to);
+            else
+            {
+                StyleDelta delta = marker switch
+                {
+                    "**" => new StyleDelta(bold: true),
+                    "*" => new StyleDelta(italic: true),
+                    _ => new StyleDelta(strikethrough: true)
+                };
+                block.StyleRange(from, to, delta);
+                closed = marker switch
+                {
+                    "**" => new StyleDelta(bold: false),
+                    "*" => new StyleDelta(italic: false),
+                    _ => new StyleDelta(strikethrough: false)
+                };
+            }
+
+            block.ApplyLayout(document.layout);
+            undo?.Push(new BlockStateEdit(this, index, before, SnapshotBlocks(index, index)));
+            SetCaret(block, to);
+            return true;
+        }
+
+        // Where the opener a closing marker ending at end pairs with starts; -1 when there is none.
+        // Content may not start or end with a space, and a single "*" or "`" never touches its twin.
+        private static int InlineOpener(string s, int end, string marker)
+        {
+            int close = end - marker.Length;
+            if (close <= 0 || string.CompareOrdinal(s, close, marker, 0, marker.Length) != 0) return -1;
+            if (char.IsWhiteSpace(s[close - 1])) return -1;
+            if (marker.Length == 1 && s[close - 1] == marker[0]) return -1;
+
+            for (int open = close - marker.Length - 1; open >= 0; open--)
+            {
+                if (string.CompareOrdinal(s, open, marker, 0, marker.Length) != 0) continue;
+
+                int content = open + marker.Length;
+                if (content >= close || char.IsWhiteSpace(s[content])) continue;
+                if (marker.Length == 1 && (s[content] == marker[0] || (open > 0 && s[open - 1] == marker[0]))) continue;
+                if (marker == "**" && open > 0 && s[open - 1] == '*') continue;
+                return open;
+            }
+            return -1;
+        }
+
+        // Gives a character range the inline code styling.
+        private static void MarkCode(BlockControl block, int from, int to)
+        {
+            block.SplitSpanAt(to);
+            int first = block.SplitSpanAt(from);
+            int at = from;
+            for (int i = first; i < block.spans.Count && at < to; i++)
+            {
+                StyleSpan span = block.spans[i];
+                at += span.count;
+                span.stylingType = TextStyleType.Code;
+                span.fontSizeAuthored = false;
+                block.spans[i] = span;
+            }
+            block.MergeSpans();
+        }
+
+        // "```lang" on a line of its own
+        private static readonly Regex fenceLine = new Regex(@"^```(\S*)$");
+
+        // three or more of one of -, * or _, spaces between allowed
+        private static readonly Regex ruleLine = new Regex(@"^([-*_])(?:[ \t]*\1){2,}[ \t]*$");
+
+        // "# " to "###### "
+        private static readonly Regex headingPrefix = new Regex(@"^#{1,6} $");
+        #endregion
+
+        #region ---- lists ----
+        // "- " at a block's start makes a bullet; "[ ] " or "[x] " at a bullet's start makes a task;
+        // "# " to "###### " makes a heading and "> " a quote.
+        private bool TypeMarkdownPrefix(BlockControl block, int index, int typedEnd)
+        {
+            if (plainText || block.stylingType is TextStyleType.Code or TextStyleType.Rule || block.parent != this) return false;
 
             string head = (block.text ?? string.Empty)[..typedEnd];
+            TextStyleType? styling = null;
+            if (block.listKind == ListKind.None && headingPrefix.IsMatch(head))
+                styling = (TextStyleType)((int)TextStyleType.Heading1 + head.Length - 2);
+            else if (block.listKind == ListKind.None && head == "> ") styling = TextStyleType.Quote;
+
+            if (styling is TextStyleType type)
+            {
+                DocumentAddress at = new DocumentAddress(index, 0);
+                undo?.Push(new TextEdit(this, at, head, false));
+                RemoveText(at, head.Length);
+
+                List<BlockSnapshot> before = SnapshotBlocks(index, index);
+                SetBlockStylingBetween(index, index, type);
+                undo?.Push(new StyleRangeEdit(this, index, before, type));
+                return true;
+            }
+
             ListKind kind;
             ListMarker? marker = null;
             if (block.listKind == ListKind.None && head == "- ") kind = ListKind.Bullet;
@@ -2047,6 +2325,34 @@ namespace ArctisAurora.Core.UI
 
         public TextStyleType CaretBlockStyling => caretBlock?.stylingType ?? TextStyleType.Text;
 
+        public TextAlignment CaretBlockAlignment => caretBlock?.alignment ?? TextAlignment.Left;
+
+        // The alignment of every block the range touches; with nothing selected, the caret's own.
+        public bool SetBlockAlignment(TextAlignment alignment)
+        {
+            if (caretBlock == null) return false;
+
+            int first, last;
+            if (OrderedSelection(out DocumentAddress from, out DocumentAddress to))
+            {
+                first = from.block;
+                last = to.block;
+            }
+            else first = last = Blocks().IndexOf(caretBlock);
+
+            if (first < 0 || last < 0) return false;
+
+            List<BlockControl> blocks = Blocks();
+            List<BlockSnapshot> before = SnapshotBlocks(first, last);
+            for (int b = first; b <= last; b++)
+            {
+                blocks[b].alignment = alignment;
+                blocks[b].InvalidateLayout();
+            }
+            undo?.Push(new BlockStateEdit(this, first, before, SnapshotBlocks(first, last)));
+            return true;
+        }
+
         // Restyles the selected range; with nothing selected the style is armed for the next
         // character instead. False either way when nothing was written.
         public bool ApplyStyle(StyleDelta delta)
@@ -2223,6 +2529,7 @@ namespace ArctisAurora.Core.UI
             head.RemoveText(from.offset, head.Length - from.offset);
             tail.RemoveText(0, to.offset);
             head.AppendBlock(tail);
+            if (head.stylingType == TextStyleType.Rule) head.TakeKind(tail.SliceSnapshot(0, 0));
 
             for (int i = to.block; i > from.block; i--)
                 RemoveBlock(blocks[i]);
@@ -2283,6 +2590,16 @@ namespace ArctisAurora.Core.UI
             SetCaret(head, offset);
         }
 
+        // Puts a block's kind back without touching its text; what undoing a merge into a rule needs.
+        internal void RestoreKind(DocumentAddress at, BlockSnapshot kind)
+        {
+            if (!Resolve(at, out BlockControl block, out _)) return;
+
+            block.TakeKind(kind);
+            block.ApplyLayout(document.layout);
+            ListsChanged();
+        }
+
         // A fragment put in forwards, for a paste or a drop and their redo; the caret ends after it.
         internal void InsertBetween(DocumentAddress from, DocumentAddress to, DocumentFragment fragment)
         {
@@ -2314,7 +2631,7 @@ namespace ArctisAurora.Core.UI
             float top = Mm(page.marginTop);
             float bottom = Mm(page.marginBottom);
             bool paged = page.mode == PageMode.Paged;
-            PageBands bands = new PageBands(top, paged ? paper.Y - top - bottom : float.PositiveInfinity, paper.Y + page.gap * zoom);
+            PageBands bands = new PageBands(top, paged ? paper.Y - top - bottom : float.PositiveInfinity, paper.Y + PageGap * zoom);
             if (bands.top != paginatedBands.top || bands.height != paginatedBands.height || bands.stride != paginatedBands.stride)
             {
                 from = 0;
@@ -2327,18 +2644,21 @@ namespace ArctisAurora.Core.UI
             floats.RemoveAll(f => f.block.parent != this || blockControls.IndexOf(f.block) is int anchor && (anchor < 0 || anchor >= from));
             int index = 0;
             bool settled = false;
+            Entity previous = null;
             foreach (Entity child in children)
             {
                 BlockControl block = child as BlockControl;
                 TableControl table = block == null ? TableIn(child) : null;
                 if (block == null && table == null) continue;
+                bool codeRun = block?.stylingType == TextStyleType.Code && previous is BlockControl { stylingType: TextStyleType.Code };
+                previous = child;
                 if (index < from)
                 {
                     index++;
                     continue;
                 }
 
-                if (index > 0) y += blockSpacing * zoom;
+                if (index > 0 && !codeRun) y += blockSpacing * zoom;
 
                 Control item = block ?? (Control)child;
                 float blockTop = y;
@@ -2404,7 +2724,7 @@ namespace ArctisAurora.Core.UI
 
             pageCount = bands.PageOf(y - PageBands.tolerance) + 1;
             pageHeight = paper.Y;
-            return pageCount * paper.Y + (pageCount - 1) * page.gap * zoom;
+            return pageCount * paper.Y + (pageCount - 1) * PageGap * zoom;
         }
 
         private static bool Remeasured(Control control) => ((ArrangeFlags)control.arrange.flags & ArrangeFlags.Remeasured) != 0;
@@ -2435,7 +2755,7 @@ namespace ArctisAurora.Core.UI
         {
             for (int i = 0; i < pages.Count; i++)
                 pages[i].Arrange(i < pageCount
-                    ? new LayoutRect(x, y + i * (pageHeight + page.gap * zoom), width, pageHeight)
+                    ? new LayoutRect(x, y + i * (pageHeight + PageGap * zoom), width, pageHeight)
                     : new LayoutRect(x, y, 0f, 0f));
         }
         #endregion
@@ -2574,7 +2894,7 @@ namespace ArctisAurora.Core.UI
             float to = clip.Bottom - top;
             int walked = 0;
 
-            float stride = pageHeight + page.gap * zoom;
+            float stride = pageHeight + PageGap * zoom;
             int sheets = Math.Min(pageCount, pages.Count);
             for (int i = Math.Max(0, (int)(from / stride)); i < sheets && i * stride < to; i++)
                 walked += UIEngine.Collect(pages[i], z);

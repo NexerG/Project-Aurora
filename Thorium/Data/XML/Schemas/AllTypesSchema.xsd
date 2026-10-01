@@ -94,6 +94,7 @@
       <xs:enumeration value="Panel" />
       <xs:enumeration value="Document" />
       <xs:enumeration value="TextStyleType" />
+      <xs:enumeration value="TextAlignment" />
       <xs:enumeration value="TextStyle" />
       <xs:enumeration value="ListLevel" />
       <xs:enumeration value="DocumentLayout" />
@@ -168,6 +169,7 @@
       <xs:enumeration value="IconSetAsset" />
       <xs:enumeration value="TextureAsset" />
       <xs:enumeration value="UIDocumentAsset" />
+      <xs:enumeration value="MathConstants" />
       <xs:enumeration value="Charset" />
       <xs:enumeration value="FontImport" />
       <xs:enumeration value="IconImport" />

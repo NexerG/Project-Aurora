@@ -72,6 +72,21 @@
 		<Press />
 	</Keybind>
 
+	<Keybind Trigger="L" Action="Text.AlignLeft">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="E" Action="Text.AlignCenter">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="R" Action="Text.AlignRight">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
 	<Keybind Trigger="C" Action="Text.Copy">
 		<Modifier Key="LeftControl" />
 		<Press />

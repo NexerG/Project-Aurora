@@ -13,6 +13,9 @@ namespace ArctisAurora.Core.UI
         private static readonly Regex task = new Regex(@"^([ \t]*)- \[([ xX])\](?: (.*))?$");
         private static readonly Regex bullet = new Regex(@"^([ \t]*)- (.*)$");
         private static readonly Regex ordered = new Regex(@"^([ \t]*)(\d{1,9})[.)] (.*)$");
+        private static readonly Regex lettered = new Regex(@"^([ \t]*)([a-zA-Z]{1,15})([.)])( +)(.*)$");
+        private static readonly Regex rule = new Regex(@"^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*$");
+        private static readonly Regex fenceLine = new Regex(@"^(`{3,}|~{3,})(.*)$");
         private const string fence = "```";
         private const string quote = "> ";
 
@@ -38,6 +41,7 @@ namespace ArctisAurora.Core.UI
             ("Palette", "Document", "Palette"),
             ("Created", "Document", "Created"),
             ("Modified", "Document", "Modified"),
+            ("ReadOnly", "Document", "ReadOnly"),
             ("LineHeight", "DocumentLayout", "LineHeight"),
             ("BlockSpacing", "DocumentLayout", "BlockSpacing"),
             ("ListIndent", "DocumentLayout", "ListIndent"),
@@ -49,13 +53,16 @@ namespace ArctisAurora.Core.UI
             ("MarginTop", "Page", "MarginTop"),
             ("MarginBottom", "Page", "MarginBottom"),
             ("MarginLeft", "Page", "MarginLeft"),
-            ("MarginRight", "Page", "MarginRight"),
-            ("PageGap", "Page", "Gap")
+            ("MarginRight", "Page", "MarginRight")
         };
+
+        // frontmatter key for the per-level list markers, <ListLevel> children of <DocumentLayout>
+        private const string listMarkersKey = "ListMarkers";
 
         // Whether a frontmatter key is one the note reads into its own properties.
         public static bool IsProperty(string key) =>
-            properties.Any(p => string.Equals(p.key, key, StringComparison.OrdinalIgnoreCase));
+            string.Equals(key, listMarkersKey, StringComparison.OrdinalIgnoreCase)
+            || properties.Any(p => string.Equals(p.key, key, StringComparison.OrdinalIgnoreCase));
 
         #region ---- read ----
         public static XElement Read(string text, string name)
@@ -69,25 +76,43 @@ namespace ArctisAurora.Core.UI
                 ReadProperties(root, front);
                 text = body;
             }
-            bool inFence = false;
+            string? openFence = null;
+            string? language = null;
 
             foreach (string raw in text.Split('\n'))
             {
                 string line = raw.TrimEnd('\r');
 
-                if (line.StartsWith(fence))
+                if (openFence != null && ClosesFence(line, openFence))
                 {
-                    inFence = !inFence;
-                    continue;
-                }
-
-                if (inFence)
-                {
-                    root.Add(Block("Code", new List<XElement> { PlainRun(line) }));
+                    openFence = null;
                     continue;
                 }
 
                 Match match;
+                if (openFence == null && (match = fenceLine.Match(line)).Success
+                    && !(match.Groups[1].Value[0] == '`' && match.Groups[2].Value.Contains('`')))
+                {
+                    openFence = match.Groups[1].Value;
+                    language = match.Groups[2].Value.Trim();
+                    continue;
+                }
+
+                if (openFence != null)
+                {
+                    XElement code = Block("Code", new List<XElement> { PlainRun(line) });
+                    if (!string.IsNullOrEmpty(language)) code.SetAttributeValue("Language", language);
+                    root.Add(code);
+                    continue;
+                }
+
+                if (rule.IsMatch(line))
+                {
+                    listWidths.Clear();
+                    root.Add(Block("Rule", new List<XElement>()));
+                    continue;
+                }
+
                 if ((match = task.Match(line)).Success || (match = bullet.Match(line)).Success)
                 {
                     bool isTask = match.Groups.Count == 4;
@@ -115,6 +140,26 @@ namespace ArctisAurora.Core.UI
                     continue;
                 }
 
+                if ((match = lettered.Match(line)).Success && LetteredGap(match) is int gap)
+                {
+                    int level = ListLevel(listWidths, match.Groups[1].Value);
+                    XElement? previous = PreviousItem(root, level);
+                    string token = match.Groups[2].Value;
+                    string? marker = LetteredMarker(token, (string?)previous?.Attribute("Marker"), previous?.Annotation<string>());
+                    if (marker != null)
+                    {
+                        string rest = match.Groups[4].Value[gap..] + match.Groups[5].Value;
+                        XElement block = Block(null, ParseInline(rest));
+                        block.SetAttributeValue("List", "Bullet");
+                        block.SetAttributeValue("Marker", marker);
+                        if (level > 0) block.SetAttributeValue("Level", level);
+                        block.AddAnnotation(token);
+
+                        root.Add(block);
+                        continue;
+                    }
+                }
+
                 listWidths.Clear();
 
                 if ((match = heading.Match(line)).Success)
@@ -135,6 +180,14 @@ namespace ArctisAurora.Core.UI
                 string? value = Frontmatter.Get(block, key);
                 if (value != null) PropertyHolder(root, element, true)!.SetAttributeValue(attribute, value);
             }
+
+            string? markers = Frontmatter.Get(block, listMarkersKey);
+            if (markers == null) return;
+
+            XElement layout = PropertyHolder(root, "DocumentLayout", true)!;
+            foreach (string name in markers.Trim('[', ']').Split(',').Select(m => m.Trim()))
+                if (Enum.TryParse(name, true, out ListMarker marker))
+                    layout.Add(new XElement("ListLevel", new XAttribute("Marker", marker)));
         }
 
         // The element a property lives on, made on the way when create is set.
@@ -162,6 +215,76 @@ namespace ArctisAurora.Core.UI
 
             widths.Add(width);
             return widths.Count - 1;
+        }
+
+        // The same character as the opening fence, at least as many, and nothing else.
+        private static bool ClosesFence(string line, string openFence)
+        {
+            string trimmed = line.Trim();
+            return trimmed.Length >= openFence.Length && trimmed.All(c => c == openFence[0]);
+        }
+
+        // Spaces the marker takes after it: two after a capital and a period, so "A. Smith" stays prose.
+        private static int? LetteredGap(Match match)
+        {
+            bool upperPeriod = char.IsUpper(match.Groups[2].Value[0]) && match.Groups[3].Value == ".";
+            int gap = upperPeriod ? 2 : 1;
+            return match.Groups[4].Length >= gap ? gap : null;
+        }
+
+        // The marker a lettered item reads as, or null when the token is prose.
+        private static string? LetteredMarker(string token, string? previous, string? previousToken)
+        {
+            bool upper = token.All(char.IsUpper);
+            if (!upper && !token.All(char.IsLower)) return null;
+
+            string alpha = upper ? "UpperAlpha" : "LowerAlpha";
+            string roman = upper ? "UpperRoman" : "LowerRoman";
+
+            if (previous == alpha && previousToken != null && token == NextLetters(previousToken)) return alpha;
+            if (IsRoman(token) && (previous == roman || token.Length > 1 || token is "i" or "I")) return roman;
+            return token.Length == 1 ? alpha : null;
+        }
+
+        // a..z, aa.. counted on by one, case kept
+        private static string NextLetters(string token)
+        {
+            char[] letters = token.ToCharArray();
+            char first = char.IsUpper(token[0]) ? 'A' : 'a';
+            for (int i = letters.Length - 1; i >= 0; i--)
+            {
+                if (letters[i] != first + 25) { letters[i]++; return new string(letters); }
+                letters[i] = first;
+            }
+            return first + new string(letters);
+        }
+
+        // The item above at this level, while the list it belongs to is unbroken.
+        private static XElement? PreviousItem(XElement root, int level)
+        {
+            foreach (XElement block in root.Elements().Reverse())
+            {
+                if (block.Name.LocalName != "Block" || block.Attribute("List") == null) return null;
+
+                int at = (int?)block.Attribute("Level") ?? 0;
+                if (at < level) return null;
+                if (at == level) return block;
+            }
+            return null;
+        }
+
+        private static bool IsRoman(string token)
+        {
+            string lower = token.ToLowerInvariant();
+            int total = 0, last = 0;
+            for (int i = lower.Length - 1; i >= 0; i--)
+            {
+                int value = lower[i] switch { 'i' => 1, 'v' => 5, 'x' => 10, 'l' => 50, 'c' => 100, 'd' => 500, 'm' => 1000, _ => 0 };
+                if (value == 0) return false;
+                total += value < last ? -value : value;
+                last = Math.Max(last, value);
+            }
+            return total > 0 && ListMarkers.Format(total, ListMarker.LowerRoman) == lower + ".";
         }
 
         private static XElement Block(string? styling, List<XElement> runs)
@@ -352,30 +475,70 @@ namespace ArctisAurora.Core.UI
         {
             List<string> lines = new List<string>();
             List<(int count, string? marker)> counters = new List<(int, string?)>();
-            bool inFence = false;
+            int fenceAt = -1;
+            int longestTicks = 0;
+            bool afterList = false;
+            string? fenceLanguage = null;
+
+            // the fence outgrows any line of backticks inside it
+            void CloseFence()
+            {
+                string ticks = new string('`', Math.Max(fence.Length, longestTicks + 1));
+                lines[fenceAt] = ticks + fenceLanguage;
+                lines.Add(ticks);
+                fenceAt = -1;
+                longestTicks = 0;
+            }
 
             foreach (XElement block in document.Elements())
             {
                 if (block.Name.LocalName != "Block") continue;
 
                 string styling = (string?)block.Attribute("StylingType") ?? "Text";
+                string? language = (string?)block.Attribute("Language");
                 List<XElement> runs = block.Elements().ToList();
                 int number = Count(counters, block);
+                bool code = styling == "Code";
 
-                if ((styling == "Code") != inFence)
+                if (fenceAt >= 0 && (!code || language != fenceLanguage)) CloseFence();
+                if (code && fenceAt < 0)
                 {
+                    fenceAt = lines.Count;
                     lines.Add(fence);
-                    inFence = !inFence;
+                    fenceLanguage = language;
                 }
 
-                lines.Add(inFence ? Flatten(runs, out _) : BlockLine(block, styling, runs, number));
+                if (styling == "Rule") lines.Add(lines.Count == 0 ? "***" : "---");
+                else if (fenceAt >= 0)
+                {
+                    string line = Flatten(runs, out _);
+                    string trimmed = line.Trim();
+                    if (trimmed.Length > 0 && trimmed.All(c => c == '`')) longestTicks = Math.Max(longestTicks, trimmed.Length);
+                    lines.Add(line);
+                }
+                else lines.Add(BlockLine(block, styling, runs, number, afterList));
+
+                afterList = block.Attribute("List") != null;
             }
 
-            if (inFence) lines.Add(fence);
+            if (fenceAt >= 0) CloseFence();
 
             string? front = (string?)document.Attribute("Frontmatter");
+            bool customPage = (string?)PropertyHolder(document, "Page", false)?.Attribute("Size") == nameof(PageSize.Custom);
             foreach ((string key, string element, string attribute) in properties)
-                front = Frontmatter.Set(front, key, (string?)PropertyHolder(document, element, false)?.Attribute(attribute));
+            {
+                bool paperSize = element == "Page" && attribute is "Width" or "Height";
+                string? value = paperSize && !customPage ? null : (string?)PropertyHolder(document, element, false)?.Attribute(attribute);
+                front = Frontmatter.Set(front, key, value);
+            }
+
+            List<string> markers = PropertyHolder(document, "DocumentLayout", false)?.Elements()
+                .Where(e => e.Name.LocalName == "ListLevel")
+                .Select(e => (string?)e.Attribute("Marker") ?? nameof(ListMarker.Disc)).ToList() ?? new List<string>();
+            string? existing = Frontmatter.Get(front, listMarkersKey);
+            string joined = string.Join(", ", markers);
+            front = Frontmatter.Set(front, listMarkersKey,
+                markers.Count == 0 ? null : existing != null && !existing.StartsWith('[') ? joined : "[" + joined + "]");
 
             if (front != null) lines.Insert(0, front);
             else if (lines.Count > 0 && (lines[0] == "---" || lines[0] == "+++")) lines[0] = "\\" + lines[0];
@@ -409,7 +572,7 @@ namespace ArctisAurora.Core.UI
             return number;
         }
 
-        private static string BlockLine(XElement block, string styling, List<XElement> runs, int number)
+        private static string BlockLine(XElement block, string styling, List<XElement> runs, int number, bool afterList)
         {
             string content = WriteInline(runs);
             string? list = (string?)block.Attribute("List");
@@ -420,8 +583,11 @@ namespace ArctisAurora.Core.UI
                 if (list == "Task")
                     return indent + ((bool?)block.Attribute("Checked") == true ? "- [x] " : "- [ ] ") + content;
 
-                if (numbered.Contains((string?)block.Attribute("Marker")))
-                    return indent + number + ". " + content;
+                string? marker = (string?)block.Attribute("Marker");
+                if (marker == "Decimal") return indent + number + ". " + content;
+                if (numbered.Contains(marker))
+                    return indent + ListMarkers.Format(number, Enum.Parse<ListMarker>(marker!))
+                           + (marker!.StartsWith("Upper") ? "  " : " ") + content;
 
                 return indent + "- " + (task.IsMatch("- " + content) ? "\\" + content : content);
             }
@@ -435,8 +601,16 @@ namespace ArctisAurora.Core.UI
             if (ordered.Match(content) is { Success: true } numberLike)
                 return content.Insert(numberLike.Groups[1].Length + numberLike.Groups[2].Length, "\\");
 
-            bool structural = heading.IsMatch(content) || bullet.IsMatch(content)
-                              || content.StartsWith(quote) || content.StartsWith(fence);
+            // "a. " and "iv) " escape their delimiter the same way
+            if (lettered.Match(content) is { Success: true } letterLike && LetteredGap(letterLike) != null)
+            {
+                string token = letterLike.Groups[2].Value;
+                if (LetteredMarker(token, null, null) != null || (afterList && (token.All(char.IsUpper) || token.All(char.IsLower))))
+                    return content.Insert(letterLike.Groups[1].Length + token.Length, "\\");
+            }
+
+            bool structural = heading.IsMatch(content) || bullet.IsMatch(content) || rule.IsMatch(content)
+                              || content.StartsWith(quote) || content.StartsWith(fence) || content.StartsWith("~~~");
             if (!structural) return content;
 
             int at = content.Length - content.TrimStart(' ', '\t').Length;
@@ -610,6 +784,12 @@ namespace ArctisAurora.Core.UI
 
                 if (!first) text.Append('\n');
                 first = false;
+
+                if ((string?)block.Attribute("StylingType") == "Rule")
+                {
+                    text.Append("---");
+                    continue;
+                }
 
                 foreach (XElement run in block.Elements())
                     text.Append((string?)run.Attribute("Text"));

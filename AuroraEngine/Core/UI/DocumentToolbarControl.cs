@@ -59,7 +59,8 @@ namespace ArctisAurora.Core.UI
             ("Heading 6", TextStyleType.Heading6),
             ("Quote", TextStyleType.Quote),
             ("Code", TextStyleType.Code),
-            ("Comment", TextStyleType.Comment)
+            ("Comment", TextStyleType.Comment),
+            ("Horizontal line", TextStyleType.Rule)
         };
 
         // Default is the colour a fresh span carries, so picking it lets the note drop the attribute
@@ -91,6 +92,9 @@ namespace ArctisAurora.Core.UI
         private readonly IconControl italicInk;
         private readonly IconControl underlineInk;
         private readonly IconControl highlightInk;
+        private readonly IconControl alignLeftInk;
+        private readonly IconControl alignCenterInk;
+        private readonly IconControl alignRightInk;
         private readonly LabelControl stylingCaption;
         private readonly LabelControl colorInk;
         private readonly PxBox pxField;
@@ -116,6 +120,9 @@ namespace ArctisAurora.Core.UI
         private bool? shownUnderline;
         private string? shownHighlight;
         private TextStyleType? shownStyling;
+        private bool? shownLeft;
+        private bool? shownCenter;
+        private bool? shownRight;
         private string? shownColor;
         private PaletteRole? shownInk;
         private int? shownPx;
@@ -141,6 +148,14 @@ namespace ArctisAurora.Core.UI
 
             stylingCaption = Caption(stylingOptions[0].caption);
             AddChild(CaptionButton(stylingCaption, 124, OpenStyling));
+            AddChild(Separator());
+
+            alignLeftInk = Ink("align-left");
+            alignCenterInk = Ink("align-center");
+            alignRightInk = Ink("align-right");
+            AddChild(IconButton(alignLeftInk, _ => TextInputActions.AlignLeft()));
+            AddChild(IconButton(alignCenterInk, _ => TextInputActions.AlignCenter()));
+            AddChild(IconButton(alignRightInk, _ => TextInputActions.AlignRight()));
             AddChild(Separator());
 
             colorInk = Caption("A");
@@ -199,6 +214,11 @@ namespace ArctisAurora.Core.UI
                 shownStyling = styling;
                 stylingCaption.text = CaptionFor(styling);
             }
+
+            TextAlignment? alignment = editor?.CanAlign == true ? editor.CaretBlockAlignment : null;
+            Reflect(alignLeftInk, alignment == TextAlignment.Left, ref shownLeft);
+            Reflect(alignCenterInk, alignment == TextAlignment.Center, ref shownCenter);
+            Reflect(alignRightInk, alignment == TextAlignment.Right, ref shownRight);
 
             string? color = source.HasValue ? source.Value.colorHex : idleInkHex;
             PaletteRole ink = source.HasValue ? PaletteRole.Ink : PaletteRole.MutedInk;
@@ -300,7 +320,9 @@ namespace ArctisAurora.Core.UI
             foreach ((string caption, TextStyleType type) in stylingOptions)
             {
                 TextStyleType picked = type;
-                entries.Add(new ContextMenuButton(caption, () => editor.SetBlockStyling(picked)));
+                entries.Add(new ContextMenuButton(caption, picked == TextStyleType.Rule
+                    ? editor.InsertRule
+                    : () => editor.SetBlockStyling(picked)));
             }
 
             Drop(owner, entries);

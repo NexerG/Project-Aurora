@@ -4,7 +4,7 @@
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:import schemaLocation="EntityRegistryTypeSchema.xsd" namespace="http://arctisaurora/AuroraEntityRegistryTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:ListMarker types:EffectLoop types:GradientKind types:GridSizeMode types:PaletteRole types:WindowCorners types:TextStyleType types:PageMode types:PageSize types:ScrollDirection types:PictureWrap types:PictureCollision types:Orientation" />
+    <xs:union memberTypes="types:ListMarker types:EffectLoop types:GradientKind types:GridSizeMode types:PaletteRole types:WindowCorners types:TextStyleType types:TextAlignment types:PageMode types:PageSize types:ScrollDirection types:PictureWrap types:PictureCollision types:Orientation" />
   </xs:simpleType>
   <xs:attributeGroup name="VaultBrowser.Attributes">
     <xs:attributeGroup ref="types:Scrollable.Attributes" />
@@ -449,6 +449,7 @@
     <xs:attribute name="Palette" type="xs:string" />
     <xs:attribute name="Created" type="xs:string" />
     <xs:attribute name="Modified" type="xs:string" />
+    <xs:attribute name="ReadOnly" type="xs:boolean" />
     <xs:attribute name="Frontmatter" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="Document" type="types:Document" />
@@ -475,11 +476,20 @@
       <xs:enumeration value="Comment" />
       <xs:enumeration value="Code" />
       <xs:enumeration value="Quote" />
+      <xs:enumeration value="Rule" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:simpleType name="TextAlignment">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Left" />
+      <xs:enumeration value="Center" />
+      <xs:enumeration value="Right" />
     </xs:restriction>
   </xs:simpleType>
   <xs:attributeGroup name="TextStyle.Attributes">
     <xs:attribute name="Type" type="types:TextStyleType" />
     <xs:attribute name="FontSize" type="xs:int" />
+    <xs:attribute name="FontName" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="TextStyle" type="types:TextStyle" />
   <xs:complexType name="TextStyle">

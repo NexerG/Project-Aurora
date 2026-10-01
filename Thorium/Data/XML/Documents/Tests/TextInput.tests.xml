@@ -46,4 +46,22 @@
 	<Test Action="TextInput.PictureRotateDraws"/>
 	<Test Action="TextInput.PictureRotate"/>
 	<Test Action="TextInput.PictureInline"/>
+	<Test Action="TextInput.MarkdownPrefixes"/>
+	<Test Action="TextInput.MarkdownInline"/>
+	<Test Action="TextInput.CodeBlockEditing"/>
+	<Test Action="TextInput.RuleEditing"/>
+	<Test Action="TextInput.MarkdownBlocksRoundTrip"/>
+	<Test Action="TextInput.MarkdownSkipsPlainText"/>
+	<Test Action="TextInput.AlignLines"/>
+	<Test Action="TextInput.AlignAroundPicture"/>
+	<Test Action="TextInput.MarkdownBlocksDraw"/>
+	<Test Action="TextInput.MarkdownFences"/>
+	<Test Action="TextInput.CodeBlockTab"/>
+	<Test Action="TextInput.MarkdownFancyLists"/>
+	<Test Action="TextInput.HeaderFieldTakesPress"/>
+	<Test Action="TextInput.ViewStateRoundTrip"/>
+	<Test Action="TextInput.FrontmatterKeys"/>
+	<Test Action="TextInput.TabStops"/>
+	<Test Action="TextInput.SessionScopeSwap"/>
+	<Test Action="TextInput.ReadOnlyRefusesEdits"/>
 </TestSuite>

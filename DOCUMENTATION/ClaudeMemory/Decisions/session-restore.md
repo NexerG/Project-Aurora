@@ -95,6 +95,51 @@ window is built from a document, so menus and the drag preview are excluded with
 A tab whose editor never loaded a file is left out, and `Active` is resolved against the *recorded* index, so
 a note deleted between sessions drops out without shifting which tab comes back on top.
 
+### 7. Each open tab records where the reader was (2026-10-01)
+
+`SessionTab` gains `CaretBlock`/`CaretOffset`, `AnchorBlock`/`AnchorOffset` (block indices as `DocumentAddress`
+uses them; -1 = none), `TopBlock`/`TopOffset`/`TopDelta`, `ScrollX` and `PropertiesOpen`. Every open tab is
+recorded, active or not; a closed tab keeps nothing (user, 2026-10-01). Switching tabs already kept state:
+`TabViewControl.SetActive` hides and shows the editor, it never rebuilds it.
+
+- `DocumentEditorControl.ViewState()` — captured by `SessionLayout.LeafPane`. The top of the view is
+  `DocumentControl.CaretAtPoint` at the viewport's top-left, and `TopDelta` is how far that line's top sits above
+  the viewport.
+- `DocumentEditorControl.RestoreView(SessionTab)` — called by `FillTabs` right after `tabFactory`. It does
+  `DocumentControl.Select` and sets the expander, then parks the record in `pendingView`. `ArrangeCore` applies
+  the scroll at the first Arrange after that, through the same re-arrange/clear-flag pattern as scroll-to-caret.
+  A tab that hasn't been shown yet hands back its `pendingView` unchanged, so capturing it doesn't lose the record.
+
+**Scroll is anchored to a line, not stored as pixels** (user, fork C). Pixels are exact only at the same window
+width and zoom; a line plus a small delta still lands right after a rewrap. `ScrollX` stays in pixels, since only
+a page wider than the view scrolls sideways.
+
+**`SessionTab` is the editor's view record.** The approved plan had `ViewState(out …)`/`RestoreView(…)` taking
+separate values. Line anchoring made that six outs, so the editor reads and writes the settings record directly.
+Both live in `ArctisAurora.Core.UI`.
+
+**Switching vaults swaps the whole session** (user, 2026-10-01: torn-off windows close, and the new vault's
+come back as they were). In order:
+1. `VaultsWindow.Switch` → `NoteActions.SettleAll`: every window in turn, one naming prompt at a time, then the
+   edited notes saved. Cancelling a prompt abandons the switch.
+2. `Enter` writes the vault path, then calls `SessionLayout.ChangeScope(key)`:
+   - `Capture()` against the old scope;
+   - `ClearWorkspaces()`: the primary's workspace children are destroyed, and every other window holding a
+     workspace gets `Engine.CloseWindow`;
+   - `scope = key`, then `Rebuild(placePrimary: false)`.
+3. `Commit`, then the browser rebuilds. A vault with nothing recorded gets one empty pane (`LoadPane`) and
+   `OpenFirstNote`, not the authored default, which seeds sample notes.
+
+`Restore()` is now `Rebuild(true)` with the `LoadDefault` fallback. **The primary does not move on a switch.**
+That was my default, since the user didn't answer that sub-question; `placePrimary` is the switch.
+
+**Restored windows take names from a counter** (`restoredCount`), not from their index in the record.
+`Engine.CloseWindow` only flags a window, and `Publish` overwrites by name. So an old `session-1` still waiting on
+its GPU teardown would have been dropped from `Engine.windows` and never destroyed.
+
+Before this, `scope` was set only at boot. After a switch, the shutdown capture filed the new vault's tabs under the
+old vault's key.
+
 ## The `Collapse` ordering defect this exposed
 
 `SplitViewControl.Split` detaches the source from its host before the new split arrives, and says so in a
@@ -113,13 +158,10 @@ it.
   first bootstrap step, so nothing can read the session before `InitWindowing` creates the window — it is
   visible at the `GraphicsSettings` size for the ~800ms of bootstrap and then jumps. Fixing it means either
   creating the primary hidden or sourcing the scope key from somewhere available before `LoadAll`.
-- **Switching vaults does not capture the vault being left.** `VaultsWindow.Switch` closes every tab and
-  writes the setting; the outgoing vault's arrangement is only ever captured at shutdown, so switching away
-  and quitting elsewhere loses it. The fix is a `SessionLayout.Capture()` in `Switch` before `CloseTabs`,
-  against the old scope.
-- **`Switch` only closes tabs in `Engine.primary`** — pre-existing, and it now also means a torn-off window
-  keeps notes from the vault that was left, which capture will then record under the new vault's key.
-- Caret position, scroll offset and selection are not recorded — only the ordered tab paths and the active one.
+- The vault switch is test-verified for the primary's tabs (`TextInput.SessionScopeSwap`). Closing and
+  reopening secondary windows on a switch has **not run under any test or GUI**.
+- View state is test-verified (`TextInput.ViewStateRoundTrip`) but **NOT GUI-verified** across a real quit and
+  relaunch. A tab arranged for the first time at a size other than its final one restores once, at that size.
 - An iconified window restores normal; only maximized is carried.
 - A window whose every recorded note is gone restores as an empty pane rather than closing.
 

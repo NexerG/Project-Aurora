@@ -143,6 +143,17 @@ namespace ArctisAurora.Core.UI
         [A_XSDActionDependency("Text.Underline", "Input", "Toggles underline over the selection, or for what is typed next")]
         public static void Underline() => Toggle(style => new StyleDelta(underline: !style.underline));
 
+        #region ---- alignment ----
+        [A_XSDActionDependency("Text.AlignLeft", "Input", "Aligns the paragraphs under the caret to the left")]
+        public static void AlignLeft() => Editor()?.SetAlignment(TextAlignment.Left);
+
+        [A_XSDActionDependency("Text.AlignCenter", "Input", "Centres the paragraphs under the caret")]
+        public static void AlignCenter() => Editor()?.SetAlignment(TextAlignment.Center);
+
+        [A_XSDActionDependency("Text.AlignRight", "Input", "Aligns the paragraphs under the caret to the right")]
+        public static void AlignRight() => Editor()?.SetAlignment(TextAlignment.Right);
+        #endregion
+
         #region ---- list markers ----
         [A_XSDActionDependency("List.Disc", "Input", "Marks the caret's list level with filled circles")]
         public static void MarkDisc() => Editor()?.SetListMarker(ListMarker.Disc);

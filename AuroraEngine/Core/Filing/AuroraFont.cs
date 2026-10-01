@@ -106,8 +106,10 @@ namespace ArctisAurora.Core.Filing
         {
             // One array per face. Contours live here and never reach the .agd.
             Glyph[][] faceGlyphs = new Glyph[faces.Length][];
+            Diagnostics.Profiling.Zone.Start("Atlas.ReadFaces");
             for (int f = 0; f < faces.Length; f++)
                 faceGlyphs[f] = ReadFaceGlyphs(faces[f], facePaths[f]);
+            Diagnostics.Profiling.Zone.End("Atlas.ReadFaces");
 
             AtlasMetaData glyphs = new AtlasMetaData();
             glyphs.glyphCount = faces[0].textData.characterCount;
@@ -125,12 +127,15 @@ namespace ArctisAurora.Core.Filing
                     glyphs.glyphs[i].SetMetrics(faceStyles[f], faceGlyphs[f][i].regular);
 
             string atlasDataPath = Path.Combine(outputRoot, baseName, $"{baseName}.agd"); // aurora glyph data
+            Diagnostics.Profiling.Zone.Start("Atlas.WriteMeta");
             Serializer.SerializeAttributed(glyphs, atlasDataPath);
+            Diagnostics.Profiling.Zone.End("Atlas.WriteMeta");
 
             // One cell per (character, face), laid out as consecutive per-face blocks.
             int cellCount = glyphs.glyphCount * faces.Length;
             int glyphsPerAxis = (int)Math.Ceiling(MathF.Sqrt(cellCount));
             Image<Rgba32> atlasImage = new Image<Rgba32>(perGlyphSize * glyphsPerAxis, perGlyphSize * glyphsPerAxis);
+            Diagnostics.Profiling.Zone.Start("Atlas.Cells");
             for (int cell = 0; cell < cellCount; cell++)
             {
                 Glyph g = faceGlyphs[cell / glyphs.glyphCount][cell % glyphs.glyphCount];
@@ -140,9 +145,13 @@ namespace ArctisAurora.Core.Filing
                 int x = cell % glyphsPerAxis * perGlyphSize;
                 int y = cell / glyphsPerAxis * perGlyphSize;
                 MTSDFGen.GenerateCell(g, atlasImage, x, y, perGlyphSize, MTSDFGen.PxRange);
+                Diagnostics.Profiling.Zone.Increment("Cell");
             }
+            Diagnostics.Profiling.Zone.End("Atlas.Cells");
 
+            Diagnostics.Profiling.Zone.Start("Atlas.SavePng");
             atlasImage.Save(Path.Combine(outputRoot, baseName, $"{baseName}_atlas.png"));
+            Diagnostics.Profiling.Zone.End("Atlas.SavePng");
         }
 
         // Reads one face's outlines and metrics into its own glyph array.

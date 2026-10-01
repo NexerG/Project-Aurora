@@ -47,6 +47,7 @@ ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FileObject.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FolderPicker.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/Glyph.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/IconSet.cs
+ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/MathConstants.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/AssetImporter.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/ImportManifest.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/MeshImporter.cs
@@ -122,6 +123,9 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ImageControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/KeyCaptureControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/LabelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/LayoutEngine.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MathLayout.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MathParser.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MathSymbols.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MenuButtonControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/MenuScreen.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteActions.cs
@@ -205,10 +209,13 @@ ArctisAurora.Properties { -> AuroraEngine/Properties/Resources.Designer.cs
 ArctisAurora.Simulators -> AuroraEngine/Simulators/Simulator_DEPRECATED.cs
 ArctisAurora.Simulators.ParticleTypes -> AuroraEngine/Simulators/ParticleTypes/Particle2D.cs
 ArctisAurora.Simulators.Vulkan -> AuroraEngine/Simulators/Vulkan/Simulator3D.cs
+ArctisAurora.Tests -> AuroraEngine/Tests/AtlasPerfTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/CommandTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/ConsoleTests.cs
+ArctisAurora.Tests -> AuroraEngine/Tests/FontTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/InputTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/LayoutTests.cs
+ArctisAurora.Tests -> AuroraEngine/Tests/MathTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/PerfTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/VisualTests.cs
 AuroraEditor -> AuroraEditor/Editor.cs
