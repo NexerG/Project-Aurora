@@ -1,6 +1,7 @@
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Testing;
 using ArctisAurora.Core.UI;
+using System.Numerics;
 
 namespace ArctisAurora.Tests
 {
@@ -80,6 +81,38 @@ namespace ArctisAurora.Tests
             t.Check(wrapping.arrangedRect.width <= 100f, "the text is arranged inside its 100 px column");
             t.Check(wrapping.DesiredSize.Y > single.DesiredSize.Y * 1.5f, "the text wraps at its column's width");
             t.Check(grid.rowDefinitions[0].resolvedSize == wrapping.DesiredSize.Y, "the auto row is as tall as the wrapped text");
+        }
+
+        [A_XSDActionDependency("Layout.RotatedHitTest", "Test")]
+        private static IEnumerator<int> RotatedHitTest(TestContext t)
+        {
+            StackPanelControl root = new StackPanelControl
+            {
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                verticalAlignment = VerticalAlignment.Stretch
+            };
+            StackPanelControl bar = new StackPanelControl
+            {
+                preferredWidth = 100f,
+                preferredHeight = 20f,
+                margin = new Thickness(60f),
+                horizontalAlignment = HorizontalAlignment.Left,
+                verticalAlignment = VerticalAlignment.Top
+            };
+            root.AddChild(bar);
+            t.Show(root);
+            yield return 2;
+
+            LayoutRect r = bar.arrangedRect;
+            Vector2 centre = new Vector2(r.x + r.width * 0.5f, r.y + r.height * 0.5f);
+            t.Check(UIEngine.HitTest(root, centre + new Vector2(40f, 0f)) == bar, "upright, the bar is hit along its length");
+            t.Check(UIEngine.HitTest(root, centre + new Vector2(0f, 40f)) != bar, "and missed below it");
+
+            bar.rotation = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, MathF.PI * 0.5f);
+            yield return 2;
+            t.Check(UIEngine.HitTest(root, centre + new Vector2(0f, 40f)) == bar, "turned a quarter, it is hit where its end now pokes out");
+            t.Check(UIEngine.HitTest(root, centre + new Vector2(40f, 0f)) != bar, "and missed where the upright bar was");
+            t.Check(MathF.Abs(bar.arrange.subtreeBounds.height - 100f) < 0.01f, $"its bounds are the turned box: {bar.arrange.subtreeBounds.height}");
         }
     }
 }

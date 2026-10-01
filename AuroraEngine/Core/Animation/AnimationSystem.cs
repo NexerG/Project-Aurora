@@ -284,6 +284,8 @@ namespace ArctisAurora.Core.Animation
             if (count > 0) _paints.MarkRangeDirty(first, first + count - 1);
         }
 
+        internal bool FadesRunning => _fades.Count > 0;
+
         private void StepFades(float dt)
         {
             if (_fades.Count == 0) return;

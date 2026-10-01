@@ -152,7 +152,8 @@ namespace ArctisAurora.Core.UI
         {
             Span<ArrangeData> arrange = pool.GetSpan<ArrangeData>();
             ref ArrangeData a = ref arrange[row];
-            LayoutRect clip = ClipOf(rect, parent >= 0, parent >= 0 ? arrange[parent].clip : default, a.flags);
+            LayoutRect clipRect = ((ArrangeFlags)a.flags & ArrangeFlags.Rotated) != 0 ? rect.Turned((control ?? (Control)pool.OwnerAt(row)).rotation) : rect;
+            LayoutRect clip = ClipOf(clipRect, parent >= 0, parent >= 0 ? arrange[parent].clip : default, a.flags);
             if (!_noSkip && ((ArrangeFlags)a.flags & (ArrangeFlags.ArrangeDirty | ArrangeFlags.Remeasured)) == 0
                 && Same(a.arranged, rect) && Same(a.clip, clip))
                 return;
@@ -175,6 +176,8 @@ namespace ArctisAurora.Core.UI
 
             arrange = pool.GetSpan<ArrangeData>();
             LayoutRect bounds = arrange[row].arranged;
+            if (((ArrangeFlags)arrange[row].flags & ArrangeFlags.Rotated) != 0)
+                bounds = bounds.Turned((control ?? (Control)pool.OwnerAt(row)).rotation);
             ChildCursor children = kind == LayoutNodeKind.Custom ? new ChildCursor(control!.children) : new ChildCursor(row, nodes[row].count);
             while (children.Next(nodes, pool, out int child, out _))
                 bounds = LayoutRect.Union(bounds, arrange[child].subtreeBounds);

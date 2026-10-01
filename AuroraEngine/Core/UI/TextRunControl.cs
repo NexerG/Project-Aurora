@@ -10,6 +10,26 @@ using System.Numerics;
 
 namespace ArctisAurora.Core.UI
 {
+    // How text flows around a picture in a note.
+    [A_XSDType("PictureWrap", "UI")]
+    public enum PictureWrap
+    {
+        Inline,
+        Square,
+        Tight,
+        TopAndBottom,
+        Behind,
+        InFront
+    }
+
+    // What a turned Square picture pushes text away from.
+    [A_XSDType("PictureCollision", "UI")]
+    public enum PictureCollision
+    {
+        Box,
+        Shape
+    }
+
     // One styled slice of a run's string. Spans tile the string in order and the last one absorbs
     // whatever is left, so an edit never has to re-cut the list.
     public struct StyleSpan
@@ -33,14 +53,47 @@ namespace ArctisAurora.Core.UI
         public TextStyleType stylingType;
         public bool fontSizeAuthored;
 
+        // a picture: one U+FFFC drawn from this file; a 0 size takes the picture's own
+        public string imageSource;
+        public float imageWidth;
+        public float imageHeight;
+
+        // a floating picture's wrap and its offset from the column's left and its paragraph's top
+        public PictureWrap wrap;
+        public float imageX;
+        public float imageY;
+
+        // a picture's turn in clockwise degrees, and what a turned Square float wraps
+        public float imageRotation;
+        public PictureCollision collision;
+
+        public Quaternion Rotation => Quaternion.CreateFromAxisAngle(Vector3.UnitZ, imageRotation * MathF.PI / 180f);
+        public bool IsFloating => IsPicture && wrap != PictureWrap.Inline;
         public bool IsBold => style == FontStyle.Bold || style == FontStyle.BoldItalic;
         public bool IsItalic => style == FontStyle.Italic || style == FontStyle.BoldItalic;
+        public bool IsPicture => imageSource != null;
+
+        // The same style with the picture taken off.
+        public StyleSpan AsText()
+        {
+            StyleSpan text = this;
+            text.imageSource = null;
+            text.imageWidth = 0f;
+            text.imageHeight = 0f;
+            text.wrap = PictureWrap.Inline;
+            text.imageX = 0f;
+            text.imageY = 0f;
+            text.imageRotation = 0f;
+            text.collision = PictureCollision.Box;
+            return text;
+        }
     }
 
     // What a run tells when a glyph is pressed.
     public interface IGlyphPressTarget
     {
         void GlyphPressed(TextRunControl run, int index);
+        void PicturePressed(TextRunControl run, int index, int button);
     }
 
     // A block of text as one control: the string, the spans styling it, and one emitted quad per
@@ -62,6 +115,8 @@ namespace ArctisAurora.Core.UI
         private readonly List<uint> _runGradients = new List<uint>();
         private readonly List<uint> _runEffects = new List<uint>();
         private readonly List<(bool underline, bool strike, uint highlight)> _runDecorations = new List<(bool, bool, uint)>();
+        private readonly List<TextureAsset?> _runTextures = new List<TextureAsset?>();
+        private readonly List<(Vector2 size, Quaternion rotation)> _runPictures = new List<(Vector2, Quaternion)>();
 
         // characters under a selection, which a highlight leaves a gap for; -1 when none
         internal int selectedFrom = -1;
@@ -175,7 +230,7 @@ namespace ArctisAurora.Core.UI
         #region ---- layout ----
         // Spans in order over the shared string, the last one taking whatever is left. An empty span
         // still takes a slot, so runIndex keeps indexing the span list.
-        private void BuildRuns()
+        private void BuildRuns(float wrapWidth)
         {
             _runs.Clear();
             _runPaints.Clear();
@@ -183,6 +238,8 @@ namespace ArctisAurora.Core.UI
             _runGradients.Clear();
             _runEffects.Clear();
             _runDecorations.Clear();
+            _runTextures.Clear();
+            _runPictures.Clear();
 
             string s = text ?? string.Empty;
             if (spans.Count == 0)
@@ -193,6 +250,8 @@ namespace ArctisAurora.Core.UI
                 _runGradients.Add(gradientId);
                 _runEffects.Add(visual.effect);
                 _runDecorations.Add((false, false, 0u));
+                _runTextures.Add(null);
+                _runPictures.Add((Vector2.Zero, Quaternion.Identity));
                 return;
             }
 
@@ -208,7 +267,23 @@ namespace ArctisAurora.Core.UI
                 int spanSize = spans[i].fontSize > 0 ? spans[i].fontSize : fontSize;
                 FontAsset font = spans[i].fontName == null ? _fontAsset : ResolveFont(spanFont);
 
-                _runs.Add(new TextMeasurer.Run(s, start, count, spanFont, font.atlasMetaData, Zoomed(spanSize), spans[i].style));
+                if (spans[i].IsPicture)
+                {
+                    TextureAsset? picture = TextureAsset.ForFile(spans[i].imageSource);
+                    (float w, float h) = PictureSize(spans[i], picture, wrapWidth);
+                    Quaternion rotation = spans[i].Rotation;
+                    Vector2 box = spans[i].IsFloating ? new Vector2(w, h) : new LayoutRect(0f, 0f, w, h).Turned(rotation).size;
+                    _runs.Add(new TextMeasurer.Run(s, start, count, spanFont, font.atlasMetaData, Zoomed(spanSize), spans[i].style, true, box.X, box.Y,
+                        spans[i].IsFloating));
+                    _runTextures.Add(picture);
+                    _runPictures.Add((new Vector2(w, h), rotation));
+                }
+                else
+                {
+                    _runs.Add(new TextMeasurer.Run(s, start, count, spanFont, font.atlasMetaData, Zoomed(spanSize), spans[i].style));
+                    _runTextures.Add(null);
+                    _runPictures.Add((Vector2.Zero, Quaternion.Identity));
+                }
                 _runPaints.Add(spans[i].colorHex == null ? _paint : Palettes.Inline(spans[i].colorHex));
                 _runFonts.Add(font);
                 _runGradients.Add(spans[i].gradient == null
@@ -218,6 +293,25 @@ namespace ArctisAurora.Core.UI
                     spans[i].highlightHex == null ? 0u : Palettes.Inline(spans[i].highlightHex)));
                 start += count;
             }
+        }
+
+        // The authored size at the picture's aspect, or its own size capped to the column; zoomed.
+        private (float width, float height) PictureSize(StyleSpan span, TextureAsset? picture, float wrapWidth)
+        {
+            Vector2 native = picture != null ? new Vector2(picture.image.Width, picture.image.Height) : Vector2.Zero;
+            float aspect = native.X > 0f ? native.Y / native.X : 0f;
+            float w = span.imageWidth;
+            float h = span.imageHeight;
+
+            if (w <= 0f && h <= 0f)
+            {
+                w = MathF.Min(native.X * textZoom, wrapWidth);
+                return (w, w * aspect);
+            }
+
+            if (w <= 0f) w = aspect > 0f ? h / aspect : 0f;
+            else if (h <= 0f) h = w * aspect;
+            return (w * textZoom, h * textZoom);
         }
 
         private int Zoomed(int size) => textZoom == 1f ? size : Math.Max(1, (int)MathF.Round(size * textZoom));
@@ -233,11 +327,12 @@ namespace ArctisAurora.Core.UI
             if (!isMeasureDirty && _layout != null && wrapWidth == _wrapWidth) return a.desired;
 
             Profiling.Zone.Start("Text.BuildRuns");
-            BuildRuns();
+            BuildRuns(wrapWidth);
             Profiling.Zone.End("Text.BuildRuns");
 
             Profiling.Zone.Start("Text.MeasureBlock");
             _layout = TextMeasurer.MeasureBlock(_runs, wrapWidth, metrics, lineHeight);
+            laidAround = false;
             Profiling.Zone.End("Text.MeasureBlock");
             _wrapWidth = wrapWidth;
 
@@ -247,6 +342,28 @@ namespace ArctisAurora.Core.UI
             a.desired = new Vector2(w, h);
             SetFlag(ArrangeFlags.MeasureDirty, false);
             return a.desired;
+        }
+
+        // Re-lays the measured runs line by line through the slots; null lays them plainly again.
+        internal float LayoutAround(ILineSlots? slots)
+        {
+            if (_layout == null) return 0f;
+
+            _layout = TextMeasurer.MeasureBlock(_runs, _wrapWidth, metrics, lineHeight, 0f, slots);
+            laidAround = slots != null;
+            return _layout.height;
+        }
+
+        // the lines were last laid around something rather than plainly
+        internal bool laidAround;
+
+        // A picture's drawn size at this run's zoom.
+        internal Vector2 PictureSizeAt(int index)
+        {
+            for (int i = 0; i < _runs.Count; i++)
+                if (_runs[i].picture && index >= _runs[i].charStart && index < _runs[i].charStart + _runs[i].charCount)
+                    return _runPictures[i].size;
+            return Vector2.Zero;
         }
 
         // Places the text block. The glyphs are cut at emit, against the clip of the moment.
@@ -290,7 +407,7 @@ namespace ArctisAurora.Core.UI
                 if (lineTop >= box.Bottom) break;
 
                 float baselineY = _origin.Y + line.baseline;
-                float pen = _origin.X;
+                float pen = _origin.X + line.left;
 
                 foreach (LineSegment segment in line.segments)
                 {
@@ -304,6 +421,18 @@ namespace ArctisAurora.Core.UI
                     float stagger = Effects.Stagger(effect);
                     (bool underline, bool strike, uint highlight) = _runDecorations[segment.runIndex];
                     float segmentX = pen;
+
+                    if (run.picture)
+                    {
+                        for (int k = 0; k < segment.charCount && !run.floating; k++)
+                        {
+                            (Vector2 size, Quaternion rotation) = _runPictures[segment.runIndex];
+                            WriteImage(quads, _runTextures[segment.runIndex], new LayoutRect(pen, baselineY - run.imageHeight, run.imageWidth, run.imageHeight),
+                                       size, rotation, alpha, z, clip);
+                            pen += run.imageWidth;
+                        }
+                        continue;
+                    }
 
                     if (highlight != 0)
                         WriteHighlight(quads, segment, segmentX, lineTop, line.height, highlight, alpha, z - depthStep, clip, gradientRect);
@@ -368,6 +497,34 @@ namespace ArctisAurora.Core.UI
             v.paint = paint;
             v.alpha = alpha;
             v.textureIndex = VulkanControl.noTexture;
+        }
+
+        // One picture, the whole texture turned about the centre of its box.
+        private static void WriteImage(DataPool quads, TextureAsset? picture, LayoutRect box, Vector2 size, Quaternion rotation,
+                                       float alpha, float z, Vector4 clip)
+        {
+            if (picture == null || size.X <= 0f || size.Y <= 0f) return;
+
+            float cx = box.x + box.width * 0.5f;
+            float cy = box.y + box.height * 0.5f;
+            int row = quads.Append();
+            ref ControlGeometry g = ref quads.GetSpan<ControlGeometry>()[row];
+            g.matrix = Matrix4x4.CreateScale(size.X, size.Y, 1f)
+                     * Matrix4x4.CreateFromQuaternion(rotation)
+                     * Matrix4x4.CreateTranslation(cx, cy, z);
+            g.clip = clip;
+            g.gradientRect = new Vector4(cx - size.X * 0.5f, cy - size.Y * 0.5f, cx + size.X * 0.5f, cy + size.Y * 0.5f);
+
+            ref VulkanControl v = ref quads.GetSpan<VulkanControl>()[row];
+            v = default;
+            v.type = VulkanControlType.ImageControl;
+            v.uvs.uv1 = new Vector2(1f, 1f);
+            v.uvs.uv2 = new Vector2(0f, 0f);
+            v.uvs.uv3 = new Vector2(0f, 1f);
+            v.uvs.uv4 = new Vector2(1f, 0f);
+            v.paint = Palettes.Inline(Vector3.One);
+            v.alpha = alpha;
+            v.textureIndex = picture.textureIndex;
         }
 
         // Cuts one glyph's quad out of the atlas and writes both of its columns, returning the pen
@@ -457,8 +614,8 @@ namespace ArctisAurora.Core.UI
         {
             if (_layout == null) return 0;
 
-            float localX = point.X - _origin.X;
             TextLine line = _layout.lines[LineAt(point.Y - _origin.Y)];
+            float localX = point.X - _origin.X - line.left;
             float pen = 0f;
 
             foreach (LineSegment segment in line.segments)
@@ -487,7 +644,7 @@ namespace ArctisAurora.Core.UI
             {
                 TextLine line = _layout.lines[i];
                 bool isLastLine = i == _layout.lines.Count - 1;
-                float x = 0f;
+                float x = line.left;
 
                 for (int s = 0; s < line.segments.Count; s++)
                 {
@@ -513,7 +670,7 @@ namespace ArctisAurora.Core.UI
             }
 
             TextLine lastLine = _layout.lines[_layout.lines.Count - 1];
-            return new CaretGeometry(lastLine.width, lastLine.top, lastLine.height, lastLine.baseline);
+            return new CaretGeometry(lastLine.left + lastLine.width, lastLine.top, lastLine.height, lastLine.baseline);
         }
 
         // What CaretAt is relative to: the design-space point the first line's pen starts at.
@@ -523,6 +680,67 @@ namespace ArctisAurora.Core.UI
         public IReadOnlyList<TextLine> Lines => _layout?.lines;
 
         public int Length => (text ?? string.Empty).Length;
+
+        // The picture under a design-space point, or -1.
+        public int PictureAt(Vector2 point)
+        {
+            if (_layout == null) return -1;
+
+            TextLine line = _layout.lines[LineAt(point.Y - _origin.Y)];
+            foreach (LineSegment segment in line.segments)
+            {
+                if (!_runs[segment.runIndex].picture) continue;
+
+                for (int i = segment.charStart; i < segment.charStart + segment.charCount; i++)
+                    if (PictureFrame(i, out LayoutRect rect, out Quaternion rotation) && rect.Contains(rect.Unturned(point, rotation))) return i;
+            }
+            return -1;
+        }
+
+        // A picture character's drawn box in design space; false when the index is not a picture.
+        public bool PictureBox(int index, out LayoutRect box)
+        {
+            box = LayoutRect.Empty;
+            if (_layout == null) return false;
+
+            foreach (TextLine line in _layout.lines)
+                foreach (LineSegment segment in line.segments)
+                {
+                    if (index < segment.charStart || index >= segment.charStart + segment.charCount) continue;
+
+                    TextMeasurer.Run run = _runs[segment.runIndex];
+                    if (!run.picture || run.floating) return false;
+
+                    float x = line.left;
+                    foreach (LineSegment before in line.segments)
+                    {
+                        if (before.charStart == segment.charStart) break;
+                        x += before.width;
+                    }
+                    x += (index - segment.charStart) * run.imageWidth;
+
+                    box = new LayoutRect(_origin.X + x, _origin.Y + line.baseline - run.imageHeight, run.imageWidth, run.imageHeight);
+                    return true;
+                }
+            return false;
+        }
+
+        // An inline picture's drawn rect, unturned and centred in its box, and its turn.
+        public bool PictureFrame(int index, out LayoutRect rect, out Quaternion rotation)
+        {
+            rect = LayoutRect.Empty;
+            rotation = Quaternion.Identity;
+            if (!PictureBox(index, out LayoutRect box)) return false;
+
+            for (int i = 0; i < _runs.Count; i++)
+                if (index >= _runs[i].charStart && index < _runs[i].charStart + _runs[i].charCount)
+                {
+                    (Vector2 size, rotation) = _runPictures[i];
+                    rect = new LayoutRect(box.x + (box.width - size.X) * 0.5f, box.y + (box.height - size.Y) * 0.5f, size.X, size.Y);
+                    return true;
+                }
+            return false;
+        }
 
         // Re-stacks the lines from blockTop, pushing each across page breaks; returns the height.
         internal float Paginate(float blockTop, PageBands bands)
@@ -562,7 +780,9 @@ namespace ArctisAurora.Core.UI
             IGlyphPressTarget target = FindPressTarget();
             if (target == null) return false;
 
-            target.GlyphPressed(this, IndexAt(e.point));
+            int picture = PictureAt(e.point);
+            if (picture >= 0) target.PicturePressed(this, picture, e.button);
+            else target.GlyphPressed(this, IndexAt(e.point));
             return true;
         }
 

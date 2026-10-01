@@ -230,4 +230,5 @@ Thorium -> Thorium/ThoriumSettings.cs
 Thorium.Editor -> Thorium/Editor/Decorations.cs
 Thorium.Editor -> Thorium/Editor/VaultsWindow.cs
 Thorium.Editor.CustomControls -> Thorium/Editor/CustomControls/VaultBrowserControl.cs
+Thorium.Tests -> Thorium/Tests/PaletteTests.cs
 Thorium.Tests -> Thorium/Tests/TextInputTests.cs

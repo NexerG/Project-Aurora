@@ -138,6 +138,31 @@ namespace ArctisAurora.Core.Testing
             return Queued();
         }
 
+        // Presses on control at a design-space point, moves to another with keys held, and releases.
+        public int Drag(Control control, Vector2 from, Vector2 to, int steps = 8, params Keys[] held)
+        {
+            _steps.Enqueue(() =>
+            {
+                RenderWindow? window = UIEngine.WindowOf(control);
+                Control? walk = window == null ? null : UIEngine.HitTest(window.ui.uiRoot, from);
+                while (walk != null && !ReferenceEquals(walk, control)) walk = walk.parent as Control;
+                if (walk == null) failures.Add(("the press point does not hit the control", "", 0));
+                if (window != null) Point(window, from);
+            });
+            if (held.Length > 0)
+                _steps.Enqueue(() => { foreach (Keys k in held) Raw(k, RawAction.Down); });
+            _steps.Enqueue(() => Raw(Keys.MouseLeft, RawAction.Down));
+            for (int i = 1; i <= steps; i++)
+            {
+                float f = (float)i / steps;
+                _steps.Enqueue(() => { if (_window != null) Point(_window, Vector2.Lerp(from, to, f)); });
+            }
+            _steps.Enqueue(() => Raw(Keys.MouseLeft, RawAction.Up));
+            if (held.Length > 0)
+                _steps.Enqueue(() => { foreach (Keys k in held) Raw(k, RawAction.Up); });
+            return Queued();
+        }
+
         // Presses key with modifiers held.
         public int Key(Keys key, params Keys[] modifiers)
         {

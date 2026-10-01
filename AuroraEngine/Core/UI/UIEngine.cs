@@ -118,7 +118,7 @@ namespace ArctisAurora.Core.UI
         [Conditional("DEBUG")]
         private static void VerifySubtreeCache(Control control)
         {
-            LayoutRect bounds = control.arrangedRect;
+            LayoutRect bounds = control.rotation.IsIdentity ? control.arrangedRect : control.arrangedRect.Turned(control.rotation);
 
             foreach (Entity e in control.children)
             {
@@ -519,11 +519,13 @@ namespace ArctisAurora.Core.UI
         }
 
         // The clip is inherited, so a point outside it rules the control out wherever it was arranged.
-        // An axis-aligned box is exact while nothing rotates; a rotation would change only this.
         private static bool HitsNode(Control control, Vector2 point)
         {
             ref ArrangeData a = ref control.arrange;
-            return a.clip.Contains(point) && a.arranged.Contains(point);
+            if (!a.clip.Contains(point)) return false;
+
+            Vector2 local = ((ArrangeFlags)a.flags & ArrangeFlags.Rotated) != 0 ? a.arranged.Unturned(point, control.rotation) : point;
+            return a.arranged.Contains(local) && control.HitsShape(local);
         }
 
         private static void Dispatch(PointerEvent e, PointerPhase phase)

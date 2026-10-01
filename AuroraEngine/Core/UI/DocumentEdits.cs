@@ -188,6 +188,27 @@ namespace ArctisAurora.Core.UI
         public void Redo() => document.InsertBetween(from, to, fragment);
     }
 
+    // A picture resized, rewrapped or moved; both directions leave it selected.
+    public sealed class PictureEdit : IEditRecord
+    {
+        private readonly DocumentControl document;
+        private readonly DocumentAddress at;
+        private readonly StyleSpan before;
+        private readonly StyleSpan after;
+
+        public PictureEdit(DocumentControl document, DocumentAddress at, StyleSpan before, StyleSpan after)
+        {
+            this.document = document;
+            this.at = at;
+            this.before = before;
+            this.after = after;
+        }
+
+        public void Undo() => document.SetPicture(at, before);
+
+        public void Redo() => document.SetPicture(at, after);
+    }
+
     // Blocks rewritten in place — list kind, nesting, a tick. Both directions are snapshots.
     public sealed class BlockStateEdit : IEditRecord
     {

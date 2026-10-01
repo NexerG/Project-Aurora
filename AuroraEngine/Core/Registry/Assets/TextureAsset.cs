@@ -62,8 +62,9 @@ namespace ArctisAurora.Core.Registry.Assets
 
             try
             {
-                TextureAsset texture = new TextureAsset();
-                texture.LoadFile(full, Format.R8G8B8A8Srgb, true);
+                Image<Rgba32> source = Image.Load<Rgba32>(full);
+                TextureAsset texture = new TextureAsset { _opaqueRows = OpaqueRowsOf(source) };
+                texture.LoadImage(source, Format.R8G8B8A8Unorm, true);
                 _byFile.Add(full, texture);
                 return texture;
             }
@@ -72,6 +73,33 @@ namespace ArctisAurora.Core.Registry.Assets
                 Log.Warn($"picture '{full}' failed to load: {e.Message}");
                 return null;
             }
+        }
+        // Each pixel row's leftmost and rightmost opaque pixel as fractions of the width; an empty row has
+        // left > right. Taken at load by ForFile, since the pixels are freed after upload; null otherwise.
+        private (float left, float right)[]? _opaqueRows;
+
+        public (float left, float right)[]? OpaqueRows() => _opaqueRows;
+
+        private static (float left, float right)[] OpaqueRowsOf(Image<Rgba32> image)
+        {
+            int width = image.Width;
+            (float left, float right)[] rows = new (float, float)[image.Height];
+            image.ProcessPixelRows(pixels =>
+            {
+                for (int y = 0; y < pixels.Height; y++)
+                {
+                    Span<Rgba32> row = pixels.GetRowSpan(y);
+                    int first = -1, last = -1;
+                    for (int x = 0; x < row.Length; x++)
+                        if (row[x].A >= 128)
+                        {
+                            if (first < 0) first = x;
+                            last = x;
+                        }
+                    rows[y] = first < 0 ? (1f, 0f) : ((float)first / width, (float)(last + 1) / width);
+                }
+            });
+            return rows;
         }
         #endregion
 

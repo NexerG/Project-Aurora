@@ -58,6 +58,9 @@ namespace ArctisAurora.Core.UI
         // which the block cache supplies — the measurer never sees document coordinates.
         public float top;
 
+        // where the line's pen starts, past whatever it wraps around
+        public float left;
+
         public float height => ascent + descent;
         public float baseline => top + ascent;
     }
@@ -77,6 +80,13 @@ namespace ArctisAurora.Core.UI
             this.height = height;
             this.baseline = baseline;
         }
+    }
+
+    // Where a block's next line may go: its top for a line of this height, and the span it may fill,
+    // all local to the block's text origin.
+    public interface ILineSlots
+    {
+        float Place(float y, float height, out float left, out float right);
     }
 
     public sealed class BlockLayout
@@ -114,6 +124,12 @@ namespace ArctisAurora.Core.UI
             public readonly int charStart;
             public readonly int charCount;
 
+            // a picture run: one U+FFFC drawn as an image of this size; a floating one takes no room
+            public readonly bool picture;
+            public readonly float imageWidth;
+            public readonly float imageHeight;
+            public readonly bool floating;
+
             public Run(string text, string fontName, AtlasMetaData atlas, int fontSize, FontStyle style = FontStyle.Regular)
             {
                 this.text = text;
@@ -126,7 +142,8 @@ namespace ArctisAurora.Core.UI
                 charCount = text?.Length ?? 0;
             }
 
-            public Run(string text, int charStart, int charCount, string fontName, AtlasMetaData atlas, int fontSize, FontStyle style)
+            public Run(string text, int charStart, int charCount, string fontName, AtlasMetaData atlas, int fontSize, FontStyle style,
+                bool picture = false, float imageWidth = 0f, float imageHeight = 0f, bool floating = false)
             {
                 this.text = text;
                 this.fontName = fontName;
@@ -136,6 +153,10 @@ namespace ArctisAurora.Core.UI
                 face = atlas.Effective(style);
                 this.charStart = charStart;
                 this.charCount = charCount;
+                this.picture = picture;
+                this.imageWidth = imageWidth;
+                this.imageHeight = imageHeight;
+                this.floating = floating;
             }
         }
 
@@ -147,15 +168,17 @@ namespace ArctisAurora.Core.UI
             public readonly int runIndex;
             public readonly int charIndex;
             public readonly bool breakAfter;
+            public readonly bool picture;
             public readonly float advance;
             public readonly float ascent;
             public readonly float descent;
 
-            public PenChar(int runIndex, int charIndex, bool breakAfter, float advance, float ascent, float descent)
+            public PenChar(int runIndex, int charIndex, bool breakAfter, float advance, float ascent, float descent, bool picture = false)
             {
                 this.runIndex = runIndex;
                 this.charIndex = charIndex;
                 this.breakAfter = breakAfter;
+                this.picture = picture;
                 this.advance = advance;
                 this.ascent = ascent;
                 this.descent = descent;
@@ -167,11 +190,13 @@ namespace ArctisAurora.Core.UI
 
         // firstLineOffset applies to line 0 only.
         public static BlockLayout MeasureBlock(IReadOnlyList<Run> runs, float contentWidth, IGlyphMetrics metrics,
-            float lineHeight, float firstLineOffset = 0f)
+            float lineHeight, float firstLineOffset = 0f, ILineSlots slots = null)
         {
             int count = Flatten(runs, metrics, lineHeight);
             PenChar[] chars = _penChars;
             BlockLayout layout = new BlockLayout();
+
+            if (slots != null) return MeasureAround(layout, chars, count, runs, metrics, lineHeight, firstLineOffset, slots);
 
             if (count == 0)
             {
@@ -191,11 +216,11 @@ namespace ArctisAurora.Core.UI
                 // A break character is never what pushes a line over: trailing spaces are allowed to
                 // hang past the column, and letting one wrap would push the break onto the next line
                 // where it would show up as a leading indent.
-                if (!c.breakAfter && penX + c.advance > contentWidth && i > lineStart)
+                if ((!c.breakAfter || c.picture) && penX + c.advance > contentWidth && i > lineStart)
                 {
                     // End the line at the last break opportunity. Without one the word is wider than
                     // the column, so it has to split mid-word or nothing would ever fit.
-                    int breakAt = lastBreak >= 0 ? lastBreak : i - 1;
+                    int breakAt = c.picture || lastBreak < 0 ? i - 1 : lastBreak;
 
                     AppendLine(layout, chars, lineStart, breakAt);
 
@@ -217,6 +242,68 @@ namespace ArctisAurora.Core.UI
                 if (line.width > layout.width) layout.width = line.width;
 
             return layout;
+        }
+
+        // One line at a time, each placed and narrowed by the slots; a line found taller than its
+        // guess asks again with its real height.
+        private static BlockLayout MeasureAround(BlockLayout layout, PenChar[] chars, int count, IReadOnlyList<Run> runs,
+            IGlyphMetrics metrics, float lineHeight, float firstLineOffset, ILineSlots slots)
+        {
+            if (count == 0)
+            {
+                TextLine empty = EmptyLine(runs, metrics, lineHeight);
+                empty.top = slots.Place(0f, empty.height, out empty.left, out _);
+                layout.lines.Add(empty);
+                layout.height = empty.top + empty.height;
+                return layout;
+            }
+
+            int lineStart = 0;
+            while (lineStart < count)
+            {
+                float guess = chars[lineStart].ascent + chars[lineStart].descent;
+                float top = 0f, left = 0f;
+                int end = lineStart;
+
+                for (int attempt = 0; attempt < 3; attempt++)
+                {
+                    top = slots.Place(layout.height, guess, out left, out float right);
+                    end = FillLine(chars, lineStart, count, right - left, lineStart == 0 ? firstLineOffset : 0f);
+
+                    float ascent = 0f, descent = 0f;
+                    for (int i = lineStart; i <= end; i++)
+                    {
+                        ascent = MathF.Max(ascent, chars[i].ascent);
+                        descent = MathF.Max(descent, chars[i].descent);
+                    }
+                    if (ascent + descent <= guess + 0.01f) break;
+                    guess = ascent + descent;
+                }
+
+                AppendLine(layout, chars, lineStart, end, top, left);
+                lineStart = end + 1;
+            }
+
+            foreach (TextLine line in layout.lines)
+                if (line.left + line.width > layout.width) layout.width = line.left + line.width;
+
+            return layout;
+        }
+
+        // The last character one line of this width holds, by the same break rules as MeasureBlock.
+        private static int FillLine(PenChar[] chars, int start, int count, float width, float penX)
+        {
+            int lastBreak = -1;
+            for (int i = start; i < count; i++)
+            {
+                PenChar c = chars[i];
+                if ((!c.breakAfter || c.picture) && penX + c.advance > width && i > start)
+                    return c.picture || lastBreak < 0 ? i - 1 : lastBreak;
+
+                penX += c.advance;
+                if (c.breakAfter) lastBreak = i;
+            }
+            return count - 1;
         }
 
         // Writes the runs' characters into _penChars, doubling it first if they do not fit.
@@ -241,6 +328,15 @@ namespace ArctisAurora.Core.UI
 
                 // Resolved once per run, not per character — the line box does not vary within a run.
                 (float ascent, float descent) = LineBox(run, metrics, lineHeight);
+
+                if (run.picture)
+                {
+                    for (int i = run.charStart; i < run.charStart + run.charCount; i++)
+                        chars[count++] = run.floating
+                            ? new PenChar(r, i, true, 0f, 0f, 0f)
+                            : new PenChar(r, i, true, run.imageWidth, run.imageHeight, descent, true);
+                    continue;
+                }
 
                 int end = run.charStart + run.charCount;
                 for (int i = run.charStart; i < end; i++)
@@ -271,9 +367,12 @@ namespace ArctisAurora.Core.UI
         // Groups the run of characters into per-run segments and takes the line's box from the
         // tallest style on it, then stacks it under whatever the block holds so far. Taking a max
         // matters only where a line mixes font sizes; within one style every line comes out equal.
-        private static void AppendLine(BlockLayout layout, PenChar[] chars, int from, int to)
+        private static void AppendLine(BlockLayout layout, PenChar[] chars, int from, int to) =>
+            AppendLine(layout, chars, from, to, layout.height, 0f);
+
+        private static void AppendLine(BlockLayout layout, PenChar[] chars, int from, int to, float top, float left)
         {
-            TextLine line = new TextLine { top = layout.height };
+            TextLine line = new TextLine { top = top, left = left };
 
             int segmentRun = chars[from].runIndex;
             int segmentStart = chars[from].charIndex;
@@ -302,7 +401,7 @@ namespace ArctisAurora.Core.UI
             line.segments.Add(new LineSegment(segmentRun, segmentStart, segmentCount, segmentWidth));
 
             layout.lines.Add(line);
-            layout.height += line.height;
+            layout.height = top + line.height;
         }
 
         // An empty paragraph still occupies a line, or it would be zero tall and drop out of the
@@ -323,6 +422,8 @@ namespace ArctisAurora.Core.UI
         // formula would let clicks drift out of step with the lines they are being tested against.
         public static float MeasureAdvance(char character, in Run run)
         {
+            if (run.picture) return run.floating ? 0f : run.imageWidth;
+
             Glyph glyph = run.atlas.GetGlyph(character) ?? run.atlas.GetGlyph(' ');
             if (glyph == null) return 0f;
 

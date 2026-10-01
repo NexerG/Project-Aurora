@@ -10,6 +10,7 @@
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>
         <xs:restriction base="xs:string">
+          <xs:enumeration value="Palette.SetCrossfades" />
           <xs:enumeration value="TextInput.TypeWritesText" />
           <xs:enumeration value="TextInput.WordMoves" />
           <xs:enumeration value="TextInput.UndoReselects" />
@@ -38,6 +39,22 @@
           <xs:enumeration value="TextInput.TableOverflowDraws" />
           <xs:enumeration value="TextInput.TableWheelAxes" />
           <xs:enumeration value="TextInput.TableSplitsAcrossPages" />
+          <xs:enumeration value="TextInput.PictureInline" />
+          <xs:enumeration value="TextInput.PictureEditUndo" />
+          <xs:enumeration value="TextInput.PictureRoundTrip" />
+          <xs:enumeration value="TextInput.PictureResize" />
+          <xs:enumeration value="TextInput.PictureHandlesDraw" />
+          <xs:enumeration value="TextInput.PictureWrapLayout" />
+          <xs:enumeration value="TextInput.PictureFloatEdit" />
+          <xs:enumeration value="TextInput.PictureWrapDraws" />
+          <xs:enumeration value="TextInput.PictureTightLayout" />
+          <xs:enumeration value="TextInput.PictureFloatMove" />
+          <xs:enumeration value="TextInput.PictureTightDraws" />
+          <xs:enumeration value="TextInput.PictureRotateRoundTrip" />
+          <xs:enumeration value="TextInput.PictureRotateInline" />
+          <xs:enumeration value="TextInput.PictureRotateLayout" />
+          <xs:enumeration value="TextInput.PictureRotate" />
+          <xs:enumeration value="TextInput.PictureRotateDraws" />
           <xs:enumeration value="Commands.HelpListsCommands" />
           <xs:enumeration value="Commands.UnknownIsAnError" />
           <xs:enumeration value="Commands.ArgumentsConvert" />
@@ -49,6 +66,7 @@
           <xs:enumeration value="Layout.StackPanelArranges" />
           <xs:enumeration value="Layout.StarChildCrossSize" />
           <xs:enumeration value="Layout.GridAutoRowWrapsAtColumn" />
+          <xs:enumeration value="Layout.RotatedHitTest" />
           <xs:enumeration value="Perf.RelayoutLabels" />
           <xs:enumeration value="Visual.PanelAndLabel" />
           <xs:enumeration value="Visual.ImageScaled" />
@@ -84,6 +102,14 @@
           <xs:enumeration value="List.LowerAlpha" />
           <xs:enumeration value="List.LowerRoman" />
           <xs:enumeration value="List.UpperRoman" />
+          <xs:enumeration value="Picture.WrapInline" />
+          <xs:enumeration value="Picture.WrapSquare" />
+          <xs:enumeration value="Picture.WrapTight" />
+          <xs:enumeration value="Picture.WrapTopAndBottom" />
+          <xs:enumeration value="Picture.WrapBehind" />
+          <xs:enumeration value="Picture.WrapInFront" />
+          <xs:enumeration value="Picture.CollideBox" />
+          <xs:enumeration value="Picture.CollideShape" />
           <xs:enumeration value="Text.Indent" />
           <xs:enumeration value="Text.Outdent" />
           <xs:enumeration value="Text.Undo" />
@@ -196,6 +222,17 @@
       </xs:simpleType>
     </xs:union>
   </xs:simpleType>
+  <xs:simpleType name="Console">
+    <xs:union memberTypes="actions:Any">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="Palettes.Set" />
+          <xs:enumeration value="Help" />
+          <xs:enumeration value="Quit" />
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
   <xs:simpleType name="PoolSort">
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>
@@ -215,16 +252,6 @@
           <xs:enumeration value="Main.DrawLists" />
           <xs:enumeration value="Physics.Step" />
           <xs:enumeration value="Animation.Step" />
-        </xs:restriction>
-      </xs:simpleType>
-    </xs:union>
-  </xs:simpleType>
-  <xs:simpleType name="Console">
-    <xs:union memberTypes="actions:Any">
-      <xs:simpleType>
-        <xs:restriction base="xs:string">
-          <xs:enumeration value="Help" />
-          <xs:enumeration value="Quit" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>

@@ -479,6 +479,107 @@ for each cell
 
 On disk a table is `<Table>` holding `<Column Width>` elements and `<Row>`s of `<Cell>`s, each cell holding `<Block>`s written exactly as the note's own. Tables live only in `.xml` notes; the Markdown and plain-text writers skip them. Nothing in the UI inserts a table yet. See `ClaudeMemory/Decisions/document-tables.md`.
 
+## Pictures
+A picture in a note is one character, U+FFFC, whose style span names a picture file — Word's model, where every picture is anchored to a place in the text. Because it is a character, the caret steps over it, a selection covers it, Delete removes it and undo puts it back without any of that code knowing pictures exist. The span holds the file path (absolute in memory, relative to the note on disk) and an optional width and height; with no size the picture shows at its own size, shrunk to the column, and with one side set the other follows its aspect.
+
+Inline, a picture is as wide as it is drawn and stands on the baseline, so a tall one makes its line taller. A line may break on either side of it, and unlike a trailing space it never hangs past the margin: a picture that does not fit moves to the next line and leaves the word in front of it behind. It is drawn as one image quad in place of a glyph, with no highlight or decoration.
+
+A picture span never merges with its neighbours and never grows. Typing next to one lands in the text span beside it, or in a new text span in the picture's style when there is none; the style a caret takes next to a picture is that style with the picture taken off.
+
+Ctrl+V pastes text when the clipboard holds text, and a picture only when it holds no text. A copy that is text or a table always offers text, and a table has nothing that pastes it yet, so it lands as its text. A screenshot, a copied picture or an image file in Explorer offers none. The picture is saved as a PNG in an `attachments` folder beside the note, named after the note and the time, and goes in at the caret as one undo step. A plain-text note refuses it.
+
+#### Paste Image (image)
+if the note is plain text, refuse
+save `image` as `attachments/<note> <time>.png` beside the note
+delete the selection; if it cannot be deleted, stop
+`span` = the caret's style with the picture file set and a count of one
+record an insert of U+FFFC with `span` at the caret
+insert it
+
+#### Insert Text (offset, text) — beside a picture
+`span` = the span the offset belongs to
+if `span` is a picture
+	if the offset is before it, `span` = the text span in front, or a new empty one in the picture's style
+	else `span` = the text span after it, or a new empty one in the picture's style
+grow `span` by the text's length
+
+On disk an `.xml` note writes a picture as `<Run Image="attachments/…png" Width Height/>`, with no `Text`. Markdown writes Obsidian's `![|W](path)`, with spaces as `%20`, and reads `![alt|W](path)` and `![alt|WxH](path)`. Plain text drops pictures. See `ClaudeMemory/Decisions/note-images.md`.
+
+### Wrapping text around a picture
+Right-click a picture and choose Wrap text: In line with text, Square, Tight, Top and bottom, Behind text or In front of text. Any choice but the first makes the picture float. Its character stays in its paragraph, so the picture still belongs to that paragraph, moves with it and is deleted with it, but the character takes no room in the line. The picture is placed off the paragraph instead, by an offset from the column's left edge and the paragraph's top. Switching a picture to floating keeps it where it stood in the line, and switching it back clears the offset. Each change is one undo step. Pictures in table cells stay in line.
+
+Square keeps text out of the picture's box plus an 8-pixel gap; Tight keeps it out of the picture's opaque outline instead, so text follows a round or cut-out picture's edge, and a picture with no transparency wraps exactly as Square does — the outline is read off each pixel row when the picture is loaded, since its pixels are freed once they are on the GPU; Top and bottom keeps text off the whole width beside it; Behind and In front leave the text alone and only decide whether the picture is drawn under it or over it. Where a picture leaves room on both sides, a line takes the wider side only. A line that would be squeezed under 48 pixels moves down past the picture instead.
+
+A line's width now depends on where in the document it lands, so a paragraph a floating picture reaches is laid out and placed on the pages in the same pass, line by line from the top. Every other paragraph is measured once and placed afterwards exactly as before, and a note with no floating pictures runs the old code throughout. A floating picture is only ever at or below its paragraph's top, which is what lets the pass go top to bottom once.
+
+#### Place (y, height) — a line in a paragraph a picture reaches
+`top` = the paragraph's top + `y`
+repeat
+	`top` = moved to the next page if a line this tall would cross the page's bottom
+	`gaps` = the paragraph's column, from its indent to its right edge
+	for each wrapping picture overlapping `top` to `top` + `height`
+		cut its box plus the gap out of `gaps` — or everything, for Top and bottom
+	if no picture overlapped, or the widest gap is wide enough
+		return `top` and the widest gap
+	`top` = the nearest bottom of the pictures that overlapped
+
+Markdown writes a floating picture as `<img src width height data-wrap data-x data-y>`, which Obsidian shows as a picture in place; the wrap and offset ride along in the data attributes.
+
+### Moving a floating picture
+Press on a floating picture to select it, then drag it to move it; the cursor shows a four-way arrow over one. The picture follows the pointer and the text reflows around it as it goes. It cannot leave the paper, margins included. On release the picture is handed to the paragraph it now sits beside — the last one whose top is at or above the picture's top — and its offset is measured again from that paragraph, so a picture is never above its own paragraph. That is what lets the layout pass run top to bottom once: a paragraph only ever needs to know about pictures belonging to it and the paragraphs above. While dragging, a picture held above its old paragraph does not push the text above aside yet; that happens on release. Moving within the same paragraph, or into another, is one undo step either way.
+
+#### End Move (picture)
+`top` = the picture's top in the document
+`target` = the last paragraph outside a table whose top is at or above `top`, or the first paragraph
+if `target` is the picture's own paragraph
+	record the offset change
+else
+	put the picture back as it was when the drag began
+	delete its character, recorded
+	insert it at the start of `target` with its offset from `target`'s top, recorded
+	select it
+
+### Resizing
+A click on a picture selects it: the selection becomes exactly its one character. Whenever the selection is exactly one picture — by a click, by Shift+arrows, by undo — the picture gets a thin frame and eight square handles, so there is no separate "selected picture" to keep in step with everything else. Delete, copy and dragging it to move it work on it as they would on any one-character selection, and a click on the already-selected picture leaves it selected.
+
+A corner handle keeps the picture's shape, scaling by whichever direction the pointer moved further; a side handle stretches one direction only; Shift with a corner resizes freely. An inline picture's left and top edges are fixed by the text around it, so dragging the left or top handle outward grows it to the right or downward. A picture is never narrower or shorter than 8 pixels and never wider than its column. The size is stored without the document zoom, in whole pixels; a picture that follows its own shape and is resized by a corner keeps storing the width alone, so its Markdown stays `![|W]`. A whole drag is one undo step, and undo leaves the picture selected.
+
+#### Resize Picture (handle, pointer, free)
+`dx` = how far the pointer moved across since the press, counted outward from the handle's side, or 0 for a top or bottom handle
+`dy` = the same downward, or 0 for a left or right handle
+if `handle` is a corner and not `free`
+	`scale` = (width + `dx`) ÷ width if `dx` moved further, else (height + `dy`) ÷ height
+	clamp `scale` so neither side drops under 8 px and the width stays inside the column
+	new size = the size at the press × `scale`
+else
+	new width = width + `dx`, between 8 px and the column
+	new height = height + `dy`, at least 8 px
+store the new size ÷ zoom, rounded; a corner on a picture with no stored height stores the width only
+
+### Rotating
+A selected picture also gets a thin ring around it, a little outside its corners. Press on the ring and drag around the picture to turn it; the cursor is a crosshair over the ring. The turn follows the angle the pointer has swept about the picture's centre since the press, in whole degrees, and Shift steps it by 15. The whole drag is one undo step. The angle is stored in clockwise degrees — `Rotation` on the run in an `.xml` note, `data-rotate` on an `<img>` in Markdown — but everything the engine does with it, from drawing to hit-testing to wrapping, works on a quaternion made from it.
+
+The frame and handles turn with the picture, and resizing works along the picture's own sides: dragging a turned picture's handle stretches it along that side, and the opposite handle stays where it is on the page. Changing how text wraps keeps the turn.
+
+An inline picture that is turned takes its turned bounding box in the line, so it never overlaps the text beside it and a picture turned on its side makes its line as tall as it is long. Because Markdown's `![|W]` has no room for an angle, a turned inline picture is written as `<img src width height data-rotate>` with no wrap.
+
+A floating picture pushes text away from its turned bounding box. A Square picture has a collision option, set from the right-click Collision menu: Bounding box, the default, or Picture shape, which follows the tilted rectangle itself so lines can come closer beside its corners. Tight always follows the picture's own opaque outline, turned with it, and Top and bottom still clears the full width over the box's height. A floating picture is never allowed above its paragraph's top, and that now means its turned box: a turn that lifts the box above the paragraph hands the picture to the paragraph above, the same way dropping a moved picture does.
+
+#### Rotate Picture (pointer, snap)
+`from` = the direction from the picture's centre to where the ring was pressed
+`to` = the direction from the centre to the pointer
+`turn` = the quaternion that turns `from` onto `to`
+`q` = the stored turn's quaternion followed by `turn`
+`degrees` = twice the angle of `q` about its axis, rounded — to 15 if `snap`
+store `degrees`, kept between 0 and 359
+
+#### Outline (picture, line top, line bottom) — Picture shape and Tight
+for each part of the picture — the whole rectangle for Picture shape, each opaque pixel row for Tight
+	turn the part's four corners about the picture's centre
+	take the corners that lie between the line's top and bottom
+	take where each of the part's edges crosses the line's top or bottom
+	widen the cut to every x taken
+
 ## Status
 - P0 (model types) and P1 (XML persistence) complete; round-trip verified (in-code build + reload of code-built and hand-authored XML are byte/structurally equal).
 - P3 complete: click→caret, character input, arrow / Home / End / PageUp / PageDown navigation, and Ctrl+S through `DocumentEditSession`. Save verified against the sample note — no run gains a `FontSize`. Navigation itself is compile-verified and pending GUI verification.

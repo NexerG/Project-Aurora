@@ -3,6 +3,8 @@ using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Testing;
 using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 using System.Numerics;
 using System.Xml.Linq;
 
@@ -822,6 +824,625 @@ namespace Thorium.Tests
             table.Cells()[cell].children.OfType<BlockControl>().ToList();
 
         private static BlockControl Cell(TableControl table, int cell, int block = 0) => Blocks(table, cell)[block];
+        #endregion
+
+        #region ---- pictures ----
+        [A_XSDActionDependency("TextInput.PictureInline", "Test")]
+        private static IEnumerator<int> PictureInline(TestContext t)
+        {
+            string dir = PictureFolder();
+            string small = PicturePng(Path.Combine(dir, "small.png"), 50, 40);
+            string wide = PicturePng(Path.Combine(dir, "wide.png"), 4000, 100);
+            RichTextDocument fixture = DocumentXml.Parse(new XElement("Document",
+                new XElement("Block", RunX("abc"), PictureRun(small, ("Width", "100"), ("Height", "80")), RunX("def")),
+                new XElement("Block", RunX("abc"), PictureRun(wide))));
+            DocumentEditorControl editor = ShowFixture(t, fixture);
+            yield return 2;
+
+            List<BlockControl> p = Paragraphs(editor);
+            float advance = p[0].CaretAt(4).x - p[0].CaretAt(3).x;
+            float zoom = advance / 100f;
+            t.Check(advance > 0f && MathF.Abs(p[0].Lines[0].ascent - 80f * zoom) < 0.01f,
+                $"an inline picture advances its width and its height stands on the baseline (advance {advance}, ascent {p[0].Lines[0].ascent})");
+            t.Check(p[0].Lines.Count == 1, "a picture that fits stays on the line");
+
+            IReadOnlyList<TextLine> lines = p[1].Lines;
+            t.Check(lines.Count == 2 && lines[0].segments.Sum(s => s.charCount) == 3 && lines[1].segments[0].charStart == 3,
+                "a picture that does not fit breaks before itself, leaving the word in front of it");
+            t.Check(lines.Count == 2 && lines[1].width <= p[1].arrangedRect.width,
+                "an unsized picture is fitted to the column");
+
+            Directory.Delete(dir, true);
+        }
+
+        [A_XSDActionDependency("TextInput.PictureEditUndo", "Test")]
+        private static IEnumerator<int> PictureEditUndo(TestContext t)
+        {
+            DocumentEditorControl editor = ShowParagraphs(t, "ab");
+            DocumentControl content = Content(editor);
+            content.SetCaret(Paragraphs(editor)[0], 2);
+            yield return 2;
+
+            string attachments = Path.Combine(Path.GetDirectoryName(editor.session.path)!, "attachments");
+            using (Image<Rgba32> image = new Image<Rgba32>(30, 20, new Rgba32(200, 80, 40)))
+                editor.PasteImage(image);
+            yield return 2;
+
+            BlockControl p = Paragraphs(editor)[0];
+            string? saved = p.spans.FirstOrDefault(s => s.IsPicture).imageSource;
+            t.Check(p.text == "ab" + BlockControl.PictureChar && PictureCount(p) == 1, "a pasted picture is one character with a picture span");
+            t.Check(saved != null && File.Exists(saved) && Path.GetDirectoryName(saved) == attachments, "the pasted picture is saved under attachments");
+
+            yield return t.Type("x");
+            t.Check(p.text == "ab" + BlockControl.PictureChar + "x" && PictureCount(p) == 1, "typing after a picture at the block's end starts a text span");
+            content.SetCaret(p, 2);
+            yield return t.Type("y");
+            t.Check(p.text == "aby" + BlockControl.PictureChar + "x" && PictureCount(p) == 1, "typing before a picture extends the text in front of it");
+
+            string before = DocumentXml.ToXml(editor.session.document).ToString();
+            content.SetCaret(p, 1);
+            content.SetCaret(p, 5, true);
+            yield return t.Key(Keys.Delete);
+            p = Paragraphs(editor)[0];
+            t.Check(p.text == "a" && PictureCount(p) == 0, "a range delete takes the picture with it");
+
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            p = Paragraphs(editor)[0];
+            t.Check(DocumentXml.ToXml(editor.session.document).ToString() == before && PictureCount(p) == 1, "undo puts the picture back exactly");
+
+            if (saved != null) File.Delete(saved);
+            if (Directory.Exists(attachments) && !Directory.EnumerateFileSystemEntries(attachments).Any()) Directory.Delete(attachments);
+        }
+
+        [A_XSDActionDependency("TextInput.PictureRoundTrip", "Test")]
+        private static IEnumerator<int> PictureRoundTrip(TestContext t)
+        {
+            string dir = PictureFolder();
+            string picture = PicturePng(Path.Combine(dir, "attachments", "my pic.png"), 30, 20);
+
+            foreach (string extension in new[] { ".xml", ".md" })
+            {
+                RichTextDocument fixture = DocumentXml.Parse(new XElement("Document",
+                    new XElement("Block", RunX("a"), PictureRun(picture, ("Width", "120")))));
+                string path = Path.Combine(dir, "note" + extension);
+                fixture.Save(path);
+                DestroyBlocks(fixture);
+
+                string written = File.ReadAllText(path);
+                t.Check(written.Contains(extension == ".md" ? "![|120](attachments/my%20pic.png)" : "Image=\"attachments/my pic.png\""),
+                    $"{extension} writes the picture relative to the note: {written}");
+
+                RichTextDocument back = RichTextDocument.Load(path);
+                StyleSpan? span = back.blocks.OfType<BlockControl>().First().spans.Where(s => s.IsPicture).Cast<StyleSpan?>().FirstOrDefault();
+                t.Check(span is { count: 1, imageWidth: 120f } && string.Equals(span.Value.imageSource, picture, StringComparison.OrdinalIgnoreCase),
+                    $"{extension} reads it back as the same picture span");
+                DestroyBlocks(back);
+            }
+
+            RichTextDocument plain = DocumentXml.Parse(new XElement("Document",
+                new XElement("Block", RunX("a"), PictureRun(picture))));
+            string txt = Path.Combine(dir, "note.txt");
+            plain.Save(txt);
+            DestroyBlocks(plain);
+            t.Check(File.ReadAllText(txt) == "a", "plain text drops the picture");
+
+            Directory.Delete(dir, true);
+            yield break;
+        }
+
+        [A_XSDActionDependency("TextInput.PictureResize", "Test")]
+        private static IEnumerator<int> PictureResize(TestContext t)
+        {
+            string dir = PictureFolder();
+            string small = PicturePng(Path.Combine(dir, "small.png"), 50, 40);
+            string wide = PicturePng(Path.Combine(dir, "wide.png"), 4000, 100);
+            RichTextDocument fixture = DocumentXml.Parse(new XElement("Document",
+                new XElement("Block", PictureRun(wide)),
+                new XElement("Block", RunX("ab"), PictureRun(small, ("Width", "100")))));
+            DocumentEditorControl editor = ShowFixture(t, fixture);
+            DocumentControl content = Content(editor);
+            yield return 2;
+
+            List<BlockControl> p = Paragraphs(editor);
+            yield return t.Click(p[0]);
+            t.Check(content.HasSelection && content.caretBlock == p[0] && content.caretOffset == 1, "a click on a picture selects it");
+            t.Check(Handles(content).Count(h => h.arrangedRect.width > 0f) == 8, "a selected picture shows eight handles");
+
+            content.SetCaret(p[1], 2);
+            content.SetCaret(p[1], 3, true);
+            yield return 2;
+            p[1].PictureBox(2, out LayoutRect box);
+            float zoom = box.width / 100f;
+
+            DocumentControl.PictureHandle corner = Handles(content).First(h => h.right && h.bottom);
+            yield return t.Drag(corner, Centre(corner) + new Vector2(50f * zoom, 0f));
+            t.Check(Stored(p[1]) == new Vector2(150f, 0f), $"a corner keeps the aspect and writes the width only: {Stored(p[1])}");
+            p[1].PictureBox(2, out box);
+            t.Check(MathF.Abs(box.height - 120f * zoom) < 0.5f, $"and the height follows it: {box.height}");
+
+            DocumentControl.PictureHandle side = Handles(content).First(h => h.right && !h.top && !h.bottom);
+            yield return t.Drag(side, Centre(side) + new Vector2(20f * zoom, 0f));
+            t.Check(Stored(p[1]) == new Vector2(170f, 120f), $"a side stretches one axis and writes both: {Stored(p[1])}");
+
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(Stored(Paragraphs(editor)[1]) == new Vector2(150f, 0f), "undo takes back the side drag");
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(Stored(Paragraphs(editor)[1]) == new Vector2(100f, 0f), "and then the corner drag");
+            t.Check(content.HasSelection && content.caretOffset == 3, "undo leaves the picture selected");
+
+            Directory.Delete(dir, true);
+        }
+
+        [A_XSDActionDependency("TextInput.PictureHandlesDraw", "Test")]
+        private static IEnumerator<int> PictureHandlesDraw(TestContext t)
+        {
+            string dir = PictureFolder();
+            string picture = PicturePng(Path.Combine(dir, "picture.png"), 60, 40);
+            RichTextDocument fixture = DocumentXml.Parse(new XElement("Document",
+                new XElement("Block", RunX("ab "), PictureRun(picture), RunX(" cd"))));
+            DocumentEditorControl editor = ShowFixture(t, fixture);
+            DocumentControl content = Content(editor);
+            BlockControl p = Paragraphs(editor)[0];
+            content.SetCaret(p, 3);
+            content.SetCaret(p, 4, true);
+            yield return 2;
+
+            yield return t.Golden("Selected", editor);
+            Directory.Delete(dir, true);
+        }
+
+        [A_XSDActionDependency("TextInput.PictureWrapLayout", "Test")]
+        private static IEnumerator<int> PictureWrapLayout(TestContext t)
+        {
+            string dir = PictureFolder();
+            string picture = PicturePng(Path.Combine(dir, "square.png"), 100, 100);
+            string words = string.Join(" ", Enumerable.Repeat("lorem ipsum dolor", 60));
+
+            foreach ((string mode, bool right) in new[] { ("Square", false), ("Square", true), ("TopAndBottom", false), ("Behind", false), ("InFront", false) })
+            {
+                DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                    new XElement("Block", PictureRun(picture, ("Width", "100"), ("Height", "100"), ("Wrap", mode)), RunX(words)))));
+                yield return 2;
+
+                DocumentControl content = Content(editor);
+                BlockControl p = Paragraphs(editor)[0];
+                float z = content.zoom;
+                float column = p.arrangedRect.width;
+                if (right)
+                {
+                    p.SetPicture(0, new StyleSpan { imageWidth = 100f, imageHeight = 100f, wrap = PictureWrap.Square, imageX = column / z - 100f });
+                    yield return 2;
+                }
+
+                IReadOnlyList<TextLine> lines = p.Lines;
+                float edge = 108f * z;
+                List<TextLine> beside = lines.Where(l => l.top < edge).ToList();
+                List<TextLine> under = lines.Where(l => l.top >= edge).ToList();
+
+                if (mode == "Square" && !right)
+                    t.Check(beside.Count > 0 && beside.All(l => l.left >= edge - 0.5f) && under.Count > 0 && under.All(l => l.left == 0f),
+                        "Square on the left indents the lines beside it and not the ones below");
+                else if (mode == "Square")
+                    t.Check(beside.Count > 0 && beside.All(l => l.left == 0f && l.width <= column - edge + p.fontSize * 0.35f * z),
+                        $"Square on the right narrows the lines beside it, a trailing space allowed to hang: {string.Join(" ", lines.Select(l => $"{l.top}:{l.width}"))}");
+                else if (mode == "TopAndBottom")
+                    t.Check(lines[0].top >= edge - 0.5f, $"Top and bottom moves the first line below the picture: {lines[0].top}");
+                else
+                    t.Check(lines[0].top == 0f && lines.All(l => l.left == 0f), $"{mode} leaves the lines where they were");
+            }
+
+            Directory.Delete(dir, true);
+        }
+
+        [A_XSDActionDependency("TextInput.PictureFloatEdit", "Test")]
+        private static IEnumerator<int> PictureFloatEdit(TestContext t)
+        {
+            string dir = PictureFolder();
+            string picture = PicturePng(Path.Combine(dir, "pic.png"), 50, 40);
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                new XElement("Block", RunX("ab"), PictureRun(picture, ("Width", "100"))),
+                Block(string.Join(" ", Enumerable.Repeat("lorem ipsum", 40))))));
+            DocumentControl content = Content(editor);
+            yield return 2;
+
+            BlockControl p = Paragraphs(editor)[0];
+            content.SetCaret(p, 0);
+            content.PicturePressed(p, 2, PointerEvent.rightButton);
+            t.Check(content.HasSelection && content.caretOffset == 3, "a right press on a picture selects it");
+
+            editor.SetPictureWrap(PictureWrap.Square);
+            yield return 2;
+            StyleSpan span = Paragraphs(editor)[0].spans.First(s => s.IsPicture);
+            t.Check(span.wrap == PictureWrap.Square && span.imageX > 0f && span.imageY >= 0f,
+                $"Square floats the picture where it stood inline: {span.imageX}, {span.imageY}");
+            t.Check(Handles(content).Count(h => h.arrangedRect.width > 0f) == 8, "the floating picture keeps its handles");
+
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            span = Paragraphs(editor)[0].spans.First(s => s.IsPicture);
+            t.Check(span.wrap == PictureWrap.Inline && span.imageX == 0f, "undo puts it back in line");
+
+            foreach (string extension in new[] { ".xml", ".md" })
+            {
+                RichTextDocument fixture = DocumentXml.Parse(new XElement("Document", new XElement("Block",
+                    RunX("a"), PictureRun(picture, ("Width", "100"), ("Wrap", "Square"), ("X", "10"), ("Y", "20")))));
+                string path = Path.Combine(dir, "note" + extension);
+                fixture.Save(path);
+                DestroyBlocks(fixture);
+
+                string written = File.ReadAllText(path);
+                t.Check(extension == ".xml" || written.Contains("data-wrap=\"square\" data-x=\"10\" data-y=\"20\""),
+                    $"Markdown writes a floating picture as <img>: {written}");
+
+                RichTextDocument back = RichTextDocument.Load(path);
+                StyleSpan read = back.blocks.OfType<BlockControl>().First().spans.First(s => s.IsPicture);
+                t.Check(read.wrap == PictureWrap.Square && read.imageX == 10f && read.imageY == 20f && read.imageWidth == 100f,
+                    $"{extension} reads the wrap and offset back");
+                DestroyBlocks(back);
+            }
+
+            Directory.Delete(dir, true);
+        }
+
+        [A_XSDActionDependency("TextInput.PictureWrapDraws", "Test")]
+        private static IEnumerator<int> PictureWrapDraws(TestContext t)
+        {
+            string dir = PictureFolder();
+            string words = string.Join(" ", Enumerable.Repeat("lorem ipsum dolor sit", 24));
+            (string mode, Rgba32 colour, string x)[] modes =
+            {
+                ("Square", new Rgba32(200, 80, 40), "0"), ("TopAndBottom", new Rgba32(40, 140, 200), "120"),
+                ("Behind", new Rgba32(240, 200, 60), "60"), ("InFront", new Rgba32(60, 160, 80), "200")
+            };
+
+            foreach (string mode in new[] { "Pageless", "Paged" })
+            {
+                XElement document = new XElement("Document",
+                    new XElement("DocumentLayout", new XElement("Page", new XAttribute("Mode", mode))));
+                foreach ((string wrap, Rgba32 colour, string x) in modes)
+                {
+                    string path = Path.Combine(dir, wrap + ".png");
+                    using (Image<Rgba32> image = new Image<Rgba32>(80, 60, colour)) image.SaveAsPng(path);
+                    document.Add(new XElement("Block", PictureRun(path, ("Wrap", wrap), ("X", x)), RunX(words)));
+                }
+                document.Add(new XElement("Block", RunX("inline "), PictureRun(Path.Combine(dir, "Square.png"), ("Width", "40")), RunX(" after")));
+
+                DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(document));
+                yield return 2;
+                t.Check(Content(editor).page.mode.ToString() == mode, $"the note is {mode}");
+                if (mode == "Paged")
+                {
+                    BlockControl last = Paragraphs(editor)[^1];
+                    Content(editor).SetCaret(last, last.Length);
+                    yield return t.Key(Keys.Left);
+                    yield return t.Key(Keys.Right);
+                    yield return 2;
+                }
+                yield return t.Golden(mode);
+            }
+
+            Directory.Delete(dir, true);
+        }
+
+        [A_XSDActionDependency("TextInput.PictureTightLayout", "Test")]
+        private static IEnumerator<int> PictureTightLayout(TestContext t)
+        {
+            string dir = PictureFolder();
+            string path = Path.Combine(dir, "half.png");
+            using (Image<Rgba32> image = new Image<Rgba32>(100, 100))
+            {
+                image.ProcessPixelRows(rows =>
+                {
+                    for (int y = 0; y < rows.Height; y++)
+                    {
+                        Span<Rgba32> row = rows.GetRowSpan(y);
+                        for (int x = 0; x < 50; x++) row[x] = new Rgba32(40, 140, 200);
+                    }
+                });
+                image.SaveAsPng(path);
+            }
+
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document", new XElement("Block",
+                PictureRun(path, ("Width", "100"), ("Height", "100"), ("Wrap", "Tight")), RunX(string.Join(" ", Enumerable.Repeat("lorem ipsum dolor", 60)))))));
+            yield return 2;
+
+            float z = Content(editor).zoom;
+            List<TextLine> beside = Paragraphs(editor)[0].Lines.Where(l => l.top < 100f * z).ToList();
+            t.Check(beside.Count > 0 && beside.All(l => l.left >= 58f * z - 0.5f && l.left < 108f * z - 0.5f),
+                $"Tight wraps the opaque half, not the box: {string.Join(" ", beside.Select(l => l.left))}");
+
+            Directory.Delete(dir, true);
+        }
+
+        [A_XSDActionDependency("TextInput.PictureFloatMove", "Test")]
+        private static IEnumerator<int> PictureFloatMove(TestContext t)
+        {
+            string dir = PictureFolder();
+            string picture = PicturePng(Path.Combine(dir, "pic.png"), 100, 100);
+            string words = string.Join(" ", Enumerable.Repeat("lorem ipsum dolor", 40));
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                Block(words),
+                new XElement("Block", PictureRun(picture, ("Width", "100"), ("Height", "100"), ("Wrap", "Square")), RunX(words)))));
+            DocumentControl content = Content(editor);
+            yield return 2;
+
+            float z = content.zoom;
+            DocumentControl.FloatingPicture view = content.children.OfType<DocumentControl.FloatingPicture>().First(v => v.arrangedRect.width > 0f);
+            yield return t.Click(view);
+            t.Check(content.HasSelection && content.caretBlock == Paragraphs(editor)[1], "a click selects the floating picture");
+
+            yield return t.Drag(view, Centre(view) + new Vector2(40f * z, 30f * z));
+            StyleSpan span = Paragraphs(editor)[1].spans.First(s => s.IsPicture);
+            t.Check(span.imageX == 40f && span.imageY == 30f, $"a drag moves it within its paragraph: {span.imageX}, {span.imageY}");
+
+            List<BlockControl> p = Paragraphs(editor);
+            float rise = view.arrangedRect.y - p[1].arrangedRect.y + 60f * z;
+            yield return t.Drag(view, Centre(view) - new Vector2(0f, rise));
+            p = Paragraphs(editor);
+            t.Check(p[0].spans.Count(s => s.IsPicture) == 1 && p[0].text.StartsWith(BlockControl.PictureChar) && !p[1].spans.Any(s => s.IsPicture),
+                "dropped beside the paragraph above, the picture is re-anchored to its start");
+            StyleSpan moved = p[0].spans.FirstOrDefault(s => s.IsPicture);
+            t.Check(moved.imageY >= 0f && moved.imageX == 40f, $"with its offset taken from the new paragraph: {moved.imageX}, {moved.imageY}");
+
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            p = Paragraphs(editor);
+            span = p[1].spans.FirstOrDefault(s => s.IsPicture);
+            t.Check(!p[0].spans.Any(s => s.IsPicture) && span.imageX == 40f && span.imageY == 30f, "undo puts it back in its paragraph as one step");
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            span = Paragraphs(editor)[1].spans.First(s => s.IsPicture);
+            t.Check(span.imageX == 0f && span.imageY == 0f, "and the first move back too");
+
+            Directory.Delete(dir, true);
+        }
+
+        [A_XSDActionDependency("TextInput.PictureTightDraws", "Test")]
+        private static IEnumerator<int> PictureTightDraws(TestContext t)
+        {
+            string dir = PictureFolder();
+            string path = Path.Combine(dir, "circle.png");
+            using (Image<Rgba32> image = new Image<Rgba32>(120, 120))
+            {
+                image.ProcessPixelRows(rows =>
+                {
+                    for (int y = 0; y < rows.Height; y++)
+                    {
+                        Span<Rgba32> row = rows.GetRowSpan(y);
+                        for (int x = 0; x < row.Length; x++)
+                            if ((x - 59.5f) * (x - 59.5f) + (y - 59.5f) * (y - 59.5f) <= 60f * 60f) row[x] = new Rgba32(200, 80, 40);
+                    }
+                });
+                image.SaveAsPng(path);
+            }
+
+            ShowFixture(t, DocumentXml.Parse(new XElement("Document", new XElement("Block",
+                PictureRun(path, ("Wrap", "Tight"), ("X", "200")), RunX(string.Join(" ", Enumerable.Repeat("lorem ipsum dolor sit", 30)))))));
+            yield return 2;
+            yield return t.Golden("Circle");
+
+            Directory.Delete(dir, true);
+        }
+
+        [A_XSDActionDependency("TextInput.PictureRotateRoundTrip", "Test")]
+        private static IEnumerator<int> PictureRotateRoundTrip(TestContext t)
+        {
+            string dir = PictureFolder();
+            string picture = PicturePng(Path.Combine(dir, "pic.png"), 30, 20);
+
+            foreach (string extension in new[] { ".xml", ".md" })
+            {
+                RichTextDocument fixture = DocumentXml.Parse(new XElement("Document",
+                    new XElement("Block", RunX("a"), PictureRun(picture, ("Width", "120"), ("Rotation", "30"))),
+                    new XElement("Block", PictureRun(picture, ("Width", "60"), ("Wrap", "Square"), ("X", "10"), ("Y", "5"),
+                        ("Rotation", "45"), ("Collision", "Shape")), RunX("b"))));
+                string path = Path.Combine(dir, "note" + extension);
+                fixture.Save(path);
+                DestroyBlocks(fixture);
+
+                string written = File.ReadAllText(path);
+                if (extension == ".md")
+                    t.Check(written.Contains("<img src=\"pic.png\" width=\"120\" data-rotate=\"30\">")
+                            && written.Contains("data-collision=\"shape\" data-rotate=\"45\""),
+                        $".md writes a turned picture as <img> with its turn and collision: {written}");
+
+                RichTextDocument back = RichTextDocument.Load(path);
+                List<StyleSpan> spans = back.blocks.OfType<BlockControl>().SelectMany(b => b.spans.Where(s => s.IsPicture)).ToList();
+                t.Check(spans.Count == 2 && spans[0] is { wrap: PictureWrap.Inline, imageRotation: 30f, imageWidth: 120f }
+                        && spans[1] is { wrap: PictureWrap.Square, imageRotation: 45f, collision: PictureCollision.Shape, imageX: 10f, imageY: 5f },
+                    $"{extension} reads back the turn, the wrap and the collision");
+                DestroyBlocks(back);
+            }
+
+            Directory.Delete(dir, true);
+            yield break;
+        }
+
+        [A_XSDActionDependency("TextInput.PictureRotateInline", "Test")]
+        private static IEnumerator<int> PictureRotateInline(TestContext t)
+        {
+            string dir = PictureFolder();
+            string picture = PicturePng(Path.Combine(dir, "pic.png"), 100, 40);
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                new XElement("Block", RunX("ab "), PictureRun(picture, ("Width", "100"), ("Height", "40"), ("Rotation", "90")), RunX(" cd")))));
+            yield return 2;
+
+            BlockControl p = Paragraphs(editor)[0];
+            float z = Content(editor).zoom;
+            p.PictureBox(3, out LayoutRect box);
+            t.Check(MathF.Abs(box.width - 40f * z) < 0.5f && MathF.Abs(box.height - 100f * z) < 0.5f,
+                $"a quarter-turned inline picture takes its turned box in the line: {box.width} x {box.height}");
+            p.PictureFrame(3, out LayoutRect rect, out _);
+            t.Check(MathF.Abs(rect.width - 100f * z) < 0.5f && MathF.Abs(rect.height - 40f * z) < 0.5f,
+                $"and keeps its own size for the frame: {rect.width} x {rect.height}");
+
+            Content(editor).SetCaret(p, 3);
+            Content(editor).SetCaret(p, 4, true);
+            yield return 2;
+            yield return t.Golden("Selected", editor);
+
+            Directory.Delete(dir, true);
+        }
+
+        [A_XSDActionDependency("TextInput.PictureRotateLayout", "Test")]
+        private static IEnumerator<int> PictureRotateLayout(TestContext t)
+        {
+            string dir = PictureFolder();
+            string picture = PicturePng(Path.Combine(dir, "square.png"), 100, 100);
+            string words = string.Join(" ", Enumerable.Repeat("lorem ipsum dolor", 60));
+            float[] firstLeft = new float[2];
+
+            for (int i = 0; i < 2; i++)
+            {
+                string collision = i == 0 ? "Box" : "Shape";
+                DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document", new XElement("Block",
+                    PictureRun(picture, ("Width", "100"), ("Height", "100"), ("Wrap", "Square"), ("Rotation", "45"), ("Collision", collision)),
+                    RunX(words)))));
+                yield return 2;
+
+                float z = Content(editor).zoom;
+                IReadOnlyList<TextLine> lines = Paragraphs(editor)[0].Lines;
+                firstLeft[i] = lines[0].left / z;
+                if (i == 0)
+                    t.Check(lines.Where(l => l.top < 100f * z).All(l => l.left >= 128.5f * z - 0.5f),
+                        $"Box wraps the 45-degree picture's bounding box: {string.Join(" ", lines.Select(l => l.left))}");
+            }
+            t.Check(firstLeft[1] < firstLeft[0] - 10f && firstLeft[1] > 70f,
+                $"Shape lets the first line in closer, beside the diamond's tip: {firstLeft[1]} vs {firstLeft[0]}");
+
+            string path = Path.Combine(dir, "half.png");
+            using (Image<Rgba32> image = new Image<Rgba32>(100, 100))
+            {
+                image.ProcessPixelRows(rows =>
+                {
+                    for (int y = 0; y < rows.Height; y++)
+                    {
+                        Span<Rgba32> row = rows.GetRowSpan(y);
+                        for (int x = 0; x < 50; x++) row[x] = new Rgba32(40, 140, 200);
+                    }
+                });
+                image.SaveAsPng(path);
+            }
+
+            DocumentEditorControl tight = ShowFixture(t, DocumentXml.Parse(new XElement("Document", new XElement("Block",
+                PictureRun(path, ("Width", "100"), ("Height", "100"), ("Wrap", "Tight"), ("Rotation", "90")), RunX(words)))));
+            yield return 2;
+
+            float tz = Content(tight).zoom;
+            IReadOnlyList<TextLine> tl = Paragraphs(tight)[0].Lines;
+            List<TextLine> top = tl.Where(l => l.top + l.height < 50f * tz).ToList();
+            List<TextLine> lower = tl.Where(l => l.top > 52f * tz && l.top < 100f * tz).ToList();
+            t.Check(top.Count > 0 && top.All(l => l.left >= 108f * tz - 0.5f) && lower.Count > 0 && lower.All(l => l.left == 0f),
+                $"Tight turned a quarter wraps the opaque half now on top: {string.Join(" ", tl.Select(l => $"{l.top}:{l.left}"))}");
+
+            yield return t.Golden("Tight");
+            Directory.Delete(dir, true);
+        }
+
+        [A_XSDActionDependency("TextInput.PictureRotate", "Test")]
+        private static IEnumerator<int> PictureRotate(TestContext t)
+        {
+            string dir = PictureFolder();
+            string picture = PicturePng(Path.Combine(dir, "pic.png"), 100, 100);
+            string words = string.Join(" ", Enumerable.Repeat("lorem ipsum dolor", 40));
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                Block(words),
+                new XElement("Block", PictureRun(picture, ("Width", "100"), ("Height", "100"), ("Wrap", "Square"), ("X", "100")), RunX(words)))));
+            DocumentControl content = Content(editor);
+            yield return 2;
+
+            DocumentControl.FloatingPicture view = content.children.OfType<DocumentControl.FloatingPicture>().First(v => v.arrangedRect.width > 0f);
+            yield return t.Click(view);
+            DocumentControl.PictureRotator ring = content.children.OfType<DocumentControl.PictureRotator>().First();
+            t.Check(ring.arrangedRect.width > 0f, "a selected picture shows the rotate ring");
+
+            Vector2 c = Centre(ring);
+            float r = ring.arrangedRect.width * 0.5f - 1f;
+            yield return t.Drag(ring, c - new Vector2(0f, r), c + new Vector2(r, 0f));
+            t.Check(PictureSpan(editor).imageRotation == 90f, $"dragging the ring a quarter clockwise turns it 90: {PictureSpan(editor).imageRotation}");
+
+            c = Centre(ring);
+            r = ring.arrangedRect.width * 0.5f - 1f;
+            float a = 50f * MathF.PI / 180f;
+            yield return t.Drag(ring, c - new Vector2(0f, r), c + new Vector2(MathF.Sin(a), -MathF.Cos(a)) * r, 8, Keys.LeftShift);
+            t.Check(PictureSpan(editor).imageRotation == 135f, $"Shift snaps the turn to 15 degrees: {PictureSpan(editor).imageRotation}");
+            t.Check(Paragraphs(editor)[0].spans.Any(s => s.IsPicture),
+                "turned so its box rises above its paragraph, the picture is re-anchored to the one above");
+
+            editor.SetPictureWrap(PictureWrap.TopAndBottom);
+            yield return 2;
+            t.Check(PictureSpan(editor) is { wrap: PictureWrap.TopAndBottom, imageRotation: 135f }, "a wrap change keeps the turn");
+
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(PictureSpan(editor).imageRotation == 90f && Paragraphs(editor)[1].spans.Any(s => s.IsPicture),
+                "undo takes back the snapped turn and its re-anchoring as one step");
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(PictureSpan(editor).imageRotation == 0f, "and then the first turn");
+
+            Directory.Delete(dir, true);
+        }
+
+        private static StyleSpan PictureSpan(DocumentEditorControl editor) =>
+            Paragraphs(editor).SelectMany(p => p.spans).First(s => s.IsPicture && s.count > 0);
+
+        [A_XSDActionDependency("TextInput.PictureRotateDraws", "Test")]
+        private static IEnumerator<int> PictureRotateDraws(TestContext t)
+        {
+            string dir = PictureFolder();
+            string picture = PicturePng(Path.Combine(dir, "pic.png"), 120, 60);
+            string words = string.Join(" ", Enumerable.Repeat("lorem ipsum dolor sit", 30));
+
+            foreach (string collision in new[] { "Box", "Shape" })
+            {
+                ShowFixture(t, DocumentXml.Parse(new XElement("Document", new XElement("Block",
+                    PictureRun(picture, ("Wrap", "Square"), ("X", "200"), ("Y", "20"), ("Rotation", "30"), ("Collision", collision)), RunX(words)))));
+                yield return 2;
+                yield return t.Golden(collision);
+            }
+
+            Directory.Delete(dir, true);
+        }
+
+        private static List<DocumentControl.PictureHandle> Handles(DocumentControl content) =>
+            content.children.OfType<DocumentControl.PictureHandle>().ToList();
+
+        private static Vector2 Centre(Control control) =>
+            new Vector2(control.arrangedRect.x + control.arrangedRect.width * 0.5f, control.arrangedRect.y + control.arrangedRect.height * 0.5f);
+
+        private static Vector2 Stored(BlockControl block)
+        {
+            StyleSpan span = block.spans.First(s => s.IsPicture);
+            return new Vector2(span.imageWidth, span.imageHeight);
+        }
+
+        private static XElement PictureRun(string source, params (string name, string value)[] attributes)
+        {
+            XElement run = new XElement("Run", new XAttribute("Image", source));
+            foreach ((string name, string value) in attributes)
+                run.SetAttributeValue(name, value);
+            return run;
+        }
+
+        private static string PictureFolder()
+        {
+            string dir = Path.Combine(Path.GetTempPath(), $"aurora-pictures-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(dir);
+            return dir;
+        }
+
+        private static string PicturePng(string path, int width, int height)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            using Image<Rgba32> image = new Image<Rgba32>(width, height, new Rgba32(200, 80, 40));
+            image.SaveAsPng(path);
+            return path;
+        }
+
+        private static int PictureCount(BlockControl block) => block.spans.Count(s => s.IsPicture && s.count > 0);
+
+        private static void DestroyBlocks(RichTextDocument document)
+        {
+            foreach (Control entry in document.blocks)
+                entry.Destroy();
+        }
         #endregion
     }
 }

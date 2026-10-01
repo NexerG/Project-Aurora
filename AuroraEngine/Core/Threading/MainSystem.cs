@@ -33,7 +33,7 @@ namespace ArctisAurora.Core.Threading
 
             _done ??= DataManager.Get("AnimationDone");
             _dirty ??= DataManager.Get("LayoutDirty");
-            return Animations.Awake.Length > 0 || _done.Count > 0 || _dirty.Count > 0 || Engine.HasPosted
+            return Animations.Awake.Length > 0 || Engine.animationSystem.FadesRunning || _done.Count > 0 || _dirty.Count > 0 || Engine.HasPosted
                 || InputHandler.instance.keyTracker.AnyDown || wakeAt <= Now();
         }
 

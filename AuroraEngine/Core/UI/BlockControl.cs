@@ -136,6 +136,30 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("StylingType", "UI", "Style this run takes; Inherit follows the block.")]
         public TextStyleType stylingType { get; set; } = TextStyleType.Inherit;
 
+        [A_XSDElementProperty("Image", "UI", "Picture file, relative to the note; the run is the picture and carries no text.")]
+        public string image { get; set; }
+
+        [A_XSDElementProperty("Width", "UI", "Picture width in pixels; absent takes the picture's own, fitted to the column.")]
+        public float width { get; set; }
+
+        [A_XSDElementProperty("Height", "UI", "Picture height in pixels; absent follows the width at the picture's aspect.")]
+        public float height { get; set; }
+
+        [A_XSDElementProperty("Wrap", "UI", "How text flows around the picture; absent keeps it in line with the text.")]
+        public PictureWrap wrap { get; set; }
+
+        [A_XSDElementProperty("X", "UI", "A floating picture's offset from the column's left, in pixels.")]
+        public float x { get; set; }
+
+        [A_XSDElementProperty("Y", "UI", "A floating picture's offset from its paragraph's top, in pixels.")]
+        public float y { get; set; }
+
+        [A_XSDElementProperty("Rotation", "UI", "Picture turn in clockwise degrees; absent is upright.")]
+        public float rotation { get; set; }
+
+        [A_XSDElementProperty("Collision", "UI", "What a turned Square picture wraps: its bounding Box or its Shape; absent is Box.")]
+        public PictureCollision collision { get; set; }
+
         public FontStyle Style =>
             bold ? (italic ? FontStyle.BoldItalic : FontStyle.Bold)
                  : italic ? FontStyle.Italic : FontStyle.Regular;
@@ -168,6 +192,9 @@ namespace ArctisAurora.Core.UI
 
         // pre-palette block ink, dropped from runs at load
         private const string legacyInkHex = "#2C2B26";
+
+        // the character a picture span covers
+        public const string PictureChar = "￼";
 
         // Pressing a block focuses the editor above it, never the block itself.
         public override Control? ActiveContextTarget() => (parent as Control)?.ActiveContextTarget();
@@ -325,7 +352,7 @@ namespace ArctisAurora.Core.UI
         // Load: the run's text joins the block's string and its style becomes the next span.
         public void AppendRun(Run run)
         {
-            string slice = run.text ?? string.Empty;
+            string slice = run.image != null ? PictureChar : run.text ?? string.Empty;
 
             spans.Add(new StyleSpan
             {
@@ -340,7 +367,15 @@ namespace ArctisAurora.Core.UI
                 underline = run.underline,
                 highlightHex = run.highlightHex,
                 stylingType = run.stylingType,
-                fontSizeAuthored = run.fontSizeAuthored
+                fontSizeAuthored = run.fontSizeAuthored,
+                imageSource = run.image,
+                imageWidth = run.width,
+                imageHeight = run.height,
+                wrap = run.image != null ? run.wrap : PictureWrap.Inline,
+                imageX = run.image != null ? run.x : 0f,
+                imageY = run.image != null ? run.y : 0f,
+                imageRotation = run.image != null ? run.rotation : 0f,
+                collision = run.image != null ? run.collision : PictureCollision.Box
             });
             if (run.effect != null) RestartEffect();
 
@@ -355,6 +390,8 @@ namespace ArctisAurora.Core.UI
             if (string.IsNullOrEmpty(insert)) return;
 
             int index = SpanForInsert(offset);
+            if (spans[index].IsPicture) index = TextSpanBeside(index, offset);
+
             StyleSpan span = spans[index];
             span.count += insert.Length;
             spans[index] = span;
@@ -504,10 +541,10 @@ namespace ArctisAurora.Core.UI
             foreach (StyleSpan span in spans)
             {
                 int spanEnd = start + span.count;
-                if (offset < spanEnd || spanEnd == Length) return span;
+                if (offset < spanEnd || spanEnd == Length) return span.AsText();
                 start = spanEnd;
             }
-            return spans[^1];
+            return spans[^1].AsText();
         }
 
         // Restyles a character range: a boundary is cut at each end, every span between takes the
@@ -559,6 +596,55 @@ namespace ArctisAurora.Core.UI
             return spans.Count - 1;
         }
 
+        // Gives the picture at an offset another's size, wrap and offset.
+        public void SetPicture(int offset, StyleSpan picture)
+        {
+            int start = 0;
+            for (int i = 0; i < spans.Count; i++)
+            {
+                if (offset == start && spans[i].IsPicture && spans[i].count > 0)
+                {
+                    StyleSpan span = spans[i];
+                    span.imageWidth = picture.imageWidth;
+                    span.imageHeight = picture.imageHeight;
+                    span.wrap = picture.wrap;
+                    span.imageX = picture.imageX;
+                    span.imageY = picture.imageY;
+                    span.imageRotation = picture.imageRotation;
+                    span.collision = picture.collision;
+                    spans[i] = span;
+                    InvalidateLayout();
+                    return;
+                }
+                start += spans[i].count;
+            }
+        }
+
+        // The text span on the picture's side the offset touches, made empty in its style when there is none.
+        private int TextSpanBeside(int picture, int offset)
+        {
+            int start = 0;
+            for (int i = 0; i < picture; i++) start += spans[i].count;
+
+            if (offset <= start)
+            {
+                if (picture > 0 && !spans[picture - 1].IsPicture) return picture - 1;
+                spans.Insert(picture, ZeroText(spans[picture]));
+                return picture;
+            }
+
+            if (picture + 1 < spans.Count && !spans[picture + 1].IsPicture) return picture + 1;
+            spans.Insert(picture + 1, ZeroText(spans[picture]));
+            return picture + 1;
+        }
+
+        private static StyleSpan ZeroText(StyleSpan picture)
+        {
+            StyleSpan text = picture.AsText();
+            text.count = 0;
+            return text;
+        }
+
         // Makes a span boundary fall exactly on an offset and returns the index that starts there.
         // An offset already on one splits nothing, which is what keeps a repeated edit from shredding
         // a block into one span per character.
@@ -605,10 +691,13 @@ namespace ArctisAurora.Core.UI
         {
             for (int i = spans.Count - 1; i >= 0; i--)
                 if (spans[i].count == 0 && spans.Count > 1) spans.RemoveAt(i);
+
+            if (spans.Count == 1 && spans[0].count == 0 && spans[0].IsPicture) spans[0] = spans[0].AsText();
         }
 
         private static bool SameStyle(StyleSpan a, StyleSpan b) =>
-            a.style == b.style
+            !a.IsPicture && !b.IsPicture
+            && a.style == b.style
             && a.colorHex == b.colorHex
             && a.gradient == b.gradient
             && a.effect == b.effect
@@ -639,7 +728,15 @@ namespace ArctisAurora.Core.UI
                 StyleSpan span = spans[i];
                 runs.Add(new Run
                 {
-                    text = whole.Substring(start, count),
+                    text = span.IsPicture ? string.Empty : whole.Substring(start, count),
+                    image = span.imageSource,
+                    width = span.imageWidth,
+                    height = span.imageHeight,
+                    wrap = span.wrap,
+                    x = span.imageX,
+                    y = span.imageY,
+                    rotation = span.imageRotation,
+                    collision = span.collision,
                     bold = span.style == FontStyle.Bold || span.style == FontStyle.BoldItalic,
                     italic = span.style == FontStyle.Italic || span.style == FontStyle.BoldItalic,
                     strikethrough = span.strikethrough,

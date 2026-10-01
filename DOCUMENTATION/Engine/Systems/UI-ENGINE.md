@@ -137,6 +137,8 @@ InheritPaint()
 	ground below = this control's paint if it is an opaque plain panel, else ground
 ```
 
+`Clear` hides the whole control, edge included, because it works by setting the drawn row's opacity to zero. A control that wants its outline without a fill — the rotate ring around a selected picture — paints with the `Palettes.clear` word instead: both tag bits set, a pattern nothing else uses. The fragment shader then draws the edge band alone and nothing at all where there is no edge.
+
 ## Depth
 
 The camera projects an orthographic box that only accepts world z between −512 and −0.01, so anything at z of zero is clipped by the near plane and draws nothing at all — with no error, no validation message and no clue as to why.
@@ -177,6 +179,18 @@ ResolveLayout()
 A hidden element takes no space in a stack panel. The panel skips it when measuring, when sharing out star space and when arranging, so neither its slot nor the spacing beside it is left behind. A skipped element is never measured, so it can stay marked dirty from something that changed while it was hidden, and a dirty mark stops the walk up the tree; showing an element clears that mark first, so the walk runs and the window is laid out again.
 
 Two caches ride on every element: the rectangle covering it and everything beneath it, and how many elements its subtree holds. Both are filled by a separate walk after arrange rather than by arrange itself, so no future override can forget to maintain them. In debug builds the same walk is repeated independently and any disagreement is logged as an error.
+
+## Turning a control
+Any control can be turned about its own centre by setting its `rotation`, a quaternion; a note picture, its frame lines and its resize handles are the controls that do so today. The arranged rectangle stays the unturned one, so layout and alignment never see the turn. Everything that has to agree on where the control actually is uses the bounding box of the turned rectangle instead: its clip, so a corner that pokes out is not cut off, and the cached rectangle covering its subtree, so the draw walk and the hit-test do not reject it early. The matrix gains the turn between its scale and its translation, and the vertex shader measures the rounded-rectangle shape from the quad's own unturned corner, so corners, edges and masks turn with the quad rather than being cut against the screen.
+
+Hit-testing brings the pointer back into the control's unturned frame — the inverse turn, about the same centre — and tests the unturned rectangle there. It then asks the control's `HitsShape` with that point, which says yes unless a control narrows it; the picture's rotate ring answers only on its band, so a press inside the ring still reaches the picture and the text under it. A control that never turns pays one flag test in arrange and in the hit-test.
+
+#### Hits Node (control, point)
+if `point` is outside the control's clip
+	return false
+if the control is turned
+	`point` = `point` turned back about the control's centre
+return `point` is inside the arranged rectangle and the control's shape takes it
 
 ## The window root
 

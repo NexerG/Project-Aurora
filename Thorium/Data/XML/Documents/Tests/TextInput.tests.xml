@@ -30,4 +30,20 @@
 	<Test Action="TextInput.TableOverflowDraws"/>
 	<Test Action="TextInput.TableWheelAxes"/>
 	<Test Action="TextInput.TableSplitsAcrossPages"/>
+	<Test Action="TextInput.PictureEditUndo"/>
+	<Test Action="TextInput.PictureRoundTrip"/>
+	<Test Action="TextInput.PictureResize"/>
+	<Test Action="TextInput.PictureHandlesDraw"/>
+	<Test Action="TextInput.PictureWrapLayout"/>
+	<Test Action="TextInput.PictureFloatEdit"/>
+	<Test Action="TextInput.PictureWrapDraws"/>
+	<Test Action="TextInput.PictureTightLayout"/>
+	<Test Action="TextInput.PictureFloatMove"/>
+	<Test Action="TextInput.PictureTightDraws"/>
+	<Test Action="TextInput.PictureRotateRoundTrip"/>
+	<Test Action="TextInput.PictureRotateInline"/>
+	<Test Action="TextInput.PictureRotateLayout"/>
+	<Test Action="TextInput.PictureRotateDraws"/>
+	<Test Action="TextInput.PictureRotate"/>
+	<Test Action="TextInput.PictureInline"/>
 </TestSuite>

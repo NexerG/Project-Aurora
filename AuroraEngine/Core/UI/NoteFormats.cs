@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -20,7 +21,10 @@ namespace ArctisAurora.Core.UI
         // inline HTML Obsidian renders, read and written for what Markdown has no syntax for
         private static readonly Regex htmlTag = new Regex(@"\G<(/?)(u|mark|span)((?:\s+style=""[^""]*"")?)\s*>", RegexOptions.IgnoreCase);
         private static readonly Regex cssColor = new Regex(@"(?<![-\w])color\s*:\s*(#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?)");
-        private static readonly Regex cssBackground = new Regex(@"(?<![-\w])background(?:-color)?\s*:\s*(#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?)");
+        private static readonly Regex picture = new Regex(@"\G!\[[^\]|]*(?:\|(\d+)(?:x(\d+))?)?\]\((?:<([^>]*)>|([^)\s]+))\)");
+        private static readonly Regex htmlPicture = new Regex(@"\G<img\s([^>]*?)/?>", RegexOptions.IgnoreCase);
+        private static readonly Regex htmlAttribute = new Regex(@"([\w-]+)\s*=\s*""([^""]*)""");
+        private static readonly Regex cssBackground =new Regex(@"(?<![-\w])background(?:-color)?\s*:\s*(#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?)");
 
         // what ==text== stands for
         public const string DefaultHighlightHex = "#FFF3A3";
@@ -242,6 +246,27 @@ namespace ArctisAurora.Core.UI
                     }
                 }
 
+                if (c == '!' && picture.Match(s, i) is { Success: true } image)
+                {
+                    Flush(false);
+                    XElement run = new XElement("Run");
+                    string source = image.Groups[3].Success ? image.Groups[3].Value : Uri.UnescapeDataString(image.Groups[4].Value);
+                    run.SetAttributeValue("Image", source);
+                    if (image.Groups[1].Success) run.SetAttributeValue("Width", image.Groups[1].Value);
+                    if (image.Groups[2].Success) run.SetAttributeValue("Height", image.Groups[2].Value);
+                    runs.Add(run);
+                    i += image.Length - 1;
+                    continue;
+                }
+
+                if (c == '<' && htmlPicture.Match(s, i) is { Success: true } img && ReadHtmlPicture(img.Groups[1].Value) is XElement html)
+                {
+                    Flush(false);
+                    runs.Add(html);
+                    i += img.Length - 1;
+                    continue;
+                }
+
                 if (c == '`')
                 {
                     int close = s.IndexOf('`', i + 1);
@@ -288,6 +313,30 @@ namespace ArctisAurora.Core.UI
 
             Flush(false);
             return runs;
+        }
+
+        // <img src width height data-wrap data-x data-y data-rotate data-collision> as a picture run; null without a src.
+        private static XElement? ReadHtmlPicture(string attributes)
+        {
+            Dictionary<string, string> found = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (Match a in htmlAttribute.Matches(attributes))
+                found[a.Groups[1].Value] = a.Groups[2].Value;
+            if (!found.TryGetValue("src", out string? src)) return null;
+
+            XElement run = new XElement("Run", new XAttribute("Image", Uri.UnescapeDataString(src)));
+            if (found.TryGetValue("width", out string? width)) run.SetAttributeValue("Width", width);
+            if (found.TryGetValue("height", out string? height)) run.SetAttributeValue("Height", height);
+            if (found.TryGetValue("data-wrap", out string? wrap) && Enum.TryParse(wrap, true, out PictureWrap parsed) && parsed != PictureWrap.Inline)
+            {
+                run.SetAttributeValue("Wrap", parsed.ToString());
+                if (found.TryGetValue("data-x", out string? x)) run.SetAttributeValue("X", x);
+                if (found.TryGetValue("data-y", out string? y)) run.SetAttributeValue("Y", y);
+                if (found.TryGetValue("data-collision", out string? collision) && Enum.TryParse(collision, true, out PictureCollision shape)
+                    && shape != PictureCollision.Box)
+                    run.SetAttributeValue("Collision", shape.ToString());
+            }
+            if (found.TryGetValue("data-rotate", out string? rotate)) run.SetAttributeValue("Rotation", rotate);
+            return run;
         }
 
         private static bool At(string s, int i, string marker) => string.CompareOrdinal(s, i, marker, 0, marker.Length) == 0;
@@ -411,6 +460,16 @@ namespace ArctisAurora.Core.UI
 
             foreach (XElement run in runs)
             {
+                string? image = (string?)run.Attribute("Image");
+                if (image != null)
+                {
+                    string? wrap = (string?)run.Attribute("Wrap");
+                    line.Append(wrap == null && run.Attribute("Rotation") == null
+                        ? PictureMarkdown(image, (string?)run.Attribute("Width"), (string?)run.Attribute("Height"))
+                        : PictureHtml(image, run, wrap));
+                    continue;
+                }
+
                 string text = (string?)run.Attribute("Text") ?? string.Empty;
                 if (text.Length == 0) continue;
 
@@ -446,7 +505,7 @@ namespace ArctisAurora.Core.UI
                         char c = text[i];
                         bool needs = c == '\\'
                             ? i + 1 == text.Length || escapable.IndexOf(text[i + 1]) >= 0
-                            : "`*_~=<".IndexOf(c) >= 0;
+                            : "`*_~=<[".IndexOf(c) >= 0;
                         if (needs) line.Append('\\');
                         line.Append(c);
                     }
@@ -457,6 +516,33 @@ namespace ArctisAurora.Core.UI
             for (int i = open.Count - 1; i >= 0; i--) line.Append(Closing(open[i]));
             return line.ToString();
         }
+
+        // ![|W](path), or ![|WxH](path) once a height is set.
+        private static string PictureMarkdown(string source, string? width, string? height)
+        {
+            string size = width == null ? string.Empty : height == null ? $"|{Px(width)}" : $"|{Px(width)}x{Px(height)}";
+            string path = source.Replace("%", "%25").Replace(" ", "%20").Replace("(", "%28").Replace(")", "%29");
+            return $"![{size}]({path})";
+        }
+
+        // A floating or turned picture as <img>, the wrap, offset and turn in data- attributes.
+        private static string PictureHtml(string source, XElement run, string? wrap)
+        {
+            StringBuilder tag = new StringBuilder("<img src=\"");
+            tag.Append(source.Replace("%", "%25").Replace(" ", "%20").Replace("\"", "%22")).Append('"');
+            foreach ((string attribute, string name) in new[] { ("Width", "width"), ("Height", "height") })
+                if ((string?)run.Attribute(attribute) is string value) tag.Append($" {name}=\"{Px(value)}\"");
+            if (wrap != null)
+            {
+                tag.Append($" data-wrap=\"{wrap.ToLowerInvariant()}\"");
+                tag.Append($" data-x=\"{Px((string?)run.Attribute("X") ?? "0")}\" data-y=\"{Px((string?)run.Attribute("Y") ?? "0")}\"");
+                if ((string?)run.Attribute("Collision") is string collision) tag.Append($" data-collision=\"{collision.ToLowerInvariant()}\"");
+            }
+            if ((string?)run.Attribute("Rotation") is string rotation) tag.Append($" data-rotate=\"{Px(rotation)}\"");
+            return tag.Append('>').ToString();
+        }
+
+        private static string Px(string value) => MathF.Round(float.Parse(value, CultureInfo.InvariantCulture)).ToString(CultureInfo.InvariantCulture);
 
         // A Markdown marker closes with itself, an HTML tag with its end tag.
         private static string Closing(string marker) =>
@@ -470,6 +556,14 @@ namespace ArctisAurora.Core.UI
 
             foreach (XElement run in runs)
             {
+                string? image = (string?)run.Attribute("Image");
+                if (image != null)
+                {
+                    text.Append(BlockControl.PictureChar);
+                    styles.Add($"img|{image}|{(string?)run.Attribute("Width")}|{(string?)run.Attribute("Height")}|{(string?)run.Attribute("Wrap")}|{(string?)run.Attribute("X")}|{(string?)run.Attribute("Y")}|{(string?)run.Attribute("Rotation")}|{(string?)run.Attribute("Collision")}");
+                    continue;
+                }
+
                 string slice = (string?)run.Attribute("Text") ?? string.Empty;
                 int mask = ((bool?)run.Attribute("Bold") == true ? 1 : 0)
                          | ((bool?)run.Attribute("Italic") == true ? 2 : 0)
