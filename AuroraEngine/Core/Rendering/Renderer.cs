@@ -1015,7 +1015,7 @@ namespace ArctisAurora.EngineWork.Rendering
                     SrcAccessMask = 0,
                     DstAccessMask = AccessFlags.ShaderReadBit,
                     Image = recordingAcquires[i],
-                    SubresourceRange = new ImageSubresourceRange(ImageAspectFlags.ColorBit, 0, 1, 0, 1)
+                    SubresourceRange = new ImageSubresourceRange(ImageAspectFlags.ColorBit, 0, Vk.RemainingMipLevels, 0, 1)
                 };
             }
 

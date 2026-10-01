@@ -20,6 +20,7 @@ namespace ArctisAurora.Core.UI
 
         // DEBUG: VerifyLayout's pass without skips
         private static bool _noSkip;
+        internal static bool NoSkip => _noSkip;
 
         private static readonly Dictionary<Type, LayoutNodeKind> _kinds = new Dictionary<Type, LayoutNodeKind>();
 

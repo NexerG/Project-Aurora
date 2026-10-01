@@ -10,7 +10,7 @@ namespace ArctisAurora.Core.UI
     [A_XSDType("Document", "UI")]
     public class RichTextDocument
     {
-        public List<BlockControl> blocks = new List<BlockControl>();
+        public List<Control> blocks = new List<Control>();
 
         // Absent until the note is named. Nothing derives it from the file, so a note that has never
         // been named reads as unnamed however many times it is saved.
@@ -129,6 +129,13 @@ namespace ArctisAurora.Core.UI
         public TextStyle Clone() => new TextStyle { type = type, fontSize = fontSize };
     }
 
+    [A_XSDType("ListLevel", "UI")]
+    public class ListLevel
+    {
+        [A_XSDElementProperty("Marker", "UI", "The marker items at this level show.")]
+        public ListMarker marker { get; set; } = ListMarker.Disc;
+    }
+
     // Layout parameters for one document: line height and text sizing now, the home for content
     // width on viewport resize and the paged/pageless mode as those land. A class rather than a
     // struct because it owns a list — copying it by value would hand a working copy the original's
@@ -165,6 +172,17 @@ namespace ArctisAurora.Core.UI
 
         [A_XSDElementProperty("Page", "UI", "Page format; absent inherits the editor's.")]
         public PageLayout? page;
+
+        // one entry per level, cycling past the last; empty inherits the editor's
+        [A_XSDElementProperty("ListLevel", "UI", "The marker each list level takes by default; empty inherits the editor's.")]
+        public List<ListLevel> listLevels = new List<ListLevel>();
+
+        // The marker a list item at a level shows when it names none of its own.
+        public ListMarker MarkerFor(int level)
+        {
+            List<ListLevel> levels = listLevels.Count > 0 ? listLevels : Defaults.listLevels;
+            return levels.Count == 0 ? ListMarker.Disc : levels[Math.Max(0, level) % levels.Count].marker;
+        }
 
         private static readonly PageLayout fallbackPage = new PageLayout();
 
@@ -205,6 +223,8 @@ namespace ArctisAurora.Core.UI
             };
             foreach (TextStyle style in textStyles)
                 copy.textStyles.Add(style.Clone());
+            foreach (ListLevel level in listLevels)
+                copy.listLevels.Add(new ListLevel { marker = level.marker });
             return copy;
         }
     }

@@ -93,7 +93,9 @@ inverse, the same argument `StyleRangeEdit` makes.
 - A line that needs any escape gets all of them.
 - Adjacent marker runs can be ambiguous (`*a***b**`); the writer's re-read check does not help there.
 - A level jump with no parent (level 2 under level 0) reads back as level 0.
-- Numbered lists are text; per-role palette colours for headings/code/quotes do not exist.
+- ~~Numbered lists are text~~ — `N.`/`N)` read as `Decimal` items and numeric markers write `N. ` since
+  2026-09-29 ([[list-markers]]); colour, highlight and underline write as Obsidian HTML/`==`
+  ([[text-decorations-and-colour]]). Per-role palette colours for headings/code/quotes do not exist.
 - A double-click on a checkbox bubbles a 2-tap to `DocumentControl` and selects a word.
 - Only Thorium's `InputMap.inputs.xml` binds Tab — it is the only host with `Text.*` binds.
 

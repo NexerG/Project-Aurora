@@ -13,7 +13,7 @@ namespace Thorium
             XSDGenerator.GenerateXSD();
 
             SettingsRegistry.SetWriteRoot(Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Thorium", "Settings"));
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Arktis", "Thorium", "Settings"));
 
             engine.Init(false);
             InputHandler.SetActiveKeybindGroup("InputMap");

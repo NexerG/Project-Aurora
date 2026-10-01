@@ -11,7 +11,7 @@ namespace ArctisAurora.Core.UI
 {
     // One open note: the scroll viewport, the document under it, and the session behind that.
     [A_XSDType("DocumentEditor", "UI")]
-    public class DocumentEditorControl : ScrollableControl, IContext
+    public class DocumentEditorControl : ScrollableControl, IContext, IClipboardTarget
     {
         public RichTextDocument activeDocument { get; private set; } = null!;
         public DocumentEditSession session { get; private set; }
@@ -101,10 +101,19 @@ namespace ArctisAurora.Core.UI
                 content.header = expander;
             }
 
-            foreach (BlockControl block in document.blocks)
+            foreach (Control entry in document.blocks)
             {
-                block.ApplyLayout(document.layout);
-                content.AddChild(block);
+                if (entry is TableControl table)
+                {
+                    table.ApplyLayout(document.layout);
+                    ScrollableControl viewport = new ScrollableControl { scrollDirection = ScrollDirection.Horizontal };
+                    viewport.AddChild(table);
+                    content.AddChild(viewport);
+                    continue;
+                }
+
+                ((BlockControl)entry).ApplyLayout(document.layout);
+                content.AddChild(entry);
             }
 
             ApplyPalette();
@@ -168,6 +177,7 @@ namespace ArctisAurora.Core.UI
         {
             if (session == null || !session.undo.Undo()) return;
 
+            content?.DisarmStyle();
             MarkDirty();
             RequestScrollToCaret();
         }
@@ -176,6 +186,7 @@ namespace ArctisAurora.Core.UI
         {
             if (session == null || !session.undo.Redo()) return;
 
+            content?.DisarmStyle();
             MarkDirty();
             RequestScrollToCaret();
         }
@@ -197,6 +208,8 @@ namespace ArctisAurora.Core.UI
 
         // Nothing is written, so there is no step and no dirty note until the next character.
         public void ArmStyle(StyleDelta delta) => content?.ArmStyle(delta);
+
+        public void DisarmStyle() => content?.DisarmStyle();
 
         // For a control that must take the active context before it can be used: it captures the
         // range on the way in and hands it back here, rather than asking what is selected once the
@@ -238,8 +251,24 @@ namespace ArctisAurora.Core.UI
         {
             if (content == null) return;
 
+            if (content.caretBlock?.parent?.parent is TableControl table)
+            {
+                BlockControl? next = table.StepCell(content.caretBlock, delta);
+                if (next != null) content.SetCaret(next, 0);
+                RequestScrollToCaret();
+                return;
+            }
+
             using (BeginStep(delta > 0 ? "Indent" : "Outdent"))
                 if (content.ShiftListLevel(delta)) MarkDirty();
+        }
+
+        public void SetListMarker(ListMarker marker)
+        {
+            if (content == null) return;
+
+            using (BeginStep("List marker"))
+                if (content.SetListMarker(marker)) MarkDirty();
         }
 
         // The note's page format. Not undoable.
@@ -285,9 +314,12 @@ namespace ArctisAurora.Core.UI
 
             activeDocument.layout = layout;
             content.blockSpacing = layout.blockSpacing;
-            foreach (BlockControl block in activeDocument.blocks)
-                block.ApplyLayout(layout);
-            content.InvalidateLayout();
+            foreach (Control entry in activeDocument.blocks)
+            {
+                if (entry is TableControl table) table.ApplyLayout(layout);
+                else ((BlockControl)entry).ApplyLayout(layout);
+            }
+            content.ListsChanged();
             MarkDirty();
         }
 
@@ -387,9 +419,36 @@ namespace ArctisAurora.Core.UI
 
             if (move == CaretMove.Left) MoveLeft(extend);
             else if (move == CaretMove.Right) MoveRight(extend);
+            else if (move == CaretMove.WordLeft || move == CaretMove.WordRight) MoveWord(move == CaretMove.WordLeft ? -1 : 1, extend);
+            else if (move == CaretMove.DocumentStart || move == CaretMove.DocumentEnd) MoveToEnd(move == CaretMove.DocumentEnd, extend);
             else MoveToPoint(move, extend);
 
             RequestScrollToCaret();
+        }
+
+        // At a block's edge a word move steps into the neighbour, like a character move does.
+        private void MoveWord(int direction, bool extend)
+        {
+            BlockControl block = content.caretBlock;
+            int offset = content.caretOffset;
+
+            if (direction < 0 ? offset == 0 : offset == block.Length)
+            {
+                if (direction < 0) MoveLeft(extend);
+                else MoveRight(extend);
+                return;
+            }
+
+            content.SetCaret(block, TextInputActions.WordEdge(block.text ?? string.Empty, offset, direction), extend);
+        }
+
+        private void MoveToEnd(bool end, bool extend)
+        {
+            List<BlockControl> blocks = content.Blocks();
+            if (blocks.Count == 0) return;
+
+            if (end) content.SetCaret(blocks[^1], blocks[^1].Length, extend);
+            else content.SetCaret(blocks[0], 0, extend);
         }
 
         private void MoveLeft(bool extend)
@@ -453,9 +512,9 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- editing ----
-        public void Backspace() => DeleteOver(CaretMove.Left);
+        public void Backspace(bool word = false) => DeleteOver(word ? CaretMove.WordLeft : CaretMove.Left);
 
-        public void Delete() => DeleteOver(CaretMove.Right);
+        public void Delete(bool word = false) => DeleteOver(word ? CaretMove.WordRight : CaretMove.Right);
 
         // Without a selection the caret makes one a character wide, so deleting past a block boundary
         // follows the same rules the arrow keys already resolve.
@@ -463,16 +522,19 @@ namespace ArctisAurora.Core.UI
         {
             if (content?.caretBlock == null) return;
 
-            using (BeginStep(move == CaretMove.Left ? "Backspace" : "Delete"))
+            bool backward = move == CaretMove.Left || move == CaretMove.WordLeft;
+            using (BeginStep(backward ? "Backspace" : "Delete"))
             {
-                if (move == CaretMove.Left && content.ClearListAtCaret())
+                if (backward && content.ClearListAtCaret())
                 {
                     MarkDirty();
                     return;
                 }
 
-                if (!content.HasSelection) MoveCaret(move, true);
-                if (content.DeleteSelection()) MarkDirty();
+                CaretSlot? start = content.HasSelection ? null : content.Focus;
+                if (start != null) MoveCaret(move, true);
+                if (content.DeleteSelection(start == null)) MarkDirty();
+                else if (start is CaretSlot slot) content.SetCaret(slot.block, slot.offset);
             }
 
             RequestScrollToCaret();
@@ -494,6 +556,104 @@ namespace ArctisAurora.Core.UI
         {
             content?.TypeChar(c);
             RequestScrollToCaret();
+        }
+        #endregion
+
+        #region ---- clipboard ----
+        public bool Copy()
+        {
+            content?.CopySelection();
+            return content != null;
+        }
+
+        public bool Cut()
+        {
+            if (content == null) return false;
+            if (content.SelectedFragment() == null) return true;
+
+            content.CopySelection();
+            using (BeginStep("Cut"))
+                content.DeleteSelection();
+
+            MarkDirty();
+            RequestScrollToCaret();
+            return true;
+        }
+
+        public bool Paste(string text)
+        {
+            if (content == null) return false;
+
+            bool pasted;
+            using (BeginStep("Paste"))
+                pasted = content.PasteText(text);
+
+            if (pasted)
+            {
+                MarkDirty();
+                RequestScrollToCaret();
+            }
+            return true;
+        }
+        #endregion
+
+        #region ---- text drop ----
+        public override bool DraggingOverStart(Control dragged, Vector2 point) => DraggingOver(dragged, point);
+
+        public override bool DraggingOver(Control dragged, Vector2 point)
+        {
+            DocumentControl source = DocumentControl.TextDragSource(dragged);
+            if (content == null || source == null) return false;
+
+            source.textDragHovered = true;
+            AutoScroll(point);
+            content.ShowDropAt(point);
+            return true;
+        }
+
+        public override bool DraggingOverEnd(Control dragged)
+        {
+            if (DocumentControl.TextDragSource(dragged) != null) content?.HideDrop();
+            return false;
+        }
+
+        // Takes a text drop from this note or another.
+        public override bool FinishDrag(Control dragged, Vector2 point)
+        {
+            DocumentControl source = DocumentControl.TextDragSource(dragged);
+            if (source == null || content == null) return false;
+
+            content.HideDrop();
+            if (!content.CaretOffText(point, out BlockControl block, out int offset)) return true;
+
+            CaretSlot slot = new CaretSlot(block, offset);
+            bool copy = InputHandler.instance.IsModifierDown(InputModifier.Copy);
+            bool changed;
+
+            if (ReferenceEquals(source, content))
+            {
+                using (BeginStep(copy ? "Copy" : "Move"))
+                    changed = content.DropSelection(slot, copy);
+                if (!changed) content.SetCaret(block, offset);
+            }
+            else
+            {
+                DocumentFragment fragment = source.SelectedFragment();
+                if (fragment == null) return true;
+
+                using (BeginStep("Drop"))
+                    content.InsertAt(slot, fragment);
+                changed = true;
+
+                if (!copy && source.parent is DocumentEditorControl from)
+                    using (from.BeginStep("Move"))
+                        from.DeleteSelection();
+            }
+
+            if (changed) MarkDirty();
+            FocusCaret();
+            RequestScrollToCaret();
+            return true;
         }
         #endregion
 
@@ -525,10 +685,19 @@ namespace ArctisAurora.Core.UI
 
             if (!content.CaretPoint(out float x, out float y, out float height)) return;
 
-            Vector2 before = GetScrollOffset();
-            ScrollIntoView(new LayoutRect(x, y, CaretControl.Width, height));
+            LayoutRect caretRect = new LayoutRect(x, y, CaretControl.Width, height);
+            bool tableMoved = false;
+            if (DocumentControl.TableViewport(content.caretBlock) is ScrollableControl viewport)
+            {
+                Vector2 tableBefore = viewport.GetScrollOffset();
+                viewport.ScrollIntoView(caretRect);
+                tableMoved = viewport.GetScrollOffset() != tableBefore;
+            }
 
-            if (GetScrollOffset() != before)
+            Vector2 before = GetScrollOffset();
+            ScrollIntoView(caretRect);
+
+            if (GetScrollOffset() != before || tableMoved)
             {
                 Profiling.Zone.Start("Editor.Rearrange");
                 base.ArrangeCore(finalRect);
@@ -551,6 +720,7 @@ namespace ArctisAurora.Core.UI
         {
             if (content == null) return false;
 
+            content.DisarmStyle();
             if (content.CaretOffText(e.point, out BlockControl block, out int offset))
                 content.SetCaret(block, offset, DocumentControl.Extending);
 

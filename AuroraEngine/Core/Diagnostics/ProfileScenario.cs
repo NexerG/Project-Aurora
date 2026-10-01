@@ -106,12 +106,12 @@ namespace ArctisAurora.Core.Diagnostics
             Engine.primary.ui.uiRoot = root;
             editor.LoadDocument(document);
 
-            BlockControl first = document.blocks[0];
+            BlockControl first = (BlockControl)document.blocks[0];
             ((DocumentControl)first.parent).SetCaret(first, first.Length);
             editor.FocusCaret();
 
             AGlfwWindow._glfw.GetWindowSize(Engine.primary.os.handle, out startWidth, out startHeight);
-            Log.Info($"scenario — {document.blocks.Sum(b => b.Length)} chars in {blockCount} blocks, window {startWidth}x{startHeight}");
+            Log.Info($"scenario — {document.blocks.OfType<BlockControl>().Sum(b => b.Length)} chars in {blockCount} blocks, window {startWidth}x{startHeight}");
         }
 
         public override void OnTick()
@@ -177,7 +177,7 @@ namespace ArctisAurora.Core.Diagnostics
             {
                 if (dumpTree) UITreeDump.Dump("settings");
                 AGlfwWindow._glfw.GetWindowSize(Engine.primary.os.handle, out int width, out int height);
-                Log.Info($"scenario done — {document.blocks.Sum(b => b.Length)} chars, window {width}x{height}");
+                Log.Info($"scenario done — {document.blocks.OfType<BlockControl>().Sum(b => b.Length)} chars, window {width}x{height}");
                 Engine.Post(Shutdown.Request);
             }
         }

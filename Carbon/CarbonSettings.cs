@@ -6,7 +6,7 @@ namespace Carbon
     public class CaptureRootSetting : Setting
     {
         [A_XSDElementProperty("Path", "Settings", "Folder holding capture session folders. Environment variables are expanded; the default is where a Thorium capture lands.")]
-        public string path { get; set; } = @"%APPDATA%\Thorium\Profiling";
+        public string path { get; set; } = @"%APPDATA%\Arktis\Thorium\Profiling";
 
         public string Resolved => Environment.ExpandEnvironmentVariables(path);
     }
@@ -15,7 +15,7 @@ namespace Carbon
     public class TestRootSetting : Setting
     {
         [A_XSDElementProperty("Path", "Settings", "Folder holding test run folders. Environment variables are expanded; the default is where a Thorium --test run lands.")]
-        public string path { get; set; } = @"%APPDATA%\Thorium\Tests";
+        public string path { get; set; } = @"%APPDATA%\Arktis\Thorium\Tests";
 
         public string Resolved => Environment.ExpandEnvironmentVariables(path);
     }

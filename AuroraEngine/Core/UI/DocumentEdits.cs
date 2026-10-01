@@ -24,6 +24,7 @@ namespace ArctisAurora.Core.UI
         public TextStyleType stylingType;
         public ListKind listKind;
         public int listLevel;
+        public ListMarker? listMarker;
         public bool isChecked;
         public string text = string.Empty;
         public readonly List<StyleSpan> spans = new List<StyleSpan>();
@@ -141,7 +142,39 @@ namespace ArctisAurora.Core.UI
         private readonly DocumentAddress to;
         private readonly DocumentFragment fragment;
 
+        // the selection before the delete, put back by undo
+        private readonly DocumentAddress anchor;
+        private readonly DocumentAddress caret;
+
         public DeleteRangeEdit(DocumentControl document, DocumentAddress from,
+            DocumentAddress to, DocumentFragment fragment, DocumentAddress anchor, DocumentAddress caret)
+        {
+            this.document = document;
+            this.from = from;
+            this.to = to;
+            this.fragment = fragment;
+            this.anchor = anchor;
+            this.caret = caret;
+        }
+
+        public void Undo()
+        {
+            document.InsertFragment(from, fragment);
+            document.Select(anchor, caret);
+        }
+
+        public void Redo() => document.DeleteBetween(from, to);
+    }
+
+    // Content put into the document at one place — a paste or a drop. The mirror of a range delete.
+    public sealed class InsertRangeEdit : IEditRecord
+    {
+        private readonly DocumentControl document;
+        private readonly DocumentAddress from;
+        private readonly DocumentAddress to;
+        private readonly DocumentFragment fragment;
+
+        public InsertRangeEdit(DocumentControl document, DocumentAddress from,
             DocumentAddress to, DocumentFragment fragment)
         {
             this.document = document;
@@ -150,9 +183,9 @@ namespace ArctisAurora.Core.UI
             this.fragment = fragment;
         }
 
-        public void Undo() => document.InsertFragment(from, fragment);
+        public void Undo() => document.DeleteBetween(from, to);
 
-        public void Redo() => document.DeleteBetween(from, to);
+        public void Redo() => document.InsertBetween(from, to, fragment);
     }
 
     // Blocks rewritten in place — list kind, nesting, a tick. Both directions are snapshots.

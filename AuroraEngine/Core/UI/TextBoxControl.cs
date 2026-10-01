@@ -1,18 +1,40 @@
 using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Editing;
+using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
 using System.Numerics;
+using System.Text;
 
 namespace ArctisAurora.Core.UI
 {
     // A one-line editable field: the text, a caret and a selection box under one control.
     [A_XSDType("TextBox", "UI")]
-    public class TextBoxControl : ContainerControl, IContext
+    public class TextBoxControl : ContainerControl, IContext, IClipboardTarget
     {
         // The text itself, handing its presses to the box, which owns the caret.
         private class FieldLine : TextRunControl
         {
             public override Control? ActiveContextTarget() => (parent as Control)?.ActiveContextTarget();
+        }
+
+        // One edit as the field before and after it.
+        private sealed class FieldEdit : IEditRecord
+        {
+            private readonly TextBoxControl box;
+            private readonly (string text, int anchor, int cursor) before;
+            private readonly (string text, int anchor, int cursor) after;
+
+            public FieldEdit(TextBoxControl box, (string, int, int) before, (string, int, int) after)
+            {
+                this.box = box;
+                this.before = before;
+                this.after = after;
+            }
+
+            public void Undo() => box.Restore(before);
+
+            public void Redo() => box.Restore(after);
         }
 
         public Action<string>? onCommit;
@@ -28,6 +50,9 @@ namespace ArctisAurora.Core.UI
         private int anchor;
         private int cursor;
         private string committed = string.Empty;
+
+        // this edit's history, from the last focus
+        private readonly UndoStack history = new UndoStack();
 
         public bool isEditing { get; private set; }
 
@@ -97,6 +122,7 @@ namespace ArctisAurora.Core.UI
         {
             isEditing = true;
             caret.Focus();
+            history.Clear();
             SelectAll();
         }
 
@@ -112,30 +138,40 @@ namespace ArctisAurora.Core.UI
         {
             if (c == '\0') return;
 
+            var before = State();
             DeleteSelection();
             line.text = line.text[..cursor] + c + line.text[cursor..];
             cursor++;
             anchor = cursor;
+            Record(before);
             InvalidateLayout();
         }
 
-        public void Backspace()
+        public void Backspace(bool word = false)
         {
+            var before = State();
             if (!DeleteSelection() && cursor > 0)
             {
-                cursor--;
-                line.text = line.text[..cursor] + line.text[(cursor + 1)..];
+                int from = word ? TextInputActions.WordEdge(line.text, cursor, -1) : cursor - 1;
+                line.text = line.text[..from] + line.text[cursor..];
+                cursor = from;
             }
             anchor = cursor;
+            Record(before);
             InvalidateLayout();
         }
 
-        public void Delete()
+        public void Delete(bool word = false)
         {
+            var before = State();
             if (!DeleteSelection() && cursor < line.text.Length)
-                line.text = line.text[..cursor] + line.text[(cursor + 1)..];
+            {
+                int to = word ? TextInputActions.WordEdge(line.text, cursor, 1) : cursor + 1;
+                line.text = line.text[..cursor] + line.text[to..];
+            }
 
             anchor = cursor;
+            Record(before);
             InvalidateLayout();
         }
 
@@ -146,8 +182,11 @@ namespace ArctisAurora.Core.UI
             {
                 case CaretMove.Left: if (cursor > 0) cursor--; break;
                 case CaretMove.Right: if (cursor < line.text.Length) cursor++; break;
+                case CaretMove.WordLeft: cursor = TextInputActions.WordEdge(line.text, cursor, -1); break;
+                case CaretMove.WordRight: cursor = TextInputActions.WordEdge(line.text, cursor, 1); break;
                 case CaretMove.Up:
                 case CaretMove.PageUp:
+                case CaretMove.DocumentStart:
                 case CaretMove.LineStart: cursor = 0; break;
                 default: cursor = line.text.Length; break;
             }
@@ -160,6 +199,7 @@ namespace ArctisAurora.Core.UI
         {
             isEditing = false;
             caret.Blur();
+            history.Clear();
             committed = line.text;
             onCommit?.Invoke(committed);
         }
@@ -169,11 +209,77 @@ namespace ArctisAurora.Core.UI
         {
             isEditing = false;
             caret.Blur();
+            history.Clear();
             line.text = committed;
             anchor = cursor = committed.Length;
             onCancel?.Invoke();
             InvalidateLayout();
         }
+
+        public void Undo() => history.Undo();
+
+        public void Redo() => history.Redo();
+
+        private (string text, int anchor, int cursor) State() => (line.text, anchor, cursor);
+
+        private void Restore((string text, int anchor, int cursor) state)
+        {
+            line.text = state.text;
+            anchor = state.anchor;
+            cursor = state.cursor;
+            InvalidateLayout();
+        }
+
+        // One step per change; a key that changed nothing records nothing.
+        private void Record((string text, int anchor, int cursor) before)
+        {
+            if (before.text == line.text) return;
+
+            using (history.Begin("Edit"))
+                history.Push(new FieldEdit(this, before, State()));
+        }
+
+        public bool Copy()
+        {
+            if (!isEditing) return false;
+            if (anchor != cursor) ClipboardText.Set(Selected());
+            return true;
+        }
+
+        public bool Cut()
+        {
+            if (!isEditing) return false;
+            if (anchor == cursor) return true;
+
+            var before = State();
+            ClipboardText.Set(Selected());
+            DeleteSelection();
+            Record(before);
+            InvalidateLayout();
+            return true;
+        }
+
+        // One line, so line breaks and tabs become spaces and other control characters drop.
+        public bool Paste(string text)
+        {
+            if (!isEditing) return false;
+
+            StringBuilder flat = new StringBuilder(text.Length);
+            foreach (char c in text.Replace("\r\n", "\n"))
+                if (c == '\n' || c == '\r' || c == '\t') flat.Append(' ');
+                else if (!char.IsControl(c)) flat.Append(c);
+
+            var before = State();
+            DeleteSelection();
+            line.text = line.text[..cursor] + flat + line.text[cursor..];
+            cursor += flat.Length;
+            anchor = cursor;
+            Record(before);
+            InvalidateLayout();
+            return true;
+        }
+
+        private string Selected() => line.text[Math.Min(anchor, cursor)..Math.Max(anchor, cursor)];
 
         private bool DeleteSelection()
         {

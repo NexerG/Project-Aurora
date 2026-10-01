@@ -75,8 +75,9 @@ second Ctrl+B disarm — `Toggle` reads `CaretStyle`, sees the armed `bold: true
 
 ## Known gaps
 - **Not GUI-verified.** Nothing has typed an armed character on screen.
-- An arm dies on **any** caret move, Enter and Backspace included. Word keeps it across both.
-  Matching that needs the arm pinned to a caret position, which was not asked for.
+- ~~An arm dies on **any** caret move, Enter and Backspace included.~~ — on the new stack it died on
+  nothing but typing; since 2026-09-29 it survives Enter, Backspace, Delete and typing, and navigation drops
+  it. Deleting also arms the deleted text's style. See [[text-decorations-and-colour]].
 - Typing an armed size equal to the run's current size disarms, so it does not set
   `fontSizeAuthored` and the run stays scheme-resolved. Choosing 16 on a 16px run is a no-op.
 - `Text.Bold`/`Text.Italic` over a *mixed selection* still flip from the first run's state — the

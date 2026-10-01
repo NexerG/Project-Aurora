@@ -39,22 +39,18 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 	- [ ] editor
 		- [ ] Markdown insertions
 		- [ ] **GUI-verify `.md` notes and lists** — open, edit, save a Markdown note; dots/checkboxes in the indent, wrapping inside it, checkbox click + undo, `- `/`[ ] ` conversion, Enter/Backspace on items, Tab/Shift+Tab → `note-file-formats`
-		- [ ] numbered lists — a list item is points or numbers (`1.` is literal text today) (user, 2026-09-17) → `note-file-formats`
 		- [ ] a custom note format of Thorium's own, beside `.md` (user, 2026-09-17) → `note-file-formats`
 		- [ ] **text boxes in the note's properties header take no press** — `TextRunControl` hands the press to the nearest `IGlyphPressTarget`, now `DocumentControl`, so layout and frontmatter fields cannot be edited in the GUI; one-line fix in `TextBoxControl.FieldLine` proposed → `note-properties`
 		- [ ] glyph ceiling — every character is a `GlyphControl`, always (~56.7k on the 400-block note, past `UIModule`'s 50,000 cap). Accepted knowingly. **The UI data/visualization split does not fix this** — one control per element means the count is unchanged; the two share a cause but are separate problems. Escape hatch that does not change the design: a run holds `text` + its `BlockLayout` with no glyph children and calls `SyncGlyphs()` when visible
 		- [ ] P4 — selection + Ctrl+B/I run split/merge
 			- [x] **Ctrl+B/I over the range, and the format bar (2026-08-30)** — landed, See `ClaudeMemory/Decisions/document-format-bar.md`
-				- [x] **a style chosen with nothing selected is armed, not discarded (2026-08-31)** — landed, See `ClaudeMemory/Decisions/armed-style-at-the-caret.md`
-					- [ ] an arm dies on **any** caret move, Enter and Backspace included; Word keeps it across both, which needs the arm pinned to a caret position rather than to "the caret has not moved"
 				- [ ] `Text.Bold`/`Text.Italic` toggle from the selection's **first** run, so a mixed selection flips to the opposite of whatever that run was rather than to all-on
-				- [ ] strikethrough is now the only one of the three still declared and unread
 			- [x] **undo/redo (2026-08-22)** — landed, See `ClaudeMemory/Decisions/document-undo.md`
-				- [ ] `InsertFragment` is the piece to distrust — ~50 lines that exist only as the inverse of a delete, called by nothing else until paste lands. Cross-block with a destroyed tail run is where to look first. Holding Backspace is one step per repeat firing (~60 for a two-second hold against a 500-step cap, and worth re-checking now that repeat fires at all); undo restores the caret but not the selection, and does not reach `TextBoxControl`
+				- [ ] holding Backspace is one undo step per repeat firing (~60 for a two-second hold against a 500-step cap) — coalescing would fix it → `document-undo`
+			- [ ] **clipboard and text drag not GUI-verified** — Notepad ↔ Thorium through the real OS clipboard, Ctrl-held drop copying, and a drop into a torn-off window are all untested (tests keep the clipboard in process and cannot hold a key through a drag) → `text-clipboard`, `text-drag-and-drop`
 		- [ ] **the engine never recovers a key released while unfocused** — `Text.Write` is bound `<Continuous />`, so a key whose release went to another window keeps firing and pours characters into the focused note. Found because `SendKeys` triggers it every time the prompt steals focus mid-keystroke; same class as the stale-release `SolveDrag` already guards. Any GUI probe of text must use explicit key-up, and must restore any note it writes
-		- [ ] nothing prompts for a note with no file. `TextBoxControl` has no clipboard, no double-click-select-word and no horizontal scroll past its width — the rename field runs its text under the clip rather than following the caret. A clean note is still rewritten on tab close (byte-identical, but it touches mtime)
+		- [ ] nothing prompts for a note with no file. `TextBoxControl` has no double-click-select-word and no horizontal scroll past its width — the rename field runs its text under the clip rather than following the caret. A clean note is still rewritten on tab close (byte-identical, but it touches mtime)
 		- [ ] page view polish — first page flush with the pane's top/left, page fill barely differs from the gap, no headers/footers/page numbers, page changes not undoable, Custom size XML-only → `document-pages`
-		- [ ] bullet-list dot draws near-white on a light page (seen at 200% document zoom; its colour code is untouched by zoom) — not investigated → `ui-scaling`
 	- [ ] **UI scaling not verified at a display scale ≠ 100%, or across monitors of different scale** — test machine is one 1920×1080 at 100% → `ui-scaling`
 		- [ ] code blocks (B1 — monospace, no wrap, view-time syntax coloring)
 		- [ ] custom expressions (maths)
@@ -70,13 +66,20 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] a button held while the pointer leaves the **window** keeps its press tint — `Engine.HandleUI` returns before `SolveHover` when `isInWindow` is false, so no exit fires. The GLFW cursor-enter callback is where it would go
 	- [ ] Claude, chatgpt, other chatbot integrations.
 	- [ ] text upgrade
-		- [ ] simple color — the format bar's colour dropdown applies one to the selection through `StyleDelta`; picking an entry is not GUI-verified, and there is no custom-colour entry
+		- [ ] **decorations, colour picker and list markers not GUI-verified** — the colour and highlight dropdowns, the picker inside a menu, Ctrl+U, and right-click → List marker have only run under tests → `text-decorations-and-colour`, `list-markers`
+		- [ ] a list always numbers from 1, and a `.md` note keeps only digits — a chosen shape or letter/roman style is lost there → `list-markers`
 		- [x] **gradient (2026-08-22)** — landed, See `ClaudeMemory/Decisions/ui-gradients.md`
 			- [ ] a gradient cannot cross runs — a heading built from two runs gets two ramps. `GradientSpace="Self|Inherit"` on `VulkanControl`, letting the `arrangedRect` setter take the parent's rect, is the ~5-line generic fix; not built without a use for it
 			- [ ] no gradient on the outline or a button's hover/press colour (edge landed 2026-09-18, `ui-gradients` §9)
 		- [ ] alignment — needs a block-level line-width pass that has not existed since the L2 revert: runs measure themselves, so no run knows the width of a visual line it shares. Priced separately, deferred (user, 2026-08-30)
 		- [ ] horizontal lines (honestly its just a panel)
-		- [ ] tables
+		- [x] **tables (2026-09-29)** — landed, See `ClaudeMemory/Decisions/document-tables.md`
+			- [ ] no UI inserts a table; the insert slice brings a `TableEdit` record and must refuse or warn on `.md`/`.txt` notes
+			- [ ] row/column insert and delete, column resize drag, Tab past the last cell adding a row
+			- [ ] lists in cells (task checkbox finds its editor through `parent?.parent`)
+			- [ ] typing p95 up ~0.03 ms on the 1M-char scenario — likely `Blocks()` type-testing page panels, not pinned
+		- [ ] **pictures in notes, Word-style (2026-09-29)** — inline, wrap modes + free position, resize handles, Ctrl+V from the clipboard. Stages 1–2 built (mipmapped `TextureAsset.ForFile`, `<Image>`, `ClipboardImage`); 3–6 wait for tables to be committed → `note-images-plan`
+			- [ ] `UIEngineModule` reads the texture-table version after writing the table — a texture added in between is never bound; read it first → `note-images`
 	- [ ] cursor change on context
 - [ ] UI
 	- **Standing decision:** glyphs stay full controls with their own mat4 and tint — per-letter colour, rotation and animation are required. Do not propose making them plain data rows

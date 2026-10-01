@@ -120,13 +120,22 @@ namespace ArctisAurora.Core.UI
             Pool.GetSpan<GpuGradient>()[reserved] = default;
             indices.Clear();
 
-            // Hosts with no gradients of their own ship no file at all.
+            // the engine's own controls' gradients, then the host's; hosts with none ship no file
+            if (VirtualFileSystem.TryResolveFile("XML/Documents/Engine.gradients.xml", out string engine))
+                LoadFile(engine);
+
             if (!VirtualFileSystem.TryResolveFile("XML/Documents/Gradients.gradients.xml", out string path))
             {
-                Log.Debug($"no Gradients.gradients.xml found — no gradients loaded.");
+                Log.Debug($"no Gradients.gradients.xml found — only the engine's gradients loaded.");
                 return true;
             }
 
+            LoadFile(path);
+            return true;
+        }
+
+        private static void LoadFile(string path)
+        {
             XElement root = XElement.Load(path);
             foreach (XElement element in root.Elements())
             {
@@ -135,8 +144,6 @@ namespace ArctisAurora.Core.UI
                 indices[definition.name] = (uint)row;
                 Pool.GetSpan<GpuGradient>()[row] = Bake(definition);
             }
-
-            return true;
         }
 
         private static GradientDefinition ParseGradient(XElement element)

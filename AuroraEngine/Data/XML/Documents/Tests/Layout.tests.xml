@@ -4,4 +4,5 @@
 		  xsi:schemaLocation="http://arctisaurora/AuroraTestTypes ../../Schemas/TestTypeSchema.xsd" >
 	<Test Action="Layout.StackPanelArranges"/>
 	<Test Action="Layout.StarChildCrossSize"/>
+	<Test Action="Layout.GridAutoRowWrapsAtColumn"/>
 </TestSuite>

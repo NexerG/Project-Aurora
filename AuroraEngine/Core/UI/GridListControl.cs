@@ -116,45 +116,60 @@ namespace ArctisAurora.Core.UI
                 columnDefinitions[c].resolvedSize = columnDefinitions[c].sizeMode == GridSizeMode.Fixed
                     ? columnDefinitions[c].value : 0;
 
-            // Pass 2 — Auto bands take the largest child living entirely in them.
+            // Pass 2 — Auto columns take the widest child living entirely in them.
             foreach (GridCellAssignment assignment in _cellAssignments)
             {
                 if (assignment.child == null) continue;
+                if (assignment.columnSpan != 1 || columnDefinitions[assignment.column].sizeMode != GridSizeMode.Auto) continue;
                 Control child = assignment.child;
 
                 Vector2 childDesired = child.Measure(inner.size);
-
-                if (assignment.rowSpan == 1 && rowDefinitions[assignment.row].sizeMode == GridSizeMode.Auto)
-                    rowDefinitions[assignment.row].resolvedSize = MathF.Max(
-                        rowDefinitions[assignment.row].resolvedSize,
-                        childDesired.Y + child.margin.totalVertical);
-
-                if (assignment.columnSpan == 1 && columnDefinitions[assignment.column].sizeMode == GridSizeMode.Auto)
-                    columnDefinitions[assignment.column].resolvedSize = MathF.Max(
-                        columnDefinitions[assignment.column].resolvedSize,
-                        childDesired.X + child.margin.totalHorizontal);
+                columnDefinitions[assignment.column].resolvedSize = MathF.Max(
+                    columnDefinitions[assignment.column].resolvedSize,
+                    childDesired.X + child.margin.totalHorizontal);
             }
 
-            // Pass 3 — what is left goes to the Star bands, by weight.
+            // Pass 3 — what is left across goes to the Star columns, by weight.
             float totalRowGaps = rowDefinitions.Take(rows - 1).Sum(r => r.gapAfter);
             float totalColGaps = columnDefinitions.Take(cols - 1).Sum(c => c.gapAfter);
-            float fixedAndAutoH = rowDefinitions.Sum(r => r.resolvedSize);
             float fixedAndAutoW = columnDefinitions.Sum(c => c.resolvedSize);
-            float starH = MathF.Max(0, inner.height - fixedAndAutoH - totalRowGaps);
             float starW = MathF.Max(0, inner.width - fixedAndAutoW - totalColGaps);
-
-            float totalRowStars = rowDefinitions.Where(r => r.sizeMode == GridSizeMode.Star).Sum(r => r.value);
             float totalColStars = columnDefinitions.Where(c => c.sizeMode == GridSizeMode.Star).Sum(c => c.value);
-
-            for (int r = 0; r < rows; r++)
-                if (rowDefinitions[r].sizeMode == GridSizeMode.Star)
-                    rowDefinitions[r].resolvedSize = totalRowStars > 0
-                        ? starH * (rowDefinitions[r].value / totalRowStars) : 0;
 
             for (int c = 0; c < cols; c++)
                 if (columnDefinitions[c].sizeMode == GridSizeMode.Star)
                     columnDefinitions[c].resolvedSize = totalColStars > 0
                         ? starW * (columnDefinitions[c].value / totalColStars) : 0;
+
+            // Pass 4 — every child measures at its columns' width; Auto rows take the tallest.
+            foreach (GridCellAssignment assignment in _cellAssignments)
+            {
+                if (assignment.child == null) continue;
+                Control child = assignment.child;
+
+                int cEnd = Math.Min(assignment.column + assignment.columnSpan, cols);
+                float spanW = 0f;
+                for (int c = assignment.column; c < cEnd; c++)
+                    spanW += columnDefinitions[c].resolvedSize + (c < cEnd - 1 ? columnDefinitions[c].gapAfter : 0f);
+
+                Vector2 childDesired = child.Measure(new Vector2(
+                    MathF.Max(0f, spanW - child.margin.totalHorizontal), inner.height));
+
+                if (assignment.rowSpan == 1 && rowDefinitions[assignment.row].sizeMode == GridSizeMode.Auto)
+                    rowDefinitions[assignment.row].resolvedSize = MathF.Max(
+                        rowDefinitions[assignment.row].resolvedSize,
+                        childDesired.Y + child.margin.totalVertical);
+            }
+
+            // Pass 5 — what is left down goes to the Star rows, by weight.
+            float fixedAndAutoH = rowDefinitions.Sum(r => r.resolvedSize);
+            float starH = MathF.Max(0, inner.height - fixedAndAutoH - totalRowGaps);
+            float totalRowStars = rowDefinitions.Where(r => r.sizeMode == GridSizeMode.Star).Sum(r => r.value);
+
+            for (int r = 0; r < rows; r++)
+                if (rowDefinitions[r].sizeMode == GridSizeMode.Star)
+                    rowDefinitions[r].resolvedSize = totalRowStars > 0
+                        ? starH * (rowDefinitions[r].value / totalRowStars) : 0;
 
             float totalW = columnDefinitions.Sum(c => c.resolvedSize) + totalColGaps + padding.totalHorizontal;
             float totalH = rowDefinitions.Sum(r => r.resolvedSize) + totalRowGaps + padding.totalVertical;
@@ -196,8 +211,10 @@ namespace ArctisAurora.Core.UI
 
                 float cellX = colOffsets[c];
                 float cellY = rowOffsets[r];
+                float gapRight = cEnd < columnDefinitions.Count ? columnDefinitions[cEnd - 1].gapAfter : 0f;
+                float gapBelow = rEnd < rowDefinitions.Count ? rowDefinitions[rEnd - 1].gapAfter : 0f;
                 LayoutRect cellRect = new LayoutRect(cellX, cellY,
-                    colOffsets[cEnd] - cellX, rowOffsets[rEnd] - cellY).Shrink(child.margin);
+                    colOffsets[cEnd] - cellX - gapRight, rowOffsets[rEnd] - cellY - gapBelow).Shrink(child.margin);
 
                 float childW = (child.preferredWidth == 0 || child.horizontalAlignment == HorizontalAlignment.Stretch)
                     ? cellRect.width : MathF.Min(child.DesiredSize.X, cellRect.width);

@@ -4,4 +4,4 @@
         Name="ControlSampler"
 		MagFilter="Linear" MinFilter="Linear"
 		AddressModeU="Repeat" AddressModeV="Repeat" AddressModeW="Repeat"
-		Anisotropy="true" MipmapMode="Nearest"/>
+		Anisotropy="true" MipmapMode="Linear" MaxLod="1000"/>

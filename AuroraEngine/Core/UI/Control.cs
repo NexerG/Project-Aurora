@@ -777,6 +777,16 @@ namespace ArctisAurora.Core.UI
             if (gradientWord != 0) v.paint = gradientWord;
             if (edgeGradientWord != 0) v.edgePaint = edgeGradientWord;
         }
+
+        // Walks the children into the draw list; returns how many controls it reached.
+        internal virtual int CollectChildren(float z)
+        {
+            int walked = 0;
+            foreach (Entity child in children)
+                if (child is Control childControl)
+                    walked += UIEngine.Collect(childControl, z);
+            return walked;
+        }
         #endregion
 
         #region ---- pointer ----

@@ -44,6 +44,9 @@ namespace ArctisAurora.Core.Registry.Assets
         [A_XSDElementProperty("MipmapMode", "Rendering")]
         public SamplerMipmapMode mipmapMode { get; set; } = SamplerMipmapMode.Nearest;
 
+        [A_XSDElementProperty("MaxLod", "Rendering")]
+        public float maxLod { get; set; } = 0f;
+
         public Sampler handle { get; private set; }
 
         public SamplerAsset()
@@ -86,6 +89,7 @@ namespace ArctisAurora.Core.Registry.Assets
                     if (attr.Name == "AddressModeW") sa.addressModeW = Enum.Parse<SamplerAddressMode>(attr.Value);
                     if (attr.Name == "Anisotropy") sa.anisotropyEnable = bool.Parse(attr.Value);
                     if (attr.Name == "MipmapMode") sa.mipmapMode = Enum.Parse<SamplerMipmapMode>(attr.Value);
+                    if (attr.Name == "MaxLod") sa.maxLod = float.Parse(attr.Value, System.Globalization.CultureInfo.InvariantCulture);
                 }
                 sa.CreateVulkanSampler();
                 dSamplers.Add(sa.name, sa);
@@ -111,6 +115,7 @@ namespace ArctisAurora.Core.Registry.Assets
                 CompareEnable = false,
                 CompareOp = CompareOp.Always,
                 MipmapMode = (Silk.NET.Vulkan.SamplerMipmapMode)mipmapMode,
+                MaxLod = maxLod,
             };
 
             Sampler sampler;

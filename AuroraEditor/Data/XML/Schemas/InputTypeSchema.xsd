@@ -16,6 +16,8 @@
   <xs:simpleType name="InputModifier">
     <xs:restriction base="xs:string">
       <xs:enumeration value="Extend" />
+      <xs:enumeration value="Word" />
+      <xs:enumeration value="Copy" />
     </xs:restriction>
   </xs:simpleType>
   <xs:attributeGroup name="NamedModifier.Attributes">

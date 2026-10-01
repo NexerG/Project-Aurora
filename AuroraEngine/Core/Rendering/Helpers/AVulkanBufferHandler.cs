@@ -2,6 +2,7 @@
 using Silk.NET.Vulkan;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
 using Buffer = Silk.NET.Vulkan.Buffer;
 using Format = Silk.NET.Vulkan.Format;
 using Image = SixLabors.ImageSharp.Image;
@@ -39,16 +40,52 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 
             CreateImage((uint)_image.Width, (uint)_image.Height, imageFormat, ImageTiling.Optimal, ImageUsageFlags.TransferDstBit | ImageUsageFlags.SampledBit, MemoryPropertyFlags.DeviceLocalBit, ref _textureImage, ref _textureBufferMemory);
 
-            UploadTexture(_textureImage, _stagingBuffer, (uint)_image.Width, (uint)_image.Height, ref queue, ref cPool);
+            BufferImageCopy[] regions =
+            {
+                new BufferImageCopy
+                {
+                    ImageSubresource = new ImageSubresourceLayers(ImageAspectFlags.ColorBit, 0, 0, 1),
+                    ImageExtent = new Extent3D((uint)_image.Width, (uint)_image.Height, 1)
+                }
+            };
+            UploadTexture(_textureImage, _stagingBuffer, regions, ref queue, ref cPool);
 
             Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
             Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
         }
 
-        internal static void CreateTextureBuffer(ref Silk.NET.Vulkan.Image _textureImage, ref DeviceMemory _textureBufferMemory, ref Image<Rgba32> image, Format imageFormat, ref Queue queue, ref CommandPool cPool)
+        internal static void CreateTextureBuffer(ref Silk.NET.Vulkan.Image _textureImage, ref DeviceMemory _textureBufferMemory, ref Image<Rgba32> image, Format imageFormat, ref Queue queue, ref CommandPool cPool, bool mipmaps = false)
         {
             using var _image = image;
-            ulong _imageSize = (ulong)(_image.Width * _image.Height * _image.PixelType.BitsPerPixel / 8);
+            ClampToDevice(_image);
+
+            // mip chain, each level box-filtered from the one above in linear light
+            List<Image<Rgba32>> levels = new List<Image<Rgba32>> { _image };
+            while (mipmaps && (levels[^1].Width > 1 || levels[^1].Height > 1))
+            {
+                Size half = new Size(Math.Max(1, levels[^1].Width / 2), Math.Max(1, levels[^1].Height / 2));
+                levels.Add(levels[^1].Clone(c => c.Resize(new ResizeOptions
+                {
+                    Size = half,
+                    Mode = ResizeMode.Stretch,
+                    Sampler = KnownResamplers.Box,
+                    Compand = true
+                })));
+            }
+
+            int bytesPerPixel = _image.PixelType.BitsPerPixel / 8;
+            BufferImageCopy[] regions = new BufferImageCopy[levels.Count];
+            ulong _imageSize = 0;
+            for (int i = 0; i < levels.Count; i++)
+            {
+                regions[i] = new BufferImageCopy
+                {
+                    BufferOffset = _imageSize,
+                    ImageSubresource = new ImageSubresourceLayers(ImageAspectFlags.ColorBit, (uint)i, 0, 1),
+                    ImageExtent = new Extent3D((uint)levels[i].Width, (uint)levels[i].Height, 1)
+                };
+                _imageSize += (ulong)(levels[i].Width * levels[i].Height * bytesPerPixel);
+            }
 
             Buffer _stagingBuffer = default;
             DeviceMemory _stagingBufferMemory = default;
@@ -56,19 +93,40 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 
             void* _data;
             Renderer.vk.MapMemory(Renderer.logicalDevice, _stagingBufferMemory, 0, _imageSize, 0, &_data);
-            _image.CopyPixelDataTo(new Span<byte>(_data, (int)_imageSize));
+            for (int i = 0; i < levels.Count; i++)
+            {
+                int levelSize = levels[i].Width * levels[i].Height * bytesPerPixel;
+                levels[i].CopyPixelDataTo(new Span<byte>((byte*)_data + regions[i].BufferOffset, levelSize));
+            }
             Renderer.vk.UnmapMemory(Renderer.logicalDevice, _stagingBufferMemory);
 
-            CreateImage((uint)_image.Width, (uint)_image.Height, imageFormat, ImageTiling.Optimal, ImageUsageFlags.TransferDstBit | ImageUsageFlags.SampledBit, MemoryPropertyFlags.DeviceLocalBit, ref _textureImage, ref _textureBufferMemory);
+            CreateImage((uint)_image.Width, (uint)_image.Height, imageFormat, ImageTiling.Optimal, ImageUsageFlags.TransferDstBit | ImageUsageFlags.SampledBit, MemoryPropertyFlags.DeviceLocalBit, ref _textureImage, ref _textureBufferMemory, (uint)levels.Count);
 
-            UploadTexture(_textureImage, _stagingBuffer, (uint)_image.Width, (uint)_image.Height, ref queue, ref cPool);
+            UploadTexture(_textureImage, _stagingBuffer, regions, ref queue, ref cPool);
+
+            for (int i = 1; i < levels.Count; i++)
+                levels[i].Dispose();
 
             Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _stagingBuffer, null);
             Renderer.vk.FreeMemory(Renderer.logicalDevice, _stagingBufferMemory, null);
         }
 
+        // Shrinks an image past the device's 2D limit, keeping its aspect.
+        private static void ClampToDevice(Image<Rgba32> image)
+        {
+            Renderer.vk.GetPhysicalDeviceProperties(Renderer.gpu, out PhysicalDeviceProperties props);
+            uint limit = props.Limits.MaxImageDimension2D;
+            if (image.Width <= limit && image.Height <= limit) return;
+
+            float scale = (float)limit / Math.Max(image.Width, image.Height);
+            int width = Math.Max(1, (int)(image.Width * scale));
+            int height = Math.Max(1, (int)(image.Height * scale));
+            Log.Warn($"image {image.Width}x{image.Height} exceeds the device limit {limit}; uploading at {width}x{height}.");
+            image.Mutate(c => c.Resize(width, height));
+        }
+
         // Copies staging into a fresh image and releases it to the graphics family, in one submit.
-        private static void UploadTexture(Silk.NET.Vulkan.Image _image, Buffer _staging, uint _width, uint _height, ref Queue queue, ref CommandPool cPool)
+        private static void UploadTexture(Silk.NET.Vulkan.Image _image, Buffer _staging, BufferImageCopy[] regions, ref Queue queue, ref CommandPool cPool)
         {
             uint transferFamily = (uint)Renderer.queueAllocator.GetFamilyIndex(QueueFlags.TransferBit);
             uint graphicsFamily = (uint)Renderer.queueAllocator.GetFamilyIndex(QueueFlags.GraphicsBit);
@@ -88,17 +146,12 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
                     SrcAccessMask = 0,
                     DstAccessMask = AccessFlags.TransferWriteBit,
                     Image = _image,
-                    SubresourceRange = new ImageSubresourceRange(ImageAspectFlags.ColorBit, 0, 1, 0, 1)
+                    SubresourceRange = new ImageSubresourceRange(ImageAspectFlags.ColorBit, 0, Vk.RemainingMipLevels, 0, 1)
                 };
                 Renderer.vk!.CmdPipelineBarrier(_commandBuffer, PipelineStageFlags.TopOfPipeBit, PipelineStageFlags.TransferBit, 0, 0, null, 0, null, 1, ref _toTransfer);
 
-                BufferImageCopy _bufferImageCopy = new BufferImageCopy()
-                {
-                    ImageSubresource = new ImageSubresourceLayers(ImageAspectFlags.ColorBit, 0, 0, 1),
-                    ImageOffset = new Offset3D(0, 0, 0),
-                    ImageExtent = new Extent3D(_width, _height, 1),
-                };
-                Renderer.vk!.CmdCopyBufferToImage(_commandBuffer, _staging, _image, ImageLayout.TransferDstOptimal, 1, ref _bufferImageCopy);
+                fixed (BufferImageCopy* regionsPtr = regions)
+                    Renderer.vk!.CmdCopyBufferToImage(_commandBuffer, _staging, _image, ImageLayout.TransferDstOptimal, (uint)regions.Length, regionsPtr);
 
                 ImageMemoryBarrier _toShader = new()
                 {
@@ -110,7 +163,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
                     SrcAccessMask = AccessFlags.TransferWriteBit,
                     DstAccessMask = handOff ? 0 : AccessFlags.ShaderReadBit,
                     Image = _image,
-                    SubresourceRange = new ImageSubresourceRange(ImageAspectFlags.ColorBit, 0, 1, 0, 1)
+                    SubresourceRange = new ImageSubresourceRange(ImageAspectFlags.ColorBit, 0, Vk.RemainingMipLevels, 0, 1)
                 };
                 PipelineStageFlags dstStage = handOff ? PipelineStageFlags.BottomOfPipeBit : PipelineStageFlags.FragmentShaderBit;
                 Renderer.vk!.CmdPipelineBarrier(_commandBuffer, PipelineStageFlags.TransferBit, dstStage, 0, 0, null, 0, null, 1, ref _toShader);
@@ -122,7 +175,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
                 Renderer.QueueAcquire(_image);
         }
 
-        internal static void CreateImage(uint _width, uint _height, Format _format, ImageTiling _tiling, ImageUsageFlags _usage, MemoryPropertyFlags _properties, ref Silk.NET.Vulkan.Image _im, ref DeviceMemory _devMemory)
+        internal static void CreateImage(uint _width, uint _height, Format _format, ImageTiling _tiling, ImageUsageFlags _usage, MemoryPropertyFlags _properties, ref Silk.NET.Vulkan.Image _im, ref DeviceMemory _devMemory, uint _mipLevels = 1)
         {
             ImageCreateInfo _imageInfo = new()
             {
@@ -134,7 +187,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
                     Height = _height,
                     Depth = 1,
                 },
-                MipLevels = 1,
+                MipLevels = _mipLevels,
                 ArrayLayers = 1,
                 Format = _format,
                 Tiling = _tiling,
@@ -233,7 +286,7 @@ namespace ArctisAurora.EngineWork.Rendering.Helpers
 
             _createInfo.SubresourceRange.AspectMask = aspectFlags;
             _createInfo.SubresourceRange.BaseMipLevel = 0;
-            _createInfo.SubresourceRange.LevelCount = 1;
+            _createInfo.SubresourceRange.LevelCount = Vk.RemainingMipLevels;
             _createInfo.SubresourceRange.BaseArrayLayer = 0;
             _createInfo.SubresourceRange.LayerCount = 1;
 

@@ -41,7 +41,9 @@ namespace ArctisAurora.Core.UI
             stopsContextMenu = true;
 
             foreach (ContextMenuEntry entry in entries)
-                AddChild(entry is ContextMenuLine ? Line() : new Row(entry));
+                AddChild(entry is ContextMenuLine ? Line()
+                       : entry is ContextMenuContent hosted ? hosted.content
+                       : new Row(entry));
         }
 
         // At its own position and size, whatever box the root offers, slid up by the unrevealed part and cut at its anchor.

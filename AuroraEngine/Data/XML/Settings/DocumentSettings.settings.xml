@@ -26,6 +26,9 @@
 
       <UI:Page Mode="Paged" Size="A4" />
 
+      <!-- the marker each list level shows unless its list chose one; past the last, they cycle -->
+      <UI:ListLevel Marker="Disc" />
+
     </UI:DocumentLayout>
   </DocumentSettings>
 

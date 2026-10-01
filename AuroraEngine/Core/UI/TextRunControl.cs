@@ -24,8 +24,10 @@ namespace ArctisAurora.Core.UI
         public string gradient;
         public string effect;
 
-        // carried, never drawn
+        // decorations; a null highlight draws nothing behind the text
         public bool strikethrough;
+        public bool underline;
+        public string highlightHex;
 
         // where an unauthored size comes from, kept so a note saves back as it was written
         public TextStyleType stylingType;
@@ -59,6 +61,16 @@ namespace ArctisAurora.Core.UI
         private readonly List<FontAsset> _runFonts = new List<FontAsset>();
         private readonly List<uint> _runGradients = new List<uint>();
         private readonly List<uint> _runEffects = new List<uint>();
+        private readonly List<(bool underline, bool strike, uint highlight)> _runDecorations = new List<(bool, bool, uint)>();
+
+        // characters under a selection, which a highlight leaves a gap for; -1 when none
+        internal int selectedFrom = -1;
+        internal int selectedTo = -1;
+
+        // decoration geometry, as fractions of the font size
+        private const float underlineDrop = 0.12f;
+        private const float strikeRise = 0.28f;
+        private const float decorationWeight = 0.07f;
 
         // where the first line's pen starts, in design space
         private Vector2 _origin;
@@ -79,6 +91,7 @@ namespace ArctisAurora.Core.UI
         {
             _fontAsset = ResolveFont(fontName);
             role = PaletteRole.Ink;
+            kind = VulkanControlType.MTSDFControl;
         }
 
         [A_XSDElementProperty("Text", "UI", "The string this run lays out.")]
@@ -169,6 +182,7 @@ namespace ArctisAurora.Core.UI
             _runFonts.Clear();
             _runGradients.Clear();
             _runEffects.Clear();
+            _runDecorations.Clear();
 
             string s = text ?? string.Empty;
             if (spans.Count == 0)
@@ -178,6 +192,7 @@ namespace ArctisAurora.Core.UI
                 _runFonts.Add(_fontAsset);
                 _runGradients.Add(gradientId);
                 _runEffects.Add(visual.effect);
+                _runDecorations.Add((false, false, 0u));
                 return;
             }
 
@@ -199,6 +214,8 @@ namespace ArctisAurora.Core.UI
                 _runGradients.Add(spans[i].gradient == null
                     ? gradientId : Gradients.IndexOf(spans[i].gradient));
                 _runEffects.Add(spans[i].effect == null ? visual.effect : Effects.IndexOf(spans[i].effect));
+                _runDecorations.Add((spans[i].underline, spans[i].strikethrough,
+                    spans[i].highlightHex == null ? 0u : Palettes.Inline(spans[i].highlightHex)));
                 start += count;
             }
         }
@@ -285,6 +302,11 @@ namespace ArctisAurora.Core.UI
                     FontAsset font = _runFonts[segment.runIndex];
                     uint effect = _runEffects[segment.runIndex];
                     float stagger = Effects.Stagger(effect);
+                    (bool underline, bool strike, uint highlight) = _runDecorations[segment.runIndex];
+                    float segmentX = pen;
+
+                    if (highlight != 0)
+                        WriteHighlight(quads, segment, segmentX, lineTop, line.height, highlight, alpha, z - depthStep, clip, gradientRect);
 
                     for (int k = 0; k < segment.charCount; k++)
                     {
@@ -296,10 +318,56 @@ namespace ArctisAurora.Core.UI
                                           pen, baselineY, z, clip, gradientRect);
                     }
 
+                    float weight = MathF.Max(1f, run.fontSize * decorationWeight);
+                    if (underline)
+                        WriteRect(quads, segmentX, baselineY + run.fontSize * underlineDrop, pen - segmentX, weight, paint, alpha, z, clip, gradientRect);
+                    if (strike)
+                        WriteRect(quads, segmentX, baselineY - run.fontSize * strikeRise - weight * 0.5f, pen - segmentX, weight, paint, alpha, z, clip, gradientRect);
+
                     if (effect != 0)
                         FrameScheduler.RequestFrameAt(started + (segment.charStart + segment.charCount - run.charStart) * stagger + Effects.Duration(effect));
                 }
             }
+        }
+
+        // A segment's highlight, with a gap where the selection covers it.
+        private void WriteHighlight(DataPool quads, LineSegment segment, float x, float top, float height,
+                                    uint paint, float alpha, float z, Vector4 clip, Vector4 gradientRect)
+        {
+            float right = x + segment.width;
+            int end = segment.charStart + segment.charCount;
+
+            if (selectedTo <= segment.charStart || selectedFrom >= end || selectedFrom < 0)
+            {
+                WriteRect(quads, x, top, segment.width, height, paint, alpha, z, clip, gradientRect);
+                return;
+            }
+
+            float gapLeft = selectedFrom <= segment.charStart ? x : _origin.X + CaretAt(selectedFrom).x;
+            float gapRight = selectedTo >= end ? right : _origin.X + CaretAt(selectedTo).x;
+            if (gapLeft > x) WriteRect(quads, x, top, gapLeft - x, height, paint, alpha, z, clip, gradientRect);
+            if (right > gapRight) WriteRect(quads, gapRight, top, right - gapRight, height, paint, alpha, z, clip, gradientRect);
+        }
+
+        // One flat rectangle: a highlight or a text decoration.
+        private static void WriteRect(DataPool quads, float x, float y, float width, float height,
+                                      uint paint, float alpha, float z, Vector4 clip, Vector4 gradientRect)
+        {
+            if (width <= 0f || height <= 0f) return;
+
+            int row = quads.Append();
+            ref ControlGeometry g = ref quads.GetSpan<ControlGeometry>()[row];
+            g.matrix = Matrix4x4.CreateScale(width, height, 1f)
+                     * Matrix4x4.CreateTranslation(x + width * 0.5f, y + height * 0.5f, z);
+            g.clip = clip;
+            g.gradientRect = gradientRect;
+
+            ref VulkanControl v = ref quads.GetSpan<VulkanControl>()[row];
+            v = default;
+            v.type = VulkanControlType.PanelControl;
+            v.paint = paint;
+            v.alpha = alpha;
+            v.textureIndex = VulkanControl.noTexture;
         }
 
         // Cuts one glyph's quad out of the atlas and writes both of its columns, returning the pen

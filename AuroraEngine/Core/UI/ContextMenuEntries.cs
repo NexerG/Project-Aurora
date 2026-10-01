@@ -33,6 +33,14 @@ namespace ArctisAurora.Core.UI
     [A_XSDType("ContextLine", "UI")]
     public class ContextMenuLine : ContextMenuEntry { }
 
+    // A control shown as itself among a menu's rows; built in code, never authored.
+    public class ContextMenuContent : ContextMenuEntry
+    {
+        public readonly Control content;
+
+        public ContextMenuContent(Control content) => this.content = content;
+    }
+
     [A_XSDType("ContextSubmenu", "UI", AllowedChildren = typeof(ContextMenuEntry))]
     public class ContextMenuSubmenu : ContextMenuEntry
     {

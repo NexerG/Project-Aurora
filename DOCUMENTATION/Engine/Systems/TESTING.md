@@ -33,7 +33,7 @@ Thorium.exe --test
 Thorium.exe --test=Layout
 ```
 
-Run it from the host's own `bin` folder, like any launch. `--test` runs every suite and `--test=<Suite>` runs one. Each test prints a `PASS` or `FAIL` line, and the run ends with a summary line and the path of its results file, `%APPDATA%\<Host>\Tests\<yyyyMMdd-HHmmss>\results.xml`.
+Run it from the host's own `bin` folder, like any launch. `--test` runs every suite and `--test=<Suite>` runs one. Each test prints a `PASS` or `FAIL` line, and the run ends with a summary line and the path of its results file, `%APPDATA%\Arktis\<Host>\Tests\<yyyyMMdd-HHmmss>\results.xml`.
 
 The first entry is always **Boot**: the host's own UI runs for 60 ticks, and Boot fails if anything logged an error since launch.
 
@@ -222,7 +222,7 @@ The capture goes into the run's own folder, never the host's `Profiling` folder,
 
 ## Viewing results in Carbon
 
-Carbon's left column opens with a `Captures | Tests` switch. `Tests` swaps the capture list and charts for a list of run folders under `<Carbon><TestRoot Path>`, which defaults to `%APPDATA%\Thorium\Tests`; point it at another host's `Tests` folder to see that host's runs. Carbon never starts a run — runs are launched by hand and Carbon reads the folders when it opens.
+Carbon's left column opens with a `Captures | Tests` switch. `Tests` swaps the capture list and charts for a list of run folders under `<Carbon><TestRoot Path>`, which defaults to `%APPDATA%\Arktis\Thorium\Tests`; point it at another host's `Tests` folder to see that host's runs. Carbon never starts a run — runs are launched by hand and Carbon reads the folders when it opens.
 
 `TestResultsReader` is the reader, and it lives in the engine beside the runner that writes the file:
 

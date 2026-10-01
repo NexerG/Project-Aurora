@@ -6,7 +6,7 @@
 	                  TabHeight="28" TabWidth="180"
 	                  TearOffDocument="tab-window">
 		<TabItem Header="SampleNote">
-			<DocumentEditor Source="../../Notes/SampleNote.xml"/>
+			<DocumentEditor Source="../../Notes/SampleNote.xml" ContextMenu="note"/>
 		</TabItem>
 	</EditableTabs>
 	<Splitter Width="5"/>
@@ -14,7 +14,7 @@
 	                  TabHeight="28" TabWidth="180"
 	                  TearOffDocument="tab-window">
 		<TabItem Header="Keybinds">
-			<DocumentEditor Source="../../Notes/Reference/Keybinds.xml"/>
+			<DocumentEditor Source="../../Notes/Reference/Keybinds.xml" ContextMenu="note"/>
 		</TabItem>
 	</EditableTabs>
 </SplitView>

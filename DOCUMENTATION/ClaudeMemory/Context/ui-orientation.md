@@ -133,6 +133,10 @@ Why: [[ui-palettes]].
 - **HintControl** (no XML) · PanelControl — translucent wash; the tab view's drop preview. Old `HintControl`.
 - **IconControl** `<Icon>` · Control — one cell of an icon set's MTSDF atlas, by set and name
   (private `Rebind`). XML `Set`, `Icon`. Old `IconControl`.
+- **ImageControl** `<Image>` · Control — a picture file through `TextureAsset.ForFile` (mipmapped, cached per
+  path); `kind = ImageControl`, white paint. `MeasureCore` is native size capped to the width, or `Width`/`Height`
+  with the aspect filling the other. XML `Source` (absolute, or relative to the data mounts). No old counterpart.
+  [[note-images]]
 - **CaretControl** (no XML) · Control — blinking insertion bar. `OnTick`; `Focus` opts in to ticking,
   `Blur` out ([[entity-tick-group]]). Old
   `CaretControl`, [[caret-blink-and-focus]] (old).
@@ -141,15 +145,19 @@ Why: [[ui-palettes]].
 
 - **TextRunControl** abstract `<TextRun>` · Control — a paragraph as one control, a GPU quad per visible
   glyph. `spans` of `StyleSpan` (`count`, `style`, `colorHex`, `fontName`, `fontSize`, `gradient`,
-  `strikethrough`, `stylingType`, `fontSizeAuthored`, `IsBold`/`IsItalic`), `SetSpans`, `style`, `lineHeight`.
+  `strikethrough`, `underline`, `highlightHex`, `stylingType`, `fontSizeAuthored`, `IsBold`/`IsItalic`), `SetSpans`, `style`, `lineHeight`.
+  `kind` is `MTSDFControl`, so its children get the ground under it, not its ink. `Emit` writes a segment's
+  highlight (`WriteHighlight`, gapped over `selectedFrom/To`) before its glyphs and underline/strike (`WriteRect`)
+  after. [[text-decorations-and-colour]].
   Regions `layout` (`MeasureCore`, `ArrangeCore`, `Emit`) and `caret geometry` (`IndexAt`, `CaretAt`, `TextOrigin`,
   `Length`, `Lines`). `OnPointerPress` → `IGlyphPressTarget`. XML `Text`, `FontSize`, `FontName`. **`MeasureCore`
   returns the last `desired` while the run is clean and its wrap width unchanged** — anything `BuildRuns` reads
   must invalidate layout, which is why `colorHex` does. Why: [[ui-engine-stack]] § landing 4, § landing 6c.
 - **LabelControl** `<Label>` · TextRunControl — read-only text, one line: overrides `Wraps` false, so
   overflow is cut at the box unless `ClipToBounds="false"`. Old `LabelControl`.
-- **TextBoxControl** `<TextBox>` · ContainerControl, `IContext` — single-line field with caret and
-  selection. `Focus`, `SelectAll`, `WriteChar`, `Backspace`, `Delete`, `MoveCaret`, `Commit`, `Cancel`,
+- **TextBoxControl** `<TextBox>` · ContainerControl, `IContext`, `IClipboardTarget` — single-line field with caret and
+  selection. `Focus`, `SelectAll`, `WriteChar`, `Backspace(word)`, `Delete(word)`, `MoveCaret`, `Commit`, `Cancel`,
+  `Undo`/`Redo` (`history` of nested `FieldEdit`, cleared on focus/commit/cancel), `Copy`/`Cut`/`Paste`,
   `OnContextAdded`/`OnContextRemoved`; nested `FieldLine` carries the run. XML `Text`, `FontSize`,
   `TextColorHex`, `SelectionColorHex`, `CaretColorHex`. Old `TextBoxControl`, [[note-naming-and-text-field]] (old).
 - **EditableLabelControl** `<EditableLabel>` · ContainerControl — label that swaps to a text field on
@@ -159,38 +167,53 @@ Why: [[ui-palettes]].
 ## Documents
 
 - **BlockControl** (no XML) · TextRunControl — one block of a note: the paragraph's string with its runs as
-  spans. `stylingType`, `listKind`/`listLevel`/`isChecked`, `ApplyLayout(DocumentLayout)` (list indent as
-  `padding.left`, marker sync), `MeasureCore` (wraps inside the indent), `ArrangeCore` (places the dot or
-  `CheckBoxControl` marker child), `AppendRun`, `Runs()`. Region `text and spans`:
+  spans. `stylingType`, `listKind`/`listLevel`/`listMarker`/`isChecked`, resolved `shownMarker`/`listNumber`
+  (`ShowMarker`, set by `DocumentControl.RenumberLists`), `ApplyLayout(DocumentLayout)` (list indent as
+  `padding.left`, marker sync and size), `MeasureCore` (wraps inside the indent), `ArrangeCore` (shape `IconControl`
+  centred in the indent, number `LabelControl` right-aligned, or `CheckBoxControl`), `AppendRun`, `Runs()`. Also
+  declares `ListMarker` and `ListMarkers` (`Format`, `ShapeIcon`, `IsNumbered`) [[list-markers]]. Region `text and spans`:
   `InsertText`, `RemoveText`, `SplitAt`, `AppendBlock`, `Snapshot`/`SliceSnapshot`/`Restore`/`From`,
   `InsertSlice`/`AppendSlice`, `StyleAt`, `StyleRange`, `SplitSpanAt`, `MergeSpans`. A boundary belongs to the
   span **after** it. Replaces `Block`/`ContentBlock` + `TextRun`.
 - **Run** `<Run>` — a run as the file writes it; exists at load and save only. `Text`, `Bold`, `Italic`,
-  `Strikethrough`, `ColorHex`, `ControlColor`, `Gradient`, `FontName`, `FontSize`, `FontSizeAuthored`,
+  `Strikethrough`, `Underline`, `ColorHex`, `HighlightHex`, `ControlColor`, `Gradient`, `FontName`, `FontSize`, `FontSizeAuthored`,
   `StylingType`.
 - **DocumentControl** (no XML) · ContainerControl, `IGlyphPressTarget` — the content area. Regions `caret`
-  (`SetCaret`, `CollapseSelection`, `GlyphPressed`, `OnPointerTap`), `caret navigation` (`CaretPoint`,
+  (`SetCaret`, `CollapseSelection`, `GlyphPressed`/`OnPointerPress` → `PressAt`, `OnPointerTap`), `caret navigation` (`CaretPoint`,
   `CaretAtPoint`, `CaretOffText`, `AdjacentBlock`), `selection` (`SelectWord`, `SelectAll`,
-  `OrderedSelection`, highlights inserted at the **head** of `children`, after the page panels, so they paint behind the text),
+  `OrderedSelection`, `Select`, `InSelection`, `SelectedFragment`, `CopySelection`), `text drag` (`BeginTextDrag`,
+  `TextDragSource`, `ShowDropAt`/`HideDrop` — `dropCaret` is also the drag token; [[text-drag-and-drop]]), highlights inserted at the **head** of `children`, after the page panels, so they paint behind the text),
   `pages` (`page`, `zoom`, `Paginate` — blocks laid on paper and line tops rewritten, `ArrangePages` — page panels at the very head, `Mm`),
-  `editing` (`DeleteSelection`, `SplitBlock`, `TypeChar`, `Blocks`), `lists` (`TypeListPrefix`,
-  `ClearListAtCaret`, `ShiftListLevel`, `SetBlockList`), `styling` (`StyleSource`,
+  `editing` (`DeleteSelection(restoreSelection)`, `PasteText`, `InsertAt`, `DropSelection`, `Insert`, `FragmentFromText`, `ForDestination` — [[text-clipboard]]; `SplitBlock`, `TypeChar`, `Blocks` — flat, table cells included; `TableViewport`,
+  `OneContainer`), `lists` (`TypeListPrefix`,
+  `SetListMarker`, `ListsChanged`, `RenumberLists` — run from `MeasureCore` when `listsDirty`,
+  `ClearListAtCaret`, `ShiftListLevel`, `SetBlockList`), `styling` (`StyleSource`, `DisarmStyle`, `KeepDeletedStyle`,
   `CaretBlockStyling`, `ApplyStyle`, `ArmStyle`, `ApplyStyleTo`/`ApplyStyleBetween`, `SetBlockStyling`,
   `SnapshotBlocks`, `RestoreBlocks`), `addressing` (`AddressOf`, `Resolve`, `CaretTo`) and `undo primitives`
-  (`InsertText`, `RemoveText`, `DeleteBetween`, `InsertFragment`, `JoinBlockWithNext`). Also declares
+  (`InsertText`, `RemoveText`, `DeleteBetween`, `InsertFragment`, `InsertBetween`, `JoinBlockWithNext`). Also declares
   `CaretSlot`, `StyleDelta`, `CaretStyle` and `PageBands`. `header` — one control at the top margin of page 1,
-  `Paginate` starts below it. Old `DocumentControl`. [[document-pages]], [[note-properties]]
-- **DocumentEditorControl** `<DocumentEditor>` · ScrollableControl, `IContext` — one open note.
+  `Paginate` starts below it. `MeasureCore` skips the blocks while the paper is unchanged, and passes
+  `Paginate(paper, from, to)` the changed block range so it resumes and stops early;
+  `CollectChildren` draws only the pages and blocks the clip touches. Old `DocumentControl`. [[document-pages]], [[note-properties]], [[ui-draw-list]]
+- **TableControl** (no XML; `<Table>` in a note) · GridListControl — a note's table: Fixed columns from
+  `widths` × zoom, Auto rows, each cell a vertical `StackPanelControl` of `BlockControl`s. `AddRow`, `Cells`,
+  `AppendBlocks` (feeds `DocumentControl.Blocks`), `StepCell`, `SetZoom`, `ApplyLayout`; region `pages`
+  (`FirstRowHeight`, `Paginate` — page pushes written into `gapAfter`, zeroed again in `MeasureCore`); borders
+  are `PanelControl`s appended to `children` past the cell assignments. Lives inside a horizontal
+  `ScrollableControl` that `DocumentEditorControl.LoadDocument` builds. [[document-tables]]
+- **DocumentEditorControl** `<DocumentEditor>` · ScrollableControl, `IContext`, `IClipboardTarget` — one open note.
   `Source`/`LoadPath`/`LoadDocument` (builds the properties header for `.md`/`.xml`), `Save` (refreshes it),
   `needsNaming`, `FocusCaret`; regions `styling` (forwards under a `BeginStep`; also `SetChecked`, `ShiftListLevel`,
   `Page`/`SetPage`, and the non-undoable `SetPalette`/`ApplyPalette`, `SetLayout`, `SetFrontmatterValue`), `selection` (`SelectLine`, `BeginSelectionDrag`, `OnDrag` + autoscroll), `caret movement`
-  (`MoveCaret`), `editing` (`Backspace`, `Delete`, `SplitBlock`, `TypeChar`), `history`
+  (`MoveCaret`, `MoveWord`, `MoveToEnd`), `editing` (`Backspace(word)`, `Delete(word)`, `SplitBlock`, `TypeChar`),
+  `clipboard` (`Copy`, `Cut`, `Paste`), `text drop` (`DraggingOver*`, `FinishDrag`), `history`
   (`BeginStep`/`Undo`/`Redo`/`MarkDirty`), `focus`. `ArrangeCore` scrolls to the caret and **must never exit with
   the arrange flag set**. XML adds `CaretColorHex`, `SelectionColorHex` to the scrollable's. Old
   `DocumentEditorControl`.
 - **DocumentToolbarControl** `<DocumentToolbar>` · StackPanelControl — the format bar for whichever
   note holds the caret; resolves it per press through `TextInputActions.Editor()` and takes no active
-  control. `OnTick` (opted in at construction) reflects bold/italic/styling/colour/size/page format; `OpenPage` is the page menu; nested `ToolButton` (acts on press) and
+  control. `OnTick` (opted in at construction) reflects bold/italic/underline/highlight/styling/colour/size/page format;
+  `OpenColors`/`OpenHighlights` drop presets plus a `Picker` (`ColorPickerControl` in a `ContextMenuContent`); `OpenPage` is the page menu; nested `ToolButton` (acts on press) and
   `PxBox` (the one part that does take the focus; captures the range on its press). XML `HoverColorHex`,
   `PressColorHex`, `IdleInkColorHex`, `ActiveInkColorHex`, `SeparatorColorHex`, `FieldColorHex`. Old
   `DocumentToolbarControl`, [[document-format-bar]], [[armed-style-at-the-caret]] (old).
@@ -222,11 +245,14 @@ Why: [[ui-palettes]].
   `LastChildFill`. Old `DockingControl`.
 - **GridListControl** `<GridList>` · ContainerControl — band grid; a child claims its cell with
   `Grid.Row`/`Grid.Column`. Child elements `<RowDefinition Height SizeMode GapAfter>`,
-  `<ColumnDefinition Width SizeMode GapAfter>`; `SizeMode` is `Fixed`/`Auto`/`Star`. Old `GridListControl`.
+  `<ColumnDefinition Width SizeMode GapAfter>`; `SizeMode` is `Fixed`/`Auto`/`Star`. Measure resolves
+  Fixed → Auto columns → Star columns → Auto rows (each child at its spanned column width) → Star rows; a cell's
+  rect stops before its last band's gap. Old `GridListControl`.
 - **ScrollableControl** `<Scrollable>` (0–1 child) · ContainerControl — scrolls its child; one thumb
   per axis, appended last so hit-test reaches them first; no gutter — thumbs overlay the content's
   edge. Regions `properties`, `state`, `layout`,
-  `scrolling`: `OnScrollInput`, `OnPointerScroll`, `SetScrollOffset`/`GetScrollOffset`, `ScrollIntoView`. XML
+  `scrolling`: `OnScrollInput`, `OnPointerScroll` (wheel X drives X, wheel Y drives Y, never crossed; an
+  unmoved axis bubbles), `SetScrollOffset`/`GetScrollOffset`, `ScrollIntoView`. XML
   `ScrollDirection`, `ScrollSensitivity`, `Overscroll`, `ThumbColorHex`, `ThumbHoverColorHex`,
   `ThumbPressColorHex`. Old `ScrollableControl`, [[scrollbar-thumb]], [[scroll-overscroll]] (old).
 - **ScrollThumbControl** (no XML) · ButtonControl — the thumb; its drag becomes a scroll offset.
@@ -299,7 +325,12 @@ Why: [[ui-palettes]].
   it at its anchor. Old `ContextMenuControl`.
 - **ContextMenuEntries** — the menu document: root `<ContextMenu>` (`ContextMenu`); entries
   (`ContextMenuEntry`) `<ContextButton Text Action>` (`ContextMenuButton`), `<ContextLine>`
-  (`ContextMenuLine`), `<ContextSubmenu Text>` (`ContextMenuSubmenu`).
+  (`ContextMenuLine`), `<ContextSubmenu Text>` (`ContextMenuSubmenu`); code-only `ContextMenuContent` hosts a
+  control as itself among the rows (the colour pickers).
+- **ColorPickerControl** `<ColorPicker Hex>` · ContainerControl — S/V field (hue quad + `picker-white`/`picker-black`
+  washes), `picker-hue` strip, filled handles, swatch, hex `TextBoxControl`; lays its parts out by hand. `hex`,
+  `onPicked` (drag release, committed hex), `OnPointerPress`→`StartDrag`/`OnDrag`/`OnDragStop`; static
+  `TryParseHex`, `ToHex`, `HsvToRgb`, `RgbToHsv`. Gradients in `Engine.gradients.xml`. [[text-decorations-and-colour]]
 - **`Registry.Assets.ContextMenuAsset`** — resolves a menu's path only. Data
   `*/Data/XML/Documents/Menus/*.menu.xml`, registered in the host's `*.assets.xml`; the engine's `view` and
   `tab` in `EngineAssets.assets.xml`.

@@ -173,6 +173,9 @@ Limits now: gradient id 14 bits (16383), `firstSlot` 16 bits; unchecked.
 
 ## Still open
 
+- The engine's own controls ship gradients in `Engine.gradients.xml`, loaded before the host's
+  `Gradients.gradients.xml` (2026-09-29, `ColorPickerControl`); a host naming the same gradient replaces it.
+  See [[text-decorations-and-colour]].
 - **No gradient on the outline** (the edge takes one since §9).
 - **No per-state gradients.** `ButtonControl` has `HoverColorHex`/`PressColorHex` with no gradient
   twin, so a gradient button does not respond to hover.

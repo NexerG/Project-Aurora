@@ -41,6 +41,8 @@ ArctisAurora.Core.Editing -> AuroraEngine/Core/Editing/IEditRecord.cs
 ArctisAurora.Core.Editing -> AuroraEngine/Core/Editing/UndoStack.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/AuroraFont.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/Bezier.cs
+ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/ClipboardImage.cs
+ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/ClipboardText.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FileObject.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FolderPicker.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/Glyph.cs
@@ -87,6 +89,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/BlockControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ButtonControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/CaretControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/CheckBoxControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ColorPickerControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ConfirmWindow.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ConsoleControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ContainerControl.cs
@@ -115,6 +118,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Gradients.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/GridListControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/HintControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/IconControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ImageControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/KeyCaptureControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/LabelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/LayoutEngine.cs
@@ -138,6 +142,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SplitViewControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/StackPanelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TabActions.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TabItemControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TableControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TabStripButtonControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TabViewControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TextBoxControl.cs

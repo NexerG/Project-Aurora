@@ -4,6 +4,7 @@ using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.Filing;
 using ArctisAurora.EngineWork;
 using System.Numerics;
+using System.Text;
 
 namespace ArctisAurora.Core.UI
 {
@@ -31,18 +32,27 @@ namespace ArctisAurora.Core.UI
         public readonly bool? bold;
         public readonly bool? italic;
         public readonly bool? strikethrough;
+        public readonly bool? underline;
         public readonly string colorHex;
+        public readonly string highlightHex;
         public readonly int? fontSize;
 
         public StyleDelta(bool? bold = null, bool? italic = null, bool? strikethrough = null,
-            string colorHex = null, int? fontSize = null)
+            string colorHex = null, int? fontSize = null, bool? underline = null, string highlightHex = null)
         {
             this.bold = bold;
             this.italic = italic;
             this.strikethrough = strikethrough;
+            this.underline = underline;
             this.colorHex = colorHex;
+            this.highlightHex = highlightHex;
             this.fontSize = fontSize;
         }
+
+        // Everything a span carries, as a delta that would give another span the same look.
+        public static StyleDelta Of(StyleSpan span) => new StyleDelta(
+            span.IsBold, span.IsItalic, span.strikethrough, span.colorHex ?? string.Empty,
+            span.fontSizeAuthored ? span.fontSize : null, span.underline, span.highlightHex ?? string.Empty);
 
         public void Apply(ref StyleSpan span)
         {
@@ -52,7 +62,9 @@ namespace ArctisAurora.Core.UI
                                 : isItalic ? FontStyle.Italic : FontStyle.Regular;
 
             if (strikethrough.HasValue) span.strikethrough = strikethrough.Value;
+            if (underline.HasValue) span.underline = underline.Value;
             if (colorHex != null) span.colorHex = colorHex.Length == 0 ? null : colorHex;
+            if (highlightHex != null) span.highlightHex = highlightHex.Length == 0 ? null : highlightHex;
             if (fontSize.HasValue)
             {
                 span.fontSizeAuthored = true;
@@ -63,14 +75,17 @@ namespace ArctisAurora.Core.UI
         // This delta with another laid over it; the newer one wins wherever it speaks.
         public StyleDelta With(StyleDelta over) => new StyleDelta(
             over.bold ?? bold, over.italic ?? italic, over.strikethrough ?? strikethrough,
-            over.colorHex ?? colorHex, over.fontSize ?? fontSize);
+            over.colorHex ?? colorHex, over.fontSize ?? fontSize, over.underline ?? underline,
+            over.highlightHex ?? highlightHex);
 
         // Whether applying this would move anything on the span.
         public bool Changes(StyleSpan span) =>
             (bold.HasValue && bold != span.IsBold)
             || (italic.HasValue && italic != span.IsItalic)
             || (strikethrough.HasValue && strikethrough != span.strikethrough)
+            || (underline.HasValue && underline != span.underline)
             || (colorHex != null && (colorHex.Length == 0 ? null : colorHex) != span.colorHex)
+            || (highlightHex != null && (highlightHex.Length == 0 ? null : highlightHex) != span.highlightHex)
             || (fontSize.HasValue && fontSize != span.fontSize);
     }
 
@@ -81,7 +96,9 @@ namespace ArctisAurora.Core.UI
         public readonly bool bold;
         public readonly bool italic;
         public readonly bool strikethrough;
+        public readonly bool underline;
         public readonly string colorHex;
+        public readonly string highlightHex;
         public readonly int fontSize;
 
         public CaretStyle(BlockControl block, StyleSpan span, StyleDelta armed)
@@ -89,7 +106,9 @@ namespace ArctisAurora.Core.UI
             bold = armed.bold ?? span.IsBold;
             italic = armed.italic ?? span.IsItalic;
             strikethrough = armed.strikethrough ?? span.strikethrough;
+            underline = armed.underline ?? span.underline;
             colorHex = armed.colorHex == null ? span.colorHex : armed.colorHex.Length == 0 ? null : armed.colorHex;
+            highlightHex = armed.highlightHex == null ? span.highlightHex : armed.highlightHex.Length == 0 ? null : armed.highlightHex;
             fontSize = armed.fontSize ?? (span.fontSize > 0 ? span.fontSize : block.fontSize);
         }
     }
@@ -141,6 +160,9 @@ namespace ArctisAurora.Core.UI
         private readonly List<PanelControl> pages = new List<PanelControl>();
         private readonly List<float> blockTops = new List<float>();
         private readonly List<float> blockHeights = new List<float>();
+        private readonly List<Control> blockControls = new List<Control>();
+        private Vector2 measuredPaper;
+        private PageBands paginatedBands;
         private int pageCount;
         private float pageHeight;
 
@@ -169,6 +191,7 @@ namespace ArctisAurora.Core.UI
 
         private CaretControl caret;
         private readonly List<PanelControl> highlights = new List<PanelControl>();
+        private readonly List<BlockControl> selectedBlocks = new List<BlockControl>();
 
         public BlockControl caretBlock { get; private set; }
         public int caretOffset { get; private set; }
@@ -178,6 +201,20 @@ namespace ArctisAurora.Core.UI
 
         // a style change with nothing to apply it to, spent on the next character typed
         private StyleDelta pending;
+
+        // a selection picked up by a press, and where it would land
+        internal bool textDragging { get; private set; }
+        internal bool textDragHovered;
+        private CaretSlot textDragPress;
+        private CaretControl dropCaret;
+        private CaretSlot? dropSlot;
+
+        // list numbers and markers are stale; resolved at the next measure
+        private bool listsDirty = true;
+
+        // the last copy with its formatting, for a paste of the same text
+        private static string? copiedText;
+        private static DocumentFragment? copiedFragment;
 
         // A line above the caret ends exactly where the caret's line begins; the slack is for the
         // float arithmetic that got them both there.
@@ -221,25 +258,32 @@ namespace ArctisAurora.Core.UI
         {
             if (run is not BlockControl block) return;
 
-            SetCaret(block, index, Extending);
-            Editor?.BeginSelectionDrag();
+            PressAt(block, index);
         }
 
         // A press that landed on the document itself — the gap between blocks, or past the last one.
         public override bool OnPointerPress(PointerEvent e)
         {
             if (CaretOffText(e.point, out BlockControl block, out int offset))
-            {
-                SetCaret(block, offset, Extending);
-                Editor?.BeginSelectionDrag();
-            }
+                PressAt(block, offset);
 
             return true;
+        }
+
+        // A press inside the selection picks it up; anywhere else places the caret.
+        private void PressAt(BlockControl block, int offset)
+        {
+            DisarmStyle();
+            if (!Extending && InSelection(block, offset) && BeginTextDrag(new CaretSlot(block, offset))) return;
+
+            SetCaret(block, offset, Extending);
+            Editor?.BeginSelectionDrag();
         }
 
         // Two clicks take the word, three the visual line.
         public override bool OnPointerTap(PointerEvent e)
         {
+            if (e.tapCount >= 2) DisarmStyle();
             if (e.tapCount == 2) SelectWord();
             else if (e.tapCount >= 3) Editor?.SelectLine();
             else return false;
@@ -285,10 +329,8 @@ namespace ArctisAurora.Core.UI
             float bestY = float.MaxValue;
             float bestX = float.MaxValue;
 
-            foreach (Entity child in children)
+            foreach (BlockControl candidate in Blocks())
             {
-                if (child is not BlockControl candidate) continue;
-
                 IReadOnlyList<TextLine> lines = candidate.Lines;
                 if (lines == null) continue;
 
@@ -348,11 +390,8 @@ namespace ArctisAurora.Core.UI
 
         private BlockControl LastBlock()
         {
-            BlockControl last = null;
-            foreach (Entity child in children)
-                if (child is BlockControl block) last = block;
-
-            return last;
+            List<BlockControl> blocks = Blocks();
+            return blocks.Count > 0 ? blocks[^1] : null;
         }
 
         private static float Distance(float value, float low, float high) =>
@@ -360,13 +399,6 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- selection ----
-        private enum CharClass { Space, Word, Symbol }
-
-        private static CharClass ClassOf(char c) =>
-            char.IsWhiteSpace(c) ? CharClass.Space
-            : char.IsLetterOrDigit(c) || c == '_' ? CharClass.Word
-            : CharClass.Symbol;
-
         public bool HasSelection => caretBlock != null && !anchor.Equals(Focus);
 
         // The run of one character class around the caret, inside the block.
@@ -375,19 +407,19 @@ namespace ArctisAurora.Core.UI
             if (caretBlock == null) return;
 
             string s = caretBlock.text ?? string.Empty;
-            CharClass? right = caretOffset < s.Length ? ClassOf(s[caretOffset]) : null;
-            CharClass? left = caretOffset > 0 ? ClassOf(s[caretOffset - 1]) : null;
+            TextInputActions.CharClass? right = caretOffset < s.Length ? TextInputActions.ClassOf(s[caretOffset]) : null;
+            TextInputActions.CharClass? left = caretOffset > 0 ? TextInputActions.ClassOf(s[caretOffset - 1]) : null;
 
             // either edge of a word takes the word, not the space beside it
-            CharClass? picked = right == CharClass.Word || left == CharClass.Word
-                ? CharClass.Word : right ?? left;
+            TextInputActions.CharClass? picked = right == TextInputActions.CharClass.Word || left == TextInputActions.CharClass.Word
+                ? TextInputActions.CharClass.Word : right ?? left;
             if (picked == null) return;
 
             int start = caretOffset;
-            while (start > 0 && ClassOf(s[start - 1]) == picked) start--;
+            while (start > 0 && TextInputActions.ClassOf(s[start - 1]) == picked) start--;
 
             int end = caretOffset;
-            while (end < s.Length && ClassOf(s[end]) == picked) end++;
+            while (end < s.Length && TextInputActions.ClassOf(s[end]) == picked) end++;
 
             anchor = new CaretSlot(caretBlock, start);
             SetCaret(caretBlock, end, true);
@@ -399,6 +431,7 @@ namespace ArctisAurora.Core.UI
             List<BlockControl> blocks = Blocks();
             if (blocks.Count == 0) return;
 
+            DisarmStyle();
             anchor = new CaretSlot(blocks[0], 0);
             SetCaret(blocks[^1], blocks[^1].Length, true);
         }
@@ -419,6 +452,48 @@ namespace ArctisAurora.Core.UI
             return true;
         }
 
+        // Puts a selection back by address; equal ends leave only a caret.
+        internal void Select(DocumentAddress from, DocumentAddress to)
+        {
+            if (!Resolve(from, out BlockControl anchorBlock, out int anchorOffset)) return;
+            if (!Resolve(to, out BlockControl block, out int offset)) return;
+
+            anchor = new CaretSlot(anchorBlock, anchorOffset);
+            SetCaret(block, offset, true);
+        }
+
+        internal bool InSelection(BlockControl block, int offset)
+        {
+            if (!OrderedSelection(out DocumentAddress from, out DocumentAddress to)) return false;
+
+            DocumentAddress at = AddressOf(block, offset);
+            return !Before(at, from) && !Before(to, at);
+        }
+
+        private static bool Before(DocumentAddress a, DocumentAddress b) =>
+            a.block < b.block || (a.block == b.block && a.offset < b.offset);
+
+        // The selection as data, when it sits in one container and so can be lifted out.
+        internal DocumentFragment? SelectedFragment()
+        {
+            if (!OrderedSelection(out DocumentAddress from, out DocumentAddress to)) return null;
+            return OneContainer(from.block, to.block) ? CaptureFragment(from, to) : null;
+        }
+
+        // Puts the selection on the clipboard as plain text, keeping its formatting for our own paste.
+        internal bool CopySelection()
+        {
+            if (!OrderedSelection(out DocumentAddress from, out DocumentAddress to)) return false;
+
+            DocumentFragment fragment = CaptureFragment(from, to);
+            string text = string.Join(Environment.NewLine, fragment.blocks.Select(block => block.text));
+
+            copiedText = text;
+            copiedFragment = fragment;
+            ClipboardText.Set(text);
+            return true;
+        }
+
         // Boxes for the selected range, one per visual line it covers. Everything unused is arranged
         // to nothing rather than destroyed — a drag would otherwise create and free controls every
         // tick, each one a pool allocation and a full paint-order permute.
@@ -426,15 +501,23 @@ namespace ArctisAurora.Core.UI
         {
             int used = 0;
 
+            foreach (BlockControl marked in selectedBlocks)
+                marked.selectedFrom = marked.selectedTo = -1;
+            selectedBlocks.Clear();
+
             if (OrderedSelection(out DocumentAddress from, out DocumentAddress to))
             {
                 List<BlockControl> blocks = Blocks();
 
                 for (int i = from.block; i <= to.block && i < blocks.Count; i++)
-                    used = HighlightBlock(blocks[i],
-                        i == from.block ? from.offset : 0,
-                        i == to.block ? to.offset : blocks[i].Length,
-                        used);
+                {
+                    BlockControl block = blocks[i];
+                    block.selectedFrom = i == from.block ? from.offset : 0;
+                    block.selectedTo = i == to.block ? to.offset : block.Length;
+                    selectedBlocks.Add(block);
+
+                    used = HighlightBlock(block, block.selectedFrom, block.selectedTo, used);
+                }
             }
 
             for (int i = used; i < highlights.Count; i++)
@@ -449,6 +532,7 @@ namespace ArctisAurora.Core.UI
             if (lines == null || to <= from) return used;
 
             Vector2 origin = block.TextOrigin;
+            ScrollableControl? viewport = TableViewport(block);
 
             foreach (TextLine line in lines)
             {
@@ -467,8 +551,11 @@ namespace ArctisAurora.Core.UI
                 float left = start == lineStart ? 0f : block.CaretAt(start).x;
                 float right = end == lineEnd ? line.width : block.CaretAt(end).x;
 
-                Highlight(used++).Arrange(new LayoutRect(
-                    origin.X + left, origin.Y + line.top, right - left, line.height));
+                LayoutRect box = new LayoutRect(origin.X + left, origin.Y + line.top, right - left, line.height);
+                if (viewport != null) box = LayoutRect.Intersect(box, viewport.arrangedRect);
+                if (box.width <= 0f) continue;
+
+                Highlight(used++).Arrange(box);
             }
 
             return used;
@@ -494,14 +581,151 @@ namespace ArctisAurora.Core.UI
 
         #region ---- editing ----
         // Removes the selected range; false when nothing was selected.
-        public bool DeleteSelection()
+        public bool DeleteSelection(bool restoreSelection = true)
         {
             if (!OrderedSelection(out DocumentAddress from, out DocumentAddress to)) return false;
+            if (!OneContainer(from.block, to.block)) return false;
+
+            DocumentAddress anchorAt = AddressOf(anchor.block, anchor.offset);
+            DocumentAddress caretAt = restoreSelection ? AddressOf(caretBlock, caretOffset) : anchorAt;
 
             DocumentFragment fragment = CaptureFragment(from, to);
-            undo?.Push(new DeleteRangeEdit(this, from, to, fragment));
+            undo?.Push(new DeleteRangeEdit(this, from, to, fragment, anchorAt, caretAt));
             DeleteBetween(from, to);
+            KeepDeletedStyle(fragment);
             return true;
+        }
+
+        // What is typed next looks like the first character deleted; a style chosen outright still wins.
+        private void KeepDeletedStyle(DocumentFragment fragment)
+        {
+            foreach (BlockSnapshot block in fragment.blocks)
+                foreach (StyleSpan span in block.spans)
+                {
+                    if (span.count == 0) continue;
+
+                    StyleDelta kept = StyleDelta.Of(span);
+                    if (kept.Changes(caretBlock.StyleAt(caretOffset))) pending = kept.With(pending);
+                    return;
+                }
+        }
+
+        internal void DisarmStyle() => pending = default;
+
+        // Replaces the selection with text; the caret ends after it.
+        internal bool PasteText(string text)
+        {
+            if (HasSelection && !DeleteSelection()) return false;
+            if (caretBlock == null) return false;
+
+            DocumentFragment fragment = text == copiedText && copiedFragment != null
+                ? copiedFragment
+                : FragmentFromText(text, caretBlock, caretOffset);
+
+            Insert(AddressOf(caretBlock, caretOffset), ForDestination(fragment, caretBlock));
+            DisarmStyle();
+            return true;
+        }
+
+        // Puts a fragment in at a slot and leaves it selected — a drop from another note.
+        internal void InsertAt(CaretSlot slot, DocumentFragment fragment)
+        {
+            DocumentAddress from = AddressOf(slot.block, slot.offset);
+            DocumentAddress to = Insert(from, ForDestination(fragment, slot.block));
+            Select(from, to);
+            DisarmStyle();
+        }
+
+        // Moves or copies the selection to a slot, selected there; false for a slot inside it.
+        internal bool DropSelection(CaretSlot slot, bool copy)
+        {
+            if (!OrderedSelection(out DocumentAddress from, out DocumentAddress to)) return false;
+            if (InSelection(slot.block, slot.offset)) return false;
+
+            DocumentFragment fragment = SelectedFragment();
+            if (fragment == null) return false;
+
+            DocumentAddress at = AddressOf(slot.block, slot.offset);
+            if (!copy)
+            {
+                DeleteSelection();
+                if (Before(to, at))
+                    at = at.block == to.block
+                        ? new DocumentAddress(from.block, from.offset + at.offset - to.offset)
+                        : new DocumentAddress(at.block - (to.block - from.block), at.offset);
+            }
+
+            if (!Resolve(at, out BlockControl block, out _)) return false;
+            DocumentAddress end = Insert(at, ForDestination(fragment, block));
+            Select(at, end);
+            DisarmStyle();
+            return true;
+        }
+
+        // Records and performs an insert; returns where it ends.
+        private DocumentAddress Insert(DocumentAddress from, DocumentFragment fragment)
+        {
+            DocumentAddress to = fragment.blocks.Count == 1
+                ? new DocumentAddress(from.block, from.offset + fragment.blocks[0].text.Length)
+                : new DocumentAddress(from.block + fragment.blocks.Count - 1, fragment.blocks[^1].text.Length);
+
+            undo?.Push(new InsertRangeEdit(this, from, to, fragment));
+            InsertBetween(from, to, fragment);
+            return to;
+        }
+
+        // Plain text as paragraphs, each in the style and block kind at the caret.
+        private static DocumentFragment FragmentFromText(string text, BlockControl at, int offset)
+        {
+            StyleSpan style = at.StyleAt(offset);
+            DocumentFragment fragment = new DocumentFragment();
+
+            foreach (string line in text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n'))
+            {
+                StringBuilder clean = new StringBuilder(line.Length);
+                foreach (char c in line)
+                    if (c == '\t') clean.Append(' ');
+                    else if (!char.IsControl(c)) clean.Append(c);
+
+                BlockSnapshot block = new BlockSnapshot
+                {
+                    stylingType = at.stylingType,
+                    listKind = at.listKind,
+                    listLevel = at.listLevel,
+                    listMarker = at.listMarker,
+                    text = clean.ToString()
+                };
+
+                StyleSpan span = style;
+                span.count = block.text.Length;
+                block.spans.Add(span);
+                fragment.blocks.Add(block);
+            }
+
+            return fragment;
+        }
+
+        // The last block of a multi-block fragment takes the destination block's kind.
+        private static DocumentFragment ForDestination(DocumentFragment fragment, BlockControl destination)
+        {
+            if (fragment.blocks.Count < 2) return fragment;
+
+            BlockSnapshot last = fragment.blocks[^1];
+            BlockSnapshot landed = new BlockSnapshot
+            {
+                stylingType = destination.stylingType,
+                listKind = destination.listKind,
+                listLevel = destination.listLevel,
+                listMarker = destination.listMarker,
+                isChecked = destination.isChecked,
+                text = last.text
+            };
+            landed.spans.AddRange(last.spans);
+
+            DocumentFragment reshaped = new DocumentFragment();
+            reshaped.blocks.AddRange(fragment.blocks.Take(fragment.blocks.Count - 1));
+            reshaped.blocks.Add(landed);
+            return reshaped;
         }
 
         // Splits the caret's block in two, the second carrying everything from the caret on.
@@ -510,7 +734,12 @@ namespace ArctisAurora.Core.UI
             DeleteSelection();
 
             if (caretBlock == null) return;
-            if (caretBlock.Length == 0 && ClearListAtCaret()) return;
+            if (caretBlock.Length == 0 && caretBlock.listKind != ListKind.None)
+            {
+                if (caretBlock.listLevel > 0) ShiftListLevel(-1);
+                else ClearListAtCaret();
+                return;
+            }
             SplitBlockAt(AddressOf(caretBlock, caretOffset));
         }
 
@@ -562,10 +791,21 @@ namespace ArctisAurora.Core.UI
         // end, so a new one goes in beside its neighbour rather than at either end.
         private void InsertBlockAfter(BlockControl after, BlockControl block)
         {
+            if (after.parent is StackPanelControl cell)
+            {
+                cell.children.Insert(cell.children.IndexOf(after) + 1, block);
+                block.parent = cell;
+                MarkTreeOrderDirty();
+                cell.InvalidateLayout();
+                ListsChanged();
+                return;
+            }
+
             children.Insert(children.IndexOf(after) + 1, block);
             block.parent = this;
             MarkTreeOrderDirty();
             InvalidateLayout();
+            ListsChanged();
 
             document.blocks.Insert(document.blocks.IndexOf(after) + 1, block);
         }
@@ -575,15 +815,105 @@ namespace ArctisAurora.Core.UI
         {
             document.blocks.Remove(block);
             block.Destroy();
+            ListsChanged();
         }
 
+        // Every block in reading order, a table's cells included.
         internal List<BlockControl> Blocks()
         {
             List<BlockControl> blocks = new List<BlockControl>();
             foreach (Entity child in children)
+            {
                 if (child is BlockControl block) blocks.Add(block);
+                else if (TableIn(child) is TableControl table) table.AppendBlocks(blocks);
+            }
 
             return blocks;
+        }
+
+        // The table a child of the document holds, when it is a table's viewport.
+        private static TableControl? TableIn(Entity child)
+        {
+            if (child is not ScrollableControl viewport) return null;
+
+            foreach (Entity entry in viewport.children)
+                if (entry is TableControl table) return table;
+
+            return null;
+        }
+
+        // The viewport of the table a block sits in; null for a block of the note itself.
+        internal static ScrollableControl? TableViewport(BlockControl? block) =>
+            block?.parent?.parent is TableControl table ? table.parent as ScrollableControl : null;
+
+        // Whether every block from first to last shares one parent — the note, or one cell.
+        private bool OneContainer(int first, int last)
+        {
+            List<BlockControl> blocks = Blocks();
+            if (first < 0 || last >= blocks.Count) return false;
+
+            for (int b = first + 1; b <= last; b++)
+                if (blocks[b].parent != blocks[first].parent) return false;
+
+            return true;
+        }
+        #endregion
+
+        #region ---- text drag ----
+        // Picks the selection up; the drop marker is what the drag carries.
+        private bool BeginTextDrag(CaretSlot press)
+        {
+            if (SelectedFragment() == null) return false;
+
+            EnsureDropCaret();
+            textDragging = true;
+            textDragHovered = false;
+            textDragPress = press;
+            dropCaret.RegisterOnDragStop(EndTextDrag);
+            dropCaret.StartDrag();
+            return true;
+        }
+
+        // A release nothing took, never over an editor, is a click at the press.
+        private void EndTextDrag(bool accepted)
+        {
+            textDragging = false;
+            HideDrop();
+
+            if (!accepted && !textDragHovered) SetCaret(textDragPress.block, textDragPress.offset);
+        }
+
+        // The document whose selection a drag carries, or null for any other drag.
+        internal static DocumentControl? TextDragSource(Control dragged) =>
+            dragged is CaretControl { parent: DocumentControl { textDragging: true } source } ? source : null;
+
+        internal void ShowDropAt(Vector2 point)
+        {
+            if (!CaretOffText(point, out BlockControl block, out int offset)) return;
+
+            EnsureDropCaret();
+            dropSlot = new CaretSlot(block, offset);
+            dropCaret.Focus();
+            InvalidateArrange();
+        }
+
+        internal void HideDrop()
+        {
+            if (dropSlot == null) return;
+
+            dropSlot = null;
+            dropCaret?.Blur();
+            InvalidateArrange();
+        }
+
+        private void EnsureDropCaret()
+        {
+            if (dropCaret != null) return;
+
+            dropCaret = new CaretControl { hitTestable = false };
+            dropCaret.PaintOr(caretColorHex, PaletteRole.Ink);
+            dropCaret.Blur();
+            AddChild(dropCaret);
         }
         #endregion
 
@@ -591,11 +921,17 @@ namespace ArctisAurora.Core.UI
         // "- " at a block's start makes a bullet; "[ ] " or "[x] " at a bullet's start makes a task.
         private bool TypeListPrefix(BlockControl block, int index, int typedEnd)
         {
-            if (block.stylingType == TextStyleType.Code) return false;
+            if (block.stylingType == TextStyleType.Code || block.parent != this) return false;
 
             string head = (block.text ?? string.Empty)[..typedEnd];
             ListKind kind;
+            ListMarker? marker = null;
             if (block.listKind == ListKind.None && head == "- ") kind = ListKind.Bullet;
+            else if (block.listKind == ListKind.None && numberPrefix.IsMatch(head))
+            {
+                kind = ListKind.Bullet;
+                marker = ListMarker.Decimal;
+            }
             else if (block.listKind == ListKind.Bullet && (head == "[ ] " || head == "[x] ")) kind = ListKind.Task;
             else return false;
 
@@ -607,8 +943,82 @@ namespace ArctisAurora.Core.UI
             {
                 b.listKind = kind;
                 b.isChecked = head == "[x] ";
+                if (kind == ListKind.Bullet) b.listMarker = marker;
             });
             return true;
+        }
+
+        // "1. " or "1) ", the prefix that starts a numbered list
+        private static readonly System.Text.RegularExpressions.Regex numberPrefix =
+            new System.Text.RegularExpressions.Regex(@"^\d{1,9}[.)] $");
+
+        // Gives every item at the caret's level of the caret's list one marker, as one step.
+        internal bool SetListMarker(ListMarker marker)
+        {
+            if (caretBlock == null || caretBlock.listKind != ListKind.Bullet) return false;
+
+            List<BlockControl> blocks = Blocks();
+            BlockControl caretItem = caretBlock;
+            int level = caretItem.listLevel;
+            bool SameList(BlockControl b) =>
+                b.parent == caretItem.parent && b.listKind == ListKind.Bullet && b.listLevel >= level;
+
+            int first = blocks.IndexOf(caretItem);
+            int last = first;
+            while (first > 0 && SameList(blocks[first - 1])) first--;
+            while (last + 1 < blocks.Count && SameList(blocks[last + 1])) last++;
+
+            List<BlockSnapshot> before = SnapshotBlocks(first, last);
+            for (int b = first; b <= last; b++)
+                if (blocks[b].listLevel == level) blocks[b].listMarker = marker;
+
+            undo?.Push(new BlockStateEdit(this, first, before, SnapshotBlocks(first, last)));
+            ListsChanged();
+            return true;
+        }
+
+        internal void ListsChanged()
+        {
+            listsDirty = true;
+            InvalidateLayout();
+        }
+
+        // Numbers every list item and hands it the marker it shows. A plain block ends every list above
+        // it; a task ends the numbering at its own level and deeper; a marker change at a level starts
+        // a new list there; a container starts afresh.
+        private void RenumberLists()
+        {
+            listsDirty = false;
+            List<(int count, ListMarker marker)> counters = new List<(int, ListMarker)>();
+            object container = null;
+
+            foreach (BlockControl block in Blocks())
+            {
+                if (block.parent != container)
+                {
+                    counters.Clear();
+                    container = block.parent;
+                }
+                if (block.listKind == ListKind.None)
+                {
+                    counters.Clear();
+                    continue;
+                }
+
+                int level = block.listLevel;
+                if (counters.Count > level + 1) counters.RemoveRange(level + 1, counters.Count - level - 1);
+                if (block.listKind == ListKind.Task)
+                {
+                    if (counters.Count > level) counters.RemoveRange(level, counters.Count - level);
+                    continue;
+                }
+
+                ListMarker marker = block.listMarker ?? document.layout.MarkerFor(level);
+                while (counters.Count <= level) counters.Add((0, marker));
+                int number = counters[level].marker == marker ? counters[level].count + 1 : 1;
+                counters[level] = (number, marker);
+                block.ShowMarker(marker, number);
+            }
         }
 
         // Turns the caret's list item back into a plain block, when the caret sits at its start.
@@ -621,6 +1031,7 @@ namespace ArctisAurora.Core.UI
             {
                 b.listKind = ListKind.None;
                 b.listLevel = 0;
+                b.listMarker = null;
                 b.isChecked = false;
             });
             return true;
@@ -659,7 +1070,11 @@ namespace ArctisAurora.Core.UI
                 changed = true;
             }
 
-            if (changed) undo?.Push(new BlockStateEdit(this, first, before, SnapshotBlocks(first, last)));
+            if (changed)
+            {
+                undo?.Push(new BlockStateEdit(this, first, before, SnapshotBlocks(first, last)));
+                ListsChanged();
+            }
             return changed;
         }
 
@@ -673,6 +1088,7 @@ namespace ArctisAurora.Core.UI
             change(blocks[index]);
             blocks[index].ApplyLayout(document.layout);
             undo?.Push(new BlockStateEdit(this, index, before, SnapshotBlocks(index, index)));
+            ListsChanged();
         }
         #endregion
 
@@ -811,6 +1227,7 @@ namespace ArctisAurora.Core.UI
                 blocks[index].Restore(before[i]);
                 blocks[index].ApplyLayout(document.layout);
             }
+            ListsChanged();
         }
         #endregion
 
@@ -935,6 +1352,13 @@ namespace ArctisAurora.Core.UI
             SetCaret(head, offset);
         }
 
+        // A fragment put in forwards, for a paste or a drop and their redo; the caret ends after it.
+        internal void InsertBetween(DocumentAddress from, DocumentAddress to, DocumentFragment fragment)
+        {
+            InsertFragment(from, fragment);
+            CaretTo(to);
+        }
+
         // The inverse of a split.
         internal void JoinBlockWithNext(DocumentAddress at)
         {
@@ -954,30 +1378,69 @@ namespace ArctisAurora.Core.UI
 
         #region ---- pages ----
         // Places every block down the pages and returns the document's height.
-        private float Paginate(Vector2 paper)
+        private float Paginate(Vector2 paper, int from, int to)
         {
             float top = Mm(page.marginTop);
             float bottom = Mm(page.marginBottom);
             bool paged = page.mode == PageMode.Paged;
             PageBands bands = new PageBands(top, paged ? paper.Y - top - bottom : float.PositiveInfinity, paper.Y + page.gap * zoom);
+            if (bands.top != paginatedBands.top || bands.height != paginatedBands.height || bands.stride != paginatedBands.stride)
+            {
+                from = 0;
+                to = int.MaxValue;
+            }
+            paginatedBands = bands;
 
-            blockTops.Clear();
-            blockHeights.Clear();
-
-            float y = top + headerHeight;
+            float y = from == 0 ? top + headerHeight : blockTops[from - 1] + blockHeights[from - 1];
+            int index = 0;
+            bool settled = false;
             foreach (Entity child in children)
             {
-                if (child is not BlockControl block) continue;
+                BlockControl block = child as BlockControl;
+                TableControl table = block == null ? TableIn(child) : null;
+                if (block == null && table == null) continue;
+                if (index < from)
+                {
+                    index++;
+                    continue;
+                }
 
-                if (blockTops.Count > 0) y += blockSpacing * zoom;
+                if (index > 0) y += blockSpacing * zoom;
 
-                IReadOnlyList<TextLine> lines = block.Lines;
-                if (lines != null && lines.Count > 0) y = bands.Push(y, lines[0].height);
+                Control item = block ?? (Control)child;
+                float blockTop = y;
+                if (table != null) blockTop = bands.Push(y, table.FirstRowHeight);
+                else if (block.Lines is { Count: > 0 } lines) blockTop = bands.Push(y, lines[0].height);
 
-                float height = block.Paginate(y, bands);
-                blockTops.Add(y);
-                blockHeights.Add(height);
-                y += height;
+                if (index > to && blockTops[index] == blockTop)
+                {
+                    settled = true;
+                    break;
+                }
+
+                float height = table != null ? table.Paginate(blockTop, bands) : block.Paginate(blockTop, bands);
+                if (index < blockControls.Count)
+                {
+                    blockTops[index] = blockTop;
+                    blockHeights[index] = height;
+                    blockControls[index] = item;
+                }
+                else
+                {
+                    blockTops.Add(blockTop);
+                    blockHeights.Add(height);
+                    blockControls.Add(item);
+                }
+                y = blockTop + height;
+                index++;
+            }
+
+            if (settled) y = blockTops[^1] + blockHeights[^1];
+            else if (index < blockControls.Count)
+            {
+                blockTops.RemoveRange(index, blockTops.Count - index);
+                blockHeights.RemoveRange(index, blockHeights.Count - index);
+                blockControls.RemoveRange(index, blockControls.Count - index);
             }
 
             if (!paged)
@@ -991,6 +1454,8 @@ namespace ArctisAurora.Core.UI
             pageHeight = paper.Y;
             return pageCount * paper.Y + (pageCount - 1) * page.gap * zoom;
         }
+
+        private static bool Remeasured(Control control) => ((ArrangeFlags)control.arrange.flags & ArrangeFlags.Remeasured) != 0;
 
         // Millimetres on the page to design pixels at the current zoom.
         private float Mm(float mm) => mm * PageLayout.PxPerMm * zoom;
@@ -1026,33 +1491,62 @@ namespace ArctisAurora.Core.UI
         #region ---- layout ----
         protected override Vector2 MeasureCore(Vector2 availableSize)
         {
+            if (listsDirty) RenumberLists();
+
             Vector2 paper = page.SizePx() * zoom;
-            float textWidth = MathF.Max(0f, paper.X - Mm(page.marginLeft + page.marginRight));
-
-            Profiling.Zone.Start("Document.MeasureBlocks");
-            foreach (Entity child in children)
+            if (isMeasureDirty || paper != measuredPaper || LayoutEngine.NoSkip)
             {
-                if (child is not BlockControl block) continue;
+                measuredPaper = paper;
+                float textWidth = MathF.Max(0f, paper.X - Mm(page.marginLeft + page.marginRight));
 
-                block.SetZoom(zoom);
-                block.Measure(new Vector2(textWidth, float.MaxValue));
+                Profiling.Zone.Start("Document.MeasureBlocks");
+                int from = -1;
+                int to = -1;
+                int count = 0;
+                foreach (Entity child in children)
+                {
+                    Control item;
+                    if (child is BlockControl block)
+                    {
+                        block.SetZoom(zoom);
+                        item = block;
+                    }
+                    else if (TableIn(child) is TableControl table)
+                    {
+                        table.SetZoom(zoom);
+                        item = (Control)child;
+                    }
+                    else continue;
+
+                    item.Measure(new Vector2(textWidth, float.MaxValue));
+                    if (Remeasured(item) || count >= blockControls.Count || blockControls[count] != item)
+                    {
+                        if (from < 0) from = count;
+                        to = count;
+                    }
+                    count++;
+                }
+                if (from < 0) from = count;
+                Profiling.Zone.End("Document.MeasureBlocks");
+
+                float headerBefore = headerHeight;
+                headerHeight = header?.Measure(new Vector2(textWidth, float.MaxValue)).Y ?? 0f;
+                if (headerHeight != headerBefore) from = 0;
+
+                Profiling.Zone.Start("Document.Paginate");
+                float height = Paginate(paper, from, to);
+                Profiling.Zone.End("Document.Paginate");
+
+                EnsurePages();
+                arrange.desired = new Vector2(paper.X, height);
             }
-            Profiling.Zone.End("Document.MeasureBlocks");
 
-            headerHeight = header?.Measure(new Vector2(textWidth, float.MaxValue)).Y ?? 0f;
-
-            Profiling.Zone.Start("Document.Paginate");
-            float height = Paginate(paper);
-            Profiling.Zone.End("Document.Paginate");
-
-            EnsurePages();
             caret?.Measure(availableSize);
             foreach (PanelControl box in highlights)
                 box.Measure(availableSize);
             foreach (PanelControl sheet in pages)
                 sheet.Measure(availableSize);
 
-            arrange.desired = new Vector2(paper.X, height);
             SetFlag(ArrangeFlags.MeasureDirty, false);
             return arrange.desired;
         }
@@ -1074,9 +1568,9 @@ namespace ArctisAurora.Core.UI
             int index = 0;
             foreach (Entity child in children)
             {
-                if (child is not BlockControl block || index >= blockTops.Count) continue;
+                if ((child is not BlockControl && TableIn(child) == null) || index >= blockTops.Count) continue;
 
-                block.Arrange(new LayoutRect(textX, inner.y + blockTops[index], textWidth, blockHeights[index]));
+                ((Control)child).Arrange(new LayoutRect(textX, inner.y + blockTops[index], textWidth, blockHeights[index]));
                 index++;
             }
             Profiling.Zone.End("Document.ArrangeBlocks");
@@ -1093,19 +1587,61 @@ namespace ArctisAurora.Core.UI
         // After the blocks, so the caret resolves against this frame's line geometry.
         private void ArrangeCaret()
         {
-            if (caret == null) return;
+            if (caret != null) ArrangeCaretAt(caret, caretBlock, caretOffset);
+            if (dropCaret != null) ArrangeCaretAt(dropCaret, dropSlot?.block, dropSlot?.offset ?? 0);
+        }
 
-            if (caretBlock == null)
+        private static void ArrangeCaretAt(CaretControl marker, BlockControl block, int offset)
+        {
+            if (block == null)
             {
-                caret.Arrange(LayoutRect.Empty);
+                marker.Arrange(LayoutRect.Empty);
                 return;
             }
 
-            CaretGeometry geometry = caretBlock.CaretAt(caretOffset);
-            Vector2 origin = caretBlock.TextOrigin;
+            CaretGeometry geometry = block.CaretAt(offset);
+            Vector2 origin = block.TextOrigin;
 
-            caret.Arrange(new LayoutRect(origin.X + geometry.x, origin.Y + geometry.top,
-                CaretControl.Width, geometry.height));
+            LayoutRect rect = new LayoutRect(origin.X + geometry.x, origin.Y + geometry.top,
+                CaretControl.Width, geometry.height);
+            if (TableViewport(block) is ScrollableControl viewport && !viewport.arrangedRect.Overlaps(rect))
+                rect = LayoutRect.Empty;
+
+            marker.Arrange(rect);
+        }
+
+        // Walks only the pages and blocks the clip touches, in child order.
+        internal override int CollectChildren(float z)
+        {
+            LayoutRect clip = arrange.clip;
+            float top = arrange.arranged.Shrink(arrange.padding).y;
+            float from = clip.y - top;
+            float to = clip.Bottom - top;
+            int walked = 0;
+
+            float stride = pageHeight + page.gap * zoom;
+            int sheets = Math.Min(pageCount, pages.Count);
+            for (int i = Math.Max(0, (int)(from / stride)); i < sheets && i * stride < to; i++)
+                walked += UIEngine.Collect(pages[i], z);
+
+            foreach (PanelControl box in highlights)
+                walked += UIEngine.Collect(box, z);
+            if (header != null) walked += UIEngine.Collect(header, z);
+
+            int low = 0;
+            int high = blockControls.Count;
+            while (low < high)
+            {
+                int mid = (low + high) / 2;
+                if (blockTops[mid] + blockHeights[mid] <= from) low = mid + 1;
+                else high = mid;
+            }
+            for (int i = low; i < blockControls.Count && blockTops[i] < to; i++)
+                walked += UIEngine.Collect(blockControls[i], z);
+
+            if (caret != null) walked += UIEngine.Collect(caret, z);
+            if (dropCaret != null) walked += UIEngine.Collect(dropCaret, z);
+            return walked;
         }
         #endregion
     }

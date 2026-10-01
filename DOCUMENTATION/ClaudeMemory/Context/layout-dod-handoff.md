@@ -159,7 +159,7 @@ New `Decisions/layout-dod.md` + INDEX row; [[layout-dod-plan]] (step 4 ticked, r
   - `--profile-scenario=animation`: ladder `{ 100, 1000, 5000, 20000 }` under one capture; dumps `grid-<N>` after each build settles.
   - `--dump-tree` → `uitree-<label>.xml` beside the exe; `--profile-pools` → each pool's rows and bytes per frame in the capture.
   - The scenario points the settings write root at a sibling `ProfileScenario` folder; a plain boot re-saves the user's real session, so tests don't boot Thorium plainly.
-- **Captures:** `%APPDATA%\Thorium\Profiling\<yyyyMMdd-HHmmss>\*.frames.xml`; older sessions are pruned.
+- **Captures:** `%APPDATA%\Arktis\Thorium\Profiling\<yyyyMMdd-HHmmss>\*.frames.xml`; older sessions are pruned.
 - **Perf cuts** (scratch edits to `ProfileScenario`, reverted after): 200k = `ladder = { 200000 }`; 1M = `ladder = { 1000000 }` with the stages cut to build → settle → sparse (60-tick hold) → teardown, to fit the 3-minute cap.
 - **Stage tables:** `stages.ps1 -Dirs <capture dir> -Log <run stdout> -Show Step.Main.Layout,Layout.Measure,Layout.Arrange,…` (appendix).
 - **Dump compare:** `run.ps1 -Name <label> -AppArgs '--profile-scenario','--dump-tree'` (or `'--profile-scenario=animation','--dump-tree'`), then `cmpdump.ps1 -Before <old>\uitree-X.xml -After <new>\uitree-X.xml` (appendix). Baselines for step 4 = the current code (steps 0–3): the old session's `C:\Users\gmgyt\AppData\Local\Temp\claude\D--Repositories-Project-Aurora\6baa924f-16e7-44fd-a80a-92b5859c7d91\scratchpad\step2-doc` and `step2-anim` if still there — otherwise regenerate them from the tree before editing code.

@@ -17,10 +17,25 @@
           <xs:enumeration value="Text.Write" />
           <xs:enumeration value="Text.Backspace" />
           <xs:enumeration value="Text.Delete" />
+          <xs:enumeration value="Text.Copy" />
+          <xs:enumeration value="Text.Cut" />
+          <xs:enumeration value="Text.Paste" />
           <xs:enumeration value="Text.NewBlock" />
           <xs:enumeration value="Text.SelectAll" />
           <xs:enumeration value="Text.Bold" />
           <xs:enumeration value="Text.Italic" />
+          <xs:enumeration value="Text.Underline" />
+          <xs:enumeration value="List.Disc" />
+          <xs:enumeration value="List.Circle" />
+          <xs:enumeration value="List.Triangle" />
+          <xs:enumeration value="List.TriangleOutline" />
+          <xs:enumeration value="List.Square" />
+          <xs:enumeration value="List.SquareOutline" />
+          <xs:enumeration value="List.Decimal" />
+          <xs:enumeration value="List.UpperAlpha" />
+          <xs:enumeration value="List.LowerAlpha" />
+          <xs:enumeration value="List.LowerRoman" />
+          <xs:enumeration value="List.UpperRoman" />
           <xs:enumeration value="Text.Indent" />
           <xs:enumeration value="Text.Outdent" />
           <xs:enumeration value="Text.Undo" />
@@ -53,8 +68,15 @@
           <xs:enumeration value="Commands.ArgumentsConvert" />
           <xs:enumeration value="Commands.WaitResumesOnTime" />
           <xs:enumeration value="Console.ToggleAndAnswer" />
+          <xs:enumeration value="Input.ClickFiresRelease" />
+          <xs:enumeration value="Input.KeyWithModifierFiresKeybind" />
+          <xs:enumeration value="Input.DragMovesSplitter" />
           <xs:enumeration value="Layout.StackPanelArranges" />
           <xs:enumeration value="Layout.StarChildCrossSize" />
+          <xs:enumeration value="Layout.GridAutoRowWrapsAtColumn" />
+          <xs:enumeration value="Perf.RelayoutLabels" />
+          <xs:enumeration value="Visual.PanelAndLabel" />
+          <xs:enumeration value="Visual.ImageScaled" />
         </xs:restriction>
       </xs:simpleType>
     </xs:union>

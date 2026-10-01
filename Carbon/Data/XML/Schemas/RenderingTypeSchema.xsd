@@ -34,6 +34,7 @@
     <xs:attribute name="AddressModeW" type="types:SamplerAddressMode" />
     <xs:attribute name="Anisotropy" type="xs:boolean" />
     <xs:attribute name="MipmapMode" type="types:SamplerMipmapMode" />
+    <xs:attribute name="MaxLod" type="xs:float" />
   </xs:attributeGroup>
   <xs:element name="SamplerAsset" type="types:SamplerAsset" />
   <xs:complexType name="SamplerAsset">
