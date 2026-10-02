@@ -120,7 +120,7 @@ An item that names no marker takes its level's default from the document layout:
 
 A marker is chosen per list, not per item. Right-click in the note, then **List marker**, gives every item at the caret's level of the caret's list that marker, as one undo step; a nested level below it and any other list keep theirs.
 
-Numbers are never stored. `RenumberLists` walks the blocks at the next measure after any change to the list structure and hands each item its marker and its number.
+Numbers are not stored, with one exception: an item can carry a start, `Start` on `<Block>`, which restarts its list at that number. `RenumberLists` walks the blocks at the next measure after any change to the list structure and hands each item its marker and its number.
 
 #### Renumber Lists
 for each block in reading order
@@ -129,10 +129,22 @@ for each block in reading order
 	if it is a task, clear the counts at its level and deeper, and continue
 	drop the counts deeper than its level
 	`marker` = its own marker, or its level's default
-	`number` = the count at its level + 1 when that count was for the same marker, otherwise 1
+	`number` = its start if it has one, else the count at its level + 1 when that count was for the same marker, otherwise 1
 	show `marker` with `number`
 
 A marker change at a level starts a new count, so a `1.` typed right under a bullet list reads `1.`, not the bullet list's next number.
+
+A Markdown list that begins at `3.` opens numbered from 3: the reader keeps a list's first number when it is not 1 and ignores every number after it, the way CommonMark does, so `1. 1. 1.` still reads as 1, 2, 3. The start stays on the item it was written on — Enter after it does not copy it, and turning the item back into a paragraph clears it.
+
+Right-click, **List marker**, **Continue numbering** numbers the caret's list on from the nearest list above it with the same marker at the same level, as one undo step. It writes that number as the list's start once, so the two lists do not stay linked when the one above grows.
+
+#### Continue Numbering
+find the first item at the caret's level of the caret's list
+if its marker is not a number, stop
+for each block above it, nearest first, inside the same container
+	if it is an item at the same level with the same marker
+		give the first item a start one past that item's number
+		stop
 
 Every list change is one `BlockStateEdit`, the block snapshotted before and after, so undo and redo restore it whole.
 
@@ -168,7 +180,7 @@ if `c` closes `**`, `*`, `~~` or `` ` `` and an opener of the same marker sits e
 	a single `*` may not touch another `*`
 	remove both markers
 	make what was between them bold, italic, struck through or inline code
-	arm the style off again, so what is typed next is plain
+	arm the style off again — inline code included — so what is typed next is plain
 
 #### Split Block — a Markdown line
 if the block's whole text is ```` ``` ```` followed by an optional language name
@@ -181,7 +193,26 @@ if the block's whole text is three or more of one of `-`, `*` or `_`
 ## Code blocks
 A code block is a run of consecutive blocks styled Code, one block per line, which is the shape `.md` notes already read fenced code into. Each block carries the fence's language name, if one was given, and a split hands it on, so Enter inside code continues the same block. The style scheme names the font: `<TextStyle Type="Code" FontName="consola"/>` in `DocumentSettings.settings.xml`, Consolas being baked from the installed system font like Arial is. A Code span inside ordinary text takes the same font. Code is inset ten pixels on both sides and drawn on the palette's sub-field colour, a band the width of the column behind every line; consecutive code blocks are stacked with no block spacing between them, so the run reads as one box and needs no grouping when it crosses a page.
 
-Code still wraps. A wide line breaks onto the next one rather than scrolling sideways, and nothing colours the syntax yet; the language name is kept so that later work has it.
+Code does not wrap. A line wider than the column runs on past the right margin, its sub-field band with it, and the note grows wide enough to hold it, so the editor's own sideways scroll reaches the end of the line. A code block in an `.xml` note can ask to wrap with `Wrap="true"`; `.md` and `.txt` have nowhere to say so, so their code never wraps.
+
+Code is coloured as it is shown and never saved that way. Each run of code lines with one language is read top to bottom by `SyntaxTokenizer`, which marks every character plain, keyword, string, number or comment and hands what a line leaves open — a `/*` comment, an XML comment or tag, a Python triple quote — on to the next line. C#, GLSL, XML and Python have their own rules; any other language, or none, gets C-like rules with a few common keywords. A run is read again whenever one of its lines changes, so opening a comment on the first line recolours the lines under it. The colours come from the palette's `Keyword`, `String`, `Number` and `Comment`; a palette that leaves them out shows the first three in its accent and comments in muted text. A span with its own colour or gradient keeps it.
+
+#### Highlight Code ()
+for each run of consecutive code lines that share a language
+	if any line of it changed
+		`state` = nothing open
+		for each line
+			`state` = tokenize the line from `state`, one token per character
+
+#### Tokenize (line, language, state) — C-like
+while characters are left
+	if a comment or triple quote is open, mark up to its close and close it, or mark to the end
+	else if `//` (or `#` in Python), mark the rest as comment
+	else if `/*` (or `"""` / `'''` in Python), open it
+	else if a quote, mark up to the matching quote, stepping over escapes
+	else if a digit, mark the number
+	else if a word, mark it keyword when the language lists it
+return what is still open
 
 Tab inside code types a real tab character rather than nesting a list. With several code lines selected, Tab puts a tab at the start of each and Shift+Tab takes one off each, as one undo step.
 
@@ -214,10 +245,10 @@ if the block is an empty code line and the next block is not code
 ## Rules
 A horizontal rule is a block with the `Rule` styling and no text. It measures as one empty line and draws a single line across the column in the palette's line colour instead of glyphs. The caret can stand on it like on an empty paragraph, but nothing can be written into it.
 
-#### Type Char, Paste, Split Block — on a rule
+#### Type Char, Paste, Drop, Split Block — on a rule
 split the rule at its start
 make the new block after it a plain paragraph and put the caret there
-carry on with the character, the paste or nothing
+carry on with the character, the paste, the dropped text or nothing
 
 #### Delete Range (from, to) — when the head is a rule
 merge as usual
@@ -228,9 +259,19 @@ undo merges back and then puts the rule's kind back on the head
 The styling menu's **Horizontal line** turns an empty caret block into a rule, or adds one after the caret's block when it holds text. In Markdown a rule is written `---`, except as a note's first line, where it is written `***` so it cannot be read back as frontmatter; `---`, `***` and `___` all read as a rule.
 
 ## Alignment
-A block is aligned left, centred or right. Alignment does not change how a paragraph breaks into lines; once the lines are measured, each one is slid across the width it is allowed to fill. A line beside a floating picture is only allowed the width the picture leaves free, and the measurer records that width on the line as `room`. Trailing spaces hang past the edge, so a right-aligned line ends at the margin on its last letter. Every place that turns a line into positions — drawing, the caret, presses, the selection and picture boxes — already adds the line's left offset, so none of them changed.
+A block is aligned left, centred, right or justified. Alignment does not change how a paragraph breaks into lines; once the lines are measured, each one is slid across the width it is allowed to fill. A line beside a floating picture is only allowed the width the picture leaves free, and the measurer records that width on the line as `room`. Trailing spaces hang past the edge, so a right-aligned line ends at the margin on its last letter. Every place that turns a line into positions — drawing, the caret, presses, the selection and picture boxes — already adds the line's left offset, so none of them changed.
+
+Justified text spreads every line except a paragraph's last across its room by widening the spaces inside it. The extra width is recorded on the line as `spaceExtra`, given to each space before the line's last letter, and every place that walks a line's characters adds it after such a space. A line with a tab in it is left as it is, because the tab stops would move under the stretch.
 
 #### Align ()
+if the block is justified
+	for each line except the last
+		`visible` = the width up to the line's last letter
+		`spaces` = the spaces before that letter
+		if the line holds a tab, has no such spaces, or already fills its room, skip it
+		`spaceExtra` = (`room` − `visible`) ÷ `spaces`
+		grow the line's width by (`room` − `visible`)
+	stop
 `factor` = 0 for left, ½ for centred, 1 for right
 if `factor` is 0, stop
 for each line
@@ -239,7 +280,7 @@ for each line
 	`hang` = the width of the spaces and tabs at the line's end
 	add (`room` − (the line's width − `hang`)) × `factor` to the line's left
 
-Ctrl+L, Ctrl+E and Ctrl+R, or the three alignment buttons beside the styling menu, align every block the selection touches, or the caret's block, as one undo step. Alignment is written as `Align` on `<Block>` and only `.xml` notes have it: Markdown has no paragraph alignment, and wrapping a paragraph in HTML would stop Markdown readers formatting what is inside it. Justified text is not supported.
+Ctrl+L, Ctrl+E, Ctrl+R and Ctrl+J, or the four alignment buttons beside the styling menu, align every block the selection touches, or the caret's block, as one undo step. Alignment is written as `Align` on `<Block>` and only `.xml` notes have it: Markdown has no paragraph alignment, and wrapping a paragraph in HTML would stop Markdown readers formatting what is inside it.
 
 #### Shift List Level (delta)
 for each list item the selection touches, in order
@@ -554,7 +595,9 @@ A table is a `TableControl` sitting in the note's block list beside ordinary blo
 
 Columns may add up to less or more than the page is wide. Every table sits in its own horizontal-only `ScrollableControl`, so a table wider than the page scrolls sideways on its own while the note keeps its width; moving the caret into a hidden column scrolls the table to it. A vertical wheel never scrolls a sideways viewport — it passes through to the note — and a horizontal wheel over the table scrolls the table.
 
-The caret and every edit address a block by its position in `DocumentControl.Blocks()`, and that list now walks into tables: the note's blocks and every cell's blocks, row by row, left to right. Nothing about an address had to change — arrow keys, up and down by position, styling a range and every undo record already worked over that list. Tab and Shift+Tab step to the start of the next or previous cell.
+The caret and every edit address a block by its position in `DocumentControl.Blocks()`, and that list now walks into tables: the note's blocks and every cell's blocks, row by row, left to right. Nothing about an address had to change — arrow keys, up and down by position, styling a range and every undo record already worked over that list. Tab and Shift+Tab step to the start of the next or previous cell, and Tab in the last cell adds a row and moves into it. Inside a list item, Tab at the item's very start nests it instead, the way Word does; anywhere else in the item it still steps cells.
+
+Lists work inside a cell: `- `, `1. ` and `[ ] ` typed at a cell line's start make a list there, the checkbox finds its editor however deep it sits, and an item only nests under an item of the same cell. Headings and quotes can be typed in a cell too; code fences and rules cannot.
 
 A delete is refused when its range is not all inside one container — the note itself, or one cell. That covers Backspace at a cell's start, Delete at its end, and a selection dragged across a table; the caret stays where it was.
 
@@ -583,7 +626,36 @@ for each cell
 	if the cell is in the last column, line down its right side
 	if no row follows directly below, line along the bottom of `box`
 
-On disk a table is `<Table>` holding `<Column Width>` elements and `<Row>`s of `<Cell>`s, each cell holding `<Block>`s written exactly as the note's own. Tables live only in `.xml` notes; the Markdown and plain-text writers skip them. Nothing in the UI inserts a table yet. See `ClaudeMemory/Decisions/document-tables.md`.
+On disk a table is `<Table>` holding `<Column Width>` elements and `<Row>`s of `<Cell>`s, each cell holding `<Block>`s written exactly as the note's own. Tables live only in `.xml` notes; the Markdown and plain-text writers skip them.
+
+### Editing a table
+Right-click ▸ Insert table puts a three-by-three table after the caret's paragraph, its columns splitting the text width evenly. A `.md` or `.txt` note refuses it, because it could not save it, and so does a caret already inside a table. When the caret's paragraph is the last thing in the note it is split at its end first, so there is always a paragraph after a table to type into. The Table submenu inserts a row above or below the caret's, a column left or right of it, and deletes the row, the column or the whole table; deleting the last row or column deletes the table.
+
+Every one of those is one undo step holding a `TableEdit`: the table's XML before and after, and where the caret was. A command does not edit the grid in place. It writes the table out as XML, changes the copy, and builds a fresh table from it, so the forward edit, undo and redo all take the same road the file loader does, and the caret is put back in the same cell, line and offset afterwards.
+
+Each column's right edge is a grip. Dragging it widens or narrows that column alone, live, and letting go records one undo step.
+
+#### Change Table (change)
+if the caret is not in a table, do nothing
+remember the caret's row, column, line in the cell and offset
+`before` = the table as XML
+`edited` = a copy of `before`, changed by `change`, which says which cell the caret lands in
+replace the table with one built from `edited`
+put the caret in that cell, at its old line and offset when it is the same cell
+record `before`, the rebuilt table as XML, and both caret positions
+
+#### Insert Table ()
+if the note is `.md` or `.txt`, or the caret is in a table, refuse
+if the caret's paragraph is the last thing in the note, split it at its end
+build a 3 × 3 table of empty cells, every column a third of the text width
+put it after the caret's paragraph and the caret in its first cell
+
+#### Resize (pointer x) — a column grip
+`width` = the width at the grab + (pointer x − x at the grab) ÷ zoom
+`width` = at least 24, rounded to a whole pixel
+set the column to `width` and lay the table out again
+
+See `ClaudeMemory/Decisions/document-tables.md`.
 
 ## Pictures
 A picture in a note is one character, U+FFFC, whose style span names a picture file — Word's model, where every picture is anchored to a place in the text. Because it is a character, the caret steps over it, a selection covers it, Delete removes it and undo puts it back without any of that code knowing pictures exist. The span holds the file path (absolute in memory, relative to the note on disk) and an optional width and height; with no size the picture shows at its own size, shrunk to the column, and with one side set the other follows its aspect.

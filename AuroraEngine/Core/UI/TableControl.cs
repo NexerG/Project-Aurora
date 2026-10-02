@@ -1,5 +1,7 @@
 using ArctisAurora.Core.ECS.EngineEntity;
+using Silk.NET.GLFW;
 using System.Numerics;
+using System.Xml.Linq;
 
 namespace ArctisAurora.Core.UI
 {
@@ -12,10 +14,21 @@ namespace ArctisAurora.Core.UI
         // cell borders, laid over the cells
         private readonly List<PanelControl> borders = new List<PanelControl>();
 
+        // column edges, one per column, over the borders
+        private readonly List<ColumnGrip> grips = new List<ColumnGrip>();
+
+        // column resize in progress
+        private int resizeColumn = -1;
+        private float resizeGrab;
+        private float resizeWidth;
+        private XElement? resizeBefore;
+
         private float zoom = 1f;
 
         private const float cellInset = 6f;
         private const float borderWidth = 1f;
+        private const float gripWidth = 6f;
+        private const float minColumnWidth = 24f;
 
         public TableControl(List<float> widths)
         {
@@ -52,6 +65,20 @@ namespace ArctisAurora.Core.UI
                 AddChild(cell);
             }
         }
+
+        // The table inside the sideways scroller a note holds it in.
+        public ScrollableControl Hosted()
+        {
+            ScrollableControl viewport = new ScrollableControl { scrollDirection = ScrollDirection.Horizontal };
+            viewport.AddChild(this);
+            return viewport;
+        }
+
+        public int RowCount => rowDefinitions.Count;
+
+        // A cell's blocks by grid position.
+        internal List<BlockControl> CellBlocks(int row, int column) =>
+            Cells()[row * widths.Count + column].children.OfType<BlockControl>().ToList();
 
         // Cells in reading order.
         public List<StackPanelControl> Cells()
@@ -156,6 +183,8 @@ namespace ArctisAurora.Core.UI
             Vector2 desired = base.MeasureCore(availableSize);
             foreach (PanelControl border in borders)
                 border.Measure(availableSize);
+            foreach (ColumnGrip grip in grips)
+                grip.Measure(availableSize);
 
             return desired;
         }
@@ -164,6 +193,30 @@ namespace ArctisAurora.Core.UI
         {
             base.ArrangeCore(finalRect);
             ArrangeBorders();
+            ArrangeGrips();
+        }
+
+        // A grip centred on each column's right edge, the table's full height.
+        private void ArrangeGrips()
+        {
+            List<StackPanelControl> cells = Cells();
+            LayoutRect rect = arrangedRect;
+            for (int c = 0; c < widths.Count && c < cells.Count; c++)
+                Grip(c).Arrange(new LayoutRect(Box(cells[c]).Right - gripWidth * 0.5f, rect.y, gripWidth, rect.height));
+        }
+
+        private ColumnGrip Grip(int column)
+        {
+            while (grips.Count <= column)
+            {
+                ColumnGrip grip = new ColumnGrip(this, grips.Count) { alpha = 0f };
+                grip.parent = this;
+                children.Add(grip);
+                grips.Add(grip);
+                MarkTreeOrderDirty();
+                grip.Measure(arrange.measuredOffer);
+            }
+            return grips[column];
         }
 
         // Top and left on every cell, right on the last column, bottom where no row follows directly.
@@ -212,6 +265,85 @@ namespace ArctisAurora.Core.UI
                 line.Measure(arrange.measuredOffer);
             }
             return borders[index];
+        }
+        #endregion
+
+        #region ---- column resize ----
+        private void BeginResize(int column, float x)
+        {
+            if (parent?.parent is not DocumentControl { readOnly: false }) return;
+
+            resizeColumn = column;
+            resizeGrab = x;
+            resizeWidth = widths[column];
+            resizeBefore = DocumentXml.WriteTable(this);
+        }
+
+        // Sized from where the grab started, in design pixels.
+        private void Resize(float x)
+        {
+            if (resizeColumn < 0) return;
+
+            float width = MathF.Max(minColumnWidth, MathF.Round(resizeWidth + (x - resizeGrab) / zoom));
+            if (width == widths[resizeColumn]) return;
+
+            widths[resizeColumn] = width;
+            columnDefinitions[resizeColumn].value = width * zoom;
+            InvalidateLayout();
+        }
+
+        private void EndResize()
+        {
+            if (resizeColumn < 0) return;
+
+            bool changed = widths[resizeColumn] != resizeWidth;
+            resizeColumn = -1;
+            if (changed && parent?.parent is DocumentControl document) document.RecordTableResize(this, resizeBefore!);
+            resizeBefore = null;
+        }
+
+        // The draggable right edge of one column.
+        private sealed class ColumnGrip : PanelControl
+        {
+            private readonly TableControl table;
+            private readonly int column;
+
+            internal ColumnGrip(TableControl table, int column)
+            {
+                this.table = table;
+                this.column = column;
+            }
+
+            public override bool OnPointerEnter(PointerEvent e)
+            {
+                UIEngine.WindowOf(this)?.os.ChangeCursor(CursorShape.HResize);
+                return base.OnPointerEnter(e);
+            }
+
+            public override bool OnPointerExit(PointerEvent e)
+            {
+                UIEngine.WindowOf(this)?.os.ChangeCursor(CursorShape.Arrow);
+                return base.OnPointerExit(e);
+            }
+
+            public override bool OnPointerPress(PointerEvent e)
+            {
+                table.BeginResize(column, e.point.X);
+                StartDrag();
+                return true;
+            }
+
+            public override void OnDrag(PointerEvent e)
+            {
+                table.Resize(e.point.X);
+                base.OnDrag(e);
+            }
+
+            public override void OnDragStop(bool accepted)
+            {
+                table.EndResize();
+                base.OnDragStop(accepted);
+            }
         }
         #endregion
     }

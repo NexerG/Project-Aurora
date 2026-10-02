@@ -87,6 +87,11 @@
 		<Press />
 	</Keybind>
 
+	<Keybind Trigger="J" Action="Text.AlignJustify">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
 	<Keybind Trigger="C" Action="Text.Copy">
 		<Modifier Key="LeftControl" />
 		<Press />

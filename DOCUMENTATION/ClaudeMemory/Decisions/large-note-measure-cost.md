@@ -74,6 +74,7 @@ The first-measure frame is tier-0 JIT code; see Known gaps. Tables: Release+`PRO
   `DOTNET_TC_QuickJitForLoops=0`, 22–24 with tiering off. Tiering off costs ~40% in steady state (no PGO). Not
   acted on — a host `<TieredCompilationQuickJitForLoops>` or `[MethodImpl(AggressiveOptimization)]` is open.
 - `RewrapLargeNote` still fails its 8 ms budget; the remaining cost is per-char work across 1M chars a frame.
+  **2026-10-02:** a rewrap no longer re-flattens — p95 now under 8 ms, `max` still over → [[rewrap-advance-cache]].
 - Opening a note still allocates 2.2 MB of lines and 0.7 MB in `Text.BuildRuns`.
 - `Paginate`'s own `floats.RemoveAll(f => …)` at its top still allocates once per call (~88 B).
 - Perf budgets in `Perf.tests.xml` were not re-derived.

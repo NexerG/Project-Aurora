@@ -28,7 +28,7 @@ The layer splits in two: [[TextMeasurer]] is stateless and turns one block's run
 
 The gap between blocks is `DocumentLayout.blockSpacing` rather than a number on the view, for the same reason heading sizes moved there: the cache stacks blocks by it and the view draws them by it, and a value the two disagreed on would put every cached block top further out of step with the drawn one the further down the document you scrolled.
 
-Per-character advances are deliberately **not** stored. One float per character is megabytes at 100 pages against a cache budget of ~100 KB, and the operations that need them — hit-testing a click, placing a caret — only ever need the single line they landed on, so they re-derive that line's advances through the same [[TextMeasurer]] call the lines were measured with.
+Per-character advances **are** stored, once per block, inside the block's own `BlockLayout`: a float advance and a flag byte (break, picture, tab) per character, about 5 MB on a million-character note. A rewrap — the page or wrap width changing while no text did — then only re-breaks the stored advances instead of looking every glyph up again, which took rewrapping a 1,000-paragraph note from ~8 to ~3 ms a frame. The store checks itself against the runs on every measure (same string, same slice, same atlas, face and size) rather than trusting invalidation, so any change to a run's text or style rebuilds it. Hit-testing a click and placing a caret still re-derive their one line's advances through the same [[TextMeasurer]] call the lines were measured with. See `ClaudeMemory/Decisions/rewrap-advance-cache.md`.
 
 A line is **not** one run: a paragraph with a bold word mid-sentence puts three runs on one visual line, so a line owns a list of `LineSegment` — `(runIndex, charStart, charCount, width)` — plus its own `width`, `ascent`, `descent` and `top` (Y within the block, so the measurer never sees document coordinates). Segments are cut wherever the run index changes, which means walking a line's advances for hit-testing is a walk across its segments in order.
 
@@ -62,17 +62,24 @@ Because the measurer needs only per-glyph metrics, it takes a narrow glyph-metri
 [[DocumentLayoutCache]] does not inherit that testability — it holds a [[Rich Text Document]], whose blocks *are* controls, and it reaches through them for run text and heading level, so it cannot be exercised without booting. That is a consequence of the P0 decision that the document model is the control tree, not an oversight to fix here: narrowing the cache to plain data would mean a second model beside the one that renders. It is the reason the cache's own verification is deferred to the in-app test/profiling platform rather than done the way the measurer's was.
 
 #### Measure Block (runs, content width, glyph metrics, document layout)
-`chars` = the one pen array every measure shares
-while `chars` is shorter than the characters in `runs`
-	double its length   // a new, empty array: whatever it held is overwritten anyway
+`keep` = every `run` in `runs` matches the run stored at its index last measure   // same string, slice, atlas, face, size
+if not `keep`
+	while the block's `advances` are shorter than the characters in `runs`
+		double their length
 `count` = 0
 for each `run` in `runs`
-	`box` = line box of `run` style   // resolved once per run, not per character
-	for each `char` in `run` text
-		`chars`[`count`] = (`run` index, `char` index, advance width of `char` × run font size, `box`)
-		`count` += 1
+	store `run` key, its start = `count`, and its line box   // resolved once per run, not per character
+	if `run` is a picture or a formula
+		write its characters' advance and flags   // their width follows the wrap width, so always rewritten
+	else if `keep`
+		skip its characters   // advances and flags are still the ones from last measure
+	else
+		for each `char` in `run` text
+			`advances`[`count`] = advance width of `char` × run font size
+			`flags`[`count`] = break after a space or tab, tab for a tab
+	`count` += characters in `run`
 `lineStart` = 0, `lastBreak` = none, `penX` = 0
-for each `c` in `chars`
+for each `c` in the first `count` stored characters
 	if `c` is not whitespace and `penX` + `c` advance > `content width` and line is not empty
 		`breakAt` = `lastBreak` if set else previous character   // no break opportunity = split mid-word
 		emit line from `lineStart` to `breakAt`, stacked under the block's height so far
@@ -86,13 +93,12 @@ emit final line from `lineStart` to end
 
 #### Emit Line (chars, from, to)
 `line` top = block height so far
-`segment` = (run index of `from`, char index of `from`)
-for each `c` from `from` to `to`
-	if `c` run index ≠ `segment` run index
-		close `segment` into `line`, start a new one at `c`
-	accumulate `c` advance into `segment` width and `line` width
-	`line` ascent / descent = max with `c` line box
-close final `segment` into `line`
+for each stored `run` holding characters between `from` and `to`
+	`segment` = (run index, char index of its first character on the line)
+	for each `c` of `run` between `from` and `to`
+		accumulate `c` advance into `segment` width and `line` width
+	close `segment` into `line`
+	`line` ascent / descent = max with `run` line box
 block height += `line` height
 
 #### Invalidate Block (index)
@@ -138,7 +144,7 @@ The buffer of one viewport either side is load-bearing rather than slack. `Destr
 ## Paged vs pageless
 Landed 2026-09-27, without the cache. A note is always laid out on paper: its `DocumentLayout` carries a `<Page>` (a `PageLayout`) naming `Paged` or `Pageless`, a paper size (A0–A6, B4, B5, Letter, Legal, Tabloid, Executive or Custom in millimetres), orientation, margins and the gap between pages. A note without one uses the editor-wide page from `DocumentSettings`, which is A4 portrait with 1-inch margins. There is no mode that fills the viewport, because a note that takes whatever width it is given would break a later pin board that shows several notes side by side.
 Text is measured at the paper width minus the side margins. After every block is measured, `DocumentControl` walks them top to bottom and each block restacks its own measured lines: a line that would cross the bottom of a page's text area moves to the top of the next page's text area, so a paragraph splits across a break. Because the caret, hit-testing, selection and drawing all read those same line tops, they follow the break without knowing pages exist. Pageless is the same pass with a text area that never ends: one page as wide as the paper and as tall as the content.
-The pages themselves are plain panels drawn behind the highlights and the text. They are centred when the pane is wider than the paper, and the editor scrolls sideways when it is narrower. The format bar's page button switches mode, size and orientation for the open note, and an `.xml` note saves its choice. See `ClaudeMemory/Decisions/document-pages.md`.
+The pages themselves are plain panels drawn behind the highlights and the text. The whole stack of pages sits one page gap in from the pane's edges, so the first page never touches the top or the left; pages are centred when the pane is wider than the paper, and the editor scrolls sideways when it is narrower. When the note's page asks for page numbers, each panel carries its number centred in its bottom margin; pageless notes never show one. The format bar's page button switches mode, size, orientation and page numbers for the open note, and has two millimetre fields for a custom paper size that take effect on Enter. Every page change is one undo step, and an `.xml` note saves its choice. See `ClaudeMemory/Decisions/document-pages.md`.
 
 #### Paginate (paper)
 	top = margin top; text area = paper height − margins (unbounded when pageless); stride = paper height + gap

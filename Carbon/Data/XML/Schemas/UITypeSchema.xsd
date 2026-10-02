@@ -174,6 +174,8 @@
     <xs:attribute name="Y" type="xs:float" />
     <xs:attribute name="Rotation" type="xs:float" />
     <xs:attribute name="Collision" type="types:PictureCollision" />
+    <xs:attribute name="Math" type="xs:string" />
+    <xs:attribute name="Display" type="xs:boolean" />
   </xs:attributeGroup>
   <xs:element name="Run" type="types:Run" />
   <xs:complexType name="Run">
@@ -531,6 +533,10 @@
     <xs:attribute name="EdgeAccent" type="xs:string" />
     <xs:attribute name="DarkInk" type="xs:string" />
     <xs:attribute name="LightInk" type="xs:string" />
+    <xs:attribute name="Keyword" type="xs:string" />
+    <xs:attribute name="String" type="xs:string" />
+    <xs:attribute name="Number" type="xs:string" />
+    <xs:attribute name="Comment" type="xs:string" />
     <xs:attribute name="Step" type="xs:float" />
     <xs:attribute name="Muted" type="xs:float" />
     <xs:attribute name="RowRadius" type="xs:float" />
@@ -559,6 +565,7 @@
     <xs:attribute name="Palette" type="xs:string" />
     <xs:attribute name="Created" type="xs:string" />
     <xs:attribute name="Modified" type="xs:string" />
+    <xs:attribute name="ReadOnly" type="xs:boolean" />
     <xs:attribute name="Frontmatter" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="Document" type="types:Document" />
@@ -593,6 +600,7 @@
       <xs:enumeration value="Left" />
       <xs:enumeration value="Center" />
       <xs:enumeration value="Right" />
+      <xs:enumeration value="Justify" />
     </xs:restriction>
   </xs:simpleType>
   <xs:attributeGroup name="TextStyle.Attributes">
@@ -674,6 +682,7 @@
     <xs:attribute name="MarginLeft" type="xs:float" />
     <xs:attribute name="MarginRight" type="xs:float" />
     <xs:attribute name="Gap" type="xs:float" />
+    <xs:attribute name="PageNumbers" type="xs:boolean" />
   </xs:attributeGroup>
   <xs:element name="Page" type="types:Page" />
   <xs:complexType name="Page">

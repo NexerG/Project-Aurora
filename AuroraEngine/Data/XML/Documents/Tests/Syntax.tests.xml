@@ -2,8 +2,7 @@
 <TestSuite xmlns="http://arctisaurora/AuroraTestTypes"
 		  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 		  xsi:schemaLocation="http://arctisaurora/AuroraTestTypes ../../Schemas/TestTypeSchema.xsd" >
-	<Test Action="Input.ClickFiresRelease"/>
-	<Test Action="Input.KeyWithModifierFiresKeybind"/>
-	<Test Action="Input.DragMovesSplitter"/>
-	<Test Action="Input.RepeatJoinsUndoStep"/>
+	<Test Action="Syntax.CSharpLine"/>
+	<Test Action="Syntax.CommentSpansLines"/>
+	<Test Action="Syntax.Languages"/>
 </TestSuite>

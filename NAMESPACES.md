@@ -145,6 +145,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SliderControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SplitterControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SplitViewControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/StackPanelControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SyntaxTokenizer.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TabActions.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TabItemControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TableControl.cs
@@ -218,6 +219,7 @@ ArctisAurora.Tests -> AuroraEngine/Tests/InputTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/LayoutTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/MathTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/PerfTests.cs
+ArctisAurora.Tests -> AuroraEngine/Tests/SyntaxTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/VisualTests.cs
 AuroraEditor -> AuroraEditor/Editor.cs
 AuroraEditor.EditorProgram.Components -> AuroraEditor/EditorProgram/Components/AsmTestComp.cs

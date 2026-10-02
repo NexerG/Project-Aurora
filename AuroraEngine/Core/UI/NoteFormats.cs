@@ -151,6 +151,7 @@ namespace ArctisAurora.Core.UI
                     XElement block = Block(null, ParseInline(match.Groups[3].Value));
                     block.SetAttributeValue("List", "Bullet");
                     block.SetAttributeValue("Marker", "Decimal");
+                    block.SetAttributeValue("Start", int.Parse(match.Groups[2].Value));
 
                     int level = ListLevel(listWidths, match.Groups[1].Value);
                     if (level > 0) block.SetAttributeValue("Level", level);
@@ -190,7 +191,25 @@ namespace ArctisAurora.Core.UI
             }
 
             if (openMath != null) root.Add(Block(null, new List<XElement> { MathRun(string.Join("\n", openMath), true) }));
+            KeepListStarts(root);
             return root;
+        }
+
+        // Keeps the number a list's first item was written with when it is not 1, and drops the rest.
+        private static void KeepListStarts(XElement root)
+        {
+            List<(int count, string? marker)> counters = new List<(int count, string? marker)>();
+            foreach (XElement block in root.Elements())
+            {
+                if (block.Name.LocalName != "Block") continue;
+
+                int? start = (int?)block.Attribute("Start");
+                block.SetAttributeValue("Start", null);
+                if (Count(counters, block) != 1 || start is null or 1) continue;
+
+                block.SetAttributeValue("Start", start);
+                counters[^1] = (start.Value, counters[^1].marker);
+            }
         }
 
         private static void ReadProperties(XElement root, string block)
@@ -636,7 +655,7 @@ namespace ArctisAurora.Core.UI
 
             string? marker = (string?)block.Attribute("Marker");
             while (counters.Count <= level) counters.Add((0, marker));
-            int number = counters[level].marker == marker ? counters[level].count + 1 : 1;
+            int number = (int?)block.Attribute("Start") ?? (counters[level].marker == marker ? counters[level].count + 1 : 1);
             counters[level] = (number, marker);
             return number;
         }

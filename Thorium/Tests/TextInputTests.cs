@@ -195,6 +195,42 @@ namespace Thorium.Tests
             t.Check(box.text == "hello worlda ", "Ctrl+Backspace in a field deletes a word");
         }
 
+        [A_XSDActionDependency("TextInput.FieldWordAndScroll", "Test")]
+        private static IEnumerator<int> FieldWordAndScroll(TestContext t)
+        {
+            TextBoxControl box = new TextBoxControl
+            {
+                preferredWidth = 240f,
+                preferredHeight = 28f,
+                horizontalAlignment = HorizontalAlignment.Left,
+                verticalAlignment = VerticalAlignment.Top,
+                text = "one two"
+            };
+            t.Show(box);
+            yield return 2;
+
+            yield return t.Click(box);
+            yield return t.Click(box);
+            yield return t.Key(Keys.C, Keys.LeftControl);
+            t.Check(ClipboardText.Get() == "two", $"a double click in a field selects the word: '{ClipboardText.Get()}'");
+
+            yield return t.Click(box);
+            yield return t.Key(Keys.C, Keys.LeftControl);
+            t.Check(ClipboardText.Get() == "one two", $"a third click selects the whole field: '{ClipboardText.Get()}'");
+
+            yield return t.Key(Keys.End);
+            yield return t.Type(" three four five six seven eight nine ten eleven twelve");
+            yield return 2;
+            CaretControl caret = box.children.OfType<CaretControl>().First();
+            t.Check(caret.arrangedRect.Right <= box.arrangedRect.Right + 0.5f && caret.arrangedRect.x > box.arrangedRect.x,
+                $"typing past the edge keeps the caret inside the field: caret {caret.arrangedRect.x}, field {box.arrangedRect.x}..{box.arrangedRect.Right}");
+
+            yield return t.Key(Keys.Home);
+            yield return 2;
+            t.Check(caret.arrangedRect.x >= box.arrangedRect.x && caret.arrangedRect.x < box.arrangedRect.x + 12f,
+                $"Home slides the text back to its start: caret {caret.arrangedRect.x}, field {box.arrangedRect.x}");
+        }
+
         [A_XSDActionDependency("TextInput.DragMovesText", "Test")]
         private static IEnumerator<int> DragMovesText(TestContext t)
         {
@@ -218,6 +254,36 @@ namespace Thorium.Tests
             yield return t.Click(p[0]);
             yield return 2;
             t.Check(!content.HasSelection && p[0].text == "move me", "a click inside the selection only places the caret");
+        }
+
+        [A_XSDActionDependency("TextInput.DropOntoRule", "Test")]
+        private static IEnumerator<int> DropOntoRule(TestContext t)
+        {
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                Block("move me"),
+                new XElement("Block", new XAttribute("StylingType", "Rule"), RunX("")),
+                Block("after"))));
+            DocumentControl content = Content(editor);
+            List<BlockControl> p = Paragraphs(editor);
+            yield return 2;
+
+            content.SetCaret(p[0], 0);
+            content.SetCaret(p[0], 7, true);
+            LayoutRect rule = p[1].arrangedRect;
+            yield return t.Drag(p[0], new Vector2(rule.x + rule.width * 0.5f, rule.y + rule.height * 0.5f));
+            yield return 2;
+
+            p = Paragraphs(editor);
+            t.Check(p.Count == 4 && p[0].text == "" && p[1].stylingType == TextStyleType.Rule && p[1].text == ""
+                && p[2].text == "move me" && p[2].stylingType == TextStyleType.Text && p[3].text == "after",
+                $"a drop onto a rule lands in a new paragraph after it: {string.Join("|", p.Select(b => $"{b.stylingType}:{b.text}"))}");
+
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            p = Paragraphs(editor);
+            t.Check(p.Count == 3 && p[0].text == "move me" && p[1].stylingType == TextStyleType.Rule && p[2].text == "after",
+                "one undo puts the drop back");
+
+            t.Show(new StackPanelControl());
         }
 
         [A_XSDActionDependency("TextInput.DragBetweenNotes", "Test")]
@@ -362,6 +428,39 @@ namespace Thorium.Tests
             t.Check(!p.StyleAt(2).underline, "Ctrl+U again takes it off");
         }
 
+        [A_XSDActionDependency("TextInput.MixedSelectionToggles", "Test")]
+        private static IEnumerator<int> MixedSelectionToggles(TestContext t)
+        {
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                new XElement("Block", RunX("plain "), RunX("bold", ("Bold", "true"))),
+                new XElement("Block", RunX("next", ("Bold", "true"))))));
+            DocumentControl content = Content(editor);
+            List<BlockControl> p = Paragraphs(editor);
+            yield return 2;
+
+            content.SetCaret(p[0], 0);
+            content.SetCaret(p[1], 4, true);
+            yield return t.Key(Keys.B, Keys.LeftControl);
+            t.Check(p[0].StyleAt(1).IsBold && p[0].StyleAt(8).IsBold && p[1].StyleAt(2).IsBold,
+                "Ctrl+B over a selection starting plain and ending bold makes all of it bold");
+
+            yield return t.Key(Keys.B, Keys.LeftControl);
+            t.Check(!p[0].StyleAt(1).IsBold && !p[0].StyleAt(8).IsBold && !p[1].StyleAt(2).IsBold,
+                "Ctrl+B over an all-bold selection takes it off");
+
+            content.SetCaret(p[0], 7);
+            content.SetCaret(p[1], 2, true);
+            yield return t.Key(Keys.B, Keys.LeftControl);
+            yield return t.Key(Keys.I, Keys.LeftControl);
+            content.SetCaret(p[0], 7);
+            content.SetCaret(p[1], 4, true);
+            yield return t.Key(Keys.I, Keys.LeftControl);
+            t.Check(p[0].StyleAt(8).IsItalic && p[1].StyleAt(4).IsItalic && p[0].StyleAt(8).IsBold && !p[1].StyleAt(4).IsBold,
+                "Ctrl+I over a selection starting italic and ending plain turns italic on, leaving bold alone");
+
+            t.Show(new StackPanelControl());
+        }
+
         [A_XSDActionDependency("TextInput.HighlightApplies", "Test")]
         private static IEnumerator<int> HighlightApplies(TestContext t)
         {
@@ -471,9 +570,9 @@ namespace Thorium.Tests
 
             t.Check(p[0].shownMarker == ListMarker.Disc && p[2].shownMarker == ListMarker.Disc, "the default marker is a filled circle");
 
-            ContextMenuSubmenu? markers = ContextMenus.Get("note")?.entries.OfType<ContextMenuSubmenu>().FirstOrDefault();
-            t.Check(markers != null && markers.entries.OfType<ContextMenuButton>().Count(b => b.action != null) == 11,
-                "the note menu offers all eleven markers, each bound");
+            ContextMenuSubmenu? markers = ContextMenus.Get("note")?.entries.OfType<ContextMenuSubmenu>().FirstOrDefault(s => s.text == "List marker");
+            t.Check(markers != null && markers.entries.OfType<ContextMenuButton>().Count(b => b.action != null) == 12,
+                "the note menu offers all eleven markers and Continue numbering, each bound");
             t.Check(p[0].listNumber == 1 && p[1].listNumber == 2 && p[2].listNumber == 1 && p[3].listNumber == 3 && p[5].listNumber == 1,
                 "items count per level, a nested list restarts, a paragraph ends the list");
 
@@ -593,7 +692,8 @@ namespace Thorium.Tests
             t.Check(block.text == "a b i s c d", $"closing markers drop both markers: '{block.text}'");
             t.Check(block.StyleAt(2).IsBold && block.StyleAt(4).IsItalic && block.StyleAt(6).strikethrough
                 && block.StyleAt(8).stylingType == TextStyleType.Code, "each pair styles what it closed over");
-            t.Check(!block.StyleAt(3).IsBold && !block.StyleAt(5).IsItalic && !block.StyleAt(7).strikethrough,
+            t.Check(!block.StyleAt(3).IsBold && !block.StyleAt(5).IsItalic && !block.StyleAt(7).strikethrough
+                && block.StyleAt(10).stylingType != TextStyleType.Code && block.StyleAt(11).stylingType != TextStyleType.Code,
                 "what is typed after a closed pair is unstyled");
 
             yield return t.Key(Keys.Enter);
@@ -809,6 +909,38 @@ namespace Thorium.Tests
             t.Check(prose[0].Attribute("List") == null && prose[1].Attribute("List") == null
                 && (string?)prose[2].Attribute("Marker") == "LowerRoman", "words stay prose, a roman numeral is a list");
             yield return 0;
+        }
+
+        [A_XSDActionDependency("TextInput.ListStartNumbers", "Test")]
+        private static IEnumerator<int> ListStartNumbers(TestContext t)
+        {
+            const string source = "3. three\n4. four\ntext\n1. one\n1. two";
+            XElement read = MarkdownFormat.Read(source, "n");
+            List<XElement> back = read.Elements("Block").ToList();
+            t.Check((int?)back[0].Attribute("Start") == 3 && back.Skip(1).All(b => b.Attribute("Start") == null),
+                $"only a list's first number is kept, and only when it is not 1: {string.Join(",", back.Select(b => (string?)b.Attribute("Start") ?? "-"))}");
+            string md = MarkdownFormat.Write(read);
+            t.Check(md == "3. three\n4. four\ntext\n1. one\n2. two", $"and writes back counting on from it: {md.Replace('\n', '|')}");
+
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(read));
+            DocumentControl content = Content(editor);
+            List<BlockControl> p = Paragraphs(editor);
+            yield return 2;
+            t.Check(p[0].listNumber == 3 && p[1].listNumber == 4 && p[3].listNumber == 1 && p[4].listNumber == 2,
+                $"the note numbers from the start: {string.Join(",", p.Select(b => b.listNumber))}");
+
+            content.SetCaret(p[4], 1);
+            editor.ContinueNumbering();
+            yield return 2;
+            t.Check(p[3].listStart == 5 && p[3].listNumber == 5 && p[4].listNumber == 6,
+                "Continue numbering starts the caret's list after the list above it");
+            t.Check(DocumentXml.ToXml(editor.session.document).ToString().Contains("Start=\"5\""), "the start saves to XML");
+
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            yield return 2;
+            t.Check(p[3].listStart == null && p[3].listNumber == 1, "one undo puts the numbering back");
+
+            t.Show(new StackPanelControl());
         }
 
         [A_XSDActionDependency("TextInput.HeaderFieldTakesPress", "Test")]
@@ -1059,6 +1191,78 @@ namespace Thorium.Tests
 
             yield return t.Key(Keys.Z, Keys.LeftControl);
             t.Check(p[0].alignment == TextAlignment.Left && p[1].alignment == TextAlignment.Center, "undo puts the alignments back");
+        }
+
+        [A_XSDActionDependency("TextInput.JustifyLines", "Test")]
+        private static IEnumerator<int> JustifyLines(TestContext t)
+        {
+            string words = string.Join(" ", Enumerable.Repeat("lorem ipsum dolor sit", 12));
+            DocumentEditorControl editor = ShowParagraphs(t, words, "short");
+            List<BlockControl> p = Paragraphs(editor);
+            yield return 2;
+
+            float wrap = p[0].arrangedRect.width;
+            yield return t.Key(Keys.A, Keys.LeftControl);
+            yield return t.Key(Keys.J, Keys.LeftControl);
+            yield return 2;
+
+            IReadOnlyList<TextLine> lines = p[0].Lines;
+            t.Check(p[0].alignment == TextAlignment.Justify && p[1].alignment == TextAlignment.Justify, "Ctrl+J justifies every selected block");
+            t.Check(lines.Count > 2 && lines.Take(lines.Count - 1).All(l => l.left == 0f && l.spaceExtra > 0f
+                && MathF.Abs(p[0].CaretAt(l.justifyEnd).x - wrap) < 0.5f),
+                "every line but the last starts at the left edge and its last letter ends at the right one");
+            t.Check(lines[^1].spaceExtra == 0f && p[1].Lines[0].spaceExtra == 0f, "a paragraph's last line is not stretched");
+
+            TextLine head = lines[0];
+            Vector2 nearEnd = p[0].TextOrigin + new Vector2(wrap - 1f, head.top + head.height * 0.5f);
+            t.Check(p[0].IndexAt(nearEnd) == head.justifyEnd, $"a press at the stretched line's right edge lands after its last letter: {p[0].IndexAt(nearEnd)} vs {head.justifyEnd}");
+            t.Check(DocumentXml.ToXml(editor.session.document).ToString().Contains("Align=\"Justify\""), "justify saves to XML");
+
+            yield return t.Golden("Justified", p[0]);
+
+            yield return t.Key(Keys.L, Keys.LeftControl);
+            yield return 2;
+            t.Check(p[0].Lines.All(l => l.spaceExtra == 0f && l.left == 0f), "aligning left again drops the stretch");
+
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("TextInput.PageNumbersAndUndo", "Test")]
+        private static IEnumerator<int> PageNumbersAndUndo(TestContext t)
+        {
+            DocumentEditorControl editor = ShowParagraphs(t, "page one");
+            DocumentControl content = Content(editor);
+            yield return 2;
+
+            PanelControl sheet = content.children.OfType<PanelControl>().First(p => p.children.Count > 0 && p.children[0] is LabelControl);
+            LabelControl number = (LabelControl)sheet.children[0];
+            t.Check(sheet.arrangedRect.y - content.arrangedRect.y >= 15.5f && sheet.arrangedRect.x - content.arrangedRect.x >= 15.5f,
+                $"the first page sits a gap in from the top and left: {sheet.arrangedRect.x - content.arrangedRect.x}, {sheet.arrangedRect.y - content.arrangedRect.y}");
+            t.Check(number.text == "", "page numbers are off by default");
+
+            PageLayout numbered = editor.Page!.Clone();
+            numbered.pageNumbers = true;
+            editor.SetPage(numbered);
+            yield return 2;
+            float bottomMargin = editor.Page!.marginBottom * PageLayout.PxPerMm * content.zoom;
+            t.Check(number.text == "1" && number.arrangedRect.Bottom <= sheet.arrangedRect.Bottom
+                && number.arrangedRect.y >= sheet.arrangedRect.Bottom - bottomMargin,
+                $"the page's number sits in its bottom margin: '{number.text}' at {number.arrangedRect.y}..{number.arrangedRect.Bottom}, sheet bottom {sheet.arrangedRect.Bottom}");
+            t.Check(DocumentXml.ToXml(editor.session.document).ToString().Contains("PageNumbers=\"true\""), "page numbers save to XML");
+
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            yield return 2;
+            t.Check(!editor.Page!.pageNumbers && number.text == "", "one undo takes the page change back");
+            yield return t.Key(Keys.Y, Keys.LeftControl);
+            yield return 2;
+            t.Check(editor.Page!.pageNumbers && number.text == "1", "redo puts it back");
+
+            t.Check(!DocumentToolbarControl.SetCustomSize(editor, "abc", "150"), "a size that is not a number is refused");
+            t.Check(DocumentToolbarControl.SetCustomSize(editor, "100", "150.5") && editor.Page!.size == PageSize.Custom
+                && Vector2.Distance(editor.Page.SizePx(), new Vector2(100f, 150.5f) * PageLayout.PxPerMm) < 0.01f,
+                "the custom fields set the paper size in millimetres");
+
+            t.Show(new StackPanelControl());
         }
 
         [A_XSDActionDependency("TextInput.AlignAroundPicture", "Test")]
@@ -1579,6 +1783,213 @@ namespace Thorium.Tests
             yield return t.Key(Keys.Left);
             yield return 2;
             yield return t.Golden("PageBreak");
+        }
+
+        [A_XSDActionDependency("TextInput.TableInsertUndo", "Test")]
+        private static IEnumerator<int> TableInsertUndo(TestContext t)
+        {
+            DocumentEditorControl editor = ShowParagraphs(t, "only");
+            RichTextDocument document = editor.session.document;
+            XElement original = DocumentXml.ToXml(document);
+            yield return 2;
+
+            TextInputActions.InsertTable();
+            yield return 2;
+            TableControl? table = document.blocks.ElementAtOrDefault(1) as TableControl;
+            t.Check(document.blocks.Count == 3 && table != null && document.blocks[2] is BlockControl,
+                "a table goes after the last paragraph, with a paragraph kept after it");
+            if (table == null) yield break;
+
+            PageLayout page = editor.Page!;
+            float text = page.SizePx().X - (page.marginLeft + page.marginRight) * PageLayout.PxPerMm;
+            t.Check(table.RowCount == 3 && table.widths.Count == 3, "the default table is 3x3");
+            t.Check(table.widths.All(w => w == MathF.Floor(text / 3f)), "its columns split the text width evenly");
+            t.Check(Content(editor).caretBlock == Cell(table, 0), "the caret lands in the first cell");
+            XElement inserted = DocumentXml.ToXml(document);
+
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(XNode.DeepEquals(DocumentXml.ToXml(document), original), "one undo takes the table and its paragraph back out");
+            yield return t.Key(Keys.Y, Keys.LeftControl);
+            t.Check(XNode.DeepEquals(DocumentXml.ToXml(document), inserted), "redo puts the same table back");
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("TextInput.TableInsertRefusedInMarkdown", "Test")]
+        private static IEnumerator<int> TableInsertRefusedInMarkdown(TestContext t)
+        {
+            DocumentEditorControl editor = NewEditor();
+            t.Show(editor);
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-table-{Guid.NewGuid():N}.md");
+            File.WriteAllText(path, "text\n");
+            editor.LoadPath(path);
+            File.Delete(path);
+            Content(editor).SetCaret(Paragraphs(editor)[0], 0);
+            editor.FocusCaret();
+            yield return 2;
+
+            TextInputActions.InsertTable();
+            t.Check(!editor.session.document.blocks.OfType<TableControl>().Any(), "a Markdown note refuses a table");
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("TextInput.TableRowsAndColumns", "Test")]
+        private static IEnumerator<int> TableRowsAndColumns(TestContext t)
+        {
+            DocumentControl content = ShowNote(t, TableNote(120f, 160f), out TableControl table, out RichTextDocument document);
+            content.SetCaret(Cell(table, 1), 2);
+            yield return 2;
+
+            (string name, Action command, Func<TableControl, bool> shape)[] commands =
+            {
+                ("row above", TextInputActions.InsertRowAbove, s => s.RowCount == 3 && Cell(s, 0).text == "" && Cell(s, 3).text == "r0c1"),
+                ("row below", TextInputActions.InsertRowBelow, s => s.RowCount == 3 && Cell(s, 1).text == "r0c1" && Cell(s, 2).text == ""),
+                ("column left", TextInputActions.InsertColumnLeft, s => s.widths.SequenceEqual(new[] { 120f, 160f, 160f }) && Cell(s, 1).text == "" && Cell(s, 2).text == "r0c1"),
+                ("column right", TextInputActions.InsertColumnRight, s => s.widths.SequenceEqual(new[] { 120f, 160f, 160f }) && Cell(s, 1).text == "r0c1" && Cell(s, 2).text == ""),
+                ("row delete", TextInputActions.DeleteRow, s => s.RowCount == 1 && Cell(s, 0).text == "r1c0"),
+                ("column delete", TextInputActions.DeleteColumn, s => s.widths.Count == 1 && Cell(s, 0).text == "r0c0")
+            };
+
+            foreach ((string name, Action command, Func<TableControl, bool> shape) in commands)
+            {
+                XElement before = DocumentXml.ToXml(document);
+                command();
+                yield return 2;
+                TableControl changed = (TableControl)document.blocks[1];
+                t.Check(shape(changed), $"{name}: the table has its new shape");
+                XElement after = DocumentXml.ToXml(document);
+
+                yield return t.Key(Keys.Z, Keys.LeftControl);
+                t.Check(XNode.DeepEquals(DocumentXml.ToXml(document), before), $"{name}: undo restores the table exactly");
+                yield return t.Key(Keys.Y, Keys.LeftControl);
+                t.Check(XNode.DeepEquals(DocumentXml.ToXml(document), after), $"{name}: redo rebuilds the same table");
+                yield return t.Key(Keys.Z, Keys.LeftControl);
+                content.SetCaret(Cell((TableControl)document.blocks[1], 1), 2);
+            }
+
+            TextInputActions.InsertRowAbove();
+            yield return 2;
+            yield return t.Type("x");
+            TableControl shifted = (TableControl)document.blocks[1];
+            t.Check(Cell(shifted, 3).text == "r0xc1", "typing after a row insert lands in the caret's own cell");
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(Cell(shifted, 3).text == "r0c1", "undoing the typing finds the cell by its new flat address");
+
+            TextInputActions.DeleteTable();
+            yield return 2;
+            t.Check(document.blocks.Count == 2 && content.caretBlock == document.blocks[1], "Delete table leaves the caret on the paragraph after it");
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(document.blocks[1] is TableControl { RowCount: 3 }, "undo brings the table back");
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("TextInput.TableTabAddsRow", "Test")]
+        private static IEnumerator<int> TableTabAddsRow(TestContext t)
+        {
+            DocumentControl content = ShowNote(t, TableNote(120f, 120f), out TableControl table, out RichTextDocument document);
+            content.SetCaret(Cell(table, 3), 1);
+            yield return 2;
+
+            yield return t.Key(Keys.Tab);
+            yield return t.Type("x");
+            TableControl grown = (TableControl)document.blocks[1];
+            t.Check(grown.RowCount == 3 && Cell(grown, 4).text == "x", "Tab past the last cell adds a row and moves into it");
+
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(((TableControl)document.blocks[1]).RowCount == 2, "undo takes the row back out");
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("TextInput.TableListInCell", "Test")]
+        private static IEnumerator<int> TableListInCell(TestContext t)
+        {
+            DocumentControl content = ShowNote(t, TableNote(160f, 160f), out TableControl table);
+            content.SetCaret(Cell(table, 0), 0);
+            yield return 2;
+
+            yield return t.Type("- ");
+            t.Check(Cell(table, 0).listKind == ListKind.Bullet && Cell(table, 0).text == "r0c0", "a list prefix in a cell makes a list");
+
+            content.SetCaret(Cell(table, 0), Cell(table, 0).Length);
+            yield return t.Key(Keys.Enter);
+            yield return t.Type("b");
+            BlockControl second = Cell(table, 0, 1);
+            t.Check(second.listKind == ListKind.Bullet, "Enter on an item in a cell continues the list");
+
+            content.SetCaret(second, 0);
+            yield return t.Key(Keys.Tab);
+            t.Check(second.listLevel == 1 && content.caretBlock == second, "Tab at an item's start nests it");
+
+            content.SetCaret(second, 1);
+            yield return t.Key(Keys.Tab);
+            t.Check(content.caretBlock == Cell(table, 1), "Tab inside the item's text moves to the next cell");
+
+            content.SetCaret(second, 0);
+            yield return t.Type("[ ] ");
+            CheckBoxControl? box = second.children.OfType<CheckBoxControl>().FirstOrDefault();
+            t.Check(second.listKind == ListKind.Task && box != null, "a task prefix in a cell makes a checkbox");
+            if (box == null) yield break;
+
+            yield return t.Click(box);
+            t.Check(second.isChecked, "the checkbox in a cell ticks its item");
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("TextInput.TableResizeColumn", "Test")]
+        private static IEnumerator<int> TableResizeColumn(TestContext t)
+        {
+            DocumentControl content = ShowNote(t, TableNote(120f, 160f), out TableControl table, out RichTextDocument document);
+            yield return 2;
+
+            Control grip = table.children.OfType<PanelControl>().First(p => p.hitTestable);
+            LayoutRect at = grip.arrangedRect;
+            yield return t.Drag(grip, new System.Numerics.Vector2(at.x + at.width * 0.5f + 60f, at.y + at.height * 0.5f));
+            yield return 2;
+            TableControl resized = (TableControl)document.blocks[1];
+            t.Check(resized.widths[0] == 180f && resized.widths[1] == 160f, "dragging the first column's edge widens it alone");
+            yield return t.Golden("Resized", (Control)resized.parent);
+
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(((TableControl)document.blocks[1]).widths[0] == 120f, "one undo puts the width back");
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("TextInput.CodeColoursAndOverflow", "Test")]
+        private static IEnumerator<int> CodeColoursAndOverflow(TestContext t)
+        {
+            static XElement Code(string text, bool wrap = false) => new XElement("Block",
+                new XAttribute("StylingType", "Code"), new XAttribute("Language", "cs"),
+                wrap ? new XAttribute("Wrap", "true") : null, new XElement("Run", new XAttribute("Text", text)));
+
+            string longLine = "var total = items.Where(item => item.IsVisible).Select(item => item.Width * 2).Sum(); // " + new string('x', 60);
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                Block("before"), Code("int count = 42; // items"), Code("string name = \"note\";"), Code(longLine),
+                Block("between"), Code(longLine, true))));
+            List<BlockControl> p = Paragraphs(editor);
+            DocumentControl content = Content(editor);
+            yield return 2;
+
+            BlockControl unwrapped = p[3];
+            BlockControl wrapped = p[5];
+            t.Check(unwrapped.Lines!.Count == 1 && unwrapped.arrangedRect.width > p[1].arrangedRect.width, "a code line runs on past the text column");
+            t.Check(wrapped.Lines!.Count > 1, "Wrap=\"true\" wraps a code line");
+            t.Check(content.arrangedRect.width > editor.Page!.SizePx().X + 1f, "the note is widened to hold the long line");
+
+            XElement saved = DocumentXml.ToXml(editor.session.document);
+            t.Check(saved.Elements().Count(e => (string?)e.Attribute("Wrap") == "true") == 1, "only the wrapping block writes Wrap");
+            t.Check(!MarkdownFormat.Write(saved).Contains("Wrap"), "Markdown carries no wrap setting");
+
+            yield return t.Golden("Coloured", p[1]);
+            content.SetCaret(p[1], 0);
+            yield return t.Type("/* ");
+            yield return 2;
+            yield return t.Golden("Commented", p[2]);
+
+            content.SetCaret(unwrapped, 0);
+            yield return t.Key(Keys.End);
+            yield return 2;
+            t.Check(editor.GetScrollOffset().X > 0f, "the caret at the end of a long code line scrolls the note sideways");
+            t.Show(new StackPanelControl());
         }
 
         // A paragraph, a two-row table whose cells read rNcM, and a paragraph.

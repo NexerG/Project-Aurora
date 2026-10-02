@@ -171,6 +171,10 @@ Slice 6 of [../Context/animation-plan.md](../Context/animation-plan.md).
 
 **Why a baked copy.** With the pool on another thread, Main's owner-asserted reads would fail, and even `Backing` reads would feed mid-fade colours into contrast decisions.
 
+## Code colours (2026-10-02)
+
+- Optional `Keyword`, `String`, `Number`, `Comment` on `<Palette>`; four slots at the end of every block (`Palettes.Code`). Unset → Accent, or muted ink on `SubField` for Comment. See [[code-block-colouring]].
+
 ## Known gaps
 
 - **A selection inside a `SubField` text box is invisible** — `Line` `#E6E4DE` on `SubField` `#EAE8E2`, 4 levels (thorium-light; seen selecting "Untitled" in the new-note dialog). The document editor's selection on `Ground` is fine. Needs a decision.

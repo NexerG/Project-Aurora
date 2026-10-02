@@ -107,6 +107,8 @@ A palette is one file under `Palettes/`, twelve values: eight surface colours, a
 
 A palette also carries shape, all of it optional: how round browser rows, tabs, code-built buttons and fields, and context menus are (`RowRadius`, `TabRadius`, `ControlRadius`, `PopupRadius`), how thick the row and tab accent bars are (`RowAccentWidth`, `TabAccentWidth`), and whether the operating system rounds the window's corners (`WindowCorners`: `Round`, `Small` or `Square`). Only controls built in code read these, through a corner role and an accent role that are resolved when the control is drawn, so a palette switch reshapes them the same way it recolours them. A control written in XML keeps whatever `CornerRadius` it authors. Switching palettes also re-applies each window's corner rounding.
 
+A palette can also colour code in notes, again optionally: `Keyword`, `String`, `Number` and `Comment`. They sit at the end of the palette's block of the paint table, so a theme fade carries them with everything else. Left out, the first three take the accent and comments take muted text on the sub-field colour code is drawn on. See [[Rich Text Document]] § Code blocks.
+
 ```
 apply shape
 	scheme = the control's palette, else default

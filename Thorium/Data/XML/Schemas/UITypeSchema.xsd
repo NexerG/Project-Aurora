@@ -423,6 +423,10 @@
     <xs:attribute name="EdgeAccent" type="xs:string" />
     <xs:attribute name="DarkInk" type="xs:string" />
     <xs:attribute name="LightInk" type="xs:string" />
+    <xs:attribute name="Keyword" type="xs:string" />
+    <xs:attribute name="String" type="xs:string" />
+    <xs:attribute name="Number" type="xs:string" />
+    <xs:attribute name="Comment" type="xs:string" />
     <xs:attribute name="Step" type="xs:float" />
     <xs:attribute name="Muted" type="xs:float" />
     <xs:attribute name="RowRadius" type="xs:float" />
@@ -486,6 +490,7 @@
       <xs:enumeration value="Left" />
       <xs:enumeration value="Center" />
       <xs:enumeration value="Right" />
+      <xs:enumeration value="Justify" />
     </xs:restriction>
   </xs:simpleType>
   <xs:attributeGroup name="TextStyle.Attributes">
@@ -567,6 +572,7 @@
     <xs:attribute name="MarginLeft" type="xs:float" />
     <xs:attribute name="MarginRight" type="xs:float" />
     <xs:attribute name="Gap" type="xs:float" />
+    <xs:attribute name="PageNumbers" type="xs:boolean" />
   </xs:attributeGroup>
   <xs:element name="Page" type="types:Page" />
   <xs:complexType name="Page">

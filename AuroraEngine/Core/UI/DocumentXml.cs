@@ -100,6 +100,7 @@ namespace ArctisAurora.Core.UI
             if (align != null && Enum.TryParse(align.Value, true, out TextAlignment alignment))
                 block.alignment = alignment;
             block.language = (string?)element.Attribute("Language");
+            block.codeWrap = (bool?)element.Attribute("Wrap") ?? false;
 
             XAttribute list = element.Attribute("List");
             if (list != null && Enum.TryParse(list.Value, true, out ListKind kind))
@@ -109,6 +110,7 @@ namespace ArctisAurora.Core.UI
             XAttribute marker = element.Attribute("Marker");
             if (marker != null && Enum.TryParse(marker.Value, true, out ListMarker style))
                 block.listMarker = style;
+            block.listStart = (int?)element.Attribute("Start");
 
             foreach (XElement child in element.Elements())
             {
@@ -124,7 +126,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // <Column Width>s, then <Row>s of <Cell>s of <Block>s; a row wider than the columns adds columns.
-        private static TableControl ReadTable(XElement element)
+        internal static TableControl ReadTable(XElement element)
         {
             List<float> widths = new List<float>();
             foreach (XElement column in element.Elements().Where(e => e.Name.LocalName == "Column"))
@@ -204,6 +206,8 @@ namespace ArctisAurora.Core.UI
                 element.SetAttributeValue("Align", block.alignment.ToString());
             if (!string.IsNullOrEmpty(block.language))
                 element.SetAttributeValue("Language", block.language);
+            if (block.codeWrap && block.stylingType == TextStyleType.Code)
+                element.SetAttributeValue("Wrap", "true");
             if (block.listKind != ListKind.None)
                 element.SetAttributeValue("List", block.listKind.ToString());
             if (block.listLevel > 0)
@@ -212,11 +216,25 @@ namespace ArctisAurora.Core.UI
                 element.SetAttributeValue("Checked", "true");
             if (block.listMarker.HasValue)
                 element.SetAttributeValue("Marker", block.listMarker.Value.ToString());
+            if (block.listStart.HasValue)
+                element.SetAttributeValue("Start", block.listStart.Value);
 
             foreach (Run run in block.Runs())
                 element.Add(WriteScalars(ns + "Run", run));
 
             return element;
+        }
+
+        internal static XElement WriteTable(TableControl table) => WriteTable(XSDGenerator.NamespaceFor("UI"), table);
+
+        // A table of empty cells, every column one width.
+        internal static XElement NewTable(int rows, int columns, float width)
+        {
+            XNamespace ns = XSDGenerator.NamespaceFor("UI");
+            return new XElement(ns + "Table",
+                Enumerable.Range(0, columns).Select(_ => new XElement(ns + "Column", new XAttribute("Width", Format(width)))),
+                Enumerable.Range(0, rows).Select(_ => new XElement(ns + "Row",
+                    Enumerable.Range(0, columns).Select(_ => new XElement(ns + "Cell")))));
         }
 
         private static XElement WriteTable(XNamespace ns, TableControl table)

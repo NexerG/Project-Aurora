@@ -22,7 +22,7 @@ VerifiedAgainst: 2026-08-22
 
 Undo is a stack of steps, a step is a list of records, and a record is plain data that knows how to reverse one change. The stack itself knows nothing about documents — it holds `IEditRecord`, and the records that implement it live next to the thing they edit, so the same stack will carry the game editor's transforms and reparents when that arrives.
 
-One user action is one undo step, however many primitives the action ran. Nothing coalesces: a keypress is a step, so typing five letters is five undos.
+One user action is one undo step, however many primitives the action ran. A held key is one action: Backspace and Delete held down join every repeat into the step the press opened, because `InputHandler.firingRepeat` tells the editor the keybind fired from a repeat. Nothing else coalesces: typing five letters is five undos, and five separate Backspace presses are five.
 
 ## Architecture
 
@@ -51,9 +51,12 @@ Because redo re-enters the recording primitives, `UndoStack` holds an `_applying
 An `EditScope` is what makes one press one undo. It matters even without coalescing, because a single action already runs more than one primitive: typing over a selection deletes it and then writes, and Enter deletes the selection and then splits. Recorded separately, Ctrl+Z would put the deleted text back and leave the typed characters sitting there.
 
 ```
-Begin(label):
+Begin(label, join):
     if this is the outermost scope:
-        open a new step
+        if join, nothing to redo, and the last step has the same label:
+            reopen the last step
+        else:
+            open a new step
     return a scope that ends it on Dispose
 
 End():
@@ -135,4 +138,4 @@ The stack hangs off `DocumentEditSession`, so it is per open note. Tabs already 
 
 Nothing has been undone by hand yet — the feature builds and binds, and that is all that has been checked. `InsertFragment` is the piece to distrust: it exists only as the inverse of a delete and nothing else calls it, so the cross-block case with a destroyed tail run has never run.
 
-Holding Backspace produces one step per repeat firing, which is what one-press-one-undo means and the first thing a coalescing pass would change. Undo restores the caret but not the selection, and does not reach a standalone `TextBoxControl`, where Escape is still the only way back. It does scroll to the caret it restores, through the deferred request described in [[Rich Text Document#Scrolling to the caret]].
+Undo restores the caret but not the selection, and does not reach a standalone `TextBoxControl`, where Escape is still the only way back. It does scroll to the caret it restores, through the deferred request described in [[Rich Text Document#Scrolling to the caret]].

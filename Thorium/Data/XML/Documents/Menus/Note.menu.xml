@@ -8,6 +8,18 @@
 	<ContextButton Text="Insert display formula" Action="Math.InsertDisplay"/>
 	<ContextButton Text="Edit formula" Action="Math.Edit"/>
 	<ContextLine/>
+	<ContextButton Text="Insert table" Action="Table.Insert"/>
+	<ContextSubmenu Text="Table">
+		<ContextButton Text="Insert row above" Action="Table.RowAbove"/>
+		<ContextButton Text="Insert row below" Action="Table.RowBelow"/>
+		<ContextButton Text="Insert column left" Action="Table.ColumnLeft"/>
+		<ContextButton Text="Insert column right" Action="Table.ColumnRight"/>
+		<ContextLine/>
+		<ContextButton Text="Delete row" Action="Table.DeleteRow"/>
+		<ContextButton Text="Delete column" Action="Table.DeleteColumn"/>
+		<ContextButton Text="Delete table" Action="Table.Delete"/>
+	</ContextSubmenu>
+	<ContextLine/>
 	<ContextSubmenu Text="List marker">
 		<ContextButton Text="Filled circle" Action="List.Disc"/>
 		<ContextButton Text="Empty circle" Action="List.Circle"/>
@@ -21,6 +33,8 @@
 		<ContextButton Text="a. b. c." Action="List.LowerAlpha"/>
 		<ContextButton Text="i. ii. iii." Action="List.LowerRoman"/>
 		<ContextButton Text="I. II. III." Action="List.UpperRoman"/>
+		<ContextLine/>
+		<ContextButton Text="Continue numbering" Action="List.ContinueNumbering"/>
 	</ContextSubmenu>
 	<ContextSubmenu Text="Wrap text">
 		<ContextButton Text="In line with text" Action="Picture.WrapInline"/>

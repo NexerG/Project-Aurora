@@ -36,11 +36,11 @@ A note's `DocumentLayout` scalars do not cascade from `Defaults` (a fresh instan
 `BlockControl`'s checkbox callback walks `parent.parent` to find the editor. A page layer between them would break that, and paint order already comes from the child list.
 
 ## Known gaps
-- The first page sits flush against the top/left of the viewport, and the page fill (`Surface`) is only slightly darker than the gap. Readable, not polished.
+- ~~The first page sits flush against the top/left of the viewport~~ — since 2026-10-02 the document is inset by one `PageGap` × zoom on every side (desired size grows by two gaps; `ArrangeCore` and `CollectChildren` start a gap in). The page fill (`Surface`) is still only slightly darker than the gap.
 - No zoom: A4 is 794px wide, so a narrow pane scrolls horizontally, and 18px body text is large for A4.
 - A click in the gap between pages resolves to the nearest line **above** the gap (`LineAt` takes the last line whose top ≤ y).
-- No headers/footers, page numbers, widow/orphan or keep-with-next rules. A line taller than a page's text area overflows rather than being pushed.
-- Page changes are not undoable. Custom size is XML-only (no input on the bar).
+- No headers/footers, widow/orphan or keep-with-next rules. Headers/footers were planned and deferred (user, 2026-10-02): the open fork is plain one-line text with `{page}`/`{pages}` from page-menu fields, against rich text edited in the margin; agreed if built: a footer pushes the page number to the right corner. A line taller than a page's text area overflows rather than being pushed. Page numbers landed 2026-10-02: `PageLayout.pageNumbers` (`PageNumbers`), a `LabelControl` child of each sheet placed by `verticalPosition = 1` in the bottom margin, written by `DocumentControl.NumberPages` during measure; Paged only; toggled from the page menu. `.md` frontmatter does not carry it.
+- ~~Page changes are not undoable. Custom size is XML-only~~ — `SetPage` records a `PageEdit` (before/after `layout.page`, null = the editor's) in a "Page" step; `ApplyPage` is the unrecorded write. The page menu hosts Custom width × height mm fields through `ContextMenuContent`; Enter calls `DocumentToolbarControl.SetCustomSize`. The fields themselves are NOT GUI-verified. Test: `TextInput.PageNumbersAndUndo`
 - Caret Up/Down across a break is not GUI-verified (extended keys can't be scripted).
 
 Related: [[text-layout-one-measurer]], [[document-format-bar]], [[note-file-formats]], [[document-selection]]

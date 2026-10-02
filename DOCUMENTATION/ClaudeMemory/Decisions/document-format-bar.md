@@ -215,8 +215,10 @@ three-physical-copies shape the shaders have.
 - No alignment. It needs a block-level line-width pass that has not existed since the L2 revert —
   runs measure themselves, so no run knows the width of a visual line it shares.
 - Strikethrough is still declared and unread, now the only one of the three left that way.
-- `Text.Bold`/`Text.Italic` toggle from the selection's first run, so a mixed selection flips to the
-  opposite of whatever that run was rather than to all-on.
+- ~~`Text.Bold`/`Text.Italic` toggle from the selection's first run~~ — since 2026-10-02 Bold, Italic and
+  Underline turn on over a selection unless every span in it already has the style
+  (`DocumentControl.SelectionAll`, `BlockControl.AllSpans`); with no selection they still read the caret's style.
+  The bar's lit state still reflects the selection's start. Test: `TextInput.MixedSelectionToggles`
 
 Related: [[document-undo]], [[document-selection]], [[document-structural-editing]],
 [[text-styling-types]], [[text-layout-one-measurer]], [[context-menu-invoker]],

@@ -1,3 +1,4 @@
+using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Filing;
 using System.Numerics;
@@ -182,6 +183,9 @@ namespace ArctisAurora.Core.UI
         // a code block's fence language; null when none was named
         public string? language;
 
+        // a code block that wraps its lines; .xml only, so Markdown code never wraps
+        public bool codeWrap;
+
         // list item state
         public ListKind listKind;
         public int listLevel;
@@ -189,6 +193,9 @@ namespace ArctisAurora.Core.UI
 
         // the item's own marker; null takes the layout's for its level
         public ListMarker? listMarker;
+
+        // the number this item restarts its list at; null counts on from the item above
+        public int? listStart;
 
         // what the document resolved for this item: the marker and its number in its list
         public ListMarker shownMarker { get; internal set; } = ListMarker.Disc;
@@ -296,6 +303,8 @@ namespace ArctisAurora.Core.UI
 
         protected override TextAlignment Alignment => alignment;
 
+        protected override bool Wraps => stylingType != TextStyleType.Code || codeWrap;
+
         // A code block's ground behind each line, and a rule's line in place of text.
         internal override void Emit(float z)
         {
@@ -370,7 +379,7 @@ namespace ArctisAurora.Core.UI
                     ListKind.Task => new CheckBoxControl
                     {
                         role = PaletteRole.SubField,
-                        onChanged = value => (parent?.parent as DocumentEditorControl)?.SetChecked(this, value)
+                        onChanged = value => Editor()?.SetChecked(this, value)
                     },
                     ListKind.Bullet when numbered => new LabelControl
                     {
@@ -400,6 +409,15 @@ namespace ArctisAurora.Core.UI
                     InvalidateLayout();
                 }
             }
+        }
+
+        // The editor above, however deep the block sits.
+        private DocumentEditorControl? Editor()
+        {
+            for (Entity? e = parent; e != null; e = e.parent)
+                if (e is DocumentEditorControl editor) return editor;
+
+            return null;
         }
 
         // Load: the run's text joins the block's string and its style becomes the next span.
@@ -488,6 +506,7 @@ namespace ArctisAurora.Core.UI
                 stylingType = stylingType,
                 alignment = alignment,
                 language = language,
+                codeWrap = codeWrap,
                 listKind = listKind,
                 listLevel = listLevel,
                 listMarker = listMarker,
@@ -532,9 +551,11 @@ namespace ArctisAurora.Core.UI
                 stylingType = stylingType,
                 alignment = alignment,
                 language = language,
+                codeWrap = codeWrap,
                 listKind = listKind,
                 listLevel = listLevel,
                 listMarker = listMarker,
+                listStart = listStart,
                 isChecked = isChecked,
                 text = (text ?? string.Empty)[from..to]
             };
@@ -578,9 +599,11 @@ namespace ArctisAurora.Core.UI
             stylingType = snapshot.stylingType;
             alignment = snapshot.alignment;
             language = snapshot.language;
+            codeWrap = snapshot.codeWrap;
             listKind = snapshot.listKind;
             listLevel = snapshot.listLevel;
             listMarker = snapshot.listMarker;
+            listStart = snapshot.listStart;
             isChecked = snapshot.isChecked;
             spans.Clear();
             spans.AddRange(snapshot.spans);
@@ -594,9 +617,11 @@ namespace ArctisAurora.Core.UI
             stylingType = kind.stylingType;
             alignment = kind.alignment;
             language = kind.language;
+            codeWrap = kind.codeWrap;
             listKind = kind.listKind;
             listLevel = kind.listLevel;
             listMarker = kind.listMarker;
+            listStart = kind.listStart;
             isChecked = kind.isChecked;
             InvalidateLayout();
         }
@@ -619,6 +644,19 @@ namespace ArctisAurora.Core.UI
                 start = spanEnd;
             }
             return spans[^1].AsText();
+        }
+
+        // Whether every span over a character range passes a test.
+        public bool AllSpans(int start, int end, Func<StyleSpan, bool> test)
+        {
+            int at = 0;
+            foreach (StyleSpan span in spans)
+            {
+                int spanEnd = at + span.count;
+                if (spanEnd > start && at < end && !test(span)) return false;
+                at = spanEnd;
+            }
+            return true;
         }
 
         // Restyles a character range: a boundary is cut at each end, every span between takes the

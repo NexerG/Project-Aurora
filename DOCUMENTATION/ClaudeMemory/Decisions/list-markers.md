@@ -61,7 +61,12 @@ primitive would be one walk per keystroke-path and easy to miss on a new path. C
   as paragraphs, not as lists
 - `.md` notes with a paragraph starting `i. `, `a) ` and the like now open as lists
 - A roman number above 3999 writes as digits and reads back as `Decimal`
-- A list always numbers from 1
+- ~~A list always numbers from 1~~ — `BlockControl.listStart` (2026-10-02), XML `Start`, carried by snapshots and
+  `TakeKind` but not by `SplitAt`, cleared with the list kind. `RenumberLists` and `MarkdownFormat.Count` take it
+  over the running count. `.md` reads keep a list's first number when it is not 1 (`KeepListStarts`) and drop the
+  rest, as CommonMark does. "Continue numbering" (`List.ContinueNumbering`, Note menu ▸ List marker) sets the
+  list head's start once from the nearest same-level, same-marker item above — it does not track later changes
+  (user's fork b). Lettered and roman starts do not survive `.md`. Test: `TextInput.ListStartNumbers`
 - The List marker actions act on the caret, not on the item right-clicked
 - Shape markers are 6 px at 100% zoom
 

@@ -76,6 +76,16 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("LightInk", "UI", "Text on dark backgrounds, as a hex code.")]
         public string lightInk = "";
 
+        // code block colours, optional
+        [A_XSDElementProperty("Keyword", "UI", "Keywords and tag names in code blocks, as a hex code. Accent when left out.")]
+        public string keyword = "";
+        [A_XSDElementProperty("String", "UI", "String literals in code blocks, as a hex code. Accent when left out.")]
+        public string stringLiteral = "";
+        [A_XSDElementProperty("Number", "UI", "Numbers in code blocks, as a hex code. Accent when left out.")]
+        public string number = "";
+        [A_XSDElementProperty("Comment", "UI", "Comments in code blocks, as a hex code. Muted text when left out.")]
+        public string comment = "";
+
         // derivation
         [A_XSDElementProperty("Step", "UI", "How far each hover or press step moves a colour toward its text colour, 0 to 1.")]
         public float step = 0.04f;
@@ -121,14 +131,15 @@ namespace ArctisAurora.Core.UI
         public const uint clear = inlineBit | gradientBit;
 
         // block layout: surfaces × states, ink and muted ink per surface, the two raw inks, the edge accent,
-        // then the ground's ink stepped once
+        // the ground's ink stepped once, then the four code colours
         private const uint surfaceCount = 8;
         private const uint stateCount = 3;
         private const uint inkBase = surfaceCount * stateCount;
         private const uint rawInkBase = inkBase + surfaceCount * 2;
         private const uint edgeAccentSlot = rawInkBase + 2;
         private const uint inkStepSlot = edgeAccentSlot + 1;
-        internal const uint blockSize = inkStepSlot + 1;
+        private const uint codeBase = inkStepSlot + 1;
+        internal const uint blockSize = codeBase + 4;
 
         private static readonly Dictionary<string, PaletteDefinition> byName =
             new Dictionary<string, PaletteDefinition>(StringComparer.OrdinalIgnoreCase);
@@ -241,6 +252,9 @@ namespace ArctisAurora.Core.UI
         // The slot every unauthored edge paints with.
         public static uint EdgeAccent(PaletteDefinition palette) => palette.firstSlot + edgeAccentSlot;
 
+        // A code token's slot; Plain has none.
+        public static uint Code(PaletteDefinition palette, SyntaxToken token) => palette.firstSlot + codeBase + (uint)token - 1;
+
         // A gradient stop's role as offsets inside any palette block: its colour, and that colour stepped once.
         public static (uint rest, uint stepped) RoleOffsets(PaletteRole role)
         {
@@ -334,6 +348,10 @@ namespace ArctisAurora.Core.UI
                 accent = Required(element, "Accent"),
                 danger = Required(element, "Danger"),
                 edgeAccent = element.Attribute("EdgeAccent")?.Value ?? "",
+                keyword = element.Attribute("Keyword")?.Value ?? "",
+                stringLiteral = element.Attribute("String")?.Value ?? "",
+                number = element.Attribute("Number")?.Value ?? "",
+                comment = element.Attribute("Comment")?.Value ?? "",
                 darkInk = Required(element, "DarkInk"),
                 lightInk = Required(element, "LightInk")
             };
@@ -412,7 +430,16 @@ namespace ArctisAurora.Core.UI
             Vector3 groundInk = Contrast(dark, surfaces[0]) >= Contrast(light, surfaces[0]) ? dark : light;
             Vector3 otherInk = Contrast(dark, groundInk) >= Contrast(light, groundInk) ? dark : light;
             Put(new Vector4(Vector3.Lerp(groundInk, otherInk, palette.step), 1f));
+
+            Vector3 codeGround = surfaces[4];
+            Vector3 codeInk = Contrast(dark, codeGround) >= Contrast(light, codeGround) ? dark : light;
+            Put(new Vector4(HexOr(palette.keyword, surfaces[6]), 1f));
+            Put(new Vector4(HexOr(palette.stringLiteral, surfaces[6]), 1f));
+            Put(new Vector4(HexOr(palette.number, surfaces[6]), 1f));
+            Put(new Vector4(HexOr(palette.comment, Vector3.Lerp(codeInk, codeGround, palette.muted)), 1f));
         }
+
+        private static Vector3 HexOr(string hex, Vector3 fallback) => string.IsNullOrEmpty(hex) ? fallback : Control.HexToRGB(hex);
         #endregion
     }
 }

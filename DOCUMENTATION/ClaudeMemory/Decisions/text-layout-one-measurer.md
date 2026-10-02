@@ -131,6 +131,9 @@ slot", so the title centres with no change to `UI.xml` or `TabWindow.xml`.
 
 ## Every measure writes one cached `PenChar` array (user, 2026-09-15)
 
+**SUPERSEDED 2026-10-02** — `PenChar` and `_penChars` are gone; each `BlockLayout` keeps its own `advances`/`flags`.
+See [[rewrap-advance-cache]].
+
 `Flatten` built a fresh `List<PenChar>` with no capacity on every `MeasureBlock`: 24 B a character, grown
 4 → 8 → … by doubling, so a measure allocated about twice its final array. Found through
 `--profile-scenario` ([[engine-profiling]] §15) — typing into a 1,001-char paragraph cost `ResolveLayout`

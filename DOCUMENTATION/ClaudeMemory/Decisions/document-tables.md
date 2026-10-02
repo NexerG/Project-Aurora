@@ -1,7 +1,7 @@
 # Decision — a note table is a grid of block stacks, addressed through the flat block list
 
 **Date:** 2026-09-29
-**Scope:** `ArctisAurora.Core.UI` — `TableControl`, `GridListControl`, `DocumentControl`, `DocumentEditorControl`, `DocumentXml`, `RichTextDocument`, `ScrollableControl`
+**Scope:** `ArctisAurora.Core.UI` — `TableControl`, `GridListControl`, `DocumentControl`, `DocumentEditorControl`, `DocumentXml`, `RichTextDocument`, `ScrollableControl`, `TableEdit`, `TextInputActions`, `BlockControl`; `Thorium/Data/XML/Documents/Menus/Note.menu.xml`
 
 ## What changed
 - `TableControl : GridListControl` — Fixed columns (`widths`, design px × zoom), Auto rows. A cell is a vertical
@@ -44,8 +44,37 @@ logged `desired stale` otherwise), and the base had to stop stretching a cell in
 
 **Fixed widths, may exceed the page.** User requirement; overflow scrolls per table, not the page.
 
-**No `TableEdit` record yet.** Nothing inserts or deletes a table, row or column at runtime, so flat indices
-never shift under an existing record. The first structural command must bring its record with it.
+**Structural commands bring their own record.** Flat indices shift under a row or column insert, so each one is a
+`TableEdit` pushed in the same step; LIFO undo keeps every older record's addresses valid.
+
+## Structural editing (2026-10-02)
+- `TableEdit : IEditRecord` — the table's note-level index (`document.blocks`), its XML before and after
+  (`DocumentXml.WriteTable`; null = no table there), caret address before and after. Undo/redo call
+  `DocumentControl.SetTable` → `PutTable` (destroy the viewport at the index when present, `ReadTable` + `Hosted()`
+  the XML in its place) → `CaretTo`.
+- Every command edits a copy of the table's XML and rebuilds the table (`ChangeTable`): row above/below, column
+  left/right (the new column copies the caret column's width), delete row/column (the last one deletes the table),
+  delete table (refused when no paragraph would be left). `after` is re-serialised from the rebuilt table, so redo
+  is byte-identical.
+- Insert: `DocumentEditorControl.InsertTable` — 3×3, columns `floor(text width / 3)` design px; refused with a log
+  line on `.md`/`.txt` and inside a cell. Goes after the caret's block; when that block is the note's last entry it
+  is split at its end first (`SplitEdit` in the same step), so a paragraph always follows a table.
+- Menus: `Note.menu.xml` "Insert table" and a static "Table" submenu → `Table.*` actions →
+  `DocumentEditorControl.ChangeTable(label, change)`; outside a table they do nothing.
+- Column resize: `TableControl.ColumnGrip`, a transparent hit-testable `PanelControl` centred on each column's right
+  edge, full table height. Press → `BeginResize` (XML snapshot), drag → `widths`/`columnDefinitions` live, release →
+  one `TableEdit` in a "Resize column" step. Min 24 px, whole pixels. Refused on a read-only note.
+- Tab past the last cell inserts a row below and moves into it (`InsertTableRow(below, toNew)`), as one "Insert row" step.
+- Lists in cells: `TypeMarkdownPrefix` lost its `parent != this` guard (`TypeMarkdownLine` keeps it — no code or
+  rules typed into cells); `BlockControl.Editor()` walks up for the checkbox; `ShiftListLevel` only nests under a
+  previous item in the same container. Tab/Shift+Tab in a cell: at a list item's start with nothing selected it
+  nests/un-nests (Shift+Tab only while `listLevel > 0`), otherwise it steps cells (user, Word-style).
+- **Why rebuild from XML:** one path for forward, undo and redo, and the snapshot is the file format, so a command
+  that round-trips through `DocumentXml` cannot leave a table the loader would build differently. Cost: the
+  caret's cell is recovered as (row, column, line, offset), and the blocks are new controls after every command.
+- Tests: `TextInput.TableInsertUndo`, `TableInsertRefusedInMarkdown`, `TableRowsAndColumns` (each command + undo +
+  redo compared as XML; typing after a row insert lands through the new flat address), `TableTabAddsRow`,
+  `TableListInCell`, `TableResizeColumn` (+ golden `Resized`).
 
 ## Measured
 `--profile-scenario`, Release+PROFILE, 3 runs each, frames 31–270: `Scenario.Type` p95 0.113–0.131 →
@@ -53,11 +82,12 @@ never shift under an existing record. The first structural command must bring it
 page panels; not pinned.
 
 ## Known gaps
-- No UI inserts a table; tables come from `.xml` notes only.
-- No row/column insert or delete, no column resize drag, no Tab-past-last-cell row.
-- Lists in cells are off (the task checkbox finds its editor through `parent?.parent`).
 - A row taller than a page runs across the break.
-- Inserting a table into a `.md`/`.txt` note would lose it on save — the insert slice must refuse or warn.
-- Pointer presses in and around a table are not tested.
+- No nested tables, no merged cells, no row height drag, no column resize by keyboard.
+- A code block in a cell (from XML only) does not wrap and is not coloured — `CodeWidth` and `HighlightCode` see note-level blocks only.
+- The grip of the last column overhangs the table by 3 px, inside the viewport's clip.
+- Insert, row/column commands, resize and lists in cells are test- and golden-verified only; **NOT GUI-verified**
+  (menu placement, the resize cursor, a real drag).
+- Pointer presses in and around a table, other than the grip drag, are not tested.
 
 Related: [[document-structural-editing]], [[document-selection]], [[document-undo]], [[document-pages]], [[note-file-formats]], [[scroll-overscroll]]

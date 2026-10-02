@@ -92,7 +92,7 @@ Why: [[ui-quads-pool]], [[ui-draw-list]], [[ui-draw-list-publish]].
 ### Palettes — static, not a control
 Loads `Palettes/*.palette.xml` (`LoadPalettes`, bootstrap), `Get(name)`, `Default` (named by `UISettings.palette`); owns the paint table
 (`Paints` pool, `GpuPaint`). Paint words: `Inline`, `IsInline`, `ColorOf`. Derived words: `Surface`, `Ink`, `Step`;
-`Contrast`; `RoleOffsets` for gradient role stops. Types beside it: `PaletteDefinition` `<Palette>`, `PaletteRole`. The GPU copy is
+`Contrast`; `RoleOffsets` for gradient role stops; `Code(palette, SyntaxToken)` for code colours. Types beside it: `PaletteDefinition` `<Palette>`, `PaletteRole`. The GPU copy is
 `UIEngineModule.TableMirror<GpuPaint>`, set 1 binding 4, read by both stages.
 Why: [[ui-palettes]].
 
@@ -159,7 +159,7 @@ Why: [[ui-palettes]].
   `Length`, `Lines`). `OnPointerPress` → `IGlyphPressTarget`. Virtual `FontFor(span)` and `Alignment`; `Align` shifts
   each line's `left` across its `TextLine.room` after `MeasureBlock`/`LayoutAround` [[markdown-blocks-and-alignment]].
   Both pass `_layout` as `MeasureBlock`'s `reuse`, so `Lines` is the same list and the same `TextLine`s after a
-  remeasure [[large-note-measure-cost]].
+  remeasure [[large-note-measure-cost]], and a rewrap re-breaks `_layout`'s kept advances [[rewrap-advance-cache]].
   XML `Text`, `FontSize`, `FontName`. **`MeasureCore`
   returns the last `desired` while the run is clean and its wrap width unchanged** — anything `BuildRuns` reads
   must invalidate layout, which is why `colorHex` does. Why: [[ui-engine-stack]] § landing 4, § landing 6c.
@@ -169,6 +169,8 @@ Why: [[ui-palettes]].
   selection. `Focus`, `SelectAll`, `WriteChar`, `Backspace(word)`, `Delete(word)`, `MoveCaret`, `Commit`, `Cancel`, `onEdited` (every text change),
   `Undo`/`Redo` (`history` of nested `FieldEdit`, cleared on focus/commit/cancel), `Copy`/`Cut`/`Paste`,
   `OnContextAdded`/`OnContextRemoved`; nested `FieldLine` carries the run and lets presses through to the box.
+  `OnPointerTap`: double click selects the word (`SelectWordAt`, via `TextInputActions.WordEdge`), triple the field.
+  `scrollX` slides the line left so the caret stays inside (`FollowCaret`, reset when not editing).
   XML `Text`, `FontSize`,
   `TextColorHex`, `SelectionColorHex`, `CaretColorHex`. Old `TextBoxControl`, [[note-naming-and-text-field]] (old).
 - **EditableLabelControl** `<EditableLabel>` · ContainerControl — label that swaps to a text field on
@@ -186,7 +188,8 @@ Why: [[ui-palettes]].
   `InsertText`, `RemoveText`, `SplitAt`, `AppendBlock`, `Snapshot`/`SliceSnapshot`/`Restore`/`From`,
   `InsertSlice`/`AppendSlice`, `StyleAt`, `StyleRange`, `SplitSpanAt`, `MergeSpans`. A boundary belongs to the
   span **after** it — except a picture span, which never grows: `TextSpanBeside`. `PictureChar` is U+FFFC;
-  `SetPicture`. `alignment`, `language` (code fence), `TakeKind`; `ApplyLayout` also sets `fontName` from the style
+  `SetPicture`. `alignment`, `language` (code fence), `codeWrap` (a Code block wraps only with it; `Wraps`), `TakeKind`;
+  the checkbox finds its editor through `Editor()`, any depth; `ApplyLayout` also sets `fontName` from the style
   scheme and insets a Code block both sides; `Emit` draws a Code block's `SubField` ground per line, or a `Rule`'s
   `Line` stroke instead of text; `FontFor` gives a Code span the Code font [[markdown-blocks-and-alignment]].
   Replaces `Block`/`ContentBlock` + `TextRun`.
@@ -209,12 +212,15 @@ Why: [[ui-palettes]].
   `pages` (`page`, `zoom`, `Paginate` — blocks laid on paper and line tops rewritten, paragraphs a float reaches laid around it, `ArrangePages` — page panels at the very head, `Mm`),
   `editing` (`DeleteSelection(restoreSelection)`, `PasteText`, `PasteImage`, `InsertAt`, `DropSelection`, `Insert`, `FragmentFromText`, `ForDestination` — [[text-clipboard]]; `SplitBlock`, `TypeChar`, `Blocks` — flat, table cells included; `TableViewport`,
   `OneContainer`), `markdown` (`TypeMarkdownLine` — ```` ```lang ````/`---` + Enter, `EndCodeBlock`, `LeaveRule`,
-  `InsertRule`, `TypeInlineMarkdown`/`InlineOpener`/`MarkCode`; off when `plainText`), `lists` (`TypeMarkdownPrefix` — also `#`/`> `,
+  `InsertRule`, `TypeInlineMarkdown`/`InlineOpener`/`MarkCode`; off when `plainText`; `HighlightCode`/`Tokenize` — runs of code lines
+  coloured through `SyntaxTokenizer` into `TextRunControl.syntax`, from `MeasureCore`; `CodeWidth` — [[code-block-colouring]]), `tables`
+  (`InsertTable`, `InsertTableRow`/`InsertTableColumn`/`DeleteTableRow`/`DeleteTableColumn`/`DeleteTable` through `ChangeTable`,
+  `RecordTableResize`, `PutTable`, `AtListItemStart` — [[document-tables]]), `lists` (`TypeMarkdownPrefix` — also `#`/`> `,
   `SetListMarker`, `ListsChanged`, `RenumberLists` — run from `MeasureCore` when `listsDirty`,
   `ClearListAtCaret`, `ShiftListLevel`, `SetBlockList`), `styling` (`StyleSource`, `DisarmStyle`, `KeepDeletedStyle`,
   `CaretBlockStyling`, `ApplyStyle`, `ArmStyle`, `ApplyStyleTo`/`ApplyStyleBetween`, `SetBlockStyling`,
   `CaretBlockAlignment`, `SetBlockAlignment`, `SnapshotBlocks`, `RestoreBlocks`), `addressing` (`AddressOf`, `Resolve`, `CaretTo`) and `undo primitives`
-  (`InsertText`, `RemoveText`, `DeleteBetween` — a rule head takes the tail's kind, `InsertFragment`, `RestoreKind`, `InsertBetween`, `JoinBlockWithNext`). Also declares
+  (`InsertText`, `RemoveText`, `DeleteBetween` — a rule head takes the tail's kind, `InsertFragment`, `RestoreKind`, `InsertBetween`, `JoinBlockWithNext`, `SetTable`). Also declares
   `CaretSlot`, `StyleDelta`, `CaretStyle` and `PageBands`. `header` — one control at the top margin of page 1,
   `Paginate` starts below it. `MeasureCore` skips the blocks while the paper is unchanged, and passes
   `Paginate(paper, from, to)` the changed block range so it resumes and stops early;
@@ -223,8 +229,10 @@ Why: [[ui-palettes]].
   `widths` × zoom, Auto rows, each cell a vertical `StackPanelControl` of `BlockControl`s. `AddRow`, `Cells`,
   `AppendBlocks` (feeds `DocumentControl.Blocks`), `StepCell`, `SetZoom`, `ApplyLayout`; region `pages`
   (`FirstRowHeight`, `Paginate` — page pushes written into `gapAfter`, zeroed again in `MeasureCore`); borders
-  are `PanelControl`s appended to `children` past the cell assignments. Lives inside a horizontal
-  `ScrollableControl` that `DocumentEditorControl.LoadDocument` builds. [[document-tables]]
+  are `PanelControl`s appended to `children` past the cell assignments, and so are the column grips (nested
+  private `ColumnGrip`, one per column on its right edge; region `column resize`: `BeginResize`/`Resize`/`EndResize`
+  → `DocumentControl.RecordTableResize`). `RowCount`, `CellBlocks(row, column)`. Lives inside the horizontal
+  `ScrollableControl` that `Hosted()` builds, for both `LoadDocument` and `DocumentControl.PutTable`. [[document-tables]]
 - **DocumentEditorControl** `<DocumentEditor>` · ScrollableControl, `IContext`, `IClipboardTarget` — one open note.
   `Source`/`LoadPath`/`LoadDocument` (builds the properties header for `.md`/`.xml`), `Save` (refreshes it),
   `needsNaming`, `FocusCaret`; regions `styling` (forwards under a `BeginStep`; also `SetAlignment` — `.xml` only, `CanAlign`, `InsertRule`, `InsertFormula`/`EditFormula` (open a `FormulaPopup`), `SetChecked`, `ShiftListLevel`,

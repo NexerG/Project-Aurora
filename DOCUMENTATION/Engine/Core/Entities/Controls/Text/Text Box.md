@@ -62,12 +62,13 @@ public string textColorHex { get; set; }
 ## Methods
 
 ### Arrange
-Centres the one line vertically in the box, then places the caret and the selection from the line's own `CaretAt`. Both collapse to an empty rect while the box is not being edited — a zero-scale quad draws no pixels and fails the hit-test, the same trick the scrollbar thumb uses.
+Centres the one line vertically in the box, then places the caret and the selection from the line's own `CaretAt`. Both collapse to an empty rect while the box is not being edited — a zero-scale quad draws no pixels and fails the hit-test, the same trick the scrollbar thumb uses. While editing, the line slides left by `scrollX` so the caret never leaves the box; text past the edge is cut by the box's clip, and the slide resets to the start when editing ends.
 
 ```
 Arrange(finalRect)
     inner = finalRect shrunk by padding
-    textRect = inner, height = line.DesiredSize.Y, centred vertically
+    if editing -> FollowCaret(inner.width) else scrollX = 0
+    textRect = inner shifted left by scrollX, height = line.DesiredSize.Y, centred vertically
     line.Arrange(textRect)
 
     if not editing -> caret and selection to Empty; return
@@ -76,7 +77,17 @@ Arrange(finalRect)
     if anchor == cursorPosition -> selection to Empty; return
     other = line.CaretAt(anchor)
     selection.Arrange(spanning min(cursor.x, other.x) .. max(cursor.x, other.x))
+
+FollowCaret(width)
+    x = line.CaretAt(cursor).x
+    room = width − CaretControl.Width
+    if x − scrollX > room -> scrollX = x − room
+    if x < scrollX -> scrollX = x
+    clamp scrollX to 0 .. line width + CaretControl.Width − width
 ```
+
+### Double and triple click
+A press places the caret; the tap that follows a second press selects the word the caret touches, preferring the word on its right, and a third selects the whole field. The word comes from the same `WordEdge` the Ctrl+arrow moves use, with the spaces it walks over trimmed off the end.
 
 ### The inner line
 A private `TextInputControl` subclass with three overrides. `WrapWidth` returns `float.MaxValue` so the text never wraps at the box's own width — that hook exists on [[TextControl]] precisely for this. `ResolveOnClick` begins the edit and then hands the click to its parent explicitly, because `TextInputControl.ResolveOnClick` swallows clicks and calling `base` would swallow this one too; `TextRun` does the same thing inside a document. `OnContextRemoved` extends the base — which commits the line's own edit — by telling the box it may have lost focus.

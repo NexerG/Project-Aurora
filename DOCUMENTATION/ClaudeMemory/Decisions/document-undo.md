@@ -136,7 +136,12 @@ a second.
 - ~~**`InsertFragment` has no forward counterpart to cross-check it.**~~ — paste and drop are its
   forward callers since 2026-09-29 (`InsertRangeEdit`); `TextInput.PasteRoundTrip` checks a cross-block
   paste and its undo byte-for-byte. See [[text-clipboard]].
-- **Holding Backspace is one undo step per repeat firing** — `<Repeat/>` at `KeyRepeat.Rate`, 0.03s,
+- ~~**Holding Backspace is one undo step per repeat firing**~~ — since 2026-10-02 a hold is one press:
+  `InputHandler.firingRepeat` is set while a keybind fires from a repeat rather than its press, and
+  `DeleteOver` opens `BeginStep(label, join: firingRepeat)`; `UndoStack.Begin(label, join)` reopens the top
+  step when its label matches and no redo is pending. Separate presses stay separate steps (user's fork:
+  repeat flag over a label-run merge). Typing is not coalesced. Test: `Input.RepeatJoinsUndoStep` (the
+  stack only — no test holds a key). Original entry: `<Repeat/>` at `KeyRepeat.Rate`, 0.03s,
   so a two-second hold is roughly 60 steps against a 500-step cap. This is what one-press-one-undo
   means, and it is the first thing coalescing would fix. Worth re-checking now that repeat actually
   works — key repeat had never fired at all until 2026-08-23, so this was theoretical.

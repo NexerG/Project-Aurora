@@ -1,6 +1,9 @@
+using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.Testing;
 using ArctisAurora.Core.UI;
+using ArctisAurora.EngineWork.Registry;
 using System.Numerics;
 
 namespace ArctisAurora.Tests
@@ -145,6 +148,77 @@ namespace ArctisAurora.Tests
             yield return 30;
             t.Check(viewport.hidden, "closed again, the content is hidden");
             t.Check(MathF.Abs(expander.arrangedRect.height - closed) < 0.01f, $"closed again, the expander is back to {closed}: {expander.arrangedRect.height}");
+        }
+
+        [A_XSDActionDependency("Layout.RewrapMatchesFresh", "Test")]
+        private static IEnumerator<int> RewrapMatchesFresh(TestContext t)
+        {
+            IGlyphMetrics metrics = new FontAssetGlyphMetrics();
+            AtlasMetaData atlas = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset))["default"].atlasMetaData;
+            string first = "Lorem ipsum\tdolor sit amet, consectetur adipiscing elit, sed do ￼ eiusmod "
+                + "Pneumonoultramicroscopicsilicovolcanoconiosis tempor\tincididunt ut labore et dolore magna aliqua.";
+            string second = first.Replace('o', 'W').Replace('e', 'M');
+
+            BlockLayout? reused = null;
+            foreach (string text in new[] { first, second })
+            {
+                List<TextMeasurer.Run> runs = Runs(text, atlas);
+                foreach (float width in new[] { 400f, 150f, 400f })
+                {
+                    reused = TextMeasurer.MeasureBlock(runs, width, metrics, 1.5f, reuse: reused);
+                    BlockLayout fresh = TextMeasurer.MeasureBlock(runs, width, metrics, 1.5f);
+                    t.Check(Same(reused, fresh), $"{(text == first ? "first" : "second")} text at {width} px: a reused measure equals a fresh one");
+                    t.Check(reused.lines.Count > 2, $"at {width} px the text wraps: {reused.lines.Count} lines");
+
+                    reused = TextMeasurer.MeasureBlock(runs, width, metrics, 1.5f, 0f, new BandSlots(width), reused);
+                    fresh = TextMeasurer.MeasureBlock(runs, width, metrics, 1.5f, 0f, new BandSlots(width));
+                    t.Check(Same(reused, fresh), $"{(text == first ? "first" : "second")} text at {width} px around a float: a reused measure equals a fresh one");
+                }
+            }
+            yield break;
+        }
+
+        // regular, bold 20, italic, a formula, regular
+        private static List<TextMeasurer.Run> Runs(string text, AtlasMetaData atlas)
+        {
+            int math = text.IndexOf('￼');
+            return new List<TextMeasurer.Run>
+            {
+                new TextMeasurer.Run(text, 0, 12, "default", atlas, 16, FontStyle.Regular),
+                new TextMeasurer.Run(text, 12, 18, "default", atlas, 20, FontStyle.Bold),
+                new TextMeasurer.Run(text, 30, math - 30, "default", atlas, 16, FontStyle.Italic),
+                new TextMeasurer.Run(text, math, 1, "default", atlas, 16, FontStyle.Regular, math: true, imageWidth: 30f, imageHeight: 14f, depth: 4f),
+                new TextMeasurer.Run(text, math + 1, text.Length - math - 1, "default", atlas, 16, FontStyle.Regular),
+            };
+        }
+
+        // the first 40 px start 60 px in
+        private sealed class BandSlots : ILineSlots
+        {
+            private readonly float width;
+
+            public BandSlots(float width) => this.width = width;
+
+            public float Place(float y, float height, out float left, out float right)
+            {
+                left = y < 40f ? 60f : 0f;
+                right = width;
+                return y;
+            }
+        }
+
+        private static bool Same(BlockLayout a, BlockLayout b)
+        {
+            if (a.width != b.width || a.height != b.height || a.lines.Count != b.lines.Count) return false;
+            for (int i = 0; i < a.lines.Count; i++)
+            {
+                TextLine x = a.lines[i], y = b.lines[i];
+                if (x.width != y.width || x.ascent != y.ascent || x.descent != y.descent || x.top != y.top
+                    || x.left != y.left || x.room != y.room || x.segments.Count != y.segments.Count) return false;
+                for (int s = 0; s < x.segments.Count; s++)
+                    if (!x.segments[s].Equals(y.segments[s])) return false;
+            }
+            return true;
         }
     }
 }

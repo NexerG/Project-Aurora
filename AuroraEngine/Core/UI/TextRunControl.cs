@@ -135,6 +135,9 @@ namespace ArctisAurora.Core.UI
         internal int selectedFrom = -1;
         internal int selectedTo = -1;
 
+        // a code colour per character, set by the document; null draws every character in its run's paint
+        internal SyntaxToken[]? syntax;
+
         // decoration geometry, as fractions of the font size
         private const float underlineDrop = 0.12f;
         private const float strikeRise = 0.28f;
@@ -367,6 +370,12 @@ namespace ArctisAurora.Core.UI
         // Shifts each line across its room by the alignment, trailing spaces left hanging.
         private void Align()
         {
+            if (_layout != null && Alignment == TextAlignment.Justify)
+            {
+                Justify();
+                return;
+            }
+
             float factor = Alignment switch { TextAlignment.Center => 0.5f, TextAlignment.Right => 1f, _ => 0f };
             if (factor == 0f || _layout == null) return;
 
@@ -390,6 +399,57 @@ namespace ArctisAurora.Core.UI
             _layout.width = 0f;
             foreach (TextLine line in _layout.lines)
                 _layout.width = MathF.Max(_layout.width, line.left + line.width);
+        }
+
+        // Spreads every line but the last across its room through its inner spaces; a line holding a tab stays as it is.
+        private void Justify()
+        {
+            string s = text ?? string.Empty;
+            for (int i = 0; i < _layout.lines.Count - 1; i++)
+            {
+                TextLine line = _layout.lines[i];
+                float room = line.room > 0f ? line.room : _wrapWidth;
+                if (room == float.MaxValue || line.segments.Count == 0) continue;
+
+                float pen = 0f, visible = 0f;
+                int end = 0;
+                bool tab = false;
+                foreach (LineSegment segment in line.segments)
+                    for (int k = segment.charStart; k < segment.charStart + segment.charCount && k < s.Length; k++)
+                    {
+                        pen += TextMeasurer.MeasureAdvance(s[k], _runs[segment.runIndex], pen);
+                        if (s[k] == '\t') tab = true;
+                        else if (s[k] != ' ')
+                        {
+                            visible = pen;
+                            end = k + 1;
+                        }
+                    }
+
+                int spaces = 0;
+                for (int k = line.segments[0].charStart; k < end; k++)
+                    if (s[k] == ' ') spaces++;
+                if (tab || spaces == 0 || visible >= room) continue;
+
+                line.spaceExtra = (room - visible) / spaces;
+                line.justifyEnd = end;
+                line.width += room - visible;
+            }
+        }
+
+        // The justify stretch a character takes after its own advance.
+        private float Stretch(TextLine line, int index) =>
+            line.spaceExtra != 0f && index < line.justifyEnd && text[index] == ' ' ? line.spaceExtra : 0f;
+
+        // A segment's width with the justify stretch of its spaces.
+        private float Stretched(TextLine line, LineSegment segment)
+        {
+            if (line.spaceExtra == 0f) return segment.width;
+
+            float width = segment.width;
+            for (int k = segment.charStart; k < segment.charStart + segment.charCount; k++)
+                width += Stretch(line, k);
+            return width;
         }
 
         protected override Vector2 MeasureCore(Vector2 availableSize)
@@ -514,7 +574,7 @@ namespace ArctisAurora.Core.UI
                     }
 
                     if (highlight != 0)
-                        WriteHighlight(quads, segment, segmentX, lineTop, line.height, highlight, alpha, z - depthStep, clip, gradientRect);
+                        WriteHighlight(quads, segment, Stretched(line, segment), segmentX, lineTop, line.height, highlight, alpha, z - depthStep, clip, gradientRect);
 
                     if (run.math)
                     {
@@ -535,6 +595,7 @@ namespace ArctisAurora.Core.UI
                         continue;
                     }
 
+                    SyntaxToken[]? tokens = runGradient == 0 && (spans.Count == 0 || spans[segment.runIndex].colorHex == null) ? syntax : null;
                     for (int k = 0; k < segment.charCount; k++)
                     {
                         int index = segment.charStart + k;
@@ -546,8 +607,10 @@ namespace ArctisAurora.Core.UI
                             pen += TextMeasurer.TabAdvance(run, pen - lineStart);
                             continue;
                         }
-                        pen += WriteGlyph(quads, s[index], run.style, paint, alpha, font, run.fontSize, effect, effectStart,
-                                          pen, baselineY, z, clip, gradientRect);
+                        uint ink = tokens != null && index < tokens.Length && tokens[index] != SyntaxToken.Plain
+                            ? Palettes.Code(palette ?? Palettes.Default, tokens[index]) : paint;
+                        pen += WriteGlyph(quads, s[index], run.style, ink, alpha, font, run.fontSize, effect, effectStart,
+                                          pen, baselineY, z, clip, gradientRect) + Stretch(line, index);
                     }
 
                     float weight = MathF.Max(1f, run.fontSize * decorationWeight);
@@ -563,15 +626,15 @@ namespace ArctisAurora.Core.UI
         }
 
         // A segment's highlight, with a gap where the selection covers it.
-        private void WriteHighlight(DataPool quads, LineSegment segment, float x, float top, float height,
+        private void WriteHighlight(DataPool quads, LineSegment segment, float width, float x, float top, float height,
                                     uint paint, float alpha, float z, Vector4 clip, Vector4 gradientRect)
         {
-            float right = x + segment.width;
+            float right = x + width;
             int end = segment.charStart + segment.charCount;
 
             if (selectedTo <= segment.charStart || selectedFrom >= end || selectedFrom < 0)
             {
-                WriteRect(quads, x, top, segment.width, height, paint, alpha, z, clip, gradientRect);
+                WriteRect(quads, x, top, width, height, paint, alpha, z, clip, gradientRect);
                 return;
             }
 
@@ -726,7 +789,7 @@ namespace ArctisAurora.Core.UI
                 TextMeasurer.Run run = _runs[segment.runIndex];
                 for (int i = 0; i < segment.charCount; i++)
                 {
-                    float advance = TextMeasurer.MeasureAdvance(text[segment.charStart + i], run, pen);
+                    float advance = TextMeasurer.MeasureAdvance(text[segment.charStart + i], run, pen) + Stretch(line, segment.charStart + i);
                     if (localX < pen + advance * 0.5f) return segment.charStart + i;
                     pen += advance;
                 }
@@ -760,13 +823,13 @@ namespace ArctisAurora.Core.UI
 
                     if (!holds)
                     {
-                        x += segment.width;
+                        x += Stretched(line, segment);
                         continue;
                     }
 
                     TextMeasurer.Run run = _runs[segment.runIndex];
                     for (int c = segment.charStart; c < offset; c++)
-                        x += TextMeasurer.MeasureAdvance(text[c], run, x - line.left);
+                        x += TextMeasurer.MeasureAdvance(text[c], run, x - line.left) + Stretch(line, c);
 
                     return new CaretGeometry(x, line.top, line.height, line.baseline);
                 }
@@ -818,7 +881,7 @@ namespace ArctisAurora.Core.UI
                     foreach (LineSegment before in line.segments)
                     {
                         if (before.charStart == segment.charStart) break;
-                        x += before.width;
+                        x += Stretched(line, before);
                     }
                     x += (index - segment.charStart) * run.imageWidth;
 
@@ -880,7 +943,7 @@ namespace ArctisAurora.Core.UI
                     foreach (LineSegment before in line.segments)
                     {
                         if (before.charStart == segment.charStart) break;
-                        x += before.width;
+                        x += Stretched(line, before);
                     }
                     x += (index - segment.charStart) * run.imageWidth;
 

@@ -1,4 +1,5 @@
 using ArctisAurora.Core.Editing;
+using System.Xml.Linq;
 
 namespace ArctisAurora.Core.UI
 {
@@ -24,9 +25,11 @@ namespace ArctisAurora.Core.UI
         public TextStyleType stylingType;
         public TextAlignment alignment;
         public string? language;
+        public bool codeWrap;
         public ListKind listKind;
         public int listLevel;
         public ListMarker? listMarker;
+        public int? listStart;
         public bool isChecked;
         public string text = string.Empty;
         public readonly List<StyleSpan> spans = new List<StyleSpan>();
@@ -253,5 +256,50 @@ namespace ArctisAurora.Core.UI
         public void Undo() => document.RestoreBlocks(firstBlock, before);
 
         public void Redo() => document.RestoreBlocks(firstBlock, after);
+    }
+
+    // A table inserted, rebuilt or deleted whole, as its XML before and after; null is no table there.
+    public sealed class TableEdit : IEditRecord
+    {
+        private readonly DocumentControl document;
+        private readonly int index;
+        private readonly XElement? before;
+        private readonly XElement? after;
+        private readonly DocumentAddress caretBefore;
+        private readonly DocumentAddress caretAfter;
+
+        public TableEdit(DocumentControl document, int index, XElement? before, XElement? after,
+            DocumentAddress caretBefore, DocumentAddress caretAfter)
+        {
+            this.document = document;
+            this.index = index;
+            this.before = before;
+            this.after = after;
+            this.caretBefore = caretBefore;
+            this.caretAfter = caretAfter;
+        }
+
+        public void Undo() => document.SetTable(index, after != null, before, caretBefore);
+
+        public void Redo() => document.SetTable(index, before != null, after, caretAfter);
+    }
+
+    // A note's page format before and after a change; null is the editor's own.
+    public sealed class PageEdit : IEditRecord
+    {
+        private readonly DocumentEditorControl editor;
+        private readonly PageLayout? before;
+        private readonly PageLayout? after;
+
+        public PageEdit(DocumentEditorControl editor, PageLayout? before, PageLayout? after)
+        {
+            this.editor = editor;
+            this.before = before;
+            this.after = after;
+        }
+
+        public void Undo() => editor.ApplyPage(before);
+
+        public void Redo() => editor.ApplyPage(after);
     }
 }
