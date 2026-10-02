@@ -51,6 +51,13 @@
           <xs:enumeration value="TextInput.MathLineBox" />
           <xs:enumeration value="TextInput.MathCopyText" />
           <xs:enumeration value="TextInput.MathDraws" />
+          <xs:enumeration value="TextInput.MathInsertCommit" />
+          <xs:enumeration value="TextInput.MathInsertCancel" />
+          <xs:enumeration value="TextInput.MathEditUndo" />
+          <xs:enumeration value="TextInput.MathLivePreview" />
+          <xs:enumeration value="TextInput.MathEscReverts" />
+          <xs:enumeration value="TextInput.MathClickSelects" />
+          <xs:enumeration value="TextInput.MathDoubleClickOpens" />
           <xs:enumeration value="TextInput.TableEnterAddsLine" />
           <xs:enumeration value="TextInput.TableTabStepsCells" />
           <xs:enumeration value="TextInput.TableLeftCrossesCells" />
@@ -189,6 +196,9 @@
           <xs:enumeration value="Picture.WrapInFront" />
           <xs:enumeration value="Picture.CollideBox" />
           <xs:enumeration value="Picture.CollideShape" />
+          <xs:enumeration value="Math.Insert" />
+          <xs:enumeration value="Math.InsertDisplay" />
+          <xs:enumeration value="Math.Edit" />
           <xs:enumeration value="Text.Indent" />
           <xs:enumeration value="Text.Outdent" />
           <xs:enumeration value="Text.Undo" />

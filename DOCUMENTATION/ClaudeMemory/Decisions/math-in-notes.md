@@ -3,7 +3,17 @@
 **Date:** 2026-10-01
 **Scope:** `ArctisAurora.Core.Filing` — `MathConstants`; `ArctisAurora.Core.Filing.Serialization` — `AssetImporter` (`FaceOffset`, `ImportFont`, `ReadFace`), `FontImport.face`, `FontImportStamp.face`; `EngineFonts.imports.xml`; `ArctisAurora.Core.UI` — `MathParser`, `MathSymbols`, `MathLayout`, `MathBox`, `MathGlyph`, `MathRule`, `MathClass`, `MathStyle`, `Run.math`/`display`, `StyleSpan.mathSource`/`mathDisplay`/`IsMath`/`IsObject`, `TextMeasurer.Run.math`/`depth`, `TextRunControl` (`MathBoxFor`, `Emit`), `DocumentControl.CopySelection`, `MarkdownFormat` (`MathAt`, `MathRun`); `ArctisAurora.Core.Registry.Assets.FontAsset.mathConstants`; `EngineAssets.assets.xml` (`math`)
 
-**Status: PARTIAL** — M1 (the font), M2 (parser + layout) and M3 (notes hold, draw, save and copy formulas) landed; editing is planned in [../Context/math-plan.md](../Context/math-plan.md).
+**Status: LANDED** — M1 (the font), M2 (parser + layout), M3 (notes hold, draw, save and copy formulas) and M4 (insert and edit) landed; plan in [../Context/math-plan.md](../Context/math-plan.md). M4 scope: `FormulaPopup`, `MathEdit`, `DocumentControl` region `formulas` (`SelectedMath`, `StoredMath`, `SetMath`, `PlaceMath`, `RecordPlaced`, `RecordMath`, `RemovePlaced`, `MathAnchor`), `BlockControl.SetMath`, `TextRunControl` (`MathAt`, `MathBox`), `DocumentEditorControl` (`InsertFormula`, `EditFormula`), `TextBoxControl.onEdited`, `TextInputActions` (`Math.Insert`, `Math.InsertDisplay`, `Math.Edit`).
+
+## M4 — inserting and editing (2026-10-02)
+- **Ctrl+M** inserts an inline formula, **Ctrl+Shift+M** a display one (Thorium `InputMap`; the two-modifier bind declared first). Right-click: Insert formula, Insert display formula, Edit formula.
+- **A click on a formula selects it** (`TextRunControl.OnPointerPress` falls back to `MathAt`, then the picture path's `PicturePressed`); **double-click or Enter** on a selected formula opens the editor. `Text.NewBlock` tries `EditFormula` before `SplitBlock`.
+- **The editor is a `TextBoxControl` in a `ContextMenuContent`, opened under the formula's drawn box** (`MathAnchor`; the caret slot while a just-placed formula is not laid out). Enter, Esc, typing and field undo reach it through the existing `Box()` routing — no new input code.
+- **Live preview is in the note itself (F13):** `TextBoxControl.onEdited` (from `Record` and `Restore`) rewrites the span through `SetMath` with no undo record; the paragraph reflows as you type.
+- **One undo record per commit.** Insert places an empty formula raw (`InsertBetween`), and commit pushes an `InsertRangeEdit` holding the final source, labelled "Insert formula"; edit pushes `MathEdit(before, after)`, labelled "Edit formula"; unchanged source pushes nothing. Rejected: holding an `EditScope` open across frames, or recording the insert and the edit as two steps.
+- **Esc reverts; an empty new formula, committed or cancelled, is removed unrecorded. Click-away commits** (`onBlur`, after `DismissUnlessInside` closed the panel; no refocus, so the press keeps its target). A `done` flag stops the blur that follows Enter/Esc's refocus from finishing twice.
+- **Refused:** read-only notes, `.txt` notes, code blocks and rule blocks — logged at Info, as `PasteImage` refuses.
+- A formula keeps inline/display for life; edit does not switch it.
 
 ## M3 — formulas in notes (2026-10-02)
 - A formula is a `<Run Math="…" Display="true"/>`: one U+FFFC in the block, a `StyleSpan` with `mathSource`/`mathDisplay`. Note XML needs no code — `DocumentXml` reads and writes `Run`'s scalars by reflection.
@@ -65,7 +75,11 @@ MATH size variants and assembly parts are glyph ids with no code point; the atla
 - A `Face` index past the collection's face count is not checked; it reads garbage.
 - The asset folder is named after the file stem (`cambria`), so importing face 0 of the same `.ttc` would collide.
 - `AuroraEngine/Data/Fonts` has no `cambria` — that folder's bakes are already stale (WIP item); no host runs from it.
-- No way to insert or edit a formula in the editor yet (M4); a formula arrives by opening a note. Typing beside it and Backspace work as with pictures.
+- M4 is test-verified only: popup placement, the live reflow, and click-away were never looked at in the GUI.
+- If the app loses focus, `ContextMenus.Tick` closes the popup without a blur; an inserted formula would stay empty (zero-width) in the note. Unverified either way.
+- A popup that does not fit in the window goes to its own OS window (`HostInWindow`); keyboard reaching the box there is unverified.
+- An empty formula is zero-width while its source is being typed; there is no placeholder.
+- The source box is one line; a pasted newline becomes a space.
 - Underline, strikethrough, gradients and effects do not reach a formula; bold/italic on its run is ignored.
 - A display formula beside a float is centred in the column, not in the slot the float leaves; a formula wider than the column overflows.
 - `\$` in an existing `.md` note now reads as `$`, not `\$` — CommonMark's reading, but a change for notes written before.

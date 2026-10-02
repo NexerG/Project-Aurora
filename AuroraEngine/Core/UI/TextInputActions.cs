@@ -120,7 +120,11 @@ namespace ArctisAurora.Core.UI
         public static void NewBlock()
         {
             DocumentEditorControl next = Editor();
-            if (next != null) { next.SplitBlock(); return; }
+            if (next != null)
+            {
+                if (!next.EditFormula()) next.SplitBlock();
+                return;
+            }
 
             Box()?.Commit();
         }
@@ -213,6 +217,17 @@ namespace ArctisAurora.Core.UI
 
         [A_XSDActionDependency("Picture.CollideShape", "Input", "Wraps text around the turned picture's own shape")]
         public static void CollideShape() => Editor()?.SetPictureCollision(PictureCollision.Shape);
+        #endregion
+
+        #region ---- formulas ----
+        [A_XSDActionDependency("Math.Insert", "Input", "Inserts an inline formula at the caret and opens its source")]
+        public static void InsertFormula() => Editor()?.InsertFormula(false);
+
+        [A_XSDActionDependency("Math.InsertDisplay", "Input", "Inserts a display formula at the caret and opens its source")]
+        public static void InsertDisplayFormula() => Editor()?.InsertFormula(true);
+
+        [A_XSDActionDependency("Math.Edit", "Input", "Opens the selected formula's source")]
+        public static void EditFormula() => Editor()?.EditFormula();
         #endregion
 
         [A_XSDActionDependency("Text.Indent", "Input", "Nests the list items under the caret one level deeper")]

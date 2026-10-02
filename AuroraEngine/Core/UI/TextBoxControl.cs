@@ -44,6 +44,7 @@ namespace ArctisAurora.Core.UI
         public Action<string>? onCommit;
         public Action? onCancel;
         public Action? onBlur;
+        public Action<string>? onEdited;
 
         // selection first: children draw in order, so it lands behind the text
         private readonly PanelControl selection = new PanelControl();
@@ -232,6 +233,7 @@ namespace ArctisAurora.Core.UI
             anchor = state.anchor;
             cursor = state.cursor;
             InvalidateLayout();
+            onEdited?.Invoke(line.text);
         }
 
         // One step per change; a key that changed nothing records nothing.
@@ -241,6 +243,7 @@ namespace ArctisAurora.Core.UI
 
             using (history.Begin("Edit"))
                 history.Push(new FieldEdit(this, before, State()));
+            onEdited?.Invoke(line.text);
         }
 
         public bool Copy()

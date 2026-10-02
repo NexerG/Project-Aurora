@@ -845,6 +845,54 @@ namespace ArctisAurora.Core.UI
             return false;
         }
 
+        // The formula under a design-space point, or -1.
+        public int MathAt(Vector2 point)
+        {
+            if (_layout == null) return -1;
+
+            TextLine line = _layout.lines[LineAt(point.Y - _origin.Y)];
+            foreach (LineSegment segment in line.segments)
+            {
+                if (!_runs[segment.runIndex].math) continue;
+
+                for (int i = segment.charStart; i < segment.charStart + segment.charCount; i++)
+                    if (MathBox(i, out LayoutRect box) && box.Contains(point)) return i;
+            }
+            return -1;
+        }
+
+        // A formula character's drawn box in design space; false when the index is not a formula.
+        public bool MathBox(int index, out LayoutRect box)
+        {
+            box = LayoutRect.Empty;
+            if (_layout == null) return false;
+
+            foreach (TextLine line in _layout.lines)
+                foreach (LineSegment segment in line.segments)
+                {
+                    if (index < segment.charStart || index >= segment.charStart + segment.charCount) continue;
+
+                    TextMeasurer.Run run = _runs[segment.runIndex];
+                    MathBox? math = _runMath[segment.runIndex];
+                    if (!run.math || math == null) return false;
+
+                    float x = line.left;
+                    foreach (LineSegment before in line.segments)
+                    {
+                        if (before.charStart == segment.charStart) break;
+                        x += before.width;
+                    }
+                    x += (index - segment.charStart) * run.imageWidth;
+
+                    float width = math.width * run.fontSize;
+                    float height = math.height * run.fontSize;
+                    box = new LayoutRect(_origin.X + x + (run.imageWidth - width) * 0.5f, _origin.Y + line.baseline - height,
+                                         width, height + math.depth * run.fontSize);
+                    return true;
+                }
+            return false;
+        }
+
         // Re-stacks the lines from blockTop, pushing each across page breaks; returns the height.
         internal float Paginate(float blockTop, PageBands bands)
         {
@@ -884,6 +932,7 @@ namespace ArctisAurora.Core.UI
             if (target == null) return false;
 
             int picture = PictureAt(e.point);
+            if (picture < 0) picture = MathAt(e.point);
             if (picture >= 0) target.PicturePressed(this, picture, e.button);
             else target.GlyphPressed(this, IndexAt(e.point));
             return true;

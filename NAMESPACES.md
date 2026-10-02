@@ -114,6 +114,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ExpanderControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FileBrowserControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FileRowControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FileTreeControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FormulaPopup.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Frontmatter.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Gradients.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/GridListControl.cs

@@ -347,6 +347,7 @@ namespace ArctisAurora.Core.UI
         // Two clicks take the word, three the visual line.
         public override bool OnPointerTap(PointerEvent e)
         {
+            if (e.tapCount == 2 && SelectedMath(out _, out _) && Editor?.EditFormula() == true) return true;
             if (e.tapCount >= 2) DisarmStyle();
             if (e.tapCount == 2) SelectWord();
             else if (e.tapCount >= 3) Editor?.SelectLine();
@@ -1898,6 +1899,94 @@ namespace ArctisAurora.Core.UI
                 document.EndPictureRotate();
                 base.OnDragStop(accepted);
             }
+        }
+        #endregion
+
+        #region ---- formulas ----
+        // The selection is exactly one formula character.
+        internal bool SelectedMath(out BlockControl block, out int index)
+        {
+            block = null!;
+            index = 0;
+            if (!OrderedSelection(out DocumentAddress from, out DocumentAddress to)) return false;
+            if (from.block != to.block || to.offset != from.offset + 1) return false;
+            if (!Resolve(from, out block, out index)) return false;
+            return StoredMath(block, index).IsMath;
+        }
+
+        // The formula span at an offset; default when there is none.
+        internal static StyleSpan StoredMath(BlockControl block, int index)
+        {
+            int start = 0;
+            foreach (StyleSpan span in block.spans)
+            {
+                if (start == index && span.IsMath && span.count > 0) return span;
+                start += span.count;
+            }
+            return default;
+        }
+
+        // Rewrites a formula's source and leaves it selected; the preview, undo and redo.
+        internal void SetMath(DocumentAddress at, string source)
+        {
+            if (!Resolve(at, out BlockControl block, out int index)) return;
+
+            block.SetMath(index, source);
+            Select(at, new DocumentAddress(at.block, at.offset + 1));
+        }
+
+        // An empty formula at the caret, unrecorded; null where a formula cannot go.
+        internal DocumentAddress? PlaceMath(bool display)
+        {
+            if (caretBlock == null || readOnly || plainText
+                || caretBlock.stylingType is TextStyleType.Code or TextStyleType.Rule) return null;
+
+            StyleSpan span = caretBlock.StyleAt(caretOffset).AsText();
+            span.count = 1;
+            span.mathSource = string.Empty;
+            span.mathDisplay = display;
+
+            BlockSnapshot block = new BlockSnapshot { text = BlockControl.PictureChar };
+            block.spans.Add(span);
+            DocumentFragment fragment = new DocumentFragment();
+            fragment.blocks.Add(block);
+
+            DocumentAddress at = AddressOf(caretBlock, caretOffset);
+            InsertBetween(at, new DocumentAddress(at.block, at.offset + 1), fragment);
+            Select(at, new DocumentAddress(at.block, at.offset + 1));
+            DisarmStyle();
+            return at;
+        }
+
+        // A placed formula as an insert record, its source final.
+        internal void RecordPlaced(DocumentAddress at)
+        {
+            if (!Resolve(at, out BlockControl block, out int index)) return;
+
+            BlockSnapshot snapshot = new BlockSnapshot { text = BlockControl.PictureChar };
+            StyleSpan span = StoredMath(block, index);
+            span.count = 1;
+            snapshot.spans.Add(span);
+            DocumentFragment fragment = new DocumentFragment();
+            fragment.blocks.Add(snapshot);
+
+            undo?.Push(new InsertRangeEdit(this, at, new DocumentAddress(at.block, at.offset + 1), fragment));
+        }
+
+        internal void RecordMath(DocumentAddress at, string before, string after) =>
+            undo?.Push(new MathEdit(this, at, before, after));
+
+        internal void RemovePlaced(DocumentAddress at) =>
+            DeleteBetween(at, new DocumentAddress(at.block, at.offset + 1));
+
+        // A formula's drawn box; its caret slot while it waits to be laid out.
+        internal LayoutRect MathAnchor(DocumentAddress at)
+        {
+            if (!Resolve(at, out BlockControl block, out int index)) return LayoutRect.Empty;
+            if (block.MathBox(index, out LayoutRect box)) return box;
+
+            CaretGeometry slot = block.CaretAt(index);
+            return new LayoutRect(block.TextOrigin.X + slot.x, block.TextOrigin.Y + slot.top, 0f, slot.height);
         }
         #endregion
 

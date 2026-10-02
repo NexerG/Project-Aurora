@@ -112,6 +112,17 @@
 		<Press />
 	</Keybind>
 
+	<Keybind Trigger="M" Action="Math.InsertDisplay">
+		<Modifier Key="LeftControl" />
+		<Modifier Key="LeftShift" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="M" Action="Math.Insert">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
 	<Keybind Trigger="Left" Action="Text.CaretLeft">
 		<Repeat />
 	</Keybind>
