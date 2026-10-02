@@ -15,6 +15,9 @@ namespace ArctisAurora.Core.Registry.Assets
         public AtlasMetaData atlasMetaData = null!;
         public TextureAsset textureAsset = null!;
 
+        // a math font's layout constants; null for a text font
+        public MathConstants? mathConstants;
+
         public FontAsset() { }
 
         public Glyph GetGlyph(char c) => atlasMetaData.GetGlyph(c);
@@ -32,6 +35,9 @@ namespace ArctisAurora.Core.Registry.Assets
 
             textureAsset = new TextureAsset();
             textureAsset.LoadFile(Paths.Font(fontName, fontName + "_atlas.png"), Format.R8G8B8A8Unorm);
+
+            string math = Paths.Font(fontName, fontName + ".math.xml");
+            if (File.Exists(math)) mathConstants = MathConstants.Load(math);
         }
 
         /*public FontAsset LoadFont(string name)

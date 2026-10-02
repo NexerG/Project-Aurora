@@ -49,7 +49,7 @@ namespace ArctisAurora.Core.UI
 
     public sealed class TextLine
     {
-        public readonly List<LineSegment> segments = new List<LineSegment>();
+        public readonly List<LineSegment> segments = new List<LineSegment>(1);
         public float width;
         public float ascent;
         public float descent;
@@ -97,6 +97,30 @@ namespace ArctisAurora.Core.UI
         public readonly List<TextLine> lines = new List<TextLine>();
         public float width;
         public float height;
+
+        // lines of the previous measure, handed out again by NextLine
+        private readonly List<TextLine> spare = new List<TextLine>();
+
+        // Empties the layout, keeping its lines for NextLine.
+        internal void Reset()
+        {
+            spare.AddRange(lines);
+            lines.Clear();
+            width = 0f;
+            height = 0f;
+        }
+
+        // A cleared spare line, or a new one.
+        internal TextLine NextLine()
+        {
+            if (spare.Count == 0) return new TextLine();
+
+            TextLine line = spare[^1];
+            spare.RemoveAt(spare.Count - 1);
+            line.segments.Clear();
+            line.width = line.ascent = line.descent = line.top = line.left = line.room = 0f;
+            return line;
+        }
     }
 
     // Turns a block's runs into lines using font metrics alone. Every geometry question about the
@@ -133,6 +157,10 @@ namespace ArctisAurora.Core.UI
             public readonly float imageHeight;
             public readonly bool floating;
 
+            // a formula run: one U+FFFC of imageWidth, imageHeight above the baseline and depth below
+            public readonly bool math;
+            public readonly float depth;
+
             public Run(string text, string fontName, AtlasMetaData atlas, int fontSize, FontStyle style = FontStyle.Regular)
             {
                 this.text = text;
@@ -146,7 +174,8 @@ namespace ArctisAurora.Core.UI
             }
 
             public Run(string text, int charStart, int charCount, string fontName, AtlasMetaData atlas, int fontSize, FontStyle style,
-                bool picture = false, float imageWidth = 0f, float imageHeight = 0f, bool floating = false)
+                bool picture = false, float imageWidth = 0f, float imageHeight = 0f, bool floating = false,
+                bool math = false, float depth = 0f)
             {
                 this.text = text;
                 this.fontName = fontName;
@@ -160,6 +189,8 @@ namespace ArctisAurora.Core.UI
                 this.imageWidth = imageWidth;
                 this.imageHeight = imageHeight;
                 this.floating = floating;
+                this.math = math;
+                this.depth = depth;
             }
         }
 
@@ -225,17 +256,18 @@ namespace ArctisAurora.Core.UI
 
         // firstLineOffset applies to line 0 only.
         public static BlockLayout MeasureBlock(IReadOnlyList<Run> runs, float contentWidth, IGlyphMetrics metrics,
-            float lineHeight, float firstLineOffset = 0f, ILineSlots slots = null)
+            float lineHeight, float firstLineOffset = 0f, ILineSlots slots = null, BlockLayout reuse = null)
         {
             int count = Flatten(runs, metrics, lineHeight);
             PenChar[] chars = _penChars;
-            BlockLayout layout = new BlockLayout();
+            BlockLayout layout = reuse ?? new BlockLayout();
+            layout.Reset();
 
             if (slots != null) return MeasureAround(layout, chars, count, runs, metrics, lineHeight, firstLineOffset, slots);
 
             if (count == 0)
             {
-                layout.lines.Add(EmptyLine(runs, metrics, lineHeight));
+                layout.lines.Add(EmptyLine(layout, runs, metrics, lineHeight));
                 layout.height = layout.lines[0].height;
                 return layout;
             }
@@ -289,7 +321,7 @@ namespace ArctisAurora.Core.UI
         {
             if (count == 0)
             {
-                TextLine empty = EmptyLine(runs, metrics, lineHeight);
+                TextLine empty = EmptyLine(layout, runs, metrics, lineHeight);
                 empty.top = slots.Place(0f, empty.height, out empty.left, out _);
                 layout.lines.Add(empty);
                 layout.height = empty.top + empty.height;
@@ -378,6 +410,14 @@ namespace ArctisAurora.Core.UI
                     continue;
                 }
 
+                if (run.math)
+                {
+                    for (int i = run.charStart; i < run.charStart + run.charCount; i++)
+                        chars[count++] = new PenChar(r, i, true, run.imageWidth, MathF.Max(run.imageHeight, ascent),
+                            MathF.Max(run.depth, descent), true);
+                    continue;
+                }
+
                 int end = run.charStart + run.charCount;
                 for (int i = run.charStart; i < end; i++)
                 {
@@ -412,7 +452,9 @@ namespace ArctisAurora.Core.UI
 
         private static void AppendLine(BlockLayout layout, PenChar[] chars, int from, int to, float top, float left)
         {
-            TextLine line = new TextLine { top = top, left = left };
+            TextLine line = layout.NextLine();
+            line.top = top;
+            line.left = left;
 
             int segmentRun = chars[from].runIndex;
             int segmentStart = chars[from].charIndex;
@@ -446,9 +488,9 @@ namespace ArctisAurora.Core.UI
 
         // An empty paragraph still occupies a line, or it would be zero tall and drop out of the
         // scroll extent with nowhere for a caret to sit.
-        private static TextLine EmptyLine(IReadOnlyList<Run> runs, IGlyphMetrics metrics, float lineHeight)
+        private static TextLine EmptyLine(BlockLayout layout, IReadOnlyList<Run> runs, IGlyphMetrics metrics, float lineHeight)
         {
-            TextLine line = new TextLine();
+            TextLine line = layout.NextLine();
             line.segments.Add(new LineSegment(0, 0, 0, 0f));
             if (runs.Count == 0) return line;
 
@@ -463,6 +505,8 @@ namespace ArctisAurora.Core.UI
         public static float MeasureAdvance(char character, in Run run)
         {
             if (run.picture) return run.floating ? 0f : run.imageWidth;
+            if (run.math) return run.imageWidth;
+            if (character < AtlasMetaData.AdvanceTableSize) return run.atlas.TableAdvance(character, run.face) * run.fontSize;
 
             Glyph glyph = run.atlas.GetGlyph(character) ?? run.atlas.GetGlyph(' ');
             if (glyph == null) return 0f;

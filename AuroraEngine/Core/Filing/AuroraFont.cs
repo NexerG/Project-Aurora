@@ -566,6 +566,11 @@ namespace ArctisAurora.Core.Filing
         private Dictionary<char, int> charIndex = null!;
         private static readonly CharHash charHash = new CharHash();
 
+        // em advances of the chars below AdvanceTableSize, one row per face, built on load
+        public const int AdvanceTableSize = 256;
+        [NonSerializable]
+        private float[] advances = null!;
+
         private sealed class CharHash : IEqualityComparer<char>
         {
             public bool Equals(char a, char b) => a == b;
@@ -654,7 +659,19 @@ namespace ArctisAurora.Core.Filing
             charIndex = new Dictionary<char, int>(glyphCount, charHash);
             for (int i = 0; i < glyphCount; i++)
                 charIndex.TryAdd(chars[i], i);
+
+            advances = new float[4 * AdvanceTableSize];
+            for (int c = 0; c < AdvanceTableSize; c++)
+            {
+                Glyph glyph = GetGlyph((char)c) ?? GetGlyph(' ');
+                if (glyph == null) continue;
+                for (int f = 0; f < 4; f++)
+                    advances[f * AdvanceTableSize + c] = glyph.Metrics((FontStyle)f).advanceWidth;
+            }
         }
+
+        // A char's em advance in one face, unimported chars as space; character must be below AdvanceTableSize.
+        public float TableAdvance(char character, FontStyle face) => advances[(int)face * AdvanceTableSize + character];
 
         public Glyph GetGlyph(char character)
         {

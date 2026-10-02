@@ -225,13 +225,20 @@ The Perf suite's targets, each 30 warm-up ticks then 120 measured ticks:
 |---|---|---|---|
 | `Perf.RelayoutLabels` | 1,000 labels in a column | column width flips 400/401 | `Step.Main.Layout` |
 | `Perf.TypeLargeNote` | 1,000 blocks of 1,000 chars in an editor | one character typed into the first block | `Step.Main.Layout`, `Step.Main.Logic`, `Document.MeasureBlocks` |
-| `Perf.RewrapLargeNote` | the same note | editor width narrows 8 px a tick, then widens back | `Step.Main.Layout`, `Document.MeasureBlocks`, `Text.MeasureBlock` — fails today: the page's paper size sets the text width, so the editor's width never rewraps |
+| `Perf.RewrapLargeNote` | the same note | the page is a custom size whose width narrows 1 mm a tick from 210 to 150 mm, then widens back, so every block rewraps | `Step.Main.Layout`, `Document.MeasureBlocks`, `Text.MeasureBlock` |
+| `Perf.ResizeLargeNote` | the same note | the editor's width narrows 8 px a tick, then widens back; the text does not rewrap, because the paper sets its width | `Step.Main.Layout` |
 | `Perf.AnimationBurst` | 5,000 buttons in rows of 100 | one 2 s tween on every button's `state`, started at the first measured tick | `Step.Animation.Step` |
 | `Perf.AnimationLayoutClip` | 5,000 buttons in rows of 100 | `profile-margin` playing on every button, a relayout every tick | `Step.Animation.Step`, `Step.Main.Layout` |
+| `Perf.Controls.<Name>.Static` | 1,000 of one control in rows of 25, each a star share of a 1,000-wide grid and 16 tall | nothing changes — the cost of having them on screen | `Step.Main.Input`, `Step.Main.Layout`, `Step.Main.DrawLists`, `Draw` on Render |
+| `Perf.Controls.<Name>.Relayout` | the same grid | the grid's width flips 1000/1001, so every control re-lays out | the same four |
+
+The controls measured are Panel, Button, CheckBox, Slider, Dropdown, Expander, KeyCapture, Icon, Label, TextBox, EditableLabel, a nested StackPanel, GridList, Scrollable, SplitView and TabView. `Perf.Controls.Table.*` shows 100 small tables in a note instead, and its Relayout flips the page width by 1 mm.
 
 `Step.Animation.Step` is budgeted on Main because the scheduler runs it there while Main is free in its stage; if it moves to a worker the budget fails with the zone never having run.
 
-The capture goes into the run's own folder, never the host's `Profiling` folder, so a test run never prunes the user's captures. A single run's `max` can swing by several milliseconds on the same build, so `Max` budgets want generous headroom. `--profile-scenario` stays a separate tool for long exploratory captures.
+Every budget's `Max` is 8 ms: no zone may take more than 8 ms in any one frame, and a spike is a failure rather than noise to allow for. `P95` is set at twice the worst p95 of three Release runs, never above 8, and `AllocKB` at twice the worst frame. The rewrap of the large note and the large note's typing spikes fail this today, as does any frame that lands on the renderer growing or shrinking its quad buffers.
+
+The capture goes into the run's own folder, never the host's `Profiling` folder, so a test run never prunes the user's captures. `--profile-scenario` stays a separate tool for long exploratory captures.
 
 ## Viewing results in Carbon
 

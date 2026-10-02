@@ -67,16 +67,24 @@ namespace ArctisAurora.Core.UI
         public float imageRotation;
         public PictureCollision collision;
 
+        // a formula: one U+FFFC drawn from this TeX source
+        public string mathSource;
+        public bool mathDisplay;
+
         public Quaternion Rotation => Quaternion.CreateFromAxisAngle(Vector3.UnitZ, imageRotation * MathF.PI / 180f);
         public bool IsFloating => IsPicture && wrap != PictureWrap.Inline;
         public bool IsBold => style == FontStyle.Bold || style == FontStyle.BoldItalic;
         public bool IsItalic => style == FontStyle.Italic || style == FontStyle.BoldItalic;
         public bool IsPicture => imageSource != null;
+        public bool IsMath => mathSource != null;
+        public bool IsObject => IsPicture || IsMath;
 
-        // The same style with the picture taken off.
+        // The same style with the picture or formula taken off.
         public StyleSpan AsText()
         {
             StyleSpan text = this;
+            text.mathSource = null;
+            text.mathDisplay = false;
             text.imageSource = null;
             text.imageWidth = 0f;
             text.imageHeight = 0f;
@@ -117,6 +125,11 @@ namespace ArctisAurora.Core.UI
         private readonly List<(bool underline, bool strike, uint highlight)> _runDecorations = new List<(bool, bool, uint)>();
         private readonly List<TextureAsset?> _runTextures = new List<TextureAsset?>();
         private readonly List<(Vector2 size, Quaternion rotation)> _runPictures = new List<(Vector2, Quaternion)>();
+        private readonly List<MathBox?> _runMath = new List<MathBox?>();
+
+        // formulas, laid out once per source; the font they draw from
+        private static readonly Dictionary<(string source, bool display), MathBox> mathBoxes = new();
+        private const string MathFont = "math";
 
         // characters under a selection, which a highlight leaves a gap for; -1 when none
         internal int selectedFrom = -1;
@@ -240,10 +253,12 @@ namespace ArctisAurora.Core.UI
             _runDecorations.Clear();
             _runTextures.Clear();
             _runPictures.Clear();
+            _runMath.Clear();
 
             string s = text ?? string.Empty;
             if (spans.Count == 0)
             {
+                _runMath.Add(null);
                 _runs.Add(new TextMeasurer.Run(s, 0, s.Length, fontName, _fontAsset.atlasMetaData, Zoomed(fontSize), style));
                 _runPaints.Add(_paint);
                 _runFonts.Add(_fontAsset);
@@ -277,12 +292,28 @@ namespace ArctisAurora.Core.UI
                         spans[i].IsFloating));
                     _runTextures.Add(picture);
                     _runPictures.Add((new Vector2(w, h), rotation));
+                    _runMath.Add(null);
+                }
+                else if (spans[i].IsMath)
+                {
+                    MathBox box = MathBoxFor(spans[i]);
+                    float size = Zoomed(spanSize);
+                    float w = box.width * size;
+                    if (spans[i].mathDisplay && float.IsFinite(wrapWidth) && wrapWidth < float.MaxValue)
+                        w = MathF.Max(w, wrapWidth);
+                    _runs.Add(new TextMeasurer.Run(s, start, count, spanFont, font.atlasMetaData, Zoomed(spanSize), spans[i].style, false,
+                        w, box.height * size, false, true, box.depth * size));
+                    _runTextures.Add(null);
+                    _runPictures.Add((Vector2.Zero, Quaternion.Identity));
+                    _runMath.Add(box);
+                    font = ResolveFont(MathFont);
                 }
                 else
                 {
                     _runs.Add(new TextMeasurer.Run(s, start, count, spanFont, font.atlasMetaData, Zoomed(spanSize), spans[i].style));
                     _runTextures.Add(null);
                     _runPictures.Add((Vector2.Zero, Quaternion.Identity));
+                    _runMath.Add(null);
                 }
                 _runPaints.Add(spans[i].colorHex == null ? _paint : Palettes.Inline(spans[i].colorHex));
                 _runFonts.Add(font);
@@ -293,6 +324,19 @@ namespace ArctisAurora.Core.UI
                     spans[i].highlightHex == null ? 0u : Palettes.Inline(spans[i].highlightHex)));
                 start += count;
             }
+        }
+
+        // A span's formula laid out in em; an error box when there is no math font.
+        private static MathBox MathBoxFor(in StyleSpan span)
+        {
+            if (mathBoxes.TryGetValue((span.mathSource, span.mathDisplay), out MathBox cached)) return cached;
+
+            FontAsset font = ResolveFont(MathFont);
+            MathBox box = font.mathConstants == null
+                ? new MathBox { error = true }
+                : MathLayout.Layout(MathParser.Parse(span.mathSource), span.mathDisplay, font.atlasMetaData, font.mathConstants);
+            mathBoxes[(span.mathSource, span.mathDisplay)] = box;
+            return box;
         }
 
         // The authored size at the picture's aspect, or its own size capped to the column; zoomed.
@@ -363,7 +407,7 @@ namespace ArctisAurora.Core.UI
             Profiling.Zone.End("Text.BuildRuns");
 
             Profiling.Zone.Start("Text.MeasureBlock");
-            _layout = TextMeasurer.MeasureBlock(_runs, wrapWidth, metrics, lineHeight);
+            _layout = TextMeasurer.MeasureBlock(_runs, wrapWidth, metrics, lineHeight, reuse: _layout);
             laidAround = false;
             Profiling.Zone.End("Text.MeasureBlock");
             _wrapWidth = wrapWidth;
@@ -382,7 +426,7 @@ namespace ArctisAurora.Core.UI
         {
             if (_layout == null) return 0f;
 
-            _layout = TextMeasurer.MeasureBlock(_runs, _wrapWidth, metrics, lineHeight, 0f, slots);
+            _layout = TextMeasurer.MeasureBlock(_runs, _wrapWidth, metrics, lineHeight, 0f, slots, _layout);
             laidAround = slots != null;
             Align();
             return _layout.height;
@@ -471,6 +515,25 @@ namespace ArctisAurora.Core.UI
 
                     if (highlight != 0)
                         WriteHighlight(quads, segment, segmentX, lineTop, line.height, highlight, alpha, z - depthStep, clip, gradientRect);
+
+                    if (run.math)
+                    {
+                        MathBox math = _runMath[segment.runIndex]!;
+                        uint ink = math.error ? Palettes.Surface(palette ?? Palettes.Default, PaletteRole.Danger) : paint;
+                        float size = run.fontSize;
+                        for (int k = 0; k < segment.charCount; k++)
+                        {
+                            float x = pen + (run.imageWidth - math.width * size) * 0.5f;
+                            foreach (MathGlyph g in math.glyphs)
+                                WriteGlyph(quads, g.ch, g.face, ink, alpha, font, size * g.scale, 0u, 0f,
+                                           x + g.x * size, baselineY - g.y * size, z, clip, gradientRect);
+                            foreach (MathRule r in math.rules)
+                                WriteRect(quads, x + r.x * size, MathF.Round(baselineY - r.y * size), r.width * size,
+                                          MathF.Max(1f, MathF.Round(r.height * size)), ink, alpha, z, clip, gradientRect);
+                            pen += run.imageWidth;
+                        }
+                        continue;
+                    }
 
                     for (int k = 0; k < segment.charCount; k++)
                     {
@@ -571,7 +634,7 @@ namespace ArctisAurora.Core.UI
         // advance. Cell geometry is GlyphControl's, which is also what FontAssetGlyphMetrics
         // reproduces — three copies of it would drift.
         private float WriteGlyph(DataPool quads, char character, FontStyle glyphStyle, uint paint, float alpha,
-                                 FontAsset font, int size, uint effect, float effectStart,
+                                 FontAsset font, float size, uint effect, float effectStart,
                                  float penX, float baselineY, float z,
                                  Vector4 clip, Vector4 gradientRect)
         {

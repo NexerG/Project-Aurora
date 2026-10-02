@@ -144,7 +144,8 @@ slot", so the title centres with no change to `UI.xml` or `TabWindow.xml`.
   other thread would corrupt layouts silently.**
 - **Never grows back down.** One long paragraph keeps its array for the life of the process.
 - **Not touched:** the rest of a measure's output — `BlockLayout`, each `TextLine` and its `segments` list — is
-  still built fresh, ~1.4 KB for a 6-line paragraph.
+  still built fresh, ~1.4 KB for a 6-line paragraph. Superseded 2026-10-02: a remeasure reuses them
+  ([[large-note-measure-cost]]).
 
 | `--profile-scenario` | Before | After |
 |---|---|---|

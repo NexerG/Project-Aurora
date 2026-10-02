@@ -32,6 +32,8 @@ Per-character advances are deliberately **not** stored. One float per character 
 
 A line is **not** one run: a paragraph with a bold word mid-sentence puts three runs on one visual line, so a line owns a list of `LineSegment` — `(runIndex, charStart, charCount, width)` — plus its own `width`, `ascent`, `descent` and `top` (Y within the block, so the measurer never sees document coordinates). Segments are cut wherever the run index changes, which means walking a line's advances for hit-testing is a walk across its segments in order.
 
+A remeasure does not throw the old lines away. Each text control hands its own `BlockLayout` back to [[TextMeasurer]], which keeps the old lines aside, clears them and fills them again, so rewrapping a large note at a new width costs no new line objects — on a 1,000-paragraph note that was 3.5 MB a frame. The consequence is that a control's lines are the same objects before and after a remeasure: anything that wants the old geometry has to copy it before layout runs. See `ClaudeMemory/Decisions/large-note-measure-cost.md`.
+
 ## Line height
 Line boxes follow the CSS model that Obsidian gets from `line-height` and Word from its spacing multiple, rather than the ink of the characters that landed on the line: box height is `fontSize × DocumentLayout.lineHeight`, the font's own ink box is centred in it, and the leftover splits evenly above and below as half-leading, putting the baseline at `halfLeading + fontAscent`. Two lines in one style are therefore the same height whether or not either holds a capital or a descender — measuring per-glyph ink instead made a line grow the moment someone typed a "g". Where a line mixes styles it takes the tallest box on it, which is what CSS and Word both do.
 

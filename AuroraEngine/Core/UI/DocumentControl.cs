@@ -552,12 +552,33 @@ namespace ArctisAurora.Core.UI
             if (!OrderedSelection(out DocumentAddress from, out DocumentAddress to)) return false;
 
             DocumentFragment fragment = CaptureFragment(from, to);
-            string text = string.Join(Environment.NewLine, fragment.blocks.Select(block => block.text));
+            string text = string.Join(Environment.NewLine, fragment.blocks.Select(PlainText));
 
             copiedText = text;
             copiedFragment = fragment;
             ClipboardText.Set(text);
             return true;
+        }
+
+        // A snapshot's text with each formula written as its TeX source.
+        private static string PlainText(BlockSnapshot block)
+        {
+            StringBuilder plain = new StringBuilder(block.text.Length);
+            int start = 0;
+            foreach (StyleSpan span in block.spans)
+            {
+                int count = Math.Clamp(span.count, 0, block.text.Length - start);
+                if (span.IsMath && count > 0)
+                {
+                    string fence = span.mathDisplay ? "$$" : "$";
+                    plain.Append(fence).Append(span.mathSource).Append(fence);
+                }
+                else
+                    plain.Append(block.text, start, count);
+                start += count;
+            }
+            if (start < block.text.Length) plain.Append(block.text, start, block.text.Length - start);
+            return plain.ToString();
         }
 
         // Boxes for the selected range, one per visual line it covers. Everything unused is arranged
@@ -1356,7 +1377,8 @@ namespace ArctisAurora.Core.UI
         // Replaces a paragraph's floats with where they sit for this top.
         private void RegisterFloats(BlockControl block, float blockTop)
         {
-            floats.RemoveAll(f => f.block == block);
+            for (int i = floats.Count - 1; i >= 0; i--)
+                if (floats[i].block == block) floats.RemoveAt(i);
 
             int start = 0;
             foreach (StyleSpan span in block.spans)

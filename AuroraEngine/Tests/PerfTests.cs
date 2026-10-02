@@ -20,11 +20,21 @@ namespace ArctisAurora.Tests
         private const int blockChars = 1000;
         private const float noteWidth = 800f;
         private const float rewrapStep = 8f;
+        private const float pageWidthMm = 210f;
+        private const float rewrapStepMm = 1f;
 
         // button grid shape
         private const int buttonCount = 5000;
         private const int rowLength = 100;
         private const float buttonSize = 16f;
+
+        // per-control grid shape and table note shape
+        private const int controlCount = 1000;
+        private const int controlsPerRow = 25;
+        private const float controlGridWidth = 1000f;
+        private const float controlHeight = 16f;
+        private const int tableCount = 100;
+        private const int tableSide = 3;
 
         [A_XSDActionDependency("Perf.RelayoutLabels", "Test")]
         private static IEnumerator<int> RelayoutLabels(TestContext t)
@@ -85,6 +95,29 @@ namespace ArctisAurora.Tests
 
             for (int i = 0; i < warmupTicks; i++)
             {
+                editor.SetPage(new PageLayout { size = PageSize.Custom, width = pageWidthMm - i % 2 * rewrapStepMm });
+                yield return 1;
+            }
+
+            t.StartMeasure();
+            for (int i = 1; i <= measuredTicks; i++)
+            {
+                int narrowed = i <= measuredTicks / 2 ? i : measuredTicks - i;
+                editor.SetPage(new PageLayout { size = PageSize.Custom, width = pageWidthMm - narrowed * rewrapStepMm });
+                yield return 1;
+            }
+            yield return t.EndMeasure();
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("Perf.ResizeLargeNote", "Test")]
+        private static IEnumerator<int> ResizeLargeNote(TestContext t)
+        {
+            DocumentEditorControl editor = OpenNote(t);
+            yield return 2;
+
+            for (int i = 0; i < warmupTicks; i++)
+            {
                 editor.preferredWidth = noteWidth - i % 2 * rewrapStep;
                 yield return 1;
             }
@@ -133,6 +166,239 @@ namespace ArctisAurora.Tests
             yield return t.EndMeasure();
             StopAll(buttons);
         }
+
+        #region controls
+        [A_XSDActionDependency("Perf.Controls.Panel.Static", "Test")]
+        private static IEnumerator<int> PanelStatic(TestContext t) => MeasureControls(t, MakePanel, false);
+        [A_XSDActionDependency("Perf.Controls.Panel.Relayout", "Test")]
+        private static IEnumerator<int> PanelRelayout(TestContext t) => MeasureControls(t, MakePanel, true);
+
+        [A_XSDActionDependency("Perf.Controls.Button.Static", "Test")]
+        private static IEnumerator<int> ButtonStatic(TestContext t) => MeasureControls(t, MakeButton, false);
+        [A_XSDActionDependency("Perf.Controls.Button.Relayout", "Test")]
+        private static IEnumerator<int> ButtonRelayout(TestContext t) => MeasureControls(t, MakeButton, true);
+
+        [A_XSDActionDependency("Perf.Controls.CheckBox.Static", "Test")]
+        private static IEnumerator<int> CheckBoxStatic(TestContext t) => MeasureControls(t, MakeCheckBox, false);
+        [A_XSDActionDependency("Perf.Controls.CheckBox.Relayout", "Test")]
+        private static IEnumerator<int> CheckBoxRelayout(TestContext t) => MeasureControls(t, MakeCheckBox, true);
+
+        [A_XSDActionDependency("Perf.Controls.Slider.Static", "Test")]
+        private static IEnumerator<int> SliderStatic(TestContext t) => MeasureControls(t, MakeSlider, false);
+        [A_XSDActionDependency("Perf.Controls.Slider.Relayout", "Test")]
+        private static IEnumerator<int> SliderRelayout(TestContext t) => MeasureControls(t, MakeSlider, true);
+
+        [A_XSDActionDependency("Perf.Controls.Dropdown.Static", "Test")]
+        private static IEnumerator<int> DropdownStatic(TestContext t) => MeasureControls(t, MakeDropdown, false);
+        [A_XSDActionDependency("Perf.Controls.Dropdown.Relayout", "Test")]
+        private static IEnumerator<int> DropdownRelayout(TestContext t) => MeasureControls(t, MakeDropdown, true);
+
+        [A_XSDActionDependency("Perf.Controls.Expander.Static", "Test")]
+        private static IEnumerator<int> ExpanderStatic(TestContext t) => MeasureControls(t, MakeExpander, false);
+        [A_XSDActionDependency("Perf.Controls.Expander.Relayout", "Test")]
+        private static IEnumerator<int> ExpanderRelayout(TestContext t) => MeasureControls(t, MakeExpander, true);
+
+        [A_XSDActionDependency("Perf.Controls.KeyCapture.Static", "Test")]
+        private static IEnumerator<int> KeyCaptureStatic(TestContext t) => MeasureControls(t, MakeKeyCapture, false);
+        [A_XSDActionDependency("Perf.Controls.KeyCapture.Relayout", "Test")]
+        private static IEnumerator<int> KeyCaptureRelayout(TestContext t) => MeasureControls(t, MakeKeyCapture, true);
+
+        [A_XSDActionDependency("Perf.Controls.Icon.Static", "Test")]
+        private static IEnumerator<int> IconStatic(TestContext t) => MeasureControls(t, MakeIcon, false);
+        [A_XSDActionDependency("Perf.Controls.Icon.Relayout", "Test")]
+        private static IEnumerator<int> IconRelayout(TestContext t) => MeasureControls(t, MakeIcon, true);
+
+        [A_XSDActionDependency("Perf.Controls.Label.Static", "Test")]
+        private static IEnumerator<int> LabelStatic(TestContext t) => MeasureControls(t, MakeLabel, false);
+        [A_XSDActionDependency("Perf.Controls.Label.Relayout", "Test")]
+        private static IEnumerator<int> LabelRelayout(TestContext t) => MeasureControls(t, MakeLabel, true);
+
+        [A_XSDActionDependency("Perf.Controls.TextBox.Static", "Test")]
+        private static IEnumerator<int> TextBoxStatic(TestContext t) => MeasureControls(t, MakeTextBox, false);
+        [A_XSDActionDependency("Perf.Controls.TextBox.Relayout", "Test")]
+        private static IEnumerator<int> TextBoxRelayout(TestContext t) => MeasureControls(t, MakeTextBox, true);
+
+        [A_XSDActionDependency("Perf.Controls.EditableLabel.Static", "Test")]
+        private static IEnumerator<int> EditableLabelStatic(TestContext t) => MeasureControls(t, MakeEditableLabel, false);
+        [A_XSDActionDependency("Perf.Controls.EditableLabel.Relayout", "Test")]
+        private static IEnumerator<int> EditableLabelRelayout(TestContext t) => MeasureControls(t, MakeEditableLabel, true);
+
+        [A_XSDActionDependency("Perf.Controls.StackPanel.Static", "Test")]
+        private static IEnumerator<int> StackPanelStatic(TestContext t) => MeasureControls(t, MakeStackPanel, false);
+        [A_XSDActionDependency("Perf.Controls.StackPanel.Relayout", "Test")]
+        private static IEnumerator<int> StackPanelRelayout(TestContext t) => MeasureControls(t, MakeStackPanel, true);
+
+        [A_XSDActionDependency("Perf.Controls.GridList.Static", "Test")]
+        private static IEnumerator<int> GridListStatic(TestContext t) => MeasureControls(t, MakeGridList, false);
+        [A_XSDActionDependency("Perf.Controls.GridList.Relayout", "Test")]
+        private static IEnumerator<int> GridListRelayout(TestContext t) => MeasureControls(t, MakeGridList, true);
+
+        [A_XSDActionDependency("Perf.Controls.Scrollable.Static", "Test")]
+        private static IEnumerator<int> ScrollableStatic(TestContext t) => MeasureControls(t, MakeScrollable, false);
+        [A_XSDActionDependency("Perf.Controls.Scrollable.Relayout", "Test")]
+        private static IEnumerator<int> ScrollableRelayout(TestContext t) => MeasureControls(t, MakeScrollable, true);
+
+        [A_XSDActionDependency("Perf.Controls.SplitView.Static", "Test")]
+        private static IEnumerator<int> SplitViewStatic(TestContext t) => MeasureControls(t, MakeSplitView, false);
+        [A_XSDActionDependency("Perf.Controls.SplitView.Relayout", "Test")]
+        private static IEnumerator<int> SplitViewRelayout(TestContext t) => MeasureControls(t, MakeSplitView, true);
+
+        [A_XSDActionDependency("Perf.Controls.TabView.Static", "Test")]
+        private static IEnumerator<int> TabViewStatic(TestContext t) => MeasureControls(t, MakeTabView, false);
+        [A_XSDActionDependency("Perf.Controls.TabView.Relayout", "Test")]
+        private static IEnumerator<int> TabViewRelayout(TestContext t) => MeasureControls(t, MakeTabView, true);
+
+        [A_XSDActionDependency("Perf.Controls.Table.Static", "Test")]
+        private static IEnumerator<int> TableStatic(TestContext t) => MeasureTables(t, false);
+        [A_XSDActionDependency("Perf.Controls.Table.Relayout", "Test")]
+        private static IEnumerator<int> TableRelayout(TestContext t) => MeasureTables(t, true);
+
+        // Shows controlCount controls in rows, then measures them still or with the grid's width flipping every tick.
+        private static IEnumerator<int> MeasureControls(TestContext t, Func<Control> make, bool relayout)
+        {
+            StackPanelControl rows = new StackPanelControl
+            {
+                preferredWidth = controlGridWidth,
+                horizontalAlignment = HorizontalAlignment.Left,
+                verticalAlignment = VerticalAlignment.Top
+            };
+            StackPanelControl row = null!;
+            for (int i = 0; i < controlCount; i++)
+            {
+                if (i % controlsPerRow == 0)
+                {
+                    row = new StackPanelControl { orientation = StackPanelControl.Orientation.Horizontal, preferredHeight = controlHeight };
+                    rows.AddChild(row);
+                }
+                Control control = make();
+                control.widthStar = 1f;
+                control.preferredHeight = controlHeight;
+                row.AddChild(control);
+            }
+            t.Show(rows);
+            yield return 2;
+
+            for (int i = 0; i < warmupTicks; i++)
+            {
+                if (relayout) rows.preferredWidth = controlGridWidth + i % 2;
+                yield return 1;
+            }
+
+            t.StartMeasure();
+            for (int i = 0; i < measuredTicks; i++)
+            {
+                if (relayout) rows.preferredWidth = controlGridWidth + i % 2;
+                yield return 1;
+            }
+            yield return t.EndMeasure();
+        }
+
+        // Shows a note of tableCount tables, then measures it still or with the page width flipping every tick.
+        private static IEnumerator<int> MeasureTables(TestContext t, bool relayout)
+        {
+            RichTextDocument document = new RichTextDocument();
+            for (int i = 0; i < tableCount; i++)
+            {
+                TableControl table = new TableControl(Enumerable.Repeat(150f, tableSide).ToList());
+                for (int r = 0; r < tableSide; r++)
+                {
+                    List<List<BlockControl>> cells = new List<List<BlockControl>>();
+                    for (int c = 0; c < tableSide; c++)
+                    {
+                        BlockControl cell = new BlockControl();
+                        cell.AppendRun(new Run { text = $"Cell {r},{c}" });
+                        cells.Add(new List<BlockControl> { cell });
+                    }
+                    table.AddRow(cells);
+                }
+                document.blocks.Add(table);
+            }
+
+            DocumentEditorControl editor = new DocumentEditorControl
+            {
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                verticalAlignment = VerticalAlignment.Stretch
+            };
+            t.Show(editor);
+            editor.LoadDocument(document);
+            yield return 2;
+
+            for (int i = 0; i < warmupTicks; i++)
+            {
+                if (relayout) editor.SetPage(new PageLayout { size = PageSize.Custom, width = pageWidthMm - i % 2 * rewrapStepMm });
+                yield return 1;
+            }
+
+            t.StartMeasure();
+            for (int i = 0; i < measuredTicks; i++)
+            {
+                if (relayout) editor.SetPage(new PageLayout { size = PageSize.Custom, width = pageWidthMm - i % 2 * rewrapStepMm });
+                yield return 1;
+            }
+            yield return t.EndMeasure();
+            t.Show(new StackPanelControl());
+        }
+
+        private static Control MakePanel() => new PanelControl();
+        private static Control MakeButton() => new ButtonControl();
+        private static Control MakeCheckBox() => new CheckBoxControl { isChecked = true };
+        private static Control MakeSlider() => new SliderControl { value = 0.5f };
+        private static Control MakeDropdown() => new DropdownControl { options = new[] { "One", "Two" }, selected = "One" };
+        private static Control MakeKeyCapture() => new KeyCaptureControl();
+        private static Control MakeIcon() => new IconControl { iconName = "chevron-up" };
+        private static Control MakeLabel() => new LabelControl { text = "Label" };
+        private static Control MakeTextBox() => new TextBoxControl { text = "Text" };
+        private static Control MakeEditableLabel() => new EditableLabelControl { text = "Label" };
+
+        private static Control MakeExpander()
+        {
+            ExpanderControl expander = new ExpanderControl();
+            expander.AddChild(new LabelControl { text = "Inside" });
+            return expander;
+        }
+
+        private static Control MakeStackPanel()
+        {
+            StackPanelControl inner = new StackPanelControl();
+            inner.AddChild(new LabelControl { text = "Nested" });
+            StackPanelControl outer = new StackPanelControl { orientation = StackPanelControl.Orientation.Horizontal };
+            outer.AddChild(inner);
+            return outer;
+        }
+
+        private static Control MakeGridList()
+        {
+            GridListControl grid = new GridListControl();
+            grid.columnDefinitions.Add(new ColumnDefinition { sizeMode = GridSizeMode.Star });
+            grid.columnDefinitions.Add(new ColumnDefinition { sizeMode = GridSizeMode.Star });
+            grid.AddChild(new PanelControl { gridColumn = 0 });
+            grid.AddChild(new PanelControl { gridColumn = 1 });
+            return grid;
+        }
+
+        private static Control MakeScrollable()
+        {
+            ScrollableControl scrollable = new ScrollableControl();
+            scrollable.AddChild(new LabelControl { text = "Scrolled", preferredHeight = controlHeight * 3f });
+            return scrollable;
+        }
+
+        private static Control MakeSplitView()
+        {
+            SplitViewControl split = new SplitViewControl { orientation = StackPanelControl.Orientation.Horizontal };
+            split.AddChild(new PanelControl { widthStar = 1f });
+            split.AddChild(new PanelControl { widthStar = 1f });
+            return split;
+        }
+
+        private static Control MakeTabView()
+        {
+            TabViewControl view = new TabViewControl();
+            view.AddChild(new TabItemControl { header = "One" });
+            view.AddChild(new TabItemControl { header = "Two" });
+            return view;
+        }
+        #endregion
 
         // Shows an editor holding a generated note, caret at the end of the first block.
         private static DocumentEditorControl OpenNote(TestContext t)

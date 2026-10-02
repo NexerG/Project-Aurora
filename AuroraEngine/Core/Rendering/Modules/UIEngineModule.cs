@@ -15,8 +15,8 @@ using VulkanControl = ArctisAurora.Core.UI.VulkanControl;
 
 namespace ArctisAurora.EngineWork.Rendering.Modules
 {
-    // Draws one window's UIQuads range, which the UI engine rebuilds from its tree each frame. Two
-    // mirrors, one per column, because the shader reads the two as separate buffers.
+    // Draws one window's UIQuads range, which the UI engine rebuilds from its tree each frame. One
+    // mirror, two ranges, because the shader reads the columns as separate buffers.
     public unsafe class UIEngineModule : RenderingModule
     {
         internal override ERendererTypes rendererType => ERendererTypes.UIEngine;
@@ -81,14 +81,12 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         private AVulkanMesh _quad = null!;
 
-        // Per-image mirrors of this window's range of the two GPU columns and its indirect draw,
-        // recreated only when the range outgrows them.
-        private Silk.NET.Vulkan.Buffer[] _geometryBuffers = null!;
-        private DeviceMemory[] _geometryMemories = null!;
-        private nint[] _geometryMapped = null!;
-        private Silk.NET.Vulkan.Buffer[] _controlBuffers = null!;
-        private DeviceMemory[] _controlMemories = null!;
-        private nint[] _controlMapped = null!;
+        // Per-image mirror of this window's range of the two GPU columns, recreated when the range
+        // outgrows it, and its indirect draw.
+        private Silk.NET.Vulkan.Buffer[] _mirrorBuffers = null!;
+        private DeviceMemory[] _mirrorMemories = null!;
+        private nint[] _mirrorMapped = null!;
+        private ulong[] _controlOffsets = null!;
         private Silk.NET.Vulkan.Buffer[] _indirectBuffers = null!;
         private DeviceMemory[] _indirectMemories = null!;
         private nint[] _indirectMapped = null!;
@@ -102,7 +100,9 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         private readonly TableMirror<GpuGradient> _gradients = new TableMirror<GpuGradient>();
         private readonly TableMirror<GpuEffect> _effects = new TableMirror<GpuEffect>();
 
-        private int[] _frameBuiltCapacity = null!;
+        // per-image set 1 bindings to rewrite, as 1 << binding
+        private int[] _dirtyBindings = null!;
+        private const int allBindings = (1 << 6) - 1;
         private int[] _frameTableVersion = null!;
 
         // This window's rows in UIEngine.Quads as first << 32 | count, published by UIEngine.BuildDrawLists.
@@ -135,7 +135,7 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
         // Pending when this image's sets predate its mirrors or the texture table.
         internal override bool HasPendingWork(int frame)
-            => _frameBuiltCapacity[frame] != _mirrorCapacity[frame] || _frameTableVersion[frame] != TextureAsset.TableVersion;
+            => _dirtyBindings[frame] != 0 || _frameTableVersion[frame] != TextureAsset.TableVersion;
 
         // Composited over UIModule while both stacks run.
         public UIEngineModule()
@@ -147,19 +147,21 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         {
             base.RebindImageCount(window);
 
+            if (frameResources != null)
+                for (int i = 0; i < frameResources.Length; i++)
+                    if (frameResources[i] != null && frameResources[i].pool.Handle != default)
+                        Renderer.vk.DestroyDescriptorPool(Renderer.logicalDevice, frameResources[i].pool, null);
             frameResources = new FrameResources[window.imageCount];
-            _frameBuiltCapacity = new int[window.imageCount];
-            Array.Fill(_frameBuiltCapacity, -1);
+            _dirtyBindings = new int[window.imageCount];
+            Array.Fill(_dirtyBindings, allBindings);
             _frameTableVersion = new int[window.imageCount];
             Array.Fill(_frameTableVersion, -1);
 
             DestroyMirrors();
-            _geometryBuffers = new Silk.NET.Vulkan.Buffer[window.imageCount];
-            _geometryMemories = new DeviceMemory[window.imageCount];
-            _geometryMapped = new nint[window.imageCount];
-            _controlBuffers = new Silk.NET.Vulkan.Buffer[window.imageCount];
-            _controlMemories = new DeviceMemory[window.imageCount];
-            _controlMapped = new nint[window.imageCount];
+            _mirrorBuffers = new Silk.NET.Vulkan.Buffer[window.imageCount];
+            _mirrorMemories = new DeviceMemory[window.imageCount];
+            _mirrorMapped = new nint[window.imageCount];
+            _controlOffsets = new ulong[window.imageCount];
             _indirectBuffers = new Silk.NET.Vulkan.Buffer[window.imageCount];
             _indirectMemories = new DeviceMemory[window.imageCount];
             _indirectMapped = new nint[window.imageCount];
@@ -189,23 +191,23 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
         {
             camera.UpdateCameraMatrix(window.swapchainExtent, (uint)imageIndex);
             MirrorDrawList(imageIndex);
-            if (_paints.Sync(Palettes.Paints, imageIndex)) _frameBuiltCapacity[imageIndex] = -1;
-            if (_gradients.Sync(Gradients.Pool, imageIndex)) _frameBuiltCapacity[imageIndex] = -1;
-            if (_effects.Sync(Effects.Pool, imageIndex)) _frameBuiltCapacity[imageIndex] = -1;
+            if (_paints.Sync(Palettes.Paints, imageIndex)) _dirtyBindings[imageIndex] |= 1 << 4;
+            if (_gradients.Sync(Gradients.Pool, imageIndex)) _dirtyBindings[imageIndex] |= 1 << 3;
+            if (_effects.Sync(Effects.Pool, imageIndex)) _dirtyBindings[imageIndex] |= 1 << 5;
         }
 
         internal override void UpdateModule(int currentFrame)
         {
-            int tableVersion = TextureAsset.TableVersion;
-            if (_frameBuiltCapacity[currentFrame] != _mirrorCapacity[currentFrame])
+            if (frameResources[currentFrame] == null || frameResources[currentFrame].pool.Handle == default)
             {
                 CreateDescriptorPool(currentFrame, 0);
                 AllocateDescriptorSets(currentFrame);
-                UpdateDescriptorSets(currentFrame, _drawCount);
-                _frameBuiltCapacity[currentFrame] = _mirrorCapacity[currentFrame];
-                _frameTableVersion[currentFrame] = tableVersion;
             }
-            else if (_frameTableVersion[currentFrame] != tableVersion)
+            if (_dirtyBindings[currentFrame] != 0)
+                UpdateDescriptorSets(currentFrame, _drawCount);
+
+            int tableVersion = TextureAsset.TableVersion;
+            if (_frameTableVersion[currentFrame] != tableVersion)
             {
                 WriteTextureTable(currentFrame);
                 _frameTableVersion[currentFrame] = tableVersion;
@@ -237,16 +239,17 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
 
                 int rows = shrink ? Math.Max(_drawCount, 2 * _mirrorLowPeak[currentFrame]) : _drawCount;
                 int capacity = Math.Max(minMirrorRows, (int)BitOperations.RoundUpToPowerOf2((uint)rows));
-                ulong geometrySize = (ulong)(sizeof(ControlGeometry) * capacity);
+                ulong controlOffset = ((ulong)(sizeof(ControlGeometry) * capacity) + 255) & ~255UL;
                 ulong controlSize = (ulong)(sizeof(VulkanControl) * capacity);
-                AVulkanBufferHandler.CreateMappedBuffer(geometrySize, ref _geometryBuffers[currentFrame], ref _geometryMemories[currentFrame], out _geometryMapped[currentFrame], AVulkanBufferHandler.storageBufferFlags);
-                AVulkanBufferHandler.CreateMappedBuffer(controlSize, ref _controlBuffers[currentFrame], ref _controlMemories[currentFrame], out _controlMapped[currentFrame], AVulkanBufferHandler.storageBufferFlags);
-                AVulkanBufferHandler.CreateMappedBuffer((ulong)sizeof(DrawIndexedIndirectCommand), ref _indirectBuffers[currentFrame], ref _indirectMemories[currentFrame], out _indirectMapped[currentFrame], BufferUsageFlags.IndirectBufferBit);
+                AVulkanBufferHandler.CreateMappedBuffer(controlOffset + controlSize, ref _mirrorBuffers[currentFrame], ref _mirrorMemories[currentFrame], out _mirrorMapped[currentFrame], AVulkanBufferHandler.storageBufferFlags);
+                _controlOffsets[currentFrame] = controlOffset;
                 _mirrorCapacity[currentFrame] = capacity;
-            }
+                _dirtyBindings[currentFrame] |= (1 << 1) | (1 << 2);            }
+            if (_indirectBuffers[currentFrame].Handle == default)
+                AVulkanBufferHandler.CreateMappedBuffer((ulong)sizeof(DrawIndexedIndirectCommand), ref _indirectBuffers[currentFrame], ref _indirectMemories[currentFrame], out _indirectMapped[currentFrame], BufferUsageFlags.IndirectBufferBit);
 
-            AVulkanBufferHandler.WriteMappedRange(_geometryMapped[currentFrame], 0, geometry, first, _drawCount);
-            AVulkanBufferHandler.WriteMappedRange(_controlMapped[currentFrame], 0, controls, first, _drawCount);
+            AVulkanBufferHandler.WriteMappedRange(_mirrorMapped[currentFrame], 0, geometry, first, _drawCount);
+            AVulkanBufferHandler.WriteMappedRange(_mirrorMapped[currentFrame] + (nint)_controlOffsets[currentFrame], 0, controls, first, _drawCount);
             Unsafe.Write((void*)_indirectMapped[currentFrame], new DrawIndexedIndirectCommand
             {
                 IndexCount = (uint)_quad.indices.Length,
@@ -281,38 +284,35 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             _paints.DestroyAll();
             _gradients.DestroyAll();
             _effects.DestroyAll();
-            if (_geometryBuffers == null) return;
+            if (_mirrorBuffers == null) return;
 
-            for (int i = 0; i < _geometryBuffers.Length; i++)
+            for (int i = 0; i < _mirrorBuffers.Length; i++)
+            {
                 DestroyMirror(i);
+                if (_indirectBuffers[i].Handle == default) continue;
+
+                Renderer.vk.UnmapMemory(Renderer.logicalDevice, _indirectMemories[i]);
+                Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _indirectBuffers[i], null);
+                Renderer.vk.FreeMemory(Renderer.logicalDevice, _indirectMemories[i], null);
+                _indirectBuffers[i] = default;
+                _indirectMemories[i] = default;
+                _indirectMapped[i] = 0;
+            }
         }
 
-        // Frees one image's mirrors and its indirect draw.
+        // Frees one image's mirror.
         private void DestroyMirror(int image)
         {
-            if (_geometryBuffers[image].Handle == default) return;
+            if (_mirrorBuffers[image].Handle == default) return;
 
-            Renderer.vk.UnmapMemory(Renderer.logicalDevice, _geometryMemories[image]);
-            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _geometryBuffers[image], null);
-            Renderer.vk.FreeMemory(Renderer.logicalDevice, _geometryMemories[image], null);
+            Renderer.vk.UnmapMemory(Renderer.logicalDevice, _mirrorMemories[image]);
+            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _mirrorBuffers[image], null);
+            Renderer.vk.FreeMemory(Renderer.logicalDevice, _mirrorMemories[image], null);
 
-            Renderer.vk.UnmapMemory(Renderer.logicalDevice, _controlMemories[image]);
-            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _controlBuffers[image], null);
-            Renderer.vk.FreeMemory(Renderer.logicalDevice, _controlMemories[image], null);
-
-            Renderer.vk.UnmapMemory(Renderer.logicalDevice, _indirectMemories[image]);
-            Renderer.vk.DestroyBuffer(Renderer.logicalDevice, _indirectBuffers[image], null);
-            Renderer.vk.FreeMemory(Renderer.logicalDevice, _indirectMemories[image], null);
-
-            _geometryBuffers[image] = default;
-            _geometryMemories[image] = default;
-            _geometryMapped[image] = 0;
-            _controlBuffers[image] = default;
-            _controlMemories[image] = default;
-            _controlMapped[image] = 0;
-            _indirectBuffers[image] = default;
-            _indirectMemories[image] = default;
-            _indirectMapped[image] = 0;
+            _mirrorBuffers[image] = default;
+            _mirrorMemories[image] = default;
+            _mirrorMapped[image] = 0;
+            _controlOffsets[image] = 0;
             _mirrorCapacity[image] = -1;
         }
 
@@ -349,9 +349,6 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             if (frameResources[currentFrame] == null)
                 frameResources[currentFrame] = new FrameResources();
 
-            if (frameResources[currentFrame].pool.Handle != default)
-                Renderer.vk.DestroyDescriptorPool(Renderer.logicalDevice, frameResources[currentFrame].pool, null);
-
             CreateDescriptorPoolSizes(1);
             fixed (DescriptorPoolSize* sizesPtr = descriptorPoolSizes)
             {
@@ -373,111 +370,58 @@ namespace ArctisAurora.EngineWork.Rendering.Modules
             if (_mirrorCapacity[currentFrame] < 0 || _paints.CapacityAt(currentFrame) < 0 || _gradients.CapacityAt(currentFrame) < 0
                 || _effects.CapacityAt(currentFrame) < 0) return;
 
-            DescriptorBufferInfo cameraInfo = new DescriptorBufferInfo()
+            DescriptorBufferInfo* infos = stackalloc DescriptorBufferInfo[6];
+            infos[0] = new DescriptorBufferInfo
             {
                 Buffer = camera._cameraBuffer[currentFrame],
-                Offset = 0,
                 Range = (ulong)Unsafe.SizeOf<UBO>()
             };
-            DescriptorBufferInfo geometryInfo = new DescriptorBufferInfo()
+            infos[1] = new DescriptorBufferInfo
             {
-                Buffer = _geometryBuffers[currentFrame],
-                Offset = 0,
+                Buffer = _mirrorBuffers[currentFrame],
                 Range = (ulong)(Unsafe.SizeOf<ControlGeometry>() * _mirrorCapacity[currentFrame])
             };
-            DescriptorBufferInfo controlInfo = new DescriptorBufferInfo()
+            infos[2] = new DescriptorBufferInfo
             {
-                Buffer = _controlBuffers[currentFrame],
-                Offset = 0,
+                Buffer = _mirrorBuffers[currentFrame],
+                Offset = _controlOffsets[currentFrame],
                 Range = (ulong)(Unsafe.SizeOf<VulkanControl>() * _mirrorCapacity[currentFrame])
             };
-            DescriptorBufferInfo gradientInfo = new DescriptorBufferInfo()
+            infos[3] = new DescriptorBufferInfo
             {
                 Buffer = _gradients.BufferAt(currentFrame),
-                Offset = 0,
                 Range = (ulong)(Unsafe.SizeOf<GpuGradient>() * _gradients.CapacityAt(currentFrame))
             };
-            DescriptorBufferInfo paintInfo = new DescriptorBufferInfo()
+            infos[4] = new DescriptorBufferInfo
             {
                 Buffer = _paints.BufferAt(currentFrame),
-                Offset = 0,
                 Range = (ulong)(Unsafe.SizeOf<GpuPaint>() * _paints.CapacityAt(currentFrame))
             };
-            DescriptorBufferInfo effectInfo = new DescriptorBufferInfo()
+            infos[5] = new DescriptorBufferInfo
             {
                 Buffer = _effects.BufferAt(currentFrame),
-                Offset = 0,
                 Range = (ulong)(Unsafe.SizeOf<GpuEffect>() * _effects.CapacityAt(currentFrame))
             };
-            WriteDescriptorSet[] writes = new WriteDescriptorSet[]
-            {
-                new WriteDescriptorSet
-                {
-                    SType = StructureType.WriteDescriptorSet,
-                    DstSet = frameResources[currentFrame].sets[0],
-                    DstBinding = 0,
-                    DescriptorCount = 1,
-                    DstArrayElement = 0,
-                    DescriptorType = DescriptorType.UniformBuffer,
-                    PBufferInfo = &cameraInfo
-                },
-                new WriteDescriptorSet
-                {
-                    SType = StructureType.WriteDescriptorSet,
-                    DstSet = frameResources[currentFrame].sets[0],
-                    DstBinding = 1,
-                    DescriptorCount = 1,
-                    DstArrayElement = 0,
-                    DescriptorType = DescriptorType.StorageBuffer,
-                    PBufferInfo = &geometryInfo
-                },
-                new WriteDescriptorSet
-                {
-                    SType = StructureType.WriteDescriptorSet,
-                    DstSet = frameResources[currentFrame].sets[0],
-                    DstBinding = 2,
-                    DescriptorCount = 1,
-                    DstArrayElement = 0,
-                    DescriptorType = DescriptorType.StorageBuffer,
-                    PBufferInfo = &controlInfo
-                },
-                new WriteDescriptorSet
-                {
-                    SType = StructureType.WriteDescriptorSet,
-                    DstSet = frameResources[currentFrame].sets[0],
-                    DstBinding = 3,
-                    DescriptorCount = 1,
-                    DstArrayElement = 0,
-                    DescriptorType = DescriptorType.StorageBuffer,
-                    PBufferInfo = &gradientInfo
-                },
-                new WriteDescriptorSet
-                {
-                    SType = StructureType.WriteDescriptorSet,
-                    DstSet = frameResources[currentFrame].sets[0],
-                    DstBinding = 4,
-                    DescriptorCount = 1,
-                    DstArrayElement = 0,
-                    DescriptorType = DescriptorType.StorageBuffer,
-                    PBufferInfo = &paintInfo
-                },
-                new WriteDescriptorSet
-                {
-                    SType = StructureType.WriteDescriptorSet,
-                    DstSet = frameResources[currentFrame].sets[0],
-                    DstBinding = 5,
-                    DescriptorCount = 1,
-                    DstArrayElement = 0,
-                    DescriptorType = DescriptorType.StorageBuffer,
-                    PBufferInfo = &effectInfo
-                }
-            };
-            fixed (WriteDescriptorSet* writesPtr = writes)
-            {
-                Renderer.vk!.UpdateDescriptorSets(Renderer.logicalDevice, (uint)writes.Length, writesPtr, 0, null);
-            }
 
-            WriteTextureTable(currentFrame);
+            WriteDescriptorSet* writes = stackalloc WriteDescriptorSet[6];
+            uint count = 0;
+            for (int binding = 0; binding < 6; binding++)
+            {
+                if ((_dirtyBindings[currentFrame] & (1 << binding)) == 0) continue;
+
+                writes[count++] = new WriteDescriptorSet
+                {
+                    SType = StructureType.WriteDescriptorSet,
+                    DstSet = frameResources[currentFrame].sets[0],
+                    DstBinding = (uint)binding,
+                    DescriptorCount = 1,
+                    DstArrayElement = 0,
+                    DescriptorType = binding == 0 ? DescriptorType.UniformBuffer : DescriptorType.StorageBuffer,
+                    PBufferInfo = &infos[binding]
+                };
+            }
+            Renderer.vk!.UpdateDescriptorSets(Renderer.logicalDevice, count, writes, 0, null);
+            _dirtyBindings[currentFrame] = 0;
         }
 
         // The texture table (set 2, binding 0), indexed by TextureAsset.textureIndex — the same

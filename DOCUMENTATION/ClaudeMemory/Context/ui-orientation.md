@@ -124,9 +124,11 @@ Why: [[ui-palettes]].
   left release opens `options` as a menu under it, no narrower than itself, captions centered. `options` is code-only. Old `DropdownControl`.
 - **ExpanderControl** `<Expander>` · ContainerControl — two `Line` rules and a round grip split in half; the first
   authored child is the content, slid open between the halves. `reveal` (animatable `ArrangeData.reveal`, Measure),
-  `expanded` (XML `Expanded`, jumps), `Toggle` (tweens `reveal` and crossfades the arrows). Nested `Viewport` (clips,
-  holds the content against the lower rule), `Half` (24×12 clip) over `Circle` (24×24 button, acts on press, takes no
-  active control). No old counterpart. [[note-properties]]
+  `expanded` (XML `Expanded`, jumps), `Toggle` (tweens `reveal`). Nested `Viewport` (clips, holds the content against
+  the lower rule) — `Hide()`n while settled closed, so the content is not measured, arranged, drawn or hit; `Toggle`
+  shows it before opening, the close tween's `onDone` hides it. `Half` (24×12 clip) over `Circle` (24×24 button, acts
+  on press, takes no active control) holding one `arrow`; `ArrangeCore` turns both arrows by `reveal × 180°`. No old
+  counterpart. [[note-properties]], [[engine-testing]] § What the control targets found
 - **KeyCaptureControl** `<KeyCapture>` · ButtonControl — shows a combo (`SetCombo`, static
   `Describe`); a left release hands the next key to `InputHandler.Capture`; `OnDestroy` cancels a live capture,
   or every keybind stays swallowed. Old `KeyCaptureControl`.
@@ -156,6 +158,8 @@ Why: [[ui-palettes]].
   Regions `layout` (`MeasureCore`, `ArrangeCore`, `Emit`) and `caret geometry` (`IndexAt`, `CaretAt`, `TextOrigin`,
   `Length`, `Lines`). `OnPointerPress` → `IGlyphPressTarget`. Virtual `FontFor(span)` and `Alignment`; `Align` shifts
   each line's `left` across its `TextLine.room` after `MeasureBlock`/`LayoutAround` [[markdown-blocks-and-alignment]].
+  Both pass `_layout` as `MeasureBlock`'s `reuse`, so `Lines` is the same list and the same `TextLine`s after a
+  remeasure [[large-note-measure-cost]].
   XML `Text`, `FontSize`, `FontName`. **`MeasureCore`
   returns the last `desired` while the run is clean and its wrap width unchanged** — anything `BuildRuns` reads
   must invalidate layout, which is why `colorHex` does. Why: [[ui-engine-stack]] § landing 4, § landing 6c.
@@ -271,7 +275,8 @@ Why: [[ui-palettes]].
   `Grid.Row`/`Grid.Column`. Child elements `<RowDefinition Height SizeMode GapAfter>`,
   `<ColumnDefinition Width SizeMode GapAfter>`; `SizeMode` is `Fixed`/`Auto`/`Star`. Measure resolves
   Fixed → Auto columns → Star columns → Auto rows (each child at its spanned column width) → Star rows; a cell's
-  rect stops before its last band's gap. Old `GridListControl`.
+  rect stops before its last band's gap. Allocation-free: loops, and band offsets in two kept arrays
+  (`BuildOffsets`). Old `GridListControl`.
 - **ScrollableControl** `<Scrollable>` (0–1 child) · ContainerControl — scrolls its child; one thumb
   per axis, appended last so hit-test reaches them first; no gutter — thumbs overlay the content's
   edge. Regions `properties`, `state`, `layout`,
@@ -300,7 +305,10 @@ Why: [[ui-palettes]].
 - **TabItemControl** `<TabItem>` · PanelControl — one page; XML `Header` is its caption. Old `TabItemControl`.
 - **TabStripButtonControl** (no XML) · ButtonControl — a tab in the strip; a press moved past a
   threshold becomes a drag and shows `DragGhost`, which `OnDragStop` hides. `OnPointerPress/Move/Release`,
-  `OnDragStop`. Old `TabStripButtonControl`.
+  `OnDragStop`. Holds two children, caption then close button (`AddChild` bypasses the one-child rule), and lays
+  them out itself (region `layout`): ✕ pinned right at full height, caption in the rest, placed by its own
+  position fractions and margin — `BuildTab` gives it the bottom inset as a margin. A squeezed tab keeps its caption
+  start and ✕ visible. Old `TabStripButtonControl`.
 - **DragGhost** static — the dragged control, drawn again in a floating window centred on the pointer.
   `Show(control)`, `Hide`, `Follow`; sets `UIEngineModule.rangeRoot` and `rangeRect`; opacity from
   `Control.draggingOpacity` or the `DragGhost` UI setting. Old `DragGhost`,

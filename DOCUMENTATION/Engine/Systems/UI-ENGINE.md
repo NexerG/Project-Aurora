@@ -269,16 +269,19 @@ MirrorDrawList(image)
 	read the pool's two arrays and this window's published range into locals, once
 	clamp the count so the range fits the arrays
 	if the count outgrows this image's buffers, or has stayed at most a quarter of them for two seconds
-		destroy this image's buffers
-		create mapped geometry and paint buffers for the next power of two rows (twice the recent peak when shrinking), at least 256
+		destroy this image's mirror
+		create one mapped buffer for the next power of two rows (twice the recent peak when shrinking), at least 256: geometry first, paint after it at a 256-byte boundary
+		remember the new capacity and mark the geometry and paint bindings for a rewrite
+	if this image has no indirect buffer yet
 		create a mapped buffer holding one indirect draw
-		remember the new capacity
-	copy the window's geometry rows into this image's buffer, from row zero
-	copy the window's paint rows into this image's buffer, from row zero
+	copy the window's geometry rows into the mirror, from row zero
+	copy the window's paint rows into the mirror's paint half, from its row zero
 	write the quad's index count and the window's row count into the indirect buffer
 ```
 
-The rows land at the head of the buffer, so the draw starts at instance zero and the shader's instance index is the row. The count reaches the GPU through the indirect buffer rather than through the recorded draw, so each image's command buffer is recorded once and a new range never needs a re-record - only a buffer growth or a changed texture table does, because those rewrite descriptors.
+The rows land at the head of each half, so the draw starts at instance zero and the shader's instance index is the row. The count reaches the GPU through the indirect buffer rather than through the recorded draw, so each image's command buffer is recorded once and a new range never needs a re-record - only a mirror swap, a table swap or a changed texture table does, because those rewrite descriptors.
+
+Each image keeps its descriptor pool and sets for as long as the image exists. A swap rewrites only the bindings whose buffer changed: the two mirror halves after a growth or a shrink, or the one table that was replaced. The texture table is rewritten only when its version moves. The indirect buffer never changes size, so it lives as long as the image and is not part of a swap.
 
 The arrays and the range are read once and only once, because the main thread is refilling the pool while this runs and a growth swaps both arrays out from under a second read. The count written to the indirect buffer is the one this copy used, so an image never draws a newer range against an older buffer.
 

@@ -510,26 +510,10 @@ namespace ArctisAurora.Core.UI
             };
             tab.RegisterOnRelease(e => { SetActive(item); return true; });
 
-            StackPanelControl row = new StackPanelControl
-            {
-                orientation = StackPanelControl.Orientation.Horizontal,
-                alpha = 0f
-            };
-
-            // preferredHeight pins the cross axis: a stack probes a star child at main-axis 0, which
-            // wraps the caption one character per line, and maxCross keeps that height.
-            PanelControl wrapper = new PanelControl
-            {
-                widthStar = 1f,
-                preferredHeight = tabHeight,
-                padding = new Thickness(0, 0, 0, captionInset),
-                alpha = 0f
-            };
-            wrapper.AddChild(BuildCaption(item, tab));
-
-            row.AddChild(wrapper);
-            row.AddChild(BuildCloseButton(item));
-            tab.AddChild(row);
+            Control caption = BuildCaption(item, tab);
+            caption.margin = new Thickness(0, 0, 0, captionInset);
+            tab.AddChild(caption);
+            tab.AddChild(BuildCloseButton(item));
             return tab;
         }
 
@@ -609,15 +593,10 @@ namespace ArctisAurora.Core.UI
 
         // tab -> row -> [caption wrapper, close]
         private static ButtonControl CloseButtonOf(Control tab) =>
-            tab.children.Count > 0 && tab.children[0] is Control row && row.children.Count > 1
-                ? row.children[1] as ButtonControl
-                : null;
+            tab.children.Count > 1 ? tab.children[1] as ButtonControl : null;
 
         private static Control CaptionOf(Control tab) =>
-            tab.children.Count > 0 && tab.children[0] is Control row && row.children.Count > 0
-            && row.children[0] is Control wrapper && wrapper.children.Count > 0
-                ? wrapper.children[0] as Control
-                : null;
+            tab.children.Count > 0 ? tab.children[0] as Control : null;
         #endregion
 
         #region ---- layout ----

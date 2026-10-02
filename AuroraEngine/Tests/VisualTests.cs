@@ -27,6 +27,51 @@ namespace ArctisAurora.Tests
             yield return t.Golden("Default", panel);
         }
 
+        [A_XSDActionDependency("Visual.TabStrip", "Test")]
+        private static IEnumerator<int> TabStrip(TestContext t)
+        {
+            TabViewControl view = new TabViewControl
+            {
+                preferredWidth = 400f,
+                preferredHeight = 120f,
+                horizontalAlignment = HorizontalAlignment.Left,
+                verticalAlignment = VerticalAlignment.Top
+            };
+            view.AddChild(new TabItemControl { header = "One" });
+            view.AddChild(new TabItemControl { header = "Two" });
+            t.Show(view);
+            yield return 2;
+
+            yield return t.Golden("Default", view);
+        }
+
+        [A_XSDActionDependency("Visual.Expander", "Test")]
+        private static IEnumerator<int> Expander(TestContext t)
+        {
+            ExpanderControl expander = new ExpanderControl
+            {
+                preferredWidth = 300f,
+                horizontalAlignment = HorizontalAlignment.Left,
+                verticalAlignment = VerticalAlignment.Top
+            };
+            expander.AddChild(new LabelControl { text = "Inside", fontSize = 16 });
+            StackPanelControl column = new StackPanelControl
+            {
+                preferredWidth = 300f,
+                preferredHeight = 100f,
+                horizontalAlignment = HorizontalAlignment.Left,
+                verticalAlignment = VerticalAlignment.Top
+            };
+            column.AddChild(expander);
+            t.Show(column);
+            yield return 2;
+            yield return t.Golden("Closed", column);
+
+            expander.expanded = true;
+            yield return 2;
+            yield return t.Golden("Open", column);
+        }
+
         [A_XSDActionDependency("Visual.ImageScaled", "Test")]
         private static IEnumerator<int> ImageScaled(TestContext t)
         {

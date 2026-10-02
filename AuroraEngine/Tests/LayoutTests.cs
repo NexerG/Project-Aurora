@@ -114,5 +114,37 @@ namespace ArctisAurora.Tests
             t.Check(UIEngine.HitTest(root, centre + new Vector2(40f, 0f)) != bar, "and missed where the upright bar was");
             t.Check(MathF.Abs(bar.arrange.subtreeBounds.height - 100f) < 0.01f, $"its bounds are the turned box: {bar.arrange.subtreeBounds.height}");
         }
+
+        [A_XSDActionDependency("Layout.ExpanderOpensToContentHeight", "Test")]
+        private static IEnumerator<int> ExpanderOpensToContentHeight(TestContext t)
+        {
+            LabelControl content = new LabelControl { text = "Inside", fontSize = 16 };
+            ExpanderControl expander = new ExpanderControl
+            {
+                preferredWidth = 300f,
+                horizontalAlignment = HorizontalAlignment.Left,
+                verticalAlignment = VerticalAlignment.Top
+            };
+            expander.AddChild(content);
+            t.Show(expander);
+            yield return 2;
+
+            Control viewport = (Control)content.parent;
+            float closed = expander.arrangedRect.height;
+            t.Check(viewport.hidden, "closed, the content is hidden");
+
+            expander.Toggle();
+            yield return 30;
+            t.Check(!viewport.hidden, "open, the content is shown");
+            t.Check(content.arrangedRect.height > 0f && MathF.Abs(content.arrangedRect.height - content.DesiredSize.Y) < 0.01f,
+                $"open, the content is arranged at its own height: {content.arrangedRect.height} of {content.DesiredSize.Y}");
+            t.Check(MathF.Abs(expander.arrangedRect.height - (closed + content.DesiredSize.Y)) < 0.01f,
+                $"open, the expander grows by the content's height: {expander.arrangedRect.height}");
+
+            expander.Toggle();
+            yield return 30;
+            t.Check(viewport.hidden, "closed again, the content is hidden");
+            t.Check(MathF.Abs(expander.arrangedRect.height - closed) < 0.01f, $"closed again, the expander is back to {closed}: {expander.arrangedRect.height}");
+        }
     }
 }
