@@ -5,4 +5,5 @@
 	<Test Action="Input.ClickFiresRelease"/>
 	<Test Action="Input.KeyWithModifierFiresKeybind"/>
 	<Test Action="Input.DragMovesSplitter"/>
+	<Test Action="Input.RepeatJoinsUndoStep"/>
 </TestSuite>

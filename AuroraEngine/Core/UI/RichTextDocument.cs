@@ -139,7 +139,8 @@ namespace ArctisAurora.Core.UI
     {
         Left,
         Center,
-        Right
+        Right,
+        Justify
     }
 
     // How one styling type is rendered. However many of these a layout carries is the whole scheme,
@@ -323,6 +324,8 @@ namespace ArctisAurora.Core.UI
 
         [A_XSDElementProperty("Gap", "UI", "Space between pages in pixels.")]
         public float gap { get; set; } = 16f;
+        [A_XSDElementProperty("PageNumbers", "UI", "Prints each page's number in its bottom margin.")]
+        public bool pageNumbers { get; set; }
 
         // Paper size in pixels, orientation applied.
         public Vector2 SizePx()

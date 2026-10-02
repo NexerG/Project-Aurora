@@ -8,6 +8,7 @@ using Silk.NET.GLFW;
 using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 namespace ArctisAurora.Core.UI
 {
@@ -39,9 +40,11 @@ namespace ArctisAurora.Core.UI
         public readonly string colorHex;
         public readonly string highlightHex;
         public readonly int? fontSize;
+        public readonly bool? code;
 
         public StyleDelta(bool? bold = null, bool? italic = null, bool? strikethrough = null,
-            string colorHex = null, int? fontSize = null, bool? underline = null, string highlightHex = null)
+            string colorHex = null, int? fontSize = null, bool? underline = null, string highlightHex = null,
+            bool? code = null)
         {
             this.bold = bold;
             this.italic = italic;
@@ -50,6 +53,7 @@ namespace ArctisAurora.Core.UI
             this.colorHex = colorHex;
             this.highlightHex = highlightHex;
             this.fontSize = fontSize;
+            this.code = code;
         }
 
         // Everything a span carries, as a delta that would give another span the same look.
@@ -73,13 +77,19 @@ namespace ArctisAurora.Core.UI
                 span.fontSizeAuthored = true;
                 span.fontSize = fontSize.Value;
             }
+            if (code.HasValue && code.Value != (span.stylingType == TextStyleType.Code))
+            {
+                span.stylingType = code.Value ? TextStyleType.Code : TextStyleType.Inherit;
+                span.fontSizeAuthored = false;
+                if (!code.Value) span.fontSize = 0;
+            }
         }
 
         // This delta with another laid over it; the newer one wins wherever it speaks.
         public StyleDelta With(StyleDelta over) => new StyleDelta(
             over.bold ?? bold, over.italic ?? italic, over.strikethrough ?? strikethrough,
             over.colorHex ?? colorHex, over.fontSize ?? fontSize, over.underline ?? underline,
-            over.highlightHex ?? highlightHex);
+            over.highlightHex ?? highlightHex, over.code ?? code);
 
         // Whether applying this would move anything on the span.
         public bool Changes(StyleSpan span) =>
@@ -89,7 +99,8 @@ namespace ArctisAurora.Core.UI
             || (underline.HasValue && underline != span.underline)
             || (colorHex != null && (colorHex.Length == 0 ? null : colorHex) != span.colorHex)
             || (highlightHex != null && (highlightHex.Length == 0 ? null : highlightHex) != span.highlightHex)
-            || (fontSize.HasValue && fontSize != span.fontSize);
+            || (fontSize.HasValue && fontSize != span.fontSize)
+            || (code.HasValue && code != (span.stylingType == TextStyleType.Code));
     }
 
     // The style the next character will take: the span the caret sits in, with an armed change laid
@@ -159,8 +170,9 @@ namespace ArctisAurora.Core.UI
         // refuses picture drags, assigned by the editor
         public bool readOnly;
 
-        // app-wide space between pages
+        // app-wide space between pages, and the page number's type size
         private static float PageGap => DocumentLayout.Defaults.Page.gap;
+        private const float pageNumberSize = 12f;
 
         // document zoom, assigned by the editor; 1 is 100%
         public float zoom = 1f;
@@ -187,6 +199,9 @@ namespace ArctisAurora.Core.UI
             }
         }
         private float headerHeight;
+
+        // the widest unwrapped code line, margins included; the note is at least this wide
+        private float contentWidth;
 
         // caret and highlight paint, assigned by the editor before either is built
         public string? caretColorHex;
@@ -741,7 +756,10 @@ namespace ArctisAurora.Core.UI
         internal void InsertAt(CaretSlot slot, DocumentFragment fragment)
         {
             DocumentAddress from = AddressOf(slot.block, slot.offset);
-            DocumentAddress to = Insert(from, ForDestination(fragment, slot.block));
+            if (slot.block.stylingType == TextStyleType.Rule) from = OffRule(from);
+            if (!Resolve(from, out BlockControl block, out _)) return;
+
+            DocumentAddress to = Insert(from, ForDestination(fragment, block));
             Select(from, to);
             DisarmStyle();
         }
@@ -766,6 +784,11 @@ namespace ArctisAurora.Core.UI
             }
 
             if (!Resolve(at, out BlockControl block, out _)) return false;
+            if (block.stylingType == TextStyleType.Rule)
+            {
+                at = OffRule(at);
+                if (!Resolve(at, out block, out _)) return false;
+            }
             DocumentAddress end = Insert(at, ForDestination(fragment, block));
             Select(at, end);
             DisarmStyle();
@@ -802,6 +825,7 @@ namespace ArctisAurora.Core.UI
                     stylingType = at.stylingType,
                     alignment = at.alignment,
                     language = at.language,
+                    codeWrap = at.codeWrap,
                     listKind = at.listKind,
                     listLevel = at.listLevel,
                     listMarker = at.listMarker,
@@ -828,6 +852,7 @@ namespace ArctisAurora.Core.UI
                 stylingType = destination.stylingType,
                 alignment = destination.alignment,
                 language = destination.language,
+                codeWrap = destination.codeWrap,
                 listKind = destination.listKind,
                 listLevel = destination.listLevel,
                 listMarker = destination.listMarker,
@@ -2083,13 +2108,20 @@ namespace ArctisAurora.Core.UI
         {
             if (caretBlock?.stylingType != TextStyleType.Rule) return;
 
-            DocumentAddress at = AddressOf(caretBlock, 0);
+            OffRule(AddressOf(caretBlock, 0));
+        }
+
+        // Starts a paragraph after the rule at an address; returns where it starts.
+        private DocumentAddress OffRule(DocumentAddress at)
+        {
+            at = new DocumentAddress(at.block, 0);
             SplitBlockAt(at);
             SetBlockList(at.block + 1, b =>
             {
                 b.stylingType = TextStyleType.Text;
                 b.alignment = TextAlignment.Left;
             });
+            return new DocumentAddress(at.block + 1, 0);
         }
 
         // An empty caret block becomes a rule, or one goes in after the caret's block; the caret ends on it.
@@ -2113,6 +2145,7 @@ namespace ArctisAurora.Core.UI
                 b.listKind = ListKind.None;
                 b.listLevel = 0;
                 b.listMarker = null;
+                b.listStart = null;
                 b.isChecked = false;
             });
             SetCaret(Blocks()[index], 0);
@@ -2146,7 +2179,11 @@ namespace ArctisAurora.Core.UI
             int from = open;
             int to = contentEnd - marker.Length;
 
-            if (marker == "`") MarkCode(block, from, to);
+            if (marker == "`")
+            {
+                MarkCode(block, from, to);
+                closed = new StyleDelta(code: false);
+            }
             else
             {
                 StyleDelta delta = marker switch
@@ -2217,6 +2254,52 @@ namespace ArctisAurora.Core.UI
 
         // "# " to "###### "
         private static readonly Regex headingPrefix = new Regex(@"^#{1,6} $");
+
+        // Colours each run of note-level code lines sharing a language; a run is re-read whole when any
+        // of its lines changed.
+        private void HighlightCode()
+        {
+            int start = -1;
+            bool changed = false;
+            for (int i = 0; i <= children.Count; i++)
+            {
+                BlockControl? block = i < children.Count ? children[i] as BlockControl : null;
+                bool code = block?.stylingType == TextStyleType.Code;
+                if (start >= 0 && !(code && ((BlockControl)children[start]).language == block!.language))
+                {
+                    if (changed) Tokenize(start, i);
+                    start = -1;
+                }
+                if (!code)
+                {
+                    if (block != null) block.syntax = null;
+                    continue;
+                }
+
+                if (start < 0)
+                {
+                    start = i;
+                    changed = false;
+                }
+                changed |= block!.isMeasureDirty || block.syntax == null || block.syntax.Length != block.Length;
+            }
+        }
+
+        private void Tokenize(int from, int to)
+        {
+            SyntaxState state = SyntaxState.None;
+            for (int i = from; i < to; i++)
+            {
+                BlockControl block = (BlockControl)children[i];
+                string line = block.text ?? string.Empty;
+                if (block.syntax == null || block.syntax.Length != line.Length) block.syntax = new SyntaxToken[line.Length];
+                state = SyntaxTokenizer.Tokenize(line, block.language, state, block.syntax);
+            }
+        }
+
+        // An unwrapped code line's arranged width: its own when wider than the text column.
+        private static float CodeWidth(BlockControl block, float textWidth) =>
+            MathF.Max(textWidth, block.arrange.desired.X + block.padding.left + block.padding.right);
         #endregion
 
         #region ---- lists ----
@@ -2224,7 +2307,7 @@ namespace ArctisAurora.Core.UI
         // "# " to "###### " makes a heading and "> " a quote.
         private bool TypeMarkdownPrefix(BlockControl block, int index, int typedEnd)
         {
-            if (plainText || block.stylingType is TextStyleType.Code or TextStyleType.Rule || block.parent != this) return false;
+            if (plainText || block.stylingType is TextStyleType.Code or TextStyleType.Rule) return false;
 
             string head = (block.text ?? string.Empty)[..typedEnd];
             TextStyleType? styling = null;
@@ -2297,6 +2380,39 @@ namespace ArctisAurora.Core.UI
             return true;
         }
 
+        // Starts the caret's list at the number after the last item of the same kind above it, as one step.
+        internal bool ContinueNumbering()
+        {
+            if (caretBlock == null || caretBlock.listKind != ListKind.Bullet) return false;
+            if (listsDirty) RenumberLists();
+
+            List<BlockControl> blocks = Blocks();
+            BlockControl caretItem = caretBlock;
+            int level = caretItem.listLevel;
+            bool SameList(BlockControl b) =>
+                b.parent == caretItem.parent && b.listKind == ListKind.Bullet && b.listLevel >= level;
+
+            int head = blocks.IndexOf(caretItem);
+            while (head > 0 && SameList(blocks[head - 1])) head--;
+            while (blocks[head].listLevel != level) head++;
+            BlockControl first = blocks[head];
+            if (!ListMarkers.IsNumbered(first.shownMarker)) return false;
+
+            for (int b = head - 1; b >= 0; b--)
+            {
+                BlockControl above = blocks[b];
+                if (above.parent != caretItem.parent) break;
+                if (above.listKind != ListKind.Bullet || above.listLevel != level || above.shownMarker != first.shownMarker) continue;
+
+                List<BlockSnapshot> before = SnapshotBlocks(head, head);
+                first.listStart = above.listNumber + 1;
+                undo?.Push(new BlockStateEdit(this, head, before, SnapshotBlocks(head, head)));
+                ListsChanged();
+                return true;
+            }
+            return false;
+        }
+
         internal void ListsChanged()
         {
             listsDirty = true;
@@ -2335,7 +2451,7 @@ namespace ArctisAurora.Core.UI
 
                 ListMarker marker = block.listMarker ?? document.layout.MarkerFor(level);
                 while (counters.Count <= level) counters.Add((0, marker));
-                int number = counters[level].marker == marker ? counters[level].count + 1 : 1;
+                int number = block.listStart ?? (counters[level].marker == marker ? counters[level].count + 1 : 1);
                 counters[level] = (number, marker);
                 block.ShowMarker(marker, number);
             }
@@ -2352,6 +2468,7 @@ namespace ArctisAurora.Core.UI
                 b.listKind = ListKind.None;
                 b.listLevel = 0;
                 b.listMarker = null;
+                b.listStart = null;
                 b.isChecked = false;
             });
             return true;
@@ -2381,7 +2498,8 @@ namespace ArctisAurora.Core.UI
                 BlockControl block = blocks[b];
                 if (block.listKind == ListKind.None) continue;
 
-                int deepest = b > 0 && blocks[b - 1].listKind != ListKind.None ? blocks[b - 1].listLevel + 1 : 0;
+                int deepest = b > 0 && blocks[b - 1].listKind != ListKind.None && blocks[b - 1].parent == block.parent
+                    ? blocks[b - 1].listLevel + 1 : 0;
                 int level = delta > 0 ? Math.Min(block.listLevel + 1, deepest) : block.listLevel - 1;
                 if (level < 0 || (delta > 0 && level <= block.listLevel)) continue;
 
@@ -2434,7 +2552,22 @@ namespace ArctisAurora.Core.UI
             }
         }
 
-        public TextStyleType CaretBlockStyling => caretBlock?.stylingType ?? TextStyleType.Text;
+        // Whether every selected character passes a test; null with nothing selected.
+        public bool? SelectionAll(Func<StyleSpan, bool> test)
+        {
+            if (!OrderedSelection(out DocumentAddress from, out DocumentAddress to)) return null;
+
+            List<BlockControl> blocks = Blocks();
+            for (int b = from.block; b <= to.block && b < blocks.Count; b++)
+            {
+                int start = b == from.block ? Math.Clamp(from.offset, 0, blocks[b].Length) : 0;
+                int end = b == to.block ? Math.Clamp(to.offset, 0, blocks[b].Length) : blocks[b].Length;
+                if (!blocks[b].AllSpans(start, end, test)) return false;
+            }
+            return true;
+        }
+
+        public TextStyleType CaretBlockStyling =>caretBlock?.stylingType ?? TextStyleType.Text;
 
         public TextAlignment CaretBlockAlignment => caretBlock?.alignment ?? TextAlignment.Left;
 
@@ -2733,6 +2866,183 @@ namespace ArctisAurora.Core.UI
             head.ApplyLayout(document.layout);
             CaretTo(at);
         }
+
+        // Undo and redo of a table: the table at a note-level index swapped, the caret put back.
+        internal void SetTable(int index, bool present, XElement? xml, DocumentAddress caret)
+        {
+            PutTable(index, present, xml);
+            CaretTo(caret);
+        }
+        #endregion
+
+        #region ---- tables ----
+        private TableControl? CaretTable() => caretBlock?.parent?.parent as TableControl;
+
+        // The caret at the very start of a list item with nothing selected, where Tab in a cell nests.
+        internal bool AtListItemStart => caretBlock is { listKind: not ListKind.None } && caretOffset == 0 && !HasSelection;
+
+        // Empty cells after the caret's block, with a paragraph kept after the table; false in a cell.
+        internal bool InsertTable(int rows, int columns, float width)
+        {
+            if (caretBlock == null || caretBlock.parent != this) return false;
+
+            BlockControl block = caretBlock;
+            DocumentAddress caretBefore = AddressOf(block, caretOffset);
+            int index = document.blocks.IndexOf(block) + 1;
+            if (index == document.blocks.Count) SplitBlockAt(AddressOf(block, block.Length));
+
+            TableControl table = PutTable(index, false, DocumentXml.NewTable(rows, columns, width))!;
+            BlockControl first = table.CellBlocks(0, 0)[0];
+            SetCaret(first, 0);
+            undo?.Push(new TableEdit(this, index, null, DocumentXml.WriteTable(table), caretBefore, AddressOf(first, 0)));
+            return true;
+        }
+
+        // toNew puts the caret in the new row's first cell, as Tab past the last cell does.
+        internal bool InsertTableRow(bool below, bool toNew = false) => ChangeTable((xml, row, column) =>
+        {
+            List<XElement> rows = Named(xml, "Row");
+            XElement added = new XElement(rows[row].Name,
+                Enumerable.Range(0, Named(xml, "Column").Count).Select(_ => new XElement(xml.Name.Namespace + "Cell")));
+            if (below) rows[row].AddAfterSelf(added);
+            else rows[row].AddBeforeSelf(added);
+
+            if (toNew) return (below ? row + 1 : row, 0, false);
+            return (below ? row : row + 1, column, true);
+        });
+
+        // The new column takes the caret column's width.
+        internal bool InsertTableColumn(bool right) => ChangeTable((xml, row, column) =>
+        {
+            XNamespace ns = xml.Name.Namespace;
+            XElement caretColumn = Named(xml, "Column")[column];
+            XElement added = new XElement(ns + "Column", new XAttribute("Width", (string)caretColumn.Attribute("Width")!));
+            if (right) caretColumn.AddAfterSelf(added);
+            else caretColumn.AddBeforeSelf(added);
+
+            foreach (XElement r in Named(xml, "Row"))
+            {
+                XElement cell = Named(r, "Cell")[column];
+                if (right) cell.AddAfterSelf(new XElement(ns + "Cell"));
+                else cell.AddBeforeSelf(new XElement(ns + "Cell"));
+            }
+            return (row, right ? column : column + 1, true);
+        });
+
+        // The last row deletes the table.
+        internal bool DeleteTableRow()
+        {
+            if (CaretTable() is { RowCount: 1 }) return DeleteTable();
+
+            return ChangeTable((xml, row, column) =>
+            {
+                List<XElement> rows = Named(xml, "Row");
+                rows[row].Remove();
+                return (Math.Min(row, rows.Count - 2), column, false);
+            });
+        }
+
+        // The last column deletes the table.
+        internal bool DeleteTableColumn()
+        {
+            if (CaretTable() is { widths.Count: 1 }) return DeleteTable();
+
+            return ChangeTable((xml, row, column) =>
+            {
+                List<XElement> columns = Named(xml, "Column");
+                columns[column].Remove();
+                foreach (XElement r in Named(xml, "Row"))
+                    Named(r, "Cell")[column].Remove();
+                return (row, Math.Min(column, columns.Count - 2), false);
+            });
+        }
+
+        // Refused when the note would be left with no paragraph to hold the caret.
+        internal bool DeleteTable()
+        {
+            if (CaretTable() is not TableControl table || !document.blocks.Any(b => b is BlockControl)) return false;
+
+            int index = document.blocks.IndexOf(table);
+            int flat = Blocks().IndexOf(table.CellBlocks(0, 0)[0]);
+            DocumentAddress caretBefore = AddressOf(caretBlock, caretOffset);
+            XElement before = DocumentXml.WriteTable(table);
+            PutTable(index, true, null);
+
+            List<BlockControl> blocks = Blocks();
+            BlockControl landing = blocks[Math.Min(flat, blocks.Count - 1)];
+            SetCaret(landing, 0);
+            undo?.Push(new TableEdit(this, index, before, null, caretBefore, AddressOf(landing, 0)));
+            return true;
+        }
+
+        // A column drag finished: one step from the table as it was at the grab to as it is.
+        internal void RecordTableResize(TableControl table, XElement before)
+        {
+            if (Editor is not DocumentEditorControl editor) return;
+
+            DocumentAddress caret = caretBlock != null ? AddressOf(caretBlock, caretOffset) : default;
+            using (editor.BeginStep("Resize column"))
+                undo?.Push(new TableEdit(this, document.blocks.IndexOf(table), before, DocumentXml.WriteTable(table), caret, caret));
+            editor.MarkDirty();
+        }
+
+        // Rebuilds the caret's table from an edited copy of its XML, as one record. change gets the
+        // caret's row and column and returns the cell the caret lands in; keep holds its line and offset.
+        private bool ChangeTable(Func<XElement, int, int, (int row, int column, bool keep)> change)
+        {
+            if (caretBlock?.parent is not StackPanelControl cell || cell.parent is not TableControl table) return false;
+
+            int index = document.blocks.IndexOf(table);
+            int line = cell.children.OfType<BlockControl>().ToList().IndexOf(caretBlock);
+            int offset = caretOffset;
+            DocumentAddress caretBefore = AddressOf(caretBlock, caretOffset);
+            XElement before = DocumentXml.WriteTable(table);
+            XElement edited = new XElement(before);
+
+            (int row, int column, bool keep) = change(edited, cell.gridRow, cell.gridColumn);
+            TableControl rebuilt = PutTable(index, true, edited)!;
+
+            List<BlockControl> lines = rebuilt.CellBlocks(row, column);
+            BlockControl landing = lines[keep ? Math.Min(line, lines.Count - 1) : 0];
+            SetCaret(landing, keep ? offset : 0);
+            undo?.Push(new TableEdit(this, index, before, DocumentXml.WriteTable(rebuilt), caretBefore, AddressOf(landing, caretOffset)));
+            return true;
+        }
+
+        // Takes the table at a note-level index out when present, and builds one from xml there.
+        private TableControl? PutTable(int index, bool present, XElement? xml)
+        {
+            if (present && document.blocks[index] is TableControl old)
+            {
+                document.blocks.RemoveAt(index);
+                old.parent.Destroy();
+            }
+
+            TableControl? table = null;
+            if (xml != null)
+            {
+                table = DocumentXml.ReadTable(xml);
+                table.ApplyLayout(document.layout);
+                ScrollableControl viewport = table.Hosted();
+                int at = index < document.blocks.Count
+                    ? children.IndexOf(Hosting(document.blocks[index]))
+                    : children.IndexOf(Hosting(document.blocks[index - 1])) + 1;
+                children.Insert(at, viewport);
+                viewport.parent = this;
+                document.blocks.Insert(index, table);
+            }
+
+            MarkTreeOrderDirty();
+            InvalidateLayout();
+            ListsChanged();
+            return table;
+        }
+
+        // A note-level entry as it sits among the children: a block itself, a table its viewport.
+        private static Entity Hosting(Control entry) => entry is TableControl table ? table.parent : entry;
+
+        private static List<XElement> Named(XElement parent, string name) =>
+            parent.Elements().Where(e => e.Name.LocalName == name).ToList();
         #endregion
 
         #region ---- pages ----
@@ -2855,10 +3165,34 @@ namespace ArctisAurora.Core.UI
                     edgeThickness = new Thickness(1f)
                 };
                 sheet.PaintOr(null, PaletteRole.Surface);
+                LabelControl number = new LabelControl
+                {
+                    hitTestable = false,
+                    role = PaletteRole.MutedInk,
+                    horizontalPosition = 0.5f,
+                    verticalPosition = 1f
+                };
+                sheet.AddChild(number);
                 sheet.parent = this;
                 children.Insert(pages.Count, sheet);
                 pages.Add(sheet);
                 MarkTreeOrderDirty();
+            }
+        }
+
+        // Writes each sheet's number into its bottom margin, or clears it.
+        private void NumberPages()
+        {
+            bool show = page.pageNumbers && page.mode == PageMode.Paged;
+            int size = Math.Max(1, (int)MathF.Round(pageNumberSize * zoom));
+            for (int i = 0; i < pages.Count; i++)
+            {
+                LabelControl number = (LabelControl)pages[i].children[0];
+                number.text = show ? (i + 1).ToString() : string.Empty;
+                number.fontSize = size;
+
+                float bottom = MathF.Max(0f, (Mm(page.marginBottom) - size * number.lineHeight) * 0.5f);
+                if (number.margin.bottom != bottom) number.margin = new Thickness(0f, 0f, bottom, 0f);
             }
         }
 
@@ -2882,10 +3216,13 @@ namespace ArctisAurora.Core.UI
                 measuredPaper = paper;
                 float textWidth = MathF.Max(0f, paper.X - Mm(page.marginLeft + page.marginRight));
 
+                HighlightCode();
+
                 Profiling.Zone.Start("Document.MeasureBlocks");
                 int from = -1;
                 int to = -1;
                 int count = 0;
+                contentWidth = paper.X;
                 foreach (Entity child in children)
                 {
                     Control item;
@@ -2902,6 +3239,8 @@ namespace ArctisAurora.Core.UI
                     else continue;
 
                     item.Measure(new Vector2(textWidth, float.MaxValue));
+                    if (item is BlockControl { stylingType: TextStyleType.Code, codeWrap: false } code)
+                        contentWidth = MathF.Max(contentWidth, CodeWidth(code, textWidth) + Mm(page.marginLeft + page.marginRight));
                     if (Remeasured(item) || count >= blockControls.Count || blockControls[count] != item)
                     {
                         if (from < 0) from = count;
@@ -2922,7 +3261,9 @@ namespace ArctisAurora.Core.UI
                 SyncFloatViews(availableSize);
 
                 EnsurePages();
-                arrange.desired = new Vector2(paper.X, height);
+                NumberPages();
+                float inset = PageGap * zoom;
+                arrange.desired = new Vector2(contentWidth + 2f * inset, height + 2f * inset);
             }
 
             caret?.Measure(availableSize);
@@ -2941,12 +3282,14 @@ namespace ArctisAurora.Core.UI
 
             LayoutRect inner = finalRect.Shrink(arrange.padding);
             Vector2 paper = page.SizePx() * zoom;
-            float x = inner.x + MathF.Max(0f, (inner.width - paper.X) * 0.5f);
+            float inset = PageGap * zoom;
+            float x = inner.x + MathF.Max(inset, (inner.width - contentWidth) * 0.5f);
+            float top = inner.y + inset;
             float textX = x + Mm(page.marginLeft);
             float textWidth = MathF.Max(0f, paper.X - Mm(page.marginLeft + page.marginRight));
 
-            ArrangePages(x, inner.y, paper.X);
-            header?.Arrange(new LayoutRect(textX, inner.y + Mm(page.marginTop), textWidth, headerHeight));
+            ArrangePages(x, top, paper.X);
+            header?.Arrange(new LayoutRect(textX, top + Mm(page.marginTop), textWidth, headerHeight));
 
             Profiling.Zone.Start("Document.ArrangeBlocks");
             int index = 0;
@@ -2954,14 +3297,15 @@ namespace ArctisAurora.Core.UI
             {
                 if ((child is not BlockControl && TableIn(child) == null) || index >= blockTops.Count) continue;
 
-                ((Control)child).Arrange(new LayoutRect(textX, inner.y + blockTops[index], textWidth, blockHeights[index]));
+                float width = child is BlockControl { stylingType: TextStyleType.Code, codeWrap: false } code ? CodeWidth(code, textWidth) : textWidth;
+                ((Control)child).Arrange(new LayoutRect(textX, top + blockTops[index], width, blockHeights[index]));
                 index++;
             }
             Profiling.Zone.End("Document.ArrangeBlocks");
 
             // after the blocks, so every line's geometry is this frame's
             Profiling.Zone.Start("Document.ArrangeOverlays");
-            ArrangeFloats(textX, inner.y);
+            ArrangeFloats(textX, top);
             ArrangeSelection();
             ArrangePictureFrame();
             ArrangeCaret();
@@ -3000,7 +3344,7 @@ namespace ArctisAurora.Core.UI
         internal override int CollectChildren(float z)
         {
             LayoutRect clip = arrange.clip;
-            float top = arrange.arranged.Shrink(arrange.padding).y;
+            float top = arrange.arranged.Shrink(arrange.padding).y + PageGap * zoom;
             float from = clip.y - top;
             float to = clip.Bottom - top;
             int walked = 0;

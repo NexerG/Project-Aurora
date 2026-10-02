@@ -1,5 +1,6 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
+using System.Globalization;
 using System.Numerics;
 
 namespace ArctisAurora.Core.UI
@@ -95,6 +96,7 @@ namespace ArctisAurora.Core.UI
         private readonly IconControl alignLeftInk;
         private readonly IconControl alignCenterInk;
         private readonly IconControl alignRightInk;
+        private readonly IconControl alignJustifyInk;
         private readonly LabelControl stylingCaption;
         private readonly LabelControl colorInk;
         private readonly PxBox pxField;
@@ -123,6 +125,7 @@ namespace ArctisAurora.Core.UI
         private bool? shownLeft;
         private bool? shownCenter;
         private bool? shownRight;
+        private bool? shownJustify;
         private string? shownColor;
         private PaletteRole? shownInk;
         private int? shownPx;
@@ -153,9 +156,11 @@ namespace ArctisAurora.Core.UI
             alignLeftInk = Ink("align-left");
             alignCenterInk = Ink("align-center");
             alignRightInk = Ink("align-right");
+            alignJustifyInk = Ink("align-justify");
             AddChild(IconButton(alignLeftInk, _ => TextInputActions.AlignLeft()));
             AddChild(IconButton(alignCenterInk, _ => TextInputActions.AlignCenter()));
             AddChild(IconButton(alignRightInk, _ => TextInputActions.AlignRight()));
+            AddChild(IconButton(alignJustifyInk, _ => TextInputActions.AlignJustify()));
             AddChild(Separator());
 
             colorInk = Caption("A");
@@ -219,6 +224,7 @@ namespace ArctisAurora.Core.UI
             Reflect(alignLeftInk, alignment == TextAlignment.Left, ref shownLeft);
             Reflect(alignCenterInk, alignment == TextAlignment.Center, ref shownCenter);
             Reflect(alignRightInk, alignment == TextAlignment.Right, ref shownRight);
+            Reflect(alignJustifyInk, alignment == TextAlignment.Justify, ref shownJustify);
 
             string? color = source.HasValue ? source.Value.colorHex : idleInkHex;
             PaletteRole ink = source.HasValue ? PaletteRole.Ink : PaletteRole.MutedInk;
@@ -405,11 +411,62 @@ namespace ArctisAurora.Core.UI
                 entries.Add(PageEntry(editor, current, size.ToString(), page => page.size = picked));
             }
 
+            entries.Add(new ContextMenuContent(CustomSizeFields(editor, current)));
+
             entries.Add(new ContextMenuLine());
             entries.Add(PageEntry(editor, current, current.landscape ? "Portrait" : "Landscape",
                 page => page.landscape = !page.landscape));
+            entries.Add(PageEntry(editor, current, current.pageNumbers ? "Hide page numbers" : "Show page numbers",
+                page => page.pageNumbers = !page.pageNumbers));
 
             Drop(owner, entries);
+        }
+
+        // Width and height in millimetres; Enter in either sets them as a custom paper size.
+        private static StackPanelControl CustomSizeFields(DocumentEditorControl editor, PageLayout current)
+        {
+            Vector2 mm = current.SizePx() / PageLayout.PxPerMm;
+            TextBoxControl width = SizeField(mm.X);
+            TextBoxControl height = SizeField(mm.Y);
+            width.onCommit = height.onCommit = _ =>
+            {
+                SetCustomSize(editor, width.text, height.text);
+                editor.FocusCaret();
+            };
+
+            StackPanelControl row = new StackPanelControl { orientation = Orientation.Horizontal, Spacing = 4f, padding = new Thickness(4f) };
+            row.AddChild(Caption("Custom"));
+            row.AddChild(width);
+            row.AddChild(Caption("x"));
+            row.AddChild(height);
+            row.AddChild(Caption("mm"));
+            return row;
+        }
+
+        private static TextBoxControl SizeField(float mm) => new TextBoxControl
+        {
+            preferredWidth = 56f,
+            preferredHeight = 24f,
+            fontSize = captionSize,
+            text = mm.ToString("0.#", CultureInfo.InvariantCulture)
+        };
+
+        // Sets a custom paper size from two millimetre strings; false when either is not a positive number.
+        public static bool SetCustomSize(DocumentEditorControl editor, string width, string height)
+        {
+            PageLayout? current = editor.Page;
+            if (current == null
+                || !float.TryParse(width, NumberStyles.Float, CultureInfo.InvariantCulture, out float w)
+                || !float.TryParse(height, NumberStyles.Float, CultureInfo.InvariantCulture, out float h)
+                || w <= 0f || h <= 0f) return false;
+
+            PageLayout page = current.Clone();
+            page.size = PageSize.Custom;
+            page.width = w;
+            page.height = h;
+            page.landscape = false;
+            editor.SetPage(page);
+            return true;
         }
 
         // Changes a copy, so an inherited editor-wide page is never written through.

@@ -930,7 +930,9 @@ namespace ArctisAurora.EngineWork
 
                     if (result == ConditionResult.Triggered)
                     {
+                        InputHandler.firingRepeat = !triggerState.justPressed;
                         def.action?.Invoke();
+                        InputHandler.firingRepeat = false;
                         triggerState.consumed = true;
 
                         if (consumedTriggers == null)
@@ -1108,6 +1110,9 @@ namespace ArctisAurora.EngineWork
         private static readonly Core.Diagnostics.LogChannel Log = Core.Diagnostics.LogChannel.For("Input");
 
         public static InputHandler instance { get; set; } = null!;
+
+        // Set while a keybind's action runs from a held key's repeat rather than its press.
+        public static bool firingRepeat { get; internal set; }
 
         public KeyStateTracker keyTracker = new KeyStateTracker();
         public GestureMatcher gestureMatcher;

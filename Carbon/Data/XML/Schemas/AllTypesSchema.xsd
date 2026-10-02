@@ -174,6 +174,7 @@
       <xs:enumeration value="IconSetAsset" />
       <xs:enumeration value="TextureAsset" />
       <xs:enumeration value="UIDocumentAsset" />
+      <xs:enumeration value="MathConstants" />
       <xs:enumeration value="Charset" />
       <xs:enumeration value="FontImport" />
       <xs:enumeration value="IconImport" />

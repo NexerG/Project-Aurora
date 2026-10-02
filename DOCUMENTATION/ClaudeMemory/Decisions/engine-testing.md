@@ -82,7 +82,7 @@ slice 3: `TestContext` input helpers, `UI.WindowRoot.ToWindowSpace`, `AGlfwWindo
 | Test | Work per tick | p95 / worst max (ms), worst-frame KB — Release+PROFILE, 3 runs |
 |---|---|---|
 | `Perf.TypeLargeNote` | 1000×1000-char note, one char via `charInputReadQueue` + `TextInputActions.Write` | Layout 0.89–1.51 / 42.6, 187; Logic 0.18–0.46 / 6.2; MeasureBlocks 0.26–0.44 / 20.6, 163 |
-| `Perf.RewrapLargeNote` | `SetPage` with a `Custom` page, 210 → 150 → 210 mm, 1 mm a tick | Layout 28.5–33.1 / 42.6, 8,722; `Text.MeasureBlock` 27.4–32.3 |
+| `Perf.RewrapLargeNote` | `SetPage` with a `Custom` page, 210 → 150 → 210 mm, 1 mm a tick | Layout 28.5–33.1 / 42.6, 8,722; `Text.MeasureBlock` 27.4–32.3. **2026-10-02** after [[rewrap-advance-cache]]: Layout 4.1–4.7 / 13.5 (one run of six 8.6), `Text.MeasureBlock` p50 2.9–3.2; budgets not re-derived |
 | `Perf.ResizeLargeNote` | editor `preferredWidth` 800 → 320 → 800, 8 px a tick — no rewrap: text width is the paper's (`DocumentControl.Paginate`), Paged and Pageless alike | Layout 0.33–0.55 / 0.97 |
 | `Perf.AnimationBurst` | 5000 buttons, one 2 s `Tween` on `state` each at the first measured tick | `Step.Animation.Step` 0.62–1.20 / 1.8 |
 | `Perf.AnimationLayoutClip` | 5000 buttons playing `profile-margin` | Anim 0.47–1.01 / 1.3; Layout 0.85–1.11 / 1.5 |
@@ -91,7 +91,7 @@ slice 3: `TestContext` input helpers, `UI.WindowRoot.ToWindowSpace`, `AGlfwWindo
 - Controls: Panel, Button, CheckBox, Slider, Dropdown, Expander, KeyCapture, Icon, Label, TextBox, EditableLabel,
   StackPanel (nested), GridList (2 star cells), Scrollable, SplitView, TabView (2 tabs); `Table` is 100 3×3 tables in
   a note, Relayout flips the page 210/209 mm. Image is out — it needs a picture file.
-- Fails by design today: `RewrapLargeNote` (p95 > 8), `TypeLargeNote` and `RelayoutLabels` max (14–43 ms frames), and
+- Fails by design today: `RewrapLargeNote` (max > 8; p95 > 8 until 2026-10-02), `TypeLargeNote` and `RelayoutLabels` max (14–43 ms frames — tier-up: both pass with `DOTNET_TieredCompilation=0`), and
   any test whose frame lands on a quad-mirror reallocation (Render `Draw` 9–25 ms, 1.6 KB — see WIP).
 
 - `Step.Animation.Step` is budgeted on `Main`: at 5000 rows the scheduler runs it on Main (120/120 frames). If it

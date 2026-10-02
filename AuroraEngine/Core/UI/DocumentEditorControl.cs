@@ -111,9 +111,7 @@ namespace ArctisAurora.Core.UI
                 if (entry is TableControl table)
                 {
                     table.ApplyLayout(document.layout);
-                    ScrollableControl viewport = new ScrollableControl { scrollDirection = ScrollDirection.Horizontal };
-                    viewport.AddChild(table);
-                    content.AddChild(viewport);
+                    content.AddChild(table.Hosted());
                     continue;
                 }
 
@@ -176,7 +174,7 @@ namespace ArctisAurora.Core.UI
 
         // One user action's worth of edits. A note with no session has no history, and the default
         // scope discards what is pushed into it.
-        public EditScope BeginStep(string label) => session != null ? session.undo.Begin(label) : default;
+        public EditScope BeginStep(string label, bool join = false) => session != null ? session.undo.Begin(label, join) : default;
 
         // a loaded note that is not marked ReadOnly
         private bool Writable => content != null && activeDocument?.readOnly != true;
@@ -203,6 +201,8 @@ namespace ArctisAurora.Core.UI
         #region ---- styling ----
         // What a toggle reads its current state from, and what the format bar reflects.
         public CaretStyle? StyleSource => content?.StyleSource;
+
+        public bool? SelectionAll(Func<StyleSpan, bool> test) => content?.SelectionAll(test);
 
         public TextStyleType CaretBlockStyling => content?.CaretBlockStyling ?? TextStyleType.Text;
 
@@ -283,10 +283,14 @@ namespace ArctisAurora.Core.UI
         {
             if (content == null) return;
 
-            if (content.caretBlock?.parent?.parent is TableControl table)
+            if (content.caretBlock?.parent?.parent is TableControl table
+                && !(content.AtListItemStart && (delta > 0 || content.caretBlock.listLevel > 0)))
             {
                 BlockControl? next = table.StepCell(content.caretBlock, delta);
                 if (next != null) content.SetCaret(next, 0);
+                else if (delta > 0 && Writable)
+                    using (BeginStep("Insert row"))
+                        if (content.InsertTableRow(true, true)) MarkDirty();
                 RequestScrollToCaret();
                 return;
             }
@@ -302,6 +306,14 @@ namespace ArctisAurora.Core.UI
 
             using (BeginStep("List marker"))
                 if (content.SetListMarker(marker)) MarkDirty();
+        }
+
+        public void ContinueNumbering()
+        {
+            if (!Writable) return;
+
+            using (BeginStep("Continue numbering"))
+                if (content.ContinueNumbering()) MarkDirty();
         }
 
         public void SetPictureWrap(PictureWrap wrap)
@@ -334,6 +346,36 @@ namespace ArctisAurora.Core.UI
             FormulaPopup.Open(this, content, at.Value, true);
         }
 
+        // A 3x3 table after the caret's block, its columns splitting the text width evenly.
+        public void InsertTable()
+        {
+            if (!Writable) return;
+            if (Extension is ".md" or ".txt")
+            {
+                Log.Info($"a {Extension} note cannot store a table; insert refused.");
+                return;
+            }
+
+            PageLayout page = Page!;
+            float text = page.SizePx().X - (page.marginLeft + page.marginRight) * PageLayout.PxPerMm;
+            using (BeginStep("Insert table"))
+            {
+                if (content.InsertTable(3, 3, MathF.Floor(text / 3f))) MarkDirty();
+                else Log.Info($"a table cannot go inside another table; insert refused.");
+            }
+            RequestScrollToCaret();
+        }
+
+        // A row or column command on the caret's table; nothing outside one.
+        public void ChangeTable(string label, Func<DocumentControl, bool> change)
+        {
+            if (!Writable) return;
+
+            using (BeginStep(label))
+                if (change(content)) MarkDirty();
+            RequestScrollToCaret();
+        }
+
         // Opens the selected formula's source; false when no formula is selected.
         public bool EditFormula()
         {
@@ -343,18 +385,30 @@ namespace ArctisAurora.Core.UI
             return true;
         }
 
-        // The note's page format. Not undoable.
+        // The note's page format.
         public PageLayout? Page => activeDocument?.layout.Page;
 
         public void SetPage(PageLayout page)
         {
             if (content == null) return;
 
-            activeDocument.layout.page = page;
-            content.page = page;
-            content.InvalidateLayout();
+            using (BeginStep("Page"))
+            {
+                session?.undo.Push(new PageEdit(this, activeDocument.layout.page, page));
+                ApplyPage(page);
+            }
             MarkDirty();
             RequestScrollToCaret();
+        }
+
+        // Puts a page format on the note without recording it; null takes the editor's.
+        internal void ApplyPage(PageLayout? page)
+        {
+            if (content == null) return;
+
+            activeDocument.layout.page = page;
+            content.page = activeDocument.layout.Page;
+            content.InvalidateLayout();
         }
 
         // The note's own palette, or the app's when it names none. Not undoable.
@@ -604,7 +658,7 @@ namespace ArctisAurora.Core.UI
             if (content?.caretBlock == null || !Writable) return;
 
             bool backward = move == CaretMove.Left || move == CaretMove.WordLeft;
-            using (BeginStep(backward ? "Backspace" : "Delete"))
+            using (BeginStep(backward ? "Backspace" : "Delete", InputHandler.firingRepeat))
             {
                 if (backward && content.ClearListAtCaret())
                 {

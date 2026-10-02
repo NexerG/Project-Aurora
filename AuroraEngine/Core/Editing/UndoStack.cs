@@ -20,9 +20,18 @@ namespace ArctisAurora.Core.Editing
 
         public bool CanRedo => _redo.Count > 0;
 
-        public EditScope Begin(string label)
+        // With join, a step labelled the same as the last one reopens it instead of starting another.
+        public EditScope Begin(string label, bool join = false)
         {
-            if (_depth++ == 0) _open = new EditStep(label);
+            if (_depth++ == 0)
+            {
+                if (join && _redo.Count == 0 && _undo.Count > 0 && _undo[^1].label == label)
+                {
+                    _open = _undo[^1];
+                    _undo.RemoveAt(_undo.Count - 1);
+                }
+                else _open = new EditStep(label);
+            }
             return new EditScope(this);
         }
 

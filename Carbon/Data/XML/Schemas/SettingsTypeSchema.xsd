@@ -159,6 +159,9 @@
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
     </xs:sequence>
   </xs:complexType>
+  <xs:attributeGroup name="DocumentSettings.Attributes">
+    <xs:attribute name="StampModified" type="xs:boolean" />
+  </xs:attributeGroup>
   <xs:element name="DocumentSettings" type="types:DocumentSettings" />
   <xs:complexType name="DocumentSettings">
     <xs:sequence>
@@ -168,9 +171,19 @@
         </xs:annotation>
       </xs:element>
     </xs:sequence>
+    <xs:attributeGroup ref="types:DocumentSettings.Attributes" />
   </xs:complexType>
   <xs:attributeGroup name="SessionTab.Attributes">
     <xs:attribute name="Path" type="xs:string" />
+    <xs:attribute name="CaretBlock" type="xs:int" />
+    <xs:attribute name="CaretOffset" type="xs:int" />
+    <xs:attribute name="AnchorBlock" type="xs:int" />
+    <xs:attribute name="AnchorOffset" type="xs:int" />
+    <xs:attribute name="TopBlock" type="xs:int" />
+    <xs:attribute name="TopOffset" type="xs:int" />
+    <xs:attribute name="TopDelta" type="xs:float" />
+    <xs:attribute name="ScrollX" type="xs:float" />
+    <xs:attribute name="PropertiesOpen" type="xs:boolean" />
   </xs:attributeGroup>
   <xs:element name="SessionTab" type="types:SessionTab" />
   <xs:complexType name="SessionTab">

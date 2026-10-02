@@ -56,6 +56,9 @@ namespace ArctisAurora.Core.UI
         private int cursor;
         private string committed = string.Empty;
 
+        // how far the text is slid left to keep the caret in the box
+        private float scrollX;
+
         // this edit's history, from the last focus
         private readonly UndoStack history = new UndoStack();
 
@@ -338,6 +341,26 @@ namespace ArctisAurora.Core.UI
             InvalidateArrange();
             return true;
         }
+
+        // A double click selects the word under the caret, a triple click the whole field.
+        public override bool OnPointerTap(PointerEvent e)
+        {
+            if (!isEditing) return false;
+
+            if (e.tapCount == 2) SelectWordAt(cursor);
+            else SelectAll();
+            return true;
+        }
+
+        // Selects the word an offset touches, preferring the one to its right.
+        private void SelectWordAt(int offset)
+        {
+            string s = line.text;
+            anchor = TextInputActions.WordEdge(s, Math.Min(offset + 1, s.Length), -1);
+            cursor = TextInputActions.WordEdge(s, anchor, 1);
+            while (cursor > anchor && s[cursor - 1] == ' ') cursor--;
+            InvalidateArrange();
+        }
         #endregion
 
         #region ---- layout ----
@@ -362,12 +385,24 @@ namespace ArctisAurora.Core.UI
             // The text is centred on the box rather than filling it, so a tall box does not push the
             // one line it holds to the top.
             float textHeight = line.DesiredSize.Y;
-            line.Arrange(new LayoutRect(inner.x, inner.y + (inner.height - textHeight) * 0.5f,
+            if (isEditing) FollowCaret(inner.width);
+            else scrollX = 0f;
+            line.Arrange(new LayoutRect(inner.x - scrollX, inner.y + (inner.height - textHeight) * 0.5f,
                 MathF.Max(inner.width, line.DesiredSize.X), textHeight));
 
             ArrangeCaretAndSelection();
 
             SetFlag(ArrangeFlags.ArrangeDirty, false);
+        }
+
+        // Slides the text so the caret stays inside a box this wide.
+        private void FollowCaret(float width)
+        {
+            float x = line.CaretAt(cursor).x;
+            float room = width - CaretControl.Width;
+            if (x - scrollX > room) scrollX = x - room;
+            if (x < scrollX) scrollX = x;
+            scrollX = MathF.Max(0f, MathF.Min(scrollX, line.DesiredSize.X + CaretControl.Width - width));
         }
 
         // Both collapse to nothing when the box is not being edited — a zero-area quad neither draws

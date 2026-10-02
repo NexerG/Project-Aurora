@@ -1,5 +1,6 @@
 using ArctisAurora.Core.Filing;
 using Silk.NET.Maths;
+using System.Buffers;
 using System.Numerics;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
@@ -85,27 +86,49 @@ namespace ArctisAurora.Core.Generators
             // texel size below it is the one the shader's pxRange is measured in.
             float distanceFactor = innerSize / ((pxRange * 0.5f) * (1f + 2f * spreadPx / (float)innerSize));
 
-            for (int x = 0; x < innerSize; x++)
+            // distance band and edge culling
+            float clampDist = 1.001f / distanceFactor;
+            const float boundsSlack = 1e-4f;
+
+            int edgeCount = 0;
+            for (int c = 0; c < glyph.edgeContours.Count; c++)
+                edgeCount += glyph.edgeContours[c].Count;
+            float[] bounds = ArrayPool<float>.Shared.Rent(edgeCount * 4);
+            float[] crossX = ArrayPool<float>.Shared.Rent(edgeCount * 3);
+            int[] crossSign = ArrayPool<int>.Shared.Rent(edgeCount * 3);
+            FillBounds(glyph, bounds);
+
+            for (int y = 0; y < innerSize; y++)
             {
-                for (int y = 0; y < innerSize; y++)
+                float py = ((y + 0.5f) / innerSize) * (normH + 2 * spreadV) - spreadV;
+                int crossings = glyph.edgeContours.Count != 0 ? RowCrossings(py, glyph, crossX, crossSign) : 0;
+
+                for (int x = 0; x < innerSize; x++)
                 {
                     float px = ((x + 0.5f) / innerSize) * (normW + 2 * spreadU) - spreadU;
-                    float py = ((y + 0.5f) / innerSize) * (normH + 2 * spreadV) - spreadV;
                     Vector2 p = new Vector2(px, py);
 
                     float minR = -1, minG = -1, minB = -1, minAll = -1;
                     if (glyph.edgeContours.Count != 0)
                     {
-                        minR = float.MaxValue;
-                        minG = float.MaxValue;
-                        minB = float.MaxValue;
+                        minR = clampDist;
+                        minG = clampDist;
+                        minB = clampDist;
+                        int k = 0;
                         for (int contour = 0; contour < glyph.edgeContours.Count; contour++)
                         {
                             List<Edge> edges = glyph.edgeContours[contour];
-                            for (int j = 0; j < edges.Count; j++)
+                            for (int j = 0; j < edges.Count; j++, k++)
                             {
                                 Vector3D<int> color = edges[j].color;
                                 if (color.X == 0 && color.Y == 0 && color.Z == 0) continue;
+
+                                float reach = MathF.Max(color.X != 0 ? minR : 0f,
+                                    MathF.Max(color.Y != 0 ? minG : 0f, color.Z != 0 ? minB : 0f)) + boundsSlack;
+                                int b = k * 4;
+                                float dx = MathF.Max(MathF.Max(bounds[b] - px, px - bounds[b + 2]), 0f);
+                                float dy = MathF.Max(MathF.Max(bounds[b + 1] - py, py - bounds[b + 3]), 0f);
+                                if (dx * dx + dy * dy >= reach * reach) continue;
 
                                 float dist = ClosestTOnBezier(p, edges[j]);
                                 if (color.X != 0 && dist < minR) minR = dist;
@@ -115,7 +138,11 @@ namespace ArctisAurora.Core.Generators
                         }
                         minAll = MathF.Min(minR, MathF.Min(minG, minB));
 
-                        if (ComputeWindingNumber(p, glyph) == 0)
+                        int winding = 0;
+                        for (int i = 0; i < crossings; i++)
+                            if (crossX[i] > px) winding += crossSign[i];
+
+                        if (winding == 0)
                         {
                             minR = -minR;
                             minG = -minG;
@@ -135,6 +162,28 @@ namespace ArctisAurora.Core.Generators
                     trueDist = trueDist * 0.5f + 0.5f;
 
                     image[startX + pad + x, startY + pad + y] = new Rgba32(redDist, greenDist, blueDist, trueDist);
+                }
+            }
+
+            ArrayPool<float>.Shared.Return(bounds);
+            ArrayPool<float>.Shared.Return(crossX);
+            ArrayPool<int>.Shared.Return(crossSign);
+        }
+
+        // Control-polygon box of every edge, four floats each, in contour order.
+        private static void FillBounds(Glyph glyph, float[] bounds)
+        {
+            int b = 0;
+            for (int c = 0; c < glyph.edgeContours.Count; c++)
+            {
+                List<Edge> edges = glyph.edgeContours[c];
+                for (int e = 0; e < edges.Count; e++, b += 4)
+                {
+                    Edge edge = edges[e];
+                    bounds[b] = MathF.Min(MathF.Min(edge.p0.X, edge.c0.X), MathF.Min(edge.c1.X, edge.p1.X));
+                    bounds[b + 1] = MathF.Min(MathF.Min(edge.p0.Y, edge.c0.Y), MathF.Min(edge.c1.Y, edge.p1.Y));
+                    bounds[b + 2] = MathF.Max(MathF.Max(edge.p0.X, edge.c0.X), MathF.Max(edge.c1.X, edge.p1.X));
+                    bounds[b + 3] = MathF.Max(MathF.Max(edge.p0.Y, edge.c0.Y), MathF.Max(edge.c1.Y, edge.p1.Y));
                 }
             }
         }
@@ -272,9 +321,10 @@ namespace ArctisAurora.Core.Generators
             return 2;
         }
 
-        private static int ComputeWindingNumber(Vector2 p, Glyph glyph)
+        // Every edge's crossing of the horizontal line at py: x and winding sign.
+        private static int RowCrossings(float py, Glyph glyph, float[] crossX, int[] crossSign)
         {
-            int winding = 0;
+            int count = 0;
             Span<float> roots = stackalloc float[3];
 
             for (int c = 0; c < glyph.edgeContours.Count; c++)
@@ -290,7 +340,7 @@ namespace ArctisAurora.Core.Generators
                     float ay = -edge.p0.Y + 3f * edge.c0.Y - 3f * edge.c1.Y + edge.p1.Y;
                     float by = 3f * edge.p0.Y - 6f * edge.c0.Y + 3f * edge.c1.Y;
                     float cy = -3f * edge.p0.Y + 3f * edge.c0.Y;
-                    float dy0 = edge.p0.Y - p.Y;
+                    float dy0 = edge.p0.Y - py;
 
                     int rootCount = SolveCubic(ay, by, cy, dy0, roots);
 
@@ -304,20 +354,17 @@ namespace ArctisAurora.Core.Generators
                         float bx = omt * omt * omt * edge.p0.X + 3f * omt * omt * t * edge.c0.X
                             + 3f * omt * t * t * edge.c1.X + t * t * t * edge.p1.X;
 
-                        // Only count crossings to the right of p (ray casting rightward)
-                        if (bx <= p.X) continue;
-
                         // Curve's Y derivative at t: B'_y(t) = 3ay*t^2 + 2by*t + cy
                         float dy = 3f * ay * t * t + 2f * by * t + cy;
 
-                        if (dy > 0f)
-                            winding++;
-                        else if (dy < 0f)
-                            winding--;
+                        if (dy == 0f) continue;
+                        crossX[count] = bx;
+                        crossSign[count] = dy > 0f ? 1 : -1;
+                        count++;
                     }
                 }
             }
-            return winding;
+            return count;
         }
     }
 }

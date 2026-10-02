@@ -7,4 +7,5 @@
 	<Test Action="Layout.GridAutoRowWrapsAtColumn"/>
 	<Test Action="Layout.RotatedHitTest"/>
 	<Test Action="Layout.ExpanderOpensToContentHeight"/>
+	<Test Action="Layout.RewrapMatchesFresh"/>
 </TestSuite>

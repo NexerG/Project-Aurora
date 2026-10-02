@@ -139,13 +139,13 @@ namespace ArctisAurora.Core.UI
         }
 
         [A_XSDActionDependency("Text.Bold", "Input", "Toggles bold over the selection, or for what is typed next")]
-        public static void Bold() => Toggle(style => new StyleDelta(bold: !style.bold));
+        public static void Bold() => Toggle(span => span.IsBold, style => style.bold, on => new StyleDelta(bold: on));
 
         [A_XSDActionDependency("Text.Italic", "Input", "Toggles italic over the selection, or for what is typed next")]
-        public static void Italic() => Toggle(style => new StyleDelta(italic: !style.italic));
+        public static void Italic() => Toggle(span => span.IsItalic, style => style.italic, on => new StyleDelta(italic: on));
 
         [A_XSDActionDependency("Text.Underline", "Input", "Toggles underline over the selection, or for what is typed next")]
-        public static void Underline() => Toggle(style => new StyleDelta(underline: !style.underline));
+        public static void Underline() => Toggle(span => span.underline, style => style.underline, on => new StyleDelta(underline: on));
 
         #region ---- alignment ----
         [A_XSDActionDependency("Text.AlignLeft", "Input", "Aligns the paragraphs under the caret to the left")]
@@ -156,6 +156,9 @@ namespace ArctisAurora.Core.UI
 
         [A_XSDActionDependency("Text.AlignRight", "Input", "Aligns the paragraphs under the caret to the right")]
         public static void AlignRight() => Editor()?.SetAlignment(TextAlignment.Right);
+
+        [A_XSDActionDependency("Text.AlignJustify", "Input", "Spreads the paragraphs under the caret across the full width")]
+        public static void AlignJustify() => Editor()?.SetAlignment(TextAlignment.Justify);
         #endregion
 
         #region ---- list markers ----
@@ -191,6 +194,9 @@ namespace ArctisAurora.Core.UI
 
         [A_XSDActionDependency("List.UpperRoman", "Input", "Numbers the caret's list level I, II, III")]
         public static void MarkUpperRoman() => Editor()?.SetListMarker(ListMarker.UpperRoman);
+
+        [A_XSDActionDependency("List.ContinueNumbering", "Input", "Numbers the caret's list on from the list above it")]
+        public static void ContinueNumbering() => Editor()?.ContinueNumbering();
         #endregion
 
         #region ---- picture wrap ----
@@ -230,18 +236,47 @@ namespace ArctisAurora.Core.UI
         public static void EditFormula() => Editor()?.EditFormula();
         #endregion
 
+        #region ---- tables ----
+        [A_XSDActionDependency("Table.Insert", "Input", "Inserts a 3x3 table after the caret's paragraph")]
+        public static void InsertTable() => Editor()?.InsertTable();
+
+        [A_XSDActionDependency("Table.RowAbove", "Input", "Inserts a row above the caret's")]
+        public static void InsertRowAbove() => Editor()?.ChangeTable("Insert row", d => d.InsertTableRow(false));
+
+        [A_XSDActionDependency("Table.RowBelow", "Input", "Inserts a row below the caret's")]
+        public static void InsertRowBelow() => Editor()?.ChangeTable("Insert row", d => d.InsertTableRow(true));
+
+        [A_XSDActionDependency("Table.ColumnLeft", "Input", "Inserts a column left of the caret's")]
+        public static void InsertColumnLeft() => Editor()?.ChangeTable("Insert column", d => d.InsertTableColumn(false));
+
+        [A_XSDActionDependency("Table.ColumnRight", "Input", "Inserts a column right of the caret's")]
+        public static void InsertColumnRight() => Editor()?.ChangeTable("Insert column", d => d.InsertTableColumn(true));
+
+        [A_XSDActionDependency("Table.DeleteRow", "Input", "Deletes the caret's row")]
+        public static void DeleteRow() => Editor()?.ChangeTable("Delete row", d => d.DeleteTableRow());
+
+        [A_XSDActionDependency("Table.DeleteColumn", "Input", "Deletes the caret's column")]
+        public static void DeleteColumn() => Editor()?.ChangeTable("Delete column", d => d.DeleteTableColumn());
+
+        [A_XSDActionDependency("Table.Delete", "Input", "Deletes the caret's table")]
+        public static void DeleteTable() => Editor()?.ChangeTable("Delete table", d => d.DeleteTable());
+        #endregion
+
         [A_XSDActionDependency("Text.Indent", "Input", "Nests the list items under the caret one level deeper")]
         public static void Indent() => Editor()?.ShiftListLevel(1);
 
         [A_XSDActionDependency("Text.Outdent", "Input", "Moves the list items under the caret one level out")]
         public static void Outdent() => Editor()?.ShiftListLevel(-1);
 
-        // The state comes off the caret's style, so a toggle is what that is not.
-        private static void Toggle(Func<CaretStyle, StyleDelta> nextDelta)
+        // On over the selection unless all of it already is; off the caret's style with none.
+        private static void Toggle(Func<StyleSpan, bool> spanOn, Func<CaretStyle, bool> caretOn, Func<bool, StyleDelta> delta)
         {
             DocumentEditorControl next = Editor();
             CaretStyle? nextSource = next?.StyleSource;
-            if (nextSource != null) next.ApplyStyle(nextDelta(nextSource.Value));
+            if (nextSource == null) return;
+
+            bool on = next.SelectionAll(spanOn) ?? caretOn(nextSource.Value);
+            next.ApplyStyle(delta(!on));
         }
 
         [A_XSDActionDependency("Text.Undo", "Input", "Reverses the last edit made to the focused note")]

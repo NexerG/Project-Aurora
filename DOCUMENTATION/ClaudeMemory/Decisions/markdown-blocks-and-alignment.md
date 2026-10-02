@@ -56,7 +56,7 @@
 - **Tab stops (2026-10-01, user: "tab stops").** A tab advances to the next multiple of
   `TabStopSpaces` × the run's space advance, counted from the line's start (`TextMeasurer.TabAdvance`; a pen
   already on a stop goes a full stop on). The advance depends on position, so:
-  - the measurer flags tabs in `PenChar.tab` and `AdvanceAt` rewrites their advance as `MeasureBlock`, the wrap
+  - the measurer flags tabs (`Tab` in `BlockLayout.flags` since [[rewrap-advance-cache]]) and `AdvanceAt` rewrites their advance as `MeasureBlock`, the wrap
     re-sum and `FillLine` reach them — `AppendLine` sums the rewritten values;
   - every walker in `TextRunControl` passes its pen-in-line to `MeasureAdvance(char, run, pen)`: `IndexAt`,
     `CaretAt` (`x - line.left`), `Align`'s visible width (now a forward walk), and `Emit`, which skips the glyph
@@ -91,12 +91,23 @@ can name another monospace font. Resolution happens at `BuildRuns` (`FontFor`), 
 shape the list prefix already had.
 
 ## Known gaps
-- Syntax colouring and no-wrap code (B1's other half) not built; `language` is kept for it.
+- ~~Syntax colouring and no-wrap code (B1's other half) not built~~ — landed 2026-10-02 as view-time colouring and a
+  `Wrap` setting on the code block; see [[code-block-colouring]].
 - Tab stops are a fixed `TextMeasurer.TabStopSpaces` (4) space widths of the tab's own run, measured from the
   line's start, not from the block's or a list's indent. They are not configurable.
-- Text typed straight after an inline `` `code` `` stays code — `StyleDelta` cannot arm a styling type off.
-- A text drop onto a rule is not redirected (typing and paste are).
+- ~~Text typed straight after an inline `` `code` `` stays code~~ — `StyleDelta.code` (2026-10-02): `true` sets a
+  span's `stylingType` to `Code`, `false` turns a Code span back to `Inherit` with an unauthored size; the closing
+  backtick arms `code: false`. Test: `TextInput.MarkdownInline`
+- ~~A text drop onto a rule is not redirected~~ — `DropSelection` and `InsertAt` go through `OffRule(address)`, the
+  address form `LeaveRule` now calls (2026-10-02). Test: `TextInput.DropOntoRule`
 - `.md` writes a rule as `---`; under a paragraph line other Markdown readers take that as a setext heading 2.
-- No justify.
+  Kept on purpose (user, 2026-10-02): Thorium's own reader takes it as a rule.
+- **Justify (2026-10-02).** `TextAlignment.Justify`; `TextRunControl.Justify` gives every line but the block's last
+  `spaceExtra` = (room − visible width) / spaces before `justifyEnd` (the last visible character), and grows
+  `line.width` by the stretch. A line holding a tab is left alone. `Stretch`/`Stretched` add it in every walker —
+  draw, `WriteHighlight`, `IndexAt`, `CaretAt`, `PictureBox`, `MathBox` — because `LineSegment` is a readonly
+  struct and its `width` stays the measured one. `BlockLayout.NextLine` clears both fields. Ctrl+J
+  (`Text.AlignJustify`), toolbar `align-justify` icon. `.md` does not store alignment. Tests: `TextInput.JustifyLines`
+  (+ golden)
 
 Related: [[note-file-formats]], [[list-markers]], [[document-structural-editing]], [[document-undo]], [[note-images]], [[document-format-bar]]
