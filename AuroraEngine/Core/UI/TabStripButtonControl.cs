@@ -1,3 +1,4 @@
+using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.EngineWork;
 using System.Numerics;
 
@@ -62,5 +63,50 @@ namespace ArctisAurora.Core.UI
             owner.SetActive(item);
             base.OnDragStop(accepted);
         }
+
+        #region ---- layout ----
+        // caption first, close button second
+        public override void AddChild(Entity entity)
+        {
+            children.Add(entity);
+            entity.parent = this;
+            MarkTreeOrderDirty();
+            InvalidateLayout();
+        }
+
+        protected override Vector2 MeasureCore(Vector2 availableSize)
+        {
+            float w = preferredWidth > 0 ? preferredWidth : availableSize.X;
+            float h = preferredHeight > 0 ? preferredHeight : availableSize.Y;
+            Vector2 inner = new Vector2(MathF.Max(0, w - padding.totalHorizontal), MathF.Max(0, h - padding.totalVertical));
+
+            Control caption = (Control)children[0];
+            Vector2 close = ((Control)children[1]).Measure(inner);
+            caption.Measure(new Vector2(MathF.Max(0, inner.X - close.X - caption.margin.totalHorizontal),
+                MathF.Max(0, inner.Y - caption.margin.totalVertical)));
+
+            arrange.desired = new Vector2(w, h);
+            SetFlag(ArrangeFlags.MeasureDirty, false);
+            return arrange.desired;
+        }
+
+        protected override void ArrangeCore(LayoutRect finalRect)
+        {
+            WriteArranged(finalRect);
+            LayoutRect inner = finalRect.Shrink(padding);
+
+            Control caption = (Control)children[0];
+            Control close = (Control)children[1];
+            float closeWidth = close.DesiredSize.X;
+            close.Arrange(new LayoutRect(inner.Right - closeWidth, inner.y, closeWidth, inner.height));
+
+            LayoutRect area = new LayoutRect(inner.x, inner.y, MathF.Max(0, inner.width - closeWidth), inner.height).Shrink(caption.margin);
+            caption.Arrange(new LayoutRect(
+                area.x + (area.width - caption.DesiredSize.X) * caption.horizontalPosition,
+                area.y + (area.height - caption.DesiredSize.Y) * caption.verticalPosition,
+                caption.DesiredSize.X, caption.DesiredSize.Y));
+            SetFlag(ArrangeFlags.ArrangeDirty, false);
+        }
+        #endregion
     }
 }

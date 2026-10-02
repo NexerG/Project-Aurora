@@ -1,9 +1,22 @@
 # Decision — math in notes is laid out natively on a Cambria Math atlas
 
 **Date:** 2026-10-01
-**Scope:** `ArctisAurora.Core.Filing` — `MathConstants`; `ArctisAurora.Core.Filing.Serialization` — `AssetImporter` (`FaceOffset`, `ImportFont`, `ReadFace`), `FontImport.face`, `FontImportStamp.face`; `EngineFonts.imports.xml`; `ArctisAurora.Core.UI` — `MathParser`, `MathSymbols`, `MathLayout`, `MathBox`, `MathGlyph`, `MathRule`, `MathClass`, `MathStyle`
+**Scope:** `ArctisAurora.Core.Filing` — `MathConstants`; `ArctisAurora.Core.Filing.Serialization` — `AssetImporter` (`FaceOffset`, `ImportFont`, `ReadFace`), `FontImport.face`, `FontImportStamp.face`; `EngineFonts.imports.xml`; `ArctisAurora.Core.UI` — `MathParser`, `MathSymbols`, `MathLayout`, `MathBox`, `MathGlyph`, `MathRule`, `MathClass`, `MathStyle`, `Run.math`/`display`, `StyleSpan.mathSource`/`mathDisplay`/`IsMath`/`IsObject`, `TextMeasurer.Run.math`/`depth`, `TextRunControl` (`MathBoxFor`, `Emit`), `DocumentControl.CopySelection`, `MarkdownFormat` (`MathAt`, `MathRun`); `ArctisAurora.Core.Registry.Assets.FontAsset.mathConstants`; `EngineAssets.assets.xml` (`math`)
 
-**Status: PARTIAL** — M1 (the font) and M2 (parser + layout, CPU only) landed; model, drawing and editing are planned in [../Context/math-plan.md](../Context/math-plan.md).
+**Status: PARTIAL** — M1 (the font), M2 (parser + layout) and M3 (notes hold, draw, save and copy formulas) landed; editing is planned in [../Context/math-plan.md](../Context/math-plan.md).
+
+## M3 — formulas in notes (2026-10-02)
+- A formula is a `<Run Math="…" Display="true"/>`: one U+FFFC in the block, a `StyleSpan` with `mathSource`/`mathDisplay`. Note XML needs no code — `DocumentXml` reads and writes `Run`'s scalars by reflection.
+- `StyleSpan.IsObject` (picture or formula) replaces `IsPicture` where the rule is about an atomic character: `InsertText`/`TextSpanBeside` (typing beside it lands in a text span), `DropEmptySpans`, `SameStyle` (never merged), `Runs()` (no text). Picture-only sites (`SetPicture`, handles, wrap, textures, `PictureAt`) stay on `IsPicture`.
+- Measuring: `TextMeasurer.Run` gains `math` + `depth`; `Flatten` gives the character the box's width, `max(box height, line ascent)` and `max(box depth, line descent)`, flagged `picture` so it cannot hang and breaks either side.
+- **Display formula = the full column as its advance, drawn centred inside it (F5′).** That alone puts it on a line of its own — text before it breaks ahead of it, text after wraps — with no break code in the measurer. Block alignment is ignored for it; Obsidian centres display math regardless. Rejected: honouring `BlockControl.alignment` (display math would default to the left) and the original forced-break + `TextLine.left`.
+- **Laid-out boxes live in a static cache keyed by (source, display) in `TextRunControl` (F11)**, not on the span: `StyleSpan` is a struct copied through snapshots, and caching on it would mean writing spans back during measure.
+- Drawing: each `MathGlyph` through `WriteGlyph` (whose `size` became `float`) from the `math` font asset; each `MathRule` through `WriteRect` with its top rounded to a pixel and a 1 px floor — the underline's precedent. Sub-pixel rules straddled two rows: a 0.85 px rule drew as a dark 2-row bar beside a faint 1.04 px one.
+- A formula that fails to parse draws its source in `PaletteRole.Danger`.
+- `FontAsset.Load` reads `{font}.math.xml` into `mathConstants` when it exists; `EngineAssets.assets.xml` names the asset `math` → `Fonts/cambria`. The Thorium bake was copied byte-for-byte into AuroraEditor and Carbon — host bakes are identical (same `arial` hashes).
+- Plain-text copy writes a formula as `$src$` / `$$src$$`; our own paste keeps the span.
+- Markdown: `$…$` by Obsidian's rules (no space inside either fence, no digit after the closer, `\$` escapes), `$$…$$` inline is display, a `$$` line opens a display block closed by the next `$$` line (flushed at end of file). A Text block holding only a display formula writes as `$$` / source / `$$`. `$` joined `escapable` and the writer's escape set; the writer's re-read check means a literal `$` is escaped only when the plain form would read back as math.
+- Delimiters may stop short of the content by TeX's rule (0.901 / 0.5 em shortfall); a deep denominator sticks out below the paren, as in TeX.
 
 ## M2 — parser and layout (2026-10-01)
 - `MathParser.Parse(string) → MathNode` (`ArctisAurora.Core.UI`): recursive descent; nodes `MathList`, `MathSymbol`, `MathText`, `MathScripts`, `MathFraction`, `MathRadical`, `MathDelimited`, `MathAccent`, `MathSpace`, `MathError`. Any failure makes the **whole formula** a `MathError` carrying its source (F7) — no partial render, never throws.
@@ -49,12 +62,14 @@ MATH size variants and assembly parts are glyph ids with no code point; the atla
 
 ## Known gaps
 - Bake cost: 293 glyphs × 3 faces, ~7 min of a first Thorium `--test` launch; it must not be killed (`never-kill-thorium-mid-import`).
-- No `FontAsset` manifest entry for `Fonts/cambria` yet — M3 adds it when something draws with it.
 - A `Face` index past the collection's face count is not checked; it reads garbage.
-- Baked in Thorium only so far; AuroraEditor and Carbon bake on their next Debug launch.
 - The asset folder is named after the file stem (`cambria`), so importing face 0 of the same `.ttc` would collide.
-- Layout is test-verified on box geometry only; nothing is drawn until M3, so how the scaled `√`, the `⎷` + stem join, overlapping paren pieces and accent placement look is unchecked.
-- `TextRunControl.WriteGlyph` takes `int size`; scripts need a float size on that path (M3).
+- `AuroraEngine/Data/Fonts` has no `cambria` — that folder's bakes are already stale (WIP item); no host runs from it.
+- No way to insert or edit a formula in the editor yet (M4); a formula arrives by opening a note. Typing beside it and Backspace work as with pictures.
+- Underline, strikethrough, gradients and effects do not reach a formula; bold/italic on its run is ignored.
+- A display formula beside a float is centred in the column, not in the slot the float leaves; a formula wider than the column overflows.
+- `\$` in an existing `.md` note now reads as `$`, not `\$` — CommonMark's reading, but a change for notes written before.
+- Script-size glyphs at a 16 px body (11.7 px) are soft; inherent to the size.
 - Not in M2: `\limits`/`\nolimits`, `\operatorname`, environments (`\begin` fails), macros, `\color`, `\mathcal`, MATH kerning/italics tables, accent skew over italic letters.
 
 Related: [[bold-italic-face]], [[asset-manifest-and-import]], [[note-images]], [[text-layout-one-measurer]]

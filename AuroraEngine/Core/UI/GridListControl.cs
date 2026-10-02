@@ -63,6 +63,10 @@ namespace ArctisAurora.Core.UI
 
         private readonly List<GridCellAssignment> _cellAssignments = new List<GridCellAssignment>();
 
+        // band edges, kept between arranges
+        private float[] _rowOffsets = Array.Empty<float>();
+        private float[] _colOffsets = Array.Empty<float>();
+
         public override void AddChild(Entity entity)
         {
             if (entity is not Control control)
@@ -130,11 +134,15 @@ namespace ArctisAurora.Core.UI
             }
 
             // Pass 3 — what is left across goes to the Star columns, by weight.
-            float totalRowGaps = rowDefinitions.Take(rows - 1).Sum(r => r.gapAfter);
-            float totalColGaps = columnDefinitions.Take(cols - 1).Sum(c => c.gapAfter);
-            float fixedAndAutoW = columnDefinitions.Sum(c => c.resolvedSize);
+            float totalColGaps = 0f, fixedAndAutoW = 0f, totalColStars = 0f;
+            for (int c = 0; c < cols; c++)
+            {
+                ColumnDefinition column = columnDefinitions[c];
+                if (c < cols - 1) totalColGaps += column.gapAfter;
+                fixedAndAutoW += column.resolvedSize;
+                if (column.sizeMode == GridSizeMode.Star) totalColStars += column.value;
+            }
             float starW = MathF.Max(0, inner.width - fixedAndAutoW - totalColGaps);
-            float totalColStars = columnDefinitions.Where(c => c.sizeMode == GridSizeMode.Star).Sum(c => c.value);
 
             for (int c = 0; c < cols; c++)
                 if (columnDefinitions[c].sizeMode == GridSizeMode.Star)
@@ -162,17 +170,25 @@ namespace ArctisAurora.Core.UI
             }
 
             // Pass 5 — what is left down goes to the Star rows, by weight.
-            float fixedAndAutoH = rowDefinitions.Sum(r => r.resolvedSize);
+            float totalRowGaps = 0f, fixedAndAutoH = 0f, totalRowStars = 0f;
+            for (int r = 0; r < rows; r++)
+            {
+                RowDefinition row = rowDefinitions[r];
+                if (r < rows - 1) totalRowGaps += row.gapAfter;
+                fixedAndAutoH += row.resolvedSize;
+                if (row.sizeMode == GridSizeMode.Star) totalRowStars += row.value;
+            }
             float starH = MathF.Max(0, inner.height - fixedAndAutoH - totalRowGaps);
-            float totalRowStars = rowDefinitions.Where(r => r.sizeMode == GridSizeMode.Star).Sum(r => r.value);
 
             for (int r = 0; r < rows; r++)
                 if (rowDefinitions[r].sizeMode == GridSizeMode.Star)
                     rowDefinitions[r].resolvedSize = totalRowStars > 0
                         ? starH * (rowDefinitions[r].value / totalRowStars) : 0;
 
-            float totalW = columnDefinitions.Sum(c => c.resolvedSize) + totalColGaps + padding.totalHorizontal;
-            float totalH = rowDefinitions.Sum(r => r.resolvedSize) + totalRowGaps + padding.totalVertical;
+            float totalW = totalColGaps + padding.totalHorizontal;
+            for (int c = 0; c < cols; c++) totalW += columnDefinitions[c].resolvedSize;
+            float totalH = totalRowGaps + padding.totalVertical;
+            for (int r = 0; r < rows; r++) totalH += rowDefinitions[r].resolvedSize;
 
             if (preferredWidth > 0) totalW = MathF.Max(totalW, preferredWidth);
             if (preferredHeight > 0) totalH = MathF.Max(totalH, preferredHeight);
@@ -189,15 +205,8 @@ namespace ArctisAurora.Core.UI
 
             LayoutRect inner = finalRect.Shrink(padding);
 
-            float[] rowOffsets = BuildOffsets(
-                rowDefinitions.Select(r => r.resolvedSize).ToArray(),
-                rowDefinitions.Select(r => r.gapAfter).ToArray(),
-                inner.y);
-
-            float[] colOffsets = BuildOffsets(
-                columnDefinitions.Select(c => c.resolvedSize).ToArray(),
-                columnDefinitions.Select(c => c.gapAfter).ToArray(),
-                inner.x);
+            float[] rowOffsets = BuildOffsets(rowDefinitions, static r => r.resolvedSize, static r => r.gapAfter, inner.y, ref _rowOffsets);
+            float[] colOffsets = BuildOffsets(columnDefinitions, static c => c.resolvedSize, static c => c.gapAfter, inner.x, ref _colOffsets);
 
             foreach (GridCellAssignment assignment in _cellAssignments)
             {
@@ -241,15 +250,12 @@ namespace ArctisAurora.Core.UI
         }
 
         // Band edges, one more than there are bands, so a span reads its end straight off.
-        private static float[] BuildOffsets(float[] sizes, float[] gaps, float start)
+        private static float[] BuildOffsets<T>(List<T> bands, Func<T, float> size, Func<T, float> gap, float start, ref float[] offsets)
         {
-            float[] offsets = new float[sizes.Length + 1];
+            if (offsets.Length != bands.Count + 1) offsets = new float[bands.Count + 1];
             offsets[0] = start;
-            for (int i = 0; i < sizes.Length; i++)
-            {
-                float gap = i < sizes.Length - 1 ? gaps[i] : 0f;
-                offsets[i + 1] = offsets[i] + sizes[i] + gap;
-            }
+            for (int i = 0; i < bands.Count; i++)
+                offsets[i + 1] = offsets[i] + size(bands[i]) + (i < bands.Count - 1 ? gap(bands[i]) : 0f);
             return offsets;
         }
     }

@@ -80,7 +80,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 			- [ ] row/column insert and delete, column resize drag, Tab past the last cell adding a row
 			- [ ] lists in cells (task checkbox finds its editor through `parent?.parent`)
 			- [ ] typing p95 up ~0.03 ms on the 1M-char scenario — likely `Blocks()` type-testing page panels, not pinned
-		- [ ] **math in notes — LaTeX `$…$` / `$$…$$`, native (2026-10-01)** — M1 font (Cambria Math, `.ttc` faces, `cambria.math.xml`) and M2 parser + layout landed. **Test-verified** (suites `Fonts`, `Math`); nothing drawn yet. M3 model + render + persistence, M4 editing not started → `math-plan`
+		- [ ] **math in notes — LaTeX `$…$` / `$$…$$`, native (2026-10-01)** — M1 font, M2 parser + layout, M3 notes hold/draw/save/copy formulas (XML, `$`/`$$` Markdown) landed. **Test- and golden-verified** (`Fonts`, `Math`, `TextInput.Math*`); **NOT GUI-verified**. M4 editing (insert, popup source editor, undo) not started → `math-plan`
 		- [ ] **pictures in notes, Word-style (2026-09-29)** — inline, wrap modes + free position, resize handles, Ctrl+V from the clipboard. Stages 1–7 built: textures, `<Image>`, inline pictures, text-first Ctrl+V into `attachments/`, XML + Markdown, resize handles, wrap modes (Square, Tight, Top and bottom, Behind, In front), drag-move with re-anchoring, rotate ring (inline + floats, Square collision Box/Shape). Test- and golden-verified; real Ctrl+V, handle, move and rotate drags and the Wrap/Collision menus NOT GUI-verified → `note-images-plan`	- [ ] cursor change on context
 - [ ] UI
 	- **Standing decision:** glyphs stay full controls with their own mat4 and tint — per-letter colour, rotation and animation are required. Do not propose making them plain data rows
@@ -101,6 +101,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 			- [ ] console `Wait` overshoots under idle wait — `Wait 2000` resumed after 13 s and once after 2 min 15 s, `Wait 1500` after 5 s (Release+PROFILE). Unexplained
 	- [ ] **one invalidation re-arranges the whole root stack** — ~1,000 `Margin` changes a tick cost `ResolveLayout` 2.3/11.6/49 ms at 1k/5k/20k controls, so the cost follows the tree, not the changes. Found by the animation scenario → `animation-core` § Measured at scale
 		- [ ] **data-oriented layout toward 1M controls (plan agreed 2026-09-25)** — `UIElements` rows walked as pre-order ranges (`LayoutNode`), `Single`/`Stack` flattened, clean subtrees skipped; steps 0–3 landed (dump check, structure, paint at draw, `MeasureCore`/`ArrangeCore`), step 4 (the walks) next. **NOT GUI-verified** → `ClaudeMemory/Context/layout-dod-plan.md`
+	- [ ] **a session's first seconds run tier-0 JIT code (2026-10-02)** — measuring a 1M-char note on open took 83–96 ms, 22–24 with tiering off (old code; 46–51 ms now, tiering on); typing frames 4–6× slower until code tiers up. Host `QuickJitForLoops` or `AggressiveOptimization` on hot paths undecided → `large-note-measure-cost` § Known gaps
 	- [ ] **engine font bakes are stale (2026-09-25)** — `AuroraEngine/Data/Fonts/*.agd` fail to deserialize (type id 0); Debug and Thorium's Release shadow them with Thorium's own bakes, a host without its own fonts would crash at `FontAsset.Load` → `profiling-unoptimized-jit`
 	- [ ] **an in-engine file browser, to retire the OS folder dialog (2026-08-30)** — `FolderPicker` is Win32 `IFileOpenDialog` on an STA thread, the first hard blocker under the engine's own portability. See `ClaudeMemory/Context/file-chooser-plan.md`
 	- [ ] control frustum culling — engine-wide cull of off-screen controls; note it cuts *draw* work only, so it is not an answer to the glyph ceiling — culled controls keep their entity and their pool row
@@ -126,6 +127,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 ---
 # PHASE B — ECS rework + renderer/settings foundation (~Jul–Sep 2026)
 - [ ] renderer foundation
+	- [ ] **quad mirror reallocation hitches Render 9–25 ms (2026-10-02)** — descriptor half landed 2026-10-02 (pool/sets kept, dirty bindings only, one mirror allocation, indirect kept). Open: allocate/free still on the render thread, hitch not re-measured → `mapped-streaming-buffers` §10, `engine-testing`
 	- [ ] figure out why the renderer breaks the second monitor
 	- [ ] **`vkDeviceWaitIdle` takes no queue lock** — swapchain rebuild and window reap call it while a loader thread may be submitting to `transferQueue`; the spec needs every queue externally synchronised → `device-queue-slots`
 - [ ] Engine settings/preferences — XSD/XML-driven (GPU device selection, CPU/thread counts, misc engine options)

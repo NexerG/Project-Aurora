@@ -64,6 +64,8 @@
     <xs:attribute name="Y" type="xs:float" />
     <xs:attribute name="Rotation" type="xs:float" />
     <xs:attribute name="Collision" type="types:PictureCollision" />
+    <xs:attribute name="Math" type="xs:string" />
+    <xs:attribute name="Display" type="xs:boolean" />
   </xs:attributeGroup>
   <xs:element name="Run" type="types:Run" />
   <xs:complexType name="Run">

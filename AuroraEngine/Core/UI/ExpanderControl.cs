@@ -33,7 +33,8 @@ namespace ArctisAurora.Core.UI
                 open = value;
                 Animations.StopAll(this);
                 reveal = value ? 1f : 0f;
-                ShowArrows(value ? 1f : 0f, null);
+                if (value) viewport.Show();
+                else viewport.Hide();
             }
         }
 
@@ -59,8 +60,7 @@ namespace ArctisAurora.Core.UI
             base.AddChild(bottomRule);
             base.AddChild(topHalf);
             base.AddChild(bottomHalf);
-
-            ShowArrows(0f, null);
+            viewport.Hide();
         }
 
         // The one authored child is the content.
@@ -72,30 +72,17 @@ namespace ArctisAurora.Core.UI
             float to = open ? 1f : 0f;
 
             Animations.StopAll(this);
-            Animations.Tween(this, nameof(reveal), new Vector4(to, 0f, 0f, 0f), seconds, Curve.Ease(EaseKind.CubicOut));
-            ShowArrows(to, Curve.Ease(EaseKind.CubicOut));
-        }
-
-        // Closed, each half points away from the seam; open, toward it.
-        private void ShowArrows(float open, Curve? curve)
-        {
-            Fade(topHalf.up, 1f - open, curve);
-            Fade(topHalf.down, open, curve);
-            Fade(bottomHalf.down, 1f - open, curve);
-            Fade(bottomHalf.up, open, curve);
-        }
-
-        private static void Fade(IconControl arrow, float to, Curve? curve)
-        {
-            Animations.StopAll(arrow);
-            if (curve is Curve ease) Animations.Tween(arrow, nameof(alpha), new Vector4(to, 0f, 0f, 0f), seconds, ease);
-            else arrow.alpha = to;
+            if (open) viewport.Show();
+            Animations.Tween(this, nameof(reveal), new Vector4(to, 0f, 0f, 0f), seconds, Curve.Ease(EaseKind.CubicOut), () =>
+            {
+                if (!open && reveal <= 0f) viewport.Hide();
+            });
         }
 
         #region ---- layout ----
         protected override Vector2 MeasureCore(Vector2 availableSize)
         {
-            Vector2 content = viewport.Measure(new Vector2(availableSize.X, float.MaxValue));
+            Vector2 content = viewport.hidden ? Vector2.Zero : viewport.Measure(new Vector2(availableSize.X, float.MaxValue));
             topRule.Measure(availableSize);
             bottomRule.Measure(availableSize);
             topHalf.Measure(availableSize);
@@ -116,7 +103,11 @@ namespace ArctisAurora.Core.UI
             float shown = MathF.Max(0f, finalRect.height - diameter);
             float gripX = finalRect.x + (finalRect.width - diameter) * 0.5f;
 
-            viewport.Arrange(new LayoutRect(finalRect.x, seam, finalRect.width, shown));
+            Quaternion turn = Quaternion.CreateFromAxisAngle(Vector3.UnitZ, MathF.PI * Math.Clamp(reveal, 0f, 1f));
+            topHalf.arrow.rotation = turn;
+            bottomHalf.arrow.rotation = turn;
+
+            if (!viewport.hidden) viewport.Arrange(new LayoutRect(finalRect.x, seam, finalRect.width, shown));
             topRule.Arrange(new LayoutRect(finalRect.x, seam - 1f, finalRect.width, 1f));
             bottomRule.Arrange(new LayoutRect(finalRect.x, seam + shown - 1f, finalRect.width, 1f));
             topHalf.Arrange(new LayoutRect(gripX, finalRect.y, diameter, radius));
@@ -164,8 +155,7 @@ namespace ArctisAurora.Core.UI
             private readonly bool top;
 
             public Action? pressed { set => circle.pressed = value; }
-            public IconControl up => circle.up;
-            public IconControl down => circle.down;
+            public IconControl arrow => circle.arrow;
 
             public Half(bool top)
             {
@@ -191,12 +181,11 @@ namespace ArctisAurora.Core.UI
             }
         }
 
-        // The round grip, with both arrows stacked in its shown half for the crossfade. Acts on press
-        // and leaves the active control where it was, like the format bar's buttons.
+        // The round grip, its arrow in the shown half. Acts on press and leaves the active control
+        // where it was, like the format bar's buttons.
         private class Circle : ButtonControl
         {
-            public readonly IconControl up = Arrow("chevron-up");
-            public readonly IconControl down = Arrow("chevron-down");
+            public readonly IconControl arrow;
             public Action? pressed;
             private readonly bool top;
 
@@ -210,8 +199,8 @@ namespace ArctisAurora.Core.UI
                 edgeThickness = new Thickness(1f);
                 cornerRadius = new CornerRadii(diameter * 0.5f);
 
-                AddChild(up);
-                AddChild(down);
+                arrow = Arrow(top ? "chevron-up" : "chevron-down");
+                AddChild(arrow);
             }
 
             public override void AddChild(Entity entity)
@@ -231,8 +220,7 @@ namespace ArctisAurora.Core.UI
 
             protected override Vector2 MeasureCore(Vector2 availableSize)
             {
-                up.Measure(availableSize);
-                down.Measure(availableSize);
+                arrow.Measure(availableSize);
                 arrange.desired = new Vector2(diameter, diameter);
                 SetFlag(ArrangeFlags.MeasureDirty, false);
                 return arrange.desired;
@@ -242,10 +230,8 @@ namespace ArctisAurora.Core.UI
             {
                 WriteArranged(finalRect);
                 float middle = finalRect.y + finalRect.height * (top ? 0.25f : 0.75f);
-                LayoutRect arrow = new LayoutRect(finalRect.x + (finalRect.width - arrowSize) * 0.5f,
-                    middle - arrowSize * 0.5f, arrowSize, arrowSize);
-                up.Arrange(arrow);
-                down.Arrange(arrow);
+                arrow.Arrange(new LayoutRect(finalRect.x + (finalRect.width - arrowSize) * 0.5f,
+                    middle - arrowSize * 0.5f, arrowSize, arrowSize));
                 SetFlag(ArrangeFlags.ArrangeDirty, false);
             }
 

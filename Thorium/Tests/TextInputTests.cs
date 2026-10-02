@@ -1112,6 +1112,103 @@ namespace Thorium.Tests
         }
         #endregion
 
+        #region ---- math ----
+        private static XElement MathRunX(string tex, bool display = false)
+        {
+            XElement run = new XElement("Run", new XAttribute("Math", tex));
+            if (display) run.SetAttributeValue("Display", "true");
+            return run;
+        }
+
+        [A_XSDActionDependency("TextInput.MathRoundTrip", "Test")]
+        private static IEnumerator<int> MathRoundTrip(TestContext t)
+        {
+            RichTextDocument fixture = DocumentXml.Parse(new XElement("Document",
+                new XElement("Block", RunX("a "), MathRunX("x^2"), RunX(" b")),
+                new XElement("Block", MathRunX(@"\frac{a}{b}", true))));
+            List<XElement> runs = DocumentXml.ToXml(fixture).Descendants().Where(e => e.Name.LocalName == "Run").ToList();
+            t.Check(runs.Any(r => (string?)r.Attribute("Math") == "x^2" && r.Attribute("Display") == null)
+                && runs.Any(r => (string?)r.Attribute("Math") == @"\frac{a}{b}" && (bool?)r.Attribute("Display") == true),
+                "note XML keeps a formula's source and display flag");
+            DestroyBlocks(fixture);
+
+            string md = "a $x^2$ b\n$$\n\\frac{a}{b}\n$$\ninline $$y$$ too";
+            XElement read = MarkdownFormat.Read(md, "n");
+            List<XElement> blocks = read.Elements("Block").ToList();
+            t.Check(blocks.Count == 3, $"the markdown reads as three blocks ({blocks.Count})");
+            if (blocks.Count == 3)
+            {
+                t.Check((string?)blocks[0].Elements().ElementAt(1).Attribute("Math") == "x^2", "$x^2$ reads as an inline formula");
+                XElement display = blocks[1].Elements().Single();
+                t.Check((string?)display.Attribute("Math") == @"\frac{a}{b}" && (bool?)display.Attribute("Display") == true,
+                    "a $$ block reads as display math");
+                t.Check(blocks[2].Elements().Any(r => (string?)r.Attribute("Math") == "y" && (bool?)r.Attribute("Display") == true),
+                    "$$y$$ mid-line reads as display math");
+            }
+            string back = MarkdownFormat.Write(read);
+            t.Check(back == md, $"markdown math writes back as read: {back}");
+
+            foreach (string literal in new[] { "costs $5 and $10", "a \\$x\\$ b", "$ x$ and $y $" })
+            {
+                XElement doc = MarkdownFormat.Read(literal, "n");
+                bool noMath = !doc.Descendants().Any(e => e.Attribute("Math") != null);
+                string written = MarkdownFormat.Write(doc);
+                t.Check(noMath && written == literal, $"'{literal}' stays text and writes back unchanged ({written})");
+            }
+            yield break;
+        }
+
+        [A_XSDActionDependency("TextInput.MathLineBox", "Test")]
+        private static IEnumerator<int> MathLineBox(TestContext t)
+        {
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                Block("plain line"),
+                new XElement("Block", RunX("over "), MathRunX(@"\frac{a}{b}"), RunX(" here")),
+                new XElement("Block", RunX("before "), MathRunX(@"\sum_{i=1}^{n} i", true), RunX(" after")))));
+            yield return 2;
+
+            List<BlockControl> p = Paragraphs(editor);
+            t.Check(p[1].Lines[0].descent > p[0].Lines[0].descent, "a fraction's depth deepens its line");
+
+            IReadOnlyList<TextLine> lines = p[2].Lines;
+            t.Check(lines.Count == 3 && lines[1].segments[0].charStart == 7 && lines[0].segments.Sum(s => s.charCount) == 7,
+                $"a display formula takes a line of its own ({lines.Count} lines)");
+            t.Check(lines.Count == 3 && lines[1].width >= 0.9f * p[2].arrangedRect.width,
+                $"the display formula's line spans the column ({(lines.Count > 1 ? lines[1].width : 0f)} of {p[2].arrangedRect.width})");
+        }
+
+        [A_XSDActionDependency("TextInput.MathCopyText", "Test")]
+        private static IEnumerator<int> MathCopyText(TestContext t)
+        {
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                new XElement("Block", RunX("a "), MathRunX("x^2"), RunX(" b")),
+                new XElement("Block", MathRunX(@"\int f", true)))));
+            DocumentControl content = Content(editor);
+            List<BlockControl> p = Paragraphs(editor);
+            yield return 2;
+
+            content.SetCaret(p[0], 0);
+            content.SetCaret(p[1], 1, true);
+            yield return t.Key(Keys.C, Keys.LeftControl);
+            string expected = "a $x^2$ b" + Environment.NewLine + @"$$\int f$$";
+            t.Check(ClipboardText.Get() == expected, $"Ctrl+C writes formulas as their TeX: {ClipboardText.Get()}");
+        }
+
+        [A_XSDActionDependency("TextInput.MathDraws", "Test")]
+        private static IEnumerator<int> MathDraws(TestContext t)
+        {
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                new XElement("Block", RunX("Inline "), MathRunX(@"x^2 + y_i^2 = \frac{a}{b}"), RunX(" and "),
+                    MathRunX(@"\hat{a} \le \sqrt{x}"), RunX(" in a sentence.")),
+                new XElement("Block", MathRunX(@"\sum_{i=1}^{n} i = \frac{n(n+1)}{2}", true)),
+                new XElement("Block", MathRunX(@"\left(\frac{\frac{a}{b}}{\frac{\frac{c}{d}}{e}}\right) \sqrt[3]{\frac{\frac{a}{b}}{c}} \int_0^1 f(x)\,dx", true)),
+                new XElement("Block", RunX("Broken: "), MathRunX(@"\frac{a"), RunX(" stays readable.")))));
+            yield return 4;
+
+            yield return t.Golden("Math", Content(editor));
+        }
+        #endregion
+
         private static XElement RunX(string text, params (string name, string value)[] attributes)
         {
             XElement run = new XElement("Run", new XAttribute("Text", text));

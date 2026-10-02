@@ -136,7 +136,8 @@ frame is done, and then only that image's.
 image's geometry/control pair at once. Now `_mirrorCapacity` is `int[]`, one per image (-1 = not
 built). When image *i* is acquired and its capacity differs from the draw list's, `DestroyMirror(i)`
 frees only that pair and it is recreated at the new size; `UpdateModule` then rebuilds image *i*'s
-descriptor pool and sets through the existing `_frameBuiltCapacity[i]` check. Other images keep
+descriptor pool and sets through the existing `_frameBuiltCapacity[i]` check (since §10: pool and sets
+kept, only bindings 1–2 rewritten). Other images keep
 their old-size pair, sets and command buffer — consistent with each other — until they come round.
 
 Why no explicit wait is needed: at frame N the acquire cannot return N−1's image, so image *i* was
@@ -166,7 +167,8 @@ exercised.
   `CmdDrawIndexed`, so `HasPendingWork` answered `true` and every image re-recorded every frame.
 - **`HasPendingWork`** is now `_frameBuiltCapacity[i] != _mirrorCapacity[i] || _frameTableVersion[i] !=
   TextureAsset.TableVersion` — the two cases that write descriptors, and a descriptor write needs a
-  re-record. `isDirty` still covers resize.
+  re-record. `isDirty` still covers resize. **Superseded by §10:** `_dirtyBindings[i] != 0` replaces the
+  capacity comparison.
 - **Rows land at slot 0, so the draw starts at instance 0.** `MirrorDrawList` copies the window's range
   `[first, first + count)` to the head of the mirrors. `gl_InstanceIndex` only indexes rows in
   `UIEngine.vert`, and `firstInstance = 0` needs no `drawIndirectFirstInstance` feature.
@@ -174,6 +176,7 @@ exercised.
   `Max(minMirrorRows = 256, RoundUpToPowerOf2(count))`, never shrink. Before, every window kept per-image
   mirrors at the whole pool's capacity and every pool growth reallocated all of them. The indirect buffer
   is created and freed with the pair (`DestroyMirror`), so a growth's re-record picks up all three.
+  **Superseded:** shrink after 2 s ([[pool-shrink]]); one buffer and an image-lifetime indirect buffer (§10).
 - **`UpdateFrameData` now does the per-frame copying** — camera, `MirrorDrawList`, and the three
   `TableMirror.Sync` calls (paints, gradients, effects) — and `Renderer.Draw` calls it **before** the
   dirty/pending check, so a growth this frame is rebuilt and re-recorded before the submit.
@@ -188,6 +191,55 @@ exercised.
 (scrolled text drawn), a context menu (whole), 5 `MoveWindow` resizes (drawn at the new size); no
 validation message after the render thread started. The re-record rate itself was not measured.
 **NOT GUI-verified:** drag ghost, a second window, palette/gradient/effect table growth, iGPU.
+
+### 10. A mirror swap rewrites two bindings, not the pool (2026-10-02)
+
+Prompted by 9–25 ms `Draw.Update` hitches when the quad mirror shrinks ([[pool-shrink]]). Per image a swap
+used to cost 3× buffer create/allocate/map + 3× free, then pool destroy/create, 2 set allocations, 6 buffer
+writes and the whole texture table.
+
+| Per image, per swap | Before | After |
+|---|---|---|
+| `vkAllocateMemory` / `vkFreeMemory` / map | 3 each | 1 each |
+| descriptor pool destroy + create | 1 + 1 | 0 |
+| `vkAllocateDescriptorSets` | 2 | 0 |
+| buffer descriptor writes | 6 | 2 |
+| texture descriptor writes | `TextureAsset.Table.Count` | 0 |
+| command buffer re-record | 1 | 1 |
+
+- **Pool and sets live as long as the image.** `UpdateModule` creates them only when
+  `frameResources[i]` has no pool. `CreateDescriptorPool` no longer destroys a previous one.
+- **`_dirtyBindings[i]`** (bit `1 << binding`, set 1) replaces `_frameBuiltCapacity`. Set by
+  `RebindImageCount` (all six), a mirror swap (1, 2), a `TableMirror.Sync` that returned true (3 gradients,
+  4 paints, 5 effects). `UpdateDescriptorSets` writes only the set bits (stackalloc infos/writes) and
+  clears them; it returns early with bits kept if a buffer is not built yet.
+- **Texture table is its own trigger.** `UpdateModule` calls `WriteTextureTable` only when
+  `_frameTableVersion[i] != TextureAsset.TableVersion`; `UpdateDescriptorSets` no longer calls it.
+- **One mirror buffer, two ranges.** `_mirrorBuffers/_mirrorMemories/_mirrorMapped` + `_controlOffsets`
+  replace the geometry/control pairs. Geometry at 0; control at `geometrySize` rounded up to 256. 256 is the
+  spec's ceiling for `minStorageBufferOffsetAlignment`, so no device query is needed.
+- **Indirect buffer lives as long as the image.** Created in `MirrorDrawList` when its handle is empty;
+  freed only in `DestroyMirrors` (rebind, teardown). `DestroyMirror(i)` frees just the mirror.
+- **`RebindImageCount` destroys the old pools** before replacing `frameResources`. They leaked on an
+  image-count change before this (user, fork A).
+
+**Why in-place writes are legal without `UPDATE_AFTER_BIND`:** §8's argument. Image *i* is idle when
+`UpdateModule` runs for it, and the command buffer is re-recorded after the write anyway.
+
+**Rejected:**
+- `UPDATE_AFTER_BIND`: it needs device features and saves only a re-record of an idle image.
+- Two buffers bound to one `VkDeviceMemory` (user, fork B): it saves allocations but not buffer creates,
+  and `AVulkanBufferHandler` has no raw allocate path.
+
+**Not done:** moving allocate/free off the render thread. This is likely the bulk of the hitch, but it
+needs a cross-thread handoff of Vulkan handles. Also not done: a minimum-bytes floor for shrinking.
+
+**Verified (§10):** engine and all three hosts build. In a Thorium `--test` full run (Debug, validation +
+sync on), a temporary log showed grows and shrinks on every image (2048→256, 8192→4096→2048…). There were
+0 `[Vulkan]` lines, and every golden passed: 95 passed, 41 Perf skipped (Debug JIT), and Boot failed only on
+the pre-existing default-sampler error, which also fails it in the three runs before this change. A normal
+launch logged no `[Vulkan]` lines either. **The hitch was not re-measured.** **NOT GUI-verified:** a
+window resize, a context menu, scrolling the 200k note, table growth, an image-count change.
 
 ## What came out
 

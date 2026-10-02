@@ -10,7 +10,7 @@
 - **Free stableIds come out lowest first** (`PriorityQueue<int,int>`, was a LIFO `Stack`), so live ids stay packed and one survivor does not pin capacity. Shrink drops free ids ≥ the new capacity and clamps `_highStableId`.
 - **`_versionFloor`**: shrink raises it past every truncated slot's version; regrown slots start there, so a handle to a truncated id cannot alias a later occupant.
 - **`PoolCursor.TryConsumeStructural`** diffs to its own `_provisioned` length, treating ids past the snapshot as free.
-- **`UIEngineModule` quad mirror** (grow-only before) shrinks per image by the same rule: draw count ≤ a quarter of the mirror for 2 s → recreate at `pow2(max(count, 2 × peak))`, at least 256 rows.
+- **`UIEngineModule` quad mirror** (grow-only before) shrinks per image by the same rule: draw count ≤ a quarter of the mirror for 2 s → recreate at `pow2(max(count, 2 × peak))`, at least 256 rows. Since 2026-10-02 a swap is one allocation and two descriptor writes ([[mapped-streaming-buffers]] §10).
 
 ## Why these choices
 

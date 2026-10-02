@@ -28,7 +28,7 @@ Turns the TeX of a math formula — what sits between `$…$` or `$$…$$` in a 
 
 It never throws. Anything it cannot read — an unknown command, an unbalanced brace, a double superscript — turns the whole formula into a single `MathError` that keeps the source, which layout then shows as plain text flagged as an error.
 
-> The parser and layout exist; nothing draws a formula yet, and notes cannot hold one. See `ClaudeMemory/Context/math-plan.md`.
+> Notes hold, draw, save and copy formulas; they cannot yet be inserted or edited in the editor. See `ClaudeMemory/Context/math-plan.md`.
 
 ## API summary
 

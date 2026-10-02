@@ -38,16 +38,16 @@ Run the host from `Thorium/bin/Release/net10.0-windows10.0.22621.0/` (same shape
 | look at it, compare two captures by eye | Carbon — Load, **Pin as baseline**, load the second, zone table shows ms/frame and the change |
 
 Scenarios point the settings root at a `ProfileScenario` folder, so the user's layout is safe. `--profile` and
-`--exec` run a normally launched app — that loads and saves the user's vault; copy `%APPDATA%\<Host>\Settings`
+`--exec` run a normally launched app — that loads and saves the user's vault; copy `%APPDATA%\Arktis\<Host>\Settings`
 aside first. **An idle host draws no frames** (Thorium and Carbon wait on OS events), so a burst over an idle
 window records almost nothing — capture while something is happening, or use a scenario or a test.
 `--dump-tree` on a scenario writes `uitree-<label>.xml` at still points, for comparing two builds' layouts.
 
 ## 3. Where captures land
 
-- `%APPDATA%\<Host>\Profiling\<yyyyMMdd-HHmmss>\<Thread>.frames.xml` — one file per thread (Main, Render,
+- `%APPDATA%\Arktis\<Host>\Profiling\<yyyyMMdd-HHmmss>\<Thread>.frames.xml` — one file per thread (Main, Render,
   `Worker N`, Physics, and `Bootstrap` for `--profile`).
-- A measured test: `%APPDATA%\<Host>\Tests\<run>\<Action>\`.
+- A measured test: `%APPDATA%\Arktis\<Host>\Tests\<run>\<Action>\`.
 - **Only the newest 5 sessions survive** (`<ProfilingCapture Keep>`): every new session prunes the rest. Copy a
   baseline you still need into the scratchpad before capturing again.
 - Format: `<Names><N I V/>` (declared as they first appear), `<Batch Seq Dropped>`, `<F I T D A>` (frame index,
@@ -82,6 +82,10 @@ Reading traps:
   6 → 10 ms on an unchanged build. Report the spread, not the best run.
 - Per frame, never totals: two captures rarely hold the same frame count.
 - Early frames of a run are still tiering up; compare within the same frame range.
+- **`--profile-scenario`'s typing and resize phases run tier-0 code** — frame p50 2.6–3.0 ms there, 0.4–0.7 ms with
+  `DOTNET_TieredCompilation=0`, and every frame past ~1100 matches. They measure cold-session cost, not steady state.
+  To check whether a cost is the JIT, rerun with `DOTNET_TC_QuickJitForLoops=0` or `DOTNET_TieredCompilation=0` set
+  in the environment — nothing in the repo changes.
 - Before/after goes in a table, labelled with the build (`Release+PROFILE`, 3 runs):
 
 | zone | before p50 / p95 / max | after p50 / p95 / max | Δ p95 |
@@ -123,7 +127,8 @@ private static IEnumerator<int> RelayoutLabels(TestContext t)
 ```
 
 - Budget limits are ms (`AllocKB` is the worst frame); an absent limit is unchecked. A zone that never ran fails.
-- Set limits from the first Release+`PROFILE` runs with headroom for the `max` swing — budgets are per machine.
+- `Max` is 8 ms on every budget (user) — a spike is a failure, not headroom. `P95` is 2× the worst p95 of 3
+  Release+`PROFILE` runs, capped at 8; `AllocKB` 2× the worst frame. Budgets are per machine.
 - Debug and plain Release report `SKIP` and stay out of the exit code; only Release+`PROFILE` measures.
 - The capture lands in `<run>\<Action>\`; summarize it like any other, or open it in Carbon from the failed test.
 - `cmd //c "_Build\\PerfTests.cmd [Host]"` builds Release+`PROFILE` and runs `--test=Perf`, exit code = failures.

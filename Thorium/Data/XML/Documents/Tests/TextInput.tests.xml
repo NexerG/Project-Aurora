@@ -64,4 +64,8 @@
 	<Test Action="TextInput.TabStops"/>
 	<Test Action="TextInput.SessionScopeSwap"/>
 	<Test Action="TextInput.ReadOnlyRefusesEdits"/>
+	<Test Action="TextInput.MathRoundTrip"/>
+	<Test Action="TextInput.MathLineBox"/>
+	<Test Action="TextInput.MathCopyText"/>
+	<Test Action="TextInput.MathDraws"/>
 </TestSuite>

@@ -11,6 +11,7 @@
 	<Asset Type="FontAsset"    Name="arial-b"     Source="Fonts/arialbd"/>
 	<Asset Type="FontAsset"    Name="electrolize" Source="Fonts/Electrolize-Regular"/>
 	<Asset Type="FontAsset"    Name="consola"     Source="Fonts/consola"/>
+	<Asset Type="FontAsset"    Name="math"        Source="Fonts/cambria"/>
 
 	<Asset Type="IconSetAsset" Name="default"   Source="Icons/default"/>
 

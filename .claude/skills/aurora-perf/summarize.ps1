@@ -1,6 +1,6 @@
 # Summarizes a frame capture folder: per thread, frame time and per-zone cost per frame.
 # Per-frame zone totals and nearest-rank percentiles match TestRunner.CheckBudgets.
-#   -Dir     a session folder (*.frames.xml), e.g. %APPDATA%\Thorium\Profiling\<session> or <run>\<Action>
+#   -Dir     a session folder (*.frames.xml), e.g. %APPDATA%\Arktis\Thorium\Profiling\<session> or <run>\<Action>
 #   -Thread  only this thread file (Main, Render, Worker0, Bootstrap ...)
 #   -From/-To  frame index range (the F I attribute), inclusive
 #   -Zone    only zones whose name contains this text

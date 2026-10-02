@@ -160,6 +160,12 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("Collision", "UI", "What a turned Square picture wraps: its bounding Box or its Shape; absent is Box.")]
         public PictureCollision collision { get; set; }
 
+        [A_XSDElementProperty("Math", "UI", "TeX math source; the run is the formula and carries no text.")]
+        public string math { get; set; }
+
+        [A_XSDElementProperty("Display", "UI", "Formula is display math: a line of its own, centred.")]
+        public bool display { get; set; }
+
         public FontStyle Style =>
             bold ? (italic ? FontStyle.BoldItalic : FontStyle.Bold)
                  : italic ? FontStyle.Italic : FontStyle.Regular;
@@ -399,7 +405,7 @@ namespace ArctisAurora.Core.UI
         // Load: the run's text joins the block's string and its style becomes the next span.
         public void AppendRun(Run run)
         {
-            string slice = run.image != null ? PictureChar : run.text ?? string.Empty;
+            string slice = run.image != null || run.math != null ? PictureChar : run.text ?? string.Empty;
 
             spans.Add(new StyleSpan
             {
@@ -422,7 +428,9 @@ namespace ArctisAurora.Core.UI
                 imageX = run.image != null ? run.x : 0f,
                 imageY = run.image != null ? run.y : 0f,
                 imageRotation = run.image != null ? run.rotation : 0f,
-                collision = run.image != null ? run.collision : PictureCollision.Box
+                collision = run.image != null ? run.collision : PictureCollision.Box,
+                mathSource = run.image == null ? run.math : null,
+                mathDisplay = run.image == null && run.math != null && run.display
             });
             if (run.effect != null) RestartEffect();
 
@@ -437,7 +445,7 @@ namespace ArctisAurora.Core.UI
             if (string.IsNullOrEmpty(insert)) return;
 
             int index = SpanForInsert(offset);
-            if (spans[index].IsPicture) index = TextSpanBeside(index, offset);
+            if (spans[index].IsObject) index = TextSpanBeside(index, offset);
 
             StyleSpan span = spans[index];
             span.count += insert.Length;
@@ -694,12 +702,12 @@ namespace ArctisAurora.Core.UI
 
             if (offset <= start)
             {
-                if (picture > 0 && !spans[picture - 1].IsPicture) return picture - 1;
+                if (picture > 0 && !spans[picture - 1].IsObject) return picture - 1;
                 spans.Insert(picture, ZeroText(spans[picture]));
                 return picture;
             }
 
-            if (picture + 1 < spans.Count && !spans[picture + 1].IsPicture) return picture + 1;
+            if (picture + 1 < spans.Count && !spans[picture + 1].IsObject) return picture + 1;
             spans.Insert(picture + 1, ZeroText(spans[picture]));
             return picture + 1;
         }
@@ -758,11 +766,11 @@ namespace ArctisAurora.Core.UI
             for (int i = spans.Count - 1; i >= 0; i--)
                 if (spans[i].count == 0 && spans.Count > 1) spans.RemoveAt(i);
 
-            if (spans.Count == 1 && spans[0].count == 0 && spans[0].IsPicture) spans[0] = spans[0].AsText();
+            if (spans.Count == 1 && spans[0].count == 0 && spans[0].IsObject) spans[0] = spans[0].AsText();
         }
 
         private static bool SameStyle(StyleSpan a, StyleSpan b) =>
-            !a.IsPicture && !b.IsPicture
+            !a.IsObject && !b.IsObject
             && a.style == b.style
             && a.colorHex == b.colorHex
             && a.gradient == b.gradient
@@ -794,8 +802,10 @@ namespace ArctisAurora.Core.UI
                 StyleSpan span = spans[i];
                 runs.Add(new Run
                 {
-                    text = span.IsPicture ? string.Empty : whole.Substring(start, count),
+                    text = span.IsObject ? string.Empty : whole.Substring(start, count),
                     image = span.imageSource,
+                    math = span.mathSource,
+                    display = span.mathDisplay,
                     width = span.imageWidth,
                     height = span.imageHeight,
                     wrap = span.wrap,

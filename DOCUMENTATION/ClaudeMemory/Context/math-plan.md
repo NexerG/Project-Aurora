@@ -1,7 +1,7 @@
-# Math in notes (LaTeX math mode) — agreed plan, M1–M2 landed
+# Math in notes (LaTeX math mode) — agreed plan, M1–M3 landed
 
 **Agreed:** 2026-10-01 (user: inline + display math in notes, native route, recommended forks).
-**Built:** M1 (math font), M2 (parser + layout). M3–M4 not started.
+**Built:** M1 (math font), M2 (parser + layout), M3 (model, drawing, persistence). M4 not started.
 **Decisions:** [../Decisions/math-in-notes.md](../Decisions/math-in-notes.md).
 **Checklist form:** the math item in `DOCUMENTATION/Work in Progress List.md`.
 
@@ -39,7 +39,9 @@ Forks taken at M2: **F7** an error makes the whole formula its source text, flag
 - Handoff: aurora-mechanic transcribes the command → code point + atom class table from a written spec.
 - Verify: logic tests — `x^2` taller than `x`; `\frac` depth > 0 and axis-centred; subscript below baseline; `\sum` larger in D than T; garbage → error box.
 
-### M3 — model, render, persistence
+### M3 — model, render, persistence — DONE 2026-10-02
+Forks taken at M3: **F5′** display = full-column advance, drawn centred, block alignment ignored; **F10** built on the dirty tree (user, after the peers proved idle); **F11** static box cache keyed by (source, display). Tests: `TextInput.MathRoundTrip`, `MathLineBox`, `MathCopyText`, golden `MathDraws`. Details in the decision note; the list below is the original plan.
+
 - `Run.Math`, `Run.Display`; `StyleSpan` math fields + cached `MathBox`, `IsMath`, `AsText` → `$…$`.
 - `TextMeasurer.Run` math flag → `PenChar` with depth below baseline; display breaks before/after and centres (F5).
 - `TextRunControl.Emit` draws the box via `WriteGlyph` (math `FontAsset`) and `WriteRect`.

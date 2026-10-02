@@ -3,23 +3,230 @@
 		  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 		  xsi:schemaLocation="http://arctisaurora/AuroraTestTypes ../../Schemas/TestTypeSchema.xsd" >
 	<Test Action="Perf.RelayoutLabels">
-		<Budget Zone="Step.Main.Layout" P95="3" Max="25" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="3" Max="8" AllocKB="1"/>
 	</Test>
 	<Test Action="Perf.TypeLargeNote">
-		<Budget Zone="Step.Main.Layout" P95="2" Max="40" AllocKB="128"/>
-		<Budget Zone="Step.Main.Logic" P95="0.5" Max="15" AllocKB="32"/>
-		<Budget Zone="Document.MeasureBlocks" P95="0.5" Max="20" AllocKB="8"/>
-	</Test>
-	<Test Action="Perf.RewrapLargeNote">
-		<Budget Zone="Step.Main.Layout" P95="1000" Max="1000" AllocKB="100000"/>
-		<Budget Zone="Document.MeasureBlocks" P95="1000" Max="1000"/>
-		<Budget Zone="Text.MeasureBlock" P95="1000" Max="1000"/>
+		<Budget Zone="Step.Main.Layout" P95="3.5" Max="8" AllocKB="374"/>
+		<Budget Zone="Step.Main.Logic" P95="1" Max="8" AllocKB="37"/>
+		<Budget Zone="Document.MeasureBlocks" P95="1" Max="8" AllocKB="327"/>
 	</Test>
 	<Test Action="Perf.AnimationBurst">
-		<Budget Zone="Step.Animation.Step" P95="1" Max="10" AllocKB="1"/>
+		<Budget Zone="Step.Animation.Step" P95="2.5" Max="8" AllocKB="1"/>
 	</Test>
 	<Test Action="Perf.AnimationLayoutClip">
-		<Budget Zone="Step.Animation.Step" P95="1" Max="10" AllocKB="1"/>
-		<Budget Zone="Step.Main.Layout" P95="1.5" Max="10" AllocKB="1"/>
+		<Budget Zone="Step.Animation.Step" P95="2.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="2.5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.RewrapLargeNote">
+		<Budget Zone="Step.Main.Layout" P95="8" Max="8" AllocKB="17444"/>
+		<Budget Zone="Document.MeasureBlocks" P95="8" Max="8" AllocKB="17397"/>
+		<Budget Zone="Text.MeasureBlock" P95="8" Max="8" AllocKB="17397"/>
+	</Test>
+	<Test Action="Perf.ResizeLargeNote">
+		<Budget Zone="Step.Main.Layout" P95="1.5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.Panel.Static">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="1" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="3" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.Panel.Relayout">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="1" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="1" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="3.5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.Button.Static">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="1" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="3" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.Button.Relayout">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="1" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="1" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="3.5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.CheckBox.Static">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="1.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="3.5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.CheckBox.Relayout">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="2" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="1.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="3.5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.Slider.Static">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="2.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="4" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.Slider.Relayout">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="3" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="1.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="3.5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.Dropdown.Static">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="4" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="4.5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.Dropdown.Relayout">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="3" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="3" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="4" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.Expander.Static">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="6" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.Expander.Relayout">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="6.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="3.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="4.5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.KeyCapture.Static">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="1.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="3" Max="8" AllocKB="4"/>
+	</Test>
+	<Test Action="Perf.Controls.KeyCapture.Relayout">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="2.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="1.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="3" Max="8" AllocKB="4"/>
+	</Test>
+	<Test Action="Perf.Controls.Icon.Static">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="1" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="3" Max="8" AllocKB="4"/>
+	</Test>
+	<Test Action="Perf.Controls.Icon.Relayout">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="1.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="1" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="3.5" Max="8" AllocKB="4"/>
+	</Test>
+	<Test Action="Perf.Controls.Label.Static">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="3" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="4.5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.Label.Relayout">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="1.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="2.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.TextBox.Static">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="4.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="4.5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.TextBox.Relayout">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="3.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="3.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.EditableLabel.Static">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="4.5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.EditableLabel.Relayout">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="3" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="4" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.StackPanel.Static">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="4" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.StackPanel.Relayout">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="2.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="3.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.GridList.Static">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="2.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="4" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.GridList.Relayout">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="4" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="2" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="4.5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.Scrollable.Static">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="7" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="6" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.Scrollable.Relayout">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="5.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="6" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.SplitView.Static">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="2.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="4" Max="8" AllocKB="4"/>
+	</Test>
+	<Test Action="Perf.Controls.SplitView.Relayout">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="2" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="2" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="4" Max="8" AllocKB="4"/>
+	</Test>
+	<Test Action="Perf.Controls.TabView.Static">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="8" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="5.5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.TabView.Relayout">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="8" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="6.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="5.5" Max="8" AllocKB="1"/>
+	</Test>
+	<Test Action="Perf.Controls.Table.Static">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.DrawLists" P95="1" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="4.5" Max="8" AllocKB="4"/>
+	</Test>
+	<Test Action="Perf.Controls.Table.Relayout">
+		<Budget Zone="Step.Main.Input" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Step.Main.Layout" P95="5" Max="8" AllocKB="65"/>
+		<Budget Zone="Step.Main.DrawLists" P95="0.5" Max="8" AllocKB="1"/>
+		<Budget Zone="Draw" Thread="Render" P95="3" Max="8" AllocKB="4"/>
 	</Test>
 </TestSuite>

@@ -135,7 +135,7 @@ Setting `ProfilingCapture.Mode` to `Boot` does the same for a run with no argume
 
 Neither reaches `XSDGenerator.GenerateXSD()`, which every application runs in `Main` before the engine is initialised at all.
 
-Timings are only worth reading from an optimized build. A Debug build never lets the JIT optimize, and costs about five times more in the animation step. Build Release with the profiler compiled in, and run Thorium from its own Release folder:
+Timings are only worth reading from an optimized build. A Debug build never lets the JIT optimize, and costs about five times more in the animation step. Even a Release build runs unoptimized for its first seconds: .NET starts every method at a quick tier and only recompiles the busy ones once things settle, and in the document scenario the typing frames cost 2.6–3 ms at p50 against 0.4–0.7 ms with tiering turned off, while every frame past about 1,100 is the same either way. Read the scenario's early phases as the cost of a fresh session, not of a warm one. Setting `DOTNET_TieredCompilation=0` or `DOTNET_TC_QuickJitForLoops=0` in the environment for one run tells which a number is, without changing anything in the repository. See `ClaudeMemory/Decisions/large-note-measure-cost.md`. Build Release with the profiler compiled in, and run Thorium from its own Release folder:
 
 ```
 dotnet build AuroraEngine/ArctisAurora.sln -c Release "-p:DefineConstants=TRACE%3BPROFILE"

@@ -75,18 +75,44 @@ slice 3: `TestContext` input helpers, `UI.WindowRoot.ToWindowSpace`, `AGlfwWindo
   from `bin/Release`; exit code passes through.
 - New `ArctisAurora.Tests.PerfTests` targets, all 30 warm-up + 120 measured ticks. Fixtures copied from
   `ProfileScenario` (`OpenNote`, `ShowGrid`), which stays untouched and separate.
+- **Roof: `Max="8"` on every budget** (user, 2026-10-02) — 8 ms per frame per zone, no headroom for spikes; a spike
+  is a failure. `P95` is 2× the worst p95 of 3 Release+`PROFILE` runs, rounded up to 0.5, capped at 8; `AllocKB` is
+  2× the worst frame. Budgets are per zone; there is no whole-frame budget.
 
-| Test | Work per tick | Budgets (P95 / Max ms, AllocKB) | Measured, Release+PROFILE, 3 runs (p95 / max) |
-|---|---|---|---|
-| `Perf.TypeLargeNote` | 1000×1000-char note, one char via `charInputReadQueue` + `TextInputActions.Write` | `Step.Main.Layout` 2 / 40 / 128; `Step.Main.Logic` 0.5 / 15 / 32; `Document.MeasureBlocks` 0.5 / 20 / 8 | Layout 0.81–0.96 / 15.5–18.9, 88.9 KB; Logic 0.13–0.15 / 0.57–7.2, 18.5 KB; MeasureBlocks 0.16–0.21 / 7.7–8.0, 3.4 KB |
-| `Perf.RewrapLargeNote` | editor `preferredWidth` 800 → 320 → 800, 8 px a tick | placeholders (1000) | **fails**: `Document.MeasureBlocks`/`Text.MeasureBlock` never run — text width is `PageLayout.SizePx().X` minus margins (`DocumentControl.Paginate`), in Paged and Pageless alike; editor width never rewraps |
-| `Perf.AnimationBurst` | 5000 buttons, one 2 s `Tween` on `state` each at the first measured tick | `Step.Animation.Step` 1 / 10 / 1 | 0.24–0.37 / 0.55–0.73, 0 KB |
-| `Perf.AnimationLayoutClip` | 5000 buttons playing `profile-margin` | `Step.Animation.Step` 1 / 10 / 1; `Step.Main.Layout` 1.5 / 10 / 1 | Anim 0.17–0.20 / 0.37–0.44; Layout 0.49 / 0.51–0.56; 0 KB |
+| Test | Work per tick | p95 / worst max (ms), worst-frame KB — Release+PROFILE, 3 runs |
+|---|---|---|
+| `Perf.TypeLargeNote` | 1000×1000-char note, one char via `charInputReadQueue` + `TextInputActions.Write` | Layout 0.89–1.51 / 42.6, 187; Logic 0.18–0.46 / 6.2; MeasureBlocks 0.26–0.44 / 20.6, 163 |
+| `Perf.RewrapLargeNote` | `SetPage` with a `Custom` page, 210 → 150 → 210 mm, 1 mm a tick | Layout 28.5–33.1 / 42.6, 8,722; `Text.MeasureBlock` 27.4–32.3 |
+| `Perf.ResizeLargeNote` | editor `preferredWidth` 800 → 320 → 800, 8 px a tick — no rewrap: text width is the paper's (`DocumentControl.Paginate`), Paged and Pageless alike | Layout 0.33–0.55 / 0.97 |
+| `Perf.AnimationBurst` | 5000 buttons, one 2 s `Tween` on `state` each at the first measured tick | `Step.Animation.Step` 0.62–1.20 / 1.8 |
+| `Perf.AnimationLayoutClip` | 5000 buttons playing `profile-margin` | Anim 0.47–1.01 / 1.3; Layout 0.85–1.11 / 1.5 |
+| `Perf.Controls.<Name>.Static` / `.Relayout` | 1000 of one control in rows of 25 (`widthStar` 1, 16 tall, grid 1000 wide); Static changes nothing, Relayout flips the grid width 1000/1001 | budgets on `Step.Main.Input`, `Step.Main.Layout`, `Step.Main.DrawLists`, Render `Draw` |
+
+- Controls: Panel, Button, CheckBox, Slider, Dropdown, Expander, KeyCapture, Icon, Label, TextBox, EditableLabel,
+  StackPanel (nested), GridList (2 star cells), Scrollable, SplitView, TabView (2 tabs); `Table` is 100 3×3 tables in
+  a note, Relayout flips the page 210/209 mm. Image is out — it needs a picture file.
+- Fails by design today: `RewrapLargeNote` (p95 > 8), `TypeLargeNote` and `RelayoutLabels` max (14–43 ms frames), and
+  any test whose frame lands on a quad-mirror reallocation (Render `Draw` 9–25 ms, 1.6 KB — see WIP).
 
 - `Step.Animation.Step` is budgeted on `Main`: at 5000 rows the scheduler runs it on Main (120/120 frames). If it
   moves to a worker the budget fails as "never ran" — `CheckBudgets` reads one thread per budget.
 - Animation tests end with `Animations.StopAll` on every button; note tests end with `t.Show(new StackPanelControl())`.
-- Debug `--test=Perf`: all `SKIP — unoptimized JIT`, ~10 s wall for the whole suite.
+- Debug `--test=Perf`: all `SKIP — unoptimized JIT`. Release+`PROFILE` suite ~60 s wall.
+
+### What the control targets found (2026-10-02)
+- Layout costs ~0.2 µs per control whatever the control; a heavy control is one built from many controls.
+  Counts per instance (`--profile-pools`, `UIElements`/`UIQuads`): Panel 1/1, Expander 13/8.3 → 11/6.8, TabView 16/5 →
+  12/8, GridList 3/3, Scrollable 4/10.
+- `GridListControl` allocated ~14 objects per measure + arrange (LINQ, `Select().ToArray()`, offset arrays) — 820 KB
+  a frame at 1000 grids. Now loops and two kept offset arrays: 0 KB. `TableControl.Cells()` still allocates a list
+  per arrange (32 KB/frame on the table note).
+- `Step.Main.DrawLists` and `Draw.Update` scale with quads every frame, changed or not — the list is rebuilt and
+  `UIEngineModule.MirrorDrawList` copies every row (176 B) each frame. Rebuild-on-change is the open item in
+  [[ui-draw-list]].
+- Render `Draw` spikes (9–25 ms) are `Draw.Update` reallocating the quad mirror (grow, or shrink after
+  `DataPool.ShrinkAfterSeconds`) and rebuilding descriptor sets mid-frame.
+- Expander, TabView changes: see `Context/ui-orientation.md` entries. TabView's quads rose because a squeezed tab now
+  shows its caption start and ✕ (user, 1a) instead of drawing empty.
 
 ### Slice 5 — goldens (2026-09-28)
 - `yield return t.Golden(shot, region = null)` sets `Engine.clockHeld` and `ScreenReadback.Request(Engine.primary)`

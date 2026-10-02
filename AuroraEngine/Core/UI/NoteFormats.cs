@@ -19,7 +19,7 @@ namespace ArctisAurora.Core.UI
         private const string fence = "```";
         private const string quote = "> ";
 
-        private const string escapable = "\\`*_~#>-+[]=<.)";
+        private const string escapable = "\\`*_~#>-+[]=<.)$";
 
         // inline HTML Obsidian renders, read and written for what Markdown has no syntax for
         private static readonly Regex htmlTag = new Regex(@"\G<(/?)(u|mark|span)((?:\s+style=""[^""]*"")?)\s*>", RegexOptions.IgnoreCase);
@@ -78,6 +78,7 @@ namespace ArctisAurora.Core.UI
             }
             string? openFence = null;
             string? language = null;
+            List<string>? openMath = null;
 
             foreach (string raw in text.Split('\n'))
             {
@@ -103,6 +104,24 @@ namespace ArctisAurora.Core.UI
                     XElement code = Block("Code", new List<XElement> { PlainRun(line) });
                     if (!string.IsNullOrEmpty(language)) code.SetAttributeValue("Language", language);
                     root.Add(code);
+                    continue;
+                }
+
+                if (openMath != null)
+                {
+                    if (line.Trim() == "$$")
+                    {
+                        root.Add(Block(null, new List<XElement> { MathRun(string.Join("\n", openMath), true) }));
+                        openMath = null;
+                    }
+                    else openMath.Add(line);
+                    continue;
+                }
+
+                if (line.Trim() == "$$")
+                {
+                    listWidths.Clear();
+                    openMath = new List<string>();
                     continue;
                 }
 
@@ -170,6 +189,7 @@ namespace ArctisAurora.Core.UI
                     root.Add(Block(null, ParseInline(line)));
             }
 
+            if (openMath != null) root.Add(Block(null, new List<XElement> { MathRun(string.Join("\n", openMath), true) }));
             return root;
         }
 
@@ -390,6 +410,14 @@ namespace ArctisAurora.Core.UI
                     continue;
                 }
 
+                if (c == '$' && MathAt(s, i, out string tex, out bool display, out int mathEnd))
+                {
+                    Flush(false);
+                    runs.Add(MathRun(tex, display));
+                    i = mathEnd;
+                    continue;
+                }
+
                 if (c == '`')
                 {
                     int close = s.IndexOf('`', i + 1);
@@ -462,6 +490,40 @@ namespace ArctisAurora.Core.UI
             return run;
         }
 
+        // $…$ or $$…$$ at i, by Obsidian's rules; end is the closing fence's last character.
+        private static bool MathAt(string s, int i, out string tex, out bool display, out int end)
+        {
+            tex = string.Empty;
+            end = i;
+            display = At(s, i, "$$");
+            if (display)
+            {
+                int close = s.IndexOf("$$", i + 2, StringComparison.Ordinal);
+                if (close <= i + 2) return false;
+                tex = s.Substring(i + 2, close - i - 2);
+                end = close + 1;
+                return true;
+            }
+
+            if (i + 1 >= s.Length || char.IsWhiteSpace(s[i + 1])) return false;
+            for (int close = s.IndexOf('$', i + 1); close > i + 1; close = s.IndexOf('$', close + 1))
+            {
+                if (s[close - 1] == '\\' || char.IsWhiteSpace(s[close - 1])) continue;
+                if (close + 1 < s.Length && char.IsAsciiDigit(s[close + 1])) continue;
+                tex = s.Substring(i + 1, close - i - 1);
+                end = close;
+                return true;
+            }
+            return false;
+        }
+
+        private static XElement MathRun(string tex, bool display)
+        {
+            XElement run = new XElement("Run", new XAttribute("Math", tex));
+            if (display) run.SetAttributeValue("Display", "true");
+            return run;
+        }
+
         private static bool At(string s, int i, string marker) => string.CompareOrdinal(s, i, marker, 0, marker.Length) == 0;
 
         // The note keeps #RRGGBB; an Obsidian alpha pair is dropped.
@@ -509,6 +571,13 @@ namespace ArctisAurora.Core.UI
                 }
 
                 if (styling == "Rule") lines.Add(lines.Count == 0 ? "***" : "---");
+                else if (styling == "Text" && block.Attribute("List") == null && runs.Count == 1
+                         && (string?)runs[0].Attribute("Math") is string display && (bool?)runs[0].Attribute("Display") == true)
+                {
+                    lines.Add("$$");
+                    lines.Add(display);
+                    lines.Add("$$");
+                }
                 else if (fenceAt >= 0)
                 {
                     string line = Flatten(runs, out _);
@@ -634,6 +703,14 @@ namespace ArctisAurora.Core.UI
 
             foreach (XElement run in runs)
             {
+                string? math = (string?)run.Attribute("Math");
+                if (math != null)
+                {
+                    string mathFence = (bool?)run.Attribute("Display") == true ? "$$" : "$";
+                    line.Append(mathFence).Append(math).Append(mathFence);
+                    continue;
+                }
+
                 string? image = (string?)run.Attribute("Image");
                 if (image != null)
                 {
@@ -679,7 +756,7 @@ namespace ArctisAurora.Core.UI
                         char c = text[i];
                         bool needs = c == '\\'
                             ? i + 1 == text.Length || escapable.IndexOf(text[i + 1]) >= 0
-                            : "`*_~=<[".IndexOf(c) >= 0;
+                            : "`*_~=<[$".IndexOf(c) >= 0;
                         if (needs) line.Append('\\');
                         line.Append(c);
                     }
@@ -730,6 +807,14 @@ namespace ArctisAurora.Core.UI
 
             foreach (XElement run in runs)
             {
+                string? math = (string?)run.Attribute("Math");
+                if (math != null)
+                {
+                    text.Append(BlockControl.PictureChar);
+                    styles.Add($"math|{math}|{(bool?)run.Attribute("Display") == true}");
+                    continue;
+                }
+
                 string? image = (string?)run.Attribute("Image");
                 if (image != null)
                 {
