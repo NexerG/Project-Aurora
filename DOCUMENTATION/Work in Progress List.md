@@ -80,7 +80,7 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 			- [ ] row/column insert and delete, column resize drag, Tab past the last cell adding a row
 			- [ ] lists in cells (task checkbox finds its editor through `parent?.parent`)
 			- [ ] typing p95 up ~0.03 ms on the 1M-char scenario — likely `Blocks()` type-testing page panels, not pinned
-		- [ ] **math in notes — LaTeX `$…$` / `$$…$$`, native (2026-10-01)** — M1 font, M2 parser + layout, M3 notes hold/draw/save/copy formulas (XML, `$`/`$$` Markdown) landed. **Test- and golden-verified** (`Fonts`, `Math`, `TextInput.Math*`); **NOT GUI-verified**. M4 editing (insert, popup source editor, undo) not started → `math-plan`
+		- [ ] **math in notes, M1–M4 (2026-10-02)** — landed, test-verified; **NOT GUI-verified** (popup placement, live reflow, click-away, focus loss mid-edit). Matrices/`cases`/`aligned` unplanned → `math-plan`
 		- [ ] **pictures in notes, Word-style (2026-09-29)** — inline, wrap modes + free position, resize handles, Ctrl+V from the clipboard. Stages 1–7 built: textures, `<Image>`, inline pictures, text-first Ctrl+V into `attachments/`, XML + Markdown, resize handles, wrap modes (Square, Tight, Top and bottom, Behind, In front), drag-move with re-anchoring, rotate ring (inline + floats, Square collision Box/Shape). Test- and golden-verified; real Ctrl+V, handle, move and rotate drags and the Wrap/Collision menus NOT GUI-verified → `note-images-plan`	- [ ] cursor change on context
 - [ ] UI
 	- **Standing decision:** glyphs stay full controls with their own mat4 and tint — per-letter colour, rotation and animation are required. Do not propose making them plain data rows

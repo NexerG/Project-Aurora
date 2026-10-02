@@ -694,6 +694,23 @@ namespace ArctisAurora.Core.UI
             }
         }
 
+        public void SetMath(int offset, string source)
+        {
+            int start = 0;
+            for (int i = 0; i < spans.Count; i++)
+            {
+                if (offset == start && spans[i].IsMath && spans[i].count > 0)
+                {
+                    StyleSpan span = spans[i];
+                    span.mathSource = source;
+                    spans[i] = span;
+                    InvalidateLayout();
+                    return;
+                }
+                start += spans[i].count;
+            }
+        }
+
         // The text span on the picture's side the offset touches, made empty in its style when there is none.
         private int TextSpanBeside(int picture, int offset)
         {

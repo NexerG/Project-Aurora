@@ -320,6 +320,29 @@ namespace ArctisAurora.Core.UI
                 if (content.SetPictureCollision(collision)) MarkDirty();
         }
 
+        // Places an empty formula at the caret and opens its source.
+        public void InsertFormula(bool display)
+        {
+            if (!Writable || content == null) return;
+
+            DocumentAddress? at = content.PlaceMath(display);
+            if (at == null)
+            {
+                Log.Info($"a formula cannot go in a plain text note, a code block or a rule; insert refused.");
+                return;
+            }
+            FormulaPopup.Open(this, content, at.Value, true);
+        }
+
+        // Opens the selected formula's source; false when no formula is selected.
+        public bool EditFormula()
+        {
+            if (!Writable || content == null || !content.SelectedMath(out BlockControl block, out int index)) return false;
+
+            FormulaPopup.Open(this, content, content.AddressOf(block, index), false);
+            return true;
+        }
+
         // The note's page format. Not undoable.
         public PageLayout? Page => activeDocument?.layout.Page;
 

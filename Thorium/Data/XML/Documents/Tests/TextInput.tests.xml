@@ -68,4 +68,11 @@
 	<Test Action="TextInput.MathLineBox"/>
 	<Test Action="TextInput.MathCopyText"/>
 	<Test Action="TextInput.MathDraws"/>
+	<Test Action="TextInput.MathInsertCommit"/>
+	<Test Action="TextInput.MathInsertCancel"/>
+	<Test Action="TextInput.MathEditUndo"/>
+	<Test Action="TextInput.MathLivePreview"/>
+	<Test Action="TextInput.MathEscReverts"/>
+	<Test Action="TextInput.MathClickSelects"/>
+	<Test Action="TextInput.MathDoubleClickOpens"/>
 </TestSuite>

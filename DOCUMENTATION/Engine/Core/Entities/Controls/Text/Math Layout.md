@@ -29,7 +29,7 @@ Inline formulas use text style and display formulas display style; scripts shrin
 
 A note draws a `MathBox` through its paragraph's text control: each glyph from the `math` font at the run's size times the glyph's scale, each rule as a filled rectangle with its top on a whole pixel and at least one pixel thick. A display formula takes the whole column as its width and is drawn centred in it, which is what puts it on a line of its own. A formula that could not be read draws its source in the palette's danger colour.
 
-> Formulas cannot yet be inserted or edited in the editor. See `ClaudeMemory/Context/math-plan.md`.
+Formulas are inserted and edited through [[Formula Popup]].
 
 ## API summary
 

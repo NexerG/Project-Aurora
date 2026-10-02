@@ -1,7 +1,7 @@
-# Math in notes (LaTeX math mode) — agreed plan, M1–M3 landed
+# Math in notes (LaTeX math mode) — agreed plan, M1–M4 landed
 
 **Agreed:** 2026-10-01 (user: inline + display math in notes, native route, recommended forks).
-**Built:** M1 (math font), M2 (parser + layout), M3 (model, drawing, persistence). M4 not started.
+**Built:** M1 (math font), M2 (parser + layout), M3 (model, drawing, persistence), M4 (editing). M5 not planned.
 **Decisions:** [../Decisions/math-in-notes.md](../Decisions/math-in-notes.md).
 **Checklist form:** the math item in `DOCUMENTATION/Work in Progress List.md`.
 
@@ -51,7 +51,9 @@ Forks taken at M3: **F5′** display = full-column advance, drawn centred, block
 - First visual check of M2's layout: scaled `√`, `⎷` + stem join, overlapping paren pieces, accents.
 - Verify: `.xml`/`.md` round-trip, a golden of inline + display math, existing goldens unchanged.
 
-### M4 — editing
+### M4 — editing — DONE 2026-10-02
+Forks taken at M4: **F12** Ctrl+M inline / Ctrl+Shift+M display (rejected: Alt+=, Ctrl+Shift+E); **F13** live preview in the note itself (rejected: preview inside the popup); **F14** a click selects a formula like a picture, double-click / Enter opens (rejected: single click opens); **F15** three `Note.menu.xml` rows (rejected: toolbar button, keys only). Tests: `TextInput.MathInsertCommit`, `MathInsertCancel`, `MathEditUndo`, `MathLivePreview`, `MathEscReverts`, `MathClickSelects`, `MathDoubleClickOpens`. Details in the decision note; the list below is the original plan.
+
 - Insert keybinds (checked against `InputMap.inputs.xml`); double-click / Enter on a selected formula opens a popup source editor (TextBox in a context-menu popup, as `ColorPickerControl` is hosted); live preview; Enter/click-away commits, Esc reverts; `MathEdit : IEditRecord`.
 - Verify: console-driven input test — insert, type, commit, undo, redo.
 

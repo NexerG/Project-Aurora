@@ -1207,7 +1207,156 @@ namespace Thorium.Tests
 
             yield return t.Golden("Math", Content(editor));
         }
+
+        [A_XSDActionDependency("TextInput.MathInsertCommit", "Test")]
+        private static IEnumerator<int> MathInsertCommit(TestContext t)
+        {
+            DocumentEditorControl editor = ShowParagraphs(t, "ab");
+            yield return 2;
+
+            Content(editor).SetCaret(Paragraphs(editor)[0], 1);
+            yield return t.Key(Keys.M, Keys.LeftControl);
+            t.Check(FormulaBox() != null, "Ctrl+M opens the new formula's source");
+            yield return t.Type("x^2");
+            yield return t.Key(Keys.Enter);
+            yield return 2;
+            t.Check(FormulaBox() == null && MathSources(editor) == "x^2" && Paragraphs(editor)[0].Length == 3,
+                $"Enter commits the formula into the note ({MathSources(editor)})");
+
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(MathSources(editor) == "" && Paragraphs(editor)[0].text == "ab", "one undo takes the inserted formula out");
+            yield return t.Key(Keys.Y, Keys.LeftControl);
+            t.Check(MathSources(editor) == "x^2", "redo puts it back");
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("TextInput.MathInsertCancel", "Test")]
+        private static IEnumerator<int> MathInsertCancel(TestContext t)
+        {
+            DocumentEditorControl editor = ShowParagraphs(t, "ab");
+            yield return 2;
+
+            Content(editor).SetCaret(Paragraphs(editor)[0], 1);
+            yield return t.Key(Keys.M, Keys.LeftControl, Keys.LeftShift);
+            yield return t.Type("y");
+            t.Check(Paragraphs(editor)[0].spans.Any(s => s.IsMath && s.mathDisplay), "Ctrl+Shift+M places a display formula");
+            yield return t.Key(Keys.Escape);
+            t.Check(FormulaBox() == null && MathSources(editor) == "" && Paragraphs(editor)[0].text == "ab",
+                "Esc on a new formula leaves nothing behind");
+
+            yield return t.Key(Keys.M, Keys.LeftControl);
+            yield return t.Key(Keys.Enter);
+            t.Check(FormulaBox() == null && Paragraphs(editor)[0].text == "ab", "an empty formula committed goes away");
+
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(Paragraphs(editor)[0].text == "ab", "neither left an undo step");
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("TextInput.MathEditUndo", "Test")]
+        private static IEnumerator<int> MathEditUndo(TestContext t)
+        {
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                new XElement("Block", RunX("a "), MathRunX("x^2"), RunX(" b")))));
+            DocumentControl content = Content(editor);
+            yield return 2;
+
+            content.SetCaret(Paragraphs(editor)[0], 2);
+            content.SetCaret(Paragraphs(editor)[0], 3, true);
+            yield return t.Key(Keys.Enter);
+            t.Check(FormulaBox()?.text == "x^2", "Enter on a selected formula opens its source");
+            yield return t.Type("y");
+            yield return t.Key(Keys.Enter);
+            t.Check(FormulaBox() == null && MathSources(editor) == "y" && Paragraphs(editor)[0].Length == 5,
+                $"the edit commits in place ({MathSources(editor)})");
+
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(MathSources(editor) == "x^2", "undo restores the old source");
+            t.Check(editor.SelectedRange(out DocumentAddress from, out DocumentAddress to) && from.offset == 2 && to.offset == 3,
+                "and leaves the formula selected");
+            yield return t.Key(Keys.Y, Keys.LeftControl);
+            t.Check(MathSources(editor) == "y", "redo reapplies the edit");
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("TextInput.MathLivePreview", "Test")]
+        private static IEnumerator<int> MathLivePreview(TestContext t)
+        {
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                new XElement("Block", RunX("a "), MathRunX("x"), RunX(" b")))));
+            DocumentControl content = Content(editor);
+            yield return 2;
+
+            content.SetCaret(Paragraphs(editor)[0], 2);
+            content.SetCaret(Paragraphs(editor)[0], 3, true);
+            yield return t.Key(Keys.Enter);
+            yield return t.Key(Keys.End);
+            yield return t.Type("^2");
+            t.Check(MathSources(editor) == "x^2" && FormulaBox()?.text == "x^2", "each keystroke reaches the note");
+            yield return t.Key(Keys.Backspace);
+            t.Check(MathSources(editor) == "x^", "so does a deletion");
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(MathSources(editor) == "x^2" && FormulaBox()?.text == "x^2", "and the field's own undo");
+            yield return t.Key(Keys.Escape);
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("TextInput.MathEscReverts", "Test")]
+        private static IEnumerator<int> MathEscReverts(TestContext t)
+        {
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                new XElement("Block", RunX("a "), MathRunX("x^2"), RunX(" b")))));
+            DocumentControl content = Content(editor);
+            yield return 2;
+
+            content.SetCaret(Paragraphs(editor)[0], 2);
+            content.SetCaret(Paragraphs(editor)[0], 3, true);
+            yield return t.Key(Keys.Enter);
+            yield return t.Type("zz");
+            yield return t.Key(Keys.Escape);
+            t.Check(FormulaBox() == null && MathSources(editor) == "x^2", "Esc puts the old source back");
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(MathSources(editor) == "x^2", "and records nothing");
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("TextInput.MathClickSelects", "Test")]
+        private static IEnumerator<int> MathClickSelects(TestContext t)
+        {
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                Block("text"),
+                new XElement("Block", MathRunX(@"\sum_{i=1}^{n} i", true)))));
+            yield return 2;
+
+            yield return t.Click(Paragraphs(editor)[1]);
+            t.Check(editor.SelectedRange(out DocumentAddress from, out DocumentAddress to)
+                && from.block == 1 && from.offset == 0 && to.block == 1 && to.offset == 1,
+                "a click on a formula selects it");
+            t.Check(FormulaBox() == null, "one click does not open it");
+        }
+
+        [A_XSDActionDependency("TextInput.MathDoubleClickOpens", "Test")]
+        private static IEnumerator<int> MathDoubleClickOpens(TestContext t)
+        {
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                Block("text"),
+                new XElement("Block", MathRunX(@"\sum_{i=1}^{n} i", true)))));
+            yield return 30;
+
+            yield return t.Click(Paragraphs(editor)[1]);
+            yield return t.Click(Paragraphs(editor)[1]);
+            t.Check(FormulaBox()?.text == @"\sum_{i=1}^{n} i", "a double click opens the formula's source");
+            yield return t.Key(Keys.Escape);
+        }
         #endregion
+
+        // The open formula popup's field, or null.
+        private static TextBoxControl? FormulaBox() =>
+            UIEngine.activeControl is TextBoxControl { isEditing: true } box ? box : null;
+
+        // Every formula's source in the note, joined by '|'.
+        private static string MathSources(DocumentEditorControl editor) =>
+            string.Join("|", Paragraphs(editor).SelectMany(p => p.spans).Where(s => s.IsMath && s.count > 0).Select(s => s.mathSource));
 
         private static XElement RunX(string text, params (string name, string value)[] attributes)
         {

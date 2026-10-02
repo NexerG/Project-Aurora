@@ -4,6 +4,10 @@
 	<ContextButton Text="Copy" Action="Text.Copy"/>
 	<ContextButton Text="Paste" Action="Text.Paste"/>
 	<ContextLine/>
+	<ContextButton Text="Insert formula" Action="Math.Insert"/>
+	<ContextButton Text="Insert display formula" Action="Math.InsertDisplay"/>
+	<ContextButton Text="Edit formula" Action="Math.Edit"/>
+	<ContextLine/>
 	<ContextSubmenu Text="List marker">
 		<ContextButton Text="Filled circle" Action="List.Disc"/>
 		<ContextButton Text="Empty circle" Action="List.Circle"/>
