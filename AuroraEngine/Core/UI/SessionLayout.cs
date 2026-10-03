@@ -288,7 +288,7 @@ namespace ArctisAurora.Core.UI
                 TabItemControl tab = tabFactory(path);
                 if (tab == null) continue;
 
-                TabViewControl.EditorOf(tab)?.RestoreView(record.tabs[i]);
+                TabViewControl.FileEditorOf(tab)?.RestoreView(record.tabs[i]);
                 view.AddChild(tab);
                 if (i == record.active) active = tab;
             }
@@ -381,8 +381,8 @@ namespace ArctisAurora.Core.UI
 
             foreach (TabItemControl item in view.Items)
             {
-                DocumentEditorControl editor = TabViewControl.EditorOf(item);
-                string path = editor?.session?.path;
+                IFileEditor editor = TabViewControl.FileEditorOf(item);
+                string path = editor?.path;
                 if (path == null) continue;
 
                 if (ReferenceEquals(item, view.activeItem)) record.active = record.tabs.Count;

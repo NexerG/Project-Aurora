@@ -314,7 +314,8 @@ namespace ArctisAurora.Core.UI
                 return;
             }
 
-            if (editor?.session != null && editor.session.isDirty) editor.Save();
+            IFileEditor file = FileEditorOf(item);
+            if (file != null && file.isDirty) file.Save();
 
             FinishClose(item);
             onClosed?.Invoke();
@@ -435,6 +436,9 @@ namespace ArctisAurora.Core.UI
         public static DocumentEditorControl EditorOf(TabItemControl item) =>
             item.children.Count > 0 ? item.children[0] as DocumentEditorControl : null;
 
+        public static IFileEditor FileEditorOf(TabItemControl item) =>
+            item.children.Count > 0 ? item.children[0] as IFileEditor : null;
+
         // The tab showing this note, in whichever window it is open. Identity is the file the editor
         // loaded, not the tab's caption — a tab seeded from a UI document carries no name to match on.
         public static TabItemControl FindOpenDocument(string path, out TabViewControl owner)
@@ -462,7 +466,7 @@ namespace ArctisAurora.Core.UI
                 foreach (TabViewControl view in TabViews(window.ui.uiRoot))
                     foreach (TabItemControl item in view.Items)
                     {
-                        string open = EditorOf(item)?.session?.path;
+                        string open = FileEditorOf(item)?.path;
                         if (open != null && string.Equals(open, target, StringComparison.OrdinalIgnoreCase))
                             yield return (item, view);
                     }

@@ -160,6 +160,76 @@
 		<Repeat />
 	</Keybind>
 
+	<!-- sheets: each action does nothing unless a sheet holds the active control -->
+	<Keybind Trigger="AnySymbol" Action="Sheet.Write">
+		<Continuous />
+	</Keybind>
+
+	<Keybind Trigger="Left" Action="Sheet.Left">
+		<Repeat />
+	</Keybind>
+
+	<Keybind Trigger="Right" Action="Sheet.Right">
+		<Repeat />
+	</Keybind>
+
+	<Keybind Trigger="Up" Action="Sheet.Up">
+		<Repeat />
+	</Keybind>
+
+	<Keybind Trigger="Down" Action="Sheet.Down">
+		<Repeat />
+	</Keybind>
+
+	<Keybind Trigger="Enter" Action="Sheet.Enter">
+		<Repeat />
+	</Keybind>
+
+	<Keybind Trigger="NumpadEnter" Action="Sheet.Enter">
+		<Repeat />
+	</Keybind>
+
+	<Keybind Trigger="Tab" Action="Sheet.TabBack">
+		<Modifier Key="LeftShift" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Tab" Action="Sheet.Tab">
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="F2" Action="Sheet.Edit">
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Delete" Action="Sheet.Clear">
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Backspace" Action="Sheet.Clear">
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Z" Action="Sheet.Undo">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Y" Action="Sheet.Redo">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="S" Action="Sheet.Save">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="A" Action="Sheet.SelectAll">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
 	<!-- the two-modifier bind is declared first: IsShadowed only suppresses the looser bind once the
 	     stricter one has already fired this pass -->
 	<Keybind Trigger="Backslash" Action="View.SplitDown">
