@@ -271,6 +271,28 @@ Why: [[ui-palettes]].
   `DocumentFragment`, and the records `TextEdit`, `SplitEdit`, `DeleteRangeEdit`,
   `StyleRangeEdit`, `BlockStateEdit`, `PictureEdit`. Undo currency is snapshots and fragments, never control references — undo rebuilds
   blocks. Why: [[ui-engine-stack]] § landing 6c.
+- **IFileEditor** interface — what a tab holds, to tab close, `TabViewControl.FileEditorOf`/`FindOpenDocuments`,
+  session capture/restore and vault rename: `path`, `isDirty` (explicit — `Entity` has one), `Save`, `Repath`,
+  `ViewState`, `RestoreView`. Implemented by `DocumentEditorControl` and `SheetEditorControl`. [[sheets]]
+
+## Sheets
+
+- **SheetEditorControl** (no XML) · ScrollableControl, `IClipboardTarget`, `IFileEditor` — one open sheet; `Surface`
+  ground, scrolls Both. `LoadPath`, `Load`, `document`, `path`, `unsaved`, `undo`. Regions `file` (`Save`, `Repath`,
+  `CellsChanged`, `Undo`, `Redo`), `selection` (`activeRow/Column`, `anchorRow/Column`, `Select`, `Move`, `Enter`, `Tab`,
+  `SelectAll`, `RequestScrollToActive`), `editing` (`editing`, `editRow/Column`, `BeginEdit(keep)`, `TypeOver`, private
+  `FinishEdit`/`CancelEdit`, `Clear`, private `Write` — the one place a `SheetCellEdit` is built), `clipboard` (TSV),
+  `view` (`ViewState`/`RestoreView` in `SessionTab`'s caret/anchor/`scrollX`/`topDelta`; `ArrangeCore` applies a pending
+  view or scrolls the active cell clear of the headers). [[sheets]]
+- **SheetControl** (no XML) · ContainerControl — the grid canvas for one `SheetPage`. Measures to the used extent plus
+  spare; `ArrangeCore` reads the scroller's inner rect and lays out the visible window only: `ArrangeGrid` (pooled lines
+  and `LabelControl`s in a private `Parts` container), `ArrangeSelection` (wash, 4 outline bars, the `field`
+  `TextBoxControl` over the edited cell), `ArrangeHeaders` (pinned to the viewport). `CellRect`, `CellAt`,
+  `headerWidth`/`headerHeight`, `CellsChanged`. Pointer: press selects (Shift extends) and starts a drag, drag extends,
+  double tap edits. [[sheets]]
+- **SheetDocument.cs** — `SheetDocument` (`pages`, `extension`, `IsSheet`, `Blank`, addressing statics), `SheetPage`
+  (bands, `Shown`, `Used`), `SheetLayer` (`Get`/`Set`), `SheetCell`. **SheetXml** reads/writes `.sheet.xml`, keeping
+  unknown elements. **SheetEdits.cs** — `SheetCellEdit`. **SheetActions** — `Sheet.*` keybind actions. [[sheets]]
 
 ## Layout containers
 

@@ -13,10 +13,13 @@ namespace ArctisAurora.Core.UI
 {
     // One open note: the scroll viewport, the document under it, and the session behind that.
     [A_XSDType("DocumentEditor", "UI")]
-    public class DocumentEditorControl : ScrollableControl, IContext, IClipboardTarget
+    public class DocumentEditorControl : ScrollableControl, IContext, IClipboardTarget, IFileEditor
     {
         public RichTextDocument activeDocument { get; private set; } = null!;
         public DocumentEditSession session { get; private set; }
+
+        public string? path => session?.path;
+        bool IFileEditor.isDirty => session?.isDirty == true;
 
         [A_XSDElementProperty("CaretColorHex", "UI", "Color of the insertion caret.")]
         public string? caretColorHex
@@ -126,6 +129,12 @@ namespace ArctisAurora.Core.UI
         {
             session?.Save();
             properties?.Refresh();
+        }
+
+        public void Repath(string newPath, string name)
+        {
+            session.Repath(newPath);
+            session.document.name = name;
         }
 
         // Naming an unnamed note is a rename — the host follows the name onto the file, onto every

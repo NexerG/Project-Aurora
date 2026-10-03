@@ -160,6 +160,7 @@ Standing constraints (ECS storage, Vulkan internals, physics, XSD-not-JSON) are 
 |---|---|---|
 | [[vault-browser-and-shell]] | the vault is a settings path; the browser finds the editor by walking the tree | `ThoriumSettings`, `VaultBrowserControl`, `FileObject` |
 | [[vault-list-and-switching]] | the vault list is a settings group; the screen switches by writing the setting | `VaultsWindow`, `MenuScreen`, `FolderPicker` |
+| [[sheets]] | **PARTIAL** (S1 of `sheets-plan`) — a sheet is a `*.sheet.xml` of pages of layers, sparse A1 cells, unknown elements kept; only visible cells get controls, pooled and rebound in `ArrangeCore`; edits land in the top layer, one undo record per commit/paste/clear; TSV clipboard; `Sheet.*` keys are second binds that no-op without a sheet; tabs reach any editor through `IFileEditor` (`isDirty` explicit — `Entity` has one) | `SheetDocument`, `SheetPage`, `SheetLayer`, `SheetXml`, `SheetControl`, `SheetEditorControl`, `SheetCellEdit`, `SheetActions`, `IFileEditor`, `TabViewControl.FileEditorOf`, `VaultBrowserControl.BuildSheetTab` |
 
 ## Keeping this current
 

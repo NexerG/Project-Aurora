@@ -35,6 +35,10 @@ grep -rn "class <Name>" --include=*.cs AuroraEngine/ | grep -v bin | grep -v obj
 git grep -n 'A_XSDType("<Name>"' -- '*.cs'
 ```
 
+**Nested and private classes count too (2026-10-02).** `SheetControl`'s private nested `Layer : ContainerControl`
+collided with `CustomEntities.Layer : Entity` and threw at bootstrap before any test ran. `t.Name` of a nested type is
+its own short name, so the grep above applies to every `Entity` subclass, however deeply nested (renamed `Parts`).
+
 **Rejected:** keying `GenerateID` on `FullName`. It changes the serialized id of every type at once, so every
 saved note, scene and session file on disk stops reading.
 

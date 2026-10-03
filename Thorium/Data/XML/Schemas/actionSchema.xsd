@@ -11,6 +11,12 @@
       <xs:simpleType>
         <xs:restriction base="xs:string">
           <xs:enumeration value="Palette.SetCrossfades" />
+          <xs:enumeration value="Sheet.XmlRoundTrip" />
+          <xs:enumeration value="Sheet.TypeEnterUndo" />
+          <xs:enumeration value="Sheet.PasteBlock" />
+          <xs:enumeration value="Sheet.ScrollKeepsControls" />
+          <xs:enumeration value="Sheet.TabLifecycle" />
+          <xs:enumeration value="Sheet.GridDraws" />
           <xs:enumeration value="TextInput.TypeWritesText" />
           <xs:enumeration value="TextInput.WordMoves" />
           <xs:enumeration value="TextInput.UndoReselects" />
@@ -181,6 +187,20 @@
         <xs:restriction base="xs:string">
           <xs:enumeration value="ExitApplication" />
           <xs:enumeration value="Console.Toggle" />
+          <xs:enumeration value="Sheet.Up" />
+          <xs:enumeration value="Sheet.Down" />
+          <xs:enumeration value="Sheet.Left" />
+          <xs:enumeration value="Sheet.Right" />
+          <xs:enumeration value="Sheet.Enter" />
+          <xs:enumeration value="Sheet.Tab" />
+          <xs:enumeration value="Sheet.TabBack" />
+          <xs:enumeration value="Sheet.SelectAll" />
+          <xs:enumeration value="Sheet.Write" />
+          <xs:enumeration value="Sheet.Edit" />
+          <xs:enumeration value="Sheet.Clear" />
+          <xs:enumeration value="Sheet.Undo" />
+          <xs:enumeration value="Sheet.Redo" />
+          <xs:enumeration value="Sheet.Save" />
           <xs:enumeration value="Text.Write" />
           <xs:enumeration value="Text.Backspace" />
           <xs:enumeration value="Text.Delete" />
@@ -258,6 +278,8 @@
           <xs:enumeration value="Vaults.Add" />
           <xs:enumeration value="Notes.New" />
           <xs:enumeration value="Notes.NewHere" />
+          <xs:enumeration value="Sheets.New" />
+          <xs:enumeration value="Sheets.NewHere" />
           <xs:enumeration value="Notes.Rename" />
           <xs:enumeration value="Notes.Duplicate" />
           <xs:enumeration value="Notes.Delete" />

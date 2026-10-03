@@ -114,6 +114,16 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] **Thorium palette parts NOT GUI-verified** — rename fields, confirm dialog, torn-off tab window, split pane, block split at Enter, "Default" swatch clearing, `#2C2B26` migration → `ui-palettes` § Known gaps
 		- [ ] **10 of Thorium's 11 canvas palettes NOT GUI-verified on screen** — dropdown and live switch verified on thorium-void 2026-09-18; the rest unchecked → `ui-palettes` § Thorium's palette set
 		- [ ] **palette resolution on a runtime `Role`/`Palette` change, a reparented control and the drag ghost is NOT GUI-verified** → `ui-palettes` § Known gaps
+- [ ] **Thorium productivity suite (user, 2026-10-02)** — Thorium houses notes, sheets and a todo board
+	- [ ] **sheets** → `ClaudeMemory/Context/sheets-plan.md`
+		- [ ] **a dirty sheet is not saved on quit or window settle** — `NoteActions.SaveEditedIn` matches only `DocumentEditorControl`; tab close does save → `sheets` § Known gaps
+		- [ ] S2 — formulas: A1 references, arithmetic, `SUM`, recalc through a dependency graph
+		- [ ] S3 — formatting, column/row resize
+		- [ ] S4 — page (bottom tabs) and layer (stacked over one grid) UI
+		- [ ] S5 — CSV import/export
+	- [ ] **workspace tabs** — Blender-style tabs across the top switching Notes / Sheets / Board
+	- [ ] **todo board** — Trello-like tickets in columns, its own file kind beside notes and sheets
+	- [ ] **simplified mode** — a setting that swaps to the familiar layouts (menu bar, one document at a time) for less technical users; a layout choice, not a separate app
 - [ ] fix resolution stuff associated with DPI and stuff. use `glfwGetMonitorContentScale` *(non-essential)*
 
 ---

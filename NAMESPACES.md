@@ -120,6 +120,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Gradients.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/GridListControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/HintControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/IconControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/IFileEditor.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ImageControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/KeyCaptureControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/LabelControl.cs
@@ -141,6 +142,12 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ScrollableControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ScrollThumbControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SessionLayout.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SettingsWindow.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetActions.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetDocument.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetEditorControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetEdits.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetXml.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SliderControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SplitterControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SplitViewControl.cs
@@ -241,4 +248,5 @@ Thorium.Editor -> Thorium/Editor/Decorations.cs
 Thorium.Editor -> Thorium/Editor/VaultsWindow.cs
 Thorium.Editor.CustomControls -> Thorium/Editor/CustomControls/VaultBrowserControl.cs
 Thorium.Tests -> Thorium/Tests/PaletteTests.cs
+Thorium.Tests -> Thorium/Tests/SheetTests.cs
 Thorium.Tests -> Thorium/Tests/TextInputTests.cs

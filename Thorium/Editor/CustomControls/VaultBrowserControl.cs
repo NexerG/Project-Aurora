@@ -63,7 +63,7 @@ namespace Thorium.Editor.CustomControls
         protected override string DisplayName(FileObject file) =>
             file.type == FileObject.FileType.Directory
                 ? file.name
-                : Path.GetFileNameWithoutExtension(file.path);
+                : BaseName(file.path);
 
         protected override void Activate(FileObject file) => Open(file.path);
 
@@ -87,6 +87,22 @@ namespace Thorium.Editor.CustomControls
             if (row == null) { New(); return; }
 
             Browser()?.NewNote(row.file.type == FileObject.FileType.Directory ? row.file.path : row.file.parent.path);
+        }
+
+        [A_XSDActionDependency("Sheets.New", "UI", "Creates a sheet at the vault root and opens it")]
+        public static void NewSheet()
+        {
+            VaultBrowserControl browser = Browser();
+            browser?.NewSheet(browser.RootPath);
+        }
+
+        [A_XSDActionDependency("Sheets.NewHere", "UI", "Creates a sheet beside the entry the menu was opened on")]
+        public static void NewSheetHere()
+        {
+            FileRowControl row = MenuRow();
+            if (row == null) { NewSheet(); return; }
+
+            Browser()?.NewSheet(row.file.type == FileObject.FileType.Directory ? row.file.path : row.file.parent.path);
         }
 
         [A_XSDActionDependency("Notes.Rename", "UI", "Turns the name of the note the menu was opened on into a field")]
@@ -143,12 +159,25 @@ namespace Thorium.Editor.CustomControls
             Open(path);
         }
 
+        private void NewSheet(string folder) =>
+            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreateSheet(folder, name), null, null);
+
+        private void CreateSheet(string folder, string name)
+        {
+            string path = FreePath(folder, name, SheetDocument.extension);
+            SheetDocument.Blank(BaseName(path)).Save(path);
+
+            Expand(folder);
+            Rebuild();
+            Open(path);
+        }
+
         private void DuplicateNote(FileObject file)
         {
-            string path = FreePath(file.parent.path, Path.GetFileNameWithoutExtension(file.path) + " copy", Path.GetExtension(file.path));
+            string path = FreePath(file.parent.path, BaseName(file.path) + " copy", Extension(file.path));
 
             File.Copy(file.path, path);
-            WriteName(path, Path.GetFileNameWithoutExtension(path));
+            WriteName(path, BaseName(path));
 
             Rebuild();
             Open(path);
@@ -174,17 +203,15 @@ namespace Thorium.Editor.CustomControls
         private static void RenameNote(string path, string newName)
         {
             string name = newName?.Trim();
-            if (string.IsNullOrEmpty(name) || name == Path.GetFileNameWithoutExtension(path)) return;
+            if (string.IsNullOrEmpty(name) || name == BaseName(path)) return;
 
-            string target = FreePath(Path.GetDirectoryName(path)!, name, Path.GetExtension(path));
+            string target = FreePath(Path.GetDirectoryName(path)!, name, Extension(path));
             File.Move(path, target);
             WriteName(target, name);
 
             foreach ((TabItemControl item, TabViewControl view) in TabViewControl.FindOpenDocuments(path))
             {
-                DocumentEditorControl editor = TabViewControl.EditorOf(item);
-                editor.session.Repath(target);
-                editor.session.document.name = name;
+                TabViewControl.FileEditorOf(item).Repath(target, name);
                 item.name = target;
                 view.Retitle(item, name);
             }
@@ -295,6 +322,8 @@ namespace Thorium.Editor.CustomControls
         // built, so the caption can come from the note's own name.
         internal static TabItemControl BuildTab(string notePath)
         {
+            if (SheetDocument.IsSheet(notePath)) return BuildSheetTab(notePath);
+
             DocumentEditorControl editor = new DocumentEditorControl { contextMenu = "note" };
             editor.LoadPath(notePath);
             editor.onNamed = name => RenameNote(editor.session.path, name);
@@ -308,6 +337,27 @@ namespace Thorium.Editor.CustomControls
             tab.AddChild(editor);
             return tab;
         }
+
+        private static TabItemControl BuildSheetTab(string sheetPath)
+        {
+            SheetEditorControl editor = new SheetEditorControl();
+            editor.LoadPath(sheetPath);
+
+            TabItemControl tab = new TabItemControl
+            {
+                name = sheetPath,
+                header = editor.document.name ?? BaseName(sheetPath),
+                onRename = name => RenameNote(editor.path, name)
+            };
+            tab.AddChild(editor);
+            return tab;
+        }
+
+        // A file's name without its extension; a sheet's ".sheet.xml" counts as one.
+        private static string BaseName(string path) => Path.GetFileName(path)[..^Extension(path).Length];
+
+        private static string Extension(string path) =>
+            SheetDocument.IsSheet(path) ? SheetDocument.extension : Path.GetExtension(path);
 
         // "Name", then "Name 2", "Name 3" — a name already taken is never written over.
         private static string FreePath(string folder, string baseName, string extension)
