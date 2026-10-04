@@ -5,8 +5,10 @@ namespace ArctisAurora.Core.UI
     {
         public static readonly SheetCalc calc = new SheetCalc();
 
-        // a reference's file part to a full path; set by the host
+        // vault lookups; set by the host
         public static Func<string, string?>? findSheet;
+        public static Func<IEnumerable<string>>? vaultSheets;
+        public static Func<IEnumerable<string>>? vaultNotes;
 
         // the document whose cells were written, or null when only values may have moved
         public static event Action<SheetDocument?>? changed;
@@ -50,6 +52,60 @@ namespace ArctisAurora.Core.UI
             changed?.Invoke(document);
         }
 
+        // Pages or layers of a document were added, removed or shown.
+        public static void Restructured(SheetDocument document)
+        {
+            List<SheetPage> gone = new List<SheetPage>();
+            foreach ((SheetPage page, SheetDocument owner) in owners)
+                if (ReferenceEquals(owner, document) && !document.pages.Contains(page)) gone.Add(page);
+            foreach (SheetPage page in gone)
+                owners.Remove(page);
+            foreach (SheetPage page in document.pages)
+                owners[page] = document;
+
+            calc.RecalcAll();
+            changed?.Invoke(document);
+        }
+
+        // Rewrites every reference to a page of this document, loaded, on disk or in notes; the page is already renamed.
+        public static void PageRenamed(SheetDocument document, string oldName, string newName)
+        {
+            string? home = null;
+            foreach ((string path, SheetDocument loaded) in documents)
+                if (ReferenceEquals(loaded, document)) home = path;
+
+            Func<string?, string, string?> RenameIn(SheetDocument owner) => (file, page) =>
+                page.Equals(oldName, StringComparison.OrdinalIgnoreCase)
+                && (file == null ? ReferenceEquals(owner, document) : home != null && Names(file, home))
+                    ? newName : null;
+
+            RewritePages(document, RenameIn(document));
+            foreach ((string path, SheetDocument other) in documents)
+            {
+                if (ReferenceEquals(other, document) || other.isCsv || !RewritePages(other, RenameIn(other))) continue;
+                if (TabViewControl.FindOpenDocument(path, out _) == null) other.Save(path);
+                changed?.Invoke(other);
+            }
+
+            if (home != null)
+            {
+                foreach (string file in vaultSheets?.Invoke() ?? Enumerable.Empty<string>())
+                {
+                    string path = Path.GetFullPath(file);
+                    if (documents.ContainsKey(path) || !File.Exists(path)) continue;
+                    SheetDocument other = SheetDocument.Load(path);
+                    if (RewritePages(other, RenameIn(other))) other.Save(path);
+                }
+                SheetLinks.PageRenamed(home, oldName, newName, vaultNotes?.Invoke() ?? Enumerable.Empty<string>());
+            }
+
+            calc.RecalcAll();
+            changed?.Invoke(document);
+        }
+
+        private static bool RewritePages(SheetDocument document, Func<string?, string, string?> rename) =>
+            RewriteFormulas(document, raw => SheetFormula.RenamePage(raw, rename));
+
         #region ---- vault ----
         // A sheet now exists that references may have been waiting for.
         public static void Created()
@@ -73,24 +129,31 @@ namespace ArctisAurora.Core.UI
             calc.Remove(document);
         }
 
-        // Rekeys the file and rewrites every reference to it, loaded or on disk.
+        // Rekeys the file and rewrites every reference to it, loaded or on disk; a CSV renamed to a CSV renames its page too.
         public static void Renamed(string oldPath, string newPath, IEnumerable<string> vaultSheets)
         {
             oldPath = Path.GetFullPath(oldPath);
             newPath = Path.GetFullPath(newPath);
             string oldName = BaseName(oldPath);
             string newName = BaseName(newPath);
-            string oldStem = Stem(oldPath);
+            bool pageFollows = SheetCsv.IsCsv(oldPath) && SheetCsv.IsCsv(newPath);
 
             if (documents.Remove(oldPath, out SheetDocument? moved))
             {
                 moved.name = newName;
+                moved.isCsv = SheetCsv.IsCsv(newPath);
+                if (pageFollows) moved.pages[0].name = newName;
                 documents[newPath] = moved;
             }
 
+            string NewPage(string page) => pageFollows && page.Equals(oldName, StringComparison.OrdinalIgnoreCase) ? newName : page;
+            Func<string, string> RenameIn(SheetDocument owner) => raw => SheetFormula.RenamePrefix(raw, (file, page) =>
+                file != null ? (Names(file, oldPath) ? (Renamed(file, oldPath, newPath), NewPage(page)) : null)
+                : ReferenceEquals(owner, moved) ? (null, NewPage(page)) : null);
+
             foreach ((string path, SheetDocument document) in documents)
             {
-                if (!Rewrite(document, oldStem, oldName, newName)) continue;
+                if (document.isCsv && !ReferenceEquals(document, moved) || !RewriteFormulas(document, RenameIn(document))) continue;
                 if (TabViewControl.FindOpenDocument(path, out _) == null) document.Save(path);
                 changed?.Invoke(document);
             }
@@ -100,7 +163,7 @@ namespace ArctisAurora.Core.UI
                 string path = Path.GetFullPath(file);
                 if (documents.ContainsKey(path) || !File.Exists(path)) continue;
                 SheetDocument document = SheetDocument.Load(path);
-                if (Rewrite(document, oldStem, oldName, newName)) document.Save(path);
+                if (RewriteFormulas(document, RenameIn(document))) document.Save(path);
             }
 
             calc.RecalcAll();
@@ -115,7 +178,7 @@ namespace ArctisAurora.Core.UI
             calc.Clear();
         }
 
-        private static bool Rewrite(SheetDocument document, string oldStem, string oldName, string newName)
+        private static bool RewriteFormulas(SheetDocument document, Func<string, string> rewrite)
         {
             bool any = false;
             foreach (SheetPage page in document.pages)
@@ -123,7 +186,7 @@ namespace ArctisAurora.Core.UI
                     foreach (SheetCell cell in layer.cells.Values)
                     {
                         if (!SheetFormula.IsFormula(cell.raw)) continue;
-                        string rewritten = SheetFormula.RenameFile(cell.raw, file => Names(file, oldStem) ? Renamed(file, oldName, newName) : null);
+                        string rewritten = rewrite(cell.raw);
                         if (rewritten == cell.raw) continue;
                         cell.raw = rewritten;
                         any = true;
@@ -132,26 +195,36 @@ namespace ArctisAurora.Core.UI
         }
 
         // A file part names a path when it is the file's name or the end of its path, as vault links resolve.
-        internal static bool Names(string file, string stem)
+        internal static bool Names(string file, string path)
         {
             string name = file.Trim().Replace('\\', '/');
+            string target = path.Replace('\\', '/');
+            if (SheetCsv.IsCsv(target) || SheetCsv.IsCsv(name))
+                return SheetCsv.IsCsv(target) && target.EndsWith("/" + name, StringComparison.OrdinalIgnoreCase);
+
             if (name.EndsWith(SheetDocument.extension, StringComparison.OrdinalIgnoreCase))
                 name = name[..^SheetDocument.extension.Length];
-            return stem.EndsWith("/" + name, StringComparison.OrdinalIgnoreCase);
+            return target[..^SheetDocument.extension.Length].EndsWith("/" + name, StringComparison.OrdinalIgnoreCase);
         }
 
-        internal static string Renamed(string file, string oldName, string newName)
+        // The file part naming newPath where it named oldPath, keeping any folder it gave and whether it wrote an extension.
+        internal static string Renamed(string file, string oldPath, string newPath)
         {
             string trimmed = file.Trim();
-            int cut = trimmed.EndsWith(SheetDocument.extension, StringComparison.OrdinalIgnoreCase)
-                ? trimmed.Length - SheetDocument.extension.Length
-                : trimmed.Length;
-            return trimmed[..(cut - oldName.Length)] + newName + trimmed[cut..];
+            string extension = SheetCsv.IsCsv(trimmed) ? SheetCsv.extension
+                : trimmed.EndsWith(SheetDocument.extension, StringComparison.OrdinalIgnoreCase) ? SheetDocument.extension
+                : "";
+            string folder = trimmed[..(trimmed.Length - extension.Length - BaseName(oldPath).Length)];
+            string written = SheetCsv.IsCsv(newPath) ? SheetCsv.extension : extension.Length == 0 ? "" : SheetDocument.extension;
+            return folder + BaseName(newPath) + written;
         }
 
-        internal static string BaseName(string path) => Path.GetFileName(path)[..^SheetDocument.extension.Length];
+        // A reference's file part for a path: a sheet's name without ".sheet.xml", a CSV's with ".csv".
+        internal static string FileName(string path) =>
+            SheetCsv.IsCsv(path) ? Path.GetFileName(path) : BaseName(path);
 
-        internal static string Stem(string path) => path.Replace('\\', '/')[..^SheetDocument.extension.Length];
+        internal static string BaseName(string path) =>
+            Path.GetFileName(path)[..^(SheetCsv.IsCsv(path) ? SheetCsv.extension : SheetDocument.extension).Length];
 
         private static void RaiseAll() => changed?.Invoke(null);
         #endregion

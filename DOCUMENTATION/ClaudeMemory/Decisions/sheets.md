@@ -7,9 +7,10 @@
 `StyleSpan.sheetRef`, `Run.sheet`, `TextInputActions.PasteLink`, `SheetLinks.ExpandMath`/`RenameMath`/`HasMathLinks`,
 `TextRunControl.MathBoxFor`, `FormulaPopup.PasteLink`;
 `Thorium.Editor.CustomControls.VaultBrowserControl` (`BuildSheetTab`, `NewSheet`, `BaseName`, `Extension`, `FindSheet`),
-`Thorium.Editor.VaultsWindow.Enter`
+`Thorium.Editor.VaultsWindow.Enter`;
+S4/S5 (2026-10-04/05): `SheetPageStripControl`, `SheetLayersControl`, `SheetCsv`, `SheetPageEdit`, `SheetPageRenameEdit`, `SheetLayerEdit`, `SheetLayerShowEdit`, `SheetBook.PageRenamed`/`Restructured`, `SheetFormula.RenamePage`, `SheetLinks.PageRenamed`, `ContextMenus.Open` (`onClosed`), `FormulaPopup.Show`; Thorium `VaultBrowserControl` (`SheetFromCsv`, `Sheets.FromCsv`, `Sheets.ConvertCsv`), `VaultCsv.menu.xml`
 
-**Status:** PARTIAL — S1, S2a, S2b1, S2b2, S2b3 and S2c of [sheets-plan](../Context/sheets-plan.md) landed; S3 (formatting) is next.
+**Status:** PARTIAL — S1, S2a, S2b1, S2b2, S2b3, S2c, S3, S4a, S4b, S5 and S5b of [sheets-plan](../Context/sheets-plan.md) landed; S2d is open.
 
 ## What changed
 - A sheet is a `*.sheet.xml` in the vault: `<Sheet Name><Page Name><Column At Width/><Row At Height/><Layer Name Visible><Cell At="B3">text</Cell></Layer></Page></Sheet>`.
@@ -54,7 +55,7 @@
 - Reference syntax `[Budget]Expenses!B3`, `'[My budget]Sheet 1'!B3` (page required). `PageNamed(home, file, page)`
   resolves the file through `SheetBook.Resolve` → `findSheet`, which Thorium sets to `VaultBrowserControl.FindSheet`
   (first `*.sheet.xml` in the vault whose name or path ending matches, like `FindNote`). Missing → `#REF!`.
-- `SheetFormula.RenameFile(raw, rename)` rewrites `[file]page` prefixes found while parsing (spans collected by the
+- `SheetFormula.RenamePrefix(raw, rename)` (was `RenameFile` until S5b) rewrites `[file]page` prefixes found while parsing, the callback taking `(file, page)` (spans collected by the
   parser), via `Prefix(file, page)`, which quotes a name holding anything past letters, digits, `_`, `.` (and `/`
   in a file). `SheetBook.Renamed` rewrites loaded documents (saving those with no open tab) and every other
   vault sheet on disk that holds a reference; a file without one is not rewritten.
@@ -92,7 +93,7 @@
   No keybind change: Ctrl+Shift+V stays on `Sheet.PasteLink`.
 - `MarkdownFormat`: new `embed` regex; `ParseInline` reads `![[X.sheet.xml#…]]` as a Sheet run; `Compose` writes it back;
   `Flatten` style key `sheet|ref`.
-- `SheetBook.Names`, `Renamed(file, oldName, newName)`, `BaseName`, `Stem` went private → internal. Thorium
+- `SheetBook.Names`, `Renamed` and `BaseName` went private → internal (S5b changed their signatures and removed `Stem`). Thorium
   `VaultBrowserControl.RenameNote` calls `SheetLinks.Renamed(path, target, VaultNotes())` after `SheetBook.Renamed`; new
   private `VaultNotes()` (vault `.md` + `.xml`, `*.sheet.xml` excluded).
 - Tests (`SheetTests`, `Sheet.tests.xml`): `Sheet.NoteFormats`, `Sheet.NoteLinks` (goldens `Sheet.NoteLinks.Links.png`,
@@ -293,8 +294,112 @@ Rejected / not done: making `Union` skip empty rects engine-wide (touches every 
 
 **`€` was added to the Latin charset** because currency drew a blank glyph. Chosen over an `EUR` suffix or `$` (user). Thorium's arial, arialbd, Electrolize and consola atlases were re-baked.
 
+### S4a — page tabs (2026-10-04)
+
+**What landed.**
+- `SheetEditorControl` base `ScrollableControl` → `StackPanelControl` (vertical, Stretch both axes): `public readonly ScrollableControl scroller` (nested private `Scroller` holds the `SheetControl`; the pending-view / scroll-active-cell-into-view `ArrangeCore` moved into it unchanged) above a private `strip` (`SheetPageStripControl`). Callers scroll through `editor.scroller`.
+- `pageIndex`, `page` (shown `SheetPage`), private `Build(int)` (fresh grid on one page, selection A1, scroll 0; moves the active control to the new grid if the old grid or its field held it). `BookChanged` skips a destroyed editor (`Entity.destroyed`) and falls back to a neighbour page if the shown one was removed. `ViewState`/`RestoreView` carry the page index in `SessionTab.topBlock`.
+- Region `pages`: `ShowPage(int)`, `AddPage()` ("Sheet N", first free N), `DeletePage(int)` (the last page stays), `RenamePage(int, string) → bool` (refuses empty, containing `!`, or another page's name ignoring case), `ExportPage(int) → string?`, private `FreePageName`, private `Record(label, IEditRecord)`.
+- `SheetPageStripControl : StackPanelControl` (no XML): Chrome strip 26 px; private `PageTab : ButtonControl` per page (an `EditableLabelControl` caption; press shows the page, double-tap renames, `contextMenu = "sheet-page"`), a permanent "+" button, a star filler, a "Layers" button. `Sync()` rebuilds tabs only when pages or names changed, else relights. Its static ctor registers the code-built menu `sheet-page` through `ContextMenus.Register`: Rename, Delete, Export as CSV.
+- `SheetEdits.cs`: `SheetPageEdit(document, index, page, added)` (add and delete), `SheetPageRenameEdit(document, page, before, after)`.
+- Page rename rewrites vault-wide: `SheetBook.PageRenamed(document, oldName, newName)` → private `RewritePages` (files) and `RewriteFormulas` (shared with the file rename); `SheetFormula.RenamePage(raw, Func<string? file, string page, string?>)` (shares private `Rewrite` with `RenameFile`; the parser now also collects page-only prefixes `Page!`, `'My page'!`, prefix tuple file is `string?`); `SheetLinks.PageRenamed(sheetPath, oldName, newName, notes)` (private `RewriteNotes` shared with `Renamed`). New hooks `SheetBook.vaultSheets`/`vaultNotes` (`Func<IEnumerable<string>>?`, set by Thorium beside `findSheet`; `VaultBrowserControl.VaultSheets`/`VaultNotes` private → internal). `SheetBook.Restructured(document)` re-keys `owners`, runs `calc.RecalcAll`, raises `changed(document)`.
+
+**The strip lives inside the editor, not drawn pinned inside `SheetControl` like the headers.**
+`TabViewControl.FileEditorOf` needs `children[0] is IFileEditor` and `SheetActions.Editor()` walks up; both are kept. A pinned strip would have sat under the horizontal scroll thumb and made tabs pooled parts. Cost: the editor is a StackPanel holding a scroller + strip, and callers scroll through `editor.scroller`.
+
+**A page rename rewrites every reference to the page, vault-wide, and undo re-runs the rewrite in reverse.** (user rule already set for file renames: "a rename inside Thorium rewrites references")
+Same-file `Page!`, other sheets' `[File]Page!` (loaded or on disk), note links `file#Page!…` and note math `\sheet{file#Page!…}`. It is one undo record, so undoing rewrites other files and notes again. Rejected: same-file only, or `#REF!` everywhere.
+
+**Page add, delete and rename are undo records.**
+An older `SheetCellEdit` holds its `SheetPage` (and `SheetLayer`) and would otherwise write into a detached object. References resolve by name, so undoing a delete brings them back without bookkeeping.
+
+**Structure changes recalc with `SheetCalc.RecalcAll`, not a targeted relink.**
+They happen at edit rate, not per frame.
+
+**Delete page with one left is a no-op, not a greyed menu row.**
+Menu rows have no disabled state (user accepted).
+
+**The page menu is code-built through `ContextMenus.Register`.**
+A press-opened code menu would be closed by the right-release `OpenOn` that follows.
+
+### S4b — layers panel (2026-10-04)
+
+**What landed.**
+- `SheetLayersControl : StackPanelControl` (no XML): `panelWidth`, `Sync()` (rebuilds rows on add/remove, else repaints). One row per layer, top first: a visibility toggle built from the `bullet-disc` / `bullet-circle` icons (filled / outline dot; no eye icon exists in the default set) and the name. The edited layer is lit and a click on a name picks it. "Add layer" (goes on top, becomes edited) and "Delete layer" (deletes the edited one; the last layer stays).
+- Opened by the strip's "Layers" button as `ContextMenuContent` above itself, its height measured first because menus do not flip upward.
+- `SheetEditorControl` region `layers`: `editLayer` (picked layer while on the page, else topmost), `EditLayer(SheetLayer)`, `ToggleLayer(SheetLayer)`, `AddLayer()`, `DeleteLayer()`, private `FreeLayerName`; private `pickedLayer` replaces the old `Layer => layers[^1]`. Edits land in the picked layer; the open cell field shows that layer's own text while the grid shows the topmost visible layer's.
+- `SheetEdits.cs`: `SheetLayerEdit(document, page, index, layer, added)`, `SheetLayerShowEdit(document, page, layer)` (undo = redo = flip; the `page` parameter is unused). Show/hide recalcs through `SheetBook.Restructured`.
+
+**The edited layer is per editor and not saved.**
+It defaults to the topmost layer; a newly added layer becomes edited.
+
+**Layer add, delete and show/hide are undo records**, for the same reason as pages (an older `SheetCellEdit` holds its `SheetLayer`).
+
+**Delete layer with one left is a no-op**, like delete page.
+
+### S5 — CSV in place (2026-10-05)
+
+**What landed.**
+- Static `SheetCsv`: `extension`, `IsCsv`, `Delimiter(text)` (the most used of `,` `;` tab in the first record outside quotes; comma on a tie or none), `Read(text, delimiter)` (RFC 4180, BOM stripped, a closing line break makes no empty record), `Write(rows, delimiter)` (quotes fields holding the delimiter, `"`, CR/LF or edge spaces; CRLF after every record), `Load(path)`, `Save(document, path)`, `Export(page, path)`.
+- `SheetDocument.csvDelimiter`, `csvBom`; `Load`/`Save` route by extension to `SheetCsv` or `SheetXml`. A CSV document is one page named after the file, one layer. `LoadPath` hides the strip for a CSV.
+- `SheetBook.Renamed(oldPath, newPath, vaultSheets)` re-keys a loaded CSV (S5 first had a separate `Moved`; S5b removed it).
+- Thorium `VaultBrowserControl`: `Accepts` adds `.csv`; `DisplayName` keeps the `.csv` suffix; `RowContextMenu` → `vault-csv` for a CSV; `BuildTab` routes a CSV to `BuildSheetTab`; `FindNote`/`FirstNote` skip CSVs; `DeleteFile` drops a CSV from `SheetBook`; `RenameNote` strips a typed `.csv` suffix and calls `SheetBook.Renamed`.
+- Actions `Sheets.FromCsv` ("Create a sheet from this") and `Sheets.ConvertCsv` ("Convert to sheet") over private `SheetFromCsv(file, replace)`. `Thorium/…/Menus/VaultCsv.menu.xml` (Create a sheet from this, Convert to sheet, Rename, Duplicate, Delete) registered as `vault-csv`.
+- `SheetEditorControl.PasteLink`: S5 pasted plainly from a CSV source and `CopiedReference` returned null for one; S5b removed those guards (see S5b).
+- Page tab right-click "Export as CSV" → `ExportPage`: `<Sheet> - <Page>.csv` beside the sheet.
+
+**A CSV opens in place instead of being imported into a new `.sheet.xml`.** (user: "recreating a file and then interpreting it — might as well interpret it on the go")
+Ctrl+S writes the CSV back where it is. Formats, column widths and extra layers are not saved for a CSV (a CSV can hold none of them); there is no page strip in a CSV tab.
+
+**Save writes the raw cell text and keeps the delimiter and BOM it read.**
+Formulas stay `=B2*2` (Excel also evaluates `=` fields in CSV) rather than values.
+
+**References into a CSV were deferred to S5b, and landed there.**
+Until then Paste link from a CSV pasted plainly (retracted by S5b).
+
+**Export writes values as shown, numbers unformatted (the S3 copy rule), UTF-8 with BOM, comma, CRLF.**
+Excel needs the BOM for UTF-8. Re-export overwrites the same file name.
+
+**Two menu actions on a CSV row.** (user)
+"Create a sheet from this" writes `<name>.sheet.xml` beside the CSV, keeps the CSV and opens the sheet. "Convert to sheet" does the same, then sends the CSV to the recycle bin and closes its tab; reversible, so no confirm prompt. Both use the loaded copy, so unsaved edits in an open CSV tab come along.
+
+### S5b — references into a CSV (2026-10-05)
+
+**What landed.**
+- Reference forms: sheet formula `[data.csv]data!A1`; note link `data.csv#data!A1` (`![[data.csv#data!A1]]` in `.md`, `<Run Sheet=…>` in `.xml`); note math `\sheet{data.csv#data!A1}`. The page is the CSV's file base name.
+- `SheetDocument.isCsv` (set by `SheetCsv.Load`). `SheetCalc.PageNamed` returns null for a file-part reference whose home page belongs to a CSV document, so a CSV reaches nothing outside itself (`#REF!`).
+- `SheetFormula.RenamePrefix(raw, Func<string? file, string page, (string? file, string page)?>)` is the old private `Rewrite`, now public; `RenamePage` wraps it; `RenameFile` removed (no callers left).
+- `SheetBook`: `Renamed(oldPath, newPath, vaultSheets)` handles CSV paths (the moved document gets `isCsv` from the new path; CSV→CSV renames its page; CSV documents are skipped as rewrite targets other than the moved one); `PageRenamed` skips CSV documents; `Names(file, path)` (was `(file, stem)`) handles CSV file parts; `Renamed(file, oldPath, newPath)` (was `(file, oldName, newName)`) keeps a folder prefix and whether an extension was written — a CSV target writes `.csv`, a sheet target writes `.sheet.xml` only if the old part had an extension; new `FileName(path)` (reference file part: sheet base name, CSV name with `.csv`); `BaseName` handles `.csv`; `Stem` and `Moved` removed.
+- `SheetLinks.IsLink` accepts `.csv` file parts; `Renamed` rewrites the page part too for CSV→CSV; `PageRenamed` uses `Names(file, path)`.
+- `SheetEditorControl.PasteLink`: file part via `SheetBook.FileName`; pastes plainly when the target document is a CSV and the copy came from another file; the S5 guards that blocked links out of a CSV (`PasteLink`, `CopiedReference`) are gone.
+- Thorium `VaultBrowserControl`: `FindSheet` resolves a `.csv` file part to the first vault CSV whose path ends with it; `RenameNote` calls `SheetBook.Renamed` and `SheetLinks.Renamed` for CSVs too; `SheetFromCsv(replace: true)` calls both before `DeleteFile`. `VaultSheets()` still lists only `*.sheet.xml`.
+- Test `Sheet.CsvLinks` (`Sheet.tests.xml`).
+
+**A CSV can be referenced but references nothing outside itself.** (user, 2026-10-05: "CSVs should not be able to reference anything from outside, but they can be referenced.")
+So other files' renames never rewrite a CSV (no re-serialising a CSV just to rewrite a dead reference), and Paste link into a CSV from another file pastes plain values.
+
+**The file part keeps `.csv`; a sheet's file part may drop `.sheet.xml`.** Excel writes `[data.csv]data!A1`.
+Rejected: dropping `.csv`, which would collide with a sheet of the same base name (`data.csv` and `data` resolve separately).
+
+**A CSV→CSV rename rewrites the page part as well as the file part.**
+`[data.csv]data!` → `[cost.csv]cost!`, and the CSV's own `data!B2` → `cost!B2`, because a CSV cannot store its page name and re-derives it from the file name on load. Rejected: a fixed page name like `Sheet1` (references would read `[data.csv]Sheet1!A1`, unlike Excel); rewriting the file part only, which breaks on the next load when the page is re-derived from the new file name.
+
+**"Convert to sheet" retargets references; "Create a sheet from this" leaves them on the CSV.**
+Convert replaces the file, so every reference moves to the new sheet before the CSV goes to the recycle bin (`[data.csv]data!` → `[data.sheet.xml]data!`, note `data.csv#…` → `data.sheet.xml#…`; page unchanged), and the converted document now reaches other files. Create-from keeps the CSV, so its references stay.
+
+### Formula popup closed from outside (2026-10-04)
+
+**`ContextMenus.Open` takes `onClosed`, run once when the top-level menu closes, whoever closes it; `FormulaPopup.Show` passes `Cancel`.**
+`FormulaPopup.open` went stale when the menu holding the popup was closed by anything but the popup's own Finish/Cancel (focus loss through `ContextMenus.Tick`, another `ContextMenus.Open`). Destroyed controls are dropped by `UIEngine.Forget` without `onBlur`, so Ctrl+Shift+V then pasted into a destroyed box: `DataPool.GetRef` read row -1 → `IndexOutOfRangeException` in `Main.Input`. `onClosed` is private `_onClosed`, run at the start of `CloseFrom(0)`. See [[context-menus]].
+Rejected: a liveness guard in `FormulaPopup.PasteLink` — it would stop the crash but leave an unrecorded preview. Cancel on an outside close discards the typed source; clicking elsewhere inside the app still commits through blur. The user accepted Cancel; committing instead is an open option.
+
 ## Known gaps
-- No freeze panes, page/layer UI, CSV (S4–S5).
+- No freeze panes.
+- Page/layers (S4): no page reorder; no per-page remembered selection (switching goes to A1/top); undo of a record on a page not shown applies without switching to it. No layer rename or reorder; no dimming of cells not on the edited layer; edits into a hidden layer are invisible. Page rename undo rewrites other files again (they are not on their own undo stacks). `SheetLayerShowEdit` has an unused `page` parameter.
+- CSV (S5): formatting/width/layer changes mark a CSV tab unsaved but are silently dropped on save. Export overwrites without asking. A decimal comma in a `;` CSV is read as text, not a number. `SheetValue.Display()` returns null for Empty (Export maps it to "").
+- CSV references (S5b): a note link copied out of a note to a CSV cell, and CSV references generally, are only test-verified. After a convert the file part reads `[cost.sheet.xml]cost!` instead of `[cost]cost!` (valid, just longer). Undo records made before a CSV rename hold the old reference (same as sheets). `FindSheet` for `.csv` enumerates the vault each call (like sheets).
+- A formula popup closed by focus loss cancels (the typed source is dropped); a blur inside the app commits — inconsistent; committing in both is an open option.
+- `--test` depends on OS focus: `ContextMenus.Tick` closes menus when no app window is focused and is not gated under `TestRunner.active`; with another window on top `Sheet.MathLinks` and `Sheet.Layers` fail (no longer crash). Gating `Tick` under `TestRunner.active` is an open one-line option.
 - Formatting (S3): no italic, underline, text colour, alignment, borders or font size in cells; no dates or date formats, custom format entry, increase/decrease decimals.
 - Resize (S3): no autofit on edge double-click, no resizing several selected columns at once, no Esc to cancel a drag; no whole-column/row selection from headers.
 - Formats do not travel with copy/paste/cut.
@@ -315,20 +420,20 @@ Rejected / not done: making `Union` skip empty rects engine-wide (touches every 
 - No number formatting inside formulas; the value appears as the sheet displays it (G15, so a large number can read `1E+20`).
 - In `.md`, a `\sheet{…}` naming the renamed sheet is rewritten wherever it appears in the file, including in plain text outside `$…$`.
 - No evaluation of formulas (possible S2d).
-- Renaming or adding sheet pages does not rewrite note links (sheets do not either).
+- Renaming a sheet page rewrites note links and `\sheet{…}` (S4a); adding a page rewrites nothing.
 - Non-note `.xml` files in the vault holding `<Run … Sheet="` would be rewritten too (unlikely).
 - Paste link uses the source file's base name; with two sheets of that name in the vault the reference resolves to
-  the first match, which may be the other one. Same-file other-page links are only test-verified through `Prefix`
-  (no page tabs until S4).
+  the first match, which may be the other one. Same-file other-page links (page tabs exist since S4a) are only test-verified
+  (not GUI-verified).
 - Edits made outside Thorium to a loaded sheet are not seen until relaunch or a vault switch; a loaded sheet is
   never unloaded during a vault session. `Created`/`Deleted`/`Renamed` relink every loaded sheet.
 - `SheetControl.ArrangeCore` loops forever on an unbounded viewport — an editor laid out as its own root (never
-  added to a window) hangs the frame. Found by a test; real tabs are always bounded.
+  added to a window) hangs the frame. Found by a test; real tabs are always bounded. Hit again by `Sheet.CsvLinks`: a CSV editor never added to a window hung the run (a detached `SheetEditorControl` that is selected/copied); with both editors in the window the test passes. Not proven by instrumentation.
 - After `Cut`, Paste link pastes plainly (the copy's source is dropped).
-- Formulas: no `$A$1`, no function but `SUM`, no comparisons or strings, references are not rewritten when a page
-  is renamed or added (call `SheetCalc.RecalcAll`; no UI does either yet), nor adjusted on paste.
+- Formulas: no `$A$1`, no function but `SUM`, no comparisons or strings, references are not adjusted on paste; since S4a a page
+  rename rewrites them and a page add recalcs.
 - A range is one edge per cell: `SUM(A1:Z100000)` records 2.6M edges.
-- Showing or hiding a layer needs `RecalcAll`; nothing calls it yet (no layer UI until S4).
+- Showing or hiding a layer recalcs through `SheetBook.Restructured` (S4b).
 - Errors draw in plain ink, left-aligned.
 - Arrows inside an open cell move the caret (Excel's edit mode); there is no enter mode where arrows commit.
 - Paste reads plain TSV — quoted fields with embedded tabs/newlines are split literally.
@@ -348,5 +453,13 @@ Rejected / not done: making `Union` skip empty rects engine-wide (touches every 
   `Sheet.Formats` checks the Format XML round trip; Ctrl+B bolds a selection, a second Ctrl+B unbolds and leaves no format; fill; Number `1,234.50`, Currency `€1,234.50`, Percent on a formula `24.69%`, text ignores a number format; Copy of a formatted number gives `1234.5`; `ExpandMath` gives `{1234.5}`; Delete keeps the format; undo/redo; unsaved; formats saved.
   Golden `Sheet.Formats.Grid.png` looked at before approval (bold, orange fill, `€1,234.50`, `24.69%` in the grid, the note's inline and range links formatted). `Sheet.Resize` checks a drag of B's right edge → 160 px, unsaved, undo removes the width, redo; row 1 drag deepens it and the note's linked range grows; a row dragged past its top clamps at 8 px; a press away from an edge still selects; sizes saved. Existing goldens still matched after the atlas re-bake.
   NOT GUI-verified: the right-click menu (Fill/Number format submenus, right-press selecting), resize cursor shapes on hover, Ctrl+B in a real session, resize feel.
+  S4/S5: test- and golden-verified, NOT GUI-verified. Full `--test` (window focused) 142 passed, 1 failed = Boot (pre-existing default-sampler error), 41 skipped; no `[Vulkan]` lines; `--test=Sheet` 22 passed + Boot.
+  `Sheet.Pages`: add/switch/rename/delete; rename rewrites same-file, another loaded sheet, a sheet on disk, an `.md` note link and `\sheet{}`; undo/redo of rename; delete → `#REF!`, undo restores; a second editor survives; view state keeps the page; save round trip; golden `Sheet.Pages.Strip.png`.
+  `Sheet.Layers`: edits land in the picked layer; a covered cell keeps showing the top; hide changes the shown value and a dependent formula; undo/redo; delete; `Visible` round trip; clicks the Layers button and a layer name through the test runner; golden `Sheet.Layers.Panel.png`. `Sheet.GridDraws.Grid.png` and `Sheet.Formats.Grid.png` re-approved (strip at the bottom, thumbs moved, nothing else).
+  `Sheet.Csv`: quoting, escaped quotes, line breaks, BOM, delimiter detection, write/read round trip, export name/BOM/values/overwrite, a CSV opens through `SessionLayout.tabFactory` as a sheet tab with no strip, a `;` CSV without BOM saved back in kind with formulas raw.
+  Popup crash: reproduced with a focus-stealing window (instrumented log showed `Tick` closing the menu, then `PasteLink` on `destroyed=True`); no crash under the same thief with the fix. The new `Sheet.MathLinks` check (close the open popup from outside, then Ctrl+Shift+V) crashes 3/3 with `onClosed` removed and passes with it.
+  NOT checked in a real session: clicking tabs, "+", rename by double-click, the page and Layers menus, the vault browser CSV row and its menu, "Create a sheet from this" and "Convert to sheet" (both only build; no test drives the vault browser), CSV rename/delete.
+  S5b: test-verified, NOT GUI-verified. Full `--test` (window focused) 143 passed, 1 failed = Boot (pre-existing default-sampler error), 41 skipped; no `[Vulkan]` lines. `Sheet.CsvLinks`: sheet formulas read a CSV (including a CSV formula's result); `data.csv` vs `data.sheet.xml` resolve separately; a CSV's `[Budget]Data!A1` is `#REF!`; note link `Plain` and `\sheet{}` expansion read a CSV; Paste link from a CSV tab writes `=[data.csv]data!B2`; Paste link into a CSV from Budget pastes `10`; a CSV rename rewrites a loaded sheet (file+page), the CSV's own `data!B2`, a sheet on disk, a `.md` note's link and `\sheet{}`, and leaves `[data]Data!A1` alone; a convert-style rename (CSV → `cost.sheet.xml`) points sheet and note references at the sheet, the value still reads, and the converted document now reaches Budget.
+  NOT checked: the vault browser path (rename a CSV row, Convert to sheet through the menu) and anything in a real session.
 
 Related: [[document-tables]], [[session-restore]], [[vault-browser-and-shell]], [[document-undo]], [[text-clipboard]]

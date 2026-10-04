@@ -22,6 +22,7 @@ namespace Thorium.Editor.CustomControls
         private const string vaultMenu = "vault";
         private const string folderMenu = "vault-folder";
         private const string noteMenu = "vault-note";
+        private const string csvMenu = "vault-csv";
 
         public VaultBrowserControl()
         {
@@ -58,19 +59,21 @@ namespace Thorium.Editor.CustomControls
             KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
 
         protected override bool Accepts(FileObject file) =>
-            RichTextDocument.extensions.Contains(Path.GetExtension(file.path).ToLowerInvariant());
+            RichTextDocument.extensions.Contains(Path.GetExtension(file.path).ToLowerInvariant()) || SheetCsv.IsCsv(file.path);
 
         protected override string DisplayName(FileObject file) =>
-            file.type == FileObject.FileType.Directory
-                ? file.name
-                : BaseName(file.path);
+            file.type == FileObject.FileType.Directory ? file.name
+            : SheetCsv.IsCsv(file.path) ? Path.GetFileName(file.path)
+            : BaseName(file.path);
 
         protected override void Activate(FileObject file) => Open(file.path);
 
         protected override void Rename(FileObject file, string newName) => RenameNote(file.path, newName);
 
         protected override string RowContextMenu(FileObject file) =>
-            file.type == FileObject.FileType.Directory ? folderMenu : noteMenu;
+            file.type == FileObject.FileType.Directory ? folderMenu
+            : SheetCsv.IsCsv(file.path) ? csvMenu
+            : noteMenu;
 
         #region ---- note operations ----
         [A_XSDActionDependency("Notes.New", "UI", "Creates a note at the vault root and opens it")]
@@ -103,6 +106,20 @@ namespace Thorium.Editor.CustomControls
             if (row == null) { NewSheet(); return; }
 
             Browser()?.NewSheet(row.file.type == FileObject.FileType.Directory ? row.file.path : row.file.parent.path);
+        }
+
+        [A_XSDActionDependency("Sheets.FromCsv", "UI", "Writes the CSV the menu was opened on as a sheet beside it, keeps the CSV and opens the sheet")]
+        public static void FromCsv()
+        {
+            FileRowControl row = MenuRow();
+            if (row != null && SheetCsv.IsCsv(row.file.path)) Browser()?.SheetFromCsv(row.file, false);
+        }
+
+        [A_XSDActionDependency("Sheets.ConvertCsv", "UI", "Turns the CSV the menu was opened on into a sheet, sends the CSV to the recycle bin and opens the sheet")]
+        public static void ConvertCsv()
+        {
+            FileRowControl row = MenuRow();
+            if (row != null && SheetCsv.IsCsv(row.file.path)) Browser()?.SheetFromCsv(row.file, true);
         }
 
         [A_XSDActionDependency("Notes.Rename", "UI", "Turns the name of the note the menu was opened on into a field")]
@@ -173,6 +190,24 @@ namespace Thorium.Editor.CustomControls
             Open(path);
         }
 
+        // The loaded copy, so edits not yet saved to the CSV come along; replacing deletes the CSV and its tab.
+        private void SheetFromCsv(FileObject file, bool replace)
+        {
+            string path = FreePath(file.parent.path, BaseName(file.path), SheetDocument.extension);
+            SheetBook.Get(file.path).Save(path);
+            WriteName(path, BaseName(path));
+            if (replace)
+            {
+                SheetBook.Renamed(file.path, path, VaultSheets());
+                SheetLinks.Renamed(file.path, path, VaultNotes());
+                DeleteFile(file.path);
+            }
+            SheetBook.Created();
+
+            Rebuild();
+            Open(path);
+        }
+
         private void DuplicateNote(FileObject file)
         {
             string path = FreePath(file.parent.path, BaseName(file.path) + " copy", Extension(file.path));
@@ -196,7 +231,7 @@ namespace Thorium.Editor.CustomControls
             if (open != null) owner.FinishClose(open);
 
             FileSystem.DeleteFile(path, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
-            if (SheetDocument.IsSheet(path)) SheetBook.Deleted(path);
+            if (SheetDocument.IsSheet(path) || SheetCsv.IsCsv(path)) SheetBook.Deleted(path);
             Rebuild();
         }
         #endregion
@@ -206,6 +241,7 @@ namespace Thorium.Editor.CustomControls
         private static void RenameNote(string path, string newName)
         {
             string name = newName?.Trim();
+            if (SheetCsv.IsCsv(path) && name != null && SheetCsv.IsCsv(name)) name = name[..^SheetCsv.extension.Length];
             if (string.IsNullOrEmpty(name) || name == BaseName(path)) return;
 
             string target = FreePath(Path.GetDirectoryName(path)!, name, Extension(path));
@@ -219,7 +255,7 @@ namespace Thorium.Editor.CustomControls
                 view.Retitle(item, name);
             }
 
-            if (SheetDocument.IsSheet(target))
+            if (SheetDocument.IsSheet(target) || SheetCsv.IsCsv(target))
             {
                 SheetBook.Renamed(path, target, VaultSheets());
                 SheetLinks.Renamed(path, target, VaultNotes());
@@ -262,6 +298,14 @@ namespace Thorium.Editor.CustomControls
         public static string? FindSheet(string file)
         {
             string name = file.Trim().Replace('\\', '/');
+            if (SheetCsv.IsCsv(name))
+            {
+                string root = KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
+                if (!Directory.Exists(root)) return null;
+                foreach (string path in Directory.EnumerateFiles(root, "*" + SheetCsv.extension, System.IO.SearchOption.AllDirectories))
+                    if (path.Replace('\\', '/').EndsWith("/" + name, StringComparison.OrdinalIgnoreCase)) return path;
+                return null;
+            }
             if (name.EndsWith(SheetDocument.extension, StringComparison.OrdinalIgnoreCase))
                 name = name[..^SheetDocument.extension.Length];
 
@@ -273,7 +317,7 @@ namespace Thorium.Editor.CustomControls
             return null;
         }
 
-        private static IEnumerable<string> VaultSheets()
+        internal static IEnumerable<string> VaultSheets()
         {
             string root = KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
             return Directory.Exists(root)
@@ -282,7 +326,7 @@ namespace Thorium.Editor.CustomControls
         }
 
         // Notes that can hold a sheet link: .md and .xml, sheets left out.
-        private static IEnumerable<string> VaultNotes()
+        internal static IEnumerable<string> VaultNotes()
         {
             string root = KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
             if (!Directory.Exists(root)) return Enumerable.Empty<string>();
@@ -325,7 +369,7 @@ namespace Thorium.Editor.CustomControls
                 }
 
                 string withoutExtension = Path.ChangeExtension(child.path, null).Replace('\\', '/');
-                if (Accepts(child) && (withoutExtension.EndsWith("/" + name, StringComparison.OrdinalIgnoreCase)
+                if (Accepts(child) && !SheetCsv.IsCsv(child.path) && (withoutExtension.EndsWith("/" + name, StringComparison.OrdinalIgnoreCase)
                                        || child.path.Replace('\\', '/').EndsWith("/" + name, StringComparison.OrdinalIgnoreCase)))
                     return child.path;
             }
@@ -346,7 +390,7 @@ namespace Thorium.Editor.CustomControls
                     continue;
                 }
 
-                if (Accepts(child)) return child.path;
+                if (Accepts(child) && !SheetCsv.IsCsv(child.path)) return child.path;
             }
             return null;
         }
@@ -363,7 +407,7 @@ namespace Thorium.Editor.CustomControls
         // built, so the caption can come from the note's own name.
         internal static TabItemControl BuildTab(string notePath)
         {
-            if (SheetDocument.IsSheet(notePath)) return BuildSheetTab(notePath);
+            if (SheetDocument.IsSheet(notePath) || SheetCsv.IsCsv(notePath)) return BuildSheetTab(notePath);
 
             DocumentEditorControl editor = new DocumentEditorControl { contextMenu = "note" };
             editor.LoadPath(notePath);

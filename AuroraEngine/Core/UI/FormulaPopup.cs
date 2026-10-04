@@ -57,7 +57,7 @@ namespace ArctisAurora.Core.UI
 
             LayoutRect anchor = document.MathAnchor(at);
             ContextMenus.Open(new List<ContextMenuEntry> { new ContextMenuContent(box) }, editor,
-                new Vector2(anchor.x, anchor.Bottom + gap), width);
+                new Vector2(anchor.x, anchor.Bottom + gap), width, onClosed: Cancel);
             UIEngine.SetActiveControl(box);
             box.Focus();
             open = this;

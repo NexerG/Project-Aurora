@@ -78,19 +78,23 @@ namespace ArctisAurora.Core.UI
             return new SheetFormula(node ?? new Constant(SheetValue.Error(parse)));
         }
 
-        // The formula with each file part the rename answers for replaced; unparseable text is left alone.
-        public static string RenameFile(string raw, Func<string, string?> rename)
+        // The formula with each page the rename answers for (file part, or null on its own file) replaced.
+        public static string RenamePage(string raw, Func<string?, string, string?> rename) =>
+            RenamePrefix(raw, (file, page) => rename(file, page) is string renamed && renamed != page ? (file, renamed) : null);
+
+        // The formula with each prefix the callback answers for (file part, or null on its own file) replaced; unparseable text is left alone.
+        public static string RenamePrefix(string raw, Func<string?, string, (string? file, string page)?> rename)
         {
-            List<(int start, int end, string file, string page)> prefixes = new List<(int, int, string, string)>();
+            List<(int start, int end, string? file, string page)> prefixes = new List<(int, int, string?, string)>();
             if (new Parser(raw, 1, prefixes).Formula() == null) return raw;
 
             string result = raw;
             for (int k = prefixes.Count - 1; k >= 0; k--)
             {
-                (int start, int end, string file, string page) = prefixes[k];
-                string? renamed = rename(file);
-                if (renamed == null || renamed == file) continue;
-                result = result[..start] + Prefix(renamed, page) + result[end..];
+                (int start, int end, string? file, string page) = prefixes[k];
+                (string? file, string page)? renamed = rename(file, page);
+                if (renamed is not { } to || to.file == file && to.page == page) continue;
+                result = result[..start] + Prefix(to.file, to.page) + result[end..];
             }
             return result;
         }
@@ -287,10 +291,10 @@ namespace ArctisAurora.Core.UI
             private readonly string s;
             private int i;
 
-            // "[file]Page" spans met, when collected
-            private readonly List<(int start, int end, string file, string page)>? prefixes;
+            // "[file]Page" and "Page" spans met, when collected
+            private readonly List<(int start, int end, string? file, string page)>? prefixes;
 
-            public Parser(string s, int start, List<(int, int, string, string)>? prefixes = null)
+            public Parser(string s, int start, List<(int, int, string?, string)>? prefixes = null)
             {
                 this.s = s;
                 i = start;
@@ -379,8 +383,8 @@ namespace ArctisAurora.Core.UI
                         if (close < 2 || close == quoted.Length - 1) return null;
                         file = quoted[1..close];
                         page = quoted[(close + 1)..];
-                        prefixes?.Add((start, i, file, page));
                     }
+                    prefixes?.Add((start, i, file, page));
                     if (Peek() != '!') return null;
                     i++;
                     return Cells(file, page);
@@ -401,11 +405,14 @@ namespace ArctisAurora.Core.UI
                 }
                 if (char.IsAsciiLetter(c) || c == '_')
                 {
+                    int start = i;
                     string word = Word();
+                    int end = i;
                     char next = Peek();
                     if (next == '(') return Function(word);
                     if (next == '!')
                     {
+                        prefixes?.Add((start, end, null, word));
                         i++;
                         return Cells(null, word);
                     }

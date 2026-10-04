@@ -124,8 +124,10 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] **S2c NOT GUI-verified (2026-10-04)** — typing `\sheet{…}` or Ctrl+Shift+V in the formula popup, the value redrawing after a sheet edit; test- and golden-verified only → `sheets`
 		- [ ] S2d — evaluate note formulas (result after a trailing `=`); not designed → `sheets-plan`
 		- [ ] **S3 NOT GUI-verified (2026-10-04)** — right-click Fill/Number format menus, resize cursor and drag, Ctrl+B in a real session; test- and golden-verified only → `sheets`
-		- [ ] S4 — page (bottom tabs) and layer (stacked over one grid) UI
-		- [ ] S5 — CSV import/export
+		- [ ] **S4a/S4b NOT GUI-verified (2026-10-04)** — page tabs (click, "+", double-click rename, right-click Rename/Delete/Export), the Layers button and panel (toggle, pick, Add/Delete), a page rename with other sheets and notes open; test- and golden-verified only → `sheets`
+		- [ ] **S5/S5b NOT GUI-verified (2026-10-05)** — a `.csv` row in the vault browser (open, Ctrl+S, rename, delete), its menu "Create a sheet from this" / "Convert to sheet" (no test drives the vault browser; Convert retargets references), "Export as CSV", CSV references in a real session; test-verified only → `sheets`
+		- [ ] `--test` depends on OS focus — `ContextMenus.Tick` is not gated under `TestRunner.active`; `Sheet.MathLinks`/`Sheet.Layers` fail with another window on top → `context-menus`
+		- [ ] formula popup closed by focus loss cancels the typed source while a blur inside the app commits — commit instead? → `sheets`
 	- [ ] **workspace tabs** — Blender-style tabs across the top switching Notes / Sheets / Board
 	- [ ] **todo board** — Trello-like tickets in columns, its own file kind beside notes and sheets
 	- [ ] **simplified mode** — a setting that swaps to the familiar layouts (menu bar, one document at a time) for less technical users; a layout choice, not a separate app

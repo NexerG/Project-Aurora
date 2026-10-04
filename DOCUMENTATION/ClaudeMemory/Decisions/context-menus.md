@@ -125,6 +125,14 @@ once for the tab under the pointer and once for the view's active tab.
 `Tab.HasSiblings` / `HasRight` / `CanTearOff` stay old-only and every new row is enabled. `SplitOff` already refuses
 a view's only tab and the close variants find nothing to close, so greying would only be cosmetic.
 
+## `Open` takes `onClosed` — 2026-10-04
+
+- `ContextMenus.Open(…, Action? onClosed = null)`; private `_onClosed` is run once at the start of `CloseFrom(0)` — when the top-level menu closes, whoever closes it (a clicked row, a press outside, focus loss through `Tick`, another `Open`).
+- First user: `FormulaPopup.Show` passes `Cancel`.
+
+**A menu hosting live state needs a close callback because destroyed controls get no `onBlur`.**
+`UIEngine.Forget` drops destroyed controls without running `onBlur`, so a popup whose menu was closed from outside is never told. `FormulaPopup.open` stayed set, and Ctrl+Shift+V pasted into a destroyed box (`DataPool.GetRef` read row -1 → `IndexOutOfRangeException` in `Main.Input`). Rejected: a liveness guard in the popup's paste — it stops the crash but leaves an unrecorded preview. See [[sheets]].
+
 ## Known gaps
 - No flipping or clamping to the monitor — a windowed menu near a screen edge goes off-screen.
 - A windowed panel renders 1:1 even when the origin window autoscales; only its position is converted.
@@ -133,6 +141,7 @@ a view's only tab and the close variants find nothing to close, so greying would
 - Each window opened after boot logs the pre-existing `DemoteToHelperInvocation` validation error once more.
 - The Editor's and the engine's own font copies were already stale (importer v1 and v3) and were not re-baked.
 - A menu button's second press re-opens its menu — `SolvePress` dismisses it, then the press opens it again.
+- `Tick` closes menus when no application window has focus and is not gated under `TestRunner.active`, so `--test` depends on OS focus (`Sheet.MathLinks`, `Sheet.Layers` fail with another window on top); gating it is an open one-line option.
 - New note, Vaults, Settings, Save note, Undo and Redo run old-stack actions, which draw nothing since `UIModule` left
   the module list. They come alive at 6c and 6c2; Exit works.
 
