@@ -66,6 +66,7 @@
     <xs:attribute name="Collision" type="types:PictureCollision" />
     <xs:attribute name="Math" type="xs:string" />
     <xs:attribute name="Display" type="xs:boolean" />
+    <xs:attribute name="Sheet" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="Run" type="types:Run" />
   <xs:complexType name="Run">

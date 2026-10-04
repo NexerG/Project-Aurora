@@ -14,4 +14,10 @@
 	<Test Action="Sheet.CrossFile"/>
 	<Test Action="Sheet.RenameRewrites"/>
 	<Test Action="Sheet.PasteLinks"/>
-</TestSuite>
+	<Test Action="Sheet.NoteFormats"/>
+	<Test Action="Sheet.NoteLinks"/>
+	<Test Action="Sheet.NotePasteLinks"/>
+	<Test Action="Sheet.NoteRenameRewrites"/>
+	<Test Action="Sheet.MathLinks"/>
+	<Test Action="Sheet.Formats"/>
+	<Test Action="Sheet.Resize"/></TestSuite>

@@ -78,7 +78,7 @@ namespace ArctisAurora.Core.UI
             ("Purple", "#C678DD")
         };
 
-        private static readonly (string caption, string hex)[] highlightOptions =
+        internal static readonly (string caption, string hex)[] highlightOptions =
         {
             ("None", ""),
             ("Yellow", MarkdownFormat.DefaultHighlightHex),

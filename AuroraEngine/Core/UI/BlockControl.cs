@@ -168,6 +168,9 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("Display", "UI", "Formula is display math: a line of its own, centred.")]
         public bool display { get; set; }
 
+        [A_XSDElementProperty("Sheet", "UI", "Sheet cell or range shown live, as file#Page!A1 or file#Page!A1:B2; the run carries no text.")]
+        public string sheet { get; set; }
+
         public FontStyle Style =>
             bold ? (italic ? FontStyle.BoldItalic : FontStyle.Bold)
                  : italic ? FontStyle.Italic : FontStyle.Regular;
@@ -423,7 +426,7 @@ namespace ArctisAurora.Core.UI
         // Load: the run's text joins the block's string and its style becomes the next span.
         public void AppendRun(Run run)
         {
-            string slice = run.image != null || run.math != null ? PictureChar : run.text ?? string.Empty;
+            string slice = run.image != null || run.math != null || run.sheet != null ? PictureChar : run.text ?? string.Empty;
 
             spans.Add(new StyleSpan
             {
@@ -448,7 +451,8 @@ namespace ArctisAurora.Core.UI
                 imageRotation = run.image != null ? run.rotation : 0f,
                 collision = run.image != null ? run.collision : PictureCollision.Box,
                 mathSource = run.image == null ? run.math : null,
-                mathDisplay = run.image == null && run.math != null && run.display
+                mathDisplay = run.image == null && run.math != null && run.display,
+                sheetRef = run.image == null && run.math == null ? run.sheet : null
             });
             if (run.effect != null) RestartEffect();
 
@@ -844,6 +848,7 @@ namespace ArctisAurora.Core.UI
                     image = span.imageSource,
                     math = span.mathSource,
                     display = span.mathDisplay,
+                    sheet = span.sheetRef,
                     width = span.imageWidth,
                     height = span.imageHeight,
                     wrap = span.wrap,

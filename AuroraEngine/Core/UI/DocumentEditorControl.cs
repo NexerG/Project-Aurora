@@ -1,6 +1,7 @@
 using ArctisAurora.Core.Diagnostics;
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Editing;
+using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
@@ -51,7 +52,16 @@ namespace ArctisAurora.Core.UI
             scrollDirection = ScrollDirection.Both;
             overscroll = 0.5f;
             alpha = 0f;
+            SheetBook.changed += BookChanged;
         }
+
+        public override void OnDestroy()
+        {
+            SheetBook.changed -= BookChanged;
+            base.OnDestroy();
+        }
+
+        private void BookChanged(SheetDocument? edited) => content?.RefreshSheetLinks();
 
         [A_XSDElementProperty("Source", "UI", "Engine-XML note file to load into the editor.")]
         public string source
@@ -743,6 +753,27 @@ namespace ArctisAurora.Core.UI
             }
             return true;
         }
+
+        // A live link to the copied sheet cells; false when the clipboard is not a sheet copy this note can take.
+        public bool PasteLink()
+        {
+            if (content == null || !Writable) return false;
+            string? text = ClipboardText.Get();
+            if (string.IsNullOrEmpty(text)) return false;
+
+            bool pasted;
+            using (BeginStep("Paste link"))
+                pasted = content.PasteLink(text);
+
+            if (pasted)
+            {
+                MarkDirty();
+                RequestScrollToCaret();
+            }
+            return pasted;
+        }
+
+        public void RenameSheetLinks(Func<string, string?> rename) => content?.RenameSheetLinks(rename);
 
         // Saves the picture beside the note under attachments/ and puts it in at the caret.
         public bool PasteImage(Image<Rgba32> image)

@@ -118,9 +118,12 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 	- [ ] **sheets** → `ClaudeMemory/Context/sheets-plan.md`
 		- [ ] **S2a formulas NOT GUI-verified (2026-10-03)** — typing `=…`, F2 on a formula, recalc on edit/undo, values on copy; test-verified only → `sheets`
 		- [ ] **S2b1–2 NOT GUI-verified (2026-10-03)** — a formula reading another sheet, live update across two tabs, renaming a referenced sheet in the browser, Ctrl+Shift+V in a sheet and in a note; test-verified only → `sheets`
-		- [ ] S2b3 — notes show sheet cells live (inline value, read-only grid block, `.md` embed); detailed plan owed → `sheets-plan`
-		- [ ] S2c — note math reads sheet cells (note math only typesets today) → `sheets-plan`
-		- [ ] S3 — formatting, column/row resize
+		- [ ] **S2b3 NOT GUI-verified (2026-10-04)** — Ctrl+Shift+V into a note, renaming a sheet in the vault browser with the linking notes open and on disk; test- and golden-verified only → `sheets`
+		- [ ] empty linked sheet cell is zero-width inline (invisible, hard to select) → `sheets`
+		- [ ] a linked sheet range taller than a page does not split across pages → `sheets`
+		- [ ] **S2c NOT GUI-verified (2026-10-04)** — typing `\sheet{…}` or Ctrl+Shift+V in the formula popup, the value redrawing after a sheet edit; test- and golden-verified only → `sheets`
+		- [ ] S2d — evaluate note formulas (result after a trailing `=`); not designed → `sheets-plan`
+		- [ ] **S3 NOT GUI-verified (2026-10-04)** — right-click Fill/Number format menus, resize cursor and drag, Ctrl+B in a real session; test- and golden-verified only → `sheets`
 		- [ ] S4 — page (bottom tabs) and layer (stacked over one grid) UI
 		- [ ] S5 — CSV import/export
 	- [ ] **workspace tabs** — Blender-style tabs across the top switching Notes / Sheets / Board

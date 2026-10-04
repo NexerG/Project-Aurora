@@ -28,6 +28,8 @@ Turns the TeX of a math formula — what sits between `$…$` or `$$…$$` in a 
 
 It never throws. Anything it cannot read — an unknown command, an unbalanced brace, a double superscript — turns the whole formula into a single `MathError` that keeps the source, which layout then shows as plain text flagged as an error.
 
+The parser knows nothing of sheets. A `\sheet{…}` cell reference in a formula is replaced by the cell's value before the source reaches it, so it only ever sees ordinary TeX. See [[Sheet Editor]].
+
 > Notes hold, draw, save and copy formulas; they cannot yet be inserted or edited in the editor. See `ClaudeMemory/Context/math-plan.md`.
 
 ## API summary

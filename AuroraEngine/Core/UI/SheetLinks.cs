@@ -1,0 +1,283 @@
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Xml.Linq;
+
+namespace ArctisAurora.Core.UI
+{
+    // A sheet link laid out for a note: a cell's value on the baseline, or a range's grid from the box's top.
+    public sealed class SheetBox
+    {
+        public float width;
+        public float height;
+        public bool range;
+        public readonly List<SheetBoxCell> cells = new List<SheetBoxCell>();
+        public readonly List<LayoutRect> rules = new List<LayoutRect>();
+    }
+
+    public readonly record struct SheetBoxCell(string text, LayoutRect rect, float pen, float baseline, bool error);
+
+    // Note links to sheet cells: "file#Page!A1" or "file#Page!A1:B2".
+    public static class SheetLinks
+    {
+        // range geometry, design pixels
+        private const float cellInset = 4f;
+        private const float ruleWidth = 1f;
+
+        private static readonly Regex xmlLink = new Regex(@"(<Run\b[^>]*?\sSheet="")([^""]*)("")");
+        private static readonly Regex mdLink = new Regex(@"(!\[\[)(.*?)(\]\])");
+        private static readonly Regex xmlMath = new Regex(@"(<Run\b[^>]*?\sMath="")([^""]*)("")");
+        private static readonly Regex mathLink = new Regex(@"\\sheet\{([^}]*)\}");
+
+        public static bool Parse(string reference, out string file, out string page, out int top, out int left, out int bottom, out int right)
+        {
+            file = page = string.Empty;
+            top = left = bottom = right = 0;
+
+            int hash = reference.IndexOf('#');
+            int bang = reference.LastIndexOf('!');
+            if (hash <= 0 || bang <= hash + 1) return false;
+
+            file = reference[..hash];
+            page = reference[(hash + 1)..bang];
+            string[] ends = reference[(bang + 1)..].Split(':');
+            if (ends.Length > 2 || !SheetDocument.TryParseAddress(ends[0], out top, out left)) return false;
+            if (ends.Length == 1)
+            {
+                (bottom, right) = (top, left);
+                return true;
+            }
+            if (!SheetDocument.TryParseAddress(ends[1], out bottom, out right)) return false;
+
+            (top, bottom) = (Math.Min(top, bottom), Math.Max(top, bottom));
+            (left, right) = (Math.Min(left, right), Math.Max(left, right));
+            return true;
+        }
+
+        public static string Reference(string path, string page, int top, int left, int bottom, int right)
+        {
+            string reference = Path.GetFileName(path) + "#" + page + "!" + SheetDocument.Address(top, left);
+            return top == bottom && left == right ? reference : reference + ":" + SheetDocument.Address(bottom, right);
+        }
+
+        // A markdown embed's target is a sheet link when its file part is a sheet.
+        public static bool IsLink(string target)
+        {
+            int hash = target.IndexOf('#');
+            return hash > 0 && SheetDocument.IsSheet(target[..hash].Trim());
+        }
+
+        #region ---- layout ----
+        // Lays a link out in the run's font; zoom scales a range's columns and rows.
+        public static SheetBox Layout(string reference, in TextMeasurer.Run run, LineMetrics line, float zoom)
+        {
+            SheetBox box = new SheetBox();
+            if (!Parse(reference, out string file, out string pageName, out int top, out int left, out int bottom, out int right)
+                || PageOf(file, pageName) is not SheetPage page)
+            {
+                Inline(box, SheetFormula.reference, true, run);
+                return box;
+            }
+
+            if (top == bottom && left == right)
+            {
+                SheetValue value = SheetBook.calc.Value(page, top, left);
+                Inline(box, value.Display(page.Format(top, left).number) ?? string.Empty, value.kind == SheetValueKind.Error, run);
+                return box;
+            }
+
+            box.range = true;
+            float inset = cellInset * zoom;
+            float textHeight = (line.ascent + line.descent) * run.fontSize;
+
+            float y = 0f;
+            for (int r = top; r <= bottom; r++)
+            {
+                float height = page.RowHeight(r) * zoom;
+                float baseline = y + (height - textHeight) * 0.5f + line.ascent * run.fontSize;
+                float x = 0f;
+                for (int c = left; c <= right; c++)
+                {
+                    float width = page.ColumnWidth(c) * zoom;
+                    SheetValue value = SheetBook.calc.Value(page, r, c);
+                    string? text = value.Display(page.Format(r, c).number);
+                    if (!string.IsNullOrEmpty(text))
+                    {
+                        float advance = Advance(text, run);
+                        float pen = value.kind == SheetValueKind.Number && advance <= width - inset * 2f
+                            ? x + width - inset - advance
+                            : x + inset;
+                        box.cells.Add(new SheetBoxCell(text, new LayoutRect(x, y, width, height), pen, baseline,
+                                                       value.kind == SheetValueKind.Error));
+                    }
+                    x += width;
+                }
+                box.width = x;
+                y += height;
+            }
+            box.height = y;
+
+            float ruleX = 0f;
+            for (int c = left; c <= right; c++)
+            {
+                box.rules.Add(new LayoutRect(ruleX, 0f, ruleWidth, box.height));
+                ruleX += page.ColumnWidth(c) * zoom;
+            }
+            box.rules.Add(new LayoutRect(box.width - ruleWidth, 0f, ruleWidth, box.height));
+
+            float ruleY = 0f;
+            for (int r = top; r <= bottom; r++)
+            {
+                box.rules.Add(new LayoutRect(0f, ruleY, box.width, ruleWidth));
+                ruleY += page.RowHeight(r) * zoom;
+            }
+            box.rules.Add(new LayoutRect(0f, box.height - ruleWidth, box.width, ruleWidth));
+            return box;
+        }
+
+        private static void Inline(SheetBox box, string text, bool error, in TextMeasurer.Run run)
+        {
+            box.width = Advance(text, run);
+            if (text.Length > 0) box.cells.Add(new SheetBoxCell(text, LayoutRect.Empty, 0f, 0f, error));
+        }
+
+        private static float Advance(string text, in TextMeasurer.Run run)
+        {
+            float advance = 0f;
+            foreach (char c in text)
+                advance += TextMeasurer.MeasureAdvance(c, run);
+            return advance;
+        }
+
+        private static SheetPage? PageOf(string file, string name)
+        {
+            SheetDocument? document = SheetBook.Resolve(file);
+            if (document == null) return null;
+            foreach (SheetPage page in document.pages)
+                if (page.name.Equals(name, StringComparison.OrdinalIgnoreCase)) return page;
+            return null;
+        }
+
+        // The link's values as plain text: one value, or rows of tab-separated values.
+        public static string Plain(string reference)
+        {
+            if (!Parse(reference, out string file, out string pageName, out int top, out int left, out int bottom, out int right)
+                || PageOf(file, pageName) is not SheetPage page)
+                return SheetFormula.reference;
+
+            StringBuilder text = new StringBuilder();
+            for (int r = top; r <= bottom; r++)
+            {
+                if (r > top) text.Append(Environment.NewLine);
+                for (int c = left; c <= right; c++)
+                {
+                    if (c > left) text.Append('\t');
+                    text.Append(SheetBook.calc.Value(page, r, c).Display());
+                }
+            }
+            return text.ToString();
+        }
+        #endregion
+
+        #region ---- math ----
+        public static bool HasMathLinks(string? source) => source != null && source.Contains(@"\sheet{", StringComparison.Ordinal);
+
+        // A formula with each \sheet{…} replaced by the cell's value as TeX.
+        public static string ExpandMath(string source) => mathLink.Replace(source, match => MathValue(match.Groups[1].Value));
+
+        private static string MathValue(string reference)
+        {
+            if (!Parse(reference, out string file, out string pageName, out int top, out int left, out int bottom, out int right)
+                || PageOf(file, pageName) is not SheetPage page)
+                return @"\text{" + SheetFormula.reference + "}";
+            if (top != bottom || left != right) return @"\text{" + SheetFormula.value + "}";
+
+            SheetValue value = SheetBook.calc.Value(page, top, left);
+            if (value.kind == SheetValueKind.Number) return "{" + value.Display() + "}";
+            string text = (value.Display() ?? string.Empty).Replace("\\", string.Empty).Replace("{", string.Empty).Replace("}", string.Empty);
+            return @"\text{" + text + "}";
+        }
+
+        // A formula with the \sheet{…} references the rename answers for rewritten.
+        public static string RenameMath(string source, Func<string, string?> rename) =>
+            mathLink.Replace(source, match => rename(match.Groups[1].Value) is string renamed ? @"\sheet{" + renamed + "}" : match.Value);
+        #endregion
+
+        #region ---- rename ----
+        // Rewrites every link to a renamed sheet: in open notes, and in each note file that holds one.
+        public static void Renamed(string oldPath, string newPath, IEnumerable<string> notes)
+        {
+            oldPath = Path.GetFullPath(oldPath);
+            newPath = Path.GetFullPath(newPath);
+            string oldStem = SheetBook.Stem(oldPath);
+            string oldName = SheetBook.BaseName(oldPath);
+            string newName = SheetBook.BaseName(newPath);
+
+            string? Rename(string reference)
+            {
+                int hash = reference.IndexOf('#');
+                if (hash <= 0 || !SheetBook.Names(reference[..hash], oldStem)) return null;
+                return SheetBook.Renamed(reference[..hash], oldName, newName) + reference[hash..];
+            }
+
+            foreach (string note in notes)
+            {
+                foreach ((TabItemControl item, TabViewControl _) in TabViewControl.FindOpenDocuments(note))
+                    TabViewControl.EditorOf(item)?.RenameSheetLinks(Rename);
+                RewriteFile(note, Rename);
+            }
+        }
+
+        // Changes only the link text; every other byte, the BOM included, is written back as read.
+        private static void RewriteFile(string path, Func<string, string?> rename)
+        {
+            if (!File.Exists(path)) return;
+
+            byte[] bytes = File.ReadAllBytes(path);
+            bool bom = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
+            int skip = bom ? 3 : 0;
+            string text = Encoding.UTF8.GetString(bytes, skip, bytes.Length - skip);
+
+            bool markdown = path.EndsWith(".md", StringComparison.OrdinalIgnoreCase);
+            bool any = false;
+            string rewritten = (markdown ? mdLink : xmlLink).Replace(text, match =>
+            {
+                string raw = match.Groups[2].Value;
+                string reference = markdown ? raw : XElement.Parse($"<a v=\"{raw}\"/>").Attribute("v")!.Value;
+                if (markdown && !IsLink(reference)) return match.Value;
+
+                string? renamed = rename(reference);
+                if (renamed == null) return match.Value;
+
+                any = true;
+                return match.Groups[1].Value + (markdown ? renamed : Escaped(renamed)) + match.Groups[3].Value;
+            });
+
+            if (markdown)
+            {
+                string math = RenameMath(rewritten, rename);
+                any |= math != rewritten;
+                rewritten = math;
+            }
+            else
+                rewritten = xmlMath.Replace(rewritten, match =>
+                {
+                    string source = XElement.Parse($"<a v=\"{match.Groups[2].Value}\"/>").Attribute("v")!.Value;
+                    string renamed = RenameMath(source, rename);
+                    if (renamed == source) return match.Value;
+
+                    any = true;
+                    return match.Groups[1].Value + Escaped(renamed) + match.Groups[3].Value;
+                });
+            if (!any) return;
+
+            byte[] body = Encoding.UTF8.GetBytes(rewritten);
+            using FileStream stream = File.Create(path);
+            if (bom) stream.Write(bytes, 0, 3);
+            stream.Write(body);
+        }
+
+        // An attribute value as XML writes it, line breaks included.
+        private static string Escaped(string value) => new XAttribute("v", value).ToString()[3..^1];
+        #endregion
+    }
+}

@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Filing;
 using System.Numerics;
 
 namespace ArctisAurora.Core.UI
@@ -18,6 +19,9 @@ namespace ArctisAurora.Core.UI
         private readonly TextBoxControl box = new TextBoxControl();
         private bool done;
 
+        // the popup being edited; null when none is open
+        private static FormulaPopup? open;
+
         private FormulaPopup(DocumentEditorControl editor, DocumentControl document, DocumentAddress at, bool placed)
         {
             this.editor = editor;
@@ -31,6 +35,14 @@ namespace ArctisAurora.Core.UI
 
         public static void Open(DocumentEditorControl editor, DocumentControl document, DocumentAddress at, bool placed) =>
             new FormulaPopup(editor, document, at, placed).Show();
+
+        // A \sheet{…} reference to the copied cells at the source box's caret; false when there is nothing to take it.
+        public static bool PasteLink()
+        {
+            if (open == null || open.done || !open.box.isEditing) return false;
+            string? reference = SheetEditorControl.CopiedReference(ClipboardText.Get() ?? string.Empty);
+            return reference != null && open.box.Paste(@"\sheet{" + reference + "}");
+        }
 
         private void Show()
         {
@@ -48,6 +60,7 @@ namespace ArctisAurora.Core.UI
                 new Vector2(anchor.x, anchor.Bottom + gap), width);
             UIEngine.SetActiveControl(box);
             box.Focus();
+            open = this;
         }
 
         // Records what the preview already shows; an empty new formula goes away unrecorded.
@@ -55,6 +68,7 @@ namespace ArctisAurora.Core.UI
         {
             if (done) return;
             done = true;
+            if (open == this) open = null;
             ContextMenus.Close();
 
             if (placed && source.Length == 0)
@@ -79,6 +93,7 @@ namespace ArctisAurora.Core.UI
         {
             if (done) return;
             done = true;
+            if (open == this) open = null;
             ContextMenus.Close();
 
             if (placed) document.RemovePlaced(at);

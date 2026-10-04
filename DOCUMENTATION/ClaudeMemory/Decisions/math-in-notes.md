@@ -5,6 +5,11 @@
 
 **Status: LANDED** — M1 (the font), M2 (parser + layout), M3 (notes hold, draw, save and copy formulas) and M4 (insert and edit) landed; plan in [../Context/math-plan.md](../Context/math-plan.md). M4 scope: `FormulaPopup`, `MathEdit`, `DocumentControl` region `formulas` (`SelectedMath`, `StoredMath`, `SetMath`, `PlaceMath`, `RecordPlaced`, `RecordMath`, `RemovePlaced`, `MathAnchor`), `BlockControl.SetMath`, `TextRunControl` (`MathAt`, `MathBox`), `DocumentEditorControl` (`InsertFormula`, `EditFormula`), `TextBoxControl.onEdited`, `TextInputActions` (`Math.Insert`, `Math.InsertDisplay`, `Math.Edit`).
 
+## Sheet cells in formulas (sheets S2c, 2026-10-04)
+- A formula may hold `\sheet{Budget.sheet.xml#Data!B1}`: `TextRunControl.MathBoxFor` caches and parses `SheetLinks.ExpandMath(source)`, not the source. Number → `{value}`, text → `\text{value}`, range → `\text{#VALUE!}`, missing → `\text{#REF!}`.
+- A changed cell value is a new cache key, so the cache never goes stale; `MathParser` is unchanged and still pure. Substitution only — nothing is evaluated. Rationale and gaps: [[sheets]] § S2c.
+- `FormulaPopup.PasteLink` (Ctrl+Shift+V in the source box) inserts `\sheet{ref}` for the last copied sheet cells; a sheet rename rewrites the references in open notes and on disk (`SheetLinks.RenameMath`).
+
 ## M4 — inserting and editing (2026-10-02)
 - **Ctrl+M** inserts an inline formula, **Ctrl+Shift+M** a display one (Thorium `InputMap`; the two-modifier bind declared first). Right-click: Insert formula, Insert display formula, Edit formula.
 - **A click on a formula selects it** (`TextRunControl.OnPointerPress` falls back to `MathAt`, then the picture path's `PicturePressed`); **double-click or Enter** on a selected formula opens the editor. `Text.NewBlock` tries `EditFormula` before `SplitBlock`.
@@ -17,10 +22,10 @@
 
 ## M3 — formulas in notes (2026-10-02)
 - A formula is a `<Run Math="…" Display="true"/>`: one U+FFFC in the block, a `StyleSpan` with `mathSource`/`mathDisplay`. Note XML needs no code — `DocumentXml` reads and writes `Run`'s scalars by reflection.
-- `StyleSpan.IsObject` (picture or formula) replaces `IsPicture` where the rule is about an atomic character: `InsertText`/`TextSpanBeside` (typing beside it lands in a text span), `DropEmptySpans`, `SameStyle` (never merged), `Runs()` (no text). Picture-only sites (`SetPicture`, handles, wrap, textures, `PictureAt`) stay on `IsPicture`.
+- `StyleSpan.IsObject` (picture, formula or — since sheets S2b3 — sheet link) replaces `IsPicture` where the rule is about an atomic character: `InsertText`/`TextSpanBeside` (typing beside it lands in a text span), `DropEmptySpans`, `SameStyle` (never merged), `Runs()` (no text). Picture-only sites (`SetPicture`, handles, wrap, textures, `PictureAt`) stay on `IsPicture`.
 - Measuring: `TextMeasurer.Run` gains `math` + `depth`; `Flatten` gives the character the box's width, `max(box height, line ascent)` and `max(box depth, line descent)`, flagged `picture` so it cannot hang and breaks either side.
 - **Display formula = the full column as its advance, drawn centred inside it (F5′).** That alone puts it on a line of its own — text before it breaks ahead of it, text after wraps — with no break code in the measurer. Block alignment is ignored for it; Obsidian centres display math regardless. Rejected: honouring `BlockControl.alignment` (display math would default to the left) and the original forced-break + `TextLine.left`.
-- **Laid-out boxes live in a static cache keyed by (source, display) in `TextRunControl` (F11)**, not on the span: `StyleSpan` is a struct copied through snapshots, and caching on it would mean writing spans back during measure.
+- **Laid-out boxes live in a static cache keyed by (source, display) in `TextRunControl` (F11)**, not on the span: `StyleSpan` is a struct copied through snapshots, and caching on it would mean writing spans back during measure. Since sheets S2c the key's source is the expanded source: `\sheet{…}` is replaced by the cell's value before parsing (see below).
 - Drawing: each `MathGlyph` through `WriteGlyph` (whose `size` became `float`) from the `math` font asset; each `MathRule` through `WriteRect` with its top rounded to a pixel and a 1 px floor — the underline's precedent. Sub-pixel rules straddled two rows: a 0.85 px rule drew as a dark 2-row bar beside a faint 1.04 px one.
 - A formula that fails to parse draws its source in `PaletteRole.Danger`.
 - `FontAsset.Load` reads `{font}.math.xml` into `mathConstants` when it exists; `EngineAssets.assets.xml` names the asset `math` → `Fonts/cambria`. The Thorium bake was copied byte-for-byte into AuroraEditor and Carbon — host bakes are identical (same `arial` hashes).

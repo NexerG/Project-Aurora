@@ -118,6 +118,11 @@
 		<Press />
 	</Keybind>
 
+	<Keybind Trigger="B" Action="Sheet.Bold">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
 	<Keybind Trigger="I" Action="Text.Italic">
 		<Modifier Key="LeftControl" />
 		<Press />

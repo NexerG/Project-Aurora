@@ -3,20 +3,26 @@
 #   -Dir     a session folder (*.frames.xml), e.g. %APPDATA%\Arktis\Thorium\Profiling\<session> or <run>\<Action>
 #   -Thread  only this thread file (Main, Render, Worker0, Bootstrap ...)
 #   -From/-To  frame index range (the F I attribute), inclusive
-#   -Zone    only zones whose name contains this text
+#   -Zone    only zones whose name contains any of these texts
 #   -Top     at most this many zones per thread, by mean ms per frame
 param(
     [Parameter(Mandatory = $true)][string]$Dir,
     [string]$Thread,
     [long]$From = 0,
     [long]$To = [long]::MaxValue,
-    [string]$Zone,
+    [string[]]$Zone,
     [int]$Top = 40
 )
 
 function Pct([double[]]$sorted, [double]$p) {
     $i = [Math]::Min($sorted.Count - 1, [int][Math]::Ceiling($p * $sorted.Count) - 1)
     return $sorted[[Math]::Max($i, 0)]
+}
+
+function Skip([string]$name) {
+    if (-not $Zone) { return $false }
+    foreach ($z in ($Zone -split ',')) { if ($name -like "*$z*") { return $false } }
+    return $true
 }
 
 $files = Get-ChildItem -LiteralPath $Dir -Filter *.frames.xml | Sort-Object Name
@@ -111,7 +117,7 @@ foreach ($file in $files) {
         (Pct $sortedFrames 0.50), (Pct $sortedFrames 0.95), $sortedFrames[-1], ($frameMs | Measure-Object -Average).Average, ($frameKB / $frames))
 
     $rows = foreach ($k in $zoneMs.Keys) {
-        if ($Zone -and $k -notlike "*$Zone*") { continue }
+        if (Skip $k) { continue }
         $list = $zoneMs[$k]
         $sorted = [double[]]($list | Sort-Object)
         $sum = ($list | Measure-Object -Sum).Sum
@@ -128,7 +134,7 @@ foreach ($file in $files) {
         }
     }
     foreach ($k in ($counters.Keys | Sort-Object)) {
-        if ($Zone -and $k -notlike "*$Zone*") { continue }
+        if (Skip $k) { continue }
         Write-Output ("  #{0,-35} {1,9:N1} /frame" -f $k, ($counters[$k] / $frames))
     }
 }

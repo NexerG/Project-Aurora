@@ -107,6 +107,14 @@ namespace ArctisAurora.Core.UI
                 ToClipboardTarget(target => target.PasteImage(image));
         }
 
+        [A_XSDActionDependency("Text.PasteLink", "Input", "Inserts a live link to the copied sheet cells; a plain paste otherwise")]
+        public static void PasteLink()
+        {
+            if (FormulaPopup.PasteLink()) return;
+            DocumentEditorControl editor = Editor();
+            if (editor == null || !editor.PasteLink()) Paste();
+        }
+
         // Walks up from the active control until a target handles the request.
         private static void ToClipboardTarget(Func<IClipboardTarget, bool> request)
         {

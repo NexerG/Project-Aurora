@@ -43,6 +43,10 @@ namespace ArctisAurora.Core.UI
             SheetValueKind.Empty => null,
             _ => text
         };
+
+        // A number through its cell's format; anything else as Display().
+        public string? Display(string? format) =>
+            kind == SheetValueKind.Number && format != null ? number.ToString(format, CultureInfo.InvariantCulture) : Display();
     }
 
     // A parsed "=…" cell.
