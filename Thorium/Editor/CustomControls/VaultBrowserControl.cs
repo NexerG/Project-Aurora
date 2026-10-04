@@ -220,7 +220,10 @@ namespace Thorium.Editor.CustomControls
             }
 
             if (SheetDocument.IsSheet(target))
+            {
                 SheetBook.Renamed(path, target, VaultSheets());
+                SheetLinks.Renamed(path, target, VaultNotes());
+            }
 
             VaultBrowserControl? browser = Engine.primary.ui.uiRoot.FindByName(browserName) as VaultBrowserControl;
             browser?.Rebuild();
@@ -276,6 +279,15 @@ namespace Thorium.Editor.CustomControls
             return Directory.Exists(root)
                 ? Directory.EnumerateFiles(root, "*" + SheetDocument.extension, System.IO.SearchOption.AllDirectories)
                 : Enumerable.Empty<string>();
+        }
+
+        // Notes that can hold a sheet link: .md and .xml, sheets left out.
+        private static IEnumerable<string> VaultNotes()
+        {
+            string root = KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
+            if (!Directory.Exists(root)) return Enumerable.Empty<string>();
+            return Directory.EnumerateFiles(root, "*.md", System.IO.SearchOption.AllDirectories)
+                .Concat(Directory.EnumerateFiles(root, "*.xml", System.IO.SearchOption.AllDirectories).Where(path => !SheetDocument.IsSheet(path)));
         }
 
         // A [[note]] by name, or a web address handed to the system browser.
@@ -369,7 +381,7 @@ namespace Thorium.Editor.CustomControls
 
         private static TabItemControl BuildSheetTab(string sheetPath)
         {
-            SheetEditorControl editor = new SheetEditorControl();
+            SheetEditorControl editor = new SheetEditorControl { contextMenu = "sheet" };
             editor.LoadPath(sheetPath);
 
             TabItemControl tab = new TabItemControl

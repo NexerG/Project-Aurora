@@ -3,7 +3,7 @@ using System.Xml.Linq;
 
 namespace ArctisAurora.Core.UI
 {
-    // <Sheet Name><Page Name><Column At Width/><Row At Height/><Layer Name Visible><Cell At>text</Cell></Layer></Page></Sheet>
+    // <Sheet Name><Page Name><Column At Width/><Row At Height/><Format At Bold Fill Number/><Layer Name Visible><Cell At>text</Cell></Layer></Page></Sheet>
     public static class SheetXml
     {
         public static SheetDocument Load(string path) =>
@@ -50,6 +50,15 @@ namespace ArctisAurora.Core.UI
                         if (SheetDocument.TryParseAddress((string?)child.Attribute("At") ?? "", out int row, out _)
                             && row >= 0 && Number(child, "Height") is float height)
                             page.rowHeights[row] = height;
+                        else page.extra.Add(new XElement(child));
+                        break;
+                    case "Format":
+                        if (SheetDocument.TryParseAddress((string?)child.Attribute("At") ?? "", out int formatRow, out int formatColumn)
+                            && formatRow >= 0 && formatColumn >= 0)
+                            page.SetFormat(formatRow, formatColumn, new SheetFormat(
+                                (string?)child.Attribute("Bold") == "true",
+                                (string?)child.Attribute("Fill"),
+                                (string?)child.Attribute("Number")));
                         else page.extra.Add(new XElement(child));
                         break;
                     case "Layer":
@@ -111,6 +120,16 @@ namespace ArctisAurora.Core.UI
                     pageElement.Add(new XElement("Row",
                         new XAttribute("At", (row.Key + 1).ToString(CultureInfo.InvariantCulture)),
                         new XAttribute("Height", row.Value.ToString(CultureInfo.InvariantCulture))));
+
+                foreach (KeyValuePair<long, SheetFormat> format in page.formats.OrderBy(f => f.Key))
+                {
+                    XElement formatElement = new XElement("Format",
+                        new XAttribute("At", SheetDocument.Address(SheetDocument.RowOf(format.Key), SheetDocument.ColumnOf(format.Key))));
+                    if (format.Value.bold) formatElement.SetAttributeValue("Bold", "true");
+                    formatElement.SetAttributeValue("Fill", format.Value.fill);
+                    formatElement.SetAttributeValue("Number", format.Value.number);
+                    pageElement.Add(formatElement);
+                }
 
                 foreach (SheetLayer layer in page.layers)
                 {

@@ -30,11 +30,14 @@ The note itself is the preview. Every change in the field, including the field's
 
 Enter or a click anywhere else commits. Esc puts the old source back, and a new formula left empty, whether committed or cancelled, disappears without a trace in the history. A formula cannot be placed in a read-only note, a plain text note, a code block or a horizontal rule.
 
+While the popup is open, Ctrl+Shift+V pastes into the field: if the clipboard still holds the cells last copied in a sheet, it inserts `\sheet{reference}` at the field's caret, so the note shows the cell's value at once; otherwise it pastes plainly. See [[Sheet Editor]].
+
 ## API summary
 
 | Member | Kind | Summary |
 | --- | --- | --- |
 | `Open(DocumentEditorControl editor, DocumentControl document, DocumentAddress at, bool placed)` | static | Opens the field on the formula at `at`; `placed` marks one that was just inserted. |
+| `PasteLink()` | static | Inserts a `\sheet{reference}` for the last copied sheet cells into the open popup's field; returns false when no popup is being edited or the clipboard is not the last sheet copy. |
 
 ## Methods
 
@@ -46,6 +49,15 @@ Enter or a click anywhere else commits. Esc puts the old source back, and a new 
 	on Esc, cancel
 	open a popup holding the field under the formula's drawn box
 	give the field the keyboard
+
+### `PasteLink` *(static)*
+	if no popup is open, return false
+	if the clipboard text is the last copy made in a sheet
+		build the reference of the copied cells
+		paste \sheet{reference} into the field, which rewrites the formula like any other change
+	otherwise
+		paste the clipboard text plainly into the field
+	return true
 
 ### Finish
 	if already finished, stop

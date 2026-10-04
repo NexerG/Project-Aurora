@@ -84,6 +84,7 @@ namespace ArctisAurora.Core.UI
         public string name = "";
         public readonly Dictionary<int, float> columnWidths = new Dictionary<int, float>();
         public readonly Dictionary<int, float> rowHeights = new Dictionary<int, float>();
+        public readonly Dictionary<long, SheetFormat> formats = new Dictionary<long, SheetFormat>();
         public readonly List<SheetLayer> layers = new List<SheetLayer>();
         public readonly List<XElement> extra = new List<XElement>();
 
@@ -136,6 +137,17 @@ namespace ArctisAurora.Core.UI
         }
         #endregion
 
+        public SheetFormat Format(int row, int column) =>
+            formats.TryGetValue(SheetDocument.Key(row, column), out SheetFormat format) ? format : default;
+
+        // An unformatted cell is absent.
+        public void SetFormat(int row, int column, SheetFormat format)
+        {
+            long key = SheetDocument.Key(row, column);
+            if (format == default) formats.Remove(key);
+            else formats[key] = format;
+        }
+
         // The text a cell shows: the topmost visible layer holding it.
         public string? Shown(int row, int column)
         {
@@ -184,4 +196,7 @@ namespace ArctisAurora.Core.UI
     {
         public string raw = "";
     }
+
+    // How a cell draws; number is a .NET numeric format, null for General.
+    public readonly record struct SheetFormat(bool bold, string? fill, string? number);
 }

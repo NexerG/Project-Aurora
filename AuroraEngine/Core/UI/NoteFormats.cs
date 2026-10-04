@@ -25,7 +25,8 @@ namespace ArctisAurora.Core.UI
         private static readonly Regex htmlTag = new Regex(@"\G<(/?)(u|mark|span)((?:\s+style=""[^""]*"")?)\s*>", RegexOptions.IgnoreCase);
         private static readonly Regex cssColor = new Regex(@"(?<![-\w])color\s*:\s*(#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?)");
         private static readonly Regex picture = new Regex(@"\G!\[[^\]|]*(?:\|(\d+)(?:x(\d+))?)?\]\((?:<([^>]*)>|([^)\s]+))\)");
-        private static readonly Regex htmlPicture = new Regex(@"\G<img\s([^>]*?)/?>", RegexOptions.IgnoreCase);
+        private static readonly Regex embed = new Regex(@"\G!\[\[(.*?)\]\]");
+        private static readonly Regex htmlPicture =new Regex(@"\G<img\s([^>]*?)/?>", RegexOptions.IgnoreCase);
         private static readonly Regex htmlAttribute = new Regex(@"([\w-]+)\s*=\s*""([^""]*)""");
         private static readonly Regex cssBackground =new Regex(@"(?<![-\w])background(?:-color)?\s*:\s*(#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?)");
 
@@ -408,6 +409,14 @@ namespace ArctisAurora.Core.UI
                     }
                 }
 
+                if (c == '!' && embed.Match(s, i) is { Success: true } link && SheetLinks.IsLink(link.Groups[1].Value))
+                {
+                    Flush(false);
+                    runs.Add(new XElement("Run", new XAttribute("Sheet", link.Groups[1].Value)));
+                    i += link.Length - 1;
+                    continue;
+                }
+
                 if (c == '!' && picture.Match(s, i) is { Success: true } image)
                 {
                     Flush(false);
@@ -730,6 +739,13 @@ namespace ArctisAurora.Core.UI
                     continue;
                 }
 
+                string? sheet = (string?)run.Attribute("Sheet");
+                if (sheet != null)
+                {
+                    line.Append("![[").Append(sheet).Append("]]");
+                    continue;
+                }
+
                 string? image = (string?)run.Attribute("Image");
                 if (image != null)
                 {
@@ -831,6 +847,14 @@ namespace ArctisAurora.Core.UI
                 {
                     text.Append(BlockControl.PictureChar);
                     styles.Add($"math|{math}|{(bool?)run.Attribute("Display") == true}");
+                    continue;
+                }
+
+                string? sheet = (string?)run.Attribute("Sheet");
+                if (sheet != null)
+                {
+                    text.Append(BlockControl.PictureChar);
+                    styles.Add($"sheet|{sheet}");
                     continue;
                 }
 

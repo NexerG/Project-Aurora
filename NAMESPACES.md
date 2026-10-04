@@ -150,6 +150,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetDocument.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetEditorControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetEdits.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetFormula.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetLinks.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetXml.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SliderControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SplitterControl.cs

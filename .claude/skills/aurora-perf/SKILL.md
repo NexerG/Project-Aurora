@@ -25,10 +25,39 @@ Run the host from `Thorium/bin/Release/net10.0-windows10.0.22621.0/` (same shape
 - `-p:Optimize=true` on an up-to-date Debug tree changes nothing — the incremental build ignores properties.
 - Release reads the `Data` copied into `bin`, not the source tree. Rebuild after editing data.
 
+## Preset runs
+
+`profile.ps1` beside this file runs a scenario `-Runs` times (default 3), copies each session to `<Out>\run<N>` so
+pruning cannot take it, and summarizes each with the preset's filter. `-Build` does §1 first; `-HostApp Carbon`
+switches host; `-From`/`-Top` pass through to `summarize.ps1`. An `-Out` that already holds a `runN` is refused.
+
+```bash
+powershell -NoProfile -ExecutionPolicy Bypass -File .claude/skills/aurora-perf/profile.ps1 -Preset App -Out "<scratchpad>/app-before" -Build
+```
+
+```bash
+powershell -NoProfile -ExecutionPolicy Bypass -File .claude/skills/aurora-perf/profile.ps1 -Preset Animation -Out "<scratchpad>/anim-before"
+```
+
+```bash
+powershell -NoProfile -ExecutionPolicy Bypass -File .claude/skills/aurora-perf/profile.ps1 -Preset UI -Out "<scratchpad>/ui-before"
+```
+
+| Preset | Scenario | Thread | Zones |
+|---|---|---|---|
+| App | `--profile-scenario` | all | `Step.` — every frame-graph step, plus each thread's frame time |
+| Animation | `--profile-scenario=animation` | all — `Animation.Step` is unpinned | `Anim.`, `Step.Animation.Step`, `Scenario.` phases, `#Anim.Request`, `#Anim.Stepped` |
+| UI | `--profile-scenario` | Main | `Layout.`, `Text.`, `Document.`, `Editor.`, `HandleUI`, `ResolveLayout`, `Step.Main.Layout`, `Step.Main.DrawLists`, `Step.Edge.UIElements`, `#Root` |
+
+- The typing and resize phases run tier-0 code (§5); `-From 1100` reads steady state only.
+- Animation prints every worker's frame time with no zones under it — that is the wait between jobs, not work.
+- Re-read a kept run with a different cut: `summarize.ps1 -Dir "<Out>\run2" -Zone Layout.,Text. -From 1100`.
+
 ## 2. Pick the tool
 
 | Question | Tool |
 |---|---|
+| app / animation / UI cost over 3 runs, one command | `profile.ps1 -Preset App\|Animation\|UI` (Preset runs, above) |
 | where does a scripted workload spend its time | `--profile-scenario` (typing + resize on a 1M-char note) or `--profile-scenario=animation`; quits by itself |
 | what does a launch cost, bootstrap included | `--profile` / `--profile=N` — N frames **per thread**, the boot frame is one of Main's |
 | what does the app cost doing something you set up by hand | `Profiling.Capture` — the next `BurstFrames` (default 300): F9 in Thorium, or on the launch line `--exec "Wait 3000; Profiling.Capture; Wait 8000; Quit"`. **Release has no `--send` pipe** (Debug only) |
@@ -63,6 +92,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .claude/skills/aurora-perf/s
 - Per thread: frame time p50/p95/max/mean and KB per frame; per zone: ms and calls per frame (over every frame in
   range), then p50/p95/max over the frames it ran in and the worst frame's KB — the same rules as
   `TestRunner.CheckBudgets`, so its numbers match a test's `[Test]` stats line. Counters print as `#name /frame`.
+- `-Zone` takes several substrings, comma-separated (`-Zone Layout.,Text.`); a zone or counter matching any is kept.
 - `-From`/`-To` take the frame index (`F I`) — cut off warm-up and tiering, or isolate a phase of a scenario.
 - Header flags `dropped` (the spool fell behind, frames missing) and `TRUNCATED`.
 - Never read a `.frames.xml` whole — they are megabytes. Never `grep` them for numbers either; names are ids.

@@ -1,5 +1,7 @@
 using ArctisAurora.Core.ECS.EngineEntity;
+using ArctisAurora.Core.Filing;
 using ArctisAurora.EngineWork;
+using Silk.NET.GLFW;
 using System.Globalization;
 using System.Numerics;
 
@@ -31,6 +33,8 @@ namespace ArctisAurora.Core.UI
         private const float lineWidth = 1f;
         private const float outlineWidth = 2f;
         private const int fontSize = 14;
+        private const float grabWidth = 4f;
+        private const float minimumBand = 8f;
 
         // grid past the last used cell
         private const int spareRows = 100;
@@ -42,6 +46,7 @@ namespace ArctisAurora.Core.UI
         public readonly SheetPage page;
 
         // parts, in draw order
+        private readonly Parts fills = new Parts();
         private readonly Parts grid = new Parts();
         private readonly PanelControl selection = new PanelControl { hitTestable = false, alpha = 0.18f };
         private readonly PanelControl[] outline = new PanelControl[4];
@@ -49,6 +54,7 @@ namespace ArctisAurora.Core.UI
         private readonly Parts headers = new Parts();
 
         // pooled grid and header parts
+        private readonly List<PanelControl> fillParts = new List<PanelControl>();
         private readonly List<PanelControl> lines = new List<PanelControl>();
         private readonly List<LabelControl> labels = new List<LabelControl>();
         private readonly List<PanelControl> headerParts = new List<PanelControl>();
@@ -58,6 +64,13 @@ namespace ArctisAurora.Core.UI
         private bool usedStale = true;
         private (int rows, int columns) used;
 
+        // header edge drag
+        private bool resizing;
+        private bool resizeColumn;
+        private int resizeIndex;
+        private float? resizeBefore;
+        private CursorShape shownCursor = CursorShape.Arrow;
+
         public SheetControl(SheetEditorControl editor, SheetPage page)
         {
             this.editor = editor;
@@ -66,6 +79,7 @@ namespace ArctisAurora.Core.UI
             selection.PaintOr(null, PaletteRole.Accent);
             field.PaintOr(null, PaletteRole.Field);
 
+            AddChild(fills);
             AddChild(grid);
             AddChild(selection);
             for (int i = 0; i < outline.Length; i++)
@@ -88,6 +102,9 @@ namespace ArctisAurora.Core.UI
         #region ---- geometry ----
         private Vector2 Origin => new Vector2(arrangedRect.x + headerWidth, arrangedRect.y + headerHeight);
 
+        // A spare pooled part: no size, at the grid's corner so it stays inside its layer's bounds.
+        private LayoutRect Hidden => new LayoutRect(arrangedRect.x, arrangedRect.y, 0f, 0f);
+
         // The scroller's inner rect: the part of the grid on screen.
         private LayoutRect Viewport() =>
             parent is ScrollableControl scroller ? scroller.arrangedRect.Shrink(scroller.padding) : arrangedRect;
@@ -107,6 +124,28 @@ namespace ArctisAurora.Core.UI
             row = page.RowAt(point.Y - origin.Y);
             column = page.ColumnAt(point.X - origin.X);
             return point.X >= view.x + headerWidth && point.Y >= view.y + headerHeight;
+        }
+
+        // The column or row whose far edge is under a header point.
+        private bool EdgeAt(Vector2 point, out bool column, out int index)
+        {
+            LayoutRect view = Viewport();
+            Vector2 origin = Origin;
+            index = -1;
+            column = point.Y < view.y + headerHeight && point.X >= view.x + headerWidth;
+            if (column)
+            {
+                float x = point.X - origin.X;
+                int c = page.ColumnAt(x + grabWidth);
+                if (c > 0 && MathF.Abs(x - page.ColumnLeft(c)) <= grabWidth) index = c - 1;
+            }
+            else if (point.X < view.x + headerWidth && point.Y >= view.y + headerHeight)
+            {
+                float y = point.Y - origin.Y;
+                int r = page.RowAt(y + grabWidth);
+                if (r > 0 && MathF.Abs(y - page.RowTop(r)) <= grabWidth) index = r - 1;
+            }
+            return index >= 0;
         }
 
         private LayoutRect RangeRect()
@@ -138,6 +177,7 @@ namespace ArctisAurora.Core.UI
         protected override void ArrangeCore(LayoutRect finalRect)
         {
             WriteArranged(finalRect);
+            fills.Arrange(finalRect);
             grid.Arrange(finalRect);
             headers.Arrange(finalRect);
 
@@ -173,23 +213,40 @@ namespace ArctisAurora.Core.UI
                 Pooled(lines, grid, line++, PaletteRole.Line).Arrange(new LayoutRect(view.x, bottom - lineWidth, view.width, lineWidth));
             }
             for (int i = line; i < lines.Count; i++)
-                lines[i].Arrange(LayoutRect.Empty);
+                lines[i].Arrange(Hidden);
 
             int label = 0;
+            int fill = 0;
             for (int r = firstRow; r <= lastRow; r++)
                 for (int c = firstColumn; c <= lastColumn; c++)
                 {
+                    SheetFormat format = page.Format(r, c);
+                    if (format.fill != null)
+                    {
+                        PanelControl part = Pooled(fillParts, fills, fill++, PaletteRole.Accent);
+                        if (part.colorHex != format.fill) part.PaintOr(format.fill, PaletteRole.Accent);
+                        part.Arrange(CellRect(r, c));
+                    }
+
                     if (editor.editing && r == editor.editRow && c == editor.editColumn) continue;
 
                     SheetValue value = SheetBook.calc.Value(page, r, c);
-                    string? text = value.Display();
+                    string? text = value.Display(format.number);
                     if (string.IsNullOrEmpty(text)) continue;
 
-                    LayoutRect cell = CellRect(r, c);
-                    PlaceText(Label(labels, grid, label++, PaletteRole.Ink), text, cell, value.kind == SheetValueKind.Number);
+                    LabelControl cellLabel = Label(labels, grid, label++, PaletteRole.Ink);
+                    FontStyle style = format.bold ? FontStyle.Bold : FontStyle.Regular;
+                    if (cellLabel.style != style)
+                    {
+                        cellLabel.style = style;
+                        cellLabel.InvalidateLayout();
+                    }
+                    PlaceText(cellLabel, text, CellRect(r, c), value.kind == SheetValueKind.Number);
                 }
+            for (int i = fill; i < fillParts.Count; i++)
+                fillParts[i].Arrange(Hidden);
             for (int i = label; i < labels.Count; i++)
-                labels[i].Arrange(LayoutRect.Empty);
+                labels[i].Arrange(Hidden);
         }
 
         // Shaded range, outlined active cell, and the field over the cell being edited.
@@ -239,7 +296,7 @@ namespace ArctisAurora.Core.UI
                 PlaceCentred(Label(headerNames, headers, name++, PaletteRole.MutedInk), (r + 1).ToString(CultureInfo.InvariantCulture), band);
             }
             for (int i = name; i < headerNames.Count; i++)
-                headerNames[i].Arrange(LayoutRect.Empty);
+                headerNames[i].Arrange(Hidden);
         }
 
         private static void PlaceText(LabelControl label, string text, LayoutRect cell, bool alignRight)
@@ -300,9 +357,23 @@ namespace ArctisAurora.Core.UI
         public override bool OnPointerPress(PointerEvent e)
         {
             base.OnPointerPress(e);
+            if (e.button == PointerEvent.rightButton)
+            {
+                if (CellAt(e.point, out int row, out int column) && !editor.IsSelected(row, column))
+                    editor.Select(row, column, false);
+                return false;
+            }
             if (e.button != PointerEvent.leftButton) return false;
 
-            if (CellAt(e.point, out int row, out int column))
+            if (EdgeAt(e.point, out bool edgeColumn, out int index))
+            {
+                resizing = true;
+                resizeColumn = edgeColumn;
+                resizeIndex = index;
+                resizeBefore = (edgeColumn ? page.columnWidths : page.rowHeights).TryGetValue(index, out float size) ? size : null;
+                StartDrag();
+            }
+            else if (CellAt(e.point, out int row, out int column))
             {
                 editor.Select(row, column, InputHandler.instance.IsModifierDown(InputModifier.Extend));
                 StartDrag();
@@ -313,7 +384,48 @@ namespace ArctisAurora.Core.UI
         public override void OnDrag(PointerEvent e)
         {
             base.OnDrag(e);
+            if (resizing)
+            {
+                Vector2 origin = Origin;
+                float start = resizeColumn ? origin.X + page.ColumnLeft(resizeIndex) : origin.Y + page.RowTop(resizeIndex);
+                float size = MathF.Max(minimumBand, (resizeColumn ? e.point.X : e.point.Y) - start);
+                (resizeColumn ? page.columnWidths : page.rowHeights)[resizeIndex] = size;
+                InvalidateLayout();
+                return;
+            }
             if (CellAt(e.point, out int row, out int column)) editor.Select(row, column, true);
+        }
+
+        public override void OnDragStop(bool accepted)
+        {
+            base.OnDragStop(accepted);
+            if (!resizing) return;
+
+            resizing = false;
+            float? after = (resizeColumn ? page.columnWidths : page.rowHeights).TryGetValue(resizeIndex, out float size) ? size : null;
+            editor.ResizeBand(resizeColumn, resizeIndex, resizeBefore, after);
+            ShowCursor(CursorShape.Arrow);
+        }
+
+        public override bool OnPointerMove(PointerEvent e)
+        {
+            bool handled = base.OnPointerMove(e);
+            if (!resizing)
+                ShowCursor(EdgeAt(e.point, out bool column, out _) ? column ? CursorShape.HResize : CursorShape.VResize : CursorShape.Arrow);
+            return handled;
+        }
+
+        public override bool OnPointerExit(PointerEvent e)
+        {
+            if (!resizing) ShowCursor(CursorShape.Arrow);
+            return base.OnPointerExit(e);
+        }
+
+        private void ShowCursor(CursorShape shape)
+        {
+            if (shownCursor == shape) return;
+            shownCursor = shape;
+            UIEngine.WindowOf(this)?.os.ChangeCursor(shape);
         }
 
         public override bool OnPointerTap(PointerEvent e)

@@ -73,11 +73,53 @@ namespace ArctisAurora.Core.UI
         {
             SheetEditorControl? sheet = Editor();
             if (sheet != null) sheet.PasteLink();
-            else TextInputActions.Paste();
+            else TextInputActions.PasteLink();
         }
 
         [A_XSDActionDependency("Sheet.Save", "Input", "Writes the sheet back to its file")]
         public static void Save() => Editor()?.Save();
+        #endregion
+
+        #region ---- formatting ----
+        [A_XSDActionDependency("Sheet.Bold", "Input", "Bolds the selected cells, or unbolds them when the active cell is bold")]
+        public static void Bold() => Editor()?.ToggleBold();
+
+        [A_XSDActionDependency("Sheet.FillNone", "Input", "Removes the fill of the selected cells")]
+        public static void FillNone() => Fill("None");
+
+        [A_XSDActionDependency("Sheet.FillYellow", "Input", "Fills the selected cells yellow")]
+        public static void FillYellow() => Fill("Yellow");
+
+        [A_XSDActionDependency("Sheet.FillGreen", "Input", "Fills the selected cells green")]
+        public static void FillGreen() => Fill("Green");
+
+        [A_XSDActionDependency("Sheet.FillBlue", "Input", "Fills the selected cells blue")]
+        public static void FillBlue() => Fill("Blue");
+
+        [A_XSDActionDependency("Sheet.FillPink", "Input", "Fills the selected cells pink")]
+        public static void FillPink() => Fill("Pink");
+
+        [A_XSDActionDependency("Sheet.FillOrange", "Input", "Fills the selected cells orange")]
+        public static void FillOrange() => Fill("Orange");
+
+        [A_XSDActionDependency("Sheet.FillPurple", "Input", "Fills the selected cells purple")]
+        public static void FillPurple() => Fill("Purple");
+
+        [A_XSDActionDependency("Sheet.FormatGeneral", "Input", "Shows the selected numbers as typed or calculated")]
+        public static void FormatGeneral() => Editor()?.SetNumberFormat(null);
+
+        [A_XSDActionDependency("Sheet.FormatNumber", "Input", "Shows the selected numbers with two decimals and grouped thousands")]
+        public static void FormatNumber() => Editor()?.SetNumberFormat("#,##0.00");
+
+        [A_XSDActionDependency("Sheet.FormatPercent", "Input", "Shows the selected numbers as percentages")]
+        public static void FormatPercent() => Editor()?.SetNumberFormat("0.00%");
+
+        [A_XSDActionDependency("Sheet.FormatCurrency", "Input", "Shows the selected numbers in euros")]
+        public static void FormatCurrency() => Editor()?.SetNumberFormat("€#,##0.00");
+
+        // A note highlight swatch by its caption.
+        private static void Fill(string caption) =>
+            Editor()?.SetFill(Array.Find(DocumentToolbarControl.highlightOptions, option => option.caption == caption).hex);
         #endregion
 
         // Nearest sheet at or above the active control.

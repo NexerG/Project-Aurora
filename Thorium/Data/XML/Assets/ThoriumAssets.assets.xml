@@ -17,6 +17,7 @@
 	<Asset Type="ContextMenuAsset" Name="file"      Source="XML/Documents/Menus/File.menu.xml"/>
 	<Asset Type="ContextMenuAsset" Name="edit"      Source="XML/Documents/Menus/Edit.menu.xml"/>
 	<Asset Type="ContextMenuAsset" Name="note"      Source="XML/Documents/Menus/Note.menu.xml"/>
+	<Asset Type="ContextMenuAsset" Name="sheet"     Source="XML/Documents/Menus/Sheet.menu.xml"/>
 
 	<Asset Type="ContextMenuAsset" Name="vault"        Source="XML/Documents/Menus/Vault.menu.xml"/>
 	<Asset Type="ContextMenuAsset" Name="vault-folder" Source="XML/Documents/Menus/VaultFolder.menu.xml"/>

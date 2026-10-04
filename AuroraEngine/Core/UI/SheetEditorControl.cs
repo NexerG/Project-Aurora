@@ -146,6 +146,12 @@ namespace ArctisAurora.Core.UI
             Select(Math.Max(0, rows - 1), Math.Max(0, columns - 1), true);
         }
 
+        public bool IsSelected(int row, int column)
+        {
+            (int top, int left, int bottom, int right) = Range();
+            return row >= top && row <= bottom && column >= left && column <= right;
+        }
+
         private (int top, int left, int bottom, int right) Range() =>
             (Math.Min(anchorRow, activeRow), Math.Min(anchorColumn, activeColumn),
              Math.Max(anchorRow, activeRow), Math.Max(anchorColumn, activeColumn));
@@ -246,6 +252,57 @@ namespace ArctisAurora.Core.UI
         }
         #endregion
 
+        #region ---- formatting ----
+        // Bolds the selection, or unbolds it when the active cell is bold.
+        public void ToggleBold()
+        {
+            if (editing || sheet == null) return;
+            bool on = !sheet.page.Format(activeRow, activeColumn).bold;
+            Restyle("Bold", format => format with { bold = on });
+        }
+
+        public void SetFill(string? hex) => Restyle("Fill", format => format with { fill = string.IsNullOrEmpty(hex) ? null : hex });
+
+        public void SetNumberFormat(string? number) => Restyle("Number format", format => format with { number = number });
+
+        // One undo step changing the format of every selected cell.
+        private void Restyle(string label, Func<SheetFormat, SheetFormat> change)
+        {
+            if (editing || sheet == null) return;
+
+            (int top, int left, int bottom, int right) = Range();
+            List<(int, int, SheetFormat, SheetFormat)> changed = new List<(int, int, SheetFormat, SheetFormat)>();
+            for (int r = top; r <= bottom; r++)
+                for (int c = left; c <= right; c++)
+                {
+                    SheetFormat before = sheet.page.Format(r, c);
+                    SheetFormat after = change(before);
+                    if (before != after) changed.Add((r, c, before, after));
+                }
+            if (changed.Count == 0) return;
+
+            SheetFormatEdit edit = new SheetFormatEdit(document, sheet.page, changed);
+            using (undo.Begin(label))
+            {
+                edit.Redo();
+                undo.Push(edit);
+            }
+        }
+
+        // A header drag that already wrote its size, recorded as one undo step.
+        internal void ResizeBand(bool column, int index, float? before, float? after)
+        {
+            if (before == after) return;
+
+            SheetBandEdit edit = new SheetBandEdit(document, sheet!.page, column, index, before, after);
+            using (undo.Begin(column ? "Column width" : "Row height"))
+            {
+                edit.Redo();
+                undo.Push(edit);
+            }
+        }
+        #endregion
+
         #region ---- clipboard ----
         // The selection as tab-separated rows.
         public bool Copy()
@@ -303,6 +360,14 @@ namespace ArctisAurora.Core.UI
             anchorColumn = column;
             Select(row + bottom - top, column + right - left, true);
             return true;
+        }
+
+        // A note link to the last copied cells while the clipboard still holds them; null otherwise.
+        internal static string? CopiedReference(string clipboardText)
+        {
+            if (copiedText == null || clipboardText != copiedText || copiedFrom.path == null) return null;
+            (_, string path, SheetPage page, int top, int left, int bottom, int right) = copiedFrom;
+            return SheetLinks.Reference(path, page.name, top, left, bottom, right);
         }
 
         // Tab-separated rows from the active cell, selected after.

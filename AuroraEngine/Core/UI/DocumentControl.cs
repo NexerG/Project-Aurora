@@ -6,6 +6,7 @@ using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.EngineWork;
 using Silk.NET.GLFW;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -589,6 +590,8 @@ namespace ArctisAurora.Core.UI
                     string fence = span.mathDisplay ? "$$" : "$";
                     plain.Append(fence).Append(span.mathSource).Append(fence);
                 }
+                else if (span.IsSheet && count > 0)
+                    plain.Append(SheetLinks.Plain(span.sheetRef));
                 else
                     plain.Append(block.text, start, count);
                 start += count;
@@ -2012,6 +2015,73 @@ namespace ArctisAurora.Core.UI
 
             CaretGeometry slot = block.CaretAt(index);
             return new LayoutRect(block.TextOrigin.X + slot.x, block.TextOrigin.Y + slot.top, 0f, slot.height);
+        }
+        #endregion
+
+        #region ---- sheet links ----
+        // Replaces the selection with a live link to the copied cells; false where a plain paste should run.
+        internal bool PasteLink(string text)
+        {
+            string? reference = SheetEditorControl.CopiedReference(text);
+            if (reference == null || caretBlock == null || readOnly || plainText
+                || caretBlock.stylingType is TextStyleType.Code or TextStyleType.Rule) return false;
+
+            if (HasSelection && !DeleteSelection()) return true;
+            if (caretBlock == null) return true;
+
+            StyleSpan span = caretBlock.StyleAt(caretOffset).AsText();
+            span.count = 1;
+            span.sheetRef = reference;
+
+            BlockSnapshot block = new BlockSnapshot { text = BlockControl.PictureChar };
+            block.spans.Add(span);
+            DocumentFragment fragment = new DocumentFragment();
+            fragment.blocks.Add(block);
+
+            Insert(AddressOf(caretBlock, caretOffset), fragment);
+            DisarmStyle();
+            return true;
+        }
+
+        // Re-measures every block showing a sheet link.
+        internal void RefreshSheetLinks()
+        {
+            foreach (BlockControl block in Blocks())
+                foreach (StyleSpan span in block.spans)
+                    if (span.IsSheet || span.IsMath && SheetLinks.HasMathLinks(span.mathSource))
+                    {
+                        block.InvalidateLayout();
+                        break;
+                    }
+        }
+
+        // Rewrites links the rename answers for; true when any changed.
+        internal bool RenameSheetLinks(Func<string, string?> rename)
+        {
+            bool any = false;
+            foreach (BlockControl block in Blocks())
+            {
+                Span<StyleSpan> spans = CollectionsMarshal.AsSpan(block.spans);
+                bool changed = false;
+                for (int i = 0; i < spans.Length; i++)
+                {
+                    if (spans[i].IsMath && SheetLinks.HasMathLinks(spans[i].mathSource))
+                    {
+                        string source = SheetLinks.RenameMath(spans[i].mathSource, rename);
+                        if (source == spans[i].mathSource) continue;
+                        spans[i].mathSource = source;
+                        changed = true;
+                        continue;
+                    }
+                    if (!spans[i].IsSheet || rename(spans[i].sheetRef) is not string renamed) continue;
+                    spans[i].sheetRef = renamed;
+                    changed = true;
+                }
+                if (!changed) continue;
+                block.InvalidateLayout();
+                any = true;
+            }
+            return any;
         }
         #endregion
 

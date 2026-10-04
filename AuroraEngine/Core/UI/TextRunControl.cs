@@ -71,18 +71,23 @@ namespace ArctisAurora.Core.UI
         public string mathSource;
         public bool mathDisplay;
 
+        // a sheet link: one U+FFFC showing a cell's value or a range's grid
+        public string sheetRef;
+
         public Quaternion Rotation => Quaternion.CreateFromAxisAngle(Vector3.UnitZ, imageRotation * MathF.PI / 180f);
         public bool IsFloating => IsPicture && wrap != PictureWrap.Inline;
         public bool IsBold => style == FontStyle.Bold || style == FontStyle.BoldItalic;
         public bool IsItalic => style == FontStyle.Italic || style == FontStyle.BoldItalic;
         public bool IsPicture => imageSource != null;
         public bool IsMath => mathSource != null;
-        public bool IsObject => IsPicture || IsMath;
+        public bool IsSheet => sheetRef != null;
+        public bool IsObject => IsPicture || IsMath || IsSheet;
 
         // The same style with the picture or formula taken off.
         public StyleSpan AsText()
         {
             StyleSpan text = this;
+            text.sheetRef = null;
             text.mathSource = null;
             text.mathDisplay = false;
             text.imageSource = null;
@@ -126,6 +131,7 @@ namespace ArctisAurora.Core.UI
         private readonly List<TextureAsset?> _runTextures = new List<TextureAsset?>();
         private readonly List<(Vector2 size, Quaternion rotation)> _runPictures = new List<(Vector2, Quaternion)>();
         private readonly List<MathBox?> _runMath = new List<MathBox?>();
+        private readonly List<SheetBox?> _runSheet = new List<SheetBox?>();
 
         // formulas, laid out once per source; the font they draw from
         private static readonly Dictionary<(string source, bool display), MathBox> mathBoxes = new();
@@ -257,11 +263,13 @@ namespace ArctisAurora.Core.UI
             _runTextures.Clear();
             _runPictures.Clear();
             _runMath.Clear();
+            _runSheet.Clear();
 
             string s = text ?? string.Empty;
             if (spans.Count == 0)
             {
                 _runMath.Add(null);
+                _runSheet.Add(null);
                 _runs.Add(new TextMeasurer.Run(s, 0, s.Length, fontName, _fontAsset.atlasMetaData, Zoomed(fontSize), style));
                 _runPaints.Add(_paint);
                 _runFonts.Add(_fontAsset);
@@ -296,6 +304,20 @@ namespace ArctisAurora.Core.UI
                     _runTextures.Add(picture);
                     _runPictures.Add((new Vector2(w, h), rotation));
                     _runMath.Add(null);
+                    _runSheet.Add(null);
+                }
+                else if (spans[i].IsSheet)
+                {
+                    int size = Zoomed(spanSize);
+                    TextMeasurer.Run plain = new TextMeasurer.Run(s, start, count, spanFont, font.atlasMetaData, size, spans[i].style);
+                    SheetBox box = SheetLinks.Layout(spans[i].sheetRef, plain, metrics.GetLineMetrics(spanFont), textZoom);
+                    float w = box.range && float.IsFinite(wrapWidth) && wrapWidth < float.MaxValue ? wrapWidth : box.width;
+                    _runs.Add(new TextMeasurer.Run(s, start, count, spanFont, font.atlasMetaData, size, spans[i].style, false,
+                        w, box.height, false, true));
+                    _runTextures.Add(null);
+                    _runPictures.Add((Vector2.Zero, Quaternion.Identity));
+                    _runMath.Add(null);
+                    _runSheet.Add(box);
                 }
                 else if (spans[i].IsMath)
                 {
@@ -309,6 +331,7 @@ namespace ArctisAurora.Core.UI
                     _runTextures.Add(null);
                     _runPictures.Add((Vector2.Zero, Quaternion.Identity));
                     _runMath.Add(box);
+                    _runSheet.Add(null);
                     font = ResolveFont(MathFont);
                 }
                 else
@@ -317,6 +340,7 @@ namespace ArctisAurora.Core.UI
                     _runTextures.Add(null);
                     _runPictures.Add((Vector2.Zero, Quaternion.Identity));
                     _runMath.Add(null);
+                    _runSheet.Add(null);
                 }
                 _runPaints.Add(spans[i].colorHex == null ? _paint : Palettes.Inline(spans[i].colorHex));
                 _runFonts.Add(font);
@@ -332,13 +356,14 @@ namespace ArctisAurora.Core.UI
         // A span's formula laid out in em; an error box when there is no math font.
         private static MathBox MathBoxFor(in StyleSpan span)
         {
-            if (mathBoxes.TryGetValue((span.mathSource, span.mathDisplay), out MathBox cached)) return cached;
+            string source = SheetLinks.HasMathLinks(span.mathSource) ? SheetLinks.ExpandMath(span.mathSource) : span.mathSource;
+            if (mathBoxes.TryGetValue((source, span.mathDisplay), out MathBox cached)) return cached;
 
             FontAsset font = ResolveFont(MathFont);
             MathBox box = font.mathConstants == null
                 ? new MathBox { error = true }
-                : MathLayout.Layout(MathParser.Parse(span.mathSource), span.mathDisplay, font.atlasMetaData, font.mathConstants);
-            mathBoxes[(span.mathSource, span.mathDisplay)] = box;
+                : MathLayout.Layout(MathParser.Parse(source), span.mathDisplay, font.atlasMetaData, font.mathConstants);
+            mathBoxes[(source, span.mathDisplay)] = box;
             return box;
         }
 
@@ -576,6 +601,16 @@ namespace ArctisAurora.Core.UI
                     if (highlight != 0)
                         WriteHighlight(quads, segment, Stretched(line, segment), segmentX, lineTop, line.height, highlight, alpha, z - depthStep, clip, gradientRect);
 
+                    if (_runSheet[segment.runIndex] is SheetBox sheet)
+                    {
+                        for (int k = 0; k < segment.charCount; k++)
+                        {
+                            WriteSheet(quads, sheet, run, font, paint, alpha, pen, baselineY, z, clip, gradientRect);
+                            pen += run.imageWidth;
+                        }
+                        continue;
+                    }
+
                     if (run.math)
                     {
                         MathBox math = _runMath[segment.runIndex]!;
@@ -622,6 +657,49 @@ namespace ArctisAurora.Core.UI
                     if (effect != 0)
                         FrameScheduler.RequestFrameAt(started + (segment.charStart + segment.charCount - run.charStart) * stagger + Effects.Duration(effect));
                 }
+            }
+        }
+
+        // A sheet link: a value on the baseline, or a range's grid cut at the column, rows outside the clip skipped.
+        private void WriteSheet(DataPool quads, SheetBox sheet, in TextMeasurer.Run run, FontAsset font, uint paint, float alpha,
+                                float x, float baselineY, float z, Vector4 clip, Vector4 gradientRect)
+        {
+            PaletteDefinition colors = palette ?? Palettes.Default;
+            uint danger = Palettes.Surface(colors, PaletteRole.Danger);
+
+            if (!sheet.range)
+            {
+                foreach (SheetBoxCell cell in sheet.cells)
+                {
+                    float pen = x;
+                    foreach (char c in cell.text)
+                        pen += WriteGlyph(quads, c, run.style, cell.error ? danger : paint, alpha, font, run.fontSize, 0u, 0f,
+                                          pen, baselineY, z, clip, gradientRect);
+                }
+                return;
+            }
+
+            float top = baselineY - run.imageHeight;
+            Vector4 column = new Vector4(clip.X, clip.Y, MathF.Min(clip.Z, x + run.imageWidth), clip.W);
+            uint line = Palettes.Surface(colors, PaletteRole.Line);
+
+            foreach (LayoutRect rule in sheet.rules)
+            {
+                if (top + rule.Bottom <= clip.Y || top + rule.y >= clip.W) continue;
+                WriteRect(quads, x + rule.x, MathF.Round(top + rule.y), rule.width, rule.height, line, alpha, z, column, gradientRect);
+            }
+
+            foreach (SheetBoxCell cell in sheet.cells)
+            {
+                if (top + cell.rect.Bottom <= clip.Y) continue;
+                if (top + cell.rect.y >= clip.W) break;
+
+                Vector4 cellClip = new Vector4(MathF.Max(column.X, x + cell.rect.x), MathF.Max(column.Y, top + cell.rect.y),
+                                               MathF.Min(column.Z, x + cell.rect.Right), MathF.Min(column.W, top + cell.rect.Bottom));
+                float pen = x + cell.pen;
+                foreach (char c in cell.text)
+                    pen += WriteGlyph(quads, c, run.style, cell.error ? danger : paint, alpha, font, run.fontSize, 0u, 0f,
+                                      pen, top + cell.baseline, z, cellClip, gradientRect);
             }
         }
 

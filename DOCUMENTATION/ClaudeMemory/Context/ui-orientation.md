@@ -149,7 +149,7 @@ Why: [[ui-palettes]].
   glyph. `spans` of `StyleSpan` (`count`, `style`, `colorHex`, `fontName`, `fontSize`, `gradient`,
   `strikethrough`, `underline`, `highlightHex`, `stylingType`, `fontSizeAuthored`, `IsBold`/`IsItalic`; picture:
   `imageSource`, `imageWidth`, `imageHeight`, `imageRotation`, `collision`, `Rotation`, `IsPicture`, `AsText`), `SetSpans`, `style`, `lineHeight`. A picture
-  span draws one image quad (`PictureSize`, `WriteImage` — turned, centred in its turned box); `PictureAt`, `PictureBox` (the line box), `PictureFrame` (drawn rect + turn); `MathAt`, `MathBox` (a formula's drawn box); a press on a picture or formula calls
+  span draws one image quad (`PictureSize`, `WriteImage` — turned, centred in its turned box); `PictureAt`, `PictureBox` (the line box), `PictureFrame` (drawn rect + turn); `MathAt`, `MathBox` (a formula's drawn box); a sheet link is an object span too (`sheetRef`, `IsSheet`): `BuildRuns` lays a `SheetBox` through `SheetLinks.Layout` and `WriteSheet` draws it in `Emit` [[sheets]]; a press on a picture or formula calls
   `IGlyphPressTarget.PicturePressed(run, index, button)` instead of `GlyphPressed`; `LayoutAround(slots)` re-lays
   lines around floats (`laidAround`), `PictureSizeAt`; every line geometry use adds `TextLine.left` [[note-images]].
   `kind` is `MTSDFControl`, so its children get the ground under it, not its ink. `Emit` writes a segment's
@@ -183,7 +183,7 @@ Why: [[ui-palettes]].
   spans. `stylingType`, `listKind`/`listLevel`/`listMarker`/`isChecked`, resolved `shownMarker`/`listNumber`
   (`ShowMarker`, set by `DocumentControl.RenumberLists`), `ApplyLayout(DocumentLayout)` (list indent as
   `padding.left`, marker sync and size), `MeasureCore` (wraps inside the indent), `ArrangeCore` (shape `IconControl`
-  centred in the indent, number `LabelControl` right-aligned, or `CheckBoxControl`), `AppendRun`, `Runs()`. Also
+  centred in the indent, number `LabelControl` right-aligned, or `CheckBoxControl`), `AppendRun`, `Runs()` (both carry `Run.sheet`, the `Sheet` attribute of a sheet link). Also
   declares `ListMarker` and `ListMarkers` (`Format`, `ShapeIcon`, `IsNumbered`) [[list-markers]]. Region `text and spans`:
   `InsertText`, `RemoveText`, `SplitAt`, `AppendBlock`, `Snapshot`/`SliceSnapshot`/`Restore`/`From`,
   `InsertSlice`/`AppendSlice`, `StyleAt`, `StyleRange`, `SplitSpanAt`, `MergeSpans`. A boundary belongs to the
@@ -205,7 +205,7 @@ Why: [[ui-palettes]].
   with the picture, `Begin/Resize/EndPictureResize`, `Begin/Rotate/EndPictureRotate`, `SetPicture`, `SetPictureWrap`,
   `SetPictureCollision`, `MinPictureY`, nested public `PictureHandle` (`Side`) and `PictureRotator` (edge-only ring,
   band `HitsShape`); frame, ring, then handles collected after the caret), `formulas` (`SelectedMath`, `StoredMath`, `SetMath`,
-  `PlaceMath`/`RecordPlaced`/`RemovePlaced`, `RecordMath`, `MathAnchor`; a double-click in `OnPointerTap` opens the editor — [[math-in-notes]]) and
+  `PlaceMath`/`RecordPlaced`/`RemovePlaced`, `RecordMath`, `MathAnchor`; a double-click in `OnPointerTap` opens the editor — [[math-in-notes]]), `sheet links` (`PasteLink`, `RefreshSheetLinks`, `RenameSheetLinks`; copy writes values — [[sheets]]) and
   `floating pictures` (`RegisterFloats`, `WrapsAround`, `FloatSlots : ILineSlots` with `Outline`/`TurnedSpan`, `SyncFloatViews`,
   `ArrangeFloats`, `Begin/Move/EndPictureMove`, `PlaceFloat`, `AnchorFor`, nested public `FloatingPicture` — press selects, press on
   the selected one drags; behind views before the blocks in `children`, front ones after — [[note-images]]), highlights inserted at the **head** of `children`, after the page panels, so they paint behind the text),
@@ -233,9 +233,9 @@ Why: [[ui-palettes]].
   private `ColumnGrip`, one per column on its right edge; region `column resize`: `BeginResize`/`Resize`/`EndResize`
   → `DocumentControl.RecordTableResize`). `RowCount`, `CellBlocks(row, column)`. Lives inside the horizontal
   `ScrollableControl` that `Hosted()` builds, for both `LoadDocument` and `DocumentControl.PutTable`. [[document-tables]]
-- **DocumentEditorControl** `<DocumentEditor>` · ScrollableControl, `IContext`, `IClipboardTarget` — one open note.
+- **DocumentEditorControl** `<DocumentEditor>` · ScrollableControl, `IContext`, `IClipboardTarget` — one open note. Subscribes to `SheetBook.changed` (`BookChanged` → `RefreshSheetLinks`; `OnDestroy` unsubscribes); `PasteLink` (step "Paste link"), `RenameSheetLinks`.
   `Source`/`LoadPath`/`LoadDocument` (builds the properties header for `.md`/`.xml`), `Save` (refreshes it),
-  `needsNaming`, `FocusCaret`; regions `styling` (forwards under a `BeginStep`; also `SetAlignment` — `.xml` only, `CanAlign`, `InsertRule`, `InsertFormula`/`EditFormula` (open a `FormulaPopup`), `SetChecked`, `ShiftListLevel`,
+  `needsNaming`, `FocusCaret`; regions `styling` (forwards under a `BeginStep`; also `SetAlignment` — `.xml` only, `CanAlign`, `InsertRule`, `InsertFormula`/`EditFormula` (open a `FormulaPopup`, whose static `open` and `PasteLink()` insert a `\sheet{ref}` cell reference into its source box — [[sheets]]), `SetChecked`, `ShiftListLevel`,
   `Page`/`SetPage`, and the non-undoable `SetPalette`/`ApplyPalette`, `SetLayout`, `SetFrontmatterValue`, `SetReadOnly`;
   every edit path checks `Writable`), `ViewState`/`RestoreView` (`SessionTab`; scroll applied at the first Arrange through
   `pendingView`/`ScrollToView`), `selection` (`SelectLine`, `BeginSelectionDrag`, `OnDrag` + autoscroll), `caret movement`
@@ -285,21 +285,24 @@ Why: [[ui-palettes]].
   `FinishEdit`/`CancelEdit`, `Clear`, private `Write` — the one place a `SheetCellEdit` is built), `clipboard` (TSV of
   values; `Copy` keeps static `copiedText`/`copiedFrom` for `PasteLink`),
   `view` (`ViewState`/`RestoreView` in `SessionTab`'s caret/anchor/`scrollX`/`topDelta`; `ArrangeCore` applies a pending
-  view or scrolls the active cell clear of the headers). [[sheets]]
+  view or scrolls the active cell clear of the headers), `formatting` (`ToggleBold`, `SetFill`, `SetNumberFormat`, `IsSelected`, internal `ResizeBand`). [[sheets]]
 - **SheetControl** (no XML) · ContainerControl — the grid canvas for one `SheetPage`. Measures to the used extent plus
   spare; `ArrangeCore` reads the scroller's inner rect and lays out the visible window only: `ArrangeGrid` (pooled lines
   and `LabelControl`s in a private `Parts` container), `ArrangeSelection` (wash, 4 outline bars, the `field`
   `TextBoxControl` over the edited cell), `ArrangeHeaders` (pinned to the viewport). `CellRect`, `CellAt`,
   `headerWidth`/`headerHeight`, `CellsChanged`. Pointer: press selects (Shift extends) and starts a drag, drag extends,
-  double tap edits. [[sheets]]
+  double tap edits. Formatting: `fills` Parts drawn first, bold through the label's run style, text through `Display(format.number)`; header-edge resize (`EdgeAt`, `OnDrag` live, `OnDragStop` records through `ResizeBand`, `ShowCursor`); spare pooled parts arrange to `Hidden`; right-click uses the `sheet` context menu. [[sheets]]
 - **SheetFormula.cs** — `SheetValue` (`kind`, `FromRaw`, `Display`), `SheetFormula` (`Parse`, `Evaluate`,
   `References`, `RenameFile`, `Prefix`, error-code consts, grid bounds). **SheetCalc.cs** — `SheetCellId`, `SheetCalc`
   (`Value`, `Changed`, `Add`/`Remove`, `RecalcAll`; internal `Read`, `PageNamed`). **SheetBook.cs** — static: one
   `SheetDocument` per path (`Get`, `Register`/`Unregister`, `OwnerOf`, `Resolve` via `findSheet`), the shared `calc`,
   `changed` event, vault hooks `Created`/`Deleted`/`Renamed`/`Clear`. [[sheets]]
+- **SheetLinks.cs** — `SheetLinks` (static: `Parse`, `Reference`, `IsLink`, `Layout` → `SheetBox`, `Plain`, `Renamed`; region `math`: `HasMathLinks`, `ExpandMath`, `RenameMath` — `\sheet{…}` inside a formula, expanded to the cell's value before `MathParser` sees it), `SheetBox`,
+  `SheetBoxCell`: sheet links shown in notes, drawn by `TextRunControl`; no control of their own. `SheetEditorControl.CopiedReference`,
+  `TextInputActions.PasteLink` (`Text.PasteLink`: `FormulaPopup.PasteLink()` → note editor → plain paste) feed Paste link into a note or its open formula popup. [[sheets]]
 - **SheetDocument.cs** — `SheetDocument` (`pages`, `undo`, `extension`, `IsSheet`, `Blank`, addressing statics), `SheetPage`
   (bands, `Shown`, `Used`), `SheetLayer` (`Get`/`Set`), `SheetCell`. **SheetXml** reads/writes `.sheet.xml`, keeping
-  unknown elements. **SheetEdits.cs** — `SheetCellEdit`. **SheetActions** — `Sheet.*` keybind actions. [[sheets]]
+  unknown elements. `SheetFormat` (per-page `formats`). **SheetEdits.cs** — `SheetCellEdit`, `SheetFormatEdit`, `SheetBandEdit`. **SheetActions** — `Sheet.*` keybind actions (region `formatting`: `Sheet.Bold`, `Sheet.Fill*`, `Sheet.Format*`). [[sheets]]
 
 ## Layout containers
 

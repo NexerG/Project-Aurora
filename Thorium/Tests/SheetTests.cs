@@ -584,7 +584,490 @@ namespace Thorium.Tests
             Directory.Delete(folder, true);
         }
 
+        [A_XSDActionDependency("Sheet.NoteFormats", "Test")]
+        private static IEnumerator<int> NoteFormats(TestContext t)
+        {
+            const string cell = "Budget.sheet.xml#Data!B1";
+            const string range = "Budget.sheet.xml#Data!A1:B2";
+            string markdown = $"Total ![[{cell}]] here\n\n![[{range}]]\n\n![[Other note#Heading]]\n";
+
+            XElement read = MarkdownFormat.Read(markdown, "Links");
+            List<XElement> runs = read.Descendants("Run").ToList();
+            t.Check(runs.Count(run => (string?)run.Attribute("Sheet") == cell) == 1, "an inline embed of a sheet cell reads as a Sheet run");
+            t.Check(runs.Count(run => (string?)run.Attribute("Sheet") == range) == 1, "a range embed reads as a Sheet run");
+            t.Check(runs.Any(run => (string?)run.Attribute("Text") == "![[Other note#Heading]]"), "an embed of a note stays text");
+            t.Check(MarkdownFormat.Write(read) == markdown, $"the markdown writes back as read: {MarkdownFormat.Write(read)}");
+
+            XElement literal = new XElement("Document", new XElement("Block", new XElement("Run", new XAttribute("Text", $"![[{cell}]]"))));
+            XElement reread = MarkdownFormat.Read(MarkdownFormat.Write(literal), "Literal");
+            t.Check(reread.Descendants("Run").All(run => run.Attribute("Sheet") == null)
+                && reread.Descendants("Run").Any(run => (string?)run.Attribute("Text") == $"![[{cell}]]"), "typed embed text stays text");
+
+            RichTextDocument document = DocumentXml.Parse(new XElement("Document",
+                new XElement("Block", new XElement("Run", new XAttribute("Text", "a ")), new XElement("Run", new XAttribute("Sheet", cell)))));
+            BlockControl block = document.blocks.OfType<BlockControl>().First();
+            t.Check(block.text == "a " + BlockControl.PictureChar && block.spans.Any(span => span.IsSheet && span.sheetRef == cell),
+                "a Sheet run loads as one object character");
+            t.Check(DocumentXml.ToXml(document).Descendants().Any(run => run.Name.LocalName == "Run" && (string?)run.Attribute("Sheet") == cell),
+                "and saves as a Sheet run");
+            foreach (Control entry in document.blocks)
+                entry.Destroy();
+
+            t.Check(SheetLinks.Parse("Budget.sheet.xml#My page!B3:A1", out string file, out string page, out int top, out int left, out int bottom, out int right)
+                && file == "Budget.sheet.xml" && page == "My page" && (top, left, bottom, right) == (0, 0, 2, 1), "a reference parses, its range ordered");
+            t.Check(!SheetLinks.Parse("Budget.sheet.xml!B3", out _, out _, out _, out _, out _, out _), "a reference without a page does not parse");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Sheet.NoteLinks", "Test")]
+        private static IEnumerator<int> NoteLinks(TestContext t)
+        {
+            string folder = TempFolder();
+            Func<string, string?>? before = SheetBook.findSheet;
+            SheetBook.findSheet = FolderResolver(folder);
+            string budgetPath = BudgetSheet(folder);
+
+            string notePath = Path.Combine(folder, "Links.md");
+            File.WriteAllText(notePath, "Total ![[Budget.sheet.xml#Data!B1]] here\n\n![[Budget.sheet.xml#Data!A1:B2]]\n\n![[Gone.sheet.xml#Data!A1]]\n");
+
+            StackPanelControl both = new StackPanelControl { orientation = StackPanelControl.Orientation.Horizontal };
+            DocumentEditorControl note = new DocumentEditorControl { preferredWidth = 600f, preferredHeight = 400f };
+            SheetEditorControl sheet = new SheetEditorControl { preferredWidth = 300f, preferredHeight = 400f };
+            note.LoadPath(notePath);
+            sheet.LoadPath(budgetPath);
+            both.AddChild(note);
+            both.AddChild(sheet);
+            t.Show(both);
+            yield return 2;
+
+            List<BlockControl> p = NoteBlocks(note);
+            float Width() => p[0].CaretAt(7).x - p[0].CaretAt(6).x;
+            float narrow = Width();
+            t.Check(narrow > 0f, $"an inline cell takes its value's width: {narrow}");
+            BlockControl rangeBlock = p.First(block => block.spans.Any(span => span.IsSheet && span.sheetRef.Contains(':')));
+            t.Check(rangeBlock.arrangedRect.height >= 48f, $"a range is as tall as its rows: {rangeBlock.arrangedRect.height}");
+            t.Check(SheetLinks.Plain("Budget.sheet.xml#Data!A1:B2") == "10\t20" + Environment.NewLine + "text\t" + SheetFormula.div0,
+                $"a range reads the sheet's values: {SheetLinks.Plain("Budget.sheet.xml#Data!A1:B2")}");
+            t.Check(SheetLinks.Plain("Gone.sheet.xml#Data!A1") == SheetFormula.reference, "a missing sheet is #REF!");
+            yield return t.Golden("Links", note);
+
+            sheet.Select(0, 0, false);
+            sheet.Paste("1000");
+            yield return 2;
+            t.Check(Width() > narrow, $"an edit in the sheet widens the note's value: {narrow} -> {Width()}");
+            t.Check(!note.session.isDirty, "a sheet edit leaves the note unedited");
+            yield return t.Golden("Edited", note);
+
+            t.Show(new StackPanelControl());
+            SheetBook.findSheet = before;
+            SheetBook.Deleted(budgetPath);
+            Directory.Delete(folder, true);
+        }
+
+        [A_XSDActionDependency("Sheet.NotePasteLinks", "Test")]
+        private static IEnumerator<int> NotePasteLinks(TestContext t)
+        {
+            string folder = TempFolder();
+            Func<string, string?>? before = SheetBook.findSheet;
+            SheetBook.findSheet = FolderResolver(folder);
+            string budgetPath = BudgetSheet(folder);
+
+            string notePath = Path.Combine(folder, "Paste.md");
+            File.WriteAllText(notePath, "start\n");
+            string plainPath = Path.Combine(folder, "Plain.txt");
+            File.WriteAllText(plainPath, "start\n");
+
+            StackPanelControl both = new StackPanelControl { orientation = StackPanelControl.Orientation.Horizontal };
+            DocumentEditorControl note = new DocumentEditorControl { preferredWidth = 400f, preferredHeight = 300f };
+            DocumentEditorControl plain = new DocumentEditorControl { preferredWidth = 200f, preferredHeight = 300f };
+            SheetEditorControl sheet = new SheetEditorControl { preferredWidth = 300f, preferredHeight = 300f };
+            note.LoadPath(notePath);
+            plain.LoadPath(plainPath);
+            sheet.LoadPath(budgetPath);
+            both.AddChild(note);
+            both.AddChild(plain);
+            both.AddChild(sheet);
+            t.Show(both);
+            yield return 2;
+
+            DocumentControl content = NoteContent(note);
+            StyleSpan? Link(BlockControl block) => block.spans.Any(span => span.IsSheet) ? block.spans.First(span => span.IsSheet) : null;
+
+            sheet.Select(0, 1, false);
+            sheet.Copy();
+            content.SetCaret(NoteBlocks(note)[0], 5);
+            note.FocusCaret();
+            yield return t.Key(Keys.V, Keys.LeftControl, Keys.LeftShift);
+            BlockControl first = NoteBlocks(note)[0];
+            t.Check(Link(first)?.sheetRef == "Budget.sheet.xml#Data!B1" && first.text == "start" + BlockControl.PictureChar,
+                $"Ctrl+Shift+V in a note puts in a live cell: {Link(first)?.sheetRef} '{first.text}'");
+
+            content.SetCaret(first, 5);
+            content.SetCaret(first, 6, true);
+            yield return t.Key(Keys.C, Keys.LeftControl);
+            t.Check(ClipboardText.Get() == "20", $"copying the link copies its value: {ClipboardText.Get()}");
+
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            first = NoteBlocks(note)[0];
+            t.Check(Link(first) == null && first.text == "start", $"one undo takes the link back: '{first.text}'");
+
+            sheet.Select(0, 0, false);
+            sheet.Select(1, 1, true);
+            sheet.Copy();
+            content.SetCaret(first, 5);
+            note.FocusCaret();
+            yield return t.Key(Keys.V, Keys.LeftControl, Keys.LeftShift);
+            first = NoteBlocks(note)[0];
+            t.Check(Link(first)?.sheetRef == "Budget.sheet.xml#Data!A1:B2", $"a range pastes as a range link: {Link(first)?.sheetRef}");
+
+            NoteContent(plain).SetCaret(NoteBlocks(plain)[0], 5);
+            plain.FocusCaret();
+            yield return t.Key(Keys.V, Keys.LeftControl, Keys.LeftShift);
+            BlockControl plainFirst = NoteBlocks(plain)[0];
+            t.Check(Link(plainFirst) == null && plainFirst.text.StartsWith("start10"), $"a .txt note pastes the values: '{plainFirst.text}'");
+
+            ClipboardText.Set("elsewhere");
+            content.SetCaret(NoteBlocks(note)[0], 0);
+            note.FocusCaret();
+            yield return t.Key(Keys.V, Keys.LeftControl, Keys.LeftShift);
+            first = NoteBlocks(note)[0];
+            t.Check(first.text.StartsWith("elsewhere") && first.spans.Count(span => span.IsSheet) == 1, "a clipboard from elsewhere pastes plainly");
+
+            t.Show(new StackPanelControl());
+            SheetBook.findSheet = before;
+            SheetBook.Deleted(budgetPath);
+            Directory.Delete(folder, true);
+        }
+
+        [A_XSDActionDependency("Sheet.NoteRenameRewrites", "Test")]
+        private static IEnumerator<int> NoteRenameRewrites(TestContext t)
+        {
+            string folder = TempFolder();
+            Func<string, string?>? before = SheetBook.findSheet;
+            SheetBook.findSheet = FolderResolver(folder);
+            string budgetPath = BudgetSheet(folder);
+            string moneyPath = Path.Combine(folder, "Money" + SheetDocument.extension);
+
+            string mdPath = Path.Combine(folder, "a.md");
+            File.WriteAllText(mdPath, "x ![[Budget.sheet.xml#Data!A1]] y ![[Budgetary.sheet.xml#Data!A1]]\r\n");
+            string xmlPath = Path.Combine(folder, "b.xml");
+            File.WriteAllText(xmlPath, "<Document>\r\n  <Block><Run Text=\"a\"/><Run Sheet=\"Budget.sheet.xml#Data!A1:B2\"/></Block>\r\n</Document>\r\n",
+                new System.Text.UTF8Encoding(true));
+            string plainPath = Path.Combine(folder, "c.md");
+            File.WriteAllText(plainPath, "nothing here\n");
+            DateTime plainTime = File.GetLastWriteTimeUtc(plainPath);
+            string openPath = Path.Combine(folder, "d.md");
+            File.WriteAllText(openPath, "open ![[Budget.sheet.xml#Data!A1]]\n");
+
+            string scope = SessionLayout.scope;
+            WorkspaceControl workspace = new WorkspaceControl
+            {
+                paneDocument = "tab-pane",
+                defaultDocument = "tab-pane",
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                verticalAlignment = VerticalAlignment.Stretch
+            };
+            t.Show(workspace);
+            SessionLayout.scope = "note-rename";
+            workspace.LoadPane()!.AddChild(SessionLayout.tabFactory(openPath));
+            yield return 2;
+            DocumentEditorControl note = (DocumentEditorControl)TabViewControl.FileEditorOf(TabViewControl.FindOpenDocument(openPath, out _))!;
+
+            File.Move(budgetPath, moneyPath);
+            SheetBook.Renamed(budgetPath, moneyPath, Directory.EnumerateFiles(folder, "*" + SheetDocument.extension));
+            SheetLinks.Renamed(budgetPath, moneyPath, new[] { mdPath, xmlPath, plainPath, openPath });
+            yield return 2;
+
+            t.Check(File.ReadAllText(mdPath) == "x ![[Money.sheet.xml#Data!A1]] y ![[Budgetary.sheet.xml#Data!A1]]\r\n",
+                $"a .md note's link is rewritten and nothing else: {File.ReadAllText(mdPath)}");
+            byte[] xml = File.ReadAllBytes(xmlPath);
+            t.Check(xml.Length > 3 && xml[0] == 0xEF && xml[1] == 0xBB && xml[2] == 0xBF, "a .xml note keeps its BOM");
+            t.Check(File.ReadAllText(xmlPath) == "<Document>\r\n  <Block><Run Text=\"a\"/><Run Sheet=\"Money.sheet.xml#Data!A1:B2\"/></Block>\r\n</Document>\r\n",
+                $"a .xml note's link is rewritten and nothing else: {File.ReadAllText(xmlPath)}");
+            t.Check(File.GetLastWriteTimeUtc(plainPath) == plainTime, "a note without a link is not touched");
+
+            BlockControl open = NoteBlocks(note)[0];
+            t.Check(open.spans.Any(span => span.sheetRef == "Money.sheet.xml#Data!A1"), "an open note's link follows the rename");
+            t.Check(!note.session.isDirty, "and the open note stays unedited");
+            t.Check(SheetLinks.Plain("Money.sheet.xml#Data!A1") == "10", "the renamed link still reads");
+
+            SessionLayout.scope = scope;
+            t.Show(new StackPanelControl());
+            SheetBook.findSheet = before;
+            SheetBook.Deleted(moneyPath);
+            Directory.Delete(folder, true);
+        }
+
+        [A_XSDActionDependency("Sheet.MathLinks", "Test")]
+        private static IEnumerator<int> MathLinks(TestContext t)
+        {
+            string folder = TempFolder();
+            Func<string, string?>? before = SheetBook.findSheet;
+            SheetBook.findSheet = FolderResolver(folder);
+            string budgetPath = BudgetSheet(folder);
+            string moneyPath = Path.Combine(folder, "Money" + SheetDocument.extension);
+
+            t.Check(SheetLinks.ExpandMath(@"a = \sheet{Budget.sheet.xml#Data!B1}") == "a = {20}", "a number reads in as itself");
+            t.Check(SheetLinks.ExpandMath(@"\sheet{Budget.sheet.xml#Data!A2}") == @"\text{text}", "text reads in as \\text");
+            t.Check(SheetLinks.ExpandMath(@"\sheet{Budget.sheet.xml#Data!A1:B2}") == @"\text{" + SheetFormula.value + "}", "a range is #VALUE!");
+            t.Check(SheetLinks.ExpandMath(@"\sheet{Gone.sheet.xml#Data!A1}") == @"\text{" + SheetFormula.reference + "}", "a missing sheet is #REF!");
+
+            string notePath = Path.Combine(folder, "Math.md");
+            File.WriteAllText(notePath, "x $a = \\sheet{Budget.sheet.xml#Data!B1}$ y\n\n$\\sheet{Gone.sheet.xml#Data!A1}$ end\n");
+            string xmlPath = Path.Combine(folder, "Math.xml");
+            File.WriteAllText(xmlPath, "<Document><Block><Run Math=\"a&#xA;\\sheet{Budget.sheet.xml#Data!A1} &lt; b\" Display=\"true\"/></Block></Document>\n");
+
+            string scope = SessionLayout.scope;
+            WorkspaceControl workspace = new WorkspaceControl
+            {
+                paneDocument = "tab-pane",
+                defaultDocument = "tab-pane",
+                preferredWidth = 600f,
+                preferredHeight = 400f
+            };
+            SheetEditorControl sheet = new SheetEditorControl { preferredWidth = 300f, preferredHeight = 400f };
+            sheet.LoadPath(budgetPath);
+            StackPanelControl both = new StackPanelControl { orientation = StackPanelControl.Orientation.Horizontal };
+            both.AddChild(workspace);
+            both.AddChild(sheet);
+            t.Show(both);
+            SessionLayout.scope = "math-links";
+            workspace.LoadPane()!.AddChild(SessionLayout.tabFactory(notePath));
+            yield return 2;
+            DocumentEditorControl note = (DocumentEditorControl)TabViewControl.FileEditorOf(TabViewControl.FindOpenDocument(notePath, out _))!;
+
+            List<BlockControl> p = NoteBlocks(note);
+            float Width() => p[0].CaretAt(3).x - p[0].CaretAt(2).x;
+            float narrow = Width();
+            t.Check(narrow > 0f, $"a formula holding a link is laid out: {narrow}");
+            yield return t.Golden("Math", note);
+
+            sheet.Select(0, 0, false);
+            sheet.Paste("1000");
+            yield return 2;
+            t.Check(Width() > narrow, $"an edit in the sheet widens the formula: {narrow} -> {Width()}");
+            t.Check(!note.session.isDirty, "a sheet edit leaves the note unedited");
+
+            sheet.Select(0, 1, false);
+            sheet.Copy();
+            NoteContent(note).SetCaret(p[0], p[0].text.Length);
+            note.FocusCaret();
+            yield return t.Key(Keys.M, Keys.LeftControl);
+            yield return t.Key(Keys.V, Keys.LeftControl, Keys.LeftShift);
+            TextBoxControl? box = UIEngine.activeControl as TextBoxControl;
+            t.Check(box?.text == @"\sheet{Budget.sheet.xml#Data!B1}", $"Ctrl+Shift+V in the formula's source puts in a reference: {box?.text}");
+            yield return t.Key(Keys.Enter);
+            yield return 2;
+            p = NoteBlocks(note);
+            t.Check(p[0].spans.Count(span => span.IsMath && span.mathSource == @"\sheet{Budget.sheet.xml#Data!B1}") == 1, "and commits it into the note");
+
+            ClipboardText.Set("q");
+            yield return t.Key(Keys.M, Keys.LeftControl);
+            yield return t.Key(Keys.V, Keys.LeftControl, Keys.LeftShift);
+            box = UIEngine.activeControl as TextBoxControl;
+            t.Check(box?.text == "q", $"a clipboard from elsewhere pastes plainly: {box?.text}");
+            yield return t.Key(Keys.Escape);
+            yield return 2;
+
+            File.Move(budgetPath, moneyPath);
+            SheetBook.Renamed(budgetPath, moneyPath, new[] { moneyPath });
+            SheetLinks.Renamed(budgetPath, moneyPath, new[] { notePath, xmlPath });
+            yield return 2;
+
+            t.Check(NoteBlocks(note)[0].spans.Any(span => span.IsMath && span.mathSource == @"a = \sheet{Money.sheet.xml#Data!B1}"),
+                "an open note's formula follows the rename");
+            t.Check(File.ReadAllText(xmlPath) == "<Document><Block><Run Math=\"a&#xA;\\sheet{Money.sheet.xml#Data!A1} &lt; b\" Display=\"true\"/></Block></Document>\n",
+                $"a .xml note's formula is rewritten and nothing else: {File.ReadAllText(xmlPath)}");
+            t.Check(SheetLinks.ExpandMath(@"\sheet{Money.sheet.xml#Data!B1}") == "{2000}", "the renamed reference still reads");
+
+            SessionLayout.scope = scope;
+            t.Show(new StackPanelControl());
+            t.Check(File.ReadAllText(notePath).StartsWith("x $a = \\sheet{Money.sheet.xml#Data!B1}$"),
+                $"a .md note's formula is rewritten: {File.ReadAllText(notePath)}");
+            SheetBook.findSheet = before;
+            SheetBook.Deleted(moneyPath);
+            Directory.Delete(folder, true);
+        }
+
         #region ---- fixtures ----
+        // Budget.sheet.xml, page Data: 10, =A1*2 / text, =1/0.
+        [A_XSDActionDependency("Sheet.Formats", "Test")]
+        private static IEnumerator<int> Formats(TestContext t)
+        {
+            XElement source = XElement.Parse(
+                "<Sheet Name=\"Styled\"><Page Name=\"One\">" +
+                "<Format At=\"A1\" Bold=\"true\" Fill=\"#C8E6A0\" Number=\"0.00%\" /><Format At=\"C4\" Number=\"#,##0.00\" />" +
+                "<Layer Name=\"Layer 1\" /></Page></Sheet>");
+            SheetDocument styled = SheetXml.Parse(source);
+            t.Check(XNode.DeepEquals(source, SheetXml.ToXml(styled)), $"formats write back as they were read: {SheetXml.ToXml(styled)}");
+            t.Check(styled.pages[0].Format(0, 0) == new SheetFormat(true, "#C8E6A0", "0.00%") && styled.pages[0].formats.Count == 2,
+                "every format attribute is read");
+
+            string folder = TempFolder();
+            Func<string, string?>? before = SheetBook.findSheet;
+            SheetBook.findSheet = FolderResolver(folder);
+            SheetDocument fmt = SheetDocument.Blank("Fmt");
+            fmt.pages[0].name = "Data";
+            fmt.pages[0].layers[0].Set(0, 0, "1234.5");
+            fmt.pages[0].layers[0].Set(0, 1, "=A1/5000");
+            fmt.pages[0].layers[0].Set(1, 0, "text");
+            string sheetPath = Path.Combine(folder, "Fmt" + SheetDocument.extension);
+            fmt.Save(sheetPath);
+
+            string notePath = Path.Combine(folder, "Shown.md");
+            File.WriteAllText(notePath, "Total ![[Fmt.sheet.xml#Data!A1]] here\n\n![[Fmt.sheet.xml#Data!A1:B2]]\n");
+
+            StackPanelControl both = new StackPanelControl { orientation = StackPanelControl.Orientation.Horizontal };
+            DocumentEditorControl note = new DocumentEditorControl { preferredWidth = 420f, preferredHeight = 300f };
+            SheetEditorControl editor = new SheetEditorControl { preferredWidth = 420f, preferredHeight = 300f };
+            note.LoadPath(notePath);
+            editor.LoadPath(sheetPath);
+            both.AddChild(note);
+            both.AddChild(editor);
+            t.Show(both);
+            yield return 2;
+
+            SheetPage page = editor.document.pages[0];
+            string? Shown(int row, int column) => SheetBook.calc.Value(page, row, column).Display(page.Format(row, column).number);
+
+            SheetControl grid = Grid(editor);
+            LayoutRect a1 = grid.CellRect(0, 0);
+            Vector2 at = new Vector2(a1.x + a1.width * 0.5f, a1.y + a1.height * 0.5f);
+            yield return t.Drag(grid, at, at, 1);
+            editor.Select(0, 1, true);
+            yield return t.Key(Keys.B, Keys.LeftControl);
+            t.Check(page.Format(0, 0).bold && page.Format(0, 1).bold, "Ctrl+B bolds the selection");
+            yield return t.Key(Keys.B, Keys.LeftControl);
+            t.Check(page.formats.Count == 0, "a second Ctrl+B unbolds it and leaves no format behind");
+            yield return t.Key(Keys.B, Keys.LeftControl);
+
+            editor.SetFill("#F7CFA0");
+            t.Check(page.Format(0, 1).fill == "#F7CFA0", "a fill reaches every selected cell");
+
+            editor.Select(0, 0, false);
+            editor.SetNumberFormat("#,##0.00");
+            t.Check(Shown(0, 0) == "1,234.50", $"Number groups thousands with two decimals: {Shown(0, 0)}");
+            editor.SetNumberFormat("€#,##0.00");
+            t.Check(Shown(0, 0) == "€1,234.50", $"Currency is euros: {Shown(0, 0)}");
+            editor.Select(0, 1, false);
+            editor.SetNumberFormat("0.00%");
+            t.Check(Shown(0, 1) == "24.69%", $"Percent scales a formula's result: {Shown(0, 1)}");
+            editor.Select(1, 0, false);
+            editor.SetNumberFormat("#,##0.00");
+            t.Check(Shown(1, 0) == "text", "text ignores a number format");
+
+            editor.Select(0, 0, false);
+            editor.Copy();
+            t.Check(ClipboardText.Get() == "1234.5", $"a formatted number copies as the number: {ClipboardText.Get()}");
+            t.Check(SheetLinks.ExpandMath(@"\sheet{Fmt.sheet.xml#Data!A1}") == "{1234.5}", "note math reads the number unformatted");
+
+            editor.Clear();
+            t.Check(page.Shown(0, 0) == null && page.Format(0, 0).number == "€#,##0.00", "Delete empties the cell and keeps its format");
+            editor.Undo();
+            editor.Select(1, 0, false);
+            editor.Undo();
+            t.Check(page.Format(1, 0) == default, "undo takes a format back off");
+            editor.Redo();
+            yield return 2;
+            t.Check(editor.unsaved, "a format change leaves the sheet unsaved");
+
+            yield return t.Golden("Grid", both);
+
+            editor.Save();
+            SheetPage saved = SheetDocument.Load(sheetPath).pages[0];
+            t.Check(saved.Format(0, 0) == new SheetFormat(true, "#F7CFA0", "€#,##0.00") && saved.Format(0, 1) == new SheetFormat(true, "#F7CFA0", "0.00%"),
+                "formats are saved with the sheet");
+
+            t.Show(new StackPanelControl());
+            SheetBook.findSheet = before;
+            SheetBook.Deleted(sheetPath);
+            Directory.Delete(folder, true);
+        }
+
+        [A_XSDActionDependency("Sheet.Resize", "Test")]
+        private static IEnumerator<int> Resize(TestContext t)
+        {
+            string folder = TempFolder();
+            Func<string, string?>? before = SheetBook.findSheet;
+            SheetBook.findSheet = FolderResolver(folder);
+            string budgetPath = BudgetSheet(folder);
+
+            string notePath = Path.Combine(folder, "Range.md");
+            File.WriteAllText(notePath, "![[Budget.sheet.xml#Data!A1:B2]]\n");
+
+            StackPanelControl both = new StackPanelControl { orientation = StackPanelControl.Orientation.Horizontal };
+            DocumentEditorControl note = new DocumentEditorControl { preferredWidth = 500f, preferredHeight = 300f };
+            SheetEditorControl editor = new SheetEditorControl { preferredWidth = 500f, preferredHeight = 300f };
+            note.LoadPath(notePath);
+            editor.LoadPath(budgetPath);
+            both.AddChild(note);
+            both.AddChild(editor);
+            t.Show(both);
+            yield return 2;
+
+            SheetPage page = editor.document.pages[0];
+            SheetControl grid = Grid(editor);
+            BlockControl range = NoteBlocks(note).First(block => block.spans.Any(span => span.IsSheet));
+            float shallow = range.arrangedRect.height;
+
+            float edge = grid.CellRect(0, 2).x;
+            float headerY = grid.arrangedRect.y + SheetControl.headerHeight * 0.5f;
+            yield return t.Drag(grid, new Vector2(edge, headerY), new Vector2(edge + 60f, headerY));
+            yield return 2;
+            t.Check(page.ColumnWidth(1) == SheetPage.defaultColumnWidth + 60f, $"dragging B's right edge widens B: {page.ColumnWidth(1)}");
+            t.Check(editor.unsaved, "a resize leaves the sheet unsaved");
+
+            editor.Undo();
+            t.Check(!page.columnWidths.ContainsKey(1), "undo puts B back to the default width");
+            editor.Redo();
+            t.Check(page.ColumnWidth(1) == SheetPage.defaultColumnWidth + 60f, "redo widens it again");
+
+            float headerX = grid.arrangedRect.x + SheetControl.headerWidth * 0.5f;
+            float first = grid.CellRect(1, 0).y;
+            yield return t.Drag(grid, new Vector2(headerX, first), new Vector2(headerX, first + 30f));
+            yield return 2;
+            t.Check(page.RowHeight(0) == SheetPage.defaultRowHeight + 30f, $"dragging row 1's bottom edge deepens it: {page.RowHeight(0)}");
+            t.Check(range.arrangedRect.height > shallow, $"the note's range grows with it: {shallow} -> {range.arrangedRect.height}");
+
+            float bottom = grid.CellRect(3, 0).y;
+            yield return t.Drag(grid, new Vector2(headerX, bottom), new Vector2(headerX, bottom - 60f));
+            yield return 2;
+            t.Check(page.RowHeight(2) == 8f, $"a row dragged past its top stops at the minimum: {page.RowHeight(2)}");
+
+            Vector2 cell = new Vector2(grid.CellRect(5, 0).x + 10f, grid.CellRect(5, 0).y + 5f);
+            yield return t.Drag(grid, cell, cell, 1);
+            t.Check(editor.activeRow == 5 && page.RowHeight(5) == SheetPage.defaultRowHeight, "a press away from a header edge still selects");
+
+            editor.Save();
+            SheetPage saved = SheetDocument.Load(budgetPath).pages[0];
+            t.Check(saved.ColumnWidth(1) == SheetPage.defaultColumnWidth + 60f && saved.RowHeight(0) == SheetPage.defaultRowHeight + 30f
+                && saved.RowHeight(2) == 8f, "sizes are saved with the sheet");
+
+            t.Show(new StackPanelControl());
+            SheetBook.findSheet = before;
+            SheetBook.Deleted(budgetPath);
+            Directory.Delete(folder, true);
+        }
+
+        private static string BudgetSheet(string folder)
+        {
+            SheetDocument budget = SheetDocument.Blank("Budget");
+            budget.pages[0].name = "Data";
+            SheetLayer cells = budget.pages[0].layers[0];
+            cells.Set(0, 0, "10");
+            cells.Set(0, 1, "=A1*2");
+            cells.Set(1, 0, "text");
+            cells.Set(1, 1, "=1/0");
+            string path = Path.Combine(folder, "Budget" + SheetDocument.extension);
+            budget.Save(path);
+            return path;
+        }
+
+        private static List<BlockControl> NoteBlocks(DocumentEditorControl editor) =>
+            editor.session.document.blocks.OfType<BlockControl>().ToList();
+
+        private static DocumentControl NoteContent(DocumentEditorControl editor) => (DocumentControl)NoteBlocks(editor)[0].parent;
+
         private static string TempFolder()
         {
             string folder = Path.Combine(Path.GetTempPath(), $"aurora-sheets-{Guid.NewGuid():N}");
@@ -594,6 +1077,7 @@ namespace Thorium.Tests
 
         private static Func<string, string?> FolderResolver(string folder) => file =>
         {
+            if (file.EndsWith(SheetDocument.extension, StringComparison.OrdinalIgnoreCase)) file = file[..^SheetDocument.extension.Length];
             string path = Path.Combine(folder, file + SheetDocument.extension);
             return File.Exists(path) ? path : null;
         };

@@ -132,7 +132,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // A file part names a path when it is the file's name or the end of its path, as vault links resolve.
-        private static bool Names(string file, string stem)
+        internal static bool Names(string file, string stem)
         {
             string name = file.Trim().Replace('\\', '/');
             if (name.EndsWith(SheetDocument.extension, StringComparison.OrdinalIgnoreCase))
@@ -140,7 +140,7 @@ namespace ArctisAurora.Core.UI
             return stem.EndsWith("/" + name, StringComparison.OrdinalIgnoreCase);
         }
 
-        private static string Renamed(string file, string oldName, string newName)
+        internal static string Renamed(string file, string oldName, string newName)
         {
             string trimmed = file.Trim();
             int cut = trimmed.EndsWith(SheetDocument.extension, StringComparison.OrdinalIgnoreCase)
@@ -149,9 +149,9 @@ namespace ArctisAurora.Core.UI
             return trimmed[..(cut - oldName.Length)] + newName + trimmed[cut..];
         }
 
-        private static string BaseName(string path) => Path.GetFileName(path)[..^SheetDocument.extension.Length];
+        internal static string BaseName(string path) => Path.GetFileName(path)[..^SheetDocument.extension.Length];
 
-        private static string Stem(string path) => path.Replace('\\', '/')[..^SheetDocument.extension.Length];
+        internal static string Stem(string path) => path.Replace('\\', '/')[..^SheetDocument.extension.Length];
 
         private static void RaiseAll() => changed?.Invoke(null);
         #endregion
