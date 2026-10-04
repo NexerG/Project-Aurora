@@ -4,13 +4,13 @@
 
 	<Dedicated System="Render"/>
 
-	<Step Action="Main.Input" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints Signals"/>
-	<Step Action="Main.Logic" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints Signals AnimationDone"/>
-	<Step Action="Animation.Step" Reads="Signals Keyframes" Writes="Animations Paints UIElements.ArrangeData UIElements.LayoutNode UIElements.VulkanControl LayoutDirty AnimationDone"/>
+	<Step Action="Main.Input" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations AnimationBindings AnimationAwake PaintFades Paints Signals"/>
+	<Step Action="Main.Logic" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations AnimationBindings AnimationAwake PaintFades Paints Signals AnimationDone"/>
+	<Step Action="Animation.Step" Reads="Signals Keyframes" Writes="Animations AnimationAwake PaintFades Paints UIElements.ArrangeData UIElements.LayoutNode UIElements.VulkanControl LayoutDirty AnimationDone"/>
 	<Step Action="Physics.Step" Writes="Entities.TransformData"/>
 	<Step Edge="UIElements" Pinned="true"/>
 	<Step Edge="LayoutDirty" Pinned="true"/>
-	<Step Action="Main.Layout" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints LayoutDirty"/>
+	<Step Action="Main.Layout" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations AnimationBindings AnimationAwake PaintFades Paints LayoutDirty"/>
 
 	<Step Edge="UIQuads" Pinned="true"/>
 	<Step Edge="Entities" Pinned="true"/>
@@ -19,7 +19,10 @@
 	<Step Edge="Paints" Pinned="true"/>
 	<Step Edge="Animations" Pinned="true"/>
 	<Step Edge="AnimationDone" Pinned="true"/>
+	<Step Edge="AnimationBindings" Pinned="true"/>
+	<Step Edge="AnimationAwake" Pinned="true"/>
+	<Step Edge="PaintFades" Pinned="true"/>
 
-	<Step Action="Main.DrawLists" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations Paints"/>
+	<Step Action="Main.DrawLists" Pinned="true" Writes="UIElements UIQuads Entities Gradients Effects Animations AnimationBindings AnimationAwake PaintFades Paints"/>
 
 </FrameGraph>

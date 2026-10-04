@@ -14,7 +14,7 @@ namespace ArctisAurora.Core.UI
         public SheetDocument document { get; private set; } = null!;
         public string? path { get; private set; }
         public bool unsaved { get; private set; }
-        public UndoStack undo { get; } = new UndoStack();
+        public UndoStack undo => document.undo;
 
         bool IFileEditor.isDirty => unsaved;
 
@@ -31,6 +31,10 @@ namespace ArctisAurora.Core.UI
 
         private SheetControl? sheet;
 
+        // the last copy's text and the cells it came from, for Paste link
+        private static string? copiedText;
+        private static (SheetDocument document, string? path, SheetPage page, int top, int left, int bottom, int right) copiedFrom;
+
         // honoured at the end of Arrange
         private bool scrollToActivePending;
         private SessionTab? pendingView;
@@ -42,18 +46,24 @@ namespace ArctisAurora.Core.UI
         {
             scrollDirection = ScrollDirection.Both;
             PaintOr(null, PaletteRole.Surface);
+            SheetBook.changed += BookChanged;
+        }
+
+        public override void OnDestroy()
+        {
+            SheetBook.changed -= BookChanged;
+            base.OnDestroy();
         }
 
         public void LoadPath(string nameOrPath)
         {
             path = Path.GetFullPath(Path.IsPathRooted(nameOrPath) ? nameOrPath : Paths.Doc(nameOrPath));
-            Load(SheetDocument.Load(path));
+            Load(SheetBook.Get(path));
         }
 
         public void Load(SheetDocument loaded)
         {
             document = loaded;
-            undo.Clear();
             editing = false;
             activeRow = activeColumn = anchorRow = anchorColumn = 0;
 
@@ -68,6 +78,7 @@ namespace ArctisAurora.Core.UI
         #region ---- file ----
         public void Save()
         {
+            if (editing) sheet!.field.Commit();
             if (path == null) return;
             document.Save(path);
             unsaved = false;
@@ -79,10 +90,10 @@ namespace ArctisAurora.Core.UI
             document.name = name;
         }
 
-        // Cells changed under the grid: an edit, an undo or a redo.
-        internal void CellsChanged()
+        // Cells changed somewhere in the vault: this file's own edits make it unsaved.
+        private void BookChanged(SheetDocument? edited)
         {
-            unsaved = true;
+            if (ReferenceEquals(edited, document)) unsaved = true;
             sheet?.CellsChanged();
         }
 
@@ -226,7 +237,7 @@ namespace ArctisAurora.Core.UI
             }
             if (changed.Count == 0) return;
 
-            SheetCellEdit edit = new SheetCellEdit(this, Layer, changed);
+            SheetCellEdit edit = new SheetCellEdit(document, sheet!.page, Layer, changed);
             using (undo.Begin(label))
             {
                 edit.Redo();
@@ -248,19 +259,49 @@ namespace ArctisAurora.Core.UI
                 for (int c = left; c <= right; c++)
                 {
                     if (c > left) text.Append('\t');
-                    text.Append(sheet.page.Shown(r, c));
+                    text.Append(SheetBook.calc.Value(sheet.page, r, c).Display());
                 }
                 if (r < bottom) text.Append("\r\n");
             }
 
-            ClipboardText.Set(text.ToString());
+            copiedText = text.ToString();
+            copiedFrom = (document, path, sheet.page, top, left, bottom, right);
+            ClipboardText.Set(copiedText);
             return true;
         }
 
         public bool Cut()
         {
             if (!Copy()) return false;
+            copiedText = null;
             Clear("Cut");
+            return true;
+        }
+
+        // Formulas reading the copied cells, from the active cell; a plain paste when the clipboard holds something else.
+        public bool PasteLink()
+        {
+            if (editing || sheet == null) return false;
+
+            string text = ClipboardText.Get();
+            if (copiedText == null || text != copiedText) return Paste(text);
+
+            (SheetDocument source, string? sourcePath, SheetPage page, int top, int left, int bottom, int right) = copiedFrom;
+            string prefix = ReferenceEquals(page, sheet.page) ? ""
+                : ReferenceEquals(source, document) ? SheetFormula.Prefix(null, page.name) + "!"
+                : SheetFormula.Prefix(sourcePath != null ? Path.GetFileName(sourcePath)[..^SheetDocument.extension.Length] : source.name ?? "", page.name) + "!";
+
+            List<(int, int, string?)> cells = new List<(int, int, string?)>();
+            for (int r = top; r <= bottom; r++)
+                for (int c = left; c <= right; c++)
+                    cells.Add((activeRow + r - top, activeColumn + c - left, "=" + prefix + SheetDocument.Address(r, c)));
+
+            int row = activeRow;
+            int column = activeColumn;
+            Write("Paste link", cells);
+            anchorRow = row;
+            anchorColumn = column;
+            Select(row + bottom - top, column + right - left, true);
             return true;
         }
 

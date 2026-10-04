@@ -23,6 +23,8 @@ namespace ArctisAurora.Core.Data
         public ushort Id { get; }
         public string Name { get; }
         public bool Ordered { get; }
+        // false: Append/Truncate/Rewind only, no handle arrays
+        public bool Handles { get; }
 
         private readonly PoolGrowthType _growthMode;
         private readonly int _growthValue;
@@ -141,32 +143,36 @@ namespace ArctisAurora.Core.Data
         // Resolved from the pool's SortAction, or set directly (tests / systems).
         public Func<DataPool, IReadOnlyList<int>>? SortProvider { get; set; }
 
-        public DataPool(ushort id, string name, int capacity, bool ordered, PoolGrowthType growthMode, int growthValue, IEnumerable<Type> componentTypes)
+        public DataPool(ushort id, string name, int capacity, bool ordered, PoolGrowthType growthMode, int growthValue, bool handles, IEnumerable<Type> componentTypes)
         {
             if (capacity < 1) capacity = 1;
+            if (ordered && !handles)
+                throw new InvalidOperationException($"[DataPool] '{name}' is Ordered with Handles=\"false\" — resequencing needs the handle maps.");
             Id = id;
             Name = name;
             Ordered = ordered;
+            Handles = handles;
             _growthMode = growthMode;
             _growthValue = growthValue < 1 ? 1 : growthValue;
             _capacity = capacity;
             _initialCapacity = capacity;
 
-            _slots = new int[capacity];
-            _backMap = new int[capacity];
-            _versions = new int[capacity];
-            _owners = new object[capacity];
-            _permuteScratch = new int[capacity];
-            _ownersScratch = new object[capacity];
+            int handleCapacity = handles ? capacity : 0;
+            _slots = new int[handleCapacity];
+            _backMap = new int[handleCapacity];
+            _versions = new int[handleCapacity];
+            _owners = new object[handleCapacity];
+            _permuteScratch = new int[handleCapacity];
+            _ownersScratch = new object[handleCapacity];
             Array.Fill(_versions, 1);
 
-            _publishedSlotVersion = new int[capacity];
+            _publishedSlotVersion = new int[handleCapacity];
 
             // Column ids come from Pools.pools.xml declaration order, like pool ids from parse order.
             // Nothing in C# declares the mapping — reorder the <Component> elements and every
             // in-flight command's ColumnId means something else.
             List<IPoolColumn> columnOrder = new();
-            _slotBytes = 4 * sizeof(int) + IntPtr.Size;
+            _slotBytes = handles ? 4 * sizeof(int) + IntPtr.Size : 0;
             foreach (Type t in componentTypes)
             {
                 Type columnType = typeof(PoolColumn<>).MakeGenericType(t);
@@ -317,7 +323,7 @@ namespace ArctisAurora.Core.Data
 
         public bool Alive(DataHandle h)
             => h.PoolId == Id
-               && (uint)h.StableId < (uint)_capacity
+               && (uint)h.StableId < (uint)_versions.Length
                && _versions[h.StableId] == h.Version
                && _slots[h.StableId] >= 0;
 
@@ -329,6 +335,7 @@ namespace ArctisAurora.Core.Data
 
         public DataHandle Allocate(object owner = null)
         {
+            if (!Handles) throw new InvalidOperationException($"[DataPool] Allocate on '{Name}', which is declared Handles=\"false\".");
             AssertStructural(nameof(Allocate));
             if (_count >= _capacity)
                 Grow();
@@ -394,6 +401,7 @@ namespace ArctisAurora.Core.Data
         // it. A repeat or stale Free is a no-op.
         public void Free(DataHandle h)
         {
+            if (!Handles) throw new InvalidOperationException($"[DataPool] Free on '{Name}', which is declared Handles=\"false\".");
             AssertStructural(nameof(Free));
             if (!Alive(h)) return;
             _pendingFree.Add(h.StableId);
@@ -492,7 +500,7 @@ namespace ArctisAurora.Core.Data
 
             if (_structuralPending)
             {
-                int[] snapshot = new int[_capacity];
+                int[] snapshot = Handles ? new int[_capacity] : Array.Empty<int>();
                 for (int sid = 0; sid < _highStableId; sid++)
                     snapshot[sid] = _slots[sid] >= 0 ? _versions[sid] : 0;
 
@@ -649,8 +657,9 @@ namespace ArctisAurora.Core.Data
             _lowSince = 0;
 
             int highestLive = -1;
-            for (int i = 0; i < _count; i++)
-                highestLive = Math.Max(highestLive, _backMap[i]);
+            if (Handles)
+                for (int i = 0; i < _count; i++)
+                    highestLive = Math.Max(highestLive, _backMap[i]);
 
             int bound = Math.Max(_initialCapacity, Math.Max(2 * _lowPeak, highestLive + 1));
             int newCap = _capacity;
@@ -658,16 +667,19 @@ namespace ArctisAurora.Core.Data
                 newCap /= 2;
             if (newCap == _capacity) return;
 
-            for (int i = newCap; i < _capacity; i++)
-                _versionFloor = Math.Max(_versionFloor, _versions[i] + 1);
+            if (Handles)
+            {
+                for (int i = newCap; i < _capacity; i++)
+                    _versionFloor = Math.Max(_versionFloor, _versions[i] + 1);
 
-            List<int> kept = new List<int>();
-            foreach ((int id, int _) in _freeIds.UnorderedItems)
-                if (id < newCap) kept.Add(id);
-            _freeIds.Clear();
-            foreach (int id in kept)
-                _freeIds.Enqueue(id, id);
-            _highStableId = Math.Min(_highStableId, newCap);
+                List<int> kept = new List<int>();
+                foreach ((int id, int _) in _freeIds.UnorderedItems)
+                    if (id < newCap) kept.Add(id);
+                _freeIds.Clear();
+                foreach (int id in kept)
+                    _freeIds.Enqueue(id, id);
+                _highStableId = Math.Min(_highStableId, newCap);
+            }
 
             Resize(newCap);
         }
@@ -678,15 +690,18 @@ namespace ArctisAurora.Core.Data
             foreach (IPoolColumn col in _columns.Values)
                 col.Grow(newCap);
 
-            Array.Resize(ref _slots, newCap);
-            Array.Resize(ref _backMap, newCap);
-            Array.Resize(ref _owners, newCap);
-            _permuteScratch = new int[newCap];
-            _ownersScratch = new object[newCap];
-            int old = _versions.Length;
-            Array.Resize(ref _versions, newCap);
-            for (int i = old; i < newCap; i++)
-                _versions[i] = _versionFloor;
+            if (Handles)
+            {
+                Array.Resize(ref _slots, newCap);
+                Array.Resize(ref _backMap, newCap);
+                Array.Resize(ref _owners, newCap);
+                _permuteScratch = new int[newCap];
+                _ownersScratch = new object[newCap];
+                int old = _versions.Length;
+                Array.Resize(ref _versions, newCap);
+                for (int i = old; i < newCap; i++)
+                    _versions[i] = _versionFloor;
+            }
 
             _structuralPending = true;   // consumers size their own tables off the published one
 

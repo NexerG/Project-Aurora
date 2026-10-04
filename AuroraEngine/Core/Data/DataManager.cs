@@ -44,6 +44,7 @@ namespace ArctisAurora.Core.Data
                 string sortAction = poolElem.Attribute("SortAction")?.Value;
                 PoolGrowthType growth = Enum.Parse<PoolGrowthType>(poolElem.Attribute("Growth")?.Value ?? "Multiplicative");
                 int growthValue = int.Parse(poolElem.Attribute("GrowthValue")?.Value ?? "2");
+                bool handles = bool.Parse(poolElem.Attribute("Handles")?.Value ?? "true");
 
                 List<Type> componentTypes = new();
                 foreach (XElement compElem in poolElem.Elements(ns + "Component"))
@@ -55,7 +56,7 @@ namespace ArctisAurora.Core.Data
                     componentTypes.Add(t);
                 }
 
-                DataPool pool = new((ushort)_pools.Count, name, capacity, ordered, growth, growthValue, componentTypes);
+                DataPool pool = new((ushort)_pools.Count, name, capacity, ordered, growth, growthValue, handles, componentTypes);
                 if (!string.IsNullOrEmpty(sortAction))
                     pool.SortProvider = ResolveSortProvider(sortAction);
 

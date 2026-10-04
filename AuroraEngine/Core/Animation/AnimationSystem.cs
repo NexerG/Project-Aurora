@@ -22,16 +22,6 @@ namespace ArctisAurora.Core.Animation
         // per-chunk stats, one cache line apart: min row, max row, stepped, kept, dirty, done
         private const int statStride = 16;
 
-        private struct SlotFade
-        {
-            public int slot;
-            public Vector4 from;
-            public Vector4 to;
-            public float elapsed;
-            public float duration;
-            public Curve curve;
-        }
-
         private DataPool _tracks = null!;
         private DataPool _signals = null!;
         private DataPool _paints = null!;
@@ -54,10 +44,11 @@ namespace ArctisAurora.Core.Animation
         private int[] _stats = Array.Empty<int>();
 
         // paint slots mid-fade
-        private readonly List<SlotFade> _fades = new List<SlotFade>();
+        private DataPool _fades = null!;
 
         protected override void OnStart()
         {
+            _fades = DataManager.Get("PaintFades");
             _tracks = DataManager.Get("Animations");
             _signals = DataManager.Get("Signals");
             _paints = DataManager.Get("Paints");
@@ -269,16 +260,20 @@ namespace ArctisAurora.Core.Animation
             {
                 int slot = first + i;
                 Vector4 to = paints[slot].color;
-                int existing = _fades.FindIndex(f => f.slot == slot);
-                if (existing >= 0)
-                {
-                    to = _fades[existing].to;
-                    _fades.RemoveAt(existing);
-                }
+                Span<SlotFade> fades = _fades.GetSpan<SlotFade>();
+                for (int f = 0; f < fades.Length; f++)
+                    if (fades[f].slot == slot)
+                    {
+                        to = fades[f].to;
+                        fades[f] = fades[^1];
+                        _fades.Truncate(fades.Length - 1);
+                        break;
+                    }
 
                 Vector4 from = paints[source + i].color;
                 paints[slot].color = from;
-                _fades.Add(new SlotFade { slot = slot, from = from, to = to, duration = duration, curve = curve });
+                int row = _fades.Append();
+                _fades.GetSpan<SlotFade>()[row] = new SlotFade { slot = slot, from = from, to = to, duration = duration, curve = curve };
             }
 
             if (count > 0) _paints.MarkRangeDirty(first, first + count - 1);
@@ -291,19 +286,21 @@ namespace ArctisAurora.Core.Animation
             if (_fades.Count == 0) return;
 
             Span<GpuPaint> paints = _paints.GetSpan<GpuPaint>();
+            Span<SlotFade> fades = _fades.GetSpan<SlotFade>();
+            int count = fades.Length;
             int min = int.MaxValue, max = -1;
-            for (int i = _fades.Count - 1; i >= 0; i--)
+            for (int i = count - 1; i >= 0; i--)
             {
-                SlotFade fade = _fades[i];
+                ref SlotFade fade = ref fades[i];
                 fade.elapsed += dt;
                 float t = fade.duration > 0f ? fade.elapsed / fade.duration : 1f;
                 paints[fade.slot].color = Vector4.Lerp(fade.from, fade.to, Curve.Evaluate(fade.curve, t));
                 if (fade.slot < min) min = fade.slot;
                 if (fade.slot > max) max = fade.slot;
 
-                if (t >= 1f) _fades.RemoveAt(i);
-                else _fades[i] = fade;
+                if (t >= 1f) fade = fades[--count];
             }
+            _fades.Truncate(count);
             _paints.MarkRangeDirty(min, max);
         }
     }

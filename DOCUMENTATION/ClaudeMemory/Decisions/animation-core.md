@@ -5,6 +5,19 @@
 
 Slice 3 of [../Context/animation-plan.md](../Context/animation-plan.md).
 
+## Pooled bookkeeping (2026-10-04)
+- **Main's per-id bookkeeping lives in handle-less pools, row = id** (user). `AnimationBindings` (`TrackBinding { generation live follow }`), `AnimationAwake` (`AwakeTrack { id }`, `Awake` = `MemoryMarshal.Cast` to `int`, `KeepAwake` = `Truncate`), `PaintFades` (`SlotFade`, swap-remove + `Truncate`), and a `SignalLife { generation live }` column beside `SignalValue` in `Signals`. Edges for the three new pools; Main steps that list `Animations` list them, `Animation.Step` writes `AnimationAwake PaintFades`.
+- **The managed half stays on Main in parallel arrays** (user, over a slimmed `Binding` class): `targets`, `properties`, `doneActions` per track id; `names` per signal id. No `Binding`/`Entry` objects — 200k fewer at the 200k grid.
+- **`AnimationBindings` is never truncated**, unlike `Animations` (which `Release` trims): a reused id must keep its generation or a stale handle matches the next binding. `Signals` rows are now appended in `Create`, so `Set` no longer appends.
+- **Measured, 200k scenario, Release+PROFILE, 3 runs each, against the struct-access build:** `Anim.Fades` mean over the fade frames 0.0118–0.0121 → 0.0092–0.0099 ms; `Anim.Emit` max 12.9–14.0 → 2.0–2.8 ms (cause not confirmed — fewer heap objects for a GC to trace landing in that zone is the guess); drain frame 50.5–55.5 → 43.4–55.2 ms and teardown overlapping (noise); frame p95 8.1–8.4 → 7.7–7.9 ms, but `Step.Main.Layout` — untouched — moved as much, so treat it as machine noise.
+- **Cost: `Scenario.Burst` allocates 291.9 → 336.2 MB.** A handle-less pool still grows `_slots _backMap _owners _versions` and both scratch arrays, ~32 B per capacity row it never uses: at 262,144 capacity `AnimationAwake` is 7.0 MB for a 1 MB column, `AnimationBindings` 9.0 MB for 3 MB (`--profile-pools`). Same for the existing `Animations`, `AnimationDone`, `LayoutDirty`. Closed 2026-10-04: `Handles="false"` → [[ecs-rework-data-pools]] § Pools without handles.
+
+## Struct access — no copies (2026-10-04)
+- `AnimationSystem.StepFades` edits `SlotFade` in place (`CollectionsMarshal.AsSpan(_fades)[i]`); no write-back. `SeedFade` finds an existing fade by a span scan — no `FindIndex` closure per slot.
+- `Animations.DrainDone` reads `FinishedTrack` through `ref readonly` (user: avoid struct copies, however small). All reads precede `onDone`.
+- **Measured: noise.** 200k `--profile-scenario=animation`, Release+PROFILE, 3 runs each: `Anim.Fades` mean over the 240 fade frames 0.0126–0.0139 → 0.0118–0.0121 ms; drain frame (`Step.Main.Logic`, 200k finished tracks) 49.4–59.4 → 50.5–55.5 ms. `SeedFade` runs the frame before the capture starts, so the closure removal is unmeasured.
+- The drain frame itself is ~50 ms at 200k — `Release` per track, not the row read. Open.
+
 ## Track split into a hot row and per-driver columns (2026-09-26)
 - **`AnimationTrack` is the 64-B row every step reads:** `driver sleeping mapped changed width loop direction hold`, `column offset`, `follow`, `target`, `elapsed`, `value`, `to`. The rest are columns of the `Animations` pool at the same row: `TweenParams` (`duration from curve`, 44 B), `KeyParams` (`duration firstKey keyCount`, 12 B), `SpringParams` (`velocity frequency damping`, 24 B), `TrackCold` (`generation`, `rest hover press`, 52 B).
 - `Start` writes the hot row and `TrackCold.generation`; `Tween` / `Play` / `Spring` write their driver's params row after it, the mapped `Spring` also `TrackCold.rest/hover/press`. `Direct` reads `KeyParams.duration`, `Retarget` writes `TweenParams.from`. A row's other drivers' params stay unwritten and unread.

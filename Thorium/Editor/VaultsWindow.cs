@@ -132,6 +132,7 @@ namespace Thorium.Editor
         private static void Enter(string path)
         {
             SettingsRegistry.Get<ThoriumSettings>().vault.path = path;
+            SheetBook.Clear();
             bool restored = SessionLayout.ChangeScope(KnownVaults.Resolve(path));
             SettingsRegistry.Commit();
 

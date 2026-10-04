@@ -2,6 +2,7 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Filing;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace ArctisAurora.Core.UI
@@ -237,12 +238,11 @@ namespace ArctisAurora.Core.UI
 
             for (int i = 0; i < spans.Count; i++)
             {
-                StyleSpan span = spans[i];
+                ref StyleSpan span = ref CollectionsMarshal.AsSpan(spans)[i];
                 if (span.fontSizeAuthored) continue;
 
                 span.fontSize = span.stylingType == TextStyleType.Inherit
                     ? 0 : layout.FontSizeFor(span.stylingType);
-                spans[i] = span;
             }
 
             InvalidateLayout();
@@ -465,9 +465,7 @@ namespace ArctisAurora.Core.UI
             int index = SpanForInsert(offset);
             if (spans[index].IsObject) index = TextSpanBeside(index, offset);
 
-            StyleSpan span = spans[index];
-            span.count += insert.Length;
-            spans[index] = span;
+            CollectionsMarshal.AsSpan(spans)[index].count += insert.Length;
 
             text = (text ?? string.Empty).Insert(offset, insert);
         }
@@ -481,15 +479,11 @@ namespace ArctisAurora.Core.UI
 
             for (int i = 0; i < spans.Count; i++)
             {
-                StyleSpan span = spans[i];
+                ref StyleSpan span = ref CollectionsMarshal.AsSpan(spans)[i];
                 int spanEnd = start + span.count;
 
                 int cut = Math.Min(spanEnd, end) - Math.Max(start, offset);
-                if (cut > 0)
-                {
-                    span.count -= cut;
-                    spans[i] = span;
-                }
+                if (cut > 0) span.count -= cut;
                 start = spanEnd;
             }
 
@@ -671,14 +665,10 @@ namespace ArctisAurora.Core.UI
             int at = start;
             for (int i = first; i < spans.Count && at < end; i++)
             {
-                StyleSpan span = spans[i];
+                ref StyleSpan span = ref CollectionsMarshal.AsSpan(spans)[i];
                 int spanEnd = i == spans.Count - 1 ? Length : at + span.count;
 
-                if (spanEnd <= end)
-                {
-                    delta.Apply(ref span);
-                    spans[i] = span;
-                }
+                if (spanEnd <= end) delta.Apply(ref span);
                 at = spanEnd;
             }
 
@@ -716,7 +706,7 @@ namespace ArctisAurora.Core.UI
             {
                 if (offset == start && spans[i].IsPicture && spans[i].count > 0)
                 {
-                    StyleSpan span = spans[i];
+                    ref StyleSpan span = ref CollectionsMarshal.AsSpan(spans)[i];
                     span.imageWidth = picture.imageWidth;
                     span.imageHeight = picture.imageHeight;
                     span.wrap = picture.wrap;
@@ -724,7 +714,6 @@ namespace ArctisAurora.Core.UI
                     span.imageY = picture.imageY;
                     span.imageRotation = picture.imageRotation;
                     span.collision = picture.collision;
-                    spans[i] = span;
                     InvalidateLayout();
                     return;
                 }
@@ -739,9 +728,7 @@ namespace ArctisAurora.Core.UI
             {
                 if (offset == start && spans[i].IsMath && spans[i].count > 0)
                 {
-                    StyleSpan span = spans[i];
-                    span.mathSource = source;
-                    spans[i] = span;
+                    CollectionsMarshal.AsSpan(spans)[i].mathSource = source;
                     InvalidateLayout();
                     return;
                 }
@@ -782,18 +769,16 @@ namespace ArctisAurora.Core.UI
             int start = 0;
             for (int i = 0; i < spans.Count; i++)
             {
-                StyleSpan span = spans[i];
+                ref StyleSpan span = ref CollectionsMarshal.AsSpan(spans)[i];
                 int spanEnd = start + span.count;
 
                 if (offset == start) return i;
                 if (offset < spanEnd)
                 {
-                    StyleSpan left = span;
-                    left.count = offset - start;
                     StyleSpan right = span;
                     right.count = spanEnd - offset;
+                    span.count = offset - start;
 
-                    spans[i] = left;
                     spans.Insert(i + 1, right);
                     return i + 1;
                 }
@@ -809,9 +794,7 @@ namespace ArctisAurora.Core.UI
             for (int i = spans.Count - 1; i > 0; i--)
                 if (SameStyle(spans[i - 1], spans[i]))
                 {
-                    StyleSpan merged = spans[i - 1];
-                    merged.count += spans[i].count;
-                    spans[i - 1] = merged;
+                    CollectionsMarshal.AsSpan(spans)[i - 1].count += spans[i].count;
                     spans.RemoveAt(i);
                 }
         }

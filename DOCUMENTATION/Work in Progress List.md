@@ -116,8 +116,10 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] **palette resolution on a runtime `Role`/`Palette` change, a reparented control and the drag ghost is NOT GUI-verified** → `ui-palettes` § Known gaps
 - [ ] **Thorium productivity suite (user, 2026-10-02)** — Thorium houses notes, sheets and a todo board
 	- [ ] **sheets** → `ClaudeMemory/Context/sheets-plan.md`
-		- [ ] **a dirty sheet is not saved on quit or window settle** — `NoteActions.SaveEditedIn` matches only `DocumentEditorControl`; tab close does save → `sheets` § Known gaps
-		- [ ] S2 — formulas: A1 references, arithmetic, `SUM`, recalc through a dependency graph
+		- [ ] **S2a formulas NOT GUI-verified (2026-10-03)** — typing `=…`, F2 on a formula, recalc on edit/undo, values on copy; test-verified only → `sheets`
+		- [ ] **S2b1–2 NOT GUI-verified (2026-10-03)** — a formula reading another sheet, live update across two tabs, renaming a referenced sheet in the browser, Ctrl+Shift+V in a sheet and in a note; test-verified only → `sheets`
+		- [ ] S2b3 — notes show sheet cells live (inline value, read-only grid block, `.md` embed); detailed plan owed → `sheets-plan`
+		- [ ] S2c — note math reads sheet cells (note math only typesets today) → `sheets-plan`
 		- [ ] S3 — formatting, column/row resize
 		- [ ] S4 — page (bottom tabs) and layer (stacked over one grid) UI
 		- [ ] S5 — CSV import/export

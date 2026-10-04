@@ -117,4 +117,41 @@ namespace ArctisAurora.Core.Animation
         public int track;
         public uint generation;
     }
+
+    // Main's record of a track id, one row per id in the AnimationBindings pool.
+    [StructLayout(LayoutKind.Sequential), A_XSDType("TrackBinding", "DataPools")]
+    public struct TrackBinding
+    {
+        public uint generation;
+        public bool live;
+        // signal id the track follows, -1 for none
+        public int follow;
+    }
+
+    // A track id the step visits, one row per awake track in the AnimationAwake pool.
+    [StructLayout(LayoutKind.Sequential), A_XSDType("AwakeTrack", "DataPools")]
+    public struct AwakeTrack
+    {
+        public int id;
+    }
+
+    // Main's record of a signal id, the same row as its SignalValue.
+    [StructLayout(LayoutKind.Sequential), A_XSDType("SignalLife", "DataPools")]
+    public struct SignalLife
+    {
+        public uint generation;
+        public bool live;
+    }
+
+    // A paint slot mid-fade, one row per fading slot in the PaintFades pool.
+    [StructLayout(LayoutKind.Sequential), A_XSDType("SlotFade", "DataPools")]
+    public struct SlotFade
+    {
+        public int slot;
+        public Vector4 from;
+        public Vector4 to;
+        public float elapsed;
+        public float duration;
+        public Curve curve;
+    }
 }

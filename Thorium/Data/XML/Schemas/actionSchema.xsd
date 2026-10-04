@@ -17,6 +17,12 @@
           <xs:enumeration value="Sheet.ScrollKeepsControls" />
           <xs:enumeration value="Sheet.TabLifecycle" />
           <xs:enumeration value="Sheet.GridDraws" />
+          <xs:enumeration value="Sheet.FormulaEval" />
+          <xs:enumeration value="Sheet.FormulaRecalc" />
+          <xs:enumeration value="Sheet.FormulaView" />
+          <xs:enumeration value="Sheet.CrossFile" />
+          <xs:enumeration value="Sheet.RenameRewrites" />
+          <xs:enumeration value="Sheet.PasteLinks" />
           <xs:enumeration value="TextInput.TypeWritesText" />
           <xs:enumeration value="TextInput.WordMoves" />
           <xs:enumeration value="TextInput.UndoReselects" />
@@ -200,6 +206,7 @@
           <xs:enumeration value="Sheet.Clear" />
           <xs:enumeration value="Sheet.Undo" />
           <xs:enumeration value="Sheet.Redo" />
+          <xs:enumeration value="Sheet.PasteLink" />
           <xs:enumeration value="Sheet.Save" />
           <xs:enumeration value="Text.Write" />
           <xs:enumeration value="Text.Backspace" />

@@ -181,12 +181,12 @@ namespace ArctisAurora.Core.UI
                 {
                     if (editor.editing && r == editor.editRow && c == editor.editColumn) continue;
 
-                    string? text = page.Shown(r, c);
+                    SheetValue value = SheetBook.calc.Value(page, r, c);
+                    string? text = value.Display();
                     if (string.IsNullOrEmpty(text)) continue;
 
                     LayoutRect cell = CellRect(r, c);
-                    bool number = double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out _);
-                    PlaceText(Label(labels, grid, label++, PaletteRole.Ink), text, cell, number);
+                    PlaceText(Label(labels, grid, label++, PaletteRole.Ink), text, cell, value.kind == SheetValueKind.Number);
                 }
             for (int i = label; i < labels.Count; i++)
                 labels[i].Arrange(LayoutRect.Empty);

@@ -278,10 +278,12 @@ Why: [[ui-palettes]].
 ## Sheets
 
 - **SheetEditorControl** (no XML) · ScrollableControl, `IClipboardTarget`, `IFileEditor` — one open sheet; `Surface`
-  ground, scrolls Both. `LoadPath`, `Load`, `document`, `path`, `unsaved`, `undo`. Regions `file` (`Save`, `Repath`,
-  `CellsChanged`, `Undo`, `Redo`), `selection` (`activeRow/Column`, `anchorRow/Column`, `Select`, `Move`, `Enter`, `Tab`,
+  ground, scrolls Both. `LoadPath` (through `SheetBook.Get` — tabs of one file share the document), `Load`, `document`,
+  `path`, `unsaved`, `undo` (the document's). Subscribes to `SheetBook.changed` (private `BookChanged` redraws; own
+  file's edits set `unsaved`), unsubscribes in `OnDestroy`. Regions `file` (`Save`, `Repath`, `Undo`, `Redo`), `selection` (`activeRow/Column`, `anchorRow/Column`, `Select`, `Move`, `Enter`, `Tab`,
   `SelectAll`, `RequestScrollToActive`), `editing` (`editing`, `editRow/Column`, `BeginEdit(keep)`, `TypeOver`, private
-  `FinishEdit`/`CancelEdit`, `Clear`, private `Write` — the one place a `SheetCellEdit` is built), `clipboard` (TSV),
+  `FinishEdit`/`CancelEdit`, `Clear`, private `Write` — the one place a `SheetCellEdit` is built), `clipboard` (TSV of
+  values; `Copy` keeps static `copiedText`/`copiedFrom` for `PasteLink`),
   `view` (`ViewState`/`RestoreView` in `SessionTab`'s caret/anchor/`scrollX`/`topDelta`; `ArrangeCore` applies a pending
   view or scrolls the active cell clear of the headers). [[sheets]]
 - **SheetControl** (no XML) · ContainerControl — the grid canvas for one `SheetPage`. Measures to the used extent plus
@@ -290,7 +292,12 @@ Why: [[ui-palettes]].
   `TextBoxControl` over the edited cell), `ArrangeHeaders` (pinned to the viewport). `CellRect`, `CellAt`,
   `headerWidth`/`headerHeight`, `CellsChanged`. Pointer: press selects (Shift extends) and starts a drag, drag extends,
   double tap edits. [[sheets]]
-- **SheetDocument.cs** — `SheetDocument` (`pages`, `extension`, `IsSheet`, `Blank`, addressing statics), `SheetPage`
+- **SheetFormula.cs** — `SheetValue` (`kind`, `FromRaw`, `Display`), `SheetFormula` (`Parse`, `Evaluate`,
+  `References`, `RenameFile`, `Prefix`, error-code consts, grid bounds). **SheetCalc.cs** — `SheetCellId`, `SheetCalc`
+  (`Value`, `Changed`, `Add`/`Remove`, `RecalcAll`; internal `Read`, `PageNamed`). **SheetBook.cs** — static: one
+  `SheetDocument` per path (`Get`, `Register`/`Unregister`, `OwnerOf`, `Resolve` via `findSheet`), the shared `calc`,
+  `changed` event, vault hooks `Created`/`Deleted`/`Renamed`/`Clear`. [[sheets]]
+- **SheetDocument.cs** — `SheetDocument` (`pages`, `undo`, `extension`, `IsSheet`, `Blank`, addressing statics), `SheetPage`
   (bands, `Shown`, `Used`), `SheetLayer` (`Get`/`Set`), `SheetCell`. **SheetXml** reads/writes `.sheet.xml`, keeping
   unknown elements. **SheetEdits.cs** — `SheetCellEdit`. **SheetActions** — `Sheet.*` keybind actions. [[sheets]]
 

@@ -166,6 +166,7 @@ namespace Thorium.Editor.CustomControls
         {
             string path = FreePath(folder, name, SheetDocument.extension);
             SheetDocument.Blank(BaseName(path)).Save(path);
+            SheetBook.Created();
 
             Expand(folder);
             Rebuild();
@@ -178,6 +179,7 @@ namespace Thorium.Editor.CustomControls
 
             File.Copy(file.path, path);
             WriteName(path, BaseName(path));
+            if (SheetDocument.IsSheet(path)) SheetBook.Created();
 
             Rebuild();
             Open(path);
@@ -194,6 +196,7 @@ namespace Thorium.Editor.CustomControls
             if (open != null) owner.FinishClose(open);
 
             FileSystem.DeleteFile(path, UIOption.OnlyErrorDialogs, RecycleOption.SendToRecycleBin);
+            if (SheetDocument.IsSheet(path)) SheetBook.Deleted(path);
             Rebuild();
         }
         #endregion
@@ -215,6 +218,9 @@ namespace Thorium.Editor.CustomControls
                 item.name = target;
                 view.Retitle(item, name);
             }
+
+            if (SheetDocument.IsSheet(target))
+                SheetBook.Renamed(path, target, VaultSheets());
 
             VaultBrowserControl? browser = Engine.primary.ui.uiRoot.FindByName(browserName) as VaultBrowserControl;
             browser?.Rebuild();
@@ -247,6 +253,29 @@ namespace Thorium.Editor.CustomControls
             VaultBrowserControl browser = Browser();
             string note = browser?.FirstNote(browser.root);
             if (note != null) Open(note);
+        }
+
+        // A sheet reference's file part: the first sheet whose name, or path ending, matches it.
+        public static string? FindSheet(string file)
+        {
+            string name = file.Trim().Replace('\\', '/');
+            if (name.EndsWith(SheetDocument.extension, StringComparison.OrdinalIgnoreCase))
+                name = name[..^SheetDocument.extension.Length];
+
+            foreach (string path in VaultSheets())
+            {
+                string stem = path.Replace('\\', '/')[..^SheetDocument.extension.Length];
+                if (stem.EndsWith("/" + name, StringComparison.OrdinalIgnoreCase)) return path;
+            }
+            return null;
+        }
+
+        private static IEnumerable<string> VaultSheets()
+        {
+            string root = KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
+            return Directory.Exists(root)
+                ? Directory.EnumerateFiles(root, "*" + SheetDocument.extension, System.IO.SearchOption.AllDirectories)
+                : Enumerable.Empty<string>();
         }
 
         // A [[note]] by name, or a web address handed to the system browser.

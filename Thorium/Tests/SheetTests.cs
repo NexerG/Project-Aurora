@@ -160,7 +160,18 @@ namespace Thorium.Tests
             t.Check(editor != null && editor.document.pages[0].Shown(3, 2) == "kept", "the sheet tab comes back with its scope");
             t.Check(editor != null && editor.activeRow == 4 && editor.activeColumn == 1, "and with its active cell");
 
-            editor!.Paste("closed");
+            editor!.Paste("settled");
+            NoteActions.SaveEdited();
+            t.Check(SheetDocument.Load(path).pages[0].Shown(4, 1) == "settled", "the shutdown save writes a dirty sheet");
+
+            editor.Select(5, 1, false);
+            editor.TypeOver(new Queue<char>("typed"));
+            yield return 2;
+            editor.Save();
+            t.Check(!editor.editing && SheetDocument.Load(path).pages[0].Shown(5, 1) == "typed", "saving commits an open cell edit");
+
+            editor.Select(4, 1, false);
+            editor.Paste("closed");
             view.CloseTab(item);
             yield return 2;
             t.Check(SheetDocument.Load(path).pages[0].Shown(4, 1) == "closed", "closing the tab writes the edit");
@@ -210,7 +221,391 @@ namespace Thorium.Tests
             File.Delete(path);
         }
 
+        [A_XSDActionDependency("Sheet.FormulaEval", "Test")]
+        private static IEnumerator<int> FormulaEval(TestContext t)
+        {
+            SheetDocument sheet = SheetDocument.Blank("Eval");
+            SheetPage one = sheet.pages[0];
+            SheetPage two = SheetPage.Blank("My page");
+            sheet.pages.Add(two);
+            SheetLayer cells = one.layers[0];
+            cells.Set(0, 0, "2");
+            cells.Set(1, 0, "3");
+            cells.Set(2, 0, "text");
+            cells.Set(5, 5, "1.50");
+            two.layers[0].Set(0, 0, "10");
+            two.layers[0].Set(1, 0, "5");
+            SheetBook.Register(sheet);
+
+            string? Eval(string formula)
+            {
+                cells.Set(9, 9, formula);
+                SheetBook.calc.Changed(one, new[] { (9, 9) });
+                return SheetBook.calc.Value(one, 9, 9).Display();
+            }
+
+            void Expect(string formula, string shown) =>
+                t.Check(Eval(formula) == shown, $"{formula} shows {shown}: {Eval(formula)}");
+
+            Expect("=1+2*3", "7");
+            Expect("=(1+2)*3", "9");
+            Expect("=-2^2", "4");
+            Expect("=2^3^2", "64");
+            Expect("=2^-1", "0.5");
+            Expect("=0.1+0.2", "0.3");
+            Expect("=A1+A2*2", "8");
+            Expect("=Z99", "0");
+            Expect("=SUM(A1:A3)", "5");
+            Expect("=sum(A1, 4, 'My page'!A1:A2)", "21");
+            Expect("= 'My page'!A1 * 2", "20");
+            Expect("=A3+1", SheetFormula.value);
+            Expect("=A1:A2", SheetFormula.value);
+            Expect("=1/0", SheetFormula.div0);
+            Expect("=1/0+FOO()", SheetFormula.div0);
+            Expect("=SUM(A1, 1/0)", SheetFormula.div0);
+            Expect("=FOO(1)", SheetFormula.name);
+            Expect("=Nope!A1", SheetFormula.reference);
+            Expect("=XFE1", SheetFormula.reference);
+            Expect("=1+", SheetFormula.parse);
+            Expect("=10^400", SheetFormula.num);
+
+            SheetValue typed = SheetBook.calc.Value(one, 5, 5);
+            t.Check(typed.kind == SheetValueKind.Number && typed.Display() == "1.50", "a typed number keeps the text it was typed as");
+            SheetBook.Unregister(sheet);
+            yield break;
+        }
+
+        [A_XSDActionDependency("Sheet.FormulaRecalc", "Test")]
+        private static IEnumerator<int> FormulaRecalc(TestContext t)
+        {
+            SheetDocument sheet = SheetDocument.Blank("Recalc");
+            SheetPage one = sheet.pages[0];
+            SheetPage two = SheetPage.Blank("My page");
+            sheet.pages.Add(two);
+            SheetLayer cells = one.layers[0];
+            SheetLayer other = two.layers[0];
+            SheetCalc calc = SheetBook.calc;
+
+            string? Shown(SheetPage page, string address)
+            {
+                SheetDocument.TryParseAddress(address, out int row, out int column);
+                return calc.Value(page, row, column).Display();
+            }
+
+            void Write(SheetPage page, params (string address, string? raw)[] writes)
+            {
+                List<(int, int)> changed = new List<(int, int)>();
+                foreach ((string address, string? raw) in writes)
+                {
+                    SheetDocument.TryParseAddress(address, out int row, out int column);
+                    page.layers[^1].Set(row, column, raw);
+                    changed.Add((row, column));
+                }
+                calc.Changed(page, changed);
+            }
+
+            cells.Set(0, 0, "1");
+            cells.Set(0, 1, "=A1+1");
+            cells.Set(0, 2, "=B1*10");
+            other.Set(0, 0, "10");
+            cells.Set(0, 3, "='My page'!A1*2");
+            SheetBook.Register(sheet);
+            t.Check(Shown(one, "C1") == "20" && Shown(one, "D1") == "20", "a load evaluates every formula");
+
+            Write(one, ("A1", "5"));
+            t.Check(Shown(one, "C1") == "60", $"a chain follows its first cell: {Shown(one, "C1")}");
+
+            Write(two, ("A1", "7"));
+            t.Check(Shown(one, "D1") == "14", $"a reference into another page follows it: {Shown(one, "D1")}");
+
+            Write(one, ("E1", "=F1"), ("F1", "=E1"), ("G1", "=E1+1"));
+            t.Check(Shown(one, "E1") == SheetFormula.cycle && Shown(one, "F1") == SheetFormula.cycle, "two cells reading each other are a cycle");
+            t.Check(Shown(one, "G1") == SheetFormula.cycle, "a cell reading a cycle shows the cycle");
+
+            Write(one, ("F1", "3"));
+            t.Check(Shown(one, "E1") == "3" && Shown(one, "G1") == "4", "breaking the cycle recovers both");
+
+            Write(one, ("H1", "='My page'!B1"));
+            Write(two, ("B1", "='Sheet 1'!H1"));
+            t.Check(Shown(one, "H1") == SheetFormula.cycle && Shown(two, "B1") == SheetFormula.cycle, "a cycle across pages is found");
+
+            Write(one, ("I1", "=I1+1"));
+            t.Check(Shown(one, "I1") == SheetFormula.cycle, "a cell reading itself is a cycle");
+
+            List<(int, int)> chain = new List<(int, int)>();
+            cells.Set(0, 20, "1");
+            for (int r = 1; r < 10000; r++)
+            {
+                cells.Set(r, 20, "=U" + r + "+1");
+                chain.Add((r, 20));
+            }
+            calc.Changed(one, chain);
+            t.Check(Shown(one, "U10000") == "10000", $"a 10,000-cell chain evaluates: {Shown(one, "U10000")}");
+
+            Write(one, ("U1", "2"));
+            t.Check(Shown(one, "U10000") == "10001", "and follows its first cell");
+            SheetBook.Unregister(sheet);
+            yield break;
+        }
+
+        [A_XSDActionDependency("Sheet.FormulaView", "Test")]
+        private static IEnumerator<int> FormulaView(TestContext t)
+        {
+            string path = TempSheet(SheetDocument.Blank("Formulas"));
+            SheetEditorControl editor = ShowSheet(t, path);
+            yield return 2;
+
+            editor.Select(0, 0, false);
+            editor.Paste("3");
+            SheetControl grid = Grid(editor);
+            LayoutRect b1 = grid.CellRect(0, 1);
+            Vector2 at = new Vector2(b1.x + b1.width * 0.5f, b1.y + b1.height * 0.5f);
+            yield return t.Drag(grid, at, at, 1);
+            yield return t.Type("=A1*2");
+            yield return t.Key(Keys.Enter);
+            yield return 2;
+
+            SheetPage page = editor.document.pages[0];
+            LabelControl? InB1() => Find<LabelControl>(editor, label => label.arrangedRect.width > 0f
+                && label.arrangedRect.x >= b1.x && label.arrangedRect.Right <= b1.Right
+                && label.arrangedRect.y >= b1.y && label.arrangedRect.Bottom <= b1.Bottom);
+
+            t.Check(page.Shown(0, 1) == "=A1*2", $"the cell keeps the formula: {page.Shown(0, 1)}");
+            LabelControl? value = InB1();
+            t.Check(value?.text == "6", $"the grid shows its value: {value?.text}");
+            t.Check(value != null && value.arrangedRect.x > b1.x + b1.width * 0.5f, "a computed number aligns right");
+
+            editor.Select(0, 1, false);
+            yield return t.Key(Keys.F2);
+            TextBoxControl? field = Find<TextBoxControl>(editor, _ => true);
+            t.Check(editor.editing && field?.text == "=A1*2", $"F2 opens the formula: {field?.text}");
+            yield return t.Key(Keys.Escape);
+
+            editor.Select(0, 0, false);
+            editor.Paste("4");
+            yield return 2;
+            t.Check(InB1()?.text == "8", $"an edit recalculates what reads it: {InB1()?.text}");
+
+            editor.Undo();
+            yield return 2;
+            t.Check(InB1()?.text == "6", $"undo recalculates too: {InB1()?.text}");
+
+            editor.Select(0, 0, false);
+            editor.Select(0, 1, true);
+            editor.Copy();
+            t.Check(ClipboardText.Get() == "3\t6", $"copy writes values: {ClipboardText.Get()}");
+
+            editor.Save();
+            t.Check(SheetDocument.Load(path).pages[0].Shown(0, 1) == "=A1*2", "the file keeps the formula");
+
+            t.Show(new StackPanelControl());
+            File.Delete(path);
+        }
+
+        [A_XSDActionDependency("Sheet.CrossFile", "Test")]
+        private static IEnumerator<int> CrossFile(TestContext t)
+        {
+            string folder = TempFolder();
+            Func<string, string?>? before = SheetBook.findSheet;
+            SheetBook.findSheet = FolderResolver(folder);
+
+            SheetDocument budget = SheetDocument.Blank("Budget");
+            budget.pages[0].name = "Expenses";
+            budget.pages[0].layers[0].Set(0, 0, "10");
+            budget.pages[0].layers[0].Set(0, 1, "=A1*2");
+            string budgetPath = Path.Combine(folder, "Budget" + SheetDocument.extension);
+            budget.Save(budgetPath);
+
+            SheetDocument summary = SheetDocument.Blank("Summary");
+            SheetLayer cells = summary.pages[0].layers[0];
+            cells.Set(0, 0, "=[Budget]Expenses!B1+1");
+            cells.Set(1, 0, "='[Budget]Expenses'!A1");
+            cells.Set(2, 0, "=[Nope]Expenses!A1");
+            cells.Set(3, 0, "=[Budget]Missing!A1");
+            string summaryPath = Path.Combine(folder, "Summary" + SheetDocument.extension);
+            summary.Save(summaryPath);
+
+            StackPanelControl both = new StackPanelControl { orientation = StackPanelControl.Orientation.Horizontal };
+            SheetEditorControl editor = new SheetEditorControl { preferredWidth = 400f, preferredHeight = 300f };
+            editor.LoadPath(summaryPath);
+            both.AddChild(editor);
+            t.Show(both);
+            yield return 2;
+            SheetPage page = editor.document.pages[0];
+            string? Shown(int row) => SheetBook.calc.Value(page, row, 0).Display();
+
+            t.Check(Shown(0) == "21", $"a formula reads a sheet that is not open: {Shown(0)}");
+            t.Check(Shown(1) == "10", $"the quoted form reads it too: {Shown(1)}");
+            t.Check(Shown(2) == SheetFormula.reference && Shown(3) == SheetFormula.reference, "a missing file or page is #REF!");
+
+            SheetEditorControl other = new SheetEditorControl { preferredWidth = 400f, preferredHeight = 300f };
+            other.LoadPath(budgetPath);
+            both.AddChild(other);
+            yield return 2;
+            t.Check(ReferenceEquals(other.document, SheetBook.Get(budgetPath)), "a second editor shares the loaded copy");
+            other.Select(0, 0, false);
+            other.Paste("5");
+            yield return 2;
+            t.Check(Shown(0) == "11", $"an edit in the other sheet reaches this one: {Shown(0)}");
+            LayoutRect a1 = Grid(editor).CellRect(0, 0);
+            t.Check(Find<LabelControl>(editor, label => label.text == "11" && label.arrangedRect.x >= a1.x && label.arrangedRect.Right <= a1.Right
+                && label.arrangedRect.y >= a1.y && label.arrangedRect.Bottom <= a1.Bottom) != null, "and its grid redraws");
+            t.Check(!editor.unsaved && other.unsaved, "only the edited sheet is unsaved");
+
+            other.Select(0, 2, false);
+            other.Paste("='[Summary]Sheet 1'!A5");
+            editor.Select(4, 0, false);
+            editor.Paste("=[Budget]Expenses!C1");
+            t.Check(Shown(4) == SheetFormula.cycle && SheetBook.calc.Value(other.document.pages[0], 0, 2).Display() == SheetFormula.cycle,
+                "two files reading each other are a cycle");
+
+            t.Show(new StackPanelControl());
+            SheetBook.findSheet = before;
+            SheetBook.Deleted(budgetPath);
+            SheetBook.Deleted(summaryPath);
+            Directory.Delete(folder, true);
+        }
+
+        [A_XSDActionDependency("Sheet.RenameRewrites", "Test")]
+        private static IEnumerator<int> RenameRewrites(TestContext t)
+        {
+            string folder = TempFolder();
+            Func<string, string?>? before = SheetBook.findSheet;
+            SheetBook.findSheet = FolderResolver(folder);
+            string PathOf(string name) => Path.Combine(folder, name + SheetDocument.extension);
+
+            SheetDocument budget = SheetDocument.Blank("Budget");
+            budget.pages[0].name = "Data";
+            budget.pages[0].layers[0].Set(0, 0, "10");
+            budget.Save(PathOf("Budget"));
+
+            SheetDocument summary = SheetDocument.Blank("Summary");
+            summary.pages[0].layers[0].Set(0, 0, "=[Budget]Data!A1*2");
+            summary.pages[0].layers[0].Set(1, 0, "='[Budget]Data'!A1");
+            summary.Save(PathOf("Summary"));
+
+            SheetDocument unopened = SheetDocument.Blank("Unopened");
+            unopened.pages[0].layers[0].Set(0, 0, "=[Budget]Data!A1+1");
+            unopened.Save(PathOf("Unopened"));
+
+            SheetDocument.Blank("Plain").Save(PathOf("Plain"));
+            DateTime plainTime = File.GetLastWriteTimeUtc(PathOf("Plain"));
+
+            SheetEditorControl editor = ShowSheet(t, PathOf("Summary"));
+            yield return 2;
+            SheetLayer cells = editor.document.pages[0].layers[0];
+            t.Check(SheetBook.calc.Value(editor.document.pages[0], 0, 0).Display() == "20", "the summary reads the budget");
+
+            File.Move(PathOf("Budget"), PathOf("Money"));
+            SheetBook.Renamed(PathOf("Budget"), PathOf("Money"), Directory.EnumerateFiles(folder));
+            yield return 2;
+
+            t.Check(cells.Get(0, 0) == "=[Money]Data!A1*2" && cells.Get(1, 0) == "=[Money]Data!A1",
+                $"a loaded sheet's references follow the rename: {cells.Get(0, 0)} {cells.Get(1, 0)}");
+            t.Check(SheetBook.calc.Value(editor.document.pages[0], 0, 0).Display() == "20", "and keep their value");
+            t.Check(SheetDocument.Load(PathOf("Unopened")).pages[0].Shown(0, 0) == "=[Money]Data!A1+1", "a sheet on disk is rewritten");
+            t.Check(File.GetLastWriteTimeUtc(PathOf("Plain")) == plainTime, "a sheet without a reference is not touched");
+
+            File.Move(PathOf("Money"), PathOf("My money"));
+            SheetBook.Renamed(PathOf("Money"), PathOf("My money"), Directory.EnumerateFiles(folder));
+            t.Check(cells.Get(0, 0) == "='[My money]Data'!A1*2", $"a name with a space is quoted: {cells.Get(0, 0)}");
+            t.Check(SheetBook.calc.Value(editor.document.pages[0], 0, 0).Display() == "20", "and still reads");
+
+            t.Show(new StackPanelControl());
+            SheetBook.findSheet = before;
+            foreach (string file in Directory.EnumerateFiles(folder))
+                SheetBook.Deleted(file);
+            Directory.Delete(folder, true);
+        }
+
+        [A_XSDActionDependency("Sheet.PasteLinks", "Test")]
+        private static IEnumerator<int> PasteLinks(TestContext t)
+        {
+            string folder = TempFolder();
+            Func<string, string?>? before = SheetBook.findSheet;
+            SheetBook.findSheet = FolderResolver(folder);
+            string PathOf(string name) => Path.Combine(folder, name + SheetDocument.extension);
+
+            SheetDocument budget = SheetDocument.Blank("Budget");
+            budget.pages[0].name = "Data";
+            budget.pages[0].layers[0].Set(0, 0, "10");
+            budget.pages[0].layers[0].Set(0, 1, "20");
+            budget.Save(PathOf("Budget"));
+            SheetDocument.Blank("Summary").Save(PathOf("Summary"));
+
+            StackPanelControl both = new StackPanelControl { orientation = StackPanelControl.Orientation.Horizontal };
+            SheetEditorControl summary = new SheetEditorControl { preferredWidth = 400f, preferredHeight = 300f };
+            SheetEditorControl source = new SheetEditorControl { preferredWidth = 400f, preferredHeight = 300f };
+            summary.LoadPath(PathOf("Summary"));
+            source.LoadPath(PathOf("Budget"));
+            both.AddChild(summary);
+            both.AddChild(source);
+            t.Show(both);
+            yield return 2;
+            SheetLayer cells = summary.document.pages[0].layers[0];
+            string? Shown(int row, int column) => SheetBook.calc.Value(summary.document.pages[0], row, column).Display();
+
+            summary.Select(0, 0, false);
+            summary.Paste("1\t2");
+            summary.Select(0, 0, false);
+            summary.Select(0, 1, true);
+            summary.Copy();
+            summary.Select(2, 0, false);
+            t.Check(summary.PasteLink(), "Paste link takes the copy");
+            t.Check(cells.Get(2, 0) == "=A1" && cells.Get(2, 1) == "=B1", $"from the same page it reads plain addresses: {cells.Get(2, 0)} {cells.Get(2, 1)}");
+            t.Check(Shown(2, 0) == "1" && Shown(2, 1) == "2", "and shows their values");
+            t.Check(summary.anchorRow == 2 && summary.activeRow == 2 && summary.activeColumn == 1, "the pasted block is selected");
+
+            source.Select(0, 0, false);
+            source.Select(0, 1, true);
+            source.Copy();
+            UIEngine.SetActiveControl(summary);
+            summary.Select(4, 0, false);
+            yield return t.Key(Keys.V, Keys.LeftControl, Keys.LeftShift);
+            t.Check(cells.Get(4, 0) == "=[Budget]Data!A1" && cells.Get(4, 1) == "=[Budget]Data!B1",
+                $"Ctrl+Shift+V from another file names the file and page: {cells.Get(4, 0)} {cells.Get(4, 1)}");
+            t.Check(Shown(4, 0) == "10" && Shown(4, 1) == "20", "and shows its values");
+
+            summary.Undo();
+            t.Check(cells.Get(4, 0) == null && cells.Get(4, 1) == null, "one undo takes the link back");
+
+            ClipboardText.Set("x\ty");
+            summary.Select(6, 0, false);
+            summary.PasteLink();
+            t.Check(cells.Get(6, 0) == "x" && cells.Get(6, 1) == "y", "a clipboard from elsewhere pastes plainly");
+
+            t.Check(SheetFormula.Prefix(null, "Sheet 1") == "'Sheet 1'" && SheetFormula.Prefix("My money", "Data") == "'[My money]Data'"
+                && SheetFormula.Prefix("Finance/Budget", "Data") == "[Finance/Budget]Data", "a page or file name with a space is quoted");
+
+            t.Show(new StackPanelControl());
+            SheetBook.findSheet = before;
+            SheetBook.Deleted(PathOf("Budget"));
+            SheetBook.Deleted(PathOf("Summary"));
+            Directory.Delete(folder, true);
+        }
+
         #region ---- fixtures ----
+        private static string TempFolder()
+        {
+            string folder = Path.Combine(Path.GetTempPath(), $"aurora-sheets-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(folder);
+            return folder;
+        }
+
+        private static Func<string, string?> FolderResolver(string folder) => file =>
+        {
+            string path = Path.Combine(folder, file + SheetDocument.extension);
+            return File.Exists(path) ? path : null;
+        };
+
+        private static T? Find<T>(Entity entity, Func<T, bool> match) where T : class
+        {
+            if (entity is T found && match(found)) return found;
+            foreach (Entity child in entity.children)
+                if (Find(child, match) is T hit) return hit;
+            return null;
+        }
+
         private static string TempSheet(SheetDocument sheet)
         {
             string path = Path.GetFullPath(Path.Combine(Path.GetTempPath(), $"aurora-sheet-{Guid.NewGuid():N}{SheetDocument.extension}"));
