@@ -28,6 +28,8 @@ namespace Thorium
             SessionLayout.tabFactory = VaultBrowserControl.BuildTab;
             NotePropertiesControl.openLink = VaultBrowserControl.OpenLink;
             SheetBook.findSheet = VaultBrowserControl.FindSheet;
+            SheetBook.vaultSheets = VaultBrowserControl.VaultSheets;
+            SheetBook.vaultNotes = VaultBrowserControl.VaultNotes;
             // prepare level
 
             // One-shot atlas bake — this is the set currently in Data/Fonts/arial.

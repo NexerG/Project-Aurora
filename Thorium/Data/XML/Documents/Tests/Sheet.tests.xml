@@ -20,4 +20,8 @@
 	<Test Action="Sheet.NoteRenameRewrites"/>
 	<Test Action="Sheet.MathLinks"/>
 	<Test Action="Sheet.Formats"/>
-	<Test Action="Sheet.Resize"/></TestSuite>
+	<Test Action="Sheet.Resize"/>
+	<Test Action="Sheet.Pages"/>
+	<Test Action="Sheet.Layers"/>
+	<Test Action="Sheet.Csv"/>
+	<Test Action="Sheet.CsvLinks"/></TestSuite>

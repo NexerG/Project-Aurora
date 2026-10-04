@@ -8,8 +8,8 @@ using System.Text;
 
 namespace ArctisAurora.Core.UI
 {
-    // One open sheet: the scroll viewport, the grid under it, and the file behind them.
-    public class SheetEditorControl : ScrollableControl, IClipboardTarget, IFileEditor
+    // One open sheet: the scroll viewport, the grid under it, the page tabs, and the file behind them.
+    public class SheetEditorControl : StackPanelControl, IClipboardTarget, IFileEditor
     {
         public SheetDocument document { get; private set; } = null!;
         public string? path { get; private set; }
@@ -30,6 +30,11 @@ namespace ArctisAurora.Core.UI
         public int editColumn { get; private set; }
 
         private SheetControl? sheet;
+        public readonly ScrollableControl scroller;
+        private readonly SheetPageStripControl strip;
+
+        // the shown page; kept when it is removed so a neighbour can be shown
+        public int pageIndex { get; private set; }
 
         // the last copy's text and the cells it came from, for Paste link
         private static string? copiedText;
@@ -39,13 +44,23 @@ namespace ArctisAurora.Core.UI
         private bool scrollToActivePending;
         private SessionTab? pendingView;
 
-        // the layer edits land in: the topmost
-        private SheetLayer Layer => sheet!.page.layers[^1];
+        // the layer edits land in: the picked one while it is on the page, else the topmost
+        private SheetLayer? pickedLayer;
+        private SheetLayer Layer => pickedLayer != null && sheet!.page.layers.Contains(pickedLayer) ? pickedLayer : sheet!.page.layers[^1];
+        public SheetLayer editLayer => Layer;
+
+        public SheetPage page => sheet!.page;
 
         public SheetEditorControl()
         {
-            scrollDirection = ScrollDirection.Both;
+            horizontalAlignment = HorizontalAlignment.Stretch;
+            verticalAlignment = VerticalAlignment.Stretch;
             PaintOr(null, PaletteRole.Surface);
+
+            scroller = new Scroller(this);
+            strip = new SheetPageStripControl(this);
+            AddChild(scroller);
+            AddChild(strip);
             SheetBook.changed += BookChanged;
         }
 
@@ -59,20 +74,33 @@ namespace ArctisAurora.Core.UI
         {
             path = Path.GetFullPath(Path.IsPathRooted(nameOrPath) ? nameOrPath : Paths.Doc(nameOrPath));
             Load(SheetBook.Get(path));
+            if (SheetCsv.IsCsv(path)) strip.Hide();
         }
 
         public void Load(SheetDocument loaded)
         {
             document = loaded;
+            Build(0);
+        }
+
+        // A fresh grid on one page, the selection back at A1 and the view at the top.
+        private void Build(int index)
+        {
+            bool active = sheet != null && (ReferenceEquals(UIEngine.activeControl, sheet) || ReferenceEquals(UIEngine.activeControl, sheet.field));
+            pageIndex = index;
+            pickedLayer = null;
             editing = false;
             activeRow = activeColumn = anchorRow = anchorColumn = 0;
 
             sheet?.Destroy();
-            sheet = new SheetControl(this, document.pages[0]);
+            sheet = new SheetControl(this, document.pages[index]);
             sheet.field.onCommit = value => FinishEdit(value, true);
             sheet.field.onBlur = () => { if (editing) FinishEdit(sheet!.field.text, false); };
             sheet.field.onCancel = CancelEdit;
-            AddChild(sheet);
+            scroller.AddChild(sheet);
+            scroller.SetScrollOffset(Vector2.Zero);
+            if (active) UIEngine.SetActiveControl(sheet);
+            strip.Sync();
         }
 
         #region ---- file ----
@@ -94,7 +122,17 @@ namespace ArctisAurora.Core.UI
         private void BookChanged(SheetDocument? edited)
         {
             if (ReferenceEquals(edited, document)) unsaved = true;
-            sheet?.CellsChanged();
+            if (sheet == null || destroyed) return;
+
+            int index = document.pages.IndexOf(sheet.page);
+            if (index < 0)
+            {
+                Build(Math.Min(pageIndex, document.pages.Count - 1));
+                return;
+            }
+            pageIndex = index;
+            sheet.CellsChanged();
+            strip.Sync();
         }
 
         public void Undo()
@@ -105,6 +143,118 @@ namespace ArctisAurora.Core.UI
         public void Redo()
         {
             if (undo.Redo()) RequestScrollToActive();
+        }
+        #endregion
+
+        #region ---- pages ----
+        public void ShowPage(int index)
+        {
+            if (sheet == null || index < 0 || index >= document.pages.Count || ReferenceEquals(sheet.page, document.pages[index])) return;
+            if (editing) sheet.field.Commit();
+            Build(index);
+        }
+
+        public void AddPage()
+        {
+            if (editing) sheet!.field.Commit();
+            Record("Add page", new SheetPageEdit(document, document.pages.Count, SheetPage.Blank(FreePageName()), true));
+            ShowPage(document.pages.Count - 1);
+        }
+
+        // The last page stays.
+        public void DeletePage(int index)
+        {
+            if (document.pages.Count < 2 || index < 0 || index >= document.pages.Count) return;
+            if (editing) sheet!.field.Commit();
+            Record("Delete page", new SheetPageEdit(document, index, document.pages[index], false));
+        }
+
+        // False for an empty name, one holding "!", or another page's.
+        public bool RenamePage(int index, string name)
+        {
+            name = name.Trim();
+            if (index < 0 || index >= document.pages.Count) return false;
+
+            SheetPage page = document.pages[index];
+            if (name == page.name) return true;
+            if (name.Length == 0 || name.Contains('!')) return false;
+            foreach (SheetPage other in document.pages)
+                if (!ReferenceEquals(other, page) && other.name.Equals(name, StringComparison.OrdinalIgnoreCase)) return false;
+
+            Record("Rename page", new SheetPageRenameEdit(document, page, page.name, name));
+            return true;
+        }
+
+        // Writes "<sheet> - <page>.csv" beside the file, over an earlier export; the written path, or null without a file.
+        public string? ExportPage(int index)
+        {
+            if (path == null || index < 0 || index >= document.pages.Count) return null;
+            if (editing) sheet!.field.Commit();
+
+            SheetPage page = document.pages[index];
+            string name = Path.GetFileName(path)[..^SheetDocument.extension.Length];
+            string target = Path.Combine(Path.GetDirectoryName(path)!, $"{name} - {page.name}{SheetCsv.extension}");
+            SheetCsv.Export(page, target);
+            return target;
+        }
+
+        private string FreePageName()
+        {
+            for (int n = 1; ; n++)
+            {
+                string name = "Sheet " + n;
+                if (!document.pages.Exists(page => page.name.Equals(name, StringComparison.OrdinalIgnoreCase))) return name;
+            }
+        }
+
+        private void Record(string label, IEditRecord edit)
+        {
+            using (undo.Begin(label))
+            {
+                edit.Redo();
+                undo.Push(edit);
+            }
+        }
+        #endregion
+
+        #region ---- layers ----
+        public void EditLayer(SheetLayer layer)
+        {
+            if (editing) sheet!.field.Commit();
+            pickedLayer = layer;
+        }
+
+        public void ToggleLayer(SheetLayer layer)
+        {
+            if (editing) sheet!.field.Commit();
+            Record(layer.visible ? "Hide layer" : "Show layer", new SheetLayerShowEdit(document, page, layer));
+        }
+
+        // A new layer on top, edited from then on.
+        public void AddLayer()
+        {
+            if (editing) sheet!.field.Commit();
+            SheetLayer layer = new SheetLayer { name = FreeLayerName() };
+            Record("Add layer", new SheetLayerEdit(document, page, page.layers.Count, layer, true));
+            pickedLayer = layer;
+        }
+
+        // Deletes the edited layer; the last one stays.
+        public void DeleteLayer()
+        {
+            if (page.layers.Count < 2) return;
+            if (editing) sheet!.field.Commit();
+            SheetLayer layer = Layer;
+            Record("Delete layer", new SheetLayerEdit(document, page, page.layers.IndexOf(layer), layer, false));
+        }
+
+        private string FreeLayerName()
+        {
+            for (int n = 1; ; n++)
+            {
+                string name = "Layer " + n;
+                if (!page.layers.Exists(layer => layer.name.Equals(name, StringComparison.OrdinalIgnoreCase))) return name;
+            }
         }
         #endregion
 
@@ -159,7 +309,7 @@ namespace ArctisAurora.Core.UI
         internal void RequestScrollToActive()
         {
             scrollToActivePending = true;
-            InvalidateArrange();
+            scroller.InvalidateArrange();
         }
         #endregion
 
@@ -344,9 +494,10 @@ namespace ArctisAurora.Core.UI
             if (copiedText == null || text != copiedText) return Paste(text);
 
             (SheetDocument source, string? sourcePath, SheetPage page, int top, int left, int bottom, int right) = copiedFrom;
+            if (!ReferenceEquals(source, document) && document.isCsv) return Paste(text);
             string prefix = ReferenceEquals(page, sheet.page) ? ""
                 : ReferenceEquals(source, document) ? SheetFormula.Prefix(null, page.name) + "!"
-                : SheetFormula.Prefix(sourcePath != null ? Path.GetFileName(sourcePath)[..^SheetDocument.extension.Length] : source.name ?? "", page.name) + "!";
+                : SheetFormula.Prefix(sourcePath != null ? SheetBook.FileName(sourcePath) : source.name ?? "", page.name) + "!";
 
             List<(int, int, string?)> cells = new List<(int, int, string?)>();
             for (int r = top; r <= bottom; r++)
@@ -401,14 +552,15 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- view ----
-        // Active cell and anchor in the caret/anchor fields, scroll in ScrollX and TopDelta.
+        // Active cell and anchor in the caret/anchor fields, scroll in ScrollX and TopDelta, page in TopBlock.
         public SessionTab ViewState()
         {
             if (pendingView != null) return pendingView;
 
-            Vector2 scroll = GetScrollOffset();
+            Vector2 scroll = scroller.GetScrollOffset();
             return new SessionTab
             {
+                topBlock = pageIndex,
                 caretBlock = activeRow,
                 caretOffset = activeColumn,
                 anchorBlock = anchorRow,
@@ -420,6 +572,7 @@ namespace ArctisAurora.Core.UI
 
         public void RestoreView(SessionTab view)
         {
+            if (sheet != null && view.topBlock > 0 && view.topBlock < document.pages.Count) Build(view.topBlock);
             if (view.caretBlock >= 0)
             {
                 anchorRow = Math.Max(0, view.anchorBlock);
@@ -430,33 +583,48 @@ namespace ArctisAurora.Core.UI
 
             pendingView = view;
             sheet?.InvalidateLayout();
-            InvalidateArrange();
+            scroller.InvalidateArrange();
         }
 
-        // Applies a restored view or scrolls the active cell into view.
-        protected override void ArrangeCore(LayoutRect finalRect)
+        // The grid's viewport; applies a restored view or scrolls the active cell into view.
+        private sealed class Scroller : ScrollableControl
         {
-            base.ArrangeCore(finalRect);
-            if (sheet == null) return;
+            private readonly SheetEditorControl editor;
 
-            Vector2 before = GetScrollOffset();
-            if (pendingView != null)
+            public Scroller(SheetEditorControl editor)
             {
-                SessionTab view = pendingView;
-                pendingView = null;
-                scrollToActivePending = false;
-                SetScrollOffset(new Vector2(view.scrollX, view.topDelta));
-            }
-            else if (scrollToActivePending)
-            {
-                scrollToActivePending = false;
-                LayoutRect cell = sheet.CellRect(activeRow, activeColumn);
-                ScrollIntoView(new LayoutRect(cell.x - SheetControl.headerWidth, cell.y - SheetControl.headerHeight,
-                    cell.width + SheetControl.headerWidth, cell.height + SheetControl.headerHeight));
+                this.editor = editor;
+                scrollDirection = ScrollDirection.Both;
+                horizontalAlignment = HorizontalAlignment.Stretch;
+                heightStar = 1f;
+                PaintOr(null, PaletteRole.Surface);
             }
 
-            if (GetScrollOffset() != before) base.ArrangeCore(finalRect);
-            else SetFlag(ArrangeFlags.ArrangeDirty, false);
+            protected override void ArrangeCore(LayoutRect finalRect)
+            {
+                base.ArrangeCore(finalRect);
+                SheetControl? sheet = editor.sheet;
+                if (sheet == null) return;
+
+                Vector2 before = GetScrollOffset();
+                if (editor.pendingView != null)
+                {
+                    SessionTab view = editor.pendingView;
+                    editor.pendingView = null;
+                    editor.scrollToActivePending = false;
+                    SetScrollOffset(new Vector2(view.scrollX, view.topDelta));
+                }
+                else if (editor.scrollToActivePending)
+                {
+                    editor.scrollToActivePending = false;
+                    LayoutRect cell = sheet.CellRect(editor.activeRow, editor.activeColumn);
+                    ScrollIntoView(new LayoutRect(cell.x - SheetControl.headerWidth, cell.y - SheetControl.headerHeight,
+                        cell.width + SheetControl.headerWidth, cell.height + SheetControl.headerHeight));
+                }
+
+                if (GetScrollOffset() != before) base.ArrangeCore(finalRect);
+                else SetFlag(ArrangeFlags.ArrangeDirty, false);
+            }
         }
         #endregion
     }

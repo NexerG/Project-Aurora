@@ -277,15 +277,17 @@ Why: [[ui-palettes]].
 
 ## Sheets
 
-- **SheetEditorControl** (no XML) · ScrollableControl, `IClipboardTarget`, `IFileEditor` — one open sheet; `Surface`
-  ground, scrolls Both. `LoadPath` (through `SheetBook.Get` — tabs of one file share the document), `Load`, `document`,
+- **SheetEditorControl** (no XML) · StackPanelControl (vertical, Stretch both axes), `IClipboardTarget`, `IFileEditor` — one open sheet: public `scroller` (`ScrollableControl`; nested private `Scroller` holds the `SheetControl`) above a private page `strip` (`SheetPageStripControl`, hidden for a CSV); `Surface`
+  ground, the scroller scrolls Both. `pageIndex`, `page`, private `Build(int)`. `LoadPath` (through `SheetBook.Get` — tabs of one file share the document), `Load`, `document`,
   `path`, `unsaved`, `undo` (the document's). Subscribes to `SheetBook.changed` (private `BookChanged` redraws; own
   file's edits set `unsaved`), unsubscribes in `OnDestroy`. Regions `file` (`Save`, `Repath`, `Undo`, `Redo`), `selection` (`activeRow/Column`, `anchorRow/Column`, `Select`, `Move`, `Enter`, `Tab`,
   `SelectAll`, `RequestScrollToActive`), `editing` (`editing`, `editRow/Column`, `BeginEdit(keep)`, `TypeOver`, private
   `FinishEdit`/`CancelEdit`, `Clear`, private `Write` — the one place a `SheetCellEdit` is built), `clipboard` (TSV of
   values; `Copy` keeps static `copiedText`/`copiedFrom` for `PasteLink`),
-  `view` (`ViewState`/`RestoreView` in `SessionTab`'s caret/anchor/`scrollX`/`topDelta`; `ArrangeCore` applies a pending
-  view or scrolls the active cell clear of the headers), `formatting` (`ToggleBold`, `SetFill`, `SetNumberFormat`, `IsSelected`, internal `ResizeBand`). [[sheets]]
+  `view` (`ViewState`/`RestoreView` in `SessionTab`'s caret/anchor/`scrollX`/`topDelta`, page index in `topBlock`; the scroller's `ArrangeCore` applies a pending
+  view or scrolls the active cell clear of the headers), `formatting` (`ToggleBold`, `SetFill`, `SetNumberFormat`, `IsSelected`, internal `ResizeBand`), `pages` (`ShowPage`, `AddPage`, `DeletePage`, `RenamePage`, `ExportPage`, private `FreePageName`, `Record`), `layers` (`editLayer`, `EditLayer`, `ToggleLayer`, `AddLayer`, `DeleteLayer`, private `FreeLayerName`). [[sheets]]
+- **SheetPageStripControl** (no XML) · StackPanelControl — the page strip under the grid, Chrome 26 px: private `PageTab` : ButtonControl per page (`EditableLabelControl` caption; press shows the page, double-tap renames, `contextMenu = "sheet-page"`), a permanent "+" button, a star filler, a "Layers" button opening `SheetLayersControl` as `ContextMenuContent` above itself. `Sync()` rebuilds tabs only when pages or names changed. Its static ctor `ContextMenus.Register`s the code-built menu `sheet-page` (Rename, Delete, Export as CSV). [[sheets]]
+- **SheetLayersControl** (no XML) · StackPanelControl — the layers panel: `panelWidth`, `Sync()`; a row per layer, top first, visibility toggle (`bullet-disc`/`bullet-circle` icons) and name, the edited layer lit; "Add layer", "Delete layer". [[sheets]]
 - **SheetControl** (no XML) · ContainerControl — the grid canvas for one `SheetPage`. Measures to the used extent plus
   spare; `ArrangeCore` reads the scroller's inner rect and lays out the visible window only: `ArrangeGrid` (pooled lines
   and `LabelControl`s in a private `Parts` container), `ArrangeSelection` (wash, 4 outline bars, the `field`
@@ -293,16 +295,16 @@ Why: [[ui-palettes]].
   `headerWidth`/`headerHeight`, `CellsChanged`. Pointer: press selects (Shift extends) and starts a drag, drag extends,
   double tap edits. Formatting: `fills` Parts drawn first, bold through the label's run style, text through `Display(format.number)`; header-edge resize (`EdgeAt`, `OnDrag` live, `OnDragStop` records through `ResizeBand`, `ShowCursor`); spare pooled parts arrange to `Hidden`; right-click uses the `sheet` context menu. [[sheets]]
 - **SheetFormula.cs** — `SheetValue` (`kind`, `FromRaw`, `Display`), `SheetFormula` (`Parse`, `Evaluate`,
-  `References`, `RenameFile`, `Prefix`, error-code consts, grid bounds). **SheetCalc.cs** — `SheetCellId`, `SheetCalc`
-  (`Value`, `Changed`, `Add`/`Remove`, `RecalcAll`; internal `Read`, `PageNamed`). **SheetBook.cs** — static: one
+  `References`, `RenamePrefix`, `RenamePage`, `Prefix`, error-code consts, grid bounds). **SheetCalc.cs** — `SheetCellId`, `SheetCalc`
+  (`Value`, `Changed`, `Add`/`Remove`, `RecalcAll`; internal `Read`, `PageNamed` — null for a file-part reference from a CSV). **SheetBook.cs** — static: one
   `SheetDocument` per path (`Get`, `Register`/`Unregister`, `OwnerOf`, `Resolve` via `findSheet`), the shared `calc`,
-  `changed` event, vault hooks `Created`/`Deleted`/`Renamed`/`Clear`. [[sheets]]
-- **SheetLinks.cs** — `SheetLinks` (static: `Parse`, `Reference`, `IsLink`, `Layout` → `SheetBox`, `Plain`, `Renamed`; region `math`: `HasMathLinks`, `ExpandMath`, `RenameMath` — `\sheet{…}` inside a formula, expanded to the cell's value before `MathParser` sees it), `SheetBox`,
+  `changed` event, vault hooks `Created`/`Deleted`/`Renamed`/`Clear` (CSV paths too), `FileName` (reference file part), `PageRenamed`, `Restructured`, Thorium-set `vaultSheets`/`vaultNotes`. [[sheets]]
+- **SheetLinks.cs** — `SheetLinks` (static: `Parse`, `Reference`, `IsLink`, `Layout` → `SheetBox`, `Plain`, `Renamed`, `PageRenamed`; region `math`: `HasMathLinks`, `ExpandMath`, `RenameMath` — `\sheet{…}` inside a formula, expanded to the cell's value before `MathParser` sees it), `SheetBox`,
   `SheetBoxCell`: sheet links shown in notes, drawn by `TextRunControl`; no control of their own. `SheetEditorControl.CopiedReference`,
   `TextInputActions.PasteLink` (`Text.PasteLink`: `FormulaPopup.PasteLink()` → note editor → plain paste) feed Paste link into a note or its open formula popup. [[sheets]]
 - **SheetDocument.cs** — `SheetDocument` (`pages`, `undo`, `extension`, `IsSheet`, `Blank`, addressing statics), `SheetPage`
   (bands, `Shown`, `Used`), `SheetLayer` (`Get`/`Set`), `SheetCell`. **SheetXml** reads/writes `.sheet.xml`, keeping
-  unknown elements. `SheetFormat` (per-page `formats`). **SheetEdits.cs** — `SheetCellEdit`, `SheetFormatEdit`, `SheetBandEdit`. **SheetActions** — `Sheet.*` keybind actions (region `formatting`: `Sheet.Bold`, `Sheet.Fill*`, `Sheet.Format*`). [[sheets]]
+  unknown elements. `SheetFormat` (per-page `formats`). **SheetEdits.cs** — `SheetCellEdit`, `SheetFormatEdit`, `SheetBandEdit`, `SheetPageEdit`, `SheetPageRenameEdit`, `SheetLayerEdit`, `SheetLayerShowEdit`. `SheetDocument` also holds `csvDelimiter`/`csvBom`/`isCsv`; `Load`/`Save` route by extension to `SheetCsv` or `SheetXml`. **SheetCsv.cs** — static `SheetCsv`: `extension`, `IsCsv`, `Delimiter`, `Read`, `Write`, `Load`, `Save`, `Export`. **SheetActions** — `Sheet.*` keybind actions (region `formatting`: `Sheet.Bold`, `Sheet.Fill*`, `Sheet.Format*`). [[sheets]]
 
 ## Layout containers
 
@@ -389,7 +391,7 @@ Why: [[ui-palettes]].
 
 - **ContextMenus** static — menus by name. `Get` parses the `ContextMenuAsset` on first use (`Register`
   pre-seeds); `Collect(control)` walks up the parents gathering each `contextMenu`, a line between groups,
-  until a `stopsContextMenu`. `OpenOn`/`Open`/`Close`; row input `Entered`, `Clicked`; `DismissUnlessInside`;
+  until a `stopsContextMenu`. `OpenOn`/`Open` (`onClosed` — run once when the top-level menu closes, whoever closes it)/`Close`; row input `Entered`, `Clicked`; `DismissUnlessInside`;
   `Tick`. Hosted as the root's last child when it fits, its own window when not. Regions `menus`,
   `open and close`, `input`. Why: [[context-menus]].
 - **ContextMenuControl** (no XML) · StackPanelControl — one menu panel at a `depth`; a nested

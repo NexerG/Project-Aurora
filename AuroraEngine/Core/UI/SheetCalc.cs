@@ -26,9 +26,10 @@ namespace ArctisAurora.Core.UI
             return SheetValue.FromRaw(page.Shown(row, column));
         }
 
-        // A page of the home page's file, or of the file a reference names.
+        // A page of the home page's file, or of the file a reference names; a CSV reaches no other file.
         internal SheetPage? PageNamed(SheetPage home, string? file, string name)
         {
+            if (file != null && SheetBook.OwnerOf(home)?.isCsv == true) return null;
             SheetDocument? document = file == null ? SheetBook.OwnerOf(home) : SheetBook.Resolve(file);
             if (document == null) return null;
             foreach (SheetPage page in document.pages)

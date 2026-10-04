@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContextMenu>
+	<ContextButton Text="Create a sheet from this" Action="Sheets.FromCsv"/>
+	<ContextButton Text="Convert to sheet" Action="Sheets.ConvertCsv"/>
+	<ContextLine/>
+	<ContextButton Text="Rename" Action="Notes.Rename"/>
+	<ContextButton Text="Duplicate" Action="Notes.Duplicate"/>
+	<ContextLine/>
+	<ContextButton Text="Delete" Action="Notes.Delete"/>
+</ContextMenu>

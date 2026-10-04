@@ -63,7 +63,7 @@ namespace ArctisAurora.Core.UI
         public static bool IsLink(string target)
         {
             int hash = target.IndexOf('#');
-            return hash > 0 && SheetDocument.IsSheet(target[..hash].Trim());
+            return hash > 0 && (SheetDocument.IsSheet(target[..hash].Trim()) || SheetCsv.IsCsv(target[..hash].Trim()));
         }
 
         #region ---- layout ----
@@ -208,22 +208,48 @@ namespace ArctisAurora.Core.UI
         {
             oldPath = Path.GetFullPath(oldPath);
             newPath = Path.GetFullPath(newPath);
-            string oldStem = SheetBook.Stem(oldPath);
             string oldName = SheetBook.BaseName(oldPath);
             string newName = SheetBook.BaseName(newPath);
+            bool pageFollows = SheetCsv.IsCsv(oldPath) && SheetCsv.IsCsv(newPath);
 
             string? Rename(string reference)
             {
                 int hash = reference.IndexOf('#');
-                if (hash <= 0 || !SheetBook.Names(reference[..hash], oldStem)) return null;
-                return SheetBook.Renamed(reference[..hash], oldName, newName) + reference[hash..];
+                int bang = reference.LastIndexOf('!');
+                if (hash <= 0 || !SheetBook.Names(reference[..hash], oldPath)) return null;
+                string file = SheetBook.Renamed(reference[..hash], oldPath, newPath);
+                if (pageFollows && bang > hash && reference[(hash + 1)..bang].Equals(oldName, StringComparison.OrdinalIgnoreCase))
+                    return file + "#" + newName + reference[bang..];
+                return file + reference[hash..];
             }
 
+            RewriteNotes(notes, Rename);
+        }
+
+        // Links to a page of the sheet at sheetPath follow its new name.
+        public static void PageRenamed(string sheetPath, string oldName, string newName, IEnumerable<string> notes)
+        {
+            sheetPath = Path.GetFullPath(sheetPath);
+
+            string? Rename(string reference)
+            {
+                int hash = reference.IndexOf('#');
+                int bang = reference.LastIndexOf('!');
+                if (hash <= 0 || bang <= hash || !SheetBook.Names(reference[..hash], sheetPath)) return null;
+                if (!reference[(hash + 1)..bang].Equals(oldName, StringComparison.OrdinalIgnoreCase)) return null;
+                return reference[..(hash + 1)] + newName + reference[bang..];
+            }
+
+            RewriteNotes(notes, Rename);
+        }
+
+        private static void RewriteNotes(IEnumerable<string> notes, Func<string, string?> rename)
+        {
             foreach (string note in notes)
             {
                 foreach ((TabItemControl item, TabViewControl _) in TabViewControl.FindOpenDocuments(note))
-                    TabViewControl.EditorOf(item)?.RenameSheetLinks(Rename);
-                RewriteFile(note, Rename);
+                    TabViewControl.EditorOf(item)?.RenameSheetLinks(rename);
+                RewriteFile(note, rename);
             }
         }
 

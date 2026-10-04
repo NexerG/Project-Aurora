@@ -30,6 +30,10 @@
           <xs:enumeration value="Sheet.MathLinks" />
           <xs:enumeration value="Sheet.Formats" />
           <xs:enumeration value="Sheet.Resize" />
+          <xs:enumeration value="Sheet.Pages" />
+          <xs:enumeration value="Sheet.Layers" />
+          <xs:enumeration value="Sheet.Csv" />
+          <xs:enumeration value="Sheet.CsvLinks" />
           <xs:enumeration value="TextInput.TypeWritesText" />
           <xs:enumeration value="TextInput.WordMoves" />
           <xs:enumeration value="TextInput.UndoReselects" />
@@ -307,6 +311,8 @@
           <xs:enumeration value="Notes.NewHere" />
           <xs:enumeration value="Sheets.New" />
           <xs:enumeration value="Sheets.NewHere" />
+          <xs:enumeration value="Sheets.FromCsv" />
+          <xs:enumeration value="Sheets.ConvertCsv" />
           <xs:enumeration value="Notes.Rename" />
           <xs:enumeration value="Notes.Duplicate" />
           <xs:enumeration value="Notes.Delete" />

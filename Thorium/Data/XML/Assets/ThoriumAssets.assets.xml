@@ -22,5 +22,6 @@
 	<Asset Type="ContextMenuAsset" Name="vault"        Source="XML/Documents/Menus/Vault.menu.xml"/>
 	<Asset Type="ContextMenuAsset" Name="vault-folder" Source="XML/Documents/Menus/VaultFolder.menu.xml"/>
 	<Asset Type="ContextMenuAsset" Name="vault-note"   Source="XML/Documents/Menus/VaultNote.menu.xml"/>
+	<Asset Type="ContextMenuAsset" Name="vault-csv"    Source="XML/Documents/Menus/VaultCsv.menu.xml"/>
 
 </AssetManifest>

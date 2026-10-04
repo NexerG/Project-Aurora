@@ -19,11 +19,20 @@ namespace ArctisAurora.Core.UI
         // one history per file, whichever tab edits it
         public readonly UndoStack undo = new UndoStack();
 
+        // a CSV file, and how it was written, kept for writing it back
+        public bool isCsv;
+        public char csvDelimiter = ',';
+        public bool csvBom;
+
         public static bool IsSheet(string path) => path.EndsWith(extension, StringComparison.OrdinalIgnoreCase);
 
-        public static SheetDocument Load(string path) => SheetXml.Load(path);
+        public static SheetDocument Load(string path) => SheetCsv.IsCsv(path) ? SheetCsv.Load(path) : SheetXml.Load(path);
 
-        public void Save(string path) => SheetXml.Save(this, path);
+        public void Save(string path)
+        {
+            if (SheetCsv.IsCsv(path)) SheetCsv.Save(this, path);
+            else SheetXml.Save(this, path);
+        }
 
         // One page holding one layer.
         public static SheetDocument Blank(string? name)

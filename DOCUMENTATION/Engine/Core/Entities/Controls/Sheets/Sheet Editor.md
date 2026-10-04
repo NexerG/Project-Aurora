@@ -12,7 +12,7 @@ System:
 Class:
   - "[[Sheet Editor]]"
 Parent Class:
-  - ScrollableControl
+  - StackPanelControl
 Interfaces:
   - IClipboardTarget
   - IFileEditor
@@ -23,13 +23,13 @@ Type:
 Attributes:
 Namespace: ArctisAurora.Core.UI
 SourceFile: AuroraEngine/Core/UI/SheetEditorControl.cs
-VerifiedAgainst: 2026-10-04
+VerifiedAgainst: 2026-10-05
 ---
 ## Description
 
-One open sheet in a tab: a scroll viewport over a `SheetControl` grid, the `SheetDocument` it shows, the file it came from and its undo history. A sheet is a `*.sheet.xml` file in the vault, opened from the browser like a note.
+One open sheet in a tab: a scroll viewport over a `SheetControl` grid with a strip of page tabs under it, the `SheetDocument` it shows, the file it came from and its undo history. A sheet is a `*.sheet.xml` file in the vault, opened from the browser like a note; a `.csv` file opens here too.
 
-A sheet file holds pages, and each page holds layers stacked over the same grid. A cell shows the text of the topmost visible layer that has it, and edits go to the topmost layer. The editor shows the first page; the page tabs and the layer list come later.
+A sheet file holds pages, and each page holds layers stacked over the same grid. A cell shows the text of the topmost visible layer that has it, and edits go to the layer picked for editing, the topmost one until another is picked. The editor shows one page at a time, chosen from the strip of page tabs.
 
 Only the cells inside the viewport have controls. The grid keeps a pool of labels and lines and rebinds them to whatever cells are in view, so a sheet of ten thousand rows costs the same number of controls as one of twenty.
 
@@ -76,6 +76,28 @@ When a cell's value is a number, a number is copied: Copy writes the unformatted
 Dragging the right edge of a column header or the bottom edge of a row header resizes that column or row. The grab zone is four pixels either side of the edge, and the cursor turns into a resize shape over it. The size follows the pointer while dragging, never below 8 pixels, and the drag is recorded as one undo step when it ends.
 
 Not done yet: italic, underline, text colour, alignment, borders and font size in cells; dates, custom number formats and increase or decrease decimals; formats do not travel with copy and paste; the open edit field does not show bold; no autofit on a double-click of an edge, no resizing several selected columns at once and no Esc to cancel a drag.
+
+## Pages and layers
+
+The strip under the grid holds one tab per page, a "+" button that adds a page named "Sheet N" for the first free N, and a "Layers" button at the right end. Pressing a tab shows that page with the selection on A1 and the scroll at the top. Double-clicking a tab renames the page in place, and right-clicking it offers Rename, Delete and Export as CSV. The last page cannot be deleted. A page name cannot be empty, hold `!`, or match another page's name in any letter case. Adding, deleting and renaming a page are undo steps, and the shown page is kept by session restore.
+
+Renaming a page rewrites every reference to it across the vault, because a rename inside Thorium rewrites references: `Page!` in the same sheet, `[File]Page!` in other sheets whether they are open or only on disk, note links such as `file#Page!B3`, and `\sheet{…}` in note math. Undoing the rename runs the same rewrite in reverse, so other files and notes are rewritten again.
+
+The "Layers" button opens a panel above the strip with one row per layer, the top layer first. A dot at the left of a row is filled while the layer is visible and an outline while it is hidden, and clicking it toggles that. The layer being edited is lit, and clicking a layer's name picks it. "Add layer" puts a new layer on top and makes it the edited one, and "Delete layer" deletes the edited layer, except that the last layer stays. Adding, deleting and showing or hiding a layer are undo steps, and every formula is recalculated afterwards.
+
+The grid shows the topmost visible layer's text, while an edit goes into the picked layer, and the open cell field shows that layer's own text. The picked layer belongs to the editor and is not saved. Not done yet: reordering pages, remembering the selection per page, renaming or reordering layers, dimming cells that are not on the edited layer, and a visible sign that an edit went into a hidden layer.
+
+## CSV files
+
+A `.csv` file in the vault opens in a sheet tab as one page named after the file, with one layer and no page strip. Ctrl+S writes it back in place: the cell text as written, so a formula stays `=B2*2`, in the delimiter and BOM the file was read with. The delimiter is the most used of comma, semicolon and tab in the first record outside quotes, and a comma when there is no clear winner. Formats, column widths and extra layers cannot be held by a CSV, so they are not saved. A decimal comma in a semicolon file is read as text, not as a number.
+
+Right-clicking a page tab and choosing Export as CSV writes `<Sheet> - <Page>.csv` beside the sheet: the values as shown, numbers unformatted, UTF-8 with a BOM, comma-separated, a CRLF after every record. Exporting again overwrites the earlier file without asking.
+
+A CSV row in the vault browser has its own menu. "Create a sheet from this" writes `<name>.sheet.xml` beside the CSV, keeps the CSV and opens the sheet. "Convert to sheet" does the same and then sends the CSV to the recycle bin and closes its tab. Both start from the loaded copy, so unsaved edits in an open CSV tab come along. The menu also has Rename, Duplicate and Delete.
+
+A CSV can be referenced but reaches nothing outside itself. A formula reads one as `[data.csv]data!A1`: the file part keeps `.csv`, so `data.csv` and a sheet named `data` are different files, and the page is the CSV's file name without the extension. A note links it as `data.csv#data!A1` (`![[data.csv#data!A1]]` in a Markdown note) and a note's formula reads it as `\sheet{data.csv#data!A1}`. Paste link from a CSV tab writes these references into a sheet or a note. Inside a CSV a reference with a file part reads `#REF!`, and Paste link into a CSV from another file pastes the plain values.
+
+Renaming a CSV to another CSV rewrites every reference to it, the file part and the page part (`[data.csv]data!` becomes `[cost.csv]cost!`, and the CSV's own `data!B2` becomes `cost!B2`), because a CSV cannot store its page name and takes it from the file name on every load. "Convert to sheet" points every reference at the new sheet before the CSV goes to the recycle bin (`[data.csv]data!` becomes `[data.sheet.xml]data!`, a note's `data.csv#…` becomes `data.sheet.xml#…`, the page is unchanged), and the converted sheet can then reach other files. "Create a sheet from this" keeps the CSV, so references stay on the CSV.
 
 ## Sheet links in notes
 
@@ -124,6 +146,15 @@ A linked cell shows its number format but not its bold or fill, and a linked ran
 | `SetFill(hex)` | public | Fills the selected cells with a colour, or clears the fill with null; one undo step. |
 | `SetNumberFormat(format)` | public | Sets the number format of the selected cells, null for General; one undo step. |
 | `ResizeBand(column, index, before, after)` | internal | Records a column or row resize as one undo step, null meaning the default size. |
+| `scroller` | public | The scroll viewport holding the grid; callers scroll through it. |
+| `ShowPage(index)` | public | Shows a page, with the selection on A1 and the scroll at the top. |
+| `AddPage()` | public | Adds a page named "Sheet N" for the first free N, as one undo step. |
+| `DeletePage(index)` | public | Deletes a page as one undo step; the last page stays. |
+| `RenamePage(index, name)` | public | Renames a page and rewrites its references vault-wide, as one undo step; false when the name is refused. |
+| `ExportPage(index)` | public | Writes the page as `<Sheet> - <Page>.csv` beside the sheet and returns the path. |
+| `EditLayer(layer)` | public | Picks the layer that edits go into. |
+| `ToggleLayer(layer)` | public | Shows or hides a layer, as one undo step. |
+| `AddLayer()` / `DeleteLayer()` | public | Adds a layer on top and edits it, or deletes the edited layer; the last layer stays. |
 
 ## Methods
 
@@ -182,6 +213,22 @@ A linked cell shows its number format but not its bold or fill, and a linked ran
 		lay the grid out again
 	when the drag stops
 		record the size before and after as one undo step
+
+### Renaming a page
+	if the name is empty, holds !, or matches another page's name ignoring case, refuse
+	rename the page
+	for each sheet in the vault, loaded or on disk
+		rewrite every reference that names the old page of this file
+	for each note in the vault, open or on disk
+		rewrite every link and \sheet{…} that names the old page of this file
+	recalculate every formula
+	all of the above is one undo step; undoing it runs the same rewrite with the names swapped
+
+### Exporting a page
+	for each row of the page up to its used extent
+		take each cell's value as shown, numbers unformatted, empty as nothing
+	write the rows as comma-separated records, quoting where needed, a CRLF after each
+	write them as UTF-8 with a BOM to "<Sheet> - <Page>.csv" beside the sheet, replacing an earlier export
 
 ### Arrange
 	lay out the viewport and the grid

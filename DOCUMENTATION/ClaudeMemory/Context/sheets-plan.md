@@ -1,7 +1,7 @@
 # Sheets plan — spreadsheet editing in Thorium
 
-**Status:** S1 landed 2026-10-02; S2a, S2b1, S2b2 2026-10-03. S2b3, S2c and S3 2026-10-04. S4 is next (not designed);
-S2d, S4 and S5 are an ordered wish list, not designed.
+**Status:** S1 landed 2026-10-02; S2a, S2b1, S2b2 2026-10-03. S2b3, S2c, S3, S4a and S4b 2026-10-04; S5 and S5b 2026-10-05. S2d is open (not designed);
+nothing else is planned.
 Decision record: [sheets](../Decisions/sheets.md). Part of the Thorium productivity suite (WIP list, Phase A):
 notes, sheets and a todo board under Blender-style workspace tabs, plus a simplified mode with familiar layouts.
 
@@ -31,6 +31,26 @@ notes, sheets and a todo board under Blender-style workspace tabs, plus a simpli
 - S3: General and Scientific are one preset; currency is euros.
 - S3: note links show the number format, not bold or fill.
 
+## Settled by the user (2026-10-04)
+- S4: the page strip lives inside the editor (the editor is a StackPanel holding a scroller and the strip), not pinned inside the grid.
+- S4: a page rename rewrites every reference vault-wide (sheets loaded or on disk, note links, note math); undo re-runs the rewrite in reverse.
+- S4: page and layer add, delete and show/hide are undo records; structure changes recalc with `SheetCalc.RecalcAll`.
+- S4: the edited layer is per editor and not saved; it defaults to the topmost, and a newly added layer becomes edited.
+- S4: delete page or layer with one left is a no-op, not a greyed row.
+- Formula popup closed from outside cancels (typed source dropped); committing instead is an open option.
+
+## Settled by the user (2026-10-05)
+- S5: a CSV opens in place in a sheet tab rather than being imported; Ctrl+S saves it raw with its own delimiter and BOM; no page strip; formats, widths and extra layers are not saved.
+- S5: Export as CSV writes values as shown, numbers unformatted, UTF-8 with BOM, comma, CRLF, overwriting `<Sheet> - <Page>.csv` beside the sheet.
+- S5: a CSV row in the vault browser offers "Create a sheet from this" (CSV kept) and "Convert to sheet" (CSV to the recycle bin, tab closed).
+- S5b (references into a CSV) was deferred, then landed 2026-10-05 (below).
+
+## Settled by the user (2026-10-05, S5b)
+- A CSV can be referenced but references nothing outside itself ("CSVs should not be able to reference anything from outside, but they can be referenced"): a file-part reference inside a CSV is `#REF!`, Paste link into a CSV from another file pastes plain values, other files' renames never rewrite a CSV.
+- The file part keeps `.csv` (`[data.csv]data!A1`, as Excel writes it), so `data.csv` and a sheet `data` resolve separately; the page is the CSV's file base name.
+- Renaming a CSV to another CSV rewrites the page part as well as the file part (a CSV cannot store its page name).
+- "Convert to sheet" retargets every reference to the new sheet before the CSV is recycled; "Create a sheet from this" leaves references on the CSV.
+
 ## Slices
 | # | Slice | State |
 |---|---|---|
@@ -42,8 +62,10 @@ notes, sheets and a todo board under Blender-style workspace tabs, plus a simpli
 | S2c | note math reads sheet cells — `\sheet{file#Page!A1}` in a formula is replaced by the cell's value before parsing (substitution only, no evaluation); Ctrl+Shift+V in the formula popup; rename rewrites formulas | landed 2026-10-04 |
 | S2d | evaluate note formulas (result after a trailing `=`) — not designed | — |
 | S3 | formatting (bold, fill, number formats), column/row resize by dragging header edges | landed 2026-10-04 |
-| S4 | page tabs along the bottom, layer list (show/hide, pick the edited layer) | — |
-| S5 | CSV import/export | — |
+| S4a | page tabs along the bottom — switch, add, rename, delete (undoable); a page rename rewrites references vault-wide | landed 2026-10-04 |
+| S4b | layers panel — show/hide, pick the edited layer, add, delete | landed 2026-10-04 |
+| S5 | CSV: a `.csv` opens in place as one page (saved back raw, own delimiter and BOM), Create a sheet from this / Convert to sheet in the vault menu, Export as CSV per page | landed 2026-10-05 |
+| S5b | references into a CSV — `[data.csv]data!A1` in sheets, note links and `\sheet{…}`; Paste link from a CSV tab; a CSV references nothing outside itself; CSV rename and convert rewrite references | landed 2026-10-05 |
 
 ## Owed for S2b3 — resolved 2026-10-04
 - Done: Ctrl+Shift+V stays on `Sheet.PasteLink`, which falls back to `Text.PasteLink` outside a sheet — `Text.PasteLink`

@@ -26,6 +26,9 @@ namespace ArctisAurora.Core.UI
         private static RenderWindow? _origin;
         private static int _windowSerial;
 
+        // runs once when the open menu closes, whoever closes it
+        private static Action? _onClosed;
+
         private static readonly ContextMenuLine groupLine = new ContextMenuLine();
 
         #region ---- menus ----
@@ -76,10 +79,11 @@ namespace ArctisAurora.Core.UI
         }
 
         // Opens a menu of entries on a control, at a point in its window's design space.
-        public static void Open(List<ContextMenuEntry> entries, Control on, Vector2 point, float width = 0f, bool centered = false)
+        public static void Open(List<ContextMenuEntry> entries, Control on, Vector2 point, float width = 0f, bool centered = false, Action? onClosed = null)
         {
             Close();
             if (entries.Count == 0) return;
+            _onClosed = onClosed;
 
             RenderWindow? window = UIEngine.WindowOf(on);
             if (window?.ui.uiRoot == null) return;
@@ -94,6 +98,13 @@ namespace ArctisAurora.Core.UI
         // Closes the panel at depth and every one opened from it.
         private static void CloseFrom(int depth)
         {
+            if (depth == 0 && _onClosed != null)
+            {
+                Action closed = _onClosed;
+                _onClosed = null;
+                closed();
+            }
+
             for (int i = _open.Count - 1; i >= depth; i--)
             {
                 ContextMenuControl panel = _open[i];

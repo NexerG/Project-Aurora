@@ -94,4 +94,112 @@ namespace ArctisAurora.Core.UI
             SheetBook.Changed(document, page, []);
         }
     }
+
+    // A page added at, or removed from, an index.
+    public sealed class SheetPageEdit : IEditRecord
+    {
+        private readonly SheetDocument document;
+        private readonly int index;
+        private readonly SheetPage page;
+        private readonly bool added;
+
+        public SheetPageEdit(SheetDocument document, int index, SheetPage page, bool added)
+        {
+            this.document = document;
+            this.index = index;
+            this.page = page;
+            this.added = added;
+        }
+
+        public void Undo() => Apply(!added);
+
+        public void Redo() => Apply(added);
+
+        private void Apply(bool present)
+        {
+            if (present) document.pages.Insert(index, page);
+            else document.pages.Remove(page);
+            SheetBook.Restructured(document);
+        }
+    }
+
+    // A layer added at, or removed from, an index of its page.
+    public sealed class SheetLayerEdit : IEditRecord
+    {
+        private readonly SheetDocument document;
+        private readonly SheetPage page;
+        private readonly int index;
+        private readonly SheetLayer layer;
+        private readonly bool added;
+
+        public SheetLayerEdit(SheetDocument document, SheetPage page, int index, SheetLayer layer, bool added)
+        {
+            this.document = document;
+            this.page = page;
+            this.index = index;
+            this.layer = layer;
+            this.added = added;
+        }
+
+        public void Undo() => Apply(!added);
+
+        public void Redo() => Apply(added);
+
+        private void Apply(bool present)
+        {
+            if (present) page.layers.Insert(index, layer);
+            else page.layers.Remove(layer);
+            SheetBook.Restructured(document);
+        }
+    }
+
+    // A layer shown or hidden; undo and redo both flip it.
+    public sealed class SheetLayerShowEdit : IEditRecord
+    {
+        private readonly SheetDocument document;
+        private readonly SheetLayer layer;
+
+        public SheetLayerShowEdit(SheetDocument document, SheetPage page, SheetLayer layer)
+        {
+            this.document = document;
+            this.layer = layer;
+        }
+
+        public void Undo() => Flip();
+
+        public void Redo() => Flip();
+
+        private void Flip()
+        {
+            layer.visible = !layer.visible;
+            SheetBook.Restructured(document);
+        }
+    }
+
+    // A page's name before and after, with every reference to it.
+    public sealed class SheetPageRenameEdit : IEditRecord
+    {
+        private readonly SheetDocument document;
+        private readonly SheetPage page;
+        private readonly string before;
+        private readonly string after;
+
+        public SheetPageRenameEdit(SheetDocument document, SheetPage page, string before, string after)
+        {
+            this.document = document;
+            this.page = page;
+            this.before = before;
+            this.after = after;
+        }
+
+        public void Undo() => Apply(after, before);
+
+        public void Redo() => Apply(before, after);
+
+        private void Apply(string from, string to)
+        {
+            page.name = to;
+            SheetBook.PageRenamed(document, from, to);
+        }
+    }
 }

@@ -114,7 +114,7 @@ namespace Thorium.Tests
             yield return 3;
             int before = Count(editor);
 
-            editor.SetScrollOffset(new Vector2(0f, editor.document.pages[0].RowTop(5000)));
+            editor.scroller.SetScrollOffset(new Vector2(0f, editor.document.pages[0].RowTop(5000)));
             yield return 3;
             int after = Count(editor);
 
@@ -869,6 +869,16 @@ namespace Thorium.Tests
             yield return t.Key(Keys.Escape);
             yield return 2;
 
+            sheet.Copy();
+            yield return t.Key(Keys.M, Keys.LeftControl);
+            ContextMenus.Close();
+            yield return 2;
+            t.Check(UIEngine.activeControl is not TextBoxControl, "a popup closed from outside is cancelled and gives the focus back");
+            yield return t.Key(Keys.V, Keys.LeftControl, Keys.LeftShift);
+            t.Check(NoteBlocks(note)[0].spans.Count(span => span.IsMath && span.mathSource == @"\sheet{Budget.sheet.xml#Data!B1}") == 1,
+                "Paste link after it reaches no closed popup");
+            yield return 2;
+
             File.Move(budgetPath, moneyPath);
             SheetBook.Renamed(budgetPath, moneyPath, new[] { moneyPath });
             SheetLinks.Renamed(budgetPath, moneyPath, new[] { notePath, xmlPath });
@@ -1049,6 +1059,348 @@ namespace Thorium.Tests
             Directory.Delete(folder, true);
         }
 
+        [A_XSDActionDependency("Sheet.Pages", "Test")]
+        private static IEnumerator<int> Pages(TestContext t)
+        {
+            string folder = TempFolder();
+            Func<string, string?>? findBefore = SheetBook.findSheet;
+            Func<IEnumerable<string>>? sheetsBefore = SheetBook.vaultSheets;
+            Func<IEnumerable<string>>? notesBefore = SheetBook.vaultNotes;
+            SheetBook.findSheet = FolderResolver(folder);
+            SheetBook.vaultSheets = () => Directory.EnumerateFiles(folder, "*" + SheetDocument.extension);
+            SheetBook.vaultNotes = () => Directory.EnumerateFiles(folder, "*.md");
+            string PathOf(string name) => Path.Combine(folder, name + SheetDocument.extension);
+
+            SheetDocument budget = SheetDocument.Blank("Budget");
+            budget.pages[0].name = "Data";
+            budget.pages[0].layers[0].Set(0, 0, "10");
+            budget.pages[0].layers[0].Set(1, 0, "=Data!A1*2");
+            budget.Save(PathOf("Budget"));
+
+            SheetDocument summary = SheetDocument.Blank("Summary");
+            summary.pages[0].layers[0].Set(0, 0, "=[Budget]Data!A1+1");
+            summary.pages[0].layers[0].Set(1, 0, "='[Budget]Sheet 1'!A1");
+            summary.Save(PathOf("Summary"));
+
+            SheetDocument unopened = SheetDocument.Blank("Unopened");
+            unopened.pages[0].layers[0].Set(0, 0, "='[Budget]Data'!A1");
+            unopened.Save(PathOf("Unopened"));
+
+            string notePath = Path.Combine(folder, "a.md");
+            File.WriteAllText(notePath, "x ![[Budget.sheet.xml#Data!A1]] $\\sheet{Budget.sheet.xml#Data!A1}$\n");
+
+            SheetEditorControl editor = ShowSheet(t, PathOf("Budget"));
+            SheetPage summaryPage = SheetBook.Get(PathOf("Summary")).pages[0];
+            yield return 2;
+            SheetPageStripControl strip = Find<SheetPageStripControl>(editor, _ => true)!;
+            t.Check(Labels(strip).Contains("Data") && editor.pageIndex == 0, "the strip shows the one page");
+            t.Check(SheetBook.calc.Value(summaryPage, 1, 0).Display() == SheetFormula.reference, "a missing page reads #REF!");
+
+            editor.AddPage();
+            yield return 2;
+            SheetPage second = editor.document.pages[^1];
+            t.Check(editor.document.pages.Count == 2 && second.name == "Sheet 1" && editor.pageIndex == 1, $"a page is added and shown: {second.name}");
+            t.Check(Labels(strip).Contains("Sheet 1") && editor.unsaved, "it has a tab and the file is unsaved");
+            second.layers[0].Set(0, 0, "=Data!A1+5");
+            SheetBook.Changed(editor.document, second, new[] { (0, 0) });
+            t.Check(SheetBook.calc.Value(second, 0, 0).Display() == "15", "the new page reads another page");
+            t.Check(SheetBook.calc.Value(summaryPage, 1, 0).Display() == "15", "a waiting reference now resolves");
+
+            editor.ShowPage(0);
+            yield return 2;
+            t.Check(editor.pageIndex == 0 && Grid(editor).page == editor.document.pages[0], "a tab press shows its page");
+
+            t.Check(!editor.RenamePage(0, "a!b") && !editor.RenamePage(0, "sheet 1") && !editor.RenamePage(0, " "),
+                "a name with !, another page's name or an empty one is refused");
+            t.Check(editor.RenamePage(0, "Spend") && editor.document.pages[0].name == "Spend", "a page is renamed");
+            yield return 2;
+            t.Check(editor.document.pages[0].layers[0].Get(1, 0) == "=Spend!A1*2", "its own page's reference follows");
+            t.Check(second.layers[0].Get(0, 0) == "=Spend!A1+5", "another page's reference follows");
+            t.Check(summaryPage.layers[0].Get(0, 0) == "=[Budget]Spend!A1+1", "a loaded sheet's reference follows");
+            t.Check(SheetBook.calc.Value(summaryPage, 0, 0).Display() == "11", "and keeps its value");
+            t.Check(SheetDocument.Load(PathOf("Unopened")).pages[0].Shown(0, 0) == "=[Budget]Spend!A1", "a sheet on disk is rewritten");
+            t.Check(File.ReadAllText(notePath) == "x ![[Budget.sheet.xml#Spend!A1]] $\\sheet{Budget.sheet.xml#Spend!A1}$\n",
+                $"a note's link and formula follow: {File.ReadAllText(notePath)}");
+            t.Check(Labels(strip).Contains("Spend"), "the tab shows the new name");
+
+            editor.Undo();
+            t.Check(editor.document.pages[0].name == "Data" && summaryPage.layers[0].Get(0, 0) == "=[Budget]Data!A1+1"
+                && File.ReadAllText(notePath).Contains("#Data!A1]]"), "undo renames back everywhere");
+            editor.Redo();
+            t.Check(editor.document.pages[0].name == "Spend" && second.layers[0].Get(0, 0) == "=Spend!A1+5", "redo renames again");
+
+            editor.ShowPage(1);
+            SessionTab view = editor.ViewState();
+            t.Check(view.topBlock == 1, "the view keeps the page");
+            SheetEditorControl restored = new SheetEditorControl();
+            restored.LoadPath(PathOf("Budget"));
+            restored.RestoreView(view);
+            t.Check(restored.pageIndex == 1, "a restored view shows the page");
+            restored.Destroy();
+
+            editor.DeletePage(1);
+            yield return 2;
+            t.Check(editor.document.pages.Count == 1 && editor.pageIndex == 0, "deleting the shown page shows its neighbour");
+            t.Check(SheetBook.calc.Value(summaryPage, 1, 0).Display() == SheetFormula.reference, "a reference to it reads #REF!");
+            editor.DeletePage(0);
+            t.Check(editor.document.pages.Count == 1, "the last page stays");
+            editor.Undo();
+            t.Check(editor.document.pages.Count == 2 && ReferenceEquals(editor.document.pages[1], second), "undo brings the page back");
+            t.Check(SheetBook.calc.Value(summaryPage, 1, 0).Display() == "15", "and its references read again");
+
+            editor.ShowPage(1);
+            yield return 2;
+            yield return t.Golden("Strip", strip);
+
+            editor.Save();
+            SheetDocument saved = SheetDocument.Load(PathOf("Budget"));
+            t.Check(saved.pages.Count == 2 && saved.pages[0].name == "Spend" && saved.pages[1].name == "Sheet 1", "pages are saved");
+
+            t.Show(new StackPanelControl());
+            SheetBook.findSheet = findBefore;
+            SheetBook.vaultSheets = sheetsBefore;
+            SheetBook.vaultNotes = notesBefore;
+            foreach (string file in Directory.EnumerateFiles(folder, "*" + SheetDocument.extension))
+                SheetBook.Deleted(file);
+            Directory.Delete(folder, true);
+        }
+
+        [A_XSDActionDependency("Sheet.Layers", "Test")]
+        private static IEnumerator<int> Layers(TestContext t)
+        {
+            SheetDocument sheet = SheetDocument.Blank("Layers");
+            sheet.pages[0].layers[0].Set(0, 0, "10");
+            sheet.pages[0].layers[0].Set(0, 1, "=A1*2");
+            string path = TempSheet(sheet);
+
+            SheetEditorControl editor = ShowSheet(t, path);
+            yield return 2;
+            SheetPage page = editor.page;
+            SheetLayer bottom = page.layers[0];
+            t.Check(ReferenceEquals(editor.editLayer, bottom), "one layer is the edited one");
+
+            editor.AddLayer();
+            SheetLayer top = page.layers[^1];
+            t.Check(page.layers.Count == 2 && top.name == "Layer 2" && ReferenceEquals(editor.editLayer, top), $"an added layer goes on top and is edited: {top.name}");
+            t.Check(editor.unsaved, "adding a layer makes the file unsaved");
+            editor.Select(0, 0, false);
+            editor.Paste("5");
+            t.Check(top.Get(0, 0) == "5" && bottom.Get(0, 0) == "10", "an edit lands in the edited layer");
+            t.Check(SheetBook.calc.Value(page, 0, 1).Display() == "10", "the top layer covers the cell a formula reads");
+
+            editor.EditLayer(bottom);
+            editor.Paste("7");
+            t.Check(bottom.Get(0, 0) == "7" && page.Shown(0, 0) == "5", "an edit to a covered cell lands in the picked layer, the top one still shows");
+            editor.BeginEdit(true);
+            t.Check(Find<TextBoxControl>(editor, box => true)!.text == "7", "the open field holds the edited layer's text");
+            editor.Enter(false);
+            t.Check(bottom.Get(0, 0) == "7", "committing the unchanged field writes nothing new");
+
+            editor.ToggleLayer(top);
+            t.Check(!top.visible && page.Shown(0, 0) == "7" && SheetBook.calc.Value(page, 0, 1).Display() == "14", "hiding the top layer shows what is under it, formulas too");
+            editor.Undo();
+            t.Check(top.visible && SheetBook.calc.Value(page, 0, 1).Display() == "10", "undo shows it again");
+            editor.Redo();
+            t.Check(!top.visible, "redo hides it");
+
+            editor.EditLayer(top);
+            editor.DeleteLayer();
+            t.Check(page.layers.Count == 1 && ReferenceEquals(editor.editLayer, bottom), "deleting the edited layer leaves the one below edited");
+            editor.DeleteLayer();
+            t.Check(page.layers.Count == 1, "the last layer stays");
+            editor.Undo();
+            t.Check(page.layers.Count == 2 && ReferenceEquals(page.layers[1], top) && !top.visible, "undo brings the layer back, still hidden");
+
+            editor.Save();
+            SheetDocument saved = SheetDocument.Load(path);
+            t.Check(saved.pages[0].layers.Count == 2 && !saved.pages[0].layers[1].visible, "layers and visibility are saved");
+
+            ButtonControl open = Find<ButtonControl>(editor, b => b.children.OfType<LabelControl>().Any(l => l.text == "Layers"))!;
+            yield return t.Click(open);
+            yield return 30;
+            SheetLayersControl panel = Find<SheetLayersControl>(Engine.primary.ui.uiRoot, _ => true)!;
+            t.Check(panel != null, "the layers button opens the panel");
+            if (panel == null) yield break;
+
+            ButtonControl name = Find<ButtonControl>(panel, b => b.children.OfType<LabelControl>().Any(l => l.text == "Layer 1"))!;
+            yield return t.Click(name);
+            t.Check(ReferenceEquals(editor.editLayer, bottom), "a click on a name picks the edited layer");
+            yield return 2;
+            yield return t.Golden("Panel", panel);
+
+            ContextMenus.Close();
+            t.Show(new StackPanelControl());
+            SheetBook.Deleted(path);
+            File.Delete(path);
+        }
+
+        [A_XSDActionDependency("Sheet.Csv", "Test")]
+        private static IEnumerator<int> Csv(TestContext t)
+        {
+            string Rows(List<List<string>> rows) => string.Join(" / ", rows.Select(row => string.Join("|", row)));
+
+            List<List<string>> read = SheetCsv.Read("﻿a,\"b,c\",\"say \"\"hi\"\"\"\r\n\"two\r\nlines\",,x\n3", ',');
+            t.Check(Rows(read) == "a|b,c|say \"hi\" / two\r\nlines||x / 3", $"quotes, escaped quotes, line breaks, empty fields and a BOM read: {Rows(read)}");
+            t.Check(SheetCsv.Read("a,b\r\n", ',').Count == 1, "a closing line break makes no empty record");
+            t.Check(SheetCsv.Delimiter("a;b;\"c,d\";e\r\n1,2,3,4,5,6") == ';', "the first record's most used delimiter wins, quoted ones not counted");
+            t.Check(SheetCsv.Delimiter("a\tb\tc") == '\t' && SheetCsv.Delimiter("abc") == ',', "tab is found, and none reads as comma");
+
+            string written = SheetCsv.Write(new List<IReadOnlyList<string>> { new[] { "a", "b,c", "say \"hi\"" }, new[] { "two\r\nlines", " pad", "" } }, ',');
+            t.Check(written == "a,\"b,c\",\"say \"\"hi\"\"\"\r\n\"two\r\nlines\",\" pad\",\r\n", $"fields needing it are quoted: {written}");
+            t.Check(Rows(SheetCsv.Read(written, ',')) == "a|b,c|say \"hi\" / two\r\nlines| pad|", "what is written reads back the same");
+
+            string folder = TempFolder();
+            string path = Path.Combine(folder, "Budget" + SheetDocument.extension);
+            SheetDocument budget = SheetDocument.Blank("Budget");
+            budget.pages[0].name = "Data";
+            SheetLayer cells = budget.pages[0].layers[0];
+            cells.Set(0, 0, "Item");
+            cells.Set(0, 1, "Cost, EUR");
+            cells.Set(1, 0, "Rent");
+            cells.Set(1, 1, "1234.5");
+            cells.Set(2, 1, "=B2*2");
+            budget.pages[0].SetFormat(1, 1, new SheetFormat(true, null, "C2"));
+            budget.Save(path);
+
+            SheetEditorControl editor = ShowSheet(t, path);
+            yield return 2;
+            string? exported = editor.ExportPage(0);
+            t.Check(exported == Path.Combine(folder, "Budget - Data.csv"), $"the export sits beside the sheet, named for its page: {exported}");
+            byte[] bytes = File.ReadAllBytes(exported!);
+            t.Check(bytes.Length > 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF, "the export starts with a UTF-8 BOM");
+            string text = File.ReadAllText(exported!);
+            t.Check(text == "Item,\"Cost, EUR\"\r\nRent,1234.5\r\n,2469\r\n", $"values are exported, numbers unformatted, formulas as results: {text}");
+
+            editor.document.pages[0].layers[0].Set(1, 1, "10");
+            SheetBook.Changed(editor.document, editor.document.pages[0], new[] { (1, 1) });
+            editor.ExportPage(0);
+            t.Check(File.ReadAllText(exported!).Contains("Rent,10\r\n,20"), "a second export writes over the first");
+            t.Check(Directory.EnumerateFiles(folder, "*.csv").Count() == 1, "and adds no second file");
+
+            string csvPath = Path.Combine(folder, "data.csv");
+            File.WriteAllText(csvPath, "name;cost\r\nrent;\"1,5\"\r\nfee;=2*3\r\n", new System.Text.UTF8Encoding(false));
+            TabItemControl tab = SessionLayout.tabFactory(csvPath);
+            SheetEditorControl csv = (SheetEditorControl)TabViewControl.FileEditorOf(tab)!;
+            t.Show(tab);
+            yield return 2;
+            SheetPage csvPage = csv.document.pages[0];
+            t.Check(csv.document.pages.Count == 1 && csvPage.name == "data" && csv.document.name == "data", "a CSV opens in a sheet tab as one page named after the file");
+            t.Check(csvPage.Shown(1, 1) == "1,5" && SheetBook.calc.Value(csvPage, 2, 1).Display() == "6", "fields read as typed, formulas evaluate");
+            t.Check(Find<SheetPageStripControl>(csv, _ => true)!.hidden, "a CSV tab has no page strip");
+
+            csv.Select(3, 0, false);
+            csv.Paste("tax\t=B3+1");
+            csv.Save();
+            byte[] saved = File.ReadAllBytes(csvPath);
+            t.Check(saved[0] != 0xEF, "a CSV read without a BOM is written without one");
+            t.Check(File.ReadAllText(csvPath) == "name;cost\r\nrent;1,5\r\nfee;=2*3\r\ntax;=B3+1\r\n",
+                $"saving writes the cells back in the file's own delimiter, formulas as written: {File.ReadAllText(csvPath)}");
+            t.Check(!csv.unsaved, "and the tab is saved");
+
+            t.Show(new StackPanelControl());
+            SheetBook.Deleted(csvPath);
+            SheetBook.Deleted(path);
+            Directory.Delete(folder, true);
+        }
+
+        [A_XSDActionDependency("Sheet.CsvLinks", "Test")]
+        private static IEnumerator<int> CsvLinks(TestContext t)
+        {
+            string folder = TempFolder();
+            Func<string, string?>? findBefore = SheetBook.findSheet;
+            Func<string, string?> sheets = FolderResolver(folder);
+            SheetBook.findSheet = file => SheetCsv.IsCsv(file) ? (File.Exists(Path.Combine(folder, file)) ? Path.Combine(folder, file) : null) : sheets(file);
+            string SheetPath(string name) => Path.Combine(folder, name + SheetDocument.extension);
+
+            string dataPath = Path.Combine(folder, "data.csv");
+            File.WriteAllText(dataPath, "item,cost,ext\r\nrent,100,=[Budget]Data!A1\r\nfee,=data!B2*2,\r\n");
+
+            SheetDocument other = SheetDocument.Blank("data");
+            other.pages[0].name = "Data";
+            other.pages[0].layers[0].Set(0, 0, "999");
+            other.Save(SheetPath("data"));
+
+            SheetDocument unopened = SheetDocument.Blank("Unopened");
+            unopened.pages[0].layers[0].Set(0, 0, "=[data.csv]data!B2");
+            unopened.Save(SheetPath("Unopened"));
+
+            SheetDocument budget = SheetDocument.Blank("Budget");
+            budget.pages[0].name = "Data";
+            SheetLayer cells = budget.pages[0].layers[0];
+            cells.Set(0, 0, "10");
+            cells.Set(0, 1, "=[data.csv]data!B2+1");
+            cells.Set(1, 1, "=[data.csv]data!B3");
+            cells.Set(0, 2, "=[data]Data!A1");
+            budget.Save(SheetPath("Budget"));
+
+            string notePath = Path.Combine(folder, "a.md");
+            File.WriteAllText(notePath, "x ![[data.csv#data!B2]] $\\sheet{data.csv#data!B3}$\n");
+
+            SheetEditorControl editor = new SheetEditorControl { preferredWidth = 400f, preferredHeight = 400f };
+            editor.LoadPath(SheetPath("Budget"));
+            SheetEditorControl csv = new SheetEditorControl { preferredWidth = 400f, preferredHeight = 400f };
+            csv.LoadPath(dataPath);
+            StackPanelControl both = new StackPanelControl { orientation = StackPanelControl.Orientation.Horizontal };
+            both.AddChild(editor);
+            both.AddChild(csv);
+            t.Show(both);
+            SheetPage page = editor.document.pages[0];
+            SheetPage csvPage = csv.document.pages[0];
+            yield return 2;
+
+            t.Check(SheetBook.calc.Value(page, 0, 1).Display() == "101" && SheetBook.calc.Value(page, 1, 1).Display() == "200",
+                "a sheet formula reads a CSV, formulas inside it included");
+            t.Check(SheetBook.calc.Value(page, 0, 2).Display() == "999", "data.csv and data.sheet.xml resolve separately");
+            t.Check(SheetBook.calc.Value(csvPage, 1, 2).Display() == SheetFormula.reference, "a CSV reaches no other file");
+            t.Check(SheetLinks.IsLink("data.csv#data!B2") && SheetLinks.Plain("data.csv#data!B2") == "100", "a note link reads a CSV cell");
+            t.Check(SheetLinks.ExpandMath(@"\sheet{data.csv#data!B3}") == "{200}", "note math reads a CSV cell");
+
+            csv.Select(1, 1, false);
+            csv.Copy();
+            editor.Select(5, 0, false);
+            editor.PasteLink();
+            t.Check(page.layers[0].Get(5, 0) == "=[data.csv]data!B2", $"Paste link from a CSV writes a reference to it: {page.layers[0].Get(5, 0)}");
+            editor.Select(0, 0, false);
+            editor.Copy();
+            csv.Select(5, 0, false);
+            csv.PasteLink();
+            t.Check(csvPage.layers[0].Get(5, 0) == "10", $"Paste link into a CSV from another file pastes the value: {csvPage.layers[0].Get(5, 0)}");
+            csv.Undo();
+
+            string costPath = Path.Combine(folder, "cost.csv");
+            File.Move(dataPath, costPath);
+            SheetBook.Renamed(dataPath, costPath, Directory.EnumerateFiles(folder, "*" + SheetDocument.extension));
+            SheetLinks.Renamed(dataPath, costPath, new[] { notePath });
+            yield return 2;
+
+            t.Check(page.layers[0].Get(0, 1) == "=[cost.csv]cost!B2+1" && page.layers[0].Get(5, 0) == "=[cost.csv]cost!B2",
+                $"renaming a CSV rewrites file and page in a loaded sheet: {page.layers[0].Get(0, 1)}");
+            t.Check(SheetBook.calc.Value(page, 0, 1).Display() == "101", "and the reference still reads");
+            t.Check(csvPage.name == "cost" && csvPage.layers[0].Get(2, 1) == "=cost!B2*2" && SheetBook.calc.Value(csvPage, 2, 1).Display() == "200",
+                $"the CSV's page follows its file name, its own references too: {csvPage.layers[0].Get(2, 1)}");
+            t.Check(page.layers[0].Get(0, 2) == "=[data]Data!A1", "a reference to data.sheet.xml is left alone");
+            t.Check(SheetDocument.Load(SheetPath("Unopened")).pages[0].Shown(0, 0) == "=[cost.csv]cost!B2", "a sheet on disk is rewritten");
+            t.Check(File.ReadAllText(notePath) == "x ![[cost.csv#cost!B2]] $\\sheet{cost.csv#cost!B3}$\n", $"a note's link and formula follow: {File.ReadAllText(notePath)}");
+
+            csv.document.Save(SheetPath("cost"));
+            SheetBook.Renamed(costPath, SheetPath("cost"), Directory.EnumerateFiles(folder, "*" + SheetDocument.extension));
+            SheetLinks.Renamed(costPath, SheetPath("cost"), new[] { notePath });
+            File.Delete(costPath);
+            SheetBook.Deleted(costPath);
+            yield return 2;
+
+            t.Check(page.layers[0].Get(0, 1) == "=[cost.sheet.xml]cost!B2+1" && SheetBook.calc.Value(page, 0, 1).Display() == "101",
+                $"turning the CSV into a sheet points references at the sheet: {page.layers[0].Get(0, 1)}");
+            t.Check(File.ReadAllText(notePath) == "x ![[cost.sheet.xml#cost!B2]] $\\sheet{cost.sheet.xml#cost!B3}$\n", $"notes too: {File.ReadAllText(notePath)}");
+            t.Check(!csv.document.isCsv && SheetBook.calc.Value(csvPage, 1, 2).Display() == "10", "and as a sheet it reaches other files");
+
+            t.Show(new StackPanelControl());
+            SheetBook.findSheet = findBefore;
+            foreach (string file in Directory.EnumerateFiles(folder, "*" + SheetDocument.extension))
+                SheetBook.Deleted(file);
+            Directory.Delete(folder, true);
+        }
+
         private static string BudgetSheet(string folder)
         {
             SheetDocument budget = SheetDocument.Blank("Budget");
@@ -1109,7 +1461,7 @@ namespace Thorium.Tests
             return editor;
         }
 
-        private static SheetControl Grid(SheetEditorControl editor) => editor.children.OfType<SheetControl>().First();
+        private static SheetControl Grid(SheetEditorControl editor) => editor.scroller.children.OfType<SheetControl>().First();
 
         private static int Count(Entity entity)
         {
