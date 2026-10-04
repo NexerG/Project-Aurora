@@ -1,3 +1,4 @@
+using ArctisAurora.Core.Editing;
 using System.Globalization;
 using System.Text;
 using System.Xml.Linq;
@@ -14,6 +15,9 @@ namespace ArctisAurora.Core.UI
 
         // elements this version does not read, written back as they came
         public readonly List<XElement> extra = new List<XElement>();
+
+        // one history per file, whichever tab edits it
+        public readonly UndoStack undo = new UndoStack();
 
         public static bool IsSheet(string path) => path.EndsWith(extension, StringComparison.OrdinalIgnoreCase);
 

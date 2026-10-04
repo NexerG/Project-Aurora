@@ -289,6 +289,14 @@ The last per-control GPU resource is gone; both UI columns are now whole-pool mi
 - **Verified pixel-identical.** Built a worktree at `a2f07f3`, ran both, screenshotted the 1280x720
   window: 0 differing pixels of 230,400 sampled, max channel delta 0.
 
+## Pools without handles — `Handles="false"` (2026-10-04)
+- **`<Pool Handles="false">`** (default true; `PoolDefinition.handles`, parsed in `DataManager.LoadManifest`, ctor arg). Such a pool keeps `_slots _backMap _versions _owners _permuteScratch _ownersScratch` and the published slot snapshot at length 0: `Resize` skips them, `PublishGeneration` publishes `Array.Empty`, `TryShrink` skips the stable-id work, `_slotBytes` (so `ReservedBytes`, `--profile-pools`) counts columns only.
+- `Allocate`/`Free` on it throw; `Alive` bounds by `_versions.Length`, so `DenseOf` is -1; `Ordered` + no handles throws in the ctor (resequence needs the maps).
+- **Only `Entity` allocates handles** (`UIElements`, `Entities`). The other 12 pools — `UIQuads Paints Gradients Effects Animations Signals Keyframes LayoutDirty AnimationDone AnimationBindings AnimationAwake PaintFades` — are `Handles="false"`.
+- **Why:** ~32 B per capacity row a handle-less pool never read, plus a fresh `int[capacity]` snapshot on every resize. Rejected: allocating the maps lazily on first `Allocate` — automatic, but which pools carry handles becomes invisible.
+- **Measured** (200k `--profile-scenario=animation`, Release+PROFILE, 3 runs each): `Scenario.Burst` 336.2 → 287.1 MB allocated; KB/frame 526–529 → 470.6; `Anim.Step` worst frame 24.6 → 8.2 MB; `--profile-pools` `Animations` 55 → 49 MB, `AnimationDone`/`AnimationAwake`/`AnimationBindings` 8/7/9 → 2/1/3 MB. Timing not comparable — the before runs were on a loaded machine.
+- **`Perf.Controls.Table.Relayout` now fails `Max="8"` 3/3** (one ~9 ms `Document.ArrangeBlocks` frame, no extra allocation). Same binary with the handles back (bin XML only): passes 3/3, and `RewrapLargeNote` gets a 5–6 ms spike instead. With `DOTNET_GCgen0size=0x8000000` (1 run) neither spikes — a GC landing in a different test, not pool cost. Open: the 8 ms max is hostage to where a gen-0/1 collection lands.
+
 ## Column keys — a typed column without a `Dictionary<Type>` (2026-09-26)
 - `ColumnKeys.Of(Type)` hands out a process-wide dense index per column type (under a lock, on first use); `ColumnKey<T>.index` holds it as a `static readonly int`, which tier-1 JIT treats as a constant.
 - The pool ctor builds `_byKey` (column) and `_idByKey` (column id) indexed by that key. `GetRef`, `GetSpan`, `Column<T>` (so `Backing`, `CopyTo`, `CopyFrom`, `CopyRange`, `UpdateRange`), `Bit<T>` and `ColumnId<T>()` index them. `_columns` / `_columnIds` stay for `HasComponent(Type)`, `ColumnId(Type)` and the whole-pool loops.

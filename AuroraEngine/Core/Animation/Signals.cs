@@ -7,15 +7,8 @@ namespace ArctisAurora.Core.Animation
     // Named or anonymous values that springs follow, created and written from the main thread.
     public static class Signals
     {
-        private sealed class Entry
-        {
-            public uint generation;
-            public bool live;
-            public string? name;
-        }
-
-        // signal id -> entry; ids are reused through free
-        private static readonly List<Entry> entries = new List<Entry>();
+        // signal id -> its name, beside its SignalLife row; ids are reused through free
+        private static string?[] names = new string?[64];
         private static readonly Stack<int> free = new Stack<int>();
         private static readonly Dictionary<string, SignalHandle> byName = new Dictionary<string, SignalHandle>();
 
@@ -24,19 +17,22 @@ namespace ArctisAurora.Core.Animation
 
         public static SignalHandle Create()
         {
+            DataPool pool = Pool;
             int id;
             if (free.Count > 0) id = free.Pop();
             else
             {
-                id = entries.Count;
-                entries.Add(new Entry());
+                id = pool.Append();
+                pool.GetSpan<SignalValue>()[id] = default;
+                pool.GetSpan<SignalLife>()[id] = default;
+                if (id == names.Length) Array.Resize(ref names, id * 2);
             }
 
-            Entry entry = entries[id];
-            entry.generation++;
-            entry.live = true;
-            entry.name = null;
-            SignalHandle handle = new SignalHandle(id, entry.generation);
+            ref SignalLife life = ref pool.GetSpan<SignalLife>()[id];
+            life.generation++;
+            life.live = true;
+            names[id] = null;
+            SignalHandle handle = new SignalHandle(id, life.generation);
             Set(handle, Vector4.Zero);
             return handle;
         }
@@ -47,7 +43,7 @@ namespace ArctisAurora.Core.Animation
             if (byName.TryGetValue(name, out SignalHandle handle)) return handle;
 
             handle = Create();
-            entries[handle.id].name = name;
+            names[handle.id] = name;
             byName[name] = handle;
             return handle;
         }
@@ -58,12 +54,6 @@ namespace ArctisAurora.Core.Animation
             if (!IsLive(handle)) return;
             Profiling.Zone.Increment("Anim.Request");
             DataPool pool = Pool;
-            while (pool.Count <= handle.id)
-            {
-                int slot = pool.Append();
-                pool.GetSpan<SignalValue>()[slot] = default;
-            }
-
             ref SignalValue row = ref pool.GetSpan<SignalValue>()[handle.id];
             if (row.value == value) return;
             row.value = value;
@@ -79,14 +69,19 @@ namespace ArctisAurora.Core.Animation
         {
             if (!IsLive(handle)) return;
 
-            Entry entry = entries[handle.id];
-            if (entry.name != null) byName.Remove(entry.name);
-            entry.live = false;
-            entry.name = null;
+            string? name = names[handle.id];
+            if (name != null) byName.Remove(name);
+            Pool.GetSpan<SignalLife>()[handle.id].live = false;
+            names[handle.id] = null;
             free.Push(handle.id);
         }
 
         private static bool IsLive(SignalHandle handle)
-            => handle.id >= 0 && handle.id < entries.Count && entries[handle.id].live && entries[handle.id].generation == handle.generation;
+        {
+            DataPool pool = Pool;
+            if (handle.id < 0 || handle.id >= pool.Count) return false;
+            ref readonly SignalLife life = ref pool.Backing<SignalLife>()[handle.id];
+            return life.live && life.generation == handle.generation;
+        }
     }
 }

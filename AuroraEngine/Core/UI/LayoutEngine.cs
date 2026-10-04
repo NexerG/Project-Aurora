@@ -142,9 +142,8 @@ namespace ArctisAurora.Core.UI
                 _ => (control ?? (Control)pool.OwnerAt(row)).CallMeasureCore(offer),
             };
 
-            ref ArrangeData b = ref pool.GetSpan<ArrangeData>()[row];
-            b.measuredOffer = offer;
-            b.flags = (byte)(((ArrangeFlags)b.flags & ~ArrangeFlags.MeasureDirty) | ArrangeFlags.Remeasured);
+            a.measuredOffer = offer;
+            a.flags = (byte)(((ArrangeFlags)a.flags & ~ArrangeFlags.MeasureDirty) | ArrangeFlags.Remeasured);
             return desired;
         }
 
@@ -175,16 +174,15 @@ namespace ArctisAurora.Core.UI
             }
 
             arrange = pool.GetSpan<ArrangeData>();
-            LayoutRect bounds = arrange[row].arranged;
-            if (((ArrangeFlags)arrange[row].flags & ArrangeFlags.Rotated) != 0)
+            LayoutRect bounds = a.arranged;
+            if (((ArrangeFlags)a.flags & ArrangeFlags.Rotated) != 0)
                 bounds = bounds.Turned((control ?? (Control)pool.OwnerAt(row)).rotation);
             ChildCursor children = kind == LayoutNodeKind.Custom ? new ChildCursor(control!.children) : new ChildCursor(row, nodes[row].count);
             while (children.Next(nodes, pool, out int child, out _))
                 bounds = LayoutRect.Union(bounds, arrange[child].subtreeBounds);
 
-            ref ArrangeData b = ref arrange[row];
-            b.subtreeBounds = bounds;
-            b.flags = (byte)((ArrangeFlags)b.flags & ~(ArrangeFlags.ArrangeDirty | ArrangeFlags.Remeasured));
+            a.subtreeBounds = bounds;
+            a.flags = (byte)((ArrangeFlags)a.flags & ~(ArrangeFlags.ArrangeDirty | ArrangeFlags.Remeasured));
         }
 
         // The one child a single-child control lays out, if it has exactly one.
@@ -212,7 +210,7 @@ namespace ArctisAurora.Core.UI
 
         private static Vector2 MeasureSingle(DataPool pool, int row, Control? control, Vector2 offer, bool ranged)
         {
-            ArrangeData a = pool.GetSpan<ArrangeData>()[row];
+            ref ArrangeData a = ref pool.GetSpan<ArrangeData>()[row];
             float w = a.preferredWidth > 0 ? a.preferredWidth : MathF.Max(a.minWidth, offer.X);
             float h = a.preferredHeight > 0 ? a.preferredHeight : MathF.Max(a.minHeight, offer.Y);
             if (OnlyChild(pool, row, control, ranged, out int child, out Control? childControl))
@@ -225,7 +223,7 @@ namespace ArctisAurora.Core.UI
             }
 
             Vector2 desired = new Vector2(w, h);
-            pool.GetSpan<ArrangeData>()[row].desired = desired;
+            a.desired = desired;
             return desired;
         }
 
@@ -249,14 +247,12 @@ namespace ArctisAurora.Core.UI
             float spacing = nodes[row].spacing;
 
             Span<ArrangeData> arrange = pool.GetSpan<ArrangeData>();
-            float preferredWidth = arrange[row].preferredWidth;
-            float preferredHeight = arrange[row].preferredHeight;
-            Thickness padding = arrange[row].padding;
+            ref ArrangeData a = ref arrange[row];
 
             // A pinned axis is the box the children divide, not the offer that came in.
-            float boxWidth = preferredWidth > 0 ? preferredWidth : offer.X;
-            float boxHeight = preferredHeight > 0 ? preferredHeight : offer.Y;
-            LayoutRect inner = new LayoutRect(0, 0, boxWidth, boxHeight).Shrink(padding);
+            float boxWidth = a.preferredWidth > 0 ? a.preferredWidth : offer.X;
+            float boxHeight = a.preferredHeight > 0 ? a.preferredHeight : offer.Y;
+            LayoutRect inner = new LayoutRect(0, 0, boxWidth, boxHeight).Shrink(a.padding);
 
             float totalMain = 0f;
             float maxCross = 0f;
@@ -278,14 +274,13 @@ namespace ArctisAurora.Core.UI
                     continue;
                 }
 
-                Thickness margin = ca.margin;
                 Vector2 desired = MeasureRow(pool, child, childControl, vertical
                     ? new Vector2(inner.width, float.MaxValue)
                     : new Vector2(float.MaxValue, inner.height));
                 arrange = pool.GetSpan<ArrangeData>();
 
-                totalMain += vertical ? desired.Y + margin.totalVertical : desired.X + margin.totalHorizontal;
-                maxCross = MathF.Max(maxCross, vertical ? desired.X + margin.totalHorizontal : desired.Y + margin.totalVertical);
+                totalMain += vertical ? desired.Y + ca.margin.totalVertical : desired.X + ca.margin.totalHorizontal;
+                maxCross = MathF.Max(maxCross, vertical ? desired.X + ca.margin.totalHorizontal : desired.Y + ca.margin.totalVertical);
             }
 
             if (childCount > 1)
@@ -307,24 +302,23 @@ namespace ArctisAurora.Core.UI
                     if (star <= 0f) continue;
 
                     float starMain = MathF.Max(star * starUnit, vertical ? ca.minHeight : ca.minWidth);
-                    Thickness margin = ca.margin;
                     Vector2 desired = MeasureRow(pool, child, childControl, vertical
                         ? new Vector2(inner.width, starMain)
                         : new Vector2(starMain, inner.height));
                     arrange = pool.GetSpan<ArrangeData>();
 
-                    maxCross = MathF.Max(maxCross, vertical ? desired.X + margin.totalHorizontal : desired.Y + margin.totalVertical);
-                    totalMain += starMain + (vertical ? margin.totalVertical : margin.totalHorizontal);
+                    maxCross = MathF.Max(maxCross, vertical ? desired.X + ca.margin.totalHorizontal : desired.Y + ca.margin.totalVertical);
+                    totalMain += starMain + (vertical ? ca.margin.totalVertical : ca.margin.totalHorizontal);
                 }
             }
 
-            float w = vertical ? maxCross + padding.totalHorizontal : totalMain + padding.totalHorizontal;
-            float h = vertical ? totalMain + padding.totalVertical : maxCross + padding.totalVertical;
-            if (preferredWidth > 0) w = MathF.Max(w, preferredWidth);
-            if (preferredHeight > 0) h = MathF.Max(h, preferredHeight);
+            float w = vertical ? maxCross + a.padding.totalHorizontal : totalMain + a.padding.totalHorizontal;
+            float h = vertical ? totalMain + a.padding.totalVertical : maxCross + a.padding.totalVertical;
+            if (a.preferredWidth > 0) w = MathF.Max(w, a.preferredWidth);
+            if (a.preferredHeight > 0) h = MathF.Max(h, a.preferredHeight);
 
             Vector2 result = new Vector2(w, h);
-            arrange[row].desired = result;
+            a.desired = result;
             return result;
         }
 

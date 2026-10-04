@@ -68,6 +68,14 @@ namespace ArctisAurora.Core.UI
             if (sheet != null && !sheet.editing) sheet.Redo();
         }
 
+        [A_XSDActionDependency("Sheet.PasteLink", "Input", "Pastes formulas that read the copied cells; a plain paste outside a sheet")]
+        public static void PasteLink()
+        {
+            SheetEditorControl? sheet = Editor();
+            if (sheet != null) sheet.PasteLink();
+            else TextInputActions.Paste();
+        }
+
         [A_XSDActionDependency("Sheet.Save", "Input", "Writes the sheet back to its file")]
         public static void Save() => Editor()?.Save();
         #endregion

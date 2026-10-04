@@ -8,7 +8,7 @@
 		<Component Type="VulkanControl"/>
 	</Pool>
 
-	<Pool Name="UIQuads" Capacity="1024" Ordered="false" Growth="Multiplicative" GrowthValue="2">
+	<Pool Name="UIQuads" Capacity="1024" Ordered="false" Growth="Multiplicative" GrowthValue="2" Handles="false">
 		<Component Type="ControlGeometry"/>
 		<Component Type="VulkanControl"/>
 	</Pool>
@@ -17,19 +17,19 @@
 		<Component Type="TransformData"/>
 	</Pool>
 
-	<Pool Name="Paints" Capacity="1024" Ordered="false" Growth="Multiplicative" GrowthValue="2">
+	<Pool Name="Paints" Capacity="1024" Ordered="false" Growth="Multiplicative" GrowthValue="2" Handles="false">
 		<Component Type="GpuPaint"/>
 	</Pool>
 
-	<Pool Name="Gradients" Capacity="32" Ordered="false" Growth="Additive" GrowthValue="32">
+	<Pool Name="Gradients" Capacity="32" Ordered="false" Growth="Additive" GrowthValue="32" Handles="false">
 		<Component Type="GpuGradient"/>
 	</Pool>
 
-	<Pool Name="Effects" Capacity="32" Ordered="false" Growth="Additive" GrowthValue="32">
+	<Pool Name="Effects" Capacity="32" Ordered="false" Growth="Additive" GrowthValue="32" Handles="false">
 		<Component Type="GpuEffect"/>
 	</Pool>
 
-	<Pool Name="Animations" Capacity="256" Ordered="false" Growth="Multiplicative" GrowthValue="2">
+	<Pool Name="Animations" Capacity="256" Ordered="false" Growth="Multiplicative" GrowthValue="2" Handles="false">
 		<Component Type="AnimationTrack"/>
 		<Component Type="TweenParams"/>
 		<Component Type="KeyParams"/>
@@ -37,20 +37,33 @@
 		<Component Type="TrackCold"/>
 	</Pool>
 
-	<Pool Name="Signals" Capacity="64" Ordered="false" Growth="Multiplicative" GrowthValue="2">
+	<Pool Name="Signals" Capacity="64" Ordered="false" Growth="Multiplicative" GrowthValue="2" Handles="false">
 		<Component Type="SignalValue"/>
+		<Component Type="SignalLife"/>
 	</Pool>
 
-	<Pool Name="Keyframes" Capacity="256" Ordered="false" Growth="Multiplicative" GrowthValue="2">
+	<Pool Name="Keyframes" Capacity="256" Ordered="false" Growth="Multiplicative" GrowthValue="2" Handles="false">
 		<Component Type="Keyframe"/>
 	</Pool>
 
-	<Pool Name="LayoutDirty" Capacity="256" Ordered="false" Growth="Multiplicative" GrowthValue="2">
+	<Pool Name="LayoutDirty" Capacity="256" Ordered="false" Growth="Multiplicative" GrowthValue="2" Handles="false">
 		<Component Type="DirtyLayout"/>
 	</Pool>
 
-	<Pool Name="AnimationDone" Capacity="64" Ordered="false" Growth="Multiplicative" GrowthValue="2">
+	<Pool Name="AnimationDone" Capacity="64" Ordered="false" Growth="Multiplicative" GrowthValue="2" Handles="false">
 		<Component Type="FinishedTrack"/>
+	</Pool>
+
+	<Pool Name="AnimationBindings" Capacity="256" Ordered="false" Growth="Multiplicative" GrowthValue="2" Handles="false">
+		<Component Type="TrackBinding"/>
+	</Pool>
+
+	<Pool Name="AnimationAwake" Capacity="256" Ordered="false" Growth="Multiplicative" GrowthValue="2" Handles="false">
+		<Component Type="AwakeTrack"/>
+	</Pool>
+
+	<Pool Name="PaintFades" Capacity="64" Ordered="false" Growth="Multiplicative" GrowthValue="2" Handles="false">
+		<Component Type="SlotFade"/>
 	</Pool>
 
 </EnginePools>

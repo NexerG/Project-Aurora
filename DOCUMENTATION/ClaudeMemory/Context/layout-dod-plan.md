@@ -40,7 +40,7 @@
 - The 200k margin hold was 92.5 ms on 2026-09-24 (ladder `{ 20000, 200000 }`); this run is `{ 200000 }` alone — compare within a run.
 
 ### Column keys and the stack's single row read (2026-09-26, Release+PROFILE, `{ 200000 }`, `--dump-tree`)
-`DataPool` finds a typed column by `ColumnKey<T>.index` ([[ecs-rework-data-pools]] § Column keys); `StackPanelControl.MeasureCore`/`ArrangeCore` read each child's `ArrangeData` through one `ref`, taking `margin` into a local before `child.Measure`/`Arrange` (a row created during layout can grow the pool and move the array); `Control.WriteArranged` likewise. Build `02b2214` + in-place animation.
+`DataPool` finds a typed column by `ColumnKey<T>.index` ([[ecs-rework-data-pools]] § Column keys); `StackPanelControl.MeasureCore`/`ArrangeCore` read each child's `ArrangeData` through one `ref`, held across `child.Measure`/`Arrange` with the span re-fetched after ([[layout-refs-across-children]]); `Control.WriteArranged` likewise. Build `02b2214` + in-place animation.
 
 | 200k, ms/frame | before | column keys | + single read |
 |---|---|---|---|

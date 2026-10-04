@@ -207,6 +207,10 @@
       <xs:enumeration value="TrackCold" />
       <xs:enumeration value="DirtyLayout" />
       <xs:enumeration value="FinishedTrack" />
+      <xs:enumeration value="TrackBinding" />
+      <xs:enumeration value="AwakeTrack" />
+      <xs:enumeration value="SignalLife" />
+      <xs:enumeration value="SlotFade" />
     </xs:restriction>
   </xs:simpleType>
   <xs:simpleType name="Systems">

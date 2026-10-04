@@ -8,4 +8,10 @@
 	<Test Action="Sheet.ScrollKeepsControls"/>
 	<Test Action="Sheet.TabLifecycle"/>
 	<Test Action="Sheet.GridDraws"/>
+	<Test Action="Sheet.FormulaEval"/>
+	<Test Action="Sheet.FormulaRecalc"/>
+	<Test Action="Sheet.FormulaView"/>
+	<Test Action="Sheet.CrossFile"/>
+	<Test Action="Sheet.RenameRewrites"/>
+	<Test Action="Sheet.PasteLinks"/>
 </TestSuite>

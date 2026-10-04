@@ -33,6 +33,8 @@ namespace ArctisAurora.Core.Data
         public PoolGrowthType growth { get; set; }
         [A_XSDElementProperty("GrowthValue", "DataPools")]
         public int growthValue { get; set; }
+        [A_XSDElementProperty("Handles", "DataPools")]
+        public bool handles { get; set; } = true;
         [A_XSDElementProperty("Component", "DataPools")]
         public List<PoolComponent> components { get; set; } = new();
     }

@@ -143,10 +143,13 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ScrollThumbControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SessionLayout.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SettingsWindow.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetActions.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetBook.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetCalc.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetDocument.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetEditorControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetEdits.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetFormula.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetXml.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SliderControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SplitterControl.cs
