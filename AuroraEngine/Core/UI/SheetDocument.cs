@@ -1,4 +1,5 @@
 using ArctisAurora.Core.Editing;
+using ArctisAurora.Core.Registry;
 using System.Globalization;
 using System.Text;
 using System.Xml.Linq;
@@ -12,6 +13,9 @@ namespace ArctisAurora.Core.UI
 
         public string? name;
         public readonly List<SheetPage> pages = new List<SheetPage>();
+
+        // pages clamped to their rows and columns, grown by hand
+        public bool fixedSize;
 
         // elements this version does not read, written back as they came
         public readonly List<XElement> extra = new List<XElement>();
@@ -35,9 +39,9 @@ namespace ArctisAurora.Core.UI
         }
 
         // One page holding one layer.
-        public static SheetDocument Blank(string? name)
+        public static SheetDocument Blank(string? name, bool fixedSize = false)
         {
-            SheetDocument document = new SheetDocument { name = name };
+            SheetDocument document = new SheetDocument { name = name, fixedSize = fixedSize };
             document.pages.Add(SheetPage.Blank("Sheet 1"));
             return document;
         }
@@ -89,8 +93,14 @@ namespace ArctisAurora.Core.UI
     {
         public const float defaultColumnWidth = 100f;
         public const float defaultRowHeight = 24f;
+        public const int defaultSize = 25;
 
         public string name = "";
+
+        // grid size on a fixed document
+        public int rows = defaultSize;
+        public int columns = defaultSize;
+
         public readonly Dictionary<int, float> columnWidths = new Dictionary<int, float>();
         public readonly Dictionary<int, float> rowHeights = new Dictionary<int, float>();
         public readonly Dictionary<long, SheetFormat> formats = new Dictionary<long, SheetFormat>();
@@ -180,6 +190,46 @@ namespace ArctisAurora.Core.UI
                 }
             return (rows, columns);
         }
+
+        // Grows the size to at least rows × columns.
+        public void Extend(int rows, int columns)
+        {
+            this.rows = Math.Max(this.rows, rows);
+            this.columns = Math.Max(this.columns, columns);
+        }
+
+        // Moves every row (or column) from at onward by count; a negative count first drops the -count bands at at.
+        public void Shift(bool column, int at, int count)
+        {
+            foreach (SheetLayer layer in layers)
+                Shift(layer.cells, column, at, count);
+            Shift(formats, column, at, count);
+
+            Dictionary<int, float> bands = column ? columnWidths : rowHeights;
+            List<KeyValuePair<int, float>> moved = bands.Where(b => b.Key >= at).ToList();
+            foreach (KeyValuePair<int, float> band in moved)
+                bands.Remove(band.Key);
+            foreach (KeyValuePair<int, float> band in moved)
+                if (band.Key >= at - count) bands[band.Key + count] = band.Value;
+
+            if (column) columns = Math.Max(1, columns + count);
+            else rows = Math.Max(1, rows + count);
+        }
+
+        private static void Shift<T>(Dictionary<long, T> cells, bool column, int at, int count)
+        {
+            List<KeyValuePair<long, T>> moved = cells
+                .Where(c => (column ? SheetDocument.ColumnOf(c.Key) : SheetDocument.RowOf(c.Key)) >= at).ToList();
+            foreach (KeyValuePair<long, T> cell in moved)
+                cells.Remove(cell.Key);
+            foreach (KeyValuePair<long, T> cell in moved)
+            {
+                int row = SheetDocument.RowOf(cell.Key);
+                int col = SheetDocument.ColumnOf(cell.Key);
+                if ((column ? col : row) < at - count) continue;
+                cells[column ? SheetDocument.Key(row, col + count) : SheetDocument.Key(row + count, col)] = cell.Value;
+            }
+        }
     }
 
     // Cells over a page's grid; an empty cell is absent.
@@ -208,4 +258,17 @@ namespace ArctisAurora.Core.UI
 
     // How a cell draws; number is a .NET numeric format, null for General.
     public readonly record struct SheetFormat(bool bold, string? fill, string? number);
+
+    [A_XSDType("SheetGrow", "Settings")]
+    public class SheetGrowSetting : Setting
+    {
+        [A_XSDElementProperty("Step", "Settings", "Rows or columns a Shift-click on a fixed sheet's + edge adds.")]
+        public int step { get; set; } = 10;
+    }
+
+    [A_XSDType("Sheets", "Settings", AllowedChildren = typeof(Setting))]
+    public class SheetSettings : SettingCategory
+    {
+        public readonly SheetGrowSetting grow = new SheetGrowSetting();
+    }
 }

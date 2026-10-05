@@ -31,10 +31,16 @@ namespace ArctisAurora.Core.UI
         public static void Enter() => Editor()?.Enter(InputHandler.instance.IsModifierDown(InputModifier.Extend));
 
         [A_XSDActionDependency("Sheet.Tab", "Input", "Commits the cell being edited and steps right")]
-        public static void Tab() => Editor()?.Tab(false);
+        public static void Tab()
+        {
+            if (!SheetGrowPopup.Tab()) Editor()?.Tab(false);
+        }
 
         [A_XSDActionDependency("Sheet.TabBack", "Input", "Commits the cell being edited and steps left")]
-        public static void TabBack() => Editor()?.Tab(true);
+        public static void TabBack()
+        {
+            if (!SheetGrowPopup.Tab()) Editor()?.Tab(true);
+        }
 
         [A_XSDActionDependency("Sheet.SelectAll", "Input", "Selects every used cell of the sheet")]
         public static void SelectAll()
@@ -78,6 +84,12 @@ namespace ArctisAurora.Core.UI
 
         [A_XSDActionDependency("Sheet.Save", "Input", "Writes the sheet back to its file")]
         public static void Save() => Editor()?.Save();
+
+        [A_XSDActionDependency("Sheet.InsertRowsAbove", "Input", "Inserts as many empty rows as are selected, above the selection")]
+        public static void InsertRowsAbove() => Editor()?.Insert(false);
+
+        [A_XSDActionDependency("Sheet.InsertColumnsLeft", "Input", "Inserts as many empty columns as are selected, left of the selection")]
+        public static void InsertColumnsLeft() => Editor()?.Insert(true);
         #endregion
 
         #region ---- formatting ----

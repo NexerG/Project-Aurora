@@ -95,6 +95,8 @@ namespace ArctisAurora.Core.UI
             // never rebuilt.
             content?.Destroy();
 
+            if (Extension == ".tex") document.layout.page = new PageLayout { mode = PageMode.Pageless };
+
             content = new DocumentControl
             {
                 blockSpacing = document.layout.blockSpacing,
@@ -109,7 +111,7 @@ namespace ArctisAurora.Core.UI
             AddChild(content);
 
             string extension = Extension;
-            content.plainText = extension == ".txt";
+            content.plainText = extension is ".txt" or ".tex";
             content.readOnly = document.readOnly;
             properties = extension is ".md" or ".xml" ? new NotePropertiesControl(this, extension == ".md") : null;
             if (properties != null)
@@ -266,7 +268,7 @@ namespace ArctisAurora.Core.UI
         public TextAlignment CaretBlockAlignment => content?.CaretBlockAlignment ?? TextAlignment.Left;
 
         // Markdown and plain text have no way to write it, so only .xml notes align.
-        public bool CanAlign => content != null && !(Extension is ".md" or ".txt");
+        public bool CanAlign => content != null && !(Extension is ".md" or ".txt" or ".tex");
 
         public void SetAlignment(TextAlignment alignment)
         {
@@ -369,7 +371,7 @@ namespace ArctisAurora.Core.UI
         public void InsertTable()
         {
             if (!Writable) return;
-            if (Extension is ".md" or ".txt")
+            if (Extension is ".md" or ".txt" or ".tex")
             {
                 Log.Info($"a {Extension} note cannot store a table; insert refused.");
                 return;
@@ -780,7 +782,7 @@ namespace ArctisAurora.Core.UI
         {
             if (content == null || session == null) return false;
             if (!Writable) return true;
-            if (Path.GetExtension(session.path).Equals(".txt", StringComparison.OrdinalIgnoreCase))
+            if (Extension is ".txt" or ".tex")
             {
                 Log.Info($"a plain text note cannot hold a picture; paste refused.");
                 return true;

@@ -84,6 +84,7 @@ The runner plays one step a tick, from the test's own tick, so each step is hand
 |---|---|
 | `MoveTo(control)` / `MoveTo(window, point)` | the pointer moves to the control's centre, or a design-space point |
 | `Click(control, button)` | move, button down, button up |
+| `Click(control, point, button)` | the same at a design-space point, with any mouse button; the test fails if the point does not hit the control or a descendant |
 | `Drag(control, to, steps)` | move, left down, `steps` moves to `to`, left up |
 | `Key(key, modifiers)` | modifiers down, key down, key up, modifiers up |
 | `Type(text)` | per character: its key down with the character, then its key up |
@@ -113,7 +114,7 @@ A window's `isInWindow` starts false under `--test` and only the helpers set it,
 ## What a run changes
 
 - **Time is fixed.** Every tick is exactly 1/60 s of engine time, so key repeat, double-click windows, caret blink, animations and shader effects advance identically on every run, however fast the machine is.
-- **Desktop input does not reach it.** No window gets mouse or keyboard callbacks, so moving the mouse or typing while a run is on screen changes nothing.
+- **Desktop input does not reach it.** No window gets mouse or keyboard callbacks, so moving the mouse or typing while a run is on screen changes nothing. Open context menus are not closed for want of window focus (`ContextMenus.Tick` returns early during a run), so a popup test passes with another window on top.
 - **Frames run flat out.** Idle waiting is switched off for the run.
 - **Settings are the host's defaults.** A run reads and writes a `TestSettings` folder beside the host's own settings, emptied at the start of every run, so it never touches the user's settings, layout or vault list.
 

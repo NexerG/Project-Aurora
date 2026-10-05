@@ -103,6 +103,43 @@ namespace ArctisAurora.Core.UI
             changed?.Invoke(document);
         }
 
+        // Rewrites every reference to cells of a page whose rows or columns moved, loaded, on disk or in notes; the page is already shifted.
+        public static void Shifted(SheetDocument document, SheetPage shifted, bool column, int at, int count)
+        {
+            string? home = null;
+            foreach ((string path, SheetDocument loaded) in documents)
+                if (ReferenceEquals(loaded, document)) home = path;
+
+            Func<SheetPage, string, string> ShiftIn(SheetDocument owner) => (formulaPage, raw) => SheetFormula.ShiftCells(raw, (file, page) =>
+                file != null ? home != null && Names(file, home) && page!.Equals(shifted.name, StringComparison.OrdinalIgnoreCase)
+                : page == null ? ReferenceEquals(formulaPage, shifted)
+                : ReferenceEquals(owner, document) && page.Equals(shifted.name, StringComparison.OrdinalIgnoreCase),
+                column, at, count);
+
+            RewriteFormulas(document, ShiftIn(document));
+            foreach ((string path, SheetDocument other) in documents)
+            {
+                if (ReferenceEquals(other, document) || other.isCsv || !RewriteFormulas(other, ShiftIn(other))) continue;
+                if (TabViewControl.FindOpenDocument(path, out _) == null) other.Save(path);
+                changed?.Invoke(other);
+            }
+
+            if (home != null)
+            {
+                foreach (string file in vaultSheets?.Invoke() ?? Enumerable.Empty<string>())
+                {
+                    string path = Path.GetFullPath(file);
+                    if (documents.ContainsKey(path) || !File.Exists(path)) continue;
+                    SheetDocument other = SheetDocument.Load(path);
+                    if (RewriteFormulas(other, ShiftIn(other))) other.Save(path);
+                }
+                SheetLinks.Shifted(home, shifted.name, column, at, count, vaultNotes?.Invoke() ?? Enumerable.Empty<string>());
+            }
+
+            calc.RecalcAll();
+            changed?.Invoke(document);
+        }
+
         private static bool RewritePages(SheetDocument document, Func<string?, string, string?> rename) =>
             RewriteFormulas(document, raw => SheetFormula.RenamePage(raw, rename));
 
@@ -178,7 +215,10 @@ namespace ArctisAurora.Core.UI
             calc.Clear();
         }
 
-        private static bool RewriteFormulas(SheetDocument document, Func<string, string> rewrite)
+        private static bool RewriteFormulas(SheetDocument document, Func<string, string> rewrite) =>
+            RewriteFormulas(document, (_, raw) => rewrite(raw));
+
+        private static bool RewriteFormulas(SheetDocument document, Func<SheetPage, string, string> rewrite)
         {
             bool any = false;
             foreach (SheetPage page in document.pages)
@@ -186,7 +226,7 @@ namespace ArctisAurora.Core.UI
                     foreach (SheetCell cell in layer.cells.Values)
                     {
                         if (!SheetFormula.IsFormula(cell.raw)) continue;
-                        string rewritten = rewrite(cell.raw);
+                        string rewritten = rewrite(page, cell.raw);
                         if (rewritten == cell.raw) continue;
                         cell.raw = rewritten;
                         any = true;

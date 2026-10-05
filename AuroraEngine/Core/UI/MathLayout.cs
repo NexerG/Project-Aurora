@@ -166,6 +166,7 @@ namespace ArctisAurora.Core.UI
                     if (glyph == null) return box;
                 }
 
+                face = Present(glyph, face);
                 GlyphMetrics m = glyph.Metrics(atlas.Effective(face));
                 int range = m.yMax - m.yMin;
                 box.width = m.advanceWidth * scale;
@@ -184,11 +185,20 @@ namespace ArctisAurora.Core.UI
             {
                 Glyph glyph = atlas.GetGlyph(ch);
                 if (glyph == null) return (0f, 0f, 0f, 0f);
-                GlyphMetrics m = glyph.Metrics(atlas.Effective(face));
+                GlyphMetrics m = glyph.Metrics(atlas.Effective(Present(glyph, face)));
                 int range = m.yMax - m.yMin;
                 if (range == 0) return (0f, 0f, m.leftSideOffset * scale, 0f);
                 return (m.glyphHeight * m.yMin / range * scale, m.glyphHeight * m.yMax / range * scale,
                         m.leftSideOffset * scale, m.glyphWidth * scale);
+            }
+
+            // The face asked for, or Regular when that face lacks the character and Regular has it.
+            private FontStyle Present(Glyph glyph, FontStyle face)
+            {
+                GlyphMetrics m = glyph.Metrics(atlas.Effective(face));
+                if (m.xMin != m.xMax || m.yMin != m.yMax) return face;
+                GlyphMetrics regular = glyph.Metrics(FontStyle.Regular);
+                return regular.xMin != regular.xMax || regular.yMin != regular.yMax ? FontStyle.Regular : face;
             }
 
             public MathBox Text(string text, FontStyle face, float scale)

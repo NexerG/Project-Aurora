@@ -3,5 +3,6 @@
 		  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 		  xsi:schemaLocation="http://arctisaurora/AuroraTestTypes ../../Schemas/TestTypeSchema.xsd" >
 	<Test Action="Fonts.MathFontBaked"/>
+	<Test Action="Fonts.CffCharstring"/>
 	<Test Action="Perf.AtlasBake"/>
 </TestSuite>

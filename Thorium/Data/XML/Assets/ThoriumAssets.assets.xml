@@ -24,4 +24,9 @@
 	<Asset Type="ContextMenuAsset" Name="vault-note"   Source="XML/Documents/Menus/VaultNote.menu.xml"/>
 	<Asset Type="ContextMenuAsset" Name="vault-csv"    Source="XML/Documents/Menus/VaultCsv.menu.xml"/>
 
+	<!-- Latin Modern, baked from _Build/FontSources -->
+	<Asset Type="FontAsset" Name="latin-modern"      Source="Fonts/lmroman10-regular"/>
+	<Asset Type="FontAsset" Name="latin-modern-mono" Source="Fonts/lmmono10-regular"/>
+	<Asset Type="FontAsset" Name="latin-modern-math" Source="Fonts/latinmodern-math"/>
+
 </AssetManifest>

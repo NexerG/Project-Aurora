@@ -55,5 +55,18 @@ namespace ArctisAurora.Tests
             t.Check(Tokens("return 1; // x", "") == "kkkkkk.n..cccc", "an unnamed language takes the C-like rules");
             yield break;
         }
+
+        [A_XSDActionDependency("Syntax.Latex", "Test")]
+        private static IEnumerator<int> Latex(TestContext t)
+        {
+            t.Check(Tokens(@"\section{Intro} % x", "latex") == "kkkkkkkk........ccc", "commands and % comments");
+            t.Check(Tokens("See $x^2$ at 12pt.", "tex") == "....sssss....nnnn.", "inline math and a number with its unit");
+            t.Check(Tokens(@"\% 5", "latex") == "kk.n", "an escaped % is a command, not a comment");
+
+            SyntaxState state = SyntaxState.None;
+            t.Check(Tokens(@"\[ a", "latex", ref state) == "ssss" && state == SyntaxState.TexMath, "display math carries down");
+            t.Check(Tokens(@"b \] c", "latex", ref state) == "ssss.." && state == SyntaxState.None, "and closes on the next line");
+            yield break;
+        }
     }
 }

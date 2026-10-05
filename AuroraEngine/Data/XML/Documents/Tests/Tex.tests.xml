@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<TestSuite xmlns="http://arctisaurora/AuroraTestTypes"
+		  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		  xsi:schemaLocation="http://arctisaurora/AuroraTestTypes ../../Schemas/TestTypeSchema.xsd" >
+	<Test Action="Tex.SourceRoundTrip"/>
+	<Test Action="Tex.Catcodes"/>
+	<Test Action="Tex.DelimitedDef"/>
+	<Test Action="Tex.ExpandAfter"/>
+	<Test Action="Tex.Edef"/>
+	<Test Action="Tex.Groups"/>
+	<Test Action="Tex.Conditionals"/>
+	<Test Action="Tex.Registers"/>
+	<Test Action="Tex.NewCommand"/>
+	<Test Action="Tex.NewEnvironment"/>
+	<Test Action="Tex.Errors"/>
+	<Test Action="Tex.StepCounter"/>
+	<Test Action="Tex.EmFromFont"/>
+	<Test Action="Tex.Typeset.Paragraphs"/>
+	<Test Action="Tex.Typeset.Fonts"/>
+	<Test Action="Tex.Typeset.Sections"/>
+	<Test Action="Tex.Typeset.Lists"/>
+	<Test Action="Tex.Typeset.Math"/>
+	<Test Action="Tex.Typeset.Ligatures"/>
+	<Test Action="Tex.Typeset.Accents"/>
+	<Test Action="Tex.Typeset.Verbatim"/>
+	<Test Action="Tex.Typeset.Errors"/>
+	<Test Action="Tex.Lowering"/>
+</TestSuite>

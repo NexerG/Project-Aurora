@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ContextMenu>
 	<ContextButton Text="New note" Action="Notes.New"/>
-	<ContextButton Text="New sheet" Action="Sheets.New"/>
+	<ContextSubmenu Text="New sheet">
+		<ContextButton Text="Fixed size" Action="Sheets.NewFixed"/>
+		<ContextButton Text="Unfixed" Action="Sheets.New"/>
+	</ContextSubmenu>
 	<ContextButton Text="Vaults" Action="Vaults.Open"/>
 	<ContextButton Text="Save note" Action="Text.Save"/>
 </ContextMenu>

@@ -199,7 +199,7 @@ namespace ArctisAurora.Core.UI
         // Closes the menu once no window of the application has focus.
         internal static unsafe void Tick()
         {
-            if (_open.Count == 0) return;
+            if (_open.Count == 0 || Testing.TestRunner.active) return;
 
             foreach (RenderWindow window in Engine.windows.Values)
                 if (!window.closeRequested && AGlfwWindow._glfw.GetWindowAttrib(window.os.handle, WindowAttributeGetter.Focused))

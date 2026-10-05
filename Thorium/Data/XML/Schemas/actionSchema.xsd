@@ -10,6 +10,9 @@
     <xs:union memberTypes="actions:Any">
       <xs:simpleType>
         <xs:restriction base="xs:string">
+          <xs:enumeration value="LatinModern.Baked" />
+          <xs:enumeration value="LatinModern.Draws" />
+          <xs:enumeration value="Tex.Preview" />
           <xs:enumeration value="Palette.SetCrossfades" />
           <xs:enumeration value="Sheet.XmlRoundTrip" />
           <xs:enumeration value="Sheet.TypeEnterUndo" />
@@ -34,6 +37,9 @@
           <xs:enumeration value="Sheet.Layers" />
           <xs:enumeration value="Sheet.Csv" />
           <xs:enumeration value="Sheet.CsvLinks" />
+          <xs:enumeration value="Sheet.FixedSize" />
+          <xs:enumeration value="Sheet.GrowPopup" />
+          <xs:enumeration value="Sheet.InsertShifts" />
           <xs:enumeration value="TextInput.TypeWritesText" />
           <xs:enumeration value="TextInput.WordMoves" />
           <xs:enumeration value="TextInput.UndoReselects" />
@@ -87,6 +93,8 @@
           <xs:enumeration value="TextInput.MathEscReverts" />
           <xs:enumeration value="TextInput.MathClickSelects" />
           <xs:enumeration value="TextInput.MathDoubleClickOpens" />
+          <xs:enumeration value="Tex.SourceEnterPaste" />
+          <xs:enumeration value="Tex.SourceColours" />
           <xs:enumeration value="TextInput.TableEnterAddsLine" />
           <xs:enumeration value="TextInput.TableTabStepsCells" />
           <xs:enumeration value="TextInput.TableLeftCrossesCells" />
@@ -127,6 +135,7 @@
           <xs:enumeration value="Commands.WaitResumesOnTime" />
           <xs:enumeration value="Console.ToggleAndAnswer" />
           <xs:enumeration value="Fonts.MathFontBaked" />
+          <xs:enumeration value="Fonts.CffCharstring" />
           <xs:enumeration value="Input.ClickFiresRelease" />
           <xs:enumeration value="Input.KeyWithModifierFiresKeybind" />
           <xs:enumeration value="Input.DragMovesSplitter" />
@@ -190,6 +199,30 @@
           <xs:enumeration value="Syntax.CSharpLine" />
           <xs:enumeration value="Syntax.CommentSpansLines" />
           <xs:enumeration value="Syntax.Languages" />
+          <xs:enumeration value="Syntax.Latex" />
+          <xs:enumeration value="Tex.SourceRoundTrip" />
+          <xs:enumeration value="Tex.Catcodes" />
+          <xs:enumeration value="Tex.DelimitedDef" />
+          <xs:enumeration value="Tex.ExpandAfter" />
+          <xs:enumeration value="Tex.Edef" />
+          <xs:enumeration value="Tex.Groups" />
+          <xs:enumeration value="Tex.Conditionals" />
+          <xs:enumeration value="Tex.Registers" />
+          <xs:enumeration value="Tex.NewCommand" />
+          <xs:enumeration value="Tex.NewEnvironment" />
+          <xs:enumeration value="Tex.Errors" />
+          <xs:enumeration value="Tex.StepCounter" />
+          <xs:enumeration value="Tex.EmFromFont" />
+          <xs:enumeration value="Tex.Typeset.Paragraphs" />
+          <xs:enumeration value="Tex.Typeset.Fonts" />
+          <xs:enumeration value="Tex.Typeset.Sections" />
+          <xs:enumeration value="Tex.Typeset.Lists" />
+          <xs:enumeration value="Tex.Typeset.Math" />
+          <xs:enumeration value="Tex.Typeset.Ligatures" />
+          <xs:enumeration value="Tex.Typeset.Accents" />
+          <xs:enumeration value="Tex.Typeset.Verbatim" />
+          <xs:enumeration value="Tex.Typeset.Errors" />
+          <xs:enumeration value="Tex.Lowering" />
           <xs:enumeration value="Visual.PanelAndLabel" />
           <xs:enumeration value="Visual.TabStrip" />
           <xs:enumeration value="Visual.Expander" />
@@ -219,6 +252,8 @@
           <xs:enumeration value="Sheet.Redo" />
           <xs:enumeration value="Sheet.PasteLink" />
           <xs:enumeration value="Sheet.Save" />
+          <xs:enumeration value="Sheet.InsertRowsAbove" />
+          <xs:enumeration value="Sheet.InsertColumnsLeft" />
           <xs:enumeration value="Sheet.Bold" />
           <xs:enumeration value="Sheet.FillNone" />
           <xs:enumeration value="Sheet.FillYellow" />
@@ -311,6 +346,8 @@
           <xs:enumeration value="Notes.NewHere" />
           <xs:enumeration value="Sheets.New" />
           <xs:enumeration value="Sheets.NewHere" />
+          <xs:enumeration value="Sheets.NewFixed" />
+          <xs:enumeration value="Sheets.NewFixedHere" />
           <xs:enumeration value="Sheets.FromCsv" />
           <xs:enumeration value="Sheets.ConvertCsv" />
           <xs:enumeration value="Notes.Rename" />

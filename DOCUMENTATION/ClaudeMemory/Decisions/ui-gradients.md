@@ -92,6 +92,13 @@ CSS behaviour — instead of skewing with aspect ratio the way a normalised-UV g
 Convention: **0° left→right, 90° top→bottom** (+y is down). Radial is an ellipse fitted to the
 farthest corner, centred by normalised `CenterX`/`CenterY`.
 
+`Box` (kind 2, 2026-10-05): `t = 1 − min(inset.x, inset.y) / min(extent.x, extent.y)`, `inset = extent − |local|`.
+Distance to the nearest edge in design pixels over the short half-side, so a stop's `Pos` is the same band
+width on all four sides. Radial normalises each axis by its own half-extent, which on a long strip (sheet grow
+strips, 20×500) stretches the end fades ~25× the side fades — no stop choice fixes that. Ignores `Center*`.
+The band's inner corner is square, not the control's radius: `sampleGradient` has no radius, and text-run
+quads share it with a gradient rect that is not their silhouette.
+
 Because the rect is in design space, the angle is now in the same space as `EdgeThickness` — this
 does *not* add a third unit to the [[control-edge-and-outline]] §1 wart.
 
@@ -176,6 +183,7 @@ Limits now: gradient id 14 bits (16383), `firstSlot` 16 bits; unchecked.
 - The engine's own controls ship gradients in `Engine.gradients.xml`, loaded before the host's
   `Gradients.gradients.xml` (2026-09-29, `ColorPickerControl`); a host naming the same gradient replaces it.
   See [[text-decorations-and-colour]].
+- `sheet-grow` in `Engine.gradients.xml` (2026-10-05, `SheetControl` grow strips): box, `Role="Field"` at 0 and 0.8 to `Role="Accent"` at `Alpha="0.6"` at 1. See [[sheets]].
 - **No gradient on the outline** (the edge takes one since §9).
 - **No per-state gradients.** `ButtonControl` has `HoverColorHex`/`PressColorHex` with no gradient
   twin, so a gradient button does not respond to hover.

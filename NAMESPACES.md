@@ -41,6 +41,7 @@ ArctisAurora.Core.Editing -> AuroraEngine/Core/Editing/IEditRecord.cs
 ArctisAurora.Core.Editing -> AuroraEngine/Core/Editing/UndoStack.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/AuroraFont.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/Bezier.cs
+ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/CffOutlines.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/ClipboardImage.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/ClipboardText.cs
 ArctisAurora.Core.Filing -> AuroraEngine/Core/Filing/FileObject.cs
@@ -77,6 +78,11 @@ ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/ScreenReadback.cs
 ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/TestContext.cs
 ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/TestResultsReader.cs
 ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/TestRunner.cs
+ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexCatcode.cs
+ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexError.cs
+ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexExpander.cs
+ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexReader.cs
+ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexToken.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/FrameGraph.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/FrameScheduler.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/FrameStep.cs
@@ -151,6 +157,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetDocument.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetEditorControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetEdits.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetFormula.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetGrowPopup.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetLayersControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetLinks.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/SheetPageStripControl.cs
@@ -234,6 +241,7 @@ ArctisAurora.Tests -> AuroraEngine/Tests/LayoutTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/MathTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/PerfTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/SyntaxTests.cs
+ArctisAurora.Tests -> AuroraEngine/Tests/TexTests.cs
 ArctisAurora.Tests -> AuroraEngine/Tests/VisualTests.cs
 AuroraEditor -> AuroraEditor/Editor.cs
 AuroraEditor.EditorProgram.Components -> AuroraEditor/EditorProgram/Components/AsmTestComp.cs
@@ -254,6 +262,7 @@ Thorium -> Thorium/ThoriumSettings.cs
 Thorium.Editor -> Thorium/Editor/Decorations.cs
 Thorium.Editor -> Thorium/Editor/VaultsWindow.cs
 Thorium.Editor.CustomControls -> Thorium/Editor/CustomControls/VaultBrowserControl.cs
+Thorium.Tests -> Thorium/Tests/LatinModernTests.cs
 Thorium.Tests -> Thorium/Tests/PaletteTests.cs
 Thorium.Tests -> Thorium/Tests/SheetTests.cs
 Thorium.Tests -> Thorium/Tests/TextInputTests.cs

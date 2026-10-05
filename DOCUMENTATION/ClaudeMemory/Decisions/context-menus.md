@@ -31,7 +31,7 @@ ported. It stays for the old stack until 6d deletes it.
   them. Each is hosted by the same rule, always tested against the origin window.
 - **Closing**: a clicked button row runs its `action`, then everything closes; any press not on a panel closes and
   passes through (`SolvePress` → `DismissUnlessInside`); `ContextMenus.Tick` (from `Engine.MainTick`) closes
-  when no application window has focus.
+  when no application window has focus (not under `--test`).
 - `ContextMenus.target` is the control the menu was opened on, set before an action runs and cleared on close.
   `WindowActions.Acting` reads it first.
 - Thorium's `TitleBar` names `title-bar` (`Menus/TitleBar.menu.xml`: Minimize, Maximize, line, Close) and stops.
@@ -141,7 +141,7 @@ a view's only tab and the close variants find nothing to close, so greying would
 - Each window opened after boot logs the pre-existing `DemoteToHelperInvocation` validation error once more.
 - The Editor's and the engine's own font copies were already stale (importer v1 and v3) and were not re-baked.
 - A menu button's second press re-opens its menu — `SolvePress` dismisses it, then the press opens it again.
-- `Tick` closes menus when no application window has focus and is not gated under `TestRunner.active`, so `--test` depends on OS focus (`Sheet.MathLinks`, `Sheet.Layers` fail with another window on top); gating it is an open one-line option.
+- `Tick` closes menus when no application window has focus, and returns early under `TestRunner.active` (2026-10-05), so `--test` popup tests (`Sheet.MathLinks`, `Sheet.Layers`, `TextInput.Math*`) do not depend on OS focus.
 - New note, Vaults, Settings, Save note, Undo and Redo run old-stack actions, which draw nothing since `UIModule` left
   the module list. They come alive at 6c and 6c2; Exit works.
 

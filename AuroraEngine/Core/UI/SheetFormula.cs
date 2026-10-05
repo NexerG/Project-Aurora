@@ -99,6 +99,26 @@ namespace ArctisAurora.Core.UI
             return result;
         }
 
+        // The formula with each address on a page onPage answers for (file part, page; both null on the formula's own page)
+        // moved by count when at or past at; a negative count moves those past the removed bands. Unparseable text is left alone.
+        public static string ShiftCells(string raw, Func<string?, string?, bool> onPage, bool column, int at, int count)
+        {
+            List<(int start, int end, string? file, string? page)> addresses = new List<(int, int, string?, string?)>();
+            if (new Parser(raw, 1, null, addresses).Formula() == null) return raw;
+
+            int from = count < 0 ? at - count : at;
+            string result = raw;
+            for (int k = addresses.Count - 1; k >= 0; k--)
+            {
+                (int start, int end, string? file, string? page) = addresses[k];
+                if (!onPage(file, page) || !SheetDocument.TryParseAddress(raw[start..end], out int row, out int col)) continue;
+                if ((column ? col : row) < from) continue;
+                string moved = column ? SheetDocument.Address(row, col + count) : SheetDocument.Address(row + count, col);
+                result = result[..start] + moved + result[end..];
+            }
+            return result;
+        }
+
         // "Page", "[file]Page", quoted when a name needs it; the "!" is the caller's.
         public static string Prefix(string? file, string page)
         {
@@ -294,11 +314,16 @@ namespace ArctisAurora.Core.UI
             // "[file]Page" and "Page" spans met, when collected
             private readonly List<(int start, int end, string? file, string page)>? prefixes;
 
-            public Parser(string s, int start, List<(int, int, string?, string)>? prefixes = null)
+            // cell address spans met, when collected
+            private readonly List<(int start, int end, string? file, string? page)>? addresses;
+
+            public Parser(string s, int start, List<(int, int, string?, string)>? prefixes = null,
+                List<(int, int, string?, string?)>? addresses = null)
             {
                 this.s = s;
                 i = start;
                 this.prefixes = prefixes;
+                this.addresses = addresses;
             }
 
             public Node? Formula()
@@ -416,7 +441,7 @@ namespace ArctisAurora.Core.UI
                         i++;
                         return Cells(null, word);
                     }
-                    return Address(word, null, null);
+                    return Address(word, start, null, null);
                 }
                 return null;
             }
@@ -465,20 +490,24 @@ namespace ArctisAurora.Core.UI
             {
                 SkipSpace();
                 if (i >= s.Length || !char.IsAsciiLetter(s[i])) return null;
-                return Address(Word(), file, page);
+                int start = i;
+                return Address(Word(), start, file, page);
             }
 
             // A1, or A1:B3 when a second address follows.
-            private Node? Address(string first, string? file, string? page)
+            private Node? Address(string first, int firstStart, string? file, string? page)
             {
                 if (!TryCell(first, out int row, out int column)) return Bad(first);
+                addresses?.Add((firstStart, firstStart + first.Length, file, page));
                 if (Peek() != ':') return new Reference(file, page, row, column, row, column);
 
                 i++;
                 SkipSpace();
                 if (i >= s.Length || !char.IsAsciiLetter(s[i])) return null;
+                int secondStart = i;
                 string second = Word();
                 if (!TryCell(second, out int row2, out int column2)) return Bad(second);
+                addresses?.Add((secondStart, secondStart + second.Length, file, page));
                 return new Reference(file, page, row, column, row2, column2);
             }
 

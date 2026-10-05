@@ -202,4 +202,60 @@ namespace ArctisAurora.Core.UI
             SheetBook.PageRenamed(document, from, to);
         }
     }
+
+    // A fixed page's rows and columns before and after it grew.
+    public sealed class SheetSizeEdit : IEditRecord
+    {
+        private readonly SheetDocument document;
+        private readonly SheetPage page;
+        private readonly (int rows, int columns) before;
+        private readonly (int rows, int columns) after;
+
+        public SheetSizeEdit(SheetDocument document, SheetPage page, (int rows, int columns) before, (int rows, int columns) after)
+        {
+            this.document = document;
+            this.page = page;
+            this.before = before;
+            this.after = after;
+        }
+
+        public void Undo() => Apply(before);
+
+        public void Redo() => Apply(after);
+
+        private void Apply((int rows, int columns) size)
+        {
+            (page.rows, page.columns) = size;
+            SheetBook.Changed(document, page, []);
+        }
+    }
+
+    // Empty rows or columns inserted before an index, with every reference to the bands they moved.
+    public sealed class SheetInsertEdit : IEditRecord
+    {
+        private readonly SheetDocument document;
+        private readonly SheetPage page;
+        private readonly bool column;
+        private readonly int at;
+        private readonly int count;
+
+        public SheetInsertEdit(SheetDocument document, SheetPage page, bool column, int at, int count)
+        {
+            this.document = document;
+            this.page = page;
+            this.column = column;
+            this.at = at;
+            this.count = count;
+        }
+
+        public void Undo() => Apply(-count);
+
+        public void Redo() => Apply(count);
+
+        private void Apply(int by)
+        {
+            page.Shift(column, at, by);
+            SheetBook.Shifted(document, page, column, at, by);
+        }
+    }
 }

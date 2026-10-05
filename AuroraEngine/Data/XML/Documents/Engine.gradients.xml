@@ -24,4 +24,11 @@
 		<Stop Color="#000000" Alpha="1" Pos="1"/>
 	</Gradient>
 
+	<!-- SheetControl: the + edges of a fixed sheet, the field colour fading out to the accent -->
+	<Gradient Name="sheet-grow" Kind="Box">
+		<Stop Role="Field" Pos="0"/>
+		<Stop Role="Field" Pos="0.45"/>
+		<Stop Role="Accent" Alpha="0.6" Pos="1"/>
+	</Gradient>
+
 </Gradients>

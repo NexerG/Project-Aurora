@@ -170,29 +170,40 @@ namespace ArctisAurora.Core.Filing
                 reader.BaseStream.Position = headTable.offset + 18; // Offset 18 in 'head' is unitsPerEm
                 ushort unitsPerEm = AssetImporter.ReadUInt16BE(reader);
 
-                reader.BaseStream.Position = headTable.offset + 50; // Offset 50 in 'head'
-                uint indexToLocFormat = AssetImporter.ReadUInt16BE(reader); // 0 = uint16, 1 = uint32
-
-                TableEntry locaTable = fontData.tableEntries.First(t => t.name == "loca"); // 'loca'
-                reader.BaseStream.Position = locaTable.offset;
-                for (int i = 0; i <= numGlyphs; i++)
+                // CFF outlines, or TrueType's loca + glyf
+                TableEntry cffTable = fontData.tableEntries.FirstOrDefault(t => t.name.TrimEnd() == "CFF");
+                bool cff = cffTable.name != null;
+                (byte[][] charStrings, byte[][] global, byte[][] local) cffData = default;
+                TableEntry glyf = default;
+                if (cff) cffData = CffOutlines.Read(reader, cffTable);
+                else
                 {
-                    if (indexToLocFormat == 0)
-                        glyphOffsets[i] = (uint)(AssetImporter.ReadUInt16BE(reader) * 2); // 16-bit → scale ×2
-                    else
-                        glyphOffsets[i] = AssetImporter.ReadUInt32BE(reader); // 32-bit
+                    reader.BaseStream.Position = headTable.offset + 50; // Offset 50 in 'head'
+                    uint indexToLocFormat = AssetImporter.ReadUInt16BE(reader); // 0 = uint16, 1 = uint32
+
+                    TableEntry locaTable = fontData.tableEntries.First(t => t.name == "loca"); // 'loca'
+                    reader.BaseStream.Position = locaTable.offset;
+                    for (int i = 0; i <= numGlyphs; i++)
+                    {
+                        if (indexToLocFormat == 0)
+                            glyphOffsets[i] = (uint)(AssetImporter.ReadUInt16BE(reader) * 2); // 16-bit → scale ×2
+                        else
+                            glyphOffsets[i] = AssetImporter.ReadUInt32BE(reader); // 32-bit
+                    }
+                    glyf = fontData.tableEntries.First(t => t.name == "glyf"); // for glyph outlines
                 }
 
                 // loading glyph outlines
                 TableEntry cmap = fontData.tableEntries.First(t => t.name == "cmap"); // for index
-                TableEntry glyf = fontData.tableEntries.First(t => t.name == "glyf"); // for glyph outlines
 
                 faceGlyphs = new Glyph[fontData.textData.characterCount];
                 for (int i = 0; i < fontData.textData.characterCount; i++)
                 {
                     char character = fontData.textData.characters[i];
                     ushort glyphIndex = GetGlyphIndex(character, reader, cmap);
-                    Glyph glyph = GetGlyphOutline(glyphIndex, glyphOffsets, glyf, reader, unitsPerEm);
+                    Glyph glyph = cff
+                        ? GetCffGlyph(glyphIndex, cffData, unitsPerEm)
+                        : GetGlyphOutline(glyphIndex, glyphOffsets, glyf, reader, unitsPerEm);
                     faceGlyphs[i] = glyph;
                 }
 
@@ -251,11 +262,11 @@ namespace ArctisAurora.Core.Filing
                     {
                         faceGlyphs[i].regular.tsb = -(faceGlyphs[i].regular.yMin) / unitsPerEm;
                     }
-                    if (faceGlyphs[i].regular.glyphHeight == 1)
+                    if (faceGlyphs[i].contours.Count == 0)
+                    {
                         faceGlyphs[i].regular.glyphHeight = lineHeight;
-
-                    if (faceGlyphs[i].regular.glyphWidth == 1)
                         faceGlyphs[i].regular.glyphWidth = faceGlyphs[i].regular.advanceWidth;
+                    }
                 }
             }
             return faceGlyphs;
@@ -523,7 +534,32 @@ namespace ArctisAurora.Core.Filing
             glyph.SetParams(xMin, xMax, yMin, yMax, unitsPerEm);
 
             AppendGlyphContours(glyphIndex, glyphOffsets, glyfTable, reader, glyph.contours, 1f, 0f, 0f, 1f, 0f, 0f, 0);
+            Normalise(glyph, xMin, yMin, xMax, yMax);
+            return glyph;
+        }
 
+        private static Glyph GetCffGlyph(ushort glyphIndex, (byte[][] charStrings, byte[][] global, byte[][] local) cff, float unitsPerEm)
+        {
+            if (glyphIndex >= cff.charStrings.Length)
+                return new Glyph();
+
+            List<Bezier> contours = CffOutlines.Interpret(cff.charStrings[glyphIndex], cff.global, cff.local);
+            if (contours.Count == 0)
+                return new Glyph();
+
+            (float x0, float y0, float x1, float y1) = CffOutlines.Bounds(contours);
+            short xMin = (short)MathF.Floor(x0), yMin = (short)MathF.Floor(y0);
+            short xMax = (short)MathF.Ceiling(x1), yMax = (short)MathF.Ceiling(y1);
+
+            Glyph glyph = new Glyph { contours = contours };
+            glyph.SetParams(xMin, xMax, yMin, yMax, unitsPerEm);
+            Normalise(glyph, xMin, yMin, xMax, yMax);
+            return glyph;
+        }
+
+        // Contours into the unit box over the ink, then edges built and coloured for the generator.
+        private static void Normalise(Glyph glyph, short xMin, short yMin, short xMax, short yMax)
+        {
             float coordScale = MathF.Max(xMax - xMin, yMax - yMin);
             if (coordScale <= 0f) coordScale = 1f;
             foreach (Bezier bezier in glyph.contours)
@@ -535,8 +571,6 @@ namespace ArctisAurora.Core.Filing
 
             glyph.BuildEdges();
             MTSDFGen.ColorEdges(glyph);
-
-            return glyph;
         }
 
     }

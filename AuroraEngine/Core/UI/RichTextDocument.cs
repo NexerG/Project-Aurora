@@ -2,6 +2,7 @@ using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.Registry;
 using System.Globalization;
 using System.Numerics;
+using System.Text;
 using System.Xml.Linq;
 
 namespace ArctisAurora.Core.UI
@@ -37,8 +38,12 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("Frontmatter", "UI", "A Markdown note's metadata block as written, delimiter lines included.")]
         public string? frontmatter;
 
+        // a .tex file's line ending and byte-order mark, kept for the save
+        public string sourceNewline = "\n";
+        public bool sourceBom;
+
         // note file extensions the editor opens
-        public static readonly string[] extensions = { ".xml", ".md", ".txt" };
+        public static readonly string[] extensions = { ".xml", ".md", ".txt", ".tex" };
 
         public static RichTextDocument Load(string path)
         {
@@ -46,11 +51,24 @@ namespace ArctisAurora.Core.UI
             {
                 ".md" => DocumentXml.Parse(MarkdownPictures(MarkdownFormat.Read(File.ReadAllText(path), Path.GetFileNameWithoutExtension(path)), path)),
                 ".txt" => DocumentXml.Parse(PlainTextFormat.Read(File.ReadAllText(path), Path.GetFileNameWithoutExtension(path))),
+                ".tex" => TexSource(path),
                 _ => DocumentXml.Load(path)
             };
 
             document.created ??= Stamp(File.GetCreationTime(path));
             if (!SettingsRegistry.Get<DocumentSettings>().stampModified) document.modified = Stamp(File.GetLastWriteTime(path));
+            return document;
+        }
+
+        private static RichTextDocument TexSource(string path)
+        {
+            byte[] bytes = File.ReadAllBytes(path);
+            bool bom = bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF;
+            string text = Encoding.UTF8.GetString(bytes, bom ? 3 : 0, bytes.Length - (bom ? 3 : 0));
+
+            RichTextDocument document = DocumentXml.Parse(TexSourceFormat.Read(text, Path.GetFileNameWithoutExtension(path)));
+            document.sourceNewline = text.Contains("\r\n") ? "\r\n" : "\n";
+            document.sourceBom = bom;
             return document;
         }
 
@@ -74,6 +92,7 @@ namespace ArctisAurora.Core.UI
                     File.WriteAllText(path, MarkdownFormat.Write(root));
                     break;
                 case ".txt": File.WriteAllText(path, PlainTextFormat.Write(DocumentXml.ToXml(this))); break;
+                case ".tex": File.WriteAllText(path, TexSourceFormat.Write(DocumentXml.ToXml(this), sourceNewline), new UTF8Encoding(sourceBom)); break;
                 default: DocumentXml.Save(this, path); break;
             }
         }

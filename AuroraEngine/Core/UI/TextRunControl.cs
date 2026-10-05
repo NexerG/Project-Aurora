@@ -134,7 +134,7 @@ namespace ArctisAurora.Core.UI
         private readonly List<SheetBox?> _runSheet = new List<SheetBox?>();
 
         // formulas, laid out once per source; the font they draw from
-        private static readonly Dictionary<(string source, bool display), MathBox> mathBoxes = new();
+        private static readonly Dictionary<(string source, bool display, FontAsset font), MathBox> mathBoxes = new();
         private const string MathFont = "math";
 
         // characters under a selection, which a highlight leaves a gap for; -1 when none
@@ -321,7 +321,8 @@ namespace ArctisAurora.Core.UI
                 }
                 else if (spans[i].IsMath)
                 {
-                    MathBox box = MathBoxFor(spans[i]);
+                    FontAsset mathFont = font.mathConstants != null ? font : ResolveFont(MathFont);
+                    MathBox box = MathBoxFor(spans[i], mathFont);
                     float size = Zoomed(spanSize);
                     float w = box.width * size;
                     if (spans[i].mathDisplay && float.IsFinite(wrapWidth) && wrapWidth < float.MaxValue)
@@ -332,7 +333,7 @@ namespace ArctisAurora.Core.UI
                     _runPictures.Add((Vector2.Zero, Quaternion.Identity));
                     _runMath.Add(box);
                     _runSheet.Add(null);
-                    font = ResolveFont(MathFont);
+                    font = mathFont;
                 }
                 else
                 {
@@ -354,16 +355,15 @@ namespace ArctisAurora.Core.UI
         }
 
         // A span's formula laid out in em; an error box when there is no math font.
-        private static MathBox MathBoxFor(in StyleSpan span)
+        private static MathBox MathBoxFor(in StyleSpan span, FontAsset font)
         {
             string source = SheetLinks.HasMathLinks(span.mathSource) ? SheetLinks.ExpandMath(span.mathSource) : span.mathSource;
-            if (mathBoxes.TryGetValue((source, span.mathDisplay), out MathBox cached)) return cached;
+            if (mathBoxes.TryGetValue((source, span.mathDisplay, font), out MathBox cached)) return cached;
 
-            FontAsset font = ResolveFont(MathFont);
             MathBox box = font.mathConstants == null
                 ? new MathBox { error = true }
                 : MathLayout.Layout(MathParser.Parse(source), span.mathDisplay, font.atlasMetaData, font.mathConstants);
-            mathBoxes[(source, span.mathDisplay)] = box;
+            mathBoxes[(source, span.mathDisplay, font)] = box;
             return box;
         }
 

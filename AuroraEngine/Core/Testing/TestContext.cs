@@ -122,6 +122,23 @@ namespace ArctisAurora.Core.Testing
             return Queued();
         }
 
+        // Clicks a design-space point that hits control or one of its children.
+        public int Click(Control control, Vector2 point, Keys button = Keys.MouseLeft,
+            [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
+        {
+            _steps.Enqueue(() =>
+            {
+                RenderWindow? window = UIEngine.WindowOf(control);
+                Control? walk = window == null ? null : UIEngine.HitTest(window.ui.uiRoot, point);
+                while (walk != null && !ReferenceEquals(walk, control)) walk = walk.parent as Control;
+                if (walk == null) failures.Add(("the click point does not hit the control", Path.GetFileName(file), line));
+                if (window != null) Point(window, point);
+            });
+            _steps.Enqueue(() => Raw(button, RawAction.Down));
+            _steps.Enqueue(() => Raw(button, RawAction.Up));
+            return Queued();
+        }
+
         // Presses on control, moves to a design-space point in its window over steps ticks, and releases.
         public int Drag(Control control, Vector2 to, int steps = 8,
             [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)

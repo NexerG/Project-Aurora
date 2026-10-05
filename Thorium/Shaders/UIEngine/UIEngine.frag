@@ -101,6 +101,11 @@ vec4 sampleGradient(uint word, vec2 p, vec4 rect)
         float span = abs(g.direction.x) * extent.x + abs(g.direction.y) * extent.y;
         t = (dot(local, g.direction) + span) / (2.0f * span);
     }
+    else if (g.kind == 2u)
+    {
+        vec2 inset = extent - abs(local);
+        t = 1.0f - min(inset.x, inset.y) / min(extent.x, extent.y);
+    }
     else
     {
         vec2 offset = (g.center * 2.0f - 1.0f) * extent;

@@ -5,4 +5,5 @@
 	<Test Action="Syntax.CSharpLine"/>
 	<Test Action="Syntax.CommentSpansLines"/>
 	<Test Action="Syntax.Languages"/>
+	<Test Action="Syntax.Latex"/>
 </TestSuite>

@@ -73,6 +73,13 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [x] **tables (2026-09-29)** — landed, See `ClaudeMemory/Decisions/document-tables.md`
 			- [ ] typing p95 up ~0.03 ms on the 1M-char scenario — likely `Blocks()` type-testing page panels, not pinned
 		- [ ] **math in notes, M1–M4 (2026-10-02)** — landed, test-verified; **NOT GUI-verified** (popup placement, live reflow, click-away, focus loss mid-edit). Matrices/`cases`/`aligned` unplanned → `math-plan`
+		- [ ] **LaTeX editor** — native route agreed 2026-10-05; L1–L3 landed, L4–L8 not started → `ClaudeMemory/Context/tex-plan.md`
+			- [ ] **L1 (2026-10-05)** — `.tex` opens as source in the note editor, saves byte-identical; `ArctisAurora.Core.Tex` TeX expander, not wired to the UI. **Verified**: builds clean; Tex 11/11, Syntax incl. `Syntax.Latex`, Thorium `--test` 156 passed (only the pre-existing Boot failure besides `Tex.SourceEnterPaste`, since fixed); TextInput 88/88 after the fix; `Tex.SourceColours` golden checked. **NOT GUI-verified.** → `latex-editor`
+			- [x] **Enter on an empty last line kept as LaTeX (2026-10-05)** — `DocumentControl.EndCodeBlock` returns false in `plainText`; `Tex.SourceEnterPaste` passes → `latex-editor`
+			- [x] **`.tex` joins the `.txt` gates (2026-10-05)** — `CanAlign`, `InsertTable`, `PasteImage` refuse in a `.tex`; no test → `latex-editor`
+			- [ ] **L2 (2026-10-05)** — CFF in the font importer; Latin Modern Roman ×4, Mono and LM Math baked into Thorium atlases (sources gitignored in `_Build/FontSources/`); empty-glyph bake fix. **Verified**: builds clean; `Fonts.CffCharstring`, `LatinModern.Baked`, `LatinModern.Draws` golden. **NOT GUI-verified.** → `latex-editor`
+			- [ ] **em dash does not draw at 13px in a note** — U+2014 from L3 lowering is emitted but missing in the preview golden; a `LabelControl` draws it faintly; likely a sub-pixel-tall quad (renderer, unproven) → `latex-editor`
+			- [ ] **justify stretches the line before display math (L7)** — TeX never stretches it; the `Tex.Preview` golden records it; notes may share the bug (unverified) → `latex-editor`
 		- [ ] **pictures in notes, Word-style (2026-09-29)** — inline, wrap modes + free position, resize handles, Ctrl+V from the clipboard. Stages 1–7 built: textures, `<Image>`, inline pictures, text-first Ctrl+V into `attachments/`, XML + Markdown, resize handles, wrap modes (Square, Tight, Top and bottom, Behind, In front), drag-move with re-anchoring, rotate ring (inline + floats, Square collision Box/Shape). Test- and golden-verified; real Ctrl+V, handle, move and rotate drags and the Wrap/Collision menus NOT GUI-verified → `note-images-plan`	- [ ] cursor change on context
 - [ ] UI
 	- **Standing decision:** glyphs stay full controls with their own mat4 and tint — per-letter colour, rotation and animation are required. Do not propose making them plain data rows
@@ -124,10 +131,13 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] **S2c NOT GUI-verified (2026-10-04)** — typing `\sheet{…}` or Ctrl+Shift+V in the formula popup, the value redrawing after a sheet edit; test- and golden-verified only → `sheets`
 		- [ ] S2d — evaluate note formulas (result after a trailing `=`); not designed → `sheets-plan`
 		- [ ] **S3 NOT GUI-verified (2026-10-04)** — right-click Fill/Number format menus, resize cursor and drag, Ctrl+B in a real session; test- and golden-verified only → `sheets`
+		- [ ] `Sheet.FixedSize` golden fails in the Thorium `--test` run (seen 2026-10-05 with the uncommitted sheet work in the tree) → `sheets`
 		- [ ] **S4a/S4b NOT GUI-verified (2026-10-04)** — page tabs (click, "+", double-click rename, right-click Rename/Delete/Export), the Layers button and panel (toggle, pick, Add/Delete), a page rename with other sheets and notes open; test- and golden-verified only → `sheets`
 		- [ ] **S5/S5b NOT GUI-verified (2026-10-05)** — a `.csv` row in the vault browser (open, Ctrl+S, rename, delete), its menu "Create a sheet from this" / "Convert to sheet" (no test drives the vault browser; Convert retargets references), "Export as CSV", CSV references in a real session; test-verified only → `sheets`
-		- [ ] `--test` depends on OS focus — `ContextMenus.Tick` is not gated under `TestRunner.active`; `Sheet.MathLinks`/`Sheet.Layers` fail with another window on top → `context-menus`
 		- [ ] formula popup closed by focus loss cancels the typed source while a blur inside the app commits — commit instead? → `sheets`
+		- [ ] **S6 fixed sheets + insert NOT GUI-verified (2026-10-05)** — New sheet → Fixed size / Unfixed, "+" strips (click, Shift+click, right-click popup, Tab between boxes), Insert rows above / columns left from the grid menu; test- and golden-verified only → `sheets`
+		- [ ] link cache file in the vault for references (user's idea, not designed) — would cover the undo-after-insert gap → `sheets`
+		- [ ] delete rows/columns (insert exists; delete does not) → `sheets`
 	- [ ] **workspace tabs** — Blender-style tabs across the top switching Notes / Sheets / Board
 	- [ ] **todo board** — Trello-like tickets in columns, its own file kind beside notes and sheets
 	- [ ] **simplified mode** — a setting that swaps to the familiar layouts (menu bar, one document at a time) for less technical users; a layout choice, not a separate app

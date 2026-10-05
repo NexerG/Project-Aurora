@@ -131,6 +131,12 @@ namespace ArctisAurora.Core.UI
                 return;
             }
             pageIndex = index;
+            if (document.fixedSize)
+            {
+                anchorRow = Math.Min(anchorRow, sheet.page.rows - 1);
+                anchorColumn = Math.Min(anchorColumn, sheet.page.columns - 1);
+                if (activeRow >= sheet.page.rows || activeColumn >= sheet.page.columns) Select(activeRow, activeColumn, true);
+            }
             sheet.CellsChanged();
             strip.Sync();
         }
@@ -261,8 +267,9 @@ namespace ArctisAurora.Core.UI
         #region ---- selection ----
         public void Select(int row, int column, bool extend)
         {
-            activeRow = Math.Max(0, row);
-            activeColumn = Math.Max(0, column);
+            bool clamped = sheet != null && document.fixedSize;
+            activeRow = Math.Clamp(row, 0, clamped ? sheet!.page.rows - 1 : int.MaxValue);
+            activeColumn = Math.Clamp(column, 0, clamped ? sheet!.page.columns - 1 : int.MaxValue);
             if (!extend)
             {
                 anchorRow = activeRow;
@@ -451,6 +458,30 @@ namespace ArctisAurora.Core.UI
                 undo.Push(edit);
             }
         }
+
+        // Adds rows and columns past the far edges of a fixed page.
+        public void Grow(int rows, int columns)
+        {
+            rows = Math.Max(0, rows);
+            columns = Math.Max(0, columns);
+            if (sheet == null || !document.fixedSize || rows + columns == 0) return;
+            if (editing) sheet.field.Commit();
+
+            SheetPage shown = sheet.page;
+            Record("Grow page", new SheetSizeEdit(document, shown, (shown.rows, shown.columns), (shown.rows + rows, shown.columns + columns)));
+        }
+
+        // Inserts as many empty rows (or columns) as the selection spans, before it.
+        public void Insert(bool column)
+        {
+            if (sheet == null) return;
+            if (editing) sheet.field.Commit();
+
+            (int top, int left, int bottom, int right) = Range();
+            int at = column ? left : top;
+            int count = column ? right - left + 1 : bottom - top + 1;
+            Record(column ? "Insert columns" : "Insert rows", new SheetInsertEdit(document, sheet.page, column, at, count));
+        }
         #endregion
 
         #region ---- clipboard ----
@@ -541,7 +572,14 @@ namespace ArctisAurora.Core.UI
 
             int row = activeRow;
             int column = activeColumn;
-            Write("Paste", cells);
+            using (undo.Begin("Paste"))
+            {
+                SheetPage shown = sheet.page;
+                if (document.fixedSize && (row + count > shown.rows || column + width > shown.columns))
+                    Record("Paste", new SheetSizeEdit(document, shown, (shown.rows, shown.columns),
+                        (Math.Max(shown.rows, row + count), Math.Max(shown.columns, column + width))));
+                Write("Paste", cells);
+            }
             anchorRow = row;
             anchorColumn = column;
             Select(row + count - 1, column + width - 1, true);

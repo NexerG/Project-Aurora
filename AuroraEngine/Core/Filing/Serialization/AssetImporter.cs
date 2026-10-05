@@ -66,7 +66,7 @@ namespace ArctisAurora.Core.Filing.Serialization
             return set;
         }
 
-        // Machine-wide fonts first, then the per-user font folder.
+        // Machine-wide fonts, the per-user font folder, then the repo's _Build/FontSources.
         internal static string ResolveSystemFont(string fileName)
         {
             string machine = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts), fileName);
@@ -75,6 +75,9 @@ namespace ArctisAurora.Core.Filing.Serialization
             string user = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Microsoft", "Windows", "Fonts", fileName);
             if (File.Exists(user)) return user;
+
+            string downloaded = Path.GetFullPath(Path.Combine(Paths.DATA, "..", "..", "_Build", "FontSources", fileName));
+            if (File.Exists(downloaded)) return downloaded;
 
             return null;
         }

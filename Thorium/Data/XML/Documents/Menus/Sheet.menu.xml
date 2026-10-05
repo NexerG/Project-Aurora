@@ -5,6 +5,9 @@
 	<ContextButton Text="Paste" Action="Text.Paste"/>
 	<ContextButton Text="Paste link" Action="Sheet.PasteLink"/>
 	<ContextLine/>
+	<ContextButton Text="Insert rows above" Action="Sheet.InsertRowsAbove"/>
+	<ContextButton Text="Insert columns left" Action="Sheet.InsertColumnsLeft"/>
+	<ContextLine/>
 	<ContextButton Text="Bold" Action="Sheet.Bold"/>
 	<ContextSubmenu Text="Fill">
 		<ContextButton Text="None" Action="Sheet.FillNone"/>
