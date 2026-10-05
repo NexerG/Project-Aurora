@@ -256,6 +256,7 @@
     <xs:restriction base="xs:string">
       <xs:enumeration value="Linear" />
       <xs:enumeration value="Radial" />
+      <xs:enumeration value="Box" />
     </xs:restriction>
   </xs:simpleType>
   <xs:attributeGroup name="Stop.Attributes">

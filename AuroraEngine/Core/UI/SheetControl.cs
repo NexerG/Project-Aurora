@@ -1,5 +1,6 @@
 using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing;
+using ArctisAurora.Core.Registry;
 using ArctisAurora.EngineWork;
 using Silk.NET.GLFW;
 using System.Globalization;
@@ -24,6 +25,13 @@ namespace ArctisAurora.Core.UI
             }
 
             protected override void ArrangeCore(LayoutRect finalRect) => WriteArranged(finalRect);
+
+            // Arranges again once its children are placed, so its bounds hold this frame's.
+            internal void Settle(LayoutRect rect)
+            {
+                SetFlag(ArrangeFlags.ArrangeDirty, true);
+                Arrange(rect);
+            }
         }
 
         // geometry, design pixels
@@ -35,6 +43,8 @@ namespace ArctisAurora.Core.UI
         private const int fontSize = 14;
         private const float grabWidth = 4f;
         private const float minimumBand = 8f;
+        private const float growWidth = 20f;
+        private const float growGap = 4f;
 
         // grid past the last used cell
         private const int spareRows = 100;
@@ -51,6 +61,10 @@ namespace ArctisAurora.Core.UI
         private readonly PanelControl selection = new PanelControl { hitTestable = false, alpha = 0.18f };
         private readonly PanelControl[] outline = new PanelControl[4];
         internal readonly TextBoxControl field = new TextBoxControl { fontSize = fontSize };
+        private readonly PanelControl growRows = new PanelControl { hitTestable = false };
+        private readonly PanelControl growColumns = new PanelControl { hitTestable = false };
+        private readonly LabelControl growRowsMark = new LabelControl { text = "+", fontSize = fontSize, hitTestable = false };
+        private readonly LabelControl growColumnsMark = new LabelControl { text = "+", fontSize = fontSize, hitTestable = false };
         private readonly Parts headers = new Parts();
 
         // pooled grid and header parts
@@ -71,6 +85,12 @@ namespace ArctisAurora.Core.UI
         private float? resizeBefore;
         private CursorShape shownCursor = CursorShape.Arrow;
 
+        // a right press on a + edge, true for the rows edge, opened on release
+        private bool? growMenu;
+
+        // whether each of the last two left presses was on a + edge, newest in bit 0
+        private int growPresses;
+
         public SheetControl(SheetEditorControl editor, SheetPage page)
         {
             this.editor = editor;
@@ -78,6 +98,14 @@ namespace ArctisAurora.Core.UI
 
             selection.PaintOr(null, PaletteRole.Accent);
             field.PaintOr(null, PaletteRole.Field);
+            foreach (PanelControl strip in new[] { growRows, growColumns })
+            {
+                strip.PaintOr(null, PaletteRole.Chrome);
+                strip.gradient = "sheet-grow";
+                strip.cornerRole = CornerRole.Control;
+            }
+            growRowsMark.PaintOr(null, PaletteRole.MutedInk);
+            growColumnsMark.PaintOr(null, PaletteRole.MutedInk);
 
             AddChild(fills);
             AddChild(grid);
@@ -89,6 +117,10 @@ namespace ArctisAurora.Core.UI
                 AddChild(outline[i]);
             }
             AddChild(field);
+            AddChild(growRows);
+            AddChild(growColumns);
+            AddChild(growRowsMark);
+            AddChild(growColumnsMark);
             AddChild(headers);
         }
 
@@ -168,6 +200,13 @@ namespace ArctisAurora.Core.UI
             foreach (Entity child in children)
                 if (child is Control control) control.Measure(unbounded);
 
+            if (editor.document.fixedSize)
+            {
+                arrange.desired = new Vector2(headerWidth + page.ColumnLeft(page.columns) + growWidth + growGap * 2f,
+                    headerHeight + page.RowTop(page.rows) + growWidth + growGap * 2f);
+                return arrange.desired;
+            }
+
             int rows = Math.Max(used.rows, editor.activeRow + 1) + spareRows;
             int columns = Math.Max(used.columns, editor.activeColumn + 1) + spareColumns;
             arrange.desired = new Vector2(headerWidth + page.ColumnLeft(columns), headerHeight + page.RowTop(rows));
@@ -186,31 +225,77 @@ namespace ArctisAurora.Core.UI
             float cellsLeft = view.x + headerWidth;
             float cellsTop = view.y + headerHeight;
 
-            int firstColumn = page.ColumnAt(cellsLeft - origin.X);
-            int firstRow = page.RowAt(cellsTop - origin.Y);
+            bool fixedSize = editor.document.fixedSize;
+            int columnLimit = fixedSize ? page.columns : int.MaxValue;
+            int rowLimit = fixedSize ? page.rows : int.MaxValue;
+
+            int firstColumn = Math.Min(page.ColumnAt(cellsLeft - origin.X), columnLimit - 1);
+            int firstRow = Math.Min(page.RowAt(cellsTop - origin.Y), rowLimit - 1);
             int lastColumn = firstColumn;
-            while (origin.X + page.ColumnLeft(lastColumn + 1) < view.Right) lastColumn++;
+            while (lastColumn + 1 < columnLimit && origin.X + page.ColumnLeft(lastColumn + 1) < view.Right) lastColumn++;
             int lastRow = firstRow;
-            while (origin.Y + page.RowTop(lastRow + 1) < view.Bottom) lastRow++;
+            while (lastRow + 1 < rowLimit && origin.Y + page.RowTop(lastRow + 1) < view.Bottom) lastRow++;
 
             ArrangeGrid(view, origin, firstRow, lastRow, firstColumn, lastColumn);
             ArrangeSelection();
+            ArrangeGrow(view, origin);
             ArrangeHeaders(view, origin, firstRow, lastRow, firstColumn, lastColumn);
+            fills.Settle(finalRect);
+            grid.Settle(finalRect);
+            headers.Settle(finalRect);
+        }
+
+        // The + edges under the last row and right of the last column, cut to the viewport.
+        private void ArrangeGrow(LayoutRect view, Vector2 origin)
+        {
+            if (!editor.document.fixedSize)
+            {
+                growRows.Arrange(Hidden);
+                growColumns.Arrange(Hidden);
+                growRowsMark.Arrange(Hidden);
+                growColumnsMark.Arrange(Hidden);
+                return;
+            }
+
+            float right = origin.X + page.ColumnLeft(page.columns);
+            float bottom = origin.Y + page.RowTop(page.rows);
+            float left = MathF.Max(origin.X + growGap, view.x + headerWidth);
+            float top = MathF.Max(origin.Y + growGap, view.y + headerHeight);
+
+            LayoutRect rows = new LayoutRect(left, bottom + growGap,
+                MathF.Max(0f, MathF.Min(right - growGap, view.Right) - left), growWidth);
+            LayoutRect columns = new LayoutRect(right + growGap, top,
+                growWidth, MathF.Max(0f, MathF.Min(bottom - growGap, view.Bottom) - top));
+            growRows.Arrange(rows);
+            growColumns.Arrange(columns);
+            PlaceCentred(growRowsMark, "+", rows);
+            PlaceCentred(growColumnsMark, "+", columns);
+        }
+
+        // The + edge under a point; rows is true for the bottom one.
+        private bool GrowAt(Vector2 point, out bool rows)
+        {
+            rows = growRows.arrangedRect.Contains(point);
+            return editor.document.fixedSize && (rows || growColumns.arrangedRect.Contains(point));
         }
 
         // Lines at every visible band's far edge, then the text of every visible cell.
         private void ArrangeGrid(LayoutRect view, Vector2 origin, int firstRow, int lastRow, int firstColumn, int lastColumn)
         {
+            bool fixedSize = editor.document.fixedSize;
+            float lineHeight = fixedSize ? MathF.Min(view.Bottom, origin.Y + page.RowTop(page.rows)) - view.y : view.height;
+            float lineLength = fixedSize ? MathF.Min(view.Right, origin.X + page.ColumnLeft(page.columns)) - view.x : view.width;
+
             int line = 0;
             for (int c = firstColumn; c <= lastColumn; c++)
             {
                 float right = origin.X + page.ColumnLeft(c + 1);
-                Pooled(lines, grid, line++, PaletteRole.Line).Arrange(new LayoutRect(right - lineWidth, view.y, lineWidth, view.height));
+                Pooled(lines, grid, line++, PaletteRole.Line).Arrange(new LayoutRect(right - lineWidth, view.y, lineWidth, MathF.Max(0f, lineHeight)));
             }
             for (int r = firstRow; r <= lastRow; r++)
             {
                 float bottom = origin.Y + page.RowTop(r + 1);
-                Pooled(lines, grid, line++, PaletteRole.Line).Arrange(new LayoutRect(view.x, bottom - lineWidth, view.width, lineWidth));
+                Pooled(lines, grid, line++, PaletteRole.Line).Arrange(new LayoutRect(view.x, bottom - lineWidth, MathF.Max(0f, lineLength), lineWidth));
             }
             for (int i = line; i < lines.Count; i++)
                 lines[i].Arrange(Hidden);
@@ -357,6 +442,24 @@ namespace ArctisAurora.Core.UI
         public override bool OnPointerPress(PointerEvent e)
         {
             base.OnPointerPress(e);
+            growMenu = null;
+            stopsContextMenu = false;
+            bool grow = GrowAt(e.point, out bool bottom);
+            if (e.button == PointerEvent.leftButton) growPresses = (growPresses << 1 | (grow ? 1 : 0)) & 3;
+            if (grow)
+            {
+                if (e.button == PointerEvent.leftButton)
+                {
+                    int step = InputHandler.instance.IsModifierDown(InputModifier.Extend) ? SettingsRegistry.Get<SheetSettings>().grow.step : 1;
+                    editor.Grow(bottom ? step : 0, bottom ? 0 : step);
+                }
+                else if (e.button == PointerEvent.rightButton)
+                {
+                    growMenu = bottom;
+                    stopsContextMenu = true;
+                }
+                return true;
+            }
             if (e.button == PointerEvent.rightButton)
             {
                 if (CellAt(e.point, out int row, out int column) && !editor.IsSelected(row, column))
@@ -407,6 +510,22 @@ namespace ArctisAurora.Core.UI
             ShowCursor(CursorShape.Arrow);
         }
 
+        // Opens the grow popup after a right press on a + edge.
+        public override bool OnPointerRelease(PointerEvent e)
+        {
+            bool handled = base.OnPointerRelease(e);
+            if (e.button != PointerEvent.rightButton || growMenu is not bool rows) return handled;
+
+            growMenu = null;
+            Vector2 point = e.point;
+            Engine.Post(() =>
+            {
+                stopsContextMenu = false;
+                if (!destroyed) SheetGrowPopup.Open(editor, this, point, rows);
+            });
+            return true;
+        }
+
         public override bool OnPointerMove(PointerEvent e)
         {
             bool handled = base.OnPointerMove(e);
@@ -430,7 +549,7 @@ namespace ArctisAurora.Core.UI
 
         public override bool OnPointerTap(PointerEvent e)
         {
-            if (e.tapCount != 2 || !CellAt(e.point, out _, out _)) return base.OnPointerTap(e);
+            if (e.tapCount != 2 || growPresses != 0 || !CellAt(e.point, out _, out _)) return base.OnPointerTap(e);
 
             editor.BeginEdit(true);
             return true;

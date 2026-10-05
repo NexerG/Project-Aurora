@@ -243,6 +243,34 @@ namespace ArctisAurora.Core.UI
             RewriteNotes(notes, Rename);
         }
 
+        // Links into a page of the sheet at sheetPath follow its rows or columns that moved, as SheetFormula.ShiftCells moves them.
+        public static void Shifted(string sheetPath, string page, bool column, int at, int count, IEnumerable<string> notes)
+        {
+            sheetPath = Path.GetFullPath(sheetPath);
+            int from = count < 0 ? at - count : at;
+
+            string? Shift(string reference)
+            {
+                int hash = reference.IndexOf('#');
+                int bang = reference.LastIndexOf('!');
+                if (hash <= 0 || bang <= hash || !SheetBook.Names(reference[..hash], sheetPath)) return null;
+                if (!reference[(hash + 1)..bang].Equals(page, StringComparison.OrdinalIgnoreCase)) return null;
+
+                string[] ends = reference[(bang + 1)..].Split(':');
+                bool any = false;
+                for (int k = 0; k < ends.Length; k++)
+                {
+                    if (!SheetDocument.TryParseAddress(ends[k], out int row, out int col) || row < 0 || col < 0) return null;
+                    if ((column ? col : row) < from) continue;
+                    ends[k] = column ? SheetDocument.Address(row, col + count) : SheetDocument.Address(row + count, col);
+                    any = true;
+                }
+                return any ? reference[..(bang + 1)] + string.Join(":", ends) : null;
+            }
+
+            RewriteNotes(notes, Shift);
+        }
+
         private static void RewriteNotes(IEnumerable<string> notes, Func<string, string?> rename)
         {
             foreach (string note in notes)

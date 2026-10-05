@@ -926,4 +926,43 @@ namespace ArctisAurora.Core.UI
             return text.ToString();
         }
     }
+
+    // LaTeX source <-> <Document> tree: one wrapping LaTeX code block per line.
+    public static class TexSourceFormat
+    {
+        public static XElement Read(string text, string name)
+        {
+            XElement root = new XElement("Document", new XAttribute("Name", name));
+
+            foreach (string line in text.Split('\n'))
+            {
+                string content = line.EndsWith('\r') ? line[..^1] : line;
+                XElement run = new XElement("Run");
+                if (content.Length > 0) run.SetAttributeValue("Text", content);
+                root.Add(new XElement("Block",
+                    new XAttribute("StylingType", "Code"), new XAttribute("Language", "latex"), new XAttribute("Wrap", "true"), run));
+            }
+
+            return root;
+        }
+
+        public static string Write(XElement document, string newline)
+        {
+            StringBuilder text = new StringBuilder();
+            bool first = true;
+
+            foreach (XElement block in document.Elements())
+            {
+                if (block.Name.LocalName != "Block") continue;
+
+                if (!first) text.Append(newline);
+                first = false;
+
+                foreach (XElement run in block.Elements())
+                    text.Append((string?)run.Attribute("Text"));
+            }
+
+            return text.ToString();
+        }
+    }
 }

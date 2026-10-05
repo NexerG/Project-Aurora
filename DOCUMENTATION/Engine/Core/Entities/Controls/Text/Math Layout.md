@@ -27,7 +27,9 @@ Places a parsed formula from [[Math Parser]] as glyphs and rules, the way TeX's 
 
 Inline formulas use text style and display formulas display style; scripts shrink to script and script-script style by the font's own percentages. Big operators grow in display style and take their limits above and below; in text style the limits move to the side. Tall delimiters grow by scaling until they are 2.4 times their natural height and are then built from the Unicode bracket pieces, and a tall square root switches from a scaled `√` to the `⎷` hook with a drawn stem.
 
-A note draws a `MathBox` through its paragraph's text control: each glyph from the `math` font at the run's size times the glyph's scale, each rule as a filled rectangle with its top on a whole pixel and at least one pixel thick. A display formula takes the whole column as its width and is drawn centred in it, which is what puts it on a line of its own. A formula that could not be read draws its source in the palette's danger colour.
+A glyph asked for in a face that lacks it (Greek in Latin Modern Math's italic, which is LM Roman Italic) is set from the regular face instead, so it shows upright rather than not at all.
+
+A note draws a `MathBox` through its paragraph's text control: each glyph from the run's own font when that font has math constants (`latin-modern-math` from a `.tex` preview), otherwise from the `math` font, at the run's size times the glyph's scale, each rule as a filled rectangle with its top on a whole pixel and at least one pixel thick. A display formula takes the whole column as its width and is drawn centred in it, which is what puts it on a line of its own. A formula that could not be read draws its source in the palette's danger colour.
 
 Formulas are inserted and edited through [[Formula Popup]].
 

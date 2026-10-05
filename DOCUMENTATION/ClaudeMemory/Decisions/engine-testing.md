@@ -38,7 +38,7 @@ slice 3: `TestContext` input helpers, `UI.WindowRoot.ToWindowSpace`, `AGlfwWindo
   `LogChannel.Exception` both reach.
 
 ### Slice 3 — input helpers (2026-09-27)
-- `TestContext.MoveTo(control)`, `MoveTo(window, point)`, `Click(control, button)`, `Drag(control, to, steps = 8)`,
+- `TestContext.MoveTo(control)`, `MoveTo(window, point)`, `Click(control, button)`, `Click(control, point, button = MouseLeft)`, `Drag(control, to, steps = 8)`,
   `Key(key, params mods)`, `Type(text)` each queue steps and return `steps + 1`; the test yields that.
 - `Session.Step` calls `_context.RunStep()` once a tick, after the timeout check and before the wait countdown.
 - `Point(control)`: centre of `arrangedRect`; records a failure (caller's file:line) when `UIEngine.HitTest` there is
@@ -46,6 +46,8 @@ slice 3: `TestContext` input helpers, `UI.WindowRoot.ToWindowSpace`, `AGlfwWindo
 - Keys and buttons: `keyTracker.EnqueueEvent(key, RawAction, Engine.totalTime)`. Chars: `ProcessCharInput`.
 - `Type` key per char: `A`–`Z` (either case), `Num0`–`Num9`, `Space`, else `AnySymbol` itself.
 - `SeedIsInWindow` sets `false` under `TestRunner.active`.
+- `Click(control, point, button)` (2026-10-05): clicks a design-space point with any mouse button; records a failure when the point does not hit `control` or a descendant (same check as the point `Drag` overload). Added for `Sheet.GrowPopup`, because the sheet's grow strips are not hit-testable controls.
+- `ContextMenus.Tick` returns early under `TestRunner.active`, so a popup test does not depend on OS focus (2026-10-05).
 - `WindowRoot.ToWindowSpace(designPoint, window)` — inverse of `ToDesignSpace`.
 - Tests: `Input.ClickFiresRelease`, `Input.KeyWithModifierFiresKeybind` (Ctrl+` → `Console.Toggle`, bound in all three
   hosts' `InputMap`), `Input.DragMovesSplitter`; Thorium's `TextInput.TypeWritesText`.

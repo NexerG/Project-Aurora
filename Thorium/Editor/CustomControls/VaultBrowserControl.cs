@@ -92,20 +92,30 @@ namespace Thorium.Editor.CustomControls
             Browser()?.NewNote(row.file.type == FileObject.FileType.Directory ? row.file.path : row.file.parent.path);
         }
 
-        [A_XSDActionDependency("Sheets.New", "UI", "Creates a sheet at the vault root and opens it")]
-        public static void NewSheet()
+        [A_XSDActionDependency("Sheets.New", "UI", "Creates an unfixed sheet at the vault root and opens it")]
+        public static void NewSheet() => NewSheetAtRoot(false);
+
+        [A_XSDActionDependency("Sheets.NewHere", "UI", "Creates an unfixed sheet beside the entry the menu was opened on")]
+        public static void NewSheetHere() => NewSheetBeside(false);
+
+        [A_XSDActionDependency("Sheets.NewFixed", "UI", "Creates a fixed-size sheet at the vault root and opens it")]
+        public static void NewFixedSheet() => NewSheetAtRoot(true);
+
+        [A_XSDActionDependency("Sheets.NewFixedHere", "UI", "Creates a fixed-size sheet beside the entry the menu was opened on")]
+        public static void NewFixedSheetHere() => NewSheetBeside(true);
+
+        private static void NewSheetAtRoot(bool fixedSize)
         {
             VaultBrowserControl browser = Browser();
-            browser?.NewSheet(browser.RootPath);
+            browser?.NewSheet(browser.RootPath, fixedSize);
         }
 
-        [A_XSDActionDependency("Sheets.NewHere", "UI", "Creates a sheet beside the entry the menu was opened on")]
-        public static void NewSheetHere()
+        private static void NewSheetBeside(bool fixedSize)
         {
             FileRowControl row = MenuRow();
-            if (row == null) { NewSheet(); return; }
+            if (row == null) { NewSheetAtRoot(fixedSize); return; }
 
-            Browser()?.NewSheet(row.file.type == FileObject.FileType.Directory ? row.file.path : row.file.parent.path);
+            Browser()?.NewSheet(row.file.type == FileObject.FileType.Directory ? row.file.path : row.file.parent.path, fixedSize);
         }
 
         [A_XSDActionDependency("Sheets.FromCsv", "UI", "Writes the CSV the menu was opened on as a sheet beside it, keeps the CSV and opens the sheet")]
@@ -176,13 +186,13 @@ namespace Thorium.Editor.CustomControls
             Open(path);
         }
 
-        private void NewSheet(string folder) =>
-            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreateSheet(folder, name), null, null);
+        private void NewSheet(string folder, bool fixedSize) =>
+            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreateSheet(folder, name, fixedSize), null, null);
 
-        private void CreateSheet(string folder, string name)
+        private void CreateSheet(string folder, string name, bool fixedSize)
         {
             string path = FreePath(folder, name, SheetDocument.extension);
-            SheetDocument.Blank(BaseName(path)).Save(path);
+            SheetDocument.Blank(BaseName(path), fixedSize).Save(path);
             SheetBook.Created();
 
             Expand(folder);

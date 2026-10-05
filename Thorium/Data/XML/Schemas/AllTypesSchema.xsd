@@ -24,6 +24,8 @@
       <xs:enumeration value="SessionWindow" />
       <xs:enumeration value="SessionScope" />
       <xs:enumeration value="Session" />
+      <xs:enumeration value="SheetGrow" />
+      <xs:enumeration value="Sheets" />
       <xs:enumeration value="DragGhost" />
       <xs:enumeration value="Palette" />
       <xs:enumeration value="Zoom" />

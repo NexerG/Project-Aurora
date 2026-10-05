@@ -11,7 +11,7 @@ namespace ArctisAurora.Core.UI
     [A_XSDType("GradientKind", "UI")]
     public enum GradientKind
     {
-        Linear, Radial
+        Linear, Radial, Box
     }
 
     [A_XSDType("Stop", "UI")]
@@ -39,7 +39,7 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("Name", "UI", "Name a control references this gradient by.")]
         public string name = "";
 
-        [A_XSDElementProperty("Kind", "UI", "Linear ramps along Angle; Radial ramps outward from the centre.")]
+        [A_XSDElementProperty("Kind", "UI", "Linear ramps along Angle; Radial ramps outward from the centre; Box ramps in from the nearest edge.")]
         public GradientKind kind = GradientKind.Linear;
 
         [A_XSDElementProperty("Angle", "UI", "Linear direction in degrees. 0 is left to right, 90 is top to bottom.")]

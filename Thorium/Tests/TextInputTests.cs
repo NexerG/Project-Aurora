@@ -1578,6 +1578,56 @@ namespace Thorium.Tests
             return item;
         }
 
+        // A .tex file opened in an editor, caret at the end of its last line.
+        private static DocumentEditorControl ShowTex(TestContext t, string source)
+        {
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-edit-{Guid.NewGuid():N}.tex");
+            File.WriteAllText(path, source);
+            DocumentEditorControl editor = NewEditor();
+            t.Show(editor);
+            editor.LoadPath(path);
+            File.Delete(path);
+
+            BlockControl last = Paragraphs(editor)[^1];
+            Content(editor).SetCaret(last, last.Length);
+            editor.FocusCaret();
+            return editor;
+        }
+
+        private static bool AllLatex(List<BlockControl> blocks) =>
+            blocks.All(b => b.stylingType == TextStyleType.Code && b.language == "latex");
+
+        [A_XSDActionDependency("Tex.SourceEnterPaste", "Test")]
+        private static IEnumerator<int> TexSourceEnterPaste(TestContext t)
+        {
+            DocumentEditorControl editor = ShowTex(t, "a\nb");
+            yield return 2;
+
+            yield return t.Key(Keys.Enter);
+            yield return t.Key(Keys.Enter);
+            List<BlockControl> p = Paragraphs(editor);
+            t.Check(p.Count == 4 && AllLatex(p), $"Enter, and Enter again on the empty last line, add LaTeX source lines ({p.Count})");
+
+            ClipboardText.Set("x\ny\nz");
+            yield return t.Key(Keys.V, Keys.LeftControl);
+            p = Paragraphs(editor);
+            t.Check(p.Count == 6 && AllLatex(p) && p[3].text == "x" && p[5].text == "z",
+                $"a three-line paste lands as LaTeX source lines ({p.Count})");
+
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("Tex.SourceColours", "Test")]
+        private static IEnumerator<int> TexSourceColours(TestContext t)
+        {
+            DocumentEditorControl editor = ShowTex(t,
+                "\\documentclass{article} % class\n\\begin{document}\nSee $x^2$ at 12pt.\n\\[ a + b \\]\n\\end{document}");
+            yield return 2;
+            yield return t.Golden("Source", editor);
+
+            t.Show(new StackPanelControl());
+        }
+
         #region ---- helpers ----
         private static DocumentEditorControl NewEditor() => new DocumentEditorControl
         {

@@ -1401,6 +1401,226 @@ namespace Thorium.Tests
             Directory.Delete(folder, true);
         }
 
+        [A_XSDActionDependency("Sheet.FixedSize", "Test")]
+        private static IEnumerator<int> FixedSize(TestContext t)
+        {
+            SheetDocument blank = SheetDocument.Blank("Fixed", true);
+            t.Check(blank.fixedSize && blank.pages[0].rows == 25 && blank.pages[0].columns == 25, "a new fixed sheet is 25 x 25");
+            XElement xml = SheetXml.ToXml(blank);
+            t.Check((string?)xml.Attribute("Fixed") == "true" && (string?)xml.Element("Page")!.Attribute("Rows") == "25"
+                && (string?)xml.Element("Page")!.Attribute("Columns") == "25", "the type and size are written");
+            XElement loose = SheetXml.ToXml(SheetDocument.Blank("Loose"));
+            t.Check(loose.Attribute("Fixed") == null && loose.Element("Page")!.Attribute("Rows") == null, "an unfixed sheet writes neither");
+
+            SheetDocument old = SheetXml.Parse(XElement.Parse("<Sheet><Page Name=\"P\"><Layer><Cell At=\"C40\">x</Cell></Layer></Page></Sheet>"));
+            t.Check(!old.fixedSize, "a file without Fixed opens unfixed");
+            SheetDocument held = SheetXml.Parse(XElement.Parse(
+                "<Sheet Fixed=\"true\"><Page Name=\"P\" Rows=\"5\" Columns=\"4\"><Layer><Cell At=\"F9\">x</Cell></Layer></Page></Sheet>"));
+            t.Check(held.pages[0].rows == 9 && held.pages[0].columns == 6, "a fixed page grows to hold its cells");
+
+            SheetDocument sheet = SheetDocument.Blank("Small", true);
+            sheet.pages[0].rows = 5;
+            sheet.pages[0].columns = 4;
+            sheet.pages[0].layers[0].Set(0, 0, "Item");
+            sheet.pages[0].layers[0].Set(4, 3, "42");
+            string path = TempSheet(sheet);
+
+            SheetEditorControl editor = new SheetEditorControl
+            {
+                preferredWidth = 640f,
+                preferredHeight = 360f,
+                horizontalAlignment = HorizontalAlignment.Left,
+                verticalAlignment = VerticalAlignment.Top
+            };
+            editor.LoadPath(path);
+            t.Show(editor);
+            yield return 3;
+            SheetPage page = editor.page;
+            SheetControl grid = Grid(editor);
+            t.Check(page.rows == 5 && page.columns == 4, "the size loads");
+            yield return t.Golden("Page", editor);
+
+            editor.Select(10, 10, false);
+            t.Check(editor.activeRow == 4 && editor.activeColumn == 3, "selection stops at the page edge");
+            editor.Enter(false);
+            editor.Tab(false);
+            t.Check(editor.activeRow == 4 && editor.activeColumn == 3, "Enter and Tab stay on the last row and column");
+
+            LayoutRect last = grid.CellRect(4, 0);
+            Vector2 bottomEdge = new Vector2(last.x + last.width * 0.5f, last.Bottom + 6f);
+            yield return t.Drag(grid, bottomEdge, bottomEdge, 1);
+            t.Check(page.rows == 6 && page.columns == 4, $"a click on the bottom + adds a row: {page.rows} x {page.columns}");
+
+            SheetGrowSetting grow = SettingsRegistry.Get<SheetSettings>().grow;
+            int stepBefore = grow.step;
+            grow.step = 3;
+            yield return 2;
+            LayoutRect corner = grid.CellRect(0, 3);
+            Vector2 rightEdge = new Vector2(corner.Right + 6f, corner.y + corner.height * 0.5f);
+            yield return t.Drag(grid, rightEdge, rightEdge, 1, Keys.LeftShift);
+            grow.step = stepBefore;
+            t.Check(page.rows == 6 && page.columns == 7, $"Shift-click on the right + adds the set step: {page.rows} x {page.columns}");
+            t.Check(!editor.editing, "two quick clicks on the + edges open no cell");
+
+            editor.Undo();
+            t.Check(page.columns == 4, "undo takes the columns back");
+            editor.Undo();
+            t.Check(page.rows == 5, "and then the row");
+
+            editor.Select(3, 2, false);
+            editor.Paste("1\t2\t3\n4\t5\t6\n7\t8\t9");
+            t.Check(page.rows == 6 && page.columns == 5 && page.layers[0].Get(5, 4) == "9",
+                $"a paste past the edge grows the page: {page.rows} x {page.columns}, {page.layers[0].Get(5, 4)}, active {editor.activeRow},{editor.activeColumn}");
+            editor.Undo();
+            t.Check(page.rows == 5 && page.columns == 4 && page.layers[0].Get(3, 2) == null, "one undo takes back the paste and the growth");
+
+            editor.Grow(2, 1);
+            editor.Save();
+            SheetDocument saved = SheetDocument.Load(path);
+            t.Check(saved.fixedSize && saved.pages[0].rows == 7 && saved.pages[0].columns == 5, "the grown size is saved");
+
+            t.Show(new StackPanelControl());
+            File.Delete(path);
+        }
+
+        [A_XSDActionDependency("Sheet.GrowPopup", "Test")]
+        private static IEnumerator<int> GrowPopup(TestContext t)
+        {
+            SheetDocument sheet = SheetDocument.Blank("Popup", true);
+            sheet.pages[0].rows = 5;
+            sheet.pages[0].columns = 4;
+            string path = TempSheet(sheet);
+
+            SheetEditorControl editor = new SheetEditorControl
+            {
+                preferredWidth = 640f,
+                preferredHeight = 360f,
+                horizontalAlignment = HorizontalAlignment.Left,
+                verticalAlignment = VerticalAlignment.Top
+            };
+            editor.LoadPath(path);
+            t.Show(editor);
+            yield return 3;
+            SheetPage page = editor.page;
+            SheetControl grid = Grid(editor);
+
+            LayoutRect corner = grid.CellRect(0, 3);
+            yield return t.Click(grid, new Vector2(corner.Right + 10f, corner.y + corner.height * 0.5f), Keys.MouseRight);
+            yield return 2;
+            t.Check(FocusedCaption() == "Add horizontal", $"a right click on the right + opens the popup on Add horizontal: {FocusedCaption()}");
+            yield return t.Type("3");
+            yield return t.Key(Keys.Tab);
+            t.Check(FocusedCaption() == "Add vertical", $"Tab moves to Add vertical: {FocusedCaption()}");
+            yield return t.Type("2");
+            yield return t.Key(Keys.Enter);
+            yield return 2;
+            t.Check(page.rows == 7 && page.columns == 7, $"Enter adds both: {page.rows} x {page.columns}");
+            editor.Undo();
+            t.Check(page.rows == 5 && page.columns == 4 && !editor.undo.CanUndo, "one undo takes both back");
+            yield return 2;
+
+            LayoutRect last = grid.CellRect(4, 0);
+            yield return t.Click(grid, new Vector2(last.x + last.width * 0.5f, last.Bottom + 10f), Keys.MouseRight);
+            yield return 2;
+            t.Check(FocusedCaption() == "Add vertical", $"a right click on the bottom + opens the popup on Add vertical: {FocusedCaption()}");
+            yield return t.Type("4");
+            yield return t.Key(Keys.Escape);
+            yield return 2;
+            t.Check(page.rows == 5 && page.columns == 4 && !editor.undo.CanUndo, "Esc adds nothing");
+            t.Check(FocusedCaption() == null, "and closes the popup");
+
+            t.Show(new StackPanelControl());
+            File.Delete(path);
+
+            static string? FocusedCaption() => UIEngine.activeControl is TextBoxControl box && box.parent is Control row
+                ? row.children.OfType<LabelControl>().FirstOrDefault()?.text
+                : null;
+        }
+
+        [A_XSDActionDependency("Sheet.InsertShifts", "Test")]
+        private static IEnumerator<int> InsertShifts(TestContext t)
+        {
+            string folder = TempFolder();
+            Func<string, string?>? findBefore = SheetBook.findSheet;
+            Func<IEnumerable<string>>? sheetsBefore = SheetBook.vaultSheets;
+            Func<IEnumerable<string>>? notesBefore = SheetBook.vaultNotes;
+            SheetBook.findSheet = FolderResolver(folder);
+            SheetBook.vaultSheets = () => Directory.EnumerateFiles(folder, "*" + SheetDocument.extension);
+            SheetBook.vaultNotes = () => Directory.EnumerateFiles(folder, "*.md");
+            string PathOf(string name) => Path.Combine(folder, name + SheetDocument.extension);
+
+            SheetDocument budget = SheetDocument.Blank("Budget", true);
+            budget.pages[0].name = "Data";
+            SheetLayer cells = budget.pages[0].layers[0];
+            cells.Set(0, 0, "1");
+            cells.Set(1, 0, "2");
+            cells.Set(2, 0, "3");
+            cells.Set(3, 0, "=SUM(A1:A3)");
+            cells.Set(0, 1, "=A3*10");
+            budget.pages[0].SetFormat(2, 0, new SheetFormat(true, null, null));
+            budget.pages[0].rowHeights[2] = 40f;
+            budget.Save(PathOf("Budget"));
+
+            SheetDocument summary = SheetDocument.Blank("Summary");
+            summary.pages[0].layers[0].Set(0, 0, "=[Budget]Data!A3+1");
+            summary.pages[0].layers[0].Set(1, 0, "=SUM([Budget]Data!A1:A3)");
+            summary.Save(PathOf("Summary"));
+
+            SheetDocument unopened = SheetDocument.Blank("Unopened");
+            unopened.pages[0].layers[0].Set(0, 0, "=[Budget]Data!A3");
+            unopened.Save(PathOf("Unopened"));
+
+            string notePath = Path.Combine(folder, "a.md");
+            string note = "x ![[Budget.sheet.xml#Data!A2:A3]] $\\sheet{Budget.sheet.xml#Data!A3}$\n";
+            File.WriteAllText(notePath, note);
+
+            SheetEditorControl editor = ShowSheet(t, PathOf("Budget"));
+            SheetPage summaryPage = SheetBook.Get(PathOf("Summary")).pages[0];
+            yield return 2;
+            SheetPage page = editor.page;
+            int rowsBefore = page.rows;
+            cells = page.layers[0];
+
+            editor.Select(1, 0, false);
+            editor.Select(2, 0, true);
+            editor.Insert(false);
+            yield return 2;
+            t.Check(cells.Get(1, 0) == null && cells.Get(2, 0) == null && cells.Get(3, 0) == "2" && cells.Get(4, 0) == "3",
+                "two empty rows go in above the selection");
+            t.Check(cells.Get(5, 0) == "=SUM(A1:A5)" && cells.Get(0, 1) == "=A5*10", $"its own formulas follow: {cells.Get(5, 0)} {cells.Get(0, 1)}");
+            t.Check(SheetBook.calc.Value(page, 5, 0).Display() == "6" && SheetBook.calc.Value(page, 0, 1).Display() == "30", "and keep their values");
+            t.Check(page.Format(4, 0).bold && page.rowHeights.TryGetValue(4, out float height) && height == 40f && !page.rowHeights.ContainsKey(2),
+                "formats and row heights move with their rows");
+            t.Check(page.rows == rowsBefore + 2, "a fixed page grows by the rows inserted");
+            t.Check(summaryPage.layers[0].Get(0, 0) == "=[Budget]Data!A5+1" && summaryPage.layers[0].Get(1, 0) == "=SUM([Budget]Data!A1:A5)",
+                $"a loaded sheet's references follow: {summaryPage.layers[0].Get(1, 0)}");
+            t.Check(SheetBook.calc.Value(summaryPage, 0, 0).Display() == "4", "and keep their values");
+            t.Check(SheetDocument.Load(PathOf("Unopened")).pages[0].Shown(0, 0) == "=[Budget]Data!A5", "a sheet on disk is rewritten");
+            t.Check(File.ReadAllText(notePath) == "x ![[Budget.sheet.xml#Data!A4:A5]] $\\sheet{Budget.sheet.xml#Data!A5}$\n",
+                $"a note's link and formula follow: {File.ReadAllText(notePath)}");
+
+            editor.Undo();
+            t.Check(cells.Get(2, 0) == "3" && cells.Get(3, 0) == "=SUM(A1:A3)" && cells.Get(0, 1) == "=A3*10" && page.rows == rowsBefore
+                && page.rowHeights.ContainsKey(2), "undo takes the rows out again");
+            t.Check(summaryPage.layers[0].Get(0, 0) == "=[Budget]Data!A3+1" && File.ReadAllText(notePath) == note, "and moves every reference back");
+
+            editor.Select(0, 0, false);
+            editor.Insert(true);
+            t.Check(cells.Get(0, 0) == null && cells.Get(0, 1) == "1" && cells.Get(0, 2) == "=B3*10" && cells.Get(3, 1) == "=SUM(B1:B3)",
+                "a column goes in left of the selection and its formulas follow");
+            t.Check(summaryPage.layers[0].Get(0, 0) == "=[Budget]Data!B3+1", "a loaded sheet's references follow the column");
+            editor.Undo();
+            t.Check(cells.Get(0, 0) == "1" && cells.Get(0, 1) == "=A3*10", "undo takes the column out");
+
+            t.Show(new StackPanelControl());
+            SheetBook.findSheet = findBefore;
+            SheetBook.vaultSheets = sheetsBefore;
+            SheetBook.vaultNotes = notesBefore;
+            foreach (string file in Directory.EnumerateFiles(folder, "*" + SheetDocument.extension))
+                SheetBook.Deleted(file);
+            Directory.Delete(folder, true);
+        }
+
         private static string BudgetSheet(string folder)
         {
             SheetDocument budget = SheetDocument.Blank("Budget");

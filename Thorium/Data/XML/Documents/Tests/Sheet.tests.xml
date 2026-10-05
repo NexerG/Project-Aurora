@@ -24,4 +24,7 @@
 	<Test Action="Sheet.Pages"/>
 	<Test Action="Sheet.Layers"/>
 	<Test Action="Sheet.Csv"/>
-	<Test Action="Sheet.CsvLinks"/></TestSuite>
+	<Test Action="Sheet.CsvLinks"/>
+	<Test Action="Sheet.FixedSize"/>
+	<Test Action="Sheet.GrowPopup"/>
+	<Test Action="Sheet.InsertShifts"/></TestSuite>

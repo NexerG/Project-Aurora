@@ -9,14 +9,14 @@ namespace ArctisAurora.Core.UI
     // What a line leaves open for the next one.
     public enum SyntaxState : byte
     {
-        None, BlockComment, XmlComment, XmlTag, TripleDouble, TripleSingle
+        None, BlockComment, XmlComment, XmlTag, TripleDouble, TripleSingle, TexMath
     }
 
     // Colours code a line at a time. C-like rules with per-language keywords, Python's # comments and
     // triple quotes, and an XML mode; any other language gets the C-like rules with common keywords.
     public static class SyntaxTokenizer
     {
-        private enum Mode { CLike, Python, Xml }
+        private enum Mode { CLike, Python, Xml, Latex }
 
         #region ---- keywords ----
         private static readonly HashSet<string> csharp = new HashSet<string>
@@ -68,6 +68,7 @@ namespace ArctisAurora.Core.UI
             return mode switch
             {
                 Mode.Xml => Xml(line, state, tokens),
+                Mode.Latex => Latex(line, state, tokens),
                 Mode.Python => Code(line, state, tokens, keywords, true),
                 _ => Code(line, state, tokens, keywords, false)
             };
@@ -79,6 +80,7 @@ namespace ArctisAurora.Core.UI
             "glsl" or "vert" or "frag" or "comp" or "geom" or "tesc" or "tese" => (Mode.CLike, glsl),
             "py" or "python" => (Mode.Python, python),
             "xml" or "xsd" or "html" or "svg" or "xaml" => (Mode.Xml, common),
+            "tex" or "latex" => (Mode.Latex, common),
             _ => (Mode.CLike, common)
         };
 
@@ -231,6 +233,84 @@ namespace ArctisAurora.Core.UI
                 i++;
             }
             return state;
+        }
+        #endregion
+
+        #region ---- LaTeX ----
+        private static readonly HashSet<string> units = new HashSet<string>
+        {
+            "pt", "pc", "in", "cm", "mm", "bp", "dd", "cc", "sp", "em", "ex", "mu", "fil", "fill", "filll"
+        };
+
+        // Control sequences as keywords, math as strings, % comments, numbers with their units.
+        private static SyntaxState Latex(string s, SyntaxState state, SyntaxToken[] tokens)
+        {
+            int i = 0;
+            int n = s.Length;
+            while (i < n)
+            {
+                char c = s[i];
+                if (c == '%')
+                {
+                    Fill(tokens, i, n, SyntaxToken.Comment);
+                    break;
+                }
+                if (state == SyntaxState.TexMath)
+                {
+                    int stop = i + 1;
+                    if (c == '$')
+                    {
+                        if (stop < n && s[stop] == '$') stop++;
+                        state = SyntaxState.None;
+                    }
+                    else if (c == '\\')
+                    {
+                        if (stop < n && s[stop] is ')' or ']') state = SyntaxState.None;
+                        stop = ControlEnd(s, i);
+                    }
+                    Fill(tokens, i, stop, SyntaxToken.String);
+                    i = stop;
+                    continue;
+                }
+                if (c == '$' || (c == '\\' && i + 1 < n && s[i + 1] is '(' or '['))
+                {
+                    int stop = c == '\\' || (i + 1 < n && s[i + 1] == '$') ? i + 2 : i + 1;
+                    Fill(tokens, i, stop, SyntaxToken.String);
+                    state = SyntaxState.TexMath;
+                    i = stop;
+                    continue;
+                }
+                if (c == '\\')
+                {
+                    int stop = ControlEnd(s, i);
+                    Fill(tokens, i, stop, SyntaxToken.Keyword);
+                    i = stop;
+                    continue;
+                }
+                if ((char.IsDigit(c) || (c == '.' && i + 1 < n && char.IsDigit(s[i + 1]))) && (i == 0 || !char.IsLetter(s[i - 1])))
+                {
+                    int stop = i + 1;
+                    while (stop < n && (char.IsDigit(s[stop]) || s[stop] == '.')) stop++;
+                    int unit = stop;
+                    while (unit < n && char.IsAsciiLetterLower(s[unit])) unit++;
+                    if (units.Contains(s[stop..unit])) stop = unit;
+                    Fill(tokens, i, stop, SyntaxToken.Number);
+                    i = stop;
+                    continue;
+                }
+                i++;
+            }
+            return state;
+        }
+
+        // Past a control word's letters, or past a control symbol's one character.
+        private static int ControlEnd(string s, int backslash)
+        {
+            int stop = backslash + 1;
+            if (stop >= s.Length) return stop;
+            if (!char.IsLetter(s[stop])) return stop + 1;
+            while (stop < s.Length && char.IsLetter(s[stop])) stop++;
+            return stop;
         }
         #endregion
 

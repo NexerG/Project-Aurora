@@ -33,6 +33,8 @@ A sheet file holds pages, and each page holds layers stacked over the same grid.
 
 Only the cells inside the viewport have controls. The grid keeps a pool of labels and lines and rebinds them to whatever cells are in view, so a sheet of ten thousand rows costs the same number of controls as one of twenty.
 
+A sheet is one of two types, chosen when it is created. An unfixed sheet is an open grid: it measures to the cells in use plus 100 rows and 26 columns, and past the active cell, so there is always empty room to type into. A fixed sheet has a stored size per page, 25 rows by 25 columns for a new sheet and for every page added to it, and the grid ends there. Both types are opened, edited, saved and referenced the same way.
+
 ## File format
 
 ```xml
@@ -50,6 +52,8 @@ Only the cells inside the viewport have controls. The grid keeps a pool of label
 ```
 
 Empty cells are not written. Cells are written row by row, and so are formats, after the rows and columns of the page. A file without `Format` elements loads unchanged. An element the reader does not know is kept and written back unchanged.
+
+A fixed sheet writes `Fixed="true"` on the `Sheet` element and `Rows` and `Columns` on each `Page`; an unfixed sheet writes none of them, so every file from before fixed sheets opens as unfixed. When a fixed sheet is read, a page's size is the larger of its attribute (25 when missing) and the extent its cells use, so a cell is never outside its page. A CSV file is always unfixed.
 
 ## Formulas
 
@@ -86,6 +90,22 @@ Renaming a page rewrites every reference to it across the vault, because a renam
 The "Layers" button opens a panel above the strip with one row per layer, the top layer first. A dot at the left of a row is filled while the layer is visible and an outline while it is hidden, and clicking it toggles that. The layer being edited is lit, and clicking a layer's name picks it. "Add layer" puts a new layer on top and makes it the edited one, and "Delete layer" deletes the edited layer, except that the last layer stays. Adding, deleting and showing or hiding a layer are undo steps, and every formula is recalculated afterwards.
 
 The grid shows the topmost visible layer's text, while an edit goes into the picked layer, and the open cell field shows that layer's own text. The picked layer belongs to the editor and is not saved. Not done yet: reordering pages, remembering the selection per page, renaming or reordering layers, dimming cells that are not on the edited layer, and a visible sign that an edit went into a hidden layer.
+
+## Fixed sheets and growing
+
+The "New sheet" entries of the vault menus open a submenu with "Fixed size" and "Unfixed". The type cannot be changed afterwards.
+
+On a fixed sheet the selection is clamped to the page, and the grid, its lines and its cells stop at the page edge. A strip 20 pixels wide runs along the whole bottom edge and the whole right edge, each showing a "+". The strips sit 4 pixels clear of the grid and of each other, with the palette's rounded corners, and fade from the palette's Field colour at the centre to its Accent colour at the edges, which reads white to blue on the light palette. Left-clicking a strip adds one row or column. Shift+left-click adds the number set under Sheets in the Settings window, 10 by default. Right-clicking a strip opens a small popup with an "Add horizontal" box (columns) and an "Add vertical" box (rows), both starting at 0. The bottom strip focuses "Add vertical" and the right strip "Add horizontal", Tab swaps them, Enter grows the page once by both amounts, and Esc or a click outside cancels. Anything that is not a number counts as 0. Each grow is one undo step, and undoing it shrinks the page again.
+
+Pasting past the edge of a fixed page grows the page to fit, in the same undo step as the paste.
+
+## Inserting rows and columns
+
+Both sheet types can grow upwards and leftwards by inserting. The grid's right-click menu has "Insert rows above" and "Insert columns left", which insert as many rows or columns as the selection spans, before the selection, the way Excel does. The cells, formats and column widths or row heights at and after the insertion move over, and on a fixed sheet the page grows by the same amount.
+
+Every reference to a moved cell is rewritten to follow it: formulas on the same page, formulas on other pages, formulas in other loaded sheets and in sheets only on disk, links to the cells in notes, and `\sheet{…}` in note math. The two ends of a range move independently, so a range that spans the insertion grows and a range below it moves whole. Undo moves everything back.
+
+Not done yet: deleting rows and columns, changing a sheet's type after creation, a size field when creating a sheet. Undoing an insert does not touch a reference another file wrote into the inserted rows after the insert, because that file is not on this sheet's undo stack, so its reference keeps pointing at whichever row slides into place. Two quick clicks on the same spot of the bottom strip do not both grow, because the strip moves down a row after the first; Shift+click or the popup adds several.
 
 ## CSV files
 
@@ -155,6 +175,8 @@ A linked cell shows its number format but not its bold or fill, and a linked ran
 | `EditLayer(layer)` | public | Picks the layer that edits go into. |
 | `ToggleLayer(layer)` | public | Shows or hides a layer, as one undo step. |
 | `AddLayer()` / `DeleteLayer()` | public | Adds a layer on top and edits it, or deletes the edited layer; the last layer stays. |
+| `Grow(rows, columns)` | public | Adds that many rows and columns to a fixed page, as one undo step labelled "Grow page". |
+| `Insert(column)` | public | Inserts rows above (or columns left of) the selection, as many as it spans, and shifts every reference vault-wide, as one undo step. |
 
 ## Methods
 
@@ -230,6 +252,31 @@ A linked cell shows its number format but not its bold or fill, and a linked ran
 	write the rows as comma-separated records, quoting where needed, a CRLF after each
 	write them as UTF-8 with a BOM to "<Sheet> - <Page>.csv" beside the sheet, replacing an earlier export
 
+### Growing a fixed page
+	if the document is not fixed, or both amounts are 0, do nothing
+	commit an open edit
+	read the page's size
+	extend the page by the amounts, which only ever grows it
+	record the size before and after as one undo step, labelled "Grow page"
+
+### Inserting rows or columns
+	count is the number of rows or columns the selection spans
+	at is the selection's first row or column
+	shift the page
+		for each layer
+			move every cell at or after at over by count
+		move every format, and every column width or row height, at or after at over by count
+		add count to the page's size
+	for each formula on this sheet
+		move the endpoints of every reference to this page at or after at over by count
+	for each other sheet, loaded or on disk
+		do the same for references that name this sheet's file and page
+		save a loaded sheet no tab has open
+	for each note in the vault, open or on disk
+		move the endpoints of every link and \sheet{…} that names this page
+	recalculate every formula
+	all of the above is one undo step; undoing it shifts by minus count, first dropping the count bands at at, and rewrites the references back
+
 ### Arrange
 	lay out the viewport and the grid
 	if a restored view is waiting
@@ -240,7 +287,7 @@ A linked cell shows its number format but not its bold or fill, and a linked ran
 
 ## Keys
 
-`Sheet.*` actions sit on the same keys as the `Text.*` ones and do nothing unless a sheet has the keyboard. Arrows move (Shift extends), Enter and Tab commit and step (Shift reverses), F2 edits, Delete and Backspace clear, typing replaces the cell, Ctrl+Z / Ctrl+Y undo and redo, Ctrl+S saves, Ctrl+A selects the used range, Ctrl+B toggles bold, Ctrl+Shift+V pastes a link. Esc and the arrows inside an open cell belong to the field. `Sheet.PasteLink` is the one exception to doing nothing without a sheet: outside one it runs Paste link in the note (a plain paste when no link applies), because its Ctrl+Shift+V bind sits ahead of Ctrl+V and would otherwise take that key from notes.
+`Sheet.*` actions sit on the same keys as the `Text.*` ones and do nothing unless a sheet has the keyboard. Arrows move (Shift extends), Enter and Tab commit and step (Shift reverses), F2 edits, Delete and Backspace clear, typing replaces the cell, Ctrl+Z / Ctrl+Y undo and redo, Ctrl+S saves, Ctrl+A selects the used range, Ctrl+B toggles bold, Ctrl+Shift+V pastes a link. Esc and the arrows inside an open cell belong to the field. `Sheet.PasteLink` is the one exception to doing nothing without a sheet: outside one it runs Paste link in the note (a plain paste when no link applies), because its Ctrl+Shift+V bind sits ahead of Ctrl+V and would otherwise take that key from notes. "Insert rows above" and "Insert columns left" are entries of the grid's right-click menu (`Sheet.InsertRowsAbove`, `Sheet.InsertColumnsLeft`). While the grow popup is open, Tab and Shift+Tab swap its two boxes.
 
 ## Related
 - [[Text Box]] — the field a cell is edited in

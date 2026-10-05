@@ -54,7 +54,7 @@ Any control names one through `Gradient`, and it ramps in place of that control'
 <Run Text="Welcome to Thorium" Gradient="accent"/>
 ```
 
-`Angle` is degrees, `0` running left to right and `90` top to bottom, since +y is down. The ramp spans the control corner to corner for whatever angle it names, so a diagonal does not skew on a wide control. `Kind="Radial"` ignores `Angle` and ramps outward from `CenterX`/`CenterY` as an ellipse fitted to the control's farthest corner.
+`Angle` is degrees, `0` running left to right and `90` top to bottom, since +y is down. The ramp spans the control corner to corner for whatever angle it names, so a diagonal does not skew on a wide control. `Kind="Radial"` ignores `Angle` and ramps outward from `CenterX`/`CenterY` as an ellipse fitted to the control's farthest corner. `Kind="Box"` ignores both and ramps in from the nearest edge, measured against the shorter half-side, so a stop's `Pos` gives a band of the same width on every side however long the control is.
 
 A stop's `Alpha` multiplies the coverage the control already has, so a ramp ending at `Alpha="0"` fades out rather than fading to black.
 

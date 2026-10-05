@@ -26,7 +26,7 @@ VerifiedAgainst: 2026-05-30
 ---
 ## Description
 
-Parses a TrueType (`.ttf`) font and bakes an **MTSDF** glyph atlas. Two roles: (1) a serializable container for the font's table directory + character set (loaded from `.afm`), and (2) the static atlas generator that reads the `.ttf` tables, reconstructs glyph outlines, colors their edges, and renders a multi-channel-plus-true-distance atlas PNG along with the `.agd` metadata ([[Atlas Meta Data]]).
+Parses a TrueType (`.ttf`) or CFF (`.otf`, Type 2 charstrings) font and bakes an **MTSDF** glyph atlas. Two roles: (1) a serializable container for the font's table directory + character set (loaded from `.afm`), and (2) the static atlas generator that reads the `.ttf` tables, reconstructs glyph outlines, colors their edges, and renders a multi-channel-plus-true-distance atlas PNG along with the `.agd` metadata ([[Atlas Meta Data]]).
 
 > Text rendering is an active WIP area. The pipeline now produces **MTSDF** (RGB edge channels + an alpha "true distance" channel), having moved on from plain MSDF.
 
@@ -58,8 +58,8 @@ Reads the `FontMeta`, the `TableEntry` directory, and the character list from th
 Reads the `.ttf` from the **system fonts folder** (`Environment.SpecialFolder.Fonts`), then:
 	`maxp` â†’ glyph count
 	`head` â†’ `unitsPerEm` + `indexToLocFormat`
-	`loca` â†’ glyph offsets
-	per character: `cmap` (`GetGlyphIndex`) â†’ `glyf` (`GetGlyphOutline`) â†’ a [[Glyph]] of bezier contours
+	`loca` (TrueType only) â†’ glyph offsets
+	per character: `cmap` (`GetGlyphIndex`) â†’ `glyf` (`GetGlyphOutline`) or `CFF ` (`GetCffGlyph`) â†’ a [[Glyph]] of bezier contours
 	`hhea`/`hmtx` â†’ `advanceWidth` + left side bearings
 	derive `tsb`
 	serialize the [[Atlas Meta Data]] â†’ `.agd`
@@ -71,6 +71,10 @@ Reads the `.ttf` from the **system fonts folder** (`Environment.SpecialFolder.Fo
 - `GetGlyphIndex` â€” `cmap` format-4 segmented lookup (char â†’ glyph index).
 - `GetGlyphOutline` â€” parse `glyf` contours into beziers, `BuildEdges`, then assign MSDF **edge colors** (R/G/B) by corner detection so channels can be combined.
 - `GenerateMTSDF` â€” per pixel: three per-channel signed distances + a true distance, packed into RGBA.
+- `GetCffGlyph` — a font with a `CFF ` table: `CffOutlines.Read` reads the CharStrings, global and local subr INDEXes, `CffOutlines.Interpret` runs the Type 2 charstring into beziers (cubic controls flagged `isCubicControl`), `CffOutlines.Bounds` takes the exact ink box including cubic extrema, then `Normalise`.
+- `Normalise` — shared by `GetGlyphOutline` and `GetCffGlyph`: unit-box normalisation, `BuildEdges`, `MTSDFGen.ColorEdges`.
+- Empty glyph — a glyph with no contours takes `glyphHeight = lineHeight` and `glyphWidth = advanceWidth`; a glyph exactly one em tall or wide (LM Math ∑, √) is a normal glyph, not empty.
+- Font source lookup — `AssetImporter.ResolveSystemFont` probes the machine font folder, the per-user font folder, then `<repo>/_Build/FontSources/` (gitignored). Fonts bake only in Debug; without the source the committed atlas is kept and a Warn is logged.
 - `GetClosestDistanceOfChannel` Â· `ClosestTOnBezier` (coarse sample + Newton refinement) Â· `ComputeWindingNumber` (ray-cast via quadratic roots) Â· `SolveCubic` / `SolveQuadratic`.
 
 ## Related

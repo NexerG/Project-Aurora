@@ -3,7 +3,7 @@ using System.Xml.Linq;
 
 namespace ArctisAurora.Core.UI
 {
-    // <Sheet Name><Page Name><Column At Width/><Row At Height/><Format At Bold Fill Number/><Layer Name Visible><Cell At>text</Cell></Layer></Page></Sheet>
+    // <Sheet Name Fixed><Page Name Rows Columns><Column At Width/><Row At Height/><Format At Bold Fill Number/><Layer Name Visible><Cell At>text</Cell></Layer></Page></Sheet>
     public static class SheetXml
     {
         public static SheetDocument Load(string path) =>
@@ -20,11 +20,15 @@ namespace ArctisAurora.Core.UI
         #region ---- read ----
         public static SheetDocument Parse(XElement root)
         {
-            SheetDocument document = new SheetDocument { name = (string?)root.Attribute("Name") };
+            SheetDocument document = new SheetDocument
+            {
+                name = (string?)root.Attribute("Name"),
+                fixedSize = (string?)root.Attribute("Fixed") == "true"
+            };
 
             foreach (XElement element in root.Elements())
             {
-                if (element.Name.LocalName == "Page") document.pages.Add(ReadPage(element));
+                if (element.Name.LocalName == "Page") document.pages.Add(ReadPage(element, document.fixedSize));
                 else document.extra.Add(new XElement(element));
             }
 
@@ -32,9 +36,14 @@ namespace ArctisAurora.Core.UI
             return document;
         }
 
-        private static SheetPage ReadPage(XElement element)
+        private static SheetPage ReadPage(XElement element, bool fixedSize)
         {
             SheetPage page = new SheetPage { name = (string?)element.Attribute("Name") ?? "" };
+            if (fixedSize)
+            {
+                page.rows = Count(element, "Rows") ?? SheetPage.defaultSize;
+                page.columns = Count(element, "Columns") ?? SheetPage.defaultSize;
+            }
 
             foreach (XElement child in element.Elements())
             {
@@ -71,6 +80,8 @@ namespace ArctisAurora.Core.UI
             }
 
             if (page.layers.Count == 0) page.layers.Add(new SheetLayer { name = "Layer 1" });
+            (int rows, int columns) used = page.Used();
+            page.Extend(used.rows, used.columns);
             return page;
         }
 
@@ -98,6 +109,11 @@ namespace ArctisAurora.Core.UI
             float.TryParse((string?)element.Attribute(attribute), NumberStyles.Float, CultureInfo.InvariantCulture, out float value) && value > 0f
                 ? value
                 : null;
+
+        private static int? Count(XElement element, string attribute) =>
+            int.TryParse((string?)element.Attribute(attribute), NumberStyles.None, CultureInfo.InvariantCulture, out int value) && value > 0
+                ? value
+                : null;
         #endregion
 
         #region ---- write ----
@@ -106,10 +122,16 @@ namespace ArctisAurora.Core.UI
         {
             XElement root = new XElement("Sheet");
             if (document.name != null) root.SetAttributeValue("Name", document.name);
+            if (document.fixedSize) root.SetAttributeValue("Fixed", "true");
 
             foreach (SheetPage page in document.pages)
             {
                 XElement pageElement = new XElement("Page", new XAttribute("Name", page.name));
+                if (document.fixedSize)
+                {
+                    pageElement.SetAttributeValue("Rows", page.rows.ToString(CultureInfo.InvariantCulture));
+                    pageElement.SetAttributeValue("Columns", page.columns.ToString(CultureInfo.InvariantCulture));
+                }
 
                 foreach (KeyValuePair<int, float> column in page.columnWidths.OrderBy(c => c.Key))
                     pageElement.Add(new XElement("Column",

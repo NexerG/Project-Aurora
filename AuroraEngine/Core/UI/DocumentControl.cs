@@ -2122,7 +2122,7 @@ namespace ArctisAurora.Core.UI
         private bool EndCodeBlock()
         {
             BlockControl block = caretBlock;
-            if (block.stylingType != TextStyleType.Code || block.Length != 0) return false;
+            if (plainText || block.stylingType != TextStyleType.Code || block.Length != 0) return false;
 
             List<BlockControl> blocks = Blocks();
             int index = blocks.IndexOf(block);

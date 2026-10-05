@@ -7,6 +7,7 @@
 
 ## Sheet cells in formulas (sheets S2c, 2026-10-04)
 - A formula may hold `\sheet{Budget.sheet.xml#Data!B1}`: `TextRunControl.MathBoxFor` caches and parses `SheetLinks.ExpandMath(source)`, not the source. Number → `{value}`, text → `\text{value}`, range → `\text{#VALUE!}`, missing → `\text{#REF!}`.
+- A math run's `FontName` picks its math face when that asset has MATH constants (else the `"math"` asset); `TextRunControl.mathBoxes` is keyed `(source, display, FontAsset)`. `MathLayout.Present` falls back to the Regular face when the requested face lacks a character (L3; LM Math's italic has no Greek).
 - A changed cell value is a new cache key, so the cache never goes stale; `MathParser` is unchanged and still pure. Substitution only — nothing is evaluated. Rationale and gaps: [[sheets]] § S2c.
 - `FormulaPopup.PasteLink` (Ctrl+Shift+V in the source box) inserts `\sheet{ref}` for the last copied sheet cells; a sheet rename rewrites the references in open notes and on disk (`SheetLinks.RenameMath`).
 
@@ -64,7 +65,7 @@
 ## Why these choices
 
 **Cambria Math from the OS, not a bundled font.**
-Face 1 of `cambria.ttc` is TrueType (`glyf`/`loca`) with a `MATH` table and a format-4 BMP cmap, so the existing outline reader takes it after one header read. Latin Modern Math and most STIX builds are CFF, which would need a Type 2 charstring parser. It is resolved from the system font folder like Arial, so nothing is redistributed; the cost is Windows-only math, the same constraint every engine font already has.
+Face 1 of `cambria.ttc` is TrueType (`glyf`/`loca`) with a `MATH` table and a format-4 BMP cmap, so the existing outline reader takes it after one header read. Latin Modern Math and most STIX builds are CFF, which would need a Type 2 charstring parser (landed in L2, see [[latex-editor]]). It is resolved from the system font folder like Arial, so nothing is redistributed; the cost is Windows-only math, the same constraint every engine font already has.
 
 **Variables come from Cambria Italic, not from math-italic code points.**
 Math italic lives at U+1D434…, outside the BMP; the atlas, `AtlasMetaData.chars` and `GetGlyphAndIndex` are `char`-keyed. Declaring `cambriai.ttf` as the Italic face reuses the four-face bake. A face missing a character bakes `.notdef`, so the bold and italic blocks hold boxes for every operator — never drawn, because only letters are styled.

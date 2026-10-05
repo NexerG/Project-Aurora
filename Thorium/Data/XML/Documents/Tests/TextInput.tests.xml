@@ -88,4 +88,6 @@
 	<Test Action="TextInput.MathEscReverts"/>
 	<Test Action="TextInput.MathClickSelects"/>
 	<Test Action="TextInput.MathDoubleClickOpens"/>
+	<Test Action="Tex.SourceEnterPaste"/>
+	<Test Action="Tex.SourceColours"/>
 </TestSuite>

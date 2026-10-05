@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ContextMenu>
 	<ContextButton Text="New note" Action="Notes.NewHere"/>
-	<ContextButton Text="New sheet" Action="Sheets.NewHere"/>
+	<ContextSubmenu Text="New sheet">
+		<ContextButton Text="Fixed size" Action="Sheets.NewFixedHere"/>
+		<ContextButton Text="Unfixed" Action="Sheets.NewHere"/>
+	</ContextSubmenu>
 </ContextMenu>

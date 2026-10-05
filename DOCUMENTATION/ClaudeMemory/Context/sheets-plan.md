@@ -1,6 +1,6 @@
 # Sheets plan — spreadsheet editing in Thorium
 
-**Status:** S1 landed 2026-10-02; S2a, S2b1, S2b2 2026-10-03. S2b3, S2c, S3, S4a and S4b 2026-10-04; S5 and S5b 2026-10-05. S2d is open (not designed);
+**Status:** S1 landed 2026-10-02; S2a, S2b1, S2b2 2026-10-03. S2b3, S2c, S3, S4a and S4b 2026-10-04; S5, S5b and S6 2026-10-05. S2d is open (not designed);
 nothing else is planned.
 Decision record: [sheets](../Decisions/sheets.md). Part of the Thorium productivity suite (WIP list, Phase A):
 notes, sheets and a todo board under Blender-style workspace tabs, plus a simplified mode with familiar layouts.
@@ -66,6 +66,7 @@ notes, sheets and a todo board under Blender-style workspace tabs, plus a simpli
 | S4b | layers panel — show/hide, pick the edited layer, add, delete | landed 2026-10-04 |
 | S5 | CSV: a `.csv` opens in place as one page (saved back raw, own delimiter and BOM), Create a sheet from this / Convert to sheet in the vault menu, Export as CSV per page | landed 2026-10-05 |
 | S5b | references into a CSV — `[data.csv]data!A1` in sheets, note links and `\sheet{…}`; Paste link from a CSV tab; a CSV references nothing outside itself; CSV rename and convert rewrite references | landed 2026-10-05 |
+| S6 | fixed-size sheets (type chosen at creation, 25 x 25 pages, "+" grow strips and grow popup, paste past the edge grows) and insert rows above / columns left with vault-wide reference shifting | landed 2026-10-05 |
 
 ## Owed for S2b3 — resolved 2026-10-04
 - Done: Ctrl+Shift+V stays on `Sheet.PasteLink`, which falls back to `Text.PasteLink` outside a sheet — `Text.PasteLink`
