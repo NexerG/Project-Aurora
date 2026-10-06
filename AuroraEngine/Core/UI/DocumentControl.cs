@@ -2981,19 +2981,25 @@ namespace ArctisAurora.Core.UI
             return (below ? row : row + 1, column, true);
         });
 
-        // The new column takes the caret column's width.
+        // The new column takes the caret column's width; a merged cell it falls inside widens over it.
         internal bool InsertTableColumn(bool right) => ChangeTable((xml, row, column) =>
         {
             XNamespace ns = xml.Name.Namespace;
-            XElement caretColumn = Named(xml, "Column")[column];
-            XElement added = new XElement(ns + "Column", new XAttribute("Width", (string)caretColumn.Attribute("Width")!));
-            if (right) caretColumn.AddAfterSelf(added);
-            else caretColumn.AddBeforeSelf(added);
+            List<XElement> columns = Named(xml, "Column");
+            int at = right ? column + Span(Covering(Named(xml, "Row")[row], column).cell) : column;
+            XElement added = new XElement(ns + "Column", new XAttribute("Width", (string)columns[column].Attribute("Width")!));
+            if (at < columns.Count) columns[at].AddBeforeSelf(added);
+            else columns[^1].AddAfterSelf(added);
 
             foreach (XElement r in Named(xml, "Row"))
             {
-                XElement cell = Named(r, "Cell")[column];
-                if (right) cell.AddAfterSelf(new XElement(ns + "Cell"));
+                if (at >= columns.Count)
+                {
+                    r.Add(new XElement(ns + "Cell"));
+                    continue;
+                }
+                (XElement cell, int start) = Covering(r, at);
+                if (start < at) SetSpan(cell, Span(cell) + 1);
                 else cell.AddBeforeSelf(new XElement(ns + "Cell"));
             }
             return (row, right ? column : column + 1, true);
@@ -3022,8 +3028,46 @@ namespace ArctisAurora.Core.UI
                 List<XElement> columns = Named(xml, "Column");
                 columns[column].Remove();
                 foreach (XElement r in Named(xml, "Row"))
-                    Named(r, "Cell")[column].Remove();
+                {
+                    XElement cell = Covering(r, column).cell;
+                    if (Span(cell) > 1) SetSpan(cell, Span(cell) - 1);
+                    else cell.Remove();
+                }
                 return (row, Math.Min(column, columns.Count - 2), false);
+            });
+        }
+
+        // The next cell's blocks join the caret's, an empty side dropped; refused on a row's last cell.
+        internal bool MergeTableCellRight()
+        {
+            if (caretBlock?.parent is not StackPanelControl caretCell || caretCell.parent is not TableControl table
+                || caretCell.gridColumn + table.ColumnSpan(caretCell) >= table.widths.Count) return false;
+
+            return ChangeTable((xml, row, column) =>
+            {
+                XElement cell = Covering(Named(xml, "Row")[row], column).cell;
+                XElement next = cell.ElementsAfterSelf().First();
+                if (EmptyCell(cell)) cell.RemoveNodes();
+                if (!EmptyCell(next) || !cell.HasElements) cell.Add(next.Elements());
+                SetSpan(cell, Span(cell) + Span(next));
+                next.Remove();
+                return (row, column, true);
+            });
+        }
+
+        // A merged cell back to single cells, its blocks kept in the first; refused on a single cell.
+        internal bool SplitTableCell()
+        {
+            if (caretBlock?.parent is not StackPanelControl caretCell || caretCell.parent is not TableControl table
+                || table.ColumnSpan(caretCell) == 1) return false;
+
+            return ChangeTable((xml, row, column) =>
+            {
+                XElement cell = Covering(Named(xml, "Row")[row], column).cell;
+                for (int i = 1; i < Span(cell); i++)
+                    cell.AddAfterSelf(new XElement(cell.Name));
+                SetSpan(cell, 1);
+                return (row, column, true);
             });
         }
 
@@ -3113,6 +3157,27 @@ namespace ArctisAurora.Core.UI
 
         private static List<XElement> Named(XElement parent, string name) =>
             parent.Elements().Where(e => e.Name.LocalName == name).ToList();
+
+        // The <Cell> of a <Row> covering a column, and the column it starts at.
+        private static (XElement cell, int start) Covering(XElement row, int column)
+        {
+            List<XElement> cells = Named(row, "Cell");
+            int start = 0;
+            foreach (XElement cell in cells)
+            {
+                if (column < start + Span(cell)) return (cell, start);
+                start += Span(cell);
+            }
+            return (cells[^1], start - Span(cells[^1]));
+        }
+
+        private static int Span(XElement cell) => Math.Max(1, (int?)cell.Attribute("ColumnSpan") ?? 1);
+
+        // A cell holding at most one block whose runs carry nothing.
+        private static bool EmptyCell(XElement cell) => Named(cell, "Block").Count <= 1
+            && !cell.Descendants().Any(e => e.Name.LocalName == "Run" && e.Attributes().Any(a => a.Value.Length > 0));
+
+        private static void SetSpan(XElement cell, int span) => cell.SetAttributeValue("ColumnSpan", span > 1 ? span : (object?)null);
         #endregion
 
         #region ---- pages ----

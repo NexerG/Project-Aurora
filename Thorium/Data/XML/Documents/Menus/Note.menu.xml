@@ -15,6 +15,9 @@
 		<ContextButton Text="Insert column left" Action="Table.ColumnLeft"/>
 		<ContextButton Text="Insert column right" Action="Table.ColumnRight"/>
 		<ContextLine/>
+		<ContextButton Text="Merge cell right" Action="Table.MergeRight"/>
+		<ContextButton Text="Split cell" Action="Table.Split"/>
+		<ContextLine/>
 		<ContextButton Text="Delete row" Action="Table.DeleteRow"/>
 		<ContextButton Text="Delete column" Action="Table.DeleteColumn"/>
 		<ContextButton Text="Delete table" Action="Table.Delete"/>

@@ -12,6 +12,7 @@ namespace ArctisAurora.Core.UI
         public readonly List<float> widths;
 
         // cell borders, laid over the cells
+        public bool showBorders = true;
         private readonly List<PanelControl> borders = new List<PanelControl>();
 
         // column edges, one per column, over the borders
@@ -37,22 +38,24 @@ namespace ArctisAurora.Core.UI
                 columnDefinitions.Add(new ColumnDefinition { sizeMode = GridSizeMode.Fixed, value = width });
         }
 
-        // Appends a row, one block list per column; a cell given none gets an empty block.
-        public void AddRow(List<List<BlockControl>> cells)
+        // Appends a row, one block list per cell spanning spans[i] columns; a cell given none gets an empty block.
+        public void AddRow(List<List<BlockControl>> cells, List<int>? spans = null)
         {
             int row = rowDefinitions.Count;
             rowDefinitions.Add(new RowDefinition { sizeMode = GridSizeMode.Auto });
 
-            for (int c = 0; c < widths.Count; c++)
+            for (int c = 0, i = 0; c < widths.Count; i++)
             {
+                int span = Math.Clamp(spans != null && i < spans.Count ? spans[i] : 1, 1, widths.Count - c);
                 StackPanelControl cell = new StackPanelControl
                 {
                     gridRow = (short)row,
                     gridColumn = (short)c,
                     margin = new Thickness(cellInset * zoom)
                 };
+                c += span;
 
-                List<BlockControl> blocks = c < cells.Count ? cells[c] : new List<BlockControl>();
+                List<BlockControl> blocks = i < cells.Count ? cells[i] : new List<BlockControl>();
                 if (blocks.Count == 0)
                 {
                     BlockControl empty = new BlockControl();
@@ -63,6 +66,7 @@ namespace ArctisAurora.Core.UI
                 foreach (BlockControl block in blocks)
                     cell.AddChild(block);
                 AddChild(cell);
+                if (span > 1) SetColumnSpan(cell, span);
             }
         }
 
@@ -76,9 +80,9 @@ namespace ArctisAurora.Core.UI
 
         public int RowCount => rowDefinitions.Count;
 
-        // A cell's blocks by grid position.
+        // A cell's blocks by grid position; a column inside a span gives the spanning cell's.
         internal List<BlockControl> CellBlocks(int row, int column) =>
-            Cells()[row * widths.Count + column].children.OfType<BlockControl>().ToList();
+            Cells().Last(c => c.gridRow == row && c.gridColumn <= column).children.OfType<BlockControl>().ToList();
 
         // Cells in reading order.
         public List<StackPanelControl> Cells()
@@ -222,20 +226,20 @@ namespace ArctisAurora.Core.UI
         // Top and left on every cell, right on the last column, bottom where no row follows directly.
         private void ArrangeBorders()
         {
-            List<StackPanelControl> cells = Cells();
+            List<StackPanelControl> cells = showBorders ? Cells() : new List<StackPanelControl>();
             int used = 0;
 
             for (int i = 0; i < cells.Count; i++)
             {
                 LayoutRect box = Box(cells[i]);
-                bool lastColumn = cells[i].gridColumn == widths.Count - 1;
-                int below = i + widths.Count;
+                int row = cells[i].gridRow;
+                bool lastColumn = cells[i].gridColumn + ColumnSpan(cells[i]) == widths.Count;
 
                 Border(used++).Arrange(new LayoutRect(box.x, box.y, box.width, borderWidth));
                 Border(used++).Arrange(new LayoutRect(box.x, box.y, borderWidth, box.height));
                 if (lastColumn)
                     Border(used++).Arrange(new LayoutRect(box.Right - borderWidth, box.y, borderWidth, box.height));
-                if (below >= cells.Count || Box(cells[below]).y > box.Bottom + 0.5f)
+                if (row == rowDefinitions.Count - 1 || rowDefinitions[row].gapAfter > 0.5f)
                     Border(used++).Arrange(new LayoutRect(box.x, box.Bottom - borderWidth, box.width, borderWidth));
             }
 

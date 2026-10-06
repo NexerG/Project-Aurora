@@ -103,7 +103,7 @@ namespace ArctisAurora.Core.UI
             Profiling.Zone.Start("Tex.Compile");
             string text = TexSourceFormat.Write(DocumentXml.ToXml(source.activeDocument), "\n");
             blockLines.Clear();
-            XElement tree = TexLowering.Compile(text, out List<TexError> found, blockLines);
+            XElement tree = TexLowering.Compile(text, out List<TexError> found, blockLines, path == null ? null : Path.GetDirectoryName(path));
             RichTextDocument document = DocumentXml.Parse(tree);
             document.readOnly = true;
             Vector2 scroll = preview.GetScrollOffset();

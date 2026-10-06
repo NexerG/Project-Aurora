@@ -626,7 +626,8 @@ for each cell
 	if the cell is in the last column, line down its right side
 	if no row follows directly below, line along the bottom of `box`
 
-On disk a table is `<Table>` holding `<Column Width>` elements and `<Row>`s of `<Cell>`s, each cell holding `<Block>`s written exactly as the note's own. Tables live only in `.xml` notes; the Markdown and plain-text writers skip them.
+On disk a table is `<Table>` holding `<Column Width>` elements and `<Row>`s of `<Cell>`s, each cell holding `<Block>`s written exactly as the note's own. Tables live only in `.xml` notes; the Markdown and plain-text writers skip them. A `<Cell ColumnSpan="n">` spans n columns and `<Table Borders="false">` draws no borders; both are absent when the span is 1 and borders are on.
+A cell may span several columns. Rows are stored short, with no placeholder cells behind a spanning cell, and the cell at a grid position is found by its spans, so inserting a column inside a span widens it and deleting one inside a span shrinks it. The Table submenu's Merge cell right makes the caret's cell absorb the next cell in its row, appending its blocks and dropping an empty side; it is refused on a row's last cell. Split cell turns a merged cell back into single cells with the content in the first, and is refused on a single cell. Each is one undo step. Row spans are not supported.
 
 ### Editing a table
 Right-click ▸ Insert table puts a three-by-three table after the caret's paragraph, its columns splitting the text width evenly. A `.md` or `.txt` note refuses it, because it could not save it, and so does a caret already inside a table. When the caret's paragraph is the last thing in the note it is split at its end first, so there is always a paragraph after a table to type into. The Table submenu inserts a row above or below the caret's, a column left or right of it, and deletes the row, the column or the whole table; deleting the last row or column deletes the table.

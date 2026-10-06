@@ -1932,6 +1932,16 @@ namespace ArctisAurora.Core.Tex
 
         public void Insert(TexToken[] tokens) => Push(tokens);
 
+        // Source text read with the current catcodes and inserted, its tokens carrying no position.
+        public void InsertSource(string text)
+        {
+            TexReader inserted = new TexReader(text, "", c => catcodes.Get(c), (message, _, _) => Error(message));
+            List<TexToken> tokens = new List<TexToken>();
+            while (inserted.Next(out TexToken t))
+                tokens.Add(t.IsCs ? TexToken.Cs(t.name!) : TexToken.Char(t.ch, t.cat));
+            Push(tokens.ToArray());
+        }
+
         // Whether the next token comes from the source itself, so raw characters can be read.
         public bool CanReadRaw => !input.Exists(l => l.index < l.tokens.Length);
 

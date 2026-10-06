@@ -231,7 +231,7 @@ Why: [[ui-palettes]].
   (`FirstRowHeight`, `Paginate` — page pushes written into `gapAfter`, zeroed again in `MeasureCore`); borders
   are `PanelControl`s appended to `children` past the cell assignments, and so are the column grips (nested
   private `ColumnGrip`, one per column on its right edge; region `column resize`: `BeginResize`/`Resize`/`EndResize`
-  → `DocumentControl.RecordTableResize`). `RowCount`, `CellBlocks(row, column)`. Lives inside the horizontal
+  → `DocumentControl.RecordTableResize`). `RowCount`, `CellBlocks(row, column)` (finds the cell covering that grid position); `showBorders` (default true; borders honour spans and the flag); `AddRow(cells, spans)`; column spans via `GridListControl.ColumnSpan`/`SetColumnSpan`. Lives inside the horizontal
   `ScrollableControl` that `Hosted()` builds, for both `LoadDocument` and `DocumentControl.PutTable`. [[document-tables]]
 - **DocumentEditorControl** `<DocumentEditor>` · ScrollableControl, `IContext`, `IClipboardTarget` — one open note. Subscribes to `SheetBook.changed` (`BookChanged` → `RefreshSheetLinks`; `OnDestroy` unsubscribes); `PasteLink` (step "Paste link"), `RenameSheetLinks`.
   `Source`/`LoadPath`/`LoadDocument` (builds the properties header for `.md`/`.xml`), `Save` (refreshes it),

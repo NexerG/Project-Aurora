@@ -261,6 +261,7 @@ namespace ArctisAurora.Tests
             TexMathNode { display: true } m => "$$" + m.source + "$$",
             TexMathNode m => "$" + m.source + "$",
             TexPenalty { penalty: TexPenalty.Forced } => "|",
+            TexRefNode r => r.text,
             _ => ""
         }));
 
@@ -451,6 +452,208 @@ namespace ArctisAurora.Tests
             t.Check(errors.Count == 0, $"compiles clean: {string.Join("; ", errors.Select(e => e.message))}");
             t.Check(lines.Count == document.Elements("Block").Count(), $"one line per block: {lines.Count}");
             t.Check(string.Join(",", lines) == "3,4,4,0,8,10,11,0,8", $"heading, both halves of \\\\, rule, note, verbatim lines, Notes heading, endnote: {string.Join(",", lines)}");
+            yield break;
+        }
+        #endregion
+
+        #region ---- tables, floats, references ----
+        private static string CellText(TexTableCell cell) => string.Join(" / ", cell.vlist.OfType<TexParagraph>().Select(Line));
+
+        private static string Folder(params (string name, string text)[] files)
+        {
+            string folder = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(folder);
+            foreach ((string name, string text) in files)
+            {
+                string path = Path.Combine(folder, name);
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                File.WriteAllText(path, text);
+            }
+            return folder;
+        }
+
+        [A_XSDActionDependency("Tex.Typeset.Tabular", "Test")]
+        private static IEnumerator<int> TypesetTabular(TestContext t)
+        {
+            TexTable table = Typeset(@"\begin{tabular}{|l c|r|} \hline a & {\bf b} \bf & c \\ \hline \multicolumn{2}{c}{wide} & d \\ e & f \end{tabular}",
+                out List<TexError> errors).vlist.OfType<TexTable>().Single();
+            t.Check(errors.Count == 0, $"typesets clean: {string.Join("; ", errors.Select(e => e.message))}");
+            t.Check(table.columns.Select(c => c.align).SequenceEqual(new[] { TexAlign.Left, TexAlign.Center, TexAlign.Right }) && table.ruled,
+                "l c r with rules");
+            string rows = string.Join(" | ", table.rows.Select(r => string.Join(",", r.Select(c => CellText(c) + (c.span > 1 ? "*" + c.span : "")))));
+            t.Check(rows == "a,b,c | wide*2,d | e,f", $"rows and cells: {rows}");
+            t.Check(table.rows[1][0].vlist.OfType<TexParagraph>().Single().style.align == TexAlign.Center, "a multicolumn takes its own alignment");
+            t.Check(table.rows[2][1].vlist.OfType<TexParagraph>().Single().style.align == TexAlign.Center, "a cell takes its column's alignment");
+            t.Check(table.rows[0][1].vlist.OfType<TexParagraph>().Single().list.OfType<TexChar>().Single().style.font.bold
+                && !table.rows[0][2].vlist.OfType<TexParagraph>().Single().list.OfType<TexChar>().Single().style.font.bold,
+                "a cell's \\bf ends at the next &");
+
+            t.Check(!Typeset(@"\begin{tabular}{ll}a&b\end{tabular}", out _).vlist.OfType<TexTable>().Single().ruled, "no | and no rule is unruled");
+            t.Check(Typeset(@"\begin{tabular}{ll}\toprule a&b\\\cmidrule(lr){1-2} c&d\\\bottomrule\end{tabular}", out errors).vlist.OfType<TexTable>().Single() is { ruled: true, rows.Count: 2 }
+                && errors.Count == 0, "booktabs rules mark it ruled");
+
+            TexTable spec = Typeset(@"\begin{tabular}{@{}*{3}{c}p{2cm}@{}}x\end{tabular}", out errors).vlist.OfType<TexTable>().Single();
+            int twoCm = (int)(2f / 2.54f * 72.27f * 65536f);
+            t.Check(spec.columns.Count == 4 && spec.columns[3].align == TexAlign.Justify && Math.Abs(spec.columns[3].width - twoCm) < 100,
+                $"*{{3}}{{c}} and p{{2cm}}: {spec.columns.Count} columns, {spec.columns.LastOrDefault().width}sp");
+
+            Typeset(@"\begin{tabular}{l}a&b\end{tabular}", out errors);
+            t.Check(Has(errors, "Extra alignment tab"), "more cells than columns");
+            Typeset(@"a & b", out errors);
+            t.Check(Has(errors, "Misplaced alignment tab"), "& outside a tabular");
+
+            TexTable outer = Typeset(@"\begin{tabular}{l}\begin{tabular}{ll}x&y\end{tabular}\end{tabular} after", out errors).vlist.OfType<TexTable>().Single();
+            t.Check(outer.rows[0][0].vlist.OfType<TexTable>().Count() == 1 && errors.Count == 0, "a tabular in a cell stays in the cell");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.Typeset.Floats", "Test")]
+        private static IEnumerator<int> TypesetFloats(TestContext t)
+        {
+            TexTypesetter floats = Typeset(@"\begin{figure}[h]\centering x\caption{A cat}\end{figure}\begin{table}\caption{Data}\end{table}" +
+                @"\renewcommand\figurename{Fig.}\begin{figure*}\caption{Dog}\end{figure*}", out List<TexError> errors);
+            string text = string.Join(" / ", Pars(floats).Select(Line));
+            t.Check(text == "x / Figure 1: A cat / Table 1: Data / Fig. 2: Dog" && errors.Count == 0, $"captions numbered per kind: {text}");
+            t.Check(Pars(floats).Skip(1).All(p => p.style.align == TexAlign.Center), "captions are centred");
+
+            string report = Lines(@"\documentclass{report}\begin{document}\chapter{One}\begin{figure}\caption{A}\end{figure}\end{document}");
+            t.Check(report.EndsWith("Figure 1.1: A"), $"report numbers within the chapter: {report}");
+
+            Typeset(@"\caption{Lost}", out errors);
+            t.Check(Has(errors, "\\caption outside float"), "a caption outside a float");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.Refs", "Test")]
+        private static IEnumerator<int> Refs(TestContext t)
+        {
+            string source = "\\section{Intro}\\label{s:intro} See \\ref{s:b} and \\ref{s:intro}.\n" +
+                "\\section{Back}\\label{s:b}\n" +
+                "\\begin{enumerate}\\item a\\begin{enumerate}\\item q\\item b\\label{i:b}\\end{enumerate}\\end{enumerate}\n" +
+                "Item \\ref{i:b}, note\\footnote{n\\label{fn}} \\ref{fn}, figure \\ref{fig}.\n" +
+                "\\begin{figure}\\caption{c\\label{fig}}\\end{figure}\n" +
+                "Missing \\ref{nope}.\n" +
+                "$x = \\ref{s:b}$\\begin{equation}a\\label{eq}\\end{equation}\n";
+            TexTypesetter refs = Typeset(source, out List<TexError> errors);
+            string text = string.Join(" / ", Pars(refs).Select(Line));
+            t.Check(text.Contains("See 2 and 1."), $"a forward and a backward \\ref: {text}");
+            t.Check(text.Contains("Item 1b, note") && text.Contains(" 1, ﬁgure 1."),$"an item, footnote and figure label: {text}");
+            t.Check(text.Contains("Missing ??."), "an unknown label prints ??");
+            t.Check(errors.Count == 1 && Has(errors, "Reference `nope' undefined", 6), $"one warning, at its line: {string.Join("; ", errors)}");
+            List<TexMathNode> math = Pars(refs).SelectMany(p => p.list).OfType<TexMathNode>().ToList();
+            t.Check(math.Any(m => m.source == @"x = \text{2}") && math.Any(m => m.source == "a"), $"\\ref in math resolved, \\label dropped: {string.Join(" | ", math.Select(m => m.source))}");
+
+            Typeset(@"\section{A}\label{x}\section{B}\label{x}", out errors);
+            t.Check(Has(errors, "Label `x' multiply defined"), "a label defined twice");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.Bib", "Test")]
+        private static IEnumerator<int> Bib(TestContext t)
+        {
+            string bib = "@string{tug = \"TUGboat\"}\n@comment{ignored}\n" +
+                "@book{knuth84, author = {Donald E. Knuth}, title = {The {\\TeX}book}, publisher = \"Addison-Wesley\", year = 1984}\n" +
+                "@article{lamport, author = \"Leslie Lamport and others\", title = {A Document Preparation System}, journal = tug # \" Journal\",\n" +
+                "  volume = 7, number = {2}, pages = {10-20}, year = {1986}, month = jun}\n" +
+                "@inproceedings(vdw, author = {Johannes Diderik van der Waals and Smith, Jr., John}, title = {On Gases}, booktitle = {Proc. Physics}, year = 1873)\n" +
+                "@misc{unused, title = {Never cited}, year = 2000}\n";
+            string folder = Folder(("refs.bib", bib));
+            string Doc(string style) => "\\documentclass{article}\\begin{document}\n\\cite{lamport} and \\cite[p.~5]{knuth84,vdw}.\n" +
+                $"\\bibliographystyle{{{style}}}\\bibliography{{refs}}\nAfter \\cite{{missing}}.\n\\end{{document}}\n";
+
+            List<TexError> errors = new List<TexError>();
+            List<string> Typeset(string style)
+            {
+                TexTypesetter typesetter = new TexTypesetter(Doc(style), null, folder);
+                typesetter.Run();
+                errors = typesetter.errors;
+                return Pars(typesetter).Select(p => System.Text.RegularExpressions.Regex.Replace(Line(p), " {2,}", " ")).ToList();
+            }
+
+            List<string> plain = Typeset("plain");
+            t.Check(plain[0] == "[2] and [1, 3, p.\u00A05].", $"sorted numbers, a note: {plain[0]}");
+            t.Check(plain[1] == "References" && plain[^1] == "After [?].", $"the list stands where \\bibliography was: {string.Join(" / ", plain)}");
+            t.Check(plain.Count == 6, $"three entries, the uncited one left out: {plain.Count}");
+            t.Check(plain[2] == "[1] Donald E. Knuth. The TeXbook. Addison-Wesley, 1984.", $"a book: {plain[2]}");
+            t.Check(plain[3] == "[2] Leslie Lamport et\u00A0al. A document preparation system. TUGboat Journal, 7(2):10–20, June 1986.", $"an article: {plain[3]}");
+            t.Check(plain[4] == "[3] Johannes Diderik van der Waals and John Smith, Jr. On gases. In Proc. Physics, 1873.", $"von and Jr names: {plain[4]}");
+            t.Check(errors.Count == 1 && Has(errors, "Citation `missing' undefined"), $"one warning: {string.Join("; ", errors)}");
+
+            t.Check(Typeset("unsrt")[0] == "[1] and [2, 3, p.\u00A05].", "unsrt numbers in citation order");
+            List<string> alpha = Typeset("alpha");
+            t.Check(alpha[0] == "[L+86] and [Knu84, vdWS73, p.\u00A05]." && alpha[2].StartsWith("[Knu84]"), $"alpha labels: {alpha[0]} / {alpha[2]}");
+            t.Check(Typeset("abbrv")[2] == "[1] D.\u00A0E. Knuth. The TeXbook. Addison-Wesley, 1984.", "abbrv initials");
+
+            TexTypesetter none = new TexTypesetter(@"\cite{a}\bibliographystyle{plain}\bibliography{nope}");
+            none.Run();
+            t.Check(Has(none.errors, "I couldn't open database file nope.bib"), "a missing .bib");
+
+            List<TexBibEntry> entries = new List<TexBibEntry>();
+            List<string> problems = new List<string>();
+            TexBibliography.Parse("@misc{x, title = \"Say {\"}hi{\"}\" # {!}, note = undefinedname, year 1}", entries, problems.Add);
+            t.Check(entries.Single().fields["title"] == "Say {\"}hi{\"}!", $"quotes with braced quotes, #: {entries.Single().fields["title"]}");
+            t.Check(problems.Any(p => p.Contains("undefinedname")) && problems.Any(p => p.Contains("expecting a field name")), $"parse problems: {string.Join("; ", problems)}");
+            Directory.Delete(folder, true);
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.Lowering.Table", "Test")]
+        private static IEnumerator<int> LoweringTable(TestContext t)
+        {
+            List<int> lines = new List<int>();
+            XElement document = TexLowering.Compile("Before.\n\\begin{tabular}{lr}\na & bb \\\\\n\\multicolumn{2}{c}{a wide cell of text}\n\\end{tabular}\n",
+                out List<TexError> errors, lines);
+            t.Check(errors.Count == 0, $"compiles clean: {string.Join("; ", errors.Select(e => e.message))}");
+            XElement table = document.Element("Table")!;
+            t.Check((string?)table.Attribute("Borders") == "false", "an unruled tabular draws no borders");
+            float[] widths = table.Elements("Column").Select(c => (float)c.Attribute("Width")!).ToArray();
+            t.Check(widths.Length == 2 && widths.All(w => w >= 24f), $"two columns: {string.Join(",", widths)}");
+            List<XElement> rows = table.Elements("Row").ToList();
+            t.Check(rows.Count == 2 && rows[0].Elements("Cell").Count() == 2 && (int?)rows[1].Element("Cell")!.Attribute("ColumnSpan") == 2,
+                "two cells, then one spanning both");
+            t.Check((string?)rows[0].Elements("Cell").Last().Element("Block")!.Attribute("Align") == "Right"
+                && (string?)rows[1].Element("Cell")!.Element("Block")!.Attribute("Align") == "Center", "cells carry their alignment");
+            t.Check(string.Join(",", lines) == "1,2", $"the table is one block at its \\begin line: {string.Join(",", lines)}");
+
+            RichTextDocument parsed = DocumentXml.Parse(document);
+            TableControl control = (TableControl)parsed.blocks[1];
+            t.Check(!control.showBorders && control.ColumnSpan(control.Cells()[2]) == 2, "it parses as a borderless table with a merged cell");
+            foreach (Control block in parsed.blocks)
+                block.Destroy();
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.Lowering.Image", "Test")]
+        private static IEnumerator<int> LoweringImage(TestContext t)
+        {
+            string folder = Folder(("doc.pdf", ""));
+            using (SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32> png = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(40, 20))
+            {
+                SixLabors.ImageSharp.ImageExtensions.SaveAsPng(png, Path.Combine(folder, "pic.png"));
+                Directory.CreateDirectory(Path.Combine(folder, "sub"));
+                SixLabors.ImageSharp.ImageExtensions.SaveAsPng(png, Path.Combine(folder, "sub", "inner.png"));
+            }
+
+            List<XElement> Pictures(string source, out List<TexError> errors) =>
+                TexLowering.Compile(source, out errors, null, folder).Descendants("Run").Where(r => r.Attribute("Image") != null).ToList();
+
+            List<XElement> pictures = Pictures(@"\includegraphics[width=0.5\textwidth]{pic} \includegraphics[scale=2,angle=90]{pic.png}", out List<TexError> errors);
+            t.Check(errors.Count == 0 && pictures.Count == 2, $"two pictures: {string.Join("; ", errors.Select(e => e.message))}");
+            t.Check((string?)pictures[0].Attribute("Image") == Path.GetFullPath(Path.Combine(folder, "pic.png")), "the path is found and absolute");
+            float half = 0.5f * 345f * 96f / 72.27f;
+            t.Check(Math.Abs((float)pictures[0].Attribute("Width")! - half) < 0.5f && pictures[0].Attribute("Height") == null,
+                $"width=0.5\\textwidth: {pictures[0].Attribute("Width")?.Value}");
+            t.Check((string?)pictures[1].Attribute("Width") == "80" && (string?)pictures[1].Attribute("Height") == "40" && (string?)pictures[1].Attribute("Rotation") == "-90",
+                "scale from the picture's own size, angle turned clockwise");
+
+            t.Check(Pictures(@"\graphicspath{{sub/}}\includegraphics{inner}", out errors).Count == 1 && errors.Count == 0, "\\graphicspath");
+            Pictures(@"\includegraphics{absent}", out errors);
+            t.Check(Has(errors, "File `absent' not found"), "a missing picture");
+            Pictures(@"\includegraphics{doc}", out errors);
+            t.Check(Has(errors, "PDF and EPS pictures are not supported"), "a PDF picture");
+            TexLowering.Compile(@"\includegraphics{pic}", out errors);
+            t.Check(Has(errors, "File `pic' not found"), "no folder finds nothing");
+            Directory.Delete(folder, true);
             yield break;
         }
         #endregion

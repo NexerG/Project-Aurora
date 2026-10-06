@@ -76,6 +76,23 @@ logged `desired stale` otherwise), and the base had to stop stretching a cell in
   redo compared as XML; typing after a row insert lands through the new flat address), `TableTabAddsRow`,
   `TableListInCell`, `TableResizeColumn` (+ golden `Resized`).
 
+## Column spans, borders, merge and split (2026-10-06)
+- XML: `<Cell ColumnSpan="n">` and `<Table Borders="false">`, read and written by `DocumentXml`; absent = span 1 / borders true.
+- `GridListControl`: internal `ColumnSpan(Control)`, `SetColumnSpan(Control, int)`. `TableControl`: public `showBorders` (default true); `AddRow(cells, List<int>? spans = null)`; `CellBlocks(row, column)` finds the cell covering that grid position; borders honour spans and `showBorders`.
+- No placeholder cells behind a spanning cell; cells are found by grid position. `ReadTable`'s padding still fills a row whose spans sum to fewer than the columns.
+- `DocumentControl`: `InsertTableColumn`/`DeleteTableColumn` are span-aware; new `MergeTableCellRight()`, `SplitTableCell()`; private helpers `Covering`, `Span`, `SetSpan`, `EmptyCell`.
+- `TextInputActions`: `Table.MergeRight` (`MergeCellRight`), `Table.Split` (`SplitCell`). `Note.menu.xml` Table submenu: "Merge cell right", "Split cell".
+- Why it exists: LaTeX `\multicolumn` ([[latex-editor]], L5-F4) needs a cell wider than one column.
+- Tests: `TextInput.TableColumnSpan` (XML round-trip with ColumnSpan/Borders, merged cell width = sum of its columns, insert column inside/left of a span, delete inside a span, merge right, split, each undo restores exactly, merge on the last cell and split on a single cell refused).
+
+**Real spans, not display-only (user, scope iii).**
+Structural edits are span-aware: inserting a column inside a span widens it, deleting a column inside a span shrinks it. Rejected: display-only spans with structural edits refused.
+
+**Merge is "Merge cell right", not a selection range (user picked the recommended form).**
+The caret's cell absorbs the next cell in its row, blocks appended, an empty side dropped; refused on a row's last cell. "Split cell" turns a merged cell back into single cells with the content in the first; refused on a single cell. Both are one undo step (a table edit). Rejected: merge by selection range.
+
+**`Borders` flag on `<Table>`.** Needed so a LaTeX table without rules draws no grid; the full grid or nothing, not per-edge rules (L5-F2 in [[latex-editor]]).
+
 ## Measured
 `--profile-scenario`, Release+PROFILE, 3 runs each, frames 31–270: `Scenario.Type` p95 0.113–0.131 →
 0.153–0.178 ms; `Document.MeasureBlocks` p50 0.142–0.150 → 0.150–0.169 ms. Likely `Blocks()` type-testing
@@ -83,11 +100,12 @@ page panels; not pinned.
 
 ## Known gaps
 - A row taller than a page runs across the break.
-- No nested tables, no merged cells, no row height drag, no column resize by keyboard.
+- No nested tables, no row spans (`\multirow`), no per-edge border control, no row height drag, no column resize by keyboard. Column spans landed 2026-10-06 (above).
+- Column spans, Borders, span-aware edits and merge/split are test-verified only (`TextInput.TableColumnSpan`); **NOT GUI-verified** (the Merge/Split menu items). The test reads spans via XML because `GridListControl.ColumnSpan` is internal.
 - A code block in a cell (from XML only) does not wrap and is not coloured — `CodeWidth` and `HighlightCode` see note-level blocks only.
 - The grip of the last column overhangs the table by 3 px, inside the viewport's clip.
 - Insert, row/column commands, resize and lists in cells are test- and golden-verified only; **NOT GUI-verified**
   (menu placement, the resize cursor, a real drag).
 - Pointer presses in and around a table, other than the grip drag, are not tested.
 
-Related: [[document-structural-editing]], [[document-selection]], [[document-undo]], [[document-pages]], [[note-file-formats]], [[scroll-overscroll]]
+Related: [[document-structural-editing]], [[document-selection]], [[document-undo]], [[document-pages]], [[note-file-formats]], [[scroll-overscroll]], [[latex-editor]]

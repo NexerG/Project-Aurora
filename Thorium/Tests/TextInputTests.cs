@@ -2043,6 +2043,68 @@ namespace Thorium.Tests
         }
 
         // A paragraph, a two-row table whose cells read rNcM, and a paragraph.
+        [A_XSDActionDependency("TextInput.TableColumnSpan", "Test")]
+        private static IEnumerator<int> TableColumnSpan(TestContext t)
+        {
+            XElement source = new XElement("Document", Block("before"),
+                new XElement("Table", new XAttribute("Borders", "false"),
+                    new[] { 100, 120, 140 }.Select(w => new XElement("Column", new XAttribute("Width", w))),
+                    new XElement("Row", new XElement("Cell", new XAttribute("ColumnSpan", 2), Block("wide")), new XElement("Cell", Block("r0c2"))),
+                    new XElement("Row", Enumerable.Range(0, 3).Select(c => new XElement("Cell", Block($"r1c{c}"))))),
+                Block("after"));
+            XElement once = DocumentXml.ToXml(DocumentXml.Parse(source));
+            t.Check(XNode.DeepEquals(once, DocumentXml.ToXml(DocumentXml.Parse(once))), "a merged, borderless table survives a save and load");
+            t.Check(once.Descendants().Any(e => e.Name.LocalName == "Cell" && (string?)e.Attribute("ColumnSpan") == "2")
+                && once.Descendants().Any(e => e.Name.LocalName == "Table" && (string?)e.Attribute("Borders") == "false"), "ColumnSpan and Borders are written");
+
+            DocumentControl content = ShowNote(t, DocumentXml.Parse(source), out TableControl table, out RichTextDocument document);
+            yield return 2;
+            List<StackPanelControl> cells = table.Cells();
+            float Outer(StackPanelControl cell) => cell.arrangedRect.width + cell.margin.totalHorizontal;
+            int Span(int cell) => DocumentXml.ToXml(document).Descendants().Where(e => e.Name.LocalName == "Cell")
+                .Select(c => (int?)c.Attribute("ColumnSpan") ?? 1).ElementAt(cell);
+            t.Check(cells.Count == 5 && Span(0) == 2, "one row of two cells, one of three");
+            t.Check(Math.Abs(Outer(cells[0]) - Outer(cells[2]) - Outer(cells[3])) < 1f, "the merged cell is as wide as the two columns under it");
+
+            (string name, int caret, Action command, Func<TableControl, bool> shape)[] commands =
+            {
+                ("column right inside the span", 2, TextInputActions.InsertColumnRight, s => s.widths.Count == 4 && Span(0) == 3 && s.Cells().Count == 6
+                    && Cell(s, 1).text == "r0c2" && Cell(s, 3).text == ""),
+                ("column left of the span", 0, TextInputActions.InsertColumnLeft, s => s.widths.Count == 4 && Cell(s, 0).text == "" && Span(1) == 2
+                    && Cell(s, 1).text == "wide"),
+                ("column delete inside the span", 3, TextInputActions.DeleteColumn, s => s.widths.Count == 2 && Span(0) == 1
+                    && Cell(s, 0).text == "wide" && Cell(s, 1).text == "r0c2" && Cell(s, 2).text == "r1c0" && Cell(s, 3).text == "r1c2"),
+                ("merge right", 2, TextInputActions.MergeCellRight, s => s.Cells().Count == 4 && Span(2) == 2
+                    && Blocks(s, 2).Select(b => b.text).SequenceEqual(new[] { "r1c0", "r1c1" })),
+                ("split", 0, TextInputActions.SplitCell, s => s.Cells().Count == 6 && Span(0) == 1 && Cell(s, 0).text == "wide" && Cell(s, 1).text == "")
+            };
+
+            foreach ((string name, int caret, Action command, Func<TableControl, bool> shape) in commands)
+            {
+                content.SetCaret(Cell((TableControl)document.blocks[1], caret), 0);
+                string at = content.caretBlock!.text;
+                XElement before = DocumentXml.ToXml(document);
+                command();
+                yield return 2;
+                TableControl changed = (TableControl)document.blocks[1];
+                t.Check(shape(changed), $"{name}: the table has its new shape");
+                if (!name.Contains("delete")) t.Check(content.caretBlock?.text == at, $"{name}: the caret stays in its cell");
+                yield return t.Key(Keys.Z, Keys.LeftControl);
+                t.Check(XNode.DeepEquals(DocumentXml.ToXml(document), before), $"{name}: undo restores the table exactly");
+            }
+
+            foreach ((string name, int caret, Action command) in new (string, int, Action)[]
+                { ("merge on a row's last cell", 1, TextInputActions.MergeCellRight), ("split on a single cell", 2, TextInputActions.SplitCell) })
+            {
+                content.SetCaret(Cell((TableControl)document.blocks[1], caret), 0);
+                XElement before = DocumentXml.ToXml(document);
+                command();
+                yield return 2;
+                t.Check(XNode.DeepEquals(DocumentXml.ToXml(document), before), $"{name} is refused");
+            }
+            t.Show(new StackPanelControl());
+        }
+
         private static RichTextDocument TableNote(params float[] widths)
         {
             XElement table = new XElement("Table", widths.Select(w => new XElement("Column", new XAttribute("Width", w))));
