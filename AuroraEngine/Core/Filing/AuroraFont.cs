@@ -155,7 +155,7 @@ namespace ArctisAurora.Core.Filing
         }
 
         // Reads one face's outlines and metrics into its own glyph array.
-        private static Glyph[] ReadFaceGlyphs(AuroraFont fontData, string path)
+        internal static Glyph[] ReadFaceGlyphs(AuroraFont fontData, string path)
         {
             Glyph[] faceGlyphs;
             using (BinaryReader reader = new BinaryReader(new FileStream(path, FileMode.Open, FileAccess.Read)))

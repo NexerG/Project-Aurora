@@ -42,7 +42,7 @@ S4/S5 (2026-10-04/05): `SheetPageStripControl`, `SheetLayersControl`, `SheetCsv`
   VaultFolder menus; rename and duplicate keep `.sheet.xml` whole (`BaseName`, `Extension`).
 - **S2a formulas (2026-10-03).** A cell starting `=` is a formula; the file keeps the raw text. `SheetFormula.Parse`
   (recursive descent) → nodes `Constant`, `Reference` (page name?, cell or range), `Negate`, `Binary`, `Call`
-  (`SUM` only). `SheetValue` = Empty/Number/Text/Error; `FromRaw` keeps a typed number's text; `Display()` → `G15`.
+  (`SUM` at S2a; S7 adds comparisons and more functions, see § S7). `SheetValue` = Empty/Number/Text/Error; `FromRaw` keeps a typed number's text; `Display()` → `G15`.
 - `SheetCalc`: `formulas`, `values`, `precedents`, `dependents` keyed by `SheetCellId(SheetPage, key)`.
   `Changed(page, cells)` relinks and runs Kahn over `Downstream`; leftovers get `#CYCLE!`. `PageNamed` is
   case-insensitive. `SheetControl.ArrangeGrid` shows `Display()` and right-aligns `Number`. `Copy` writes values.
@@ -262,7 +262,7 @@ Otherwise the field pastes plainly.
 - `SheetFormat` (in SheetDocument.cs): `readonly record struct SheetFormat(bool bold, string? fill, string? number)`; `number` is a .NET custom numeric format string (null = General), `fill` a hex.
 - `SheetPage.formats : Dictionary<long, SheetFormat>` keyed by `SheetDocument.Key`; `Format(row, column)`, `SetFormat(row, column, format)` (the default format removes the key).
 - `SheetValue.Display(string? format)`: a Number through the format, anything else as `Display()`.
-- `SheetXml`: `<Format At="B3" Bold="true" Fill="#C8E6A0" Number="#,##0.00"/>` under `<Page>`, after `<Row>`, row-major; older files load unchanged.
+- `SheetXml`: `<Format At="B3" Bold="true" Fill="#C8E6A0" Number="#,##0.00"/>` under `<Page>`, after `<Row>`, row-major; older files load unchanged. `SheetXml.Fill` drops a `Fill` that is not `#RRGGBB` / `RRGGBB` (2026-10-06): `Control.HexToRGB` throws on anything else when the grid paints, so one bad attribute made the file unopenable — see `Mistakes/sheet-fill-is-hex.md`.
 - `SheetEdits.cs`: `SheetFormatEdit` (list of row, column, before, after) and `SheetBandEdit` (column or row, index, size before/after, null = default); both raise `SheetBook.Changed(document, page, [])` so the tab goes unsaved and open notes redraw.
 - `SheetEditorControl` region `formatting`: `ToggleBold()`, `SetFill(hex)`, `SetNumberFormat(number)`, private `Restyle(label, change)` (one undo step over `Range()`), internal `ResizeBand(column, index, before, after)`, `IsSelected(row, column)`.
 - `SheetControl`: `fills` Parts first in draw order (pooled `fillParts`); bold through the cell label's run `style` (`FontStyle.Bold`); grid text through `Display(format.number)`; header edge resize — `EdgeAt(point, out column, out index)` (±4 px `grabWidth` around a column header's right edge or a row header's bottom edge), `OnPointerPress` starts it, `OnDrag` writes the size live (min `minimumBand` = 8 px), `OnDragStop` records it through `ResizeBand`; `OnPointerMove`/`OnPointerExit` set HResize/VResize/Arrow through `ShowCursor`; a right press on a cell outside the selection selects it.
@@ -436,6 +436,30 @@ The context menu opens on right *release* in `UIEngine` and `ContextMenus.Open` 
 - Layer bounds: `SheetControl.ArrangeCore` arranges each `Parts` layer at the sheet's rect before it places that layer's pooled children (they need the layer's clip), so `LayoutEngine.ArrangeRow` computed the layer's `subtreeBounds` from the children's previous-frame bounds. Harmless while every child stays inside the layer rect, but a fixed page that shrinks (undo of a grow) leaves last frame's column line outside the new rect. Proven with a temporary probe: after the shrink the grid layer's cached bounds were 648 wide while its lines ended at 448 and its rect was 640, and DEBUG `VerifySubtreeCache` and the skipped-layout check logged every frame. Unfixed sheets never hit it because their canvas always extends past every line; pre-existing since S1. Fix: `Parts.Settle(LayoutRect)` sets `ArrangeFlags.ArrangeDirty` and arranges again, and `ArrangeCore` ends with `fills.Settle`, `grid.Settle`, `headers.Settle` after the pooled children are placed. Rejected: making `LayoutRect.Union` or the engine recompute bounds after `ArrangeCore` in general (touches every control). Companion to the `Hidden` rule under S3 above.
 - **Verified:** builds clean. Test-verified: `Sheet.GrowPopup` passes with no errors logged; full Thorium `--test` 160 passed, 1 failed (Boot, pre-existing default-sampler asset error), 41 skipped. Golden-verified: `Sheet.FixedSize.Page` re-approved after reading the image (strips off the grid, rounded, radial white-to-blue on the light palette). **Not checked:** the dark palette look, GUI use.
 
+### S7 — formula functions (2026-10-06)
+
+**Comparisons return the numbers 1 and 0, not a boolean value kind.** (user, 2026-10-06)
+Rejected: a TRUE/FALSE `SheetValueKind` like Excel and Google Sheets. It would touch `SheetValue`, `Display`, the XML and every consumer of value kinds. 1/0 composes in arithmetic: `=(A1>0)*(B1<10)` acts as AND and `(B2>0)+(B3>0)` counts. The cost is that a comparison shows 1/0 instead of TRUE/FALSE.
+
+**Comparison is its own node `Compare`, not an extension of `Binary`.**
+`Binary` carries a single `char` op and `<=`, `<>`, `>=` are two characters.
+
+**Rounding goes through `decimal`.**
+A double → decimal cast keeps the 15 significant digits a double displays, so ROUND(2.345,2) = 2.35 as in Excel; rounding the double directly gives 2.34 (2.345 * 100 = 234.49999…). Values with |x| ≥ 1e15 come back unrounded, to keep the decimal cast in range.
+
+**No structured "Tables"** (Google-Sheets-style header row, typed columns, banding, filters, `Table[Column]` refs). (user chose a plain sheet; not designed)
+
+What landed:
+- Operators `=` `<>` `<` `>` `<=` `>=`, lowest precedence, below `+ -` as in Excel. Numbers compare numerically; text compares `OrdinalIgnoreCase` and sorts after numbers; Empty counts as 0 against a number; an error operand propagates.
+- `SheetFormula.Call.Evaluate` is a switch over SUM / MIN / MAX / AVERAGE / ROUND / ROUNDUP / ROUNDDOWN / IF, names case-insensitive; anything else stays `#NAME?`.
+- `Call.Aggregate` (sum, count, min, max over all arguments; a range skips text and blanks, as SUM always did) is shared by SUM/MIN/MAX/AVERAGE. MIN/MAX of no numbers = 0; AVERAGE of no numbers = `#DIV/0!`.
+- `Call.Rounded`: ROUND = half away from zero, ROUNDUP = away from zero, ROUNDDOWN = toward zero. Digits optional (default 0), may be negative (ROUND(1234,-2) = 1200), clamped to ±15; a wrong argument count = `#VALUE!`.
+- IF(test, then, [else]): the test must be a number (text = `#VALUE!`), non-zero is true; only the taken branch is evaluated, so an error in the other branch does not propagate; a missing else gives 0; an argument count outside 2–3 = `#VALUE!`. `References` still collects every branch so recalc order is right.
+- Parser: a new `Comparison()` level above `Additive()`, used by `Formula()`, parenthesised expressions and function arguments; new `Operator()` reads a comparison operator.
+- Tests: `Sheet.FormulaEval` gained cases for all of the above.
+- User content, not engine code: `Company finances.sheet.xml` in the Thorium vault (pages Summary, Inputs, Staff, Costs, Pricing), a Lithuanian 2026 UAB cost/licence-pricing model built on these functions.
+- **Verified:** test-verified — `_Build/test.sh Sheet`: 25 passed, 2 failed, both pre-existing and unrelated (Boot: the baseline sampler-asset error; `Sheet.FixedSize` golden, already on the WIP list). No `[Vulkan]` lines. The finance sheet was loaded through `SheetBook.Get` in a throwaway test (since removed): every page evaluated with no `#` errors and hand-checked values (gross €3,000 → employer cost €3,053.10, net €1,815; NPD at €2,500 → €86.97). **NOT GUI-verified:** typing comparison/IF/ROUND formulas in a running Thorium.
+
 ## Known gaps
 - Fixed sheets and insert (S6): undo after another file wrote a reference into inserted rows — that file is not on this sheet's undo stack (same as page rename), so its reference is left pointing at whichever row slides into place (not turned into #REF!). Documented deliberately; the user will revisit with a link cache file in the vault.
 - No delete rows/columns, no changing a sheet's type after creation, no size field at creation. The pending Paste-link source (`copiedFrom`) is not shifted by an insert.
@@ -479,7 +503,7 @@ The context menu opens on right *release* in `UIEngine` and `ContextMenus.Open` 
 - `SheetControl.ArrangeCore` loops forever on an unbounded viewport (fixed for fixed sheets only, 2026-10-05: their arrange loops stop at the page edge; unfixed sheets still hang) — an editor laid out as its own root (never
   added to a window) hangs the frame. Found by a test; real tabs are always bounded. Hit again by `Sheet.CsvLinks`: a CSV editor never added to a window hung the run (a detached `SheetEditorControl` that is selected/copied); with both editors in the window the test passes. Not proven by instrumentation.
 - After `Cut`, Paste link pastes plainly (the copy's source is dropped).
-- Formulas: no `$A$1`, no function but `SUM`, no comparisons or strings, references are not adjusted on paste; since S4a a page
+- Formulas: no `$A$1`, no string literals (`="text"`; text compares only against another cell), no AND/OR/NOT/COUNT (1/0 arithmetic stands in), no fill-down (a new row of formulas must be typed), typing `21%` stays text (`FromRaw` does not parse a percent sign; enter 0.21 with the Percent format), references are not adjusted on paste; since S4a a page
   rename rewrites them and a page add recalcs.
 - A range is one edge per cell: `SUM(A1:Z100000)` records 2.6M edges.
 - Showing or hiding a layer recalcs through `SheetBook.Restructured` (S4b).

@@ -109,5 +109,18 @@ shape the list prefix already had.
   struct and its `width` stays the measured one. `BlockLayout.NextLine` clears both fields. Ctrl+J
   (`Text.AlignJustify`), toolbar `align-justify` icon. `.md` does not store alignment. Tests: `TextInput.JustifyLines`
   (+ golden)
+- **Justify under optimal breaks and before a display formula (2026-10-06, L7a).** When the block's `OptimalBreaks`
+  is set (`DocumentLayout.optimalBreaks`, LaTeX previews only), `TextRunControl.Justify` lets `spaceExtra` go
+  negative — a space shrinks, bounded by a third of the line's inner space width. A line whose next line opens with
+  a display math span is skipped (`BeforeDisplay`), like a last line; this applies to notes too (user, fork L7a-F3).
+  Test: `Tex.JustifyBeforeDisplay`. See [[latex-editor]]
+- **Soft hyphen U+00AD (2026-10-06, L7b).** In any note a soft hyphen takes no room (`TextMeasurer.MeasureAdvance` returns 0) and is a
+  break opportunity; a line that breaks at it shows a "-" (`TextLine.hyphen`, counted in `line.width`), and `DocumentControl.CopySelection`
+  drops it. Tests: `Tex.SoftHyphen`. See [[latex-editor]]
+- **First-line indent, space above, spacer runs (2026-10-06, L7c).** A block carries `BlockControl.firstIndent` (px; `FirstLineIndent` = `firstIndent * textZoom`,
+  moves line 0 only) and `spaceBefore` (float?, null = the layout's block spacing), written as `<Block Indent SpaceBefore>`. Both are carried through Enter
+  (the tail keeps both), Backspace/merge (`TakeKind`), undo snapshots and plain-text/fragment paste, like `alignment`; no UI sets them. `<Run Space="px"/>`
+  is a spacer: a fixed-width no-break space whose characters advance `Space` and draw nothing (`StyleSpan.spaceWidth`); text typed beside one goes into a
+  text span (`BlockControl.Typable`) and a spacer copies as spaces. Tests: `Tex.BlockSpacing`. See [[latex-editor]], [[document-pages]]
 
 Related: [[note-file-formats]], [[list-markers]], [[document-structural-editing]], [[document-undo]], [[note-images]], [[document-format-bar]]

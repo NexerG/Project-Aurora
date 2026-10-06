@@ -776,6 +776,15 @@ namespace ArctisAurora.Core.UI
 
             LayoutRect r = a.arranged;
             LayoutRect c = a.clip;
+            if (UIEngine.recorder != null)
+            {
+                VulkanControl panel = visual;
+                PaintRow(ref panel);
+                if (panel.type == VulkanControlType.PanelControl && panel.paint != 0 && panel.alpha > 0f && gradientWord == 0)
+                    UIEngine.recorder.Rect(r.x, r.y, r.width, r.height, panel.paint, new Vector4(c.x, c.y, c.Right, c.Bottom));
+                return;
+            }
+
             DataPool quads = UIEngine.Quads;
             int row = quads.Append();
 

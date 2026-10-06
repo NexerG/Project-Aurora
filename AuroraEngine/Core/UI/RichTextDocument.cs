@@ -214,6 +214,9 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("ListIndent", "UI", "Horizontal space per list level in pixels.")]
         public float listIndent { get; set; } = 24f;
 
+        [A_XSDElementProperty("OptimalBreaks", "UI", "Break lines Knuth-Plass style over the whole paragraph instead of greedily.")]
+        public bool optimalBreaks { get; set; }
+
         // Empty means inherit: a note that declares no styles of its own uses the editor's. Declaring
         // even one replaces the whole set, so a note's heading scheme is read as written rather than
         // merged level-by-level with defaults it cannot see.
@@ -280,6 +283,7 @@ namespace ArctisAurora.Core.UI
                 lineHeight = lineHeight,
                 blockSpacing = blockSpacing,
                 listIndent = listIndent,
+                optimalBreaks = optimalBreaks,
                 page = page?.Clone()
             };
             foreach (TextStyle style in textStyles)
@@ -346,6 +350,26 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("PageNumbers", "UI", "Prints each page's number in its bottom margin.")]
         public bool pageNumbers { get; set; }
 
+        // running heads: the style every page takes unless a block names its own; none declared keeps PageNumbers
+        [A_XSDElementProperty("Style", "UI", "The page style every page takes unless a block names its own.")]
+        public string? style { get; set; }
+
+        [A_XSDElementProperty("PageStyle", "UI", "Running heads and feet by name; empty leaves PageNumbers in charge.")]
+        public List<PageStyle> styles = new List<PageStyle>();
+
+        [A_XSDElementProperty("FootnoteSkip", "UI", "Millimetres between a page's text and its footnotes.")]
+        public float footnoteSkip { get; set; } = 3.2f;
+
+        // float separations in millimetres: between floats, between floats and text, around a float set here
+        [A_XSDElementProperty("FloatSep", "UI", "Millimetres between two floats at a page's top or foot.")]
+        public float floatSep { get; set; } = 4.22f;
+
+        [A_XSDElementProperty("TextFloatSep", "UI", "Millimetres between the text and the floats at a page's top or foot.")]
+        public float textFloatSep { get; set; } = 7.03f;
+
+        [A_XSDElementProperty("InTextSep", "UI", "Millimetres above and below a float set in the text.")]
+        public float inTextSep { get; set; } = 4.22f;
+
         // Paper size in pixels, orientation applied.
         public Vector2 SizePx()
         {
@@ -372,6 +396,80 @@ namespace ArctisAurora.Core.UI
         }
 
         public PageLayout Clone() => (PageLayout)MemberwiseClone();
+
+        public PageStyle? StyleNamed(string? name) => styles.Find(s => s.name == name);
+    }
+
+    // Where a running head or foot slot sits.
+    [A_XSDType("SlotPlace", "UI")]
+    public enum SlotPlace
+    {
+        HeadLeft, HeadCenter, HeadRight,
+        FootLeft, FootCenter, FootRight
+    }
+
+    // A page's head and foot: text with {page}, {leftmark} and {rightmark} fields, and the rules under and over them.
+    [A_XSDType("PageStyle", "UI")]
+    public class PageStyle
+    {
+        [A_XSDElementProperty("Name", "UI", "What PageLayout.Style and a block's PageStyle call it.")]
+        public string name { get; set; } = string.Empty;
+
+        // rule thickness, px; 0 draws none
+        [A_XSDElementProperty("HeadRule", "UI", "Thickness of the rule under the head, in pixels; 0 draws none.")]
+        public float headRule { get; set; }
+
+        [A_XSDElementProperty("FootRule", "UI", "Thickness of the rule over the foot, in pixels; 0 draws none.")]
+        public float footRule { get; set; }
+
+        // distance from the text area, mm
+        [A_XSDElementProperty("HeadSep", "UI", "Millimetres from the bottom of the head to the top of the text.")]
+        public float headSep { get; set; } = 8.8f;
+
+        [A_XSDElementProperty("FootSkip", "UI", "Millimetres from the bottom of the text to the bottom of the foot.")]
+        public float footSkip { get; set; } = 10.5f;
+
+        [A_XSDElementProperty("Slot", "UI", "The text in each place; a place with no slot is blank.")]
+        public List<RunningSlot> slots = new List<RunningSlot>();
+    }
+
+    [A_XSDType("RunningSlot", "UI")]
+    public class RunningSlot
+    {
+        [A_XSDElementProperty("Place", "UI", "Which corner or centre of the head or foot.")]
+        public SlotPlace place { get; set; }
+
+        [A_XSDElementProperty("Text", "UI", "The text; {page}, {leftmark} and {rightmark} are filled per page.")]
+        public string text { get; set; } = string.Empty;
+
+        [A_XSDElementProperty("FontName", "UI", "Font family; empty takes the default.")]
+        public string? fontName { get; set; }
+
+        [A_XSDElementProperty("FontSize", "UI", "Type size in pixels.")]
+        public int fontSize { get; set; } = 12;
+
+        [A_XSDElementProperty("Bold", "UI", "Set in bold.")]
+        public bool bold { get; set; }
+
+        [A_XSDElementProperty("Italic", "UI", "Set in italic.")]
+        public bool italic { get; set; }
+    }
+
+    // What a footnote's or a float's blocks share; a block in the flow has none.
+    public sealed class PageInsert
+    {
+        // the id a footnote's anchor run names, or the float's kind (figure, table) and its [htbp!H] placement
+        public string? footnote;
+        public string? floatKind;
+        public string placement = "tbp";
+    }
+
+    // Where a block starts: in the flow, on a new page, or on a new page after every waiting float.
+    public enum PageBreak
+    {
+        None,
+        Page,
+        Clear
     }
 
     // Editor-wide document defaults as a settings group, so the styles scheme cascades across mounts

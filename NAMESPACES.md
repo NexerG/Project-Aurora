@@ -59,6 +59,8 @@ ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/VirtualFileSystem.cs
 ArctisAurora.Core.Filing.Serialization -> AuroraEngine/Core/Filing/Serialization/XmlReflection.cs
 ArctisAurora.Core.Generators -> AuroraEngine/Core/Generators/MTSDFGen.cs
+ArctisAurora.Core.Pdf -> AuroraEngine/Core/Pdf/PdfDocument.cs
+ArctisAurora.Core.Pdf -> AuroraEngine/Core/Pdf/PdfType3Font.cs
 ArctisAurora.Core.Registry -> AuroraEngine/Core/Registry/Context.cs
 ArctisAurora.Core.Registry -> AuroraEngine/Core/Registry/ContextDefinition.cs
 ArctisAurora.Core.Registry -> AuroraEngine/Core/Registry/EntityRegistry.cs
@@ -78,11 +80,19 @@ ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/ScreenReadback.cs
 ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/TestContext.cs
 ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/TestResultsReader.cs
 ArctisAurora.Core.Testing -> AuroraEngine/Core/Testing/TestRunner.cs
+ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/ITexFontMetrics.cs
+ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexBibliography.cs
 ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexCatcode.cs
 ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexError.cs
 ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexExpander.cs
+ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexFont.cs
+ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexFormat.cs
+ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexGlue.cs
+ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexHyphenator.cs
+ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexNode.cs
 ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexReader.cs
 ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexToken.cs
+ArctisAurora.Core.Tex -> AuroraEngine/Core/Tex/TexTypesetter.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/FrameGraph.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/FrameScheduler.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/FrameStep.cs
@@ -112,6 +122,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DocumentEdits.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DocumentToolbarControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DocumentXml.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DragGhost.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DrawRecorder.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/DropdownControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/EditableLabelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/EditableTabsControl.cs
@@ -142,6 +153,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NoteNameWindow.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NotePropertiesControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Palettes.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PanelControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PdfExport.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PointerEvent.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/RichTextDocument.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ScrollableControl.cs
@@ -172,6 +184,8 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TabItemControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TableControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TabStripButtonControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TabViewControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TexEditorControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TexLowering.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TextBoxControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TextInputActions.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/TextMeasurer.cs

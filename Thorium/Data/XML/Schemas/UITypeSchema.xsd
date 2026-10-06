@@ -4,7 +4,7 @@
   <xs:import schemaLocation="AllTypesSchema.xsd" namespace="http://arctisaurora/AuroraTypes" />
   <xs:import schemaLocation="EntityRegistryTypeSchema.xsd" namespace="http://arctisaurora/AuroraEntityRegistryTypes" />
   <xs:simpleType name="UI">
-    <xs:union memberTypes="types:ListMarker types:EffectLoop types:GradientKind types:GridSizeMode types:PaletteRole types:WindowCorners types:TextStyleType types:TextAlignment types:PageMode types:PageSize types:ScrollDirection types:PictureWrap types:PictureCollision types:Orientation" />
+    <xs:union memberTypes="types:ListMarker types:EffectLoop types:GradientKind types:GridSizeMode types:PaletteRole types:WindowCorners types:TextStyleType types:TextAlignment types:PageMode types:PageSize types:SlotPlace types:ScrollDirection types:PictureWrap types:PictureCollision types:Orientation" />
   </xs:simpleType>
   <xs:attributeGroup name="VaultBrowser.Attributes">
     <xs:attributeGroup ref="types:Scrollable.Attributes" />
@@ -67,6 +67,8 @@
     <xs:attribute name="Math" type="xs:string" />
     <xs:attribute name="Display" type="xs:boolean" />
     <xs:attribute name="Sheet" type="xs:string" />
+    <xs:attribute name="Space" type="xs:float" />
+    <xs:attribute name="Note" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="Run" type="types:Run" />
   <xs:complexType name="Run">
@@ -517,6 +519,7 @@
     <xs:attribute name="LineHeight" type="xs:float" />
     <xs:attribute name="BlockSpacing" type="xs:float" />
     <xs:attribute name="ListIndent" type="xs:float" />
+    <xs:attribute name="OptimalBreaks" type="xs:boolean" />
   </xs:attributeGroup>
   <xs:element name="DocumentLayout" type="types:DocumentLayout" />
   <xs:complexType name="DocumentLayout">
@@ -575,11 +578,63 @@
     <xs:attribute name="MarginRight" type="xs:float" />
     <xs:attribute name="Gap" type="xs:float" />
     <xs:attribute name="PageNumbers" type="xs:boolean" />
+    <xs:attribute name="Style" type="xs:string" />
+    <xs:attribute name="FootnoteSkip" type="xs:float" />
+    <xs:attribute name="FloatSep" type="xs:float" />
+    <xs:attribute name="TextFloatSep" type="xs:float" />
+    <xs:attribute name="InTextSep" type="xs:float" />
   </xs:attributeGroup>
   <xs:element name="Page" type="types:Page" />
   <xs:complexType name="Page">
-    <xs:sequence />
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="PageStyle" type="types:PageStyle">
+        <xs:annotation>
+          <xs:documentation>Running heads and feet by name; empty leaves PageNumbers in charge.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
     <xs:attributeGroup ref="types:Page.Attributes" />
+  </xs:complexType>
+  <xs:simpleType name="SlotPlace">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="HeadLeft" />
+      <xs:enumeration value="HeadCenter" />
+      <xs:enumeration value="HeadRight" />
+      <xs:enumeration value="FootLeft" />
+      <xs:enumeration value="FootCenter" />
+      <xs:enumeration value="FootRight" />
+    </xs:restriction>
+  </xs:simpleType>
+  <xs:attributeGroup name="PageStyle.Attributes">
+    <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="HeadRule" type="xs:float" />
+    <xs:attribute name="FootRule" type="xs:float" />
+    <xs:attribute name="HeadSep" type="xs:float" />
+    <xs:attribute name="FootSkip" type="xs:float" />
+  </xs:attributeGroup>
+  <xs:element name="PageStyle" type="types:PageStyle" />
+  <xs:complexType name="PageStyle">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Slot" type="types:RunningSlot">
+        <xs:annotation>
+          <xs:documentation>The text in each place; a place with no slot is blank.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attributeGroup ref="types:PageStyle.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="RunningSlot.Attributes">
+    <xs:attribute name="Place" type="types:SlotPlace" />
+    <xs:attribute name="Text" type="xs:string" />
+    <xs:attribute name="FontName" type="xs:string" />
+    <xs:attribute name="FontSize" type="xs:int" />
+    <xs:attribute name="Bold" type="xs:boolean" />
+    <xs:attribute name="Italic" type="xs:boolean" />
+  </xs:attributeGroup>
+  <xs:element name="RunningSlot" type="types:RunningSlot" />
+  <xs:complexType name="RunningSlot">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:RunningSlot.Attributes" />
   </xs:complexType>
   <xs:simpleType name="ScrollDirection">
     <xs:restriction base="xs:string">

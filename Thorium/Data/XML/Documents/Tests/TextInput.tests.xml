@@ -40,6 +40,7 @@
 	<Test Action="TextInput.TableListInCell"/>
 	<Test Action="TextInput.TableResizeColumn"/>
 	<Test Action="TextInput.TableColumnSpan"/>
+	<Test Action="TextInput.TableRules"/>
 	<Test Action="TextInput.CodeColoursAndOverflow"/>
 	<Test Action="TextInput.PictureEditUndo"/>
 	<Test Action="TextInput.PictureRoundTrip"/>
@@ -82,6 +83,7 @@
 	<Test Action="TextInput.MathLineBox"/>
 	<Test Action="TextInput.MathCopyText"/>
 	<Test Action="TextInput.MathDraws"/>
+	<Test Action="TextInput.MathArrays"/>
 	<Test Action="TextInput.MathInsertCommit"/>
 	<Test Action="TextInput.MathInsertCancel"/>
 	<Test Action="TextInput.MathEditUndo"/>

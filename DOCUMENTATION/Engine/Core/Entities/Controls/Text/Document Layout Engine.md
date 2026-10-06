@@ -30,6 +30,10 @@ The gap between blocks is `DocumentLayout.blockSpacing` rather than a number on 
 
 Per-character advances **are** stored, once per block, inside the block's own `BlockLayout`: a float advance and a flag byte (break, picture, tab) per character, about 5 MB on a million-character note. A rewrap — the page or wrap width changing while no text did — then only re-breaks the stored advances instead of looking every glyph up again, which took rewrapping a 1,000-paragraph note from ~8 to ~3 ms a frame. The store checks itself against the runs on every measure (same string, same slice, same atlas, face and size) rather than trusting invalidation, so any change to a run's text or style rebuilds it. Hit-testing a click and placing a caret still re-derive their one line's advances through the same [[TextMeasurer]] call the lines were measured with. See `ClaudeMemory/Decisions/rewrap-advance-cache.md`.
 
+[[TextMeasurer]] breaks a block greedily by default. A document whose `DocumentLayout` sets `OptimalBreaks="true"` — every LaTeX preview, no note — breaks its blocks Knuth-Plass instead (L7a, 2026-10-06): the breaker picks the break set with the lowest total demerits at tolerance 200, and when no set is feasible that block falls back to the greedy loop. A text run laid around a floating picture and a block containing a tab always stay greedy. On a Knuth-Plass line justify may shrink spaces down to a third as well as stretch them, and a line before a display formula is never stretched, in notes too. See `ClaudeMemory/Decisions/latex-editor.md`.
+
+The soft hyphen U+00AD (L7b, 2026-10-06) is a break opportunity with no width of its own: [[TextMeasurer]] gives it a zero advance, and a line that breaks at it ends with a hyphen whose width (`TextLine.hyphen`) is included in the line's width. The greedy loop and Knuth-Plass both take a soft break only when that hyphen fits, and never put one on a block's last character. Knuth-Plass charges TeX plain's costs for hyphenated lines: `HyphenPenalty` 50, `DoubleHyphenDemerits` 10000 for consecutive hyphenated lines and `FinalHyphenDemerits` 5000 when the second-last line is hyphenated. `TextRunControl` draws the hyphen as "-" at a line end and draws nothing for a soft hyphen elsewhere, justify and alignment count the hyphen in the line's visible width, and copying a selection drops it. Notes behave the same way; LaTeX lowering is what inserts soft hyphens into words. See `ClaudeMemory/Decisions/latex-editor.md`.
+
 A line is **not** one run: a paragraph with a bold word mid-sentence puts three runs on one visual line, so a line owns a list of `LineSegment` — `(runIndex, charStart, charCount, width)` — plus its own `width`, `ascent`, `descent` and `top` (Y within the block, so the measurer never sees document coordinates). Segments are cut wherever the run index changes, which means walking a line's advances for hit-testing is a walk across its segments in order.
 
 A remeasure does not throw the old lines away. Each text control hands its own `BlockLayout` back to [[TextMeasurer]], which keeps the old lines aside, clears them and fills them again, so rewrapping a large note at a new width costs no new line objects — on a 1,000-paragraph note that was 3.5 MB a frame. The consequence is that a control's lines are the same objects before and after a remeasure: anything that wants the old geometry has to copy it before layout runs. See `ClaudeMemory/Decisions/large-note-measure-cost.md`.
@@ -101,6 +105,20 @@ for each stored `run` holding characters between `from` and `to`
 	`line` ascent / descent = max with `run` line box
 block height += `line` height
 
+#### First Line Indent (offset)
+`offset` = the block's `firstIndent` × text zoom
+the first line starts at `left` += `offset`
+the first line's `room` = (`room` or content width) − `offset`   // the same in greedy, Knuth-Plass, empty block and floating-picture paths
+`layout.width` counts `line.left`
+
+#### Spacer Run (run)
+for each `char` in `run` text
+	`advances`[`count`] = `run` space   // the run's fixed advance, in place of the glyph's
+	the glyph draws nothing
+the run's space is part of its reuse key
+typing beside a spacer goes into a text span, never into the spacer
+copying turns each spacer character into a space
+
 #### Invalidate Block (index)
 [[#Measure Block]] (`block`, content width)
 `delta` = new height − old height
@@ -150,7 +168,7 @@ The pages themselves are plain panels drawn behind the highlights and the text. 
 	top = margin top; text area = paper height − margins (unbounded when pageless); stride = paper height + gap
 	y = top
 	for each block
-		if not the first block: y += block spacing
+		if not the first block: y += the block's space before when it has one, else block spacing   // a table's too; a code run has no gap unless it sets one
 		y = push(y, first line's height)            — the whole block moves if its first line would cross
 		for each line of the block
 			y = push(y, line height)
@@ -165,6 +183,76 @@ The pages themselves are plain panels drawn behind the highlights and the text. 
 	if the span fits before the band's end: return y
 	if the span is taller than a whole text area and starts inside it: return y
 	return next page's band top
+
+Landed 2026-10-06 (L7d and L7e): a block can break the page before it, a page style puts running heads and feet in the margins, and a footnote is reserved room at the foot of the page its anchor lands on. Footnote and float blocks stay in the block list in source order but are not part of the flow; they are placed from their own lists.
+
+Landed 2026-10-06 (L7f): a float group is placed by LaTeX's `[htbp!H]` rules with LaTeX's default parameters: here in the text, at the top or foot of the current page, held back and placed on a later page, or on a page of floats. A float is handled at its position among the blocks, which is its reference point; a float inside a paragraph is emitted after the paragraph, so its reference point is the paragraph's end. `\clearpage` and the end of the document put out every float still waiting, as pages of floats. A footnote sits above the bottom floats of its page.
+
+#### Break (y)
+	band top = the text-area top of the page y falls on
+	if y has not left the band top: return y
+	return the next page's band top
+
+#### Paginate with footnotes and floats (only when the document has footnote or float blocks)
+	plain notes take the Push path; this one adds a `PageSpace` for the pass and, with floats, a `PageFloats`
+	for each child, by index so that a page can be rewound
+		a footnote block is skipped
+		a float group arrives at the current y (Float Arrival below), then the loop moves past the group
+		a block or table with a page break moves to Break(y)
+			a Clear break first flushes the waiting floats (Flush below)
+		for each line of the block
+			the line's anchors are the footnote ids it holds
+			ask the `PageSpace` whether the line plus its unplaced footnotes fit above the page's reserved foot
+			if they do not: the line moves to the next page's top and takes its footnotes with it
+			reserve the footnotes on the page the line lands on
+	at the end of the pass
+		a footnote whose anchor is gone is reserved at the foot of the last page, or one page more if it does not fit
+		the waiting floats are flushed
+		each footnote is placed at the foot of its page's text area, stacked under a short rule, above the page's bottom floats
+			a footnote taller than the text area starts below the last text on that page instead of above it
+		the floats are stacked into place (Stack below)
+	the incremental "settled" shortcut is off while any footnote or float block exists, so the pass is always full
+
+#### Float Arrival (group, y)
+	a float already decided is skipped on a re-run; one set here is placed inline again
+	`H` is always here, with `\intextsep` above and below, and never floats; pageless mode sets every float here
+	if an earlier float of the same kind is waiting: the float waits
+	if the placement allows `h` and the float fits in the room left plus `\intextsep`: place it here
+	if the placement allows `t` and the float fits on the current page, within topnumber, topfraction, totalnumber and textfraction, with the text already on the page still fitting under it
+		reserve the page's top for it
+		rewind: lay the page's text again from the first flow block that reaches that page
+			footnotes reserved from that page on are rolled back
+			picture floats of the rewound blocks are dropped and registered again
+			at most two rewinds per page
+	if the placement allows `b` and the float fits below the text so far, within bottomnumber, bottomfraction, totalnumber and textfraction: place it at the foot
+	otherwise the float waits
+	`!` ignores the counts and fractions, and still needs the float to fit
+	on page 1 the top reservation includes the note editor's header
+
+#### Fresh Page (page)
+	run once per page, the first time anything lands on it
+	try a page of floats from the waiting `p` floats, in order, without passing a failed float of the same kind
+		the page must be filled to at least floatpagefraction
+	otherwise place the waiting floats at the top or foot in order
+	a page of floats is skipped by Push
+
+#### Flush (start page)
+	run by a Clear break and at the end of the document
+	put out every waiting float as pages of floats, ignoring floatpagefraction
+		each page as full as fits, at least one float per page
+
+#### Stack
+	for each page of floats
+		spread the leftover as `\@fptop`, `\@fpsep` per gap, `\@fpbot` = 1 : 2 per gap : 1 fil, centred for one float
+	for each other page
+		top floats stack down from the band top, `\floatsep` between them and `\textfloatsep` to the text
+		bottom floats stack up from the band foot
+
+#### Number Pages
+	for each page panel
+		its only child is the page's margin layer, which holds six slot labels and the head, foot and footnote rules
+		write the running head and foot from the page's style: slot text with the page number and the page's marks filled in
+		the plain page number is the foot-center slot
 
 ## Memory budget (100 pages ≈ 300k chars)
 

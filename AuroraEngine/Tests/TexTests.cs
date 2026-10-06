@@ -1,8 +1,13 @@
+using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry;
+using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.Testing;
 using ArctisAurora.Core.Tex;
 using ArctisAurora.Core.UI;
+using ArctisAurora.EngineWork.Registry;
+using System.Numerics;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 namespace ArctisAurora.Tests
@@ -251,7 +256,23 @@ namespace ArctisAurora.Tests
             return typesetter;
         }
 
-        private static List<TexParagraph> Pars(TexTypesetter typesetter) => typesetter.vlist.OfType<TexParagraph>().ToList();
+        // The main list's paragraphs, a float's where it stands and after the paragraph it is in.
+        private static List<TexParagraph> Pars(TexTypesetter typesetter) => Pars(typesetter.vlist).ToList();
+
+        private static IEnumerable<TexParagraph> Pars(List<TexNode> vlist)
+        {
+            foreach (TexNode node in vlist)
+                if (node is TexFloat f)
+                    foreach (TexParagraph inner in Pars(f.vlist))
+                        yield return inner;
+                else if (node is TexParagraph p)
+                {
+                    yield return p;
+                    foreach (TexFloat g in p.list.OfType<TexFloat>())
+                        foreach (TexParagraph inner in Pars(g.vlist))
+                            yield return inner;
+                }
+        }
 
         // A paragraph as text: glue a space, math in $ or $$, a forced break |.
         private static string Line(TexParagraph p) => string.Concat(p.list.Select(n => n switch
@@ -345,7 +366,7 @@ namespace ArctisAurora.Tests
             t.Check(math == @"$x^2$ $$a+b$$$$\frac {a}{b}$$$y$" && errors.Count == 0, $"inline and display forms: {math}");
             string macro = Lines(@"\newcommand\R{\mathbb{R}}$x\in\R$", out errors);
             t.Check(macro == @"$x\in \mathbb {R}$" && errors.Count == 0, $"macros expand inside math: {macro}");
-            t.Check(Lines(@"\begin{equation}E=mc^2\end{equation}") == "$$E=mc^2$$", "an equation is display math");
+            t.Check(Lines(@"\begin{equation}E=mc^2\end{equation}") == @"$$E=mc^2\tag{1}$$", "an equation is numbered display math");
 
             string open = Lines("$a\n\nb", out errors);
             t.Check(open == "$a$ / b" && Has(errors, "Missing $ inserted"), $"a paragraph ends unclosed math: {open}");
@@ -421,16 +442,18 @@ namespace ArctisAurora.Tests
 
             XElement[] expected =
             {
-                new XElement("Block", new XAttribute("StylingType", "Heading1"),
-                    new XElement("Run", new XAttribute("Text", "1\u00A0\u00A0\u00A0Intro"), new XAttribute("Bold", "true"))),
-                new XElement("Block", new XAttribute("Align", "Justify"),
+                new XElement("Block", new XAttribute("StylingType", "Heading1"), new XAttribute("SpaceBefore", "20.038"),
+                    new XElement("Run", new XAttribute("Text", "1"), new XAttribute("Bold", "true")),
+                    new XElement("Run", new XAttribute("Text", "\u00A0"), new XAttribute("Bold", "true"), new XAttribute("Space", "19.128")),
+                    new XElement("Run", new XAttribute("Text", "In\u00ADtro"), new XAttribute("Bold", "true"))),
+                new XElement("Block", new XAttribute("Align", "Justify"), new XAttribute("SpaceBefore", "13.168"),
                     new XElement("Run", new XAttribute("Text", "Some ")),
                     new XElement("Run", new XAttribute("Text", "bold"), new XAttribute("Bold", "true")),
                     new XElement("Run", new XAttribute("Text", " text ")),
                     new XElement("Run", new XAttribute("Math", "x^2"), new XAttribute("FontName", "latin-modern-math")),
                     new XElement("Run", new XAttribute("Text", "."))),
                 new XElement("Block", new XAttribute("Align", "Justify"), new XAttribute("List", "Bullet"), new XAttribute("Level", 0),
-                    new XAttribute("Marker", "Disc"), new XElement("Run", new XAttribute("Text", "One")))
+                    new XAttribute("Marker", "Disc"), new XAttribute("SpaceBefore", "10.627"), new XElement("Run", new XAttribute("Text", "One")))
             };
             string body = string.Concat(document.Elements("Block").Select(b => b.ToString(SaveOptions.DisableFormatting)));
             string want = string.Concat(expected.Select(b => b.ToString(SaveOptions.DisableFormatting)));
@@ -450,8 +473,8 @@ namespace ArctisAurora.Tests
                 "\\documentclass{article}\n\\begin{document}\n\\section{Intro}\nFirst line\\\\\nsecond half.\n\n\\hrule\nNote.\\footnote{Text.}\n\\begin{verbatim}\na\nb\n\\end{verbatim}\n\\end{document}\n",
                 out List<TexError> errors, lines);
             t.Check(errors.Count == 0, $"compiles clean: {string.Join("; ", errors.Select(e => e.message))}");
-            t.Check(lines.Count == document.Elements("Block").Count(), $"one line per block: {lines.Count}");
-            t.Check(string.Join(",", lines) == "3,4,4,0,8,10,11,0,8", $"heading, both halves of \\\\, rule, note, verbatim lines, Notes heading, endnote: {string.Join(",", lines)}");
+            t.Check(lines.Count == document.Elements("Block").Count() + document.Elements("Footnote").Elements("Block").Count(), $"one line per block: {lines.Count}");
+            t.Check(string.Join(",", lines) == "3,4,4,0,8,8,10,11", $"heading, both halves of \\\\, rule, note, its footnote, verbatim lines: {string.Join(",", lines)}");
             yield break;
         }
         #endregion
@@ -478,8 +501,11 @@ namespace ArctisAurora.Tests
             TexTable table = Typeset(@"\begin{tabular}{|l c|r|} \hline a & {\bf b} \bf & c \\ \hline \multicolumn{2}{c}{wide} & d \\ e & f \end{tabular}",
                 out List<TexError> errors).vlist.OfType<TexTable>().Single();
             t.Check(errors.Count == 0, $"typesets clean: {string.Join("; ", errors.Select(e => e.message))}");
-            t.Check(table.columns.Select(c => c.align).SequenceEqual(new[] { TexAlign.Left, TexAlign.Center, TexAlign.Right }) && table.ruled,
-                "l c r with rules");
+            t.Check(table.columns.Select(c => c.align).SequenceEqual(new[] { TexAlign.Left, TexAlign.Center, TexAlign.Right }),
+                "l c r");
+            t.Check(string.Join(",", table.vrules) == "1,0,1,1", $"| counted per column boundary: {string.Join(",", table.vrules)}");
+            t.Check(string.Join(",", table.rules.Select(r => $"{r.kind}@{r.row}:{r.from}-{r.to}")) == "Plain@0:0-2,Plain@1:0-2",
+                $"\\hline above the first and second rows: {string.Join(",", table.rules.Select(r => $"{r.kind}@{r.row}:{r.from}-{r.to}"))}");
             string rows = string.Join(" | ", table.rows.Select(r => string.Join(",", r.Select(c => CellText(c) + (c.span > 1 ? "*" + c.span : "")))));
             t.Check(rows == "a,b,c | wide*2,d | e,f", $"rows and cells: {rows}");
             t.Check(table.rows[1][0].vlist.OfType<TexParagraph>().Single().style.align == TexAlign.Center, "a multicolumn takes its own alignment");
@@ -488,9 +514,15 @@ namespace ArctisAurora.Tests
                 && !table.rows[0][2].vlist.OfType<TexParagraph>().Single().list.OfType<TexChar>().Single().style.font.bold,
                 "a cell's \\bf ends at the next &");
 
-            t.Check(!Typeset(@"\begin{tabular}{ll}a&b\end{tabular}", out _).vlist.OfType<TexTable>().Single().ruled, "no | and no rule is unruled");
-            t.Check(Typeset(@"\begin{tabular}{ll}\toprule a&b\\\cmidrule(lr){1-2} c&d\\\bottomrule\end{tabular}", out errors).vlist.OfType<TexTable>().Single() is { ruled: true, rows.Count: 2 }
-                && errors.Count == 0, "booktabs rules mark it ruled");
+            TexTable plain = Typeset(@"\begin{tabular}{ll}a&b\end{tabular}", out _).vlist.OfType<TexTable>().Single();
+            t.Check(plain.rules.Count == 0 && plain.vrules.All(n => n == 0), "no | and no rule has no rules");
+            TexTable booktabs = Typeset(@"\begin{tabular}{lll}\toprule[2pt] a&b&c\\\cmidrule(lr){1-2}\cmidrule(l){3-3} c&d&e\\\cline{2-3}\hline\hline\bottomrule\end{tabular}",
+                out errors).vlist.OfType<TexTable>().Single();
+            string ruleList = string.Join(",", booktabs.rules.Select(r => $"{r.kind}@{r.row}:{r.from}-{r.to}{(r.trimLeft ? "l" : "")}{(r.trimRight ? "r" : "")}"));
+            t.Check(booktabs.rows.Count == 2 && errors.Count == 0
+                && ruleList == "Heavy@0:0-2,Cmid@1:0-1lr,Cmid@1:2-2l,Plain@2:1-2,Plain@2:0-2,Plain@2:0-2,Heavy@2:0-2",
+                $"booktabs, \\cline and trims at their boundaries: {ruleList}; {string.Join("; ", errors.Select(e => e.message))}");
+            t.Check(Math.Abs(booktabs.rules[0].width - 2 * 65536) < 2 && booktabs.rules[1].width == 0, "\\toprule[2pt] carries its width");
 
             TexTable spec = Typeset(@"\begin{tabular}{@{}*{3}{c}p{2cm}@{}}x\end{tabular}", out errors).vlist.OfType<TexTable>().Single();
             int twoCm = (int)(2f / 2.54f * 72.27f * 65536f);
@@ -521,6 +553,21 @@ namespace ArctisAurora.Tests
 
             Typeset(@"\caption{Lost}", out errors);
             t.Check(Has(errors, "\\caption outside float"), "a caption outside a float");
+
+            List<TexFloat> set = floats.vlist.OfType<TexFloat>().ToList();
+            t.Check(set.Select(f => f.kind + ":" + f.placement).SequenceEqual(new[] { "figure:ht", "table:tbp", "figure:tbp" }),
+                $"each float keeps its kind and placement, a lone h becoming ht: {string.Join(", ", set.Select(f => f.kind + ":" + f.placement))}");
+            t.Check(!floats.vlist.OfType<TexVGlue>().Any(), "a float leaves no glue in the text");
+            t.Check(Typeset(@"\begin{figure}[!b]x\end{figure}\begin{table}[H]x\end{table}\begin{figure}[pxq]x\end{figure}", out _).vlist.OfType<TexFloat>()
+                .Select(f => f.placement).SequenceEqual(new[] { "!b", "H", "p" }), "! and H are kept, unknown letters dropped");
+
+            TexTypesetter inside = Typeset(@"Before this \begin{figure}\caption{Mid}\end{figure} and after.", out errors);
+            TexParagraph whole = inside.vlist.OfType<TexParagraph>().Single();
+            t.Check(Line(whole) == "Before this and after." && whole.list.OfType<TexFloat>().Count() == 1 && errors.Count == 0,
+                $"a float inside a paragraph leaves the paragraph whole: {Line(whole)}");
+
+            Typeset(@"x\footnote{n \begin{figure}y\end{figure}}", out errors);
+            t.Check(Has(errors, "Not in outer par mode"), "a float inside a footnote is an error");
             yield break;
         }
 
@@ -541,10 +588,65 @@ namespace ArctisAurora.Tests
             t.Check(text.Contains("Missing ??."), "an unknown label prints ??");
             t.Check(errors.Count == 1 && Has(errors, "Reference `nope' undefined", 6), $"one warning, at its line: {string.Join("; ", errors)}");
             List<TexMathNode> math = Pars(refs).SelectMany(p => p.list).OfType<TexMathNode>().ToList();
-            t.Check(math.Any(m => m.source == @"x = \text{2}") && math.Any(m => m.source == "a"), $"\\ref in math resolved, \\label dropped: {string.Join(" | ", math.Select(m => m.source))}");
+            t.Check(math.Any(m => m.source == @"x = \text{2}") && math.Any(m => m.source == @"a\tag{1}"), $"\\ref in math resolved, \\label dropped: {string.Join(" | ", math.Select(m => m.source))}");
 
             Typeset(@"\section{A}\label{x}\section{B}\label{x}", out errors);
             t.Check(Has(errors, "Label `x' multiply defined"), "a label defined twice");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.Equations", "Test")]
+        private static IEnumerator<int> Equations(TestContext t)
+        {
+            string source = "\\begin{equation}a\\label{e:a}\\end{equation}\n" +
+                "\\begin{equation*}b\\end{equation*}\n" +
+                "\\begin{align}x &= 1 \\label{e:x}\\\\ y &= 2 \\notag\\\\ z &= 3 \\tag{A}\\label{e:z}\\\\ w &= 4\\\\\\end{align}\n" +
+                "\\begin{align*}p &= q\\end{align*}\n" +
+                "\\begin{multline}m \\\\ n\\label{e:m}\\end{multline}\n" +
+                "See \\eqref{e:x}, \\ref{e:z} and \\eqref{e:m}. $\\eqref{e:a}$\n";
+            TexTypesetter typesetter = Typeset(source, out List<TexError> errors);
+            List<TexMathNode> math = Pars(typesetter).SelectMany(p => p.list).OfType<TexMathNode>().ToList();
+            string all = string.Join(" | ", math.Select(m => m.source));
+            string Tags(TexMathNode m) => string.Join(",", Regex.Matches(m.source, @"\\tag\s*\{([^}]*)\}").Select(x => x.Groups[1].Value));
+
+            t.Check(errors.Count == 0, $"compiles clean: {string.Join("; ", errors)}");
+            t.Check(math.Count == 6 && math[0].source == @"a\tag{1}" && math[1].source == "b", $"equation numbered, equation* not: {all}");
+            t.Check(math[2].source.StartsWith(@"\begin{align}") && Tags(math[2]) == "2,A,3" && !math[2].source.Contains("notag"),
+                $"align numbers each row but \\notag and \\tag rows, and not the empty last row: {math[2].source}");
+            t.Check(math[3].source.StartsWith(@"\begin{align*}") && Tags(math[3]) == "", $"align* is unnumbered: {math[3].source}");
+            t.Check(Tags(math[4]) == "4" && math[4].source.EndsWith(@"\tag{4}\end{multline}"), $"multline takes one number, on its last row: {math[4].source}");
+            t.Check(typesetter.labels["e:a"] == "1" && typesetter.labels["e:x"] == "2" && typesetter.labels["e:z"] == "A" && typesetter.labels["e:m"] == "4",
+                "labels point at their row's number or tag");
+
+            string text = string.Join(" / ", Pars(typesetter).Select(Line));
+            t.Check(text.Contains("See (2), A and (4)."), $"\\eqref and \\ref in text: {text}");
+            t.Check(math[5].source == @"\text{(1)}", $"\\eqref in math: {math[5].source}");
+
+            string report = "\\documentclass{report}\\begin{document}\\chapter{A}\\begin{equation}x\\end{equation}\\end{document}";
+            t.Check(Pars(Typeset(report, out _)).SelectMany(p => p.list).OfType<TexMathNode>().Single().source == @"x\tag{1.1}",
+                "report numbers equations within the chapter");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.MathEnvironments", "Test")]
+        private static IEnumerator<int> MathEnvironments(TestContext t)
+        {
+            string matrix = Lines(@"\[ \begin{pmatrix} a & b \\ c & d \end{pmatrix} \]", out List<TexError> errors);
+            t.Check(matrix == @"$$\begin{pmatrix} a & b \\ c & d \end{pmatrix}$$" && errors.Count == 0, $"an environment inside math is written back as source: {matrix}");
+
+            List<TexMathNode> math = Pars(Typeset(@"\begin{equation}\begin{split}a&=b\\&=c\end{split}\end{equation}" +
+                @"\begin{align}\left\{\begin{aligned}a\\b\end{aligned}\right. \\ c\end{align}", out errors))
+                .SelectMany(p => p.list).OfType<TexMathNode>().ToList();
+            t.Check(math[0].source == @"\begin{split}a&=b\\&=c\end{split}\tag{1}", $"split inside equation takes one number: {math[0].source}");
+            t.Check(Regex.Matches(math[1].source, @"\\tag").Count == 2, $"rows split only at the top level: {math[1].source}");
+            t.Check(math.All(m => MathParser.Parse(m.source) is not MathError) && errors.Count == 0, "both parse as math");
+
+            Lines(@"\begin{pmatrix} a \end{pmatrix}", out errors);
+            t.Check(Has(errors, "Missing $ inserted"), "a math environment in text");
+
+            string ops = Lines(@"\DeclareMathOperator{\tr}{tr}\DeclareMathOperator*{\argmax}{argmax}$\tr A + \argmax_x f$", out errors);
+            t.Check(ops.Contains(@"\operatorname {tr}") && ops.Contains(@"\operatorname *{argmax}") && errors.Count == 0,
+                $"\\DeclareMathOperator defines \\operatorname macros: {ops}");
             yield break;
         }
 
@@ -618,8 +720,44 @@ namespace ArctisAurora.Tests
             RichTextDocument parsed = DocumentXml.Parse(document);
             TableControl control = (TableControl)parsed.blocks[1];
             t.Check(!control.showBorders && control.ColumnSpan(control.Cells()[2]) == 2, "it parses as a borderless table with a merged cell");
+            t.Check(table.Attribute("Align") == null && control.alignment == TextAlignment.Left, "a tabular in a justified paragraph sits left");
             foreach (Control block in parsed.blocks)
                 block.Destroy();
+
+            string Aligned(string body)
+            {
+                XElement compiled = TexLowering.Compile(body, out _);
+                return (string?)compiled.Descendants("Table").Single().Attribute("Align") ?? "Left";
+            }
+            const string tabular = "\\begin{tabular}{l}a\\end{tabular}";
+            t.Check(Aligned($"\\begin{{center}}{tabular}\\end{{center}}") == "Center", "center centres");
+            t.Check(Aligned($"\\begin{{table}}\\centering{tabular}\\end{{table}}") == "Center", "\\centering in a float centres");
+            t.Check(Aligned($"\\begin{{flushright}}{tabular}\\end{{flushright}}") == "Right", "flushright");
+            t.Check(Aligned($"{{\\centering{tabular}}}\n\nAfter.") == "Left", "\\centering closed before the paragraph ends does not");
+
+            XElement ruled = TexLowering.Compile(@"\begin{tabular}{|l||r|}\toprule a&b\\\cmidrule(lr){1-1}\cline{2-2} c&d\\\hline\hline\end{tabular}", out _)
+                .Descendants("Table").Single();
+            List<XElement> columns = ruled.Elements("Column").ToList();
+            t.Check((string?)ruled.Attribute("Borders") == "false" && ((string?)ruled.Attribute("Padding"))?.EndsWith(" 0") == true,
+                $"a ruled tabular draws its own rules with LaTeX's padding: {ruled.Attribute("Padding")}");
+            t.Check((string?)columns[0].Attribute("RuleLeft") == "Plain" && (string?)columns[1].Attribute("RuleLeft") == "Double"
+                && (string?)columns[1].Attribute("RuleRight") == "Plain" && columns[0].Attribute("RuleRight") == null, "| and || on their column edges");
+            List<XElement> top = ruled.Elements("Row").First().Elements("Cell").ToList();
+            List<XElement> bottom = ruled.Elements("Row").Last().Elements("Cell").ToList();
+            t.Check(top.All(c => (string?)c.Attribute("RuleAbove") == "Heavy"), "\\toprule over every first-row cell");
+            t.Check((string?)bottom[0].Attribute("RuleAbove") == "Cmid" && (string?)bottom[0].Attribute("TrimAbove") == "Both"
+                && (string?)bottom[1].Attribute("RuleAbove") == "Plain" && bottom[1].Attribute("TrimAbove") == null, "\\cmidrule(lr) and \\cline on their columns");
+            t.Check(bottom.All(c => (string?)c.Attribute("RuleBelow") == "Double"), "\\hline\\hline under the last row is a double rule");
+
+            XElement centred = TexLowering.Compile($"\\begin{{center}}{tabular}\\end{{center}}", out _);
+            TableControl table2 = DocumentXml.Parse(centred).blocks.OfType<TableControl>().Single();
+            t.Check(DocumentXml.WriteTable(table2).Attribute("Align")?.Value == "Center", "Align round-trips");
+            Vector2 desired = table2.Measure(new Vector2(1000f, float.PositiveInfinity));
+            table2.Arrange(new LayoutRect(0f, 0f, 1000f, desired.Y));
+            StackPanelControl first = table2.Cells()[0];
+            float left = first.arrangedRect.x - first.margin.left;
+            t.Check(MathF.Abs(left - (1000f - desired.X) * 0.5f) < 0.5f, $"the columns sit centred: {left} of {(1000f - desired.X) * 0.5f}");
+            table2.Destroy();
             yield break;
         }
 
@@ -655,6 +793,710 @@ namespace ArctisAurora.Tests
             t.Check(Has(errors, "File `pic' not found"), "no folder finds nothing");
             Directory.Delete(folder, true);
             yield break;
+        }
+        #endregion
+
+        #region ---- line breaking ----
+        // each line but the last: how far its spaces stretch (above 0) or shrink (below 0) to fill the width
+        private static List<float> Ratios(BlockLayout layout, TextMeasurer.Run run, string text, float width)
+        {
+            List<float> ratios = new List<float>();
+            for (int l = 0; l < layout.lines.Count - 1; l++)
+            {
+                LineSegment segment = layout.lines[l].segments[0];
+                float pen = 0f, visible = 0f, spaces = 0f, inner = 0f;
+                for (int k = segment.charStart; k < segment.charStart + segment.charCount; k++)
+                {
+                    float advance = TextMeasurer.MeasureAdvance(text[k], run);
+                    pen += advance;
+                    if (text[k] == ' ') spaces += advance;
+                    else
+                    {
+                        visible = pen;
+                        inner = spaces;
+                    }
+                }
+                ratios.Add(visible <= width ? (width - visible) / (inner * TextMeasurer.GlueStretch) : (width - visible) / (inner * TextMeasurer.GlueShrink));
+            }
+            return ratios;
+        }
+
+        [A_XSDActionDependency("Tex.OptimalBreaks", "Test")]
+        private static IEnumerator<int> OptimalBreaks(TestContext t)
+        {
+            IGlyphMetrics metrics = new FontAssetGlyphMetrics();
+            AtlasMetaData atlas = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset))["default"].atlasMetaData;
+            const string text = "In olden times when wishing still helped one, there lived a king whose daughters were all beautiful, "
+                + "but the youngest was so beautiful that the sun itself, which has seen so much, was astonished whenever it shone in her face. "
+                + "Close by the king's castle lay a great dark forest, and under an old lime tree in the forest was a well, and when the day "
+                + "was very warm, the king's child went out into the forest and sat down by the side of the cool fountain.";
+            TextMeasurer.Run run = new TextMeasurer.Run(text, 0, text.Length, "default", atlas, 16, FontStyle.Regular);
+            List<TextMeasurer.Run> runs = new List<TextMeasurer.Run> { run };
+
+            int applied = 0;
+            bool looser = false;
+            for (float width = 260f; width <= 900f; width += 20f)
+            {
+                List<float> greedy = Ratios(TextMeasurer.MeasureBlock(runs, width, metrics, 1.5f), run, text, width);
+                List<float> optimal = Ratios(TextMeasurer.MeasureBlock(runs, width, metrics, 1.5f, optimal: true), run, text, width);
+                bool feasible = optimal.All(r => r >= -1f && r <= 1.26f);
+                t.Check(feasible || optimal.SequenceEqual(greedy),
+                    $"at {width} px Knuth-Plass sets every line within tolerance or leaves the block to greedy: {string.Join(", ", optimal.Select(r => r.ToString("0.00")))}");
+                if (!feasible || optimal.SequenceEqual(greedy)) continue;
+                applied++;
+                if (greedy.Max() > optimal.Max()) looser = true;
+            }
+            t.Check(applied > 0 && looser, $"Knuth-Plass applies at {applied} widths and somewhere greedy leaves a looser line than it");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.Hyphenator", "Test")]
+        private static IEnumerator<int> Hyphenator(TestContext t)
+        {
+            static string Show(string word, bool[]? points) =>
+                points == null ? word : string.Concat(word.Select((c, i) => (points[i] ? "-" : "") + c));
+
+            TexHyphenator liang = new TexHyphenator(new[] { "hy3ph", "he2n", "hena4", "hen5at", "1na", "n2at", "1tio", "2io", "o2n", "1b" }, new[] { "as-so-ciate" });
+            t.Check(Show("hyphenation", liang.Points("hyphenation")) == "hy-phen-ation", $"Liang's example: {Show("hyphenation", liang.Points("hyphenation"))}");
+            t.Check(Show("associate", liang.Points("associate")) == "as-so-ciate", "an exception is used as written");
+            t.Check(Show("table", liang.Points("table")) == "ta-ble" && liang.Points("tab") == null, "a break needs 2 letters before and 3 after");
+            t.Check(liang.Points("abode") == null, "a break 1 letter from the start is dropped");
+            Dictionary<string, bool[]> extra = new Dictionary<string, bool[]> { ["hyphenation"] = TexHyphenator.Exception("hyphe-nation")!.Value.points };
+            t.Check(Show("hyphenation", liang.Points("hyphenation", extra)) == "hyphe-nation", "a document's \\hyphenation wins over patterns");
+
+            TexHyphenator? english = TexHyphenator.English;
+            t.Check(english != null, "the US English patterns load");
+            if (english != null)
+            {
+                string Word(string w) => Show(w, english.Points(w));
+                t.Check(Word("hyphenation") == "hy-phen-ation" && Word("table") == "ta-ble" && Word("present") == "present",
+                    $"US English: {Word("hyphenation")} {Word("table")} {Word("present")}");
+                t.Check(Word("democrat") == "de-mo-c-rat", $"the patterns' documented TeX result, bug included: {Word("democrat")}");
+            }
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.SoftHyphen", "Test")]
+        private static IEnumerator<int> SoftHyphen(TestContext t)
+        {
+            IGlyphMetrics metrics = new FontAssetGlyphMetrics();
+            AtlasMetaData atlas = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset))["default"].atlasMetaData;
+            const string text = "aaaa bbbb\u00ADcccc dddd";
+            TextMeasurer.Run run = new TextMeasurer.Run(text, 0, text.Length, "default", atlas, 16, FontStyle.Regular);
+            List<TextMeasurer.Run> runs = new List<TextMeasurer.Run> { run };
+            float Width(string s) => s.Sum(c => TextMeasurer.MeasureAdvance(c, run));
+            float hyphen = TextMeasurer.MeasureAdvance('-', run);
+            t.Check(TextMeasurer.MeasureAdvance(TextMeasurer.SoftHyphen, run) == 0f && hyphen > 0f, "a soft hyphen takes no room");
+
+            float fits = Width("aaaa bbbb") + hyphen + 1f;
+            foreach (bool optimal in new[] { false, true })
+            {
+                BlockLayout layout = TextMeasurer.MeasureBlock(runs, fits, metrics, 1.5f, optimal: optimal);
+                TextLine first = layout.lines[0];
+                LineSegment end = first.segments[^1];
+                t.Check(layout.lines.Count >= 2 && text[end.charStart + end.charCount - 1] == TextMeasurer.SoftHyphen && first.hyphen == hyphen
+                    && first.width <= fits, $"{(optimal ? "Knuth-Plass" : "greedy")}: the line breaks at the soft hyphen and shows a hyphen inside the width");
+                t.Check(layout.lines.All(l => l != first ? l.hyphen == 0f : true), "only the hyphenated line shows a hyphen");
+            }
+
+            BlockLayout tight = TextMeasurer.MeasureBlock(runs, Width("aaaa bbbb") + hyphen * 0.5f, metrics, 1.5f);
+            t.Check(tight.lines[0].hyphen == 0f && tight.lines[0].segments[^1].charStart + tight.lines[0].segments[^1].charCount == 5,
+                "when the hyphen does not fit the line breaks at the space instead");
+            BlockLayout whole = TextMeasurer.MeasureBlock(runs, 1000f, metrics, 1.5f);
+            t.Check(whole.lines.Count == 1 && whole.lines[0].hyphen == 0f, "an unbroken soft hyphen shows nothing");
+
+            XElement document = new XElement("Document", new XElement("Block", new XElement("Run", new XAttribute("Text", text))));
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.xml");
+            document.Save(path);
+            DocumentEditorControl editor = new DocumentEditorControl
+            {
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                verticalAlignment = VerticalAlignment.Stretch
+            };
+            t.Show(editor);
+            editor.LoadPath(path);
+            File.Delete(path);
+            yield return 2;
+            editor.SelectAll();
+            editor.Copy();
+            t.Check(ClipboardText.Get() == "aaaa bbbbcccc dddd", $"copy drops soft hyphens: {ClipboardText.Get()}");
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("Tex.Lowering.Hyphens", "Test")]
+        private static IEnumerator<int> LoweringHyphens(TestContext t)
+        {
+            XElement document = TexLowering.Compile("\\hyphenation{ta-ble}\nA big ex\\-tra table \\texttt{table}.", out List<TexError> errors);
+            t.Check(errors.Count == 0, $"compiles clean: {string.Join("; ", errors.Select(e => e.message))}");
+            List<string> runs = document.Descendants("Run").Select(r => (string?)r.Attribute("Text") ?? "").ToList();
+            t.Check(runs.Count == 3 && runs[0] == "A big ex\u00ADtra ta\u00ADble " && runs[1] == "table" && runs[2] == ".",
+                $"\\- and \\hyphenation become soft hyphens, monospace is left whole: {string.Join(" | ", runs).Replace('\u00AD', '~')}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.Lowering.Spacing", "Test")]
+        private static IEnumerator<int> LoweringSpacing(TestContext t)
+        {
+            const string source = """
+                \documentclass{article}
+                \begin{document}
+                \section{A}
+                First paragraph.
+
+                Second paragraph.
+
+                \noindent Third.
+
+                \bigskip
+                Fourth \[ x \] after.
+                \begin{itemize}\item a \item b\end{itemize}
+                Fifth.
+
+                Sixth\quad x\hspace{1cm}y.
+                \end{document}
+                """;
+            XElement document = TexLowering.Compile(source, out List<TexError> errors);
+            t.Check(errors.Count == 0, $"compiles clean: {string.Join("; ", errors.Select(e => e.message))}");
+            List<XElement> blocks = document.Elements("Block").ToList();
+            const float px = 96f / 72.27f;
+            float At(int i, string name) => (float?)blocks[i].Attribute(name) ?? 0f;
+            bool Near(float a, float b) => MathF.Abs(a - b) < 0.01f;
+            t.Check(blocks.Count == 11, $"heading, 3 paragraphs, text / display / text, 2 items, 2 paragraphs: {blocks.Count}");
+            if (blocks.Count != 11) yield break;
+
+            t.Check(At(1, "Indent") == 0f && Near(At(1, "SpaceBefore"), 2.3f * At(0, "SpaceBefore") / 3.5f), "the first paragraph after a heading is not indented, 2.3ex below it");
+            t.Check(Near(At(2, "Indent"), 15f * px) && At(2, "SpaceBefore") == 0f, "a following paragraph is indented 15pt, with no \\parskip");
+            t.Check(At(3, "Indent") == 0f, "\\noindent");
+            t.Check(Near(At(4, "SpaceBefore"), 12f * px) && Near(At(4, "Indent"), 15f * px), "\\bigskip above an indented paragraph");
+            t.Check(blocks[5].Elements("Run").Single().Attribute("Display") != null && Near(At(5, "SpaceBefore"), 10f * px),
+                "a display formula is a block of its own, \\abovedisplayskip above it");
+            t.Check(Near(At(6, "SpaceBefore"), 10f * px) && At(6, "Indent") == 0f, "the text after a display continues unindented, \\belowdisplayskip above it");
+            t.Check(Near(At(7, "SpaceBefore"), 8f * px) && Near(At(8, "SpaceBefore"), 8f * px), "\\topsep above a list, \\itemsep + \\parsep between items");
+            t.Check(Near(At(9, "SpaceBefore"), 8f * px) && At(9, "Indent") == 0f, "\\topsep below a list, and the text right after it is not indented");
+            List<float> spacers = blocks[10].Elements("Run").Select(r => (float?)r.Attribute("Space")).OfType<float>().ToList();
+            t.Check(Near(At(10, "Indent"), 15f * px) && spacers.Count == 2 && Near(spacers[0], 10f * px) && Near(spacers[1], 72.27f / 2.54f * px),
+                $"after a blank line the paragraph is indented; \\quad and \\hspace{{1cm}} are exact spacers: {string.Join(", ", spacers)}");
+            t.Check((string?)document.Element("DocumentLayout")!.Attribute("BlockSpacing") == "0", "\\parskip is 0");
+        }
+
+        [A_XSDActionDependency("Tex.BlockSpacing", "Test")]
+        private static IEnumerator<int> BlockSpacing(TestContext t)
+        {
+            IGlyphMetrics metrics = new FontAssetGlyphMetrics();
+            AtlasMetaData atlas = AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset))["default"].atlasMetaData;
+            string words = string.Join(" ", Enumerable.Repeat("lorem ipsum", 20));
+            List<TextMeasurer.Run> runs = new List<TextMeasurer.Run> { new TextMeasurer.Run(words, 0, words.Length, "default", atlas, 16, FontStyle.Regular) };
+            foreach (bool optimal in new[] { false, true })
+            {
+                BlockLayout layout = TextMeasurer.MeasureBlock(runs, 300f, metrics, 1.5f, 40f, optimal: optimal);
+                TextLine first = layout.lines[0];
+                t.Check(first.left == 40f && first.room == 260f && first.width <= 260f + 1f && layout.lines.Skip(1).All(l => l.left == 0f),
+                    $"{(optimal ? "Knuth-Plass" : "greedy")}: the first line starts at the indent and fills the room left: {first.left} {first.room} {first.width}");
+            }
+            List<TextMeasurer.Run> spacer = new List<TextMeasurer.Run> { new TextMeasurer.Run("a b", 1, 1, "default", atlas, 16, FontStyle.Regular, space: 25f) };
+            t.Check(TextMeasurer.MeasureAdvance(' ', spacer[0]) == 25f, "a spacer advances its own width");
+
+            XElement source = new XElement("Document",
+                new XElement("Block", new XElement("Run", new XAttribute("Text", "first"))),
+                new XElement("Block", new XAttribute("Indent", "30"), new XAttribute("SpaceBefore", "40"), new XAttribute("Align", "Justify"),
+                    new XElement("Run", new XAttribute("Text", words + " a")),
+                    new XElement("Run", new XAttribute("Text", " "), new XAttribute("Space", "25")),
+                    new XElement("Run", new XAttribute("Text", "b"))),
+                new XElement("Block", new XElement("Run", new XAttribute("Text", "last"))));
+            RichTextDocument parsed = DocumentXml.Parse(source);
+            XElement written = DocumentXml.ToXml(parsed);
+            List<XElement> blocks = written.Elements().Where(e => e.Name.LocalName == "Block").ToList();
+            t.Check((string?)blocks[1].Attribute("Indent") == "30" && (string?)blocks[1].Attribute("SpaceBefore") == "40"
+                && blocks[1].Elements().Any(r => (string?)r.Attribute("Space") == "25"), "Indent, SpaceBefore and Space round-trip through .xml");
+            foreach (Control block in parsed.blocks)
+                block.Destroy();
+
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.xml");
+            source.Save(path);
+            DocumentEditorControl editor = new DocumentEditorControl
+            {
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                verticalAlignment = VerticalAlignment.Stretch
+            };
+            t.Show(editor);
+            editor.LoadPath(path);
+            File.Delete(path);
+            yield return 2;
+
+            List<BlockControl> p = editor.session.document.blocks.OfType<BlockControl>().ToList();
+            float zoom = p[1].Lines[0].left / 30f;
+            float gap = p[1].arrangedRect.y - (p[0].arrangedRect.y + p[0].arrangedRect.height);
+            float plain = p[2].arrangedRect.y - (p[1].arrangedRect.y + p[1].arrangedRect.height);
+            t.Check(zoom > 0f && MathF.Abs(gap - 40f * zoom) < 0.5f && MathF.Abs(plain - editor.session.document.layout.blockSpacing * zoom) < 0.5f,
+                $"SpaceBefore replaces the block spacing above its block only: {gap} and {plain} at zoom {zoom}");
+            t.Check(p[1].Lines.Count > 2 && p[1].Lines.Skip(1).All(l => l.left == 0f), "only the first line is indented");
+
+            int spacerAt = p[1].Length - 2;
+            p[1].InsertText(spacerAt + 1, "x");
+            t.Check(p[1].spans.Count(s => s.spaceWidth != 0f) == 1 && p[1].spans.Single(s => s.spaceWidth != 0f).count == 1,
+                "text typed after a spacer is text, not more spacer");
+            p[1].RemoveText(spacerAt + 1, 1);
+
+            BlockSnapshot snapshot = p[1].Snapshot();
+            BlockControl tail = p[1].SplitAt(10);
+            t.Check(tail.firstIndent == 30f && tail.spaceBefore == 40f && snapshot.firstIndent == 30f && snapshot.spaceBefore == 40f,
+                "a split and a snapshot carry the indent and the space above");
+            tail.Destroy();
+            p[1].Restore(snapshot);
+
+            editor.SelectAll();
+            editor.Copy();
+            t.Check(ClipboardText.Get().Contains(" a b"), $"a spacer copies as a space: {ClipboardText.Get().Substring(Math.Max(0, ClipboardText.Get().Length - 12))}");
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("Tex.JustifyBeforeDisplay", "Test")]
+        private static IEnumerator<int> JustifyBeforeDisplay(TestContext t)
+        {
+            string words = string.Join(" ", Enumerable.Repeat("lorem ipsum dolor sit", 12));
+            XElement document = new XElement("Document",
+                new XElement("Block", new XAttribute("Align", "Justify"),
+                    new XElement("Run", new XAttribute("Text", words + " ")),
+                    new XElement("Run", new XAttribute("Math", "x^2"), new XAttribute("Display", "true")),
+                    new XElement("Run", new XAttribute("Text", " " + words))));
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.xml");
+            document.Save(path);
+            DocumentEditorControl editor = new DocumentEditorControl
+            {
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                verticalAlignment = VerticalAlignment.Stretch
+            };
+            t.Show(editor);
+            editor.LoadPath(path);
+            File.Delete(path);
+            yield return 2;
+
+            IReadOnlyList<TextLine> lines = ((BlockControl)editor.session.document.blocks[0]).Lines;
+            int display = lines.ToList().FindIndex(l => l.segments.Count > 0 && l.segments[0].runIndex == 1);
+            t.Check(display > 1, $"the text wraps onto two lines or more before the display: display on line {display} of {lines.Count}");
+            if (display > 1)
+            {
+                t.Check(lines[0].spaceExtra > 0f, "a line inside the paragraph is stretched");
+                t.Check(lines[display - 1].spaceExtra == 0f, "the line before the display is not stretched");
+            }
+            t.Show(new StackPanelControl());
+        }
+        #endregion
+
+        #region ---- pages ----
+        private static List<XElement> TopBlocks(XElement document) => document.Elements().Where(e => e.Name.LocalName is "Block" or "Table").ToList();
+
+        private static string BlockText(XElement block) => string.Concat(block.Elements("Run").Select(r => (string?)r.Attribute("Text"))).Replace("­", "");
+
+        // A lowered or hand-built <Document> in a note editor, from a temporary file.
+        private static DocumentEditorControl ShowDocument(TestContext t, XElement document)
+        {
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.xml");
+            document.Save(path);
+            DocumentEditorControl editor = new DocumentEditorControl
+            {
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                verticalAlignment = VerticalAlignment.Stretch
+            };
+            t.Show(editor);
+            editor.LoadPath(path);
+            File.Delete(path);
+            return editor;
+        }
+
+        // Each sheet's head and foot labels, page by page, in SlotPlace order.
+        private static List<string[]> Margins(DocumentEditorControl editor)
+        {
+            DocumentControl content = (DocumentControl)((Control)editor.session.document.blocks[0]).parent;
+            return content.children.OfType<PanelControl>().Where(p => p.children.Count == 1 && p.children[0] is ContainerControl)
+                .Select(p => ((Control)p.children[0]).children.OfType<LabelControl>().Select(l => l.text).ToArray()).ToList();
+        }
+
+        [A_XSDActionDependency("Tex.Lowering.Pages", "Test")]
+        private static IEnumerator<int> LoweringPages(TestContext t)
+        {
+            const string source = """
+                \documentclass{article}
+                \pagestyle{headings}
+                \begin{document}
+                \section{Introduction}\label{sec:intro}
+                Text on page \pageref{sec:intro}.
+                \newpage
+                \newpage
+                After a break.
+                \clearpage
+                \thispagestyle{empty}After a clear.
+
+                \markboth{Left}{Right}
+                \subsection{Sub}
+                Unknown \pageref{nowhere}.
+                \end{document}
+                """;
+            XElement document = TexLowering.Compile(source, out List<TexError> errors);
+            t.Check(errors.Count == 1 && errors[0].message.Contains("`nowhere' undefined"), $"only the missing label is reported: {string.Join("; ", errors.Select(e => e.message))}");
+
+            List<XElement> blocks = TopBlocks(document);
+            XElement heading = blocks.First(b => BlockText(b).Contains("Introduction"));
+            t.Check((string?)heading.Attribute("MarkRight") == "1  INTRODUCTION" && heading.Attribute("MarkLeft") == null,
+                $"a numbered section under headings sets \\rightmark to its uppercased number and title: {(string?)heading.Attribute("MarkRight")}");
+            XElement after = blocks.First(b => BlockText(b).Contains("After a break"));
+            XElement cleared = blocks.First(b => BlockText(b).Contains("After a clear"));
+            t.Check((string?)after.Attribute("PageBreak") == "Page" && (string?)cleared.Attribute("PageBreak") == "Clear",
+                "\\newpage and \\clearpage break before the next block");
+            t.Check((string?)cleared.Attribute("PageStyle") == "empty", "\\thispagestyle goes on the next block");
+            XElement sub = blocks.First(b => BlockText(b).Contains("Sub"));
+            t.Check((string?)sub.Attribute("MarkLeft") == "Left" && (string?)sub.Attribute("MarkRight") == "Right",
+                "\\markboth in vertical mode marks the next block; a subsection under headings sets none of its own");
+
+            XElement page = document.Descendants("Page").Single();
+            List<XElement> styles = page.Elements("PageStyle").ToList();
+            XElement headings = styles.Single(s => (string?)s.Attribute("Name") == "headings");
+            t.Check((string?)page.Attribute("Style") == "headings" && styles.Any(s => (string?)s.Attribute("Name") == "empty"),
+                $"the document's style and every \\thispagestyle are written: {string.Join(", ", styles.Select(s => (string?)s.Attribute("Name")))}");
+            string Slot(XElement style, string place) => (string?)style.Elements("Slot").FirstOrDefault(s => (string?)s.Attribute("Place") == place)?.Attribute("Text") ?? "";
+            t.Check(Slot(headings, "HeadLeft") == "{rightmark}" && Slot(headings, "HeadRight") == "{page}"
+                && (string?)headings.Elements("Slot").First().Attribute("Italic") == "true",
+                $"headings puts the slanted \\rightmark left and the page right: {Slot(headings, "HeadLeft")} | {Slot(headings, "HeadRight")}");
+
+            TexPageRefs refs = TexLowering.PageRefs(document);
+            int introBlock = blocks.IndexOf(heading);
+            t.Check(refs.refs.Count == 2 && refs.labels.TryGetValue("sec:intro", out (int block, int offset) site) && site.block == introBlock,
+                $"each \\pageref is a run to fill and the label stands at its heading: {refs.refs.Count} refs, {string.Join(", ", refs.labels.Select(l => $"{l.Key}@{l.Value}"))}");
+
+            const string fancy = """
+                \documentclass{article}
+                \usepackage{fancyhdr}
+                \pagestyle{fancy}
+                \fancyhf{}
+                \fancyhead[LE,RO]{\thepage}
+                \fancyhead[LO]{\textbf{Draft}}
+                \fancyfoot[C]{\leftmark}
+                \renewcommand{\headrulewidth}{0.8pt}
+                \fancypagestyle{plain}{\fancyhf{}\rfoot{p. \thepage}}
+                \begin{document}
+                \maketitle
+                \section{Methods}
+                \subsection{Setup}
+                Text.
+                \end{document}
+                """;
+            document = TexLowering.Compile(fancy, out errors);
+            t.Check(errors.Count == 0, $"the fancyhdr sample compiles clean: {string.Join("; ", errors.Select(e => e.message))}");
+            page = document.Descendants("Page").Single();
+            XElement fancyStyle = page.Elements("PageStyle").Single(s => (string?)s.Attribute("Name") == "fancy");
+            XElement plain = page.Elements("PageStyle").Single(s => (string?)s.Attribute("Name") == "plain");
+            t.Check(Slot(fancyStyle, "HeadRight") == "{page}" && Slot(fancyStyle, "HeadLeft") == "Draft"
+                && (string?)fancyStyle.Elements("Slot").First(s => (string?)s.Attribute("Place") == "HeadLeft").Attribute("Bold") == "true"
+                && Slot(fancyStyle, "FootCenter") == "{leftmark}" && fancyStyle.Elements("Slot").Count() == 3,
+                $"\\fancyhf clears, odd-page entries land, E-only ones are dropped: {string.Join(" | ", fancyStyle.Elements("Slot").Select(s => $"{(string?)s.Attribute("Place")}={(string?)s.Attribute("Text")}"))}");
+            t.Check(MathF.Abs(((float?)fancyStyle.Attribute("HeadRule") ?? 0f) - 0.8f * 96f / 72.27f) < 0.01f, "\\headrulewidth sets the fancy head rule");
+            t.Check(Slot(plain, "FootRight") == "p. {page}" && plain.Elements("Slot").Count() == 1, "\\fancypagestyle redefines plain");
+            blocks = TopBlocks(document);
+            t.Check((string?)blocks[0].Attribute("PageStyle") == "plain", "\\maketitle takes plain for its page");
+            XElement methods = blocks.First(b => BlockText(b).Contains("Methods"));
+            XElement setup = blocks.First(b => BlockText(b).Contains("Setup"));
+            t.Check((string?)methods.Attribute("MarkLeft") == "1  METHODS" && (string?)methods.Attribute("MarkRight") == ""
+                && (string?)setup.Attribute("MarkRight") == "1.1  Setup" && setup.Attribute("MarkLeft") == null,
+                $"fancy's section marks both, its subsection marks right: {(string?)methods.Attribute("MarkLeft")} / {(string?)setup.Attribute("MarkRight")}");
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.PageBreak", "Test")]
+        private static IEnumerator<int> PageBreaks(TestContext t)
+        {
+            XElement document = new XElement("Document",
+                new XElement("Block", new XElement("Run", new XAttribute("Text", "first"))),
+                new XElement("Block", new XAttribute("PageBreak", "Page"), new XAttribute("MarkRight", "R"), new XAttribute("PageStyle", "empty"),
+                    new XElement("Run", new XAttribute("Text", "second page"))),
+                new XElement("Block", new XAttribute("PageBreak", "Clear"), new XElement("Run", new XAttribute("Text", "third page"))),
+                new XElement("Table", new XAttribute("PageBreak", "Page"), new XElement("Column", new XAttribute("Width", "100")),
+                    new XElement("Row", new XElement("Cell", new XElement("Block", new XElement("Run", new XAttribute("Text", "cell")))))));
+            RichTextDocument parsed = DocumentXml.Parse(document);
+            List<XElement> written = TopBlocks(DocumentXml.ToXml(parsed));
+            t.Check((string?)written[1].Attribute("PageBreak") == "Page" && (string?)written[1].Attribute("MarkRight") == "R"
+                && (string?)written[1].Attribute("PageStyle") == "empty" && (string?)written[2].Attribute("PageBreak") == "Clear"
+                && (string?)written[3].Attribute("PageBreak") == "Page" && written[0].Attribute("PageBreak") == null,
+                "PageBreak, PageStyle and the marks round-trip through .xml, tables' breaks too");
+            foreach (Control block in parsed.blocks)
+                block.Destroy();
+
+            DocumentEditorControl editor = ShowDocument(t, document);
+            yield return 2;
+            t.Check(editor.PageAt(0, 0) == 1 && editor.PageAt(1, 0) == 2 && editor.PageAt(2, 0) == 3 && editor.PageAt(3, 0) == 4,
+                $"each break starts a new page: {editor.PageAt(0, 0)} {editor.PageAt(1, 0)} {editor.PageAt(2, 0)} {editor.PageAt(3, 0)}");
+            List<BlockControl> blocks = editor.session.document.blocks.OfType<BlockControl>().ToList();
+            BlockSnapshot snapshot = blocks[1].Snapshot();
+            BlockControl tail = blocks[1].SplitAt(6);
+            t.Check(tail.pageBreak == PageBreak.None && tail.markRight == null && tail.pageStyle == null
+                && blocks[1].pageBreak == PageBreak.Page && snapshot.pageBreak == PageBreak.Page && snapshot.markRight == "R" && snapshot.pageStyle == "empty",
+                "a split leaves the break, style and marks with the head; a snapshot carries them");
+            tail.Destroy();
+            blocks[1].Restore(snapshot);
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("Tex.Lowering.Footnote", "Test")]
+        private static IEnumerator<int> LoweringFootnote(TestContext t)
+        {
+            const string source = """
+                \documentclass{article}
+                \begin{document}
+                First\footnote{One note.} and second.\footnote{Two notes.}
+
+                After.
+                \end{document}
+                """;
+            XElement document = TexLowering.Compile(source, out List<TexError> errors);
+            t.Check(errors.Count == 0, $"compiles clean: {string.Join("; ", errors.Select(e => e.message))}");
+            List<XElement> top = document.Elements().Where(e => e.Name.LocalName is "Block" or "Footnote").ToList();
+            t.Check(top.Count == 4 && top[0].Name.LocalName == "Block" && (string?)top[1].Attribute("Id") == "1" && (string?)top[2].Attribute("Id") == "2"
+                && BlockText(top[3]).Contains("After"), $"each footnote follows the paragraph its mark is in: {string.Join(", ", top.Select(e => e.Name.LocalName))}");
+            List<string?> anchors = top[0].Elements("Run").Select(r => (string?)r.Attribute("Note")).Where(n => n != null).ToList();
+            t.Check(anchors.SequenceEqual(new[] { "1", "2" }), $"the marks in the text name their footnotes: {string.Join(",", anchors)}");
+            XElement note = top[1].Elements("Block").Single();
+            int small = (int)MathF.Round(8f * 96f / 72.27f);
+            t.Check(BlockText(note).Contains("One note.") && note.Elements("Run").Any(r => (int?)r.Attribute("FontSize") == small)
+                && note.Elements("Run").All(r => r.Attribute("Note") == null), $"a footnote is set in \\footnotesize and its own mark anchors nothing: {note}");
+            t.Check(MathF.Abs(((float?)document.Descendants("Page").Single().Attribute("FootnoteSkip") ?? 0f) - 9f * 25.4f / 72.27f) < 0.01f, "\\skip\\footins is the page's footnote skip");
+
+            RichTextDocument parsed = DocumentXml.Parse(document);
+            List<BlockControl> blocks = parsed.blocks.OfType<BlockControl>().ToList();
+            t.Check(blocks.Count == 4 && blocks[0].insert == null && blocks[1].insert?.footnote == "1" && blocks[2].insert?.footnote == "2" && blocks[3].insert == null,
+                "a <Footnote> reads as its blocks with one PageInsert");
+            XElement written = DocumentXml.ToXml(parsed);
+            t.Check(written.Elements().Count(e => e.Name.LocalName == "Footnote") == 2
+                && written.Elements().First(e => e.Name.LocalName == "Block").Elements().Count(r => (string?)r.Attribute("Note") != null) == 2,
+                "footnotes and their anchors round-trip through .xml");
+
+            BlockSnapshot snapshot = blocks[1].Snapshot();
+            BlockControl tail = blocks[1].SplitAt(3);
+            t.Check(tail.insert == blocks[1].insert && snapshot.insert == blocks[1].insert, "Enter in a footnote makes another block of it; a snapshot keeps it");
+            tail.Destroy();
+            foreach (Control block in parsed.blocks)
+                block.Destroy();
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.Footnotes", "Test")]
+        private static IEnumerator<int> Footnotes(TestContext t)
+        {
+            string filler = string.Join(" ", Enumerable.Repeat("lorem ipsum dolor sit", 13));
+            string tall = string.Join(" ", Enumerable.Repeat("note text here", 12));
+            XElement Para(string text, string? anchor = null, string? pageBreak = null)
+            {
+                XElement block = new XElement("Block", new XElement("Run", new XAttribute("Text", text)));
+                if (anchor != null) block.Add(new XElement("Run", new XAttribute("Text", "*"), new XAttribute("Note", anchor)));
+                if (pageBreak != null) block.SetAttributeValue("PageBreak", pageBreak);
+                return block;
+            }
+            XElement Note(string id, string text) => new XElement("Footnote", new XAttribute("Id", id), Para(text));
+
+            XElement document = new XElement("Document",
+                new XElement("DocumentLayout", new XAttribute("BlockSpacing", "0"),
+                    new XElement("Page", new XAttribute("Mode", "Paged"), new XAttribute("Size", "A6"))),
+                Para("intro", "a"), Note("a", "note a"),
+                Para("more", "b"), Note("b", "note b"),
+                Para(filler, "c", "Page"), Note("c", tall),
+                Note("z", "orphan"));
+            DocumentEditorControl editor = ShowDocument(t, document);
+            yield return 2;
+
+            List<Control> blocks = editor.session.document.blocks;
+            BlockControl a = (BlockControl)blocks[1], b = (BlockControl)blocks[3], filled = (BlockControl)blocks[4], c = (BlockControl)blocks[5], z = (BlockControl)blocks[6];
+            t.Check(editor.PageAt(1, 0) == 1 && editor.PageAt(3, 0) == 1, $"footnotes a and b sit on their anchors' page: {editor.PageAt(1, 0)} {editor.PageAt(3, 0)}");
+            t.Check(b.arrangedRect.y >= a.arrangedRect.Bottom - 0.5f, "two footnotes on a page stack in anchor order");
+
+            DocumentControl content = (DocumentControl)a.parent;
+            PanelControl sheet = content.children.OfType<PanelControl>().First(p => p.children.Count == 1 && p.children[0] is ContainerControl);
+            float textBottom = sheet.arrangedRect.Bottom - 25.4f * PageLayout.PxPerMm * content.zoom;
+            t.Check(MathF.Abs(b.arrangedRect.Bottom - textBottom) < 1f && a.arrangedRect.y > ((BlockControl)blocks[2]).arrangedRect.Bottom + 10f,
+                $"footnotes end at the foot of the text area, under a gap: b ends {b.arrangedRect.Bottom}, text area ends {textBottom}");
+            Control rule = (Control)((Control)sheet.children[0]).children[8];
+            t.Check(rule.arrangedRect.width > 0f && rule.arrangedRect.Bottom <= a.arrangedRect.y, $"a short rule sits above the footnotes: {rule.arrangedRect.width}");
+
+            t.Check(filled.Lines.Count == 13 && editor.PageAt(4, 0) == 2 && editor.PageAt(4, filler.Length) == 3 && editor.PageAt(5, 0) == 3,
+                $"a line whose footnote does not fit goes to the next page with it: {filled.Lines.Count} lines, first on {editor.PageAt(4, 0)}, anchor line {editor.PageAt(4, filler.Length)}, note {editor.PageAt(5, 0)}");
+            t.Check(editor.PageAt(6, 0) == 3 && z.arrangedRect.y >= c.arrangedRect.Bottom - 0.5f, $"a footnote no anchor names goes at the foot of the last page: {editor.PageAt(6, 0)}");
+            t.Check(filled.Lines.All(l => l.top + l.height + filled.arrangedRect.y <= c.arrangedRect.y || l.top + filled.arrangedRect.y >= c.arrangedRect.Bottom),
+                "no line of text runs into a footnote");
+
+            XElement huge = new XElement("Document",
+                new XElement("DocumentLayout", new XAttribute("BlockSpacing", "0"),
+                    new XElement("Page", new XAttribute("Mode", "Paged"), new XAttribute("Size", "A6"))),
+                Para("before"), Para("anchor", "h"), Note("h", string.Join(" ", Enumerable.Repeat("note text here", 40))));
+            editor = ShowDocument(t, huge);
+            yield return 2;
+            BlockControl anchor = (BlockControl)editor.session.document.blocks[1];
+            BlockControl over = (BlockControl)editor.session.document.blocks[2];
+            t.Check(over.arrangedRect.y >= anchor.arrangedRect.Bottom, $"a footnote taller than the page starts below its anchor's line: {over.arrangedRect.y} vs {anchor.arrangedRect.Bottom}");
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("Tex.Lowering.Float", "Test")]
+        private static IEnumerator<int> LoweringFloat(TestContext t)
+        {
+            const string source = """
+                \documentclass[12pt]{article}
+                \begin{document}
+                Before.
+
+                \vspace{10pt}
+                \begin{figure}[!t]\centering x\caption{A}\end{figure}
+                After, with \begin{table}[b]\caption{B}\end{table} a table inside.
+                \end{document}
+                """;
+            XElement document = TexLowering.Compile(source, out List<TexError> errors);
+            t.Check(errors.Count == 0, $"compiles clean: {string.Join("; ", errors.Select(e => e.message))}");
+            List<XElement> top = document.Elements().Where(e => e.Name.LocalName is "Block" or "Float").ToList();
+            t.Check(top.Select(e => e.Name.LocalName).SequenceEqual(new[] { "Block", "Float", "Block", "Float" }),
+                $"a float stands where it was set, or after the paragraph it is in: {string.Join(", ", top.Select(e => e.Name.LocalName))}");
+            t.Check((string?)top[1].Attribute("Kind") == "figure" && (string?)top[1].Attribute("Placement") == "!t"
+                && (string?)top[3].Attribute("Kind") == "table" && (string?)top[3].Attribute("Placement") == "b", "<Float> carries the kind and placement");
+            t.Check(top[1].Elements("Block").Count() == 2 && BlockText(top[1].Elements("Block").Last()).Contains("Figure 1: A"), "the float holds its body and caption");
+            t.Check(top[2].Attribute("SpaceBefore") != null && top[1].Elements("Block").First().Attribute("SpaceBefore") == null,
+                "the space above a float stays with the next block in the text");
+            XElement page = document.Descendants("Page").Single();
+            float Mm(string name) => (float?)page.Attribute(name) ?? 0f;
+            const float mmPerPt = 25.4f / 72.27f;
+            t.Check(MathF.Abs(Mm("FloatSep") - 14f * mmPerPt) < 0.01f && MathF.Abs(Mm("TextFloatSep") - 20f * mmPerPt) < 0.01f && MathF.Abs(Mm("InTextSep") - 14f * mmPerPt) < 0.01f,
+                $"the class size sets the float separations: {Mm("FloatSep")} {Mm("TextFloatSep")} {Mm("InTextSep")}");
+
+            RichTextDocument parsed = DocumentXml.Parse(document);
+            List<Control> blocks = parsed.blocks;
+            PageInsert? figure = (blocks[1] as BlockControl)?.insert;
+            t.Check(figure is { floatKind: "figure", placement: "!t" } && (blocks[2] as BlockControl)?.insert == figure && (blocks[3] as BlockControl)?.insert == null,
+                "a <Float> reads as its blocks with one PageInsert");
+            XElement written = DocumentXml.ToXml(parsed);
+            t.Check(written.Elements().Count(e => e.Name.LocalName == "Float") == 2, "floats round-trip through .xml");
+            foreach (Control block in parsed.blocks)
+                block.Destroy();
+            yield break;
+        }
+
+        [A_XSDActionDependency("Tex.FloatPlacement", "Test")]
+        private static IEnumerator<int> FloatPlacement(TestContext t)
+        {
+            string filler = string.Join(" ", Enumerable.Repeat("lorem ipsum dolor sit", 40));
+            XElement Para(string text, string? pageBreak = null, string? anchor = null)
+            {
+                XElement block = new XElement("Block", new XElement("Run", new XAttribute("Text", text)));
+                if (anchor != null) block.Add(new XElement("Run", new XAttribute("Text", "*"), new XAttribute("Note", anchor)));
+                if (pageBreak != null) block.SetAttributeValue("PageBreak", pageBreak);
+                return block;
+            }
+            XElement Float(string placement, float tall = 0f, string kind = "figure") => new XElement("Float", new XAttribute("Kind", kind), new XAttribute("Placement", placement),
+                Para("float " + placement), new XElement("Block", new XAttribute("SpaceBefore", tall), new XElement("Run", new XAttribute("Text", "end"))));
+            XElement Document(string mode, params XElement[] content) => new XElement("Document",
+                new XElement("DocumentLayout", new XAttribute("BlockSpacing", "0"),
+                    new XElement("Page", new XAttribute("Mode", mode), new XAttribute("Size", "A6"))), content);
+            LayoutRect Rect(DocumentEditorControl e, int block) => e.session.document.blocks[block].arrangedRect;
+            string Span(DocumentEditorControl e, int block) => $"{Rect(e, block).y:0.#}..{Rect(e, block).Bottom:0.#}";
+
+            DocumentEditorControl editor = ShowDocument(t, Document("Paged", Para("a"), Float("ht"), Para("b")));
+            yield return 2;
+            t.Check(Rect(editor, 1).y > Rect(editor, 0).Bottom && Rect(editor, 3).y > Rect(editor, 2).Bottom && editor.PageAt(1, 0) == 1,
+                "h: a float that fits is set in the text where it stands");
+
+            editor = ShowDocument(t, Document("Paged", Para("a"), Para("b"), Float("tbp"), Para("c")));
+            yield return 2;
+            t.Check(editor.PageAt(2, 0) == 1 && Rect(editor, 3).Bottom < Rect(editor, 0).y && Rect(editor, 4).y >= Rect(editor, 1).Bottom - 0.5f,
+                $"t: a float met mid-page goes to that page's top and the text above it moves down: float {Span(editor, 2)} {Span(editor, 3)}, a {Span(editor, 0)}, b {Span(editor, 1)}, c {Span(editor, 4)}");
+            Control? header = ((DocumentControl)editor.session.document.blocks[0].parent).header;
+            t.Check(header != null && Rect(editor, 2).y >= header.arrangedRect.Bottom - 0.5f,
+                $"a top float on the first page sits under the note's header: float {Rect(editor, 2).y}, header ends {header?.arrangedRect.Bottom}");
+
+            editor = ShowDocument(t, Document("Paged", Para("a", anchor: "n"), new XElement("Footnote", new XAttribute("Id", "n"), Para("note")), Float("b"), Para("c")));
+            yield return 2;
+            DocumentControl content = (DocumentControl)editor.session.document.blocks[0].parent;
+            PanelControl sheet = content.children.OfType<PanelControl>().First(p => p.children.Count == 1 && p.children[0] is ContainerControl);
+            float textBottom = sheet.arrangedRect.Bottom - 25.4f * PageLayout.PxPerMm * content.zoom;
+            t.Check(editor.PageAt(2, 0) == 1 && MathF.Abs(Rect(editor, 3).Bottom - textBottom) < 1f && Rect(editor, 1).Bottom <= Rect(editor, 2).y && Rect(editor, 4).Bottom < Rect(editor, 1).y,
+                $"b: a float goes to the foot of the page, under the footnotes: float ends {Rect(editor, 3).Bottom}, text area {textBottom}, note ends {Rect(editor, 1).Bottom}");
+
+            float height = sheet.arrangedRect.height / content.zoom - 2f * 25.4f * PageLayout.PxPerMm;
+            editor = ShowDocument(t, Document("Paged", Para("a"), Float("tbp", 0.8f * height), Float("t", 10f), Float("t", 10f, "table"), Para(filler), Para(filler)));
+            yield return 2;
+            t.Check(editor.PageAt(1, 0) == 2 && editor.PageAt(3, 0) == 3, $"a float too tall for a text page waits for a page of floats; the next figure may not pass it: {editor.PageAt(1, 0)} {editor.PageAt(3, 0)}");
+            t.Check(editor.PageAt(5, 0) == 1 && Rect(editor, 6).Bottom < Rect(editor, 0).y, $"a table is not held back by a waiting figure: page {editor.PageAt(5, 0)}");
+            BlockControl text = (BlockControl)editor.session.document.blocks[7];
+            t.Check(editor.PageAt(8, 0) > 2 && Enumerable.Range(0, text.Length).All(i => editor.PageAt(7, i) != 2), "no text goes on a page of floats");
+
+            editor = ShowDocument(t, Document("Paged", Para("a"), Float("p", 10f), Para("b", "Clear"), Para("c")));
+            yield return 2;
+            t.Check(editor.PageAt(1, 0) == 2 && editor.PageAt(3, 0) == 3, $"\\clearpage puts out the waiting floats before it breaks: float {editor.PageAt(1, 0)}, b {editor.PageAt(3, 0)}");
+
+            editor = ShowDocument(t, Document("Paged", Para("a"), Float("p", 10f), Para("b")));
+            yield return 2;
+            t.Check(editor.PageAt(1, 0) == 2 && editor.PageAt(3, 0) == 1, $"the document's end puts out what still waits: float {editor.PageAt(1, 0)}");
+
+            editor = ShowDocument(t, Document("Paged", Para("a"), Float("H", 10f), Para("b")));
+            yield return 2;
+            t.Check(Rect(editor, 1).y > Rect(editor, 0).Bottom && Rect(editor, 3).y > Rect(editor, 2).Bottom, "H: set here, always");
+
+            editor = ShowDocument(t, Document("Paged", Para("a"), Float("!t", 0.6f * height), Para("b")));
+            yield return 2;
+            t.Check(editor.PageAt(1, 0) == 1 && Rect(editor, 2).Bottom < Rect(editor, 0).y, $"!: a float past \\topfraction still goes at the top: page {editor.PageAt(1, 0)}, float {Span(editor, 1)} {Span(editor, 2)}, a {Span(editor, 0)}, height {height}");
+            editor = ShowDocument(t, Document("Paged", Para("a"), Float("t", 0.6f * height), Para("b")));
+            yield return 2;
+            t.Check(editor.PageAt(1, 0) == 2, $"without !, \\topfraction holds it back: page {editor.PageAt(1, 0)}");
+
+            editor = ShowDocument(t, Document("Pageless", Para("a"), Float("tp", 10f), Para("b")));
+            yield return 2;
+            t.Check(Rect(editor, 1).y > Rect(editor, 0).Bottom && Rect(editor, 3).y > Rect(editor, 2).Bottom, "pageless: every float is set where it stands");
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("Tex.RunningHeads", "Test")]
+        private static IEnumerator<int> RunningHeads(TestContext t)
+        {
+            string words = string.Join(" ", Enumerable.Repeat("lorem ipsum dolor", 4));
+            XElement Para(string text) => new XElement("Block", new XElement("Run", new XAttribute("Text", text)));
+            XElement Heading(string text, string? left, string? right)
+            {
+                XElement block = Para(text);
+                if (left != null) block.SetAttributeValue("MarkLeft", left);
+                if (right != null) block.SetAttributeValue("MarkRight", right);
+                return block;
+            }
+            XElement Slot(string place, string text, bool italic = false) => new XElement("Slot", new XAttribute("Place", place), new XAttribute("Text", text),
+                new XAttribute("FontSize", "12"), new XAttribute("Italic", italic ? "true" : "false"));
+
+            XElement document = new XElement("Document",
+                new XElement("DocumentLayout",
+                    new XElement("Page", new XAttribute("Mode", "Paged"), new XAttribute("Size", "A6"), new XAttribute("Style", "heads"),
+                        new XElement("PageStyle", new XAttribute("Name", "heads"), new XAttribute("HeadRule", "1"),
+                            Slot("HeadLeft", "{leftmark} / {rightmark}", true), Slot("HeadRight", "{page}")),
+                        new XElement("PageStyle", new XAttribute("Name", "plain"), Slot("FootCenter", "- {page} -")))),
+                new XElement("Block", new XAttribute("PageStyle", "plain"), new XElement("Run", new XAttribute("Text", "Title"))),
+                Heading("One", "ONE", ""),
+                Para(words),
+                Heading("Sub A", null, "A"),
+                Para(words),
+                new XElement("Block", new XAttribute("PageBreak", "Page"), new XElement("Run", new XAttribute("Text", "no marks here"))),
+                new XElement("Block", new XAttribute("PageBreak", "Page"), new XElement("Run", new XAttribute("Text", "two marks"))),
+                Heading("Sub B", null, "B"),
+                Heading("Two", "TWO", ""));
+            RichTextDocument parsed = DocumentXml.Parse(document);
+            XElement page = DocumentXml.ToXml(parsed).Descendants().Single(e => e.Name.LocalName == "Page");
+            t.Check(page.Elements().Count(e => e.Name.LocalName == "PageStyle") == 2 && (string?)page.Attribute("Style") == "heads"
+                && page.Elements().First().Elements().Count() == 2, "page styles and their slots round-trip through .xml");
+            foreach (Control block in parsed.blocks)
+                block.Destroy();
+
+            DocumentEditorControl editor = ShowDocument(t, document);
+            yield return 2;
+            List<string[]> margins = Margins(editor);
+            t.Check(margins.Count >= 3, $"three pages: {margins.Count}");
+            if (margins.Count < 3)
+            {
+                t.Show(new StackPanelControl());
+                yield break;
+            }
+            t.Check(margins[0][0] == "" && margins[0][2] == "" && margins[0][4] == "- 1 -", $"page 1 takes its block's plain: {string.Join("|", margins[0])}");
+            t.Check(margins[1][0] == "ONE / A" && margins[1][2] == "2", $"page 2 carries the last marks over: {string.Join("|", margins[1])}");
+            t.Check(margins[2][0] == "TWO / B" && margins[2][2] == "3",
+                $"page 3: \\leftmark is the last mark's left, \\rightmark the first mark's right: {string.Join("|", margins[2])}");
+            t.Show(new StackPanelControl());
         }
         #endregion
     }

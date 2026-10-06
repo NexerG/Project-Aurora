@@ -26,6 +26,9 @@ namespace ArctisAurora.Core.UI
         public static DataPool Quads => _quads ??= DataManager.Get("UIQuads");
         private static DataPool LayoutDirty => _layoutDirty ??= DataManager.Get("LayoutDirty");
 
+        // set while an export walks a tree; Emit records into it instead of writing quads
+        internal static DrawRecorder? recorder;
+
         #region ---- layout ----
         private static readonly HashSet<Control> _dirtyRoots = new HashSet<Control>();
 
