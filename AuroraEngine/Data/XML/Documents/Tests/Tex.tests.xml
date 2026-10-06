@@ -26,4 +26,10 @@
 	<Test Action="Tex.Typeset.Errors"/>
 	<Test Action="Tex.Lowering"/>
 	<Test Action="Tex.Lowering.Lines"/>
+	<Test Action="Tex.Typeset.Tabular"/>
+	<Test Action="Tex.Typeset.Floats"/>
+	<Test Action="Tex.Refs"/>
+	<Test Action="Tex.Bib"/>
+	<Test Action="Tex.Lowering.Table"/>
+	<Test Action="Tex.Lowering.Image"/>
 </TestSuite>

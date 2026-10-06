@@ -5,6 +5,7 @@
 	<Test Action="LatinModern.Baked"/>
 	<Test Action="LatinModern.Draws"/>
 	<Test Action="Tex.Preview"/>
+	<Test Action="Tex.Floats"/>
 	<Test Action="Tex.SplitView.Recompile"/>
 	<Test Action="Tex.SplitView.Errors"/>
 	<Test Action="Tex.SplitView.ClickToSource"/>

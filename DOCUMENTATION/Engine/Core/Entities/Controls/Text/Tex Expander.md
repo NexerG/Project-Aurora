@@ -44,6 +44,7 @@ Lengths in `em` and `ex` are read from the `quad` and `xHeight` callbacks, which
 | `DefinePrimitive(name)` | method | Makes `Next` return the token under its own name. |
 | `Save(Action restore)` | method | Runs the action when the current group closes. |
 | `Insert(TexToken[])` | method | Pushes tokens back to be read next. |
+| `InsertSource(string)` | method | Tokenizes text with the current catcodes and pushes the tokens; they carry no source positions. |
 | `CanReadRaw`, `ReadRaw(terminator)`, `ReadRawChar(out char)` | method | Reads source characters without tokenizing, for `\verb` and similar. |
 | `Counter(name)`, `StepCounter(name)` | method | Reads and steps a LaTeX counter. |
 | `Error`, `ScanInt`, `ScanDimen()`, `ScanGlue`, `ScanKeyword`, `Argument`, `Optional`, `NameArgument`, `TakeStar` | method | The scanning helpers a typesetter's own commands use. |

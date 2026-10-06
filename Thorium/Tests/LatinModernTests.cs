@@ -6,6 +6,8 @@ using ArctisAurora.Core.Testing;
 using ArctisAurora.Core.Tex;
 using ArctisAurora.Core.UI;
 using ArctisAurora.EngineWork;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 using System.Numerics;
 using System.Xml.Linq;
 
@@ -121,6 +123,73 @@ namespace Thorium.Tests
             File.Delete(path);
             yield return 2;
             yield return t.Golden("Page", editor);
+        }
+
+        [A_XSDActionDependency("Tex.Floats", "Test")]
+        private static IEnumerator<int> TexFloats(TestContext t)
+        {
+            string folder = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(folder);
+            using (Image<Rgba32> picture = new Image<Rgba32>(120, 60))
+            {
+                for (int y = 0; y < 60; y++)
+                    for (int x = 0; x < 120; x++)
+                        picture[x, y] = new Rgba32((byte)(x * 2), (byte)(y * 4), 160);
+                picture.SaveAsPng(Path.Combine(folder, "gradient.png"));
+            }
+            File.WriteAllText(Path.Combine(folder, "refs.bib"), """
+                @book{knuth84, author = {Donald E. Knuth}, title = {The {\TeX}book}, publisher = {Addison-Wesley}, year = 1984}
+                @article{lamport86, author = {Leslie Lamport}, title = {Document Preparation}, journal = {TUGboat}, volume = 7, pages = {10--20}, year = 1986}
+                """);
+
+            const string source = """
+                \documentclass{article}
+                \usepackage{graphicx,booktabs}
+                \begin{document}
+                \section{Results}\label{sec:results}
+                Figure~\ref{fig:gradient} and Table~\ref{tab:data} are in Section~\ref{sec:results}, after \cite{knuth84,lamport86}.
+                \begin{figure}[h]
+                \centering
+                \includegraphics[width=0.4\textwidth]{gradient}
+                \caption{A gradient.}\label{fig:gradient}
+                \end{figure}
+                \begin{table}[h]
+                \caption{Measurements}\label{tab:data}
+                \begin{tabular}{lrr}
+                \toprule
+                \multicolumn{3}{c}{Run times} \\
+                \midrule
+                Case & Before & After \\
+                Layout & 4.2 & 1.1 \\
+                Typing & 12 & 3 \\
+                \bottomrule
+                \end{tabular}
+                \end{table}
+                \begin{tabular}{|c|c|}
+                \hline
+                a & b \\
+                \hline
+                \end{tabular}
+                \bibliographystyle{plain}
+                \bibliography{refs}
+                \end{document}
+                """;
+            XElement document = TexLowering.Compile(source, out List<TexError> errors, null, folder);
+            t.Check(errors.Count == 0, $"the sample compiles clean: {string.Join("; ", errors.Select(e => $"{e.line}: {e.message}"))}");
+
+            string path = Path.Combine(folder, "floats.xml");
+            document.Save(path);
+            DocumentEditorControl editor = new DocumentEditorControl
+            {
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                verticalAlignment = VerticalAlignment.Stretch
+            };
+            t.Show(editor);
+            editor.LoadPath(path);
+            yield return 2;
+            yield return t.Golden("Page", editor);
+            t.Show(new StackPanelControl());
+            Directory.Delete(folder, true);
         }
 
         [A_XSDActionDependency("Tex.SplitView.Recompile", "Test")]

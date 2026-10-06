@@ -266,6 +266,12 @@ namespace ArctisAurora.Core.UI
         [A_XSDActionDependency("Table.DeleteColumn", "Input", "Deletes the caret's column")]
         public static void DeleteColumn() => Editor()?.ChangeTable("Delete column", d => d.DeleteTableColumn());
 
+        [A_XSDActionDependency("Table.MergeRight", "Input", "Merges the caret's cell with the next one in its row")]
+        public static void MergeCellRight() => Editor()?.ChangeTable("Merge cells", d => d.MergeTableCellRight());
+
+        [A_XSDActionDependency("Table.Split", "Input", "Splits the caret's merged cell back into single cells")]
+        public static void SplitCell() => Editor()?.ChangeTable("Split cell", d => d.SplitTableCell());
+
         [A_XSDActionDependency("Table.Delete", "Input", "Deletes the caret's table")]
         public static void DeleteTable() => Editor()?.ChangeTable("Delete table", d => d.DeleteTable());
         #endregion

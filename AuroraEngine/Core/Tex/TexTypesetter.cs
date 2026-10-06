@@ -1,6 +1,7 @@
 using ArctisAurora.Core.Diagnostics;
 using System.Globalization;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace ArctisAurora.Core.Tex
 {
@@ -36,6 +37,22 @@ namespace ArctisAurora.Core.Tex
         private readonly record struct Frame(Mode mode, TexParagraph? par, List<TexNode> vtarget, TexStyle style,
             ListFrame? list, TexAlign align, bool quote);
 
+        // a tabular being read: the open row and cell, and the style each cell starts from
+        private sealed class TableBuild
+        {
+            public readonly TexTable table;
+            public readonly TexStyle style;
+            public List<TexTableCell>? row;
+            public TexTableCell? cell;
+            public int column;
+
+            public TableBuild(TexTable table, TexStyle style)
+            {
+                this.table = table;
+                this.style = style;
+            }
+        }
+
         private sealed class FixedMetrics : ITexFontMetrics
         {
             public int Quad(TexFont font) => font.size;
@@ -59,8 +76,19 @@ namespace ArctisAurora.Core.Tex
         private static readonly HashSet<string> knownPackages = new HashSet<string>
         {
             "amsmath", "amssymb", "amsfonts", "geometry", "xcolor", "color", "hyperref", "url",
-            "inputenc", "fontenc", "lmodern", "textcomp", "babel", "microtype"
+            "inputenc", "fontenc", "lmodern", "textcomp", "babel", "microtype", "graphicx", "graphics", "booktabs"
         };
+
+        // article's \textwidth at 10pt, 11pt, 12pt and its \textheight, pt
+        public static readonly float[] textWidths = { 345f, 360f, 390f };
+        public const float TextHeight = 550f;
+        private const float MmPerPt = 25.4f / 72.27f;
+
+        private static readonly string[] rasterExtensions = { ".png", ".jpg", ".jpeg" };
+        private static readonly string[] vectorExtensions = { ".pdf", ".eps", ".ps" };
+
+        private static readonly Regex mathLabel = new Regex(@"\\label\s*\{[^}]*\}");
+        private static readonly Regex mathRef = new Regex(@"\\ref\s*\{([^}]*)\}");
 
         public readonly TexExpander expander;
         public List<TexError> errors => expander.errors;
@@ -75,7 +103,13 @@ namespace ArctisAurora.Core.Tex
         public string paper = "letter";
         public float? marginTop, marginBottom, marginLeft, marginRight;
 
+        // \label key -> its text, cited keys in citation order, \bibitem key -> its label
+        public readonly Dictionary<string, string> labels = new Dictionary<string, string>();
+        public readonly List<string> citations = new List<string>();
+        public readonly Dictionary<string, string> bibLabels = new Dictionary<string, string>();
+
         private readonly ITexFontMetrics metrics;
+        private readonly string? folder;
         private readonly Dictionary<string, Action<TexToken>> commands = new Dictionary<string, Action<TexToken>>();
         private readonly Stack<Frame> frames = new Stack<Frame>();
 
@@ -99,6 +133,23 @@ namespace ArctisAurora.Core.Tex
         // last source line a dispatched token came from
         private int sourceLine;
 
+        // references resolved once the document has been read
+        private readonly List<TexRefNode> refs = new List<TexRefNode>();
+        private readonly List<(TexMathNode node, int line)> mathRefs = new List<(TexMathNode, int)>();
+        private string currentLabel = "";
+
+        // floats, pictures and tabulars, innermost tabular last
+        private string? floatKind;
+        private List<string> graphicsPath = new List<string> { "" };
+        private readonly List<TableBuild> tables = new List<TableBuild>();
+
+        // bibliography: \bibliographystyle, \bibliography's files and where it stood
+        private string bibStyle = "";
+        private string[] bibFiles = Array.Empty<string>();
+        private (List<TexNode> list, TexBibliographyMark mark)? bibMark;
+        private bool allCited;
+        private int bibCount;
+
         private List<TexNode> HList => box?.list ?? par!.list;
 
         // \normalsize at the class option, sp
@@ -106,9 +157,19 @@ namespace ArctisAurora.Core.Tex
 
         private bool Chapters => documentClass is "report" or "book";
 
-        public TexTypesetter(string source, ITexFontMetrics? metrics = null)
+        // paper, mm
+        public float paperWidth => paper == "a4" ? 210f : 215.9f;
+        public float paperHeight => paper == "a4" ? 297f : 279.4f;
+
+        // \textwidth and \textheight, sp: the class's, or the paper less geometry's margins
+        public int textWidth => Extent(paperWidth, marginLeft, marginRight, textWidths[sizeOption]);
+        public int textHeight => Extent(paperHeight, marginTop, marginBottom, TextHeight);
+
+        // folder is where pictures and .bib files are looked for; null finds none.
+        public TexTypesetter(string source, ITexFontMetrics? metrics = null, string? folder = null)
         {
             this.metrics = metrics ?? new FixedMetrics();
+            this.folder = folder;
             vtarget = vlist;
             style = new TexStyle(new TexFont(TexFamily.Roman, false, false, Size(NormalSize)), null, false);
             expander = new TexExpander(source, TexFormat.Prelude);
@@ -121,6 +182,8 @@ namespace ArctisAurora.Core.Tex
         {
             while (!done && expander.Next(out TexToken t)) Dispatch(t);
             EndParagraph();
+            TypesetBibliography();
+            Resolve();
         }
 
         private void Dispatch(TexToken t)
@@ -142,7 +205,12 @@ namespace ArctisAurora.Core.Tex
             On("documentclass", DocumentClass);
             On("usepackage", UsePackage);
             On("geometry", t => Geometry(expander.Argument(t, true)));
-            On("document", _ => inDocument = true);
+            On("document", _ =>
+            {
+                inDocument = true;
+                PageDimens();
+            });
+            On("@pagedimens", _ => PageDimens());
             On("enddocument", _ =>
             {
                 EndParagraph();
@@ -221,12 +289,59 @@ namespace ArctisAurora.Core.Tex
             On("footnote", Footnote);
             On("@endnote", _ => Resume());
 
+            On("label", Label);
+            On("ref", t => Reference(t, false));
+            On("cite", t => Reference(t, true));
+            On("nocite", NoCite);
+            On("bibliographystyle", t => bibStyle = expander.NameArgument(t)?.Trim() ?? bibStyle);
+            On("bibliography", Bibliography);
+            On("thebibliography", BeginBibliography);
+            On("endthebibliography", _ => EndParagraph());
+            On("bibitem", BibItem);
+            On("@endbib", _ => done = true);
+
+            foreach (string kind in new[] { "figure", "table" })
+                foreach (string name in new[] { kind, kind + "*" })
+                {
+                    On(name, t => BeginFloat(t, kind));
+                    On("end" + name, _ => EndParagraph());
+                }
+            On("caption", Caption);
+            On("@endcaption", _ => Resume());
+            On("includegraphics", IncludeGraphics);
+            On("graphicspath", GraphicsPath);
+
+            On("tabular", BeginTabular);
+            On("endtabular", _ => EndTabular());
+            On("multicolumn", MultiColumn);
+            On("hline", _ => Rule());
+            On("cline", t =>
+            {
+                expander.Argument(t, false);
+                Rule();
+            });
+            foreach (string name in new[] { "toprule", "midrule", "bottomrule" })
+                On(name, t =>
+                {
+                    expander.Optional(t);
+                    Rule();
+                });
+            On("cmidrule", t =>
+            {
+                expander.Optional(t);
+                if (expander.ScanKeyword("("))
+                    while (!expander.ScanKeyword(")") && expander.Next(out _)) { }
+                expander.Argument(t, false);
+                Rule();
+            });
+
             On("\\", t =>
             {
                 expander.TakeStar();
                 expander.Optional(t);
                 if (box != null) return;
-                if (mode == Mode.Vertical) expander.Error("LaTeX Error: There's no line here to end");
+                if (tables.Count > 0) EndRow();
+                else if (mode == Mode.Vertical) expander.Error("LaTeX Error: There's no line here to end");
                 else HList.Add(new TexPenalty(TexPenalty.Forced));
             });
             On("hskip", _ =>
@@ -373,12 +488,42 @@ namespace ArctisAurora.Core.Tex
             }
         }
 
-        private float Millimetres(TexToken[] value)
+        private float Millimetres(TexToken[] value) => Dimen(value) / (float)Unity * 25.4f / 72.27f;
+
+        // A dimension written in tokens, sp.
+        private int Dimen(TexToken[] value)
         {
             expander.Insert(value.Append(TexToken.Cs("relax")).ToArray());
             int sp = expander.ScanDimen();
             while (expander.Next(out TexToken rest) && !(rest.IsCs && rest.name == "relax")) { }
-            return sp / (float)Unity * 25.4f / 72.27f;
+            return sp;
+        }
+
+        // \textwidth and its kin from the class, paper and geometry.
+        private void PageDimens()
+        {
+            List<TexToken> tokens = new List<TexToken>();
+            void Set(string name, int sp)
+            {
+                tokens.Add(TexToken.Cs("global"));
+                tokens.Add(TexToken.Cs(name));
+                tokens.AddRange(Chars("=" + sp.ToString(CultureInfo.InvariantCulture) + "sp"));
+                tokens.Add(TexToken.Cs("relax"));
+            }
+
+            foreach (string name in new[] { "textwidth", "linewidth", "columnwidth" })
+                Set(name, textWidth);
+            Set("textheight", textHeight);
+            Set("paperwidth", (int)(paperWidth / MmPerPt * Unity));
+            Set("paperheight", (int)(paperHeight / MmPerPt * Unity));
+            expander.Insert(tokens.ToArray());
+        }
+
+        private static int Extent(float paper, float? before, float? after, float defaultPt)
+        {
+            if (before == null && after == null) return (int)(defaultPt * Unity);
+            float side = (paper - defaultPt * MmPerPt) / 2f;
+            return (int)((paper - (before ?? side) - (after ?? side)) / MmPerPt * Unity);
         }
 
         // \chapter (0) to \subparagraph (5).
@@ -399,6 +544,7 @@ namespace ArctisAurora.Core.Tex
             bool numbered = !star && depth <= (Chapters ? 2 : 3);
             if (numbered) expander.StepCounter(sectionNames[depth]);
             string number = numbered ? string.Join(".", Enumerable.Range(top, depth - top + 1).Select(d => expander.Counter(sectionNames[d]))) : "";
+            if (numbered) SetLabel(number);
 
             if (depth >= 4)
             {
@@ -452,7 +598,11 @@ namespace ArctisAurora.Core.Tex
             TexToken[]? label = expander.Optional(t);
             EndParagraph();
             if (list == null) expander.Error("LaTeX Error: Lonely \\item--perhaps a missing list environment");
-            else if (label == null) list.count++;
+            else if (label == null)
+            {
+                list.count++;
+                if (list.kind == TexListKind.Enumerate) SetLabel(EnumerateLabel(list));
+            }
 
             itemPending = true;
             StartParagraph();
@@ -544,6 +694,7 @@ namespace ArctisAurora.Core.Tex
             if (text == null) return;
 
             expander.StepCounter("footnote");
+            SetLabel(expander.Counter("footnote").ToString(CultureInfo.InvariantCulture));
             string mark = "{}^{" + expander.Counter("footnote").ToString(CultureInfo.InvariantCulture) + "}";
             StartParagraph();
             HList.Add(new TexMathNode(mark, false, style));
@@ -601,6 +752,460 @@ namespace ArctisAurora.Core.Tex
         }
         #endregion
 
+        #region ---- references ----
+        private void SetLabel(string text)
+        {
+            string outer = currentLabel;
+            expander.Save(() => currentLabel = outer);
+            currentLabel = text;
+        }
+
+        // An enumerate item as \ref prints it: 1, 1a, 1(a)i, 1(a)iA.
+        private static string EnumerateLabel(ListFrame list)
+        {
+            List<int> counts = new List<int>();
+            for (ListFrame? f = list; f != null; f = f.parent)
+                if (f.kind == TexListKind.Enumerate) counts.Insert(0, f.count);
+
+            string[] parts = counts.Select((n, i) => (i % 4) switch
+            {
+                0 => n.ToString(CultureInfo.InvariantCulture),
+                1 => Alpha(n, 'a'),
+                2 => Roman(n),
+                _ => Alpha(n, 'A')
+            }).ToArray();
+            string text = parts[0];
+            if (parts.Length == 2) text += parts[1];
+            if (parts.Length >= 3) text += "(" + parts[1] + ")" + parts[2];
+            if (parts.Length >= 4) text += parts[3];
+            return text;
+        }
+
+        private static string Alpha(int n, char first) => n is >= 1 and <= 26 ? ((char)(first + n - 1)).ToString() : n.ToString(CultureInfo.InvariantCulture);
+
+        private static string Roman(int n)
+        {
+            StringBuilder roman = new StringBuilder();
+            foreach ((int value, string numeral) in new[] { (1000, "m"), (900, "cm"), (500, "d"), (400, "cd"), (100, "c"), (90, "xc"),
+                         (50, "l"), (40, "xl"), (10, "x"), (9, "ix"), (5, "v"), (4, "iv"), (1, "i") })
+                for (; n >= value; n -= value) roman.Append(numeral);
+            return roman.ToString();
+        }
+
+        private void Label(TexToken t)
+        {
+            string? key = expander.NameArgument(t)?.Trim();
+            if (key == null) return;
+            if (labels.ContainsKey(key)) expander.Error($"LaTeX Warning: Label `{key}' multiply defined");
+            labels[key] = currentLabel;
+        }
+
+        // \ref{key}, or \cite[note]{keys} as [labels, note].
+        private void Reference(TexToken t, bool cite)
+        {
+            TexToken[]? note = cite ? expander.Optional(t) : null;
+            string? names = expander.NameArgument(t);
+            if (names == null) return;
+            string[] keys = cite ? Keys(names) : new[] { names.Trim() };
+
+            StartParagraph();
+            if (cite)
+            {
+                foreach (string key in keys)
+                    if (!citations.Contains(key)) citations.Add(key);
+                AddText("[");
+            }
+            suppressSpace = false;
+            boundary = true;
+            TexRefNode node = new TexRefNode(keys, cite, style, t.line, t.column);
+            refs.Add(node);
+            HList.Add(node);
+            if (!cite) return;
+
+            if (note == null || note.All(x => x.IsChar(x.ch, TexCatcode.Space))) AddText("]");
+            else expander.Insert(new[] { TexToken.Char(',', TexCatcode.Other), TexToken.Char(' ', TexCatcode.Space) }
+                .Concat(note).Append(TexToken.Char(']', TexCatcode.Other)).ToArray());
+        }
+
+        private void NoCite(TexToken t)
+        {
+            string? names = expander.NameArgument(t);
+            if (names == null) return;
+            foreach (string key in Keys(names))
+                if (key == "*") allCited = true;
+                else if (!citations.Contains(key)) citations.Add(key);
+        }
+
+        private static string[] Keys(string names) => names.Split(',').Select(k => k.Trim()).Where(k => k.Length > 0).ToArray();
+
+        // Each \ref and \cite gets its text, now every label and \bibitem is known.
+        private void Resolve()
+        {
+            foreach (TexRefNode r in refs)
+                r.text = r.cite
+                    ? string.Join(", ", r.keys.Select(k => Look(bibLabels, k, "Citation", r.line, r.column, "?")))
+                    : Look(labels, r.keys[0], "Reference", r.line, r.column, "??");
+            foreach ((TexMathNode node, int line) in mathRefs)
+                node.source = mathRef.Replace(node.source, m => @"\text{" + Look(labels, m.Groups[1].Value.Trim(), "Reference", line, 0, "??") + "}");
+        }
+
+        private string Look(Dictionary<string, string> table, string key, string what, int line, int column, string missing)
+        {
+            if (table.TryGetValue(key, out string? text)) return text;
+            errors.Add(new TexError(line, column, $"LaTeX Warning: {what} `{key}' undefined"));
+            return missing;
+        }
+        #endregion
+
+        #region ---- floats and pictures ----
+        private void BeginFloat(TexToken t, string kind)
+        {
+            expander.Optional(t);
+            EndParagraph();
+            string? outer = floatKind;
+            expander.Save(() => floatKind = outer);
+            floatKind = kind;
+        }
+
+        // "Figure n: text", centred, numbered within the chapter in report and book.
+        private void Caption(TexToken t)
+        {
+            expander.Optional(t);
+            TexToken[]? text = expander.Argument(t, true);
+            if (text == null) return;
+            if (floatKind == null)
+            {
+                expander.Error("LaTeX Error: \\caption outside float");
+                return;
+            }
+
+            expander.StepCounter(floatKind);
+            string number = (Chapters ? expander.Counter("chapter").ToString(CultureInfo.InvariantCulture) + "." : "")
+                + expander.Counter(floatKind).ToString(CultureInfo.InvariantCulture);
+            SetLabel(number);
+            EndParagraph();
+            Suspend(new TexParStyle { kind = TexParKind.Text, align = TexAlign.Center }, style.font);
+            expander.Insert(new[] { TexToken.Cs(floatKind + "name"), TexToken.Char(' ', TexCatcode.Space) }
+                .Concat(Chars(number + ":")).Append(TexToken.Char(' ', TexCatcode.Space))
+                .Concat(text).Append(TexToken.Cs("@endcaption")).ToArray());
+        }
+
+        // graphicx's width, height, scale, angle and keepaspectratio; other keys are ignored.
+        private void IncludeGraphics(TexToken t)
+        {
+            expander.TakeStar();
+            TexToken[]? options = expander.Optional(t);
+            TexToken[]? arg = expander.Argument(t, false);
+            if (arg == null) return;
+            string? path = FindGraphic(Text(arg).Trim());
+            if (path == null) return;
+
+            TexImage image = new TexImage(path);
+            foreach (TexToken[] option in options == null ? new List<TexToken[]>() : Split(options))
+            {
+                int equals = Array.FindIndex(option, x => x.IsChar('=', TexCatcode.Other));
+                string key = Text(equals < 0 ? option : option[..equals]).Trim();
+                TexToken[] value = equals < 0 ? Array.Empty<TexToken>() : option[(equals + 1)..];
+                switch (key)
+                {
+                    case "width": image.width = Dimen(value); break;
+                    case "height" or "totalheight": image.height = Dimen(value); break;
+                    case "scale": image.scale = Number(value); break;
+                    case "angle": image.angle = Number(value); break;
+                    case "keepaspectratio": image.keepAspect = equals < 0 || Text(value).Trim() == "true"; break;
+                }
+            }
+
+            StartParagraph();
+            suppressSpace = false;
+            boundary = true;
+            HList.Add(image);
+        }
+
+        private float Number(TexToken[] value)
+        {
+            if (float.TryParse(Text(value).Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out float n)) return n;
+            expander.Error("Missing number, treated as zero");
+            return 0f;
+        }
+
+        // The file under the source's folder and each \graphicspath entry; no extension tries PNG and JPEG.
+        private string? FindGraphic(string name)
+        {
+            bool named = Path.GetExtension(name).Length > 0;
+            if (folder != null)
+                foreach (string prefix in graphicsPath)
+                {
+                    string stem = Path.Combine(folder, prefix, name);
+                    IEnumerable<string> candidates = named ? new[] { stem } : rasterExtensions.Concat(vectorExtensions).Select(e => stem + e);
+                    foreach (string candidate in candidates)
+                    {
+                        if (!File.Exists(candidate)) continue;
+                        if (vectorExtensions.Contains(Path.GetExtension(candidate).ToLowerInvariant()))
+                        {
+                            expander.Error($"LaTeX Error: {Path.GetFileName(candidate)}: PDF and EPS pictures are not supported");
+                            return null;
+                        }
+                        return Path.GetFullPath(candidate);
+                    }
+                }
+            expander.Error($"LaTeX Error: File `{name}' not found");
+            return null;
+        }
+
+        // \graphicspath{{a/}{b/}}
+        private void GraphicsPath(TexToken t)
+        {
+            TexToken[]? arg = expander.Argument(t, false);
+            if (arg == null) return;
+            graphicsPath = new List<string> { "" };
+            for (int i = 0; i < arg.Length; i++)
+                if (arg[i].IsChar(arg[i].ch, TexCatcode.BeginGroup))
+                {
+                    i--;
+                    graphicsPath.Add(Text(Group(arg, ref i)));
+                }
+        }
+        #endregion
+
+        #region ---- tabular ----
+        private void BeginTabular(TexToken t)
+        {
+            expander.Optional(t);
+            TexToken[]? spec = expander.Argument(t, false);
+            if (spec == null) return;
+            if (tables.Count > 0 && tables[^1].cell == null) StartCell();
+            EndParagraph();
+            EnsureDocument();
+
+            TexTable table = new TexTable { line = sourceLine };
+            ColumnSpec(spec, table, 0);
+            if (table.columns.Count == 0) table.columns.Add(new TexColumn { align = TexAlign.Left });
+            vtarget.Add(table);
+            tables.Add(new TableBuild(table, style));
+        }
+
+        // l c r p{} m{} b{} | @{} !{} >{} <{} *{n}{spec}
+        private void ColumnSpec(TexToken[] spec, TexTable table, int depth)
+        {
+            for (int i = 0; i < spec.Length; i++)
+            {
+                TexToken s = spec[i];
+                if (!s.IsCs && s.cat == TexCatcode.Space) continue;
+                switch (s.IsCs ? '\0' : s.ch)
+                {
+                    case 'l': table.columns.Add(new TexColumn { align = TexAlign.Left }); break;
+                    case 'c': table.columns.Add(new TexColumn { align = TexAlign.Center }); break;
+                    case 'r': table.columns.Add(new TexColumn { align = TexAlign.Right }); break;
+                    case 'p' or 'm' or 'b': table.columns.Add(new TexColumn { align = TexAlign.Justify, width = Dimen(Group(spec, ref i)) }); break;
+                    case '|': table.ruled = true; break;
+                    case '@' or '!' or '>' or '<': Group(spec, ref i); break;
+                    case '*':
+                        int.TryParse(Text(Group(spec, ref i)).Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int count);
+                        TexToken[] repeated = Group(spec, ref i);
+                        for (int n = 0; n < Math.Min(count, 100) && depth < 8; n++)
+                            ColumnSpec(repeated, table, depth + 1);
+                        break;
+                    default:
+                        expander.Error("LaTeX Error: Illegal character in array arg");
+                        break;
+                }
+            }
+        }
+
+        // The braced group or single token after i; i is left on its last token.
+        private static TexToken[] Group(TexToken[] tokens, ref int i)
+        {
+            i++;
+            while (i < tokens.Length && !tokens[i].IsCs && tokens[i].cat == TexCatcode.Space) i++;
+            if (i >= tokens.Length) return Array.Empty<TexToken>();
+            if (!tokens[i].IsChar(tokens[i].ch, TexCatcode.BeginGroup)) return new[] { tokens[i] };
+
+            int start = i + 1, depth = 0;
+            for (; i < tokens.Length; i++)
+            {
+                if (tokens[i].IsChar(tokens[i].ch, TexCatcode.BeginGroup)) depth++;
+                else if (tokens[i].IsChar(tokens[i].ch, TexCatcode.EndGroup) && --depth == 0) return tokens[start..i];
+            }
+            return tokens[start..];
+        }
+
+        // A cell is set like a heading: the outer state suspended, the cell's own list the target.
+        private void StartCell()
+        {
+            TableBuild b = tables[^1];
+            if (b.row == null)
+            {
+                b.row = new List<TexTableCell>();
+                b.table.rows.Add(b.row);
+                b.column = 0;
+            }
+            TexTableCell cell = new TexTableCell();
+            b.row.Add(cell);
+            b.cell = cell;
+
+            TexAlign to = b.column < b.table.columns.Count ? b.table.columns[b.column].align : TexAlign.Left;
+            Suspend(new TexParStyle { kind = TexParKind.Text, align = to }, b.style.font, cell.vlist);
+            style = b.style;
+            suppressSpace = true;
+        }
+
+        private void EndCell()
+        {
+            TableBuild b = tables[^1];
+            if (b.cell == null) return;
+            Resume();
+            b.column += b.cell.span;
+            b.cell = null;
+        }
+
+        // &
+        private void NextCell()
+        {
+            TableBuild b = tables[^1];
+            if (b.cell == null) StartCell();
+            EndCell();
+            if (b.column >= b.table.columns.Count)
+            {
+                expander.Error("Extra alignment tab has been changed to \\cr");
+                b.row = null;
+            }
+            StartCell();
+        }
+
+        // \\ in a tabular
+        private void EndRow()
+        {
+            TableBuild b = tables[^1];
+            if (b.cell == null) StartCell();
+            EndCell();
+            b.row = null;
+        }
+
+        private void EndTabular()
+        {
+            if (tables.Count == 0) return;
+            EndCell();
+            tables.RemoveAt(tables.Count - 1);
+        }
+
+        private void MultiColumn(TexToken t)
+        {
+            TexToken[]? count = expander.Argument(t, false);
+            TexToken[]? spec = count == null ? null : expander.Argument(t, false);
+            TexToken[]? text = spec == null ? null : expander.Argument(t, true);
+            if (text == null) return;
+            if (tables.Count == 0)
+            {
+                expander.Error("Misplaced \\omit");
+                return;
+            }
+
+            TableBuild b = tables[^1];
+            if (b.cell == null) StartCell();
+            int.TryParse(Text(count!).Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out int span);
+            b.cell!.span = Math.Max(1, span);
+            TexTable own = new TexTable();
+            ColumnSpec(spec!, own, 0);
+            if (own.ruled) b.table.ruled = true;
+            align = own.columns.Count > 0 ? own.columns[0].align : TexAlign.Center;
+            expander.Insert(Grouped(text));
+        }
+
+        // \hline, \cline and the booktabs rules
+        private void Rule()
+        {
+            if (tables.Count > 0) tables[^1].table.ruled = true;
+            else expander.Error("Misplaced \\noalign");
+        }
+        #endregion
+
+        #region ---- bibliography ----
+        private void Bibliography(TexToken t)
+        {
+            string? names = expander.NameArgument(t);
+            if (names == null) return;
+            bibFiles = Keys(names);
+            EndParagraph();
+            EnsureDocument();
+            TexBibliographyMark mark = new TexBibliographyMark();
+            vtarget.Add(mark);
+            bibMark = (vtarget, mark);
+        }
+
+        private void BeginBibliography(TexToken t)
+        {
+            expander.Argument(t, false);
+            EndParagraph();
+            bibCount = 0;
+            expander.Insert(new[]
+            {
+                TexToken.Cs(Chapters ? "chapter" : "section"), TexToken.Char('*', TexCatcode.Other), TexToken.Char('{', TexCatcode.BeginGroup),
+                TexToken.Cs(Chapters ? "bibname" : "refname"), TexToken.Char('}', TexCatcode.EndGroup)
+            });
+        }
+
+        // \bibitem[label]{key}: a paragraph starting [label], or [n] counted.
+        private void BibItem(TexToken t)
+        {
+            TexToken[]? label = expander.Optional(t);
+            string? key = expander.NameArgument(t)?.Trim();
+            if (key == null) return;
+            EndParagraph();
+
+            TexToken[] shown = label ?? Chars((++bibCount).ToString(CultureInfo.InvariantCulture));
+            bibLabels[key] = Text(shown.Where(x => x.IsCs || x.cat is not (TexCatcode.BeginGroup or TexCatcode.EndGroup)));
+            StartParagraph();
+            suppressSpace = true;
+            expander.Insert(Grouped(new[] { TexToken.Char('[', TexCatcode.Other) }.Concat(shown).Append(TexToken.Char(']', TexCatcode.Other)))
+                .Append(TexToken.Cs("@label")).ToArray());
+        }
+
+        // BibTeX's job, once every \cite is known: the cited entries as a thebibliography, typeset where \bibliography stood.
+        private void TypesetBibliography()
+        {
+            if (bibMark is not (List<TexNode> list, TexBibliographyMark mark)) return;
+
+            List<TexBibEntry> entries = new List<TexBibEntry>();
+            foreach (string file in bibFiles)
+            {
+                string name = file.EndsWith(".bib", StringComparison.OrdinalIgnoreCase) ? file : file + ".bib";
+                string? path = folder == null ? null : Path.Combine(folder, name);
+                if (path == null || !File.Exists(path))
+                {
+                    expander.Error($"I couldn't open database file {name}");
+                    continue;
+                }
+                TexBibliography.Parse(File.ReadAllText(path), entries, message => expander.Error($"{message} in {name}"));
+            }
+            if (!TexBibliography.styles.Contains(bibStyle))
+            {
+                expander.Error(bibStyle.Length == 0 ? "I found no \\bibliographystyle command" : $"I couldn't open style file {bibStyle}.bst");
+                bibStyle = "plain";
+            }
+
+            Dictionary<string, TexBibEntry> byKey = new Dictionary<string, TexBibEntry>();
+            foreach (TexBibEntry entry in entries)
+                byKey.TryAdd(entry.key, entry);
+            IEnumerable<string> keys = allCited ? citations.Concat(entries.Select(e => e.key)).Distinct() : citations;
+            List<TexBibEntry> cited = keys.Where(byKey.ContainsKey).Select(k => byKey[k]).ToList();
+
+            List<TexNode> made = new List<TexNode>();
+            vtarget = made;
+            mode = Mode.Vertical;
+            par = null;
+            done = false;
+            expander.Insert(new[] { TexToken.Cs("@endbib") });
+            expander.InsertSource(TexBibliography.Format(cited, bibStyle));
+            while (!done && expander.Next(out TexToken t)) Dispatch(t);
+            EndParagraph();
+
+            int at = list.IndexOf(mark);
+            list.RemoveAt(at);
+            list.InsertRange(at, made);
+        }
+        #endregion
+
         #region ---- building ----
         private void Character(TexToken t)
         {
@@ -617,7 +1222,8 @@ namespace ArctisAurora.Core.Tex
                     else if (mode == Mode.Horizontal) Interword();
                     return;
                 case TexCatcode.AlignTab:
-                    expander.Error("Misplaced alignment tab character &");
+                    if (tables.Count > 0) NextCell();
+                    else expander.Error("Misplaced alignment tab character &");
                     return;
                 case TexCatcode.Superscript or TexCatcode.Subscript:
                     expander.Error("Missing $ inserted");
@@ -698,6 +1304,11 @@ namespace ArctisAurora.Core.Tex
         private void StartParagraph()
         {
             if (mode == Mode.Horizontal) return;
+            if (tables.Count > 0 && tables[^1].cell == null)
+            {
+                StartCell();
+                return;
+            }
             EnsureDocument();
 
             TexParStyle parStyle = new TexParStyle { kind = quote ? TexParKind.Quote : TexParKind.Text };
@@ -871,7 +1482,9 @@ namespace ArctisAurora.Core.Tex
         private void Place(StringBuilder source, bool display)
         {
             StartParagraph();
-            HList.Add(new TexMathNode(source.ToString().Trim(), display, style));
+            TexMathNode node = new TexMathNode(mathLabel.Replace(source.ToString(), "").Trim(), display, style);
+            HList.Add(node);
+            if (mathRef.IsMatch(node.source)) mathRefs.Add((node, sourceLine));
             suppressSpace = display;
             boundary = true;
         }
@@ -880,6 +1493,10 @@ namespace ArctisAurora.Core.Tex
         #region ---- helpers ----
         private static TexToken[] Grouped(IEnumerable<TexToken> tokens) =>
             new[] { TexToken.Char('{', TexCatcode.BeginGroup) }.Concat(tokens).Append(TexToken.Char('}', TexCatcode.EndGroup)).ToArray();
+
+        // Text as letter and other tokens.
+        private static TexToken[] Chars(string text) =>
+            text.Select(c => TexToken.Char(c, char.IsLetter(c) ? TexCatcode.Letter : TexCatcode.Other)).ToArray();
 
         // Tokens as their characters, a control sequence as \name.
         private static string Text(IEnumerable<TexToken> tokens)

@@ -39,6 +39,7 @@
 	<Test Action="TextInput.TableTabAddsRow"/>
 	<Test Action="TextInput.TableListInCell"/>
 	<Test Action="TextInput.TableResizeColumn"/>
+	<Test Action="TextInput.TableColumnSpan"/>
 	<Test Action="TextInput.CodeColoursAndOverflow"/>
 	<Test Action="TextInput.PictureEditUndo"/>
 	<Test Action="TextInput.PictureRoundTrip"/>

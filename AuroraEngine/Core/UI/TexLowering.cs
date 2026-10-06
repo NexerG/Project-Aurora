@@ -2,6 +2,7 @@ using ArctisAurora.Core.Filing;
 using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.Core.Tex;
 using ArctisAurora.EngineWork.Registry;
+using SixLabors.ImageSharp;
 using System.Globalization;
 using System.Text;
 using System.Xml.Linq;
@@ -19,14 +20,14 @@ namespace ArctisAurora.Core.UI
         private const float PxPerPt = 96f / 72.27f;
         private const float MmPerPt = 25.4f / 72.27f;
 
-        // article's \textwidth at 10pt, 11pt, 12pt and its \textheight, pt
-        private static readonly float[] textWidths = { 345f, 360f, 390f };
-        private const float TextHeight = 550f;
+        // \tabcolsep, either side of a column, and the narrowest column a table takes
+        private const float TabColSep = 6f * PxPerPt;
+        private const float MinColumn = 24f;
 
-        // blockLines, when given, gets each block's source line; 0 = none.
-        public static XElement Compile(string source, out List<TexError> errors, List<int>? blockLines = null)
+        // blockLines, when given, gets each block's source line; 0 = none. folder is where pictures and .bib files are found.
+        public static XElement Compile(string source, out List<TexError> errors, List<int>? blockLines = null, string? folder = null)
         {
-            TexTypesetter typesetter = new TexTypesetter(source, new TexAtlasMetrics());
+            TexTypesetter typesetter = new TexTypesetter(source, new TexAtlasMetrics(), folder);
             typesetter.Run();
             errors = typesetter.errors;
             return Lower(typesetter, blockLines);
@@ -56,9 +57,8 @@ namespace ArctisAurora.Core.UI
         private static XElement Layout(TexTypesetter typesetter, int normal, Dictionary<int, int> headings)
         {
             bool a4 = typesetter.paper == "a4";
-            float width = a4 ? 210f : 215.9f, height = a4 ? 297f : 279.4f;
-            float side = (width - textWidths[typesetter.sizeOption] * MmPerPt) / 2f;
-            float top = (height - TextHeight * MmPerPt) / 2f;
+            float side = (typesetter.paperWidth - TexTypesetter.textWidths[typesetter.sizeOption] * MmPerPt) / 2f;
+            float top = (typesetter.paperHeight - TexTypesetter.TextHeight * MmPerPt) / 2f;
 
             XElement layout = new XElement("DocumentLayout",
                 new XAttribute("LineHeight", "1.2"),
@@ -109,6 +109,10 @@ namespace ArctisAurora.Core.UI
                 case TexRuleNode:
                     root.Add(new XElement("Block", new XAttribute("StylingType", "Rule")));
                     blockLines?.Add(0);
+                    break;
+                case TexTable t:
+                    root.Add(Table(t, normal, headings));
+                    blockLines?.Add(t.line);
                     break;
             }
         }
@@ -163,6 +167,165 @@ namespace ArctisAurora.Core.UI
         private static string Marker(TexListKind kind, int depth) => kind == TexListKind.Enumerate
             ? ((depth - 1) % 4) switch { 0 => "Decimal", 1 => "LowerAlpha", 2 => "LowerRoman", _ => "UpperAlpha" }
             : ((depth - 1) % 4) switch { 0 => "Disc", 1 => "Circle", 2 => "Square", _ => "SquareOutline" };
+
+        // Columns at their widest single-column cell, p{} columns at their width, a merged cell widening its last column.
+        private static XElement Table(TexTable t, int normal, Dictionary<int, int> headings)
+        {
+            int count = Math.Max(t.columns.Count, t.rows.Count == 0 ? 1 : t.rows.Max(r => r.Sum(c => c.span)));
+            float[] widths = new float[count];
+            List<List<(TexTableCell cell, List<TexNode> nodes, float width)>> rows = t.rows.Select(r => r.Select(c =>
+            {
+                List<TexNode> nodes = Flat(c.vlist).ToList();
+                return (c, nodes, Width(nodes));
+            }).ToList()).ToList();
+
+            foreach (List<(TexTableCell cell, List<TexNode> nodes, float width)> row in rows)
+            {
+                int c = 0;
+                foreach ((TexTableCell cell, _, float width) in row)
+                {
+                    if (cell.span == 1 && c < count) widths[c] = MathF.Max(widths[c], width);
+                    c += cell.span;
+                }
+            }
+            for (int i = 0; i < t.columns.Count; i++)
+                if (t.columns[i].width > 0) widths[i] = t.columns[i].width / Unity * PxPerPt;
+            foreach (List<(TexTableCell cell, List<TexNode> nodes, float width)> row in rows)
+            {
+                int c = 0;
+                foreach ((TexTableCell cell, _, float width) in row)
+                {
+                    int end = Math.Min(c + cell.span, count);
+                    if (cell.span > 1 && end > c)
+                    {
+                        float have = widths[c..end].Sum() + 2f * TabColSep * (end - c - 1);
+                        if (width > have) widths[end - 1] += width - have;
+                    }
+                    c += cell.span;
+                }
+            }
+
+            XElement table = new XElement("Table");
+            if (!t.ruled) table.SetAttributeValue("Borders", "false");
+            foreach (float width in widths)
+                table.Add(new XElement("Column", new XAttribute("Width", Format(MathF.Max(MinColumn, MathF.Ceiling(width + 2f * TabColSep))))));
+            foreach (List<(TexTableCell cell, List<TexNode> nodes, float width)> row in rows)
+            {
+                XElement written = new XElement("Row");
+                foreach ((TexTableCell cell, List<TexNode> nodes, _) in row)
+                {
+                    XElement element = new XElement("Cell");
+                    if (cell.span > 1) element.SetAttributeValue("ColumnSpan", cell.span);
+                    foreach (TexNode node in nodes)
+                        LowerVertical(node, element, normal, headings, null);
+                    written.Add(element);
+                }
+                table.Add(written);
+            }
+            return table;
+        }
+
+        // A tabular inside a cell, which a note cannot hold, as a paragraph per row.
+        private static IEnumerable<TexNode> Flat(List<TexNode> vlist)
+        {
+            foreach (TexNode node in vlist)
+            {
+                if (node is not TexTable inner)
+                {
+                    yield return node;
+                    continue;
+                }
+                foreach (List<TexTableCell> row in inner.rows)
+                {
+                    TexParagraph line = new TexParagraph(new TexParStyle { align = TexAlign.Left });
+                    foreach (TexParagraph p in row.SelectMany(c => Flat(c.vlist)).OfType<TexParagraph>())
+                    {
+                        if (line.list.Count > 0 && p.list.OfType<TexChar>().FirstOrDefault() is TexChar first) line.list.Add(new TexChar(' ', first.style));
+                        line.list.AddRange(p.list);
+                    }
+                    yield return line;
+                }
+            }
+        }
+        #endregion
+
+        #region ---- measuring ----
+        // The widest line of a cell's paragraphs, px.
+        private static float Width(List<TexNode> vlist)
+        {
+            float widest = 0f;
+            foreach (TexParagraph p in vlist.OfType<TexParagraph>())
+                foreach (List<TexNode> line in Lines(p.list))
+                    widest = MathF.Max(widest, Width(line, 0));
+            return widest;
+        }
+
+        private static float Width(List<TexNode> nodes, int depth)
+        {
+            float width = 0f;
+            foreach (TexNode node in nodes)
+                width += node switch
+                {
+                    TexChar c => Advance(c.ch, c.style),
+                    TexGlueNode { interword: true } g => Advance(' ', g.style),
+                    TexGlueNode g => g.glue.width / Unity * PxPerPt,
+                    TexKern k => k.width / Unity * PxPerPt,
+                    TexHBox b when depth < 16 => Width(b.list, depth + 1),
+                    TexRefNode r => r.text.Sum(c => Advance(c, r.style)),
+                    TexMathNode m => MathWidth(m),
+                    TexImage i => PictureSize(i).width is > 0f and float w ? w : Native(i.path).width,
+                    _ => 0f
+                };
+            return width;
+        }
+
+        private static float Advance(char c, TexStyle s)
+        {
+            int px = Px(s.font.size);
+            if (Font(s.font.family == TexFamily.Mono ? MonoFont : RomanFont) is not FontAsset font || c >= AtlasMetaData.AdvanceTableSize) return px * 0.5f;
+            return font.atlasMetaData.TableAdvance(c, Face(font.atlasMetaData, s.font)) * px;
+        }
+
+        private static float MathWidth(TexMathNode m)
+        {
+            int px = Px(m.style.font.size);
+            if (Font(MathFont) is not { mathConstants: not null } font) return m.source.Length * px * 0.5f;
+            return MathLayout.Layout(MathParser.Parse(m.source), m.display, font.atlasMetaData, font.mathConstants).width * px;
+        }
+
+        private static FontAsset? Font(string name) =>
+            AssetRegistries.GetRegistryByValueType<string, FontAsset>(typeof(FontAsset)).GetValueOrDefault(name);
+
+        private static FontStyle Face(AtlasMetaData atlas, TexFont font) => atlas.Effective(font.bold
+            ? font.italic ? FontStyle.BoldItalic : FontStyle.Bold
+            : font.italic ? FontStyle.Italic : FontStyle.Regular);
+
+        // \includegraphics' size in px; 0 leaves that side to the picture.
+        private static (float width, float height) PictureSize(TexImage image)
+        {
+            float w = image.width > 0 ? image.width / Unity * PxPerPt : 0f, h = image.height > 0 ? image.height / Unity * PxPerPt : 0f;
+            bool scaled = image.scale > 0f && w == 0f && h == 0f, fitted = image.keepAspect && w > 0f && h > 0f;
+            if (!scaled && !fitted) return (w, h);
+
+            (int nw, int nh) = Native(image.path);
+            if (nw <= 0 || nh <= 0) return (w, h);
+            if (scaled) return (nw * image.scale, nh * image.scale);
+            float fit = MathF.Min(w / nw, h / nh);
+            return (nw * fit, nh * fit);
+        }
+
+        private static (int width, int height) Native(string path)
+        {
+            try
+            {
+                ImageInfo info = Image.Identify(path);
+                return (info.Width, info.Height);
+            }
+            catch (Exception)
+            {
+                return (0, 0);
+            }
+        }
         #endregion
 
         #region ---- runs ----
@@ -204,6 +367,19 @@ namespace ArctisAurora.Core.UI
                             break;
                         case TexHBox b:
                             Walk(b.list, true);
+                            break;
+                        case TexRefNode r:
+                            Put(r.text, r.style);
+                            break;
+                        case TexImage i:
+                            Flush();
+                            current = null;
+                            XElement picture = new XElement("Run", new XAttribute("Image", i.path));
+                            (float width, float height) = PictureSize(i);
+                            if (width > 0f) picture.SetAttributeValue("Width", Format(width));
+                            if (height > 0f) picture.SetAttributeValue("Height", Format(height));
+                            if (i.angle != 0f) picture.SetAttributeValue("Rotation", Format(-i.angle));
+                            block.Add(picture);
                             break;
                         case TexMathNode m:
                             Flush();

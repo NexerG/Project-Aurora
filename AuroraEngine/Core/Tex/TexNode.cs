@@ -79,7 +79,7 @@ namespace ArctisAurora.Core.Tex
 
     public sealed class TexMathNode : TexNode
     {
-        public readonly string source;
+        public string source;
         public readonly bool display;
         public readonly TexStyle style;
 
@@ -94,6 +94,39 @@ namespace ArctisAurora.Core.Tex
     public sealed class TexHBox : TexNode
     {
         public readonly List<TexNode> list = new List<TexNode>();
+    }
+
+    // \ref or \cite; text is filled once the whole document has been read.
+    public sealed class TexRefNode : TexNode
+    {
+        public readonly string[] keys;
+        public readonly bool cite;
+        public readonly TexStyle style;
+        public readonly int line;
+        public readonly int column;
+        public string text = "??";
+
+        public TexRefNode(string[] keys, bool cite, TexStyle style, int line, int column)
+        {
+            this.keys = keys;
+            this.cite = cite;
+            this.style = style;
+            this.line = line;
+            this.column = column;
+        }
+    }
+
+    // \includegraphics; sizes in sp, 0 = not given.
+    public sealed class TexImage : TexNode
+    {
+        public readonly string path;
+        public int width;
+        public int height;
+        public float scale;
+        public float angle;
+        public bool keepAspect;
+
+        public TexImage(string path) => this.path = path;
     }
     #endregion
 
@@ -124,5 +157,33 @@ namespace ArctisAurora.Core.Tex
     }
 
     public sealed class TexRuleNode : TexNode { }
+
+    // where \bibliography put the reference list, filled after the document ends
+    public sealed class TexBibliographyMark : TexNode { }
+
+    // tabular column: alignment, and a p{} width in sp (0 = natural)
+    public struct TexColumn
+    {
+        public TexAlign align;
+        public int width;
+    }
+
+    public sealed class TexTableCell
+    {
+        public readonly List<TexNode> vlist = new List<TexNode>();
+        public int span = 1;
+    }
+
+    public sealed class TexTable : TexNode
+    {
+        public readonly List<TexColumn> columns = new List<TexColumn>();
+        public readonly List<List<TexTableCell>> rows = new List<List<TexTableCell>>();
+
+        // any | in the spec, or \hline, \cline or a booktabs rule
+        public bool ruled;
+
+        // source line of \begin{tabular}
+        public int line;
+    }
     #endregion
 }

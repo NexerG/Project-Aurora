@@ -132,20 +132,24 @@ namespace ArctisAurora.Core.UI
             foreach (XElement column in element.Elements().Where(e => e.Name.LocalName == "Column"))
                 widths.Add((float?)column.Attribute("Width") ?? defaultColumnWidth);
 
-            List<List<List<BlockControl>>> rows = new List<List<List<BlockControl>>>();
+            List<(List<List<BlockControl>> cells, List<int> spans)> rows = new List<(List<List<BlockControl>>, List<int>)>();
             foreach (XElement row in element.Elements().Where(e => e.Name.LocalName == "Row"))
             {
                 List<List<BlockControl>> cells = new List<List<BlockControl>>();
+                List<int> spans = new List<int>();
                 foreach (XElement cell in row.Elements().Where(e => e.Name.LocalName == "Cell"))
+                {
                     cells.Add(cell.Elements().Where(e => e.Name.LocalName == "Block").Select(ReadBlock).ToList());
+                    spans.Add(Math.Max(1, (int?)cell.Attribute("ColumnSpan") ?? 1));
+                }
 
-                while (widths.Count < cells.Count) widths.Add(defaultColumnWidth);
-                rows.Add(cells);
+                while (widths.Count < spans.Sum()) widths.Add(defaultColumnWidth);
+                rows.Add((cells, spans));
             }
 
-            TableControl table = new TableControl(widths);
-            foreach (List<List<BlockControl>> cells in rows)
-                table.AddRow(cells);
+            TableControl table = new TableControl(widths) { showBorders = (bool?)element.Attribute("Borders") ?? true };
+            foreach ((List<List<BlockControl>> cells, List<int> spans) in rows)
+                table.AddRow(cells, spans);
 
             return table;
         }
@@ -240,6 +244,7 @@ namespace ArctisAurora.Core.UI
         private static XElement WriteTable(XNamespace ns, TableControl table)
         {
             XElement element = new XElement(ns + "Table");
+            if (!table.showBorders) element.SetAttributeValue("Borders", "false");
             foreach (float width in table.widths)
                 element.Add(new XElement(ns + "Column", new XAttribute("Width", Format(width))));
 
@@ -253,6 +258,7 @@ namespace ArctisAurora.Core.UI
                 }
 
                 XElement written = new XElement(ns + "Cell");
+                if (table.ColumnSpan(cell) > 1) written.SetAttributeValue("ColumnSpan", table.ColumnSpan(cell));
                 foreach (Entity entry in cell.children)
                     if (entry is BlockControl block) written.Add(WriteBlock(ns, block));
                 row.Add(written);

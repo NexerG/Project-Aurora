@@ -90,6 +90,17 @@ namespace ArctisAurora.Core.UI
             InvalidateLayout();
         }
 
+        // Columns a child's cell covers.
+        internal int ColumnSpan(Control child) => _cellAssignments.Find(a => a.child == child)?.columnSpan ?? 1;
+
+        internal void SetColumnSpan(Control child, int span)
+        {
+            GridCellAssignment? cell = _cellAssignments.Find(a => a.child == child);
+            if (cell == null || cell.columnSpan == span) return;
+            cell.columnSpan = span;
+            InvalidateLayout();
+        }
+
         private void EnsureDefaults()
         {
             if (rowDefinitions.Count == 0)
