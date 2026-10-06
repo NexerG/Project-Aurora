@@ -153,12 +153,15 @@ namespace ArctisAurora.Core.UI
         // tab holding the note and onto its own list. Null when nothing owns the note that way.
         public Action<string>? onNamed;
 
+        // What a save does in an editor with no session.
+        public Action? onSave;
+
         // Writes the note, asking for a name first when it has never been named. onSaved runs once it
         // is on disk, onDiscarded if the note was left unwritten on purpose, onCancelled if the
         // answer was abandoned. Passing no onDiscarded leaves the prompt without that button.
         public void SaveNamed(Action onSaved = null, Action onDiscarded = null, Action onCancelled = null)
         {
-            if (session == null) { onSaved?.Invoke(); return; }
+            if (session == null) { onSave?.Invoke(); onSaved?.Invoke(); return; }
 
             if (!needsNaming)
             {
@@ -191,7 +194,13 @@ namespace ArctisAurora.Core.UI
         #region ---- history ----
         // Every path that changes the document ends here, so the close paths can tell an edited note
         // from one that was only opened.
-        public void MarkDirty() => session?.MarkDirty();
+        public void MarkDirty()
+        {
+            session?.MarkDirty();
+            onEdited?.Invoke();
+        }
+
+        public Action? onEdited;
 
         // One user action's worth of edits. A note with no session has no history, and the default
         // scope discards what is pushed into it.
@@ -530,6 +539,16 @@ namespace ArctisAurora.Core.UI
         }
 
         public BlockControl CaretBlock => content?.caretBlock;
+
+        // Puts the caret at a block and offset, and scrolls to it.
+        public void GoTo(int block, int offset)
+        {
+            if (content == null) return;
+
+            DocumentAddress at = new DocumentAddress(block, offset);
+            content.Select(at, at);
+            RequestScrollToCaret();
+        }
 
         // Two clicks take the word, three the visual line.
         internal void SelectLine()

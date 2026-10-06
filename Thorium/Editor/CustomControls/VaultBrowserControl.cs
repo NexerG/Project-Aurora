@@ -418,6 +418,7 @@ namespace Thorium.Editor.CustomControls
         internal static TabItemControl BuildTab(string notePath)
         {
             if (SheetDocument.IsSheet(notePath) || SheetCsv.IsCsv(notePath)) return BuildSheetTab(notePath);
+            if (Path.GetExtension(notePath).Equals(".tex", StringComparison.OrdinalIgnoreCase)) return BuildTexTab(notePath);
 
             DocumentEditorControl editor = new DocumentEditorControl { contextMenu = "note" };
             editor.LoadPath(notePath);
@@ -442,6 +443,22 @@ namespace Thorium.Editor.CustomControls
             {
                 name = sheetPath,
                 header = editor.document.name ?? BaseName(sheetPath),
+                onRename = name => RenameNote(editor.path, name)
+            };
+            tab.AddChild(editor);
+            return tab;
+        }
+
+        private static TabItemControl BuildTexTab(string texPath)
+        {
+            TexEditorControl editor = new TexEditorControl();
+            editor.LoadPath(texPath);
+            editor.source.onNamed = name => RenameNote(editor.path, name);
+
+            TabItemControl tab = new TabItemControl
+            {
+                name = texPath,
+                header = editor.source.session?.document?.name ?? Path.GetFileNameWithoutExtension(texPath),
                 onRename = name => RenameNote(editor.path, name)
             };
             tab.AddChild(editor);

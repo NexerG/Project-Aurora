@@ -103,6 +103,9 @@ namespace ArctisAurora.Core.Tex
         public TexParStyle style;
         public readonly List<TexNode> list = new List<TexNode>();
 
+        // source line it started on, 0 = none
+        public int line;
+
         public TexParagraph(TexParStyle style) => this.style = style;
     }
 
