@@ -5,6 +5,8 @@ using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Testing;
 using ArctisAurora.Core.Tex;
 using ArctisAurora.Core.UI;
+using ArctisAurora.EngineWork;
+using System.Numerics;
 using System.Xml.Linq;
 
 namespace Thorium.Tests
@@ -120,5 +122,98 @@ namespace Thorium.Tests
             yield return 2;
             yield return t.Golden("Page", editor);
         }
+
+        [A_XSDActionDependency("Tex.SplitView.Recompile", "Test")]
+        private static IEnumerator<int> SplitViewRecompile(TestContext t)
+        {
+            string body = string.Concat(Enumerable.Range(1, 60).Select(i => $"Paragraph {i} of the sample.\n\n"));
+            TexEditorControl editor = ShowSplit(t, "\\documentclass{article}\n\\begin{document}\n" + body + "\\end{document}\n");
+            yield return 2;
+
+            RichTextDocument first = editor.preview.activeDocument;
+            t.Check(first != null && first.blocks.Count == 60, $"the preview is typeset on open: {first?.blocks.Count}");
+            editor.preview.SetScrollOffset(new Vector2(0f, 200f));
+            yield return 1;
+            float scrolled = editor.preview.GetScrollOffset().Y;
+
+            editor.source.GoTo(2, "Paragraph 1".Length);
+            editor.source.FocusCaret();
+            yield return t.Type("Z");
+            t.Check(ReferenceEquals(editor.preview.activeDocument, first), "no recompile while typing");
+
+            double until = Engine.totalTime + TexEditorControl.recompileDelay + 0.1;
+            for (int i = 0; i < 2000 && Engine.totalTime < until; i++) yield return 1;
+            yield return 1;
+
+            RichTextDocument second = editor.preview.activeDocument;
+            string text = ((BlockControl)second.blocks[0]).text;
+            t.Check(!ReferenceEquals(second, first) && text.StartsWith("Paragraph 1Z"), $"recompiled after the pause: {text}");
+            t.Check(scrolled > 0f && Math.Abs(editor.preview.GetScrollOffset().Y - scrolled) < 0.5f,
+                $"the preview keeps its scroll: {scrolled} → {editor.preview.GetScrollOffset().Y}");
+
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("Tex.SplitView.Errors", "Test")]
+        private static IEnumerator<int> SplitViewErrors(TestContext t)
+        {
+            TexEditorControl editor = ShowSplit(t,
+                "\\documentclass{article}\n\\begin{document}\n\\section{Errors}\nText with \\nosuch{} in it.\n\\end{document}\n");
+            yield return 2;
+
+            t.Check(!editor.errors.hidden, "the error list shows");
+            List<ButtonControl> rows = editor.errors.children.OfType<StackPanelControl>().SelectMany(p => p.children.OfType<ButtonControl>()).ToList();
+            t.Check(rows.Count == 1, $"one error row: {rows.Count}");
+            yield return t.Golden("Split", editor);
+
+            if (rows.Count > 0) yield return t.Click(rows[0]);
+            yield return 1;
+            DocumentControl content = Content(editor.source);
+            int index = editor.source.session.document.blocks.IndexOf(content.caretBlock);
+            t.Check(index == 3 && content.caretOffset == "Text with ".Length,
+                $"the row puts the source caret at the error: block {index}, offset {content.caretOffset}");
+
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("Tex.SplitView.ClickToSource", "Test")]
+        private static IEnumerator<int> SplitViewClickToSource(TestContext t)
+        {
+            TexEditorControl editor = ShowSplit(t,
+                "\\documentclass{article}\n\\begin{document}\nFirst paragraph.\n\nSecond\nparagraph.\n\\end{document}\n");
+            yield return 2;
+
+            BlockControl second = (BlockControl)editor.preview.activeDocument.blocks[1];
+            LayoutRect r = second.arrangedRect;
+            Vector2 at = new Vector2(r.x + 4f, r.y + r.height * 0.5f);
+            yield return t.Click(second, at);
+            yield return 1;
+            DocumentControl content = Content(editor.source);
+            int index = editor.source.session.document.blocks.IndexOf(content.caretBlock);
+            t.Check(index != 4, $"a single click leaves the source caret: block {index}");
+
+            yield return t.Click(second, at);
+            yield return t.Click(second, at);
+            yield return 1;
+            index = editor.source.session.document.blocks.IndexOf(content.caretBlock);
+            t.Check(index == 4 && content.caretOffset == 0, $"a double click on the second paragraph goes to its source line: block {index}, offset {content.caretOffset}");
+
+            t.Show(new StackPanelControl());
+        }
+
+        // A .tex opened in the split view from a temporary file.
+        private static TexEditorControl ShowSplit(TestContext t, string source)
+        {
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-split-{Guid.NewGuid():N}.tex");
+            File.WriteAllText(path, source);
+            TexEditorControl editor = new TexEditorControl();
+            t.Show(editor);
+            editor.LoadPath(path);
+            File.Delete(path);
+            return editor;
+        }
+
+        private static DocumentControl Content(DocumentEditorControl editor) =>
+            (DocumentControl)((BlockControl)editor.session.document.blocks[0]).parent;
     }
 }

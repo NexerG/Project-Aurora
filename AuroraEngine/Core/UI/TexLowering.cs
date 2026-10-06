@@ -23,15 +23,16 @@ namespace ArctisAurora.Core.UI
         private static readonly float[] textWidths = { 345f, 360f, 390f };
         private const float TextHeight = 550f;
 
-        public static XElement Compile(string source, out List<TexError> errors)
+        // blockLines, when given, gets each block's source line; 0 = none.
+        public static XElement Compile(string source, out List<TexError> errors, List<int>? blockLines = null)
         {
             TexTypesetter typesetter = new TexTypesetter(source, new TexAtlasMetrics());
             typesetter.Run();
             errors = typesetter.errors;
-            return Lower(typesetter);
+            return Lower(typesetter, blockLines);
         }
 
-        public static XElement Lower(TexTypesetter typesetter)
+        public static XElement Lower(TexTypesetter typesetter, List<int>? blockLines = null)
         {
             XElement root = new XElement("Document");
             int normal = Px(typesetter.normalSize);
@@ -39,13 +40,14 @@ namespace ArctisAurora.Core.UI
             root.Add(Layout(typesetter, normal, headings));
 
             foreach (TexNode node in typesetter.vlist)
-                LowerVertical(node, root, normal, headings);
+                LowerVertical(node, root, normal, headings, blockLines);
 
             if (typesetter.endnotes.Count > 0)
             {
                 root.Add(new XElement("Block", new XAttribute("StylingType", "Heading1"), new XElement("Run", new XAttribute("Text", "Notes"), new XAttribute("Bold", "true"))));
+                blockLines?.Add(0);
                 foreach (TexNode node in typesetter.endnotes)
-                    LowerVertical(node, root, normal, headings);
+                    LowerVertical(node, root, normal, headings, blockLines);
             }
             return root;
         }
@@ -92,17 +94,21 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- blocks ----
-        private static void LowerVertical(TexNode node, XElement root, int normal, Dictionary<int, int> headings)
+        private static void LowerVertical(TexNode node, XElement root, int normal, Dictionary<int, int> headings, List<int>? blockLines)
         {
             switch (node)
             {
                 case TexParagraph p:
                     List<List<TexNode>> lines = Lines(p.list);
                     for (int i = 0; i < lines.Count; i++)
+                    {
                         root.Add(Block(p, lines[i], i == 0, normal, headings));
+                        blockLines?.Add(p.line);
+                    }
                     break;
                 case TexRuleNode:
                     root.Add(new XElement("Block", new XAttribute("StylingType", "Rule")));
+                    blockLines?.Add(0);
                     break;
             }
         }

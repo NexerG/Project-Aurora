@@ -440,6 +440,19 @@ namespace ArctisAurora.Tests
                 block.Destroy();
             yield break;
         }
+
+        [A_XSDActionDependency("Tex.Lowering.Lines", "Test")]
+        private static IEnumerator<int> LoweringLines(TestContext t)
+        {
+            List<int> lines = new List<int>();
+            XElement document = TexLowering.Compile(
+                "\\documentclass{article}\n\\begin{document}\n\\section{Intro}\nFirst line\\\\\nsecond half.\n\n\\hrule\nNote.\\footnote{Text.}\n\\begin{verbatim}\na\nb\n\\end{verbatim}\n\\end{document}\n",
+                out List<TexError> errors, lines);
+            t.Check(errors.Count == 0, $"compiles clean: {string.Join("; ", errors.Select(e => e.message))}");
+            t.Check(lines.Count == document.Elements("Block").Count(), $"one line per block: {lines.Count}");
+            t.Check(string.Join(",", lines) == "3,4,4,0,8,10,11,0,8", $"heading, both halves of \\\\, rule, note, verbatim lines, Notes heading, endnote: {string.Join(",", lines)}");
+            yield break;
+        }
         #endregion
     }
 }

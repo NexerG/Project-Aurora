@@ -25,4 +25,5 @@
 	<Test Action="Tex.Typeset.Verbatim"/>
 	<Test Action="Tex.Typeset.Errors"/>
 	<Test Action="Tex.Lowering"/>
+	<Test Action="Tex.Lowering.Lines"/>
 </TestSuite>

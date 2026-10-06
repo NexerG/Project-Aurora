@@ -13,6 +13,9 @@
           <xs:enumeration value="LatinModern.Baked" />
           <xs:enumeration value="LatinModern.Draws" />
           <xs:enumeration value="Tex.Preview" />
+          <xs:enumeration value="Tex.SplitView.Recompile" />
+          <xs:enumeration value="Tex.SplitView.Errors" />
+          <xs:enumeration value="Tex.SplitView.ClickToSource" />
           <xs:enumeration value="Palette.SetCrossfades" />
           <xs:enumeration value="Sheet.XmlRoundTrip" />
           <xs:enumeration value="Sheet.TypeEnterUndo" />
@@ -223,6 +226,7 @@
           <xs:enumeration value="Tex.Typeset.Verbatim" />
           <xs:enumeration value="Tex.Typeset.Errors" />
           <xs:enumeration value="Tex.Lowering" />
+          <xs:enumeration value="Tex.Lowering.Lines" />
           <xs:enumeration value="Visual.PanelAndLabel" />
           <xs:enumeration value="Visual.TabStrip" />
           <xs:enumeration value="Visual.Expander" />

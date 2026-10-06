@@ -96,6 +96,9 @@ namespace ArctisAurora.Core.Tex
         private bool suppressSpace;
         private bool warnedSmallCaps;
 
+        // last source line a dispatched token came from
+        private int sourceLine;
+
         private List<TexNode> HList => box?.list ?? par!.list;
 
         // \normalsize at the class option, sp
@@ -122,6 +125,7 @@ namespace ArctisAurora.Core.Tex
 
         private void Dispatch(TexToken t)
         {
+            if (t.line > 0) sourceLine = t.line;
             if (!t.IsCs) Character(t);
             else if (commands.TryGetValue(t.name!, out Action<TexToken>? command)) command(t);
         }
@@ -490,13 +494,14 @@ namespace ArctisAurora.Core.Tex
             }
 
             List<string> lines = text.Split('\n').ToList();
-            if (lines.Count > 1 && string.IsNullOrWhiteSpace(lines[0])) lines.RemoveAt(0);
+            int sourceAt = t.line;
+            if (lines.Count > 1 && string.IsNullOrWhiteSpace(lines[0])) { lines.RemoveAt(0); sourceAt++; }
             if (lines.Count > 1 && string.IsNullOrWhiteSpace(lines[^1])) lines.RemoveAt(lines.Count - 1);
 
             TexStyle code = style with { font = style.font with { family = TexFamily.Mono, bold = false, italic = false } };
             foreach (string line in lines)
             {
-                TexParagraph paragraph = new TexParagraph(new TexParStyle { kind = TexParKind.Code, align = TexAlign.Left });
+                TexParagraph paragraph = new TexParagraph(new TexParStyle { kind = TexParKind.Code, align = TexAlign.Left }) { line = sourceAt > 0 ? sourceAt++ : 0 };
                 foreach (char c in line)
                     paragraph.list.Add(new TexChar(c, code));
                 Add(paragraph);
@@ -705,7 +710,7 @@ namespace ArctisAurora.Core.Tex
                 parStyle.item = itemPending;
             }
             itemPending = false;
-            par = new TexParagraph(parStyle);
+            par = new TexParagraph(parStyle) { line = sourceLine };
             mode = Mode.Horizontal;
             boundary = true;
         }
@@ -744,7 +749,7 @@ namespace ArctisAurora.Core.Tex
             quote = false;
             align = parStyle.align;
             style = new TexStyle(font, null, false);
-            par = new TexParagraph(parStyle);
+            par = new TexParagraph(parStyle) { line = sourceLine };
             mode = Mode.Horizontal;
             boundary = true;
         }
