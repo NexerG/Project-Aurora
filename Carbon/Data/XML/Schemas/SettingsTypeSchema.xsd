@@ -37,6 +37,7 @@
       <xs:element name="WindowSetting" type="types:WindowSetting" />
       <xs:element name="VSync" type="types:VSync" />
       <xs:element name="Validation" type="types:Validation" />
+      <xs:element name="SheetGrow" type="types:SheetGrow" />
       <xs:element name="DragGhost" type="types:DragGhost" />
       <xs:element name="Palette" type="types:Palette" />
       <xs:element name="Zoom" type="types:Zoom" />
@@ -255,6 +256,21 @@
       <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:SessionScope.Children" />
     </xs:sequence>
   </xs:complexType>
+  <xs:attributeGroup name="SheetGrow.Attributes">
+    <xs:attributeGroup ref="types:Setting.Attributes" />
+    <xs:attribute name="Step" type="xs:int" />
+  </xs:attributeGroup>
+  <xs:element name="SheetGrow" type="types:SheetGrow" />
+  <xs:complexType name="SheetGrow">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:SheetGrow.Attributes" />
+  </xs:complexType>
+  <xs:element name="Sheets" type="types:Sheets" />
+  <xs:complexType name="Sheets">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:Setting.Children" />
+    </xs:sequence>
+  </xs:complexType>
   <xs:attributeGroup name="DragGhost.Attributes">
     <xs:attributeGroup ref="types:Setting.Attributes" />
     <xs:attribute name="Opacity" type="xs:float" />
@@ -349,6 +365,7 @@
       <xs:element name="Graphics" type="types:Graphics" />
       <xs:element name="DocumentSettings" type="types:DocumentSettings" />
       <xs:element name="Session" type="types:Session" />
+      <xs:element name="Sheets" type="types:Sheets" />
       <xs:element name="UI" type="types:UI" />
       <xs:element name="Threading" type="types:Threading" />
       <xs:element name="Logging" type="types:Logging" />

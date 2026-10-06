@@ -54,6 +54,7 @@
     <xs:attribute name="SortAction" type="xs:string" />
     <xs:attribute name="Growth" type="types:PoolGrowthType" />
     <xs:attribute name="GrowthValue" type="xs:int" />
+    <xs:attribute name="Handles" type="xs:boolean" />
   </xs:attributeGroup>
   <xs:element name="Pool" type="types:Pool" />
   <xs:complexType name="Pool">
@@ -114,6 +115,22 @@
   </xs:complexType>
   <xs:element name="FinishedTrack" type="types:FinishedTrack" />
   <xs:complexType name="FinishedTrack">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="TrackBinding" type="types:TrackBinding" />
+  <xs:complexType name="TrackBinding">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="AwakeTrack" type="types:AwakeTrack" />
+  <xs:complexType name="AwakeTrack">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="SignalLife" type="types:SignalLife" />
+  <xs:complexType name="SignalLife">
+    <xs:sequence />
+  </xs:complexType>
+  <xs:element name="SlotFade" type="types:SlotFade" />
+  <xs:complexType name="SlotFade">
     <xs:sequence />
   </xs:complexType>
 </xs:schema>

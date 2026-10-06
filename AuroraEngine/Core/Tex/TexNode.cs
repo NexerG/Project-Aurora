@@ -23,6 +23,9 @@ namespace ArctisAurora.Core.Tex
 
         // first paragraph of an \item
         public bool item;
+
+        // first line indented by \parindent
+        public bool indent;
     }
 
     public abstract class TexNode { }
@@ -83,6 +86,9 @@ namespace ArctisAurora.Core.Tex
         public readonly bool display;
         public readonly TexStyle style;
 
+        // the footnote this mark anchors, when it is a \footnote's mark in the text
+        public TexFootnote? note;
+
         public TexMathNode(string source, bool display, TexStyle style)
         {
             this.source = source;
@@ -106,6 +112,9 @@ namespace ArctisAurora.Core.Tex
         public readonly int column;
         public string text = "??";
 
+        // \pageref: filled from the laid-out pages, not the label's text
+        public bool page;
+
         public TexRefNode(string[] keys, bool cite, TexStyle style, int line, int column)
         {
             this.keys = keys;
@@ -114,6 +123,14 @@ namespace ArctisAurora.Core.Tex
             this.line = line;
             this.column = column;
         }
+    }
+
+    // where a \label stood, so \pageref can find its page
+    public sealed class TexLabelMark : TexNode
+    {
+        public readonly string key;
+
+        public TexLabelMark(string key) => this.key = key;
     }
 
     // \includegraphics; sizes in sp, 0 = not given.
@@ -139,6 +156,11 @@ namespace ArctisAurora.Core.Tex
         // source line it started on, 0 = none
         public int line;
 
+        // \thispagestyle and the marks set on it; null leaves a mark as it was
+        public string? pageStyle;
+        public string? markLeft;
+        public string? markRight;
+
         public TexParagraph(TexParStyle style) => this.style = style;
     }
 
@@ -146,7 +168,14 @@ namespace ArctisAurora.Core.Tex
     {
         public readonly TexGlue glue;
 
-        public TexVGlue(TexGlue glue) => this.glue = glue;
+        // \addvspace: takes the larger of this and the space already pending, instead of adding
+        public readonly bool merge;
+
+        public TexVGlue(TexGlue glue, bool merge = false)
+        {
+            this.glue = glue;
+            this.merge = merge;
+        }
     }
 
     public sealed class TexVPenalty : TexNode
@@ -157,6 +186,45 @@ namespace ArctisAurora.Core.Tex
     }
 
     public sealed class TexRuleNode : TexNode { }
+
+    // a \footnote's text, set at the foot of the page its mark lands on
+    public sealed class TexFootnote
+    {
+        public readonly string id;
+        public readonly List<TexNode> vlist = new List<TexNode>();
+
+        public TexFootnote(string id) => this.id = id;
+    }
+
+    // a figure or table environment: its body, set where [htbp!H] lets the page place it
+    public sealed class TexFloat : TexNode
+    {
+        public readonly string kind;
+        public readonly string placement;
+        public readonly List<TexNode> vlist = new List<TexNode>();
+
+        public TexFloat(string kind, string placement)
+        {
+            this.kind = kind;
+            this.placement = placement;
+        }
+    }
+
+    // \newpage, or \clearpage, which also puts out every waiting float
+    public sealed class TexPageBreak : TexNode
+    {
+        public readonly bool clear;
+
+        public TexPageBreak(bool clear) => this.clear = clear;
+    }
+
+    // a page style's slots, typeset, by place name (HeadLeft ... FootRight), and its rules, pt
+    public sealed class TexPageStyle
+    {
+        public readonly Dictionary<string, TexParagraph> slots = new Dictionary<string, TexParagraph>();
+        public float headRule;
+        public float footRule;
+    }
 
     // where \bibliography put the reference list, filled after the document ends
     public sealed class TexBibliographyMark : TexNode { }
@@ -174,13 +242,33 @@ namespace ArctisAurora.Core.Tex
         public int span = 1;
     }
 
+    public enum TexRuleKind { Plain, Heavy, Light, Cmid }
+
+    // \hline, \cline or a booktabs rule above row (rows.Count = under the last), over columns from..to
+    public sealed class TexTableRule
+    {
+        public int row;
+        public TexRuleKind kind;
+        public int from;
+        public int to;
+        public bool trimLeft;
+        public bool trimRight;
+
+        // sp; 0 = the kind's own
+        public int width;
+    }
+
     public sealed class TexTable : TexNode
     {
         public readonly List<TexColumn> columns = new List<TexColumn>();
         public readonly List<List<TexTableCell>> rows = new List<List<TexTableCell>>();
 
-        // any | in the spec, or \hline, \cline or a booktabs rule
-        public bool ruled;
+        // horizontal rules in source order; the | count at each column boundary (index = column before it)
+        public readonly List<TexTableRule> rules = new List<TexTableRule>();
+        public readonly List<int> vrules = new List<int>();
+
+        // the alignment of the paragraph the tabular sits in, taken when it ends
+        public TexAlign align = TexAlign.Left;
 
         // source line of \begin{tabular}
         public int line;

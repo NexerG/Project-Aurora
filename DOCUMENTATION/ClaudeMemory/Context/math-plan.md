@@ -1,7 +1,7 @@
-# Math in notes (LaTeX math mode) — agreed plan, M1–M4 landed
+# Math in notes (LaTeX math mode) — agreed plan, M1–M5 landed
 
 **Agreed:** 2026-10-01 (user: inline + display math in notes, native route, recommended forks).
-**Built:** M1 (math font), M2 (parser + layout), M3 (model, drawing, persistence), M4 (editing). M5 not planned.
+**Built:** M1 (math font), M2 (parser + layout), M3 (model, drawing, persistence), M4 (editing), M5 (amsmath environments, `\tag`, ams commands — landed 2026-10-06 as LaTeX L6; parser and layout are shared).
 **Decisions:** [../Decisions/math-in-notes.md](../Decisions/math-in-notes.md).
 **Checklist form:** the math item in `DOCUMENTATION/Work in Progress List.md`.
 
@@ -57,5 +57,11 @@ Forks taken at M4: **F12** Ctrl+M inline / Ctrl+Shift+M display (rejected: Alt+=
 - Insert keybinds (checked against `InputMap.inputs.xml`); double-click / Enter on a selected formula opens a popup source editor (TextBox in a context-menu popup, as `ColorPickerControl` is hosted); live preview; Enter/click-away commits, Esc reverts; `MathEdit : IEditRecord`.
 - Verify: console-driven input test — insert, type, commit, undo, redo.
 
+### M5 — amsmath environments — DONE 2026-10-06 (landed as LaTeX L6)
+- `MathArray` (matrix family, `cases`, `array`, aligned family, `gathered`, `multline`), `MathTag`, `MathFramed`; `\substack`, `\binom`, `\overset`/`\underset`, `\boxed`, `\operatorname(*)`; `MathLayout.Grid`, display `\tag` flush right
+- Notes do not auto-number; only `\tag` shows. `.tex` documents number `equation` and the align family in `TexTypesetter`
+- Test-verified (`--test=Math` 17/17); golden `TextInput.MathArrays`; **NOT GUI-verified**
+- Details: [[math-in-notes]] § M5, [[latex-editor]] § L6, [tex-plan](tex-plan.md)
+
 ## Left out
-Macros, `\color`, `\mathcal`/`\mathfrak` (SMP), matrices/`cases`/`aligned` (possible M5), equation numbers, auto-converting typed `$…$`, paste converting `$…$`, Editor/Carbon verification.
+Macros, `\color`, `\mathcal`/`\mathfrak` (SMP), automatic equation numbers (`\tag` only), auto-converting typed `$…$`, paste converting `$…$`, Editor/Carbon verification.

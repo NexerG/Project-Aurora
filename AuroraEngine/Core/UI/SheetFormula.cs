@@ -249,6 +249,55 @@ namespace ArctisAurora.Core.UI
             }
         }
 
+        // = <> < > <= >=, as 1 or 0; text compares ignoring case and sorts after numbers.
+        private sealed class Compare : Node
+        {
+            private readonly string op;
+            private readonly Node left, right;
+
+            public Compare(string op, Node left, Node right)
+            {
+                this.op = op;
+                this.left = left;
+                this.right = right;
+            }
+
+            public override SheetValue Evaluate(SheetCalc calc, SheetPage home)
+            {
+                SheetValue a = left.Evaluate(calc, home);
+                if (a.kind == SheetValueKind.Error) return a;
+                SheetValue b = right.Evaluate(calc, home);
+                if (b.kind == SheetValueKind.Error) return b;
+
+                int order;
+                if (a.kind == SheetValueKind.Text || b.kind == SheetValueKind.Text)
+                {
+                    int rankA = a.kind == SheetValueKind.Number ? 0 : 1;
+                    int rankB = b.kind == SheetValueKind.Number ? 0 : 1;
+                    order = rankA != rankB ? rankA - rankB : string.Compare(a.text ?? "", b.text ?? "", StringComparison.OrdinalIgnoreCase);
+                }
+                else
+                    order = a.number.CompareTo(b.number);
+
+                bool result = op switch
+                {
+                    "=" => order == 0,
+                    "<>" => order != 0,
+                    "<" => order < 0,
+                    ">" => order > 0,
+                    "<=" => order <= 0,
+                    _ => order >= 0
+                };
+                return SheetValue.Number(result ? 1d : 0d);
+            }
+
+            public override void References(SheetCalc calc, SheetPage home, HashSet<SheetCellId> into)
+            {
+                left.References(calc, home, into);
+                right.References(calc, home, into);
+            }
+        }
+
         private sealed class Call : Node
         {
             private readonly string function;
@@ -262,9 +311,45 @@ namespace ArctisAurora.Core.UI
 
             public override SheetValue Evaluate(SheetCalc calc, SheetPage home)
             {
-                if (!function.Equals("SUM", StringComparison.OrdinalIgnoreCase)) return SheetValue.Error(name);
+                switch (function.ToUpperInvariant())
+                {
+                    case "SUM":
+                    case "MIN":
+                    case "MAX":
+                    case "AVERAGE":
+                        SheetValue failure = Aggregate(calc, home, out double sum, out int count, out double min, out double max);
+                        if (failure.kind == SheetValueKind.Error) return failure;
+                        return function.ToUpperInvariant() switch
+                        {
+                            "SUM" => SheetValue.Number(sum),
+                            "MIN" => SheetValue.Number(count == 0 ? 0d : min),
+                            "MAX" => SheetValue.Number(count == 0 ? 0d : max),
+                            _ => count == 0 ? SheetValue.Error(div0) : SheetValue.Number(sum / count)
+                        };
+                    case "ROUND":
+                        return Rounded(calc, home, MidpointRounding.AwayFromZero, MidpointRounding.AwayFromZero);
+                    case "ROUNDUP":
+                        return Rounded(calc, home, MidpointRounding.ToPositiveInfinity, MidpointRounding.ToNegativeInfinity);
+                    case "ROUNDDOWN":
+                        return Rounded(calc, home, MidpointRounding.ToZero, MidpointRounding.ToZero);
+                    case "IF":
+                        if (arguments.Count < 2 || arguments.Count > 3) return SheetValue.Error(value);
+                        SheetValue test = arguments[0].Evaluate(calc, home);
+                        if (!AsNumber(test, out double condition)) return Failure(test);
+                        if (condition != 0d) return arguments[1].Evaluate(calc, home);
+                        return arguments.Count == 3 ? arguments[2].Evaluate(calc, home) : SheetValue.Number(0d);
+                    default:
+                        return SheetValue.Error(name);
+                }
+            }
 
-                double sum = 0d;
+            // Sum, count, min and max of every argument; a range skips text and blanks. An error comes back, Empty otherwise.
+            private SheetValue Aggregate(SheetCalc calc, SheetPage home, out double sum, out int count, out double min, out double max)
+            {
+                sum = 0d;
+                count = 0;
+                min = double.MaxValue;
+                max = double.MinValue;
                 foreach (Node argument in arguments)
                 {
                     if (argument is Reference cells)
@@ -276,7 +361,11 @@ namespace ArctisAurora.Core.UI
                             {
                                 SheetValue v = calc.Read(target, r, c);
                                 if (v.kind == SheetValueKind.Error) return v;
-                                if (v.kind == SheetValueKind.Number) sum += v.number;
+                                if (v.kind != SheetValueKind.Number) continue;
+                                sum += v.number;
+                                count++;
+                                min = Math.Min(min, v.number);
+                                max = Math.Max(max, v.number);
                             }
                         continue;
                     }
@@ -284,8 +373,33 @@ namespace ArctisAurora.Core.UI
                     SheetValue result = argument.Evaluate(calc, home);
                     if (!AsNumber(result, out double n)) return Failure(result);
                     sum += n;
+                    count++;
+                    min = Math.Min(min, n);
+                    max = Math.Max(max, n);
                 }
-                return SheetValue.Number(sum);
+                return SheetValue.Empty;
+            }
+
+            // ROUND/ROUNDUP/ROUNDDOWN(number, [digits]) on the 15 significant digits a double shows.
+            private SheetValue Rounded(SheetCalc calc, SheetPage home, MidpointRounding positive, MidpointRounding negative)
+            {
+                if (arguments.Count < 1 || arguments.Count > 2) return SheetValue.Error(value);
+                SheetValue a = arguments[0].Evaluate(calc, home);
+                if (!AsNumber(a, out double x)) return Failure(a);
+                double digits = 0d;
+                if (arguments.Count == 2)
+                {
+                    SheetValue b = arguments[1].Evaluate(calc, home);
+                    if (!AsNumber(b, out digits)) return Failure(b);
+                }
+                if (Math.Abs(x) >= 1e15) return SheetValue.Number(x);
+
+                int d = (int)Math.Clamp(Math.Truncate(digits), -15d, 15d);
+                MidpointRounding mode = x < 0d ? negative : positive;
+                decimal m = (decimal)x;
+                if (d >= 0) return SheetValue.Number((double)Math.Round(m, d, mode));
+                decimal scale = (decimal)Math.Pow(10d, -d);
+                return SheetValue.Number((double)(Math.Round(m / scale, 0, mode) * scale));
             }
 
             public override void References(SheetCalc calc, SheetPage home, HashSet<SheetCellId> into)
@@ -305,7 +419,7 @@ namespace ArctisAurora.Core.UI
         #endregion
 
         #region ---- parser ----
-        // Lowest to highest: + -, * /, ^ (left to right), unary - +, then operands.
+        // Lowest to highest: = <> < > <= >=, + -, * /, ^ (left to right), unary - +, then operands.
         private struct Parser
         {
             private readonly string s;
@@ -328,9 +442,37 @@ namespace ArctisAurora.Core.UI
 
             public Node? Formula()
             {
-                Node? node = Additive();
+                Node? node = Comparison();
                 SkipSpace();
                 return i == s.Length ? node : null;
+            }
+
+            private Node? Comparison()
+            {
+                Node? node = Additive();
+                while (node != null && Operator() is string op)
+                {
+                    Node? right = Additive();
+                    node = right == null ? null : new Compare(op, node, right);
+                }
+                return node;
+            }
+
+            // A comparison operator, consumed; null leaves the position alone.
+            private string? Operator()
+            {
+                char c = Peek();
+                if (c == '=')
+                {
+                    i++;
+                    return "=";
+                }
+                if (c != '<' && c != '>') return null;
+                i++;
+                char next = i < s.Length ? s[i] : '\0';
+                if (next != '=' && !(c == '<' && next == '>')) return c.ToString();
+                i++;
+                return c == '>' ? ">=" : next == '=' ? "<=" : "<>";
             }
 
             private Node? Additive()
@@ -388,7 +530,7 @@ namespace ArctisAurora.Core.UI
                 if (c == '(')
                 {
                     i++;
-                    Node? inner = Additive();
+                    Node? inner = Comparison();
                     if (inner == null || Peek() != ')') return null;
                     i++;
                     return inner;
@@ -475,7 +617,7 @@ namespace ArctisAurora.Core.UI
                 }
                 while (true)
                 {
-                    Node? argument = Additive();
+                    Node? argument = Comparison();
                     if (argument == null) return null;
                     arguments.Add(argument);
                     char c = Peek();

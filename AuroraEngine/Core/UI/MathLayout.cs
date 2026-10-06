@@ -49,10 +49,16 @@ namespace ArctisAurora.Core.UI
         public readonly List<MathRule> rules = new List<MathRule>();
         public bool error;
 
+        // \tag texts at their rows' baselines, right edge at x 0
+        public MathBox tag;
+
         // italic correction of a single-glyph box
         internal float italic;
 
-        // Copies another box's contents in, offset.
+        // an align, flalign or multline display, whose layout depends on the line width
+        public bool widthAware;
+
+        // Copies another box's contents in, offset; its tags keep only the vertical offset.
         internal void Place(MathBox child, float dx, float dy)
         {
             foreach (MathGlyph g in child.glyphs)
@@ -61,6 +67,11 @@ namespace ArctisAurora.Core.UI
                 rules.Add(new MathRule(r.x + dx, r.y + dy, r.width, r.height));
             height = MathF.Max(height, child.height + dy);
             depth = MathF.Max(depth, child.depth - dy);
+            if (child.tag == null) return;
+
+            tag ??= new MathBox();
+            tag.Place(child.tag, 0f, dy);
+            tag.width = MathF.Max(tag.width, child.tag.width);
         }
     }
 
@@ -97,17 +108,32 @@ namespace ArctisAurora.Core.UI
             /*Inner*/{-3,  3, -4, -5, -3,  0, -3, -3 },
         };
 
-        // Lays out a parsed formula, in em at font size 1.
-        public static MathBox Layout(MathNode root, bool display, AtlasMetaData atlas, MathConstants constants)
+        // Lays out a parsed formula, in em at font size 1; align, flalign and multline spread over lineWidth when given.
+        public static MathBox Layout(MathNode root, bool display, AtlasMetaData atlas, MathConstants constants, float lineWidth = 0f)
         {
-            Layouter layouter = new Layouter(atlas, constants);
+            Layouter layouter = new Layouter(atlas, constants, display ? lineWidth : 0f);
             if (root is MathError error)
             {
                 MathBox box = layouter.Text(error.source, FontStyle.Regular, 1f);
                 box.error = true;
                 return box;
             }
-            return layouter.Node(root, display ? MathStyle.Display : MathStyle.Text, false);
+            MathBox laid = layouter.Node(root, display ? MathStyle.Display : MathStyle.Text, false);
+            laid.widthAware = display && layouter.fills;
+            if (laid.tag == null) return laid;
+
+            MathBox tag = laid.tag;
+            if (display)
+            {
+                laid.height = MathF.Max(laid.height, tag.height);
+                laid.depth = MathF.Max(laid.depth, tag.depth);
+                return laid;
+            }
+            laid.tag = null;
+            float end = laid.width + 1f + tag.width;
+            laid.Place(tag, end, 0f);
+            laid.width = end;
+            return laid;
         }
 
         private sealed class Layouter
@@ -115,10 +141,15 @@ namespace ArctisAurora.Core.UI
             private readonly AtlasMetaData atlas;
             private readonly MathConstants c;
 
-            public Layouter(AtlasMetaData atlas, MathConstants constants)
+            // the line width the first filling environment spreads over, em; 0 = natural width
+            private float lineWidth;
+            public bool fills;
+
+            public Layouter(AtlasMetaData atlas, MathConstants constants, float lineWidth)
             {
                 this.atlas = atlas;
                 c = constants;
+                this.lineWidth = lineWidth;
             }
 
             private float Scale(MathStyle style) => style switch
@@ -149,6 +180,9 @@ namespace ArctisAurora.Core.UI
                 MathDelimited delimited => Delimited(delimited, style, cramped),
                 MathAccent accent => Accent(accent, style),
                 MathSpace space => new MathBox { width = space.em * Scale(style) },
+                MathArray array => Grid(array, style),
+                MathTag tag => Tag(tag),
+                MathFramed framed => Framed(framed),
                 _ => new MathBox()
             };
 
@@ -242,6 +276,7 @@ namespace ArctisAurora.Core.UI
             private static MathClass? ClassOf(MathNode node) => node switch
             {
                 MathSpace => null,
+                MathTag => null,
                 MathSymbol symbol => symbol.cls,
                 MathText text => text.cls,
                 MathScripts scripts => ClassOf(scripts.nucleus) ?? MathClass.Ord,
@@ -304,8 +339,8 @@ namespace ArctisAurora.Core.UI
             {
                 float k = Scale(style);
                 bool display = style == MathStyle.Display;
-                bool limits = display && (scripts.nucleus is MathSymbol { bigOp: true, limits: true }
-                                          || scripts.nucleus is MathText { limits: true });
+                bool limits = scripts.overUnder || display && (scripts.nucleus is MathSymbol { bigOp: true, limits: true }
+                                                               || scripts.nucleus is MathText { limits: true });
 
                 MathBox nucleus = Node(scripts.nucleus, style, cramped);
                 MathStyle scriptStyle = ScriptStyle(style);
@@ -393,6 +428,7 @@ namespace ArctisAurora.Core.UI
 
                 MathBox num = Node(fraction.num, Smaller(style), cramped);
                 MathBox den = Node(fraction.den, Smaller(style), true);
+                if (fraction.noRule) return Stack(num, den, display, k);
 
                 float t = c.fractionRuleThickness * k;
                 float axis = c.axisHeight * k;
@@ -410,6 +446,256 @@ namespace ArctisAurora.Core.UI
                 box.Place(num, pad + (inner - num.width) * 0.5f, shiftUp);
                 box.Place(den, pad + (inner - den.width) * 0.5f, -shiftDown);
                 box.rules.Add(new MathRule(pad, axis + t * 0.5f, inner, t));
+                return box;
+            }
+
+            // A fraction without its rule, \binom's body: TeX's stack shifts and gap.
+            private MathBox Stack(MathBox num, MathBox den, bool display, float k)
+            {
+                float up = (display ? c.stackTopDisplayStyleShiftUp : c.stackTopShiftUp) * k;
+                float down = (display ? c.stackBottomDisplayStyleShiftDown : c.stackBottomShiftDown) * k;
+                float gapMin = (display ? c.stackDisplayStyleGapMin : c.stackGapMin) * k;
+                float gap = (up - num.depth) - (den.height - down);
+                if (gap < gapMin)
+                {
+                    up += (gapMin - gap) * 0.5f;
+                    down += (gapMin - gap) * 0.5f;
+                }
+
+                float inner = MathF.Max(num.width, den.width);
+                MathBox box = new MathBox { width = inner };
+                box.Place(num, (inner - num.width) * 0.5f, up);
+                box.Place(den, (inner - den.width) * 0.5f, -down);
+                return box;
+            }
+
+            #endregion
+
+            #region arrays
+
+            // row struts, interline glue and column separation, em
+            private const float strutHeight = 0.84f;
+            private const float strutDepth = 0.36f;
+            private const float casesStretch = 1.2f;
+            private const float alignedSkip = 1.5f;
+            private const float alignedLimit = 0.3f;
+            private const float alignedLineSkip = 0.4f;
+            private const float smallSkip = 0.77f;
+            private const float smallLineSkip = 0.13f;
+            private const float arrayColSep = 0.5f;
+            private const float multlineGap = 1f;
+
+            // \arrayrulewidth and \fboxrule, \fboxsep
+            private const float ruleWidth = 0.04f;
+            private const float frameSep = 0.3f;
+
+            // Lays out every cell, then places each at its column's width and alignment, centred on the axis.
+            private MathBox Grid(MathArray array, MathStyle style)
+            {
+                MathArrayKind kind = array.kind;
+                MathStyle cellStyle = kind switch
+                {
+                    MathArrayKind.Aligned or MathArrayKind.Gathered or MathArrayKind.Multline => MathStyle.Display,
+                    MathArrayKind.Small => MathStyle.Script,
+                    _ => MathStyle.Text
+                };
+                float stretch = kind == MathArrayKind.Cases ? casesStretch : 1f;
+                bool struts = kind is MathArrayKind.Matrix or MathArrayKind.Array or MathArrayKind.Cases;
+
+                // pass 1: cells, row extents and column widths
+                int rows = array.rows.Count;
+                int columns = Math.Max(array.rows.Max(row => row.Count), array.columns.Length);
+                MathBox[][] cells = new MathBox[rows][];
+                float[] widths = new float[columns];
+                float[] heights = new float[rows];
+                float[] depths = new float[rows];
+                for (int r = 0; r < rows; r++)
+                {
+                    List<MathNode> row = array.rows[r];
+                    cells[r] = new MathBox[row.Count];
+                    if (struts)
+                    {
+                        heights[r] = strutHeight * stretch;
+                        depths[r] = strutDepth * stretch;
+                    }
+                    for (int j = 0; j < row.Count; j++)
+                    {
+                        MathNode node = row[j];
+                        if (kind == MathArrayKind.Aligned && j % 2 == 1 && node is MathList cell)
+                        {
+                            MathList prefixed = new MathList();
+                            prefixed.items.Add(new MathList());
+                            prefixed.items.AddRange(cell.items);
+                            node = prefixed;
+                        }
+                        MathBox box = Node(node, cellStyle, false);
+                        cells[r][j] = box;
+                        widths[j] = MathF.Max(widths[j], box.width);
+                        heights[r] = MathF.Max(heights[r], box.height);
+                        depths[r] = MathF.Max(depths[r], box.depth);
+                    }
+                }
+
+                // pass 2: baselines and column edges
+                float[] baselines = new float[rows];
+                for (int r = 1; r < rows; r++)
+                {
+                    float gap = kind switch
+                    {
+                        MathArrayKind.Aligned or MathArrayKind.Gathered or MathArrayKind.Multline =>
+                            Interline(alignedSkip, alignedLimit, alignedLineSkip, depths[r - 1], heights[r]),
+                        MathArrayKind.Small => Interline(smallSkip, smallLineSkip, smallLineSkip, depths[r - 1], heights[r]),
+                        _ => depths[r - 1] + heights[r]
+                    };
+                    float skip = r - 1 < array.rowSkip.Count ? array.rowSkip[r - 1] : 0f;
+                    baselines[r] = baselines[r - 1] - gap - skip;
+                }
+
+                // a filling environment spreads over the line; again over the line less the widest tag and a quad
+                // when a tagged row comes within a quad of its tag
+                float fit = 0f, tags = 0f;
+                if (array.fill != MathFill.None)
+                {
+                    fills = true;
+                    foreach (MathBox[] row in cells)
+                        foreach (MathBox cell in row)
+                            if (cell.tag != null) tags = MathF.Max(tags, cell.tag.width + 1f);
+                    fit = lineWidth;
+                    lineWidth = 0f;
+                }
+                float[] left = new float[columns];
+                (float width, float lead, float trail) = Edges(array, rows, widths, left, fit, tags > 0f);
+                if (fit > 0f && tags > 0f && Collides())
+                    (width, lead, trail) = Edges(array, rows, widths, left, fit - tags, true);
+
+                float CellX(int r, int j)
+                {
+                    MathBox cell = cells[r][j];
+                    float slack = widths[j] - cell.width;
+                    return kind == MathArrayKind.Multline
+                        ? (r == 0 ? lead : r == rows - 1 ? width - cell.width - trail : (width - cell.width) * 0.5f)
+                        : left[j] + ColumnAlign(array, j) switch { 'r' => slack, 'c' => slack * 0.5f, _ => 0f };
+                }
+
+                bool Collides()
+                {
+                    for (int r = 0; r < rows; r++)
+                    {
+                        float tag = 0f, right = 0f;
+                        for (int j = 0; j < cells[r].Length; j++)
+                        {
+                            if (cells[r][j].tag != null) tag = MathF.Max(tag, cells[r][j].tag.width);
+                            right = MathF.Max(right, CellX(r, j) + cells[r][j].width);
+                        }
+                        if (tag > 0f && right > MathF.Max(width, fit) - tag - 1f) return true;
+                    }
+                    return false;
+                }
+
+                float top = heights[0];
+                float bottom = baselines[rows - 1] - depths[rows - 1];
+                float shift = c.axisHeight * Scale(style) - (top + bottom) * 0.5f;
+
+                MathBox grid = new MathBox { width = width };
+                for (int r = 0; r < rows; r++)
+                    for (int j = 0; j < cells[r].Length; j++)
+                        grid.Place(cells[r][j], CellX(r, j), baselines[r] + shift);
+                grid.height = MathF.Max(grid.height, top + shift);
+                grid.depth = MathF.Max(grid.depth, -(bottom + shift));
+
+                foreach (int boundary in array.hlines)
+                {
+                    float y = boundary == 0 ? top : boundary >= rows ? bottom : baselines[boundary - 1] - depths[boundary - 1];
+                    grid.rules.Add(new MathRule(0f, y + shift, width, ruleWidth));
+                }
+                foreach (int boundary in array.vrules)
+                {
+                    float rx = boundary == 0 ? 0f : boundary >= columns ? width - ruleWidth : left[boundary] - arrayColSep - ruleWidth * 0.5f;
+                    grid.rules.Add(new MathRule(rx, top + shift, ruleWidth, top - bottom));
+                }
+                return grid;
+            }
+
+            // Column lefts into left; the grid's width, and multline's first- and last-row insets.
+            private static (float width, float lead, float trail) Edges(MathArray array, int rows, float[] widths, float[] left, float fit, bool tagged)
+            {
+                MathArrayKind kind = array.kind;
+                (float margin, float pairSep) = fit > 0f && kind == MathArrayKind.Aligned ? Spread(array, widths, fit) : (0f, array.pairGap);
+                float outer = kind == MathArrayKind.Array ? arrayColSep : margin;
+                float x = outer;
+                for (int j = 0; j < widths.Length; j++)
+                {
+                    left[j] = x;
+                    x += widths[j];
+                    if (j < widths.Length - 1) x += kind == MathArrayKind.Aligned && j % 2 == 1 ? pairSep : ColumnGap(array, j);
+                }
+                float width = x + outer;
+                if (kind == MathArrayKind.Multline && fit >= width + multlineGap) return (fit, multlineGap, tagged ? 0f : multlineGap);
+                if (kind == MathArrayKind.Multline && rows > 1) width += multlineGap;
+                return (width, 0f, 0f);
+            }
+
+            // amsmath's align/flalign margins and pair gaps from the free width.
+            private static (float margin, float sep) Spread(MathArray array, float[] widths, float fit)
+            {
+                int pairs = (widths.Length + 1) / 2;
+                bool flush = array.fill == MathFill.FlAlign && pairs > 1;
+                float free = fit - widths.Sum();
+                float margin = flush ? 0f : free / (pairs + 1);
+                float sep = flush ? free / (pairs - 1) : margin;
+                if (sep < array.pairGap)
+                {
+                    sep = array.pairGap;
+                    if (margin > 0f) margin = (free - (pairs - 1) * sep) * 0.5f;
+                }
+                return (MathF.Max(0f, margin), sep);
+            }
+
+            // TeX's interline glue: the baseline skip, or the line skip when boxes come closer than the limit.
+            private static float Interline(float skip, float limit, float lineSkip, float depth, float height) =>
+                skip - depth - height >= limit ? skip : depth + height + lineSkip;
+
+            private static float ColumnGap(MathArray array, int column) => array.kind switch
+            {
+                MathArrayKind.Matrix or MathArrayKind.Array => 2f * arrayColSep,
+                MathArrayKind.Cases => 1f,
+                MathArrayKind.Small => 5f / 18f,
+                MathArrayKind.Aligned => column % 2 == 1 ? array.pairGap : 0f,
+                _ => 0f
+            };
+
+            private static char ColumnAlign(MathArray array, int column) => array.kind switch
+            {
+                MathArrayKind.Array => column < array.columns.Length ? array.columns[column] : 'c',
+                MathArrayKind.Cases => 'l',
+                MathArrayKind.Aligned => column % 2 == 0 ? 'r' : 'l',
+                _ => 'c'
+            };
+
+            // A \tag's text, right edge at x 0, carried up to the formula by Place.
+            private MathBox Tag(MathTag tag)
+            {
+                MathBox text = Text(tag.text, FontStyle.Regular, 1f);
+                MathBox tagged = new MathBox { width = text.width };
+                tagged.Place(text, -text.width, 0f);
+                return new MathBox { tag = tagged };
+            }
+
+            // \boxed: a display-style body framed at \fboxsep.
+            private MathBox Framed(MathFramed framed)
+            {
+                MathBox body = Node(framed.body, MathStyle.Display, false);
+                float edge = frameSep + ruleWidth;
+                float top = body.height + edge;
+                float bottom = -(body.depth + edge);
+                MathBox box = new MathBox { width = body.width + 2f * edge };
+                box.Place(body, edge, 0f);
+                box.rules.Add(new MathRule(0f, top, box.width, ruleWidth));
+                box.rules.Add(new MathRule(0f, bottom + ruleWidth, box.width, ruleWidth));
+                box.rules.Add(new MathRule(0f, top, ruleWidth, top - bottom));
+                box.rules.Add(new MathRule(box.width - ruleWidth, top, ruleWidth, top - bottom));
+                box.height = MathF.Max(box.height, top);
+                box.depth = MathF.Max(box.depth, -bottom);
                 return box;
             }
 

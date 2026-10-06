@@ -148,7 +148,7 @@ Why: [[ui-palettes]].
 - **TextRunControl** abstract `<TextRun>` · Control — a paragraph as one control, a GPU quad per visible
   glyph. `spans` of `StyleSpan` (`count`, `style`, `colorHex`, `fontName`, `fontSize`, `gradient`,
   `strikethrough`, `underline`, `highlightHex`, `stylingType`, `fontSizeAuthored`, `IsBold`/`IsItalic`; picture:
-  `imageSource`, `imageWidth`, `imageHeight`, `imageRotation`, `collision`, `Rotation`, `IsPicture`, `AsText`), `SetSpans`, `style`, `lineHeight`. A picture
+  `imageSource`, `imageWidth`, `imageHeight`, `imageRotation`, `collision`, `Rotation`, `IsPicture`, `AsText`), `SetSpans`, `style`, `lineHeight`. `OptimalBreaks` (protected virtual, default false) makes `MeasureBlock` break Knuth-Plass; `Justify` then lets spaces shrink, and skips a line before a display math span (`BeforeDisplay`). A line ending at a soft hyphen (U+00AD, `TextLine.hyphen`) draws a "-" after its last character and the soft hyphen draws nothing elsewhere; `Align` and `Justify` count the hyphen in the line's visible width. `FirstLineIndent` (protected virtual, 0) moves line 0; a spacer span (`StyleSpan.spaceWidth`, unzoomed px, cleared by `AsText`) advances its width per character and the draw loop skips it. A picture
   span draws one image quad (`PictureSize`, `WriteImage` — turned, centred in its turned box); `PictureAt`, `PictureBox` (the line box), `PictureFrame` (drawn rect + turn); `MathAt`, `MathBox` (a formula's drawn box); a sheet link is an object span too (`sheetRef`, `IsSheet`): `BuildRuns` lays a `SheetBox` through `SheetLinks.Layout` and `WriteSheet` draws it in `Emit` [[sheets]]; a press on a picture or formula calls
   `IGlyphPressTarget.PicturePressed(run, index, button)` instead of `GlyphPressed`; `LayoutAround(slots)` re-lays
   lines around floats (`laidAround`), `PictureSizeAt`; every line geometry use adds `TextLine.left` [[note-images]].
@@ -181,12 +181,12 @@ Why: [[ui-palettes]].
 
 - **BlockControl** (no XML) · TextRunControl — one block of a note: the paragraph's string with its runs as
   spans. `stylingType`, `listKind`/`listLevel`/`listMarker`/`isChecked`, resolved `shownMarker`/`listNumber`
-  (`ShowMarker`, set by `DocumentControl.RenumberLists`), `ApplyLayout(DocumentLayout)` (list indent as
+  (`ShowMarker`, set by `DocumentControl.RenumberLists`), `ApplyLayout(DocumentLayout)` (copies `optimalBreaks`; list indent as
   `padding.left`, marker sync and size), `MeasureCore` (wraps inside the indent), `ArrangeCore` (shape `IconControl`
   centred in the indent, number `LabelControl` right-aligned, or `CheckBoxControl`), `AppendRun`, `Runs()` (both carry `Run.sheet`, the `Sheet` attribute of a sheet link). Also
   declares `ListMarker` and `ListMarkers` (`Format`, `ShapeIcon`, `IsNumbered`) [[list-markers]]. Region `text and spans`:
   `InsertText`, `RemoveText`, `SplitAt`, `AppendBlock`, `Snapshot`/`SliceSnapshot`/`Restore`/`From`,
-  `InsertSlice`/`AppendSlice`, `StyleAt`, `StyleRange`, `SplitSpanAt`, `MergeSpans`. A boundary belongs to the
+  `InsertSlice`/`AppendSlice`, `StyleAt`, `StyleRange`, `SplitSpanAt`, `MergeSpans`. `firstIndent` (px; the `FirstLineIndent` override = `firstIndent * textZoom`) and `spaceBefore` (float?, null = the layout's block spacing) are copied in `SplitAt`, `SliceSnapshot`, `Restore`, `TakeKind` and carried by `BlockSnapshot`; `Typable` (private) keeps text typed beside a spacer in a text span, never the spacer. A boundary belongs to the
   span **after** it — except a picture span, which never grows: `TextSpanBeside`. `PictureChar` is U+FFFC;
   `SetPicture`. `alignment`, `language` (code fence), `codeWrap` (a Code block wraps only with it; `Wraps`), `TakeKind`;
   the checkbox finds its editor through `Editor()`, any depth; `ApplyLayout` also sets `fontName` from the style
@@ -209,7 +209,7 @@ Why: [[ui-palettes]].
   `floating pictures` (`RegisterFloats`, `WrapsAround`, `FloatSlots : ILineSlots` with `Outline`/`TurnedSpan`, `SyncFloatViews`,
   `ArrangeFloats`, `Begin/Move/EndPictureMove`, `PlaceFloat`, `AnchorFor`, nested public `FloatingPicture` — press selects, press on
   the selected one drags; behind views before the blocks in `children`, front ones after — [[note-images]]), highlights inserted at the **head** of `children`, after the page panels, so they paint behind the text),
-  `pages` (`page`, `zoom`, `Paginate` — blocks laid on paper and line tops rewritten, paragraphs a float reaches laid around it, `ArrangePages` — page panels at the very head, `Mm`),
+  `pages` (`page`, `zoom`, `Paginate` — blocks laid on paper and line tops rewritten, paragraphs a float reaches laid around it, `ArrangePages` — page panels at the very head, `Mm`; L7d/L7e: `NumberPages` writes running heads, the page number and the footnote rule into each sheet's private nested `PageMargins : ContainerControl`, `RunningHeads`, `PageAt`, footnote and float blocks skipped by the flow and placed from `insertControls` — `MeasureFootnotes`, `PlaceFootnotes`, `IsInsert`; L7f: `MeasureFloats`, `ReserveOrphanNotes`, `Paginate` rewinds for top floats; internal nested `PageSpace`, internal `PageFloats` — [[document-pages]]),
   `editing` (`DeleteSelection(restoreSelection)`, `PasteText`, `PasteImage`, `InsertAt`, `DropSelection`, `Insert`, `FragmentFromText`, `ForDestination` — [[text-clipboard]]; `SplitBlock`, `TypeChar`, `Blocks` — flat, table cells included; `TableViewport`,
   `OneContainer`), `markdown` (`TypeMarkdownLine` — ```` ```lang ````/`---` + Enter, `EndCodeBlock`, `LeaveRule`,
   `InsertRule`, `TypeInlineMarkdown`/`InlineOpener`/`MarkCode`; off when `plainText`; `HighlightCode`/`Tokenize` — runs of code lines
@@ -231,7 +231,7 @@ Why: [[ui-palettes]].
   (`FirstRowHeight`, `Paginate` — page pushes written into `gapAfter`, zeroed again in `MeasureCore`); borders
   are `PanelControl`s appended to `children` past the cell assignments, and so are the column grips (nested
   private `ColumnGrip`, one per column on its right edge; region `column resize`: `BeginResize`/`Resize`/`EndResize`
-  → `DocumentControl.RecordTableResize`). `RowCount`, `CellBlocks(row, column)` (finds the cell covering that grid position); `showBorders` (default true; borders honour spans and the flag); `AddRow(cells, spans)`; column spans via `GridListControl.ColumnSpan`/`SetColumnSpan`. Lives inside the horizontal
+  → `DocumentControl.RecordTableResize`). `RowCount`, `CellBlocks(row, column)` (finds the cell covering that grid position); `showBorders` (default true; borders honour spans and the flag); `AddRow(cells, spans)`; `alignment` (`TextAlignment`; `ArrangeCore` narrows and moves the grid for centred/right), `cellRules`/`leftRules`/`rightRules` (exact rules, drawn by private `ArrangeRules`, which joins touching segments), `cellPadding` + `ApplyInsets` (from `ApplyLayout`, `SetZoom`, `ReadTable`); column spans via `GridListControl.ColumnSpan`/`SetColumnSpan`. Lives inside the horizontal
   `ScrollableControl` that `Hosted()` builds, for both `LoadDocument` and `DocumentControl.PutTable`. [[document-tables]]
 - **DocumentEditorControl** `<DocumentEditor>` · ScrollableControl, `IContext`, `IClipboardTarget` — one open note. Subscribes to `SheetBook.changed` (`BookChanged` → `RefreshSheetLinks`; `OnDestroy` unsubscribes); `PasteLink` (step "Paste link"), `RenameSheetLinks`.
   `Source`/`LoadPath`/`LoadDocument` (builds the properties header for `.md`/`.xml`), `Save` (refreshes it),
@@ -252,6 +252,7 @@ Why: [[ui-palettes]].
   `PxBox` (the one part that does take the focus; captures the range on its press). XML `HoverColorHex`,
   `PressColorHex`, `IdleInkColorHex`, `ActiveInkColorHex`, `SeparatorColorHex`, `FieldColorHex`. Old
   `DocumentToolbarControl`, [[document-format-bar]], [[armed-style-at-the-caret]] (old).
+- **TexEditorControl** — the LaTeX split view: source editor plus read-only preview, debounced `Recompile` ([[latex-editor]]). L7d: after layout `ResolvePages()` reads each label's page through `DocumentEditorControl.PageAt` and re-shows the tree (`Show(tree)`) when a `\pageref` number changed, at most twice (`pageReloads`); state `compiledAt`, `pageTree`, `pageRefs` (from `TexLowering.PageRefs`). Costs a one-frame "??" per recompile that has `\pageref`.
 - **RichTextDocument** `<Document>` — the model: `blocks`, `name`, `layout`, `palette`, `created`, `modified`,
   `frontmatter`; `extensions`, `Load` (fills `created` from disk), `Save` (switch on the extension), `Stamp`.
   **DocumentEditSession** — the open file: `path`, `undo`, `isDirty`, `MarkDirty`, `Repath`, `Save` (stamps
@@ -296,7 +297,7 @@ Why: [[ui-palettes]].
   `headerWidth`/`headerHeight`, `CellsChanged`. Pointer: press selects (Shift extends) and starts a drag, drag extends,
   double tap edits. Formatting: `fills` Parts drawn first, bold through the label's run style, text through `Display(format.number)`; header-edge resize (`EdgeAt`, `OnDrag` live, `OnDragStop` records through `ResizeBand`, `ShowCursor`); spare pooled parts arrange to `Hidden`; right-click uses the `sheet` context menu. Measuring above is the unfixed type; a fixed sheet (`SheetDocument.fixedSize`) measures to the page's `rows` x `columns` plus a 20 px strip (`growWidth`), arrange loops stop at the page edge, grid lines end at the grid edge, and two fixed parts `growRows`/`growColumns` ("+" labels, Chrome / MutedInk, cut to the viewport) are placed by `ArrangeGrow`; `GrowAt` hit-tests them. The strips sit `growGap` (4 px) off the grid and each other (`MeasureCore` adds `growWidth + growGap * 2`), with `cornerRole = CornerRole.Control` and gradient `sheet-grow` (radial Field → Accent at 0.6 alpha, `Engine.gradients.xml`). `ArrangeCore` ends with `Parts.Settle` on `fills`, `grid` and `headers`, re-arranging each layer once its pooled children are placed so its cached `subtreeBounds` are current. Left press on a strip adds 1, Shift+left adds `SheetSettings.grow.step`, right press sets `growMenu` and `stopsContextMenu` and `OnPointerRelease` posts (`Engine.Post`) the `SheetGrowPopup` next tick; `growPresses` makes `OnPointerTap` ignore a double tap that involved a strip press. [[sheets]]
 - **SheetFormula.cs** — `SheetValue` (`kind`, `FromRaw`, `Display`), `SheetFormula` (`Parse`, `Evaluate`,
-  `References`, `ShiftCells`, `RenamePrefix`, `RenamePage`, `Prefix`, error-code consts, grid bounds). **SheetCalc.cs** — `SheetCellId`, `SheetCalc`
+  `References`, `ShiftCells`, `RenamePrefix`, `RenamePage`, `Prefix`, error-code consts, grid bounds; private nodes `Constant`, `Reference`, `Negate`, `Binary`, `Compare` — `= <> < > <= >=` giving 1/0 — and `Call` — SUM, MIN, MAX, AVERAGE, ROUND, ROUNDUP, ROUNDDOWN, IF, with `Aggregate` and `Rounded`). **SheetCalc.cs** — `SheetCellId`, `SheetCalc`
   (`Value`, `Changed`, `Add`/`Remove`, `RecalcAll`; internal `Read`, `PageNamed` — null for a file-part reference from a CSV). **SheetBook.cs** — static: one
   `SheetDocument` per path (`Get`, `Register`/`Unregister`, `OwnerOf`, `Resolve` via `findSheet`), the shared `calc`,
   `changed` event, vault hooks `Created`/`Deleted`/`Renamed`/`Clear` (CSV paths too), `FileName` (reference file part), `PageRenamed`, `Shifted`, `Restructured`, Thorium-set `vaultSheets`/`vaultNotes`. [[sheets]]

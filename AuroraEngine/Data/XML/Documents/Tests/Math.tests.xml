@@ -12,4 +12,12 @@
 	<Test Action="Math.SqrtCoversBody"/>
 	<Test Action="Math.Spacing"/>
 	<Test Action="Math.Classes"/>
+	<Test Action="Math.Matrix"/>
+	<Test Action="Math.Cases"/>
+	<Test Action="Math.Aligned"/>
+	<Test Action="Math.FillWidth"/>
+	<Test Action="Math.Array"/>
+	<Test Action="Math.Tag"/>
+	<Test Action="Math.EnvErrors"/>
+	<Test Action="Math.AmsCommands"/>
 </TestSuite>

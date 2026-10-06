@@ -1234,8 +1234,8 @@ namespace Thorium.Tests
             DocumentControl content = Content(editor);
             yield return 2;
 
-            PanelControl sheet = content.children.OfType<PanelControl>().First(p => p.children.Count > 0 && p.children[0] is LabelControl);
-            LabelControl number = (LabelControl)sheet.children[0];
+            PanelControl sheet = content.children.OfType<PanelControl>().First(p => p.children.Count > 0 && p.children[0] is ContainerControl);
+            LabelControl number = (LabelControl)((Control)sheet.children[0]).children[(int)SlotPlace.FootCenter];
             t.Check(sheet.arrangedRect.y - content.arrangedRect.y >= 15.5f && sheet.arrangedRect.x - content.arrangedRect.x >= 15.5f,
                 $"the first page sits a gap in from the top and left: {sheet.arrangedRect.x - content.arrangedRect.x}, {sheet.arrangedRect.y - content.arrangedRect.y}");
             t.Check(number.text == "", "page numbers are off by default");
@@ -1407,6 +1407,21 @@ namespace Thorium.Tests
                 new XElement("Block", MathRunX(@"\sum_{i=1}^{n} i = \frac{n(n+1)}{2}", true)),
                 new XElement("Block", MathRunX(@"\left(\frac{\frac{a}{b}}{\frac{\frac{c}{d}}{e}}\right) \sqrt[3]{\frac{\frac{a}{b}}{c}} \int_0^1 f(x)\,dx", true)),
                 new XElement("Block", RunX("Broken: "), MathRunX(@"\frac{a"), RunX(" stays readable.")))));
+            yield return 4;
+
+            yield return t.Golden("Math", Content(editor));
+        }
+
+        [A_XSDActionDependency("TextInput.MathArrays", "Test")]
+        private static IEnumerator<int> MathArrays(TestContext t)
+        {
+            DocumentEditorControl editor = ShowFixture(t, DocumentXml.Parse(new XElement("Document",
+                new XElement("Block", RunX("Inline "), MathRunX(@"\binom{n}{k}"), RunX(" and "),
+                    MathRunX(@"\begin{smallmatrix} a & b \\ c & d \end{smallmatrix}"), RunX(" in a sentence.")),
+                new XElement("Block", MathRunX(@"A = \begin{pmatrix} 1 & 2 & 3 \\ 4 & 5 & 6 \end{pmatrix} \quad \det\begin{vmatrix} a & b \\ c & d \end{vmatrix} = ad - bc", true)),
+                new XElement("Block", MathRunX(@"|x| = \begin{cases} x & \text{if } x \ge 0 \\ -x & \text{otherwise} \end{cases}", true)),
+                new XElement("Block", MathRunX(@"\begin{aligned} f(x) &= (x+1)^2 \\ &= x^2 + 2x + 1 \end{aligned} \tag{1}", true)),
+                new XElement("Block", MathRunX(@"\begin{array}{l|r} 1 & 22 \\ \hline 333 & 4 \end{array} \qquad \boxed{E = mc^2} \qquad \sum_{\substack{0<i<m \\ 0<j<n}} P(i,j)", true)))));
             yield return 4;
 
             yield return t.Golden("Math", Content(editor));
@@ -2102,6 +2117,94 @@ namespace Thorium.Tests
                 yield return 2;
                 t.Check(XNode.DeepEquals(DocumentXml.ToXml(document), before), $"{name} is refused");
             }
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("TextInput.TableRules", "Test")]
+        private static IEnumerator<int> TableRules(TestContext t)
+        {
+            XElement RuledCell(string text, params object[] attributes) => new XElement("Cell", attributes, Block(text));
+            XElement source = new XElement("Document", Block("before"),
+                new XElement("Table", new XAttribute("Borders", "false"), new XAttribute("Padding", "8 0"),
+                    new XElement("Column", new XAttribute("Width", 100), new XAttribute("RuleLeft", "Plain")),
+                    new XElement("Column", new XAttribute("Width", 100)),
+                    new XElement("Column", new XAttribute("Width", 100), new XAttribute("RuleRight", "Double")),
+                    new XElement("Row", RuledCell("a", new XAttribute("RuleAbove", "Heavy")), RuledCell("b", new XAttribute("RuleAbove", "Heavy")),
+                        RuledCell("c", new XAttribute("RuleAbove", "Heavy 3"))),
+                    new XElement("Row",
+                        RuledCell("wide", new XAttribute("ColumnSpan", 2), new XAttribute("RuleAbove", "Cmid"), new XAttribute("TrimAbove", "Both"),
+                            new XAttribute("RuleBelow", "Heavy")),
+                        RuledCell("d", new XAttribute("RuleAbove", "Light"), new XAttribute("RuleBelow", "Heavy")))),
+                Block("after"));
+            XElement once = DocumentXml.ToXml(DocumentXml.Parse(source));
+            t.Check(XNode.DeepEquals(once, DocumentXml.ToXml(DocumentXml.Parse(once))), "rules, trims and padding survive a save and load");
+            t.Check(once.Descendants().Any(e => (string?)e.Attribute("RuleAbove") == "Heavy 3") && once.Descendants().Any(e => (string?)e.Attribute("TrimAbove") == "Both")
+                && once.Descendants().Any(e => (string?)e.Attribute("RuleRight") == "Double")
+                && (string?)once.Descendants().First(e => e.Name.LocalName == "Table").Attribute("Padding") == "8 0", "rules, a rule width and padding are written");
+
+            DocumentControl content = ShowNote(t, DocumentXml.Parse(source), out TableControl table, out RichTextDocument document);
+            yield return 2;
+            foreach (float zoom in new[] { 1f, 2f })
+            {
+                content.zoom = zoom;
+                content.InvalidateLayout();
+                yield return 2;
+                table = (TableControl)document.blocks[1];
+                List<StackPanelControl> cells = table.Cells();
+                float em = cells[0].children.OfType<BlockControl>().First().fontSize * zoom;
+                List<LayoutRect> lines = table.children.OfType<PanelControl>()
+                    .Where(p => !p.hitTestable && p.arrangedRect.width > 0f && p.arrangedRect.height > 0f)
+                    .Select(p => p.arrangedRect).ToList();
+                LayoutRect Box(StackPanelControl cell) => new LayoutRect(cell.arrangedRect.x - cell.margin.left, cell.arrangedRect.y - cell.margin.top,
+                    cell.arrangedRect.width + cell.margin.totalHorizontal, cell.arrangedRect.height + cell.margin.totalVertical);
+                bool Near(float a, float b) => MathF.Abs(a - b) < 0.05f;
+
+                float heavy = MathF.Max(1f, 0.08f * em);
+                LayoutRect first = Box(cells[0]);
+                t.Check(lines.Count(l => Near(l.y, first.y) && Near(l.height, heavy) && Near(l.x, first.x) && Near(l.Right, Box(cells[1]).Right)) == 1,
+                    $"zoom {zoom}: two \\toprule cells joined into one line at 0.08 em ({heavy})");
+                t.Check(lines.Any(l => Near(l.y, first.y) && Near(l.height, 3f * zoom)), $"zoom {zoom}: a rule's own width, zoomed");
+                t.Check(Near(cells[1].margin.top, MathF.Max(heavy, 3f * zoom) + 0.65f * 0.430555f * em),
+                    $"zoom {zoom}: the row's thickest rule and \\belowrulesep under it: {cells[1].margin.top}");
+                t.Check(Near(cells[0].margin.left, 8f * zoom), $"zoom {zoom}: the padding across");
+
+                LayoutRect wide = Box(cells[3]);
+                t.Check(lines.Any(l => Near(l.y, wide.y) && Near(l.x, wide.x + 0.5f * em) && Near(l.width, wide.width - em) && Near(l.height, MathF.Max(1f, 0.03f * em))),
+                    $"zoom {zoom}: a \\cmidrule trimmed by \\cmidrulekern at both ends");
+                t.Check(lines.Any(l => Near(l.y, Box(cells[4]).y) && Near(l.height, MathF.Max(1f, 0.05f * em))), $"zoom {zoom}: \\midrule at 0.05 em");
+                t.Check(Near(cells[0].margin.bottom, 0.4f * 0.430555f * em), $"zoom {zoom}: \\aboverulesep over the next row's rule");
+
+                float plain = MathF.Max(1f, 0.4f * 96f / 72.27f * zoom);
+                float left = first.x;
+                float right = Box(cells[2]).Right;
+                t.Check(lines.Count(l => Near(l.x, left) && Near(l.width, plain)) == 1, $"zoom {zoom}: a | down the left edge");
+                t.Check(lines.Count(l => Near(l.x + l.width, right) && Near(l.width, plain)) == 1
+                    && lines.Count(l => Near(l.x, right - 2f * plain - 2f * 96f / 72.27f * zoom) && Near(l.width, plain)) == 1,
+                    $"zoom {zoom}: || down the right edge, \\doublerulesep apart");
+            }
+            content.zoom = 1f;
+            content.InvalidateLayout();
+            yield return 2;
+
+            IEnumerable<XElement> Row(int row) => DocumentXml.ToXml(document).Descendants().Where(e => e.Name.LocalName == "Row").ElementAt(row).Elements();
+            content.SetCaret(Cell((TableControl)document.blocks[1], 3), 0);
+            XElement before = DocumentXml.ToXml(document);
+            TextInputActions.SplitCell();
+            yield return 2;
+            List<XElement> split = Row(1).ToList();
+            t.Check(split.Count == 3 && split.Take(2).All(c => (string?)c.Attribute("RuleAbove") == "Cmid" && (string?)c.Attribute("RuleBelow") == "Heavy")
+                && (string?)split[0].Attribute("TrimAbove") == "Left" && (string?)split[1].Attribute("TrimAbove") == "Right",
+                "a split copies the rules, the left trim to the first half and the right to the second");
+            yield return t.Key(Keys.Z, Keys.LeftControl);
+            t.Check(XNode.DeepEquals(DocumentXml.ToXml(document), before), "undo restores the merged cell's rules");
+
+            content.SetCaret(Cell((TableControl)document.blocks[1], 0), 0);
+            TextInputActions.InsertRowBelow();
+            yield return 2;
+            t.Check(Row(1).All(c => c.Attribute("RuleAbove") == null && c.Attribute("RuleBelow") == null)
+                && Row(2).Any(c => (string?)c.Attribute("RuleAbove") == "Cmid") && Row(0).All(c => c.Attribute("RuleAbove") != null),
+                "a new row has no rules; the rows around it keep theirs");
+            yield return t.Key(Keys.Z, Keys.LeftControl);
             t.Show(new StackPanelControl());
         }
 

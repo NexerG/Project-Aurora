@@ -29,7 +29,13 @@ Inline formulas use text style and display formulas display style; scripts shrin
 
 A glyph asked for in a face that lacks it (Greek in Latin Modern Math's italic, which is LM Roman Italic) is set from the regular face instead, so it shows upright rather than not at all.
 
-A note draws a `MathBox` through its paragraph's text control: each glyph from the run's own font when that font has math constants (`latin-modern-math` from a `.tex` preview), otherwise from the `math` font, at the run's size times the glyph's scale, each rule as a filled rectangle with its top on a whole pixel and at least one pixel thick. A display formula takes the whole column as its width and is drawn centred in it, which is what puts it on a line of its own. A formula that could not be read draws its source in the palette's danger colour.
+A note draws a `MathBox` through its paragraph's text control: each glyph from the run's own font when that font has math constants (`latin-modern-math` from a `.tex` preview), otherwise from the `math` font, at the run's size times the glyph's scale, each rule as a filled rectangle with its top on a whole pixel and at least one pixel thick and one pixel wide. A display formula takes the whole column as its width and is drawn centred in it, which is what puts it on a line of its own. A formula that could not be read draws its source in the palette's danger colour.
+
+An environment (`MathArray`) is laid out as a grid in two passes: every cell is measured first, then each is placed by its column's width and alignment. Matrix, `cases` and `array` cells use text style, the aligned family uses display style and `smallmatrix` and `\substack` use script style. Every grid is centred on the math axis, and an aligned right-hand cell is laid out after an empty ordinary atom, as amsmath does, so a leading `=` keeps its relation space.
+
+Layout takes the line width as an optional argument, 0 meaning none, and only a top-level `align`, `flalign` or `multline` uses it. Such a formula spreads over the width with amsmath's rules, and its box is marked `widthAware`, so the note's text control lays it out again whenever the width changes and keeps those boxes only for the current width. With no width the old spacing stays: `align` and `flalign` are spaced like `aligned` with 1 em between pairs, and `multline` has its first row flush left and its last row flush right within its widest row plus 1 em, middle rows centred.
+
+A `\tag` becomes the box's `tag`: its text sits at its row's baseline with its right edge at x 0, and a display formula's height and depth include it. An inline formula's tag is placed after the formula, a quad apart. The note draws a formula centred but shifted left to keep a quad clear of its tag, and lets it overflow past that.
 
 Formulas are inserted and edited through [[Formula Popup]].
 
@@ -37,7 +43,7 @@ Formulas are inserted and edited through [[Formula Popup]].
 
 | Member | Kind | Summary |
 | --- | --- | --- |
-| `Layout(MathNode root, bool display, AtlasMetaData atlas, MathConstants constants)` | static | The formula as a `MathBox` in em; a `MathError` lays out its source as plain text with `error` set. |
+| `Layout(MathNode root, bool display, AtlasMetaData atlas, MathConstants constants, float lineWidth = 0)` | static | The formula as a `MathBox` in em; a `MathError` lays out its source as plain text with `error` set. A line width in em makes a top-level `align`, `flalign` or `multline` spread over it. |
 
 ## Fields & Properties
 
@@ -47,6 +53,7 @@ float width, height, depth;
 List<MathGlyph> glyphs;   // char, face, x, y, scale
 List<MathRule> rules;     // x, top y, width, height
 bool error;
+MathBox tag;              // a display formula's tag, right edge at x 0
 ```
 
 ## Methods
@@ -95,6 +102,47 @@ bool error;
 		scaled up to 2.4 times
 		beyond that, top piece, bottom piece, a middle piece for braces, and overlapping extenders between them
 		vertical bars become rules
+
+### Laying out an array
+	first pass
+		lay out every cell in its style
+		take each column's width and each row's height and depth, never under the strut of 0.84 above and 0.36 below, cases rows 1.2 times that
+	rows in the aligned family
+		baselines are 1.5 em apart, which is baselineskip plus `\jot`
+		when the gap between two rows would fall under 0.3, use 0.4
+	rows in a smallmatrix or `\substack`
+		baselines 0.77 apart, lineskip 0.13 when the gap is too small
+	add each row's `\\[len]` skip
+	second pass
+		place each cell in its column by its l, c or r alignment
+		put the gap between columns: matrix 1, array 0.5 each side, cases 1, smallmatrix 5/18, aligned pairs by `pairGap`
+		draw `|` rules and `\hline` rules 0.04 thick
+	in a grid that fills the line width, set the margins and gaps from the width as in the next section
+	centre the grid on the math axis
+	place the delimiters around it as `\left…\right` does
+
+### Spreading a grid over the line
+	for an `align` with n pairs of columns
+		the margins and the gaps between pairs are all (width - sum of the columns) / (n + 1)
+	for a `flalign` with n pairs
+		there are no margins and the gaps are (width - sum of the columns) / (n - 1)
+		one pair falls back to the `align` rule
+	in both the gaps are at least `\minalignsep`, 1 em
+		when they would be less, the margins take (width - sum - (n - 1) * the gap) / 2, never negative
+	for a `multline`
+		the first row sits `\multlinegap`, 1 em, from the left and the last row 1 em from the right
+		with a tag, the tag and `\multlinetaggap`, 1 em, take the last row's place
+		the middle rows are centred
+	when a tagged row ends within 1 em of its tag
+		spread again over the width minus the widest tag and 1 em
+	`alignat`, `aligned` and `gather` are not spread
+
+### Laying out a tag, a frame and a stack
+	a tag: lay out its text, put it at its row's baseline with the right edge at x 0
+	a child's tag moves up with the child, keeping only its vertical offset
+	a frame (`\boxed`): lay out the body, then draw a rule 0.04 thick at a gap of 0.3 around it
+	a fraction without a rule (`\binom`): stack numerator and denominator by the font's stack constants
+	scripts with `overUnder` always take their limits above and below
 
 ## Related
 - [[Math Parser]] — produces the nodes

@@ -29,7 +29,23 @@
 	<Test Action="Tex.Typeset.Tabular"/>
 	<Test Action="Tex.Typeset.Floats"/>
 	<Test Action="Tex.Refs"/>
+	<Test Action="Tex.Equations"/>
+	<Test Action="Tex.MathEnvironments"/>
 	<Test Action="Tex.Bib"/>
 	<Test Action="Tex.Lowering.Table"/>
 	<Test Action="Tex.Lowering.Image"/>
+	<Test Action="Tex.OptimalBreaks"/>
+	<Test Action="Tex.JustifyBeforeDisplay"/>
+	<Test Action="Tex.Hyphenator"/>
+	<Test Action="Tex.SoftHyphen"/>
+	<Test Action="Tex.Lowering.Hyphens"/>
+	<Test Action="Tex.Lowering.Spacing"/>
+	<Test Action="Tex.BlockSpacing"/>
+	<Test Action="Tex.Lowering.Pages"/>
+	<Test Action="Tex.PageBreak"/>
+	<Test Action="Tex.RunningHeads"/>
+	<Test Action="Tex.Lowering.Footnote"/>
+	<Test Action="Tex.Footnotes"/>
+	<Test Action="Tex.Lowering.Float"/>
+	<Test Action="Tex.FloatPlacement"/>
 </TestSuite>

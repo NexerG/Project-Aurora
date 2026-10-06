@@ -7,4 +7,5 @@
 	</ContextSubmenu>
 	<ContextButton Text="Vaults" Action="Vaults.Open"/>
 	<ContextButton Text="Save note" Action="Text.Save"/>
+	<ContextButton Text="Export PDF" Action="Tex.ExportPdf"/>
 </ContextMenu>

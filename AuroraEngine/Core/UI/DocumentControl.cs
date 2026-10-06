@@ -158,6 +158,395 @@ namespace ArctisAurora.Core.UI
             if (spanHeight > height && y < bandEnd) return y;
             return bandTop + stride;
         }
+
+        // The top of the next text area, or of this one when y has not left its top.
+        public float Break(float y)
+        {
+            float bandTop = top + PageOf(y) * stride;
+            return y <= bandTop + tolerance ? bandTop : bandTop + stride;
+        }
+    }
+
+    // What one paginate pass has set aside on each page: footnotes at the foot of its text area, floats at its top and foot.
+    internal sealed class PageSpace
+    {
+        // each footnote's height by id, and the gap between a page's text and its first footnote, px
+        public readonly Dictionary<string, float> notes = new Dictionary<string, float>();
+        public readonly float separator;
+
+        // px reserved at each page's foot, where each page's text ends, the footnotes each page holds, and every footnote placed so far
+        private readonly List<float> bottom = new List<float>();
+        private readonly List<float> textEnd = new List<float>();
+        public readonly List<List<string>?> placed = new List<List<string>?>();
+        private readonly HashSet<string> seen = new HashSet<string>();
+
+        // px floats take at each page's top and foot, whether it is a page of floats, whether its waiting floats were placed, and what places them
+        private readonly List<float> top = new List<float>();
+        private readonly List<float> floatBottom = new List<float>();
+        private readonly List<bool> floatPage = new List<bool>();
+        private readonly List<bool> opened = new List<bool>();
+        public Action<int>? opening;
+
+        public PageSpace(float separator) => this.separator = separator;
+
+        public float Bottom(int page) => Notes(page) + (page < floatBottom.Count ? floatBottom[page] : 0f);
+
+        public float Notes(int page) => page < bottom.Count ? bottom[page] : 0f;
+
+        public float Top(int page) => page < top.Count ? top[page] : 0f;
+
+        public float TextEnd(int page) => page < textEnd.Count ? textEnd[page] : 0f;
+
+        public bool IsFloatPage(int page) => page < floatPage.Count && floatPage[page];
+
+        public int Pages => bottom.Count;
+
+        public bool Placed(string id) => seen.Contains(id);
+
+        // A span pushed across page breaks and past pages of floats, each text area short by its page's floats and footnotes and by notes more on the page it lands.
+        public float Push(PageBands bands, float y, float spanHeight, float notesHeight = 0f)
+        {
+            while (true)
+            {
+                int page = bands.PageOf(y);
+                float bandTop = bands.top + page * bands.stride;
+                Open(page);
+                if (floatPage[page])
+                {
+                    y = bandTop + bands.stride;
+                    continue;
+                }
+
+                float textTop = bandTop + top[page];
+                y = MathF.Max(y, textTop);
+                float need = notesHeight > 0f ? notesHeight + (Notes(page) == 0f ? separator : 0f) : 0f;
+                if (y + spanHeight > bandTop + bands.height - Bottom(page) - need + PageBands.tolerance && y > textTop + PageBands.tolerance)
+                {
+                    y = bandTop + bands.stride;
+                    continue;
+                }
+
+                textEnd[page] = MathF.Max(textEnd[page], y + spanHeight);
+                return y;
+            }
+        }
+
+        // Places the waiting floats on a page the first time anything lands there.
+        public void Open(int page)
+        {
+            Grow(page);
+            if (opened[page]) return;
+            opened[page] = true;
+            opening?.Invoke(page);
+        }
+
+        public void SetFloats(int page, float topArea, float bottomArea)
+        {
+            Grow(page);
+            top[page] = topArea;
+            floatBottom[page] = bottomArea;
+        }
+
+        public void MarkFloatPage(int page)
+        {
+            Grow(page);
+            floatPage[page] = true;
+            opened[page] = true;
+        }
+
+        // Takes back the footnotes set from a page on, for a pass that lays those pages out again.
+        public void Rollback(int page)
+        {
+            for (int p = page; p < bottom.Count; p++)
+            {
+                if (placed[p] is List<string> ids)
+                    foreach (string id in ids)
+                        seen.Remove(id);
+                placed[p] = null;
+                bottom[p] = 0f;
+                textEnd[p] = 0f;
+            }
+        }
+
+        private void Grow(int page)
+        {
+            while (bottom.Count <= page)
+            {
+                bottom.Add(0f);
+                textEnd.Add(0f);
+                placed.Add(null);
+                top.Add(0f);
+                floatBottom.Add(0f);
+                floatPage.Add(false);
+                opened.Add(false);
+            }
+        }
+
+        // Pushes a line, then sets its anchors' footnotes aside on the page it landed on.
+        public float PushLine(PageBands bands, float y, float lineHeight, List<string>? ids)
+        {
+            float notesHeight = 0f;
+            if (ids != null)
+                foreach (string id in ids)
+                    if (!seen.Contains(id) && notes.TryGetValue(id, out float height)) notesHeight += height;
+            y = Push(bands, y, lineHeight, notesHeight);
+            if (notesHeight > 0f) Reserve(bands.PageOf(y), ids!);
+            return y;
+        }
+
+        // Puts footnotes on a page; one already placed stays where it is.
+        public void Reserve(int page, IEnumerable<string> ids)
+        {
+            foreach (string id in ids)
+            {
+                if (!notes.TryGetValue(id, out float height) || !seen.Add(id)) continue;
+                Grow(page);
+                if (bottom[page] == 0f) bottom[page] = separator;
+                bottom[page] += height;
+                (placed[page] ??= new List<string>()).Add(id);
+            }
+        }
+    }
+
+    // Where one paginate pass puts each figure and table float: in the text, at a page's top or foot, or on a page of floats,
+    // by LaTeX's [htbp!H] rules and its default parameters.
+    internal sealed class PageFloats
+    {
+        // \topnumber, \bottomnumber, \totalnumber, \topfraction, \bottomfraction, \textfraction, \floatpagefraction
+        private const int TopNumber = 2;
+        private const int BottomNumber = 1;
+        private const int TotalNumber = 3;
+        private const float TopFraction = 0.7f;
+        private const float BottomFraction = 0.3f;
+        private const float TextFraction = 0.2f;
+        private const float FloatPageFraction = 0.5f;
+
+        public enum Where { None, Waiting, Here, Top, Bottom, FloatPage }
+
+        // one float's blocks and tables, stacked, and where it went
+        public sealed class Group
+        {
+            public readonly PageInsert insert;
+            public readonly List<Control> items = new List<Control>();
+            public readonly List<float> offsets = new List<float>();
+            public readonly List<float> heights = new List<float>();
+            public float height;
+            public Where where;
+            public int page;
+            public float y;
+
+            public Group(PageInsert insert) => this.insert = insert;
+
+            public bool Allows(char c) => insert.placement.Contains(c);
+        }
+
+        // every float in document order, each by its first block or table, and those still waiting
+        public readonly List<Group> groups = new List<Group>();
+        public readonly Dictionary<Entity, Group> starts = new Dictionary<Entity, Group>();
+        private readonly List<Group> waiting = new List<Group>();
+
+        private readonly PageSpace space;
+        private readonly PageBands bands;
+        private readonly bool paged;
+
+        // \floatsep, \textfloatsep, \intextsep and \@fpsep, px
+        private readonly float floatSep;
+        private readonly float textFloatSep;
+        private readonly float inTextSep;
+        private readonly float pageSep;
+
+        // the editor's header above the first page's text, px
+        private readonly float header;
+
+        public PageFloats(PageSpace space, PageBands bands, bool paged, float floatSep, float textFloatSep, float inTextSep, float pageSep, float header)
+        {
+            this.space = space;
+            this.bands = bands;
+            this.paged = paged;
+            this.floatSep = floatSep;
+            this.textFloatSep = textFloatSep;
+            this.inTextSep = inTextSep;
+            this.pageSep = pageSep;
+            this.header = header;
+            space.opening = Open;
+        }
+
+        private float Head(int page) => page == 0 ? header : 0f;
+
+        public bool Waiting => waiting.Count > 0;
+
+        private float BandTop(int page) => bands.top + page * bands.stride;
+
+        // A float met in the text at y: here, at the current page's top or foot, or waiting; returns the text's y after it.
+        // rewind is the page whose text must be laid out again under a new top float, else -1.
+        public float Arrive(Group g, float y, out int rewind)
+        {
+            rewind = -1;
+            if (g.where == Where.Here) return Here(g, y);
+            if (g.where != Where.None) return y;
+            if (!paged || g.Allows('H')) return Here(g, y);
+
+            int p = bands.PageOf(y);
+            space.Open(p);
+            while (space.IsFloatPage(p))
+            {
+                y = BandTop(++p);
+                space.Open(p);
+            }
+
+            if (!waiting.Any(w => w.insert.floatKind == g.insert.floatKind))
+            {
+                bool force = g.Allows('!');
+                float textTop = BandTop(p) + space.Top(p);
+                float textY = MathF.Max(y, textTop);
+                if (g.Allows('h') && textY + inTextSep + g.height <= BandTop(p) + bands.height - space.Bottom(p) + PageBands.tolerance) return Here(g, y);
+                if (g.Allows('t') && TopFits(g, p, force, textY))
+                {
+                    Put(g, Where.Top, p);
+                    rewind = p;
+                    return y;
+                }
+                if (g.Allows('b') && BottomFits(g, p, force, textY))
+                {
+                    Put(g, Where.Bottom, p);
+                    return y;
+                }
+            }
+            g.where = Where.Waiting;
+            waiting.Add(g);
+            return y;
+        }
+
+        private float Here(Group g, float y)
+        {
+            g.where = Where.Here;
+            g.y = space.Push(bands, y + inTextSep, g.height);
+            g.page = bands.PageOf(g.y);
+            return g.y + g.height + inTextSep;
+        }
+
+        // A fresh page takes a page of floats if the waiting ones fill enough of it, else what fits at its top and foot, in order.
+        private void Open(int p)
+        {
+            if (!paged || waiting.Count == 0) return;
+
+            List<Group> taken = new List<Group>();
+            HashSet<string?> failed = new HashSet<string?>();
+            float used = 0f;
+            foreach (Group g in waiting)
+            {
+                float need = (taken.Count > 0 ? pageSep : 0f) + g.height;
+                if (failed.Contains(g.insert.floatKind) || !g.Allows('p') || used + need > bands.height + PageBands.tolerance)
+                {
+                    failed.Add(g.insert.floatKind);
+                    continue;
+                }
+                taken.Add(g);
+                used += need;
+            }
+            if (taken.Count > 0 && used >= FloatPageFraction * bands.height)
+            {
+                foreach (Group g in taken)
+                    Put(g, Where.FloatPage, p);
+                space.MarkFloatPage(p);
+                return;
+            }
+
+            failed.Clear();
+            foreach (Group g in waiting.ToList())
+            {
+                if (failed.Contains(g.insert.floatKind)) continue;
+                bool force = g.Allows('!');
+                if (g.Allows('t') && TopFits(g, p, force, BandTop(p))) Put(g, Where.Top, p);
+                else if (g.Allows('b') && BottomFits(g, p, force, BandTop(p) + space.Top(p))) Put(g, Where.Bottom, p);
+                else failed.Add(g.insert.floatKind);
+            }
+        }
+
+        // Every waiting float onto pages of floats from start on, each page as full as it goes; returns the next text page's top.
+        public float Flush(int start)
+        {
+            int p = start;
+            while (waiting.Count > 0)
+            {
+                float used = 0f;
+                for (int n = 0; waiting.Count > 0 && (n == 0 || used + pageSep + waiting[0].height <= bands.height + PageBands.tolerance); n++)
+                {
+                    used += (n > 0 ? pageSep : 0f) + waiting[0].height;
+                    Put(waiting[0], Where.FloatPage, p);
+                }
+                space.MarkFloatPage(p);
+                p++;
+            }
+            return BandTop(p);
+        }
+
+        // Within \topnumber, \totalnumber, \topfraction and \textfraction unless forced, and with the text already on the page still fitting under it.
+        private bool TopFits(Group g, int p, bool force, float textY)
+        {
+            if (!force && (Count(Where.Top, p) >= TopNumber || Count(Where.Top, p) + Count(Where.Bottom, p) >= TotalNumber
+                || Heights(Where.Top, p) + g.height > TopFraction * bands.height
+                || Heights(Where.Top, p) + Heights(Where.Bottom, p) + g.height > (1f - TextFraction) * bands.height)) return false;
+            float text = MathF.Max(0f, textY - BandTop(p) - MathF.Max(Head(p), space.Top(p)));
+            return Head(p) + Area(Where.Top, p, g) + text + space.Bottom(p) <= bands.height + PageBands.tolerance;
+        }
+
+        // Within \bottomnumber, \totalnumber, \bottomfraction and \textfraction unless forced, and below the text set so far.
+        private bool BottomFits(Group g, int p, bool force, float textY)
+        {
+            if (!force && (Count(Where.Bottom, p) >= BottomNumber || Count(Where.Top, p) + Count(Where.Bottom, p) >= TotalNumber
+                || Heights(Where.Bottom, p) + g.height > BottomFraction * bands.height
+                || Heights(Where.Top, p) + Heights(Where.Bottom, p) + g.height > (1f - TextFraction) * bands.height)) return false;
+            return textY + space.Notes(p) + Area(Where.Bottom, p, g) <= BandTop(p) + bands.height + PageBands.tolerance;
+        }
+
+        private void Put(Group g, Where where, int p)
+        {
+            waiting.Remove(g);
+            g.where = where;
+            g.page = p;
+            if (where == Where.FloatPage) return;
+            float top = Area(Where.Top, p);
+            space.SetFloats(p, top > 0f ? Head(p) + top : 0f, Area(Where.Bottom, p));
+        }
+
+        private int Count(Where where, int p) => groups.Count(g => g.where == where && g.page == p);
+
+        private float Heights(Where where, int p) => groups.Where(g => g.where == where && g.page == p).Sum(g => g.height);
+
+        // The floats' heights, \floatsep between them and \textfloatsep to the text; extra counted as one more.
+        private float Area(Where where, int p, Group? extra = null)
+        {
+            int n = Count(where, p) + (extra != null ? 1 : 0);
+            return n == 0 ? 0f : Heights(where, p) + (extra?.height ?? 0f) + (n - 1) * floatSep + textFloatSep;
+        }
+
+        // Each float's top: where it was set in the text, stacked down from a page's top, up from its foot, or spread down a page of floats.
+        public void Stack(Action<Control, float, float> put)
+        {
+            foreach (IGrouping<(Where, int), Group> page in groups.Where(g => g.where != Where.Waiting && g.where != Where.None).GroupBy(g => (g.where, g.page)))
+            {
+                (Where where, int p) = page.Key;
+                List<Group> list = page.ToList();
+                float at = BandTop(p) + (where == Where.Top ? Head(p) : 0f);
+                float sep = floatSep;
+                if (where == Where.Bottom) at += bands.height - (Area(Where.Bottom, p) - textFloatSep);
+                else if (where == Where.FloatPage)
+                {
+                    float spread = MathF.Max(0f, bands.height - list.Sum(g => g.height) - (list.Count - 1) * pageSep) / (2 * list.Count);
+                    at += spread;
+                    sep = pageSep + 2f * spread;
+                }
+
+                foreach (Group g in list)
+                {
+                    float top = where == Where.Here ? g.y : at;
+                    for (int i = 0; i < g.items.Count; i++)
+                        put(g.items[i], top + g.offsets[i], g.heights[i]);
+                    at += g.height + sep;
+                }
+            }
+        }
     }
 
     // The note's content area: blocks stacked top to bottom, with the caret over them.
@@ -183,6 +572,17 @@ namespace ArctisAurora.Core.UI
         private readonly List<float> blockTops = new List<float>();
         private readonly List<float> blockHeights = new List<float>();
         private readonly List<Control> blockControls = new List<Control>();
+        // footnote and float blocks, out of the flow: where the last paginate put each, each page's footnote rule,
+        // each footnote's blocks by id, and whether the document has any
+        private readonly List<Control> insertControls = new List<Control>();
+        private readonly List<float> insertTops = new List<float>();
+        private readonly List<float> insertHeights = new List<float>();
+        private readonly List<(int page, float y)> footnoteRules = new List<(int, float)>();
+        private readonly Dictionary<string, List<BlockControl>> footnoteGroups = new Dictionary<string, List<BlockControl>>();
+        private bool inserts;
+        private static readonly PageBands unbounded = new PageBands(0f, float.PositiveInfinity, float.MaxValue);
+        private const float PxPerPt = 96f / 72.27f;
+
         private Vector2 measuredPaper;
         private PageBands paginatedBands;
         private int pageCount;
@@ -569,7 +969,7 @@ namespace ArctisAurora.Core.UI
             if (!OrderedSelection(out DocumentAddress from, out DocumentAddress to)) return false;
 
             DocumentFragment fragment = CaptureFragment(from, to);
-            string text = string.Join(Environment.NewLine, fragment.blocks.Select(PlainText));
+            string text = string.Join(Environment.NewLine, fragment.blocks.Select(PlainText)).Replace(TextMeasurer.SoftHyphen.ToString(), string.Empty);
 
             copiedText = text;
             copiedFragment = fragment;
@@ -592,6 +992,8 @@ namespace ArctisAurora.Core.UI
                 }
                 else if (span.IsSheet && count > 0)
                     plain.Append(SheetLinks.Plain(span.sheetRef));
+                else if (span.spaceWidth != 0f)
+                    plain.Append(' ', count);
                 else
                     plain.Append(block.text, start, count);
                 start += count;
@@ -827,6 +1229,9 @@ namespace ArctisAurora.Core.UI
                 {
                     stylingType = at.stylingType,
                     alignment = at.alignment,
+                    firstIndent = at.firstIndent,
+                    spaceBefore = at.spaceBefore,
+                    insert = at.insert,
                     language = at.language,
                     codeWrap = at.codeWrap,
                     listKind = at.listKind,
@@ -854,6 +1259,9 @@ namespace ArctisAurora.Core.UI
             {
                 stylingType = destination.stylingType,
                 alignment = destination.alignment,
+                firstIndent = destination.firstIndent,
+                spaceBefore = destination.spaceBefore,
+                insert = destination.insert,
                 language = destination.language,
                 codeWrap = destination.codeWrap,
                 listKind = destination.listKind,
@@ -3065,7 +3473,14 @@ namespace ArctisAurora.Core.UI
             {
                 XElement cell = Covering(Named(xml, "Row")[row], column).cell;
                 for (int i = 1; i < Span(cell); i++)
-                    cell.AddAfterSelf(new XElement(cell.Name));
+                    cell.AddAfterSelf(new XElement(cell.Name, cell.Attributes().Where(a => a.Name.LocalName.StartsWith("Rule")).Select(a => new XAttribute(a))));
+                XElement last = cell.ElementsAfterSelf().ElementAt(Span(cell) - 2);
+                foreach (string name in new[] { "TrimAbove", "TrimBelow" })
+                    if (Enum.TryParse((string?)cell.Attribute(name), out RuleTrim trim))
+                    {
+                        if ((trim & RuleTrim.Right) != 0) last.SetAttributeValue(name, "Right");
+                        cell.SetAttributeValue(name, (trim & RuleTrim.Left) != 0 ? "Left" : null);
+                    }
                 SetSpan(cell, 1);
                 return (row, column, true);
             });
@@ -3194,6 +3609,20 @@ namespace ArctisAurora.Core.UI
                 to = int.MaxValue;
             }
             paginatedBands = bands;
+            PageSpace? space = inserts ? new PageSpace(Mm(page.footnoteSkip)) : null;
+            insertControls.Clear();
+            insertTops.Clear();
+            insertHeights.Clear();
+            footnoteRules.Clear();
+            PageFloats? placer = null;
+            if (space != null)
+            {
+                from = 0;
+                to = int.MaxValue;
+                MeasureFootnotes(space);
+                placer = new PageFloats(space, bands, paged, Mm(page.floatSep), Mm(page.textFloatSep), Mm(page.inTextSep), 8f * PxPerPt * zoom, headerHeight);
+                MeasureFloats(placer);
+            }
 
             float y = from == 0 ? top + headerHeight : blockTops[from - 1] + blockHeights[from - 1];
             float textWidth = MathF.Max(0f, paper.X - Mm(page.marginLeft + page.marginRight));
@@ -3201,11 +3630,30 @@ namespace ArctisAurora.Core.UI
             int index = 0;
             bool settled = false;
             Entity previous = null;
-            foreach (Entity child in children)
+            for (int c = 0; c < children.Count; c++)
             {
+                Entity child = children[c];
                 BlockControl block = child as BlockControl;
                 TableControl table = block == null ? TableIn(child) : null;
                 if (block == null && table == null) continue;
+                if (IsInsert(child))
+                {
+                    if (placer == null || !placer.starts.TryGetValue(child, out PageFloats.Group? group)) continue;
+                    y = placer.Arrive(group, y, out int rewind);
+                    if (rewind < 0) continue;
+
+                    // a new top float: lay the page's text out again from the first block that reaches it
+                    float pageTop = bands.top + rewind * bands.stride;
+                    int first = 0;
+                    while (first < index && blockTops[first] + blockHeights[first] <= pageTop) first++;
+                    space!.Rollback(rewind);
+                    floats.RemoveAll(f => blockControls.IndexOf(f.block) is int anchor && anchor >= first && anchor < index);
+                    c = first == 0 ? -1 : children.IndexOf(blockControls[first - 1]);
+                    y = first == 0 ? top + headerHeight : blockTops[first - 1] + blockHeights[first - 1];
+                    previous = first == 0 ? null : blockControls[first - 1];
+                    index = first;
+                    continue;
+                }
                 bool codeRun = block?.stylingType == TextStyleType.Code && previous is BlockControl { stylingType: TextStyleType.Code };
                 previous = child;
                 if (index < from)
@@ -3214,12 +3662,19 @@ namespace ArctisAurora.Core.UI
                     continue;
                 }
 
-                if (index > 0 && !codeRun) y += blockSpacing * zoom;
+                float? before = block != null ? block.spaceBefore : table.spaceBefore;
+                PageBreak pageBreak = block != null ? block.pageBreak : table.pageBreak;
+                if (index > 0 && paged && pageBreak != PageBreak.None)
+                {
+                    if (pageBreak == PageBreak.Clear && placer is { Waiting: true }) y = placer.Flush(bands.PageOf(bands.Break(y)));
+                    y = bands.Break(y);
+                }
+                else if (index > 0 && (before.HasValue || !codeRun)) y += (before ?? blockSpacing) * zoom;
 
                 Control item = block ?? (Control)child;
                 float blockTop = y;
-                if (table != null) blockTop = bands.Push(y, table.FirstRowHeight);
-                else if (block.Lines is { Count: > 0 } lines) blockTop = bands.Push(y, lines[0].height);
+                if (table != null) blockTop = space?.Push(bands, y, table.FirstRowHeight) ?? bands.Push(y, table.FirstRowHeight);
+                else if (block.Lines is { Count: > 0 } lines) blockTop = space?.Push(bands, y, lines[0].height) ?? bands.Push(y, lines[0].height);
 
                 if (index > to && blockTops[index] == blockTop && !FloatsBelow(blockTop) && block is not { laidAround: true })
                 {
@@ -3228,7 +3683,16 @@ namespace ArctisAurora.Core.UI
                 }
 
                 float height;
-                if (table != null) height = table.Paginate(blockTop, bands);
+                if (table != null)
+                {
+                    height = table.Paginate(blockTop, bands, space);
+                    if (space != null)
+                    {
+                        List<BlockControl> cells = new List<BlockControl>();
+                        table.AppendBlocks(cells);
+                        space.Reserve(bands.PageOf(blockTop), cells.SelectMany(c => c.Anchors()).Select(a => a.id));
+                    }
+                }
                 else
                 {
                     RegisterFloats(block, blockTop);
@@ -3237,7 +3701,7 @@ namespace ArctisAurora.Core.UI
                     else
                     {
                         if (block.laidAround) block.LayoutAround(null);
-                        height = block.Paginate(blockTop, bands);
+                        height = block.Paginate(blockTop, bands, space);
                     }
                 }
                 if (index < blockControls.Count)
@@ -3270,6 +3734,18 @@ namespace ArctisAurora.Core.UI
             }
             foreach (FloatPicture f in floats)
                 y = MathF.Max(y, f.bounds.Bottom);
+            if (space != null)
+            {
+                ReserveOrphanNotes(bands, space, y, paged);
+                if (placer!.Waiting) y = placer.Flush(Math.Max(bands.PageOf(y - PageBands.tolerance) + 1, space.Pages));
+                y = PlaceFootnotes(bands, space, y, paged);
+                placer.Stack((control, at, height) =>
+                {
+                    insertControls.Add(control);
+                    insertTops.Add(at);
+                    insertHeights.Add(height);
+                });
+            }
 
             if (!paged)
             {
@@ -3282,6 +3758,100 @@ namespace ArctisAurora.Core.UI
             pageHeight = paper.Y;
             return pageCount * paper.Y + (pageCount - 1) * PageGap * zoom;
         }
+
+        // Each footnote's blocks, the first group to name an id, and their heights stacked.
+        private void MeasureFootnotes(PageSpace space)
+        {
+            footnoteGroups.Clear();
+            PageInsert? current = null;
+            foreach (Entity child in children)
+            {
+                if (child is not BlockControl { insert.footnote: string id } block) continue;
+                if (block.insert != current && footnoteGroups.ContainsKey(id)) continue;
+                current = block.insert;
+                if (!footnoteGroups.TryGetValue(id, out List<BlockControl>? blocks)) footnoteGroups[id] = blocks = new List<BlockControl>();
+                float height = block.Paginate(0f, unbounded) + (blocks.Count > 0 ? (block.spaceBefore ?? 0f) * zoom : 0f);
+                blocks.Add(block);
+                space.notes[id] = space.notes.GetValueOrDefault(id) + height;
+            }
+        }
+
+        // Each float's blocks and tables, stacked, one group per PageInsert.
+        private void MeasureFloats(PageFloats placer)
+        {
+            PageFloats.Group? current = null;
+            foreach (Entity child in children)
+            {
+                BlockControl? block = child as BlockControl;
+                TableControl? table = block == null ? TableIn(child) : null;
+                PageInsert? insert = block?.insert ?? table?.insert;
+                if (insert?.floatKind == null) continue;
+                if (current?.insert != insert)
+                {
+                    placer.groups.Add(current = new PageFloats.Group(insert));
+                    placer.starts[child] = current;
+                }
+
+                float gap = current.items.Count > 0 ? ((block != null ? block.spaceBefore : table!.spaceBefore) ?? 0f) * zoom : 0f;
+                float height = block != null ? block.Paginate(0f, unbounded) : table!.Paginate(0f, unbounded);
+                current.offsets.Add(current.height + gap);
+                current.items.Add((Control)child);
+                current.heights.Add(height);
+                current.height += gap + height;
+            }
+        }
+
+        // Footnotes no anchor placed go on the last page, or one more if they do not fit.
+        private void ReserveOrphanNotes(PageBands bands, PageSpace space, float y, bool paged)
+        {
+            List<string> orphans = footnoteGroups.Keys.Where(id => !space.Placed(id)).ToList();
+            if (orphans.Count == 0) return;
+            int last = bands.PageOf(y - PageBands.tolerance);
+            float need = orphans.Sum(id => space.notes[id]) + (space.Notes(last) == 0f ? space.separator : 0f);
+            float room = paged ? bands.top + last * bands.stride + bands.height - space.Bottom(last) - y : float.PositiveInfinity;
+            space.Reserve(paged && need > room ? last + 1 : last, orphans);
+        }
+
+        // Stacks each page's footnotes at the foot of its text area under a short rule, above the page's bottom floats.
+        // Pageless puts them all under the text. Returns the document's new end.
+        private float PlaceFootnotes(PageBands bands, PageSpace space, float y, bool paged)
+        {
+            float end = y;
+            float at = y + space.separator;
+            for (int p = 0; p < space.placed.Count; p++)
+            {
+                if (space.placed[p] is not List<string> ids) continue;
+                if (paged) at = MathF.Max(bands.top + p * bands.stride + bands.height - space.Bottom(p), space.TextEnd(p)) + space.separator;
+                if (paged || footnoteRules.Count == 0) footnoteRules.Add((paged ? p : 0, at - 2.6f * PxPerPt * zoom));
+                foreach (string id in ids)
+                    for (int i = 0; i < footnoteGroups[id].Count; i++)
+                    {
+                        BlockControl block = footnoteGroups[id][i];
+                        if (i > 0) at += (block.spaceBefore ?? 0f) * zoom;
+                        float height = block.Paginate(at, unbounded);
+                        insertControls.Add(block);
+                        insertTops.Add(at);
+                        insertHeights.Add(height);
+                        at += height;
+                    }
+                end = MathF.Max(end, at);
+            }
+            return end;
+        }
+
+        // The 1-based page a block's character lands on, a table's top for a table; null until the block is placed.
+        internal int? PageAt(Control item, int offset)
+        {
+            int index = blockControls.FindIndex(c => c == item || TableIn(c) == item);
+            float y;
+            if (index >= 0) y = blockTops[index];
+            else if (insertControls.FindIndex(c => c == item || TableIn(c) == item) is int insert and >= 0) y = insertTops[insert];
+            else return null;
+            if (item is BlockControl block) y += block.CaretAt(Math.Clamp(offset, 0, block.Length)).top;
+            return paginatedBands.PageOf(y + PageBands.tolerance) + 1;
+        }
+
+        private static bool IsInsert(Entity child) => (child as BlockControl)?.insert != null || TableIn(child)?.insert != null;
 
         private static bool Remeasured(Control control) => ((ArrangeFlags)control.arrange.flags & ArrangeFlags.Remeasured) != 0;
 
@@ -3300,14 +3870,7 @@ namespace ArctisAurora.Core.UI
                     edgeThickness = new Thickness(1f)
                 };
                 sheet.PaintOr(null, PaletteRole.Surface);
-                LabelControl number = new LabelControl
-                {
-                    hitTestable = false,
-                    role = PaletteRole.MutedInk,
-                    horizontalPosition = 0.5f,
-                    verticalPosition = 1f
-                };
-                sheet.AddChild(number);
+                sheet.AddChild(new PageMargins());
                 sheet.parent = this;
                 children.Insert(pages.Count, sheet);
                 pages.Add(sheet);
@@ -3315,19 +3878,181 @@ namespace ArctisAurora.Core.UI
             }
         }
 
-        // Writes each sheet's number into its bottom margin, or clears it.
+        // Each page sheet's arranged rect, first page first.
+        internal IEnumerable<LayoutRect> PageRects() => pages.Take(pageCount).Select(sheet => sheet.arrangedRect);
+
+        // Writes each sheet's running head and foot, or its number in the bottom margin, or clears them.
         private void NumberPages()
         {
-            bool show = page.pageNumbers && page.mode == PageMode.Paged;
-            int size = Math.Max(1, (int)MathF.Round(pageNumberSize * zoom));
+            bool paged = page.mode == PageMode.Paged;
+            bool running = paged && page.styles.Count > 0;
+            (string left, string right, string? style)[] heads = running ? RunningHeads() : Array.Empty<(string, string, string?)>();
+            float textLeft = Mm(page.marginLeft);
+            float textRight = measuredPaper.X - Mm(page.marginRight);
+            float textTop = Mm(page.marginTop);
+            float textBottom = measuredPaper.Y - Mm(page.marginBottom);
+
             for (int i = 0; i < pages.Count; i++)
             {
-                LabelControl number = (LabelControl)pages[i].children[0];
-                number.text = show ? (i + 1).ToString() : string.Empty;
-                number.fontSize = size;
+                PageMargins margins = (PageMargins)pages[i].children[0];
+                margins.Begin(measuredPaper);
+                if (!running && paged && page.pageNumbers)
+                {
+                    LabelControl number = margins.Slot(SlotPlace.FootCenter, (i + 1).ToString(), null, pageNumberSize * zoom, FontStyle.Regular, PaletteRole.MutedInk);
+                    float bottom = MathF.Max(0f, (Mm(page.marginBottom) - number.fontSize * number.lineHeight) * 0.5f);
+                    margins.Place(SlotPlace.FootCenter, 0f, measuredPaper.X, measuredPaper.Y - bottom);
+                }
+                else if (running && i < heads.Length && page.StyleNamed(heads[i].style ?? page.style) is PageStyle style)
+                {
+                    float headBottom = textTop - Mm(style.headSep);
+                    float footBottom = textBottom + Mm(style.footSkip);
+                    foreach (RunningSlot slot in style.slots)
+                    {
+                        string text = slot.text.Replace("{page}", (i + 1).ToString()).Replace("{leftmark}", heads[i].left).Replace("{rightmark}", heads[i].right);
+                        FontStyle face = slot.bold ? slot.italic ? FontStyle.BoldItalic : FontStyle.Bold : slot.italic ? FontStyle.Italic : FontStyle.Regular;
+                        margins.Slot(slot.place, text, slot.fontName, slot.fontSize * zoom, face, PaletteRole.Ink);
+                        margins.Place(slot.place, textLeft, textRight, slot.place <= SlotPlace.HeadRight ? headBottom : footBottom);
+                    }
+                    if (style.headRule > 0f)
+                        margins.Rule(0, new LayoutRect(textLeft, headBottom + 2f * zoom, textRight - textLeft, MathF.Max(1f, style.headRule * zoom)));
+                    if (style.footRule > 0f)
+                        margins.Rule(1, new LayoutRect(textLeft, (textBottom + footBottom) * 0.5f, textRight - textLeft, MathF.Max(1f, style.footRule * zoom)));
+                }
+                foreach ((int p, float y) in footnoteRules)
+                    if (p == i)
+                        margins.Rule(2, new LayoutRect(textLeft, y - i * paginatedBands.stride, 0.4f * (textRight - textLeft), MathF.Max(1f, 0.4f * PxPerPt * zoom)));
+                margins.End();
+            }
+        }
 
-                float bottom = MathF.Max(0f, (Mm(page.marginBottom) - size * number.lineHeight) * 0.5f);
-                if (number.margin.bottom != bottom) number.margin = new Thickness(0f, 0f, bottom, 0f);
+        // Each page's \leftmark (its last mark's left half), \rightmark (its first mark's right half) and \thispagestyle.
+        private (string left, string right, string? style)[] RunningHeads()
+        {
+            (string left, string right, string? style)[] heads = new (string, string, string?)[pageCount];
+            string left = string.Empty;
+            string right = string.Empty;
+            int b = 0;
+            for (int p = 0; p < pageCount; p++)
+            {
+                string? firstRight = null;
+                string? style = null;
+                for (; b < blockControls.Count && paginatedBands.PageOf(blockTops[b]) <= p; b++)
+                {
+                    if (blockControls[b] is not BlockControl block) continue;
+                    style ??= block.pageStyle;
+                    if (block.markLeft == null && block.markRight == null) continue;
+                    left = block.markLeft ?? left;
+                    right = block.markRight ?? right;
+                    firstRight ??= right;
+                }
+                heads[p] = (left, firstRight ?? right, style);
+            }
+            return heads;
+        }
+
+        // A sheet's head and foot: six slot labels and the head, foot and footnote rules, each placed by the document.
+        private sealed class PageMargins : ContainerControl
+        {
+            private readonly LabelControl[] slots = new LabelControl[6];
+            private readonly PanelControl[] rules = new PanelControl[3];
+
+            // each slot's span across the sheet, the bottom it sits on and where in the span it aligns; each rule's rect; what this pass wrote
+            private readonly (float left, float right, float bottom, float align)[] places = new (float, float, float, float)[6];
+            private readonly LayoutRect[] ruleRects = new LayoutRect[3];
+            private readonly bool[] written = new bool[9];
+            private Vector2 paper;
+
+            public PageMargins()
+            {
+                hitTestable = false;
+                horizontalAlignment = HorizontalAlignment.Left;
+                verticalAlignment = VerticalAlignment.Top;
+                horizontalPosition = 0f;
+                verticalPosition = 0f;
+                for (int i = 0; i < slots.Length; i++)
+                {
+                    slots[i] = new LabelControl { hitTestable = false };
+                    AddChild(slots[i]);
+                }
+                for (int i = 0; i < rules.Length; i++)
+                {
+                    rules[i] = new PanelControl { hitTestable = false };
+                    rules[i].PaintOr(null, PaletteRole.Ink);
+                    AddChild(rules[i]);
+                }
+            }
+
+            public void Begin(Vector2 paper)
+            {
+                if (this.paper != paper) InvalidateLayout();
+                this.paper = paper;
+                Array.Clear(written);
+            }
+
+            // Blanks whatever this pass did not write.
+            public void End()
+            {
+                for (int i = 0; i < slots.Length; i++)
+                    if (!written[i]) slots[i].text = string.Empty;
+                for (int i = 0; i < rules.Length; i++)
+                    if (!written[6 + i]) Rule(i, default);
+            }
+
+            public LabelControl Slot(SlotPlace place, string text, string? fontName, float size, FontStyle face, PaletteRole role)
+            {
+                written[(int)place] = true;
+                LabelControl label = slots[(int)place];
+                label.text = text;
+                label.fontName = fontName ?? "default";
+                label.fontSize = Math.Max(1, (int)MathF.Round(size));
+                label.role = role;
+                if (label.style != face)
+                {
+                    label.style = face;
+                    label.InvalidateLayout();
+                }
+                return label;
+            }
+
+            public void Place(SlotPlace place, float left, float right, float bottom)
+            {
+                (float, float, float, float) at = (left, right, bottom, (int)place % 3 * 0.5f);
+                if (places[(int)place] == at) return;
+                places[(int)place] = at;
+                InvalidateArrange();
+            }
+
+            public void Rule(int index, LayoutRect rect)
+            {
+                written[6 + index] = rect.width > 0f;
+                ref LayoutRect at = ref ruleRects[index];
+                if (at.x == rect.x && at.y == rect.y && at.width == rect.width && at.height == rect.height) return;
+                at = rect;
+                InvalidateArrange();
+            }
+
+            protected override Vector2 MeasureCore(Vector2 availableSize)
+            {
+                foreach (Entity child in children)
+                    ((Control)child).Measure(paper);
+                arrange.desired = paper;
+                return paper;
+            }
+
+            protected override void ArrangeCore(LayoutRect finalRect)
+            {
+                WriteArranged(finalRect);
+                for (int i = 0; i < slots.Length; i++)
+                {
+                    (float left, float right, float bottom, float align) = places[i];
+                    Vector2 size = slots[i].arrange.desired;
+                    slots[i].Arrange(new LayoutRect(finalRect.x + left + (right - left - size.X) * align, finalRect.y + bottom - size.Y, size.X, size.Y));
+                }
+                for (int i = 0; i < rules.Length; i++)
+                {
+                    LayoutRect rect = ruleRects[i];
+                    rules[i].Arrange(new LayoutRect(finalRect.x + rect.x, finalRect.y + rect.y, rect.width, rect.height));
+                }
             }
         }
 
@@ -3357,6 +4082,7 @@ namespace ArctisAurora.Core.UI
                 int from = -1;
                 int to = -1;
                 int count = 0;
+                inserts = false;
                 contentWidth = paper.X;
                 foreach (Entity child in children)
                 {
@@ -3376,6 +4102,11 @@ namespace ArctisAurora.Core.UI
                     item.Measure(new Vector2(textWidth, float.MaxValue));
                     if (item is BlockControl { stylingType: TextStyleType.Code, codeWrap: false } code)
                         contentWidth = MathF.Max(contentWidth, CodeWidth(code, textWidth) + Mm(page.marginLeft + page.marginRight));
+                    if (IsInsert(child))
+                    {
+                        inserts = true;
+                        continue;
+                    }
                     if (Remeasured(item) || count >= blockControls.Count || blockControls[count] != item)
                     {
                         if (from < 0) from = count;
@@ -3430,12 +4161,14 @@ namespace ArctisAurora.Core.UI
             int index = 0;
             foreach (Entity child in children)
             {
-                if ((child is not BlockControl && TableIn(child) == null) || index >= blockTops.Count) continue;
+                if ((child is not BlockControl && TableIn(child) == null) || IsInsert(child) || index >= blockTops.Count) continue;
 
                 float width = child is BlockControl { stylingType: TextStyleType.Code, codeWrap: false } code ? CodeWidth(code, textWidth) : textWidth;
                 ((Control)child).Arrange(new LayoutRect(textX, top + blockTops[index], width, blockHeights[index]));
                 index++;
             }
+            for (int i = 0; i < insertControls.Count; i++)
+                insertControls[i].Arrange(new LayoutRect(textX, top + insertTops[i], textWidth, insertHeights[i]));
             Profiling.Zone.End("Document.ArrangeBlocks");
 
             // after the blocks, so every line's geometry is this frame's
@@ -3505,6 +4238,8 @@ namespace ArctisAurora.Core.UI
             }
             for (int i = low; i < blockControls.Count && blockTops[i] < to; i++)
                 walked += UIEngine.Collect(blockControls[i], z);
+            for (int i = 0; i < insertControls.Count; i++)
+                if (insertTops[i] < to && insertTops[i] + insertHeights[i] > from) walked += UIEngine.Collect(insertControls[i], z);
 
             foreach (FloatingPicture view in frontViews)
                 walked += UIEngine.Collect(view, z);

@@ -91,7 +91,25 @@ Structural edits are span-aware: inserting a column inside a span widens it, del
 **Merge is "Merge cell right", not a selection range (user picked the recommended form).**
 The caret's cell absorbs the next cell in its row, blocks appended, an empty side dropped; refused on a row's last cell. "Split cell" turns a merged cell back into single cells with the content in the first; refused on a single cell. Both are one undo step (a table edit). Rejected: merge by selection range.
 
-**`Borders` flag on `<Table>`.** Needed so a LaTeX table without rules draws no grid; the full grid or nothing, not per-edge rules (L5-F2 in [[latex-editor]]).
+**`Borders` flag on `<Table>`.** Needed so a LaTeX table without rules draws no grid; the full grid or nothing, not per-edge rules (L5-F2 in [[latex-editor]]). Superseded in L7g: LaTeX tables always write `Borders="false"` and carry per-edge rules (next section).
+
+**`<Table SpaceBefore>` (L7c).** `TableControl.spaceBefore` (float?) is the space above a table, read and written by `DocumentXml`; `DocumentControl.Paginate` uses it instead of the block spacing when set. See [[latex-editor]].
+
+**`<Table PageBreak>` (L7d).** `TableControl.pageBreak` (enum `PageBreak`, XML `PageBreak`) puts a page break before the table, as a block's does. See [[document-pages]].
+
+## Rules, alignment and padding (L7g, 2026-10-06)
+- XML: `<Table Align Padding="across down">`, `<Column RuleLeft RuleRight>` (Plain|Double), `<Cell RuleAbove RuleBelow>` ("Kind" or "Kind widthPx"; kinds Plain, Double, Heavy, Light, Cmid), `<Cell TrimAbove TrimBelow>` (Left|Right|Both). Read and written by `DocumentXml` (`ReadCellRules`, `ReadRule`, `ReadPadding`, `WriteRule`).
+- `TableControl`: public `alignment` (`TextAlignment`), `cellRules` (`Dictionary<StackPanelControl, CellRules>`), `leftRules`/`rightRules` (`TableRule[]` per column), `cellPadding` (`Vector2?`, null = the 6 px `cellInset`), `ApplyInsets()`; enums `TableRule`, `RuleTrim`; struct `CellRules`. `ArrangeCore` narrows and moves the grid by `alignment`; `ArrangeRules` draws the rules in `PaletteRole.Ink`, at least 1 px, zoom-scaled, touching segments joined into one line, vertical rules split at page gaps.
+- Rules are drawn at LaTeX's weights: arrayRule 0.4 pt, doubleRuleSep 2 pt, heavy 0.08 em, light 0.05 em, cmid 0.03 em, booktabs rule seps 0.4 ex above and 0.65 ex below, ex = 0.430555 em (Latin Modern's x-height, not the cell font's).
+- Edits: `DocumentControl.SplitTableCell` copies Rule* attributes to the new cells (Left trim stays on the first piece, Right trim moves to the last). A new row or column has no rules, deleting drops its rules, merge keeps the left cell's.
+- Why it exists: LaTeX tabulars with exact rules, centring and `\tabcolsep` ([[latex-editor]], L7g-F1 to L7g-F3).
+- Tests: `TextInput.TableRules` (XML round-trip, thicknesses and positions at zoom 1 and 2, booktabs seps, cmidrule trims, joined segments, split carries rules and trims, undo, a new row has no rules); golden `Tex.Booktabs`.
+
+**Rules live on the cells and columns, not as a rule per row boundary (L7g-F1, user, recommended).**
+Row and column edits carry them free. Rejected: `<Rule From To Kind Trim>` per boundary — LaTeX's exact shape, but column insert and delete shift its indices. Cost: a rule under part of a merged cell is not expressible; it reaches any cell it overlaps.
+
+**Structural edits and padding (L7g-F2, L7g-F3, user, recommended).**
+Edits as above; rejected: dropping every rule on any structural edit. Padding is `<Table Padding>`: LaTeX tables get `\tabcolsep` across and 0 down, notes keep 6 px; rejected: 6 px everywhere plus booktabs gaps (wrong table heights).
 
 ## Measured
 `--profile-scenario`, Release+PROFILE, 3 runs each, frames 31–270: `Scenario.Type` p95 0.113–0.131 →
@@ -100,10 +118,11 @@ page panels; not pinned.
 
 ## Known gaps
 - A row taller than a page runs across the break.
-- No nested tables, no row spans (`\multirow`), no per-edge border control, no row height drag, no column resize by keyboard. Column spans landed 2026-10-06 (above).
+- No nested tables, no row spans (`\multirow`), no UI for per-edge rules, alignment or padding (a LaTeX preview writes them; L7g), no row height drag, no column resize by keyboard. Column spans landed 2026-10-06 (above).
 - Column spans, Borders, span-aware edits and merge/split are test-verified only (`TextInput.TableColumnSpan`); **NOT GUI-verified** (the Merge/Split menu items). The test reads spans via XML because `GridListControl.ColumnSpan` is internal.
 - A code block in a cell (from XML only) does not wrap and is not coloured — `CodeWidth` and `HighlightCode` see note-level blocks only.
 - The grip of the last column overhangs the table by 3 px, inside the viewport's clip.
+- Rules, alignment and padding (L7g) are test-verified (`TextInput.TableRules`) and golden-verified (`Tex.Booktabs`); **NOT GUI-verified**. `|` inside a `\multicolumn` spec is ignored, booktabs gaps do not interrupt vertical rules, and a rule under part of a merged cell rules the whole cell.
 - Insert, row/column commands, resize and lists in cells are test- and golden-verified only; **NOT GUI-verified**
   (menu placement, the resize cursor, a real drag).
 - Pointer presses in and around a table, other than the grip drag, are not tested.

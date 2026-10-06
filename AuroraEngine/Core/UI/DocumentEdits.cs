@@ -24,6 +24,13 @@ namespace ArctisAurora.Core.UI
     {
         public TextStyleType stylingType;
         public TextAlignment alignment;
+        public float firstIndent;
+        public float? spaceBefore;
+        public PageBreak pageBreak;
+        public string? pageStyle;
+        public string? markLeft;
+        public string? markRight;
+        public PageInsert? insert;
         public string? language;
         public bool codeWrap;
         public ListKind listKind;

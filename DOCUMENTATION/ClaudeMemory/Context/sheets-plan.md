@@ -67,6 +67,7 @@ notes, sheets and a todo board under Blender-style workspace tabs, plus a simpli
 | S5 | CSV: a `.csv` opens in place as one page (saved back raw, own delimiter and BOM), Create a sheet from this / Convert to sheet in the vault menu, Export as CSV per page | landed 2026-10-05 |
 | S5b | references into a CSV — `[data.csv]data!A1` in sheets, note links and `\sheet{…}`; Paste link from a CSV tab; a CSV references nothing outside itself; CSV rename and convert rewrite references | landed 2026-10-05 |
 | S6 | fixed-size sheets (type chosen at creation, 25 x 25 pages, "+" grow strips and grow popup, paste past the edge grows) and insert rows above / columns left with vault-wide reference shifting | landed 2026-10-05 |
+| S7 | formula functions — comparisons `= <> < > <= >=` (result the number 1/0; user settled, no boolean kind), MIN, MAX, AVERAGE, ROUND, ROUNDUP, ROUNDDOWN, IF beside SUM; a plain sheet, no structured Tables (user settled) | landed 2026-10-06 |
 
 ## Owed for S2b3 — resolved 2026-10-04
 - Done: Ctrl+Shift+V stays on `Sheet.PasteLink`, which falls back to `Text.PasteLink` outside a sheet — `Text.PasteLink`

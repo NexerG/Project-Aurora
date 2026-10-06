@@ -418,6 +418,8 @@ namespace ArctisAurora.Core.UI
         // The note's page format.
         public PageLayout? Page => activeDocument?.layout.Page;
 
+        public int? PageAt(int block, int offset) => content?.PageAt(activeDocument.blocks[block], offset);
+
         public void SetPage(PageLayout page)
         {
             if (content == null) return;

@@ -171,6 +171,12 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("Sheet", "UI", "Sheet cell or range shown live, as file#Page!A1 or file#Page!A1:B2; the run carries no text.")]
         public string sheet { get; set; }
 
+        [A_XSDElementProperty("Space", "UI", "Each character's advance in pixels: a fixed-width space that draws nothing; absent is ordinary text.")]
+        public float space { get; set; }
+
+        [A_XSDElementProperty("Note", "UI", "The id of the footnote this run anchors; its page reserves room for it.")]
+        public string? note { get; set; }
+
         public FontStyle Style =>
             bold ? (italic ? FontStyle.BoldItalic : FontStyle.Bold)
                  : italic ? FontStyle.Italic : FontStyle.Regular;
@@ -183,6 +189,19 @@ namespace ArctisAurora.Core.UI
     {
         public TextStyleType stylingType = TextStyleType.Text;
         public TextAlignment alignment;
+
+        // first-line indent and the gap above the block, px; a null gap takes the layout's block spacing
+        public float firstIndent;
+        public float? spaceBefore;
+
+        // a break before the block, the page style its page takes, and the running-head marks it sets; null leaves a mark as it was
+        public PageBreak pageBreak;
+        public string? pageStyle;
+        public string? markLeft;
+        public string? markRight;
+
+        // the footnote or float this block is part of; null in the flow
+        public PageInsert? insert;
 
         // a code block's fence language; null when none was named
         public string? language;
@@ -208,6 +227,7 @@ namespace ArctisAurora.Core.UI
         // shape, number or checkbox, in the indent
         private Control? marker;
         private float listIndent;
+        private bool optimalBreaks;
         private const float bulletSize = 6f;
         private const float numberGap = 6f;
 
@@ -235,6 +255,7 @@ namespace ArctisAurora.Core.UI
             fontName = layout.FontNameFor(stylingType) ?? "default";
 
             listIndent = layout.listIndent;
+            optimalBreaks = layout.optimalBreaks;
             ApplyInset();
             SyncMarker();
             SizeMarker();
@@ -305,6 +326,10 @@ namespace ArctisAurora.Core.UI
             span.fontName ?? (span.stylingType == TextStyleType.Inherit ? null : layout?.FontNameFor(span.stylingType)) ?? fontName;
 
         protected override TextAlignment Alignment => alignment;
+
+        protected override bool OptimalBreaks => optimalBreaks;
+
+        protected override float FirstLineIndent => firstIndent * textZoom;
 
         protected override bool Wraps => stylingType != TextStyleType.Code || codeWrap;
 
@@ -452,7 +477,9 @@ namespace ArctisAurora.Core.UI
                 collision = run.image != null ? run.collision : PictureCollision.Box,
                 mathSource = run.image == null ? run.math : null,
                 mathDisplay = run.image == null && run.math != null && run.display,
-                sheetRef = run.image == null && run.math == null ? run.sheet : null
+                sheetRef = run.image == null && run.math == null ? run.sheet : null,
+                spaceWidth = run.image == null && run.math == null && run.sheet == null ? run.space : 0f,
+                note = run.note
             });
             if (run.effect != null) RestartEffect();
 
@@ -467,7 +494,7 @@ namespace ArctisAurora.Core.UI
             if (string.IsNullOrEmpty(insert)) return;
 
             int index = SpanForInsert(offset);
-            if (spans[index].IsObject) index = TextSpanBeside(index, offset);
+            if (!Typable(spans[index])) index = TextSpanBeside(index, offset);
 
             CollectionsMarshal.AsSpan(spans)[index].count += insert.Length;
 
@@ -503,6 +530,9 @@ namespace ArctisAurora.Core.UI
             {
                 stylingType = stylingType,
                 alignment = alignment,
+                firstIndent = firstIndent,
+                spaceBefore = spaceBefore,
+                insert = insert,
                 language = language,
                 codeWrap = codeWrap,
                 listKind = listKind,
@@ -548,6 +578,13 @@ namespace ArctisAurora.Core.UI
             {
                 stylingType = stylingType,
                 alignment = alignment,
+                firstIndent = firstIndent,
+                spaceBefore = spaceBefore,
+                pageBreak = pageBreak,
+                pageStyle = pageStyle,
+                markLeft = markLeft,
+                markRight = markRight,
+                insert = insert,
                 language = language,
                 codeWrap = codeWrap,
                 listKind = listKind,
@@ -596,6 +633,13 @@ namespace ArctisAurora.Core.UI
         {
             stylingType = snapshot.stylingType;
             alignment = snapshot.alignment;
+            firstIndent = snapshot.firstIndent;
+            spaceBefore = snapshot.spaceBefore;
+            pageBreak = snapshot.pageBreak;
+            pageStyle = snapshot.pageStyle;
+            markLeft = snapshot.markLeft;
+            markRight = snapshot.markRight;
+            insert = snapshot.insert;
             language = snapshot.language;
             codeWrap = snapshot.codeWrap;
             listKind = snapshot.listKind;
@@ -614,6 +658,13 @@ namespace ArctisAurora.Core.UI
         {
             stylingType = kind.stylingType;
             alignment = kind.alignment;
+            firstIndent = kind.firstIndent;
+            spaceBefore = kind.spaceBefore;
+            pageBreak = kind.pageBreak;
+            pageStyle = kind.pageStyle;
+            markLeft = kind.markLeft;
+            markRight = kind.markRight;
+            insert = kind.insert;
             language = kind.language;
             codeWrap = kind.codeWrap;
             listKind = kind.listKind;
@@ -748,15 +799,18 @@ namespace ArctisAurora.Core.UI
 
             if (offset <= start)
             {
-                if (picture > 0 && !spans[picture - 1].IsObject) return picture - 1;
+                if (picture > 0 && Typable(spans[picture - 1])) return picture - 1;
                 spans.Insert(picture, ZeroText(spans[picture]));
                 return picture;
             }
 
-            if (picture + 1 < spans.Count && !spans[picture + 1].IsObject) return picture + 1;
+            if (picture + 1 < spans.Count && Typable(spans[picture + 1])) return picture + 1;
             spans.Insert(picture + 1, ZeroText(spans[picture]));
             return picture + 1;
         }
+
+        // Text typed into it stays text: not a picture, formula, sheet link or spacer.
+        private static bool Typable(StyleSpan span) => !span.IsObject && span.spaceWidth == 0f;
 
         private static StyleSpan ZeroText(StyleSpan picture)
         {
@@ -823,7 +877,9 @@ namespace ArctisAurora.Core.UI
             && a.underline == b.underline
             && a.highlightHex == b.highlightHex
             && a.stylingType == b.stylingType
-            && a.fontSizeAuthored == b.fontSizeAuthored;
+            && a.fontSizeAuthored == b.fontSizeAuthored
+            && a.spaceWidth == b.spaceWidth
+            && a.note == b.note;
         #endregion
 
         // Save: the spans cut back into runs. The last span absorbs whatever is left of the string,
@@ -849,6 +905,8 @@ namespace ArctisAurora.Core.UI
                     math = span.mathSource,
                     display = span.mathDisplay,
                     sheet = span.sheetRef,
+                    space = span.spaceWidth,
+                    note = span.note,
                     width = span.imageWidth,
                     height = span.imageHeight,
                     wrap = span.wrap,

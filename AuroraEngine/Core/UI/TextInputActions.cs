@@ -317,6 +317,17 @@ namespace ArctisAurora.Core.UI
         [A_XSDActionDependency("Text.Save", "Input", "Writes the focused note back to the file it was loaded from")]
         public static void Save() => Editor()?.SaveNamed();
 
+        [A_XSDActionDependency("Tex.ExportPdf", "Input", "Writes the focused LaTeX file's preview as a PDF beside it")]
+        public static void ExportPdf()
+        {
+            for (ArctisAurora.Core.UI.Control? control = Editor(); control != null; control = control.parent as ArctisAurora.Core.UI.Control)
+                if (control is TexEditorControl tex)
+                {
+                    tex.ExportPdf();
+                    return;
+                }
+        }
+
         [A_XSDActionDependency("Text.CaretLeft", "Input")]
         public static void CaretLeft() => Move(CaretMove.Left);
 

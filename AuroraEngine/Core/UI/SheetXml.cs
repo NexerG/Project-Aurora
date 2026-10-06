@@ -66,7 +66,7 @@ namespace ArctisAurora.Core.UI
                             && formatRow >= 0 && formatColumn >= 0)
                             page.SetFormat(formatRow, formatColumn, new SheetFormat(
                                 (string?)child.Attribute("Bold") == "true",
-                                (string?)child.Attribute("Fill"),
+                                Fill(child),
                                 (string?)child.Attribute("Number")));
                         else page.extra.Add(new XElement(child));
                         break;
@@ -114,6 +114,15 @@ namespace ArctisAurora.Core.UI
             int.TryParse((string?)element.Attribute(attribute), NumberStyles.None, CultureInfo.InvariantCulture, out int value) && value > 0
                 ? value
                 : null;
+
+        // A fill as #RRGGBB or RRGGBB; anything else is dropped.
+        private static string? Fill(XElement element)
+        {
+            string? fill = (string?)element.Attribute("Fill");
+            if (fill == null) return null;
+            string digits = fill.StartsWith('#') ? fill[1..] : fill;
+            return digits.Length == 6 && digits.All(char.IsAsciiHexDigit) ? fill : null;
+        }
         #endregion
 
         #region ---- write ----

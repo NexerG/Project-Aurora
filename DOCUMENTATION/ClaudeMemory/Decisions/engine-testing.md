@@ -139,6 +139,17 @@ slice 3: `TestContext` input helpers, `UI.WindowRoot.ToWindowSpace`, `AGlfwWindo
 - `TextureAsset.LoadFile` is public (Carbon uploads shot PNGs). Carbon side: [[carbon-frame-viewer]] §17.
 - Test: `Visual.PanelAndLabel` — 200×80 `#2E5C8A` panel, radius 8, white label; golden committed.
 
+### One-shot runner — `_Build/test.sh` (2026-10-06)
+- `bash _Build/test.sh [Suite] [--baseline]`: Debug solution build (errors only, exit 255 on failure), then Thorium
+  `--test[=<Suite>]` into `%TEMP%\aurora-test\run.txt`; prints `FAIL`/`NEW`/`APPROVED` lines, the summary line, and
+  `new error:` for each `ERROR`/`FATAL` kind (timestamp and lane stripped) absent from `_Build/test-baseline.txt`.
+  Exit = Thorium's (failed count). `--baseline` rewrites the baseline from this run's kinds (whole run, not Boot only).
+- The `aurora-test` skill is now the runner only; writing tests, goldens, screenshots and `--send` moved verbatim to
+  the skill's `writing.md`.
+- **Why:** session cost is the main-session turn count times its context (~300k), not the run. Build, run and the
+  Boot error-kind grep used to take 1–3 turns; the script makes it one turn with ~1 KB back. A subagent saves nothing:
+  the spawn is still a main turn at full context, and its own cold start comes on top.
+
 ## Why these choices
 
 **In the real hosts, not a fifth test app (user, 2026-09-25).**

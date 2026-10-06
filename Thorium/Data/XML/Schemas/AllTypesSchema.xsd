@@ -103,6 +103,9 @@
       <xs:enumeration value="PageMode" />
       <xs:enumeration value="PageSize" />
       <xs:enumeration value="Page" />
+      <xs:enumeration value="SlotPlace" />
+      <xs:enumeration value="PageStyle" />
+      <xs:enumeration value="RunningSlot" />
       <xs:enumeration value="ScrollDirection" />
       <xs:enumeration value="Scrollable" />
       <xs:enumeration value="Slider" />

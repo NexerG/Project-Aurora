@@ -192,6 +192,138 @@ namespace Thorium.Tests
             Directory.Delete(folder, true);
         }
 
+        [A_XSDActionDependency("Tex.Booktabs", "Test")]
+        private static IEnumerator<int> TexBooktabs(TestContext t)
+        {
+            const string source = """
+                \documentclass{article}
+                \usepackage{booktabs}
+                \begin{document}
+                \begin{center}
+                \begin{tabular}{lrr}
+                \toprule
+                & \multicolumn{2}{c}{Time (ms)} \\
+                \cmidrule(lr){2-3}
+                Case & Before & After \\
+                \midrule
+                Layout & 4.2 & 1.1 \\
+                Typing & 12 & 3 \\
+                \bottomrule
+                \end{tabular}
+                \end{center}
+                A ruled grid at the left margin:
+
+                \noindent\begin{tabular}{|l||c|}
+                \hline
+                a & b \\
+                \cline{2-2}
+                c & d \\
+                \hline\hline
+                \end{tabular}
+
+                \begin{flushright}
+                \begin{tabular}{ll}
+                \toprule[2pt]
+                x & y \\
+                \bottomrule
+                \end{tabular}
+                \end{flushright}
+                \end{document}
+                """;
+            XElement document = TexLowering.Compile(source, out List<TexError> errors);
+            t.Check(errors.Count == 0, $"the sample compiles clean: {string.Join("; ", errors.Select(e => $"{e.line}: {e.message}"))}");
+
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-booktabs-{Guid.NewGuid():N}.xml");
+            document.Save(path);
+            DocumentEditorControl editor = new DocumentEditorControl
+            {
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                verticalAlignment = VerticalAlignment.Stretch
+            };
+            t.Show(editor);
+            editor.LoadPath(path);
+            File.Delete(path);
+            yield return 2;
+            yield return t.Golden("Page", editor);
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("Tex.Amsmath", "Test")]
+        private static IEnumerator<int> TexAmsmath(TestContext t)
+        {
+            const string source = """
+                \documentclass{article}
+                \usepackage{amsmath}
+                \DeclareMathOperator{\tr}{tr}
+                \begin{document}
+                \section{Equations}
+                Euler's identity is \eqref{eq:euler}; the sum of squares is \eqref{eq:sum}.
+                \begin{equation}
+                e^{i\pi} + 1 = 0 \label{eq:euler}
+                \end{equation}
+                \begin{align}
+                (a+b)^2 &= a^2 + 2ab + b^2 \label{eq:sum} \\
+                (a-b)^2 &= a^2 - 2ab + b^2 \notag \\
+                a^2 - b^2 &= (a+b)(a-b) \tag{A}
+                \end{align}
+                \begin{gather}
+                \tr A = \sum_i a_{ii} \\
+                \binom{n}{k} = \frac{n!}{k!\,(n-k)!}
+                \end{gather}
+                \[ A = \begin{pmatrix} 1 & 2 \\ 3 & 4 \end{pmatrix}, \quad
+                   B = \begin{bmatrix} a & b \\ c & d \end{bmatrix}, \quad
+                   \det\begin{vmatrix} a & b \\ c & d \end{vmatrix} = ad - bc \]
+                \[ f(x) = \begin{cases} x^2 & \text{if } x \ge 0 \\ -x & \text{otherwise} \end{cases} \]
+                \end{document}
+                """;
+            XElement document = TexLowering.Compile(source, out List<TexError> errors);
+            t.Check(errors.Count == 0, $"the sample compiles clean: {string.Join("; ", errors.Select(e => $"{e.line}: {e.message}"))}");
+
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.xml");
+            document.Save(path);
+            DocumentEditorControl editor = new DocumentEditorControl
+            {
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                verticalAlignment = VerticalAlignment.Stretch
+            };
+            t.Show(editor);
+            editor.LoadPath(path);
+            File.Delete(path);
+            yield return 2;
+            yield return t.Golden("Page", editor);
+        }
+
+        [A_XSDActionDependency("Tex.Hyphenation", "Test")]
+        private static IEnumerator<int> TexHyphenation(TestContext t)
+        {
+            const string source = """
+                \documentclass{article}
+                \begin{document}
+                Characteristically, internationalization requirements complicate straightforward implementations
+                of typographical conventions; incomprehensibility follows whenever administrators misunderstand
+                the representational responsibilities of documentation, notwithstanding considerable
+                experimentation with alternative hyphenation algorithms, extraordinarily comprehensive
+                dictionaries and counterintuitive transformations.
+                \end{document}
+                """;
+            XElement document = TexLowering.Compile(source, out List<TexError> errors);
+            t.Check(errors.Count == 0, $"the sample compiles clean: {string.Join("; ", errors.Select(e => $"{e.line}: {e.message}"))}");
+
+            string path = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}.xml");
+            document.Save(path);
+            DocumentEditorControl editor = new DocumentEditorControl
+            {
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                verticalAlignment = VerticalAlignment.Stretch
+            };
+            t.Show(editor);
+            editor.LoadPath(path);
+            File.Delete(path);
+            yield return 2;
+            IReadOnlyList<TextLine> lines = ((BlockControl)editor.session.document.blocks[0]).Lines;
+            t.Check(lines.Count > 2 && lines.Any(l => l.hyphen > 0f), $"some line of {lines.Count} ends at a hyphen");            yield return t.Golden("Page", editor);
+        }
+
         [A_XSDActionDependency("Tex.SplitView.Recompile", "Test")]
         private static IEnumerator<int> SplitViewRecompile(TestContext t)
         {
@@ -268,6 +400,263 @@ namespace Thorium.Tests
             t.Check(index == 4 && content.caretOffset == 0, $"a double click on the second paragraph goes to its source line: block {index}, offset {content.caretOffset}");
 
             t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("Tex.Pages", "Test")]
+        private static IEnumerator<int> TexPages(TestContext t)
+        {
+            string words = string.Concat(Enumerable.Repeat("The quick brown fox jumps over the lazy dog. ", 6));
+            TexEditorControl editor = ShowSplit(t, $$"""
+                \documentclass{article}
+                \pagestyle{headings}
+                \begin{document}
+                \section{Introduction}\label{sec:intro}
+                {{words}}See page~\pageref{sec:results}.
+                \newpage
+                \section{Results}\label{sec:results}
+                {{words}}Back to page~\pageref{sec:intro}.
+                \end{document}
+                """);
+            for (int i = 0; i < 12; i++) yield return 1;
+
+            List<BlockControl> blocks = editor.preview.activeDocument.blocks.OfType<BlockControl>().ToList();
+            string Plain(BlockControl b) => b.text.Replace("­", "").Replace(' ', ' ');
+            BlockControl first = blocks.First(b => Plain(b).Contains("See page"));
+            BlockControl second = blocks.First(b => Plain(b).Contains("Back to page"));
+            t.Check(Plain(first).EndsWith("See page 2.") && Plain(second).EndsWith("Back to page 1."),
+                $"\\pageref takes its label's page once the preview is laid out: '{Plain(first)[^12..]}' '{Plain(second)[^16..]}'");
+            t.Check(editor.preview.PageAt(editor.preview.activeDocument.blocks.IndexOf(second), 0) == 2, "\\newpage puts Results on page 2");
+
+            BlockControl results = blocks.First(b => Plain(b).Contains("Results"));
+            editor.preview.SetScrollOffset(new Vector2(120f, results.arrangedRect.y - editor.preview.arrangedRect.y - 260f));
+            yield return 2;
+            yield return t.Golden("Break", editor.preview);
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("Tex.FootnotePage", "Test")]
+        private static IEnumerator<int> TexFootnotePage(TestContext t)
+        {
+            string words = string.Concat(Enumerable.Repeat("The quick brown fox jumps over the lazy dog. ", 9));
+            TexEditorControl editor = ShowSplit(t, $$"""
+                \documentclass{article}
+                \begin{document}
+                \section{Notes at the foot}
+                {{words}}A claim.\footnote{The first footnote, set in \emph{footnotesize}.}
+                {{words}}Another.\footnote{A second one, with math $a^2+b^2=c^2$.}
+
+                {{words}}{{words}}
+                \end{document}
+                """);
+            yield return 4;
+
+            List<BlockControl> blocks = editor.preview.activeDocument.blocks.OfType<BlockControl>().ToList();
+            BlockControl second = blocks.Last(b => b.insert?.footnote != null);
+            t.Check(blocks.Count(b => b.insert?.footnote != null) == 2 && editor.preview.PageAt(editor.preview.activeDocument.blocks.IndexOf(second), 0) == 1,
+                "both footnotes are on page 1");
+            editor.preview.SetScrollOffset(new Vector2(120f, second.arrangedRect.Bottom - editor.preview.arrangedRect.y - 420f));
+            yield return 2;
+            yield return t.Golden("Foot", editor.preview);
+            t.Show(new StackPanelControl());
+        }
+
+        [A_XSDActionDependency("Tex.FloatPage", "Test")]
+        private static IEnumerator<int> TexFloatPage(TestContext t)
+        {
+            string folder = Path.Combine(Path.GetTempPath(), $"aurora-tex-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(folder);
+            using (Image<Rgba32> picture = new Image<Rgba32>(120, 60))
+            {
+                for (int y = 0; y < 60; y++)
+                    for (int x = 0; x < 120; x++)
+                        picture[x, y] = new Rgba32((byte)(x * 2), (byte)(y * 4), 160);
+                picture.SaveAsPng(Path.Combine(folder, "gradient.png"));
+            }
+
+            string words = string.Concat(Enumerable.Repeat("The quick brown fox jumps over the lazy dog. ", 9));
+            string source = $$"""
+                \documentclass{article}
+                \usepackage{graphicx}
+                \begin{document}
+                \section{Placement}
+                {{words}}
+
+                \begin{figure}[t]\centering\includegraphics[width=0.5\textwidth]{gradient}\caption{Met mid-page, set at its top.}\end{figure}
+                {{words}}
+
+                \begin{figure}[p]\centering\includegraphics[height=10cm]{gradient}\caption{Too tall to share a page.}\end{figure}
+                {{words}}{{words}}{{words}}
+
+                {{words}}{{words}}{{words}}
+                \end{document}
+                """;
+            XElement document = TexLowering.Compile(source, out List<TexError> errors, null, folder);
+            t.Check(errors.Count == 0, $"the sample compiles clean: {string.Join("; ", errors.Select(e => $"{e.line}: {e.message}"))}");
+
+            string path = Path.Combine(folder, "floatpage.xml");
+            document.Save(path);
+            DocumentEditorControl editor = new DocumentEditorControl
+            {
+                horizontalAlignment = HorizontalAlignment.Stretch,
+                verticalAlignment = VerticalAlignment.Stretch
+            };
+            t.Show(editor);
+            editor.LoadPath(path);
+            yield return 2;
+
+            List<Control> blocks = editor.session.document.blocks;
+            int top = blocks.FindIndex(b => b is BlockControl { insert.placement: "t" });
+            int page = blocks.FindIndex(b => b is BlockControl { insert.placement: "p" });
+            int heading = blocks.FindIndex(b => b is BlockControl { insert: null });
+            t.Check(top >= 0 && editor.PageAt(top, 0) == 1 && blocks[top].arrangedRect.y < blocks[heading].arrangedRect.y, "the [t] figure heads page 1, above the section");
+            t.Check(page >= 0 && editor.PageAt(page, 0) == 2
+                && Enumerable.Range(0, blocks.Count).Where(i => blocks[i] is BlockControl { insert: null }).All(i => editor.PageAt(i, 0) != 2),
+                "the [p] figure has page 2 to itself");
+            DocumentControl content = Content(editor);
+            PanelControl sheet = content.children.OfType<PanelControl>().Where(p => p.children.Count == 1 && p.children[0] is ContainerControl).ElementAt(1);
+            float perMm = PageLayout.PxPerMm * content.zoom;
+            float above = blocks[page].arrangedRect.y - (sheet.arrangedRect.y + content.page.marginTop * perMm);
+            float below = sheet.arrangedRect.Bottom - content.page.marginBottom * perMm - blocks.Last(b => b is BlockControl { insert.placement: "p" }).arrangedRect.Bottom;
+            t.Check(above > 10f && MathF.Abs(above - below) < 1f, $"a page of floats centres them: {above} above, {below} below");
+            yield return t.Golden("Top", editor);
+
+            editor.SetScrollOffset(new Vector2(0f, blocks[page].arrangedRect.y - editor.arrangedRect.y - 300f));
+            yield return 2;
+            yield return t.Golden("FloatPage", editor);
+            t.Show(new StackPanelControl());
+            Directory.Delete(folder, true);
+        }
+
+        [A_XSDActionDependency("Tex.Pdf.Structure", "Test")]
+        private static IEnumerator<int> PdfStructure(TestContext t)
+        {
+            byte[]? file = null;
+            IEnumerator<int> export = ExportFixture(t, bytes => file = bytes);
+            while (export.MoveNext()) yield return export.Current;
+            if (file == null) yield break;
+
+            string pdf = System.Text.Encoding.Latin1.GetString(file);
+            t.Check(pdf.StartsWith("%PDF-1.7"), "a PDF 1.7 header");
+            int start = pdf.LastIndexOf("startxref\n", StringComparison.Ordinal);
+            int xref = int.Parse(pdf.Substring(start + 10).Split('\n')[0]);
+            t.Check(pdf.Substring(xref).StartsWith("xref\n"), $"startxref points at the table: {xref}");
+            string[] rows = pdf.Substring(xref).Split('\n');
+            int count = int.Parse(rows[1].Split(' ')[1]);
+            bool aligned = true;
+            for (int i = 1; i < count; i++)
+                aligned &= pdf.Substring(int.Parse(rows[2 + i][..10])).StartsWith($"{i} 0 obj\n");
+            t.Check(aligned, "every xref offset points at its object");
+
+            t.Check(System.Text.RegularExpressions.Regex.Matches(pdf, @"/Type /Page ").Count == 2, "one page per sheet");
+            t.Check(pdf.Contains("/MediaBox [0 0 612 792]"), "letter paper in points");
+            t.Check(pdf.Contains("/Subtype /Type3"), "text in Type 3 fonts");
+            t.Check(pdf.Contains("/Filter /DCTDecode"), "the JPEG passes through");
+            t.Check(pdf.Contains("/SMask"), "the translucent PNG keeps its alpha");
+        }
+
+        [A_XSDActionDependency("Tex.Pdf.Text", "Test")]
+        private static IEnumerator<int> PdfText(TestContext t)
+        {
+            byte[]? file = null;
+            IEnumerator<int> export = ExportFixture(t, bytes => file = bytes);
+            while (export.MoveNext()) yield return export.Current;
+            if (file == null) yield break;
+
+            string text = PdfPlainText(file);
+            string shown = text.Replace('\n', '|');
+            t.Check(text.StartsWith("1 Export"), $"the heading first: {shown}");
+            t.Check(text.Contains("Hello world, a fine figure."), $"spaces kept and ligatures back as letters: {shown}");
+            t.Check(text.Contains("Figure 1: Two"), $"the caption: {shown}");
+            t.Check(text.Contains("see page 1."), $"\\pageref resolved before the export: {shown}");
+            t.Check(text.EndsWith("2\n"), $"the page number last: {shown}");
+            t.Check(!text.Contains("??"), "no unresolved reference");
+        }
+
+        // Exports a two-page .tex with a heading, a ligature, a JPEG, a translucent PNG and a \pageref; hands over the file.
+        private static IEnumerator<int> ExportFixture(TestContext t, Action<byte[]> done)
+        {
+            string folder = Path.Combine(Path.GetTempPath(), $"aurora-pdf-{Guid.NewGuid():N}");
+            Directory.CreateDirectory(folder);
+            using (Image<Rgba32> picture = new Image<Rgba32>(40, 20))
+            {
+                for (int y = 0; y < 20; y++)
+                    for (int x = 0; x < 40; x++)
+                        picture[x, y] = new Rgba32((byte)(x * 6), 80, 160, (byte)(x < 20 ? 255 : 0));
+                picture.SaveAsPng(Path.Combine(folder, "pic.png"));
+                picture.SaveAsJpeg(Path.Combine(folder, "photo.jpg"));
+            }
+            string path = Path.Combine(folder, "doc.tex");
+            File.WriteAllText(path, "\\documentclass{article}\n\\begin{document}\n\\section{Export}\nHello world, a fine figure.\\label{here}\n\n" +
+                                    "\\begin{figure}[h]\\centering\\includegraphics{pic}\\includegraphics{photo}\\caption{Two}\\end{figure}\n\n" +
+                                    "\\newpage\nSecond page, see page \\pageref{here}.\n\\end{document}\n");
+
+            TexEditorControl editor = new TexEditorControl();
+            t.Show(editor);
+            editor.LoadPath(path);
+            string? target = editor.ExportPdf();
+            t.Check(target == Path.Combine(folder, "doc.pdf"), $"the PDF goes beside the .tex: {target}");
+            for (int i = 0; i < 30 && !File.Exists(target); i++) yield return 1;
+            t.Check(File.Exists(target), "the export waits for \\pageref, then writes");
+            if (File.Exists(target)) done(File.ReadAllBytes(target!));
+
+            t.Show(new StackPanelControl());
+            Directory.Delete(folder, true);
+        }
+
+        // The text a PDF's pages draw, each code read back through its font's ToUnicode map.
+        private static string PdfPlainText(byte[] file)
+        {
+            string pdf = System.Text.Encoding.Latin1.GetString(file);
+            Dictionary<int, (string head, byte[]? data)> objects = new Dictionary<int, (string, byte[]?)>();
+            foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(pdf, @"(\d+) 0 obj\n"))
+            {
+                int body = m.Index + m.Length;
+                int end = pdf.IndexOf("\nendobj", body, StringComparison.Ordinal);
+                string whole = pdf.Substring(body, end - body);
+                int stream = whole.IndexOf(">>\nstream\n", StringComparison.Ordinal);
+                if (stream < 0) { objects[int.Parse(m.Groups[1].Value)] = (whole, null); continue; }
+                byte[] raw = System.Text.Encoding.Latin1.GetBytes(whole.Substring(stream + 10, whole.Length - stream - 10 - "\nendstream".Length));
+                bool packed = whole.Substring(0, stream).Contains("/FlateDecode");
+                byte[] data = raw;
+                if (packed)
+                {
+                    using MemoryStream output = new MemoryStream();
+                    using (System.IO.Compression.ZLibStream zlib = new System.IO.Compression.ZLibStream(new MemoryStream(raw), System.IO.Compression.CompressionMode.Decompress))
+                        zlib.CopyTo(output);
+                    data = output.ToArray();
+                }
+                objects[int.Parse(m.Groups[1].Value)] = (whole.Substring(0, stream + 2), data);
+            }
+
+            Dictionary<int, Dictionary<int, string>> maps = new Dictionary<int, Dictionary<int, string>>();
+            Dictionary<int, string> MapOf(int font)
+            {
+                if (maps.TryGetValue(font, out Dictionary<int, string>? known)) return known;
+                Dictionary<int, string> map = new Dictionary<int, string>();
+                int cmap = int.Parse(System.Text.RegularExpressions.Regex.Match(objects[font].head, @"/ToUnicode (\d+) 0 R").Groups[1].Value);
+                string body = System.Text.Encoding.Latin1.GetString(objects[cmap].data!);
+                foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(body, @"<([0-9A-F]{2})> <([0-9A-F]+)>"))
+                {
+                    string hex = m.Groups[2].Value;
+                    map[Convert.ToInt32(m.Groups[1].Value, 16)] = string.Concat(Enumerable.Range(0, hex.Length / 4).Select(i => (char)Convert.ToInt32(hex.Substring(i * 4, 4), 16)));
+                }
+                return maps[font] = map;
+            }
+
+            System.Text.StringBuilder text = new System.Text.StringBuilder();
+            foreach ((string head, byte[]? data) page in objects.Values.Where(o => o.head.Contains("/Type /Page ")).ToList())
+            {
+                int contents = int.Parse(System.Text.RegularExpressions.Regex.Match(page.head, @"/Contents (\d+) 0 R").Groups[1].Value);
+                string content = System.Text.Encoding.Latin1.GetString(objects[contents].data!);
+                int font = -1;
+                foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(content, @"/F(\d+) [\d.]+ Tf|<([0-9A-F]{2})> Tj"))
+                {
+                    if (m.Groups[1].Success) font = int.Parse(m.Groups[1].Value);
+                    else text.Append(MapOf(font).GetValueOrDefault(Convert.ToInt32(m.Groups[2].Value, 16), "\uFFFD"));
+                }
+                text.Append('\n');
+            }
+            return text.ToString();
         }
 
         // A .tex opened in the split view from a temporary file.

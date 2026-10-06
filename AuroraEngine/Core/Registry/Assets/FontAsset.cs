@@ -18,6 +18,9 @@ namespace ArctisAurora.Core.Registry.Assets
         // a math font's layout constants; null for a text font
         public MathConstants? mathConstants;
 
+        // the cooked folder under Data/Fonts
+        public string folder = string.Empty;
+
         public FontAsset() { }
 
         public Glyph GetGlyph(char c) => atlasMetaData.GetGlyph(c);
@@ -25,6 +28,7 @@ namespace ArctisAurora.Core.Registry.Assets
         public override void Load(string name, string source)
         {
             string fontName = source.Substring(source.LastIndexOf('/') + 1);
+            folder = fontName;
 
             atlasMetaData = new AtlasMetaData();
             Serializer.DeserializeAttributed(Paths.Font(fontName, fontName + ".agd"), ref atlasMetaData);

@@ -269,6 +269,37 @@ namespace Thorium.Tests
             Expect("=1+", SheetFormula.parse);
             Expect("=10^400", SheetFormula.num);
 
+            Expect("=1+2>2", "1");
+            Expect("=1+2<2", "0");
+            Expect("=A1<>2", "0");
+            Expect("=A1>=2", "1");
+            Expect("=A1<=1", "0");
+            Expect("=A1=Z1+2", "1");
+            Expect("=A3>A1", "1");
+            Expect("=(A1>1)*10", "10");
+            Expect("=1<1/0", SheetFormula.div0);
+            Expect("=IF(A1>1, 10, 20)", "10");
+            Expect("=if(A1>5, 10, 20)", "20");
+            Expect("=IF(A1>5, 10)", "0");
+            Expect("=IF(A1>1, 1, 1/0)", "1");
+            Expect("=IF(A3, 1, 2)", SheetFormula.value);
+            Expect("=IF(1)", SheetFormula.value);
+            Expect("=MIN(A1:A3)", "2");
+            Expect("=MAX(A1:A3, 7)", "7");
+            Expect("=MIN(Z1:Z5)", "0");
+            Expect("=AVERAGE(A1:A3)", "2.5");
+            Expect("=AVERAGE(Z1:Z5)", SheetFormula.div0);
+            Expect("=MAX(0, MIN(747, 747-0.49*(3000-1153)))", "0");
+            Expect("=MAX(0, MIN(747, 747-0.49*(1500-1153)))", "576.97");
+            Expect("=ROUNDUP(10/3, 0)", "4");
+            Expect("=ROUNDUP(-10/3)", "-4");
+            Expect("=ROUNDDOWN(-10/3)", "-3");
+            Expect("=ROUNDUP(3)", "3");
+            Expect("=ROUND(2.345, 2)", "2.35");
+            Expect("=ROUND(-2.5)", "-3");
+            Expect("=ROUND(1234, -2)", "1200");
+            Expect("=ROUND()", SheetFormula.value);
+
             SheetValue typed = SheetBook.calc.Value(one, 5, 5);
             t.Check(typed.kind == SheetValueKind.Number && typed.Display() == "1.50", "a typed number keeps the text it was typed as");
             SheetBook.Unregister(sheet);
@@ -912,6 +943,11 @@ namespace Thorium.Tests
             t.Check(XNode.DeepEquals(source, SheetXml.ToXml(styled)), $"formats write back as they were read: {SheetXml.ToXml(styled)}");
             t.Check(styled.pages[0].Format(0, 0) == new SheetFormat(true, "#C8E6A0", "0.00%") && styled.pages[0].formats.Count == 2,
                 "every format attribute is read");
+            SheetDocument badFills = SheetXml.Parse(XElement.Parse(
+                "<Sheet><Page Name=\"One\"><Format At=\"A1\" Bold=\"true\" Fill=\"Yellow\" /><Format At=\"A2\" Fill=\"#FFF3A3AA\" />" +
+                "<Format At=\"A3\" Fill=\"FFF3A3\" /><Layer Name=\"Layer 1\" /></Page></Sheet>"));
+            t.Check(badFills.pages[0].Format(0, 0) == new SheetFormat(true, null, null) && badFills.pages[0].Format(1, 0).fill == null
+                && badFills.pages[0].Format(2, 0).fill == "FFF3A3", "a fill that is not six hex digits is dropped");
 
             string folder = TempFolder();
             Func<string, string?>? before = SheetBook.findSheet;

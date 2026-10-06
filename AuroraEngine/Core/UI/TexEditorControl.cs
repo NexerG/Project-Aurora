@@ -3,6 +3,7 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Tex;
 using ArctisAurora.Core.Threading;
 using ArctisAurora.EngineWork;
+using System.Globalization;
 using System.Numerics;
 using System.Xml.Linq;
 
@@ -11,6 +12,8 @@ namespace ArctisAurora.Core.UI
     // One open .tex file: the source, a grip, and the typeset preview over its error list.
     public class TexEditorControl : StackPanelControl, IFileEditor
     {
+        private static readonly LogChannel Log = LogChannel.For("Tex");
+
         public const double recompileDelay = 0.5;
         private const float rowHeight = 22f;
         private const int maxErrorRows = 5;
@@ -24,8 +27,18 @@ namespace ArctisAurora.Core.UI
         // each preview block's source line, 0 = none
         private readonly List<int> blockLines = new List<int>();
 
-        // the last edit not yet compiled
+        // the last edit not yet compiled, and when the last compile ran
         private double editedAt;
+        private double compiledAt;
+
+        // the preview's tree while its \pageref numbers wait for pages, and how often it has been reloaded for them
+        private XElement? pageTree;
+        private TexPageRefs? pageRefs;
+        private int pageReloads;
+
+        // the tree the preview shows, and whether an export waits for it to settle
+        private XElement? shown;
+        private bool exportWaiting;
 
         public string? path => source.path;
 
@@ -85,6 +98,12 @@ namespace ArctisAurora.Core.UI
         public override void OnTick()
         {
             base.OnTick();
+            if (pageRefs != null && editedAt <= compiledAt)
+            {
+                ResolvePages();
+                if (pageRefs == null && exportWaiting) WritePdf();
+                return;
+            }
             if (Engine.totalTime < editedAt + recompileDelay)
             {
                 FrameScheduler.RequestFrameAt(editedAt + recompileDelay);
@@ -93,6 +112,7 @@ namespace ArctisAurora.Core.UI
 
             SetTicking(false);
             Recompile();
+            if (pageRefs == null && exportWaiting) WritePdf();
         }
 
         // Typesets the source into the preview and lists what went wrong.
@@ -104,14 +124,89 @@ namespace ArctisAurora.Core.UI
             string text = TexSourceFormat.Write(DocumentXml.ToXml(source.activeDocument), "\n");
             blockLines.Clear();
             XElement tree = TexLowering.Compile(text, out List<TexError> found, blockLines, path == null ? null : Path.GetDirectoryName(path));
+            Show(tree);
+            Profiling.Zone.End("Tex.Compile");
+
+            compiledAt = Engine.totalTime;
+            TexPageRefs refs = TexLowering.PageRefs(tree);
+            pageTree = refs.refs.Count > 0 ? tree : null;
+            pageRefs = refs.refs.Count > 0 ? refs : null;
+            pageReloads = 0;
+            if (pageRefs != null)
+            {
+                SetTicking(true);
+                FrameScheduler.RequestFrameAt(Engine.totalTime);
+            }
+
+            ShowErrors(found);
+        }
+
+        private void Show(XElement tree)
+        {
+            shown = tree;
             RichTextDocument document = DocumentXml.Parse(tree);
             document.readOnly = true;
             Vector2 scroll = preview.GetScrollOffset();
             preview.LoadDocument(document);
             preview.SetScrollOffset(scroll);
-            Profiling.Zone.End("Tex.Compile");
+        }
 
-            ShowErrors(found);
+        // Writes the preview as <name>.pdf beside the .tex once it has settled; that path, or null without a file.
+        public string? ExportPdf()
+        {
+            if (path == null) return null;
+            if (editedAt > compiledAt) Recompile();
+            exportWaiting = true;
+            if (pageRefs == null) WritePdf();
+            return Path.ChangeExtension(path, ".pdf");
+        }
+
+        private void WritePdf()
+        {
+            exportWaiting = false;
+            if (shown == null || path == null) return;
+
+            string target = Path.ChangeExtension(path, ".pdf");
+            try
+            {
+                if (PdfExport.Export(shown, target, Path.GetFileNameWithoutExtension(path))) Log.Info($"exported '{target}'");
+            }
+            catch (IOException e)
+            {
+                Log.Warn($"'{target}' could not be written: {e.Message}");
+            }
+        }
+
+        // Fills each \pageref from its label's page once the preview is laid out, reloading while a number changed; at most twice.
+        private void ResolvePages()
+        {
+            bool changed = false;
+            foreach ((XElement run, string key) in pageRefs!.refs)
+            {
+                if (!pageRefs.labels.TryGetValue(key, out (int block, int offset) site)) continue;
+                int? page = preview.PageAt(site.block, site.offset);
+                if (page == null)
+                {
+                    FrameScheduler.RequestFrameAt(Engine.totalTime);
+                    return;
+                }
+
+                string number = page.Value.ToString(CultureInfo.InvariantCulture);
+                if (run.Attribute("Text")?.Value == number) continue;
+                run.SetAttributeValue("Text", number);
+                changed = true;
+            }
+
+            if (!changed || pageReloads == 2)
+            {
+                pageTree = null;
+                pageRefs = null;
+                SetTicking(false);
+                return;
+            }
+            pageReloads++;
+            Show(pageTree!);
+            FrameScheduler.RequestFrameAt(Engine.totalTime);
         }
 
         private void ShowErrors(List<TexError> found)

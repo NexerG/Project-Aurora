@@ -1,4 +1,6 @@
 using ArctisAurora.Core.Filing;
+using System.Globalization;
+using System.Text;
 
 namespace ArctisAurora.Core.UI
 {
@@ -33,6 +35,7 @@ namespace ArctisAurora.Core.UI
         public MathNode nucleus = null!;
         public MathNode sup;
         public MathNode sub;
+        public bool overUnder;
     }
 
     public sealed class MathFraction : MathNode
@@ -40,6 +43,36 @@ namespace ArctisAurora.Core.UI
         public MathNode num = null!;
         public MathNode den = null!;
         public MathStyle? style;
+        public bool noRule;
+    }
+
+    public enum MathArrayKind { Matrix, Small, Cases, Array, Aligned, Gathered, Multline }
+
+    // how a display environment spreads over the line width
+    public enum MathFill { None, Align, FlAlign, Multline }
+
+    // an environment's rows of cells
+    public sealed class MathArray : MathNode
+    {
+        public MathArrayKind kind;
+        public MathFill fill;
+        public string columns = string.Empty;
+        public readonly List<int> vrules = new List<int>();
+        public float pairGap;
+        public readonly List<List<MathNode>> rows = new List<List<MathNode>>();
+        public readonly List<float> rowSkip = new List<float>();
+        public readonly List<int> hlines = new List<int>();
+    }
+
+    // \tag's text, drawn at the right edge of a display
+    public sealed class MathTag : MathNode
+    {
+        public string text = string.Empty;
+    }
+
+    public sealed class MathFramed : MathNode
+    {
+        public MathNode body = null!;
     }
 
     public sealed class MathRadical : MathNode
@@ -83,7 +116,28 @@ namespace ArctisAurora.Core.UI
             return parser.failed ? new MathError { source = tex ?? string.Empty } : list;
         }
 
-        private enum Stop { End, Brace, Bracket, Right }
+        private enum Stop { End, Brace, Bracket, Right, Cell }
+
+        // environment → kind and delimiters
+        private static readonly Dictionary<string, (MathArrayKind kind, char left, char right)> environments = new()
+        {
+            ["matrix"] = (MathArrayKind.Matrix, '\0', '\0'), ["pmatrix"] = (MathArrayKind.Matrix, '(', ')'),
+            ["bmatrix"] = (MathArrayKind.Matrix, '[', ']'), ["Bmatrix"] = (MathArrayKind.Matrix, '{', '}'),
+            ["vmatrix"] = (MathArrayKind.Matrix, '|', '|'), ["Vmatrix"] = (MathArrayKind.Matrix, '‖', '‖'),
+            ["smallmatrix"] = (MathArrayKind.Small, '\0', '\0'), ["cases"] = (MathArrayKind.Cases, '{', '\0'),
+            ["array"] = (MathArrayKind.Array, '\0', '\0'),
+            ["aligned"] = (MathArrayKind.Aligned, '\0', '\0'), ["split"] = (MathArrayKind.Aligned, '\0', '\0'),
+            ["alignedat"] = (MathArrayKind.Aligned, '\0', '\0'),
+            ["align"] = (MathArrayKind.Aligned, '\0', '\0'), ["align*"] = (MathArrayKind.Aligned, '\0', '\0'),
+            ["flalign"] = (MathArrayKind.Aligned, '\0', '\0'), ["flalign*"] = (MathArrayKind.Aligned, '\0', '\0'),
+            ["alignat"] = (MathArrayKind.Aligned, '\0', '\0'), ["alignat*"] = (MathArrayKind.Aligned, '\0', '\0'),
+            ["gathered"] = (MathArrayKind.Gathered, '\0', '\0'), ["gather"] = (MathArrayKind.Gathered, '\0', '\0'),
+            ["gather*"] = (MathArrayKind.Gathered, '\0', '\0'),
+            ["multline"] = (MathArrayKind.Multline, '\0', '\0'), ["multline*"] = (MathArrayKind.Multline, '\0', '\0'),
+        };
+
+        // amsmath's \minalignsep, em
+        private const float minAlignSep = 1f;
 
         private enum FontMode { Normal, Roman, Bold, Blackboard }
 
@@ -124,6 +178,7 @@ namespace ArctisAurora.Core.UI
                     char c = s[pos];
                     if (c == '}')
                     {
+                        if (stop == Stop.Cell) break;
                         if (stop != Stop.Brace) Fail();
                         else pos++;
                         break;
@@ -134,6 +189,7 @@ namespace ArctisAurora.Core.UI
                         break;
                     }
                     if (stop == Stop.Right && PeekCommand() == "right") break;
+                    if (stop == Stop.Cell && (c == '&' || RowEnds() || PeekCommand() == "end")) break;
 
                     MathNode atom = ParseScripted();
                     if (atom != null) list.items.Add(atom);
@@ -148,6 +204,8 @@ namespace ArctisAurora.Core.UI
                 while (end < s.Length && char.IsAsciiLetter(s[end])) end++;
                 return s.Substring(pos + 1, end - pos - 1);
             }
+
+            private bool RowEnds() => pos + 1 < s.Length && s[pos] == '\\' && s[pos + 1] == '\\';
 
             private MathNode ParseScripted()
             {
@@ -293,6 +351,65 @@ namespace ArctisAurora.Core.UI
                         return new MathDelimited { left = left, right = right, body = body };
                     }
 
+                    case "binom":
+                    case "dbinom":
+                    case "tbinom":
+                    {
+                        MathNode top = ParseArgument();
+                        MathNode bottom = ParseArgument();
+                        MathStyle? style = name == "dbinom" ? MathStyle.Display : name == "tbinom" ? MathStyle.Text : null;
+                        return new MathDelimited
+                        {
+                            left = '(', right = ')',
+                            body = new MathFraction { num = top, den = bottom, style = style, noRule = true }
+                        };
+                    }
+
+                    case "overset":
+                    case "underset":
+                    {
+                        MathNode script = ParseArgument();
+                        MathNode nucleus = ParseArgument();
+                        if (nucleus is MathList { items.Count: 1 } single) nucleus = single.items[0];
+                        return name == "overset"
+                            ? new MathScripts { nucleus = nucleus, sup = script, overUnder = true }
+                            : new MathScripts { nucleus = nucleus, sub = script, overUnder = true };
+                    }
+
+                    case "boxed": return new MathFramed { body = ParseArgument() };
+
+                    case "operatorname":
+                    {
+                        SkipSpace();
+                        bool star = Star();
+                        return new MathText { text = ReadRawGroup(), face = FontStyle.Regular, cls = MathClass.Op, limits = star };
+                    }
+
+                    case "tag":
+                    {
+                        SkipSpace();
+                        bool star = Star();
+                        string text = ReadRawGroup();
+                        return new MathTag { text = star ? text : "(" + text + ")" };
+                    }
+                    case "notag":
+                    case "nonumber":
+                        return null;
+                    case "label":
+                        ReadRawGroup();
+                        return null;
+
+                    case "begin": return Environment();
+                    case "substack":
+                    {
+                        SkipSpace();
+                        if (AtEnd || s[pos] != '{') return Fail();
+                        pos++;
+                        MathArray stack = new MathArray { kind = MathArrayKind.Small };
+                        ReadRows(stack, null);
+                        return stack.rows.Any(row => row.Count > 1) ? Fail() : stack;
+                    }
+
                     case "text": return new MathText { text = ReadRawGroup(), face = FontStyle.Regular, cls = MathClass.Ord };
                     case "mathrm": return InMode(FontMode.Roman);
                     case "mathbf": return InMode(FontMode.Bold);
@@ -330,6 +447,145 @@ namespace ArctisAurora.Core.UI
                 mode = outer;
                 if (inner == FontMode.Blackboard) Blackboard(argument);
                 return argument;
+            }
+
+            private bool Star()
+            {
+                if (AtEnd || s[pos] != '*') return false;
+                pos++;
+                return true;
+            }
+
+            // \begin{name} … \end{name}
+            private MathNode Environment()
+            {
+                string name = ReadRawGroup();
+                if (failed) return null;
+                if (name is "equation" or "equation*")
+                {
+                    MathList body = ParseList(Stop.Cell);
+                    if (failed || PeekCommand() != "end") return Fail();
+                    ReadCommandName();
+                    return ReadRawGroup() == name ? body : Fail();
+                }
+                if (!environments.TryGetValue(name, out (MathArrayKind kind, char left, char right) env)) return Fail();
+
+                MathArray array = new MathArray
+                {
+                    kind = env.kind,
+                    fill = name.TrimEnd('*') switch
+                    {
+                        "align" => MathFill.Align,
+                        "flalign" => MathFill.FlAlign,
+                        "multline" => MathFill.Multline,
+                        _ => MathFill.None
+                    }
+                };
+                if (env.kind == MathArrayKind.Aligned)
+                {
+                    bool at = name.StartsWith("alignat") || name == "alignedat";
+                    if (at) ReadRawGroup();
+                    array.pairGap = at ? 0f : minAlignSep;
+                }
+                if (env.kind == MathArrayKind.Array && !ColumnSpec(array)) return Fail();
+
+                ReadRows(array, name);
+                if (failed) return null;
+                foreach (List<MathNode> row in array.rows)
+                    if ((row.Count > 1 && env.kind is MathArrayKind.Gathered or MathArrayKind.Multline)
+                        || (env.kind == MathArrayKind.Array && row.Count > array.columns.Length))
+                        return Fail();
+
+                if (env.left == '\0' && env.right == '\0') return array;
+                return new MathDelimited { left = env.left, right = env.right, body = array };
+            }
+
+            // Rows of cells up to \end{end}, or up to } when end is null.
+            private void ReadRows(MathArray array, string end)
+            {
+                while (!failed)
+                {
+                    SkipSpace();
+                    while (PeekCommand() == "hline")
+                    {
+                        ReadCommandName();
+                        array.hlines.Add(array.rows.Count);
+                        SkipSpace();
+                    }
+
+                    List<MathNode> row = new List<MathNode> { ParseList(Stop.Cell) };
+                    while (!failed && s[pos] == '&')
+                    {
+                        pos++;
+                        row.Add(ParseList(Stop.Cell));
+                    }
+                    if (failed) return;
+
+                    if (RowEnds())
+                    {
+                        pos += 2;
+                        array.rows.Add(row);
+                        array.rowSkip.Add(RowSkip());
+                        continue;
+                    }
+
+                    if (end == null)
+                    {
+                        if (s[pos] != '}') { Fail(); return; }
+                        pos++;
+                    }
+                    else
+                    {
+                        if (PeekCommand() != "end") { Fail(); return; }
+                        ReadCommandName();
+                        if (ReadRawGroup() != end) { Fail(); return; }
+                    }
+                    if (array.rows.Count == 0 || row.Count > 1 || row[0] is not MathList { items.Count: 0 }) array.rows.Add(row);
+                    return;
+                }
+            }
+
+            // \\'s optional * and [length], in em
+            private float RowSkip()
+            {
+                Star();
+                if (AtEnd || s[pos] != '[') return 0f;
+                int close = s.IndexOf(']', pos);
+                if (close < 0)
+                {
+                    Fail();
+                    return 0f;
+                }
+
+                string length = s.Substring(pos + 1, close - pos - 1).Trim();
+                pos = close + 1;
+                int unit = 0;
+                while (unit < length.Length && (char.IsAsciiDigit(length[unit]) || length[unit] is '.' or '-' or '+')) unit++;
+                float? perEm = length[unit..].Trim() switch
+                {
+                    "em" => 1f, "ex" => 0.430554f, "pt" => 0.1f, "mm" => 0.28453f, "cm" => 2.8453f, "in" => 7.227f, _ => null
+                };
+                if (perEm == null || !float.TryParse(length[..unit], NumberStyles.Float, CultureInfo.InvariantCulture, out float value))
+                {
+                    Fail();
+                    return 0f;
+                }
+                return value * perEm.Value;
+            }
+
+            // array's {l c r |} columns
+            private bool ColumnSpec(MathArray array)
+            {
+                string spec = ReadRawGroup();
+                StringBuilder columns = new StringBuilder();
+                foreach (char ch in spec)
+                {
+                    if (ch is 'l' or 'c' or 'r') columns.Append(ch);
+                    else if (ch == '|') array.vrules.Add(columns.Length);
+                    else if (!char.IsWhiteSpace(ch)) return false;
+                }
+                array.columns = columns.ToString();
+                return !failed && columns.Length > 0;
             }
 
             private static void Blackboard(MathNode node)

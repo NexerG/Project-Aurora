@@ -2,6 +2,7 @@ using ArctisAurora.Core.ECS.EngineEntity;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using System.Globalization;
+using System.Numerics;
 using System.Reflection;
 using System.Xml.Linq;
 
@@ -52,10 +53,34 @@ namespace ArctisAurora.Core.UI
                     case "DocumentLayout": ReadLayout(element, document.layout); break;
                     case "Block": document.blocks.Add(ReadBlock(element)); break;
                     case "Table": document.blocks.Add(ReadTable(element)); break;
+                    case "Footnote":
+                    case "Float": document.blocks.AddRange(ReadInsert(element)); break;
                     default: throw new Exception($"Unknown document element '{element.Name.LocalName}'.");
                 }
 
             return document;
+        }
+
+        // A <Footnote Id> or <Float Kind Placement>: its blocks and tables, sharing one PageInsert.
+        private static IEnumerable<Control> ReadInsert(XElement element)
+        {
+            PageInsert insert = element.Name.LocalName == "Footnote"
+                ? new PageInsert { footnote = (string?)element.Attribute("Id") ?? "" }
+                : new PageInsert { floatKind = (string?)element.Attribute("Kind") ?? "figure", placement = (string?)element.Attribute("Placement") ?? "tbp" };
+            foreach (XElement child in element.Elements())
+                switch (child.Name.LocalName)
+                {
+                    case "Block":
+                        BlockControl block = ReadBlock(child);
+                        block.insert = insert;
+                        yield return block;
+                        break;
+                    case "Table":
+                        TableControl table = ReadTable(child);
+                        table.insert = insert;
+                        yield return table;
+                        break;
+                }
         }
 
         private static void ReadLayout(XElement element, DocumentLayout layout)
@@ -68,6 +93,18 @@ namespace ArctisAurora.Core.UI
                 {
                     layout.page = new PageLayout();
                     XmlReflection.ApplyAttributes(child, layout.page, tolerant: true);
+                    foreach (XElement named in child.Elements().Where(e => e.Name.LocalName == "PageStyle"))
+                    {
+                        PageStyle pageStyle = new PageStyle();
+                        XmlReflection.ApplyAttributes(named, pageStyle, tolerant: true);
+                        foreach (XElement slot in named.Elements().Where(e => e.Name.LocalName == "Slot"))
+                        {
+                            RunningSlot read = new RunningSlot();
+                            XmlReflection.ApplyAttributes(slot, read, tolerant: true);
+                            pageStyle.slots.Add(read);
+                        }
+                        layout.page.styles.Add(pageStyle);
+                    }
                     continue;
                 }
 
@@ -99,6 +136,12 @@ namespace ArctisAurora.Core.UI
             XAttribute align = element.Attribute("Align");
             if (align != null && Enum.TryParse(align.Value, true, out TextAlignment alignment))
                 block.alignment = alignment;
+            block.firstIndent = (float?)element.Attribute("Indent") ?? 0f;
+            block.spaceBefore = (float?)element.Attribute("SpaceBefore");
+            block.pageBreak = ReadPageBreak(element);
+            block.pageStyle = (string?)element.Attribute("PageStyle");
+            block.markLeft = (string?)element.Attribute("MarkLeft");
+            block.markRight = (string?)element.Attribute("MarkRight");
             block.language = (string?)element.Attribute("Language");
             block.codeWrap = (bool?)element.Attribute("Wrap") ?? false;
 
@@ -133,12 +176,15 @@ namespace ArctisAurora.Core.UI
                 widths.Add((float?)column.Attribute("Width") ?? defaultColumnWidth);
 
             List<(List<List<BlockControl>> cells, List<int> spans)> rows = new List<(List<List<BlockControl>>, List<int>)>();
+            Dictionary<(int row, int column), CellRules> rules = new Dictionary<(int, int), CellRules>();
             foreach (XElement row in element.Elements().Where(e => e.Name.LocalName == "Row"))
             {
                 List<List<BlockControl>> cells = new List<List<BlockControl>>();
                 List<int> spans = new List<int>();
                 foreach (XElement cell in row.Elements().Where(e => e.Name.LocalName == "Cell"))
                 {
+                    if (cell.Attribute("RuleAbove") != null || cell.Attribute("RuleBelow") != null)
+                        rules[(rows.Count, spans.Sum())] = ReadCellRules(cell);
                     cells.Add(cell.Elements().Where(e => e.Name.LocalName == "Block").Select(ReadBlock).ToList());
                     spans.Add(Math.Max(1, (int?)cell.Attribute("ColumnSpan") ?? 1));
                 }
@@ -147,12 +193,66 @@ namespace ArctisAurora.Core.UI
                 rows.Add((cells, spans));
             }
 
-            TableControl table = new TableControl(widths) { showBorders = (bool?)element.Attribute("Borders") ?? true };
+            TableControl table = new TableControl(widths)
+            {
+                showBorders = (bool?)element.Attribute("Borders") ?? true,
+                spaceBefore = (float?)element.Attribute("SpaceBefore"),
+                alignment = Enum.TryParse((string?)element.Attribute("Align"), true, out TextAlignment align) ? align : TextAlignment.Left,
+                pageBreak = ReadPageBreak(element),
+                cellPadding = ReadPadding((string?)element.Attribute("Padding"))
+            };
             foreach ((List<List<BlockControl>> cells, List<int> spans) in rows)
                 table.AddRow(cells, spans);
 
+            List<XElement> columns = element.Elements().Where(e => e.Name.LocalName == "Column").ToList();
+            for (int c = 0; c < columns.Count; c++)
+            {
+                table.leftRules[c] = ReadRule((string?)columns[c].Attribute("RuleLeft")).kind;
+                table.rightRules[c] = ReadRule((string?)columns[c].Attribute("RuleRight")).kind;
+            }
+            foreach (StackPanelControl cell in table.Cells())
+                if (rules.TryGetValue((cell.gridRow, cell.gridColumn), out CellRules found)) table.cellRules[cell] = found;
+            table.ApplyInsets();
+
             return table;
         }
+
+        private static CellRules ReadCellRules(XElement cell)
+        {
+            (TableRule above, float aboveWidth) = ReadRule((string?)cell.Attribute("RuleAbove"));
+            (TableRule below, float belowWidth) = ReadRule((string?)cell.Attribute("RuleBelow"));
+            return new CellRules
+            {
+                above = above,
+                aboveWidth = aboveWidth,
+                aboveTrim = Enum.TryParse((string?)cell.Attribute("TrimAbove"), true, out RuleTrim a) ? a : RuleTrim.None,
+                below = below,
+                belowWidth = belowWidth,
+                belowTrim = Enum.TryParse((string?)cell.Attribute("TrimBelow"), true, out RuleTrim b) ? b : RuleTrim.None
+            };
+        }
+
+        // "Kind" or "Kind width", the width in px.
+        private static (TableRule kind, float width) ReadRule(string? value)
+        {
+            string[] parts = (value ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0 || !Enum.TryParse(parts[0], true, out TableRule kind)) return (TableRule.None, 0f);
+            float width = parts.Length > 1 && float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float w) ? w : 0f;
+            return (kind, width);
+        }
+
+        // "across down", px.
+        private static Vector2? ReadPadding(string? value)
+        {
+            string[] parts = (value ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length != 2
+                || !float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out float across)
+                || !float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out float down)) return null;
+            return new Vector2(across, down);
+        }
+
+        private static PageBreak ReadPageBreak(XElement element) =>
+            Enum.TryParse((string?)element.Attribute("PageBreak"), true, out PageBreak value) ? value : PageBreak.None;
 
         private const float defaultColumnWidth = 150f;
         #endregion
@@ -190,13 +290,35 @@ namespace ArctisAurora.Core.UI
             foreach (TextStyle style in document.layout.textStyles)
                 layout.Add(WriteScalars(ns + "TextStyle", style));
             if (document.layout.page != null)
-                layout.Add(WriteScalars(ns + "Page", document.layout.page));
+            {
+                XElement page = WriteScalars(ns + "Page", document.layout.page);
+                foreach (PageStyle style in document.layout.page.styles)
+                {
+                    XElement named = WriteScalars(ns + "PageStyle", style);
+                    named.Add(style.slots.Select(s => WriteScalars(ns + "Slot", s)));
+                    page.Add(named);
+                }
+                layout.Add(page);
+            }
             foreach (ListLevel level in document.layout.listLevels)
                 layout.Add(WriteScalars(ns + "ListLevel", level));
             if (layout.HasAttributes || layout.HasElements) root.Add(layout);
 
+            XElement? group = null;
+            PageInsert? grouped = null;
             foreach (Control entry in document.blocks)
-                root.Add(entry is TableControl table ? WriteTable(ns, table) : WriteBlock(ns, (BlockControl)entry));
+            {
+                PageInsert? insert = entry is TableControl t ? t.insert : ((BlockControl)entry).insert;
+                if (insert != grouped)
+                {
+                    grouped = insert;
+                    group = insert == null ? null
+                        : insert.footnote != null ? new XElement(ns + "Footnote", new XAttribute("Id", insert.footnote))
+                        : new XElement(ns + "Float", new XAttribute("Kind", insert.floatKind ?? "figure"), new XAttribute("Placement", insert.placement));
+                    if (group != null) root.Add(group);
+                }
+                (group ?? root).Add(entry is TableControl table ? WriteTable(ns, table) : WriteBlock(ns, (BlockControl)entry));
+            }
 
             return root;
         }
@@ -208,6 +330,18 @@ namespace ArctisAurora.Core.UI
                 element.SetAttributeValue("StylingType", block.stylingType.ToString());
             if (block.alignment != TextAlignment.Left)
                 element.SetAttributeValue("Align", block.alignment.ToString());
+            if (block.firstIndent != 0f)
+                element.SetAttributeValue("Indent", Format(block.firstIndent));
+            if (block.spaceBefore.HasValue)
+                element.SetAttributeValue("SpaceBefore", Format(block.spaceBefore.Value));
+            if (block.pageBreak != PageBreak.None)
+                element.SetAttributeValue("PageBreak", block.pageBreak.ToString());
+            if (block.pageStyle != null)
+                element.SetAttributeValue("PageStyle", block.pageStyle);
+            if (block.markLeft != null)
+                element.SetAttributeValue("MarkLeft", block.markLeft);
+            if (block.markRight != null)
+                element.SetAttributeValue("MarkRight", block.markRight);
             if (!string.IsNullOrEmpty(block.language))
                 element.SetAttributeValue("Language", block.language);
             if (block.codeWrap && block.stylingType == TextStyleType.Code)
@@ -245,8 +379,17 @@ namespace ArctisAurora.Core.UI
         {
             XElement element = new XElement(ns + "Table");
             if (!table.showBorders) element.SetAttributeValue("Borders", "false");
-            foreach (float width in table.widths)
-                element.Add(new XElement(ns + "Column", new XAttribute("Width", Format(width))));
+            if (table.spaceBefore.HasValue) element.SetAttributeValue("SpaceBefore", Format(table.spaceBefore.Value));
+            if (table.alignment != TextAlignment.Left) element.SetAttributeValue("Align", table.alignment.ToString());
+            if (table.pageBreak != PageBreak.None) element.SetAttributeValue("PageBreak", table.pageBreak.ToString());
+            if (table.cellPadding is Vector2 pad) element.SetAttributeValue("Padding", $"{Format(pad.X)} {Format(pad.Y)}");
+            for (int c = 0; c < table.widths.Count; c++)
+            {
+                XElement column = new XElement(ns + "Column", new XAttribute("Width", Format(table.widths[c])));
+                if (table.leftRules[c] != TableRule.None) column.SetAttributeValue("RuleLeft", table.leftRules[c].ToString());
+                if (table.rightRules[c] != TableRule.None) column.SetAttributeValue("RuleRight", table.rightRules[c].ToString());
+                element.Add(column);
+            }
 
             XElement row = null;
             foreach (StackPanelControl cell in table.Cells())
@@ -259,6 +402,13 @@ namespace ArctisAurora.Core.UI
 
                 XElement written = new XElement(ns + "Cell");
                 if (table.ColumnSpan(cell) > 1) written.SetAttributeValue("ColumnSpan", table.ColumnSpan(cell));
+                if (table.cellRules.TryGetValue(cell, out CellRules rules))
+                {
+                    if (rules.above != TableRule.None) written.SetAttributeValue("RuleAbove", WriteRule(rules.above, rules.aboveWidth));
+                    if (rules.aboveTrim != RuleTrim.None) written.SetAttributeValue("TrimAbove", rules.aboveTrim.ToString());
+                    if (rules.below != TableRule.None) written.SetAttributeValue("RuleBelow", WriteRule(rules.below, rules.belowWidth));
+                    if (rules.belowTrim != RuleTrim.None) written.SetAttributeValue("TrimBelow", rules.belowTrim.ToString());
+                }
                 foreach (Entity entry in cell.children)
                     if (entry is BlockControl block) written.Add(WriteBlock(ns, block));
                 row.Add(written);
@@ -288,6 +438,8 @@ namespace ArctisAurora.Core.UI
 
         // xs:boolean has no True — a note carrying one fails its own schema, and Convert.ToString
         // spells a bool the C# way.
+        private static string WriteRule(TableRule kind, float width) => width > 0f ? $"{kind} {Format(width)}" : kind.ToString();
+
         private static string Format(object value) =>
             value is bool flag ? (flag ? "true" : "false") : Convert.ToString(value, CultureInfo.InvariantCulture);
         #endregion
