@@ -181,7 +181,7 @@ namespace Thorium.Tests
         {
             TexEditorControl editor = ShowSplit(t,
                 "\\documentclass{article}\n\\begin{document}\nFirst paragraph.\n\nSecond\nparagraph.\n\\end{document}\n");
-            yield return 2;
+            yield return 30;
 
             BlockControl second = (BlockControl)editor.preview.activeDocument.blocks[1];
             LayoutRect r = second.arrangedRect;

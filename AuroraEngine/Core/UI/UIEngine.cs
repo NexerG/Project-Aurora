@@ -171,6 +171,10 @@ namespace ArctisAurora.Core.UI
         private static Vector2 _lastPoint;
         private static bool _sameTargetTap;
 
+        // a drag released this close to its press is also a click
+        private const float clickSlop = 4f;
+        private static Vector2 _pressPoint;
+
         // Resolves the pointer against one window's tree and dispatches what the buttons did.
         public static void Poll(RenderWindow window)
         {
@@ -257,6 +261,7 @@ namespace ArctisAurora.Core.UI
 
             if (button == PointerEvent.leftButton)
             {
+                _pressPoint = point;
                 Control target = hovering.ActiveContextTarget();
                 Control previous = pressTarget;
                 _sameTargetTap = ReferenceEquals(target, previous);
@@ -280,7 +285,7 @@ namespace ArctisAurora.Core.UI
             if (button == PointerEvent.leftButton && dragging != null)
             {
                 EndDrag();
-                return;
+                if (Vector2.Distance(point, _pressPoint) > clickSlop) return;
             }
 
             if (hovering == null) return;
