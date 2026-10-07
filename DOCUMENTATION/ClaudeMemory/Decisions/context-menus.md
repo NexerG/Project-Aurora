@@ -7,6 +7,7 @@
 `ArctisAurora.Core.Registry.Assets.ContextMenuAsset`; `Core.UI.WindowActions.Acting`; `Engine.MainTick`.
 2026-09-12 (landing 6b3): `MenuButtonControl`, `DropdownControl`, `TabViewControl.tabContextMenu`,
 `Core.UI.TabActions`, `ViewActions`, `UIActions.Invoking`
+2026-10-07 (planner P2): `ContextMenus.OpenFrom`, `RegisterSource`, `ContextMenuSubmenu.source`, `DropdownControl`
 
 Designed fresh from the user's spec (2026-09-11) — the old stack's `ContextMenus` was deliberately not read or
 ported. It stays for the old stack until 6d deletes it.
@@ -132,6 +133,27 @@ a view's only tab and the close variants find nothing to close, so greying would
 
 **A menu hosting live state needs a close callback because destroyed controls get no `onBlur`.**
 `UIEngine.Forget` drops destroyed controls without running `onBlur`, so a popup whose menu was closed from outside is never told. `FormulaPopup.open` stayed set, and Ctrl+Shift+V pasted into a destroyed box (`DataPool.GetRef` read row -1 → `IndexOutOfRangeException` in `Main.Input`). Rejected: a liveness guard in the popup's paste — it stops the crash but leaves an unrecorded preview. See [[sheets]].
+
+## Menus inside popups and submenus built on open — 2026-10-07 (planner P2)
+
+- `ContextMenus.OpenFrom(entries, on, point, width = 0, centered = false)`: when `on` is inside an open panel at depth d, closes panels deeper than d and hosts the new panel at d+1 (position converted into the origin window's design space as `owner.position + (point - owner.arrangedRect.xy)`), opener = null; otherwise identical to `Open`.
+- `ContextMenus.Clicked`: a button row runs its action, then closes from `NestedFrom(panel)` — the shallowest open panel at depth ≥ 1 whose `opener` is null (a panel opened by `OpenFrom`), else 0 (the whole menu, as before). Picking from a list opened inside a popup closes only that list.
+- `ContextMenus.DismissUnlessInside`: a press inside panel d closes panel d+1 when that one was opened by `OpenFrom` (opener null); a press outside every panel closes the menu as before.
+- `ContextMenus.RegisterSource(string name, Func<List<ContextMenuEntry>> build)` + private `EntriesOf(ContextMenuSubmenu)`; `Entered` opens a submenu with the built entries when the submenu has a source. Unknown source → one `Log.Once().Warn` per call site, submenu does not open. Private `_sources` dictionary.
+- `ContextMenuSubmenu.source` — `[A_XSDElementProperty("Source", "UI", …)]`, authored `<ContextSubmenu Text="…" Source="name"/>`; the reflective XML parser and the XSD generator pick it up with no other change; `UITypeSchema.xsd` regenerated.
+- `DropdownControl.OnPointerRelease` calls `OpenFrom` instead of `Open`; the Settings window and note-properties dropdowns are not inside a menu, so unchanged.
+- First users: the planner's ticket popup (category dropdown) and its "Move to category" submenu (`Source="planner-categories"`). See [[planner]].
+
+**A dropdown inside a popup needs the engine to nest menus (user's pick).**
+`ContextMenus.Open` closes whatever is open first, so a `DropdownControl` in a popup closed the popup. Rejected: category chips in the popup (works, no engine change, but the user wanted the general fix); a dialog window for the ticket editor (a second hosting path for one popup).
+
+**A panel opened by `OpenFrom` is told apart by `opener == null` at depth ≥ 1.**
+Submenu panels always have an opener row, so no new field on `ContextMenuControl`.
+
+**Submenus build on open; `RegisterSource` is a builder registered at runtime and called each time the submenu opens (user: "gets stuff on open … or registered at runtime then get'ed").**
+Rejected: a registered list the planner keeps updated — stale when two open planners have different categories. Rejected: the chart building its whole right-click menu in code — loses the XML menu.
+
+**NOT GUI-verified:** the Settings window and note-properties dropdowns after the `OpenFrom` switch (they should be unchanged). Test-verified: engine Input suite `Input.DropdownInsidePopup`, `Input.SourceSubmenu` (`bash _Build/test.sh Input` → 6 passed).
 
 ## Known gaps
 - No flipping or clamping to the monitor — a windowed menu near a screen edge goes off-screen.

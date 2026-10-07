@@ -47,6 +47,9 @@ namespace ArctisAurora.Core.UI
         [A_XSDElementProperty("Text", "UI", "The caption shown on the row.")]
         public string text = string.Empty;
 
+        [A_XSDElementProperty("Source", "UI", "A builder registered with ContextMenus.RegisterSource; its entries are built each time the submenu opens, in place of the authored ones.")]
+        public string? source;
+
         public readonly List<ContextMenuEntry> entries = new List<ContextMenuEntry>();
     }
 }

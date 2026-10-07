@@ -133,6 +133,7 @@
   </xs:complexType>
   <xs:attributeGroup name="ContextSubmenu.Attributes">
     <xs:attribute name="Text" type="xs:string" />
+    <xs:attribute name="Source" type="xs:string" />
   </xs:attributeGroup>
   <xs:element name="ContextSubmenu" type="types:ContextSubmenu" />
   <xs:complexType name="ContextSubmenu">
@@ -453,6 +454,27 @@
   <xs:complexType name="Panel">
     <xs:sequence />
     <xs:attributeGroup ref="EntityRegistry:Control.Attributes" />
+  </xs:complexType>
+  <xs:attributeGroup name="AttachmentKind.Attributes">
+    <xs:attribute name="Name" type="xs:string" />
+    <xs:attribute name="Color" type="xs:string" />
+    <xs:attribute name="Minutes" type="xs:int" />
+  </xs:attributeGroup>
+  <xs:element name="AttachmentKind" type="types:AttachmentKind" />
+  <xs:complexType name="AttachmentKind">
+    <xs:sequence />
+    <xs:attributeGroup ref="types:AttachmentKind.Attributes" />
+  </xs:complexType>
+  <xs:element name="AttachmentKinds" type="types:AttachmentKinds" />
+  <xs:group name="PlannerAttachmentKind.Children">
+    <xs:choice>
+      <xs:element name="AttachmentKind" type="types:AttachmentKind" />
+    </xs:choice>
+  </xs:group>
+  <xs:complexType name="AttachmentKinds">
+    <xs:sequence>
+      <xs:group minOccurs="0" maxOccurs="unbounded" ref="types:PlannerAttachmentKind.Children" />
+    </xs:sequence>
   </xs:complexType>
   <xs:attributeGroup name="Document.Attributes">
     <xs:attribute name="Name" type="xs:string" />

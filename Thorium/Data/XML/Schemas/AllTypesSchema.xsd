@@ -94,6 +94,8 @@
       <xs:enumeration value="WindowCorners" />
       <xs:enumeration value="Palette" />
       <xs:enumeration value="Panel" />
+      <xs:enumeration value="AttachmentKind" />
+      <xs:enumeration value="AttachmentKinds" />
       <xs:enumeration value="Document" />
       <xs:enumeration value="TextStyleType" />
       <xs:enumeration value="TextAlignment" />

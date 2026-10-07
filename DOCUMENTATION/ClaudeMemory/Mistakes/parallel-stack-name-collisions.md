@@ -39,6 +39,8 @@ git grep -n 'A_XSDType("<Name>"' -- '*.cs'
 collided with `CustomEntities.Layer : Entity` and threw at bootstrap before any test ran. `t.Name` of a nested type is
 its own short name, so the grep above applies to every `Entity` subclass, however deeply nested (renamed `Parts`).
 
+**It happened again (2026-10-07).** The planner copied `SheetControl`'s private nested `Parts` and `SheetEditorControl`'s private nested `Scroller` unchanged; both collided in `RegisterSerializableTypes` and killed boot (renamed `ChartParts` / `PlannerScroller`). When a new control is built "like" an old one, grep the nested class names it copied too, before the first run.
+
 **Rejected:** keying `GenerateID` on `FullName`. It changes the serialized id of every type at once, so every
 saved note, scene and session file on disk stops reading.
 

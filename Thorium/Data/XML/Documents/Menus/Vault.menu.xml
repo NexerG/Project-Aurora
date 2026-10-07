@@ -5,4 +5,5 @@
 		<ContextButton Text="Fixed size" Action="Sheets.NewFixed"/>
 		<ContextButton Text="Unfixed" Action="Sheets.New"/>
 	</ContextSubmenu>
+	<ContextButton Text="New planner" Action="Planners.New"/>
 </ContextMenu>

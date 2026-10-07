@@ -231,6 +231,25 @@
 		<Press />
 	</Keybind>
 
+	<Keybind Trigger="Delete" Action="Planner.Delete">
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Z" Action="Planner.Undo">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="Y" Action="Planner.Redo">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
+	<Keybind Trigger="S" Action="Planner.Save">
+		<Modifier Key="LeftControl" />
+		<Press />
+	</Keybind>
+
 	<Keybind Trigger="S" Action="Sheet.Save">
 		<Modifier Key="LeftControl" />
 		<Press />
