@@ -50,7 +50,7 @@ namespace ArctisAurora.Core.UI
             box.preferredHeight = rowHeight;
             box.fontSize = 14;
             box.role = PaletteRole.Field;
-            box.onEdited = source => document.SetMath(at, source);
+            box.onEdited = source => document.document.SetMath(at, source);
             box.onCommit = source => Finish(source, true);
             box.onBlur = () => Finish(box.text, false);
             box.onCancel = Cancel;
@@ -97,7 +97,7 @@ namespace ArctisAurora.Core.UI
             ContextMenus.Close();
 
             if (placed) document.RemovePlaced(at);
-            else document.SetMath(at, before);
+            else document.document.SetMath(at, before);
             editor.FocusCaret();
         }
     }

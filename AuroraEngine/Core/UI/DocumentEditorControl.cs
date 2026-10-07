@@ -58,10 +58,16 @@ namespace ArctisAurora.Core.UI
         public override void OnDestroy()
         {
             SheetBook.changed -= BookChanged;
+            if (activeDocument != null) activeDocument.changed -= NoteChanged;
             base.OnDestroy();
         }
 
         private void BookChanged(SheetDocument? edited) => content?.RefreshSheetLinks();
+
+        private void NoteChanged(NoteChange change)
+        {
+            if (change.kind == NoteChangeKind.Palette) ApplyPalette();
+        }
 
         [A_XSDElementProperty("Source", "UI", "Engine-XML note file to load into the editor.")]
         public string source
@@ -89,7 +95,9 @@ namespace ArctisAurora.Core.UI
 
         public void LoadDocument(RichTextDocument document)
         {
+            if (activeDocument != null) activeDocument.changed -= NoteChanged;
             activeDocument = document;
+            document.changed += NoteChanged;
 
             // Only the content: the scroll thumbs are children too, and the fields holding them are
             // never rebuilt.
@@ -429,21 +437,11 @@ namespace ArctisAurora.Core.UI
 
             using (BeginStep("Page"))
             {
-                session?.undo.Push(new PageEdit(this, activeDocument.layout.page, page));
-                ApplyPage(page);
+                session?.undo.Push(new PageEdit(activeDocument, activeDocument.layout.page, page));
+                activeDocument.SetPage(page);
             }
             MarkDirty();
             RequestScrollToCaret();
-        }
-
-        // Puts a page format on the note without recording it; null takes the editor's.
-        internal void ApplyPage(PageLayout? page)
-        {
-            if (content == null) return;
-
-            activeDocument.layout.page = page;
-            content.page = activeDocument.layout.Page;
-            content.InvalidateLayout();
         }
 
         // The note's own palette, or the app's when it names none. Not undoable.
@@ -451,8 +449,7 @@ namespace ArctisAurora.Core.UI
         {
             if (activeDocument == null) return;
 
-            activeDocument.palette = name;
-            ApplyPalette();
+            activeDocument.SetPalette(name);
             MarkDirty();
         }
 
@@ -473,14 +470,7 @@ namespace ArctisAurora.Core.UI
         {
             if (content == null) return;
 
-            activeDocument.layout = layout;
-            content.blockSpacing = layout.blockSpacing;
-            foreach (Entity child in content.children)
-            {
-                if (child is BlockControl block) block.ApplyLayout(layout);
-                else if (child is ScrollableControl viewport && viewport.children.Count > 0 && viewport.children[0] is TableControl table) table.ApplyLayout(layout);
-            }
-            content.ListsChanged();
+            activeDocument.SetLayout(layout);
             MarkDirty();
         }
 
@@ -489,7 +479,7 @@ namespace ArctisAurora.Core.UI
         {
             if (activeDocument == null) return;
 
-            activeDocument.frontmatter = Frontmatter.Set(activeDocument.frontmatter, key, value);
+            activeDocument.SetFrontmatterValue(key, value);
             MarkDirty();
         }
 
@@ -498,7 +488,7 @@ namespace ArctisAurora.Core.UI
         {
             if (content == null) return;
 
-            activeDocument.readOnly = content.readOnly = value;
+            activeDocument.SetReadOnly(value);
             MarkDirty();
         }
 

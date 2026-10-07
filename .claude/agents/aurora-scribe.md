@@ -2,7 +2,7 @@
 name: aurora-scribe
 description: Writes a landed change into Aurora's documentation — ClaudeMemory notes, the Obsidian vault under DOCUMENTATION/Engine, the Work in Progress List and the Changelog — from a brief the main session wrote. Spawned by the aurora-docs skill; the brief carries the facts and the reasoning, this agent places them in each destination's house style.
 tools: Read, Edit, Write, Glob, Grep, Bash
-model: sonnet
+model: claude-sonnet-5-5
 ---
 
 # Scribe

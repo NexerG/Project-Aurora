@@ -1,4 +1,5 @@
 using ArctisAurora.Core.Data;
+using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.Filing.Serialization;
 using ArctisAurora.Core.Registry;
 using ArctisAurora.Core.Testing;
@@ -47,6 +48,129 @@ namespace Thorium.Tests
             yield break;
         }
 
+        [A_XSDActionDependency("NoteModel.Changes", "Test")]
+        private static IEnumerator<int> Changes(TestContext t)
+        {
+            RichTextDocument document = DocumentXml.Parse(Small);
+            List<NoteChange> seen = new List<NoteChange>();
+            document.changed += seen.Add;
+
+            bool Raised(string what, params (NoteChangeKind kind, int first, int count)[] expected)
+            {
+                bool same = seen.Count == expected.Length;
+                for (int i = 0; same && i < expected.Length; i++)
+                    same = seen[i].kind == expected[i].kind && seen[i].first == expected[i].first && seen[i].count == expected[i].count;
+                t.Check(same, $"{what} raises {string.Join(", ", expected.Select(e => $"{e.kind} {e.first}+{e.count}"))} " +
+                    $"(got {string.Join(", ", seen.Select(c => $"{c.kind} {c.first}+{c.count}"))})");
+                return same;
+            }
+
+            bool CaretAt(int block, int offset) => seen[^1].caret is DocumentAddress c && c.block == block && c.offset == offset;
+
+            string Text(int block) => document.Blocks()[block].run.text;
+
+            seen.Clear();
+            document.InsertText(new DocumentAddress(0, 3), "!");
+            if (Raised("typing", (NoteChangeKind.Text, 0, 1)))
+                t.Check(seen[0].length == 1 && CaretAt(0, 4) && Text(0) == "one!", "typing carries its length and leaves the caret after it");
+
+            seen.Clear();
+            document.RemoveText(new DocumentAddress(0, 3), 1);
+            if (Raised("a removal", (NoteChangeKind.Text, 0, 1)))
+                t.Check(seen[0].length == -1 && CaretAt(0, 3) && Text(0) == "one", "a removal carries a negative length");
+
+            seen.Clear();
+            document.SplitBlockAt(new DocumentAddress(0, 1));
+            if (Raised("a split", (NoteChangeKind.Spans, 0, 1), (NoteChangeKind.Inserted, 1, 1)))
+                t.Check(CaretAt(1, 0) && Text(0) == "o" && Text(1) == "ne", "a split leaves the caret at the tail's start");
+
+            seen.Clear();
+            document.JoinBlockWithNext(new DocumentAddress(0, 1));
+            if (Raised("a join", (NoteChangeKind.Removed, 1, 1), (NoteChangeKind.Kind, 0, 1)))
+                t.Check(CaretAt(0, 1) && Text(0) == "one", "a join puts the text back");
+
+            seen.Clear();
+            document.InsertText(new DocumentAddress(3, 4), "!");
+            if (Raised("typing in a cell", (NoteChangeKind.Text, 3, 1)))
+                t.Check(((NoteTable)document.blocks[3]).rows[0][0].blocks[0].run.text == "cell!", "a cell's block is addressed after the note's blocks");
+
+            seen.Clear();
+            document.ChangeBlocks(1, 2, b => b.alignment = TextAlignment.Center);
+            Raised("a block change", (NoteChangeKind.Kind, 1, 2));
+
+            seen.Clear();
+            document.ApplyStyleBetween(new DocumentAddress(0, 0), new DocumentAddress(1, 2), new StyleDelta(bold: true));
+            if (Raised("a restyle", (NoteChangeKind.Spans, 0, 2)))
+                t.Check(seen[0].anchor is DocumentAddress a && a.block == 0 && a.offset == 0 && CaretAt(1, 2), "a restyle leaves its range selected");
+
+            seen.Clear();
+            DocumentFragment cut = document.CaptureFragment(new DocumentAddress(0, 1), new DocumentAddress(2, 2));
+            document.DeleteBetween(new DocumentAddress(0, 1), new DocumentAddress(2, 2));
+            if (Raised("a delete across blocks", (NoteChangeKind.Removed, 1, 2), (NoteChangeKind.Kind, 0, 1)))
+                t.Check(CaretAt(0, 1) && Text(0) == "oree", "a delete across blocks merges the head and the tail");
+
+            seen.Clear();
+            document.InsertFragment(new DocumentAddress(0, 1), cut);
+            if (Raised("putting a fragment back", (NoteChangeKind.Inserted, 1, 2), (NoteChangeKind.Kind, 0, 1)))
+                t.Check(Text(0) == "one" && Text(1) == "two" && Text(2) == "three", "the fragment's blocks come back");
+
+            seen.Clear();
+            document.PutTable(3, true, null);
+            if (Raised("a table removed", (NoteChangeKind.Table, 3, 1)))
+                t.Check(document.blocks.Length == 3, "the table leaves the model");
+
+            seen.Clear();
+            document.SetPage(null);
+            document.SetPalette(null);
+            document.SetReadOnly(true);
+            Raised("note setters", (NoteChangeKind.Page, 0, 1), (NoteChangeKind.Palette, 0, 1), (NoteChangeKind.ReadOnly, 0, 1));
+            yield break;
+        }
+
+        [A_XSDActionDependency("NoteModel.EditHeadless", "Test")]
+        private static IEnumerator<int> EditHeadless(TestContext t)
+        {
+            DataPool controls = DataManager.Get("UIElements");
+            int before = controls.Count;
+            RichTextDocument document = DocumentXml.Parse(Small);
+            UndoStack undo = new UndoStack();
+            string original = DocumentXml.ToXml(document).ToString();
+
+            DocumentAddress typed = new DocumentAddress(1, 3);
+            using (undo.Begin("Type"))
+            {
+                undo.Push(new TextEdit(document, typed, "x", true));
+                document.InsertText(typed, "x");
+            }
+
+            DocumentAddress split = new DocumentAddress(0, 2);
+            using (undo.Begin("Split"))
+            {
+                document.SplitBlockAt(split);
+                undo.Push(new SplitEdit(document, split));
+            }
+
+            DocumentAddress from = new DocumentAddress(1, 0);
+            DocumentAddress to = new DocumentAddress(3, 2);
+            using (undo.Begin("Delete"))
+            {
+                DocumentFragment fragment = document.CaptureFragment(from, to);
+                undo.Push(new DeleteRangeEdit(document, from, to, fragment, from, to));
+                document.DeleteBetween(from, to);
+            }
+
+            string edited = DocumentXml.ToXml(document).ToString();
+            t.Check(edited != original, "the edits change the note");
+
+            while (undo.Undo()) { }
+            t.Check(DocumentXml.ToXml(document).ToString() == original, "undoing every edit with no view gives the note back as loaded");
+
+            while (undo.Redo()) { }
+            t.Check(DocumentXml.ToXml(document).ToString() == edited, "redoing every edit gives the edited note again");
+            t.Check(controls.Count == before, $"editing a note with no view builds no control ({controls.Count - before} rows)");
+            yield break;
+        }
+
         // A note's text read and written the way RichTextDocument does, without the file's timestamps.
         private static string RoundTrip(string text, string extension, string name)
         {
@@ -72,6 +196,11 @@ namespace Thorium.Tests
             new XElement("Block", attributes, new XElement("Run", new XAttribute("Text", text)));
 
         private static XElement Cell(params object[] content) => new XElement("Cell", content);
+
+        // Three blocks and a one-cell table.
+        private static readonly XElement Small = new XElement("Document",
+            Block("one"), Block("two"), Block("three"),
+            new XElement("Table", new XElement("Column", new XAttribute("Width", "100")), new XElement("Row", Cell(Block("cell")))));
 
         // Every block, run, table and insert feature the note format carries.
         private static readonly XElement Everything = new XElement("Document",

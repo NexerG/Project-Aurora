@@ -2,7 +2,7 @@
 name: aurora-mechanic
 description: Applies an exact, already-decided textual change across a named set of files. Mass renames, one agreed pattern across N call sites, transcription. No design decisions — the brief carries them.
 tools: Read, Edit, Glob, Grep
-model: haiku
+model: claude-haiku-5-5
 ---
 
 # Mechanic

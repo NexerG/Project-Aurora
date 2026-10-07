@@ -240,4 +240,50 @@ namespace ArctisAurora.Core.UI
             rightRules = new TableRule[widths.Length];
         }
     }
+
+    // What an edit to a note changed.
+    public enum NoteChangeKind
+    {
+        Text,
+        Spans,
+        Kind,
+        Inserted,
+        Removed,
+        Table,
+        Page,
+        Palette,
+        Layout,
+        Properties,
+        ReadOnly
+    }
+
+    // One change the model made, raised after it is made.
+    public readonly struct NoteChange
+    {
+        public readonly NoteChangeKind kind;
+
+        // blocks by flat index; a note-level index for a table
+        public readonly int first;
+        public readonly int count;
+
+        // where text went in or came out, and how much; negative is removed
+        public readonly DocumentAddress at;
+        public readonly int length;
+
+        // where the edit leaves the caret, and the selection's other end; null leaves them
+        public readonly DocumentAddress? anchor;
+        public readonly DocumentAddress? caret;
+
+        public NoteChange(NoteChangeKind kind, int first, int count, DocumentAddress at, int length,
+            DocumentAddress? anchor, DocumentAddress? caret)
+        {
+            this.kind = kind;
+            this.first = first;
+            this.count = count;
+            this.at = at;
+            this.length = length;
+            this.anchor = anchor;
+            this.caret = caret;
+        }
+    }
 }

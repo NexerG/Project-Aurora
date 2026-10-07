@@ -6,7 +6,6 @@ using ArctisAurora.Core.Registry.Assets;
 using ArctisAurora.EngineWork;
 using Silk.NET.GLFW;
 using System.Numerics;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -609,7 +608,16 @@ namespace ArctisAurora.Core.UI
         public string? selectionColorHex;
 
         // the model these blocks came from; the file is written from its block list
-        internal RichTextDocument document = null!;
+        internal RichTextDocument document
+        {
+            get => field;
+            set
+            {
+                if (field != null) field.changed -= OnNoteChanged;
+                field = value;
+                field.changed += OnNoteChanged;
+            }
+        } = null!;
 
         // the open note's history, assigned by the editor; null until a session exists
         internal UndoStack undo;
@@ -623,6 +631,9 @@ namespace ArctisAurora.Core.UI
 
         public BlockControl caretBlock { get; private set; }
         public int caretOffset { get; private set; }
+
+        // the caret block's flat index; -1 until it is looked up
+        private int caretIndex = -1;
 
         // Where a selection started; equal to the caret means nothing is selected.
         private CaretSlot anchor;
@@ -688,6 +699,7 @@ namespace ArctisAurora.Core.UI
         {
             if (block == null) return;
 
+            if (block != caretBlock) caretIndex = -1;
             caretBlock = block;
             caretOffset = Math.Clamp(offset, 0, block.Length);
             if (!extend) anchor = Focus;
@@ -943,6 +955,7 @@ namespace ArctisAurora.Core.UI
 
             anchor = new CaretSlot(anchorBlock, anchorOffset);
             SetCaret(block, offset, true);
+            caretIndex = to.block;
         }
 
         internal bool InSelection(BlockControl block, int offset)
@@ -960,7 +973,7 @@ namespace ArctisAurora.Core.UI
         internal DocumentFragment? SelectedFragment()
         {
             if (!OrderedSelection(out DocumentAddress from, out DocumentAddress to)) return null;
-            return OneContainer(from.block, to.block) ? CaptureFragment(from, to) : null;
+            return OneContainer(from.block, to.block) ? document.CaptureFragment(from, to) : null;
         }
 
         // Puts the selection on the clipboard as plain text, keeping its formatting for our own paste.
@@ -968,8 +981,8 @@ namespace ArctisAurora.Core.UI
         {
             if (!OrderedSelection(out DocumentAddress from, out DocumentAddress to)) return false;
 
-            DocumentFragment fragment = CaptureFragment(from, to);
-            string text = string.Join(Environment.NewLine, fragment.blocks.Select(PlainText)).Replace(TextMeasurer.SoftHyphen.ToString(), string.Empty);
+            DocumentFragment fragment = document.CaptureFragment(from, to);
+            string text =string.Join(Environment.NewLine, fragment.blocks.Select(PlainText)).Replace(TextMeasurer.SoftHyphen.ToString(), string.Empty);
 
             copiedText = text;
             copiedFragment = fragment;
@@ -1097,9 +1110,9 @@ namespace ArctisAurora.Core.UI
             DocumentAddress anchorAt = AddressOf(anchor.block, anchor.offset);
             DocumentAddress caretAt = restoreSelection ? AddressOf(caretBlock, caretOffset) : anchorAt;
 
-            DocumentFragment fragment = CaptureFragment(from, to);
-            undo?.Push(new DeleteRangeEdit(this, from, to, fragment, anchorAt, caretAt));
-            DeleteBetween(from, to);
+            DocumentFragment fragment = document.CaptureFragment(from, to);
+            undo?.Push(new DeleteRangeEdit(document, from, to, fragment, anchorAt, caretAt));
+            document.DeleteBetween(from, to);
             KeepDeletedStyle(fragment);
             return true;
         }
@@ -1207,8 +1220,8 @@ namespace ArctisAurora.Core.UI
                 ? new DocumentAddress(from.block, from.offset + fragment.blocks[0].text.Length)
                 : new DocumentAddress(from.block + fragment.blocks.Count - 1, fragment.blocks[^1].text.Length);
 
-            undo?.Push(new InsertRangeEdit(this, from, to, fragment));
-            InsertBetween(from, to, fragment);
+            undo?.Push(new InsertRangeEdit(document, from, to, fragment));
+            document.InsertBetween(from, to, fragment);
             return to;
         }
 
@@ -1302,16 +1315,10 @@ namespace ArctisAurora.Core.UI
         // The split itself, addressed rather than read off the caret, so redo can replay it.
         internal void SplitBlockAt(DocumentAddress at)
         {
-            if (!Resolve(at, out BlockControl block, out int offset)) return;
+            if (!Resolve(at, out _, out _)) return;
 
-            BlockControl tail = block.SplitAt(offset);
-            InsertBlockAfter(block, tail);
-            tail.ApplyLayout(document.layout);
-            block.InvalidateLayout();
-
-            undo?.Push(new SplitEdit(this, at));
-
-            SetCaret(tail, 0);
+            document.SplitBlockAt(at);
+            undo?.Push(new SplitEdit(document, at));
         }
 
         // Records the insert before the write, because the address is read off the caret the write is
@@ -1327,10 +1334,8 @@ namespace ArctisAurora.Core.UI
             StyleDelta armed = pending;
             pending = default;
 
-            undo?.Push(new TextEdit(this, at, c.ToString(), true));
-            block.InsertText(at.offset, c.ToString());
-
-            SetCaret(block, at.offset + 1);
+            undo?.Push(new TextEdit(document, at, c.ToString(), true));
+            document.InsertText(block.note, at, c.ToString());
 
             if (c == ' ' && TypeMarkdownPrefix(block, at.block, at.offset + 1))
             {
@@ -1361,9 +1366,6 @@ namespace ArctisAurora.Core.UI
                 MarkTreeOrderDirty();
                 cell.InvalidateLayout();
                 ListsChanged();
-
-                NoteCell model = ((TableControl)cell.parent).CellOf(cell);
-                model.blocks = Inserted(model.blocks, Array.IndexOf(model.blocks, after.note) + 1, block.note);
                 return;
             }
 
@@ -1372,30 +1374,12 @@ namespace ArctisAurora.Core.UI
             MarkTreeOrderDirty();
             InvalidateLayout();
             ListsChanged();
-
-            document.blocks = Inserted(document.blocks, Array.IndexOf(document.blocks, after.note) + 1, block.note);
         }
 
-        // Destroy detaches from the child list itself; the model list is the other place it lives.
         private void RemoveBlock(BlockControl block)
         {
-            if (block.parent is StackPanelControl cell && cell.parent is TableControl table)
-            {
-                NoteCell model = table.CellOf(cell);
-                model.blocks = Removed(model.blocks, block.note);
-            }
-            else document.blocks = Removed(document.blocks, block.note);
-
             block.Destroy();
             ListsChanged();
-        }
-
-        private static T[] Inserted<T>(T[] array, int at, T item) => [.. array.AsSpan(0, at), item, .. array.AsSpan(at)];
-
-        private static T[] Removed<T>(T[] array, T item)
-        {
-            int at = Array.IndexOf(array, item);
-            return at < 0 ? array : [.. array.AsSpan(0, at), .. array.AsSpan(at + 1)];
         }
 
         // Every block in reading order, a table's cells included.
@@ -1660,7 +1644,7 @@ namespace ArctisAurora.Core.UI
                 picture.imageX = resizeStored.imageX + MathF.Round(shift.X / zoom);
                 picture.imageY = MathF.Max(MinPictureY(new Vector2(w, h), resizeRotation), resizeStored.imageY + MathF.Round(shift.Y / zoom));
             }
-            block.SetPicture(index, picture);
+            document.SetPicture(resizeAt, picture);
         }
 
         private void EndPictureResize()
@@ -1673,17 +1657,8 @@ namespace ArctisAurora.Core.UI
             if (SamePicture(after, resizeStored) || Editor is not DocumentEditorControl editor) return;
 
             using (editor.BeginStep("Resize picture"))
-                undo?.Push(new PictureEdit(this, resizeAt, resizeStored, after));
+                undo?.Push(new PictureEdit(document, resizeAt, resizeStored, after));
             editor.MarkDirty();
-        }
-
-        // Undo and redo: the picture as stored, left selected.
-        internal void SetPicture(DocumentAddress at, StyleSpan picture)
-        {
-            if (!Resolve(at, out BlockControl block, out int index)) return;
-
-            block.SetPicture(index, picture);
-            Select(at, new DocumentAddress(at.block, at.offset + 1));
         }
 
         // Changes the selected picture's wrap; false when no picture outside a table is selected.
@@ -1708,8 +1683,8 @@ namespace ArctisAurora.Core.UI
             }
 
             DocumentAddress at = AddressOf(block, index);
-            undo?.Push(new PictureEdit(this, at, before, after));
-            SetPicture(at, after);
+            undo?.Push(new PictureEdit(document, at, before, after));
+            document.SetPicture(at, after);
             return true;
         }
 
@@ -1724,8 +1699,8 @@ namespace ArctisAurora.Core.UI
             StyleSpan after = before;
             after.collision = collision;
             DocumentAddress at = AddressOf(block, index);
-            undo?.Push(new PictureEdit(this, at, before, after));
-            SetPicture(at, after);
+            undo?.Push(new PictureEdit(document, at, before, after));
+            document.SetPicture(at, after);
             return true;
         }
 
@@ -1764,7 +1739,7 @@ namespace ArctisAurora.Core.UI
 
             StyleSpan picture = rotateStored;
             picture.imageRotation = degrees;
-            block.SetPicture(index, picture);
+            document.SetPicture(rotateAt, picture);
         }
 
         // One step: the new turn, a float re-anchored when its turned box rises above its paragraph.
@@ -1777,7 +1752,7 @@ namespace ArctisAurora.Core.UI
             StyleSpan after = StoredPicture(block, index);
             if (SamePicture(after, rotateStored) || Editor is not DocumentEditorControl editor)
             {
-                block.SetPicture(index, rotateStored);
+                document.SetPicture(rotateAt, rotateStored);
                 return;
             }
 
@@ -1785,7 +1760,7 @@ namespace ArctisAurora.Core.UI
             else
             {
                 using (editor.BeginStep("Rotate picture"))
-                    undo?.Push(new PictureEdit(this, rotateAt, rotateStored, after));
+                    undo?.Push(new PictureEdit(document, rotateAt, rotateStored, after));
             }
             editor.MarkDirty();
         }
@@ -2095,7 +2070,7 @@ namespace ArctisAurora.Core.UI
             picture.imageX = Math.Clamp(MathF.Round(moveStored.imageX + (point.X - moveGrab.X) / zoom),
                 -marginLeft, MathF.Max(-marginLeft, page.SizePx().X - marginLeft - width));
             picture.imageY = MathF.Round(moveStored.imageY + (point.Y - moveGrab.Y) / zoom);
-            block.SetPicture(index, picture);
+            document.SetPicture(moveAt, picture);
         }
 
         // One step: the new offset, or the picture re-anchored to the paragraph at or above its top.
@@ -2108,7 +2083,7 @@ namespace ArctisAurora.Core.UI
             StyleSpan after = StoredPicture(block, index);
             if (SamePicture(after, moveStored) || blockControls.IndexOf(block) < 0 || Editor is not DocumentEditorControl editor)
             {
-                block.SetPicture(index, moveStored);
+                document.SetPicture(moveAt, moveStored);
                 return;
             }
 
@@ -2124,7 +2099,7 @@ namespace ArctisAurora.Core.UI
             if (anchor < 0)
             {
                 using (editor.BeginStep(step))
-                    undo?.Push(new PictureEdit(this, at, stored, after));
+                    undo?.Push(new PictureEdit(document, at, stored, after));
                 return;
             }
 
@@ -2137,11 +2112,11 @@ namespace ArctisAurora.Core.UI
 
             using (editor.BeginStep(step))
             {
-                block.SetPicture(index, stored);
+                document.SetPicture(at, stored);
                 if (targetBlock == block)
                 {
-                    undo?.Push(new PictureEdit(this, at, stored, moved));
-                    SetPicture(at, moved);
+                    undo?.Push(new PictureEdit(document, at, stored, moved));
+                    document.SetPicture(at, moved);
                 }
                 else
                 {
@@ -2379,15 +2354,6 @@ namespace ArctisAurora.Core.UI
             return default;
         }
 
-        // Rewrites a formula's source and leaves it selected; the preview, undo and redo.
-        internal void SetMath(DocumentAddress at, string source)
-        {
-            if (!Resolve(at, out BlockControl block, out int index)) return;
-
-            block.SetMath(index, source);
-            Select(at, new DocumentAddress(at.block, at.offset + 1));
-        }
-
         // An empty formula at the caret, unrecorded; null where a formula cannot go.
         internal DocumentAddress? PlaceMath(bool display)
         {
@@ -2405,7 +2371,7 @@ namespace ArctisAurora.Core.UI
             fragment.blocks.Add(block);
 
             DocumentAddress at = AddressOf(caretBlock, caretOffset);
-            InsertBetween(at, new DocumentAddress(at.block, at.offset + 1), fragment);
+            document.InsertBetween(at, new DocumentAddress(at.block, at.offset + 1), fragment);
             Select(at, new DocumentAddress(at.block, at.offset + 1));
             DisarmStyle();
             return at;
@@ -2423,14 +2389,14 @@ namespace ArctisAurora.Core.UI
             DocumentFragment fragment = new DocumentFragment();
             fragment.blocks.Add(snapshot);
 
-            undo?.Push(new InsertRangeEdit(this, at, new DocumentAddress(at.block, at.offset + 1), fragment));
+            undo?.Push(new InsertRangeEdit(document, at, new DocumentAddress(at.block, at.offset + 1), fragment));
         }
 
         internal void RecordMath(DocumentAddress at, string before, string after) =>
-            undo?.Push(new MathEdit(this, at, before, after));
+            undo?.Push(new MathEdit(document, at, before, after));
 
         internal void RemovePlaced(DocumentAddress at) =>
-            DeleteBetween(at, new DocumentAddress(at.block, at.offset + 1));
+            document.DeleteBetween(at, new DocumentAddress(at.block, at.offset + 1));
 
         // A formula's drawn box; its caret slot while it waits to be laid out.
         internal LayoutRect MathAnchor(DocumentAddress at)
@@ -2481,33 +2447,7 @@ namespace ArctisAurora.Core.UI
         }
 
         // Rewrites links the rename answers for; true when any changed.
-        internal bool RenameSheetLinks(Func<string, string?> rename)
-        {
-            bool any = false;
-            foreach (BlockControl block in Blocks())
-            {
-                Span<StyleSpan> spans = CollectionsMarshal.AsSpan(block.spans);
-                bool changed = false;
-                for (int i = 0; i < spans.Length; i++)
-                {
-                    if (spans[i].IsMath && SheetLinks.HasMathLinks(spans[i].mathSource))
-                    {
-                        string source = SheetLinks.RenameMath(spans[i].mathSource, rename);
-                        if (source == spans[i].mathSource) continue;
-                        spans[i].mathSource = source;
-                        changed = true;
-                        continue;
-                    }
-                    if (!spans[i].IsSheet || rename(spans[i].sheetRef) is not string renamed) continue;
-                    spans[i].sheetRef = renamed;
-                    changed = true;
-                }
-                if (!changed) continue;
-                block.InvalidateLayout();
-                any = true;
-            }
-            return any;
-        }
+        internal bool RenameSheetLinks(Func<string, string?> rename) => document.RenameSheetLinks(rename);
         #endregion
 
         #region ---- markdown ----
@@ -2524,8 +2464,8 @@ namespace ArctisAurora.Core.UI
             if (!fence.Success && !isRule) return false;
 
             DocumentAddress start = AddressOf(block, 0);
-            undo?.Push(new TextEdit(this, start, line, false));
-            RemoveText(start, line.Length);
+            undo?.Push(new TextEdit(document, start, line, false));
+            document.RemoveText(start, line.Length);
 
             if (isRule)
             {
@@ -2570,8 +2510,8 @@ namespace ArctisAurora.Core.UI
             DocumentAddress caretAt = AddressOf(caretBlock, caretOffset);
             if (delta > 0 && !HasSelection)
             {
-                undo?.Push(new TextEdit(this, caretAt, "\t", true));
-                InsertText(caretAt, "\t");
+                undo?.Push(new TextEdit(document, caretAt, "\t", true));
+                document.InsertText(caretAt, "\t");
                 return true;
             }
 
@@ -2585,10 +2525,10 @@ namespace ArctisAurora.Core.UI
                 if (block.stylingType != TextStyleType.Code) continue;
 
                 DocumentAddress head = new DocumentAddress(i, 0);
-                if (step > 0) block.InsertText(0, "\t");
-                else if (block.text.StartsWith('\t')) block.RemoveText(0, 1);
+                if (step > 0) document.InsertText(head, "\t");
+                else if (block.text.StartsWith('\t')) document.RemoveText(head, 1);
                 else continue;
-                undo?.Push(new TextEdit(this, head, "\t", step > 0));
+                undo?.Push(new TextEdit(document, head, "\t", step > 0));
 
                 if (anchorAt.block == i) anchorAt = new DocumentAddress(i, Math.Max(0, anchorAt.offset + step));
                 if (caretAt.block == i) caretAt = new DocumentAddress(i, Math.Max(0, caretAt.offset + step));
@@ -2669,25 +2609,19 @@ namespace ArctisAurora.Core.UI
             int contentEnd = typedEnd - marker.Length;
 
             List<BlockSnapshot> before = SnapshotBlocks(index, index);
-            block.RemoveText(contentEnd, marker.Length);
-            block.RemoveText(open, marker.Length);
             int from = open;
             int to = contentEnd - marker.Length;
 
-            if (marker == "`")
-            {
-                MarkCode(block, from, to);
-                closed = new StyleDelta(code: false);
-            }
+            StyleDelta delta = default;
+            if (marker == "`") closed = new StyleDelta(code: false);
             else
             {
-                StyleDelta delta = marker switch
+                delta = marker switch
                 {
                     "**" => new StyleDelta(bold: true),
                     "*" => new StyleDelta(italic: true),
                     _ => new StyleDelta(strikethrough: true)
                 };
-                block.StyleRange(from, to, delta);
                 closed = marker switch
                 {
                     "**" => new StyleDelta(bold: false),
@@ -2696,8 +2630,14 @@ namespace ArctisAurora.Core.UI
                 };
             }
 
-            block.ApplyLayout(document.layout);
-            undo?.Push(new BlockStateEdit(this, index, before, SnapshotBlocks(index, index)));
+            document.ChangeBlocks(index, index, b =>
+            {
+                b.run.RemoveText(contentEnd, marker.Length);
+                b.run.RemoveText(open, marker.Length);
+                if (marker == "`") RichTextDocument.MarkCode(b, from, to);
+                else if (to > from) b.run.StyleRange(from, to, delta);
+            });
+            undo?.Push(new BlockStateEdit(document, index, before, SnapshotBlocks(index, index)));
             SetCaret(block, to);
             return true;
         }
@@ -2722,23 +2662,6 @@ namespace ArctisAurora.Core.UI
                 return open;
             }
             return -1;
-        }
-
-        // Gives a character range the inline code styling.
-        private static void MarkCode(BlockControl block, int from, int to)
-        {
-            block.SplitSpanAt(to);
-            int first = block.SplitSpanAt(from);
-            int at = from;
-            for (int i = first; i < block.spans.Count && at < to; i++)
-            {
-                StyleSpan span = block.spans[i];
-                at += span.count;
-                span.stylingType = TextStyleType.Code;
-                span.fontSizeAuthored = false;
-                block.spans[i] = span;
-            }
-            block.MergeSpans();
         }
 
         // "```lang" on a line of its own
@@ -2813,12 +2736,12 @@ namespace ArctisAurora.Core.UI
             if (styling is TextStyleType type)
             {
                 DocumentAddress at = new DocumentAddress(index, 0);
-                undo?.Push(new TextEdit(this, at, head, false));
-                RemoveText(at, head.Length);
+                undo?.Push(new TextEdit(document, at, head, false));
+                document.RemoveText(at, head.Length);
 
                 List<BlockSnapshot> before = SnapshotBlocks(index, index);
-                SetBlockStylingBetween(index, index, type);
-                undo?.Push(new StyleRangeEdit(this, index, before, type));
+                document.SetBlockStylingBetween(index, index, type);
+                undo?.Push(new StyleRangeEdit(document, index, before, type));
                 return true;
             }
 
@@ -2834,8 +2757,8 @@ namespace ArctisAurora.Core.UI
             else return false;
 
             DocumentAddress start = new DocumentAddress(index, 0);
-            undo?.Push(new TextEdit(this, start, head, false));
-            RemoveText(start, head.Length);
+            undo?.Push(new TextEdit(document, start, head, false));
+            document.RemoveText(start, head.Length);
 
             SetBlockList(index, b =>
             {
@@ -2867,11 +2790,12 @@ namespace ArctisAurora.Core.UI
             while (last + 1 < blocks.Count && SameList(blocks[last + 1])) last++;
 
             List<BlockSnapshot> before = SnapshotBlocks(first, last);
-            for (int b = first; b <= last; b++)
-                if (blocks[b].listLevel == level) blocks[b].listMarker = marker;
+            document.ChangeBlocks(first, last, b =>
+            {
+                if (b.listLevel == level) b.listMarker = marker;
+            });
 
-            undo?.Push(new BlockStateEdit(this, first, before, SnapshotBlocks(first, last)));
-            ListsChanged();
+            undo?.Push(new BlockStateEdit(document, first, before, SnapshotBlocks(first, last)));
             return true;
         }
 
@@ -2900,9 +2824,9 @@ namespace ArctisAurora.Core.UI
                 if (above.listKind != ListKind.Bullet || above.listLevel != level || above.shownMarker != first.shownMarker) continue;
 
                 List<BlockSnapshot> before = SnapshotBlocks(head, head);
-                first.listStart = above.listNumber + 1;
-                undo?.Push(new BlockStateEdit(this, head, before, SnapshotBlocks(head, head)));
-                ListsChanged();
+                int start = above.listNumber + 1;
+                document.ChangeBlocks(head, head, b => b.listStart = start);
+                undo?.Push(new BlockStateEdit(document, head, before, SnapshotBlocks(head, head)));
                 return true;
             }
             return false;
@@ -2998,30 +2922,23 @@ namespace ArctisAurora.Core.UI
                 int level = delta > 0 ? Math.Min(block.listLevel + 1, deepest) : block.listLevel - 1;
                 if (level < 0 || (delta > 0 && level <= block.listLevel)) continue;
 
-                block.listLevel = level;
-                block.ApplyLayout(document.layout);
+                document.ChangeBlocks(b, b, n => n.listLevel = level);
                 changed = true;
             }
 
-            if (changed)
-            {
-                undo?.Push(new BlockStateEdit(this, first, before, SnapshotBlocks(first, last)));
-                ListsChanged();
-            }
+            if (changed) undo?.Push(new BlockStateEdit(document, first, before, SnapshotBlocks(first, last)));
             return changed;
         }
 
         // One block's list state rewritten as one undoable record.
-        internal void SetBlockList(int index, Action<BlockControl> change)
+        internal void SetBlockList(int index, Action<NoteBlock> change)
         {
             List<BlockControl> blocks = Blocks();
             if (index < 0 || index >= blocks.Count) return;
 
             List<BlockSnapshot> before = SnapshotBlocks(index, index);
-            change(blocks[index]);
-            blocks[index].ApplyLayout(document.layout);
-            undo?.Push(new BlockStateEdit(this, index, before, SnapshotBlocks(index, index)));
-            ListsChanged();
+            document.ChangeBlocks(index, index, change);
+            undo?.Push(new BlockStateEdit(document, index, before, SnapshotBlocks(index, index)));
         }
         #endregion
 
@@ -3081,14 +2998,9 @@ namespace ArctisAurora.Core.UI
 
             if (first < 0 || last < 0) return false;
 
-            List<BlockControl> blocks = Blocks();
             List<BlockSnapshot> before = SnapshotBlocks(first, last);
-            for (int b = first; b <= last; b++)
-            {
-                blocks[b].alignment = alignment;
-                blocks[b].InvalidateLayout();
-            }
-            undo?.Push(new BlockStateEdit(this, first, before, SnapshotBlocks(first, last)));
+            document.ChangeBlocks(first, last, b => b.alignment = alignment);
+            undo?.Push(new BlockStateEdit(document, first, before, SnapshotBlocks(first, last)));
             return true;
         }
 
@@ -3122,27 +3034,9 @@ namespace ArctisAurora.Core.UI
 
             List<BlockSnapshot> before = SnapshotBlocks(from.block, to.block);
 
-            ApplyStyleBetween(from, to, delta);
-            undo?.Push(new StyleRangeEdit(this, from.block, before, from, to, delta));
+            document.ApplyStyleBetween(from, to, delta);
+            undo?.Push(new StyleRangeEdit(document, from.block, before, from, to, delta));
             return true;
-        }
-
-        // Addressed rather than read off the selection, so redo can replay it against the spans undo
-        // restored. Offsets are block-relative, so nothing here has to survive a re-partition.
-        internal void ApplyStyleBetween(DocumentAddress from, DocumentAddress to, StyleDelta delta)
-        {
-            List<BlockControl> blocks = Blocks();
-            if (from.block < 0 || to.block >= blocks.Count || to.block < from.block) return;
-
-            for (int b = from.block; b <= to.block; b++)
-                blocks[b].StyleRange(
-                    b == from.block ? Math.Clamp(from.offset, 0, blocks[b].Length) : 0,
-                    b == to.block ? Math.Clamp(to.offset, 0, blocks[b].Length) : blocks[b].Length,
-                    delta);
-
-            anchor = new CaretSlot(blocks[from.block],
-                Math.Clamp(from.offset, 0, blocks[from.block].Length));
-            SetCaret(blocks[to.block], Math.Clamp(to.offset, 0, blocks[to.block].Length), true);
         }
 
         // The styling type of every block the range touches; with nothing selected, the caret's own.
@@ -3161,20 +3055,9 @@ namespace ArctisAurora.Core.UI
             if (first < 0 || last < 0) return false;
 
             List<BlockSnapshot> before = SnapshotBlocks(first, last);
-            SetBlockStylingBetween(first, last, type);
-            undo?.Push(new StyleRangeEdit(this, first, before, type));
+            document.SetBlockStylingBetween(first, last, type);
+            undo?.Push(new StyleRangeEdit(document, first, before, type));
             return true;
-        }
-
-        internal void SetBlockStylingBetween(int first, int last, TextStyleType type)
-        {
-            List<BlockControl> blocks = Blocks();
-
-            for (int b = first; b <= last && b < blocks.Count; b++)
-            {
-                blocks[b].stylingType = type;
-                blocks[b].ApplyLayout(document.layout);
-            }
         }
 
         // A style change leaves the text alone, so a span of blocks as data is the whole inverse.
@@ -3188,185 +3071,162 @@ namespace ArctisAurora.Core.UI
 
             return snapshots;
         }
-
-        // Undo for both styling primitives. Neither adds or removes a block, so the blocks
-        // themselves survive and only their spans are rewritten.
-        internal void RestoreBlocks(int firstBlock, List<BlockSnapshot> before)
-        {
-            List<BlockControl> blocks = Blocks();
-
-            for (int i = 0; i < before.Count; i++)
-            {
-                int index = firstBlock + i;
-                if (index < 0 || index >= blocks.Count) continue;
-
-                blocks[index].Restore(before[i]);
-                blocks[index].ApplyLayout(document.layout);
-            }
-            ListsChanged();
-        }
         #endregion
 
         #region ---- addressing ----
         internal DocumentAddress AddressOf(BlockControl block, int offset) =>
-            new DocumentAddress(Blocks().IndexOf(block), offset);
+            new DocumentAddress(block != null && block == caretBlock ? CaretIndex : Blocks().IndexOf(block), offset);
+
+        private int CaretIndex
+        {
+            get
+            {
+                if (caretIndex < 0) caretIndex = Blocks().IndexOf(caretBlock);
+                else CheckCaretIndex();
+                return caretIndex;
+            }
+        }
+
+        // Throws when the cached caret index no longer names the caret's block.
+        [System.Diagnostics.Conditional("DEBUG")]
+        private void CheckCaretIndex()
+        {
+            int walked = Blocks().IndexOf(caretBlock);
+            if (walked != caretIndex)
+                throw new Exception($"[DocumentControl] cached caret index {caretIndex} is stale; the caret's block is at {walked}.");
+        }
 
         internal bool Resolve(DocumentAddress at, out BlockControl block, out int offset)
         {
             block = null;
             offset = 0;
 
-            List<BlockControl> blocks = Blocks();
-            if (at.block < 0 || at.block >= blocks.Count) return false;
+            if (BlockAt(at.block) is not BlockControl found) return false;
 
-            block = blocks[at.block];
+            block = found;
             offset = Math.Clamp(at.offset, 0, block.Length);
             return true;
         }
 
+        // The block at a flat index without building the list; null past the end.
+        private BlockControl? BlockAt(int index)
+        {
+            if (index < 0) return null;
+            if (index == caretIndex && caretBlock != null)
+            {
+                CheckCaretIndex();
+                return caretBlock;
+            }
+
+            foreach (Entity child in children)
+            {
+                if (child is BlockControl block)
+                {
+                    if (index-- == 0) return block;
+                }
+                else if (TableIn(child) is TableControl table)
+                    foreach (Entity entry in table.children)
+                    {
+                        if (entry is not StackPanelControl cell) continue;
+
+                        foreach (Entity line in cell.children)
+                            if (line is BlockControl cellBlock && index-- == 0) return cellBlock;
+                    }
+            }
+
+            return null;
+        }
+
         private void CaretTo(DocumentAddress at)
         {
-            if (Resolve(at, out BlockControl block, out int offset)) SetCaret(block, offset);
+            if (!Resolve(at, out BlockControl block, out int offset)) return;
+
+            SetCaret(block, offset);
+            caretIndex = at.block;
         }
         #endregion
 
-        #region ---- undo primitives ----
-        internal void InsertText(DocumentAddress at, string insert)
+        #region ---- model changes ----
+        public override void OnDestroy()
         {
-            if (!Resolve(at, out BlockControl block, out int offset)) return;
-
-            block.InsertText(offset, insert);
-            SetCaret(block, offset + insert.Length);
+            if (document != null) document.changed -= OnNoteChanged;
+            base.OnDestroy();
         }
 
-        internal void RemoveText(DocumentAddress at, int count)
+        // Brings the controls in line with a change the model made.
+        private void OnNoteChanged(NoteChange change)
         {
-            if (!Resolve(at, out BlockControl block, out int offset)) return;
-            if (offset + count > block.Length) return;
+            if (change.kind is NoteChangeKind.Inserted or NoteChangeKind.Removed or NoteChangeKind.Table) caretIndex = -1;
 
-            block.RemoveText(offset, count);
-            SetCaret(block, offset);
-        }
-
-        // The head block keeps its prefix and the caret, the tail block's suffix joins it, and every
-        // block the range crossed whole goes with the tail.
-        internal void DeleteBetween(DocumentAddress from, DocumentAddress to)
-        {
-            List<BlockControl> blocks = Blocks();
-            if (from.block < 0 || to.block >= blocks.Count || from.block > to.block) return;
-
-            BlockControl head = blocks[from.block];
-
-            if (from.block == to.block)
+            switch (change.kind)
             {
-                head.RemoveText(from.offset, to.offset - from.offset);
-                SetCaret(head, from.offset);
-                return;
+                case NoteChangeKind.Text:
+                case NoteChangeKind.Spans:
+                {
+                    if (change.count == 1)
+                    {
+                        BlockAt(change.first)?.InvalidateLayout();
+                        break;
+                    }
+
+                    List<BlockControl> blocks = Blocks();
+                    for (int b = change.first; b < change.first + change.count && b < blocks.Count; b++)
+                        blocks[b].InvalidateLayout();
+                    break;
+                }
+                case NoteChangeKind.Kind:
+                {
+                    List<BlockControl> blocks = Blocks();
+                    for (int b = change.first; b < change.first + change.count && b < blocks.Count; b++)
+                        blocks[b].ApplyLayout(document.layout);
+                    ListsChanged();
+                    break;
+                }
+                case NoteChangeKind.Inserted:
+                {
+                    List<NoteBlock> notes = document.Blocks();
+                    BlockControl after = Blocks()[change.first - 1];
+                    for (int i = 0; i < change.count; i++)
+                    {
+                        BlockControl block = new BlockControl(notes[change.first + i]);
+                        block.CopyPaint(after);
+                        InsertBlockAfter(after, block);
+                        block.ApplyLayout(document.layout);
+                        after = block;
+                    }
+                    break;
+                }
+                case NoteChangeKind.Removed:
+                {
+                    List<BlockControl> blocks = Blocks();
+                    for (int i = change.first + change.count - 1; i >= change.first; i--)
+                        RemoveBlock(blocks[i]);
+                    break;
+                }
+                case NoteChangeKind.Table:
+                    ShowTable(change.first);
+                    break;
+                case NoteChangeKind.Page:
+                    page = document.layout.Page;
+                    InvalidateLayout();
+                    break;
+                case NoteChangeKind.Layout:
+                    blockSpacing = document.layout.blockSpacing;
+                    foreach (Entity child in children)
+                    {
+                        if (child is BlockControl block) block.ApplyLayout(document.layout);
+                        else if (TableIn(child) is TableControl table) table.ApplyLayout(document.layout);
+                    }
+                    ListsChanged();
+                    break;
+                case NoteChangeKind.ReadOnly:
+                    readOnly = document.readOnly;
+                    break;
             }
 
-            BlockControl tail = blocks[to.block];
-            head.RemoveText(from.offset, head.Length - from.offset);
-            tail.RemoveText(0, to.offset);
-            head.AppendBlock(tail);
-            if (head.stylingType == TextStyleType.Rule) head.TakeKind(tail.SliceSnapshot(0, 0));
-
-            for (int i = to.block; i > from.block; i--)
-                RemoveBlock(blocks[i]);
-
-            head.ApplyLayout(document.layout);
-            SetCaret(head, from.offset);
-        }
-
-        // Everything the range covers, as data: the head block's cut suffix, then whole blocks, then
-        // the tail block's cut prefix.
-        private DocumentFragment CaptureFragment(DocumentAddress from, DocumentAddress to)
-        {
-            DocumentFragment fragment = new DocumentFragment();
-            List<BlockControl> blocks = Blocks();
-
-            for (int i = from.block; i <= to.block && i < blocks.Count; i++)
-                fragment.blocks.Add(blocks[i].SliceSnapshot(
-                    i == from.block ? from.offset : 0,
-                    i == to.block ? to.offset : blocks[i].Length));
-
-            return fragment;
-        }
-
-        // The inverse of a range delete. The head block takes its cut text back, and when the range
-        // crossed blocks the survivors that were merged into it move back out into rebuilt ones.
-        internal void InsertFragment(DocumentAddress at, DocumentFragment fragment)
-        {
-            if (fragment.blocks.Count == 0) return;
-            if (!Resolve(at, out BlockControl head, out int offset)) return;
-
-            if (fragment.blocks.Count == 1)
-            {
-                head.InsertSlice(offset, fragment.blocks[0]);
-                SetCaret(head, offset);
-                return;
-            }
-
-            // everything after the insertion point in the head block was moved there by the merge
-            BlockSnapshot rest = head.SliceSnapshot(offset, head.Length);
-            head.RemoveText(offset, head.Length - offset);
-            head.AppendSlice(fragment.blocks[0]);
-
-            BlockControl previous = head;
-            for (int i = 1; i < fragment.blocks.Count - 1; i++)
-            {
-                BlockControl block = BlockControl.From(fragment.blocks[i]);
-                InsertBlockAfter(previous, block);
-                block.ApplyLayout(document.layout);
-                previous = block;
-            }
-
-            BlockControl last = BlockControl.From(fragment.blocks[^1]);
-            last.AppendSlice(rest);
-            InsertBlockAfter(previous, last);
-            last.ApplyLayout(document.layout);
-
-            head.ApplyLayout(document.layout);
-            SetCaret(head, offset);
-        }
-
-        // Puts a block's kind back without touching its text; what undoing a merge into a rule needs.
-        internal void RestoreKind(DocumentAddress at, BlockSnapshot kind)
-        {
-            if (!Resolve(at, out BlockControl block, out _)) return;
-
-            block.TakeKind(kind);
-            block.ApplyLayout(document.layout);
-            ListsChanged();
-        }
-
-        // A fragment put in forwards, for a paste or a drop and their redo; the caret ends after it.
-        internal void InsertBetween(DocumentAddress from, DocumentAddress to, DocumentFragment fragment)
-        {
-            InsertFragment(from, fragment);
-            CaretTo(to);
-        }
-
-        // The inverse of a split.
-        internal void JoinBlockWithNext(DocumentAddress at)
-        {
-            List<BlockControl> blocks = Blocks();
-            if (at.block < 0 || at.block + 1 >= blocks.Count) return;
-
-            BlockControl head = blocks[at.block];
-            BlockControl tail = blocks[at.block + 1];
-
-            head.AppendBlock(tail);
-            RemoveBlock(tail);
-
-            head.ApplyLayout(document.layout);
-            CaretTo(at);
-        }
-
-        // Undo and redo of a table: the table at a note-level index swapped, the caret put back.
-        internal void SetTable(int index, bool present, XElement? xml, DocumentAddress caret)
-        {
-            PutTable(index, present, xml);
-            CaretTo(caret);
+            if (change.caret is not DocumentAddress caretAt) return;
+            if (change.anchor is DocumentAddress anchorAt) Select(anchorAt, caretAt);
+            else CaretTo(caretAt);
         }
         #endregion
 
@@ -3386,10 +3246,10 @@ namespace ArctisAurora.Core.UI
             int index = Array.IndexOf(document.blocks, block.note) + 1;
             if (index == document.blocks.Length) SplitBlockAt(AddressOf(block, block.Length));
 
-            TableControl table = PutTable(index, false, DocumentXml.NewTable(rows, columns, width))!;
-            BlockControl first = table.CellBlocks(0, 0)[0];
+            NoteTable model = document.PutTable(index, false, DocumentXml.NewTable(rows, columns, width))!;
+            BlockControl first = ((TableControl)ViewOf(model)).CellBlocks(0, 0)[0];
             SetCaret(first, 0);
-            undo?.Push(new TableEdit(this, index, null, DocumentXml.WriteTable(table.model), caretBefore, AddressOf(first, 0)));
+            undo?.Push(new TableEdit(document, index, null, DocumentXml.WriteTable(model), caretBefore, AddressOf(first, 0)));
             return true;
         }
 
@@ -3512,12 +3372,12 @@ namespace ArctisAurora.Core.UI
             int flat = Blocks().IndexOf(table.CellBlocks(0, 0)[0]);
             DocumentAddress caretBefore = AddressOf(caretBlock, caretOffset);
             XElement before = DocumentXml.WriteTable(table.model);
-            PutTable(index, true, null);
+            document.PutTable(index, true, null);
 
             List<BlockControl> blocks = Blocks();
             BlockControl landing = blocks[Math.Min(flat, blocks.Count - 1)];
             SetCaret(landing, 0);
-            undo?.Push(new TableEdit(this, index, before, null, caretBefore, AddressOf(landing, 0)));
+            undo?.Push(new TableEdit(document, index, before, null, caretBefore, AddressOf(landing, 0)));
             return true;
         }
 
@@ -3528,7 +3388,7 @@ namespace ArctisAurora.Core.UI
 
             DocumentAddress caret = caretBlock != null ? AddressOf(caretBlock, caretOffset) : default;
             using (editor.BeginStep("Resize column"))
-                undo?.Push(new TableEdit(this, Array.IndexOf(document.blocks, table.model), before, DocumentXml.WriteTable(table.model), caret, caret));
+                undo?.Push(new TableEdit(document, Array.IndexOf(document.blocks, table.model), before, DocumentXml.WriteTable(table.model), caret, caret));
             editor.MarkDirty();
         }
 
@@ -3546,43 +3406,37 @@ namespace ArctisAurora.Core.UI
             XElement edited = new XElement(before);
 
             (int row, int column, bool keep) = change(edited, cell.gridRow, cell.gridColumn);
-            TableControl rebuilt = PutTable(index, true, edited)!;
+            NoteTable model = document.PutTable(index, true, edited)!;
 
-            List<BlockControl> lines = rebuilt.CellBlocks(row, column);
+            List<BlockControl> lines = ((TableControl)ViewOf(model)).CellBlocks(row, column);
             BlockControl landing = lines[keep ? Math.Min(line, lines.Count - 1) : 0];
             SetCaret(landing, keep ? offset : 0);
-            undo?.Push(new TableEdit(this, index, before, DocumentXml.WriteTable(rebuilt.model), caretBefore, AddressOf(landing, caretOffset)));
+            undo?.Push(new TableEdit(document, index, before, DocumentXml.WriteTable(model), caretBefore, AddressOf(landing, caretOffset)));
             return true;
         }
 
-        // Takes the table at a note-level index out when present, and builds one from xml there.
-        private TableControl? PutTable(int index, bool present, XElement? xml)
+        // Drops the view of a table the model no longer holds, and builds one for the table at a note-level index.
+        private void ShowTable(int index)
         {
-            if (present && document.blocks[index] is NoteTable old)
-            {
-                Control view = ViewOf(old);
-                document.blocks = Removed(document.blocks, old);
-                view.parent.Destroy();
-            }
+            for (int i = children.Count - 1; i >= 0; i--)
+                if (TableIn(children[i]) is TableControl stale && Array.IndexOf(document.blocks, stale.model) < 0)
+                    children[i].Destroy();
 
-            TableControl? table = null;
-            if (xml != null)
+            if (index < document.blocks.Length && document.blocks[index] is NoteTable model && ViewOf(model) == null)
             {
-                table = new TableControl(DocumentXml.ReadTable(xml));
+                TableControl table = new TableControl(model);
                 table.ApplyLayout(document.layout);
                 ScrollableControl viewport = table.Hosted();
-                int at = index < document.blocks.Length
-                    ? children.IndexOf(Hosting(ViewOf(document.blocks[index])))
+                int at = index + 1 < document.blocks.Length
+                    ? children.IndexOf(Hosting(ViewOf(document.blocks[index + 1])))
                     : children.IndexOf(Hosting(ViewOf(document.blocks[index - 1]))) + 1;
                 children.Insert(at, viewport);
                 viewport.parent = this;
-                document.blocks = Inserted(document.blocks, index, table.model);
             }
 
             MarkTreeOrderDirty();
             InvalidateLayout();
             ListsChanged();
-            return table;
         }
 
         // A note-level entry as it sits among the children: a block itself, a table its viewport.
