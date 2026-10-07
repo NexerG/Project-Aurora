@@ -6,4 +6,6 @@
 	<Test Action="Input.KeyWithModifierFiresKeybind"/>
 	<Test Action="Input.DragMovesSplitter"/>
 	<Test Action="Input.RepeatJoinsUndoStep"/>
+	<Test Action="Input.DropdownInsidePopup"/>
+	<Test Action="Input.SourceSubmenu"/>
 </TestSuite>

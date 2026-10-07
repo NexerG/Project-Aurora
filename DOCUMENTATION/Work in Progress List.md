@@ -150,7 +150,20 @@ This file holds **open work**. A landed entry moves to [[Changelog]]; one that s
 		- [ ] link cache file in the vault for references (user's idea, not designed) — would cover the undo-after-insert gap → `sheets`
 		- [ ] delete rows/columns (insert exists; delete does not) → `sheets`
 	- [ ] **workspace tabs** — Blender-style tabs across the top switching Notes / Sheets / Board
-	- [ ] **todo board** — Trello-like tickets in columns, its own file kind beside notes and sheets
+	- [ ] **planner (user, 2026-10-07)** — `*.planner.xml`, one file shown as Gantt, board and calendar; F0, P1–P4, PC, C2 landed (Gantt editable, board draggable, categories, assignee chips, calendar view, attachments and follows links); follow-ups below → `ClaudeMemory/Context/planner-plan.md`
+		- [ ] **planner F0–P4 NOT GUI-verified (2026-10-07)** — vault browser menus, open/rename/delete, tab restore, zoom; P2 bar drag, popup, menu, keys; P3 real card drag; P4 "+ Category", category popup (typing, picker, Delete), row/column double clicks, category menus, many-assignee chips, one-tick board lag; test-, golden-, shot-verified only → `planner`
+		- [ ] **planner popup: Tab between boxes** — no `Planner.Tab` bind → `planner`
+		- [ ] **planner: clear a ticket colour back to its category's** — impossible once picked → `planner`
+		- [ ] **planner Gantt: drag past the span** — a bar dragged past the chart's span is cut off until release → `planner`
+		- [ ] **planner board: select / open a card** — no click-to-select or double-click edit on the board; Delete / Edit act on the Gantt selection only; a drop outside the board does nothing, no auto-scroll at the edge → `planner`
+		- [ ] **planner: reorder categories** — no way to change category order (Gantt rows, board columns) → `planner`
+		- [ ] **planner PC + C2 NOT GUI-verified (2026-10-07)** — real-mouse calendar drags / resizes, VResize cursor, toolbar `<` `Today` `>` and span buttons, now line on the real clock, popup Before / After / Follows rows, session restore; test- and golden-verified only → `planner`
+		- [ ] **planner popup: Apply button runs inside a press dispatch** — clicking it in `Planner.AttachmentText` logged `subtreeBounds stale` ×8 in the full run (the engine trap); the test uses Enter, the button is unchanged → `rebuild-inside-pointer-dispatch`
+		- [ ] **planner calendar: drag to create, more drags** — no drag-to-create on empty time; no resize in Month or the all-day strip; a timed ticket cannot be dragged into the strip → `planner`
+		- [ ] **planner attachments: not drawn on the board, Month chips or the calendar's all-day strip** → `planner`
+		- [ ] **planner follows: followers move only on release** — not live during the drag → `planner`
+		- [ ] **engine: guard `UIEngine` pointer dispatch against controls destroyed mid-dispatch** — destroying or rebuilding controls in press / release / tap / drag end leaves stale layout state; the planner posts its rebuild (`RebuildSoon`) → `rebuild-inside-pointer-dispatch`
+	- [ ] **calendar (designed 2026-10-06, parked)** — engine side merged into the planner 2026-10-07 (PC + C2 in planner-plan); still parked: Google + iCloud over CalDAV (read-only first), iCalendar/recurrence, tray + start at login + toasts; C3–C7 → `ClaudeMemory/Context/calendar-plan.md`
 	- [ ] **simplified mode** — a setting that swaps to the familiar layouts (menu bar, one document at a time) for less technical users; a layout choice, not a separate app
 - [ ] fix resolution stuff associated with DPI and stuff. use `glfwGetMonitorContentScale` *(non-essential)*
 

@@ -118,6 +118,22 @@ namespace Thorium.Editor.CustomControls
             Browser()?.NewSheet(row.file.type == FileObject.FileType.Directory ? row.file.path : row.file.parent.path, fixedSize);
         }
 
+        [A_XSDActionDependency("Planners.New", "UI", "Creates a planner at the vault root and opens it")]
+        public static void NewPlanner()
+        {
+            VaultBrowserControl browser = Browser();
+            browser?.NewPlanner(browser.RootPath);
+        }
+
+        [A_XSDActionDependency("Planners.NewHere", "UI", "Creates a planner beside the entry the menu was opened on")]
+        public static void NewPlannerHere()
+        {
+            FileRowControl row = MenuRow();
+            if (row == null) { NewPlanner(); return; }
+
+            Browser()?.NewPlanner(row.file.type == FileObject.FileType.Directory ? row.file.path : row.file.parent.path);
+        }
+
         [A_XSDActionDependency("Sheets.FromCsv", "UI", "Writes the CSV the menu was opened on as a sheet beside it, keeps the CSV and opens the sheet")]
         public static void FromCsv()
         {
@@ -194,6 +210,19 @@ namespace Thorium.Editor.CustomControls
             string path = FreePath(folder, name, SheetDocument.extension);
             SheetDocument.Blank(BaseName(path), fixedSize).Save(path);
             SheetBook.Created();
+
+            Expand(folder);
+            Rebuild();
+            Open(path);
+        }
+
+        private void NewPlanner(string folder) =>
+            NoteNameWindow.Ask(UIEngine.WindowOf(this), "Untitled", name => CreatePlanner(folder, name), null, null);
+
+        private void CreatePlanner(string folder, string name)
+        {
+            string path = FreePath(folder, name, PlannerDocument.extension);
+            PlannerDocument.Blank(BaseName(path)).Save(path);
 
             Expand(folder);
             Rebuild();
@@ -335,13 +364,14 @@ namespace Thorium.Editor.CustomControls
                 : Enumerable.Empty<string>();
         }
 
-        // Notes that can hold a sheet link: .md and .xml, sheets left out.
+        // Notes that can hold a sheet link: .md and .xml, sheets and planners left out.
         internal static IEnumerable<string> VaultNotes()
         {
             string root = KnownVaults.Resolve(SettingsRegistry.Get<ThoriumSettings>().vault.path);
             if (!Directory.Exists(root)) return Enumerable.Empty<string>();
             return Directory.EnumerateFiles(root, "*.md", System.IO.SearchOption.AllDirectories)
-                .Concat(Directory.EnumerateFiles(root, "*.xml", System.IO.SearchOption.AllDirectories).Where(path => !SheetDocument.IsSheet(path)));
+                .Concat(Directory.EnumerateFiles(root, "*.xml", System.IO.SearchOption.AllDirectories)
+                    .Where(path => !SheetDocument.IsSheet(path) && !PlannerDocument.IsPlanner(path)));
         }
 
         // A [[note]] by name, or a web address handed to the system browser.
@@ -418,6 +448,7 @@ namespace Thorium.Editor.CustomControls
         internal static TabItemControl BuildTab(string notePath)
         {
             if (SheetDocument.IsSheet(notePath) || SheetCsv.IsCsv(notePath)) return BuildSheetTab(notePath);
+            if (PlannerDocument.IsPlanner(notePath)) return BuildPlannerTab(notePath);
             if (Path.GetExtension(notePath).Equals(".tex", StringComparison.OrdinalIgnoreCase)) return BuildTexTab(notePath);
 
             DocumentEditorControl editor = new DocumentEditorControl { contextMenu = "note" };
@@ -449,6 +480,21 @@ namespace Thorium.Editor.CustomControls
             return tab;
         }
 
+        private static TabItemControl BuildPlannerTab(string plannerPath)
+        {
+            PlannerEditorControl editor = new PlannerEditorControl();
+            editor.LoadPath(plannerPath);
+
+            TabItemControl tab = new TabItemControl
+            {
+                name = plannerPath,
+                header = editor.document.name ?? BaseName(plannerPath),
+                onRename = name => RenameNote(editor.path, name)
+            };
+            tab.AddChild(editor);
+            return tab;
+        }
+
         private static TabItemControl BuildTexTab(string texPath)
         {
             TexEditorControl editor = new TexEditorControl();
@@ -465,11 +511,13 @@ namespace Thorium.Editor.CustomControls
             return tab;
         }
 
-        // A file's name without its extension; a sheet's ".sheet.xml" counts as one.
+        // A file's name without its extension; a sheet's ".sheet.xml" and a planner's ".planner.xml" count as one.
         private static string BaseName(string path) => Path.GetFileName(path)[..^Extension(path).Length];
 
         private static string Extension(string path) =>
-            SheetDocument.IsSheet(path) ? SheetDocument.extension : Path.GetExtension(path);
+            SheetDocument.IsSheet(path) ? SheetDocument.extension
+            : PlannerDocument.IsPlanner(path) ? PlannerDocument.extension
+            : Path.GetExtension(path);
 
         // "Name", then "Name 2", "Name 3" — a name already taken is never written over.
         private static string FreePath(string folder, string baseName, string extension)

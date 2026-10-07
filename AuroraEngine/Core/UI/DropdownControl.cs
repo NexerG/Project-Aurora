@@ -87,7 +87,7 @@ namespace ArctisAurora.Core.UI
             foreach (string option in options)
                 entries.Add(new ContextMenuButton(option, () => Pick(option)));
 
-            ContextMenus.Open(entries, this,
+            ContextMenus.OpenFrom(entries, this,
                 new Vector2(arrangedRect.x, arrangedRect.y + arrangedRect.height), arrangedRect.width, centered: true);
             return true;
         }

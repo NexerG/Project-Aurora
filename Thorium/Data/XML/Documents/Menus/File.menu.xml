@@ -5,6 +5,7 @@
 		<ContextButton Text="Fixed size" Action="Sheets.NewFixed"/>
 		<ContextButton Text="Unfixed" Action="Sheets.New"/>
 	</ContextSubmenu>
+	<ContextButton Text="New planner" Action="Planners.New"/>
 	<ContextButton Text="Vaults" Action="Vaults.Open"/>
 	<ContextButton Text="Save note" Action="Text.Save"/>
 	<ContextButton Text="Export PDF" Action="Tex.ExportPdf"/>

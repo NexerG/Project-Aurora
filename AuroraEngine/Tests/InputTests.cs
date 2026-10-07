@@ -96,6 +96,78 @@ namespace ArctisAurora.Tests
             yield break;
         }
 
+        [A_XSDActionDependency("Input.DropdownInsidePopup", "Test")]
+        private static IEnumerator<int> DropdownInsidePopup(TestContext t)
+        {
+            StackPanelControl ground = new StackPanelControl();
+            t.Show(ground);
+            yield return 2;
+
+            string? picked = null;
+            bool closed = false;
+            DropdownControl dropdown = new DropdownControl { options = new[] { "One", "Two" }, selected = "One", preferredWidth = 120f, preferredHeight = 24f };
+            dropdown.onPicked = value => picked = value;
+            StackPanelControl content = new StackPanelControl { alpha = 0f };
+            content.AddChild(dropdown);
+            ContextMenus.Open(new List<ContextMenuEntry> { new ContextMenuContent(content) }, ground, new Vector2(40f, 40f), 200f, onClosed: () => closed = true);
+            yield return 20;
+
+            yield return t.Click(dropdown);
+            yield return 20;
+            ContextMenuControl.Row? two = Rows(ground).FirstOrDefault(row => (row.entry as ContextMenuButton)?.text == "Two");
+            t.Check(two != null && !closed, "the dropdown's list opens and the popup holding it stays open");
+            if (two == null) yield break;
+
+            yield return t.Click(two);
+            yield return 2;
+            t.Check(picked == "Two" && dropdown.selected == "Two", "picking an option reaches the dropdown");
+            t.Check(!closed && dropdown.parent != null && !Rows(ground).Any(row => (row.entry as ContextMenuButton)?.text == "Two"),
+                "the pick closes the list and leaves the popup open");
+
+            ContextMenus.Close();
+            t.Check(closed, "closing the menu closes the popup");
+        }
+
+        [A_XSDActionDependency("Input.SourceSubmenu", "Test")]
+        private static IEnumerator<int> SourceSubmenu(TestContext t)
+        {
+            StackPanelControl ground = new StackPanelControl();
+            t.Show(ground);
+            yield return 2;
+
+            int built = 0;
+            ContextMenus.RegisterSource("test-source", () =>
+            {
+                built++;
+                return new List<ContextMenuEntry> { new ContextMenuButton($"Built {built}", () => { }) };
+            });
+            ContextMenuSubmenu more = new ContextMenuSubmenu { text = "More", source = "test-source" };
+            ContextMenus.Open(new List<ContextMenuEntry> { more }, ground, new Vector2(40f, 40f), 160f);
+            yield return 20;
+            t.Check(built == 0, "a sourced submenu builds nothing until it opens");
+
+            ContextMenuControl.Row row = Rows(ground).First(r => ReferenceEquals(r.entry, more));
+            yield return t.MoveTo(row);
+            yield return 20;
+            t.Check(built == 1 && Rows(ground).Any(r => (r.entry as ContextMenuButton)?.text == "Built 1"), "hovering it builds its entries then");
+            ContextMenus.Close();
+        }
+
+        // Menu rows open in the control's window.
+        private static List<ContextMenuControl.Row> Rows(Control within)
+        {
+            List<ContextMenuControl.Row> rows = new List<ContextMenuControl.Row>();
+            Collect(UIEngine.WindowOf(within)!.ui.uiRoot, rows);
+            return rows;
+        }
+
+        private static void Collect(ArctisAurora.Core.ECS.EngineEntity.Entity entity, List<ContextMenuControl.Row> rows)
+        {
+            if (entity is ContextMenuControl.Row row && !row.destroyed) rows.Add(row);
+            foreach (ArctisAurora.Core.ECS.EngineEntity.Entity child in entity.children)
+                Collect(child, rows);
+        }
+
         private sealed class CountRecord : IEditRecord
         {
             private readonly List<int> _undone;

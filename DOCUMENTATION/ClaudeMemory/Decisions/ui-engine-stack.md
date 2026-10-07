@@ -329,6 +329,8 @@ only `DragGhost.Show` caller.
 | `UIEngine.RaiseHovered` | brings the window under the drag forward, once per crossing; needs the active-window latch | tabs |
 | `DragGhost` + `Control.draggingOpacity` | **landed 2026-09-12 as `DragGhost`** — `UIEngineModule.rangeRoot`, which `BuildDrawLists` walks in place of `uiRoot`, and `rangeRect`, the box built in `Show` on the main thread because the camera runs on the render thread and may not read a `UIElements` row ([[render-thread-reads-pool-row]]). `DragGhost.Follow` runs beside the old one in `Engine.MainTick` | tabs |
 
+**Rule (2026-10-07, widened in planner P4):** no handler may destroy or rebuild controls inside a UIEngine pointer dispatch — press, release, tap, drag end (`FinishDrag`, where `EndDrag` calls `OnDragStop` on the claimant after it) — because destroyed controls left stale layout state. Post it with `Engine.Post`. See [[rebuild-inside-pointer-dispatch]].
+
 ## Row layout — measured, not estimated
 
 Printed by `UIEngine.Bootstrap` via `Unsafe.SizeOf` at boot.

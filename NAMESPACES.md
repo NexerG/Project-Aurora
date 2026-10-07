@@ -104,6 +104,7 @@ ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/ThreadedSystem.cs
 ArctisAurora.Core.Threading -> AuroraEngine/Core/Threading/ThreadingSettings.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/BlockControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ButtonControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/CalendarControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/CaretControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/CheckBoxControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ColorPickerControl.cs
@@ -133,6 +134,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FileRowControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FileTreeControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/FormulaPopup.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Frontmatter.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/GanttChartControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Gradients.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/GridListControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/HintControl.cs
@@ -154,6 +156,15 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/NotePropertiesControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/Palettes.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PanelControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PdfExport.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerActions.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerAttachments.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerBoardControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerCategoryPopup.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerDocument.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerEditorControl.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerEdits.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerTicketPopup.cs
+ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PlannerXml.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/PointerEvent.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/RichTextDocument.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/ScrollableControl.cs
@@ -202,6 +213,7 @@ ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WindowActions.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WindowFrameControl.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WindowRoot.cs
 ArctisAurora.Core.UI -> AuroraEngine/Core/UI/WorkspaceControl.cs
+ArctisAurora.Core.Users -> AuroraEngine/Core/Users/User.cs
 ArctisAurora.CustomEntities -> AuroraEngine/CustomEntities/Layer.cs
 ArctisAurora.CustomEntities -> AuroraEngine/CustomEntities/SimulatorEntity.cs
 ArctisAurora.CustomEntities -> AuroraEngine/CustomEntities/TestingEntity.cs
@@ -278,5 +290,6 @@ Thorium.Editor -> Thorium/Editor/VaultsWindow.cs
 Thorium.Editor.CustomControls -> Thorium/Editor/CustomControls/VaultBrowserControl.cs
 Thorium.Tests -> Thorium/Tests/LatinModernTests.cs
 Thorium.Tests -> Thorium/Tests/PaletteTests.cs
+Thorium.Tests -> Thorium/Tests/PlannerTests.cs
 Thorium.Tests -> Thorium/Tests/SheetTests.cs
 Thorium.Tests -> Thorium/Tests/TextInputTests.cs

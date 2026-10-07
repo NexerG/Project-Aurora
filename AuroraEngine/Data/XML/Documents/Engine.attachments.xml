@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<AttachmentKinds xmlns="http://arctisaurora/AuroraUITypes"
+		   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		   xsi:schemaLocation="http://arctisaurora/AuroraUITypes ../Schemas/UITypeSchema.xsd" >
+
+	<AttachmentKind Name="Travel" Color="#8E8E93" Minutes="30"/>
+	<AttachmentKind Name="Prep" Color="#B48EDB" Minutes="15"/>
+</AttachmentKinds>

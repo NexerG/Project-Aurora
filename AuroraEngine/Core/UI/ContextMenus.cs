@@ -21,6 +21,9 @@ namespace ArctisAurora.Core.UI
         // menus by name — parsed documents and ones registered from code
         private static readonly Dictionary<string, ContextMenu> _menus = new Dictionary<string, ContextMenu>();
 
+        // submenu entry builders by name, called each time their submenu opens
+        private static readonly Dictionary<string, Func<List<ContextMenuEntry>>> _sources = new Dictionary<string, Func<List<ContextMenuEntry>>>();
+
         // open panels, index = depth
         private static readonly List<ContextMenuControl> _open = new List<ContextMenuControl>();
         private static RenderWindow? _origin;
@@ -34,6 +37,19 @@ namespace ArctisAurora.Core.UI
         #region ---- menus ----
         // Makes a menu built in code nameable by ContextMenu="…".
         public static void Register(string name, ContextMenu menu) => _menus[name] = menu;
+
+        // Makes a builder nameable by a submenu's Source="…".
+        public static void RegisterSource(string name, Func<List<ContextMenuEntry>> build) => _sources[name] = build;
+
+        // A submenu's entries: built by its source when it names one, else the authored ones.
+        private static List<ContextMenuEntry> EntriesOf(ContextMenuSubmenu submenu)
+        {
+            if (submenu.source == null) return submenu.entries;
+            if (_sources.TryGetValue(submenu.source, out Func<List<ContextMenuEntry>>? build)) return build();
+
+            Log.Once().Warn($"no context menu source named '{submenu.source}'");
+            return new List<ContextMenuEntry>();
+        }
 
         // A registered menu, or the document of that name, parsed on first use.
         public static ContextMenu? Get(string name)
@@ -91,6 +107,27 @@ namespace ArctisAurora.Core.UI
             _origin = window;
             target = on;
             Host(new ContextMenuControl(entries, 0) { position = point, preferredWidth = width, centered = centered });
+        }
+
+        // Opens one level under the open panel holding the control, which stays open; like Open when none holds it.
+        public static void OpenFrom(List<ContextMenuEntry> entries, Control on, Vector2 point, float width = 0f, bool centered = false)
+        {
+            ContextMenuControl? owner = null;
+            for (Control? c = on; c != null && owner == null; c = c.parent as Control)
+                if (c is ContextMenuControl panel && _open.Contains(panel)) owner = panel;
+            if (owner == null)
+            {
+                Open(entries, on, point, width, centered);
+                return;
+            }
+
+            int deeper = owner.depth + 1;
+            CloseFrom(deeper);
+            if (entries.Count == 0) return;
+
+            LayoutRect p = owner.arrangedRect;
+            Vector2 at = owner.position + new Vector2(point.X - p.x, point.Y - p.y);
+            Host(new ContextMenuControl(entries, deeper) { position = at, preferredWidth = width, centered = centered });
         }
 
         public static void Close() => CloseFrom(0);
@@ -168,32 +205,48 @@ namespace ArctisAurora.Core.UI
             if (_open.Count > deeper && ReferenceEquals(_open[deeper].opener, row)) return;
 
             CloseFrom(deeper);
-            if (row.entry is not ContextMenuSubmenu submenu || submenu.entries.Count == 0) return;
+            if (row.entry is not ContextMenuSubmenu submenu) return;
+            List<ContextMenuEntry> entries = EntriesOf(submenu);
+            if (entries.Count == 0) return;
 
             LayoutRect r = row.arrangedRect;
             LayoutRect p = panel.arrangedRect;
             Vector2 at = panel.position + new Vector2(r.x + r.width - p.x, r.y - p.y - panel.padding.top);
 
-            Host(new ContextMenuControl(submenu.entries, deeper) { position = at, opener = row });
+            Host(new ContextMenuControl(entries, deeper) { position = at, opener = row });
         }
 
-        // A clicked button row runs its action, then the whole menu closes.
+        // A clicked button row runs its action, then closes the menu, or only the list opened from inside a panel.
         internal static void Clicked(ContextMenuControl.Row row)
         {
             if (row.entry is not ContextMenuButton button) return;
 
+            int from = NestedFrom((ContextMenuControl)row.parent);
             button.action?.Invoke();
-            Close();
+            CloseFrom(from);
         }
 
-        // A press anywhere but on an open panel closes the menu.
+        // A press anywhere but on an open panel closes the menu; inside one, it closes a list opened from it.
         internal static void DismissUnlessInside(Control? pressed)
         {
             if (_open.Count == 0) return;
 
             for (Control? c = pressed; c != null; c = c.parent as Control)
-                if (c is ContextMenuControl) return;
+                if (c is ContextMenuControl panel)
+                {
+                    int deeper = panel.depth + 1;
+                    if (_open.Count > deeper && _open[deeper].opener == null) CloseFrom(deeper);
+                    return;
+                }
             Close();
+        }
+
+        // The shallowest panel at or above this one that was opened from inside another; 0 when none was.
+        private static int NestedFrom(ContextMenuControl panel)
+        {
+            for (int i = 1; i <= panel.depth && i < _open.Count; i++)
+                if (_open[i].opener == null) return i;
+            return 0;
         }
 
         // Closes the menu once no window of the application has focus.
