@@ -120,8 +120,6 @@ namespace ArctisAurora.Core.UI
             }
         }
 
-        internal NoteCell CellOf(StackPanelControl cell) => cellOf[cell];
-
         // The table inside the sideways scroller a note holds it in.
         public ScrollableControl Hosted()
         {

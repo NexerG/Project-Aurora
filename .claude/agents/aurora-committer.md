@@ -2,7 +2,7 @@
 name: aurora-committer
 description: Writes and makes the one commit of everything dirty in the Aurora tree, message derived from the diff in CLAUDE.md §9's shape. Use only when the user has asked for a commit. Handles trees whose changes span several sessions. Pass "draft" to get the message without committing, and optionally a one-line hint naming what landed.
 tools: Bash, Read, Grep, Glob
-model: sonnet
+model: claude-sonnet-5-5
 ---
 
 # Committer

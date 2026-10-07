@@ -53,12 +53,12 @@ namespace ArctisAurora.Core.UI
     // Text written into or cut out of a single block, changing no structure — typing.
     public sealed class TextEdit : IEditRecord
     {
-        private readonly DocumentControl document;
+        private readonly RichTextDocument document;
         private readonly DocumentAddress at;
         private readonly string text;
         private readonly bool inserted;
 
-        public TextEdit(DocumentControl document, DocumentAddress at, string text, bool inserted)
+        public TextEdit(RichTextDocument document, DocumentAddress at, string text, bool inserted)
         {
             this.document = document;
             this.at = at;
@@ -83,10 +83,10 @@ namespace ArctisAurora.Core.UI
     // partition the undo restored.
     public sealed class SplitEdit : IEditRecord
     {
-        private readonly DocumentControl document;
+        private readonly RichTextDocument document;
         private readonly DocumentAddress at;
 
-        public SplitEdit(DocumentControl document, DocumentAddress at)
+        public SplitEdit(RichTextDocument document, DocumentAddress at)
         {
             this.document = document;
             this.at = at;
@@ -101,7 +101,7 @@ namespace ArctisAurora.Core.UI
     // the inverse is the spans that were on it — no fragment, no structural surgery.
     public sealed class StyleRangeEdit : IEditRecord
     {
-        private readonly DocumentControl document;
+        private readonly RichTextDocument document;
         private readonly int firstBlock;
         private readonly List<BlockSnapshot> before;
 
@@ -113,7 +113,7 @@ namespace ArctisAurora.Core.UI
         // block styling; absent means this record is a span restyle
         private readonly TextStyleType? blockStyling;
 
-        public StyleRangeEdit(DocumentControl document, int firstBlock,
+        public StyleRangeEdit(RichTextDocument document, int firstBlock,
             List<BlockSnapshot> before, DocumentAddress from, DocumentAddress to,
             StyleDelta delta)
         {
@@ -125,7 +125,7 @@ namespace ArctisAurora.Core.UI
             this.delta = delta;
         }
 
-        public StyleRangeEdit(DocumentControl document, int firstBlock,
+        public StyleRangeEdit(RichTextDocument document, int firstBlock,
             List<BlockSnapshot> before, TextStyleType blockStyling)
         {
             this.document = document;
@@ -149,7 +149,7 @@ namespace ArctisAurora.Core.UI
     // rather than inverting the inverse, so only one direction is hand-written.
     public sealed class DeleteRangeEdit : IEditRecord
     {
-        private readonly DocumentControl document;
+        private readonly RichTextDocument document;
         private readonly DocumentAddress from;
         private readonly DocumentAddress to;
         private readonly DocumentFragment fragment;
@@ -158,7 +158,7 @@ namespace ArctisAurora.Core.UI
         private readonly DocumentAddress anchor;
         private readonly DocumentAddress caret;
 
-        public DeleteRangeEdit(DocumentControl document, DocumentAddress from,
+        public DeleteRangeEdit(RichTextDocument document, DocumentAddress from,
             DocumentAddress to, DocumentFragment fragment, DocumentAddress anchor, DocumentAddress caret)
         {
             this.document = document;
@@ -171,9 +171,8 @@ namespace ArctisAurora.Core.UI
 
         public void Undo()
         {
-            document.InsertFragment(from, fragment);
-            if (fragment.blocks.Count > 1) document.RestoreKind(from, fragment.blocks[0]);
-            document.Select(anchor, caret);
+            document.InsertFragment(from, fragment, anchor, caret);
+            if (fragment.blocks.Count > 1) document.RestoreKind(from, fragment.blocks[0], anchor, caret);
         }
 
         public void Redo() => document.DeleteBetween(from, to);
@@ -182,12 +181,12 @@ namespace ArctisAurora.Core.UI
     // Content put into the document at one place — a paste or a drop. The mirror of a range delete.
     public sealed class InsertRangeEdit : IEditRecord
     {
-        private readonly DocumentControl document;
+        private readonly RichTextDocument document;
         private readonly DocumentAddress from;
         private readonly DocumentAddress to;
         private readonly DocumentFragment fragment;
 
-        public InsertRangeEdit(DocumentControl document, DocumentAddress from,
+        public InsertRangeEdit(RichTextDocument document, DocumentAddress from,
             DocumentAddress to, DocumentFragment fragment)
         {
             this.document = document;
@@ -204,12 +203,12 @@ namespace ArctisAurora.Core.UI
     // A picture resized, rewrapped or moved; both directions leave it selected.
     public sealed class PictureEdit : IEditRecord
     {
-        private readonly DocumentControl document;
+        private readonly RichTextDocument document;
         private readonly DocumentAddress at;
         private readonly StyleSpan before;
         private readonly StyleSpan after;
 
-        public PictureEdit(DocumentControl document, DocumentAddress at, StyleSpan before, StyleSpan after)
+        public PictureEdit(RichTextDocument document, DocumentAddress at, StyleSpan before, StyleSpan after)
         {
             this.document = document;
             this.at = at;
@@ -225,12 +224,12 @@ namespace ArctisAurora.Core.UI
     // A formula's source rewritten; both directions leave it selected.
     public sealed class MathEdit : IEditRecord
     {
-        private readonly DocumentControl document;
+        private readonly RichTextDocument document;
         private readonly DocumentAddress at;
         private readonly string before;
         private readonly string after;
 
-        public MathEdit(DocumentControl document, DocumentAddress at, string before, string after)
+        public MathEdit(RichTextDocument document, DocumentAddress at, string before, string after)
         {
             this.document = document;
             this.at = at;
@@ -246,12 +245,12 @@ namespace ArctisAurora.Core.UI
     // Blocks rewritten in place — list kind, nesting, a tick. Both directions are snapshots.
     public sealed class BlockStateEdit : IEditRecord
     {
-        private readonly DocumentControl document;
+        private readonly RichTextDocument document;
         private readonly int firstBlock;
         private readonly List<BlockSnapshot> before;
         private readonly List<BlockSnapshot> after;
 
-        public BlockStateEdit(DocumentControl document, int firstBlock,
+        public BlockStateEdit(RichTextDocument document, int firstBlock,
             List<BlockSnapshot> before, List<BlockSnapshot> after)
         {
             this.document = document;
@@ -268,14 +267,14 @@ namespace ArctisAurora.Core.UI
     // A table inserted, rebuilt or deleted whole, as its XML before and after; null is no table there.
     public sealed class TableEdit : IEditRecord
     {
-        private readonly DocumentControl document;
+        private readonly RichTextDocument document;
         private readonly int index;
         private readonly XElement? before;
         private readonly XElement? after;
         private readonly DocumentAddress caretBefore;
         private readonly DocumentAddress caretAfter;
 
-        public TableEdit(DocumentControl document, int index, XElement? before, XElement? after,
+        public TableEdit(RichTextDocument document, int index, XElement? before, XElement? after,
             DocumentAddress caretBefore, DocumentAddress caretAfter)
         {
             this.document = document;
@@ -286,27 +285,27 @@ namespace ArctisAurora.Core.UI
             this.caretAfter = caretAfter;
         }
 
-        public void Undo() => document.SetTable(index, after != null, before, caretBefore);
+        public void Undo() => document.PutTable(index, after != null, before, caretBefore);
 
-        public void Redo() => document.SetTable(index, before != null, after, caretAfter);
+        public void Redo() => document.PutTable(index, before != null, after, caretAfter);
     }
 
     // A note's page format before and after a change; null is the editor's own.
     public sealed class PageEdit : IEditRecord
     {
-        private readonly DocumentEditorControl editor;
+        private readonly RichTextDocument document;
         private readonly PageLayout? before;
         private readonly PageLayout? after;
 
-        public PageEdit(DocumentEditorControl editor, PageLayout? before, PageLayout? after)
+        public PageEdit(RichTextDocument document, PageLayout? before, PageLayout? after)
         {
-            this.editor = editor;
+            this.document = document;
             this.before = before;
             this.after = after;
         }
 
-        public void Undo() => editor.ApplyPage(before);
+        public void Undo() => document.SetPage(before);
 
-        public void Redo() => editor.ApplyPage(after);
+        public void Redo() => document.SetPage(after);
     }
 }

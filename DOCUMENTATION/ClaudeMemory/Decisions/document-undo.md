@@ -5,6 +5,7 @@
 `Thorium` boots to all three threads with `Text.Undo` and `Text.Redo` resolving at
 `InputHandler.LoadInputs`, which throws on a name it cannot bind. **Not GUI-verified** — no undo has
 been pressed.
+**Update 2026-10-08 (note model N2):** the records now hold `RichTextDocument` (the model), not `DocumentControl`; see [[note-model]].
 **Scope:** new `ArctisAurora.Core.Editing`, new
 `ArctisAurora.Core.UISystem.Controls.Text.Document.Edits`, plus `DocumentControl`,
 `DocumentEditorControl`, `DocumentEditSession`, `TextInputActions`, and

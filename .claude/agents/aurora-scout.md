@@ -2,7 +2,7 @@
 name: aurora-scout
 description: Answers one specific question about the Aurora tree and returns a compact answer with file:line pointers. Read-only fan-out — use when the reading is much larger than the answer and the location is not already known.
 tools: Read, Glob, Grep, Bash
-model: haiku
+model: claude-haiku-5-5
 ---
 
 # Scout

@@ -27,6 +27,8 @@
           <xs:enumeration value="Tex.Pdf.Text" />
           <xs:enumeration value="NoteModel.SaveIsStable" />
           <xs:enumeration value="NoteModel.LoadHeadless" />
+          <xs:enumeration value="NoteModel.Changes" />
+          <xs:enumeration value="NoteModel.EditHeadless" />
           <xs:enumeration value="Palette.SetCrossfades" />
           <xs:enumeration value="Planner.XmlRoundTrip" />
           <xs:enumeration value="Planner.GanttGeometry" />

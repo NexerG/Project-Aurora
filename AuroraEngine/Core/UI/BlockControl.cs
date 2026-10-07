@@ -501,25 +501,7 @@ namespace ArctisAurora.Core.UI
             return tail;
         }
 
-        // The inverse of a split: the other block's text and spans land on the end of this one.
-        public void AppendBlock(BlockControl tail)
-        {
-            AppendSpans(tail.spans, tail.text ?? string.Empty);
-        }
-
         public BlockSnapshot Snapshot() => note.Snapshot();
-
-        public BlockSnapshot SliceSnapshot(int from, int to) => note.SliceSnapshot(from, to);
-
-        // Puts a captured slice back, styles and all.
-        public void InsertSlice(int offset, BlockSnapshot slice)
-        {
-            string before = data.text;
-            data.InsertSpans(offset, slice.spans, slice.text);
-            Edited(before);
-        }
-
-        public void AppendSlice(BlockSnapshot slice) => AppendSpans(slice.spans, slice.text);
 
         // Replaces everything this block holds.
         public void Restore(BlockSnapshot snapshot)
@@ -528,52 +510,14 @@ namespace ArctisAurora.Core.UI
             InvalidateLayout();
         }
 
-        // Takes another block's kind and leaves the text alone.
-        internal void TakeKind(BlockSnapshot kind)
-        {
-            note.TakeKind(kind);
-            InvalidateLayout();
-        }
-
-        public static BlockControl From(BlockSnapshot snapshot)
-        {
-            BlockControl block = new BlockControl();
-            block.Restore(snapshot);
-            return block;
-        }
-
         public StyleSpan StyleAt(int offset) => data.StyleAt(offset);
 
         public bool AllSpans(int start, int end, Func<StyleSpan, bool> test) => data.AllSpans(start, end, test);
-
-        public void StyleRange(int start, int end, StyleDelta delta)
-        {
-            if (end <= start) return;
-
-            data.StyleRange(start, end, delta);
-            InvalidateLayout();
-        }
-
-        private void AppendSpans(List<StyleSpan> add, string slice)
-        {
-            string before = data.text;
-            data.AppendSpans(add, slice);
-            Edited(before);
-        }
 
         public void SetPicture(int offset, StyleSpan picture)
         {
             if (data.SetPicture(offset, picture)) InvalidateLayout();
         }
-
-        public void SetMath(int offset, string source)
-        {
-            if (data.SetMath(offset, source)) InvalidateLayout();
-        }
-
-        public int SplitSpanAt(int offset) => data.SplitSpanAt(offset);
-
-        public void MergeSpans() => data.MergeSpans();
         #endregion
 
         public List<Run> Runs() => data.Runs();

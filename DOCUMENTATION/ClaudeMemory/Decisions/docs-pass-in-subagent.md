@@ -10,6 +10,7 @@
   working rules: grep-then-offset-read on the large indexes, all independent edits in one message, shortest
   unique `old_string`, one `Write` per new file.
 - The skill's statistics and rationale paragraphs moved out; this note holds the reasoning.
+- 2026-10-07: `aurora-scribe` and `aurora-committer` pin `claude-sonnet-5-5`; `aurora-mechanic` and `aurora-scout` pin `claude-haiku-5-5`.
 
 ## Why these choices
 

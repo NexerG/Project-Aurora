@@ -2,6 +2,7 @@ using ArctisAurora.Core.Editing;
 using ArctisAurora.Core.Registry;
 using System.Globalization;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Xml.Linq;
 
@@ -95,6 +96,403 @@ namespace ArctisAurora.Core.UI
                 default: DocumentXml.Save(this, path); break;
             }
         }
+
+        #region ---- editing ----
+        public event Action<NoteChange>? changed;
+
+        private void Raise(NoteChangeKind kind, int first, int count = 1, DocumentAddress at = default, int length = 0,
+            DocumentAddress? anchor = null, DocumentAddress? caret = null) =>
+            changed?.Invoke(new NoteChange(kind, first, count, at, length, anchor, caret));
+
+        // Every block in reading order, a table's cells included.
+        public List<NoteBlock> Blocks()
+        {
+            List<NoteBlock> flat = new List<NoteBlock>();
+            foreach (NoteNode node in blocks)
+            {
+                if (node is NoteBlock block) flat.Add(block);
+                else if (node is NoteTable table)
+                    foreach (NoteCell[] row in table.rows)
+                        foreach (NoteCell cell in row)
+                            flat.AddRange(cell.blocks);
+            }
+
+            return flat;
+        }
+
+        // The block at a flat index without building the list; null past the end.
+        public NoteBlock? BlockAt(int index)
+        {
+            if (index < 0) return null;
+
+            foreach (NoteNode node in blocks)
+            {
+                if (node is NoteBlock block)
+                {
+                    if (index-- == 0) return block;
+                }
+                else if (node is NoteTable table)
+                    foreach (NoteCell[] row in table.rows)
+                        foreach (NoteCell cell in row)
+                        {
+                            if (index < cell.blocks.Length) return cell.blocks[index];
+                            index -= cell.blocks.Length;
+                        }
+            }
+
+            return null;
+        }
+
+        public bool Resolve(DocumentAddress at, out NoteBlock block, out int offset)
+        {
+            block = null!;
+            offset = 0;
+
+            if (BlockAt(at.block) is not NoteBlock found) return false;
+
+            block = found;
+            offset = Math.Clamp(at.offset, 0, block.run.Length);
+            return true;
+        }
+
+        // The cell holding a block; null for a block of the note itself.
+        public NoteCell? CellOf(NoteBlock block)
+        {
+            foreach (NoteNode node in blocks)
+                if (node is NoteTable table)
+                    foreach (NoteCell[] row in table.rows)
+                        foreach (NoteCell cell in row)
+                            if (Array.IndexOf(cell.blocks, block) >= 0) return cell;
+
+            return null;
+        }
+
+        private void InsertAfter(NoteBlock after, NoteBlock[] added)
+        {
+            if (CellOf(after) is NoteCell cell) cell.blocks = Inserted(cell.blocks, Array.IndexOf(cell.blocks, after) + 1, added);
+            else blocks = Inserted(blocks, Array.IndexOf(blocks, after) + 1, added);
+        }
+
+        private void Detach(NoteBlock block)
+        {
+            if (CellOf(block) is NoteCell cell) cell.blocks = Removed(cell.blocks, block);
+            else blocks = Removed(blocks, block);
+        }
+
+        private static T[] Inserted<T>(T[] array, int at, IEnumerable<T> items) => [.. array.AsSpan(0, at), .. items, .. array.AsSpan(at)];
+
+        private static T[] Removed<T>(T[] array, T item)
+        {
+            int at = Array.IndexOf(array, item);
+            return at < 0 ? array : [.. array.AsSpan(0, at), .. array.AsSpan(at + 1)];
+        }
+
+        public void InsertText(DocumentAddress at, string insert)
+        {
+            if (Resolve(at, out NoteBlock block, out _)) InsertText(block, at, insert);
+        }
+
+        // For a caller that already holds the block at the address.
+        public void InsertText(NoteBlock block, DocumentAddress at, string insert)
+        {
+            int offset = Math.Clamp(at.offset, 0, block.run.Length);
+            block.run.InsertText(offset, insert);
+            Raise(NoteChangeKind.Text, at.block, at: new DocumentAddress(at.block, offset), length: insert.Length,
+                caret: new DocumentAddress(at.block, offset + insert.Length));
+        }
+
+        public void RemoveText(DocumentAddress at, int count)
+        {
+            if (!Resolve(at, out NoteBlock block, out int offset)) return;
+            if (offset + count > block.run.Length) return;
+
+            block.run.RemoveText(offset, count);
+            DocumentAddress start = new DocumentAddress(at.block, offset);
+            Raise(NoteChangeKind.Text, at.block, at: start, length: -count, caret: start);
+        }
+
+        // The head block keeps its prefix and the caret, the tail block's suffix joins it, and every
+        // block the range crossed whole goes with the tail.
+        public void DeleteBetween(DocumentAddress from, DocumentAddress to)
+        {
+            List<NoteBlock> flat = Blocks();
+            if (from.block < 0 || to.block >= flat.Count || from.block > to.block) return;
+
+            NoteBlock head = flat[from.block];
+
+            if (from.block == to.block)
+            {
+                head.run.RemoveText(from.offset, to.offset - from.offset);
+                Raise(NoteChangeKind.Text, from.block, at: from, length: from.offset - to.offset, caret: from);
+                return;
+            }
+
+            NoteBlock tail = flat[to.block];
+            head.run.RemoveText(from.offset, head.run.Length - from.offset);
+            tail.run.RemoveText(0, to.offset);
+            head.run.AppendSpans(tail.run.spans, tail.run.text ?? string.Empty);
+            if (head.stylingType == TextStyleType.Rule) head.TakeKind(tail.SliceSnapshot(0, 0));
+
+            for (int i = to.block; i > from.block; i--)
+                Detach(flat[i]);
+
+            Raise(NoteChangeKind.Removed, from.block + 1, to.block - from.block, at: from);
+            Raise(NoteChangeKind.Kind, from.block, caret: from);
+        }
+
+        // Everything the range covers, as data: the head block's cut suffix, then whole blocks, then
+        // the tail block's cut prefix.
+        public DocumentFragment CaptureFragment(DocumentAddress from, DocumentAddress to)
+        {
+            DocumentFragment fragment = new DocumentFragment();
+            List<NoteBlock> flat = Blocks();
+
+            for (int i = from.block; i <= to.block && i < flat.Count; i++)
+                fragment.blocks.Add(flat[i].SliceSnapshot(
+                    i == from.block ? from.offset : 0,
+                    i == to.block ? to.offset : flat[i].run.Length));
+
+            return fragment;
+        }
+
+        // The inverse of a range delete. The head block takes its cut text back, and when the range
+        // crossed blocks the survivors that were merged into it move back out into rebuilt ones.
+        public void InsertFragment(DocumentAddress at, DocumentFragment fragment,
+            DocumentAddress? anchor = null, DocumentAddress? caret = null)
+        {
+            if (fragment.blocks.Count == 0) return;
+            if (!Resolve(at, out NoteBlock head, out int offset)) return;
+
+            DocumentAddress start = new DocumentAddress(at.block, offset);
+            caret ??= start;
+
+            if (fragment.blocks.Count == 1)
+            {
+                head.run.InsertSpans(offset, fragment.blocks[0].spans, fragment.blocks[0].text);
+                Raise(NoteChangeKind.Text, at.block, at: start, length: fragment.blocks[0].text.Length, anchor: anchor, caret: caret);
+                return;
+            }
+
+            // everything after the insertion point in the head block was moved there by the merge
+            BlockSnapshot rest = head.SliceSnapshot(offset, head.run.Length);
+            head.run.RemoveText(offset, head.run.Length - offset);
+            head.run.AppendSpans(fragment.blocks[0].spans, fragment.blocks[0].text);
+
+            NoteBlock[] added = new NoteBlock[fragment.blocks.Count - 1];
+            for (int i = 1; i < fragment.blocks.Count; i++)
+                added[i - 1] = NoteBlock.From(fragment.blocks[i]);
+            added[^1].run.AppendSpans(rest.spans, rest.text);
+            InsertAfter(head, added);
+
+            Raise(NoteChangeKind.Inserted, at.block + 1, added.Length, at: start);
+            Raise(NoteChangeKind.Kind, at.block, anchor: anchor, caret: caret);
+        }
+
+        // Puts a block's kind back without touching its text; what undoing a merge into a rule needs.
+        public void RestoreKind(DocumentAddress at, BlockSnapshot kind,
+            DocumentAddress? anchor = null, DocumentAddress? caret = null)
+        {
+            if (!Resolve(at, out NoteBlock block, out _)) return;
+
+            block.TakeKind(kind);
+            Raise(NoteChangeKind.Kind, at.block, anchor: anchor, caret: caret);
+        }
+
+        // A fragment put in forwards, for a paste or a drop and their redo; the caret ends after it.
+        public void InsertBetween(DocumentAddress from, DocumentAddress to, DocumentFragment fragment) =>
+            InsertFragment(from, fragment, caret: to);
+
+        // The split itself, addressed rather than read off the caret, so redo can replay it.
+        public void SplitBlockAt(DocumentAddress at)
+        {
+            if (!Resolve(at, out NoteBlock block, out int offset)) return;
+
+            NoteBlock tail = block.SplitAt(offset);
+            InsertAfter(block, [tail]);
+
+            DocumentAddress start = new DocumentAddress(at.block, offset);
+            Raise(NoteChangeKind.Spans, at.block);
+            Raise(NoteChangeKind.Inserted, at.block + 1, at: start, caret: new DocumentAddress(at.block + 1, 0));
+        }
+
+        // The inverse of a split.
+        public void JoinBlockWithNext(DocumentAddress at)
+        {
+            List<NoteBlock> flat = Blocks();
+            if (at.block < 0 || at.block + 1 >= flat.Count) return;
+
+            NoteBlock head = flat[at.block];
+            NoteBlock tail = flat[at.block + 1];
+
+            head.run.AppendSpans(tail.run.spans, tail.run.text ?? string.Empty);
+            Detach(tail);
+
+            Raise(NoteChangeKind.Removed, at.block + 1, at: at);
+            Raise(NoteChangeKind.Kind, at.block, caret: at);
+        }
+
+        // Rewrites blocks in place, text and kind alike.
+        public void ChangeBlocks(int first, int last, Action<NoteBlock> change)
+        {
+            List<NoteBlock> flat = Blocks();
+            first = Math.Max(first, 0);
+            last = Math.Min(last, flat.Count - 1);
+            if (last < first) return;
+
+            for (int b = first; b <= last; b++)
+                change(flat[b]);
+
+            Raise(NoteChangeKind.Kind, first, last - first + 1);
+        }
+
+        // Undo for both styling primitives. Neither adds or removes a block, so the blocks
+        // themselves survive and only their spans are rewritten.
+        public void RestoreBlocks(int firstBlock, List<BlockSnapshot> before)
+        {
+            List<NoteBlock> flat = Blocks();
+            int first = Math.Max(firstBlock, 0);
+            int last = Math.Min(firstBlock + before.Count, flat.Count) - 1;
+            if (last < first) return;
+
+            for (int b = first; b <= last; b++)
+                flat[b].Restore(before[b - firstBlock]);
+
+            Raise(NoteChangeKind.Kind, first, last - first + 1);
+        }
+
+        public void SetBlockStylingBetween(int first, int last, TextStyleType type) =>
+            ChangeBlocks(first, last, b => b.stylingType = type);
+
+        // Addressed rather than read off the selection, so redo can replay it against the spans undo
+        // restored. Offsets are block-relative, so nothing here has to survive a re-partition.
+        public void ApplyStyleBetween(DocumentAddress from, DocumentAddress to, StyleDelta delta)
+        {
+            List<NoteBlock> flat = Blocks();
+            if (from.block < 0 || to.block >= flat.Count || to.block < from.block) return;
+
+            for (int b = from.block; b <= to.block; b++)
+            {
+                int start = b == from.block ? Math.Clamp(from.offset, 0, flat[b].run.Length) : 0;
+                int end = b == to.block ? Math.Clamp(to.offset, 0, flat[b].run.Length) : flat[b].run.Length;
+                if (end > start) flat[b].run.StyleRange(start, end, delta);
+            }
+
+            Raise(NoteChangeKind.Spans, from.block, to.block - from.block + 1, anchor: from, caret: to);
+        }
+
+        // Gives a character range the inline code styling.
+        public static void MarkCode(NoteBlock block, int from, int to)
+        {
+            List<StyleSpan> spans = block.run.spans;
+            block.run.SplitSpanAt(to);
+            int first = block.run.SplitSpanAt(from);
+            int at = from;
+            for (int i = first; i < spans.Count && at < to; i++)
+            {
+                StyleSpan span = spans[i];
+                at += span.count;
+                span.stylingType = TextStyleType.Code;
+                span.fontSizeAuthored = false;
+                spans[i] = span;
+            }
+            block.run.MergeSpans();
+        }
+
+        // Undo and redo: the picture as stored, left selected.
+        public void SetPicture(DocumentAddress at, StyleSpan picture)
+        {
+            if (!Resolve(at, out NoteBlock block, out int index)) return;
+
+            block.run.SetPicture(index, picture);
+            Raise(NoteChangeKind.Spans, at.block, anchor: at, caret: new DocumentAddress(at.block, at.offset + 1));
+        }
+
+        // Rewrites a formula's source and leaves it selected; the preview, undo and redo.
+        public void SetMath(DocumentAddress at, string source)
+        {
+            if (!Resolve(at, out NoteBlock block, out int index)) return;
+
+            block.run.SetMath(index, source);
+            Raise(NoteChangeKind.Spans, at.block, anchor: at, caret: new DocumentAddress(at.block, at.offset + 1));
+        }
+
+        // Rewrites links the rename answers for; true when any changed.
+        public bool RenameSheetLinks(Func<string, string?> rename)
+        {
+            bool any = false;
+            List<NoteBlock> flat = Blocks();
+            for (int b = 0; b < flat.Count; b++)
+            {
+                Span<StyleSpan> spans = CollectionsMarshal.AsSpan(flat[b].run.spans);
+                bool changed = false;
+                for (int i = 0; i < spans.Length; i++)
+                {
+                    if (spans[i].IsMath && SheetLinks.HasMathLinks(spans[i].mathSource))
+                    {
+                        string source = SheetLinks.RenameMath(spans[i].mathSource, rename);
+                        if (source == spans[i].mathSource) continue;
+                        spans[i].mathSource = source;
+                        changed = true;
+                        continue;
+                    }
+                    if (!spans[i].IsSheet || rename(spans[i].sheetRef) is not string renamed) continue;
+                    spans[i].sheetRef = renamed;
+                    changed = true;
+                }
+                if (!changed) continue;
+                Raise(NoteChangeKind.Spans, b);
+                any = true;
+            }
+            return any;
+        }
+
+        // Takes the table at a note-level index out when present, and puts one built from xml there.
+        public NoteTable? PutTable(int index, bool present, XElement? xml, DocumentAddress? caret = null)
+        {
+            if (present && blocks[index] is NoteTable old) blocks = Removed(blocks, old);
+
+            NoteTable? table = null;
+            if (xml != null)
+            {
+                table = DocumentXml.ReadTable(xml);
+                blocks = Inserted(blocks, index, [table]);
+            }
+
+            Raise(NoteChangeKind.Table, index, caret: caret);
+            return table;
+        }
+
+        public void SetPage(PageLayout? page)
+        {
+            layout.page = page;
+            Raise(NoteChangeKind.Page, 0);
+        }
+
+        public void SetPalette(string? name)
+        {
+            palette = name;
+            Raise(NoteChangeKind.Palette, 0);
+        }
+
+        public void SetLayout(DocumentLayout layout)
+        {
+            this.layout = layout;
+            Raise(NoteChangeKind.Layout, 0);
+        }
+
+        // One frontmatter key, removed when value is null.
+        public void SetFrontmatterValue(string key, string? value)
+        {
+            frontmatter = Frontmatter.Set(frontmatter, key, value);
+            Raise(NoteChangeKind.Properties, 0);
+        }
+
+        public void SetReadOnly(bool value)
+        {
+            readOnly = value;
+            Raise(NoteChangeKind.ReadOnly, 0);
+        }
+        #endregion
     }
 
     // One open note: the document the editor is showing and the file it came from.
